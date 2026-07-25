@@ -1,0 +1,21 @@
+{
+  "name": "@llm-machines/console",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "corepack pnpm -r build",
+    "dev": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && corepack pnpm --filter @llm-machines/web dev",
+    "format": "biome format --write . && corepack pnpm -r format",
+    "lint": "biome lint . && corepack pnpm -r lint",
+    "test": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && corepack pnpm -r test",
+    "typecheck": "corepack pnpm -r build && corepack pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "typescript": "5.8.3"
+  }
+}

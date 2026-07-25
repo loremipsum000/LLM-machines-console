@@ -1,0 +1,32 @@
+{
+  "name": "@llm-machines/contracts",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "test": "vitest run && tsc --project tsconfig.json",
+    "typecheck": "tsc --project tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "3.24.4"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vitest": "3.1.4"
+  },
+  "llmMachines": {
+    "tier": "t1"
+  }
+}
