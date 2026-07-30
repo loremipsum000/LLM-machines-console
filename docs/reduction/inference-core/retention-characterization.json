@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "scope": "pr01-source-characterization",
+  "overallVerdict": "PR01_SOURCE_CHARACTERIZATION_INCOMPLETE",
+  "runtimeZeroRetentionCompliance": "NOT_EVALUATED",
+  "d2aRcRetentionEvidence": "NOT_DUE",
+  "requiredTerminalStates": [
+    "success",
+    "rejection",
+    "cancellation",
+    "timeout",
+    "upstream-failure",
+    "crash",
+    "restart",
+    "backup",
+    "restore"
+  ],
+  "requiredSourceScenarios": [
+    "non-stream-success",
+    "stream-success",
+    "rejection",
+    "cancellation",
+    "timeout",
+    "upstream-failure",
+    "crash",
+    "restart",
+    "backup",
+    "restore"
+  ],
+  "requiredArtifactClasses": [
+    "managed-store",
+    "log",
+    "metric",
+    "queue",
+    "cache",
+    "crash-output",
+    "export",
+    "backup"
+  ],
+  "sourceCoverage": [
+    {
+      "scenario": "non-stream-success",
+      "status": "EXISTING_AUDIT_AND_USAGE_ASSERTIONS"
+    },
+    {
+      "scenario": "stream-success",
+      "status": "EXISTING_AUDIT_AND_USAGE_ASSERTIONS"
+    },
+    {
+      "scenario": "rejection",
+      "status": "PARTIAL_SOURCE_CHARACTERIZATION"
+    },
+    {
+      "scenario": "cancellation",
+      "status": "NOT_EVALUATED_RUNTIME"
+    },
+    {
+      "scenario": "timeout",
+      "status": "SOURCE_CONTROL_ABSENT"
+    },
+    {
+      "scenario": "upstream-failure",
+      "status": "PARTIAL_SOURCE_CHARACTERIZATION"
+    },
+    {
+      "scenario": "crash",
+      "status": "NOT_EVALUATED_RUNTIME"
+    },
+    {
+      "scenario": "restart",
+      "status": "NOT_EVALUATED_RUNTIME"
+    },
+    {
+      "scenario": "backup",
+      "status": "NOT_EVALUATED_RUNTIME"
+    },
+    {
+      "scenario": "restore",
+      "status": "NOT_EVALUATED_RUNTIME"
+    }
+  ],
+  "legacyGaps": [
+    {
+      "id": "ZR-LEGACY-001",
+      "summary": "Gateway accounting failures log raw Error message and stack.",
+      "retireBy": "PR-07"
+    },
+    {
+      "id": "ZR-LEGACY-002",
+      "summary": "Audit reason and metadata accept unrestricted content.",
+      "retireBy": "PR-04"
+    },
+    {
+      "id": "ZR-LEGACY-003",
+      "summary": "Retired schemas and stores contain workload content.",
+      "retireBy": "PR-04"
+    },
+    {
+      "id": "ZR-LEGACY-004",
+      "summary": "Generic idempotency storage can retain arbitrary mutation responses.",
+      "retireBy": "PR-04"
+    },
+    {
+      "id": "ZR-COVERAGE-001",
+      "summary": "PostgreSQL and Redis persistence are not exercised by the source harness.",
+      "retireBy": "PR-12"
+    },
+    {
+      "id": "ZR-COVERAGE-002",
+      "summary": "Cancellation, timeout, crash, restart, backup, and restore are not fully exercised.",
+      "retireBy": "PR-12"
+    },
+    {
+      "id": "ZR-COVERAGE-003",
+      "summary": "LiteLLM, inference, Firecrawl, proxy, observability, and appliance stores require candidate-runtime evidence.",
+      "retireBy": "PR-12"
+    }
+  ]
+}

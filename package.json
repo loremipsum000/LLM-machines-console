@@ -8,11 +8,18 @@
   },
   "scripts": {
     "build": "corepack pnpm -r build",
+    "build:inference-core": "node scripts/inference-core/run-core-command.mjs build",
+    "check:inference-core": "node scripts/inference-core/guardrails.mjs",
+    "check:inference-core:base": "node scripts/inference-core/guardrails.mjs --base-ref origin/codex/inference-core-stack-reduction",
     "dev": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && corepack pnpm --filter @llm-machines/web dev",
     "format": "biome format --write . && corepack pnpm -r format",
     "lint": "biome lint . && corepack pnpm -r lint",
-    "test": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && corepack pnpm -r test",
-    "typecheck": "corepack pnpm -r build && corepack pnpm -r typecheck"
+    "test": "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm -r --fail-if-no-match test",
+    "test:inference-core-authorization": "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match exec vitest run src/inference-core-authorization.test.ts",
+    "test:inference-core-characterization": "corepack pnpm --filter @llm-machines/bff --fail-if-no-match exec vitest run src/routes/inference-core-characterization.test.ts",
+    "test:inference-core-guardrails": "node --test scripts/inference-core/*.test.mjs",
+    "typecheck": "corepack pnpm -r build && corepack pnpm -r typecheck",
+    "typecheck:inference-core": "node scripts/inference-core/run-core-command.mjs typecheck"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
