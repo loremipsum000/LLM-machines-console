@@ -13,6 +13,29 @@ const retainedEntryPaths = [
   "app/settings/page.tsx",
   "app/team/[[...section]]/page.tsx",
 ]
+const retiredRoutePaths = [
+  "app/api/builder/agents/[id]/test/stream/route.ts",
+  "app/api/hub/chat/route.ts",
+  "app/api/hub/events/route.ts",
+  "app/api/hub/notifications/[id]/read/route.ts",
+  "app/api/hub/search/route.ts",
+  "app/artifacts/[id]/page.tsx",
+  "app/artifacts/page.tsx",
+  "app/builder/agents/[id]/page.tsx",
+  "app/builder/page.tsx",
+  "app/builder/resources/[id]/page.tsx",
+  "app/builder/submissions/page.tsx",
+  "app/builder/templates/[id]/page.tsx",
+  "app/builder/templates/page.tsx",
+  "app/chat/page.tsx",
+  "app/knowledge/page.tsx",
+  "app/profile/page.tsx",
+  "app/resources/[type]/[id]/page.tsx",
+  "app/resources/page.tsx",
+  "app/tasks/[id]/page.tsx",
+  "app/tasks/page.tsx",
+  "app/usage/page.tsx",
+]
 const retiredBoundaryPatterns = [
   /agentic/i,
   /builder/i,
@@ -34,6 +57,12 @@ function source(relativePath: string): string {
 }
 
 describe("retained Web inference-core boundaries", () => {
+  it("keeps every retired page and route handler absent", () => {
+    for (const path of retiredRoutePaths) {
+      expect(existsSync(resolve(webSourceRoot, path)), path).toBe(false)
+    }
+  })
+
   it("keeps the complete retained local import closure free of retired domains", () => {
     for (const path of retainedLocalImportClosure(retainedEntryPaths)) {
       const moduleSource = readFileSync(resolve(webSourceRoot, path), "utf8")

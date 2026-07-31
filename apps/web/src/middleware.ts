@@ -6,10 +6,6 @@ import {
 } from "next/server"
 import type { NextAuthRequest } from "next-auth"
 import { auth } from "@/lib/auth/auth"
-import {
-  getSignInRedirectUrl,
-  isHubAuthRequired,
-} from "@/lib/auth/middleware-policy"
 
 type AuthMiddlewareFactory = (
   middleware: (
@@ -34,12 +30,9 @@ export default function middleware(
 ) {
   if (
     request.nextUrl.pathname.startsWith("/auth/") ||
-    PUBLIC_ASSET_PATHS.has(request.nextUrl.pathname)
+    PUBLIC_ASSET_PATHS.has(request.nextUrl.pathname) ||
+    !isProtectedConsolePath(request.nextUrl.pathname)
   ) {
-    return NextResponse.next()
-  }
-
-  if (!isHubAuthRequired()) {
     return NextResponse.next()
   }
 
@@ -52,6 +45,27 @@ export default function middleware(
   }) as NextMiddleware
 
   return requireAuthenticatedSession(request, event)
+}
+
+function isProtectedConsolePath(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname === "/hardware" ||
+    pathname === "/settings" ||
+    isPathWithin(pathname, "/applications") ||
+    isPathWithin(pathname, "/inference") ||
+    isPathWithin(pathname, "/team")
+  )
+}
+
+function getSignInRedirectUrl(requestUrl: string): URL {
+  const signInUrl = new URL("/auth/signin", requestUrl)
+  signInUrl.searchParams.set("callbackUrl", requestUrl)
+  return signInUrl
+}
+
+function isPathWithin(pathname: string, root: string): boolean {
+  return pathname === root || pathname.startsWith(`${root}/`)
 }
 
 export const config = {

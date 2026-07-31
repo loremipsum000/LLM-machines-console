@@ -1,3 +1,0 @@
-Title: Local AI Safety Operating Note
-
-Corporate knowledge must be ingested by an administrator, published as an immutable snapshot, and retrieved through the governed MCP gateway with source citations.

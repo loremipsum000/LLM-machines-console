@@ -1,3 +1,0 @@
-Naslov: Pravilnik o sigurnoj uporabi lokalne umjetne inteligencije
-
-Zaposlenici smiju koristiti korporativne modele samo kroz odobrene agente. Dokumenti s osobnim podacima moraju ostati unutar appliance okruženja. Administratori objavljuju korpuse znanja nakon provjere izvora, jezika i citata.

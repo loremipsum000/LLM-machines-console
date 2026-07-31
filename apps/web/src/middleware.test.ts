@@ -1,110 +1,119 @@
 import { type NextFetchEvent, NextRequest } from "next/server"
-import { afterEach, describe, expect, it, vi } from "vitest"
-import {
-  getSignInRedirectUrl,
-  isHubAuthRequired,
-} from "@/lib/auth/middleware-policy"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import middleware from "@/middleware"
 
-const authSpies = vi.hoisted(() => {
-  const authenticatedMiddleware = vi.fn(
-    () => new Response(null, { status: 204 }),
-  )
-  return {
-    auth: vi.fn(() => authenticatedMiddleware),
-    authenticatedMiddleware,
-  }
-})
+type TestAuthRequest = NextRequest & { auth: object | null }
+type AuthCallback = (
+  request: TestAuthRequest,
+  event: NextFetchEvent,
+) => Response | Promise<Response> | undefined
+type AuthFactory = (
+  callback: AuthCallback,
+) => (request: NextRequest, event: NextFetchEvent) => ReturnType<AuthCallback>
+
+const authSpies = vi.hoisted(() => ({
+  auth: vi.fn<AuthFactory>(),
+  session: { current: null as object | null },
+}))
 
 vi.mock("@/lib/auth/auth", () => ({
   auth: authSpies.auth,
 }))
 
-describe("Hub middleware helpers", () => {
+describe("Console middleware", () => {
+  beforeEach(() => {
+    authSpies.session.current = null
+    authSpies.auth.mockImplementation(
+      (callback) => (request, event) =>
+        callback(
+          Object.assign(request, { auth: authSpies.session.current }),
+          event,
+        ),
+    )
+  })
+
   afterEach(() => {
-    authSpies.auth.mockClear()
-    authSpies.authenticatedMiddleware.mockClear()
-    vi.unstubAllEnvs()
+    authSpies.auth.mockReset()
   })
 
-  it("keeps local fixture mode open by default", () => {
-    expect(isHubAuthRequired({ NODE_ENV: "development" })).toBe(false)
+  it("always protects every retained Console route", async () => {
+    const protectedPaths = [
+      "/",
+      "/applications",
+      "/applications/add",
+      "/hardware",
+      "/inference",
+      "/inference/model-update",
+      "/settings",
+      "/team",
+      "/team/import/template",
+    ]
+    for (const pathname of protectedPaths) {
+      const response = await runMiddleware(pathname)
+      expect(response.status, pathname).toBe(307)
+    }
+    expect(authSpies.auth).toHaveBeenCalledTimes(protectedPaths.length)
   })
 
-  it("requires auth for production BFF-backed runtimes", () => {
-    expect(
-      isHubAuthRequired({
-        CONSOLE_BFF_URL: "https://bff.example.test",
-        NODE_ENV: "production",
-      }),
-    ).toBe(true)
-  })
-
-  it("allows explicit auth requirement override", () => {
-    expect(
-      isHubAuthRequired({
-        CONSOLE_REQUIRE_AUTH: "true",
-        NODE_ENV: "development",
-      }),
-    ).toBe(true)
-    expect(
-      isHubAuthRequired({
-        CONSOLE_BFF_URL: "https://bff.example.test",
-        CONSOLE_REQUIRE_AUTH: "false",
-        NODE_ENV: "production",
-      }),
-    ).toBe(false)
-  })
-
-  it("builds Auth.js sign-in redirects with the original callback URL", () => {
-    const redirectUrl = getSignInRedirectUrl(
-      "https://console.example.test/resources",
+  it("redirects unauthenticated requests with the original callback URL", async () => {
+    const response = await runMiddleware(
+      "/applications/apps/app-1?tab=credentials",
     )
 
-    expect(redirectUrl.toString()).toBe(
-      "https://console.example.test/auth/signin?callbackUrl=https%3A%2F%2Fconsole.example.test%2Fresources",
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "https://console.example.test/auth/signin?callbackUrl=https%3A%2F%2Fconsole.example.test%2Fapplications%2Fapps%2Fapp-1%3Ftab%3Dcredentials",
     )
   })
 
-  it("bypasses Auth.js middleware for local fixture-mode routes", () => {
-    vi.stubEnv("NODE_ENV", "development")
-
-    middleware(
-      new NextRequest("http://localhost:3001/builder"),
-      {} as NextFetchEvent,
-    )
-
-    expect(authSpies.authenticatedMiddleware).not.toHaveBeenCalled()
+  it("lets unknown and retired paths reach the Next 404 boundary", async () => {
+    for (const pathname of [
+      "/unknown",
+      "/chat",
+      "/knowledge",
+      "/builder",
+      "/artifacts/example",
+      "/resources",
+      "/tasks",
+      "/profile",
+      "/usage",
+    ]) {
+      const response = await runMiddleware(pathname)
+      expect(response.headers.get("x-middleware-next"), pathname).toBe("1")
+    }
     expect(authSpies.auth).not.toHaveBeenCalled()
   })
 
-  it("bypasses Auth.js middleware for favicon assets", () => {
-    vi.stubEnv("CONSOLE_BFF_URL", "https://bff.example.test")
-    vi.stubEnv("NODE_ENV", "production")
+  it("bypasses authentication for public authentication and icon paths", async () => {
+    for (const pathname of [
+      "/auth/signin",
+      "/favicon-32x32.png",
+      "/icon.svg",
+    ]) {
+      const response = await runMiddleware(pathname)
+      expect(response.headers.get("x-middleware-next"), pathname).toBe("1")
+    }
 
-    middleware(
-      new NextRequest("https://console.example.test/favicon-32x32.png"),
-      {} as NextFetchEvent,
-    )
-    middleware(
-      new NextRequest("https://console.example.test/icon.svg"),
-      {} as NextFetchEvent,
-    )
-
-    expect(authSpies.authenticatedMiddleware).not.toHaveBeenCalled()
     expect(authSpies.auth).not.toHaveBeenCalled()
   })
 
-  it("runs Auth.js middleware for BFF-backed production routes", () => {
-    vi.stubEnv("CONSOLE_BFF_URL", "https://bff.example.test")
-    vi.stubEnv("NODE_ENV", "production")
+  it("allows authenticated sessions through retained protected routes", async () => {
+    authSpies.session.current = { user: { id: "admin-1" } }
 
-    middleware(
-      new NextRequest("https://console.example.test/knowledge"),
-      {} as NextFetchEvent,
-    )
+    const response = await runMiddleware("/applications")
 
+    expect(response.headers.get("x-middleware-next")).toBe("1")
     expect(authSpies.auth).toHaveBeenCalledTimes(1)
-    expect(authSpies.authenticatedMiddleware).toHaveBeenCalledTimes(1)
   })
 })
+
+async function runMiddleware(pathname: string): Promise<Response> {
+  const response = await middleware(
+    new NextRequest(`https://console.example.test${pathname}`),
+    {} as NextFetchEvent,
+  )
+  if (!(response instanceof Response)) {
+    throw new Error("Expected middleware to return a Response.")
+  }
+  return response
+}

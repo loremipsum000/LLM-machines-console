@@ -65,7 +65,7 @@ describe("Keycloak token refresh", () => {
       accessToken: jwtWithPayload({ exp: 9_999_999_999 }),
       accessTokenExpiresAt: 9_999_999_999,
       refreshToken: "refresh-1",
-      roles: ["builder"],
+      roles: ["operator"],
       sub: "user-1",
     }
 
@@ -104,7 +104,7 @@ describe("Keycloak token refresh", () => {
         accessTokenExpiresAt: 900,
         refreshToken: "refresh-1",
         groups: ["Finance"],
-        roles: ["builder"],
+        roles: ["operator"],
         sub: "user-1",
       },
       {
@@ -127,7 +127,7 @@ describe("Keycloak token refresh", () => {
     expect(refreshed.accessTokenExpiresAt).toBe(1_300)
     expect(refreshed.refreshToken).toBe("refresh-2")
     expect(refreshed.groups).toEqual(["Finance", "Security"])
-    expect(refreshed.roles).toEqual(["builder", "admin"])
+    expect(refreshed.roles).toEqual(["operator", "admin"])
   })
 
   it("suppresses stale forwarded access tokens when refresh fails", async () => {

@@ -5,11 +5,14 @@ appliance.
 
 ## Structure
 
-- `apps/web` - Next.js administration interface
-- `apps/bff` - Fastify backend-for-frontend
-- `apps/sidecar` - FastAPI AI sidecar
-- `packages/contracts` - shared Zod contracts
-- `packages/copy` - shared UX copy and localization
+- `apps/web` - reduced Next.js administration interface
+- `apps/bff` - Fastify control plane and Application gateway
+- `packages/contracts` - retained inference and administration contracts
+- `packages/copy` - retained product and authentication copy
+
+The product source contains the API-first inference control plane. Customer
+chat and agent interfaces are third-party applications and are not included
+in this repository.
 
 The repository is undergoing an inference-core product reduction. This
 clean-root publication is a source checkpoint, not a production release.

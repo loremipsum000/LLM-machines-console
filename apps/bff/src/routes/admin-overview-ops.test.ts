@@ -63,7 +63,7 @@ describe("Admin overview LiteLLM ops federation", () => {
             {
               request_duration_ms: 1800,
               status: "success",
-              user: "demo-builder",
+              user: "app-user",
             },
             {
               request_duration_ms: 5500,

@@ -26,6 +26,8 @@ import {
   extractWebRoutes,
   listCandidatePaths,
   pr02ContractRevisionPath,
+  pr03ContractRevisionPath,
+  pr03DecisionPath,
   repositoryRoot,
   routeBaselinePath,
   scanForbiddenSurfaces,
@@ -33,13 +35,18 @@ import {
   verifyCorePackageClosure,
   verifyLegacyRouteShrink,
   verifyPolicyStability,
+  verifyPr03BaseEvidence,
+  verifyPr03DecisionDocument,
+  verifyPr03FindingTransition,
   verifyProtectedGuardrailStability,
   verifyRepository,
   verifyRetentionCharacterization,
   verifyReviewedContractRevision,
   verifyReviewedFindingReduction,
+  verifyReviewedWebAuthenticationEvidence,
   verifyRouteBaselineMetadata,
   verifyShrinkOnly,
+  verifyWebAuthenticationBoundary,
 } from "./guardrails.mjs"
 
 const temporaryRoots = []
@@ -185,6 +192,242 @@ test("reviewed finding reductions reject new keys, count growth, and disposition
     "reviewed legacy disposition changed FS102_MCP\u0000retained.ts",
     "reviewed legacy finding count grew FS102_MCP\u0000retained.ts",
   ])
+})
+
+test("PR-03 applies only exact reviewed finding dispositions", () => {
+  const root = temporaryRoot()
+  const paths = [
+    "apps/bff/src/auth/persona.ts",
+    "apps/web/src/middleware.test.ts",
+    "infra/migrations/0003_builder_lifecycle_tables.sql",
+    "packages/contracts/src/common.ts",
+    "apps/bff/src/routes/retained.ts",
+  ]
+  for (const path of paths) {
+    writeFixture(root, path, "export const BuilderRole = true\n")
+  }
+
+  const findings = scanForbiddenSurfaces({ root, paths })
+  assert.deepEqual(
+    findings.map(({ path, removeBy }) => ({ path, removeBy })),
+    [
+      { path: "apps/bff/src/auth/persona.ts", removeBy: "PR-05" },
+      { path: "apps/bff/src/routes/retained.ts", removeBy: "PR-03" },
+      { path: "apps/web/src/middleware.test.ts", removeBy: "PR-12" },
+      {
+        path: "infra/migrations/0003_builder_lifecycle_tables.sql",
+        removeBy: "PR-04",
+      },
+      { path: "packages/contracts/src/common.ts", removeBy: "PR-05" },
+    ],
+  )
+})
+
+test("PR-03 finding transition permits only reviewed exact-path deferrals", () => {
+  const base = [
+    {
+      ruleId: "FS105_BUILDER_HUB",
+      path: "apps/bff/src/auth/persona.ts",
+      count: 2,
+      fingerprints: { before: 2 },
+      removeBy: "PR-03",
+    },
+    {
+      ruleId: "FS105_BUILDER_HUB",
+      path: "packages/contracts/src/common.ts",
+      count: 2,
+      fingerprints: { before: 2 },
+      removeBy: "PR-03",
+    },
+  ]
+  const current = base.map((entry) => ({
+    ...entry,
+    count: 1,
+    fingerprints: { reviewedReplacement: 1 },
+    removeBy: "PR-05",
+  }))
+
+  assert.deepEqual(verifyPr03FindingTransition(base, current), [])
+
+  const unreviewed = [
+    ...base,
+    {
+      ruleId: "FS105_BUILDER_HUB",
+      path: "apps/web/src/other.ts",
+      count: 1,
+      fingerprints: { before: 1 },
+      removeBy: "PR-03",
+    },
+  ]
+  assert.match(
+    verifyPr03FindingTransition(unreviewed, [
+      ...current,
+      {
+        ...unreviewed[2],
+        removeBy: "PR-05",
+      },
+    ]).join("\n"),
+    /outside policy|unreviewed PR-03 Builder\/Hub deferral/,
+  )
+  assert.match(
+    verifyPr03FindingTransition(base, [base[0]]).join("\n"),
+    /PR-03 findings remain/,
+  )
+})
+
+test("PR-03 ignores only the reviewed pnpm integrity false positive", () => {
+  const root = temporaryRoot()
+  const path = "pnpm-lock.yaml"
+  const integrity =
+    "resolution: {integrity: sha512-8SbC8BR40pS6baCM8sbtYDSwEVQd4JlFTOlaD3gWGHfThTcABnNDBda6eTZeqbofalIJhFx0qKzgHJmcPTnGdw==}"
+  writeFixture(root, path, `${integrity}\n`)
+
+  assert.deepEqual(scanForbiddenSurfaces({ root, paths: [path] }), [])
+
+  writeFixture(root, path, `${integrity}\nMCP_SERVER_ENABLED=true\n`)
+  const findings = scanForbiddenSurfaces({ root, paths: [path] })
+  assert.equal(findings.length, 1)
+  assert.equal(findings[0].ruleId, "FS102_MCP")
+  assert.equal(findings[0].path, path)
+  assert.equal(findings[0].count, 1)
+  assert.equal(
+    Object.keys(findings[0].fingerprints)[0],
+    testSha256("FS102_MCP\0MCP_SERVER_ENABLED=true\0mcp"),
+  )
+})
+
+test("PR-03 decision evidence requires reviewed exact path matrices", () => {
+  const decision = JSON.parse(
+    readFileSync(join(repositoryRoot, pr03DecisionPath), "utf8"),
+  )
+
+  assert.deepEqual(verifyPr03DecisionDocument(decision), [])
+  assert.deepEqual(
+    verifyPr03DecisionDocument(decision, { requireReady: true }),
+    [],
+  )
+
+  const pending = structuredClone(decision)
+  pending.reviewStatus = "pending-final-staged-delta"
+  assert.deepEqual(verifyPr03DecisionDocument(pending), [])
+  assert.deepEqual(
+    verifyPr03DecisionDocument(pending, { requireReady: true }),
+    ["PR-03 operation policy is not reviewed"],
+  )
+
+  const overlappingClosures = structuredClone(decision)
+  overlappingClosures.operationPolicy.changedSourcePaths = [
+    "apps/bff/src/auth/persona.ts",
+  ]
+  overlappingClosures.operationPolicy.changedRepositoryPaths = [
+    "apps/bff/src/auth/persona.ts",
+  ]
+  assert.deepEqual(verifyPr03DecisionDocument(overlappingClosures), [])
+})
+
+test("PR-03 generation requires byte-identical retained PR-02 evidence", () => {
+  assert.deepEqual(verifyPr03BaseEvidence(), [])
+
+  const root = temporaryRoot()
+  execFileSync(
+    "git",
+    ["clone", "--quiet", "--shared", "--no-checkout", repositoryRoot, root],
+    {
+      stdio: "ignore",
+    },
+  )
+  git(root, ["checkout", "--quiet", "43c11ace1b80d5241cf2a6a06670fe01f49e3e10"])
+  assert.deepEqual(verifyPr03BaseEvidence(root), [])
+
+  writeFixture(
+    root,
+    pr02ContractRevisionPath,
+    `${readFileSync(join(root, pr02ContractRevisionPath), "utf8")}\n`,
+  )
+  assert.deepEqual(verifyPr03BaseEvidence(root), [
+    `PR-03 retained PR-02 evidence changed ${pr02ContractRevisionPath}`,
+  ])
+})
+
+test("PR-03 Web authentication boundary is fail-closed and self-contained", () => {
+  const root = temporaryRoot()
+  const path = "apps/web/src/middleware.ts"
+  const validSource = [
+    'import { auth } from "@/lib/auth/auth"',
+    'import { NextResponse } from "next/server"',
+    "export default function middleware(request) {",
+    "  if (!isProtectedConsolePath(request.nextUrl.pathname)) {",
+    "    return NextResponse.next()",
+    "  }",
+    "  return auth((request) => {",
+    "    if (request.auth) return NextResponse.next()",
+    '    const signInUrl = new URL("/auth/signin", request.url)',
+    '    signInUrl.searchParams.set("callbackUrl", request.url)',
+    "    return NextResponse.redirect(signInUrl)",
+    "  })(request)",
+    "}",
+    "function isProtectedConsolePath(pathname) {",
+    "  return (",
+    '    pathname === "/" ||',
+    '    pathname === "/applications" ||',
+    '    pathname === "/hardware" ||',
+    '    pathname === "/inference" ||',
+    '    pathname === "/settings" ||',
+    '    pathname === "/team"',
+    "  )",
+    "}",
+    "export const config = {",
+    '  matcher: ["/((?!api|_next/static|_next/image|apple-touch-icon.png|favicon.ico|favicon-16x16.png|favicon-32x32.png|favicon-48x48.png|icon.svg).*)"],',
+    "}",
+    "",
+  ].join("\n")
+  writeFixture(root, path, validSource)
+
+  assert.deepEqual(verifyWebAuthenticationBoundary(root), [])
+  writeFixture(
+    root,
+    path,
+    validSource.replace(
+      "/((?!api|_next/static|_next/image|apple-touch-icon.png|favicon.ico|favicon-16x16.png|favicon-32x32.png|favicon-48x48.png|icon.svg).*)",
+      "/protected",
+    ),
+  )
+  assert.match(
+    verifyWebAuthenticationBoundary(root).join("\n"),
+    /missing reviewed middleware matcher/,
+  )
+  writeFixture(
+    root,
+    path,
+    `${validSource}\nconst CONSOLE_REQUIRE_AUTH = false\n`,
+  )
+  assert.match(
+    verifyWebAuthenticationBoundary(root).join("\n"),
+    /fail-open auth override/,
+  )
+})
+
+test("PR-03 binds exact Web authentication implementation and tests", () => {
+  assert.deepEqual(verifyReviewedWebAuthenticationEvidence(), [])
+
+  const root = temporaryRoot()
+  for (const path of [
+    "apps/web/src/middleware.test.ts",
+    "apps/web/src/middleware.ts",
+  ]) {
+    writeFixture(root, path, readFileSync(join(repositoryRoot, path)))
+  }
+  assert.deepEqual(verifyReviewedWebAuthenticationEvidence(root), [])
+
+  writeFixture(
+    root,
+    "apps/web/src/middleware.ts",
+    `${readFileSync(join(root, "apps/web/src/middleware.ts"), "utf8")}\n`,
+  )
+  assert.match(
+    verifyReviewedWebAuthenticationEvidence(root).join("\n"),
+    /reviewed Web authentication evidence changed apps\/web\/src\/middleware\.ts/,
+  )
 })
 
 test("guard policy changes require a reviewed contract revision", () => {
@@ -546,6 +789,75 @@ test("future shrink-only comparisons retain an already reviewed PR-02 revision",
   assert.match(
     verifyReviewedContractRevision(fixture).errors.join("\n"),
     /retained PR-02 revision evidence changed/,
+  )
+})
+
+test("reviewed revision history recognizes only an exact PR-03 append", () => {
+  const root = temporaryRoot()
+  execFileSync(
+    "git",
+    [
+      "clone",
+      "--quiet",
+      "--shared",
+      "--no-checkout",
+      repositoryRoot,
+      root,
+    ],
+    { stdio: "ignore" },
+  )
+  git(root, [
+    "checkout",
+    "--quiet",
+    "43c11ace1b80d5241cf2a6a06670fe01f49e3e10",
+  ])
+
+  const baseAllowlist = JSON.parse(
+    readFileSync(
+      join(
+        root,
+        "docs/reduction/inference-core/forbidden-surface-allowlist.yaml",
+      ),
+      "utf8",
+    ),
+  )
+  const baseRoutes = JSON.parse(
+    readFileSync(join(root, routeBaselinePath), "utf8"),
+  )
+  const currentRoutes = structuredClone(baseRoutes)
+  currentRoutes.reviewedRevisions.push({
+    id: "PR-03",
+    path: pr03ContractRevisionPath,
+    sha256: "a".repeat(64),
+  })
+  const result = verifyReviewedContractRevision({
+    root,
+    baseCommit: "964ff087f39111862c90f72ec57ab33bb937f5d2",
+    baseAllowlist,
+    currentAllowlist: baseAllowlist,
+    baseRoutes,
+    currentRoutes,
+  })
+
+  assert.equal(result.present, true)
+  assert.equal(result.id, "PR-03")
+  assert.match(
+    result.errors.join("\n"),
+    /missing reviewed contract revision .*PR-03\.json/,
+  )
+
+  const reorderedRoutes = structuredClone(currentRoutes)
+  reorderedRoutes.reviewedRevisions.reverse()
+  assert.match(
+    verifyReviewedContractRevision({
+      root,
+      baseCommit: "964ff087f39111862c90f72ec57ab33bb937f5d2",
+      baseAllowlist,
+      currentAllowlist: baseAllowlist,
+      baseRoutes,
+      currentRoutes: reorderedRoutes,
+    }).errors.join("\n"),
+    /unsupported reviewed contract revision history transition/,
   )
 })
 
@@ -1929,6 +2241,44 @@ test("Next middleware helpers must have reviewed provenance", () => {
   )
 })
 
+test("Next middleware accepts self-contained non-response helpers", () => {
+  const root = temporaryRoot()
+  const path = "apps/web/src/middleware.ts"
+  writeFixture(
+    root,
+    path,
+    [
+      'import { NextResponse } from "next/server"',
+      'import { auth } from "@/lib/auth/auth"',
+      "const createAuthMiddleware = auth",
+      "export default function middleware(request, event) {",
+      "  if (!isProtectedConsolePath(request.nextUrl.pathname)) {",
+      "    return NextResponse.next()",
+      "  }",
+      "  const requireAuthenticatedSession = createAuthMiddleware((request) => {",
+      "    if (request.auth) return NextResponse.next()",
+      "    return NextResponse.redirect(getSignInRedirectUrl(request.nextUrl.href))",
+      "  })",
+      "  return requireAuthenticatedSession(request, event)",
+      "}",
+      "function isProtectedConsolePath(pathname) {",
+      '  return pathname === "/" || isPathWithin(pathname, "/applications")',
+      "}",
+      "function getSignInRedirectUrl(requestUrl) {",
+      '  const signInUrl = new URL("/auth/signin", requestUrl)',
+      '  signInUrl.searchParams.set("callbackUrl", requestUrl)',
+      "  return signInUrl",
+      "}",
+      "function isPathWithin(pathname, root) {",
+      "  return pathname === root || pathname.startsWith(`${root}/`)",
+      "}",
+      "",
+    ].join("\n"),
+  )
+
+  assert.doesNotThrow(() => extractWebRoutes({ root, paths: [path] }))
+})
+
 test("sanitized Core commands reject environment files in any package", () => {
   const root = temporaryRoot()
   writeFixture(root, "packages/contracts/.env.local", "TOKEN=example\n")
@@ -2051,7 +2401,7 @@ test("the live repository matches its reviewed PR-01 baselines", () => {
   const result = verifyRepository({
     baseRef:
       process.env.INFERENCE_CORE_BASE_REF ??
-      "origin/codex/inference-core-stack-reduction",
+      "964ff087f39111862c90f72ec57ab33bb937f5d2",
   })
   assert.deepEqual(result.errors, [])
   assert.equal(result.ok, true)

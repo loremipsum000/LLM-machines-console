@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "9b1fc2ce41ad6519412016bde3ea995a1176c4e4a3b710f1c74308ffbf47bbb2",
+  "policyDigest": "31716d08ba18681e367986dc676aa07379a35ae67a086dbe61bb3c27dbafd54c",
   "target": {
     "requiredPublicInference": [
       {
@@ -52,41 +52,6 @@
     {
       "surface": "bff",
       "method": "GET",
-      "path": "/api/admin/agentic/adapter/diagnostics",
-      "source": "apps/bff/src/routes/agentic-runtime.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/admin/agentic/hermes/access",
-      "source": "apps/bff/src/routes/agentic-runtime.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/admin/agentic/history",
-      "source": "apps/bff/src/routes/agentic-runtime.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/admin/agentic/openclaw/access",
-      "source": "apps/bff/src/routes/agentic-runtime.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/admin/agentic/status",
-      "source": "apps/bff/src/routes/agentic-runtime.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
       "path": "/api/admin/applications/connected-apps/:id",
       "source": "apps/bff/src/routes/admin.ts",
       "classification": "current-console-seam"
@@ -118,27 +83,6 @@
       "path": "/api/admin/inference",
       "source": "apps/bff/src/routes/admin.ts",
       "classification": "current-console-seam"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/admin/knowledge/archive/sources",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/admin/knowledge/corpora/:id",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/admin/knowledge/corpora",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
     },
     {
       "surface": "bff",
@@ -199,146 +143,6 @@
     {
       "surface": "bff",
       "method": "GET",
-      "path": "/api/builder/agents/:id/corpora",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/builder/agents/:id/studio",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/builder/knowledge/corpora",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/builder/resources/:id",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/builder/resources",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/builder/submissions",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/builder/templates/:id",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/builder/templates",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/admin-summary",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/artifacts/:id",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/artifacts",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/events",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/home",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/notifications",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/resources/:type/:id",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/resources",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/search",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/tasks/:id",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/tasks",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
-      "path": "/api/hub/usage",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "GET",
       "path": "/healthz",
       "source": "apps/bff/src/index.ts",
       "classification": "private-operational"
@@ -359,45 +163,10 @@
     },
     {
       "surface": "bff",
-      "method": "GET",
-      "path": "/v1/models",
-      "source": "apps/bff/src/routes/openai-compatible.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
       "method": "PATCH",
       "path": "/api/admin/applications/connected-apps/:id",
       "source": "apps/bff/src/routes/admin.ts",
       "classification": "current-console-seam"
-    },
-    {
-      "surface": "bff",
-      "method": "PATCH",
-      "path": "/api/hub/notifications/:id/read",
-      "source": "apps/bff/src/routes/hub.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/agentic/egress-approvals/:approvalId/revoke",
-      "source": "apps/bff/src/routes/agentic-runtime.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/agentic/egress-approvals",
-      "source": "apps/bff/src/routes/agentic-runtime.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/agentic/hermes/v1/chat/completions",
-      "source": "apps/bff/src/routes/agentic-runtime.ts",
-      "classification": "legacy-retired"
     },
     {
       "surface": "bff",
@@ -433,125 +202,6 @@
       "path": "/api/admin/inference/model-updates/apply",
       "source": "apps/bff/src/routes/admin.ts",
       "classification": "current-console-seam"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/archive/sources/bulk-action",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/access",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/archive",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/disable",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/hard-delete",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/ingest",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/refresh",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/retrieval-test",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/snapshots/:snapshotId/discard",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/snapshots/:snapshotId/publish",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/sources/:sourceId/retry",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/sources/bulk-action",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/sources/upload",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora/:id/sources/url",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/knowledge/corpora",
-      "source": "apps/bff/src/routes/knowledge.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/resources/:id/approve",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/admin/resources/:id/reject",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
     },
     {
       "surface": "bff",
@@ -673,123 +323,11 @@
       "classification": "required-now"
     },
     {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/builder/agents/:id/corpora/:corpusId",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/builder/agents/:id/studio/reset",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/builder/agents/:id/studio",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/builder/agents/:id/test-runs/clear",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/builder/agents/:id/test/stream",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/builder/agents/:id/test",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/builder/resources/:id/submit",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/builder/resources/:id/versions",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/builder/resources/:id/withdraw",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/builder/templates/:id/fork",
-      "source": "apps/bff/src/routes/builder.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/mcp/:connectorId",
-      "source": "apps/bff/src/routes/mcp-gateway.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/mcp/admin-servers",
-      "source": "apps/bff/src/routes/mcp-gateway.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/api/mcp/internal-docs",
-      "source": "apps/bff/src/routes/mcp-gateway.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "bff",
-      "method": "POST",
-      "path": "/v1/chat/completions",
-      "source": "apps/bff/src/routes/openai-compatible.ts",
-      "classification": "legacy-retired"
-    },
-    {
       "surface": "web-handler",
       "method": "GET",
       "path": "/api/auth/[...nextauth]",
       "source": "apps/web/src/app/api/auth/[...nextauth]/route.ts",
       "classification": "operational-auth"
-    },
-    {
-      "surface": "web-handler",
-      "method": "GET",
-      "path": "/api/hub/events",
-      "source": "apps/web/src/app/api/hub/events/route.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-handler",
-      "method": "GET",
-      "path": "/api/hub/search",
-      "source": "apps/web/src/app/api/hub/search/route.ts",
-      "classification": "legacy-retired"
     },
     {
       "surface": "web-handler",
@@ -807,31 +345,10 @@
     },
     {
       "surface": "web-handler",
-      "method": "PATCH",
-      "path": "/api/hub/notifications/[id]/read",
-      "source": "apps/web/src/app/api/hub/notifications/[id]/read/route.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-handler",
       "method": "POST",
       "path": "/api/auth/[...nextauth]",
       "source": "apps/web/src/app/api/auth/[...nextauth]/route.ts",
       "classification": "operational-auth"
-    },
-    {
-      "surface": "web-handler",
-      "method": "POST",
-      "path": "/api/builder/agents/[id]/test/stream",
-      "source": "apps/web/src/app/api/builder/agents/[id]/test/stream/route.ts",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-handler",
-      "method": "POST",
-      "path": "/api/hub/chat",
-      "source": "apps/web/src/app/api/hub/chat/route.ts",
-      "classification": "legacy-retired"
     },
     {
       "surface": "web-metadata",
@@ -857,72 +374,9 @@
     {
       "surface": "web-page",
       "method": "PAGE",
-      "path": "/artifacts/[id]",
-      "source": "apps/web/src/app/artifacts/[id]/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/artifacts",
-      "source": "apps/web/src/app/artifacts/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
       "path": "/auth/signin",
       "source": "apps/web/src/app/auth/signin/page.tsx",
       "classification": "operational-auth"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/builder/agents/[id]",
-      "source": "apps/web/src/app/builder/agents/[id]/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/builder/resources/[id]",
-      "source": "apps/web/src/app/builder/resources/[id]/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/builder/submissions",
-      "source": "apps/web/src/app/builder/submissions/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/builder/templates/[id]",
-      "source": "apps/web/src/app/builder/templates/[id]/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/builder/templates",
-      "source": "apps/web/src/app/builder/templates/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/builder",
-      "source": "apps/web/src/app/builder/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/chat",
-      "source": "apps/web/src/app/chat/page.tsx",
-      "classification": "legacy-retired"
     },
     {
       "surface": "web-page",
@@ -941,34 +395,6 @@
     {
       "surface": "web-page",
       "method": "PAGE",
-      "path": "/knowledge",
-      "source": "apps/web/src/app/knowledge/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/profile",
-      "source": "apps/web/src/app/profile/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/resources/[type]/[id]",
-      "source": "apps/web/src/app/resources/[type]/[id]/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/resources",
-      "source": "apps/web/src/app/resources/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
       "path": "/settings",
       "source": "apps/web/src/app/settings/page.tsx",
       "classification": "current-console-seam"
@@ -976,30 +402,9 @@
     {
       "surface": "web-page",
       "method": "PAGE",
-      "path": "/tasks/[id]",
-      "source": "apps/web/src/app/tasks/[id]/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/tasks",
-      "source": "apps/web/src/app/tasks/page.tsx",
-      "classification": "legacy-retired"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
       "path": "/team/[[...section]]",
       "source": "apps/web/src/app/team/[[...section]]/page.tsx",
       "classification": "current-console-seam"
-    },
-    {
-      "surface": "web-page",
-      "method": "PAGE",
-      "path": "/usage",
-      "source": "apps/web/src/app/usage/page.tsx",
-      "classification": "legacy-retired"
     },
     {
       "surface": "web-static",
@@ -1215,14 +620,7 @@
       "sourcePath": "apps/bff/src/auth/persona.ts"
     }
   ],
-  "webInferenceConsumers": [
-    {
-      "path": "apps/web/src/app/api/hub/chat/route.ts",
-      "invocationCount": 1,
-      "sha256": "0a77d90aacc6341dc4def9132eb44577c06ca571a95acf52de0e9fa057efad83",
-      "removeBy": "PR-03"
-    }
-  ],
+  "webInferenceConsumers": [],
   "sourceClosure": [
     {
       "path": ".dockerignore",
@@ -1234,11 +632,11 @@
     },
     {
       "path": "apps/bff/package.json",
-      "sha256": "a6b9f698942945f784dfd874da702b9f42da97110ec14e4c3b5ad2a403367e4c"
+      "sha256": "7fdaccd7d7fb4b331923abd319616b31dde04aeee6a49cfcffbff0ac223a8283"
     },
     {
       "path": "apps/bff/README.md",
-      "sha256": "7c795b8f41d0c7ac728d09ba637abbf9743cac4edf7e47f04cfad422e39c0db5"
+      "sha256": "9a09caf7837a39ea4a9fd8e62b6ac1d0090679116655fff8207678731339c408"
     },
     {
       "path": "apps/bff/src/auth/keycloak-jwt.ts",
@@ -1246,23 +644,11 @@
     },
     {
       "path": "apps/bff/src/auth/persona.ts",
-      "sha256": "a1b37031f9ab4daeec1ea1e3b8f187381c8a0adfa2634151c7423f2179b587ae"
-    },
-    {
-      "path": "apps/bff/src/catalog/mcp-catalog.ts",
-      "sha256": "07d7ccdc751377740c99e61ed09f375b8300a72f0425f94ec7f58526eaeee671"
-    },
-    {
-      "path": "apps/bff/src/catalog/signed-catalog.ts",
-      "sha256": "2e16c81a20f1c8749d31f2f1b9cb39de8d4ad61adeb38d1a76da345c0564fc87"
+      "sha256": "d3aa0ccd69d8e225e32ac760e4f9e7c7f2eb70bbd922d7caee6dd99fa7881481"
     },
     {
       "path": "apps/bff/src/config/fixture-mode.ts",
       "sha256": "0ecd5de78411b2f58c2faef0b6289eaeffa112f2bed67fd3f4f21954172d1197"
-    },
-    {
-      "path": "apps/bff/src/db/client.ts",
-      "sha256": "0fe99544c6c96461b1b27fa11c7d67ea6768c9059bb48310df2760075aa12581"
     },
     {
       "path": "apps/bff/src/db/inference-core-client.ts",
@@ -1273,10 +659,6 @@
       "sha256": "e71833c4e4b5ec23c751412a01fccc2a147119b08f47f0389d631d1e641fc2b7"
     },
     {
-      "path": "apps/bff/src/db/schema.ts",
-      "sha256": "e83766906e6ad6961f878a05ac87580b531792d01e91b375951b922f64936f6f"
-    },
-    {
       "path": "apps/bff/src/index.ts",
       "sha256": "53c2e7eac1c1c5a2a8b6ab0c8955adab15378767c25d7c7189bfd194180a8ff5"
     },
@@ -1285,48 +667,12 @@
       "sha256": "d98020e817757a27029a6d07445b7886cb6b510f0e8e7d0c59f986fbd69e0bca"
     },
     {
-      "path": "apps/bff/src/openai/types.ts",
-      "sha256": "e6e457654b4a6acb19ee04deecb21aa251da925c834465e78821dbd40656e556"
-    },
-    {
       "path": "apps/bff/src/routes/admin.ts",
       "sha256": "1041d5f714cf63e0e4abda4cc659c588e769acfbb6997601f8f4994bec1fbe1a"
     },
     {
-      "path": "apps/bff/src/routes/agentic-runtime.ts",
-      "sha256": "f12f87851d7eb106df74ade93f61061d60aeebe8a93986c8c36ff9515a5877a0"
-    },
-    {
       "path": "apps/bff/src/routes/app-gateway.ts",
       "sha256": "dc4d3b565db74215a443977fa6ef958097808098e0cd8622dd080a1d8aca9451"
-    },
-    {
-      "path": "apps/bff/src/routes/builder.ts",
-      "sha256": "a0c51836ca4d0a84c6f73fc1b8c23e623749d44794d48425fea1bfbd0e86e929"
-    },
-    {
-      "path": "apps/bff/src/routes/hub.ts",
-      "sha256": "d743a2f7b81837cc56c64a4382bc6018ce7d29ee3314aed20e2821c3aff45a50"
-    },
-    {
-      "path": "apps/bff/src/routes/knowledge.ts",
-      "sha256": "d6b476d47c3e28a97ab0ff92b5237854d3861af70f0b8a493c01b17ff7ab3ce6"
-    },
-    {
-      "path": "apps/bff/src/routes/mcp-gateway.ts",
-      "sha256": "e2d7277e5245005078e9ff8366a2595232efb1cb9058ca02a8a80a6950755248"
-    },
-    {
-      "path": "apps/bff/src/routes/openai-compatible.ts",
-      "sha256": "352fb3241f4f53863eeea42651ce3608b80084ecd73b3d3b40d91e2a19a6a8e3"
-    },
-    {
-      "path": "apps/bff/src/scripts/backfill-knowledge-embeddings.ts",
-      "sha256": "6eaa589bf394ccea5ba65a7fcc8ccb25f6779ed85438af56a9d9924a56b6a011"
-    },
-    {
-      "path": "apps/bff/src/services/admin-approvals.ts",
-      "sha256": "b8261def513a4dc10cccab7ce9c4d8c0040412d428e29611db3dc6ec5f76c250"
     },
     {
       "path": "apps/bff/src/services/admin-audit.ts",
@@ -1335,22 +681,6 @@
     {
       "path": "apps/bff/src/services/admin-connected-apps.ts",
       "sha256": "0c7715d8a97e96715f2580fd3e34dc2e82c9c8b516ae4f1e69dfd9c83ded32ef"
-    },
-    {
-      "path": "apps/bff/src/services/admin-connector-registry.ts",
-      "sha256": "5776d60a74fdcb1b35aa57f50ecd74f12ae08b064c58658d095c192e8cf06adb"
-    },
-    {
-      "path": "apps/bff/src/services/admin-governance-detail.ts",
-      "sha256": "024cb5e24ee6f376c2221ef8a462917260f1e31dc1b6abdf3c6415e529f3e3df"
-    },
-    {
-      "path": "apps/bff/src/services/admin-governance-state.ts",
-      "sha256": "64d85fa41463b5055b004ad92a8f672a6eb792ea9e2e9b6b259c8b5113db834c"
-    },
-    {
-      "path": "apps/bff/src/services/admin-governance.ts",
-      "sha256": "a50c6919e7055963ca948a75eed52e2dadce318112c82466edfa55058ab4808d"
     },
     {
       "path": "apps/bff/src/services/admin-hardware.ts",
@@ -1389,88 +719,24 @@
       "sha256": "e0a1094ce7a886c3e825a64634cd6e6b13c8a523ea32e8d94af7eec2c68836d4"
     },
     {
-      "path": "apps/bff/src/services/admin-settings-fixtures.ts",
-      "sha256": "723879e8b368cf1e386b3ed9cc56617278d4d13de507ae35f99461291004c9a3"
-    },
-    {
       "path": "apps/bff/src/services/admin-settings-validation.ts",
       "sha256": "fc3630d47b7bf5bfbe605a9924e44e9dcab70bb7ae2a9cdc74de4823de73968c"
-    },
-    {
-      "path": "apps/bff/src/services/admin-settings.ts",
-      "sha256": "c0019a18647d1e662b2a3618e0ec16ee9ffc24c9c845f3d1a5c55bca03192209"
     },
     {
       "path": "apps/bff/src/services/admin-team.ts",
       "sha256": "233b095f37b7e8a074513f6ffb0e0d33f7dd60dea21f70a6a62e888c12bd0ace"
     },
     {
-      "path": "apps/bff/src/services/admin/pure-mode-docker-executor.ts",
-      "sha256": "812b5e602d0026f89a5546c17eb4a3d53b15fb7be37358ac32a9a3f7ed9294ac"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-executor-common.ts",
-      "sha256": "3bcd501ad1f9524249161250eebbe6d6d66b90ce6e05e959794c883a8241f9b8"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-executor.ts",
-      "sha256": "4abadc62620fc220f927a327b08307570fe8840ec5c3afb3db5352dc37fbacfd"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-kubernetes-client.ts",
-      "sha256": "cb0683b780572cc198510aa57a38f71685c3012bbf06c81c613c09c85f109e87"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-kubernetes-executor.ts",
-      "sha256": "a45d1229417f0e53f7d41ff530113f77fd5e240fe39469c2ca0d5c1b89ce7b59"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-kubernetes-types.ts",
-      "sha256": "71a43f683a72bc9bbd4b6beb7502f4083cdfbbd1ecba3498bc28b75619974b72"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode.ts",
-      "sha256": "46b1d36914fc077661ae4549886e9362e789999c7f44b88f2832a2be32e706fe"
-    },
-    {
-      "path": "apps/bff/src/services/agentic-runtime-client.ts",
-      "sha256": "3577e3b0178569d9b8e94b179e7f606afd64814b2b72013de7c01df036b9c467"
-    },
-    {
-      "path": "apps/bff/src/services/agentic-runtime-history.ts",
-      "sha256": "1bfe6a65f3da73c7ef02e7e42b7f10b50fbf1603f402782828b04c1189d1e4fe"
-    },
-    {
       "path": "apps/bff/src/services/application-gateway-policy.ts",
       "sha256": "6ece111dae4c4d003c0f701ff7236060454f4699e1cda32bb31d872dfefe2e84"
-    },
-    {
-      "path": "apps/bff/src/services/approval-envelope.ts",
-      "sha256": "2f60cf431ec0b46d08a81ae8753032a73914ded6a4bbeb7c9be2fea028e4c541"
     },
     {
       "path": "apps/bff/src/services/audit.ts",
       "sha256": "62c89924ae2b1875b2d42bcd3077663c439ed0061c9fade7c2023143927376c4"
     },
     {
-      "path": "apps/bff/src/services/builder.ts",
-      "sha256": "3daf470a8ae841895b9d41348aca132e5901d57bbf4ac4f31a07c8eef7bf442d"
-    },
-    {
-      "path": "apps/bff/src/services/egress-approvals.ts",
-      "sha256": "0779383c6ab2f84c821bd71abec9ca236cac9593d3f5a2ffe253c5fb0b790a71"
-    },
-    {
       "path": "apps/bff/src/services/expert-capabilities.ts",
       "sha256": "08fe59f639e8f498faeb69ace9c4abaa87bc8e5afd49cfcf914bc350227c5650"
-    },
-    {
-      "path": "apps/bff/src/services/hub-events.ts",
-      "sha256": "52c48906a1babadcf4f85dc7293571db2425600ae2f97acc5f41a222ec0b7d97"
-    },
-    {
-      "path": "apps/bff/src/services/hub.ts",
-      "sha256": "0b2912a4a3054717ac58f8d639aff7ac9b662b64905741cf9cf6f463e3373c2f"
     },
     {
       "path": "apps/bff/src/services/idempotency.ts",
@@ -1481,80 +747,12 @@
       "sha256": "46d4148ceea6ebd0446801ebb3548f31b82f21ce948cc6aec250d99c222bf6eb"
     },
     {
-      "path": "apps/bff/src/services/internal-docs-mcp-posture.ts",
-      "sha256": "845afdac5c7f01ceb85ff24400fb090be60b35ea23e31febfdc33f123879306e"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/admin.ts",
-      "sha256": "ae8737e272ea22d7e1b00841fd42efcc220410502fd50b8d0d6a96c462824f98"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/corpus-preflight.ts",
-      "sha256": "5d252dbe81c53d9be0e8e2c87a6efc566f31641bba4fa7fb04540b5565aac055"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/embeddings.ts",
-      "sha256": "6bd2dad411d04107baf076e64420db0883c3621aa3076910241e2cf210e17a40"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/ingestion.ts",
-      "sha256": "c60ca0b92feee218061b727ddb5b9fc8fbbc1f06715ec8530bc2d40785db4c9d"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/object-store.ts",
-      "sha256": "f60a5b50cb44789bcfdf4c067b6c588bd621845d4c834f8c182194ed4b934033"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/repository.ts",
-      "sha256": "081968ccc3646ec94d5aca44135be698fadee26621cb4b8fb0cd2f907580f919"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/url-acquisition.ts",
-      "sha256": "c6fafcd43718f66ce94768b2ad6151673b43210dd163bd52dac439fba895fe13"
-    },
-    {
-      "path": "apps/bff/src/services/librechat-backfill.ts",
-      "sha256": "bc5ab4d639ca096021ef8227000c0c7774c22c8f0afe204cc967adf8e33d21c2"
-    },
-    {
-      "path": "apps/bff/src/services/librechat-native-agents.ts",
-      "sha256": "e9b7f298e30b10ca2c674d2a6978f85ec1c989ecd472636ba9866dc3d50a6b5b"
-    },
-    {
       "path": "apps/bff/src/services/litellm-chat-transport.ts",
       "sha256": "7fd5a9f6e59eb981c50b689ac8a98ddf9316aa29edc266ae0a5743795d248ab1"
     },
     {
-      "path": "apps/bff/src/services/mcp-gateway.ts",
-      "sha256": "500a3a92073c6bd6e4e7d52bba29b097425b4265fa9d142c808ee7aefa233725"
-    },
-    {
-      "path": "apps/bff/src/services/policy-violations.ts",
-      "sha256": "7d799cb930c27cc37b982067354581f4ef2aeeaa1209b6a29092150f43b9017c"
-    },
-    {
-      "path": "apps/bff/src/services/security/url-safety.ts",
-      "sha256": "ac9369f7d93842108541ee1162da17055462c35e01c97658619d75a51aa445a4"
-    },
-    {
-      "path": "apps/bff/src/services/slash-middleware.ts",
-      "sha256": "a7e32e89c1f53e06ff7e6111dc65c93abb4045bbdd91dd93b17c9b5d7a1ad56c"
-    },
-    {
-      "path": "apps/bff/src/services/team-keycloak-admin.ts",
-      "sha256": "f93230c1d847c3b0324728c15a5b80de559cbff4c824c8e2a126fb19bdbbf8c3"
-    },
-    {
       "path": "apps/bff/src/services/users.ts",
       "sha256": "615387239c4da41d9f71cc8f836be3976a04e561f83132d76168ab30032ff988"
-    },
-    {
-      "path": "apps/bff/src/streaming/openai-encoder.ts",
-      "sha256": "33b7cebfaa165884fe65987d0c4d720ab45d5ffbe83a2c98bf912dbf130247fb"
-    },
-    {
-      "path": "apps/bff/src/workers/knowledge-url-acquisition.ts",
-      "sha256": "3a95090e0c85b805e8940cb05bf54dd037f930ff9b6dcf00196faa1166c82991"
     },
     {
       "path": "apps/bff/tsconfig.json",
@@ -1570,11 +768,11 @@
     },
     {
       "path": "apps/web/next.config.ts",
-      "sha256": "9deb808be4867ed8a68bbafa18c6fec3c9643b87d394c6c6a673e4392f195153"
+      "sha256": "c38435e9d663163e08bfec69d806a5f7a2245d08f2746d909cecd61618609db7"
     },
     {
       "path": "apps/web/package.json",
-      "sha256": "cb1a66b0fba96c7038df07bddc2b50af45ed8c1b669d190ceb52f9f548b58ffc"
+      "sha256": "b57c1b08920d020603ae351f481ee273cef7206153fc69ee92eae8501152c6ac"
     },
     {
       "path": "apps/web/postcss.config.mjs",
@@ -1694,43 +892,15 @@
     },
     {
       "path": "apps/web/README.md",
-      "sha256": "1297d692a33211baa1c7d91981bc7a661f570e00d785f36881ad3e7d4ab4a542"
+      "sha256": "5fd5015fa0b892658367bcaf5bbb1dbf32e18132c1874c09e08cdad9fa5b80d6"
     },
     {
       "path": "apps/web/src/app/api/auth/[...nextauth]/route.ts",
       "sha256": "99f247e5de7318586c530afa65493936520325f5d3a43f58a9474d8af9328912"
     },
     {
-      "path": "apps/web/src/app/api/builder/agents/[id]/test/stream/route.ts",
-      "sha256": "948b7d9d7319ad5fae1c2eb6949e167ea9a30bb21f9615bf320ee2e8204e098d"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/chat/route.ts",
-      "sha256": "0a77d90aacc6341dc4def9132eb44577c06ca571a95acf52de0e9fa057efad83"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/events/route.ts",
-      "sha256": "bc5cf55eea34193b943072b3092429d33ff4c265742ab8d03779b35eea7e047d"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/notifications/[id]/read/route.ts",
-      "sha256": "c981cccbbeeb2fdbf05d34b0ccce5bacc66f2c6cc23e04c05e0d12200a579b2c"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/search/route.ts",
-      "sha256": "7dd79ca970c0d8aef91c053e858d8e6495ae17fe43aaa5024f23acda06668a6c"
-    },
-    {
       "path": "apps/web/src/app/applications/[[...section]]/page.tsx",
       "sha256": "f29cdf8b5b22c40427294eed92ce290a279e96e15af4c121a39cc4d13575fc63"
-    },
-    {
-      "path": "apps/web/src/app/artifacts/[id]/page.tsx",
-      "sha256": "5f3203a9e0228bdf9fb8a4d46ae374c88d10ab34a0b574f5b46bd7368baa6b60"
-    },
-    {
-      "path": "apps/web/src/app/artifacts/page.tsx",
-      "sha256": "9f510a24481e6e1cfbf772af78b82ef7590ded3331ea1bd284c1999c560814c5"
     },
     {
       "path": "apps/web/src/app/auth/keycloak/route.ts",
@@ -1738,35 +908,7 @@
     },
     {
       "path": "apps/web/src/app/auth/signin/page.tsx",
-      "sha256": "6bbde887529d235a8c950c49ac7483f96145ff7090920c4b7536f39fd5435dea"
-    },
-    {
-      "path": "apps/web/src/app/builder/agents/[id]/page.tsx",
-      "sha256": "333002885919794b55eddfea9e330ce30d5e626fa823aa2da036557e0e33fddf"
-    },
-    {
-      "path": "apps/web/src/app/builder/page.tsx",
-      "sha256": "cc146bc88f695d53ed9f3d37e93bf1c3d42528aa7c7c125244b169701d225f42"
-    },
-    {
-      "path": "apps/web/src/app/builder/resources/[id]/page.tsx",
-      "sha256": "fbba0f9555abec1c514974396f93d6e7644c5e6786990ca656a1920da5205859"
-    },
-    {
-      "path": "apps/web/src/app/builder/submissions/page.tsx",
-      "sha256": "dab83f3d14c417cb9458fd2eec4170ddd01f4aa7e66733544b94f39076a374e2"
-    },
-    {
-      "path": "apps/web/src/app/builder/templates/[id]/page.tsx",
-      "sha256": "cf53a5290f8360424d2aba8c88f5e71b3ec4e16a15559fe53cb9cc6310a98187"
-    },
-    {
-      "path": "apps/web/src/app/builder/templates/page.tsx",
-      "sha256": "2b4317c9edd9b4322989ae2ec317e1f46f00b370ed408492c89069579a1583d0"
-    },
-    {
-      "path": "apps/web/src/app/chat/page.tsx",
-      "sha256": "a85235563dc288c2d1d38e29b9d88ea9e579fa9d0e6aceb26e8ef3b316b6d9aa"
+      "sha256": "749753ea62c67d1ed80c9bb7bfb0ac0a1ff361876d32770453256a9c0676dd8a"
     },
     {
       "path": "apps/web/src/app/fonts.ts",
@@ -1789,44 +931,16 @@
       "sha256": "9c10b17ad9664edb82088d2280063e79bba3dca3394549cf358ae280f03814d3"
     },
     {
-      "path": "apps/web/src/app/knowledge/page.tsx",
-      "sha256": "b8ff1cd8342f86ee87e8c820f0b2891c4cfa41f156ec9c7591f83e17b4a074c6"
-    },
-    {
       "path": "apps/web/src/app/layout.tsx",
-      "sha256": "20a3c43e1b476407c181ae5e1bbeda190d73a7fad227fe14182948cbe5e74354"
+      "sha256": "7abb3c2dd390928cc132005516d350e153e5dc698816801df35ac218a8a0930e"
     },
     {
       "path": "apps/web/src/app/page.tsx",
       "sha256": "0051262fe149376d078bd1568c3699ef7212061cc8a6141741ace1f11f1af663"
     },
     {
-      "path": "apps/web/src/app/profile/page.tsx",
-      "sha256": "a3bae8ae2700a7367f9fae70e73dbc879c853f219ac5a40be362f59e8036204d"
-    },
-    {
-      "path": "apps/web/src/app/providers.tsx",
-      "sha256": "12fe29787137c19836629bc9d8cf3b59d5327d7fbb061a073345ecab1a725514"
-    },
-    {
-      "path": "apps/web/src/app/resources/[type]/[id]/page.tsx",
-      "sha256": "41dc1745a54834967395d5fbe6b468413eacc8b69e70777db849626c32eee7af"
-    },
-    {
-      "path": "apps/web/src/app/resources/page.tsx",
-      "sha256": "c7f680cbeb6fbd7590f1423f0e931c6e35b9cd08b9c92b299f5dd0912251e022"
-    },
-    {
       "path": "apps/web/src/app/settings/page.tsx",
       "sha256": "0049ecc810ae9a12ee583fa4a71f952d3572cca4366a94a34f10dbbc03b0afea"
-    },
-    {
-      "path": "apps/web/src/app/tasks/[id]/page.tsx",
-      "sha256": "da7d696137fd5e834ce6e74c30a9a88868efd3d447baef6ceea0eb4e55f83234"
-    },
-    {
-      "path": "apps/web/src/app/tasks/page.tsx",
-      "sha256": "90e642805beccffbe5452f7ec92e78354111485b3f1964714b5fc0db8cc3cf83"
     },
     {
       "path": "apps/web/src/app/team/[[...section]]/page.tsx",
@@ -1835,22 +949,6 @@
     {
       "path": "apps/web/src/app/team/import/template/route.ts",
       "sha256": "58d08cca8979ebb277158d03769b97cd53fc0a39487f27f4a51d3442a7ebe4d2"
-    },
-    {
-      "path": "apps/web/src/app/usage/page.tsx",
-      "sha256": "f148545050c653265bbbf0d23b0c90da4773d838d06fb432deaf48e62ff09154"
-    },
-    {
-      "path": "apps/web/src/components/builder/builder-action-notice.tsx",
-      "sha256": "1de1a3ec22702f83c85360caecc2a5b6dbab705123a9b2135e7daafc3aec982e"
-    },
-    {
-      "path": "apps/web/src/components/builder/builder-agent-test-pane.tsx",
-      "sha256": "29bfcf05d81c5d05a32e7e536330941bfaac9c300c44bad4d46393ba98ea8127"
-    },
-    {
-      "path": "apps/web/src/components/builder/builder-lifecycle-actions.tsx",
-      "sha256": "a18d4ae93e90b7188b8e264de245304167846f83869926fd93d1612ecb6f179e"
     },
     {
       "path": "apps/web/src/components/console-v2/action-toasts.tsx",
@@ -1886,15 +984,11 @@
     },
     {
       "path": "apps/web/src/components/console-v2/inference-chart-primitives.tsx",
-      "sha256": "247c33c8f70ceb2ab51ca511d71f62e955b95e9b2ef58cb39859818865831226"
+      "sha256": "c6eb410e81e603a5eb10f1914dd2fd771fdcefc2380055a228d96f63c1005edd"
     },
     {
       "path": "apps/web/src/components/console-v2/inference-v2-experience.tsx",
       "sha256": "00a0c51cfce120e52cd0b2bb4ac29ee3bb6d941615983c8a2025026a42223a98"
-    },
-    {
-      "path": "apps/web/src/components/console-v2/knowledge-v2-experience.tsx",
-      "sha256": "8fc46241ec9511969258a53941d265d595b5d78ba0def3f0991b69a9bedddaeb"
     },
     {
       "path": "apps/web/src/components/console-v2/settings-v2-experience.tsx",
@@ -1903,42 +997,6 @@
     {
       "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
       "sha256": "4968589fea181c152a14b40d62c6c1407d976fd9264a59fc2c3a05f8d320fd25"
-    },
-    {
-      "path": "apps/web/src/components/embed/embedded-surface-frame.tsx",
-      "sha256": "93f416246e031fca41c1f8d89ca5bc67a6ffde386bc2e0551b9f09ab45056521"
-    },
-    {
-      "path": "apps/web/src/components/hub/access-denied-panel.tsx",
-      "sha256": "9eb397afbf89adac59171f4c90334d86dffdca31bbe166375db06bc23210b1ba"
-    },
-    {
-      "path": "apps/web/src/components/hub/command-palette.tsx",
-      "sha256": "d30190acdcac9facb851eb9c1ae66da49bd93d317401702534e6a3cd2baffd33"
-    },
-    {
-      "path": "apps/web/src/components/hub/hub-navigation.tsx",
-      "sha256": "f98eec21fd2ebbe5d81dcb02a62a8a88d012d25fe72b2a1968f9ceff04d4da06"
-    },
-    {
-      "path": "apps/web/src/components/hub/hub-page-frame.tsx",
-      "sha256": "ce9885438a03a7231bdb7b92fc9bbdeeca51f03df2bf9f3133a99f461483c080"
-    },
-    {
-      "path": "apps/web/src/components/hub/live-events-indicator.tsx",
-      "sha256": "0a66b9d1fd7962dcb70d8925577fe2c2d53271eb9383a610c20a8d031899ecd9"
-    },
-    {
-      "path": "apps/web/src/components/hub/notifications-drawer.tsx",
-      "sha256": "9294b0a4576e0262bfaa54ecb7e4e72e9021a4244a77a76f7ffcb7df6ade0aa9"
-    },
-    {
-      "path": "apps/web/src/components/hub/profile-menu.tsx",
-      "sha256": "05a99f0d108fcc10d1280a74b175bf71a89334aa2d9a98260d8e2d27adbc95ae"
-    },
-    {
-      "path": "apps/web/src/components/ui/badge.tsx",
-      "sha256": "e63a7c00c724207d2350770ad8eef6ca19a541fd7f6932a5e6eb3bbef597621d"
     },
     {
       "path": "apps/web/src/components/ui/button.tsx",
@@ -1953,28 +1011,12 @@
       "sha256": "5b1c35c8b43c914e7e231c507638a07e9c3cedbcf01ea5cda22ccf21275f12af"
     },
     {
-      "path": "apps/web/src/lib/admin/actions.ts",
-      "sha256": "d912a97239d46bf94c1be2708a0d932fc5d6cb6de0feafd8a842475949f93fd7"
-    },
-    {
       "path": "apps/web/src/lib/admin/console-v2-routes-core.tsx",
       "sha256": "3712297ee7a042b9e30ee61247976165ea77b0a99333c14dd4fea5658afa5792"
     },
     {
-      "path": "apps/web/src/lib/admin/console-v2-routes.tsx",
-      "sha256": "8c4bc9643fc07e4c41972ab39f4ac40dea014f8d9a660c9aa4273f191a25844c"
-    },
-    {
-      "path": "apps/web/src/lib/admin/mock-data.ts",
-      "sha256": "d411e2062811d153b6766465ec86234c0d6b34523483b2344fca6bf8c684c655"
-    },
-    {
       "path": "apps/web/src/lib/admin/server-data-core.ts",
       "sha256": "ccbc4dd28e491e1c3c3ca3952207cf5993a368b2952b562a716ca19101405b21"
-    },
-    {
-      "path": "apps/web/src/lib/admin/server-data.ts",
-      "sha256": "f422773b914254d9658db1d015a722369c79f205b0576a1a1b7b5f8cec2cbf6d"
     },
     {
       "path": "apps/web/src/lib/auth/auth.ts",
@@ -1985,20 +1027,12 @@
       "sha256": "d89dd7881b92c8fb92e6abe782ac0fc009b5ed13c8c9a40e508dcc1b50cccba9"
     },
     {
-      "path": "apps/web/src/lib/auth/middleware-policy.ts",
-      "sha256": "5267942cd4fa9e69050f20aaccc0b389f23c25ba31d0138a1df61eac4a1193f4"
-    },
-    {
       "path": "apps/web/src/lib/auth/role-claims.ts",
       "sha256": "e7447821e5e7da878db3d98e6e4e72b241b9e3207f448421230a38f8b6fbb08f"
     },
     {
       "path": "apps/web/src/lib/auth/session.ts",
       "sha256": "ba20d41c32f611d90b97b388a42eb6713f6923ba159a50e1fba982bc0be60223"
-    },
-    {
-      "path": "apps/web/src/lib/auth/sso-bridge.ts",
-      "sha256": "a2c918de16286ace29ccc9f6e73575b597d22950f1a87345b21a6b2dfbc18e33"
     },
     {
       "path": "apps/web/src/lib/auth/token-refresh.ts",
@@ -2009,52 +1043,12 @@
       "sha256": "677a0d43f1afb14e6875d883d781c544a8585fe8f14b0f11c6969a72f2945e35"
     },
     {
-      "path": "apps/web/src/lib/builder/actions.ts",
-      "sha256": "1c5a59d871907f2cab2e18987598375d100306e003aa3d0765b059ebad5e8147"
-    },
-    {
-      "path": "apps/web/src/lib/builder/mock-data.ts",
-      "sha256": "2be7e01b9e2f3c7a9664b2555787ae4cfedb6e8c817e9e661d725e7990117822"
-    },
-    {
-      "path": "apps/web/src/lib/builder/server-data.ts",
-      "sha256": "4275fa8cb247c081af798cc3e87e6efa166be059c92553ebec73865a28ce99ae"
-    },
-    {
-      "path": "apps/web/src/lib/hub/mock-data.ts",
-      "sha256": "8c8eefa6e76aab977b16358e4f9e98b31a7bb460b8682d59d6fb5e20b460060d"
-    },
-    {
-      "path": "apps/web/src/lib/hub/search.ts",
-      "sha256": "ce36156827e9cdb68e8c631164afcd34fdd6b1e9cf96c7e0a57846d6ed8d6503"
-    },
-    {
-      "path": "apps/web/src/lib/hub/server-data.ts",
-      "sha256": "d9f6f6db012b3c820a551bde52200b60eb640dbd7c0198f24e9f9d92e658a8a6"
-    },
-    {
-      "path": "apps/web/src/lib/knowledge/fixture-store.ts",
-      "sha256": "001fa9f8c6a89a0f7360434ac78c95e2db1caed30b4b0fefc1c936327cdd5733"
-    },
-    {
-      "path": "apps/web/src/lib/knowledge/mock-data.ts",
-      "sha256": "d592ce9f48af95d3759e7d19949d19f609a9c4e776f874d2dcd7ae97a9f0409b"
-    },
-    {
-      "path": "apps/web/src/lib/knowledge/upload-policy.ts",
-      "sha256": "c8d2c7680d3546edb5698cfb70c0a9a4fefcc7432c535ff6ec5e4b359569dd2c"
-    },
-    {
-      "path": "apps/web/src/lib/runtime/fixture-mode.ts",
-      "sha256": "7fdeb74fc5418092567ba7ac62fb23567041e60038d16b770952482ecd031f6e"
-    },
-    {
       "path": "apps/web/src/lib/utils.ts",
       "sha256": "7c8c3dfc0cdd370d44932828eb067ef771c8fe7996693221d5d4b90af6d54f2d"
     },
     {
       "path": "apps/web/src/middleware.ts",
-      "sha256": "a1f2c01a264a1a596643fc61a19ce5690febdf97e09d69c81248618c3e9bc580"
+      "sha256": "c1e5c03f612872ad05ed6ddc14b52bc61e3c0dd2864b3f58235c3478872fa661"
     },
     {
       "path": "apps/web/src/test/server-only.ts",
@@ -2070,7 +1064,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "b55e414fd51f13b63928be1bb4148574342e22a1092633ec41ee7dcd725735fa"
+      "sha256": "9ee33e16eabf187d0b9325d5557900b4eacf56cf1f8511d14008f66d39978028"
     },
     {
       "path": "packages/contracts/package.json",
@@ -2081,24 +1075,12 @@
       "sha256": "f46075e9b81da04d1e7fe3b34af440dbfd8f849b71c21ce7b9dd645f3e920cde"
     },
     {
-      "path": "packages/contracts/src/admin.ts",
-      "sha256": "4006e4198b57c0aa1af3d1fca4bfd73ebc6447b55902dc1d365c0aec81995c54"
-    },
-    {
-      "path": "packages/contracts/src/builder.ts",
-      "sha256": "40557f06e1c60baff7b4255d3fc7ac2271bc1095aaec11208b43cfac31617bb4"
-    },
-    {
       "path": "packages/contracts/src/common.ts",
-      "sha256": "77d53d64c40f9dc9a7578acb7a050fb09cfc066f139b52c3d7cda9d381257017"
-    },
-    {
-      "path": "packages/contracts/src/hub.ts",
-      "sha256": "116ab1bb5849ec5aa2c2e7a0dde8ca8c8c1b44537580612b28dc7f5afad639a5"
+      "sha256": "da9aa2d0c3faab33198b5aded569cc1138c3a4ab9acbe35795fd5f17c720cb8c"
     },
     {
       "path": "packages/contracts/src/index.ts",
-      "sha256": "12907541630249d47ebd35de2dde15ebc91777ba66dee2054d76bf511dd04064"
+      "sha256": "afed759eb5e5c9ff3a6b771cf290efd9c3ec343f03b9029bf929697541bb3d59"
     },
     {
       "path": "packages/contracts/src/inference-core-authorization.ts",
@@ -2107,10 +1089,6 @@
     {
       "path": "packages/contracts/src/inference-core.ts",
       "sha256": "fa15f1e29d66ad096ccb9cdefcb92d0d7efe74e7fc0ecebca670cf28f3a536f7"
-    },
-    {
-      "path": "packages/contracts/src/knowledge.ts",
-      "sha256": "3683f7fe5165ed36d05c3eed933643a1a90494f518020175d52d656e57891233"
     },
     {
       "path": "packages/contracts/tsconfig.build.json",
@@ -2130,7 +1108,7 @@
     },
     {
       "path": "packages/copy/src/index.ts",
-      "sha256": "c266a5e2b568876ef5483fa72582cb4a23734cc3c9a9dac3a24e66581cc85fdf"
+      "sha256": "46ffeb5421fd4f6ba2851d782a7854a382a8966a799648fb17135b791c09a188"
     },
     {
       "path": "packages/copy/tsconfig.build.json",
@@ -2142,7 +1120,7 @@
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "7d394721b2a66d9b8b87d0d55dfdc2b3253e3f7703eefb1ec80ccfbd2db621c4"
+      "sha256": "4d86aa71baca9d748959e3e2cb9e55b8c83fd6baa563fe7946c854aed36c7c8a"
     },
     {
       "path": "pnpm-workspace.yaml",
@@ -2158,42 +1136,12 @@
     {
       "path": ".env.example",
       "mode": "100644",
-      "objectId": "42864fe60f6b285be642afaed4ec58163c307e2b"
+      "objectId": "9dab3b7677831624fda276f16081ae5c77724f05"
     },
     {
       "path": ".gitignore",
       "mode": "100644",
       "objectId": "90957351a0b40660a6b64cfc78daca46e2f36e5b"
-    },
-    {
-      "path": "apps/agentic-adapter/package.json",
-      "mode": "100644",
-      "objectId": "1cead6b11d59b142d2befb626e251ca408cd8954"
-    },
-    {
-      "path": "apps/agentic-adapter/README.md",
-      "mode": "100644",
-      "objectId": "3086a770bb2764d65518f1913bbc3e03e0ed253d"
-    },
-    {
-      "path": "apps/agentic-adapter/src/index.test.ts",
-      "mode": "100644",
-      "objectId": "3a6e3e1085809d4cfe3fa6fbae00a290a5240b2e"
-    },
-    {
-      "path": "apps/agentic-adapter/src/index.ts",
-      "mode": "100644",
-      "objectId": "746686fd2af35c2d7c0045f96e88e67e4f5677ba"
-    },
-    {
-      "path": "apps/agentic-adapter/tsconfig.build.json",
-      "mode": "100644",
-      "objectId": "1bb87ac8927cbaeecaf396a0ba7c7d2bca32f159"
-    },
-    {
-      "path": "apps/agentic-adapter/tsconfig.json",
-      "mode": "100644",
-      "objectId": "824d57c3c4f2fc16761dbcf744d50fc9e0b60a46"
     },
     {
       "path": "apps/bff/Dockerfile",
@@ -2203,12 +1151,12 @@
     {
       "path": "apps/bff/package.json",
       "mode": "100644",
-      "objectId": "0a67204db0457e6a84faf3cab367ba159e7b819a"
+      "objectId": "aeeb504bc975d267582a039057fe7863893c734f"
     },
     {
       "path": "apps/bff/README.md",
       "mode": "100644",
-      "objectId": "7d75fccc0771adff92bc65b81e0fd94b97eb3b1f"
+      "objectId": "4efbf87f4fcb3925d1feb22b822772a953639e24"
     },
     {
       "path": "apps/bff/src/auth/keycloak-jwt.ts",
@@ -2218,42 +1166,17 @@
     {
       "path": "apps/bff/src/auth/persona-security.test.ts",
       "mode": "100644",
-      "objectId": "53307392ba03ad2405b99b34944d221096e1fd84"
+      "objectId": "44fb5939cc9c65541634677593c85ba9fba5a432"
     },
     {
       "path": "apps/bff/src/auth/persona.ts",
       "mode": "100644",
-      "objectId": "c4c2086cbf1bc7a5d4e237de0ba6f612b12dedf0"
-    },
-    {
-      "path": "apps/bff/src/catalog/mcp-catalog.ts",
-      "mode": "100644",
-      "objectId": "5591613cd5cfdc0e491f01b1148693350d4dea7f"
-    },
-    {
-      "path": "apps/bff/src/catalog/signed-catalog.test.ts",
-      "mode": "100644",
-      "objectId": "fff549b569bc5a2cf01137fbe3df131e454e1062"
-    },
-    {
-      "path": "apps/bff/src/catalog/signed-catalog.ts",
-      "mode": "100644",
-      "objectId": "b55d11b5627d9b8557dd37e87eec3578f8db4d15"
+      "objectId": "f918220768b6b8e4bd5995d72b099b8e39c446ff"
     },
     {
       "path": "apps/bff/src/config/fixture-mode.ts",
       "mode": "100644",
       "objectId": "4f20aa4bede9a23715f31e242bfeef8ac85457bd"
-    },
-    {
-      "path": "apps/bff/src/db/admin-settings-schema.test.ts",
-      "mode": "100644",
-      "objectId": "461cb52f0d0fe941385653ff9dfefa3526460c8a"
-    },
-    {
-      "path": "apps/bff/src/db/client.ts",
-      "mode": "100644",
-      "objectId": "6862dc066746d3d18d25dd5f0d2681cf4ecdedc7"
     },
     {
       "path": "apps/bff/src/db/inference-core-client.ts",
@@ -2271,16 +1194,6 @@
       "objectId": "12418e07310ae9d8f992be455b8c81c5ef9c6b8d"
     },
     {
-      "path": "apps/bff/src/db/knowledge-schema.test.ts",
-      "mode": "100644",
-      "objectId": "3c77e9d2f1633a749363aac0a829ecfdd87a3161"
-    },
-    {
-      "path": "apps/bff/src/db/schema.ts",
-      "mode": "100644",
-      "objectId": "cf9d624a2e5420bf516e35cf10199767cc036233"
-    },
-    {
       "path": "apps/bff/src/index.ts",
       "mode": "100644",
       "objectId": "70acd1732b1c51f557f64192e724c367a0b3cd42"
@@ -2291,19 +1204,14 @@
       "objectId": "235a214b668dc10b5ea44db204d48dc69ad5b74f"
     },
     {
-      "path": "apps/bff/src/openai/types.ts",
-      "mode": "100644",
-      "objectId": "336377bdc6d88ef507c5a5c13aa4a7d1d77a3686"
-    },
-    {
       "path": "apps/bff/src/routes/admin-hardware.test.ts",
       "mode": "100644",
-      "objectId": "a69e5d8bf16e1fc0d0309432398bcab0deefcc45"
+      "objectId": "e140eb1297898a1480e6185e6f2dfe7dabfd8369"
     },
     {
       "path": "apps/bff/src/routes/admin-inference.test.ts",
       "mode": "100644",
-      "objectId": "d6aac01e7e6f6e1ecb581f6bb3b66f161f81b178"
+      "objectId": "76e4ae45fb894e1a296b1ccc8ac4cea0a9258026"
     },
     {
       "path": "apps/bff/src/routes/admin-overview-health.test.ts",
@@ -2313,22 +1221,17 @@
     {
       "path": "apps/bff/src/routes/admin-overview-ops.test.ts",
       "mode": "100644",
-      "objectId": "0bcca06e4afc17a7553964f57706f62ef590a301"
+      "objectId": "706c77b166967bba6ee2a4ffb5fed3ea7411eca4"
     },
     {
       "path": "apps/bff/src/routes/admin.test.ts",
       "mode": "100644",
-      "objectId": "b125e2b4112d06c1b670f63d1cf74f6b852e09e9"
+      "objectId": "c215a15874b8f8a4993ed7e19c7f164df8a2b759"
     },
     {
       "path": "apps/bff/src/routes/admin.ts",
       "mode": "100644",
       "objectId": "a7325c4547e87f6f9df2068161a836083142e865"
-    },
-    {
-      "path": "apps/bff/src/routes/agentic-runtime.ts",
-      "mode": "100644",
-      "objectId": "933a8c6126cebc190486f91c1dc2f899c5ec73b6"
     },
     {
       "path": "apps/bff/src/routes/app-gateway-accounting-errors.test.ts",
@@ -2351,44 +1254,9 @@
       "objectId": "ab448e762b8a4a121d1c607b75eee08575437289"
     },
     {
-      "path": "apps/bff/src/routes/builder.ts",
-      "mode": "100644",
-      "objectId": "2bfe91435cb7d4be7eb6229a8f624be6301a9034"
-    },
-    {
-      "path": "apps/bff/src/routes/hub.ts",
-      "mode": "100644",
-      "objectId": "2f51be2c4cc0a62cb818c446f18eea45df249d0e"
-    },
-    {
       "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
       "mode": "100644",
       "objectId": "af05ac6a1216ab51de555cc32cef7d2ac639dbf7"
-    },
-    {
-      "path": "apps/bff/src/routes/knowledge.ts",
-      "mode": "100644",
-      "objectId": "7e4840f38cda7f8a4f3ca27396fec869af692ec9"
-    },
-    {
-      "path": "apps/bff/src/routes/mcp-gateway.ts",
-      "mode": "100644",
-      "objectId": "c02613c251dcebab2f947365f1d5606bdbb67ab4"
-    },
-    {
-      "path": "apps/bff/src/routes/openai-compatible.ts",
-      "mode": "100644",
-      "objectId": "00a98630322b82b16dc15573f3fc6f2b1f79bd95"
-    },
-    {
-      "path": "apps/bff/src/scripts/backfill-knowledge-embeddings.ts",
-      "mode": "100644",
-      "objectId": "a2400611a002ac0fb6790d33fdc848e1b029630b"
-    },
-    {
-      "path": "apps/bff/src/services/admin-approvals.ts",
-      "mode": "100644",
-      "objectId": "7ee7c545bf380513e42c0cea7f008370767ede57"
     },
     {
       "path": "apps/bff/src/services/admin-audit.ts",
@@ -2404,26 +1272,6 @@
       "path": "apps/bff/src/services/admin-connected-apps.ts",
       "mode": "100644",
       "objectId": "0d733bfccfe6746b2e6d462c595bb41e3ab950fa"
-    },
-    {
-      "path": "apps/bff/src/services/admin-connector-registry.ts",
-      "mode": "100644",
-      "objectId": "d26f4e16072603a5200fc55a3d579783bdbcd4a2"
-    },
-    {
-      "path": "apps/bff/src/services/admin-governance-detail.ts",
-      "mode": "100644",
-      "objectId": "290ad68fcb856740acc46072079e56f79ec96e0b"
-    },
-    {
-      "path": "apps/bff/src/services/admin-governance-state.ts",
-      "mode": "100644",
-      "objectId": "2454ea8eb8a3f9ecaacf5f19ba0aa647e268a63f"
-    },
-    {
-      "path": "apps/bff/src/services/admin-governance.ts",
-      "mode": "100644",
-      "objectId": "eed092d2a611a55d85a83fc231e6fcf66e02c62d"
     },
     {
       "path": "apps/bff/src/services/admin-hardware.ts",
@@ -2471,11 +1319,6 @@
       "objectId": "513980e34404a0301e65822987d147885490a577"
     },
     {
-      "path": "apps/bff/src/services/admin-settings-fixtures.ts",
-      "mode": "100644",
-      "objectId": "845a469c492c9301b3351fb747561148fc214274"
-    },
-    {
       "path": "apps/bff/src/services/admin-settings-validation.test.ts",
       "mode": "100644",
       "objectId": "b0113b28302087ce52ce10fa79171113cbebb551"
@@ -2486,64 +1329,9 @@
       "objectId": "7c88cdca7967020a436e0cb863b571e9b4bef101"
     },
     {
-      "path": "apps/bff/src/services/admin-settings.ts",
-      "mode": "100644",
-      "objectId": "a7b242ed50cb54168df3e48099396b1607988715"
-    },
-    {
       "path": "apps/bff/src/services/admin-team.ts",
       "mode": "100644",
       "objectId": "dfacf27bf100569998c8b5b10e0dc87d0d0159b2"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-docker-executor.ts",
-      "mode": "100644",
-      "objectId": "2f4f6f777940ef4367772a7507b4efb998f3a70c"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-executor-common.ts",
-      "mode": "100644",
-      "objectId": "4702d5c0c404c22d4383656ab81307ff4a70037f"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-executor.test.ts",
-      "mode": "100644",
-      "objectId": "98a39f9934c72b140a712b5684ecccbeca593671"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-executor.ts",
-      "mode": "100644",
-      "objectId": "47e921e828d12e3117513b4e9940bba0864c2076"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-kubernetes-client.ts",
-      "mode": "100644",
-      "objectId": "02192c92f407620145ae22c75a56856422bc3664"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-kubernetes-executor.ts",
-      "mode": "100644",
-      "objectId": "1f4887ae4f0c24f178c5606d734ad4550187a923"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode-kubernetes-types.ts",
-      "mode": "100644",
-      "objectId": "bf596e7bb8d1e51aeba56e99d88b709147f40483"
-    },
-    {
-      "path": "apps/bff/src/services/admin/pure-mode.ts",
-      "mode": "100644",
-      "objectId": "87bb9c9004a4e480260ed3d9bb87b17353ab62d5"
-    },
-    {
-      "path": "apps/bff/src/services/agentic-runtime-client.ts",
-      "mode": "100644",
-      "objectId": "332855e7c60a55fa223ced80c338fac8eaa011c3"
-    },
-    {
-      "path": "apps/bff/src/services/agentic-runtime-history.ts",
-      "mode": "100644",
-      "objectId": "4bad628b23a62d14eac1d6190a5c050db3a88d2c"
     },
     {
       "path": "apps/bff/src/services/application-gateway-policy.ts",
@@ -2551,24 +1339,9 @@
       "objectId": "7c14dcd7e871e96b1fc366ca3b1ae3af7fdd6471"
     },
     {
-      "path": "apps/bff/src/services/approval-envelope.ts",
-      "mode": "100644",
-      "objectId": "87638da579a99de46bb3b05c22c09f2908f295ae"
-    },
-    {
       "path": "apps/bff/src/services/audit.ts",
       "mode": "100644",
       "objectId": "f07878e7ce2d32a65688c98fc96bb3881e0e0c72"
-    },
-    {
-      "path": "apps/bff/src/services/builder.ts",
-      "mode": "100644",
-      "objectId": "28b7fee7e52b9040863a8af755d3accf2be35734"
-    },
-    {
-      "path": "apps/bff/src/services/egress-approvals.ts",
-      "mode": "100644",
-      "objectId": "4ad43311c993ef7f5872d968eb51fc04a56f1304"
     },
     {
       "path": "apps/bff/src/services/expert-capabilities.test.ts",
@@ -2579,21 +1352,6 @@
       "path": "apps/bff/src/services/expert-capabilities.ts",
       "mode": "100644",
       "objectId": "925d12a6494f67999b8ef2d8421894699aad21e5"
-    },
-    {
-      "path": "apps/bff/src/services/hub-events.test.ts",
-      "mode": "100644",
-      "objectId": "c3136981b306d46851677ace7732012dda49f16a"
-    },
-    {
-      "path": "apps/bff/src/services/hub-events.ts",
-      "mode": "100644",
-      "objectId": "d501d489b6d6d61747b8342766c552cd7a02a299"
-    },
-    {
-      "path": "apps/bff/src/services/hub.ts",
-      "mode": "100644",
-      "objectId": "19fc2f57fbabf4392211aa52a6363eafca6c277d"
     },
     {
       "path": "apps/bff/src/services/idempotency.ts",
@@ -2611,114 +1369,9 @@
       "objectId": "acb86e44f766cbed406ae5bd27480085ca9a3fe3"
     },
     {
-      "path": "apps/bff/src/services/internal-docs-mcp-posture.ts",
-      "mode": "100644",
-      "objectId": "5c125fae4af0249322a25b84382c05ec8be21a9e"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/admin.ts",
-      "mode": "100644",
-      "objectId": "c31a36f408dd1e4221330ae8285831f111234487"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/corpus-preflight.ts",
-      "mode": "100644",
-      "objectId": "2d1d86a656ce08aa4d450cdc4ac800c312f2b5bc"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/embeddings.ts",
-      "mode": "100644",
-      "objectId": "09df823937c62e5510ddee51a2fb3d736abd62d9"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/fixtures.test.ts",
-      "mode": "100644",
-      "objectId": "f911be08472f2ecfd02efec9322d59abca8339e0"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/ingestion.test.ts",
-      "mode": "100644",
-      "objectId": "04654b5085d16d1875a7ff4253de281d42b37c04"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/ingestion.ts",
-      "mode": "100644",
-      "objectId": "be31685476e08fd27d4216950804ac275ef2c826"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/object-store.test.ts",
-      "mode": "100644",
-      "objectId": "f1b0874907bae7373bf83a020807b8467053abed"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/object-store.ts",
-      "mode": "100644",
-      "objectId": "4d7d2676b80ab13f7612ad913b87638326374afd"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/repository.ts",
-      "mode": "100644",
-      "objectId": "8e872ac086f40d4ecdabff18c127b0e0935e8a83"
-    },
-    {
-      "path": "apps/bff/src/services/knowledge/url-acquisition.ts",
-      "mode": "100644",
-      "objectId": "04773607beb78759836109dbf6d147b4cabb302e"
-    },
-    {
-      "path": "apps/bff/src/services/librechat-backfill.test.ts",
-      "mode": "100644",
-      "objectId": "06eb897f4fd8d4efe4dd39b8b1a35dd2c01e6384"
-    },
-    {
-      "path": "apps/bff/src/services/librechat-backfill.ts",
-      "mode": "100644",
-      "objectId": "91b440e01f753d51c57dca43411ad3b52b8e9ce1"
-    },
-    {
-      "path": "apps/bff/src/services/librechat-native-agents.ts",
-      "mode": "100644",
-      "objectId": "16fe43cbd0bb7a24b443d9edb904d622e5629da0"
-    },
-    {
       "path": "apps/bff/src/services/litellm-chat-transport.ts",
       "mode": "100644",
       "objectId": "bcdb60b9c66edf3985342f4574be6c302b2f220b"
-    },
-    {
-      "path": "apps/bff/src/services/mcp-gateway.ts",
-      "mode": "100644",
-      "objectId": "63a894765362400d073d9035b4b712852a64f421"
-    },
-    {
-      "path": "apps/bff/src/services/policy-violations.ts",
-      "mode": "100644",
-      "objectId": "a6e5a4473b21f787e30ca96da617bc8833e25233"
-    },
-    {
-      "path": "apps/bff/src/services/security/url-safety.test.ts",
-      "mode": "100644",
-      "objectId": "2f076b811f317b4218278489394eb219e4d99c6d"
-    },
-    {
-      "path": "apps/bff/src/services/security/url-safety.ts",
-      "mode": "100644",
-      "objectId": "aa486b810a3455a3ae78b91508f0f82fc78627c4"
-    },
-    {
-      "path": "apps/bff/src/services/slash-middleware.ts",
-      "mode": "100644",
-      "objectId": "8913f304caf9f6303a81737b44a831848792280b"
-    },
-    {
-      "path": "apps/bff/src/services/team-keycloak-admin.test.ts",
-      "mode": "100644",
-      "objectId": "4c9f5c08a6f0ffe5d4754b7f15964cf89f0a1880"
-    },
-    {
-      "path": "apps/bff/src/services/team-keycloak-admin.ts",
-      "mode": "100644",
-      "objectId": "29522821e7164bbef5e021f53439c46ee1cce4aa"
     },
     {
       "path": "apps/bff/src/services/users.test.ts",
@@ -2731,16 +1384,6 @@
       "objectId": "058209b36f080abeecb5065d2c8212835ea5264d"
     },
     {
-      "path": "apps/bff/src/streaming/openai-encoder.ts",
-      "mode": "100644",
-      "objectId": "7935141ee40d1832a6a574f9abeac9a897cba974"
-    },
-    {
-      "path": "apps/bff/src/workers/knowledge-url-acquisition.ts",
-      "mode": "100644",
-      "objectId": "7919688c27d4e64e847eb46fe37f37d5501dfa56"
-    },
-    {
       "path": "apps/bff/tsconfig.json",
       "mode": "100644",
       "objectId": "7959233d2e7a210cc64d217ef20092b301a8a76f"
@@ -2749,126 +1392,6 @@
       "path": "apps/bff/vitest.config.ts",
       "mode": "100644",
       "objectId": "f46def830fb60f94c14a933c972819b256a5732c"
-    },
-    {
-      "path": "apps/pdf-parser/Dockerfile",
-      "mode": "100644",
-      "objectId": "82b635c579707e85d493df98bc7fb291072dbcbe"
-    },
-    {
-      "path": "apps/pdf-parser/pyproject.toml",
-      "mode": "100644",
-      "objectId": "0a0576b032c5bfbd4f67be9b31fdc8075c2fe811"
-    },
-    {
-      "path": "apps/pdf-parser/src/pdf_parser/__init__.py",
-      "mode": "100644",
-      "objectId": "bec1d96ae2d9b3852e01159b59db7cd4217930ba"
-    },
-    {
-      "path": "apps/pdf-parser/src/pdf_parser/main.py",
-      "mode": "100644",
-      "objectId": "05679e790ad782432a43d519a0db4ff35b978411"
-    },
-    {
-      "path": "apps/pdf-parser/src/pdf_parser/models.py",
-      "mode": "100644",
-      "objectId": "a43f14b1d7c57a5230f303c2265d949c6dce1a84"
-    },
-    {
-      "path": "apps/pdf-parser/src/pdf_parser/opendataloader.py",
-      "mode": "100644",
-      "objectId": "09b000b5f2f039ae4895ddc230f7d2c920fa970d"
-    },
-    {
-      "path": "apps/pdf-parser/tests/test_pdf_parser.py",
-      "mode": "100644",
-      "objectId": "3b7862a894d9cc0cfbf3c01a770a3418750f749b"
-    },
-    {
-      "path": "apps/pdf-parser/uv.lock",
-      "mode": "100644",
-      "objectId": "4ac666b0b8c88f8f5e5877998794c62ad14da246"
-    },
-    {
-      "path": "apps/reranker-api/Dockerfile",
-      "mode": "100644",
-      "objectId": "575fa26be414d5ef6fbee399ce7c6d17b7a3316b"
-    },
-    {
-      "path": "apps/reranker-api/package.json",
-      "mode": "100644",
-      "objectId": "9ee0182eb0aaca5d0d25dfa68dcdfa197e7c78cf"
-    },
-    {
-      "path": "apps/reranker-api/README.md",
-      "mode": "100644",
-      "objectId": "5074fa192984d532f233c36f708d77722a2e0089"
-    },
-    {
-      "path": "apps/reranker-api/src/index.test.ts",
-      "mode": "100644",
-      "objectId": "0c2ec8b4e56c1f808f2126b9ffaa7874ac36d8b8"
-    },
-    {
-      "path": "apps/reranker-api/src/index.ts",
-      "mode": "100644",
-      "objectId": "9ae4fa6a5bf49501f7aabfcd2bdc827877a8a0c0"
-    },
-    {
-      "path": "apps/reranker-api/tsconfig.build.json",
-      "mode": "100644",
-      "objectId": "63fc19eb1d1a4a6d333d9169e2da1f07940da24f"
-    },
-    {
-      "path": "apps/reranker-api/tsconfig.json",
-      "mode": "100644",
-      "objectId": "9cb445f6ffaff72ba79d9b2ce7aa49068a9377e0"
-    },
-    {
-      "path": "apps/sidecar/Dockerfile",
-      "mode": "100644",
-      "objectId": "e1d7fcd61ed0bee5258dffb5f26a42c019815d54"
-    },
-    {
-      "path": "apps/sidecar/pyproject.toml",
-      "mode": "100644",
-      "objectId": "66b12aa03c86cb5a5426e880c383d3390c0905f1"
-    },
-    {
-      "path": "apps/sidecar/README.md",
-      "mode": "100644",
-      "objectId": "72547ab9224e7dffa7484a9a863830f7d45e09d2"
-    },
-    {
-      "path": "apps/sidecar/src/sidecar/__init__.py",
-      "mode": "100644",
-      "objectId": "fbccf1b3e6d3f08ddfcc43682f87da8bb5b4c61b"
-    },
-    {
-      "path": "apps/sidecar/src/sidecar/knowledge.py",
-      "mode": "100644",
-      "objectId": "7bfdc37cf7ea88e02bbfbdd2ffa3e4476063e9b2"
-    },
-    {
-      "path": "apps/sidecar/src/sidecar/main.py",
-      "mode": "100644",
-      "objectId": "037bdc4d348a4bb900020c4809d98bb409ea8b36"
-    },
-    {
-      "path": "apps/sidecar/tests/test_health.py",
-      "mode": "100644",
-      "objectId": "7d31bc788c3bb9cb57ac07996934f7467ce257c1"
-    },
-    {
-      "path": "apps/sidecar/tests/test_knowledge_extraction.py",
-      "mode": "100644",
-      "objectId": "d239f71d976d9215ea2f046727a7dcf30f9de90c"
-    },
-    {
-      "path": "apps/sidecar/uv.lock",
-      "mode": "100644",
-      "objectId": "744c1daf27436616267ff1e5892d3cb01eb47138"
     },
     {
       "path": "apps/web/Dockerfile",
@@ -2888,12 +1411,12 @@
     {
       "path": "apps/web/next.config.ts",
       "mode": "100644",
-      "objectId": "8200113b0eae7327f89122725f595c3863fb650b"
+      "objectId": "1986614aa07c69a17bfa21fcb48e2c102cbb6e5c"
     },
     {
       "path": "apps/web/package.json",
       "mode": "100644",
-      "objectId": "c6d3dc5b824f94d73856b5c08ecb24f9314f5ba7"
+      "objectId": "7bc224e00a63de8a40ed1e3e4de5a733173d1a7f"
     },
     {
       "path": "apps/web/postcss.config.mjs",
@@ -3043,7 +1566,7 @@
     {
       "path": "apps/web/README.md",
       "mode": "100644",
-      "objectId": "9c20b629f727f43f8c727bbe0c5902ceb6c6e861"
+      "objectId": "2d3bb75affdb7a73e83a2fb3575c707b40a00c1b"
     },
     {
       "path": "apps/web/src/app/api/auth/[...nextauth]/route.ts",
@@ -3051,64 +1574,9 @@
       "objectId": "c9ebf8e49feef1f184976cb66788aaa48e20123e"
     },
     {
-      "path": "apps/web/src/app/api/builder/agents/[id]/test/stream/route.ts",
-      "mode": "100644",
-      "objectId": "029843a668848427789cfa2ddd97d16cbff3b66e"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/chat/route.test.ts",
-      "mode": "100644",
-      "objectId": "f4e2991718c91d2491efa92bd455dbb607af666e"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/chat/route.ts",
-      "mode": "100644",
-      "objectId": "506ad3010dad4cf3b73207d5e464e349119beb57"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/events/route.test.ts",
-      "mode": "100644",
-      "objectId": "18788fa6b6bd4dd6a863bd770863641686700d52"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/events/route.ts",
-      "mode": "100644",
-      "objectId": "5a7d1d77784cf942653f19f5dc15ecb562b8a5b5"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/notifications/[id]/read/route.test.ts",
-      "mode": "100644",
-      "objectId": "0b488a5f0ab84c72b0e811ed1c5388e524fd0210"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/notifications/[id]/read/route.ts",
-      "mode": "100644",
-      "objectId": "1c132b4b2e5b35c011e3c9286ad8d8d5ee36bcfe"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/search/route.test.ts",
-      "mode": "100644",
-      "objectId": "92f8c65924945df057d5c350e94a65205a901744"
-    },
-    {
-      "path": "apps/web/src/app/api/hub/search/route.ts",
-      "mode": "100644",
-      "objectId": "ccc825ab673f75230523bd6ae2f7ed6bffd00638"
-    },
-    {
       "path": "apps/web/src/app/applications/[[...section]]/page.tsx",
       "mode": "100644",
       "objectId": "c837f01d2b55ac43dd212823d75e7d9ef1fb1b41"
-    },
-    {
-      "path": "apps/web/src/app/artifacts/[id]/page.tsx",
-      "mode": "100644",
-      "objectId": "60ae7a35170c2f559b9e0424ab4d7ffdc7e6bdeb"
-    },
-    {
-      "path": "apps/web/src/app/artifacts/page.tsx",
-      "mode": "100644",
-      "objectId": "e8d47e0f9b852f59f49962c6dadf8983de7e6867"
     },
     {
       "path": "apps/web/src/app/auth/keycloak/route.ts",
@@ -3118,42 +1586,7 @@
     {
       "path": "apps/web/src/app/auth/signin/page.tsx",
       "mode": "100644",
-      "objectId": "29f321f58b8d6cc551a394696e15cf159133266a"
-    },
-    {
-      "path": "apps/web/src/app/builder/agents/[id]/page.tsx",
-      "mode": "100644",
-      "objectId": "9b81678da1a2546d3474885c03f166fa768d9ebd"
-    },
-    {
-      "path": "apps/web/src/app/builder/page.tsx",
-      "mode": "100644",
-      "objectId": "add3061d04a8235d0e0f0baf8725504213cd7433"
-    },
-    {
-      "path": "apps/web/src/app/builder/resources/[id]/page.tsx",
-      "mode": "100644",
-      "objectId": "9b73c08b2bd37c4368254cc42c47d4680b259e74"
-    },
-    {
-      "path": "apps/web/src/app/builder/submissions/page.tsx",
-      "mode": "100644",
-      "objectId": "6dd022f0822c133dc0a859693b33bf923a20b083"
-    },
-    {
-      "path": "apps/web/src/app/builder/templates/[id]/page.tsx",
-      "mode": "100644",
-      "objectId": "0e662097105b8670d8dd9866f390eb943e126a89"
-    },
-    {
-      "path": "apps/web/src/app/builder/templates/page.tsx",
-      "mode": "100644",
-      "objectId": "c831304d107dd6f21190957350ad2e60237f0688"
-    },
-    {
-      "path": "apps/web/src/app/chat/page.tsx",
-      "mode": "100644",
-      "objectId": "31d30bec8371a086c32930453c4f51f071ddd8f7"
+      "objectId": "b2da6c64e3b38013495d711521aa5e1dfe0b164e"
     },
     {
       "path": "apps/web/src/app/fonts.ts",
@@ -3181,19 +1614,14 @@
       "objectId": "14f2b5da7f9aee30ed293fe401ef3de4000aa5dd"
     },
     {
-      "path": "apps/web/src/app/knowledge/page.tsx",
-      "mode": "100644",
-      "objectId": "1cd6256626dcdbd4ba404294d5650eddb9fbbb44"
-    },
-    {
       "path": "apps/web/src/app/layout.tsx",
       "mode": "100644",
-      "objectId": "335ba553888cdfd1ed91de623dffe1a3a3049de1"
+      "objectId": "a3af6581f0e033ab49db3b7c7897ad2d98f5c658"
     },
     {
       "path": "apps/web/src/app/page.test.tsx",
       "mode": "100644",
-      "objectId": "bce46c7978cc2bd2de829116cc788be3179220e9"
+      "objectId": "27e3f4efe0791acfe3bc5f2c5b249c68328441c9"
     },
     {
       "path": "apps/web/src/app/page.tsx",
@@ -3201,39 +1629,9 @@
       "objectId": "fe33332cff5ee70d4def9e080658d57e7a72f2d5"
     },
     {
-      "path": "apps/web/src/app/profile/page.tsx",
-      "mode": "100644",
-      "objectId": "9b65079c2d68d2f0d634b546069e2c2bb42802ec"
-    },
-    {
-      "path": "apps/web/src/app/providers.tsx",
-      "mode": "100644",
-      "objectId": "9f467d04d7dbb4b2ab073c01269d650a4bb7cd74"
-    },
-    {
-      "path": "apps/web/src/app/resources/[type]/[id]/page.tsx",
-      "mode": "100644",
-      "objectId": "33fff95426a3b37b0fdd71637edba2065361d889"
-    },
-    {
-      "path": "apps/web/src/app/resources/page.tsx",
-      "mode": "100644",
-      "objectId": "3cc51ccf84362f0ededff0a1c7a2b7b3a6f33b4e"
-    },
-    {
       "path": "apps/web/src/app/settings/page.tsx",
       "mode": "100644",
       "objectId": "a8a436aaafb115551bbf05a50503edc992bd5d80"
-    },
-    {
-      "path": "apps/web/src/app/tasks/[id]/page.tsx",
-      "mode": "100644",
-      "objectId": "052b70a637aa437c894bbf695fbd2364c7670de1"
-    },
-    {
-      "path": "apps/web/src/app/tasks/page.tsx",
-      "mode": "100644",
-      "objectId": "c7df33392dd9adbfc1c592f0b608feb9c2d73e20"
     },
     {
       "path": "apps/web/src/app/team/[[...section]]/page.tsx",
@@ -3244,31 +1642,6 @@
       "path": "apps/web/src/app/team/import/template/route.ts",
       "mode": "100644",
       "objectId": "18ba8e57cb8717c4dae786188e5dbe4d643255b7"
-    },
-    {
-      "path": "apps/web/src/app/usage/page.tsx",
-      "mode": "100644",
-      "objectId": "b2327ce151c1f862c67b8e6c91fd358f9465cce8"
-    },
-    {
-      "path": "apps/web/src/components/builder/builder-action-notice.tsx",
-      "mode": "100644",
-      "objectId": "aa1b1452d7611640a3529ee3fd32a88dc9970a1b"
-    },
-    {
-      "path": "apps/web/src/components/builder/builder-agent-test-pane.test.tsx",
-      "mode": "100644",
-      "objectId": "e37b5bd7fb3d34e9940c5374b07d9c106c98d1d0"
-    },
-    {
-      "path": "apps/web/src/components/builder/builder-agent-test-pane.tsx",
-      "mode": "100644",
-      "objectId": "24660b7f5d4ee819740d3eb306dd0067e4ebd9aa"
-    },
-    {
-      "path": "apps/web/src/components/builder/builder-lifecycle-actions.tsx",
-      "mode": "100644",
-      "objectId": "8d5dbad00ec13c2bce02534a1caf9f99a726b302"
     },
     {
       "path": "apps/web/src/components/console-v2/action-toasts.test.tsx",
@@ -3303,7 +1676,7 @@
     {
       "path": "apps/web/src/components/console-v2/console-v2-shell.test.tsx",
       "mode": "100644",
-      "objectId": "32bbafcc572c116353874b83c441a1cadaad02f8"
+      "objectId": "d061bfea55f15ea21720843054236ef6b9ebdf7c"
     },
     {
       "path": "apps/web/src/components/console-v2/console-v2-shell.tsx",
@@ -3323,17 +1696,12 @@
     {
       "path": "apps/web/src/components/console-v2/inference-chart-primitives.tsx",
       "mode": "100644",
-      "objectId": "ac24641a083f6f749604c374676dc9a3989eec93"
+      "objectId": "a60bbcd9941090cc6509e5fb67952c3f7281cc22"
     },
     {
       "path": "apps/web/src/components/console-v2/inference-v2-experience.tsx",
       "mode": "100644",
       "objectId": "0f65f40edab05d8ef5723d0cf891ec47f803e3e9"
-    },
-    {
-      "path": "apps/web/src/components/console-v2/knowledge-v2-experience.tsx",
-      "mode": "100644",
-      "objectId": "4a5ec389a397b095cd66f08fce9a4b5c6d5a6c9f"
     },
     {
       "path": "apps/web/src/components/console-v2/settings-v2-experience.tsx",
@@ -3344,66 +1712,6 @@
       "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
       "mode": "100644",
       "objectId": "ac569e9865fbe10afd84684ea775e78036483c3e"
-    },
-    {
-      "path": "apps/web/src/components/embed/embedded-surface-frame.tsx",
-      "mode": "100644",
-      "objectId": "0c9a52cb1f639f41c2422d3cefeb81f97f95cbd0"
-    },
-    {
-      "path": "apps/web/src/components/hub/access-denied-panel.tsx",
-      "mode": "100644",
-      "objectId": "d64bd6457432e0e58db6c3a60a07c89016b1b689"
-    },
-    {
-      "path": "apps/web/src/components/hub/command-palette.test.tsx",
-      "mode": "100644",
-      "objectId": "33f738d9f183561b2bdc028d2d2ecb706ee18a80"
-    },
-    {
-      "path": "apps/web/src/components/hub/command-palette.tsx",
-      "mode": "100644",
-      "objectId": "3951af900d0bda3f631bc382f428a4f684eebf66"
-    },
-    {
-      "path": "apps/web/src/components/hub/hub-navigation.tsx",
-      "mode": "100644",
-      "objectId": "8527e069ffa2c5773e085167f6d82496f4abd84e"
-    },
-    {
-      "path": "apps/web/src/components/hub/hub-page-frame.tsx",
-      "mode": "100644",
-      "objectId": "f6204a8082946df7ed7846c5a7d1a49c367de555"
-    },
-    {
-      "path": "apps/web/src/components/hub/live-events-indicator.test.tsx",
-      "mode": "100644",
-      "objectId": "faf9d8a89ad509ca6e90e135b63cd49845bfec16"
-    },
-    {
-      "path": "apps/web/src/components/hub/live-events-indicator.tsx",
-      "mode": "100644",
-      "objectId": "d3d41ff1cc4fd0d655f31664bf6c092f7cd6e3ee"
-    },
-    {
-      "path": "apps/web/src/components/hub/notifications-drawer.test.tsx",
-      "mode": "100644",
-      "objectId": "b28f5b9f5324cd689bb4ce0acef801a7100e7d6e"
-    },
-    {
-      "path": "apps/web/src/components/hub/notifications-drawer.tsx",
-      "mode": "100644",
-      "objectId": "c0a3d9acf8d4e3a88962b19552bfba7b0e79f03b"
-    },
-    {
-      "path": "apps/web/src/components/hub/profile-menu.tsx",
-      "mode": "100644",
-      "objectId": "4d4ab22a162fae01c3180d7d19ea13b5a3f2f2c9"
-    },
-    {
-      "path": "apps/web/src/components/ui/badge.tsx",
-      "mode": "100644",
-      "objectId": "c9be92a70414dc71f0fb423f48d2cacb56e5ab95"
     },
     {
       "path": "apps/web/src/components/ui/button.tsx",
@@ -3418,7 +1726,7 @@
     {
       "path": "apps/web/src/lib/admin/actions-core.test.ts",
       "mode": "100644",
-      "objectId": "4010449f16fcbcf844c34c51e7c361633959ea37"
+      "objectId": "769569a017ca6bc5486f7de643aca0009c4ab151"
     },
     {
       "path": "apps/web/src/lib/admin/actions-core.ts",
@@ -3426,34 +1734,14 @@
       "objectId": "1b0e2dce97275e84eab1ce006f467a0627b7cf39"
     },
     {
-      "path": "apps/web/src/lib/admin/actions.test.ts",
-      "mode": "100644",
-      "objectId": "55e85f8ff49813f996f82a2eea410fffbf8d0fc6"
-    },
-    {
-      "path": "apps/web/src/lib/admin/actions.ts",
-      "mode": "100644",
-      "objectId": "c290ad861f3b89d8ef6435af4599b154df5aa556"
-    },
-    {
       "path": "apps/web/src/lib/admin/console-v2-routes-core.tsx",
       "mode": "100644",
       "objectId": "ffbb9620da9a84f14365bd3b990b15f424fccd68"
     },
     {
-      "path": "apps/web/src/lib/admin/console-v2-routes.tsx",
-      "mode": "100644",
-      "objectId": "5f3a2964247612d677b0a1d992d8cf8a912c46a0"
-    },
-    {
-      "path": "apps/web/src/lib/admin/mock-data.ts",
-      "mode": "100644",
-      "objectId": "d22f270a5f7bb582b109c3fc886bc3dacc441217"
-    },
-    {
       "path": "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
       "mode": "100644",
-      "objectId": "c0e3d88f33740ad35d3e8d74b2b7be9a8d8666e6"
+      "objectId": "3048faa4d84ede35989222279718b56aa3bdcdce"
     },
     {
       "path": "apps/web/src/lib/admin/server-data-core.test.ts",
@@ -3464,16 +1752,6 @@
       "path": "apps/web/src/lib/admin/server-data-core.ts",
       "mode": "100644",
       "objectId": "a2f371e4e53e810871fa8b2608a50836d1a0ebf8"
-    },
-    {
-      "path": "apps/web/src/lib/admin/server-data.test.ts",
-      "mode": "100644",
-      "objectId": "631055abc669f759ba259b2bceeebcfcb5d6fcc7"
-    },
-    {
-      "path": "apps/web/src/lib/admin/server-data.ts",
-      "mode": "100644",
-      "objectId": "6c7063bd57d1b8c619b5e8ca7ea418f6fc723473"
     },
     {
       "path": "apps/web/src/lib/auth/auth.ts",
@@ -3491,14 +1769,9 @@
       "objectId": "379f9fe62b1732220448eb9deb1b9b0ec065c0d2"
     },
     {
-      "path": "apps/web/src/lib/auth/middleware-policy.ts",
-      "mode": "100644",
-      "objectId": "fa560daa6d2d0aca0109bce4fac425cbe85e8346"
-    },
-    {
       "path": "apps/web/src/lib/auth/role-claims.test.ts",
       "mode": "100644",
-      "objectId": "d775a6bc99122c351ce31541903bc99ca63eef28"
+      "objectId": "b4ccd27c2a777775429c9c81451c60a01a166c5c"
     },
     {
       "path": "apps/web/src/lib/auth/role-claims.ts",
@@ -3511,19 +1784,9 @@
       "objectId": "be2b9735ddc3c8fbf3c51673a63632dc783f790c"
     },
     {
-      "path": "apps/web/src/lib/auth/sso-bridge.test.ts",
-      "mode": "100644",
-      "objectId": "b8353ad3d6bc9226f683481c37248aab15fda294"
-    },
-    {
-      "path": "apps/web/src/lib/auth/sso-bridge.ts",
-      "mode": "100644",
-      "objectId": "51b0bf44a94c80f09744dd2daa07ce9d33a7b302"
-    },
-    {
       "path": "apps/web/src/lib/auth/token-refresh.test.ts",
       "mode": "100644",
-      "objectId": "59fb730f39170fa08fde3058a855ae4b1f8ec4e4"
+      "objectId": "ed39cabe93b1a45fb52374c02055b8d4777a3b50"
     },
     {
       "path": "apps/web/src/lib/auth/token-refresh.ts",
@@ -3536,66 +1799,6 @@
       "objectId": "f0fb07ffdd46209753748909526a02e0c9c059dc"
     },
     {
-      "path": "apps/web/src/lib/builder/actions.ts",
-      "mode": "100644",
-      "objectId": "15232ad953a3526fa02df8fc1f07eb226a968cc3"
-    },
-    {
-      "path": "apps/web/src/lib/builder/mock-data.ts",
-      "mode": "100644",
-      "objectId": "8281c6995bd3241c6515b274df92feb77ec02627"
-    },
-    {
-      "path": "apps/web/src/lib/builder/server-data.ts",
-      "mode": "100644",
-      "objectId": "ff91fceb01ce034920cdc2db3ce7af8b4ff308c5"
-    },
-    {
-      "path": "apps/web/src/lib/hub/mock-data.ts",
-      "mode": "100644",
-      "objectId": "8eea335fadaa2b210b42ea933b9710a4946647de"
-    },
-    {
-      "path": "apps/web/src/lib/hub/search.ts",
-      "mode": "100644",
-      "objectId": "067ecb584edea16e18ed3500e58883487da85816"
-    },
-    {
-      "path": "apps/web/src/lib/hub/server-data.test.ts",
-      "mode": "100644",
-      "objectId": "6e8d7ca15b177893c15dd6e7b9d1d578afefaac9"
-    },
-    {
-      "path": "apps/web/src/lib/hub/server-data.ts",
-      "mode": "100644",
-      "objectId": "40061585c4216b4f9b4358322ba6952f1f050424"
-    },
-    {
-      "path": "apps/web/src/lib/knowledge/fixture-store.ts",
-      "mode": "100644",
-      "objectId": "123c9eac782ede4d58d2917766ca8a3ade46c039"
-    },
-    {
-      "path": "apps/web/src/lib/knowledge/mock-data.ts",
-      "mode": "100644",
-      "objectId": "9ef480bc516e262d4050ef54cf94150191fde5c3"
-    },
-    {
-      "path": "apps/web/src/lib/knowledge/upload-policy.test.ts",
-      "mode": "100644",
-      "objectId": "61ca00d29224a89cac6d00337ea8e146c149dbdc"
-    },
-    {
-      "path": "apps/web/src/lib/knowledge/upload-policy.ts",
-      "mode": "100644",
-      "objectId": "1d08fec34a63c14ccd74d91fdfd329c8ce22cb71"
-    },
-    {
-      "path": "apps/web/src/lib/runtime/fixture-mode.ts",
-      "mode": "100644",
-      "objectId": "c588a3545c34c7d0c1b175f048a1d6b97461c685"
-    },
-    {
       "path": "apps/web/src/lib/utils.ts",
       "mode": "100644",
       "objectId": "bd0c391ddd1088e9067844c48835bf4abcd61783"
@@ -3603,12 +1806,12 @@
     {
       "path": "apps/web/src/middleware.test.ts",
       "mode": "100644",
-      "objectId": "1735e879351f185ad51eec0d2fd6900ee0a34b47"
+      "objectId": "f496b8328cb146d6b84c29e402d815aec5558ea1"
     },
     {
       "path": "apps/web/src/middleware.ts",
       "mode": "100644",
-      "objectId": "f6424fdd9e3aa4ec55b37c8449c5c6b3f0ed66d9"
+      "objectId": "eb2138ace351641a1c792f3438f56206efa05e74"
     },
     {
       "path": "apps/web/src/test/server-only.ts",
@@ -3641,9 +1844,14 @@
       "objectId": "848c9fad9c79e1e9b8ae585292d7c41ef471898e"
     },
     {
+      "path": "docs/reduction/inference-core/pr-03-removal-decisions.json",
+      "mode": "100644",
+      "objectId": "1c187cb89b10d2f062c273ee3b457eb7aca94d97"
+    },
+    {
       "path": "docs/reduction/inference-core/README.md",
       "mode": "100644",
-      "objectId": "ddee35329e509be32be06f29e3ab4d483de79e33"
+      "objectId": "ae77ad04f9df66ab27472db5ac69aedfe8bec84f"
     },
     {
       "path": "docs/reduction/inference-core/retention-characterization.json",
@@ -3788,7 +1996,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "objectId": "9de1828494fcbff91e7363c3fffebe65e92468da"
+      "objectId": "94662357ecc29c6c6894fc7654dc1fe0aca5085b"
     },
     {
       "path": "packages/contracts/package.json",
@@ -3801,49 +2009,14 @@
       "objectId": "f812d5ed9f100415c3de02ea42e6364991bb3b0c"
     },
     {
-      "path": "packages/contracts/src/admin.test.ts",
-      "mode": "100644",
-      "objectId": "9f3a803b6bfbb961acb28840733053ce508bfbc0"
-    },
-    {
-      "path": "packages/contracts/src/admin.ts",
-      "mode": "100644",
-      "objectId": "b214f9ab357b2f4088e6d28fe288fa87d6665430"
-    },
-    {
-      "path": "packages/contracts/src/builder.test.ts",
-      "mode": "100644",
-      "objectId": "03ca41d1b0c8467bc223fb7c6458753cb232a4cc"
-    },
-    {
-      "path": "packages/contracts/src/builder.ts",
-      "mode": "100644",
-      "objectId": "356a4f452c60064260ab53fc30a9ed43c4712be5"
-    },
-    {
-      "path": "packages/contracts/src/common.test.ts",
-      "mode": "100644",
-      "objectId": "32c1cdc1d5630f7889680ec89ea26345252cb005"
-    },
-    {
       "path": "packages/contracts/src/common.ts",
       "mode": "100644",
-      "objectId": "ce9205bb83cb473cd3d9308c398ab843bf661ea8"
-    },
-    {
-      "path": "packages/contracts/src/hub.test.ts",
-      "mode": "100644",
-      "objectId": "e493b4df0633f1e87e8ad516a216525e5454f636"
-    },
-    {
-      "path": "packages/contracts/src/hub.ts",
-      "mode": "100644",
-      "objectId": "d299546e47e52b9f5132fe946a49f250e8a5fcc2"
+      "objectId": "c70ee55769996e40e90e33074fb3f6b9bb3dbb02"
     },
     {
       "path": "packages/contracts/src/index.ts",
       "mode": "100644",
-      "objectId": "8ab308bae4af6ed842f1a21c0445c0fddce67cfa"
+      "objectId": "7742ee421cd396cf219e48f2778ee45948ae97ea"
     },
     {
       "path": "packages/contracts/src/inference-core-authorization.test.ts",
@@ -3864,16 +2037,6 @@
       "path": "packages/contracts/src/inference-core.ts",
       "mode": "100644",
       "objectId": "f9b0ccd92faa112e0b28e7fec23b3be26ac3aa06"
-    },
-    {
-      "path": "packages/contracts/src/knowledge.test.ts",
-      "mode": "100644",
-      "objectId": "9c2ae7fae9d4cb229c0ba04fa9593d93b6ac0cf4"
-    },
-    {
-      "path": "packages/contracts/src/knowledge.ts",
-      "mode": "100644",
-      "objectId": "fa4db6ddaae1a2a238c95f77c88850bde45eb855"
     },
     {
       "path": "packages/contracts/tsconfig.build.json",
@@ -3898,7 +2061,7 @@
     {
       "path": "packages/copy/src/index.ts",
       "mode": "100644",
-      "objectId": "64bebc7dc5ca25a5856a95981fdc12e740089bcf"
+      "objectId": "628e3812af5f73bcdd7850e1a9e474bf511ca622"
     },
     {
       "path": "packages/copy/tsconfig.build.json",
@@ -3913,7 +2076,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "objectId": "6890e579bbf16758d60538f0a16ddae357039601"
+      "objectId": "62418c898755d77d7dc0dfa1215041ba0b921314"
     },
     {
       "path": "pnpm-workspace.yaml",
@@ -3923,17 +2086,17 @@
     {
       "path": "README.md",
       "mode": "100644",
-      "objectId": "e8deb10d7eac23187e1e6afcff335d19095212d2"
+      "objectId": "9d743d771553149a828d9a631a28d918aff3aefd"
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",
       "mode": "100644",
-      "objectId": "53043eb1979118d909ff003240ba87c9fc2adda9"
+      "objectId": "2f8f3caddeb5d7ac4fc97675c33f0374d51568f2"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
       "mode": "100644",
-      "objectId": "7e30ba3c97000de443370fd0bd9496dffec45601"
+      "objectId": "48e47130753693d4b387155200f8c9a59e39f69f"
     },
     {
       "path": "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -3944,6 +2107,16 @@
       "path": "scripts/inference-core/pr02-contract-revision.mjs",
       "mode": "100644",
       "objectId": "90665fc7d59476582147b8e8e9e7c11ae95214e4"
+    },
+    {
+      "path": "scripts/inference-core/pr03-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "0590a1b0373efab1387f441c32d8106f2b0f72ae"
+    },
+    {
+      "path": "scripts/inference-core/pr03-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "b42570daf2ef74fb641dbbd2a946d1ea77a455e6"
     },
     {
       "path": "scripts/inference-core/retention-canary.mjs",
@@ -3966,81 +2139,6 @@
       "objectId": "e623d236adcea1788abac9caa25619a0c68f1d6a"
     },
     {
-      "path": "test-fixtures/knowledge/en-safety.pdf",
-      "mode": "100644",
-      "objectId": "9ef16aa8568a0271129c3481aaf110bda9791331"
-    },
-    {
-      "path": "test-fixtures/knowledge/en-safety.txt",
-      "mode": "100644",
-      "objectId": "9de2c7d2da22852a4a382974d042f4137c5c0423"
-    },
-    {
-      "path": "test-fixtures/knowledge/hr-pravilnik.docx",
-      "mode": "100644",
-      "objectId": "edebb033b56dc42bf153c522407195f2068321ee"
-    },
-    {
-      "path": "test-fixtures/knowledge/hr-pravilnik.txt",
-      "mode": "100644",
-      "objectId": "47dea87cedd2f5b25ce24928b0adfd92999993c4"
-    },
-    {
-      "path": "test-fixtures/knowledge/image-ocr.jpg",
-      "mode": "100644",
-      "objectId": "ffbb14835b87eef21842889c5214e6a545f99544"
-    },
-    {
-      "path": "test-fixtures/knowledge/image-ocr.png",
-      "mode": "100644",
-      "objectId": "5d666d12548bb5f31abd1ae9c3ca5173dc72285a"
-    },
-    {
-      "path": "test-fixtures/knowledge/pdf-parser/corrupt.pdf",
-      "mode": "100644",
-      "objectId": "592c72ae38eb47e427526bbd736e22ccd9964e74"
-    },
-    {
-      "path": "test-fixtures/knowledge/pdf-parser/digital-croatian-policy.pdf",
-      "mode": "100644",
-      "objectId": "f2ca8b90dc562673c10410abd95e9dc600e42d30"
-    },
-    {
-      "path": "test-fixtures/knowledge/pdf-parser/digital-english-policy.pdf",
-      "mode": "100644",
-      "objectId": "31075d7c7ea2693263b5c8586810a45ab5d543b8"
-    },
-    {
-      "path": "test-fixtures/knowledge/pdf-parser/multi-page-operations.pdf",
-      "mode": "100644",
-      "objectId": "ecdfa9d9f4a84f26216d02a14f56865d83031699"
-    },
-    {
-      "path": "test-fixtures/knowledge/pdf-parser/scanned-croatian-placeholder.pdf",
-      "mode": "100644",
-      "objectId": "04bcbfbe31137a28e0958b4259610f8cb076aefa"
-    },
-    {
-      "path": "test-fixtures/knowledge/pdf-parser/table-heavy-policy.pdf",
-      "mode": "100644",
-      "objectId": "6160e2dea9d6bbf0bf7baf9b9b5c3d845265105c"
-    },
-    {
-      "path": "test-fixtures/knowledge/table-policy.csv",
-      "mode": "100644",
-      "objectId": "5faaca8442ada3489e98954fb7acd0a96b18d57b"
-    },
-    {
-      "path": "test-fixtures/knowledge/table-policy.xlsx",
-      "mode": "100644",
-      "objectId": "8c8b64bbe15516dc3fa857909996bdea9a0017f5"
-    },
-    {
-      "path": "test-fixtures/knowledge/url-policy.html",
-      "mode": "100644",
-      "objectId": "51de7735824ca89251b55992da4222c281ac59d9"
-    },
-    {
       "path": "tsconfig.base.json",
       "mode": "100644",
       "objectId": "d589b28f61af8901270b166eb1988ed19be56838"
@@ -4050,7 +2148,7 @@
     {
       "path": "apps/web/next.config.ts",
       "symbol": "<file>",
-      "sha256": "938e0279f460cb08fac6c1e7be5fdd9bd6243e6c79cb07fff215327ddaa620aa"
+      "sha256": "58f841f6ee4170e90c110e33727d85dabe6a2c096784b05940319d770a958f8b"
     },
     {
       "path": "apps/web/src/lib/auth/auth.ts",
@@ -4061,18 +2159,8 @@
   "escapeHatches": [
     {
       "path": "apps/bff/src/auth/persona.ts",
-      "sha256": "a1b37031f9ab4daeec1ea1e3b8f187381c8a0adfa2634151c7423f2179b587ae",
+      "sha256": "d3aa0ccd69d8e225e32ac760e4f9e7c7f2eb70bbd922d7caee6dd99fa7881481",
       "removeBy": "PR-05"
-    },
-    {
-      "path": "apps/web/src/lib/auth/middleware-policy.ts",
-      "sha256": "5267942cd4fa9e69050f20aaccc0b389f23c25ba31d0138a1df61eac4a1193f4",
-      "removeBy": "PR-03"
-    },
-    {
-      "path": "apps/web/src/middleware.ts",
-      "sha256": "a1f2c01a264a1a596643fc61a19ce5690febdf97e09d69c81248618c3e9bc580",
-      "removeBy": "PR-03"
     }
   ],
   "reviewedRevisions": [
@@ -4080,6 +2168,11 @@
       "id": "PR-02",
       "path": "docs/reduction/inference-core/contract-revisions/PR-02.json",
       "sha256": "dd5d388e55bbc2881e3d312e24bd696091fe406e547c1ed4c17e5f7356f54370"
+    },
+    {
+      "id": "PR-03",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-03.json",
+      "sha256": "1d6a3f93644001c46dd60d1ead41051181d27013292188787f5f80274d0eb66c"
     }
   ]
 }

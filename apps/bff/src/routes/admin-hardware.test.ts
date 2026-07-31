@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
 import { resetAuditEventsForTest } from "../services/audit"
-import { resetHubStateForTest } from "../services/hub"
 
 const adminHeaders = {
   authorization: "Bearer test-service-key",
@@ -11,11 +10,11 @@ const adminHeaders = {
   "x-llm-machines-user-roles": "admin",
 }
 
-const builderHeaders = {
+const unclassifiedHeaders = {
   ...adminHeaders,
-  "x-llm-machines-user-sub": "builder-1",
-  "x-llm-machines-user-email": "builder@example.test",
-  "x-llm-machines-user-roles": "builder",
+  "x-llm-machines-user-sub": "unclassified-1",
+  "x-llm-machines-user-email": "unclassified@example.test",
+  "x-llm-machines-user-roles": "unclassified",
 }
 
 describe("Admin hardware", () => {
@@ -23,7 +22,6 @@ describe("Admin hardware", () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     resetAuditEventsForTest()
-    resetHubStateForTest()
   })
 
   it("returns seven curated hardware charts while native expert links remain disabled", async () => {
@@ -125,7 +123,7 @@ describe("Admin hardware", () => {
     await server.close()
   })
 
-  it("blocks non-admin personas from hardware metrics", async () => {
+  it("rejects unclassified identities from hardware metrics", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     const fetchSpy = vi.spyOn(globalThis, "fetch")
     const server = buildServer()
@@ -133,10 +131,10 @@ describe("Admin hardware", () => {
     const response = await server.inject({
       method: "GET",
       url: "/api/admin/hardware",
-      headers: builderHeaders,
+      headers: unclassifiedHeaders,
     })
 
-    expect(response.statusCode).toBe(403)
+    expect(response.statusCode).toBe(401)
     expect(fetchSpy).not.toHaveBeenCalled()
     await server.close()
   })

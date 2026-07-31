@@ -13,7 +13,7 @@ interface SignInPageProps {
 }
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
-  const copy = productCopy.pages.hub.signIn
+  const copy = productCopy.pages.signIn
   const { callbackUrl } = await searchParams
   const redirectTo = await normalizeCallbackUrl(callbackUrl)
   const keycloakStartUrl = `/auth/keycloak?${new URLSearchParams({

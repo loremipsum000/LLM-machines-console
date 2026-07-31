@@ -27,17 +27,29 @@ export const retentionCharacterizationPath =
   "docs/reduction/inference-core/retention-characterization.json"
 export const pr02ContractRevisionPath =
   "docs/reduction/inference-core/contract-revisions/PR-02.json"
+export const pr03ContractRevisionPath =
+  "docs/reduction/inference-core/contract-revisions/PR-03.json"
+export const pr03DecisionPath =
+  "docs/reduction/inference-core/pr-03-removal-decisions.json"
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
+export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
+export const pr03LaneAnchor = "43c11ace1b80d5241cf2a6a06670fe01f49e3e10"
 const pr02RevisionEvidencePaths = [
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "scripts/inference-core/pr02-boundaries.test.mjs",
   "scripts/inference-core/pr02-contract-revision.mjs",
 ]
+export const pr03RevisionEvidencePaths = [
+  pr03DecisionPath,
+  "scripts/inference-core/pr03-boundaries.test.mjs",
+  "scripts/inference-core/pr03-contract-revision.mjs",
+]
 const generatedContractPaths = new Set([
   allowlistPath,
   routeBaselinePath,
   pr02ContractRevisionPath,
+  pr03ContractRevisionPath,
 ])
 export const pr02OperationPolicy = {
   changedSourcePaths: [
@@ -199,13 +211,17 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/README.md",
   "docs/reduction/inference-core/forbidden-surface-allowlist.yaml",
   "docs/reduction/inference-core/contract-revisions/PR-02.json",
+  "docs/reduction/inference-core/contract-revisions/PR-03.json",
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+  "docs/reduction/inference-core/pr-03-removal-decisions.json",
   "docs/reduction/inference-core/retention-characterization.json",
   "docs/reduction/inference-core/route-baseline.json",
   "scripts/inference-core/guardrails.mjs",
   "scripts/inference-core/guardrails.test.mjs",
   "scripts/inference-core/pr02-contract-revision.mjs",
   "scripts/inference-core/pr02-boundaries.test.mjs",
+  "scripts/inference-core/pr03-contract-revision.mjs",
+  "scripts/inference-core/pr03-boundaries.test.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -221,7 +237,10 @@ const protectedGuardrailPaths = [
   "apps/web/tsconfig.json",
   "apps/web/vitest.config.ts",
   "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+  "apps/web/src/middleware.test.ts",
+  "apps/web/src/middleware.ts",
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+  "docs/reduction/inference-core/pr-03-removal-decisions.json",
   "packages/contracts/src/inference-core-authorization.test.ts",
   "packages/contracts/src/inference-core-authorization.ts",
   "packages/contracts/src/inference-core.test.ts",
@@ -234,6 +253,8 @@ const protectedGuardrailPaths = [
   "scripts/inference-core/guardrails.test.mjs",
   "scripts/inference-core/pr02-boundaries.test.mjs",
   "scripts/inference-core/pr02-contract-revision.mjs",
+  "scripts/inference-core/pr03-boundaries.test.mjs",
+  "scripts/inference-core/pr03-contract-revision.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -348,6 +369,131 @@ const contentRules = [
       "connector[-_ ]?registry|connectorRegistry|ConnectorRegistry|connector[-_ ]?vetting|connectorVetting|ConnectorVetting|vettingStatus|VettingStatus|pending_vetting",
     flags: "giu",
     removeBy: "PR-03",
+  },
+]
+
+const findingDispositionOverrides = [
+  {
+    ruleId: "FS102_MCP",
+    path: "infra/migrations/0021_admin_mcp_servers.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical MCP migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "infra/migrations/0022_admin_settings.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical MCP migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "apps/bff/src/auth/persona.ts",
+    from: "PR-03",
+    removeBy: "PR-05",
+    reason: "Retained legacy Persona seam scheduled for replacement in PR-05.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "apps/web/src/middleware.test.ts",
+    from: "PR-03",
+    removeBy: "PR-12",
+    reason:
+      "Negative retired-route tombstone proving /builder reaches the Next.js 404 boundary is retained through PR-12 final product qualification.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/migrations/0000_init_schemas.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical Builder and Hub migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/migrations/0003_builder_lifecycle_tables.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical Builder and Hub migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/migrations/0004_builder_withdrawn_lifecycle_state.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical Builder and Hub migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/migrations/0005_builder_agent_configs.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical Builder and Hub migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/migrations/0006_hub_chat_threads.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical Builder and Hub migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/migrations/0010_builder_agent_test_run_accounting.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical Builder and Hub migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/migrations/0012_builder_agent_test_run_trace.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical Builder and Hub migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/migrations/0013_builder_agent_test_runtime_trace_id.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical Builder and Hub migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/migrations/0014_builder_agent_test_tool_calls.sql",
+    from: "PR-03",
+    removeBy: "PR-04",
+    reason:
+      "Historical Builder and Hub migration evidence remains immutable until the PR-04 migration retirement.",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "packages/contracts/src/common.ts",
+    from: "PR-03",
+    removeBy: "PR-05",
+    reason:
+      "Retained legacy Persona schema scheduled for replacement in PR-05.",
+  },
+]
+
+const ignoredFindingFingerprints = [
+  {
+    ruleId: "FS102_MCP",
+    path: "pnpm-lock.yaml",
+    fingerprint:
+      "67bb7fa84a2daa8084c7f0585782ce5bb70fc65cfb137fb36ea4dd66c9367186",
+    reason:
+      "Random case-insensitive mcP substring inside the pinned lightningcss-win32-arm64-msvc integrity digest; no MCP package or configuration.",
   },
 ]
 
@@ -482,18 +628,37 @@ const resolverFingerprintSpecs = [
   },
 ]
 
+const reviewedPr03ResolverFingerprints = [
+  {
+    path: "apps/web/next.config.ts",
+    symbol: "<file>",
+    sha256: "58f841f6ee4170e90c110e33727d85dabe6a2c096784b05940319d770a958f8b",
+  },
+  {
+    path: "apps/web/src/lib/auth/auth.ts",
+    symbol: "<file>",
+    sha256: "563d3d5cb84e563e20fcad08dc88eac00e71136d25fc5df3c043fc0eb26016c7",
+  },
+]
+
+const reviewedPr03WebAuthenticationEvidence = [
+  {
+    path: "apps/web/src/middleware.test.ts",
+    sha256: "8fdc4be4e1ef7d286eaa7985a924c5490a3377c3d555dbab9047a1fed38341f7",
+  },
+  {
+    path: "apps/web/src/middleware.ts",
+    sha256: "c1e5c03f612872ad05ed6ddc14b52bc61e3c0dd2864b3f58235c3478872fa661",
+  },
+]
+
+const reviewedPr03WebMiddlewareMatcher =
+  "/((?!api|_next/static|_next/image|apple-touch-icon.png|favicon.ico|favicon-16x16.png|favicon-32x32.png|favicon-48x48.png|icon.svg).*)"
+
 const legacyEscapeHatchSpecs = [
   {
     path: "apps/bff/src/auth/persona.ts",
     removeBy: "PR-05",
-  },
-  {
-    path: "apps/web/src/lib/auth/middleware-policy.ts",
-    removeBy: "PR-03",
-  },
-  {
-    path: "apps/web/src/middleware.ts",
-    removeBy: "PR-03",
   },
 ]
 
@@ -664,7 +829,11 @@ export function scanForbiddenSurfaces({
         }
         throw new Error(`Invalid UTF-8 in tracked content candidate ${path}`)
       }
-      const fingerprints = matchFingerprints(rule, source)
+      const fingerprints = filterIgnoredFindingFingerprints(
+        rule,
+        path,
+        matchFingerprints(rule, source),
+      )
       if (Object.keys(fingerprints).length === 0) {
         continue
       }
@@ -676,12 +845,33 @@ export function scanForbiddenSurfaces({
           0,
         ),
         fingerprints,
-        removeBy: rule.removeBy,
+        removeBy: findingDisposition(rule, path),
       })
     }
   }
 
   return findings.sort(compareFindingKeys)
+}
+
+function findingDisposition(rule, path) {
+  return (
+    findingDispositionOverrides.find(
+      (override) => override.ruleId === rule.id && override.path === path,
+    )?.removeBy ?? rule.removeBy
+  )
+}
+
+function filterIgnoredFindingFingerprints(rule, path, fingerprints) {
+  const ignored = new Set(
+    ignoredFindingFingerprints
+      .filter((entry) => entry.ruleId === rule.id && entry.path === path)
+      .map(({ fingerprint }) => fingerprint),
+  )
+  return Object.fromEntries(
+    Object.entries(fingerprints).filter(
+      ([fingerprint]) => !ignored.has(fingerprint),
+    ),
+  )
 }
 
 export function buildForbiddenAllowlist({
@@ -969,6 +1159,13 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
+    ...(expectedRoutes.reviewedRevisions?.at(-1)?.id === "PR-03"
+      ? verifyPr03TargetState({
+          root,
+          currentAllowlist: expectedAllowlist,
+          currentRoutes: expectedRoutes,
+        })
+      : []),
   ]
 
   let baseStatus = "not-requested"
@@ -1004,12 +1201,14 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       })
       errors.push(...reviewedRevision.errors)
       if (reviewedRevision.present) {
-        errors.push(
-          ...verifyReviewedFindingReduction(
-            baseAllowlist.entries,
-            expectedAllowlist.entries,
-          ),
-        )
+        if (reviewedRevision.id !== "PR-03") {
+          errors.push(
+            ...verifyReviewedFindingReduction(
+              baseAllowlist.entries,
+              expectedAllowlist.entries,
+            ),
+          )
+        }
       } else {
         errors.push(
           ...verifyPolicyStability(
@@ -1061,6 +1260,8 @@ export function verifyReviewedContractRevision({
   const currentRevisions = currentRoutes.reviewedRevisions ?? []
   const basePr02Revision = baseRevisions.find(({ id }) => id === "PR-02")
   const currentPr02Revision = currentRevisions.find(({ id }) => id === "PR-02")
+  const basePr03Revision = baseRevisions.find(({ id }) => id === "PR-03")
+  const currentPr03Revision = currentRevisions.find(({ id }) => id === "PR-03")
   const errors = []
   if (
     (!currentPr02Revision || !basePr02Revision) &&
@@ -1076,7 +1277,30 @@ export function verifyReviewedContractRevision({
         ...verifyRetainedPr02RevisionEvidence(root, currentPr02Revision),
       )
     }
-    return { present: false, errors: errors.sort() }
+    if (basePr03Revision && currentPr03Revision) {
+      errors.push(
+        ...verifyRetainedPr03RevisionEvidence(root, currentPr03Revision),
+      )
+    }
+    return { present: false, id: null, errors: errors.sort() }
+  }
+
+  if (
+    isExactRevisionAppend(
+      baseRevisions,
+      currentRevisions,
+      "PR-03",
+      pr03ContractRevisionPath,
+    )
+  ) {
+    return verifyIntroducedPr03Revision({
+      root,
+      baseCommit,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+    })
   }
 
   if (basePr02Revision || !currentPr02Revision) {
@@ -1085,6 +1309,7 @@ export function verifyReviewedContractRevision({
   if (!isRegularFile(resolve(root, pr02ContractRevisionPath))) {
     return {
       present: true,
+      id: "PR-02",
       errors: [
         ...errors,
         `missing reviewed contract revision ${pr02ContractRevisionPath}`,
@@ -1146,7 +1371,144 @@ export function verifyReviewedContractRevision({
     ),
   )
 
-  return { present: true, errors: errors.sort() }
+  return { present: true, id: "PR-02", errors: errors.sort() }
+}
+
+function isExactRevisionAppend(base, current, id, path) {
+  return Boolean(
+    current.length === base.length + 1 &&
+      JSON.stringify(current.slice(0, -1)) === JSON.stringify(base) &&
+      current.at(-1)?.id === id &&
+      current.at(-1)?.path === path &&
+      /^[0-9a-f]{64}$/.test(current.at(-1)?.sha256 ?? ""),
+  )
+}
+
+function verifyIntroducedPr03Revision({
+  root,
+  baseCommit,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+}) {
+  const errors = []
+  if (baseCommit !== pr03ContractBase) {
+    errors.push(
+      `PR-03 contract revision base changed expected=${pr03ContractBase} actual=${baseCommit}`,
+    )
+  }
+  errors.push(...verifyPr03LaneLineage(root))
+  const baseRevisionHistory = baseRoutes.reviewedRevisions ?? []
+  if (
+    baseRevisionHistory.length !== 1 ||
+    baseRevisionHistory[0]?.id !== "PR-02"
+  ) {
+    errors.push("PR-03 requires the exact retained PR-02 revision history")
+  } else {
+    errors.push(
+      ...verifyRetainedPr02RevisionEvidence(root, baseRevisionHistory[0]),
+    )
+  }
+  if (!isRegularFile(resolve(root, pr03ContractRevisionPath))) {
+    return {
+      present: true,
+      id: "PR-03",
+      errors: [
+        ...errors,
+        `missing reviewed contract revision ${pr03ContractRevisionPath}`,
+      ].sort(),
+    }
+  }
+
+  const decision = readPr03DecisionDocument(root)
+  errors.push(
+    ...verifyPr03DecisionDocument(decision, {
+      requireReady: true,
+    }),
+  )
+  const evidenceFiles = buildRevisionEvidenceFingerprints(
+    root,
+    pr03RevisionEvidencePaths,
+    "PR-03",
+  )
+  const expected = buildContractRevisionDocument({
+    revisionId: "PR-03",
+    scope: "legacy-source-removal",
+    baseCommit,
+    baseTree: resolveTree(root, baseCommit),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes: {
+      ...currentRoutes,
+      reviewedRevisions: structuredClone(baseRoutes.reviewedRevisions ?? []),
+    },
+    evidenceFiles,
+  })
+  const actual = readJson(resolve(root, pr03ContractRevisionPath))
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    errors.push("PR-03 reviewed contract revision does not match exact changes")
+  }
+
+  const expectedRevisionHistory = [
+    ...(baseRoutes.reviewedRevisions ?? []),
+    {
+      id: "PR-03",
+      path: pr03ContractRevisionPath,
+      sha256: sha256(readFileSync(resolve(root, pr03ContractRevisionPath))),
+    },
+  ]
+  if (
+    JSON.stringify(currentRoutes.reviewedRevisions ?? []) !==
+    JSON.stringify(expectedRevisionHistory)
+  ) {
+    errors.push("reviewed contract revision history changed")
+  }
+  if (
+    JSON.stringify(baseRoutes.target) !== JSON.stringify(currentRoutes.target)
+  ) {
+    errors.push("route target contract changed outside PR-03 scope")
+  }
+  if (
+    JSON.stringify(currentRoutes.fingerprints) !==
+    JSON.stringify(reviewedPr03ResolverFingerprints)
+  ) {
+    errors.push("PR-03 resolver fingerprints changed")
+  }
+  errors.push(...verifyRequiredRoutes(currentRoutes))
+  errors.push(
+    ...verifyPr03CandidateContract({
+      root,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+      operationPolicy: decision.operationPolicy,
+    }),
+  )
+
+  return { present: true, id: "PR-03", errors: errors.sort() }
+}
+
+function verifyPr03LaneLineage(root) {
+  const anchor = resolveCommit(root, pr03LaneAnchor)
+  if (anchor !== pr03LaneAnchor) {
+    return [`PR-03 lane anchor is unavailable ${pr03LaneAnchor}`]
+  }
+  const head = currentHead(root)
+  if (head === pr03LaneAnchor) {
+    return []
+  }
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", pr03LaneAnchor, head], {
+      cwd: root,
+      stdio: "ignore",
+    })
+    return []
+  } catch {
+    return [`PR-03 lane anchor is not an ancestor ${pr03LaneAnchor}`]
+  }
 }
 
 function verifyRetainedPr02RevisionEvidence(root, revision) {
@@ -1175,9 +1537,91 @@ function verifyRetainedPr02RevisionEvidence(root, revision) {
   }
   if (
     JSON.stringify(document.evidenceFiles) !==
-    JSON.stringify(buildRevisionEvidenceFingerprints(root))
+    JSON.stringify(
+      buildRevisionEvidenceFingerprints(
+        root,
+        pr02RevisionEvidencePaths,
+        "PR-02",
+      ),
+    )
   ) {
     errors.push("retained PR-02 revision evidence changed")
+  }
+  return errors.sort()
+}
+
+function verifyRetainedPr03RevisionEvidence(root, revision) {
+  const errors = []
+  if (
+    revision.id !== "PR-03" ||
+    revision.path !== pr03ContractRevisionPath ||
+    !/^[0-9a-f]{64}$/.test(revision.sha256 ?? "")
+  ) {
+    return ["invalid retained PR-03 revision identity"]
+  }
+  const absolutePath = resolve(root, pr03ContractRevisionPath)
+  if (!isRegularFile(absolutePath)) {
+    return [`missing reviewed contract revision ${pr03ContractRevisionPath}`]
+  }
+  if (sha256(readFileSync(absolutePath)) !== revision.sha256) {
+    errors.push("retained PR-03 revision fingerprint changed")
+  }
+  const document = readJson(absolutePath)
+  if (
+    document.id !== "PR-03" ||
+    document.scope !== "legacy-source-removal" ||
+    document.baseCommit !== pr03ContractBase ||
+    document.baseTree !== resolveTree(root, pr03ContractBase)
+  ) {
+    errors.push("retained PR-03 revision base identity changed")
+  }
+  if (
+    JSON.stringify(document.evidenceFiles) !==
+    JSON.stringify(
+      buildRevisionEvidenceFingerprints(
+        root,
+        pr03RevisionEvidencePaths,
+        "PR-03",
+      ),
+    )
+  ) {
+    errors.push("retained PR-03 revision evidence changed")
+  }
+  return errors.sort()
+}
+
+export function verifyPr03BaseEvidence(root = repositoryRoot) {
+  const errors = []
+  for (const path of [pr02ContractRevisionPath, ...pr02RevisionEvidencePaths]) {
+    let expected
+    try {
+      expected = execFileSync(
+        "git",
+        [
+          "show",
+          "--no-ext-diff",
+          "--no-textconv",
+          "--end-of-options",
+          `${pr03ContractBase}:${path}`,
+        ],
+        {
+          cwd: root,
+          encoding: null,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      )
+    } catch {
+      errors.push(`PR-03 immutable base evidence is unavailable ${path}`)
+      continue
+    }
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-03 retained PR-02 evidence is missing ${path}`)
+      continue
+    }
+    if (!readFileSync(absolutePath).equals(expected)) {
+      errors.push(`PR-03 retained PR-02 evidence changed ${path}`)
+    }
   }
   return errors.sort()
 }
@@ -1353,7 +1797,7 @@ function verifyPr02ClosureChanges(
   return errors.sort()
 }
 
-function verifyExactPathPolicy(policy, keys) {
+function verifyExactPathPolicy(policy, keys, workPackage = "PR-02") {
   const errors = []
   const allPaths = []
   for (const key of keys) {
@@ -1364,13 +1808,15 @@ function verifyExactPathPolicy(policy, keys) {
       JSON.stringify(paths) !== JSON.stringify([...paths].sort()) ||
       new Set(paths).size !== paths.length
     ) {
-      errors.push(`invalid PR-02 operation policy ${key}`)
+      errors.push(`invalid ${workPackage} operation policy ${key}`)
     }
     allPaths.push(...paths.map((path) => `${key}\0${path}`))
   }
   const pathsWithoutCategory = allPaths.map((entry) => entry.split("\0")[1])
   if (new Set(pathsWithoutCategory).size !== pathsWithoutCategory.length) {
-    errors.push("PR-02 operation policy path appears in multiple categories")
+    errors.push(
+      `${workPackage} operation policy path appears in multiple categories`,
+    )
   }
   return errors
 }
@@ -1387,7 +1833,431 @@ function uniqueEntriesByPath(entries, label, errors) {
   return byPath
 }
 
+export function readPr03DecisionDocument(root = repositoryRoot) {
+  return readJson(resolve(root, pr03DecisionPath))
+}
+
+export function verifyPr03DecisionDocument(
+  decision,
+  { requireReady = false } = {},
+) {
+  const errors = []
+  const expectedKeys = [
+    "contractBaseCommit",
+    "findingDispositionOverrides",
+    "ignoredFalsePositives",
+    "laneAnchorCommit",
+    "operationPolicy",
+    "resolverFingerprints",
+    "reviewStatus",
+    "schemaVersion",
+    "scope",
+    "target",
+    "webAuthenticationEvidence",
+    "workPackage",
+  ]
+  const expectedOverrides = findingDispositionOverrides.map(
+    ({ ruleId, path, from, removeBy, reason }) => ({
+      ruleId,
+      path,
+      from,
+      to: removeBy,
+      reason,
+    }),
+  )
+  const expectedIgnoredFalsePositives = ignoredFindingFingerprints.map(
+    ({ ruleId, path, fingerprint, reason }) => ({
+      ruleId,
+      path,
+      fingerprint,
+      reason,
+    }),
+  )
+  const expectedTarget = {
+    findingEntriesDueByPr03: 0,
+    legacyRoutes: 0,
+    routes: 79,
+    fastifyRegistrars: 3,
+    webInferenceConsumers: 0,
+    escapeHatchPaths: ["apps/bff/src/auth/persona.ts"],
+  }
+  if (
+    !decision ||
+    JSON.stringify(Object.keys(decision).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-03" ||
+    decision.scope !== "legacy-source-removal" ||
+    decision.contractBaseCommit !== pr03ContractBase ||
+    decision.laneAnchorCommit !== pr03LaneAnchor
+  ) {
+    errors.push("invalid PR-03 decision identity")
+  }
+  if (
+    JSON.stringify(decision?.findingDispositionOverrides) !==
+    JSON.stringify(expectedOverrides)
+  ) {
+    errors.push("invalid PR-03 finding disposition overrides")
+  }
+  if (
+    JSON.stringify(decision?.ignoredFalsePositives) !==
+    JSON.stringify(expectedIgnoredFalsePositives)
+  ) {
+    errors.push("invalid PR-03 ignored false positives")
+  }
+  if (JSON.stringify(decision?.target) !== JSON.stringify(expectedTarget)) {
+    errors.push("invalid PR-03 target")
+  }
+  if (
+    JSON.stringify(decision?.resolverFingerprints) !==
+    JSON.stringify(reviewedPr03ResolverFingerprints)
+  ) {
+    errors.push("invalid PR-03 resolver fingerprints")
+  }
+  if (
+    JSON.stringify(decision?.webAuthenticationEvidence) !==
+    JSON.stringify(reviewedPr03WebAuthenticationEvidence)
+  ) {
+    errors.push("invalid PR-03 Web authentication evidence")
+  }
+  if (
+    !["pending-final-staged-delta", "reviewed"].includes(decision?.reviewStatus)
+  ) {
+    errors.push("invalid PR-03 review status")
+  } else if (requireReady && decision.reviewStatus !== "reviewed") {
+    errors.push("PR-03 operation policy is not reviewed")
+  }
+  errors.push(
+    ...verifyExactPathPolicy(
+      decision?.operationPolicy ?? {},
+      ["addedSourcePaths", "changedSourcePaths", "deletedSourcePaths"],
+      "PR-03",
+    ),
+    ...verifyExactPathPolicy(
+      decision?.operationPolicy ?? {},
+      [
+        "addedRepositoryPaths",
+        "changedRepositoryPaths",
+        "deletedRepositoryPaths",
+      ],
+      "PR-03",
+    ),
+  )
+  return errors.sort()
+}
+
+export function verifyPr03FindingTransition(baseEntries, currentEntries) {
+  const errors = []
+  const baseByKey = new Map(
+    baseEntries.map((entry) => [findingKey(entry), entry]),
+  )
+  const allowedOverrides = new Map(
+    findingDispositionOverrides.map(({ ruleId, path, from, removeBy }) => [
+      `${ruleId}\0${path}`,
+      { from, to: removeBy },
+    ]),
+  )
+
+  for (const entry of currentEntries) {
+    const key = findingKey(entry)
+    const baseEntry = baseByKey.get(key)
+    if (!baseEntry) {
+      errors.push(`new PR-03 reviewed legacy finding ${key}`)
+      continue
+    }
+    if (entry.count > baseEntry.count) {
+      errors.push(`PR-03 reviewed legacy finding count grew ${key}`)
+    }
+    if (entry.removeBy !== baseEntry.removeBy) {
+      const override = allowedOverrides.get(key)
+      if (
+        !override ||
+        baseEntry.removeBy !== override.from ||
+        entry.removeBy !== override.to
+      ) {
+        errors.push(`PR-03 legacy disposition changed outside policy ${key}`)
+      }
+    }
+  }
+
+  const dueEntries = currentEntries.filter(
+    (entry) => entry.removeBy === "PR-03",
+  )
+  if (dueEntries.length > 0) {
+    errors.push(
+      `PR-03 findings remain ${dueEntries.map(findingKey).sort().join(",")}`,
+    )
+  }
+  const deferredBuilderHubEntries = currentEntries.filter(
+    (entry) =>
+      entry.ruleId === "FS105_BUILDER_HUB" && entry.removeBy === "PR-05",
+  )
+  for (const entry of deferredBuilderHubEntries) {
+    if (!allowedOverrides.has(findingKey(entry))) {
+      errors.push(`unreviewed PR-03 Builder/Hub deferral ${findingKey(entry)}`)
+    }
+  }
+  return errors.sort()
+}
+
+export function verifyPr03CandidateContract({
+  root = repositoryRoot,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+  operationPolicy,
+}) {
+  const errors = [
+    ...verifyPr03FindingTransition(
+      baseAllowlist.entries ?? [],
+      currentAllowlist.entries ?? [],
+    ),
+    ...verifyPr03RetainedRouteContract(baseRoutes, currentRoutes),
+    ...verifyPr03ClosureChanges(
+      baseRoutes.sourceClosure ?? [],
+      currentRoutes.sourceClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedSourcePaths",
+        changedKey: "changedSourcePaths",
+        deletedKey: "deletedSourcePaths",
+        label: "source closure",
+      },
+    ),
+    ...verifyPr03ClosureChanges(
+      baseRoutes.repositoryClosure ?? [],
+      currentRoutes.repositoryClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedRepositoryPaths",
+        changedKey: "changedRepositoryPaths",
+        deletedKey: "deletedRepositoryPaths",
+        label: "repository closure",
+      },
+    ),
+    ...verifyPr03TargetState({
+      root,
+      currentAllowlist,
+      currentRoutes,
+    }),
+  ]
+  return errors.sort()
+}
+
+function verifyPr03RetainedRouteContract(base, current) {
+  const expectedRoutes = (base.routes ?? []).filter(
+    (route) => route.classification !== "legacy-retired",
+  )
+  const errors = []
+  if (JSON.stringify(current.routes ?? []) !== JSON.stringify(expectedRoutes)) {
+    errors.push("PR-03 retained route inventory changed")
+  }
+  if (
+    JSON.stringify(current.fastifyRegistrars ?? []) !==
+    JSON.stringify(base.fastifyRegistrars ?? [])
+  ) {
+    errors.push("PR-03 Fastify registrar inventory changed")
+  }
+  if ((current.webInferenceConsumers ?? []).length !== 0) {
+    errors.push("PR-03 Web inference consumers remain")
+  }
+  return errors
+}
+
+function verifyPr03ClosureChanges(
+  base,
+  current,
+  policy,
+  { addedKey, changedKey, deletedKey, label },
+) {
+  const errors = verifyExactPathPolicy(
+    policy ?? {},
+    [addedKey, changedKey, deletedKey],
+    "PR-03",
+  )
+  const baseByPath = uniqueEntriesByPath(base, `base ${label}`, errors)
+  const currentByPath = uniqueEntriesByPath(current, `current ${label}`, errors)
+  const actual = {
+    [addedKey]: [],
+    [changedKey]: [],
+    [deletedKey]: [],
+  }
+  for (const path of [
+    ...new Set([...baseByPath.keys(), ...currentByPath.keys()]),
+  ]) {
+    const before = baseByPath.get(path)
+    const after = currentByPath.get(path)
+    if (!before) {
+      actual[addedKey].push(path)
+    } else if (!after) {
+      actual[deletedKey].push(path)
+    } else if (JSON.stringify(before) !== JSON.stringify(after)) {
+      actual[changedKey].push(path)
+    }
+  }
+  for (const key of Object.keys(actual)) {
+    const expectedPaths = [...(policy?.[key] ?? [])].sort()
+    const actualPaths = actual[key].sort()
+    if (JSON.stringify(expectedPaths) !== JSON.stringify(actualPaths)) {
+      errors.push(
+        `PR-03 ${key} differ expected=${expectedPaths.join(",")} actual=${actualPaths.join(",")}`,
+      )
+    }
+  }
+  return errors.sort()
+}
+
+export function verifyPr03TargetState({
+  root = repositoryRoot,
+  currentAllowlist,
+  currentRoutes,
+}) {
+  const errors = []
+  const classificationCounts = new Map()
+  for (const route of currentRoutes.routes ?? []) {
+    classificationCounts.set(
+      route.classification,
+      (classificationCounts.get(route.classification) ?? 0) + 1,
+    )
+  }
+  const expectedClassificationCounts = {
+    "current-console-seam": 70,
+    "legacy-retired": 0,
+    "operational-auth": 4,
+    "private-operational": 3,
+    "required-now": 2,
+  }
+  for (const [classification, expected] of Object.entries(
+    expectedClassificationCounts,
+  )) {
+    const actual = classificationCounts.get(classification) ?? 0
+    if (actual !== expected) {
+      errors.push(
+        `PR-03 route count changed ${classification} expected=${expected} actual=${actual}`,
+      )
+    }
+  }
+  if ((currentRoutes.routes ?? []).length !== 79) {
+    errors.push(
+      `PR-03 total route count changed expected=79 actual=${(currentRoutes.routes ?? []).length}`,
+    )
+  }
+  const expectedRegistrarNames = [
+    "registerAdminRoutes",
+    "registerAppGatewayRoutes",
+    "registerPersonaAuth",
+  ]
+  const registrarNames = (currentRoutes.fastifyRegistrars ?? [])
+    .map(({ exportName }) => exportName)
+    .sort()
+  if (
+    JSON.stringify(registrarNames) !== JSON.stringify(expectedRegistrarNames)
+  ) {
+    errors.push("PR-03 retained Fastify registrars changed")
+  }
+  if ((currentRoutes.webInferenceConsumers ?? []).length !== 0) {
+    errors.push("PR-03 Web inference consumer count is not zero")
+  }
+  if (
+    JSON.stringify(currentRoutes.fingerprints ?? []) !==
+    JSON.stringify(reviewedPr03ResolverFingerprints)
+  ) {
+    errors.push("PR-03 resolver fingerprints changed")
+  }
+  const escapeHatches = currentRoutes.escapeHatches ?? []
+  if (
+    escapeHatches.length !== 1 ||
+    escapeHatches[0]?.path !== "apps/bff/src/auth/persona.ts" ||
+    escapeHatches[0]?.removeBy !== "PR-05" ||
+    !/^[0-9a-f]{64}$/.test(escapeHatches[0]?.sha256 ?? "")
+  ) {
+    errors.push("PR-03 escape hatch target changed")
+  }
+  if (
+    (currentAllowlist.entries ?? []).some((entry) => entry.removeBy === "PR-03")
+  ) {
+    errors.push("PR-03 due findings remain")
+  }
+  errors.push(...verifyReviewedWebAuthenticationEvidence(root))
+  errors.push(...verifyWebAuthenticationBoundary(root))
+  return errors.sort()
+}
+
+export function verifyReviewedWebAuthenticationEvidence(root = repositoryRoot) {
+  const errors = []
+  for (const {
+    path,
+    sha256: expectedSha256,
+  } of reviewedPr03WebAuthenticationEvidence) {
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`missing reviewed Web authentication evidence ${path}`)
+      continue
+    }
+    const actualSha256 = sha256(readFileSync(absolutePath))
+    if (actualSha256 !== expectedSha256) {
+      errors.push(
+        `reviewed Web authentication evidence changed ${path} expected=${expectedSha256} actual=${actualSha256}`,
+      )
+    }
+  }
+  return errors.sort()
+}
+
+export function verifyWebAuthenticationBoundary(root = repositoryRoot) {
+  const path = "apps/web/src/middleware.ts"
+  const absolutePath = resolve(root, path)
+  if (!isRegularFile(absolutePath)) {
+    return [`missing reviewed Web authentication boundary ${path}`]
+  }
+  const source = readFileSync(absolutePath, "utf8")
+  const requiredPatterns = [
+    [/from\s+["']@\/lib\/auth\/auth["']/, "Auth.js import"],
+    [/export\s+default\s+function\s+middleware\b/, "default middleware export"],
+    [/\bisProtectedConsolePath\s*\(/, "retained-route protection"],
+    [/\brequest\.nextUrl\.pathname\b/, "request path inspection"],
+    [/\brequest\.auth\b/, "authenticated-session check"],
+    [/\bNextResponse\.redirect\s*\(/, "unauthenticated redirect"],
+    [/["']\/auth\/signin["']/, "sign-in destination"],
+    [/\bcallbackUrl\b/, "callback URL preservation"],
+    [/export\s+const\s+config\s*=/, "middleware configuration"],
+    [/\bmatcher\s*:/, "middleware matcher"],
+    [/["']\/["']/, "Console root protection"],
+    [/["']\/applications["']/, "Applications protection"],
+    [/["']\/hardware["']/, "Hardware protection"],
+    [/["']\/inference["']/, "Inference protection"],
+    [/["']\/settings["']/, "Settings protection"],
+    [/["']\/team["']/, "Team protection"],
+  ]
+  const errors = []
+  for (const [pattern, label] of requiredPatterns) {
+    if (!pattern.test(source)) {
+      errors.push(`Web authentication boundary missing ${label}`)
+    }
+  }
+  if (!source.includes(JSON.stringify(reviewedPr03WebMiddlewareMatcher))) {
+    errors.push(
+      "Web authentication boundary missing reviewed middleware matcher",
+    )
+  }
+  for (const [pattern, label] of [
+    [/middleware-policy/, "retired middleware policy"],
+    [/\bisHubAuthRequired\b/, "legacy Hub auth switch"],
+    [/\bCONSOLE_REQUIRE_AUTH\b/, "fail-open auth override"],
+    [/\bCONSOLE_BFF_URL\b/, "deployment-dependent auth switch"],
+    [/\bprocess\.env\b/, "runtime auth override"],
+  ]) {
+    if (pattern.test(source)) {
+      errors.push(`Web authentication boundary retains ${label}`)
+    }
+  }
+  return errors.sort()
+}
+
 export function buildContractRevisionDocument({
+  revisionId = "PR-02",
+  scope = "retained-seam-extraction",
   baseCommit,
   baseTree,
   baseAllowlist,
@@ -1398,8 +2268,8 @@ export function buildContractRevisionDocument({
 }) {
   return {
     schemaVersion: 1,
-    id: "PR-02",
-    scope: "retained-seam-extraction",
+    id: revisionId,
+    scope,
     baseCommit,
     baseTree,
     changes: {
@@ -1494,23 +2364,38 @@ function routeManifestKey(route) {
 }
 
 function buildReviewedRevisionFingerprints(root) {
-  if (!isRegularFile(resolve(root, pr02ContractRevisionPath))) {
-    return []
+  const revisions = []
+  for (const { id, path } of [
+    { id: "PR-02", path: pr02ContractRevisionPath },
+    { id: "PR-03", path: pr03ContractRevisionPath },
+  ]) {
+    if (!isRegularFile(resolve(root, path))) {
+      if (
+        id === "PR-02" &&
+        isRegularFile(resolve(root, pr03ContractRevisionPath))
+      ) {
+        throw new Error("PR-03 contract revision cannot exist without PR-02")
+      }
+      continue
+    }
+    revisions.push({
+      id,
+      path,
+      sha256: sha256(readFileSync(resolve(root, path))),
+    })
   }
-  return [
-    {
-      id: "PR-02",
-      path: pr02ContractRevisionPath,
-      sha256: sha256(readFileSync(resolve(root, pr02ContractRevisionPath))),
-    },
-  ]
+  return revisions
 }
 
-function buildRevisionEvidenceFingerprints(root) {
-  return pr02RevisionEvidencePaths.map((path) => {
+function buildRevisionEvidenceFingerprints(
+  root,
+  paths = pr02RevisionEvidencePaths,
+  revisionId = "PR-02",
+) {
+  return paths.map((path) => {
     const absolutePath = resolve(root, path)
     if (!isRegularFile(absolutePath)) {
-      throw new Error(`Missing PR-02 revision evidence file ${path}`)
+      throw new Error(`Missing ${revisionId} revision evidence file ${path}`)
     }
     return { path, sha256: sha256(readFileSync(absolutePath)) }
   })
@@ -1581,7 +2466,7 @@ export function verifyCorePackageClosure(
       "node scripts/inference-core/run-core-command.mjs build",
     "check:inference-core": "node scripts/inference-core/guardrails.mjs",
     "check:inference-core:base":
-      "node scripts/inference-core/guardrails.mjs --base-ref origin/codex/inference-core-stack-reduction",
+      "node scripts/inference-core/guardrails.mjs --base-ref 964ff087f39111862c90f72ec57ab33bb937f5d2",
     "test:inference-core-authorization":
       "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match exec vitest run src/inference-core-authorization.test.ts",
     "test:inference-core-characterization":
@@ -3712,7 +4597,40 @@ function assertReviewedNextMiddleware(root, path) {
         unwrapExpression(redirect.expression).text === "getSignInRedirectUrl",
     )
   }
+  const nearestFunctionLike = (node) => {
+    for (let current = node.parent; current; current = current.parent) {
+      if (ts.isFunctionLike(current)) {
+        return current
+      }
+    }
+    return null
+  }
+  const isAuthenticatedSessionCallback = (node) => {
+    const parent = node.parent
+    if (!ts.isCallExpression(parent) || parent.arguments[0] !== node) {
+      return false
+    }
+    const callee = unwrapExpression(parent.expression)
+    return ts.isIdentifier(callee) && callee.text === "createAuthMiddleware"
+  }
+  const isReviewedResponseScope = (node) => {
+    const scope = nearestFunctionLike(node)
+    return Boolean(
+      (ts.isFunctionDeclaration(scope) &&
+        scope.name?.text === "middleware" &&
+        scope.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword,
+        ) &&
+        scope.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+        )) ||
+        ((ts.isArrowFunction(scope) || ts.isFunctionExpression(scope)) &&
+          isAuthenticatedSessionCallback(scope)),
+    )
+  }
   let authFactoryDeclarations = 0
+  let authenticatedSessionChecks = 0
+  let middlewareDeclarations = 0
   let sessionWrapperDeclarations = 0
   const visit = (node) => {
     if (
@@ -3749,6 +4667,18 @@ function assertReviewedNextMiddleware(root, path) {
       }
     }
     if (
+      ts.isFunctionDeclaration(node) &&
+      node.name?.text === "middleware" &&
+      node.modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword,
+      ) &&
+      node.modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+      )
+    ) {
+      middlewareDeclarations += 1
+    }
+    if (
       ts.isVariableDeclaration(node) &&
       ts.isIdentifier(node.name) &&
       node.name.text === "requireAuthenticatedSession"
@@ -3779,6 +4709,15 @@ function assertReviewedNextMiddleware(root, path) {
       }
     }
     if (
+      ts.isPropertyAccessExpression(node) &&
+      ts.isIdentifier(unwrapExpression(node.expression)) &&
+      unwrapExpression(node.expression).text === "request" &&
+      node.name.text === "auth" &&
+      isAuthenticatedSessionCallback(nearestFunctionLike(node))
+    ) {
+      authenticatedSessionChecks += 1
+    }
+    if (
       ts.isNewExpression(node) &&
       ts.isIdentifier(unwrapExpression(node.expression)) &&
       ["NextResponse", "Response"].includes(
@@ -3807,6 +4746,7 @@ function assertReviewedNextMiddleware(root, path) {
     if (
       ts.isReturnStatement(node) &&
       node.expression &&
+      isReviewedResponseScope(node) &&
       !allowedReturnCall(node.expression)
     ) {
       throw routeAnalysisError(
@@ -3819,6 +4759,7 @@ function assertReviewedNextMiddleware(root, path) {
     if (
       ts.isArrowFunction(node) &&
       !ts.isBlock(node.body) &&
+      isAuthenticatedSessionCallback(node) &&
       !allowedReturnCall(node.body)
     ) {
       throw routeAnalysisError(
@@ -3831,7 +4772,12 @@ function assertReviewedNextMiddleware(root, path) {
     ts.forEachChild(node, visit)
   }
   visit(sourceFile)
-  if (authFactoryDeclarations !== 1 || sessionWrapperDeclarations !== 1) {
+  if (
+    authFactoryDeclarations !== 1 ||
+    authenticatedSessionChecks !== 1 ||
+    middlewareDeclarations !== 1 ||
+    sessionWrapperDeclarations !== 1
+  ) {
     throw new Error(`Next middleware wrapper declarations changed in ${path}`)
   }
 }
@@ -4225,11 +5171,15 @@ function forbiddenPolicyDigest() {
         removeBy: rule.removeBy,
       })),
       contentRules,
+      findingDispositionOverrides,
+      ignoredFindingFingerprints,
       implementation: [
         listCandidatePaths,
         listCachedEntries,
         assertCachedEntryIntegrity,
         scanForbiddenSurfaces,
+        findingDisposition,
+        filterIgnoredFindingFingerprints,
         matchFingerprints,
         isContentScanPath,
         isGuardrailPath,
@@ -4259,12 +5209,27 @@ function routePolicyDigest() {
       target: targetRouteContract,
       resolverFingerprintSpecs,
       legacyEscapeHatchSpecs,
-      reviewedContractRevision: {
-        integrationBase: pr02IntegrationBase,
-        path: pr02ContractRevisionPath,
-        evidencePaths: pr02RevisionEvidencePaths,
-        operationPolicy: pr02OperationPolicy,
-      },
+      reviewedContractRevisions: [
+        {
+          id: "PR-02",
+          integrationBase: pr02IntegrationBase,
+          path: pr02ContractRevisionPath,
+          evidencePaths: pr02RevisionEvidencePaths,
+          operationPolicy: pr02OperationPolicy,
+        },
+        {
+          id: "PR-03",
+          contractBase: pr03ContractBase,
+          laneAnchor: pr03LaneAnchor,
+          path: pr03ContractRevisionPath,
+          evidencePaths: pr03RevisionEvidencePaths,
+          resolverFingerprints: reviewedPr03ResolverFingerprints,
+          webAuthenticationEvidence: reviewedPr03WebAuthenticationEvidence,
+          webMiddlewareMatcher: reviewedPr03WebMiddlewareMatcher,
+          operationPolicy:
+            readPr03DecisionDocument(repositoryRoot).operationPolicy,
+        },
+      ],
       implementation: [
         listCandidatePaths,
         listCachedEntries,
@@ -4331,13 +5296,27 @@ function routePolicyDigest() {
         verifyLegacyRouteShrink,
         routeCounts,
         verifyReviewedContractRevision,
+        isExactRevisionAppend,
+        verifyIntroducedPr03Revision,
+        verifyPr03LaneLineage,
+        verifyPr03BaseEvidence,
         verifyRetainedPr02RevisionEvidence,
+        verifyRetainedPr03RevisionEvidence,
         verifyPr02OperationMatrix,
         verifyExactMultisetSubset,
         verifyPr02EscapeHatches,
         verifyPr02SourceChanges,
         verifyPr02RepositoryChanges,
         verifyPr02ClosureChanges,
+        readPr03DecisionDocument,
+        verifyPr03DecisionDocument,
+        verifyPr03FindingTransition,
+        verifyPr03CandidateContract,
+        verifyPr03RetainedRouteContract,
+        verifyPr03ClosureChanges,
+        verifyPr03TargetState,
+        verifyReviewedWebAuthenticationEvidence,
+        verifyWebAuthenticationBoundary,
         verifyExactPathPolicy,
         uniqueEntriesByPath,
         verifyBaseCommitLineage,
