@@ -1,8 +1,7 @@
 import type {
   AdminOverviewMetric,
-  HubSourceStatus,
-  HubUsageSummary,
-} from "@llm-machines/contracts"
+  InferenceCoreSourceStatus,
+} from "@llm-machines/contracts/inference-core"
 import {
   LITE_LLM_LOG_SAMPLE_SIZE,
   LiteLlmAdminClient,
@@ -17,19 +16,14 @@ import {
 
 export interface AdminOpsSummary {
   metrics: AdminOverviewMetric[]
-  sourceStatus: HubSourceStatus
+  sourceStatus: InferenceCoreSourceStatus
   summary: string
 }
 
-export async function getAdminOpsSummary(
-  usage: HubUsageSummary,
-): Promise<AdminOpsSummary> {
+export async function getAdminOpsSummary(): Promise<AdminOpsSummary> {
   const config = liteLlmConfig()
   if (!config) {
-    return fallbackOps(
-      usage,
-      "Gateway usage is available; LiteLLM operational federation is not configured for this BFF.",
-    )
+    return notConfiguredOps()
   }
 
   const window = liteLlmDateWindow()
@@ -56,8 +50,8 @@ export async function getAdminOpsSummary(
         metric(
           "top-model",
           "Top model",
-          activity.topModel ?? fallbackTopModel(usage),
-          activity.topModel ? "By request count" : "Hub fallback",
+          activity.topModel ?? "Unknown",
+          activity.topModel ? "By request count" : "LiteLLM activity",
         ),
         metric(
           "p95-latency",
@@ -76,7 +70,7 @@ export async function getAdminOpsSummary(
       ],
     }
   } catch {
-    return unavailableOps(usage)
+    return unavailableOps()
   }
 }
 
@@ -102,29 +96,29 @@ async function readLogs(
   }
 }
 
-function fallbackOps(usage: HubUsageSummary, summary: string): AdminOpsSummary {
+function notConfiguredOps(): AdminOpsSummary {
   return {
-    sourceStatus: usage.sourceStatus,
-    summary,
+    sourceStatus: "not_configured",
+    summary: "LiteLLM operational federation is not configured for this BFF.",
     metrics: [
-      metric("requests", "Requests", usage.prompts, "Hub usage fallback"),
-      metric("tokens", "Tokens", usage.tokens, "Hub usage fallback"),
-      metric("top-model", "Top model", fallbackTopModel(usage), null),
+      metric("requests", "Requests", "Pending", "LiteLLM API"),
+      metric("tokens", "Tokens", "Pending", "LiteLLM API"),
+      metric("top-model", "Top model", "Pending", "LiteLLM API"),
       metric("p95-latency", "p95 latency", "Pending", "LiteLLM API"),
       metric("top-user", "Top user", "Pending", "LiteLLM API"),
     ],
   }
 }
 
-function unavailableOps(usage: HubUsageSummary): AdminOpsSummary {
+function unavailableOps(): AdminOpsSummary {
   return {
     sourceStatus: "unavailable",
     summary:
       "LiteLLM operational federation is configured, but the BFF could not read it.",
     metrics: [
-      metric("requests", "Requests", usage.prompts, "Hub usage fallback"),
-      metric("tokens", "Tokens", usage.tokens, "Hub usage fallback"),
-      metric("top-model", "Top model", fallbackTopModel(usage), "Hub fallback"),
+      metric("requests", "Requests", "Unavailable", "LiteLLM API"),
+      metric("tokens", "Tokens", "Unavailable", "LiteLLM API"),
+      metric("top-model", "Top model", "Unavailable", "LiteLLM API"),
       metric("p95-latency", "p95 latency", "Unavailable", "LiteLLM API"),
       metric("top-user", "Top user", "Unavailable", "LiteLLM API", "warning"),
     ],
@@ -134,7 +128,7 @@ function unavailableOps(usage: HubUsageSummary): AdminOpsSummary {
 function opsSourceStatus(
   failedRequests: number,
   partialLogs: boolean,
-): HubSourceStatus {
+): InferenceCoreSourceStatus {
   if (failedRequests > 0 || partialLogs) {
     return "degraded"
   }
@@ -155,10 +149,6 @@ function metric(
     detail,
     tone,
   }
-}
-
-function fallbackTopModel(usage: HubUsageSummary): string {
-  return usage.topModels[0] ?? "Unknown"
 }
 
 function formatNumber(value: number): string {

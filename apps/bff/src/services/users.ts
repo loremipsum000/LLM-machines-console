@@ -1,10 +1,10 @@
 import { eq, sql } from "drizzle-orm"
-import { getDb } from "../db/client"
-import { users } from "../db/schema"
 import type { Actor } from "../auth/persona"
+import { getInferenceCoreDb } from "../db/inference-core-client"
+import { users } from "../db/inference-core-schema"
 
 export async function upsertActorUser(actor: Actor): Promise<Actor> {
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (!db) {
     return actor
   }

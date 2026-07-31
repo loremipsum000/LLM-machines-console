@@ -19,7 +19,7 @@ let shortcutModifierVisible = false
 const modifierSubscribers = new Set<ModifierSubscriber>()
 
 interface ConsoleV2ShellProps {
-  activeSection: ConsoleV2SectionId
+  activeSection?: ConsoleV2SectionId
   children: ReactNode
 }
 
@@ -123,36 +123,6 @@ export function ConsoleV2Shell({
             </nav>
           </div>
 
-          <div className="flex w-full flex-col gap-4">
-            <div className="flex w-full flex-col gap-3 p-1.5 text-sm text-white">
-              <Link
-                className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                href="/resources"
-              >
-                Help
-              </Link>
-              <Link
-                className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                href="/resources"
-              >
-                Documentation
-              </Link>
-            </div>
-
-            <div className="flex h-10 w-full items-center justify-between rounded-full border border-[#323337] bg-[#181818] py-1 pl-1 pr-2">
-              <div className="flex items-center gap-2">
-                <div
-                  aria-hidden
-                  className="size-8 rounded-full bg-[radial-gradient(circle_at_32%_28%,#ff8bd8_0,#f344c8_28%,#8f6dff_56%,#12a8ff_100%)]"
-                />
-                <div className="flex items-center gap-2 whitespace-nowrap text-[#dfdfdf]">
-                  <p className="text-sm font-medium">Pero Peric</p>
-                  <p className="text-[10px]">Admin</p>
-                </div>
-              </div>
-              <ArrowRightIcon aria-hidden className="size-6 text-[#dfdfdf]" />
-            </div>
-          </div>
         </aside>
 
         <main className="min-w-0 px-5 py-8 max-lg:pt-4 sm:px-8 lg:ml-[534px] lg:w-[640px] lg:px-0 lg:py-0">
@@ -276,32 +246,4 @@ function shortcutAriaLabel(
   return shortcutModifier === "meta"
     ? `Meta+${shortcut}`
     : `Control+${shortcut}`
-}
-
-function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      height="24"
-      viewBox="0 0 24 24"
-      width="24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <path
-        d="M7 12H17"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M13 8L17 12L13 16"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
 }

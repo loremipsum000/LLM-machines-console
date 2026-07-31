@@ -26,7 +26,7 @@ describe("Admin hardware", () => {
     resetHubStateForTest()
   })
 
-  it("returns seven curated hardware charts from Prometheus range queries", async () => {
+  it("returns seven curated hardware charts while native expert links remain disabled", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_PROMETHEUS_BASE_URL", "http://prometheus.test")
     vi.stubEnv("GRAFANA_PUBLIC_URL", "https://grafana.example")
@@ -63,8 +63,8 @@ describe("Admin hardware", () => {
       step: "180s",
       selectedHost: "all",
       sourceStatus: "ok",
-      grafanaUrl:
-        "https://grafana.example/d/llmm-infra-overview/llm-machines-infrastructure-overview",
+      alertmanagerUrl: null,
+      grafanaUrl: null,
       availableHosts: [
         "compute-node-a",
         "compute-node-b",
@@ -73,6 +73,11 @@ describe("Admin hardware", () => {
       ],
     })
     expect(body.charts).toHaveLength(7)
+    expect(
+      body.charts.every(
+        (chart: { grafanaUrl: string | null }) => chart.grafanaUrl === null,
+      ),
+    ).toBe(true)
     expect(body.charts.map((chart: { id: string }) => chart.id)).toEqual([
       "cpu_utilization",
       "gpu_temperature",

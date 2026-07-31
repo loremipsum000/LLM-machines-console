@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Actor } from "../auth/persona"
-import { getDb } from "../db/client"
+import { getInferenceCoreDb } from "../db/inference-core-client"
 import { upsertActorUser } from "./users"
 
-vi.mock("../db/client", () => ({
-  getDb: vi.fn(),
+vi.mock("../db/inference-core-client", () => ({
+  getInferenceCoreDb: vi.fn(),
 }))
 
 const actor: Actor = {
@@ -22,7 +22,7 @@ describe("upsertActorUser", () => {
 
   it("uses the existing storage id when the actor email is already present", async () => {
     const db = buildDbMock([{ id: "demo-admin" }])
-    vi.mocked(getDb).mockReturnValue(db.instance)
+    vi.mocked(getInferenceCoreDb).mockReturnValue(db.instance)
 
     const storedActor = await upsertActorUser(actor)
 
@@ -44,7 +44,7 @@ describe("upsertActorUser", () => {
 
   it("inserts by actor subject when there is no existing email row", async () => {
     const db = buildDbMock([])
-    vi.mocked(getDb).mockReturnValue(db.instance)
+    vi.mocked(getInferenceCoreDb).mockReturnValue(db.instance)
 
     const storedActor = await upsertActorUser(actor)
 
@@ -84,7 +84,7 @@ function buildDbMock(existingUsers: Array<{ id: string }>) {
       insert,
       select,
       update,
-    } as unknown as ReturnType<typeof getDb>,
+    } as unknown as ReturnType<typeof getInferenceCoreDb>,
     update,
   }
 }

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import {
   mkdirSync,
   mkdtempSync,
@@ -12,20 +14,31 @@ import { dirname, join } from "node:path"
 import { after, test } from "node:test"
 import {
   assertNoUnexpectedEnvironmentFiles,
+  buildContractRevisionDocument,
+  buildEntryChanges,
+  buildForbiddenAllowlist,
+  buildRepositoryClosureFromCommit,
   compareExactFindings,
   compareForbiddenBaselineMetadata,
   extractBffRoutes,
   extractFastifyRegistrarManifest,
   extractWebInferenceConsumers,
   extractWebRoutes,
+  listCandidatePaths,
+  pr02ContractRevisionPath,
   repositoryRoot,
+  routeBaselinePath,
   scanForbiddenSurfaces,
+  verifyBaseCommitLineage,
   verifyCorePackageClosure,
   verifyLegacyRouteShrink,
   verifyPolicyStability,
   verifyProtectedGuardrailStability,
   verifyRepository,
   verifyRetentionCharacterization,
+  verifyReviewedContractRevision,
+  verifyReviewedFindingReduction,
+  verifyRouteBaselineMetadata,
   verifyShrinkOnly,
 } from "./guardrails.mjs"
 
@@ -112,6 +125,68 @@ test("base comparison accepts only a multiset reduction", () => {
   )
 })
 
+test("reviewed finding reductions allow bound fingerprint replacement without growth", () => {
+  const base = [
+    {
+      ruleId: "FS102_MCP",
+      path: "retained.ts",
+      count: 2,
+      fingerprints: { a: 1, b: 1 },
+      removeBy: "PR-03",
+    },
+  ]
+
+  assert.deepEqual(
+    verifyReviewedFindingReduction(base, [
+      {
+        ...base[0],
+        fingerprints: { c: 1, d: 1 },
+      },
+    ]),
+    [],
+  )
+  assert.deepEqual(
+    verifyReviewedFindingReduction(base, [
+      {
+        ...base[0],
+        count: 1,
+        fingerprints: { replacement: 1 },
+      },
+    ]),
+    [],
+  )
+})
+
+test("reviewed finding reductions reject new keys, count growth, and disposition changes", () => {
+  const base = [
+    {
+      ruleId: "FS102_MCP",
+      path: "retained.ts",
+      count: 1,
+      fingerprints: { a: 1 },
+      removeBy: "PR-03",
+    },
+  ]
+  const errors = verifyReviewedFindingReduction(base, [
+    {
+      ...base[0],
+      count: 2,
+      fingerprints: { a: 1, b: 1 },
+      removeBy: "PR-12",
+    },
+    {
+      ...base[0],
+      path: "new.ts",
+    },
+  ])
+
+  assert.deepEqual(errors, [
+    "new reviewed legacy finding FS102_MCP\u0000new.ts",
+    "reviewed legacy disposition changed FS102_MCP\u0000retained.ts",
+    "reviewed legacy finding count grew FS102_MCP\u0000retained.ts",
+  ])
+})
+
 test("guard policy changes require a reviewed contract revision", () => {
   assert.deepEqual(
     verifyPolicyStability(
@@ -138,6 +213,467 @@ test("guard policy changes require a reviewed contract revision", () => {
   )
 })
 
+test("reviewed contract revisions bind every changed entry and policy digest", () => {
+  const baseAllowlist = {
+    policyDigest: "forbidden-before",
+    protectedFiles: [{ path: "guard.mjs", sha256: "a".repeat(64) }],
+    entries: [
+      {
+        ruleId: "FS102_MCP",
+        path: "legacy.ts",
+        count: 1,
+        fingerprints: { legacy: 1 },
+        removeBy: "PR-03",
+      },
+    ],
+  }
+  const currentAllowlist = {
+    policyDigest: "forbidden-after",
+    protectedFiles: [{ path: "guard.mjs", sha256: "b".repeat(64) }],
+    entries: [],
+  }
+  const baseRoutes = {
+    policyDigest: "route-before",
+    routes: [
+      {
+        surface: "bff",
+        method: "POST",
+        path: "/v1/chat/completions",
+        source: "apps/bff/src/routes/openai-compatible.ts",
+        classification: "legacy-retired",
+      },
+    ],
+    fastifyRegistrars: [{ exportName: "registerLegacy", sourcePath: "old.ts" }],
+    webInferenceConsumers: [],
+    sourceClosure: [{ path: "apps/bff/src/index.ts", sha256: "c".repeat(64) }],
+    repositoryClosure: [
+      {
+        path: "apps/bff/src/index.ts",
+        mode: "100644",
+        objectId: "a".repeat(40),
+      },
+    ],
+    escapeHatches: [],
+  }
+  const currentRoutes = {
+    ...baseRoutes,
+    policyDigest: "route-after",
+    routes: [],
+    fastifyRegistrars: [],
+    sourceClosure: [{ path: "apps/bff/src/index.ts", sha256: "d".repeat(64) }],
+    repositoryClosure: [
+      {
+        path: "apps/bff/src/index.ts",
+        mode: "100644",
+        objectId: "b".repeat(40),
+      },
+    ],
+  }
+  const evidenceFiles = [{ path: "decision.json", sha256: "e".repeat(64) }]
+
+  const revision = buildContractRevisionDocument({
+    baseCommit: "f".repeat(40),
+    baseTree: "1".repeat(40),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes,
+    evidenceFiles,
+  })
+
+  assert.equal(revision.id, "PR-02")
+  assert.deepEqual(revision.changes.forbiddenEntries, [
+    {
+      key: "FS102_MCP legacy.ts",
+      before: baseAllowlist.entries,
+      after: [],
+    },
+  ])
+  assert.deepEqual(revision.changes.routes, [
+    {
+      key: "bff POST /v1/chat/completions apps/bff/src/routes/openai-compatible.ts",
+      before: baseRoutes.routes,
+      after: [],
+    },
+  ])
+  assert.deepEqual(revision.changes.sourceClosure, [
+    {
+      key: "apps/bff/src/index.ts",
+      before: baseRoutes.sourceClosure,
+      after: currentRoutes.sourceClosure,
+    },
+  ])
+  assert.deepEqual(revision.changes.repositoryClosure, [
+    {
+      key: "apps/bff/src/index.ts",
+      before: baseRoutes.repositoryClosure,
+      after: currentRoutes.repositoryClosure,
+    },
+  ])
+  assert.deepEqual(revision.evidenceFiles, evidenceFiles)
+})
+
+test("entry-change manifests preserve multiplicity and reject silent replacement", () => {
+  const base = [
+    { path: "same.ts", sha256: "a" },
+    { path: "same.ts", sha256: "b" },
+  ]
+  const current = [
+    { path: "same.ts", sha256: "a" },
+    { path: "same.ts", sha256: "c" },
+  ]
+
+  assert.deepEqual(
+    buildEntryChanges(base, current, (entry) => entry.path),
+    [
+      {
+        key: "same.ts",
+        before: base,
+        after: current,
+      },
+    ],
+  )
+})
+
+test("candidate discovery rejects gitlinks and unstaged missing cached files", () => {
+  const missingRoot = initializedGitRoot()
+  const trackedPath = "apps/bff/src/tracked.ts"
+  writeFixture(missingRoot, trackedPath, "export const tracked = true\n")
+  git(missingRoot, ["add", trackedPath])
+  assert.deepEqual(listCandidatePaths(missingRoot), [trackedPath])
+
+  rmSync(join(missingRoot, trackedPath))
+  assert.throws(
+    () => listCandidatePaths(missingRoot),
+    /stage its deletion before verification/,
+  )
+  git(missingRoot, ["add", "--update"])
+  assert.deepEqual(listCandidatePaths(missingRoot), [])
+
+  const gitlinkRoot = initializedGitRoot()
+  writeFixture(gitlinkRoot, "seed.txt", "seed\n")
+  git(gitlinkRoot, ["add", "seed.txt"])
+  git(gitlinkRoot, ["commit", "--quiet", "-m", "seed"])
+  const commit = git(gitlinkRoot, ["rev-parse", "HEAD"])
+  git(gitlinkRoot, [
+    "update-index",
+    "--add",
+    "--cacheinfo",
+    "160000",
+    commit,
+    "vendor/core",
+  ])
+  assert.throws(
+    () => listCandidatePaths(gitlinkRoot),
+    /Unsupported gitlink 160000 at vendor\/core/,
+  )
+
+  const divergentRoot = initializedGitRoot()
+  const divergentPath = "apps/bff/src/divergent.ts"
+  writeFixture(divergentRoot, divergentPath, "export const staged = true\n")
+  git(divergentRoot, ["add", divergentPath])
+  writeFixture(divergentRoot, divergentPath, "export const staged = false\n")
+  assert.throws(
+    () => listCandidatePaths(divergentRoot),
+    /Cached content differs from the worktree/,
+  )
+
+  for (const indexFlag of ["--assume-unchanged", "--skip-worktree"]) {
+    const flaggedRoot = initializedGitRoot()
+    const flaggedPath = "apps/bff/src/flagged.ts"
+    writeFixture(flaggedRoot, flaggedPath, "export const mcp = true\n")
+    git(flaggedRoot, ["add", flaggedPath])
+    writeFixture(flaggedRoot, flaggedPath, "export const safe = true\n")
+    git(flaggedRoot, ["update-index", indexFlag, flaggedPath])
+    assert.throws(
+      () => listCandidatePaths(flaggedRoot),
+      /Cached content differs from the worktree/,
+      indexFlag,
+    )
+  }
+
+  const missingObjectRoot = initializedGitRoot()
+  const missingObjectPath = "apps/bff/src/missing-object.ts"
+  writeFixture(
+    missingObjectRoot,
+    missingObjectPath,
+    "export const safe = true\n",
+  )
+  git(missingObjectRoot, [
+    "update-index",
+    "--add",
+    "--cacheinfo",
+    "100644",
+    "f".repeat(40),
+    missingObjectPath,
+  ])
+  assert.throws(
+    () => listCandidatePaths(missingObjectRoot),
+    /Cached Git object is missing or not a blob/,
+  )
+
+  const treeObjectRoot = initializedGitRoot()
+  writeFixture(treeObjectRoot, "seed.txt", "seed\n")
+  git(treeObjectRoot, ["add", "seed.txt"])
+  git(treeObjectRoot, ["commit", "--quiet", "-m", "seed"])
+  const treeObjectId = git(treeObjectRoot, ["rev-parse", "HEAD^{tree}"])
+  const treeObjectPath = "apps/bff/src/tree-object.ts"
+  writeFixture(treeObjectRoot, treeObjectPath, "export const safe = true\n")
+  git(treeObjectRoot, [
+    "update-index",
+    "--add",
+    "--cacheinfo",
+    "100644",
+    treeObjectId,
+    treeObjectPath,
+  ])
+  assert.throws(
+    () => listCandidatePaths(treeObjectRoot),
+    /Cached Git object is missing or not a blob/,
+  )
+})
+
+test("repository closure binds configs, infrastructure, and test reachability", () => {
+  const closurePaths = new Set(
+    buildRepositoryClosureFromCommit(
+      repositoryRoot,
+      "bb60cb0dfe46a39189e2a80fe1839e8288201492",
+    ).map(({ path }) => path),
+  )
+
+  assert.equal(closurePaths.has(".env.example"), true)
+  assert.equal(
+    closurePaths.has("infra/migrations/0026_knowledge_chunk_embeddings.sql"),
+    true,
+  )
+  assert.equal(
+    closurePaths.has("apps/bff/src/routes/app-gateway.test.ts"),
+    true,
+  )
+  assert.equal(closurePaths.has(routeBaselinePath), false)
+  assert.equal(
+    closurePaths.has(
+      "docs/reduction/inference-core/forbidden-surface-allowlist.yaml",
+    ),
+    false,
+  )
+})
+
+test("a valid exact PR-02 revision passes the scoped verifier", () => {
+  const fixture = pr02RevisionFixture()
+  const result = verifyReviewedContractRevision(fixture)
+
+  assert.equal(result.present, true)
+  assert.deepEqual(result.errors, [])
+})
+
+test("PR-02 revision verification rejects evidence, history, target, and resolver tampering", () => {
+  const evidenceFixture = pr02RevisionFixture()
+  writeFixture(
+    evidenceFixture.root,
+    "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+    '{"tampered":true}\n',
+  )
+  assert.match(
+    verifyReviewedContractRevision(evidenceFixture).errors.join("\n"),
+    /reviewed contract revision does not match exact changes/,
+  )
+
+  const historyFixture = pr02RevisionFixture()
+  historyFixture.currentRoutes.reviewedRevisions[0].sha256 = "0".repeat(64)
+  assert.match(
+    verifyReviewedContractRevision(historyFixture).errors.join("\n"),
+    /reviewed contract revision history changed/,
+  )
+
+  const targetFixture = pr02RevisionFixture({
+    mutate({ currentRoutes }) {
+      currentRoutes.target = { changed: true }
+    },
+  })
+  assert.match(
+    verifyReviewedContractRevision(targetFixture).errors.join("\n"),
+    /route target contract changed outside PR-02 scope/,
+  )
+
+  const resolverFixture = pr02RevisionFixture({
+    mutate({ currentRoutes }) {
+      currentRoutes.fingerprints = [{ path: "changed", sha256: "f".repeat(64) }]
+    },
+  })
+  assert.match(
+    verifyReviewedContractRevision(resolverFixture).errors.join("\n"),
+    /route resolver fingerprints changed outside PR-02 scope/,
+  )
+})
+
+test("PR-02 revision verification rejects an incorrect base even with equal revision arrays", () => {
+  const routes = {
+    target: {},
+    routes: [],
+    fingerprints: [],
+    reviewedRevisions: [],
+  }
+  const result = verifyReviewedContractRevision({
+    root: repositoryRoot,
+    baseCommit: "a".repeat(40),
+    baseAllowlist: {},
+    currentAllowlist: {},
+    baseRoutes: routes,
+    currentRoutes: routes,
+    operationPolicy: emptyPr02OperationPolicy(),
+  })
+
+  assert.equal(result.present, false)
+  assert.match(result.errors.join("\n"), /PR-02 contract revision base changed/)
+})
+
+test("future shrink-only comparisons retain an already reviewed PR-02 revision", () => {
+  const fixture = pr02RevisionFixture()
+  fixture.baseRoutes.reviewedRevisions = structuredClone(
+    fixture.currentRoutes.reviewedRevisions,
+  )
+  const result = verifyReviewedContractRevision(fixture)
+
+  assert.equal(result.present, false)
+  assert.deepEqual(result.errors, [])
+
+  writeFixture(
+    fixture.root,
+    "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+    '{"tampered":true}\n',
+  )
+  assert.match(
+    verifyReviewedContractRevision(fixture).errors.join("\n"),
+    /retained PR-02 revision evidence changed/,
+  )
+})
+
+test("base comparison requires a proper ancestor of candidate HEAD", () => {
+  const root = initializedGitRoot()
+  writeFixture(root, "seed.txt", "base\n")
+  git(root, ["add", "seed.txt"])
+  git(root, ["commit", "--quiet", "-m", "base"])
+  const base = git(root, ["rev-parse", "HEAD"])
+  writeFixture(root, "seed.txt", "candidate\n")
+  git(root, ["add", "seed.txt"])
+  git(root, ["commit", "--quiet", "-m", "candidate"])
+  const head = git(root, ["rev-parse", "HEAD"])
+
+  assert.deepEqual(verifyBaseCommitLineage(root, base), [])
+  assert.match(
+    verifyBaseCommitLineage(root, head).join("\n"),
+    /proper ancestor outside the fixed PR-02 precommit base/,
+  )
+  assert.match(
+    verifyBaseCommitLineage(root, head, head).join("\n"),
+    /proper ancestor of clean candidate HEAD/,
+  )
+  writeFixture(root, "candidate-untracked.txt", "candidate\n")
+  assert.match(
+    verifyBaseCommitLineage(root, head).join("\n"),
+    /proper ancestor outside the fixed PR-02 precommit base/,
+  )
+  assert.deepEqual(verifyBaseCommitLineage(root, head, head), [])
+  const unrelated = git(root, [
+    "commit-tree",
+    `${base}^{tree}`,
+    "-m",
+    "unrelated",
+  ])
+  assert.match(
+    verifyBaseCommitLineage(root, unrelated).join("\n"),
+    /not an ancestor/,
+  )
+})
+
+test("PR-02 revision operation matrix rejects added runtime surfaces", () => {
+  const scenarios = [
+    {
+      expected: /PR-02 route added or changed/,
+      mutate({ currentRoutes }) {
+        currentRoutes.routes.push({
+          surface: "bff",
+          method: "POST",
+          path: "/api/admin/backdoor",
+          source: "apps/bff/src/routes/admin.ts",
+          classification: "current-console-seam",
+        })
+      },
+    },
+    {
+      expected: /PR-02 Fastify registrar added or changed/,
+      mutate({ currentRoutes }) {
+        currentRoutes.fastifyRegistrars.push({
+          exportName: "registerBackdoorRoutes",
+          importSource: "./routes/backdoor",
+          sourcePath: "apps/bff/src/routes/backdoor.ts",
+        })
+      },
+    },
+    {
+      expected: /PR-02 Web inference consumer added or changed/,
+      mutate({ currentRoutes }) {
+        currentRoutes.webInferenceConsumers.push({
+          path: "apps/web/src/lib/backdoor.ts",
+          invocationCount: 1,
+          fingerprints: { backdoor: 1 },
+        })
+      },
+    },
+    {
+      expected: /PR-02 addedSourcePaths differ/,
+      mutate({ currentRoutes }) {
+        currentRoutes.sourceClosure.push({
+          path: "apps/bff/src/routes/backdoor.ts",
+          sha256: "b".repeat(64),
+        })
+      },
+    },
+    {
+      expected: /PR-02 addedRepositoryPaths differ/,
+      mutate({ currentRoutes }) {
+        currentRoutes.repositoryClosure.push({
+          path: ".github/workflows/unreviewed.yml",
+          mode: "100644",
+          objectId: "b".repeat(40),
+        })
+      },
+    },
+  ]
+
+  for (const scenario of scenarios) {
+    const fixture = pr02RevisionFixture({ mutate: scenario.mutate })
+    assert.match(
+      verifyReviewedContractRevision(fixture).errors.join("\n"),
+      scenario.expected,
+    )
+  }
+})
+
+test("PR-02 revision operation matrix preserves the reviewed Web authentication boundary", () => {
+  const middlewarePath = "apps/web/src/middleware.ts"
+  const fixture = pr02RevisionFixture({
+    operationPolicy: {
+      ...emptyPr02OperationPolicy(),
+      deletedSourcePaths: [middlewarePath],
+    },
+    mutate({ baseRoutes, currentRoutes }) {
+      const middleware = {
+        path: middlewarePath,
+        sha256: "c".repeat(64),
+      }
+      baseRoutes.sourceClosure.push(middleware)
+      currentRoutes.sourceClosure = []
+    },
+  })
+
+  assert.match(
+    verifyReviewedContractRevision(fixture).errors.join("\n"),
+    /reviewed Web authentication boundary changed or disappeared/,
+  )
+})
+
 test("baseline metadata rejects unknown fields and altered bootstrap identity", () => {
   const reviewed = {
     schemaVersion: 1,
@@ -161,6 +697,29 @@ test("baseline metadata rejects unknown fields and altered bootstrap identity", 
       reviewed,
     ),
     ["forbidden-surface baseline metadata changed"],
+  )
+
+  const routeBaseline = {
+    schemaVersion: 3,
+    baseCommit: "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
+    policyDigest: "reviewed",
+    target: {},
+    routes: [],
+    fastifyRegistrars: [],
+    webInferenceConsumers: [],
+    sourceClosure: [],
+    repositoryClosure: [],
+    fingerprints: [],
+    escapeHatches: [],
+    reviewedRevisions: [],
+  }
+  assert.deepEqual(verifyRouteBaselineMetadata(routeBaseline), [])
+  assert.deepEqual(
+    verifyRouteBaselineMetadata({
+      ...routeBaseline,
+      unreviewedClaim: true,
+    }),
+    ["route baseline metadata changed"],
   )
 })
 
@@ -196,6 +755,32 @@ test("self-describing exclusions are exact and text scanning is extension indepe
       { ruleId: "FS104_LIBRECHAT", path: "web/unreviewed.html" },
     ],
   )
+})
+
+test("dedicated negative-boundary tests are excluded only as protected files", () => {
+  const paths = [
+    "apps/bff/src/db/inference-core-schema.test.ts",
+    "apps/bff/src/routes/app-gateway-boundary.test.ts",
+    "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
+    "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+    "packages/contracts/src/inference-core.test.ts",
+  ]
+  const evidencePaths = [
+    "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+    "scripts/inference-core/pr02-boundaries.test.mjs",
+    "scripts/inference-core/pr02-contract-revision.mjs",
+  ]
+  assert.deepEqual(scanForbiddenSurfaces({ paths }), [])
+
+  const protectedPaths = new Set(
+    buildForbiddenAllowlist({
+      paths: [],
+      baseCommit: "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
+    }).protectedFiles.map(({ path }) => path),
+  )
+  for (const path of [...paths, ...evidencePaths]) {
+    assert.equal(protectedPaths.has(path), true, `${path} is not protected`)
+  }
 })
 
 test("content scanning rejects invalid source bytes and scans NUL-containing UTF-8", () => {
@@ -430,6 +1015,57 @@ test("base route comparison rejects additions and reclassification", () => {
       { routes: [], sourceClosure: [] },
     ),
     [],
+  )
+  const retainedRepositoryEntry = {
+    path: ".env.example",
+    mode: "100644",
+    objectId: "a".repeat(40),
+  }
+  assert.deepEqual(
+    verifyLegacyRouteShrink(
+      { routes: [], repositoryClosure: [retainedRepositoryEntry] },
+      {
+        routes: [],
+        repositoryClosure: [
+          {
+            ...retainedRepositoryEntry,
+            objectId: "b".repeat(40),
+          },
+          {
+            path: ".github/workflows/unreviewed.yml",
+            mode: "100644",
+            objectId: "c".repeat(40),
+          },
+        ],
+      },
+    ),
+    [
+      "repository closure changed .env.example",
+      "repository closure changed .github/workflows/unreviewed.yml",
+    ],
+  )
+  assert.deepEqual(
+    verifyLegacyRouteShrink(
+      { routes: [], repositoryClosure: [retainedRepositoryEntry] },
+      { routes: [], repositoryClosure: [] },
+    ),
+    [],
+  )
+  assert.deepEqual(
+    verifyLegacyRouteShrink(
+      { routes: [], reviewedRevisions: [] },
+      {
+        routes: [],
+        reviewedRevisions: [
+          {
+            id: "PR-02",
+            path: pr02ContractRevisionPath,
+            sha256: "a".repeat(64),
+          },
+        ],
+      },
+    ),
+    ["reviewed contract revision history changed"],
   )
   assert.deepEqual(
     verifyLegacyRouteShrink(base, {
@@ -1453,6 +2089,127 @@ test("leading-dash base refs fail closed", () => {
   assert.equal(result.baseStatus, "unavailable")
   assert.match(result.errors.join("\n"), /base ref is unavailable --help/)
 })
+
+function initializedGitRoot() {
+  const root = temporaryRoot()
+  git(root, ["init", "--quiet"])
+  git(root, ["config", "user.name", "Guardrail Test"])
+  git(root, ["config", "user.email", "guardrail@example.invalid"])
+  return root
+}
+
+function pr02RevisionFixture({
+  mutate,
+  operationPolicy = emptyPr02OperationPolicy(),
+} = {}) {
+  const root = temporaryRoot()
+  execFileSync(
+    "git",
+    ["clone", "--quiet", "--shared", "--no-checkout", repositoryRoot, root],
+    {
+      stdio: "ignore",
+    },
+  )
+  const baseCommit = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
+  const baseAllowlist = {
+    policyDigest: "forbidden-before",
+    protectedFiles: [],
+    entries: [],
+  }
+  const currentAllowlist = {
+    policyDigest: "forbidden-after",
+    protectedFiles: [],
+    entries: [],
+  }
+  const baseRoutes = {
+    policyDigest: "route-before",
+    target: {
+      requiredPublicInference: [],
+      requiredPrivateOperational: [],
+    },
+    routes: [],
+    fastifyRegistrars: [],
+    webInferenceConsumers: [],
+    sourceClosure: [],
+    repositoryClosure: [],
+    fingerprints: [],
+    escapeHatches: [],
+    reviewedRevisions: [],
+  }
+  const currentRoutes = structuredClone(baseRoutes)
+  currentRoutes.policyDigest = "route-after"
+  mutate?.({
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes,
+  })
+
+  const evidencePaths = [
+    "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+    "scripts/inference-core/pr02-boundaries.test.mjs",
+    "scripts/inference-core/pr02-contract-revision.mjs",
+  ]
+  for (const path of evidencePaths) {
+    writeFixture(root, path, `${path}\n`)
+  }
+  const evidenceFiles = evidencePaths.map((path) => ({
+    path,
+    sha256: testSha256(readFileSync(join(root, path))),
+  }))
+  const revision = buildContractRevisionDocument({
+    baseCommit,
+    baseTree: git(root, ["rev-parse", `${baseCommit}^{tree}`]),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes,
+    evidenceFiles,
+  })
+  const serializedRevision = `${JSON.stringify(revision, null, 2)}\n`
+  writeFixture(root, pr02ContractRevisionPath, serializedRevision)
+  currentRoutes.reviewedRevisions = [
+    {
+      id: "PR-02",
+      path: pr02ContractRevisionPath,
+      sha256: testSha256(serializedRevision),
+    },
+  ]
+
+  return {
+    root,
+    baseCommit,
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes,
+    operationPolicy,
+  }
+}
+
+function emptyPr02OperationPolicy() {
+  return {
+    addedSourcePaths: [],
+    changedSourcePaths: [],
+    deletedSourcePaths: [],
+    addedRepositoryPaths: [],
+    changedRepositoryPaths: [],
+    deletedRepositoryPaths: [],
+    mutableEscapeHatchPaths: [],
+  }
+}
+
+function git(root, args) {
+  return execFileSync("git", args, {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  }).trim()
+}
+
+function testSha256(value) {
+  return createHash("sha256").update(value).digest("hex")
+}
 
 function temporaryRoot() {
   const root = mkdtempSync(join(tmpdir(), "llmm-pr01-"))

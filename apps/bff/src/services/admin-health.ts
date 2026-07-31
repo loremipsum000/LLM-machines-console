@@ -1,7 +1,7 @@
 import type {
   AdminOverviewMetric,
-  HubSourceStatus,
-} from "@llm-machines/contracts"
+  InferenceCoreSourceStatus,
+} from "@llm-machines/contracts/inference-core"
 import {
   firstFiniteValue,
   PrometheusClient,
@@ -10,7 +10,7 @@ import {
 
 export interface AdminHealthSummary {
   metrics: AdminOverviewMetric[]
-  sourceStatus: HubSourceStatus
+  sourceStatus: InferenceCoreSourceStatus
   summary: string
 }
 
@@ -114,7 +114,7 @@ function summarizeAlerts(samples: PrometheusVectorSample[]): {
 function healthSourceStatus(
   downTargets: number,
   alerts: { critical: number; total: number },
-): HubSourceStatus {
+): InferenceCoreSourceStatus {
   if (downTargets > 0 || alerts.total > 0) {
     return "degraded"
   }

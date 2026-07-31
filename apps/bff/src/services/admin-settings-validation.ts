@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 import {
   adminSettingsLogoAssetSchema,
   type AdminSettingsLogoAsset,
-} from "@llm-machines/contracts"
+} from "@llm-machines/contracts/inference-core"
 
 const maxLogoBytes = 1024 * 1024
 const maxLogoPixels = 4_000_000

@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-02",
+  "scope": "retained-seam-extraction",
+  "coordination": [
+    {
+      "id": "product-postgresql",
+      "decision": "keep",
+      "target": "sole product metadata and coordination store",
+      "implementationOwner": "PR-04"
+    },
+    {
+      "id": "redis",
+      "decision": "replace",
+      "target": "PostgreSQL atomic windows and metadata ledgers",
+      "temporaryBoundary": "Existing retained limit enforcement may use the compatibility adapter until PR-04. New Core features must not add Redis use.",
+      "implementationOwner": "PR-04"
+    },
+    {
+      "id": "temporal",
+      "decision": "remove",
+      "target": "No product workflow engine",
+      "implementationOwner": "PR-03"
+    },
+    {
+      "id": "minio",
+      "decision": "remove",
+      "target": "No product object store",
+      "implementationOwner": "PR-03"
+    },
+    {
+      "id": "pgvector",
+      "decision": "remove",
+      "target": "No product vector extension or vector store",
+      "implementationOwner": "PR-04"
+    },
+    {
+      "id": "queues",
+      "decision": "remove",
+      "target": "No generic product queue. A Firecrawl-owned queue may be introduced only inside the isolated PR-08 slice.",
+      "implementationOwner": "PR-03"
+    },
+    {
+      "id": "workers",
+      "decision": "remove",
+      "target": "No generic product worker. A Firecrawl-owned worker may be introduced only inside the isolated PR-08 slice.",
+      "implementationOwner": "PR-03"
+    },
+    {
+      "id": "scheduling",
+      "decision": "replace",
+      "target": "A bounded one-shot retention command invoked by the appliance supervisor and guarded by a PostgreSQL advisory lock. No generic scheduler is retained.",
+      "implementationOwner": "PR-04"
+    },
+    {
+      "id": "idempotency",
+      "decision": "replace",
+      "target": "A metadata-only PostgreSQL ledger unique on Keycloak subject ID, operation code, and idempotency key. It stores bounded fingerprints, state, outcome, resource ID, correlation ID, status, and expiry, never request or response bodies or secrets.",
+      "implementationOwner": "PR-04"
+    },
+    {
+      "id": "rate-limiting",
+      "decision": "replace",
+      "target": "A PostgreSQL atomic minute window per Application ID. Limits remain optional and disabled by default. An enabled limit fails closed if PostgreSQL is unavailable.",
+      "implementationOwner": "PR-04"
+    },
+    {
+      "id": "usage-accounting",
+      "decision": "keep",
+      "target": "PostgreSQL daily metadata-only Application usage buckets retained for 90 days.",
+      "implementationOwner": "PR-04"
+    }
+  ],
+  "expertSystems": [
+    {
+      "id": "keycloak",
+      "consoleProjection": "read-only",
+      "nativeMutationAccess": "disabled",
+      "nativeAuditIngestion": "not-proven",
+      "reason": "No appliance-realm native admin-event ingestion or last recovery-ready Operator protection is implemented.",
+      "enableAfterAll": ["PR-05", "PR-09"]
+    },
+    {
+      "id": "litellm",
+      "consoleProjection": "read-only",
+      "nativeMutationAccess": "disabled",
+      "nativeAuditIngestion": "not-proven",
+      "reason": "No native route or virtual-key mutation event ingestion and reconciliation is implemented.",
+      "enableAfterAll": ["PR-05", "PR-09"]
+    },
+    {
+      "id": "grafana",
+      "consoleProjection": "read-only",
+      "nativeMutationAccess": "disabled",
+      "nativeAuditIngestion": "not-proven",
+      "reason": "No bounded native dashboard, alert, contact-point, or silence audit ingestion is implemented.",
+      "enableAfterAll": ["PR-05", "PR-09"]
+    },
+    {
+      "id": "alertmanager",
+      "consoleProjection": "read-only",
+      "nativeMutationAccess": "disabled",
+      "nativeAuditIngestion": "not-proven",
+      "reason": "No authenticated mutation boundary or native audit ingestion mechanism is selected and proven.",
+      "enableAfterAll": ["PR-05", "PR-09"]
+    }
+  ],
+  "auditBoundary": {
+    "currentSource": "Console-local audit records only",
+    "externalSourceStatus": "not-configured",
+    "nativeMutationRule": "Direct expert editing remains disabled until the native source captures direct and Console-originated mutations, uses an approved field allowlist, reconciles missed events, and enforces retention and export behavior.",
+    "requiredFields": [
+      "source system",
+      "actor Keycloak subject ID",
+      "Application ID where applicable",
+      "credential-record ID or safe key prefix where applicable",
+      "action",
+      "safe target identifiers",
+      "outcome",
+      "timestamp",
+      "correlation ID"
+    ],
+    "prohibitedFields": [
+      "prompts",
+      "responses",
+      "secrets",
+      "usernames",
+      "emails",
+      "source IPs",
+      "request or response bodies",
+      "search terms",
+      "target URLs, pages, or extracted content",
+      "tool arguments or tool results",
+      "free-text recovery reasons",
+      "headers",
+      "arbitrary native payloads"
+    ]
+  }
+}

@@ -24,9 +24,6 @@ interface ConsoleActionToastsProps {
 const ONE_TIME_ACTION_QUERY_PARAMS = [
   "appAction",
   "inferenceAction",
-  "knowledgeAction",
-  "knowledgeUpload",
-  "mcpAction",
   "settingsAction",
   "teamAction",
 ]

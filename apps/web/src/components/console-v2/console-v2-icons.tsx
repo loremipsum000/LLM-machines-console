@@ -5,6 +5,7 @@ type IconProps = SVGProps<SVGSVGElement>
 export function ApplicationsIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"
@@ -43,6 +44,7 @@ export function ApplicationsIcon(props: IconProps) {
 export function HardwareIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"
@@ -81,6 +83,7 @@ export function HardwareIcon(props: IconProps) {
 export function InferenceIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"
@@ -110,35 +113,10 @@ export function InferenceIcon(props: IconProps) {
   )
 }
 
-export function KnowledgeIcon(props: IconProps) {
-  return (
-    <svg
-      fill="none"
-      height="20"
-      viewBox="0 0 20 20"
-      width="20"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <path
-        d="M12.5 4.17H16.67C17.13 4.17 17.5 4.54 17.5 5V13.33C17.5 13.79 17.13 14.17 16.67 14.17H13C12.17 14.17 11.39 14.58 10.92 15.28L10 16.67V6.67C10 5.29 11.12 4.17 12.5 4.17Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7.5 4.17H3.33C2.87 4.17 2.5 4.54 2.5 5V13.33C2.5 13.79 2.87 14.17 3.33 14.17H7C7.83 14.17 8.61 14.58 9.08 15.28L10 16.67V6.67C10 5.29 8.88 4.17 7.5 4.17Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 export function SettingsIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"
@@ -165,6 +143,7 @@ export function SettingsIcon(props: IconProps) {
 export function TeamIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"

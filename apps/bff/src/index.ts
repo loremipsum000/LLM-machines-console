@@ -1,17 +1,11 @@
 import {
   type HealthResponse,
   healthResponseSchema,
-} from "@llm-machines/contracts"
+} from "@llm-machines/contracts/inference-core"
 import Fastify, { type FastifyInstance } from "fastify"
 import { registerPersonaAuth } from "./auth/persona"
 import { registerAdminRoutes } from "./routes/admin"
-import { registerAgenticRuntimeRoutes } from "./routes/agentic-runtime"
 import { registerAppGatewayRoutes } from "./routes/app-gateway"
-import { registerBuilderRoutes } from "./routes/builder"
-import { registerHubRoutes } from "./routes/hub"
-import { registerKnowledgeRoutes } from "./routes/knowledge"
-import { registerMcpGatewayRoutes } from "./routes/mcp-gateway"
-import { registerOpenAICompatibleRoutes } from "./routes/openai-compatible"
 
 export function buildServer(): FastifyInstance {
   const server = Fastify({
@@ -38,14 +32,8 @@ export function buildServer(): FastifyInstance {
     })
   })
 
-  registerOpenAICompatibleRoutes(server)
   registerAppGatewayRoutes(server)
   registerAdminRoutes(server)
-  registerKnowledgeRoutes(server)
-  registerAgenticRuntimeRoutes(server)
-  registerMcpGatewayRoutes(server)
-  registerHubRoutes(server)
-  registerBuilderRoutes(server)
 
   return server
 }

@@ -1,27 +1,21 @@
 "use client"
 
-import Link from "next/link"
-import Image from "next/image"
-import { ChevronDown, Pencil, Shield, Trash2 } from "lucide-react"
-import { useRef, useState } from "react"
-import type { ChangeEvent, ReactNode } from "react"
+import {
+  updateAdminSettingsOrganizationAction,
+  updateAdminSettingsTelemetryAction,
+} from "@/lib/admin/actions-core"
+import { cn } from "@/lib/utils"
 import type {
   AdminSettingsLogoAsset,
   AdminSettingsResponse,
   AdminSettingsServiceId,
-  AdminUrlPolicyRule,
-  AdminUrlPolicyRuleScope,
-  HubSourceStatus,
-} from "@llm-machines/contracts"
-import {
-  createAdminSettingsUrlPolicyRuleAction,
-  deleteAdminSettingsUrlPolicyRuleAction,
-  disableAdminSettingsUrlPolicyRuleAction,
-  updateAdminSettingsOrganizationAction,
-  updateAdminSettingsTelemetryAction,
-  updateAdminSettingsUrlPolicyRuleAction,
-} from "@/lib/admin/actions"
-import { cn } from "@/lib/utils"
+  InferenceCoreSourceStatus,
+} from "@llm-machines/contracts/inference-core"
+import { ChevronDown } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { useRef, useState } from "react"
+import type { ChangeEvent, ReactNode } from "react"
 import { ConsoleActionToasts } from "./action-toasts"
 
 const returnTo = "/settings"
@@ -32,16 +26,6 @@ const settingsDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
   timeStyle: "short",
 })
-const urlPolicyScopes: Array<{
-  label: string
-  value: AdminUrlPolicyRuleScope
-}> = [
-  { label: "All governed URL flows", value: "all" },
-  { label: "Knowledge ingestion", value: "knowledge_ingestion" },
-  { label: "Web fetch", value: "web_fetch" },
-  { label: "MCP egress", value: "mcp_egress" },
-]
-
 interface SettingsV2ExperienceProps {
   settings: AdminSettingsResponse
   settingsAction?: string
@@ -73,8 +57,8 @@ export function SettingsV2Experience({
           Settings
         </h1>
         <p className="mt-3 max-w-[600px] text-sm leading-5 text-[#b2b2b2]">
-          Configure appliance identity, governed URL policy, maintenance
-          posture, and privacy controls for the Console.
+          Configure appliance identity, maintenance posture, and privacy
+          controls for the Console.
         </p>
       </header>
 
@@ -82,7 +66,6 @@ export function SettingsV2Experience({
 
       <div className="mt-8 flex w-full flex-col gap-3 lg:w-[640px]">
         <OrganizationSettingsPanel settings={settings} />
-        <UrlGovernancePanel rules={settings.urlPolicyRules} />
         <SystemStatusPanel
           generatedAt={settings.generatedAt}
           services={settings.reachability}
@@ -441,7 +424,10 @@ function LogoUploadStatus({
         {mustBeSquare ? ", 1:1 ratio required" : ""}.
       </p>
       {candidate?.error ? (
-        <p className="text-xs font-medium leading-5 text-[#ff595d]" id={errorId}>
+        <p
+          className="text-xs font-medium leading-5 text-[#ff595d]"
+          id={errorId}
+        >
           {candidate.error}
         </p>
       ) : candidate?.warning ? (
@@ -566,7 +552,11 @@ function LogoCurrentFileMeta({
         label="Dimensions"
         value={formatDimensions(asset.width, asset.height)}
       />
-      <LogoMetaRow alignRight label="Size" value={formatBytes(asset.sizeBytes)} />
+      <LogoMetaRow
+        alignRight
+        label="Size"
+        value={formatBytes(asset.sizeBytes)}
+      />
       <LogoMetaRow
         alignRight
         label="Checksum"
@@ -690,313 +680,6 @@ function LogoMetaRow({
       <span className="min-w-0 break-all text-sm leading-5 text-[#dfdfdf]">
         {value}
       </span>
-    </div>
-  )
-}
-
-function UrlGovernancePanel({ rules }: { rules: AdminUrlPolicyRule[] }) {
-  const [deleteRule, setDeleteRule] = useState<AdminUrlPolicyRule | null>(null)
-  const sortedRules = rules.toSorted((first, second) =>
-    first.type === second.type
-      ? first.pattern.localeCompare(second.pattern)
-      : first.type.localeCompare(second.type),
-  )
-
-  return (
-    <section
-      aria-labelledby="settings-url-governance-title"
-      className="rounded-lg border border-[#353535] bg-[#232323] p-3"
-    >
-      <PanelHeading
-        description="Maintains trusted and forbidden URL rules for governed content intake and future egress policy consumers."
-        title="URL Governance"
-      />
-      <form
-        action={createAdminSettingsUrlPolicyRuleAction}
-        className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr]"
-      >
-        <input name="returnTo" type="hidden" value={returnTo} />
-        <SettingsSelect label="Rule type" name="type" value={undefined}>
-          <option className="bg-[#232323]" value="trusted">
-            Trusted
-          </option>
-          <option className="bg-[#232323]" value="forbidden">
-            Forbidden
-          </option>
-        </SettingsSelect>
-        <SettingsSelect label="Scope" name="scope" value={undefined}>
-          {urlPolicyScopes.map((scope) => (
-            <option
-              className="bg-[#232323]"
-              key={scope.value}
-              value={scope.value}
-            >
-              {scope.label}
-            </option>
-          ))}
-        </SettingsSelect>
-        <div className="sm:col-span-2">
-          <SettingsTextField
-            label="URL or domain pattern"
-            name="pattern"
-            placeholder="https://docs.example.com"
-            required
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <SettingsTextField
-            label="Reason"
-            maxLength={500}
-            minLength={3}
-            name="reason"
-            placeholder="Why this rule exists"
-            required
-          />
-        </div>
-        <div className="sm:col-span-2 flex justify-end">
-          <button className={primaryButtonClass} type="submit">
-            Add URL rule
-          </button>
-        </div>
-      </form>
-
-      <div className="mt-3 overflow-hidden rounded-lg border border-[#242424] bg-[#181818]">
-        <table
-          aria-label="URL policy rules"
-          className="w-full border-collapse text-left text-sm"
-        >
-          <thead>
-            <tr className="h-11 border-b border-[#242424] text-xs text-white">
-              <th className="w-8 px-2 font-medium">#</th>
-              <th className="px-2 font-medium">Rule</th>
-              <th className="px-2 font-medium">Scope</th>
-              <th className="px-2 font-medium">Status</th>
-              <th className="px-2 text-right font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedRules.length > 0 ? (
-              sortedRules.map((rule, index) => (
-                <UrlPolicyRuleRow
-                  index={index}
-                  key={rule.id}
-                  onDelete={() => setDeleteRule(rule)}
-                  rule={rule}
-                />
-              ))
-            ) : (
-              <tr>
-                <td
-                  className="px-2 py-4 text-sm leading-5 text-[#b2b2b2]"
-                  colSpan={5}
-                >
-                  No URL rules have been added yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {deleteRule ? (
-        <DeleteUrlRuleDialog
-          onCancel={() => setDeleteRule(null)}
-          rule={deleteRule}
-        />
-      ) : null}
-    </section>
-  )
-}
-
-function UrlPolicyRuleRow({
-  index,
-  onDelete,
-  rule,
-}: {
-  index: number
-  onDelete: () => void
-  rule: AdminUrlPolicyRule
-}) {
-  const [editing, setEditing] = useState(false)
-  const labelPrefix = `${rule.type} ${rule.pattern}`
-
-  return (
-    <>
-      <tr className="min-h-10 border-b border-[#242424] last:border-b-0">
-        <td className="p-2 text-xs text-[#b2b2b2]">{index + 1}</td>
-        <td className="p-2">
-          <div className="flex min-w-0 flex-col gap-1">
-            <span className="break-all text-sm font-medium leading-5 text-white">
-              {rule.pattern}
-            </span>
-            <span className="text-xs leading-5 text-[#8b8b8b]">
-              {rule.type === "trusted" ? "Trusted" : "Forbidden"} -{" "}
-              {rule.reason}
-            </span>
-          </div>
-        </td>
-        <td className="p-2 text-xs leading-5 text-[#b2b2b2]">
-          {scopeLabel(rule.scope)}
-        </td>
-        <td className="p-2">
-          <StatusPill status={rule.status} />
-        </td>
-        <td className="p-2">
-          <div className="flex justify-end gap-1">
-            <button
-              aria-expanded={editing}
-              aria-label={`Edit ${labelPrefix}`}
-              className={iconButtonClass}
-              onClick={() => setEditing((current) => !current)}
-              type="button"
-            >
-              <Pencil aria-hidden className="size-4" />
-            </button>
-            {rule.status === "active" ? (
-              <form action={disableAdminSettingsUrlPolicyRuleAction}>
-                <input name="returnTo" type="hidden" value={returnTo} />
-                <input name="ruleId" type="hidden" value={rule.id} />
-                <button
-                  aria-label={`Disable ${labelPrefix}`}
-                  className={iconButtonClass}
-                  type="submit"
-                >
-                  <Shield aria-hidden className="size-4" />
-                </button>
-              </form>
-            ) : null}
-            <button
-              aria-label={`Delete ${labelPrefix}`}
-              className={cn(iconButtonClass, "text-[#ff595d]")}
-              onClick={onDelete}
-              type="button"
-            >
-              <Trash2 aria-hidden className="size-4" />
-            </button>
-          </div>
-        </td>
-      </tr>
-      {editing ? (
-        <tr className="border-b border-[#242424] bg-[#1d1d1d]">
-          <td className="px-2 py-3" colSpan={5}>
-            <form
-              action={updateAdminSettingsUrlPolicyRuleAction}
-              className="grid gap-2 sm:grid-cols-[1fr_1fr]"
-            >
-              <input name="returnTo" type="hidden" value={returnTo} />
-              <input name="ruleId" type="hidden" value={rule.id} />
-              <SettingsSelect
-                label={`Rule type for ${rule.pattern}`}
-                name="type"
-                value={rule.type}
-              >
-                <option className="bg-[#232323]" value="trusted">
-                  Trusted
-                </option>
-                <option className="bg-[#232323]" value="forbidden">
-                  Forbidden
-                </option>
-              </SettingsSelect>
-              <SettingsSelect
-                label={`Scope for ${rule.pattern}`}
-                name="scope"
-                value={rule.scope}
-              >
-                {urlPolicyScopes.map((scope) => (
-                  <option
-                    className="bg-[#232323]"
-                    key={scope.value}
-                    value={scope.value}
-                  >
-                    {scope.label}
-                  </option>
-                ))}
-              </SettingsSelect>
-              <SettingsSelect
-                label={`Status for ${rule.pattern}`}
-                name="status"
-                value={rule.status}
-              >
-                <option className="bg-[#232323]" value="active">
-                  Active
-                </option>
-                <option className="bg-[#232323]" value="disabled">
-                  Disabled
-                </option>
-              </SettingsSelect>
-              <SettingsTextField
-                defaultValue={rule.pattern}
-                label={`Pattern for ${rule.pattern}`}
-                name="pattern"
-                required
-              />
-              <div className="sm:col-span-2">
-                <SettingsTextField
-                  defaultValue={rule.reason}
-                  label={`Reason for ${rule.pattern}`}
-                  maxLength={500}
-                  minLength={3}
-                  name="reason"
-                  required
-                />
-              </div>
-              <div className="sm:col-span-2 flex justify-end">
-                <button className={primaryButtonClass} type="submit">
-                  Save rule
-                </button>
-              </div>
-            </form>
-          </td>
-        </tr>
-      ) : null}
-    </>
-  )
-}
-
-function DeleteUrlRuleDialog({
-  onCancel,
-  rule,
-}: {
-  onCancel: () => void
-  rule: AdminUrlPolicyRule
-}) {
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-      <dialog
-        aria-labelledby="delete-url-rule-title"
-        className="w-full max-w-[360px] rounded-lg border border-[#353535] bg-[#232323] p-3 shadow-2xl"
-        open
-      >
-        <h3
-          className="text-lg font-semibold leading-[22px] text-white"
-          id="delete-url-rule-title"
-        >
-          Delete URL rule?
-        </h3>
-        <p className="mt-2 text-sm leading-5 text-[#b2b2b2]">
-          This removes the rule from future policy decisions. The action cannot
-          be undone.
-        </p>
-        <p className="mt-2 break-all rounded-md bg-[#181818] p-2 text-xs leading-5 text-[#dfdfdf]">
-          {rule.pattern}
-        </p>
-        <div className="mt-3 flex justify-end gap-2">
-          <button
-            className={secondaryButtonClass}
-            onClick={onCancel}
-            type="button"
-          >
-            Cancel
-          </button>
-          <form action={deleteAdminSettingsUrlPolicyRuleAction}>
-            <input name="returnTo" type="hidden" value={returnTo} />
-            <input name="ruleId" type="hidden" value={rule.id} />
-            <button className={dangerButtonClass} type="submit">
-              Delete rule
-            </button>
-          </form>
-        </div>
-      </dialog>
     </div>
   )
 }
@@ -1277,35 +960,22 @@ function SettingsActionNotice({
   const message =
     settingsAction === "organizationSaved"
       ? { description: "Organization settings saved.", tone: "success" }
-      : settingsAction === "urlRuleCreated"
-        ? { description: "URL rule added.", tone: "success" }
-        : settingsAction === "urlRuleUpdated"
-          ? { description: "URL rule updated.", tone: "success" }
-          : settingsAction === "urlRuleDisabled"
-            ? { description: "URL rule disabled.", tone: "warning" }
-            : settingsAction === "urlRuleDeleted"
-              ? { description: "URL rule deleted.", tone: "danger" }
-              : settingsAction === "duplicateUrlRule"
-                ? {
-                    description: "A matching URL rule already exists.",
-                    tone: "warning",
-                  }
-                : settingsAction === "invalidLogo"
-                  ? {
-                      description: "Logo upload failed validation.",
-                      tone: "danger",
-                    }
-                  : settingsAction === "telemetryEnabled"
-                    ? { description: "Telemetry enabled.", tone: "success" }
-                    : settingsAction === "telemetryDisabled"
-                      ? {
-                          description: "Telemetry disabled.",
-                          tone: "warning",
-                        }
-                      : {
-                          description: "Settings action failed.",
-                          tone: "danger",
-                        }
+      : settingsAction === "invalidLogo"
+        ? {
+            description: "Logo upload failed validation.",
+            tone: "danger",
+          }
+        : settingsAction === "telemetryEnabled"
+          ? { description: "Telemetry enabled.", tone: "success" }
+          : settingsAction === "telemetryDisabled"
+            ? {
+                description: "Telemetry disabled.",
+                tone: "warning",
+              }
+            : {
+                description: "Settings action failed.",
+                tone: "danger",
+              }
 
   return (
     <ConsoleActionToasts
@@ -1367,13 +1037,18 @@ function SettingsTextField({
 }) {
   const inputClassName =
     "h-[43px] rounded-lg border border-[#353535] bg-[#232323] px-3 text-base font-medium leading-[19px] text-white placeholder:text-[#969696] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+  const inputId = `settings-${name}`
 
   return (
-    <label className="flex flex-col gap-2 text-base font-medium leading-[19px] text-white">
+    <label
+      className="flex flex-col gap-2 text-base font-medium leading-[19px] text-white"
+      htmlFor={inputId}
+    >
       <span>{label}</span>
       {onChange ? (
         <input
           className={inputClassName}
+          id={inputId}
           maxLength={maxLength}
           minLength={minLength}
           name={name}
@@ -1387,6 +1062,7 @@ function SettingsTextField({
         <input
           className={inputClassName}
           defaultValue={defaultValue}
+          id={inputId}
           maxLength={maxLength}
           minLength={minLength}
           name={name}
@@ -1414,14 +1090,19 @@ function SettingsSelect({
 }) {
   const selectClassName =
     "h-[43px] w-full appearance-none rounded-lg border border-[#353535] bg-[#232323] px-3 pr-8 text-base font-medium leading-[19px] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+  const selectId = `settings-${name}`
 
   return (
-    <label className="flex flex-col gap-2 text-base font-medium leading-[19px] text-white">
+    <label
+      className="flex flex-col gap-2 text-base font-medium leading-[19px] text-white"
+      htmlFor={selectId}
+    >
       <span>{label}</span>
       <span className="relative">
         {onChange ? (
           <select
             className={selectClassName}
+            id={selectId}
             name={name}
             onChange={onChange}
             value={value ?? ""}
@@ -1429,7 +1110,12 @@ function SettingsSelect({
             {children}
           </select>
         ) : (
-          <select className={selectClassName} defaultValue={value} name={name}>
+          <select
+            className={selectClassName}
+            defaultValue={value}
+            id={selectId}
+            name={name}
+          >
             {children}
           </select>
         )}
@@ -1471,26 +1157,7 @@ function PreviewTerm({
   )
 }
 
-function StatusPill({
-  status,
-}: {
-  status: "active" | "disabled"
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center rounded-full border px-2 text-xs font-medium leading-none",
-        status === "active"
-          ? "border-[#265d3b] bg-[#152c20] text-[#78d957]"
-          : "border-[#353535] bg-[#232323] text-[#8b8b8b]",
-      )}
-    >
-      {status === "active" ? "Active" : "Disabled"}
-    </span>
-  )
-}
-
-function ServiceStatus({ status }: { status: HubSourceStatus }) {
+function ServiceStatus({ status }: { status: InferenceCoreSourceStatus }) {
   return (
     <span className="inline-flex items-center gap-2 text-xs font-medium leading-5 text-[#b2b2b2]">
       <span
@@ -1565,12 +1232,6 @@ function readImageDimensions(
   image.src = url
 }
 
-function scopeLabel(scope: AdminUrlPolicyRuleScope): string {
-  return (
-    urlPolicyScopes.find((option) => option.value === scope)?.label ?? scope
-  )
-}
-
 function ownerLabel(
   section: AdminSettingsResponse["reachability"][number]["owningSection"],
   serviceId: AdminSettingsServiceId,
@@ -1593,7 +1254,7 @@ function ownerLabel(
   return "Settings"
 }
 
-function sourceStatusLabel(status: HubSourceStatus): string {
+function sourceStatusLabel(status: InferenceCoreSourceStatus): string {
   if (status === "ok") {
     return "Reachable"
   }
@@ -1676,5 +1337,3 @@ const secondaryButtonClass =
   "flex h-[30px] items-center justify-center rounded-md border border-[#353535] bg-transparent px-2.5 py-1.5 text-center text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#2e2e2e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
 const dangerButtonClass =
   "flex h-[30px] items-center justify-center rounded-md bg-[#321f20] px-2.5 py-1.5 text-center text-sm font-medium leading-[18px] text-[#ff595d] transition-colors hover:bg-[#432527] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-const iconButtonClass =
-  "grid size-[30px] place-items-center rounded-md border border-[#353535] bg-transparent text-white transition-colors hover:bg-[#2e2e2e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"

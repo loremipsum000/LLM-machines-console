@@ -1,12 +1,15 @@
 import type {
   AdminAuditEvent,
   AdminAuditResponse,
-  HubSeverity,
-} from "@llm-machines/contracts"
-import { personaCanAccess } from "@llm-machines/contracts"
+  InferenceCoreSeverity,
+} from "@llm-machines/contracts/inference-core"
 import type { Actor } from "../auth/persona"
 import type { AuditEventRecord } from "./audit"
-import { emitAudit, getRecentAuditEvents } from "./audit"
+import {
+  emitAudit,
+  getRecentAuditEvents,
+  sanitizeAuditMetadata,
+} from "./audit"
 
 export interface AdminAuditFilters {
   eventId?: string
@@ -20,13 +23,16 @@ export async function getAdminAuditTimeline(
   actor: Actor,
   filters: AdminAuditFilters = {},
 ): Promise<AdminAuditResponse> {
-  if (!personaCanAccess(actor.persona, "admin")) {
-    throw new Error("Admin audit requires admin persona.")
+  if (
+    actor.persona !== "admin" &&
+    !actor.roles.some((role) => role.toLowerCase() === "operator")
+  ) {
+    throw new Error("Admin audit requires Admin or Operator access.")
   }
 
   const generatedAt = new Date().toISOString()
   const normalizedQuery = normalizeQuery(filters.query)
-  const selectedEventId = normalizeQuery(filters.eventId)
+  const selectedEventId = normalizeEventId(filters.eventId)
   const limit = clampLimit(filters.limit)
   const allEvents = await getRecentAuditEvents(MAX_AUDIT_LOOKBACK)
   const events = allEvents
@@ -41,7 +47,6 @@ export async function getAdminAuditTimeline(
     targetId: selectedEventId ?? "timeline",
     metadata: {
       authMode: actor.authMode,
-      query: normalizedQuery,
       selectedEventId,
       returnedCount: events.length,
     },
@@ -71,6 +76,15 @@ export async function getAdminAuditTimeline(
 function normalizeQuery(value: string | undefined): string | null {
   const normalized = value?.trim()
   return normalized ? normalized : null
+}
+
+function normalizeEventId(value: string | undefined): string | null {
+  const normalized = normalizeQuery(value)
+  return normalized &&
+    normalized.length <= 128 &&
+    /^[a-z0-9][a-z0-9._:-]*$/i.test(normalized)
+    ? normalized
+    : null
 }
 
 function clampLimit(value: number | undefined): number {
@@ -122,7 +136,7 @@ function toAdminAuditEvent(event: AuditEventRecord): AdminAuditEvent {
   }
 }
 
-function auditSeverity(event: AuditEventRecord): HubSeverity {
+function auditSeverity(event: AuditEventRecord): InferenceCoreSeverity {
   const action = event.action.toLowerCase()
   if (
     action.includes("failed") ||
@@ -138,8 +152,7 @@ function auditSeverity(event: AuditEventRecord): HubSeverity {
 function metadataEntries(
   metadata: Record<string, unknown>,
 ): AdminAuditEvent["metadata"] {
-  return Object.entries(metadata)
-    .filter(([, value]) => value !== null && value !== undefined)
+  return Object.entries(sanitizeAuditMetadata(metadata))
     .slice(0, 6)
     .map(([label, value]) => ({
       label,
@@ -148,7 +161,9 @@ function metadataEntries(
 }
 
 function metadataValues(metadata: Record<string, unknown>): string[] {
-  return Object.values(metadata).map(stringifyMetadataValue)
+  return Object.values(sanitizeAuditMetadata(metadata)).map(
+    stringifyMetadataValue,
+  )
 }
 
 function stringifyMetadataValue(value: unknown): string {
@@ -158,5 +173,5 @@ function stringifyMetadataValue(value: unknown): string {
   if (typeof value === "number" || typeof value === "boolean") {
     return String(value)
   }
-  return JSON.stringify(value)
+  return ""
 }

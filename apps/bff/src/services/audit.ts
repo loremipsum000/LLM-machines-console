@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { desc } from "drizzle-orm"
-import { getDb } from "../db/client"
-import { auditEvents } from "../db/schema"
+import { getInferenceCoreDb } from "../db/inference-core-client"
+import { auditEvents } from "../db/inference-core-schema"
 
 export interface AuditEventRecord {
   id: string
@@ -26,16 +26,16 @@ export async function emitAudit(event: {
 }): Promise<AuditEventRecord> {
   const record: AuditEventRecord = {
     id: randomUUID(),
-    actorId: event.actorId,
-    action: event.action,
-    targetType: event.targetType,
-    targetId: event.targetId,
-    reason: event.reason,
-    metadata: event.metadata ?? {},
+    actorId: sanitizeAuditEnvelopeIdentifier(event.actorId),
+    action: sanitizeAuditEnvelopeIdentifier(event.action),
+    targetType: sanitizeAuditEnvelopeIdentifier(event.targetType),
+    targetId: sanitizeAuditEnvelopeIdentifier(event.targetId),
+    reason: sanitizeAuditReason(event.reason),
+    metadata: sanitizeAuditMetadata(event.metadata),
     createdAt: new Date().toISOString(),
   }
 
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (db) {
     await db.insert(auditEvents).values({
       id: record.id,
@@ -61,7 +61,7 @@ export function getAuditEventsForTest(): AuditEventRecord[] {
 export async function getRecentAuditEvents(
   limit = 10,
 ): Promise<AuditEventRecord[]> {
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (db) {
     const rows = await db
       .select()
@@ -69,19 +69,22 @@ export async function getRecentAuditEvents(
       .orderBy(desc(auditEvents.createdAt))
       .limit(limit)
 
-    return rows.map((row) => ({
-      id: row.id,
-      actorId: row.actorId,
-      action: row.action,
-      targetType: row.targetType,
-      targetId: row.targetId,
-      reason: row.reason ?? undefined,
-      metadata:
+    return rows.map((row) => {
+      const metadata =
         row.metadata && typeof row.metadata === "object"
           ? (row.metadata as Record<string, unknown>)
-          : {},
-      createdAt: row.createdAt.toISOString(),
-    }))
+          : undefined
+      return {
+        id: row.id,
+        actorId: sanitizeAuditEnvelopeIdentifier(row.actorId),
+        action: sanitizeAuditEnvelopeIdentifier(row.action),
+        targetType: sanitizeAuditEnvelopeIdentifier(row.targetType),
+        targetId: sanitizeAuditEnvelopeIdentifier(row.targetId),
+        reason: sanitizeAuditReason(row.reason ?? undefined),
+        metadata: sanitizeAuditMetadata(metadata),
+        createdAt: row.createdAt.toISOString(),
+      }
+    })
   }
 
   return [...memoryAuditEvents]
@@ -92,3 +95,109 @@ export async function getRecentAuditEvents(
 export function resetAuditEventsForTest(): void {
   memoryAuditEvents.length = 0
 }
+
+export function sanitizeAuditMetadata(
+  metadata: Record<string, unknown> | undefined,
+): Record<string, string | number | boolean> {
+  if (!metadata) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(metadata).flatMap(([key, value]) => {
+      if (!safeAuditMetadataKeys.has(key)) {
+        return []
+      }
+      const sanitized = sanitizeAuditMetadataValue(key, value)
+      return sanitized === null ? [] : [[key, sanitized]]
+    }),
+  )
+}
+
+function sanitizeAuditReason(reason: string | undefined): string | undefined {
+  const normalized = reason?.trim()
+  return normalized && retainedAuditReasonCodes.has(normalized)
+    ? normalized
+    : undefined
+}
+
+function sanitizeAuditEnvelopeIdentifier(value: string): string {
+  const normalized = value.trim()
+  return normalized.length <= 128 &&
+    /^[a-z0-9][a-z0-9._:-]*$/i.test(normalized)
+    ? normalized
+    : "redacted"
+}
+
+function sanitizeAuditMetadataValue(
+  key: string,
+  value: unknown,
+): string | number | boolean | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null
+  }
+  if (typeof value === "boolean") {
+    return value
+  }
+  if (typeof value !== "string") {
+    return null
+  }
+
+  const normalized = value.trim()
+  if (!normalized || normalized.length > 256) {
+    return null
+  }
+  if (
+    key === "route" &&
+    !/^\/[a-z0-9_/:.-]{1,255}$/i.test(normalized)
+  ) {
+    return null
+  }
+  return normalized
+}
+
+const safeAuditMetadataKeys = new Set([
+  "appId",
+  "applicationId",
+  "application_id",
+  "authMethod",
+  "authMode",
+  "clientId",
+  "completionTokens",
+  "correlationId",
+  "correlation_id",
+  "credentialId",
+  "credentialRecordId",
+  "credential_id",
+  "durationMs",
+  "keyId",
+  "keyPrefix",
+  "key_identifier",
+  "keycloakSubjectId",
+  "keycloak_subject_id",
+  "latencyMs",
+  "model",
+  "outcome",
+  "promptTokens",
+  "requestCount",
+  "returnedCount",
+  "route",
+  "selectedEventId",
+  "source",
+  "sourceSystem",
+  "status",
+  "statusCode",
+  "tokens",
+  "totalTokens",
+])
+
+const retainedAuditReasonCodes = new Set([
+  "adapter_blocked",
+  "insufficient_persona",
+  "invalid_forwarded_identity",
+  "invalid_forwarded_token",
+  "invalid_token",
+  "missing_token",
+  "not_available_or_unconfigured",
+  "unresolved_placeholder",
+])

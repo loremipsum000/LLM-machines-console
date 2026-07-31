@@ -1,8 +1,7 @@
 "use client"
 
-import { applyAdminInferenceModelUpdateAction } from "@/lib/admin/actions"
+import { applyAdminInferenceModelUpdateAction } from "@/lib/admin/actions-core"
 import { cn } from "@/lib/utils"
-import { ConsoleActionToasts } from "./action-toasts"
 import type {
   AdminInferenceDashboard,
   AdminInferenceModel,
@@ -11,11 +10,12 @@ import type {
   AdminInferenceRange,
   AdminInferenceUsagePoint,
   AdminInferenceVirtualKey,
-  HubSourceStatus,
-} from "@llm-machines/contracts"
+  InferenceCoreSourceStatus,
+} from "@llm-machines/contracts/inference-core"
 import { ArrowUpRight, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { useMemo, useState } from "react"
+import { ConsoleActionToasts } from "./action-toasts"
 
 const rangeOptions: Array<{ label: string; value: AdminInferenceRange }> = [
   { label: "7d", value: "7d" },
@@ -589,11 +589,11 @@ function AvailableModelsSection({
                   className="h-10 border-b border-[#242424] transition-colors hover:bg-[#202020]"
                   key={model.id}
                 >
-                  <td className="px-2">
-                    {String(index + 1).padStart(2, "0")}
-                  </td>
+                  <td className="px-2">{String(index + 1).padStart(2, "0")}</td>
                   <td className="truncate px-2">{model.name}</td>
-                  <td className="truncate px-2">{model.provider ?? "Unknown"}</td>
+                  <td className="truncate px-2">
+                    {model.provider ?? "Unknown"}
+                  </td>
                   <td className="px-2">
                     {model.contextWindow
                       ? formatNumber(model.contextWindow)
@@ -693,9 +693,7 @@ function VirtualKeysSection({
                         ? virtualKey.models.join(", ")
                         : "All allowed"}
                     </td>
-                    <td className="px-2 capitalize">
-                      {virtualKey.status}
-                    </td>
+                    <td className="px-2 capitalize">{virtualKey.status}</td>
                   </tr>
                 ))}
               </tbody>
@@ -737,7 +735,7 @@ function EmptyPanel({ message }: { message: string }) {
   )
 }
 
-function StatusDot({ status }: { status: HubSourceStatus }) {
+function StatusDot({ status }: { status: InferenceCoreSourceStatus }) {
   return (
     <>
       <span className="sr-only">Status: {status}</span>

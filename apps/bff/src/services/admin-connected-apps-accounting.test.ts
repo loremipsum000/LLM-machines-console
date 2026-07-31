@@ -1,7 +1,7 @@
 import type { SQL } from "drizzle-orm"
 import { PgDialect } from "drizzle-orm/pg-core"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { getDb } from "../db/client"
+import { getInferenceCoreDb } from "../db/inference-core-client"
 import {
   type ConnectedAppRuntimeIdentity,
   reconcileConnectedAppGatewayUsage,
@@ -9,8 +9,8 @@ import {
 } from "./admin-connected-apps"
 import { upsertActorUser } from "./users"
 
-vi.mock("../db/client", () => ({
-  getDb: vi.fn(),
+vi.mock("../db/inference-core-client", () => ({
+  getInferenceCoreDb: vi.fn(),
 }))
 
 vi.mock("./users", () => ({
@@ -23,7 +23,9 @@ const app: ConnectedAppRuntimeIdentity = {
   appName: "Accounting Test",
   authMethod: "api_key",
   clientId: "llmm_test",
+  credentialRecordId: "cak-accounting-test",
   environment: "staging",
+  keycloakSubjectId: null,
   rateLimitRpm: null,
   status: "enabled",
   tokenBudget7d: 100_000,
@@ -44,9 +46,9 @@ describe("connected app gateway accounting SQL", () => {
     const execute = vi.fn(async (_statement: unknown) => [
       { usage_summary: {} },
     ])
-    vi.mocked(getDb).mockReturnValue({
+    vi.mocked(getInferenceCoreDb).mockReturnValue({
       execute,
-    } as unknown as ReturnType<typeof getDb>)
+    } as unknown as ReturnType<typeof getInferenceCoreDb>)
     vi.mocked(upsertActorUser).mockResolvedValue({
       authMode: "service-forwarded",
       persona: "admin",
@@ -66,9 +68,9 @@ describe("connected app gateway accounting SQL", () => {
 
   it("binds the usage-reconciliation timestamp as an ISO string", async () => {
     const execute = vi.fn(async (_statement: unknown) => [])
-    vi.mocked(getDb).mockReturnValue({
+    vi.mocked(getInferenceCoreDb).mockReturnValue({
       execute,
-    } as unknown as ReturnType<typeof getDb>)
+    } as unknown as ReturnType<typeof getInferenceCoreDb>)
     vi.mocked(upsertActorUser).mockResolvedValue({
       authMode: "service-forwarded",
       persona: "admin",

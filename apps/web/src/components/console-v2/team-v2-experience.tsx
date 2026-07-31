@@ -1,6 +1,13 @@
 "use client"
 
-import Link from "next/link"
+import type {
+  AdminTeamCsvImportPreviewResponse,
+  AdminTeamGroup,
+  AdminTeamGroupDetail,
+  AdminTeamMember,
+  AdminTeamMemberDetail,
+  AdminTeamOverviewResponse,
+} from "@llm-machines/contracts/inference-core"
 import {
   ArrowLeft,
   ExternalLink,
@@ -10,16 +17,9 @@ import {
   Shield,
   Trash2,
 } from "lucide-react"
+import Link from "next/link"
 import { useActionState } from "react"
 import type { ReactNode } from "react"
-import type {
-  AdminTeamCsvImportPreviewResponse,
-  AdminTeamGroup,
-  AdminTeamGroupDetail,
-  AdminTeamMember,
-  AdminTeamMemberDetail,
-  AdminTeamOverviewResponse,
-} from "@llm-machines/contracts"
 
 const teamDateTimeFormatter = new Intl.DateTimeFormat("en", {
   dateStyle: "medium",
@@ -27,6 +27,8 @@ const teamDateTimeFormatter = new Intl.DateTimeFormat("en", {
   timeStyle: "short",
 })
 import {
+  type TeamCsvImportActionState,
+  type TeamMemberActionState,
   bulkAssignAdminTeamGroupMembersAction,
   commitAdminTeamCsvImportAction,
   createAdminTeamGroupAction,
@@ -35,16 +37,13 @@ import {
   deleteAdminTeamMemberAction,
   disableAdminTeamMemberAction,
   generateAdminTeamPasswordAction,
-  removeAdminTeamGroupMemberAction,
   previewAdminTeamCsvImportAction,
   reactivateAdminTeamMemberAction,
+  removeAdminTeamGroupMemberAction,
   sendAdminTeamInviteAction,
   sendAdminTeamPasswordResetAction,
-  updateAdminTeamBreakGlassAction,
   updateAdminTeamGroupAction,
-  type TeamCsvImportActionState,
-  type TeamMemberActionState,
-} from "@/lib/admin/actions"
+} from "@/lib/admin/actions-core"
 import { ConsoleActionToasts } from "./action-toasts"
 
 export type TeamView =
@@ -107,16 +106,13 @@ export function TeamV2Experience({
   }
 
   if (view === "manage-users") {
-    return <ManageUsersView members={overview.members} teamAction={teamAction} />
+    return (
+      <ManageUsersView members={overview.members} teamAction={teamAction} />
+    )
   }
 
   if (view === "member-detail") {
-    return (
-      <MemberDetailView
-        detail={detail ?? null}
-        teamAction={teamAction}
-      />
-    )
+    return <MemberDetailView detail={detail ?? null} teamAction={teamAction} />
   }
 
   return <TeamOverviewView overview={overview} teamAction={teamAction} />
@@ -205,7 +201,6 @@ function TeamOverviewView({
           >
             Identity controls
           </h2>
-          <BreakGlassInline breakGlass={overview.breakGlass} />
           {overview.scim.keycloakHref ? (
             <a
               className="inline-flex h-5 w-fit items-center gap-1 text-sm font-medium text-[#b2b2b2] transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
@@ -218,71 +213,6 @@ function TeamOverviewView({
             </a>
           ) : null}
         </section>
-      </div>
-    </div>
-  )
-}
-
-function BreakGlassInline({
-  breakGlass,
-}: {
-  breakGlass: AdminTeamOverviewResponse["breakGlass"]
-}) {
-  const selected = breakGlass.eligibleAdmins.find(
-    (admin) => admin.id === breakGlass.selectedAdminId,
-  )
-
-  return (
-    <div className="rounded-lg border border-[#353535] bg-[#232323] p-4">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="min-w-0">
-          <h3 className="text-base font-semibold leading-5 text-white">
-            Break-glass Admin
-          </h3>
-          <p className="mt-2 max-w-[420px] text-sm leading-5 text-[#b2b2b2]">
-            Protect one enabled Admin account from Console disable and delete
-            actions.
-          </p>
-          <p className="mt-2 text-xs font-medium leading-4 text-[#8f8f8f]">
-            Current: {selected?.displayName ?? "No Admin selected"}
-          </p>
-        </div>
-        {breakGlass.eligibleAdmins.length > 0 ? (
-          <form
-            action={updateAdminTeamBreakGlassAction}
-            className="flex w-full flex-col gap-3 md:w-[260px]"
-          >
-            <input name="returnTo" type="hidden" value="/team" />
-            <label className="grid gap-2 text-sm font-medium leading-5 text-[#d9d9d9]">
-              Admin
-              <select
-                className="h-11 rounded-md border border-[#353535] bg-[#181818] px-3 text-white outline-none focus:border-[#009fff]"
-                defaultValue={breakGlass.selectedAdminId ?? ""}
-                name="selectedAdminId"
-                required
-              >
-                <option disabled value="">
-                  Select Admin
-                </option>
-                {breakGlass.eligibleAdmins.map((admin) => (
-                  <option key={admin.id} value={admin.id}>
-                    {admin.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              className="h-10 rounded-md bg-[#2e2e2e] px-4 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-              type="submit"
-            >
-              Save
-            </button>
-          </form>
-        ) : (
-          <p className="rounded-md border border-[#353535] bg-[#181818] p-3 text-sm leading-5 text-[#b2b2b2]">
-            No enabled Admin users are available from Keycloak.
-          </p>
-        )}
       </div>
     </div>
   )
@@ -338,7 +268,7 @@ function GroupDetailView({
     )
   }
 
-  const { group, unlocks } = detail
+  const { group } = detail
   const assignableMembers = members.filter(
     (member) =>
       !detail.members.some((groupMember) => groupMember.id === member.id),
@@ -357,11 +287,15 @@ function GroupDetailView({
             </h2>
             <dl className="mt-5 grid gap-4 text-sm leading-5 md:grid-cols-2">
               <DetailItem label="Name" value={group.name} />
-              <DetailItem label="Members" value={group.memberCount.toString()} />
-              <DetailItem label="Unlocks" value={group.unlockCount.toString()} />
+              <DetailItem
+                label="Members"
+                value={group.memberCount.toString()}
+              />
               <DetailItem
                 label="Source"
-                value={group.virtual ? "Virtual Everyone group" : "Keycloak group"}
+                value={
+                  group.virtual ? "Virtual Everyone group" : "Keycloak group"
+                }
               />
             </dl>
           </div>
@@ -414,12 +348,6 @@ function GroupDetailView({
             </form>
           ) : null}
         </section>
-        <section className="rounded-lg border border-[#353535] bg-[#232323] p-5">
-          <h2 className="text-2xl font-semibold leading-none text-white">
-            Unlocks
-          </h2>
-          <UnlocksTable unlocks={unlocks} />
-        </section>
       </section>
     </div>
   )
@@ -434,8 +362,7 @@ function CsvImportView() {
     commitAdminTeamCsvImportAction,
     initialCsvImportState,
   )
-  const activeState =
-    commitState.status !== "idle" ? commitState : previewState
+  const activeState = commitState.status !== "idle" ? commitState : previewState
   const rows = activeState.preview?.rows ?? activeState.commit?.rows ?? []
   const canCommit = Boolean(activeState.preview?.valid && activeState.csv)
 
@@ -454,9 +381,9 @@ function CsvImportView() {
                 Import users
               </h2>
               <p className="mt-3 max-w-[620px] text-sm leading-5 text-[#b2b2b2]">
-                Upload a CSV with name, username, corporate email, group, role,
-                invite preference, and enabled state. Preview validates every row
-                before users are created in Keycloak.
+                Upload a CSV with name, username, company email, group, role,
+                invite preference, and enabled state. Preview validates every
+                row before users are created in Keycloak.
               </p>
             </div>
             <Link
@@ -574,7 +501,9 @@ function CsvImportRowsTable({
                 </span>
               </td>
               <td className="p-4 text-[#b2b2b2]">
-                {row.errors.length > 0 ? row.errors.join(" ") : row.actions.join(", ")}
+                {row.errors.length > 0
+                  ? row.errors.join(" ")
+                  : row.actions.join(", ")}
               </td>
             </tr>
           ))}
@@ -660,7 +589,10 @@ function ManageUsersTable({ members }: { members: AdminTeamMember[] }) {
                 </span>
               </td>
               <td className="p-4">
-                <UserLifecycleActions member={member} returnTo="/team/members" />
+                <UserLifecycleActions
+                  member={member}
+                  returnTo="/team/members"
+                />
               </td>
             </tr>
           ))}
@@ -745,11 +677,7 @@ function NewMemberView({ groups }: { groups: AdminTeamGroup[] }) {
           action={formAction}
           className="grid gap-5 rounded-lg border border-[#353535] bg-[#232323] p-5"
         >
-          <input
-            name="returnTo"
-            type="hidden"
-            value="/team/members/new"
-          />
+          <input name="returnTo" type="hidden" value="/team/members/new" />
           <div className="grid gap-4 md:grid-cols-2">
             <LabeledInput
               label="Name"
@@ -758,15 +686,14 @@ function NewMemberView({ groups }: { groups: AdminTeamGroup[] }) {
               required
             />
             <LabeledInput
-              label="Corporate email"
+              label="Company email"
               name="email"
               placeholder="ada@company.com"
               required
               type="email"
             />
             <LabeledSelect label="Role" name="role">
-              <option value="consumer">Consumer</option>
-              <option value="builder">Builder</option>
+              <option value="operator">Operator</option>
               <option value="admin">Admin</option>
             </LabeledSelect>
             <LabeledSelect defaultValue="" label="Group" name="groups" required>
@@ -785,7 +712,7 @@ function NewMemberView({ groups }: { groups: AdminTeamGroup[] }) {
             <code className="font-mono text-[#d9d9d9]">
               ada.lovelace.engineering
             </code>
-            , and can be used to log in alongside the corporate email address.
+            , and can be used to log in alongside the company email address.
           </p>
           {assignableGroups.length === 0 ? (
             <p className="rounded-md border border-[#5b4a20] bg-[#2c2718] px-4 py-3 text-sm font-medium leading-5 text-[#f2c94c]">
@@ -803,7 +730,11 @@ function NewMemberView({ groups }: { groups: AdminTeamGroup[] }) {
               Generate non-temporary password
             </label>
             <label className="flex items-center gap-3">
-              <input className="size-4 accent-[#009fff]" name="sendInvite" type="checkbox" />
+              <input
+                className="size-4 accent-[#009fff]"
+                name="sendInvite"
+                type="checkbox"
+              />
               Send invite email after user creation
             </label>
           </div>
@@ -858,10 +789,22 @@ function MemberDetailView({
               <DetailItem label="Username" value={member.username} />
               <DetailItem label="Email" value={member.email} />
               <DetailItem label="Role" value={capitalize(member.role)} />
-              <DetailItem label="Groups" value={member.groups.join(", ") || "Unassigned"} />
-              <DetailItem label="Status" value={member.enabled ? "Active" : "Disabled"} />
-              <DetailItem label="Last active" value={formatDateTime(member.lastActiveAt)} />
-              <DetailItem label="Created" value={formatDateTime(member.createdAt)} />
+              <DetailItem
+                label="Groups"
+                value={member.groups.join(", ") || "Unassigned"}
+              />
+              <DetailItem
+                label="Status"
+                value={member.enabled ? "Active" : "Disabled"}
+              />
+              <DetailItem
+                label="Last active"
+                value={formatDateTime(member.lastActiveAt)}
+              />
+              <DetailItem
+                label="Created"
+                value={formatDateTime(member.createdAt)}
+              />
             </dl>
           </div>
           <MemberActions member={member} />
@@ -870,11 +813,13 @@ function MemberDetailView({
           <h2 className="text-2xl font-semibold leading-none text-white">
             Usage summary
           </h2>
-          <div className="mt-5 grid gap-3 md:grid-cols-4">
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
             <Metric label="Prompts" value={usage.prompts.toLocaleString()} />
             <Metric label="Tokens" value={usage.tokens.toLocaleString()} />
-            <Metric label="Most used model" value={usage.mostUsedModel ?? "No data"} />
-            <Metric label="MCP calls" value={usage.mcpCalls.toLocaleString()} />
+            <Metric
+              label="Most used model"
+              value={usage.mostUsedModel ?? "No data"}
+            />
           </div>
         </section>
         <section className="rounded-lg border border-[#353535] bg-[#232323] p-5">
@@ -953,7 +898,10 @@ function MemberActions({
           <summary className="cursor-pointer text-sm font-semibold leading-5 text-[#ff6262]">
             Delete user
           </summary>
-          <form action={deleteAdminTeamMemberAction} className="mt-3 grid gap-3">
+          <form
+            action={deleteAdminTeamMemberAction}
+            className="mt-3 grid gap-3"
+          >
             <input name="memberId" type="hidden" value={member.id} />
             <input name="returnTo" type="hidden" value={returnTo} />
             <label className="grid gap-2 text-sm font-medium leading-5 text-[#d9d9d9]">
@@ -1053,7 +1001,7 @@ function GroupsList({ groups }: { groups: AdminTeamGroup[] }) {
               {group.name}
             </span>
             <span className="text-sm leading-5 text-[#b2b2b2]">
-              {group.memberCount} members, {group.unlockCount} unlocks
+              {group.memberCount} members
             </span>
           </Link>
           {index < list.length - 1 ? (
@@ -1174,9 +1122,7 @@ function GroupMembersTable({
             <tr key={member.id}>
               <td className="p-4">{member.displayName}</td>
               <td className="p-4 text-[#d9d9d9]">{member.username}</td>
-              <td className="p-4 text-[#d9d9d9]">
-                {capitalize(member.role)}
-              </td>
+              <td className="p-4 text-[#d9d9d9]">{capitalize(member.role)}</td>
               <td className="p-4">
                 {!group.virtual ? (
                   <form action={removeAdminTeamGroupMemberAction}>
@@ -1197,52 +1143,6 @@ function GroupMembersTable({
                 ) : (
                   <span className="text-[#8f8f8f]">Virtual</span>
                 )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function UnlocksTable({
-  unlocks,
-}: {
-  unlocks: AdminTeamGroupDetail["unlocks"]
-}) {
-  if (unlocks.length === 0) {
-    return (
-      <p className="mt-5 text-sm leading-5 text-[#b2b2b2]">
-        This group does not unlock any corpora or admin-created MCP servers yet.
-      </p>
-    )
-  }
-
-  return (
-    <div className="mt-5 overflow-hidden rounded-md border border-[#353535]">
-      <table className="w-full border-collapse text-left">
-        <thead className="border-b border-[#353535] text-xs uppercase leading-none tracking-[0.08em] text-[#8f8f8f]">
-          <tr>
-            <th className="px-4 py-3 font-semibold">Resource</th>
-            <th className="px-4 py-3 font-semibold">Type</th>
-            <th className="px-4 py-3 font-semibold">Open</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[#353535] text-sm leading-5 text-white">
-          {unlocks.map((unlock) => (
-            <tr key={`${unlock.type}-${unlock.id}`}>
-              <td className="p-4">{unlock.name}</td>
-              <td className="p-4 text-[#d9d9d9]">
-                {unlock.type === "corpus" ? "Corpus" : "MCP server"}
-              </td>
-              <td className="p-4">
-                <Link
-                  className="font-semibold text-white underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                  href={unlock.href}
-                >
-                  Open
-                </Link>
               </td>
             </tr>
           ))}
@@ -1395,9 +1295,7 @@ function SubpageHeader({ title }: { title: string }) {
         {trail && trail !== title ? (
           <span className="flex items-center gap-2">
             <span className="text-sm font-medium text-[#8b8b8b]">{">"}</span>
-            <span className="text-sm font-medium text-[#fdfdfd]">
-              {trail}
-            </span>
+            <span className="text-sm font-medium text-[#fdfdfd]">{trail}</span>
           </span>
         ) : null}
       </h1>
@@ -1490,7 +1388,9 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="text-xs font-semibold uppercase leading-none tracking-[0.08em] text-[#8f8f8f]">
         {label}
       </p>
-      <p className="mt-3 text-xl font-semibold leading-none text-white">{value}</p>
+      <p className="mt-3 text-xl font-semibold leading-none text-white">
+        {value}
+      </p>
     </div>
   )
 }
@@ -1549,10 +1449,6 @@ function formatTeamAction(
       tone: "success",
     },
     groupUpdated: { description: "Team group updated.", tone: "success" },
-    breakGlassUpdated: {
-      description: "Break-glass Admin updated.",
-      tone: "success",
-    },
     inviteSent: { description: "Invite email sent.", tone: "success" },
     missingSelection: {
       description: "Select at least one user first.",

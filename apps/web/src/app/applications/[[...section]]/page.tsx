@@ -1,7 +1,7 @@
 import {
   type ConsoleV2SearchParams,
   renderApplicationsConsoleRoute,
-} from "@/lib/admin/console-v2-routes"
+} from "@/lib/admin/console-v2-routes-core"
 
 export const dynamic = "force-dynamic"
 

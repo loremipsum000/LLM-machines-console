@@ -83,6 +83,32 @@ protected-guard file change fails. Planned edits, route additions, and moves
 require a visible, reviewed contract revision before their implementation is
 admitted.
 
+PR-02 uses one fixed revision at
+`contract-revisions/PR-02.json`. The revision binds the exact integration-base
+commit and tree, policy digests, forbidden-finding reductions,
+protected-file changes, route inventory, registrar inventory, Web inference
+consumers, production source closure, the repository-wide Git path/blob delta,
+legacy escape hatches, and the hashes of the PR-02 decision and boundary-test
+evidence. Regenerate it only after the implementation is stable and every
+tracked candidate change has been staged:
+
+```text
+node scripts/inference-core/pr02-contract-revision.mjs --write
+```
+
+The generator accepts no alternate base, revision ID, output path, or evidence
+list, and it runs only while `HEAD` is the exact PR-02 integration base. It
+precomputes all three outputs and replaces each file atomically with rollback
+on a failed transaction. Verification rejects missing cached blobs and any
+tracked index/worktree mismatch, recomputes the document from the integration
+base and candidate tree, requires the revision history fingerprint to match,
+and keeps the public inference target, resolver fingerprints, and reviewed Web
+authentication boundary unchanged. PR-02 can only remove routes, registrars,
+and Web inference consumers; its production-source and repository-wide edits
+are constrained to explicit path matrices in the guard. Reviewed PR-02
+evidence is protected and rehashed on later comparisons. The ordinary
+shrink-only comparison applies again when no new reviewed revision is present.
+
 The root `test` command runs the base comparison before any workspace tests.
 Core workspace membership and each Core package build, typecheck, and test
 script are exact-locked. Their pre- and post-lifecycle companions are
@@ -92,9 +118,10 @@ intended package command.
 The filtered Core build contains Contracts, Copy, BFF, and Web. It removes
 Agentic-related environment variables from the child process and excludes
 the separate legacy Agentic adapter and reranker workspaces. Eight legacy
-Agentic BFF routes still exist and remain frozen for removal in the next
-packages, so this is dependency-lane evidence rather than final Core
-independence.
+Agentic BFF route implementations still exist as unregistered legacy source
+scheduled for removal in PR-03. They are not part of the retained runtime
+registrar inventory, so this remains dependency-lane evidence rather than
+final source-tree independence.
 
 The Core build and typecheck runner forwards only basic process paths and
 locale values. Product credentials, cloud tokens, service configuration, and
