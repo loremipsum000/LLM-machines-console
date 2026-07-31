@@ -104,7 +104,7 @@ describe("Firecrawl gateway runtime adapters", () => {
     }
   })
 
-  it("bounds and clears timers for never-resolving cancellation settlements", async () => {
+  it("does not overlap retries with a timed-out cancellation settlement", async () => {
     vi.useFakeTimers()
     try {
       const controller = new AbortController()
@@ -135,8 +135,53 @@ describe("Firecrawl gateway runtime adapters", () => {
         ok: false,
         reason: "unavailable",
       })
-      expect(settle).toHaveBeenCalledTimes(3)
-      expect(Date.now() - startedAt).toBe(825)
+      expect(settle).toHaveBeenCalledTimes(1)
+      expect(Date.now() - startedAt).toBe(250)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not retry after a timed-out cancellation settlement succeeds late", async () => {
+    vi.useFakeTimers()
+    try {
+      const controller = new AbortController()
+      const settle = vi.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            setTimeout(() => resolve(true), 300)
+          }),
+      )
+      const options = firecrawlGatewayOptionsFromRuntime(
+        services({
+          admit: async () => {
+            controller.abort(new Error("cancelled"))
+            return { admissionId: "admission-late-success", ok: true }
+          },
+          settle,
+        }),
+      )
+      if (!options.admission) {
+        throw new Error("Admission adapter is missing.")
+      }
+
+      const admission = options.admission.admit({
+        correlationId: "request-late-success",
+        identity,
+        operation: "search",
+        signal: controller.signal,
+      })
+      await vi.advanceTimersByTimeAsync(250)
+
+      await expect(admission).resolves.toEqual({
+        ok: false,
+        reason: "unavailable",
+      })
+      expect(settle).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(50)
+      expect(settle).toHaveBeenCalledTimes(1)
       expect(vi.getTimerCount()).toBe(0)
     } finally {
       vi.useRealTimers()

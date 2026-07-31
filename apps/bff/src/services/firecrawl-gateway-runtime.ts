@@ -18,6 +18,8 @@ const CANCELLED_ADMISSION_SETTLEMENT_MAX_ATTEMPTS = 3
 const CANCELLED_ADMISSION_SETTLEMENT_ATTEMPT_DEADLINE_MS = 250
 const CANCELLED_ADMISSION_SETTLEMENT_RETRY_DELAY_MS = 25
 
+type CancelledAdmissionSettlementAttempt = "failed" | "succeeded" | "timed_out"
+
 export interface FirecrawlGatewayRuntimeServices {
   admit(input: {
     correlationId: string
@@ -135,7 +137,8 @@ async function settleCancelledAdmissionWithRetry(
     attempt <= CANCELLED_ADMISSION_SETTLEMENT_MAX_ATTEMPTS;
     attempt += 1
   ) {
-    if (await settleCancelledAdmissionAttempt(services, settlement)) {
+    const result = await settleCancelledAdmissionAttempt(services, settlement)
+    if (result === "succeeded" || result === "timed_out") {
       return
     }
     if (attempt < CANCELLED_ADMISSION_SETTLEMENT_MAX_ATTEMPTS) {
@@ -152,14 +155,19 @@ async function settleCancelledAdmissionWithRetry(
 async function settleCancelledAdmissionAttempt(
   services: FirecrawlGatewayRuntimeServices,
   settlement: ConnectedAppFirecrawlSettlementInput,
-): Promise<boolean> {
+): Promise<CancelledAdmissionSettlementAttempt> {
   let timeout: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
-      services.settle(settlement).catch(() => false),
-      new Promise<false>((resolve) => {
+      services
+        .settle(settlement)
+        .then<CancelledAdmissionSettlementAttempt>((settled) =>
+          settled ? "succeeded" : "failed",
+        )
+        .catch(() => "failed" as const),
+      new Promise<CancelledAdmissionSettlementAttempt>((resolve) => {
         timeout = setTimeout(
-          () => resolve(false),
+          () => resolve("timed_out"),
           CANCELLED_ADMISSION_SETTLEMENT_ATTEMPT_DEADLINE_MS,
         )
       }),

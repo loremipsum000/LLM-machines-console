@@ -383,7 +383,7 @@
         "after": [
           {
             "path": "apps/bff/src/services/firecrawl-gateway-runtime.ts",
-            "sha256": "098ba03c5f2525acc2e6ba4a79567f0a9b4222f8413e829581f0357ff71f15f2"
+            "sha256": "7bf20250349cf3640f13e30356d05f6556173cc88baacbbdb1106e51dfd336fa"
           }
         ]
       },
@@ -737,7 +737,7 @@
           {
             "path": "apps/bff/src/services/firecrawl-gateway-runtime.test.ts",
             "mode": "100644",
-            "objectId": "5a9a639d158561647f054a4d975b4eafc73ed4d0"
+            "objectId": "4f0ca24b7f7636870c65f3b6631d480add7a00e8"
           }
         ]
       },
@@ -748,7 +748,7 @@
           {
             "path": "apps/bff/src/services/firecrawl-gateway-runtime.ts",
             "mode": "100644",
-            "objectId": "f24b243565301c7f6b598335cdfb46d53d68461e"
+            "objectId": "5853aa097874da2c43172d19daffc3a751cb767d"
           }
         ]
       },
