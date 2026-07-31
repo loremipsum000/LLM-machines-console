@@ -113,15 +113,15 @@ describe("Connected app gateway routes", () => {
     expect(auditText).toContain("connected_app.gateway.chat_completions")
     expect(gatewayEvents).toHaveLength(2)
     for (const event of gatewayEvents) {
-      expect(event.actorId).toBe(event.metadata.credentialRecordId)
+      expect(event.actorId).toBe("system")
       expect(event.metadata).toMatchObject({
         applicationId: created.app.id,
-        authMethod: "api_key",
         correlationId: expect.any(String),
         credentialRecordId: expect.stringMatching(/^cak-/),
         outcome: "succeeded",
         sourceSystem: "console",
       })
+      expect(event.metadata).not.toHaveProperty("authMethod")
     }
     expect(
       auditEvents.find(
@@ -131,9 +131,7 @@ describe("Connected app gateway routes", () => {
       actorId: "admin-1",
       metadata: {
         applicationId: created.app.id,
-        authMethod: "api_key",
         credentialRecordId: expect.stringMatching(/^cak-/),
-        keyPrefix: created.credential.keyPrefix,
         keycloakSubjectId: "admin-1",
       },
     })
@@ -479,7 +477,6 @@ describe("Connected app gateway routes", () => {
       actorId: `fixture-subject:${created.credential.clientId}`,
       metadata: {
         applicationId: created.app.id,
-        authMethod: "oauth_client_credentials",
         correlationId: expect.any(String),
         credentialRecordId: expect.any(String),
         keycloakSubjectId: `fixture-subject:${created.credential.clientId}`,
@@ -495,7 +492,6 @@ describe("Connected app gateway routes", () => {
       actorId: "admin-1",
       metadata: {
         applicationId: created.app.id,
-        authMethod: "oauth_client_credentials",
         credentialRecordId: expect.any(String),
         keycloakSubjectId: "admin-1",
       },
@@ -549,9 +545,7 @@ describe("Connected app gateway routes", () => {
       actorId: "admin-1",
       metadata: {
         applicationId: created.app.id,
-        authMethod: "api_key",
         credentialRecordId: expect.stringMatching(/^cak-/),
-        keyPrefix: created.credential.keyPrefix,
         keycloakSubjectId: "admin-1",
       },
     })
@@ -584,7 +578,7 @@ describe("Connected app gateway routes", () => {
     await server.close()
   })
 
-  it("rejects rotated static API keys and accepts the replacement key", async () => {
+  it("keeps rotated static API keys usable during the overlap window", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("BFF_FALLBACK_MODELS", "local-a")
     const server = buildServer()
@@ -616,23 +610,17 @@ describe("Connected app gateway routes", () => {
       credential: expect.objectContaining({ authMethod: "api_key" }),
       status: "rotated",
     })
-    expect(oldKeyResponse.statusCode).toBe(401)
-    expect(oldKeyResponse.json()).toMatchObject({
-      title: "Invalid connected app token",
-    })
+    expect(oldKeyResponse.statusCode).toBe(200)
     expect(newKeyResponse.statusCode).toBe(200)
     expect(
       getAuditEventsForTest().find(
-        (event) =>
-          event.action === "admin.connected_app.credentials_rotated",
+        (event) => event.action === "admin.connected_app.credentials_rotated",
       ),
     ).toMatchObject({
       actorId: "admin-1",
       metadata: {
         applicationId: created.app.id,
-        authMethod: "api_key",
         credentialRecordId: expect.stringMatching(/^cak-/),
-        keyPrefix: rotated.json().credential.keyPrefix,
         keycloakSubjectId: "admin-1",
       },
     })
@@ -732,7 +720,7 @@ describe("Connected app gateway routes", () => {
     await server.close()
   })
 
-  it("enforces request and token limits before forwarding app traffic", async () => {
+  it("enforces RPM and fails closed for unqualified token budgets", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     vi.stubEnv("LITELLM_URL", "http://litellm.test")
@@ -753,7 +741,7 @@ describe("Connected app gateway routes", () => {
     const server = buildServer()
     const rateLimitedApp = await createApp(server, ["local-a"], {
       rateLimitRpm: 1,
-      tokenBudget7d: 500_000,
+      tokenBudget7d: null,
     })
     const rateLimitedToken = bearerForCredential(rateLimitedApp.credential)
 
@@ -804,10 +792,15 @@ describe("Connected app gateway routes", () => {
     expect(first.statusCode).toBe(200)
     expect(rateLimited.statusCode).toBe(429)
     expect(rateLimited.json()).toMatchObject({ title: "Rate limit exceeded" })
-    expect(budgetPrimer.statusCode).toBe(200)
-    expect(overBudget.statusCode).toBe(429)
-    expect(overBudget.json()).toMatchObject({ title: "Token budget exceeded" })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(budgetPrimer.statusCode).toBe(503)
+    expect(budgetPrimer.json()).toMatchObject({
+      title: "Token budget enforcement not qualified",
+    })
+    expect(overBudget.statusCode).toBe(503)
+    expect(overBudget.json()).toMatchObject({
+      title: "Token budget enforcement not qualified",
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
     await server.close()
   })
 
@@ -864,7 +857,7 @@ describe("Connected app gateway routes", () => {
     await server.close()
   })
 
-  it("does not exceed token budget under concurrent connected-app completions", async () => {
+  it("does not forward concurrent traffic with an unqualified token budget", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     vi.stubEnv("LITELLM_URL", "http://litellm.test")
@@ -917,13 +910,13 @@ describe("Connected app gateway routes", () => {
     })
 
     expect(responses.map((response) => response.statusCode).sort()).toEqual([
-      200, 429,
+      503, 503,
     ])
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(detailResponse.json().app.usage).toMatchObject({
-      failures7d: 1,
+      failures7d: 2,
       requests7d: 2,
-      tokens7d: 4,
+      tokens7d: 0,
     })
     await server.close()
   })
@@ -958,69 +951,7 @@ describe("Connected app gateway routes", () => {
     await secondServer.close()
   })
 
-  it("fails closed for rate-limited production apps when Redis is unavailable", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("LITELLM_URL", "http://litellm.test")
-    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
-    const fetchMock = vi.fn<typeof fetch>()
-    vi.stubGlobal("fetch", fetchMock)
-    const server = buildServer()
-    const created = await createApp(server, ["local-a"], {
-      rateLimitRpm: 1,
-      tokenBudget7d: null,
-    })
-    const token = bearerForCredential(created.credential)
-    vi.stubEnv("BFF_FIXTURE_MODE", "false")
-    vi.stubEnv("NODE_ENV", "production")
-    vi.stubEnv("REDIS_URL", "")
-
-    const response = await server.inject({
-      method: "GET",
-      url: "/api/app-gateway/v1/models",
-      headers: { authorization: `Bearer ${token}` },
-    })
-
-    expect(response.statusCode).toBe(503)
-    expect(response.json()).toMatchObject({
-      title: "Rate limit backend unavailable",
-    })
-    expect(fetchMock).not.toHaveBeenCalled()
-    await server.close()
-  })
-
-  it("allows production apps without rate limits when Redis is unavailable", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("LITELLM_URL", "http://litellm.test")
-    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
-      Response.json({
-        data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
-        object: "list",
-      }),
-    )
-    vi.stubGlobal("fetch", fetchMock)
-    const server = buildServer()
-    const created = await createApp(server, ["local-a"], {
-      rateLimitRpm: null,
-      tokenBudget7d: null,
-    })
-    const token = bearerForCredential(created.credential)
-    vi.stubEnv("BFF_FIXTURE_MODE", "false")
-    vi.stubEnv("NODE_ENV", "production")
-    vi.stubEnv("REDIS_URL", "")
-
-    const response = await server.inject({
-      method: "GET",
-      url: "/api/app-gateway/v1/models",
-      headers: { authorization: `Bearer ${token}` },
-    })
-
-    expect(response.statusCode).toBe(200)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    await server.close()
-  })
-
-  it("releases reserved token budget when the upstream completion fails", async () => {
+  it("records known usage when token limits are disabled", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     vi.stubEnv("LITELLM_URL", "http://litellm.test")
@@ -1044,7 +975,7 @@ describe("Connected app gateway routes", () => {
     const server = buildServer()
     const created = await createApp(server, ["local-a"], {
       rateLimitRpm: 10,
-      tokenBudget7d: 4,
+      tokenBudget7d: null,
     })
     const token = bearerForCredential(created.credential)
     const payload = {

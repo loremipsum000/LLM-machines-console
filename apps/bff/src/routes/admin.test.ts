@@ -52,15 +52,13 @@ describe("Inference Core Admin routes", () => {
 
     expect(unauthenticated.statusCode).toBe(401)
     expect(wrongRole.statusCode).toBe(401)
+    expect(getAuditEventsForTest()).toHaveLength(2)
     expect(getAuditEventsForTest()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           action: "auth.denied",
-          reason: "missing_token",
-        }),
-        expect.objectContaining({
-          action: "auth.denied",
-          reason: "invalid_forwarded_identity",
+          outcome: "denied",
+          sourceSystem: "console",
         }),
       ]),
     )
@@ -205,6 +203,11 @@ describe("Inference Core Admin routes", () => {
       url: "/api/admin/team",
       headers: adminHeaders,
     })
+    const operator = await server.inject({
+      method: "GET",
+      url: "/api/admin/team/members/operator-1",
+      headers: adminHeaders,
+    })
     const unclassified = await server.inject({
       method: "GET",
       url: "/api/admin/team/members/unclassified-1",
@@ -218,65 +221,126 @@ describe("Inference Core Admin routes", () => {
         "idempotency-key": "last-operator-disable",
       },
     })
+    const disableReplay = await server.inject({
+      method: "POST",
+      url: "/api/admin/team/members/operator-1/disable",
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "last-operator-disable",
+      },
+    })
 
     expect(overview.statusCode).toBe(200)
     expect(overview.json()).not.toHaveProperty("breakGlass")
     expect(overview.json().members).toEqual([
       expect.objectContaining({ id: "operator-1", role: "operator" }),
     ])
+    expect(operator.statusCode).toBe(200)
+    expect(operator.json().usage).toEqual({
+      mostUsedModel: null,
+      prompts: 0,
+      sourceStatus: "not_configured",
+      tokens: 0,
+      window: "30d",
+    })
+    expect(JSON.stringify(getAuditEventsForTest())).not.toMatch(
+      /model|promptTokens|totalTokens/,
+    )
     expect(unclassified.statusCode).toBe(409)
     expect(unclassified.json().detail).toMatch(/explicit Admin or Operator/)
     expect(disable.statusCode).toBe(409)
     expect(disable.json().detail).toMatch(/last enabled Operator/)
+    expect(disableReplay.statusCode).toBe(409)
+    expect(disableReplay.json()).toMatchObject({
+      outcome: "failed",
+      status: "already_completed",
+    })
     expect(mutations).toEqual([])
     await server.close()
   })
 
-  it("sanitizes audit persistence and never retains audit search terms", async () => {
+  it("requires reconciliation when a failed Team mutation cannot finalize its receipt", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    await emitAudit({
-      actorId: "person@example.test",
-      action: "gateway.request.completed",
-      targetType: "application.request",
-      targetId: "Bearer secret header",
-      reason: "shortsecret",
-      metadata: {
-        appId: "app-1",
-        authMethod: "api_key",
-        clientId: "client-1",
-        correlationId: "correlation-1",
-        credentialId: "credential-1",
-        keycloakSubjectId: "subject-1",
-        latencyMs: 12,
-        route: "/api/app-gateway/v1/models",
-        statusCode: 200,
-        tokens: 42,
-        prompt: "private prompt",
-        response: "private response",
-        query: "private search terms",
-        username: "private-user",
-        email: "private@example.test",
-        headers: { authorization: "Bearer private" },
-        arbitrary: { nested: "private" },
+    stubKeycloakAdminEnv()
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (input) => {
+        const url = new URL(input.toString())
+        if (url.pathname.endsWith("/protocol/openid-connect/token")) {
+          return jsonResponse({ access_token: "admin-token", expires_in: 60 })
+        }
+        if (url.pathname.endsWith("/users") && url.searchParams.has("max")) {
+          resetIdempotencyForTest()
+          return jsonResponse([keycloakUser("operator-1", "operator")])
+        }
+        if (url.pathname.includes("/groups")) {
+          return jsonResponse([])
+        }
+        if (url.pathname.endsWith("/role-mappings/realm")) {
+          return jsonResponse([{ id: "role-operator", name: "operator" }])
+        }
+        return jsonResponse({})
+      }),
+    )
+    const server = buildServer()
+
+    const response = await server.inject({
+      method: "POST",
+      url: "/api/admin/team/members/operator-1/disable",
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "lost-team-failure-receipt",
       },
     })
 
+    expect(response.statusCode).toBe(503)
+    expect(response.json()).toMatchObject({
+      status: 503,
+      title: "Idempotency completion unavailable",
+    })
+    expect(response.json().detail).toMatch(/Reconcile the resource/)
+    await server.close()
+  })
+
+  it("rejects disallowed audit fields and never retains audit search terms", async () => {
+    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+    const disallowedEvent = {
+      action: "gateway.request.completed",
+      correlationId: "correlation-rejected",
+      outcome: "succeeded",
+      prompt: "private prompt",
+      sourceSystem: "console",
+    } as const
+    await expect(emitAudit(disallowedEvent)).rejects.toThrow(
+      /unsupported field prompt/,
+    )
+
+    await emitAudit({
+      action: "gateway.request.completed",
+      applicationId: "app-1",
+      correlationId: "correlation-1",
+      credentialRecordId: "credential-1",
+      keycloakSubjectId: "subject-1",
+      outcome: "succeeded",
+      sourceSystem: "console",
+    })
+
     expect(getAuditEventsForTest()[0]).toMatchObject({
-      actorId: "redacted",
-      targetId: "redacted",
-      reason: undefined,
+      action: "gateway.request.completed",
+      applicationId: "app-1",
+      correlationId: "correlation-1",
+      credentialRecordId: "credential-1",
+      keycloakSubjectId: "subject-1",
       metadata: {
-        appId: "app-1",
-        authMethod: "api_key",
-        clientId: "client-1",
+        applicationId: "app-1",
         correlationId: "correlation-1",
-        credentialId: "credential-1",
+        credentialRecordId: "credential-1",
         keycloakSubjectId: "subject-1",
-        latencyMs: 12,
-        route: "/api/app-gateway/v1/models",
-        statusCode: 200,
-        tokens: 42,
+        outcome: "succeeded",
+        sourceSystem: "console",
       },
+      outcome: "succeeded",
+      sourceSystem: "console",
     })
 
     const server = buildServer()
@@ -288,7 +352,7 @@ describe("Inference Core Admin routes", () => {
     expect(response.statusCode).toBe(200)
     expect(response.json().query).toBe("private search terms")
     expect(JSON.stringify(getAuditEventsForTest())).not.toMatch(
-      /private prompt|private response|private search terms|private-user|private@example|Bearer private/,
+      /private prompt|private search terms/,
     )
     await server.close()
   })

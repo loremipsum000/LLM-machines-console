@@ -30,4 +30,11 @@ The BFF does not retain prompts, responses, chat history, or tool arguments.
 Audit records retain only the metadata needed to attribute and operate
 application requests.
 
-Redis remains a compatibility dependency for idempotency and rate limiting.
+PostgreSQL coordinates metadata-only idempotency, Application rate limits, and
+usage accounting across BFF instances.
+
+Requests-per-minute limits are enforced when configured. A non-null seven-day
+token limit currently fails closed with HTTP 503: qualified total-token
+admission and streaming reconciliation are deferred to the gateway
+qualification work. With the token limit disabled, the BFF records only known
+upstream usage totals.

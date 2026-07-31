@@ -5,12 +5,12 @@ import {
   isChatCompletionsBody,
 } from "../inference/chat-completions"
 import {
-  type ConnectedAppGatewayReservation,
+  type ConnectedAppGatewayUsageContext,
   type ConnectedAppRuntimeIdentity,
+  admitConnectedAppGatewayUsage,
   consumeConnectedAppGatewayRateLimit,
   reconcileConnectedAppGatewayUsage,
   recordConnectedAppGatewayUsage,
-  reserveConnectedAppGatewayTokens,
   resolveConnectedAppRuntimeIdentity,
   resolveConnectedAppRuntimeIdentityByApiKey,
 } from "../services/admin-connected-apps"
@@ -22,8 +22,6 @@ import {
   isStreamingChatCompletionsRequest,
   parseOpenAIUsageTokens,
 } from "../services/litellm-chat-transport"
-
-const DEFAULT_TOKEN_RESERVATION = 2048
 
 export function registerAppGatewayRoutes(server: FastifyInstance): void {
   server.get("/api/app-gateway/v1/models", async (request, reply) => {
@@ -258,35 +256,32 @@ async function proxyChatCompletions(
   }
 
   const startedAt = Date.now()
-  let reservation: Awaited<ReturnType<typeof reserveConnectedAppGatewayTokens>>
+  let admission: Awaited<ReturnType<typeof admitConnectedAppGatewayUsage>>
   try {
-    reservation = await reserveConnectedAppGatewayTokens(
-      app,
-      estimateTokenReservation(body),
-    )
-  } catch (error) {
-    logGatewayAccountingFailure(request, app, "reserve", error)
+    admission = await admitConnectedAppGatewayUsage(app)
+  } catch {
+    logGatewayAccountingFailure(request, app, "admit")
     return sendGatewayProblem(
       reply,
       503,
       "Connected app accounting unavailable",
-      "The connected app request could not reserve its token budget. Retry later.",
+      "The connected app request could not establish usage accounting. Retry later.",
       "accounting_unavailable",
     )
   }
-  if (!reservation.ok) {
+  if (!admission.ok) {
     await safelyAuditGatewayRequest(request, app, {
       latencyMs: 0,
       model: body.model,
       route: "chat_completions",
-      status: reservation.status,
+      status: admission.status,
       tokens: 0,
     })
     return sendGatewayProblem(
       reply,
-      reservation.status,
-      reservation.title,
-      reservation.detail,
+      admission.status,
+      admission.title,
+      admission.detail,
     )
   }
   const controller = new AbortController()
@@ -307,7 +302,7 @@ async function proxyChatCompletions(
         status: 502,
         tokens: 0,
       },
-      reservation.reservation,
+      admission.context,
     )
     return sendGatewayProblem(
       reply,
@@ -329,7 +324,7 @@ async function proxyChatCompletions(
         status: upstream.status,
         tokens: 0,
       },
-      reservation.reservation,
+      admission.context,
     )
     return sendGatewayProblem(
       reply,
@@ -352,7 +347,7 @@ async function proxyChatCompletions(
         status: upstream.status,
         tokens,
       },
-      reservation.reservation,
+      admission.context,
     )
     reply.code(upstream.status)
     reply.header(
@@ -373,7 +368,7 @@ async function proxyChatCompletions(
       status: upstream.status,
       tokens: streamedUsage.tokens,
     },
-    reservation.reservation,
+    admission.context,
   )
   return undefined
 }
@@ -388,26 +383,28 @@ async function safelyAuditGatewayRequest(
     status: number
     tokens: number
   },
-  reservation?: ConnectedAppGatewayReservation,
+  usageContext?: ConnectedAppGatewayUsageContext,
 ): Promise<void> {
   try {
-    await auditGatewayRequest(app, input, request.id, reservation)
-  } catch (error) {
-    logGatewayAccountingFailure(request, app, "reconcile", error)
+    await auditGatewayRequest(app, input, request.id, usageContext)
+  } catch {
+    logGatewayAccountingFailure(request, app, "reconcile")
   }
 }
 
 function logGatewayAccountingFailure(
   request: FastifyRequest,
   app: ConnectedAppRuntimeIdentity,
-  operation: "reconcile" | "reserve",
-  error: unknown,
+  operation: "admit" | "reconcile",
 ): void {
   request.log.error(
     {
       appId: app.appId,
       environment: app.environment,
-      err: error,
+      failureClass:
+        operation === "admit"
+          ? "accounting_admission_failed"
+          : "accounting_reconciliation_failed",
       operation,
       requestId: request.id,
     },
@@ -425,7 +422,7 @@ async function auditGatewayRequest(
     tokens: number
   },
   correlationId: string,
-  reservation?: ConnectedAppGatewayReservation,
+  usageContext?: ConnectedAppGatewayUsageContext,
 ): Promise<void> {
   const usageInput = {
     environment: app.environment,
@@ -434,30 +431,26 @@ async function auditGatewayRequest(
     status: input.status,
     tokens: input.tokens,
   }
-  if (reservation) {
-    await reconcileConnectedAppGatewayUsage(app.appId, usageInput, reservation)
+  if (usageContext) {
+    await reconcileConnectedAppGatewayUsage(app, usageInput, usageContext)
   } else {
-    await recordConnectedAppGatewayUsage(app.appId, usageInput)
+    await recordConnectedAppGatewayUsage(app, usageInput)
   }
   await emitAudit({
-    actorId: app.keycloakSubjectId ?? app.credentialRecordId,
     action: `connected_app.gateway.${input.route}`,
-    targetType: "connected_app",
-    targetId: app.appId,
-    metadata: {
-      applicationId: app.appId,
-      authMethod: app.authMethod,
-      correlationId,
-      credentialRecordId: app.credentialRecordId,
-      keycloakSubjectId: app.keycloakSubjectId,
-      outcome:
-        input.status >= 200 && input.status < 400
-          ? "succeeded"
-          : input.status === 401 || input.status === 403
-            ? "denied"
-            : "failed",
-      sourceSystem: "console",
-    },
+    applicationId: app.appId,
+    correlationId,
+    credentialRecordId: app.credentialRecordId,
+    ...(app.keycloakSubjectId
+      ? { keycloakSubjectId: app.keycloakSubjectId }
+      : {}),
+    outcome:
+      input.status >= 200 && input.status < 400
+        ? "succeeded"
+        : input.status === 401 || input.status === 403
+          ? "denied"
+          : "failed",
+    sourceSystem: "console",
   })
 }
 
@@ -535,23 +528,6 @@ function sendGatewayProblem(
 function bearerToken(request: FastifyRequest): string | null {
   const value = request.headers.authorization
   return value?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || null
-}
-
-function estimateTokenReservation(body: ChatCompletionsBody): number {
-  for (const field of ["max_tokens", "max_completion_tokens"]) {
-    const value = body[field]
-    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-      return Math.floor(value)
-    }
-  }
-  const configured = Number.parseInt(
-    process.env.CONNECTED_APP_DEFAULT_TOKEN_RESERVATION ??
-      String(DEFAULT_TOKEN_RESERVATION),
-    10,
-  )
-  return Number.isInteger(configured) && configured > 0
-    ? configured
-    : DEFAULT_TOKEN_RESERVATION
 }
 
 class SseUsageParser {

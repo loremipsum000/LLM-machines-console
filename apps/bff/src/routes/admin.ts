@@ -81,6 +81,7 @@ import {
   updateAdminTeamGroup,
 } from "../services/admin-team"
 import {
+  type IdempotencyReceipt,
   completeIdempotency,
   reserveIdempotency,
 } from "../services/idempotency"
@@ -426,7 +427,7 @@ export function registerAdminRoutes(server: FastifyInstance): void {
         return invalidRequest(
           reply,
           "Invalid Team member request",
-          "A name, corporate email, Admin or Operator role, and valid group list are required.",
+          "A name, work email, Admin or Operator role, and valid group list are required.",
         )
       }
       return withAdminIdempotentMutation(
@@ -439,7 +440,7 @@ export function registerAdminRoutes(server: FastifyInstance): void {
             await createAdminTeamMember(actor, body.data),
           )
           return {
-            idempotencyPayload: { ...payload, generatedPassword: null },
+            idempotencyResourceId: payload.member.id,
             payload,
             statusCode: 201,
           }
@@ -483,7 +484,7 @@ export function registerAdminRoutes(server: FastifyInstance): void {
             await generateAdminTeamPassword(actor, id),
           )
           return {
-            idempotencyPayload: { ...payload, generatedPassword: null },
+            idempotencyResourceId: payload.member.id,
             payload,
             statusCode: 200,
           }
@@ -564,7 +565,7 @@ export function registerAdminRoutes(server: FastifyInstance): void {
             )
           }
           return {
-            idempotencyPayload: { app: result.app, status: result.status },
+            idempotencyResourceId: result.app.id,
             payload: adminConnectedAppCreateResponseSchema.parse(result),
             statusCode: 201,
           }
@@ -661,11 +662,7 @@ export function registerAdminRoutes(server: FastifyInstance): void {
             return connectedAppBlocked(result.detail)
           }
           return {
-            idempotencyPayload: {
-              app: result.app,
-              detail: result.detail,
-              status: result.status,
-            },
+            idempotencyResourceId: result.app.id,
             payload: adminConnectedAppRotateCredentialResultSchema.parse(
               result,
             ),
@@ -726,12 +723,21 @@ export function registerAdminRoutes(server: FastifyInstance): void {
         reply,
         "POST /api/admin/inference/model-updates/apply",
         body.data,
-        async (actor) => ({
-          payload: adminInferenceModelUpdateActionResponseSchema.parse(
+        async (actor) => {
+          const payload = adminInferenceModelUpdateActionResponseSchema.parse(
             await applyAdminInferenceModelUpdate(actor, body.data),
-          ),
-          statusCode: 200,
-        }),
+          )
+          return {
+            payload,
+            receiptOutcome:
+              payload.status === "blocked"
+                ? "denied"
+                : payload.status === "failed"
+                  ? "failed"
+                  : "succeeded",
+            statusCode: 200,
+          }
+        },
       )
     },
   )
@@ -850,24 +856,40 @@ async function teamRouteResult(
 }
 
 function teamError(reply: FastifyReply, error: unknown) {
+  const result = teamErrorResult(error)
+  if (!result) {
+    throw error
+  }
+  return reply.code(result.statusCode).send(result.payload)
+}
+
+function teamErrorResult(
+  error: unknown,
+): { payload: unknown; statusCode: number } | null {
   if (error instanceof AdminTeamError) {
-    return reply.code(error.httpStatus).send({
-      type: "about:blank",
-      title: "Team request failed",
-      status: error.httpStatus,
-      detail: error.message,
-    })
+    return {
+      payload: {
+        type: "about:blank",
+        title: "Team request failed",
+        status: error.httpStatus,
+        detail: error.message,
+      },
+      statusCode: error.httpStatus,
+    }
   }
   if (isTeamServiceStatusError(error)) {
     const status = teamServiceHttpStatus(error.status)
-    return reply.code(status).send({
-      type: "about:blank",
-      title: "Team request failed",
-      status,
-      detail: "Keycloak Admin API request failed.",
-    })
+    return {
+      payload: {
+        type: "about:blank",
+        title: "Team request failed",
+        status,
+        detail: "Keycloak Admin API request failed.",
+      },
+      statusCode: status,
+    }
   }
-  throw error
+  return null
 }
 
 function isTeamServiceStatusError(error: unknown): error is { status: string } {
@@ -897,7 +919,7 @@ async function connectedAppActionResult(
     actor: Actor,
     id: string,
   ) => Promise<{
-    idempotencyPayload?: unknown
+    idempotencyResourceId?: string
     payload: unknown
     statusCode: number
   }>,
@@ -977,8 +999,9 @@ async function withAdminIdempotentMutation(
   route: string,
   requestPayload: unknown,
   run: (actor: Actor) => Promise<{
-    idempotencyPayload?: unknown
+    idempotencyResourceId?: string
     payload: unknown
+    receiptOutcome?: IdempotencyReceipt["outcome"]
     statusCode: number
   }>,
 ) {
@@ -995,12 +1018,18 @@ async function withAdminIdempotentMutation(
   const requestHash = hashJson(requestPayload)
   const reservation = await reserveIdempotency({
     actorId: actor.subject,
+    correlationId: request.id,
     route,
     idempotencyKey,
     requestHash,
   })
   if (reservation.status === "replay") {
-    return reply.code(reservation.statusCode).send(reservation.response)
+    return reply.code(reservation.receipt.statusCode).send({
+      correlationId: reservation.receipt.correlationId,
+      outcome: reservation.receipt.outcome,
+      resourceId: reservation.receipt.resourceId,
+      status: "already_completed",
+    })
   }
   if (reservation.status === "conflict") {
     return reply.code(409).send({
@@ -1020,23 +1049,77 @@ async function withAdminIdempotentMutation(
         "This Idempotency-Key is already processing. Retry after the first request finishes.",
     })
   }
+  if (reservation.status === "reconciliation_required") {
+    return reply.code(409).send({
+      type: "about:blank",
+      title: "Admin mutation requires reconciliation",
+      status: 409,
+      detail:
+        "The previous mutation did not record a durable outcome before its lease expired. Reconcile the target resource before using a new Idempotency-Key.",
+    })
+  }
+  if (reservation.status === "unavailable") {
+    return reply.code(503).send({
+      type: "about:blank",
+      title: "Idempotency backend unavailable",
+      status: 503,
+      detail:
+        "The admin mutation could not reserve durable idempotency state. Retry later.",
+    })
+  }
 
   let result: {
-    idempotencyPayload?: unknown
+    idempotencyResourceId?: string
     payload: unknown
+    receiptOutcome?: IdempotencyReceipt["outcome"]
     statusCode: number
   }
   try {
     result = await run(actor)
   } catch (error) {
-    return teamError(reply, error)
+    const errorResult = teamErrorResult(error)
+    if (!errorResult) {
+      throw error
+    }
+    const completed = await completeIdempotency({
+      outcome: "failed",
+      storeKey: reservation.storeKey,
+      requestHash,
+      statusCode: errorResult.statusCode,
+    })
+    if (!completed) {
+      return reply.code(503).send({
+        type: "about:blank",
+        title: "Idempotency completion unavailable",
+        status: 503,
+        detail:
+          "The mutation completed but its durable idempotency receipt could not be recorded. Reconcile the resource before retrying.",
+      })
+    }
+    return reply.code(errorResult.statusCode).send(errorResult.payload)
   }
-  await completeIdempotency({
+  const completed = await completeIdempotency({
+    outcome:
+      result.receiptOutcome ??
+      (result.statusCode >= 200 && result.statusCode < 400
+        ? "succeeded"
+        : result.statusCode === 401 || result.statusCode === 403
+          ? "denied"
+          : "failed"),
+    resourceId: result.idempotencyResourceId,
     storeKey: reservation.storeKey,
     requestHash,
     statusCode: result.statusCode,
-    response: result.idempotencyPayload ?? result.payload,
   })
+  if (!completed) {
+    return reply.code(503).send({
+      type: "about:blank",
+      title: "Idempotency completion unavailable",
+      status: 503,
+      detail:
+        "The mutation completed but its durable idempotency receipt could not be recorded. Reconcile the resource before retrying.",
+    })
+  }
   return reply.code(result.statusCode).send(result.payload)
 }
 
@@ -1049,5 +1132,5 @@ function getHeaderValue(
 }
 
 function hashJson(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value)).digest("base64url")
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex")
 }

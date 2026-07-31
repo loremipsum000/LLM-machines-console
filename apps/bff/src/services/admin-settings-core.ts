@@ -9,14 +9,10 @@ import {
   type UpdateAdminSettingsOrganizationRequest,
   type UpdateAdminSettingsTelemetryRequest,
 } from "@llm-machines/contracts/inference-core"
-import { eq, sql } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import type { Actor } from "../auth/persona"
 import { getInferenceCoreDb } from "../db/inference-core-client"
-import {
-  consoleSettings,
-  licenseState,
-  users,
-} from "../db/inference-core-schema"
+import { consoleSettings, licenseState } from "../db/inference-core-schema"
 import {
   LiteLlmAdminClient,
   liteLlmConfig,
@@ -28,6 +24,7 @@ import {
   type SettingsLogoKind,
   validateSettingsLogoAsset,
 } from "./admin-settings-validation"
+import { upsertActorUser } from "./users"
 
 const singletonSettingsId = "singleton"
 const singletonLicenseId = "singleton"
@@ -51,13 +48,10 @@ export async function getAdminSettings(
 ): Promise<AdminSettingsResponse> {
   const settings = await readSettings()
   await emitAudit({
-    actorId: actor.subject,
     action: "admin.settings.read",
-    targetType: "admin.settings",
-    targetId: singletonSettingsId,
-    metadata: {
-      sourceStatus: settings.sourceStatus,
-    },
+    keycloakSubjectId: actor.subject,
+    outcome: "succeeded",
+    sourceSystem: "console",
   })
   return settings
 }
@@ -94,7 +88,7 @@ export async function updateAdminSettingsOrganization(
 
   const db = getInferenceCoreDb()
   if (db) {
-    const actorId = await upsertCoreActor(actor)
+    const actorId = (await upsertActorUser(actor)).subject
     await db
       .insert(consoleSettings)
       .values({
@@ -126,15 +120,10 @@ export async function updateAdminSettingsOrganization(
   }
 
   await emitAudit({
-    actorId: actor.subject,
     action: "admin.settings.organization.updated",
-    targetType: "admin.settings",
-    targetId: singletonSettingsId,
-    metadata: {
-      defaultLanguage: organization.defaultLanguage,
-      fullLogoPresent: Boolean(organization.fullLogo),
-      iconLogoPresent: Boolean(organization.iconLogo),
-    },
+    keycloakSubjectId: actor.subject,
+    outcome: "succeeded",
+    sourceSystem: "console",
   })
   return { status: "ok", settings: await readSettings() }
 }
@@ -158,7 +147,7 @@ export async function updateAdminSettingsTelemetry(
 
   const db = getInferenceCoreDb()
   if (db) {
-    const actorId = await upsertCoreActor(actor)
+    const actorId = (await upsertActorUser(actor)).subject
     await db.transaction(async (transaction) => {
       await transaction
         .insert(consoleSettings)
@@ -215,13 +204,12 @@ export async function updateAdminSettingsTelemetry(
   }
 
   await emitAudit({
-    actorId: actor.subject,
     action: request.enabled
       ? "admin.settings.telemetry.enabled"
       : "admin.settings.telemetry.disabled",
-    targetType: "admin.settings",
-    targetId: singletonSettingsId,
-    metadata: { enabled: request.enabled },
+    keycloakSubjectId: actor.subject,
+    outcome: "succeeded",
+    sourceSystem: "console",
   })
   return { status: "ok", settings: await readSettings() }
 }
@@ -538,34 +526,6 @@ async function probeUrl(
   } catch {
     return checked("unavailable", failureDetail, checkedAt)
   }
-}
-
-async function upsertCoreActor(actor: Actor): Promise<string> {
-  const db = getInferenceCoreDb()
-  if (!db) {
-    return actor.subject
-  }
-  const now = new Date()
-  await db
-    .insert(users)
-    .values({
-      id: actor.subject,
-      email: actor.email ?? `${actor.subject}@local.invalid`,
-      displayName: actor.email ?? actor.subject,
-      persona: actor.persona,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: users.id,
-      set: {
-        email: sql`excluded.email`,
-        displayName: sql`excluded.display_name`,
-        persona: sql`excluded.persona`,
-        updatedAt: now,
-      },
-    })
-  return actor.subject
 }
 
 function defaultSettings(

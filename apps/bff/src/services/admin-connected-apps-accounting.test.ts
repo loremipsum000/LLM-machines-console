@@ -4,17 +4,13 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { getInferenceCoreDb } from "../db/inference-core-client"
 import {
   type ConnectedAppRuntimeIdentity,
+  admitConnectedAppGatewayUsage,
+  consumeConnectedAppGatewayRateLimit,
   reconcileConnectedAppGatewayUsage,
-  reserveConnectedAppGatewayTokens,
 } from "./admin-connected-apps"
-import { upsertActorUser } from "./users"
 
 vi.mock("../db/inference-core-client", () => ({
   getInferenceCoreDb: vi.fn(),
-}))
-
-vi.mock("./users", () => ({
-  upsertActorUser: vi.fn(),
 }))
 
 const app: ConnectedAppRuntimeIdentity = {
@@ -26,7 +22,7 @@ const app: ConnectedAppRuntimeIdentity = {
   credentialRecordId: "cak-accounting-test",
   environment: "staging",
   keycloakSubjectId: null,
-  rateLimitRpm: null,
+  rateLimitRpm: 10,
   status: "enabled",
   tokenBudget7d: 100_000,
   usage: {
@@ -37,49 +33,91 @@ const app: ConnectedAppRuntimeIdentity = {
   },
 }
 
-describe("connected app gateway accounting SQL", () => {
+describe("connected app PostgreSQL coordination", () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllEnvs()
   })
 
-  it("binds the token-reservation timestamp as an ISO string", async () => {
-    const execute = vi.fn(async (_statement: unknown) => [
-      { usage_summary: {} },
-    ])
+  it("increments a requests-per-minute window atomically", async () => {
+    const execute = vi.fn(async (_statement: unknown) => [{ request_count: 1 }])
     vi.mocked(getInferenceCoreDb).mockReturnValue({
       execute,
     } as unknown as ReturnType<typeof getInferenceCoreDb>)
-    vi.mocked(upsertActorUser).mockResolvedValue({
-      authMode: "service-forwarded",
-      persona: "admin",
-      roles: ["admin"],
-      subject: "connected-app-gateway",
+
+    await expect(consumeConnectedAppGatewayRateLimit(app)).resolves.toEqual({
+      ok: true,
     })
 
-    await reserveConnectedAppGatewayTokens(app, 128)
-
-    const statement = execute.mock.calls[0]?.[0]
-    expect(statement).toBeDefined()
-    const query = new PgDialect().sqlToQuery(statement as SQL)
-    expect(query.sql).toContain("::timestamptz")
-    expect(query.params).not.toContainEqual(expect.any(Date))
-    expect(query.params).toContainEqual(expect.stringMatching(ISO_TIMESTAMP))
+    const query = sqlQuery(execute.mock.calls[0]?.[0])
+    expect(query.sql).toContain(
+      "INSERT INTO admin.application_rate_limit_windows",
+    )
+    expect(query.sql).toContain("ON CONFLICT (app_id, window_started_at)")
+    expect(query.sql).toContain("request_count + 1")
+    expect(query.sql).toContain("RETURNING request_count")
+    expect(query.params).toContain(app.appId)
+    expect(query.params).toContain(app.rateLimitRpm)
   })
 
-  it("binds the usage-reconciliation timestamp as an ISO string", async () => {
+  it("fails closed when a rate limit needs PostgreSQL outside fixture mode", async () => {
+    vi.stubEnv("BFF_FIXTURE_MODE", "false")
+    vi.stubEnv("NODE_ENV", "production")
+    vi.mocked(getInferenceCoreDb).mockReturnValue(null)
+
+    await expect(
+      consumeConnectedAppGatewayRateLimit(app),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: 503,
+      title: "Rate limit backend unavailable",
+    })
+  })
+
+  it("does not require PostgreSQL when the rate limit is disabled", async () => {
+    vi.stubEnv("BFF_FIXTURE_MODE", "false")
+    vi.stubEnv("NODE_ENV", "production")
+    vi.mocked(getInferenceCoreDb).mockReturnValue(null)
+
+    await expect(
+      consumeConnectedAppGatewayRateLimit({ ...app, rateLimitRpm: null }),
+    ).resolves.toEqual({ ok: true })
+  })
+
+  it("fails closed while seven-day token-budget enforcement is not qualified", async () => {
+    await expect(admitConnectedAppGatewayUsage(app)).resolves.toEqual({
+      detail:
+        "Seven-day token-budget enforcement is unavailable until total-token admission and streaming reconciliation are qualified.",
+      ok: false,
+      status: 503,
+      title: "Token budget enforcement not qualified",
+    })
+    expect(getInferenceCoreDb).not.toHaveBeenCalled()
+  })
+
+  it("creates only a zero-value accounting marker when the token limit is disabled", async () => {
+    await expect(
+      admitConnectedAppGatewayUsage({ ...app, tokenBudget7d: null }),
+    ).resolves.toEqual({
+      context: {
+        appId: app.appId,
+        bucketDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        credentialId: app.credentialRecordId,
+        environment: "staging",
+      },
+      ok: true,
+    })
+    expect(getInferenceCoreDb).not.toHaveBeenCalled()
+  })
+
+  it("reconciles usage and credential activity without payload retention", async () => {
     const execute = vi.fn(async (_statement: unknown) => [])
     vi.mocked(getInferenceCoreDb).mockReturnValue({
       execute,
     } as unknown as ReturnType<typeof getInferenceCoreDb>)
-    vi.mocked(upsertActorUser).mockResolvedValue({
-      authMode: "service-forwarded",
-      persona: "admin",
-      roles: ["admin"],
-      subject: "connected-app-gateway",
-    })
 
     await reconcileConnectedAppGatewayUsage(
-      app.appId,
+      app,
       {
         environment: "staging",
         latencyMs: 25,
@@ -89,19 +127,26 @@ describe("connected app gateway accounting SQL", () => {
       },
       {
         appId: app.appId,
+        bucketDate: "2026-07-31",
+        credentialId: app.credentialRecordId,
         environment: "staging",
-        reservedTokens: 128,
       },
     )
 
-    const statement = execute.mock.calls[0]?.[0]
-    expect(statement).toBeDefined()
-    const query = new PgDialect().sqlToQuery(statement as SQL)
-    expect(query.sql).toContain("::text")
-    expect(query.sql).toContain("::timestamptz")
+    const query = sqlQuery(execute.mock.calls[0]?.[0])
+    expect(query.sql).toContain("admin.application_usage_daily")
+    expect(query.sql).toContain("admin.applications")
+    expect(query.sql).toContain("admin.application_credentials")
+    expect(query.sql).not.toContain("reserved_tokens")
+    expect(query.sql).not.toContain("usage_summary")
     expect(query.params).not.toContainEqual(expect.any(Date))
     expect(query.params).toContainEqual(expect.stringMatching(ISO_TIMESTAMP))
   })
 })
+
+function sqlQuery(statement: unknown) {
+  expect(statement).toBeDefined()
+  return new PgDialect().sqlToQuery(statement as SQL)
+}
 
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/

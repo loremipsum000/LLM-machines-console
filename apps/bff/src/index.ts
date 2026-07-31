@@ -4,14 +4,24 @@ import {
 } from "@llm-machines/contracts/inference-core"
 import Fastify, { type FastifyInstance } from "fastify"
 import { registerPersonaAuth } from "./auth/persona"
+import { isProductionRuntime } from "./config/fixture-mode"
+import {
+  checkInferenceCoreDbReadiness,
+  closeInferenceCoreDb,
+} from "./db/inference-core-client"
 import { registerAdminRoutes } from "./routes/admin"
 import { registerAppGatewayRoutes } from "./routes/app-gateway"
 
 export function buildServer(): FastifyInstance {
+  if (isProductionRuntime() && !process.env.DATABASE_URL?.trim()) {
+    throw new Error("DATABASE_URL is required for the Console BFF.")
+  }
+
   const server = Fastify({
     bodyLimit: bffBodyLimitBytes(),
     logger: true,
   })
+  server.addHook("onClose", closeInferenceCoreDb)
 
   registerPersonaAuth(server)
 
@@ -24,12 +34,15 @@ export function buildServer(): FastifyInstance {
 
   server.get("/livez", liveness)
   server.get("/healthz", liveness)
-  server.get("/readyz", async (): Promise<HealthResponse> => {
-    return healthResponseSchema.parse({
+  server.get("/readyz", async (_request, reply): Promise<HealthResponse> => {
+    const ready =
+      !isProductionRuntime() || (await checkInferenceCoreDbReadiness())
+    const response = healthResponseSchema.parse({
       service: "console-bff",
-      status: "ok",
+      status: ready ? "ok" : "degraded",
       version: "0.0.0",
     })
+    return ready ? response : reply.code(503).send(response)
   })
 
   registerAppGatewayRoutes(server)

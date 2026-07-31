@@ -18,6 +18,7 @@ COPY packages/contracts packages/contracts
 RUN corepack pnpm --filter @llm-machines/contracts build
 
 ENV HOST=0.0.0.0
+ENV NODE_ENV=production
 ENV PORT=4001
 
 EXPOSE 4001

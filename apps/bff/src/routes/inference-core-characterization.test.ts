@@ -35,7 +35,7 @@ vi.mock("fastify", async (importOriginal) => {
         configurable: true,
         value: ((hook: string, ...args: unknown[]) => {
           runtimeControls.push({ method: "addHook", subject: hook })
-          if (hook !== "preHandler") {
+          if (hook !== "preHandler" && hook !== "onClose") {
             throw new Error(`Unreviewed Fastify runtime hook ${hook}`)
           }
           return Reflect.apply(addHook, server, [hook, ...args])
@@ -62,6 +62,7 @@ vi.mock("fastify", async (importOriginal) => {
 describe("Inference Core route characterization", () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it("keeps Core available without Agentic configuration and matches the reviewed runtime route inventory", async () => {
@@ -77,6 +78,7 @@ describe("Inference Core route characterization", () => {
 
       expect(normalizeRoutes(runtimeRoutes)).toEqual(reviewedBffRoutes())
       expect(runtimeControls).toEqual([
+        { method: "addHook", subject: "onClose" },
         { method: "addHook", subject: "preHandler" },
       ])
 
@@ -113,8 +115,8 @@ describe("Inference Core route characterization", () => {
   })
 
   it("matches the reviewed route and control inventories under production registration", async () => {
-    const previousNodeEnvironment = process.env.NODE_ENV
-    process.env.NODE_ENV = "production"
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("DATABASE_URL", "postgresql://unused.invalid/characterization")
     let server: Awaited<ReturnType<typeof createServer>> | undefined
     try {
       vi.resetModules()
@@ -122,17 +124,12 @@ describe("Inference Core route characterization", () => {
       await server.ready()
       expect(normalizeRoutes(runtimeRoutes)).toEqual(reviewedBffRoutes())
       expect(runtimeControls).toEqual([
+        { method: "addHook", subject: "onClose" },
         { method: "addHook", subject: "preHandler" },
       ])
     } finally {
       if (server) {
         await server.close()
-      }
-      if (previousNodeEnvironment === undefined) {
-        // biome-ignore lint/performance/noDelete: Node coerces an undefined assignment to the string "undefined".
-        delete process.env.NODE_ENV
-      } else {
-        process.env.NODE_ENV = previousNodeEnvironment
       }
     }
   })
@@ -277,13 +274,13 @@ function reviewedBffRoutes(): RuntimeRoute[] {
   ]
   return normalizeRoutes(
     routes.flatMap(({ method, url }) =>
-        method === "GET"
-          ? [
-              { method, url },
-              { method: "HEAD", url },
-            ]
-          : [{ method, url }],
-      ),
+      method === "GET"
+        ? [
+            { method, url },
+            { method: "HEAD", url },
+          ]
+        : [{ method, url }],
+    ),
   )
 }
 

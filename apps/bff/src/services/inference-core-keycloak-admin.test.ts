@@ -202,6 +202,115 @@ describe("inference-core Keycloak Admin boundary", () => {
     )
     expect(fetchMock.mock.calls[4]?.[1]?.method).toBe("POST")
   })
+
+  it("deletes an application client through the configured realm", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse({ access_token: "unit-test-token", expires_in: 60 }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+
+    const client = new KeycloakAdminClient(config(), fetchMock)
+    await expect(
+      client.deleteConfidentialClient("client/uuid"),
+    ).resolves.toBeUndefined()
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      "https://keycloak.example/keycloak/admin/realms/llm-machines/clients/client%2Fuuid",
+    )
+    expect(fetchMock.mock.calls[1]?.[1]?.method).toBe("DELETE")
+  })
+
+  it("removes a partially provisioned client when finishing setup fails", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse({ access_token: "unit-test-token", expires_in: 60 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(null, {
+          headers: {
+            location:
+              "https://keycloak.example/admin/realms/llm-machines/clients/partial-client-uuid",
+          },
+          status: 201,
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+
+    const client = new KeycloakAdminClient(config(), fetchMock)
+    await expect(
+      client.createConfidentialClient({
+        clientId: "llmm-app-partial",
+        description: "Partial client test.",
+        name: "Partial Client",
+      }),
+    ).rejects.toMatchObject({
+      message: "Keycloak Admin API is unavailable.",
+      status: "unavailable",
+    })
+
+    expect(fetchMock.mock.calls[3]?.[0]).toBe(
+      "https://keycloak.example/keycloak/admin/realms/llm-machines/clients/partial-client-uuid",
+    )
+    expect(fetchMock.mock.calls[3]?.[1]?.method).toBe("DELETE")
+  })
+
+  it("returns a bounded reconciliation instruction when partial-client cleanup fails", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse({ access_token: "unit-test-token", expires_in: 60 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(null, {
+          headers: {
+            location:
+              "https://keycloak.example/admin/realms/llm-machines/clients/partial-client-uuid",
+          },
+          status: 201,
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+
+    const client = new KeycloakAdminClient(config(), fetchMock)
+    await expect(
+      client.createConfidentialClient({
+        clientId: "llmm-app-partial",
+        description: "Partial client test.",
+        name: "Partial Client",
+      }),
+    ).rejects.toMatchObject({
+      message:
+        "Keycloak client provisioning did not complete. Reconcile client llmm-app-partial before retrying; do not use a new idempotency key until Keycloak is checked.",
+      status: "unavailable",
+    })
+  })
+
+  it("returns a bounded reconciliation instruction when client creation is ambiguous", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse({ access_token: "unit-test-token", expires_in: 60 }),
+      )
+      .mockRejectedValueOnce(new Error("private-network-error-marker"))
+
+    const client = new KeycloakAdminClient(config(), fetchMock)
+    await expect(
+      client.createConfidentialClient({
+        clientId: "llmm-app-ambiguous",
+        description: "Ambiguous client test.",
+        name: "Ambiguous Client",
+      }),
+    ).rejects.toMatchObject({
+      message:
+        "Keycloak client creation could not be confirmed. Reconcile client llmm-app-ambiguous before retrying; do not use a new idempotency key until Keycloak is checked.",
+      status: "unavailable",
+    })
+  })
 })
 
 function config() {
