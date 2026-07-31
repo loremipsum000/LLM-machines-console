@@ -140,7 +140,6 @@ export const applications = admin.table(
       .default("not_connected")
       .notNull(),
     lastConnectedAt: timestamp("last_connected_at", { withTimezone: true }),
-    lastTestedAt: timestamp("last_tested_at", { withTimezone: true }),
     createdBy: text("created_by")
       .notNull()
       .references(() => humanIdentities.subjectId, { onDelete: "restrict" }),
@@ -244,32 +243,48 @@ export const applicationCredentials = admin.table(
       sql`${table.kind} = 'api_key'
         OR (
           ${table.status} <> 'retiring'
-          AND ${table.rotatedAt} IS NULL
           AND ${table.overlapExpiresAt} IS NULL
         )`,
     ),
     check(
       "application_credentials_lifecycle_check",
       sql`(
-        ${table.status} = 'active'
-        AND ${table.rotatedAt} IS NULL
-        AND ${table.overlapExpiresAt} IS NULL
-        AND ${table.revokedAt} IS NULL
-      ) OR (
-        ${table.status} = 'retiring'
-        AND ${table.rotatedAt} IS NOT NULL
-        AND ${table.overlapExpiresAt} IS NOT NULL
-        AND ${table.revokedAt} IS NULL
-      ) OR (
-        ${table.status} = 'revoked'
-        AND ${table.revokedAt} IS NOT NULL
+        ${table.kind} = 'api_key'
         AND (
           (
-            ${table.rotatedAt} IS NULL
+            ${table.status} = 'active'
+            AND ${table.rotatedAt} IS NULL
             AND ${table.overlapExpiresAt} IS NULL
+            AND ${table.revokedAt} IS NULL
           ) OR (
-            ${table.rotatedAt} IS NOT NULL
+            ${table.status} = 'retiring'
+            AND ${table.rotatedAt} IS NOT NULL
             AND ${table.overlapExpiresAt} IS NOT NULL
+            AND ${table.revokedAt} IS NULL
+          ) OR (
+            ${table.status} = 'revoked'
+            AND ${table.revokedAt} IS NOT NULL
+            AND (
+              (
+                ${table.rotatedAt} IS NULL
+                AND ${table.overlapExpiresAt} IS NULL
+              ) OR (
+                ${table.rotatedAt} IS NOT NULL
+                AND ${table.overlapExpiresAt} IS NOT NULL
+              )
+            )
+          )
+        )
+      ) OR (
+        ${table.kind} = 'oauth_client_credentials'
+        AND ${table.overlapExpiresAt} IS NULL
+        AND (
+          (
+            ${table.status} = 'active'
+            AND ${table.revokedAt} IS NULL
+          ) OR (
+            ${table.status} = 'revoked'
+            AND ${table.revokedAt} IS NOT NULL
           )
         )
       )`,
@@ -280,7 +295,10 @@ export const applicationCredentials = admin.table(
         AND (${table.rotatedAt} IS NULL OR ${table.rotatedAt} >= ${table.issuedAt})
         AND (
           ${table.overlapExpiresAt} IS NULL
-          OR ${table.overlapExpiresAt} > ${table.rotatedAt}
+          OR (
+            ${table.rotatedAt} IS NOT NULL
+            AND ${table.overlapExpiresAt} = ${table.rotatedAt} + interval '86400 seconds'
+          )
         )
         AND (
           ${table.revokedAt} IS NULL
@@ -306,6 +324,9 @@ export const applicationCredentials = admin.table(
     uniqueIndex("application_credentials_one_active_idx")
       .on(table.appId)
       .where(sql`${table.status} = 'active'`),
+    uniqueIndex("application_credentials_one_retiring_idx")
+      .on(table.appId)
+      .where(sql`${table.kind} = 'api_key' AND ${table.status} = 'retiring'`),
     index("application_credentials_prefix_status_idx").on(
       table.keyPrefix,
       table.status,
@@ -577,7 +598,7 @@ export const identityMutationJournal = admin.table(
     ),
     check(
       "identity_mutation_journal_target_type_check",
-      sql`${table.targetType} IN ('user', 'group')`,
+      sql`${table.targetType} IN ('user', 'group', 'oauth_client')`,
     ),
     check(
       "identity_mutation_journal_target_identifier_check",

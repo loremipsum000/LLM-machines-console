@@ -74,6 +74,14 @@ const expectedAdminRoutePolicies = {
   "POST /api/admin/applications/connected-apps/:id/disable": capability(
     "applications.disable",
   ),
+  "POST /api/admin/applications/connected-apps/:id/enable": capability(
+    "applications.reenable",
+  ),
+  "POST /api/admin/applications/connected-apps/:id/credentials/:credentialId/revoke":
+    capability("applications.credentials.test_rotate_revoke"),
+  "DELETE /api/admin/applications/connected-apps/:id": capability(
+    "applications.create_delete",
+  ),
   "GET /api/admin/hardware": capability("console.operational.view"),
   "GET /api/admin/inference": capability("console.operational.view"),
   "POST /api/admin/inference/model-updates/apply": capability("updates.apply"),

@@ -1,11 +1,16 @@
 import { randomUUID } from "node:crypto"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { canUseBffFixtureData } from "../config/fixture-mode"
-import { getInferenceCoreDb } from "../db/inference-core-client"
+import {
+  type InferenceCoreQueryExecutor,
+  type InferenceCoreTransaction,
+  getInferenceCoreDb,
+} from "../db/inference-core-client"
 import {
   identityMutationJournal,
   identityMutationJournalTargets,
 } from "../db/inference-core-schema"
+import { IdempotencyCompletionError } from "./idempotency"
 
 export const IDENTITY_MUTATION_JOURNAL_STORAGE = {
   columns: {
@@ -61,7 +66,7 @@ export type IdentityMutationReconciliationReason =
   | "finalization_failed"
   | "completion_persistence_failed"
 
-export type IdentityMutationTargetType = "group" | "user"
+export type IdentityMutationTargetType = "group" | "oauth_client" | "user"
 
 export type IdentityMutationChildTargetType = "group_membership" | "user"
 
@@ -191,6 +196,10 @@ export interface IdentityMutationExecutionRuntime {
 }
 
 export interface IdentityMutationRouteContext {
+  commitWithReceipt?<T>(input: {
+    resourceId: string | null
+    run(transaction: InferenceCoreTransaction | null): Promise<T>
+  }): Promise<T>
   finalizeReceipt(input: { resourceId: string | null }): Promise<void>
   idempotencyLedgerId: string
   operationCode: string
@@ -263,10 +272,8 @@ class IdentityMutationDeadlineError extends Error {
   }
 }
 
-type InferenceCoreDatabase = NonNullable<ReturnType<typeof getInferenceCoreDb>>
-
 export function createDrizzleIdentityMutationJournalStore(
-  database: ReturnType<typeof getInferenceCoreDb> = getInferenceCoreDb(),
+  database: InferenceCoreQueryExecutor | null = getInferenceCoreDb(),
 ): IdentityMutationJournalStore | null {
   return database ? new DrizzleIdentityMutationJournalStore(database) : null
 }
@@ -274,7 +281,7 @@ export function createDrizzleIdentityMutationJournalStore(
 class DrizzleIdentityMutationJournalStore
   implements IdentityMutationJournalStore
 {
-  constructor(private readonly database: InferenceCoreDatabase) {}
+  constructor(private readonly database: InferenceCoreQueryExecutor) {}
 
   async insertPrepared(
     input: IdentityMutationIntentInput & { id: string; now: Date },
@@ -457,10 +464,15 @@ export async function executeJournaledIdentityMutation<
     keycloak: KeycloakMutationPhase,
     targets: IdentityMutationTargetsPhase,
   ): Promise<Result>
+  atomicFinalization?: boolean
   context: IdentityMutationRouteContext
-  finalize(result: Result): Promise<void>
+  finalize(
+    result: Result,
+    transaction?: InferenceCoreTransaction | null,
+  ): Promise<void>
   keycloakSubjectId: string
   preflight(signal: AbortSignal): Promise<Preflight>
+  receiptResourceId?: string | ((result: Result) => string | null)
   targetIdentifier: string
   targets?(preflight: Preflight): IdentityMutationTargetInput[]
   targetType: IdentityMutationTargetType
@@ -470,6 +482,12 @@ export async function executeJournaledIdentityMutation<
     throw new IdentityMutationExecutionError(
       "unavailable",
       "Identity mutation storage is unavailable.",
+    )
+  }
+  if (input.atomicFinalization && !input.context.commitWithReceipt) {
+    throw new IdentityMutationExecutionError(
+      "unavailable",
+      "Atomic identity mutation finalization is unavailable.",
     )
   }
 
@@ -546,23 +564,40 @@ export async function executeJournaledIdentityMutation<
           )
         }
 
-        await finalizeIdentityMutation(
-          runtime.store,
-          phase.appliedIntent(),
-          async () => {
-            deadline.assertActive()
-            await input.finalize(result)
-            deadline.assertActive()
-            await input.context.finalizeReceipt({
-              resourceId: phase.resourceId(),
-            })
-            deadline.assertActive()
-          },
-          {
-            assertCanContinue: () => deadline.assertActive(),
-            requiredAppliedTargetCount: targets.count,
-          },
+        const receiptResourceId = resolveIdentityReceiptResourceId(
+          input.receiptResourceId,
+          result,
+          phase.resourceId(),
         )
+        if (input.atomicFinalization) {
+          await finalizeIdentityMutationAtomically({
+            context: input.context,
+            finalize: (transaction) => input.finalize(result, transaction),
+            intent: phase.appliedIntent(),
+            receiptResourceId,
+            requiredAppliedTargetCount: targets.count,
+            runtime,
+            assertCanContinue: () => deadline.assertActive(),
+          })
+        } else {
+          await finalizeIdentityMutation(
+            runtime.store,
+            phase.appliedIntent(),
+            async () => {
+              deadline.assertActive()
+              await input.finalize(result)
+              deadline.assertActive()
+              await input.context.finalizeReceipt({
+                resourceId: receiptResourceId,
+              })
+              deadline.assertActive()
+            },
+            {
+              assertCanContinue: () => deadline.assertActive(),
+              requiredAppliedTargetCount: targets.count,
+            },
+          )
+        }
         return result
       } finally {
         deadline.dispose()
@@ -573,6 +608,97 @@ export async function executeJournaledIdentityMutation<
       IDENTITY_MUTATION_QUEUE_ACQUIRE_TIMEOUT_MS,
     ),
   )
+}
+
+class AtomicIdentityJournalCompletionError extends Error {
+  constructor(options?: ErrorOptions) {
+    super(
+      "Identity mutation journal completion could not be persisted.",
+      options,
+    )
+    this.name = "AtomicIdentityJournalCompletionError"
+  }
+}
+
+async function finalizeIdentityMutationAtomically(input: {
+  assertCanContinue(): void
+  context: IdentityMutationRouteContext
+  finalize(transaction: InferenceCoreTransaction | null): Promise<void>
+  intent: IdentityMutationJournalRecord
+  receiptResourceId: string | null
+  requiredAppliedTargetCount: number
+  runtime: IdentityMutationExecutionRuntime
+}): Promise<void> {
+  const commitWithReceipt = input.context.commitWithReceipt
+  if (!commitWithReceipt) {
+    throw new IdentityMutationExecutionError(
+      "unavailable",
+      "Atomic identity mutation finalization is unavailable.",
+    )
+  }
+
+  try {
+    await commitWithReceipt({
+      resourceId: input.receiptResourceId,
+      run: async (transaction) => {
+        input.assertCanContinue()
+        await input.finalize(transaction)
+        input.assertCanContinue()
+        const store = transaction
+          ? createDrizzleIdentityMutationJournalStore(transaction)
+          : input.runtime.store
+        if (!store) {
+          throw new AtomicIdentityJournalCompletionError()
+        }
+        const completedAt = new Date()
+        let transitioned: IdentityMutationJournalRecord | null
+        try {
+          transitioned = await store.transition({
+            completedAt,
+            expectedStates: ["keycloak_applied"],
+            id: input.intent.id,
+            nextState: "completed",
+            now: completedAt,
+            requiredAppliedTargetCount: input.requiredAppliedTargetCount,
+          })
+        } catch (error) {
+          throw new AtomicIdentityJournalCompletionError({ cause: error })
+        }
+        if (!transitioned) {
+          throw new AtomicIdentityJournalCompletionError()
+        }
+        input.assertCanContinue()
+      },
+    })
+  } catch (error) {
+    const now = new Date()
+    const reason =
+      error instanceof AtomicIdentityJournalCompletionError ||
+      error instanceof IdempotencyCompletionError
+        ? "completion_persistence_failed"
+        : "finalization_failed"
+    await markReconciliationBestEffort(
+      input.runtime.store,
+      input.intent.id,
+      reason,
+      now,
+    )
+    throw new IdentityMutationReconciliationRequiredError(
+      input.intent.id,
+      "The Keycloak mutation succeeded but atomic local finalization failed. Reconcile the target before retrying.",
+      { cause: error },
+    )
+  }
+}
+
+function resolveIdentityReceiptResourceId<Result>(
+  resourceId: string | ((result: Result) => string | null) | undefined,
+  result: Result,
+  fallback: string | null,
+): string | null {
+  return typeof resourceId === "function"
+    ? resourceId(result)
+    : (resourceId ?? fallback)
 }
 
 class IdentityMutationTargetPersistenceError extends Error {
@@ -985,7 +1111,7 @@ function executionErrorFromReservation(
       : reservation.status === "already_finalized"
         ? "Identity mutation already has a durable final state."
         : reservation.status === "blocked_by_active_reconciliation"
-          ? "Another unresolved identity mutation blocks all Team writes until reconciliation."
+          ? "Another unresolved identity or Application mutation blocks all identity and Application writes until reconciliation."
           : "Identity mutation requires reconciliation before retrying.",
   )
 }
@@ -1317,7 +1443,7 @@ function hasExactKeys(
 function isIdentityMutationTargetType(
   value: string,
 ): value is IdentityMutationTargetType {
-  return value === "group" || value === "user"
+  return value === "group" || value === "oauth_client" || value === "user"
 }
 
 function isReconciliationReason(
@@ -1350,6 +1476,20 @@ function executionRuntimeFromEnvironment(): IdentityMutationExecutionRuntime | n
   fixtureJournalStore ??= new FixtureIdentityMutationJournalStore()
   return {
     store: fixtureJournalStore,
+  }
+}
+
+export async function hasUnresolvedOAuthClientMutation(
+  runtime: IdentityMutationExecutionRuntime | null = executionRuntimeFromEnvironment(),
+): Promise<boolean | "unavailable"> {
+  if (!runtime) {
+    return "unavailable"
+  }
+  try {
+    const active = await runtime.store.findActive()
+    return active?.targetType === "oauth_client"
+  } catch {
+    return "unavailable"
   }
 }
 

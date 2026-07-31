@@ -645,7 +645,8 @@ function VirtualKeysSection({
             Virtual keys
           </span>
           <span className="mt-2 block text-sm leading-5 text-[#b2b2b2]">
-            Redacted key metadata. Expand only when operator context is needed.
+            Redacted LiteLLM-native metadata. These keys remain separate from
+            Console Application credentials and are managed in LiteLLM.
           </span>
         </span>
         <span className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-[#353535] px-3 text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#2e2e2e]">

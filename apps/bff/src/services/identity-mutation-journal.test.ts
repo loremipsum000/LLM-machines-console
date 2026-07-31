@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { IdempotencyCompletionError } from "./idempotency"
 import {
   IDENTITY_MUTATION_JOURNAL_STORAGE,
   type IdentityMutationIntentInput,
@@ -12,6 +13,7 @@ import {
   createDrizzleIdentityMutationJournalStore,
   executeJournaledIdentityMutation,
   finalizeIdentityMutation,
+  hasUnresolvedOAuthClientMutation,
   recordIdentityMutationKeycloakApplied,
   recordIdentityMutationOutcomeUnknown,
   recordIdentityMutationRejected,
@@ -25,6 +27,29 @@ describe("identity mutation journal", () => {
 
   it("has no production fallback when the database is unavailable", () => {
     expect(createDrizzleIdentityMutationJournalStore(null)).toBeNull()
+  })
+
+  it("fails OAuth authorization closed when reconciliation state is unavailable or active", async () => {
+    const store = new MemoryJournalStore()
+    await expect(hasUnresolvedOAuthClientMutation({ store })).resolves.toBe(
+      false,
+    )
+
+    await beginIdentityMutation(store, oauthIntentInput(), {
+      now: instant(0),
+      randomId: () => "oauth-journal",
+    })
+    await expect(hasUnresolvedOAuthClientMutation({ store })).resolves.toBe(
+      true,
+    )
+
+    const unavailableStore = new MemoryJournalStore()
+    vi.spyOn(unavailableStore, "findActive").mockRejectedValueOnce(
+      new Error("bounded-storage-failure"),
+    )
+    await expect(
+      hasUnresolvedOAuthClientMutation({ store: unavailableStore }),
+    ).resolves.toBe("unavailable")
   })
 
   it("defines the durable table and one-to-one idempotency link", () => {
@@ -674,7 +699,399 @@ describe("identity mutation journal", () => {
     await expect(third).resolves.toBe("user-3")
     expect(thirdPreflight).toHaveBeenCalledTimes(1)
   })
+
+  describe("oauth_client top-level targets", () => {
+    it("reserves the Application target and applies the global unresolved fence", async () => {
+      const store = new MemoryJournalStore()
+      const firstInput = oauthIntentInput({
+        idempotencyLedgerId: "ledger-oauth-active",
+      })
+
+      await expect(
+        beginIdentityMutation(store, firstInput, {
+          now: instant(0),
+          randomId: () => "journal-oauth-active",
+        }),
+      ).resolves.toMatchObject({
+        intent: {
+          id: "journal-oauth-active",
+          targetIdentifier: "oauth-client-public-id",
+          targetType: "oauth_client",
+        },
+        status: "reserved",
+      })
+      await expect(
+        beginIdentityMutation(store, firstInput),
+      ).resolves.toMatchObject({
+        intent: { id: "journal-oauth-active" },
+        status: "reconciliation_required",
+      })
+      await expect(
+        beginIdentityMutation(
+          store,
+          oauthIntentInput({ idempotencyLedgerId: "ledger-oauth-new" }),
+        ),
+      ).resolves.toMatchObject({
+        intent: { id: "journal-oauth-active" },
+        status: "blocked_by_active_reconciliation",
+      })
+
+      const preflight = vi.fn(async () => true)
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: async () => "unreachable",
+          context: executionContext("oauth-new", store),
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight,
+          targetIdentifier: "oauth-client-new",
+          targetType: "oauth_client",
+        }),
+      ).rejects.toMatchObject({
+        message:
+          "Another unresolved identity or Application mutation blocks all identity and Application writes until reconciliation.",
+        status: "blocked_by_active_reconciliation",
+      })
+      expect(preflight).not.toHaveBeenCalled()
+      expect(store.targetRecords).toEqual([])
+    })
+
+    it("executes without persisting a client secret or child intent", async () => {
+      const store = new MemoryJournalStore()
+      const finalizeReceipt = vi.fn(async () => undefined)
+      const clientSecret = "unit-test-oauth-client-secret"
+
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: async (_preflight, keycloak) =>
+            keycloak.firstWrite(
+              async () => ({ clientSecret, id: "keycloak-client-uuid" }),
+              (client) => client.id,
+            ),
+          context: executionContext("oauth-success", store, finalizeReceipt),
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight: async () => true,
+          targetIdentifier: "oauth-client-public-id",
+          targetType: "oauth_client",
+        }),
+      ).resolves.toEqual({
+        clientSecret,
+        id: "keycloak-client-uuid",
+      })
+      expect(finalizeReceipt).toHaveBeenCalledWith({
+        resourceId: "keycloak-client-uuid",
+      })
+      expect(store.records[0]).toMatchObject({
+        resourceId: "keycloak-client-uuid",
+        state: "completed",
+        targetIdentifier: "oauth-client-public-id",
+        targetType: "oauth_client",
+      })
+      expect(store.records[0]).not.toHaveProperty("clientSecret")
+      expect(store.records[0]).not.toHaveProperty("secret")
+      expect(store.records[0]).not.toHaveProperty("token")
+      expect(JSON.stringify(store.records)).not.toContain(clientSecret)
+      expect(store.targetRecords).toEqual([])
+    })
+
+    it("atomically separates the Console receipt id from the retained Keycloak resource id", async () => {
+      const store = new MemoryJournalStore()
+      const finalizeReceipt = vi.fn(async () => undefined)
+      const receiptResourceIds: Array<string | null> = []
+      const clientSecret = "unit-test-atomic-oauth-client-secret"
+      const consoleApplicationId = "app-console-resource"
+      const context = {
+        ...executionContext("oauth-atomic-success", store, finalizeReceipt),
+        commitWithReceipt: async <T>(input: {
+          resourceId: string | null
+          run(transaction: null): Promise<T>
+        }) => {
+          receiptResourceIds.push(input.resourceId)
+          return input.run(null)
+        },
+      }
+
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: async (_preflight, keycloak) =>
+            keycloak.firstWrite(
+              async () => ({ clientSecret, id: "keycloak-client-uuid" }),
+              (client) => client.id,
+            ),
+          atomicFinalization: true,
+          context,
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight: async () => true,
+          receiptResourceId: consoleApplicationId,
+          targetIdentifier: "oauth-client-public-id",
+          targetType: "oauth_client",
+        }),
+      ).resolves.toEqual({
+        clientSecret,
+        id: "keycloak-client-uuid",
+      })
+      expect(receiptResourceIds).toEqual([consoleApplicationId])
+      expect(receiptResourceIds).not.toContain("keycloak-client-uuid")
+      expect(finalizeReceipt).not.toHaveBeenCalled()
+      expect(store.records[0]).toMatchObject({
+        resourceId: "keycloak-client-uuid",
+        state: "completed",
+      })
+      expect(JSON.stringify(store.records)).not.toContain(clientSecret)
+    })
+
+    it("fences same and new keys when atomic receipt completion fails after a confirmed Keycloak write", async () => {
+      const store = new MemoryJournalStore()
+      const clientSecret = "unit-test-failed-atomic-oauth-secret"
+      const context = {
+        ...executionContext("oauth-atomic-failure", store),
+        commitWithReceipt: async () => {
+          throw new IdempotencyCompletionError("synthetic receipt failure")
+        },
+      }
+
+      const error = await rejectedError(
+        executeJournaledIdentityMutation({
+          apply: async (_preflight, keycloak) =>
+            keycloak.firstWrite(
+              async () => ({ clientSecret, id: "keycloak-client-uuid" }),
+              (client) => client.id,
+            ),
+          atomicFinalization: true,
+          context,
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight: async () => true,
+          receiptResourceId: "app-console-resource",
+          targetIdentifier: "oauth-client-public-id",
+          targetType: "oauth_client",
+        }),
+      )
+      expect(error).toBeInstanceOf(IdentityMutationReconciliationRequiredError)
+      expect(error.message).not.toContain(clientSecret)
+      expect(error.message).not.toContain("keycloak-client-uuid")
+      expect(store.records[0]).toMatchObject({
+        reconciliationReason: "completion_persistence_failed",
+        resourceId: "keycloak-client-uuid",
+        state: "reconciliation_required",
+      })
+      expect(JSON.stringify(store.records)).not.toContain(clientSecret)
+
+      const samePreflight = vi.fn(async () => true)
+      const sameApply = vi.fn(async () => "unreachable")
+      const newPreflight = vi.fn(async () => true)
+      const newApply = vi.fn(async () => "unreachable")
+      const atomicContext = (ledgerId: string) => ({
+        ...executionContext(ledgerId, store),
+        commitWithReceipt: async <T>(input: {
+          resourceId: string | null
+          run(transaction: null): Promise<T>
+        }) => input.run(null),
+      })
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: sameApply,
+          atomicFinalization: true,
+          context: atomicContext("oauth-atomic-failure"),
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight: samePreflight,
+          targetIdentifier: "oauth-client-public-id",
+          targetType: "oauth_client",
+        }),
+      ).rejects.toMatchObject({ status: "reconciliation_required" })
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: newApply,
+          atomicFinalization: true,
+          context: atomicContext("oauth-after-atomic-failure"),
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight: newPreflight,
+          targetIdentifier: "oauth-client-new",
+          targetType: "oauth_client",
+        }),
+      ).rejects.toMatchObject({ status: "blocked_by_active_reconciliation" })
+      expect(samePreflight).not.toHaveBeenCalled()
+      expect(sameApply).not.toHaveBeenCalled()
+      expect(newPreflight).not.toHaveBeenCalled()
+      expect(newApply).not.toHaveBeenCalled()
+    })
+
+    it("keeps unknown Application outcomes fenced for the same and new idempotency keys", async () => {
+      const store = new MemoryJournalStore()
+
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: async (_preflight, keycloak) => {
+            await keycloak.firstWrite(async () => {
+              throw new Error("bounded-oauth-transport-failure")
+            }, "oauth-client-public-id")
+            return "unreachable"
+          },
+          context: executionContext("oauth-unknown", store),
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight: async () => true,
+          targetIdentifier: "oauth-client-public-id",
+          targetType: "oauth_client",
+        }),
+      ).rejects.toMatchObject({ status: "reconciliation_required" })
+      expect(store.records[0]).toMatchObject({
+        reconciliationReason: "keycloak_outcome_unknown",
+        resourceId: null,
+        state: "reconciliation_required",
+        targetType: "oauth_client",
+      })
+
+      const samePreflight = vi.fn(async () => true)
+      const newPreflight = vi.fn(async () => true)
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: async () => "unreachable",
+          context: executionContext("oauth-unknown", store),
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight: samePreflight,
+          targetIdentifier: "oauth-client-public-id",
+          targetType: "oauth_client",
+        }),
+      ).rejects.toMatchObject({ status: "reconciliation_required" })
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: async () => "unreachable",
+          context: executionContext("oauth-after-unknown", store),
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight: newPreflight,
+          targetIdentifier: "oauth-client-new",
+          targetType: "oauth_client",
+        }),
+      ).rejects.toMatchObject({ status: "blocked_by_active_reconciliation" })
+      expect(samePreflight).not.toHaveBeenCalled()
+      expect(newPreflight).not.toHaveBeenCalled()
+    })
+
+    it("records confirmed Application rejection as terminal and releases the global fence", async () => {
+      const store = new MemoryJournalStore()
+      const rejection = Object.assign(new Error("confirmed-oauth-rejection"), {
+        mutationOutcome: "rejected" as const,
+      })
+
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: async (_preflight, keycloak) => {
+            await keycloak.firstWrite(async () => {
+              throw rejection
+            }, "oauth-client-public-id")
+            return "unreachable"
+          },
+          context: executionContext("oauth-rejected", store),
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight: async () => true,
+          targetIdentifier: "oauth-client-public-id",
+          targetType: "oauth_client",
+        }),
+      ).rejects.toBe(rejection)
+      expect(store.records[0]).toMatchObject({
+        keycloakAppliedAt: null,
+        resourceId: null,
+        state: "failed",
+        targetType: "oauth_client",
+      })
+      await expect(
+        beginIdentityMutation(
+          store,
+          oauthIntentInput({
+            idempotencyLedgerId: "ledger-oauth-rejected",
+          }),
+        ),
+      ).resolves.toMatchObject({ status: "already_finalized" })
+
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: async (_preflight, keycloak) =>
+            keycloak.firstWrite(
+              async () => "keycloak-client-after-rejection",
+              (id) => id,
+            ),
+          context: executionContext("oauth-after-rejection", store),
+          finalize: async () => undefined,
+          keycloakSubjectId: "admin-1",
+          preflight: async () => true,
+          targetIdentifier: "oauth-client-after-rejection",
+          targetType: "oauth_client",
+        }),
+      ).resolves.toBe("keycloak-client-after-rejection")
+      expect(store.records.map((record) => record.state)).toEqual([
+        "failed",
+        "completed",
+      ])
+    })
+
+    it("keeps finalization failures fenced for the same and new idempotency keys", async () => {
+      const store = new MemoryJournalStore()
+
+      await expect(
+        executeJournaledIdentityMutation({
+          apply: async (_preflight, keycloak) =>
+            keycloak.firstWrite(
+              async () => "keycloak-client-finalization",
+              (id) => id,
+            ),
+          context: executionContext("oauth-finalization", store),
+          finalize: async () => {
+            throw new Error("bounded-oauth-finalization-failure")
+          },
+          keycloakSubjectId: "admin-1",
+          preflight: async () => true,
+          targetIdentifier: "oauth-client-public-id",
+          targetType: "oauth_client",
+        }),
+      ).rejects.toMatchObject({ status: "reconciliation_required" })
+      expect(store.records[0]).toMatchObject({
+        reconciliationReason: "finalization_failed",
+        resourceId: "keycloak-client-finalization",
+        state: "reconciliation_required",
+        targetType: "oauth_client",
+      })
+
+      await expect(
+        beginIdentityMutation(
+          store,
+          oauthIntentInput({
+            idempotencyLedgerId: "ledger-oauth-finalization",
+          }),
+        ),
+      ).resolves.toMatchObject({ status: "reconciliation_required" })
+      await expect(
+        beginIdentityMutation(
+          store,
+          oauthIntentInput({
+            idempotencyLedgerId: "ledger-oauth-after-finalization",
+          }),
+        ),
+      ).resolves.toMatchObject({
+        status: "blocked_by_active_reconciliation",
+      })
+    })
+  })
 })
+
+async function rejectedError(promise: Promise<unknown>): Promise<Error> {
+  try {
+    await promise
+  } catch (error) {
+    if (error instanceof Error) {
+      return error
+    }
+    throw new Error("Expected a rejected Error value.")
+  }
+  throw new Error("Expected the operation to reject.")
+}
 
 class MemoryJournalStore implements IdentityMutationJournalStore {
   constructor(
@@ -874,6 +1291,17 @@ function intentInput(
     targetType: "user" as const,
     ...overrides,
   }
+}
+
+function oauthIntentInput(
+  overrides: Partial<IdentityMutationIntentInput> = {},
+): IdentityMutationIntentInput {
+  return intentInput({
+    operationCode: "POST /api/admin/applications/connected-apps",
+    targetIdentifier: "oauth-client-public-id",
+    targetType: "oauth_client",
+    ...overrides,
+  })
 }
 
 function executionContext(

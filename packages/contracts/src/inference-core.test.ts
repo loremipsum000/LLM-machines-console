@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest"
 import * as inferenceCoreContracts from "./inference-core"
 import {
   adminConnectedAppCreateRequestSchema,
-  adminConnectedAppEnvironmentStateSchema,
+  adminConnectedAppCredentialMetadataSchema,
+  adminConnectedAppCredentialSchema,
+  adminConnectedAppDeleteRequestSchema,
+  adminConnectedAppLifecycleResultSchema,
+  adminConnectedAppSchema,
+  adminConnectedAppTestResultSchema,
+  adminConnectedAppUpdateRequestSchema,
   adminHardwareResponseSchema,
   adminInferenceDashboardSchema,
   adminOverviewResponseSchema,
@@ -57,7 +63,7 @@ describe("Inference Core contract boundary", () => {
     ])
 
     const retiredExport = Object.keys(inferenceCoreContracts).find((name) =>
-      /(BreakGlass|Builder|Hub|Knowledge|Mcp|Promotion|UrlPolicy)/.test(name),
+      /(BreakGlass|Builder|Hub|Knowledge|Mcp|UrlPolicy)/.test(name),
     )
     expect(retiredExport).toBeUndefined()
   })
@@ -282,21 +288,116 @@ describe("Inference Core contract boundary", () => {
     ).toBe(false)
   })
 
-  it("keeps the temporary Application environment shape without promotion contracts", () => {
-    expect(
-      adminConnectedAppEnvironmentStateSchema.safeParse({
-        authMethods: ["api_key", "oauth_client_credentials"],
-        clientId: "client-1",
-        credentialIssuedAt: timestamp,
-        environment: "production",
-        keyPrefix: "llmm_live",
+  it("parses the flat Application and credential lifecycle contract", () => {
+    const staticCredential = {
+      authMethod: "api_key",
+      clientId: null,
+      id: "credential-1",
+      issuedAt: timestamp,
+      keyPrefix: "llmm_t4_1234",
+      lastUsedAt: null,
+      overlapExpiresAt: null,
+      revokedAt: null,
+      rotatedAt: null,
+      status: "active",
+    } as const
+    const application = {
+      allowedModels: ["local-chat"],
+      auditHref: "/activity?applicationId=app-1",
+      authMethod: "api_key",
+      connectionStatus: "not_connected",
+      createdAt: timestamp,
+      credentials: [staticCredential],
+      description: "Desktop chat application",
+      detailHref: "/applications/apps/app-1",
+      id: "app-1",
+      lastConnectedAt: null,
+      name: "Desktop",
+      rateLimitRpm: null,
+      status: "enabled",
+      tokenBudget7d: null,
+      updatedAt: timestamp,
+      usage: {
+        failures7d: 0,
         lastUsedAt: null,
-        lastTestedAt: timestamp,
-        primaryAuthMethod: "api_key",
-        productionReady: true,
-        testStatus: "passed",
+        requests7d: 0,
+        tokens7d: 0,
+      },
+    } as const
+
+    expect(
+      adminConnectedAppCredentialMetadataSchema.safeParse(staticCredential)
+        .success,
+    ).toBe(true)
+    expect(adminConnectedAppSchema.safeParse(application).success).toBe(true)
+    expect(
+      adminConnectedAppSchema.safeParse({
+        ...application,
+        allowedModels: ["local-chat", "local-chat"],
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppSchema.safeParse({
+        ...application,
+        allowedModels: ["x".repeat(161)],
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppSchema.safeParse({
+        ...application,
+        credentials: [staticCredential, staticCredential],
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppSchema.safeParse({
+        ...application,
+        credentials: [
+          {
+            ...staticCredential,
+            revokedAt: timestamp,
+            status: "revoked",
+          },
+        ],
+        status: "disabled",
       }).success,
     ).toBe(true)
+    expect(
+      adminConnectedAppSchema.safeParse({
+        ...application,
+        legacyOwner: "Everyone",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppSchema.safeParse({
+        ...application,
+        credentials: [
+          {
+            ...staticCredential,
+            authMethod: "oauth_client_credentials",
+            clientId: "client-1",
+            keyPrefix: null,
+          },
+        ],
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppCredentialMetadataSchema.safeParse({
+        ...staticCredential,
+        authMethod: "oauth_client_credentials",
+        clientId: "client-1",
+        keyPrefix: null,
+        overlapExpiresAt: timestamp,
+        status: "retiring",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppCredentialMetadataSchema.safeParse({
+        ...staticCredential,
+        overlapExpiresAt: timestamp,
+        status: "active",
+      }).success,
+    ).toBe(false)
+
     expect(
       adminConnectedAppCreateRequestSchema.parse({
         allowedModels: ["local-chat"],
@@ -305,12 +406,171 @@ describe("Inference Core contract boundary", () => {
       }),
     ).toMatchObject({
       authMethod: "api_key",
-      ownerGroup: "Everyone",
       rateLimitRpm: null,
       tokenBudget7d: null,
     })
     expect(
-      "adminConnectedAppPromotionResultSchema" in inferenceCoreContracts,
+      adminConnectedAppUpdateRequestSchema.safeParse({
+        allowedModels: ["local-chat"],
+        authMethod: "oauth_client_credentials",
+        description: "Changed",
+        name: "Desktop",
+        rateLimitRpm: null,
+        tokenBudget7d: null,
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppUpdateRequestSchema.safeParse({
+        allowedModels: ["local-chat"],
+        description: "Changed",
+        name: "Desktop",
+        rateLimitRpm: null,
+        status: "disabled",
+        tokenBudget7d: null,
+      }).success,
+    ).toBe(false)
+
+    expect(
+      adminConnectedAppCredentialSchema.safeParse({
+        apiKey: "llmm_t4_once_only",
+        authMethod: "api_key",
+        bffBaseUrl: "https://bff.example.test",
+        credentialId: "credential-1",
+        exampleCurl: "curl example",
+        issuedAt: timestamp,
+        keyPrefix: "llmm_t4_once",
+        model: "local-chat",
+        openAiBaseUrl: "https://bff.example.test/api/app-gateway/v1",
+      }).success,
+    ).toBe(true)
+    const oauthCredential = {
+      authMethod: "oauth_client_credentials",
+      bffBaseUrl: "https://bff.example.test",
+      clientId: "client-1",
+      clientSecret: "one-time-secret",
+      credentialId: "credential-2",
+      exampleCurl: "curl example",
+      issuedAt: timestamp,
+      keyPrefix: null,
+      model: "local-chat",
+      openAiBaseUrl: "https://bff.example.test/api/app-gateway/v1",
+      tokenUrl: "https://identity.example.test/token",
+    } as const
+    for (const endpoint of [
+      "javascript:alert(1)",
+      "data:text/plain,credential",
+      "ftp://identity.example.test/token",
+      "https://user:password@identity.example.test/token",
+      "https://identity.example.test/token?audience=inference",
+      "https://identity.example.test/token?",
+      "https://identity.example.test/token#fragment",
+      "https://identity.example.test/token#",
+    ]) {
+      for (const field of [
+        "bffBaseUrl",
+        "openAiBaseUrl",
+        "tokenUrl",
+      ] as const) {
+        expect(
+          adminConnectedAppCredentialSchema.safeParse({
+            ...oauthCredential,
+            [field]: endpoint,
+          }).success,
+        ).toBe(false)
+      }
+    }
+    expect(
+      adminConnectedAppCredentialSchema.safeParse(oauthCredential).success,
+    ).toBe(true)
+    expect(
+      adminConnectedAppDeleteRequestSchema.safeParse({
+        confirmation: "DELETE APPLICATION",
+      }).success,
+    ).toBe(true)
+    expect(
+      adminConnectedAppDeleteRequestSchema.safeParse({ confirmation: "DELETE" })
+        .success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppTestResultSchema.safeParse({
+        app: application,
+        connectionStatus: "not_connected",
+        detail: "Waiting for a client models request.",
+        observedAt: null,
+        status: "waiting",
+      }).success,
+    ).toBe(true)
+    const connectedApplication = {
+      ...application,
+      connectionStatus: "connected",
+      lastConnectedAt: timestamp,
+    } as const
+    expect(
+      adminConnectedAppTestResultSchema.safeParse({
+        app: connectedApplication,
+        connectionStatus: "connected",
+        detail: "A real client reached the models endpoint.",
+        observedAt: timestamp,
+        status: "passed",
+      }).success,
+    ).toBe(true)
+    expect(
+      adminConnectedAppTestResultSchema.safeParse({
+        app: application,
+        connectionStatus: "not_connected",
+        detail: "No real client connection exists.",
+        observedAt: null,
+        status: "passed",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppTestResultSchema.safeParse({
+        app: connectedApplication,
+        connectionStatus: "connected",
+        detail: "Evidence timestamp does not match.",
+        observedAt: null,
+        status: "passed",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppLifecycleResultSchema.safeParse({
+        app: null,
+        applicationId: application.id,
+        detail: "Application deleted.",
+        status: "deleted",
+      }).success,
+    ).toBe(true)
+    expect(
+      adminConnectedAppLifecycleResultSchema.safeParse({
+        app: { ...application, status: "disabled" },
+        applicationId: application.id,
+        detail: "Application disabled.",
+        status: "disabled",
+      }).success,
+    ).toBe(true)
+    expect(
+      adminConnectedAppLifecycleResultSchema.safeParse({
+        app: application,
+        applicationId: application.id,
+        detail: "Application re-enabled.",
+        status: "reenabled",
+      }).success,
+    ).toBe(true)
+    expect(
+      adminConnectedAppLifecycleResultSchema.safeParse({
+        app: application,
+        applicationId: application.id,
+        detail: "Application disabled.",
+        status: "disabled",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppLifecycleResultSchema.safeParse({
+        app: { ...application, status: "disabled" },
+        applicationId: application.id,
+        detail: "Application re-enabled.",
+        status: "reenabled",
+      }).success,
     ).toBe(false)
   })
 

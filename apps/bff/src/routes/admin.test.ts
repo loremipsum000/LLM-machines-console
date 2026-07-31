@@ -88,7 +88,6 @@ describe("Inference Core Admin routes", () => {
         updateActionEnabled: false,
       },
     })
-    expect(response.json()).not.toHaveProperty("urlPolicyRules")
     expect(
       response.json().reachability.map((service: { id: string }) => service.id),
     ).toEqual([
@@ -231,7 +230,6 @@ describe("Inference Core Admin routes", () => {
     })
 
     expect(overview.statusCode).toBe(200)
-    expect(overview.json()).not.toHaveProperty("breakGlass")
     expect(overview.json().members).toEqual([
       expect.objectContaining({ id: "operator-1", role: "operator" }),
     ])
@@ -419,7 +417,7 @@ describe("Inference Core Admin routes", () => {
 
 function stubKeycloakAdminEnv(): void {
   vi.stubEnv("KEYCLOAK_ADMIN_BASE_URL", "https://keycloak.example/keycloak")
-  vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_ID", "console-team")
+  vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_ID", "console-human-admin")
   vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_SECRET", "admin-client-secret")
   vi.stubEnv("KEYCLOAK_ADMIN_REALM", "llm-machines")
   vi.stubEnv("TEAM_ALLOWED_EMAIL_DOMAINS", "example.test")

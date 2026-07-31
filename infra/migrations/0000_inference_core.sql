@@ -93,7 +93,6 @@ CREATE TABLE admin.applications (
   status text NOT NULL DEFAULT 'enabled',
   connection_status text NOT NULL DEFAULT 'not_connected',
   last_connected_at timestamptz,
-  last_tested_at timestamptz,
   created_by text NOT NULL REFERENCES common.human_identities(subject_id) ON DELETE RESTRICT,
   updated_by text NOT NULL REFERENCES common.human_identities(subject_id) ON DELETE RESTRICT,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -166,38 +165,58 @@ CREATE TABLE admin.application_credentials (
       kind = 'api_key'
       OR (
         status <> 'retiring'
-        AND rotated_at IS NULL
         AND overlap_expires_at IS NULL
       )
     ),
   CONSTRAINT application_credentials_lifecycle_check
     CHECK (
       (
-        status = 'active'
-        AND rotated_at IS NULL
-        AND overlap_expires_at IS NULL
-        AND revoked_at IS NULL
-      )
-      OR
-      (
-        status = 'retiring'
-        AND rotated_at IS NOT NULL
-        AND overlap_expires_at IS NOT NULL
-        AND revoked_at IS NULL
-      )
-      OR
-      (
-        status = 'revoked'
-        AND revoked_at IS NOT NULL
+        kind = 'api_key'
         AND (
           (
-            rotated_at IS NULL
+            status = 'active'
+            AND rotated_at IS NULL
             AND overlap_expires_at IS NULL
+            AND revoked_at IS NULL
           )
           OR
           (
-            rotated_at IS NOT NULL
+            status = 'retiring'
+            AND rotated_at IS NOT NULL
             AND overlap_expires_at IS NOT NULL
+            AND revoked_at IS NULL
+          )
+          OR
+          (
+            status = 'revoked'
+            AND revoked_at IS NOT NULL
+            AND (
+              (
+                rotated_at IS NULL
+                AND overlap_expires_at IS NULL
+              )
+              OR
+              (
+                rotated_at IS NOT NULL
+                AND overlap_expires_at IS NOT NULL
+              )
+            )
+          )
+        )
+      )
+      OR
+      (
+        kind = 'oauth_client_credentials'
+        AND overlap_expires_at IS NULL
+        AND (
+          (
+            status = 'active'
+            AND revoked_at IS NULL
+          )
+          OR
+          (
+            status = 'revoked'
+            AND revoked_at IS NOT NULL
           )
         )
       )
@@ -208,7 +227,10 @@ CREATE TABLE admin.application_credentials (
       AND (rotated_at IS NULL OR rotated_at >= issued_at)
       AND (
         overlap_expires_at IS NULL
-        OR overlap_expires_at > rotated_at
+        OR (
+          rotated_at IS NOT NULL
+          AND overlap_expires_at = rotated_at + interval '86400 seconds'
+        )
       )
       AND (
         revoked_at IS NULL
@@ -234,6 +256,9 @@ CREATE UNIQUE INDEX application_credentials_external_id_idx
 CREATE UNIQUE INDEX application_credentials_one_active_idx
   ON admin.application_credentials (app_id)
   WHERE status = 'active';
+CREATE UNIQUE INDEX application_credentials_one_retiring_idx
+  ON admin.application_credentials (app_id)
+  WHERE kind = 'api_key' AND status = 'retiring';
 CREATE INDEX application_credentials_prefix_status_idx
   ON admin.application_credentials (key_prefix, status);
 CREATE INDEX application_credentials_app_status_idx
@@ -402,7 +427,7 @@ CREATE TABLE admin.identity_mutation_journal (
   CONSTRAINT identity_mutation_journal_fingerprint_check
     CHECK (char_length(request_fingerprint) = 64),
   CONSTRAINT identity_mutation_journal_target_type_check
-    CHECK (target_type IN ('user', 'group')),
+    CHECK (target_type IN ('user', 'group', 'oauth_client')),
   CONSTRAINT identity_mutation_journal_target_identifier_check
     CHECK (char_length(target_identifier) BETWEEN 1 AND 255),
   CONSTRAINT identity_mutation_journal_state_check

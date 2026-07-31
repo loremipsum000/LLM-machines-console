@@ -2,7 +2,7 @@
   "apiVersion": "inference-core.llm-machines/v1",
   "kind": "LogicalKeycloakRealmSeed",
   "metadata": {
-    "changePackage": "PR-05",
+    "changePackage": "PR-06",
     "containsCredentials": false,
     "packagingTarget": "PR-12"
   },
@@ -247,13 +247,6 @@
       "fgapPolicy": "console-human-admin-service-account",
       "id": "human-identity-admin",
       "status": "active-console-only"
-    },
-    {
-      "allowedFgapResourceTypes": ["Clients"],
-      "assignedClientId": null,
-      "fgapPolicy": null,
-      "id": "application-oauth-client-admin",
-      "status": "reserved-unassigned-until-pr06"
     }
   ],
   "adminFineGrainedAuthorization": {

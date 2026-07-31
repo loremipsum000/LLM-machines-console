@@ -1,39 +1,23 @@
+import { randomUUID } from "node:crypto"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Actor } from "../auth/authorization"
-
-const dependencies = vi.hoisted(() => ({
-  createClient: vi.fn(),
-  deleteClient: vi.fn(),
-  emitAudit: vi.fn(),
-  getDatabase: vi.fn(),
-  keycloakClientFromEnv: vi.fn(),
-  rotateClientSecret: vi.fn(),
-  upsertActor: vi.fn(),
-}))
-
-vi.mock("../db/inference-core-client", () => ({
-  getInferenceCoreDb: dependencies.getDatabase,
-}))
-
-vi.mock("./audit", () => ({
-  emitAudit: dependencies.emitAudit,
-}))
-
-vi.mock("./users", () => ({
-  upsertActorUser: dependencies.upsertActor,
-}))
-
-vi.mock("./inference-core-keycloak-admin", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./inference-core-keycloak-admin")>()),
-  keycloakAdminClientFromEnv: dependencies.keycloakClientFromEnv,
-}))
-
 import {
   createAdminConnectedApp,
+  getAdminConnectedAppDetail,
+  recordConnectedAppModelsConnection,
   resetConnectedAppsForTest,
+  resolveConnectedAppRuntimeIdentity,
   resolveConnectedAppRuntimeIdentityByApiKey,
+  revokeAdminConnectedAppCredential,
   rotateAdminConnectedAppCredentials,
+  testAdminConnectedApp,
 } from "./admin-connected-apps"
+import { getAuditEventsForTest, resetAuditEventsForTest } from "./audit"
+import {
+  IdentityMutationReconciliationRequiredError,
+  executeJournaledIdentityMutation,
+  resetIdentityMutationJournalForTest,
+} from "./identity-mutation-journal"
 
 const actor: Actor = {
   authMode: "service-forwarded",
@@ -43,111 +27,100 @@ const actor: Actor = {
 
 describe("connected app credential mutation boundaries", () => {
   beforeEach(() => {
-    dependencies.createClient.mockReset().mockResolvedValue({
-      clientId: "llmm-test-client",
-      clientSecret: "created-client-secret",
-      id: "keycloak-client-uuid",
-      tokenUrl:
-        "https://keycloak.example.test/realms/appliance/protocol/openid-connect/token",
-    })
-    dependencies.deleteClient.mockReset().mockResolvedValue(undefined)
-    dependencies.emitAudit.mockReset().mockResolvedValue(undefined)
-    dependencies.getDatabase.mockReset().mockReturnValue(null)
-    dependencies.rotateClientSecret.mockReset().mockResolvedValue({
-      clientId: "llmm-test-client",
-      clientSecret: "rotated-client-secret",
-      id: "keycloak-client-uuid",
-      tokenUrl:
-        "https://keycloak.example.test/realms/appliance/protocol/openid-connect/token",
-    })
-    dependencies.upsertActor.mockReset().mockResolvedValue(actor)
-    dependencies.keycloakClientFromEnv.mockReset().mockReturnValue({
-      client: {
-        createConfidentialClient: dependencies.createClient,
-        deleteConfidentialClient: dependencies.deleteClient,
-        rotateConfidentialClientSecret: dependencies.rotateClientSecret,
-      },
-      status: "ok",
-    })
+    vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
   })
 
   afterEach(async () => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
     vi.unstubAllEnvs()
+    resetIdentityMutationJournalForTest()
+    resetAuditEventsForTest()
     await resetConnectedAppsForTest()
   })
 
-  it("removes a newly created Keycloak client when Product DB persistence fails", async () => {
-    dependencies.getDatabase.mockReturnValue({
-      transaction: vi.fn(async () => {
-        throw new Error("synthetic database failure")
-      }),
-    })
-
-    const result = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("oauth_client_credentials"),
-    )
-
-    expect(result).toEqual({
-      detail:
-        "Connected app persistence failed. The temporary Keycloak client was removed; retry the request.",
-      status: "blocked",
-    })
-    expect(dependencies.createClient).toHaveBeenCalledOnce()
-    expect(dependencies.deleteClient).toHaveBeenCalledWith(
-      "keycloak-client-uuid",
-    )
-    expect(dependencies.emitAudit).not.toHaveBeenCalled()
-  })
-
-  it("returns a bounded reconciliation instruction when Keycloak cleanup fails", async () => {
-    dependencies.getDatabase.mockReturnValue({
-      transaction: vi.fn(async () => {
-        throw new Error("private-database-error-marker")
-      }),
-    })
-    dependencies.deleteClient.mockRejectedValue(
-      new Error("private-identity-error-marker"),
-    )
-
-    const result = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("oauth_client_credentials"),
-    )
-
-    expect(result.status).toBe("blocked")
-    expect(result).toMatchObject({
-      detail: expect.stringMatching(
-        /^Connected app persistence failed and Keycloak cleanup did not complete\. Reconcile client llmm-app-[a-z0-9-]+-staging before retrying; do not use a new idempotency key until Keycloak is checked\.$/,
-      ),
-    })
-    expect(JSON.stringify(result)).not.toMatch(/private-(?:database|identity)/)
-    expect(dependencies.deleteClient).toHaveBeenCalledOnce()
-  })
-
-  it("keeps OAuth secret rotation disabled until durable reconciliation exists", async () => {
-    vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
-    const created = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("oauth_client_credentials"),
-    )
+  it("defaults an omitted auth method to a static key without retaining its secret", async () => {
+    const request = connectedAppRequest("api_key")
+    const created = await createAdminConnectedApp(actor, {
+      ...request,
+      authMethod: undefined,
+    } as unknown as typeof request)
     expect(created.status).toBe("created")
-    if (created.status !== "created") {
-      throw new Error("Expected an OAuth Application fixture.")
+    if (
+      created.status !== "created" ||
+      created.credential.authMethod !== "api_key"
+    ) {
+      throw new Error("Expected a static Application credential.")
     }
 
-    const result = await rotateAdminConnectedAppCredentials(
+    const detail = await getAdminConnectedAppDetail(actor, created.app.id)
+    expect(detail?.app.authMethod).toBe("api_key")
+    expect(JSON.stringify(detail)).not.toContain(created.credential.apiKey)
+    expect(JSON.stringify(getAuditEventsForTest())).not.toContain(
+      created.credential.apiKey,
+    )
+  })
+
+  it("keeps exactly 86400 seconds of static overlap and supports immediate retiring-key revocation", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-07-31T12:00:00.000Z"))
+    const created = await createAdminConnectedApp(
+      actor,
+      connectedAppRequest("api_key"),
+    )
+    if (
+      created.status !== "created" ||
+      created.credential.authMethod !== "api_key"
+    ) {
+      throw new Error("Expected an initial static key.")
+    }
+
+    vi.setSystemTime(new Date("2026-07-31T13:00:00.000Z"))
+    const rotated = await rotateAdminConnectedAppCredentials(
       actor,
       created.app.id,
     )
-
-    expect(result).toMatchObject({
-      detail:
-        "OAuth client-secret rotation remains disabled until durable identity reconciliation is available.",
-      status: "blocked",
+    if (
+      rotated.status !== "rotated" ||
+      rotated.credential.authMethod !== "api_key"
+    ) {
+      throw new Error("Expected a rotated static key.")
+    }
+    const retiring = rotated.app.credentials.find(
+      (credential) => credential.id === created.credential.credentialId,
+    )
+    expect(retiring).toMatchObject({
+      overlapExpiresAt: "2026-08-01T13:00:00.000Z",
+      rotatedAt: "2026-07-31T13:00:00.000Z",
+      status: "retiring",
     })
-    expect(dependencies.rotateClientSecret).not.toHaveBeenCalled()
+
+    vi.setSystemTime(new Date("2026-07-31T13:05:00.000Z"))
+    const revoked = await revokeAdminConnectedAppCredential(
+      actor,
+      created.app.id,
+      created.credential.credentialId,
+    )
+    expect(revoked.status).toBe("revoked")
+    if (revoked.status !== "revoked") {
+      throw new Error("Expected the retiring key to be revoked.")
+    }
+    expect(
+      revoked.app.credentials.find(
+        (credential) => credential.id === created.credential.credentialId,
+      ),
+    ).toMatchObject({
+      overlapExpiresAt: "2026-08-01T13:00:00.000Z",
+      revokedAt: "2026-07-31T13:05:00.000Z",
+      rotatedAt: "2026-07-31T13:00:00.000Z",
+      status: "revoked",
+    })
+    await expect(
+      resolveConnectedAppRuntimeIdentityByApiKey(created.credential.apiKey),
+    ).resolves.toBeNull()
+    await expect(
+      resolveConnectedAppRuntimeIdentityByApiKey(rotated.credential.apiKey),
+    ).resolves.toMatchObject({ appId: created.app.id })
   })
 
   it("revokes the oldest overlap key during a second rapid static rotation", async () => {
@@ -157,8 +130,10 @@ describe("connected app credential mutation boundaries", () => {
       actor,
       connectedAppRequest("api_key"),
     )
-    expect(created.status).toBe("created")
-    if (created.status !== "created" || !created.credential.apiKey) {
+    if (
+      created.status !== "created" ||
+      created.credential.authMethod !== "api_key"
+    ) {
       throw new Error("Expected an initial static key.")
     }
 
@@ -174,9 +149,9 @@ describe("connected app credential mutation boundaries", () => {
     )
     if (
       firstRotation.status !== "rotated" ||
-      !firstRotation.credential.apiKey ||
+      firstRotation.credential.authMethod !== "api_key" ||
       secondRotation.status !== "rotated" ||
-      !secondRotation.credential.apiKey
+      secondRotation.credential.authMethod !== "api_key"
     ) {
       throw new Error("Expected two rotated static keys.")
     }
@@ -195,6 +170,154 @@ describe("connected app credential mutation boundaries", () => {
       ),
     ).resolves.toMatchObject({ appId: created.app.id })
   })
+
+  it("rotates an OAuth secret in place with the same client id, Keycloak uuid, and credential id", async () => {
+    const created = await createAdminConnectedApp(
+      actor,
+      connectedAppRequest("oauth_client_credentials"),
+      identityContext("application.oauth.create"),
+    )
+    if (
+      created.status !== "created" ||
+      created.credential.authMethod !== "oauth_client_credentials"
+    ) {
+      throw new Error("Expected an OAuth Application credential.")
+    }
+
+    const rotated = await rotateAdminConnectedAppCredentials(
+      actor,
+      created.app.id,
+      identityContext("application.oauth.rotate"),
+    )
+    if (
+      rotated.status !== "rotated" ||
+      rotated.credential.authMethod !== "oauth_client_credentials"
+    ) {
+      throw new Error("Expected a rotated OAuth Application credential.")
+    }
+
+    expect(rotated.credential.clientId).toBe(created.credential.clientId)
+    expect(rotated.credential.credentialId).toBe(
+      created.credential.credentialId,
+    )
+    expect(rotated.credential.clientSecret).not.toBe(
+      created.credential.clientSecret,
+    )
+    expect(rotated.app.credentials).toEqual([
+      expect.objectContaining({
+        clientId: created.credential.clientId,
+        id: created.credential.credentialId,
+        overlapExpiresAt: null,
+        status: "active",
+      }),
+    ])
+    const retainedText = JSON.stringify({
+      app: rotated.app,
+      audit: getAuditEventsForTest(),
+    })
+    expect(retainedText).not.toContain(created.credential.clientSecret)
+    expect(retainedText).not.toContain(rotated.credential.clientSecret)
+  })
+
+  it("fails OAuth runtime resolution closed while an OAuth journal outcome is unresolved", async () => {
+    const created = await createAdminConnectedApp(
+      actor,
+      connectedAppRequest("oauth_client_credentials"),
+      identityContext("application.oauth.create"),
+    )
+    if (
+      created.status !== "created" ||
+      created.credential.authMethod !== "oauth_client_credentials"
+    ) {
+      throw new Error("Expected an OAuth Application credential.")
+    }
+    await expect(
+      resolveConnectedAppRuntimeIdentity(created.credential.clientId),
+    ).resolves.toMatchObject({ appId: created.app.id })
+
+    await expect(
+      executeJournaledIdentityMutation({
+        apply: async (_preflight, keycloak) =>
+          keycloak.firstWrite(
+            async () => ({ id: "ambiguous-oauth-client" }),
+            "ambiguous-oauth-client",
+          ),
+        context: identityContext("application.oauth.revoke.ambiguous"),
+        finalize: async () => {
+          throw new Error("synthetic persistence failure")
+        },
+        keycloakSubjectId: actor.subject,
+        preflight: async () => null,
+        targetIdentifier: "ambiguous-oauth-client",
+        targetType: "oauth_client",
+      }),
+    ).rejects.toBeInstanceOf(IdentityMutationReconciliationRequiredError)
+
+    await expect(
+      resolveConnectedAppRuntimeIdentity(created.credential.clientId),
+    ).resolves.toBeNull()
+  })
+
+  it("keeps authentication resolution and passive connection checks side-effect-free", async () => {
+    const created = await createAdminConnectedApp(
+      actor,
+      connectedAppRequest("api_key"),
+    )
+    if (
+      created.status !== "created" ||
+      created.credential.authMethod !== "api_key"
+    ) {
+      throw new Error("Expected a static Application credential.")
+    }
+    await resolveConnectedAppRuntimeIdentityByApiKey(created.credential.apiKey)
+    const checked = await testAdminConnectedApp(actor, created.app.id)
+    expect(checked).toMatchObject({
+      connectionStatus: "not_connected",
+      observedAt: null,
+      status: "waiting",
+    })
+    const detail = await getAdminConnectedAppDetail(actor, created.app.id)
+    expect(detail?.app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+      usage: { lastUsedAt: null },
+    })
+    expect(detail?.app.credentials[0]?.lastUsedAt).toBeNull()
+  })
+
+  it("does not partially mark a fixture Application connected when its audit write fails", async () => {
+    const created = await createAdminConnectedApp(
+      actor,
+      connectedAppRequest("api_key"),
+    )
+    if (
+      created.status !== "created" ||
+      created.credential.authMethod !== "api_key"
+    ) {
+      throw new Error("Expected a static Application credential.")
+    }
+    const identity = await resolveConnectedAppRuntimeIdentityByApiKey(
+      created.credential.apiKey,
+    )
+    if (!identity) {
+      throw new Error("Expected a runtime identity.")
+    }
+
+    const auditModule = await import("./audit")
+    vi.spyOn(auditModule, "emitAudit").mockRejectedValueOnce(
+      new Error("synthetic audit failure"),
+    )
+    await expect(
+      recordConnectedAppModelsConnection(identity, "correlation-fixture"),
+    ).rejects.toThrow("synthetic audit failure")
+
+    const detail = await getAdminConnectedAppDetail(actor, created.app.id)
+    expect(detail?.app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+    })
+    expect(detail?.app.credentials[0]?.lastUsedAt).toBeNull()
+  })
 })
 
 function connectedAppRequest(
@@ -205,8 +328,20 @@ function connectedAppRequest(
     authMethod,
     description: "Credential mutation boundary test.",
     name: `Atomicity ${authMethod}`,
-    ownerGroup: "Administrators",
     rateLimitRpm: null,
     tokenBudget7d: null,
+  }
+}
+
+function identityContext(operationCode: string) {
+  return {
+    commitWithReceipt: async <T>(input: {
+      resourceId: string | null
+      run(transaction: null): Promise<T>
+    }) => input.run(null),
+    finalizeReceipt: async () => undefined,
+    idempotencyLedgerId: randomUUID(),
+    operationCode,
+    requestFingerprint: randomUUID(),
   }
 }

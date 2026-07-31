@@ -887,7 +887,7 @@ const adminActor: Actor = {
 
 function stubKeycloakAdminEnv(): void {
   vi.stubEnv("KEYCLOAK_ADMIN_BASE_URL", "https://keycloak.example/keycloak")
-  vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_ID", "console-team")
+  vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_ID", "console-human-admin")
   vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_SECRET", "unit-test-credential")
   vi.stubEnv("KEYCLOAK_ADMIN_REALM", "llm-machines")
 }

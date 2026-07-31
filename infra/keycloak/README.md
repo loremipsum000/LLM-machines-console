@@ -1,10 +1,13 @@
 # Inference Core Keycloak seed
 
-This directory defines the PR-05 logical appliance-realm seed and its ordered
-commissioning contract. It is not a Keycloak realm export and does not perform
-an import. PR-12 packaging must translate the reviewed selectors into the
-pinned Keycloak release, resolve realm resource UUIDs, and prove the live
-permission matrix before customer use.
+This directory defines separate logical seeds and ordered commissioning
+contracts for the human appliance realm and the Application realm. The human
+identity contract originates in PR-05. PR-06 removes Application client
+authority from it and defines that authority in a dedicated realm. These files
+are not Keycloak realm exports and do not perform an import. PR-12 packaging
+must translate the reviewed selectors into the pinned Keycloak release,
+resolve realm resource UUIDs, and prove both live permission matrices before
+customer use.
 
 ## Runtime boundary
 
@@ -16,11 +19,13 @@ Groups `manage-membership-of-members` scope supplies the group-side bridge for
 the Users `manage-group-membership` scope. No custom Keycloak provider plugin
 is required or permitted by this seed.
 
-The seed has one realm, `llm-machines`. The `master` realm is never a customer
+The human realm is `llm-machines`. The `master` realm is never a customer
 administration target. Its only human roles are `admin` and `operator`, mapped
 by the `Admins` and `Operators` groups. The only `realm-management` roles for
 customer Admins and the Console human-admin service account are `query-users`
 and `query-groups`; these expose navigation and search but do not bypass FGAP.
+The human realm contains no Application admin client, Application service
+permission class, Application FGAP policy, or Clients permission.
 
 ## FGAP v2 permissions
 
@@ -84,6 +89,38 @@ Operator mutation. PR-12 must evaluate the exact pinned runtime against the
 commissioning matrix and prove this operating boundary. PR-05 defines the
 logical contract only and makes no deployed-runtime qualification claim.
 
+## Application realm
+
+The dedicated Application realm is exactly `llm-machines-applications`. It has
+no human users, groups, customer roles, browser flow, human clients, role
+mapping, or authority over the human realm. Its realm access-token lifetime is
+300 seconds. The only seeded client is `console-application-admin`, whose
+access-token lifetime is overridden to 60 seconds. It enables only the service
+account and client-credentials flow.
+
+`console-application-admin` receives only the `query-clients`
+`realm-management` role and the FGAP v2 `Clients` scopes `view` and `manage`.
+It receives no coarse client or realm management role and no Users, Groups,
+Roles, Organizations, role-mapping, refresh-token, or offline-token authority.
+FGAP v2 `Clients/manage` is realm-wide, so the dedicated realm is the primary
+containment boundary. Console must also enforce the managed client namespace
+and journal every mutation.
+
+Managed customer Application clients follow an exact contract:
+
+- Client IDs match `llmm-app-UUID`.
+- Only service accounts and the client-credentials flow are enabled.
+- Default and optional client scopes are empty and `fullScopeAllowed` is
+  `false`.
+- The custom audience is exactly `console-bff` through
+  `included.custom.audience`.
+- Access tokens inherit the 300-second realm default and receive no refresh or
+  offline token.
+
+The logical seed contains no managed client instances or credentials. PR-12
+creates each managed client and generated secret outside Git, then proves the
+contract against the separate Application commissioning matrix.
+
 ## Offline access
 
 The seed does not use a synthetic realm `offlineSessionsEnabled` switch because
@@ -126,13 +163,16 @@ node scripts/inference-core/pr05-keycloak-seed.mjs
 node --test scripts/inference-core/pr05-keycloak-seed.test.mjs
 ```
 
-The verifier has no network or runtime mutation path. It exact-binds the
+The verifier reads all four logical artifacts and has no network or runtime
+mutation path. It independently exact-binds each realm and commissioning
+matrix, then rejects cross-realm authority leakage. It also verifies the
 minimum version, feature, FGAP policies and scopes, permission-class split,
-browser execution references, protocol mappers, audience, residual controls,
-and commissioning evaluation matrix. It rejects coarse administrative roles,
-wildcards, active `Roles` permissions, role-mapping scopes, client or realm
-management, native Operator mutation permissions, embedded credentials, and
-missing MFA evidence claims.
+browser execution references, protocol mappers, audiences, token lifetimes,
+managed Application client contract, residual controls, and negative token
+tests. It rejects coarse administrative roles, wildcards, active human-realm
+`Roles` or `Clients` permissions, Application-realm human identity authority,
+role-mapping scopes, native Operator mutation permissions, embedded
+credentials, and missing MFA evidence claims.
 
 Keycloak sources used for this contract:
 

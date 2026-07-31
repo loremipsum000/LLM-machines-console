@@ -21,12 +21,13 @@ describe("Connected app gateway routes", () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
+    vi.useRealTimers()
     resetAuditEventsForTest()
     resetIdempotencyForTest()
     await resetConnectedAppsForTest()
   })
 
-  it("routes staging app model and chat calls to LiteLLM through BFF policy without leaking secrets or prompts", async () => {
+  it("routes connected app model and chat calls through policy and records only the model-list connection", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     vi.stubEnv("LITELLM_URL", "http://litellm.test")
@@ -104,11 +105,16 @@ describe("Connected app gateway routes", () => {
       requests7d: 2,
       tokens7d: 42,
     })
+    expect(detailResponse.json().app).toMatchObject({
+      connectionStatus: "connected",
+      lastConnectedAt: expect.any(String),
+    })
     const auditEvents = getAuditEventsForTest()
     const gatewayEvents = auditEvents.filter((event) =>
       event.action.startsWith("connected_app.gateway."),
     )
     const auditText = JSON.stringify(auditEvents)
+    const gatewayAuditText = JSON.stringify(gatewayEvents)
     expect(auditText).toContain("connected_app.gateway.models")
     expect(auditText).toContain("connected_app.gateway.chat_completions")
     expect(gatewayEvents).toHaveLength(2)
@@ -122,6 +128,7 @@ describe("Connected app gateway routes", () => {
         sourceSystem: "console",
       })
       expect(event.metadata).not.toHaveProperty("authMethod")
+      expect(event.metadata).not.toHaveProperty("environment")
     }
     expect(
       auditEvents.find(
@@ -135,11 +142,15 @@ describe("Connected app gateway routes", () => {
         keycloakSubjectId: "admin-1",
       },
     })
-    expect(auditText).not.toContain('"tokens"')
-    expect(auditText).not.toContain('"model"')
-    expect(auditText).not.toContain("private prompt")
-    expect(auditText).not.toContain("private completion")
-    expect(auditText).not.toContain(created.credential.apiKey)
+    expect(gatewayAuditText).not.toContain('"tokens"')
+    expect(gatewayAuditText).not.toContain('"model"')
+    expect(gatewayAuditText).not.toContain("local-a")
+    expect(gatewayAuditText).not.toContain("local-b")
+    expect(gatewayAuditText).not.toContain("owned_by")
+    expect(gatewayAuditText).not.toContain("private prompt")
+    expect(gatewayAuditText).not.toContain("private completion")
+    expect(gatewayAuditText).not.toContain(created.credential.apiKey)
+    expect(auditText).not.toContain('"environment"')
     await server.close()
   })
 
@@ -383,6 +394,11 @@ describe("Connected app gateway routes", () => {
       url: "/api/app-gateway/v1/models",
       headers: { authorization: `Bearer ${token}` },
     })
+    const detailResponse = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
 
     expect(response.statusCode).toBe(503)
     expect(response.json()).toMatchObject({
@@ -391,6 +407,61 @@ describe("Connected app gateway routes", () => {
     })
     expect(response.body).not.toContain("litellm.example.test")
     expect(response.body).not.toContain("internal-litellm-key")
+    expect(detailResponse.json().app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+    })
+    const modelEvents = getAuditEventsForTest().filter(
+      (event) => event.action === "connected_app.gateway.models",
+    )
+    expect(modelEvents).toHaveLength(1)
+    expect(modelEvents[0]?.metadata).toMatchObject({ outcome: "failed" })
+    expect(modelEvents[0]?.metadata).not.toHaveProperty("environment")
+    await server.close()
+  })
+
+  it("keeps authentication resolution side-effect-free when the request is rejected before accounting", async () => {
+    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+    vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
+    const server = buildServer()
+    const created = await createApp(server, ["local-a"])
+    const token = bearerForCredential(created.credential)
+
+    const rejected = await server.inject({
+      method: "POST",
+      url: "/api/app-gateway/v1/chat/completions",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { model: "local-a" },
+    })
+    const detailResponse = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
+
+    expect(rejected.statusCode).toBe(400)
+    expect(detailResponse.json().app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+      usage: {
+        failures7d: 0,
+        lastUsedAt: null,
+        requests7d: 0,
+        tokens7d: 0,
+      },
+    })
+    expect(
+      detailResponse
+        .json()
+        .app.credentials.find(
+          (credential: { status: string }) => credential.status === "active",
+        ),
+    ).toMatchObject({ lastUsedAt: null })
+    expect(
+      getAuditEventsForTest().filter((event) =>
+        event.action.startsWith("connected_app.gateway."),
+      ),
+    ).toHaveLength(0)
     await server.close()
   })
 
@@ -414,6 +485,11 @@ describe("Connected app gateway routes", () => {
         messages: [{ role: "user", content: "do not forward" }],
       },
     })
+    const deniedDetail = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
     await server.inject({
       method: "POST",
       url: `/api/admin/applications/connected-apps/${created.app.id}/disable`,
@@ -434,15 +510,35 @@ describe("Connected app gateway routes", () => {
         authorization: "Bearer llmm_t4_unknown_unknown-secret",
       },
     })
+    const detailResponse = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
 
     expect(disallowedModel.statusCode).toBe(403)
     expect(disallowedModel.json()).toMatchObject({ title: "Model not allowed" })
+    expect(deniedDetail.json().app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+    })
     expect(disabled.statusCode).toBe(403)
     expect(disabled.json()).toMatchObject({ title: "Connected app disabled" })
     expect(unknown.statusCode).toBe(401)
     expect(unknown.json()).toMatchObject({
       title: "Invalid connected app token",
     })
+    expect(detailResponse.json().app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+    })
+    expect(
+      getAuditEventsForTest().filter(
+        (event) =>
+          event.action === "connected_app.gateway.models" &&
+          event.metadata.outcome === "succeeded",
+      ),
+    ).toHaveLength(0)
     expect(fetchMock).not.toHaveBeenCalled()
     await server.close()
   })
@@ -463,6 +559,11 @@ describe("Connected app gateway routes", () => {
         authorization: `Bearer fixture-connected-app:${created.credential.clientId}`,
       },
     })
+    const detailResponse = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
 
     expect(created.credential.authMethod).toBe("oauth_client_credentials")
     expect(models.statusCode).toBe(200)
@@ -470,9 +571,17 @@ describe("Connected app gateway routes", () => {
       object: "list",
       data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
     })
-    const event = getAuditEventsForTest().find(
-      (candidate) => candidate.action === "connected_app.gateway.models",
+    expect(detailResponse.json().app).toMatchObject({
+      connectionStatus: "connected",
+      lastConnectedAt: expect.any(String),
+    })
+    const modelsEvents = getAuditEventsForTest().filter(
+      (candidate) =>
+        candidate.action === "connected_app.gateway.models" &&
+        candidate.metadata.outcome === "succeeded",
     )
+    expect(modelsEvents).toHaveLength(1)
+    const event = modelsEvents[0]
     expect(event).toMatchObject({
       actorId: `fixture-subject:${created.credential.clientId}`,
       metadata: {
@@ -484,6 +593,7 @@ describe("Connected app gateway routes", () => {
         sourceSystem: "console",
       },
     })
+    expect(event?.metadata).not.toHaveProperty("environment")
     expect(
       getAuditEventsForTest().find(
         (candidate) => candidate.action === "admin.connected_app.created",
@@ -502,7 +612,7 @@ describe("Connected app gateway routes", () => {
     await server.close()
   })
 
-  it("keeps the retired production promotion route absent", async () => {
+  it("keeps connection testing passive before client authentication", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("BFF_FALLBACK_MODELS", "local-a")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
@@ -521,15 +631,7 @@ describe("Connected app gateway routes", () => {
       url: `/api/admin/applications/connected-apps/${created.app.id}/test`,
       headers: {
         ...adminHeaders,
-        "idempotency-key": "connected-app-gateway-test-before-prod",
-      },
-    })
-    const promoted = await server.inject({
-      method: "POST",
-      url: `/api/admin/applications/connected-apps/${created.app.id}/promote-production`,
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "connected-app-gateway-promote",
+        "idempotency-key": "connected-app-gateway-passive-test",
       },
     })
     expect(locked.statusCode).toBe(401)
@@ -537,9 +639,17 @@ describe("Connected app gateway routes", () => {
       title: "Invalid connected app token",
     })
     expect(tested.statusCode).toBe(200)
+    expect(tested.json()).toMatchObject({
+      app: {
+        connectionStatus: "not_connected",
+        lastConnectedAt: null,
+      },
+      connectionStatus: "not_connected",
+    })
     expect(
       getAuditEventsForTest().find(
-        (event) => event.action === "admin.connected_app.tested",
+        (event) =>
+          event.action === "admin.connected_app.connection_evidence_read",
       ),
     ).toMatchObject({
       actorId: "admin-1",
@@ -549,7 +659,6 @@ describe("Connected app gateway routes", () => {
         keycloakSubjectId: "admin-1",
       },
     })
-    expect(promoted.statusCode).toBe(404)
     await server.close()
   })
 
@@ -570,20 +679,142 @@ describe("Connected app gateway routes", () => {
         authorization: `Bearer fixture-connected-app:${created.credential.clientId}`,
       },
     })
+    vi.stubEnv("NODE_ENV", "test")
+    const detailResponse = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
 
     expect(response.statusCode).toBe(401)
     expect(response.json()).toMatchObject({
       title: "Invalid connected app token",
     })
+    expect(detailResponse.json().app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+    })
+    expect(
+      getAuditEventsForTest().filter(
+        (event) => event.action === "connected_app.gateway.models",
+      ),
+    ).toHaveLength(0)
     await server.close()
   })
 
-  it("keeps rotated static API keys usable during the overlap window", async () => {
+  it("records passive connection evidence for an unexpired retiring key", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-07-31T12:00:00.000Z"))
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("BFF_FALLBACK_MODELS", "local-a")
+    vi.stubEnv("LITELLM_URL", "http://litellm.test")
+    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        Response.json({
+          data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
+          object: "list",
+        }),
+      ),
+    )
+    const server = buildServer()
+    const created = await createApp(server, ["local-a"])
+    const rotated = await server.inject({
+      method: "POST",
+      url: `/api/admin/applications/connected-apps/${created.app.id}/rotate-credentials`,
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "retiring-key-evidence-rotation",
+      },
+    })
+
+    const models = await server.inject({
+      method: "GET",
+      url: "/api/app-gateway/v1/models",
+      headers: {
+        authorization: `Bearer ${bearerForCredential(created.credential)}`,
+      },
+    })
+    const detail = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
+
+    expect(rotated.statusCode).toBe(200)
+    expect(models.statusCode).toBe(200)
+    expect(detail.json().app).toMatchObject({
+      connectionStatus: "connected",
+      lastConnectedAt: "2026-07-31T12:00:00.000Z",
+    })
+    expect(
+      detail
+        .json()
+        .app.credentials.find(
+          (credential: { id: string }) =>
+            credential.id === created.credential.credentialId,
+        ),
+    ).toMatchObject({
+      lastUsedAt: "2026-07-31T12:00:00.000Z",
+      status: "retiring",
+    })
+    expect(
+      getAuditEventsForTest().filter(
+        (event) =>
+          event.action === "connected_app.gateway.models" &&
+          event.metadata.outcome === "succeeded",
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          applicationId: created.app.id,
+          credentialRecordId: created.credential.credentialId,
+        }),
+      }),
+    ])
+    expect(JSON.stringify(getAuditEventsForTest())).not.toContain(
+      created.credential.apiKey,
+    )
+    await server.close()
+  })
+
+  it("does not connect a credential revoked while its model request is in flight", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-07-31T12:00:00.000Z"))
+    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+    vi.stubEnv("LITELLM_URL", "http://litellm.test")
+    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
+    let signalModelRequestStarted: (() => void) | undefined
+    let releaseModelRequest: ((response: Response) => void) | undefined
+    const modelRequestStarted = new Promise<void>((resolve) => {
+      signalModelRequestStarted = resolve
+    })
+    const pendingModelResponse = new Promise<Response>((resolve) => {
+      releaseModelRequest = resolve
+    })
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementationOnce(async () => {
+        signalModelRequestStarted?.()
+        return pendingModelResponse
+      })
+      .mockResolvedValueOnce(
+        Response.json({
+          data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
+          object: "list",
+        }),
+      )
+    vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
     const created = await createApp(server, ["local-a"])
     const oldToken = bearerForCredential(created.credential)
+    const oldKeyRequest = server.inject({
+      method: "GET",
+      url: "/api/app-gateway/v1/models",
+      headers: { authorization: `Bearer ${oldToken}` },
+    })
+
+    await modelRequestStarted
     const rotated = await server.inject({
       method: "POST",
       url: `/api/admin/applications/connected-apps/${created.app.id}/rotate-credentials`,
@@ -592,11 +823,31 @@ describe("Connected app gateway routes", () => {
         "idempotency-key": "connected-app-static-key-rotate",
       },
     })
-    const oldKeyResponse = await server.inject({
-      method: "GET",
-      url: "/api/app-gateway/v1/models",
-      headers: { authorization: `Bearer ${oldToken}` },
+    const revoked = await server.inject({
+      method: "POST",
+      url: `/api/admin/applications/connected-apps/${created.app.id}/credentials/${created.credential.credentialId}/revoke`,
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "connected-app-stale-key-revoke",
+      },
     })
+    releaseModelRequest?.(
+      Response.json({
+        data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
+        object: "list",
+      }),
+    )
+    const oldKeyResponse = await oldKeyRequest
+    const staleDetail = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
+    const staleSucceededModelsEvents = getAuditEventsForTest().filter(
+      (event) =>
+        event.action === "connected_app.gateway.models" &&
+        event.metadata.outcome === "succeeded",
+    )
     const newKeyResponse = await server.inject({
       method: "GET",
       url: "/api/app-gateway/v1/models",
@@ -604,14 +855,44 @@ describe("Connected app gateway routes", () => {
         authorization: `Bearer ${bearerForCredential(rotated.json().credential)}`,
       },
     })
+    const connectedDetail = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
 
     expect(rotated.statusCode).toBe(200)
+    expect(revoked.statusCode).toBe(200)
     expect(rotated.json()).toMatchObject({
       credential: expect.objectContaining({ authMethod: "api_key" }),
       status: "rotated",
     })
     expect(oldKeyResponse.statusCode).toBe(200)
+    expect(staleDetail.json().app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+    })
+    expect(staleSucceededModelsEvents).toHaveLength(0)
     expect(newKeyResponse.statusCode).toBe(200)
+    expect(connectedDetail.json().app).toMatchObject({
+      connectionStatus: "connected",
+      lastConnectedAt: expect.any(String),
+    })
+    const activeCredential = rotated
+      .json()
+      .app.credentials.find(
+        (credential: { status: string }) => credential.status === "active",
+      )
+    const successfulModelsEvents = getAuditEventsForTest().filter(
+      (event) =>
+        event.action === "connected_app.gateway.models" &&
+        event.metadata.outcome === "succeeded",
+    )
+    expect(activeCredential).toBeDefined()
+    expect(successfulModelsEvents).toHaveLength(1)
+    expect(successfulModelsEvents[0]?.metadata.credentialRecordId).toBe(
+      activeCredential?.id,
+    )
     expect(
       getAuditEventsForTest().find(
         (event) => event.action === "admin.connected_app.credentials_rotated",
@@ -628,6 +909,20 @@ describe("Connected app gateway routes", () => {
     expect(JSON.stringify(getAuditEventsForTest())).not.toContain(
       rotated.json().credential.apiKey,
     )
+    const revokedOldKeyResponse = await server.inject({
+      method: "GET",
+      url: "/api/app-gateway/v1/models",
+      headers: { authorization: `Bearer ${oldToken}` },
+    })
+    expect(revokedOldKeyResponse.statusCode).toBe(401)
+    expect(
+      getAuditEventsForTest().filter(
+        (event) =>
+          event.action === "connected_app.gateway.models" &&
+          event.metadata.outcome === "succeeded",
+      ),
+    ).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
     await server.close()
   })
 
@@ -755,13 +1050,14 @@ describe("Connected app gateway routes", () => {
       },
     })
     const rateLimited = await server.inject({
-      method: "POST",
-      url: "/api/app-gateway/v1/chat/completions",
+      method: "GET",
+      url: "/api/app-gateway/v1/models",
       headers: { authorization: `Bearer ${rateLimitedToken}` },
-      payload: {
-        model: "local-a",
-        messages: [{ role: "user", content: "second" }],
-      },
+    })
+    const rateLimitedDetail = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${rateLimitedApp.app.id}`,
+      headers: adminHeaders,
     })
     const budgetedApp = await createApp(server, ["local-a"], {
       rateLimitRpm: 10,
@@ -792,6 +1088,10 @@ describe("Connected app gateway routes", () => {
     expect(first.statusCode).toBe(200)
     expect(rateLimited.statusCode).toBe(429)
     expect(rateLimited.json()).toMatchObject({ title: "Rate limit exceeded" })
+    expect(rateLimitedDetail.json().app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+    })
     expect(budgetPrimer.statusCode).toBe(503)
     expect(budgetPrimer.json()).toMatchObject({
       title: "Token budget enforcement not qualified",
@@ -1051,7 +1351,6 @@ async function createApp(
       allowedModels: models,
       description: "Integration used by app gateway tests.",
       name: `Gateway Test ${models.join(" ")}`,
-      ownerGroup: "Everyone",
       ...limitPayload,
     },
   })
@@ -1063,6 +1362,7 @@ async function createApp(
       authMethod: "api_key" | "oauth_client_credentials"
       clientId?: string
       clientSecret?: string
+      credentialId: string
       keyPrefix: string | null
     }
   }

@@ -6,7 +6,9 @@ import {
   adminAuditResponseSchema,
   adminConnectedAppCreateRequestSchema,
   adminConnectedAppCreateResponseSchema,
+  adminConnectedAppDeleteRequestSchema,
   adminConnectedAppDetailSchema,
+  adminConnectedAppLifecycleResultSchema,
   adminConnectedAppRotateCredentialResultSchema,
   adminConnectedAppSchema,
   adminConnectedAppTestResultSchema,
@@ -45,12 +47,18 @@ import {
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Actor } from "../auth/authorization"
 import { withAdminOnly, withCapability } from "../auth/authorization"
+import { getInferenceCoreDb } from "../db/inference-core-client"
 import { getAdminAuditTimeline } from "../services/admin-audit"
 import {
   createAdminConnectedApp,
+  deleteAdminConnectedApp,
   disableAdminConnectedApp,
+  enableAdminConnectedApp,
   getAdminConnectedAppDetail,
   getAdminConnectedApps,
+  preflightAdminConnectedAppCredentialRotation,
+  preflightConnectedAppCredentialReveal,
+  revokeAdminConnectedAppCredential,
   rotateAdminConnectedAppCredentials,
   testAdminConnectedApp,
   updateAdminConnectedApp,
@@ -91,6 +99,7 @@ import {
 } from "../services/admin-team"
 import type { EmergencyRecoveryService } from "../services/emergency-recovery"
 import {
+  IdempotencyCompletionError,
   type IdempotencyReceipt,
   completeIdempotency,
   reserveIdempotency,
@@ -757,6 +766,7 @@ export function registerAdminRoutes(
     "/api/admin/applications/connected-apps",
     withCapability("applications.create_delete"),
     async (request, reply) => {
+      reply.header("cache-control", "no-store")
       const body = adminConnectedAppCreateRequestSchema.safeParse(
         request.body ?? {},
       )
@@ -764,7 +774,7 @@ export function registerAdminRoutes(
         return invalidRequest(
           reply,
           "Invalid connected app request",
-          "Name, description, owner group, allowed models, and optional limits are required.",
+          "Name, description, allowed models, and optional limits are required.",
         )
       }
       return withAdminIdempotentMutation(
@@ -772,8 +782,22 @@ export function registerAdminRoutes(
         reply,
         "POST /api/admin/applications/connected-apps",
         body.data,
-        async (actor) => {
-          const result = await createAdminConnectedApp(actor, body.data)
+        async (actor, identityContext) => {
+          const revealPreflight = preflightConnectedAppCredentialReveal(
+            body.data.authMethod,
+          )
+          if (revealPreflight.status === "blocked") {
+            return serviceUnavailable(
+              "Connected app endpoint configuration unavailable",
+              revealPreflight.detail,
+            )
+          }
+          const result = await createAdminConnectedApp(
+            actor,
+            body.data,
+            identityContext,
+            revealPreflight.endpoints,
+          )
           if (result.status === "blocked") {
             return serviceUnavailable(
               "Connected app identity unavailable",
@@ -786,6 +810,7 @@ export function registerAdminRoutes(
             statusCode: 201,
           }
         },
+        201,
       )
     },
   )
@@ -864,13 +889,35 @@ export function registerAdminRoutes(
   server.post(
     "/api/admin/applications/connected-apps/:id/rotate-credentials",
     withCapability("applications.credentials.test_rotate_revoke"),
-    async (request, reply) =>
-      connectedAppActionResult(
+    async (request, reply) => {
+      reply.header("cache-control", "no-store")
+      const id = routeId(request)
+      if (!id) {
+        return missingId(reply, "Connected app")
+      }
+      return withAdminIdempotentMutation(
         request,
         reply,
         "POST /api/admin/applications/connected-apps/:id/rotate-credentials",
-        async (actor, id) => {
-          const result = await rotateAdminConnectedAppCredentials(actor, id)
+        { id },
+        async (actor, identityContext) => {
+          const revealPreflight =
+            await preflightAdminConnectedAppCredentialRotation(id)
+          if (revealPreflight.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          if (revealPreflight.status === "blocked") {
+            return serviceUnavailable(
+              "Connected app endpoint configuration unavailable",
+              revealPreflight.detail,
+            )
+          }
+          const result = await rotateAdminConnectedAppCredentials(
+            actor,
+            id,
+            identityContext,
+            revealPreflight.endpoints,
+          )
           if (result.status === "not_found") {
             return connectedAppNotFound()
           }
@@ -884,7 +931,8 @@ export function registerAdminRoutes(
             statusCode: 200,
           }
         },
-      ),
+      )
+    },
   )
 
   server.post(
@@ -897,14 +945,124 @@ export function registerAdminRoutes(
         "POST /api/admin/applications/connected-apps/:id/disable",
         async (actor, id) => {
           const result = await disableAdminConnectedApp(actor, id)
-          return result.status === "not_found"
-            ? connectedAppNotFound()
-            : {
-                payload: adminConnectedAppSchema.parse(result.app),
-                statusCode: 200,
-              }
+          if (result.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          if (result.status === "blocked") {
+            return connectedAppBlocked(result.detail)
+          }
+          return {
+            payload: adminConnectedAppLifecycleResultSchema.parse(result),
+            statusCode: 200,
+          }
         },
       ),
+  )
+
+  server.post(
+    "/api/admin/applications/connected-apps/:id/enable",
+    withCapability("applications.reenable"),
+    async (request, reply) =>
+      connectedAppActionResult(
+        request,
+        reply,
+        "POST /api/admin/applications/connected-apps/:id/enable",
+        async (actor, id) => {
+          const result = await enableAdminConnectedApp(actor, id)
+          if (result.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          if (result.status === "blocked") {
+            return connectedAppBlocked(result.detail)
+          }
+          return {
+            payload: adminConnectedAppLifecycleResultSchema.parse(result),
+            statusCode: 200,
+          }
+        },
+      ),
+  )
+
+  server.post(
+    "/api/admin/applications/connected-apps/:id/credentials/:credentialId/revoke",
+    withCapability("applications.credentials.test_rotate_revoke"),
+    async (request, reply) => {
+      const id = routeId(request)
+      const credentialId = routeCredentialId(request)
+      if (!id || !credentialId) {
+        return missingId(reply, "Connected app credential")
+      }
+      return withAdminIdempotentMutation(
+        request,
+        reply,
+        "POST /api/admin/applications/connected-apps/:id/credentials/:credentialId/revoke",
+        { credentialId, id },
+        async (actor, identityContext) => {
+          const result = await revokeAdminConnectedAppCredential(
+            actor,
+            id,
+            credentialId,
+            identityContext,
+          )
+          if (result.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          if (result.status === "blocked") {
+            return connectedAppBlocked(result.detail)
+          }
+          return {
+            idempotencyResourceId: result.app.id,
+            payload: adminConnectedAppSchema.parse(result.app),
+            statusCode: 200,
+          }
+        },
+      )
+    },
+  )
+
+  server.delete(
+    "/api/admin/applications/connected-apps/:id",
+    withCapability("applications.create_delete"),
+    async (request, reply) => {
+      const id = routeId(request)
+      if (!id) {
+        return missingId(reply, "Connected app")
+      }
+      const body = adminConnectedAppDeleteRequestSchema.safeParse(
+        request.body ?? {},
+      )
+      if (!body.success) {
+        return invalidRequest(
+          reply,
+          "Invalid connected app delete request",
+          "Deleting an Application requires exact DELETE APPLICATION confirmation.",
+        )
+      }
+      return withAdminIdempotentMutation(
+        request,
+        reply,
+        "DELETE /api/admin/applications/connected-apps/:id",
+        { body: body.data, id },
+        async (actor, identityContext) => {
+          const result = await deleteAdminConnectedApp(
+            actor,
+            id,
+            identityContext,
+          )
+          if (result.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          if (result.status === "blocked") {
+            return connectedAppBlocked(result.detail)
+          }
+          return {
+            idempotencyResourceId: result.applicationId,
+            payload: adminConnectedAppLifecycleResultSchema.parse(result),
+            statusCode: 200,
+          }
+        },
+      )
+    },
   )
 
   server.get(
@@ -1172,6 +1330,10 @@ function routeId(request: FastifyRequest): string | undefined {
   return (request.params as { id?: string }).id
 }
 
+function routeCredentialId(request: FastifyRequest): string | undefined {
+  return (request.params as { credentialId?: string }).credentialId
+}
+
 function settingsMutationResponse(
   result:
     | { settings: unknown; status: "ok" }
@@ -1298,6 +1460,7 @@ async function connectedAppActionResult(
   run: (
     actor: Actor,
     id: string,
+    identityContext: AdminTeamMutationContext,
   ) => Promise<{
     idempotencyResourceId?: string
     payload: unknown
@@ -1311,7 +1474,7 @@ async function connectedAppActionResult(
         reply,
         route,
         { id },
-        async (actor) => run(actor, id),
+        async (actor, identityContext) => run(actor, id, identityContext),
       )
     : missingId(reply, "Connected app")
 }
@@ -1450,6 +1613,33 @@ async function withAdminIdempotentMutation(
 
   let identityReceiptFinalized = false
   const identityContext: AdminTeamMutationContext = {
+    commitWithReceipt: async ({ resourceId, run }) => {
+      const db = getInferenceCoreDb()
+      const commit = async (transaction: Parameters<typeof run>[0]) => {
+        const value = await run(transaction)
+        const completed = await completeIdempotency(
+          {
+            outcome: "succeeded",
+            resourceId,
+            storeKey: reservation.storeKey,
+            requestHash,
+            statusCode: identityMutationSuccessStatusCode,
+          },
+          transaction,
+        )
+        if (!completed) {
+          throw new IdempotencyCompletionError()
+        }
+        return value
+      }
+      const value = db
+        ? await db.transaction((transaction) => commit(transaction))
+        : // Fixture mode has no durable store and is excluded from receipt-failure
+          // rollback qualification. PostgreSQL is the production atomic boundary.
+          await commit(null)
+      identityReceiptFinalized = true
+      return value
+    },
     finalizeReceipt: async ({ resourceId }) => {
       const completed = await completeIdempotency({
         outcome: "succeeded",
@@ -1494,6 +1684,9 @@ async function withAdminIdempotentMutation(
         }
       }
       return reply.code(identityError.statusCode).send(identityError.payload)
+    }
+    if (error instanceof IdempotencyCompletionError) {
+      return idempotencyCompletionUnavailable(reply)
     }
     const errorResult = teamErrorResult(error)
     if (!errorResult) {
@@ -1582,7 +1775,7 @@ function idempotencyCompletionUnavailable(reply: FastifyReply) {
     title: "Idempotency completion unavailable",
     status: 503,
     detail:
-      "The mutation completed but its durable idempotency receipt could not be recorded. Reconcile the resource before retrying.",
+      "The mutation did not produce a durable idempotency receipt. Reconcile the resource or pending request before retrying.",
   })
 }
 

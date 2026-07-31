@@ -11,7 +11,10 @@ import {
   createRuntimeAuthorizationOptions,
   createTestFixtureAuthorizationOptions,
 } from "./auth/runtime-live-authority"
-import { isProductionRuntime } from "./config/fixture-mode"
+import {
+  assertProductionFixturesDisabled,
+  isProductionRuntime,
+} from "./config/fixture-mode"
 import {
   checkInferenceCoreDbReadiness,
   closeInferenceCoreDb,
@@ -21,6 +24,7 @@ import {
   registerAdminRoutes,
 } from "./routes/admin"
 import { registerAppGatewayRoutes } from "./routes/app-gateway"
+import { assertProductionConnectedAppRevealEndpoints } from "./services/admin-connected-apps"
 import { emergencyRecoveryServiceFromRuntime } from "./services/emergency-recovery"
 
 export interface BuildServerOptions {
@@ -29,6 +33,9 @@ export interface BuildServerOptions {
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
+  assertProductionFixturesDisabled()
+  assertProductionConnectedAppRevealEndpoints()
+
   if (isProductionRuntime() && !process.env.DATABASE_URL?.trim()) {
     throw new Error("DATABASE_URL is required for the Console BFF.")
   }

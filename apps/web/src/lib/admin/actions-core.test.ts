@@ -1,33 +1,38 @@
 import type { AdminConnectedApp } from "@llm-machines/contracts/inference-core"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
+  checkAdminConnectedAppConnectionAction,
   createAdminConnectedAppAction,
-  testAdminConnectedAppConnectionAction,
+  revokeAdminConnectedAppCredentialAction,
+  softDeleteAdminConnectedAppAction,
+  updateAdminConnectedAppPolicyAction,
 } from "./actions-core"
 
 const connectedApp: AdminConnectedApp = {
   allowedModels: ["local-model"],
   auditHref: "#audit",
+  authMethod: "api_key",
+  connectionStatus: "not_connected",
   createdAt: "2026-07-31T08:00:00.000Z",
-  description: "Retained connected application test fixture.",
-  detailHref: "/applications/apps/app-1",
-  environments: [
+  credentials: [
     {
-      authMethods: ["api_key"],
-      clientId: "app-1-client",
-      credentialIssuedAt: "2026-07-31T08:00:00.000Z",
-      environment: "staging",
+      authMethod: "api_key",
+      clientId: null,
+      id: "credential-1",
+      issuedAt: "2026-07-31T08:00:00.000Z",
       keyPrefix: "llmm_t4_test",
-      lastTestedAt: null,
       lastUsedAt: null,
-      primaryAuthMethod: "api_key",
-      productionReady: false,
-      testStatus: "not_tested",
+      overlapExpiresAt: null,
+      revokedAt: null,
+      rotatedAt: null,
+      status: "active",
     },
   ],
+  description: "Retained connected application test fixture.",
+  detailHref: "/applications/apps/app-1",
   id: "app-1",
+  lastConnectedAt: null,
   name: "Retained App",
-  ownerGroup: "Everyone",
   rateLimitRpm: null,
   status: "enabled",
   tokenBudget7d: null,
@@ -87,7 +92,7 @@ describe("inference-core Admin actions", () => {
     vi.unstubAllGlobals()
   })
 
-  it("allows an operator to test a dedicated application credential", async () => {
+  it("allows an operator to refresh passive connection evidence", async () => {
     const app = connectedApp
     vi.stubGlobal(
       "fetch",
@@ -96,10 +101,10 @@ describe("inference-core Admin actions", () => {
           new Response(
             JSON.stringify({
               app,
-              detail: "Connection test passed.",
-              environment: "staging",
-              status: "passed",
-              testedAt: "2026-07-31T08:00:00.000Z",
+              connectionStatus: "not_connected",
+              detail: "Waiting for a real client GET /models request.",
+              observedAt: null,
+              status: "waiting",
             }),
             {
               headers: { "Content-Type": "application/json" },
@@ -112,19 +117,19 @@ describe("inference-core Admin actions", () => {
     formData.set("appId", app.id)
 
     await expect(
-      testAdminConnectedAppConnectionAction(
+      checkAdminConnectedAppConnectionAction(
         {
           app: null,
           detail: null,
           error: null,
+          observedAt: null,
           status: "idle",
-          testedAt: null,
         },
         formData,
       ),
     ).resolves.toMatchObject({
       app: { id: app.id },
-      status: "passed",
+      status: "waiting",
     })
     expect(fetch).toHaveBeenCalledWith(
       `http://bff.test/api/admin/applications/connected-apps/${app.id}/test`,
@@ -152,5 +157,113 @@ describe("inference-core Admin actions", () => {
       ),
     ).rejects.toThrow("Authorized Console session required.")
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("allows an operator to revoke an exact credential", async () => {
+    const fetchSpy = vi.fn(async () =>
+      Promise.resolve(
+        new Response(JSON.stringify(connectedApp), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        }),
+      ),
+    )
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+    formData.set("credentialId", "credential/one")
+
+    await expect(
+      revokeAdminConnectedAppCredentialAction(
+        {
+          app: null,
+          credential: null,
+          detail: null,
+          error: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).resolves.toMatchObject({ status: "revoked" })
+    expect(fetchSpy).toHaveBeenCalledWith(
+      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}/credentials/credential%2Fone/revoke`,
+      expect.objectContaining({ method: "POST" }),
+    )
+  })
+
+  it("submits stable aliases and null disabled limits in an Admin policy update", async () => {
+    mocks.auth.mockResolvedValue({
+      user: { id: "admin-1", roles: ["admin"] },
+    })
+    const fetchSpy = vi.fn(async () =>
+      Promise.resolve(
+        new Response(JSON.stringify(connectedApp), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        }),
+      ),
+    )
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+    formData.set("name", "Updated Application")
+    formData.set("description", "Updated policy")
+    formData.append("allowedModels", "stable-alias")
+
+    await expect(updateAdminConnectedAppPolicyAction(formData)).rejects.toThrow(
+      `redirect:/applications/apps/${connectedApp.id}?appAction=updated`,
+    )
+    expect(fetchSpy).toHaveBeenCalledWith(
+      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}`,
+      expect.objectContaining({
+        body: JSON.stringify({
+          allowedModels: ["stable-alias"],
+          description: "Updated policy",
+          name: "Updated Application",
+          rateLimitRpm: null,
+          tokenBudget7d: null,
+        }),
+        method: "PATCH",
+      }),
+    )
+  })
+
+  it("requires Admin authority and exact confirmation for soft deletion", async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+    formData.set("confirmation", "DELETE APPLICATION")
+
+    await expect(softDeleteAdminConnectedAppAction(formData)).rejects.toThrow(
+      "Authorized Console session required.",
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+
+    mocks.auth.mockResolvedValue({
+      user: { id: "admin-1", roles: ["admin"] },
+    })
+    fetchSpy.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          app: null,
+          applicationId: connectedApp.id,
+          detail: "Application deleted.",
+          status: "deleted",
+        }),
+        { headers: { "Content-Type": "application/json" }, status: 200 },
+      ),
+    )
+
+    await expect(softDeleteAdminConnectedAppAction(formData)).rejects.toThrow(
+      "redirect:/applications?appAction=deleted",
+    )
+    expect(fetchSpy).toHaveBeenLastCalledWith(
+      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}`,
+      expect.objectContaining({
+        body: JSON.stringify({ confirmation: "DELETE APPLICATION" }),
+        method: "DELETE",
+      }),
+    )
   })
 })

@@ -34,9 +34,11 @@ import {
   pr04DecisionPath,
   pr04StandaloneDbTestBoundary,
   pr05ContractBase,
+  pr06ContractBase,
   repositoryRoot,
   routeBaselinePath,
   scanForbiddenSurfaces,
+  verifyActiveReviewedRevisionId,
   verifyBaseCommitLineage,
   verifyCorePackageClosure,
   verifyLegacyRouteShrink,
@@ -49,6 +51,7 @@ import {
   verifyPr04DecisionDocument,
   verifyPr04FindingTransition,
   verifyPr04TargetState,
+  verifyPr05TargetState,
   verifyProtectedGuardrailStability,
   verifyRepository,
   verifyRetentionCharacterization,
@@ -1139,6 +1142,13 @@ test("base comparison requires a proper ancestor of candidate HEAD", () => {
 test("PR-05 base comparison accepts its dirty same-head candidate", () => {
   assert.deepEqual(
     verifyBaseCommitLineage(repositoryRoot, pr05ContractBase),
+    [],
+  )
+})
+
+test("PR-06 base comparison accepts its dirty same-head candidate", () => {
+  assert.deepEqual(
+    verifyBaseCommitLineage(repositoryRoot, pr06ContractBase),
     [],
   )
 })
@@ -2880,7 +2890,7 @@ test("Core root scripts lock the current base and standalone DB commands", () =>
 
   const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
   manifest.scripts["check:inference-core:base"] =
-    "node scripts/inference-core/guardrails.mjs --base-ref fb36b9de38396af79c82056963ae3f4833a12fef"
+    "node scripts/inference-core/guardrails.mjs --base-ref 9c502a6d4d79435f469288aa66001db7c4be4aa5"
   manifest.scripts["test:inference-core-db"] = "true"
   manifest.scripts["typecheck:inference-core-db"] = "true"
   writeFixture(root, "package.json", `${JSON.stringify(manifest)}\n`)
@@ -2915,7 +2925,7 @@ test("retention register rejects unreviewed top-level claims", () => {
 
 test("the live repository matches its current reviewed baselines", () => {
   const result = verifyRepository({
-    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr05ContractBase,
+    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr06ContractBase,
   })
   assert.deepEqual(result.errors, [])
   assert.equal(result.ok, true)
@@ -2957,8 +2967,34 @@ test("historical target verifiers defer only to reviewed successors", () => {
     [],
   )
 
+  const pr06Successor = structuredClone(currentRoutes)
+  pr06Successor.reviewedRevisions = [{ id: "PR-06" }]
+  assert.deepEqual(
+    verifyPr03TargetState({
+      currentAllowlist,
+      currentRoutes: pr06Successor,
+    }),
+    [],
+  )
+  assert.deepEqual(
+    verifyPr04TargetState({
+      currentAllowlist,
+      currentRoutes: pr06Successor,
+      paths: [],
+    }),
+    [],
+  )
+  assert.deepEqual(
+    verifyPr05TargetState({
+      currentAllowlist,
+      currentRoutes: pr06Successor,
+      paths: [],
+    }),
+    [],
+  )
+
   const unknownSuccessor = structuredClone(currentRoutes)
-  unknownSuccessor.reviewedRevisions = [{ id: "PR-06" }]
+  unknownSuccessor.reviewedRevisions = [{ id: "PR-07" }]
   assert.match(
     verifyPr03TargetState({
       currentAllowlist,
@@ -2974,6 +3010,23 @@ test("historical target verifiers defer only to reviewed successors", () => {
     }).join("\n"),
     /PR-04 total route count changed/,
   )
+  assert.match(
+    verifyPr05TargetState({
+      currentAllowlist,
+      currentRoutes: unknownSuccessor,
+      paths: [],
+    }).join("\n"),
+    /PR-05 total route count changed/,
+  )
+})
+
+test("unknown active reviewed revisions fail closed", () => {
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-02"), [])
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-06"), [])
+  assert.deepEqual(verifyActiveReviewedRevisionId(undefined), [])
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-07"), [
+    "unsupported active reviewed revision PR-07",
+  ])
 })
 
 test("the production closure contains every package and container entrypoint", () => {

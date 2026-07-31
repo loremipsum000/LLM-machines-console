@@ -63,7 +63,6 @@ const tableDefinitions = [
       "status",
       "connection_status",
       "last_connected_at",
-      "last_tested_at",
       "created_by",
       "updated_by",
       "created_at",
@@ -306,6 +305,7 @@ const expectedIndexes = [
   "application_credentials_client_identifier_idx",
   "application_credentials_external_id_idx",
   "application_credentials_one_active_idx",
+  "application_credentials_one_retiring_idx",
   "application_credentials_prefix_status_idx",
   "application_credentials_app_status_idx",
   "application_rate_limit_windows_expiry_idx",
@@ -501,6 +501,16 @@ describe("inference-core persistence boundary", () => {
     )
     expect(migration).toContain(
       "CHECK (num_nonnulls(credential_record_id, credential_prefix) <= 1)",
+    )
+    expect(migration).toContain(
+      "CHECK (target_type IN ('user', 'group', 'oauth_client'))",
+    )
+    const credentialTable = migration.slice(
+      migration.indexOf("CREATE TABLE admin.application_credentials"),
+      migration.indexOf("CREATE TABLE admin.application_model_allowlists"),
+    )
+    expect(credentialTable).not.toMatch(
+      /\b(?:api_key_plaintext|client_secret|raw_key|secret_value)\b/i,
     )
   })
 
