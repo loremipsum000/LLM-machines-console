@@ -1,6 +1,7 @@
 "use client"
 
 import { applyAdminInferenceModelUpdateAction } from "@/lib/admin/actions-core"
+import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import { cn } from "@/lib/utils"
 import type {
   AdminInferenceDashboard,
@@ -63,6 +64,7 @@ const inferenceActionNoticeMessages: Record<
 }
 
 interface InferenceV2ExperienceProps {
+  accessRole: RetainedConsoleRole
   basePath?: string
   dashboard: AdminInferenceDashboard
   inferenceAction?: string
@@ -72,6 +74,7 @@ interface InferenceV2ExperienceProps {
 export type InferenceV2View = "overview" | "model-update"
 
 export function InferenceV2Experience({
+  accessRole,
   basePath = "/inference",
   dashboard,
   inferenceAction,
@@ -104,6 +107,7 @@ export function InferenceV2Experience({
             <InferenceActionNotice action={inferenceAction} />
           ) : null}
           <ModelUpdateDetails
+            canApplyUpdates={accessRole === "admin"}
             modelUpdate={dashboard.modelUpdate}
             returnTo={returnTo}
           />
@@ -121,7 +125,11 @@ export function InferenceV2Experience({
           <InferenceActionNotice action={inferenceAction} />
         ) : null}
         <ModelUpdateCta basePath={basePath} dashboard={dashboard} />
-        <InferenceToolbar basePath={basePath} dashboard={dashboard} />
+        <InferenceToolbar
+          basePath={basePath}
+          canOpenLiteLlm={accessRole === "admin"}
+          dashboard={dashboard}
+        />
         <InferenceSummary dashboard={dashboard} />
         <ModelUsageSection modelUsage={sortedUsage} />
         <AvailableModelsSection models={dashboard.models} usage={sortedUsage} />
@@ -152,7 +160,7 @@ function InferenceHeader({
           <p className="mt-3 max-w-[560px] text-sm leading-5 text-[#b2b2b2]">
             {isModelUpdateView
               ? "Review the governed model bundle update before starting the appliance-side workflow."
-              : "Reduced LiteLLM operator view for usage, model inventory, virtual keys, and governed model updates."}
+              : "Console preview of inference usage, model inventory, virtual-key metadata, and governed model updates."}
           </p>
           {isModelUpdateView ? (
             <Link
@@ -207,9 +215,11 @@ function ModelUpdateCta({
 }
 
 function ModelUpdateDetails({
+  canApplyUpdates,
   modelUpdate,
   returnTo,
 }: {
+  canApplyUpdates: boolean
   modelUpdate: AdminInferenceModelUpdate | null
   returnTo: string
 }) {
@@ -231,7 +241,9 @@ function ModelUpdateDetails({
   }
 
   const canApply =
-    modelUpdate.status === "available" && modelUpdate.updateActionEnabled
+    canApplyUpdates &&
+    modelUpdate.status === "available" &&
+    modelUpdate.updateActionEnabled
 
   return (
     <section
@@ -293,7 +305,7 @@ function ModelUpdateDetails({
           onClick={() => setOpen(true)}
           type="button"
         >
-          Update
+          {canApplyUpdates ? "Update" : "Admin approval required"}
         </button>
       </div>
 
@@ -346,9 +358,11 @@ function ModelUpdateDetails({
 
 function InferenceToolbar({
   basePath,
+  canOpenLiteLlm,
   dashboard,
 }: {
   basePath: string
+  canOpenLiteLlm: boolean
   dashboard: AdminInferenceDashboard
 }) {
   return (
@@ -374,7 +388,7 @@ function InferenceToolbar({
         </div>
       </div>
 
-      {dashboard.liteLlmUrl ? (
+      {canOpenLiteLlm && dashboard.liteLlmUrl ? (
         <Link
           className="flex items-center gap-1.5 rounded-md bg-[#2e2e2e] px-3 py-2 text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#353535] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
           href={dashboard.liteLlmUrl}

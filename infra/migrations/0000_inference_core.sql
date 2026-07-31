@@ -379,6 +379,233 @@ CREATE UNIQUE INDEX idempotency_ledger_identity_key_idx
 CREATE INDEX idempotency_ledger_expiry_idx
   ON admin.idempotency_ledger (expires_at);
 
+CREATE TABLE admin.identity_mutation_journal (
+  id uuid PRIMARY KEY,
+  idempotency_ledger_id uuid NOT NULL UNIQUE REFERENCES admin.idempotency_ledger(id) ON DELETE CASCADE,
+  keycloak_subject_id text NOT NULL,
+  operation_code text NOT NULL,
+  request_fingerprint text NOT NULL,
+  target_type text NOT NULL,
+  target_identifier text NOT NULL,
+  state text NOT NULL DEFAULT 'prepared',
+  resource_id text,
+  reconciliation_reason text,
+  keycloak_applied_at timestamptz,
+  reconciliation_required_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT identity_mutation_journal_subject_check
+    CHECK (char_length(keycloak_subject_id) BETWEEN 1 AND 255),
+  CONSTRAINT identity_mutation_journal_operation_check
+    CHECK (char_length(operation_code) BETWEEN 1 AND 128),
+  CONSTRAINT identity_mutation_journal_fingerprint_check
+    CHECK (char_length(request_fingerprint) = 64),
+  CONSTRAINT identity_mutation_journal_target_type_check
+    CHECK (target_type IN ('user', 'group')),
+  CONSTRAINT identity_mutation_journal_target_identifier_check
+    CHECK (char_length(target_identifier) BETWEEN 1 AND 255),
+  CONSTRAINT identity_mutation_journal_state_check
+    CHECK (
+      state IN (
+        'prepared',
+        'keycloak_applied',
+        'completed',
+        'failed',
+        'reconciliation_required'
+      )
+    ),
+  CONSTRAINT identity_mutation_journal_resource_id_check
+    CHECK (
+      resource_id IS NULL
+      OR char_length(resource_id) BETWEEN 1 AND 255
+    ),
+  CONSTRAINT identity_mutation_journal_reconciliation_reason_check
+    CHECK (
+      reconciliation_reason IS NULL
+      OR reconciliation_reason IN (
+        'keycloak_outcome_unknown',
+        'keycloak_applied_persistence_failed',
+        'finalization_failed',
+        'completion_persistence_failed'
+      )
+    ),
+  CONSTRAINT identity_mutation_journal_lifecycle_check
+    CHECK (
+      (
+        state = 'prepared'
+        AND keycloak_applied_at IS NULL
+        AND reconciliation_required_at IS NULL
+        AND completed_at IS NULL
+        AND resource_id IS NULL
+        AND reconciliation_reason IS NULL
+      )
+      OR
+      (
+        state = 'keycloak_applied'
+        AND keycloak_applied_at IS NOT NULL
+        AND reconciliation_required_at IS NULL
+        AND completed_at IS NULL
+        AND reconciliation_reason IS NULL
+      )
+      OR
+      (
+        state = 'completed'
+        AND keycloak_applied_at IS NOT NULL
+        AND reconciliation_required_at IS NULL
+        AND completed_at IS NOT NULL
+        AND reconciliation_reason IS NULL
+      )
+      OR
+      (
+        state = 'failed'
+        AND keycloak_applied_at IS NULL
+        AND reconciliation_required_at IS NULL
+        AND completed_at IS NOT NULL
+        AND resource_id IS NULL
+        AND reconciliation_reason IS NULL
+      )
+      OR
+      (
+        state = 'reconciliation_required'
+        AND reconciliation_required_at IS NOT NULL
+        AND completed_at IS NULL
+        AND reconciliation_reason IS NOT NULL
+      )
+    ),
+  CONSTRAINT identity_mutation_journal_timestamps_check
+    CHECK (
+      updated_at >= created_at
+      AND (
+        keycloak_applied_at IS NULL
+        OR keycloak_applied_at >= created_at
+      )
+      AND (
+        reconciliation_required_at IS NULL
+        OR reconciliation_required_at >= COALESCE(keycloak_applied_at, created_at)
+      )
+      AND (
+        completed_at IS NULL
+        OR completed_at >= COALESCE(keycloak_applied_at, created_at)
+      )
+    )
+);
+
+CREATE INDEX identity_mutation_journal_state_updated_idx
+  ON admin.identity_mutation_journal (state, updated_at);
+CREATE UNIQUE INDEX identity_mutation_journal_one_unresolved_idx
+  ON admin.identity_mutation_journal ((true))
+  WHERE state IN ('prepared', 'keycloak_applied', 'reconciliation_required');
+
+CREATE TABLE admin.identity_mutation_journal_targets (
+  id uuid PRIMARY KEY,
+  journal_id uuid NOT NULL REFERENCES admin.identity_mutation_journal(id) ON DELETE CASCADE,
+  ordinal integer NOT NULL,
+  target_type text NOT NULL,
+  target_identifier text NOT NULL,
+  intent jsonb NOT NULL,
+  state text NOT NULL DEFAULT 'unattempted',
+  resource_id text,
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT identity_mutation_journal_targets_ordinal_check
+    CHECK (ordinal BETWEEN 0 AND 99),
+  CONSTRAINT identity_mutation_journal_targets_type_check
+    CHECK (target_type IN ('user', 'group_membership')),
+  CONSTRAINT identity_mutation_journal_targets_identifier_check
+    CHECK (char_length(target_identifier) BETWEEN 1 AND 511),
+  CONSTRAINT identity_mutation_journal_targets_intent_check
+    CHECK (
+      (
+        intent ->> 'kind' = 'csv_user'
+        AND intent ?& ARRAY[
+          'displayName', 'email', 'enabled', 'group', 'kind', 'line',
+          'role', 'sendInvite', 'username'
+        ]
+        AND intent - ARRAY[
+          'displayName', 'email', 'enabled', 'group', 'kind', 'line',
+          'role', 'sendInvite', 'username'
+        ] = '{}'::jsonb
+        AND jsonb_typeof(intent -> 'displayName') = 'string'
+        AND jsonb_typeof(intent -> 'email') = 'string'
+        AND jsonb_typeof(intent -> 'enabled') = 'boolean'
+        AND jsonb_typeof(intent -> 'group') = 'string'
+        AND jsonb_typeof(intent -> 'line') = 'number'
+        AND intent ->> 'role' IN ('admin', 'operator')
+        AND jsonb_typeof(intent -> 'sendInvite') = 'boolean'
+        AND jsonb_typeof(intent -> 'username') = 'string'
+      )
+      OR
+      (
+        intent ->> 'kind' = 'group_membership'
+        AND intent ?& ARRAY['groupId', 'kind', 'memberId']
+        AND intent - ARRAY['groupId', 'kind', 'memberId'] = '{}'::jsonb
+        AND jsonb_typeof(intent -> 'groupId') = 'string'
+        AND jsonb_typeof(intent -> 'memberId') = 'string'
+      )
+    ),
+  CONSTRAINT identity_mutation_journal_targets_state_check
+    CHECK (state IN ('unattempted', 'unknown', 'applied', 'failed')),
+  CONSTRAINT identity_mutation_journal_targets_resource_id_check
+    CHECK (
+      resource_id IS NULL
+      OR char_length(resource_id) BETWEEN 1 AND 255
+    ),
+  CONSTRAINT identity_mutation_journal_targets_lifecycle_check
+    CHECK (
+      (
+        state = 'unattempted'
+        AND resource_id IS NULL
+        AND started_at IS NULL
+        AND completed_at IS NULL
+      )
+      OR
+      (
+        state = 'unknown'
+        AND started_at IS NOT NULL
+        AND completed_at IS NULL
+      )
+      OR
+      (
+        state = 'applied'
+        AND started_at IS NOT NULL
+        AND completed_at IS NOT NULL
+        AND (
+          target_type <> 'user'
+          OR resource_id IS NOT NULL
+        )
+      )
+      OR
+      (
+        state = 'failed'
+        AND resource_id IS NULL
+        AND started_at IS NOT NULL
+        AND completed_at IS NOT NULL
+      )
+    ),
+  CONSTRAINT identity_mutation_journal_targets_timestamps_check
+    CHECK (
+      updated_at >= created_at
+      AND (
+        started_at IS NULL
+        OR started_at >= created_at
+      )
+      AND (
+        completed_at IS NULL
+        OR completed_at >= started_at
+      )
+    )
+);
+
+CREATE UNIQUE INDEX identity_mutation_journal_targets_ordinal_idx
+  ON admin.identity_mutation_journal_targets (journal_id, ordinal);
+CREATE UNIQUE INDEX identity_mutation_journal_targets_identifier_idx
+  ON admin.identity_mutation_journal_targets (journal_id, target_identifier);
+CREATE INDEX identity_mutation_journal_targets_state_idx
+  ON admin.identity_mutation_journal_targets (journal_id, state);
+
 CREATE TABLE admin.console_settings (
   id text PRIMARY KEY,
   organization_name text NOT NULL DEFAULT 'LLM Machines',
@@ -472,8 +699,100 @@ CREATE TABLE admin.backup_state (
   CONSTRAINT backup_state_status_check
     CHECK (
       status IN ('not_configured', 'idle', 'running', 'succeeded', 'failed')
+  )
+);
+
+CREATE TABLE admin.emergency_recovery_factor (
+  id text PRIMARY KEY,
+  algorithm text NOT NULL,
+  verifier_hash text NOT NULL,
+  salt text NOT NULL,
+  cost integer NOT NULL,
+  block_size integer NOT NULL,
+  parallelization integer NOT NULL,
+  key_length integer NOT NULL,
+  max_memory integer NOT NULL,
+  commissioned_by text NOT NULL,
+  commissioned_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT emergency_recovery_factor_id_check CHECK (id = 'appliance'),
+  CONSTRAINT emergency_recovery_factor_algorithm_check
+    CHECK (algorithm = 'scrypt'),
+  CONSTRAINT emergency_recovery_factor_verifier_check
+    CHECK (verifier_hash ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT emergency_recovery_factor_salt_check
+    CHECK (salt ~ '^[0-9a-f]{32}$'),
+  CONSTRAINT emergency_recovery_factor_parameters_check
+    CHECK (
+      cost = 16384
+      AND block_size = 8
+      AND parallelization = 1
+      AND key_length = 32
+      AND max_memory = 67108864
+    ),
+  CONSTRAINT emergency_recovery_factor_subject_check
+    CHECK (char_length(commissioned_by) BETWEEN 1 AND 255)
+);
+
+CREATE TABLE admin.emergency_recovery_sessions (
+  id uuid PRIMARY KEY,
+  keycloak_subject_id text NOT NULL,
+  reason_code text NOT NULL,
+  status text NOT NULL DEFAULT 'active',
+  activated_at timestamptz NOT NULL,
+  expires_at timestamptz NOT NULL,
+  revoked_at timestamptz,
+  revoked_by text,
+  correlation_id text NOT NULL,
+  CONSTRAINT emergency_recovery_sessions_subject_check
+    CHECK (char_length(keycloak_subject_id) BETWEEN 1 AND 255),
+  CONSTRAINT emergency_recovery_sessions_reason_check
+    CHECK (
+      reason_code IN (
+        'admin_lockout',
+        'admin_role_repair',
+        'admin_mfa_repair'
+      )
+    ),
+  CONSTRAINT emergency_recovery_sessions_status_check
+    CHECK (status IN ('active', 'revoked', 'expired')),
+  CONSTRAINT emergency_recovery_sessions_correlation_check
+    CHECK (char_length(correlation_id) BETWEEN 1 AND 128),
+  CONSTRAINT emergency_recovery_sessions_revoked_by_check
+    CHECK (
+      revoked_by IS NULL
+      OR char_length(revoked_by) BETWEEN 1 AND 255
+    ),
+  CONSTRAINT emergency_recovery_sessions_ttl_check
+    CHECK (expires_at = activated_at + interval '15 minutes'),
+  CONSTRAINT emergency_recovery_sessions_lifecycle_check
+    CHECK (
+      (
+        status = 'active'
+        AND revoked_at IS NULL
+        AND revoked_by IS NULL
+      )
+      OR
+      (
+        status = 'revoked'
+        AND revoked_at IS NOT NULL
+        AND revoked_by IS NOT NULL
+        AND revoked_at >= activated_at
+        AND revoked_at < expires_at
+      )
+      OR
+      (
+        status = 'expired'
+        AND revoked_at IS NULL
+        AND revoked_by IS NULL
+      )
     )
 );
+
+CREATE UNIQUE INDEX emergency_recovery_sessions_one_active_idx
+  ON admin.emergency_recovery_sessions (status)
+  WHERE status = 'active';
+CREATE INDEX emergency_recovery_sessions_expiry_idx
+  ON admin.emergency_recovery_sessions (expires_at);
 
 CREATE TABLE admin.recovery_state (
   id text PRIMARY KEY,

@@ -2,6 +2,7 @@ import { z } from "zod"
 import { inferenceCoreHumanRoleSchema } from "./inference-core-authorization.js"
 
 export * from "./inference-core-authorization.js"
+export * from "./inference-core-recovery.js"
 
 export const healthResponseSchema = z
   .object({
@@ -371,11 +372,24 @@ export type UpdateAdminTeamGroupRequest = z.infer<
   typeof updateAdminTeamGroupRequestSchema
 >
 
+export const adminTeamBatchLimit = 100
+export const adminTeamCsvBodyLimitBytes = 256 * 1024
+export const adminTeamCsvMaxBytes = 240 * 1024
+
 export const adminTeamBulkGroupAssignmentRequestSchema = z
   .object({
-    memberIds: z.array(z.string().min(1)).min(1),
+    memberIds: z.array(z.string().min(1)).min(1).max(adminTeamBatchLimit),
   })
   .strict()
+  .superRefine((value, context) => {
+    if (new Set(value.memberIds).size !== value.memberIds.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Team group assignment cannot contain duplicate members.",
+        path: ["memberIds"],
+      })
+    }
+  })
 export type AdminTeamBulkGroupAssignmentRequest = z.infer<
   typeof adminTeamBulkGroupAssignmentRequestSchema
 >
@@ -419,7 +433,15 @@ export type AdminTeamCsvImportRow = z.infer<typeof adminTeamCsvImportRowSchema>
 
 export const adminTeamCsvImportPreviewRequestSchema = z
   .object({
-    csv: z.string().min(1),
+    csv: z
+      .string()
+      .min(1)
+      .max(adminTeamCsvMaxBytes)
+      .refine(
+        (value) =>
+          new TextEncoder().encode(value).byteLength <= adminTeamCsvMaxBytes,
+        `CSV import must not exceed ${adminTeamCsvMaxBytes} UTF-8 bytes.`,
+      ),
   })
   .strict()
 export type AdminTeamCsvImportPreviewRequest = z.infer<

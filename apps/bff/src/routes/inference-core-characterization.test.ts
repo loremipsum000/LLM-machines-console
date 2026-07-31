@@ -207,6 +207,7 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     { method: "GET", url: "/readyz" },
     { method: "GET", url: "/api/admin/audit" },
     { method: "GET", url: "/api/admin/overview" },
+    { method: "GET", url: "/api/admin/recovery/status" },
     { method: "GET", url: "/api/admin/settings" },
     { method: "GET", url: "/api/admin/team" },
     { method: "GET", url: "/api/admin/team/scim" },
@@ -220,6 +221,15 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     { method: "GET", url: "/api/app-gateway/v1/models" },
     { method: "POST", url: "/api/admin/settings/organization" },
     { method: "POST", url: "/api/admin/settings/telemetry" },
+    {
+      method: "POST",
+      url: "/api/admin/recovery/factor/commission",
+    },
+    { method: "POST", url: "/api/admin/recovery/sessions" },
+    {
+      method: "POST",
+      url: "/api/admin/recovery/sessions/:id/revoke",
+    },
     { method: "POST", url: "/api/admin/team/import/preview" },
     { method: "POST", url: "/api/admin/team/import/commit" },
     { method: "POST", url: "/api/admin/team/groups" },

@@ -1,0 +1,386 @@
+{
+  "apiVersion": "inference-core.llm-machines/v1",
+  "kind": "LogicalKeycloakRealmSeed",
+  "metadata": {
+    "changePackage": "PR-05",
+    "containsCredentials": false,
+    "packagingTarget": "PR-12"
+  },
+  "keycloakRuntime": {
+    "customProviderPlugins": [],
+    "minimumVersion": "26.6.0",
+    "requiredFeatures": ["admin-fine-grained-authz:v2"]
+  },
+  "realm": {
+    "accessTokenSeconds": 300,
+    "adminPermissionsEnabled": true,
+    "authorizationCodeSeconds": 60,
+    "bruteForceProtected": true,
+    "duplicateEmailsAllowed": false,
+    "editUsernameAllowed": false,
+    "enabled": true,
+    "loginWithEmailAllowed": true,
+    "masterRealm": false,
+    "name": "llm-machines",
+    "refreshTokenMaxReuse": 0,
+    "registrationAllowed": false,
+    "rememberMe": false,
+    "resetPasswordAllowed": true,
+    "revokeRefreshToken": true,
+    "ssoSessionIdleSeconds": 1800,
+    "ssoSessionMaxSeconds": 28800,
+    "sslRequired": "external"
+  },
+  "offlineAccessPolicy": {
+    "realmDefaultRole": {
+      "name": "default-roles-llm-machines",
+      "realmRoleComposites": []
+    },
+    "realmRoleName": "offline_access",
+    "retainedClientOptionalScopes": {
+      "console-bff": [],
+      "console-human-admin": [],
+      "console-web": []
+    }
+  },
+  "roles": [
+    {
+      "clientRoleMappings": {
+        "realm-management": ["query-groups", "query-users"]
+      },
+      "description": "Customer appliance administrator",
+      "name": "admin"
+    },
+    {
+      "clientRoleMappings": {},
+      "description": "Customer appliance operator",
+      "name": "operator"
+    }
+  ],
+  "groups": [
+    {
+      "customerNativeMutation": "member-accounts-only",
+      "name": "Admins",
+      "realmRoleMappings": ["admin"]
+    },
+    {
+      "customerNativeMutation": "read-only",
+      "name": "Operators",
+      "realmRoleMappings": ["operator"]
+    }
+  ],
+  "authentication": {
+    "browserFlow": {
+      "alias": "llm-machines-browser-mfa",
+      "binding": "browser",
+      "builtIn": false,
+      "executions": [
+        {
+          "amrReference": null,
+          "authenticator": "auth-cookie",
+          "path": "llm-machines-browser-mfa/Cookie",
+          "requirement": "ALTERNATIVE"
+        },
+        {
+          "flowAlias": "llm-machines-browser-mfa-forms",
+          "path": "llm-machines-browser-mfa/Forms",
+          "requirement": "ALTERNATIVE"
+        },
+        {
+          "amrReference": "pwd",
+          "authenticator": "auth-username-password-form",
+          "path": "llm-machines-browser-mfa/Forms/Username Password Form",
+          "requirement": "REQUIRED"
+        },
+        {
+          "amrReference": "otp",
+          "authenticator": "auth-otp-form",
+          "path": "llm-machines-browser-mfa/Forms/OTP Form",
+          "requirement": "REQUIRED"
+        }
+      ],
+      "providerId": "basic-flow"
+    },
+    "humanMfa": {
+      "acceptedAmrMethods": ["hwk", "otp", "webauthn", "webauthn-passwordless"],
+      "accessTokenEvidence": {
+        "acrOnlySufficient": false,
+        "requiredClaims": ["amr", "auth_time"]
+      },
+      "currentBrowserSecondFactorReference": "otp",
+      "requiredAction": "CONFIGURE_TOTP",
+      "requiredForRealmRoles": ["admin", "operator"]
+    },
+    "otpPolicy": {
+      "algorithm": "HmacSHA256",
+      "digits": 6,
+      "initialCounter": 0,
+      "lookAheadWindow": 1,
+      "periodSeconds": 30,
+      "type": "totp"
+    },
+    "requiredActions": [
+      {
+        "alias": "CONFIGURE_TOTP",
+        "defaultAction": true,
+        "enabled": true
+      },
+      {
+        "alias": "UPDATE_PASSWORD",
+        "defaultAction": false,
+        "enabled": true
+      }
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "basic",
+      "origin": "keycloak-built-in",
+      "protocol": "openid-connect",
+      "requiredProtocolMappers": [
+        {
+          "config": {
+            "access.token.claim": "true",
+            "claim.name": "auth_time",
+            "id.token.claim": "true",
+            "introspection.token.claim": "true",
+            "jsonType.label": "long",
+            "user.session.note": "AUTH_TIME"
+          },
+          "consentRequired": false,
+          "name": "auth_time",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper"
+        }
+      ]
+    },
+    {
+      "attributes": {
+        "display.on.consent.screen": "false",
+        "include.in.token.scope": "false"
+      },
+      "name": "llm-machines-amr",
+      "origin": "realm-seed",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "lightweight.claim": "false"
+          },
+          "consentRequired": false,
+          "name": "amr",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-amr-mapper"
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "accessTokenClaims": [
+        "amr",
+        "aud",
+        "auth_time",
+        "realm_access.roles",
+        "sub"
+      ],
+      "clientAuthentication": "client-secret-generated-outside-seed",
+      "clientId": "console-web",
+      "credentialIncluded": false,
+      "defaultClientScopes": ["basic", "llm-machines-amr", "roles"],
+      "flows": ["authorization-code-pkce"],
+      "optionalClientScopes": [],
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "included.client.audience": "console-bff",
+            "included.custom.audience": "",
+            "introspection.token.claim": "true",
+            "lightweight.claim": "false"
+          },
+          "consentRequired": false,
+          "name": "console-bff-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper"
+        }
+      ],
+      "serviceAccountsEnabled": false
+    },
+    {
+      "bearerOnly": true,
+      "clientId": "console-bff",
+      "credentialIncluded": false,
+      "optionalClientScopes": [],
+      "protocol": "openid-connect",
+      "requiredBearerClaims": [
+        "amr",
+        "aud",
+        "auth_time",
+        "realm_access.roles",
+        "sub"
+      ],
+      "serviceAccountsEnabled": false
+    },
+    {
+      "accessTokenSeconds": 60,
+      "clientAuthentication": "client-secret-generated-outside-seed",
+      "clientId": "console-human-admin",
+      "credentialIncluded": false,
+      "optionalClientScopes": [],
+      "permissionClass": "human-identity-admin",
+      "protocol": "openid-connect",
+      "serviceAccountClientRoleMappings": {
+        "realm-management": ["query-groups", "query-users"]
+      },
+      "serviceAccountsEnabled": true
+    }
+  ],
+  "servicePermissionClasses": [
+    {
+      "allowedFgapResourceTypes": ["Groups", "Users"],
+      "assignedClientId": "console-human-admin",
+      "fgapPolicy": "console-human-admin-service-account",
+      "id": "human-identity-admin",
+      "status": "active-console-only"
+    },
+    {
+      "allowedFgapResourceTypes": ["Clients"],
+      "assignedClientId": null,
+      "fgapPolicy": null,
+      "id": "application-oauth-client-admin",
+      "status": "reserved-unassigned-until-pr06"
+    }
+  ],
+  "adminFineGrainedAuthorization": {
+    "enabled": true,
+    "feature": "admin-fine-grained-authz:v2",
+    "permissions": [
+      {
+        "name": "customer-admin-view-all-users",
+        "policies": ["customer-admin-role"],
+        "resourceType": "Users",
+        "scopes": ["view"]
+      },
+      {
+        "name": "customer-admin-manage-Admins-members",
+        "policies": ["customer-admin-role"],
+        "resources": ["group:Admins"],
+        "resourceType": "Groups",
+        "scopes": ["manage-members", "view", "view-members"]
+      },
+      {
+        "name": "customer-admin-view-Operators-members",
+        "policies": ["customer-admin-role"],
+        "resources": ["group:Operators"],
+        "resourceType": "Groups",
+        "scopes": ["view", "view-members"]
+      },
+      {
+        "name": "console-human-admin-manage-all-users",
+        "policies": ["console-human-admin-service-account"],
+        "resourceType": "Users",
+        "scopes": ["manage", "manage-group-membership", "view"]
+      },
+      {
+        "name": "console-human-admin-manage-all-groups",
+        "policies": ["console-human-admin-service-account"],
+        "resourceType": "Groups",
+        "scopes": ["manage", "manage-membership", "view", "view-members"]
+      },
+      {
+        "name": "console-human-admin-manage-Admins-group",
+        "policies": ["console-human-admin-service-account"],
+        "resources": ["group:Admins"],
+        "resourceType": "Groups",
+        "scopes": [
+          "manage-members",
+          "manage-membership",
+          "manage-membership-of-members",
+          "view",
+          "view-members"
+        ]
+      },
+      {
+        "name": "console-human-admin-manage-Operators-group",
+        "policies": ["console-human-admin-service-account"],
+        "resources": ["group:Operators"],
+        "resourceType": "Groups",
+        "scopes": [
+          "manage-members",
+          "manage-membership",
+          "manage-membership-of-members",
+          "view",
+          "view-members"
+        ]
+      }
+    ],
+    "policies": [
+      {
+        "logic": "POSITIVE",
+        "name": "customer-admin-role",
+        "roles": ["realm-role:admin"],
+        "type": "role"
+      },
+      {
+        "logic": "POSITIVE",
+        "name": "console-human-admin-service-account",
+        "type": "user",
+        "users": ["service-account:console-human-admin"]
+      }
+    ],
+    "intentionallyUninstalledScopes": [
+      {
+        "reason": "Keycloak 26.6 falls back to effective Users/manage when no reset-password permission exists",
+        "resourceType": "Users",
+        "scope": "reset-password"
+      }
+    ],
+    "resourceServerClientId": "admin-permissions",
+    "selectorResolution": {
+      "group:Admins": "resolve-appliance-realm-group-uuid",
+      "group:Operators": "resolve-appliance-realm-group-uuid",
+      "realm-role:admin": "resolve-appliance-realm-role-uuid",
+      "service-account:console-human-admin": "resolve-service-account-user-uuid"
+    },
+    "version": "v2"
+  },
+  "knownResiduals": [
+    {
+      "accepted": true,
+      "appliesToPermission": "console-human-admin-manage-all-users",
+      "compensatingControls": [
+        "service-credential-isolated-from-customer-humans",
+        "console-identity-mutation-journal-required",
+        "console-is-the-single-human-identity-writer",
+        "last-enabled-operator-checked-before-every-operator-mutation"
+      ],
+      "id": "fgap-users-manage-operation-breadth",
+      "inseparableOperations": ["create", "delete", "update"],
+      "reason": "Keycloak FGAP v2 Users/manage does not isolate create from update or delete"
+    },
+    {
+      "accepted": true,
+      "appliesToPermission": "console-human-admin-manage-all-groups",
+      "compensatingControls": [
+        "service-credential-isolated-from-customer-humans",
+        "console-identity-mutation-journal-required",
+        "console-is-the-single-human-identity-writer"
+      ],
+      "id": "fgap-groups-manage-operation-breadth",
+      "inseparableOperations": ["create", "delete", "update"],
+      "reason": "Keycloak FGAP v2 Groups/manage is resource-type-wide for Console group CRUD"
+    }
+  ],
+  "operatorProtection": {
+    "customerNativeKeycloak": "read-only",
+    "lastEnabledOperatorInvariant": "console-bff",
+    "nativeMutationPath": "none",
+    "serviceMutationPath": "console-human-admin"
+  },
+  "users": []
+}

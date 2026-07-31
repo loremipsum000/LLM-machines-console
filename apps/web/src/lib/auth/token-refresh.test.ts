@@ -59,6 +59,38 @@ describe("Keycloak token refresh", () => {
     expect(token.preferredUsername).toBe("demo-admin")
   })
 
+  it("derives initial authority only from one unambiguous access-token role", () => {
+    const token = attachKeycloakAccount(
+      { sub: "user-1" },
+      {
+        access_token: jwtWithPayload({
+          exp: 1_000,
+          realm_access: { roles: ["operator"] },
+        }),
+        provider: "keycloak",
+        providerAccountId: "user-1",
+        type: "oidc",
+      } satisfies Account,
+      { realm_access: { roles: ["admin"] } },
+    )
+
+    expect(token.roles).toEqual(["operator"])
+
+    const ambiguous = attachKeycloakAccount(
+      { sub: "user-1" },
+      {
+        access_token: jwtWithPayload({
+          exp: 1_000,
+          realm_access: { roles: ["admin", "operator"] },
+        }),
+        provider: "keycloak",
+        providerAccountId: "user-1",
+        type: "oidc",
+      } satisfies Account,
+    )
+    expect(ambiguous.roles).toEqual([])
+  })
+
   it("does not refresh a token that is still inside its usable window", async () => {
     const fetchSpy = vi.fn()
     const token = {
@@ -77,6 +109,19 @@ describe("Keycloak token refresh", () => {
     expect(refreshed).toBe(token)
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(freshKeycloakAccessToken(refreshed)).toBe(token.accessToken)
+  })
+
+  it("fails closed when an access token has no expiry", async () => {
+    const refreshed = await ensureFreshKeycloakAccessToken({
+      accessToken: jwtWithPayload({ realm_access: { roles: ["admin"] } }),
+      groups: ["Operations"],
+      roles: ["admin"],
+      sub: "user-1",
+    })
+
+    expect(freshKeycloakAccessToken(refreshed)).toBeUndefined()
+    expect(refreshed.groups).toEqual([])
+    expect(refreshed.roles).toEqual([])
   })
 
   it("refreshes expired Keycloak access tokens and rotates refresh tokens", async () => {
@@ -126,11 +171,11 @@ describe("Keycloak token refresh", () => {
     expect(refreshed.accessToken).toBe(newAccessToken)
     expect(refreshed.accessTokenExpiresAt).toBe(1_300)
     expect(refreshed.refreshToken).toBe("refresh-2")
-    expect(refreshed.groups).toEqual(["Finance", "Security"])
-    expect(refreshed.roles).toEqual(["operator", "admin"])
+    expect(refreshed.groups).toEqual(["Security"])
+    expect(refreshed.roles).toEqual(["admin"])
   })
 
-  it("suppresses stale forwarded access tokens when refresh fails", async () => {
+  it("clears all forwarded authority when refresh fails", async () => {
     vi.stubEnv("AUTH_KEYCLOAK_ISSUER", "https://keycloak.test/realms/demo")
     vi.stubEnv("AUTH_KEYCLOAK_ID", "console-web")
     vi.stubEnv("AUTH_KEYCLOAK_SECRET", "secret")
@@ -140,6 +185,7 @@ describe("Keycloak token refresh", () => {
         accessToken: jwtWithPayload({ exp: 900 }),
         accessTokenExpiresAt: 900,
         refreshToken: "refresh-1",
+        groups: ["Finance"],
         roles: ["admin"],
         sub: "user-1",
       },
@@ -152,8 +198,35 @@ describe("Keycloak token refresh", () => {
     )
 
     expect(freshKeycloakAccessToken(refreshed)).toBeUndefined()
-    expect(refreshed.roles).toEqual(["admin"])
+    expect(refreshed.groups).toEqual([])
+    expect(refreshed.refreshToken).toBeUndefined()
+    expect(refreshed.roles).toEqual([])
     expect(refreshed.sub).toBe("user-1")
+  })
+
+  it("does not retain old authority when a new sign-in has no retained role", () => {
+    const token = attachKeycloakAccount(
+      {
+        groups: ["Finance"],
+        refreshToken: "stale-refresh",
+        roles: ["admin"],
+        sub: "user-1",
+      },
+      {
+        access_token: jwtWithPayload({
+          exp: 1_000,
+          groups: ["/Support"],
+          realm_access: { roles: ["auditor", "offline_access"] },
+        }),
+        provider: "keycloak",
+        providerAccountId: "user-1",
+        type: "oidc",
+      } satisfies Account,
+    )
+
+    expect(token.groups).toEqual(["Support"])
+    expect(token.refreshToken).toBeUndefined()
+    expect(token.roles).toEqual([])
   })
 })
 

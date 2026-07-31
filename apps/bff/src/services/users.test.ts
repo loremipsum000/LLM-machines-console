@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import type { Actor } from "../auth/persona"
+import type { Actor } from "../auth/authorization"
 import { getInferenceCoreDb } from "../db/inference-core-client"
 import {
   humanIdentities,
@@ -14,8 +14,7 @@ vi.mock("../db/inference-core-client", () => ({
 const actor: Actor = {
   authMode: "keycloak",
   email: "demo-admin@identity.example.test",
-  persona: "admin",
-  roles: ["OPERATOR", "admin", "Admin", "unrelated-role"],
+  role: "admin",
   subject: "keycloak-uuid",
 }
 
@@ -65,29 +64,28 @@ describe("upsertActorUser", () => {
         role: "admin",
         observedAt: expect.any(Date),
       },
+    ])
+  })
+
+  it("projects the current resolved role", async () => {
+    const db = buildDbMock()
+    vi.mocked(getInferenceCoreDb).mockReturnValue(db.instance)
+
+    const currentOperator: Actor = {
+      ...actor,
+      role: "operator",
+    }
+
+    await expect(upsertActorUser(currentOperator)).resolves.toBe(currentOperator)
+    expect(db.deleteWhere).toHaveBeenCalledOnce()
+    expect(db.roleValues).toHaveBeenCalledWith([
       {
         subjectId: actor.subject,
         role: "operator",
         observedAt: expect.any(Date),
       },
     ])
-  })
-
-  it("clears stale role projections when no retained role is observed", async () => {
-    const db = buildDbMock()
-    vi.mocked(getInferenceCoreDb).mockReturnValue(db.instance)
-
-    const actorWithoutRetainedRole: Actor = {
-      ...actor,
-      roles: ["viewer"],
-    }
-
-    await expect(upsertActorUser(actorWithoutRetainedRole)).resolves.toBe(
-      actorWithoutRetainedRole,
-    )
-    expect(db.deleteWhere).toHaveBeenCalledOnce()
-    expect(db.roleValues).not.toHaveBeenCalled()
-    expect(db.insert).toHaveBeenCalledOnce()
+    expect(db.insert).toHaveBeenCalledTimes(2)
   })
 })
 

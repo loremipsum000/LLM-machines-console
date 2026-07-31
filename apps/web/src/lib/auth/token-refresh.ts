@@ -1,13 +1,9 @@
 import type { Account, Profile } from "next-auth"
 import type { JWT } from "next-auth/jwt"
 import {
-  extractGroups,
   extractGroupsFromAccessToken,
-  extractRealmRoles,
   extractRealmRolesFromAccessToken,
-  mergeGroups,
-  mergeRoles,
-  stringArrayValue,
+  retainedConsoleRoles,
 } from "./role-claims"
 
 const ACCESS_TOKEN_REFRESH_SKEW_SECONDS = 60
@@ -29,14 +25,10 @@ export function attachKeycloakAccount(
   profile?: Profile,
 ): JWT {
   const accessToken = stringValue(account.access_token)
-  const roles = mergeRoles(
-    extractRealmRoles(profile),
+  const roles = retainedConsoleRoles(
     extractRealmRolesFromAccessToken(accessToken),
   )
-  const groups = mergeGroups(
-    extractGroups(profile),
-    extractGroupsFromAccessToken(accessToken),
-  )
+  const groups = extractGroupsFromAccessToken(accessToken)
 
   return {
     ...token,
@@ -47,9 +39,9 @@ export function attachKeycloakAccount(
     preferredUsername:
       profileString(profile, "preferred_username") ??
       stringValue(token.preferredUsername),
-    refreshToken: stringValue(account.refresh_token) ?? token.refreshToken,
-    groups: groups.length > 0 ? groups : stringArrayValue(token.groups),
-    roles: roles.length > 0 ? roles : stringArrayValue(token.roles),
+    refreshToken: stringValue(account.refresh_token),
+    groups,
+    roles,
   }
 }
 
@@ -63,14 +55,14 @@ export async function ensureFreshKeycloakAccessToken(
 
   const refreshToken = stringValue(token.refreshToken)
   if (!refreshToken) {
-    return withoutForwardedAccessToken(token)
+    return withoutForwardedAuthority(token)
   }
 
   const issuer = trimTrailingSlash(process.env.AUTH_KEYCLOAK_ISSUER)
   const clientId = process.env.AUTH_KEYCLOAK_ID
   const clientSecret = process.env.AUTH_KEYCLOAK_SECRET
   if (!issuer || !clientId || !clientSecret) {
-    return withoutForwardedAccessToken(token)
+    return withoutForwardedAuthority(token)
   }
 
   try {
@@ -91,24 +83,20 @@ export async function ensureFreshKeycloakAccessToken(
       },
     )
     if (!response.ok) {
-      return withoutForwardedAccessToken(token)
+      return withoutForwardedAuthority(token)
     }
 
     const refreshed = parseRefreshResponse(await response.json())
     const accessToken = stringValue(refreshed.access_token)
     if (!accessToken) {
-      return withoutForwardedAccessToken(token)
+      return withoutForwardedAuthority(token)
     }
 
     const expiresIn = numberValue(refreshed.expires_in)
-    const roles = mergeRoles(
-      stringArrayValue(token.roles),
+    const roles = retainedConsoleRoles(
       extractRealmRolesFromAccessToken(accessToken),
     )
-    const groups = mergeGroups(
-      stringArrayValue(token.groups),
-      extractGroupsFromAccessToken(accessToken),
-    )
+    const groups = extractGroupsFromAccessToken(accessToken)
 
     return {
       ...token,
@@ -122,7 +110,7 @@ export async function ensureFreshKeycloakAccessToken(
       roles,
     }
   } catch {
-    return withoutForwardedAccessToken(token)
+    return withoutForwardedAuthority(token)
   }
 }
 
@@ -145,18 +133,21 @@ export function isKeycloakAccessTokenFresh(
     numberValue(token.accessTokenExpiresAt) ??
     extractAccessTokenExpiry(accessToken)
   if (expiresAt === undefined) {
-    return true
+    return false
   }
 
   const nowSeconds = Math.floor(now() / 1000)
   return expiresAt > nowSeconds + ACCESS_TOKEN_REFRESH_SKEW_SECONDS
 }
 
-function withoutForwardedAccessToken(token: JWT): JWT {
+function withoutForwardedAuthority(token: JWT): JWT {
   return {
     ...token,
     accessToken: undefined,
     accessTokenExpiresAt: undefined,
+    groups: [],
+    refreshToken: undefined,
+    roles: [],
   }
 }
 

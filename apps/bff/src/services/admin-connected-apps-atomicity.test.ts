@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { Actor } from "../auth/persona"
+import type { Actor } from "../auth/authorization"
 
 const dependencies = vi.hoisted(() => ({
   createClient: vi.fn(),
@@ -37,8 +37,7 @@ import {
 
 const actor: Actor = {
   authMode: "service-forwarded",
-  persona: "admin",
-  roles: ["admin"],
+  role: "admin",
   subject: "credential-atomicity-test",
 }
 

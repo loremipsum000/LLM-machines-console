@@ -1,14 +1,15 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { ComponentType, ReactNode, SVGProps } from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   type ConsoleV2SectionId,
-  consoleV2Sections,
+  consoleV2SectionsForRole,
 } from "./console-v2-sections"
 
 export type { ConsoleV2SectionId } from "./console-v2-sections"
@@ -19,15 +20,21 @@ let shortcutModifierVisible = false
 const modifierSubscribers = new Set<ModifierSubscriber>()
 
 interface ConsoleV2ShellProps {
+  accessRole: RetainedConsoleRole
   activeSection?: ConsoleV2SectionId
   children: ReactNode
 }
 
 export function ConsoleV2Shell({
+  accessRole,
   activeSection,
   children,
 }: ConsoleV2ShellProps) {
   const router = useRouter()
+  const visibleSections = useMemo(
+    () => consoleV2SectionsForRole(accessRole),
+    [accessRole],
+  )
   const [modifierVisible, setModifierVisible] = useState(
     shortcutModifierVisible,
   )
@@ -50,7 +57,7 @@ export function ConsoleV2Shell({
         return
       }
 
-      const section = consoleV2Sections[shortcutIndex]
+      const section = visibleSections[shortcutIndex]
       if (!section) {
         return
       }
@@ -80,7 +87,7 @@ export function ConsoleV2Shell({
       window.removeEventListener("blur", hideModifier)
       document.removeEventListener("visibilitychange", hideModifier)
     }
-  }, [router])
+  }, [router, visibleSections])
 
   return (
     <div className="min-h-screen min-h-dvh bg-[#181818] font-sans text-[#fdfdfd]">
@@ -108,7 +115,7 @@ export function ConsoleV2Shell({
               aria-label="Console v2 navigation"
               className="flex w-full flex-col gap-0.5"
             >
-              {consoleV2Sections.map((section, index) => (
+              {visibleSections.map((section, index) => (
                 <ConsoleV2NavLink
                   active={section.id === activeSection}
                   href={section.href}
@@ -123,6 +130,17 @@ export function ConsoleV2Shell({
             </nav>
           </div>
 
+          <div
+            className="rounded-lg border border-[#454345] bg-[#242324] px-3 py-2"
+            data-console-role={accessRole}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#8f8f8f]">
+              Current access
+            </p>
+            <p className="mt-1 text-sm font-medium text-white">
+              {accessRole === "admin" ? "Administrator" : "Operator"}
+            </p>
+          </div>
         </aside>
 
         <main className="min-w-0 px-5 py-8 max-lg:pt-4 sm:px-8 lg:ml-[534px] lg:w-[640px] lg:px-0 lg:py-0">

@@ -16,6 +16,7 @@ import type {
   AdminInferenceModel,
   AdminTeamGroup,
 } from "@llm-machines/contracts/inference-core"
+import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import { ArrowLeft, ChevronDown, Copy, Plus } from "lucide-react"
 import Link from "next/link"
 import { useActionState, useState } from "react"
@@ -60,6 +61,7 @@ const applicationsCompactNumberFormatter = new Intl.NumberFormat("en", {
 })
 
 export function ApplicationsV2Experience({
+  accessRole,
   appAction,
   connectedAppDetail,
   connectedApps = EMPTY_CONNECTED_APPS,
@@ -67,6 +69,7 @@ export function ApplicationsV2Experience({
   teamGroups = EMPTY_TEAM_GROUPS,
   view,
 }: {
+  accessRole: RetainedConsoleRole
   appAction?: string
   connectedAppDetail?: AdminConnectedApp | null
   connectedApps?: AdminConnectedApp[]
@@ -96,7 +99,7 @@ export function ApplicationsV2Experience({
       <PageHeader title="Applications" />
       <AppActionNotice appAction={appAction} />
       <div className="mt-10 w-full lg:w-[640px]">
-        <ConnectedAppsPanel apps={connectedApps} />
+        <ConnectedAppsPanel accessRole={accessRole} apps={connectedApps} />
       </div>
     </div>
   )
@@ -398,18 +401,26 @@ function ConnectedAppDetailView({
   )
 }
 
-function ConnectedAppsPanel({ apps }: { apps: AdminConnectedApp[] }) {
+function ConnectedAppsPanel({
+  accessRole,
+  apps,
+}: {
+  accessRole: RetainedConsoleRole
+  apps: AdminConnectedApp[]
+}) {
   return (
     <section className="grid gap-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Connected apps</h2>
-        <Link
-          className="flex items-center gap-1 text-sm font-medium text-white"
-          href="/applications/apps/new"
-        >
-          <Plus aria-hidden className="size-5" />
-          Add app
-        </Link>
+        {accessRole === "admin" ? (
+          <Link
+            className="flex items-center gap-1 text-sm font-medium text-white"
+            href="/applications/apps/new"
+          >
+            <Plus aria-hidden className="size-5" />
+            Add app
+          </Link>
+        ) : null}
       </div>
       <div className="overflow-hidden rounded-lg border border-[#353535] bg-[#232323]">
         {apps.length > 0 ? (

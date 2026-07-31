@@ -7,6 +7,7 @@ import {
   type ConsoleV2SectionId,
   ConsoleV2Shell,
 } from "@/components/console-v2/console-v2-shell"
+import { roleCanAccessConsoleSection } from "@/components/console-v2/console-v2-sections"
 import { HardwareV2Experience } from "@/components/console-v2/hardware-v2-experience"
 import {
   InferenceV2Experience,
@@ -28,6 +29,8 @@ import {
   getAdminTeamOverview,
   isConsoleBffAuthExpiredError,
 } from "@/lib/admin/server-data-core"
+import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
+import { getCurrentConsoleRole } from "@/lib/auth/session"
 import { notFound, redirect } from "next/navigation"
 import type { ReactNode } from "react"
 
@@ -47,9 +50,12 @@ export async function renderApplicationsConsoleRoute({
   section?: string[]
   searchParams?: Promise<ConsoleV2SearchParams>
 }) {
-  return withConsoleAccess("applications", async () => {
+  return withConsoleAccess("applications", async (role) => {
     const resolvedSearchParams = searchParams ? await searchParams : undefined
     const applicationsView = resolveApplicationsView(section)
+    if (applicationsView === "new-app" && role !== "admin") {
+      return <ConsoleCapabilityDeniedPanel />
+    }
     const [connectedApps, teamOverview, inference] = await Promise.all([
       getAdminConnectedApps(),
       getAdminTeamOverview(),
@@ -69,6 +75,7 @@ export async function renderApplicationsConsoleRoute({
 
     return (
       <ApplicationsV2Experience
+        accessRole={role}
         appAction={resolvedSearchParams?.appAction}
         connectedAppDetail={connectedAppDetail?.app ?? null}
         connectedApps={connectedApps.apps}
@@ -87,7 +94,7 @@ export async function renderInferenceConsoleRoute({
   section?: string[]
   searchParams?: Promise<ConsoleV2SearchParams>
 }) {
-  return withConsoleAccess("inference", async () => {
+  return withConsoleAccess("inference", async (role) => {
     const resolvedSearchParams = searchParams ? await searchParams : undefined
     const inference = await getAdminInference({
       range: resolvedSearchParams?.range,
@@ -95,6 +102,7 @@ export async function renderInferenceConsoleRoute({
 
     return (
       <InferenceV2Experience
+        accessRole={role}
         basePath="/inference"
         dashboard={inference}
         inferenceAction={resolvedSearchParams?.inferenceAction}
@@ -125,9 +133,12 @@ export async function renderTeamConsoleRoute({
   section?: string[]
   searchParams?: Promise<ConsoleV2SearchParams>
 }) {
-  return withConsoleAccess("team", async () => {
+  return withConsoleAccess("team", async (role) => {
     const resolvedSearchParams = searchParams ? await searchParams : undefined
     const teamView = resolveTeamView(section)
+    if (isTeamMutationView(teamView) && role !== "admin") {
+      return <ConsoleCapabilityDeniedPanel />
+    }
     const selectedMemberId =
       teamView === "member-detail" ? section?.[1] : undefined
     const selectedGroupId =
@@ -149,6 +160,7 @@ export async function renderTeamConsoleRoute({
 
     return (
       <TeamV2Experience
+        accessRole={role}
         detail={memberDetail}
         groupDetail={groupDetail}
         overview={overview}
@@ -162,8 +174,11 @@ export async function renderTeamConsoleRoute({
 export async function renderSettingsConsoleRoute(
   searchParams?: Promise<ConsoleV2SearchParams>,
 ) {
-  return withConsoleAccess("settings", async () => {
+  return withConsoleAccess("settings", async (role) => {
     const resolvedSearchParams = searchParams ? await searchParams : undefined
+    if (!roleCanAccessConsoleSection(role, "settings")) {
+      return <ConsoleCapabilityDeniedPanel />
+    }
     const settings = await getAdminSettings()
 
     return (
@@ -177,11 +192,16 @@ export async function renderSettingsConsoleRoute(
 
 async function withConsoleAccess(
   activeSection: ConsoleV2SectionId,
-  render: () => Promise<ReactNode>,
+  render: (role: RetainedConsoleRole) => Promise<ReactNode>,
 ) {
+  const role = await getCurrentConsoleRole()
+  if (!role) {
+    redirect(getConsoleReauthUrl(activeSection))
+  }
+
   let content: ReactNode
   try {
-    content = await render()
+    content = await render(role)
   } catch (error) {
     if (isConsoleBffAuthExpiredError(error)) {
       redirect(getConsoleReauthUrl(activeSection))
@@ -196,7 +216,9 @@ async function withConsoleAccess(
   }
 
   return (
-    <ConsoleV2Shell activeSection={activeSection}>{content}</ConsoleV2Shell>
+    <ConsoleV2Shell accessRole={role} activeSection={activeSection}>
+      {content}
+    </ConsoleV2Shell>
   )
 }
 
@@ -215,6 +237,25 @@ function ConsoleAccessDeniedPanel() {
       <p className="mt-2 text-sm leading-5 text-[#b2b2b2]">
         This surface is available only to authorized appliance administrators
         and operators.
+      </p>
+    </section>
+  )
+}
+
+function ConsoleCapabilityDeniedPanel() {
+  return (
+    <section
+      aria-labelledby="console-capability-denied-title"
+      className="mt-16 rounded-lg border border-[#353535] bg-[#232323] p-5"
+    >
+      <h1
+        className="text-xl font-semibold text-white"
+        id="console-capability-denied-title"
+      >
+        Admin access required
+      </h1>
+      <p className="mt-2 text-sm leading-5 text-[#b2b2b2]">
+        Operators can view this section, but this change is limited to Admins.
       </p>
     </section>
   )
@@ -289,4 +330,8 @@ function resolveTeamView(section?: string[]): TeamView {
     return "manage-users"
   }
   notFound()
+}
+
+function isTeamMutationView(view: TeamView): boolean {
+  return view === "import" || view === "new-group" || view === "new-member"
 }

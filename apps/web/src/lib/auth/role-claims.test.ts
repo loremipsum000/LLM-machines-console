@@ -6,6 +6,8 @@ import {
   extractRealmRolesFromAccessToken,
   mergeGroups,
   mergeRoles,
+  primaryRetainedConsoleRole,
+  retainedConsoleRoles,
 } from "./role-claims"
 
 describe("auth role claim helpers", () => {
@@ -33,6 +35,25 @@ describe("auth role claim helpers", () => {
       "admin",
       "operator",
     ])
+  })
+
+  it("retains exactly one Admin or Operator role and rejects ambiguity", () => {
+    expect(
+      retainedConsoleRoles([
+        "offline_access",
+        "operator",
+        "auditor",
+        "admin",
+        "operator",
+      ]),
+    ).toEqual([])
+    expect(primaryRetainedConsoleRole(["operator", "admin"])).toBeNull()
+    expect(primaryRetainedConsoleRole(["operator", "auditor"])).toBe(
+      "operator",
+    )
+    expect(primaryRetainedConsoleRole(["Admin", "operator"])).toBeNull()
+    expect(primaryRetainedConsoleRole(["admin", "OPERATOR"])).toBeNull()
+    expect(primaryRetainedConsoleRole(["auditor", "support"])).toBeNull()
   })
 
   it("extracts normalized Keycloak groups separately from realm roles", () => {

@@ -1,7 +1,7 @@
 import NextAuth from "next-auth"
 import Keycloak from "next-auth/providers/keycloak"
 import { cleanOptionalEnvValue, ensureAuthUrlEnv } from "./env"
-import { stringArrayValue } from "./role-claims"
+import { retainedConsoleRoles, stringArrayValue } from "./role-claims"
 import {
   attachKeycloakAccount,
   ensureFreshKeycloakAccessToken,
@@ -39,7 +39,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       session.user.id = stringValue(token.sub) ?? session.user.email ?? ""
       session.user.email = stringValue(token.email) ?? session.user.email
       session.user.groups = stringArrayValue(token.groups)
-      session.user.roles = stringArrayValue(token.roles)
+      session.user.roles = retainedConsoleRoles(token.roles)
       return session
     },
   },

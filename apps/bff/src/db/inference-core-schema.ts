@@ -532,6 +532,262 @@ export const idempotencyLedger = admin.table(
   ],
 )
 
+export const identityMutationJournal = admin.table(
+  "identity_mutation_journal",
+  {
+    id: uuid("id").primaryKey(),
+    idempotencyLedgerId: uuid("idempotency_ledger_id")
+      .notNull()
+      .unique()
+      .references(() => idempotencyLedger.id, { onDelete: "cascade" }),
+    keycloakSubjectId: text("keycloak_subject_id").notNull(),
+    operationCode: text("operation_code").notNull(),
+    requestFingerprint: text("request_fingerprint").notNull(),
+    targetType: text("target_type").notNull(),
+    targetIdentifier: text("target_identifier").notNull(),
+    state: text("state").default("prepared").notNull(),
+    resourceId: text("resource_id"),
+    reconciliationReason: text("reconciliation_reason"),
+    keycloakAppliedAt: timestamp("keycloak_applied_at", {
+      withTimezone: true,
+    }),
+    reconciliationRequiredAt: timestamp("reconciliation_required_at", {
+      withTimezone: true,
+    }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "identity_mutation_journal_subject_check",
+      sql`char_length(${table.keycloakSubjectId}) BETWEEN 1 AND 255`,
+    ),
+    check(
+      "identity_mutation_journal_operation_check",
+      sql`char_length(${table.operationCode}) BETWEEN 1 AND 128`,
+    ),
+    check(
+      "identity_mutation_journal_fingerprint_check",
+      sql`char_length(${table.requestFingerprint}) = 64`,
+    ),
+    check(
+      "identity_mutation_journal_target_type_check",
+      sql`${table.targetType} IN ('user', 'group')`,
+    ),
+    check(
+      "identity_mutation_journal_target_identifier_check",
+      sql`char_length(${table.targetIdentifier}) BETWEEN 1 AND 255`,
+    ),
+    check(
+      "identity_mutation_journal_state_check",
+      sql`${table.state} IN ('prepared', 'keycloak_applied', 'completed', 'failed', 'reconciliation_required')`,
+    ),
+    check(
+      "identity_mutation_journal_resource_id_check",
+      sql`${table.resourceId} IS NULL OR char_length(${table.resourceId}) BETWEEN 1 AND 255`,
+    ),
+    check(
+      "identity_mutation_journal_reconciliation_reason_check",
+      sql`${table.reconciliationReason} IS NULL
+        OR ${table.reconciliationReason} IN (
+          'keycloak_outcome_unknown',
+          'keycloak_applied_persistence_failed',
+          'finalization_failed',
+          'completion_persistence_failed'
+        )`,
+    ),
+    check(
+      "identity_mutation_journal_lifecycle_check",
+      sql`(
+        ${table.state} = 'prepared'
+        AND ${table.keycloakAppliedAt} IS NULL
+        AND ${table.reconciliationRequiredAt} IS NULL
+        AND ${table.completedAt} IS NULL
+        AND ${table.resourceId} IS NULL
+        AND ${table.reconciliationReason} IS NULL
+      ) OR (
+        ${table.state} = 'keycloak_applied'
+        AND ${table.keycloakAppliedAt} IS NOT NULL
+        AND ${table.reconciliationRequiredAt} IS NULL
+        AND ${table.completedAt} IS NULL
+        AND ${table.reconciliationReason} IS NULL
+      ) OR (
+        ${table.state} = 'completed'
+        AND ${table.keycloakAppliedAt} IS NOT NULL
+        AND ${table.reconciliationRequiredAt} IS NULL
+        AND ${table.completedAt} IS NOT NULL
+        AND ${table.reconciliationReason} IS NULL
+      ) OR (
+        ${table.state} = 'failed'
+        AND ${table.keycloakAppliedAt} IS NULL
+        AND ${table.reconciliationRequiredAt} IS NULL
+        AND ${table.completedAt} IS NOT NULL
+        AND ${table.resourceId} IS NULL
+        AND ${table.reconciliationReason} IS NULL
+      ) OR (
+        ${table.state} = 'reconciliation_required'
+        AND ${table.reconciliationRequiredAt} IS NOT NULL
+        AND ${table.completedAt} IS NULL
+        AND ${table.reconciliationReason} IS NOT NULL
+      )`,
+    ),
+    check(
+      "identity_mutation_journal_timestamps_check",
+      sql`${table.updatedAt} >= ${table.createdAt}
+        AND (
+          ${table.keycloakAppliedAt} IS NULL
+          OR ${table.keycloakAppliedAt} >= ${table.createdAt}
+        )
+        AND (
+          ${table.reconciliationRequiredAt} IS NULL
+          OR ${table.reconciliationRequiredAt} >= COALESCE(${table.keycloakAppliedAt}, ${table.createdAt})
+        )
+        AND (
+          ${table.completedAt} IS NULL
+          OR ${table.completedAt} >= COALESCE(${table.keycloakAppliedAt}, ${table.createdAt})
+        )`,
+    ),
+    index("identity_mutation_journal_state_updated_idx").on(
+      table.state,
+      table.updatedAt,
+    ),
+    uniqueIndex("identity_mutation_journal_one_unresolved_idx")
+      .on(sql`(true)`)
+      .where(
+        sql`${table.state} IN ('prepared', 'keycloak_applied', 'reconciliation_required')`,
+      ),
+  ],
+)
+
+export const identityMutationJournalTargets = admin.table(
+  "identity_mutation_journal_targets",
+  {
+    id: uuid("id").primaryKey(),
+    journalId: uuid("journal_id")
+      .notNull()
+      .references(() => identityMutationJournal.id, { onDelete: "cascade" }),
+    ordinal: integer("ordinal").notNull(),
+    targetType: text("target_type").notNull(),
+    targetIdentifier: text("target_identifier").notNull(),
+    intent: jsonb("intent").notNull(),
+    state: text("state").default("unattempted").notNull(),
+    resourceId: text("resource_id"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "identity_mutation_journal_targets_ordinal_check",
+      sql`${table.ordinal} BETWEEN 0 AND 99`,
+    ),
+    check(
+      "identity_mutation_journal_targets_type_check",
+      sql`${table.targetType} IN ('user', 'group_membership')`,
+    ),
+    check(
+      "identity_mutation_journal_targets_identifier_check",
+      sql`char_length(${table.targetIdentifier}) BETWEEN 1 AND 511`,
+    ),
+    check(
+      "identity_mutation_journal_targets_intent_check",
+      sql`(
+        ${table.intent} ->> 'kind' = 'csv_user'
+        AND ${table.intent} ?& ARRAY[
+          'displayName', 'email', 'enabled', 'group', 'kind', 'line',
+          'role', 'sendInvite', 'username'
+        ]
+        AND ${table.intent} - ARRAY[
+          'displayName', 'email', 'enabled', 'group', 'kind', 'line',
+          'role', 'sendInvite', 'username'
+        ] = '{}'::jsonb
+        AND jsonb_typeof(${table.intent} -> 'displayName') = 'string'
+        AND jsonb_typeof(${table.intent} -> 'email') = 'string'
+        AND jsonb_typeof(${table.intent} -> 'enabled') = 'boolean'
+        AND jsonb_typeof(${table.intent} -> 'group') = 'string'
+        AND jsonb_typeof(${table.intent} -> 'line') = 'number'
+        AND ${table.intent} ->> 'role' IN ('admin', 'operator')
+        AND jsonb_typeof(${table.intent} -> 'sendInvite') = 'boolean'
+        AND jsonb_typeof(${table.intent} -> 'username') = 'string'
+      ) OR (
+        ${table.intent} ->> 'kind' = 'group_membership'
+        AND ${table.intent} ?& ARRAY['groupId', 'kind', 'memberId']
+        AND ${table.intent} - ARRAY['groupId', 'kind', 'memberId'] = '{}'::jsonb
+        AND jsonb_typeof(${table.intent} -> 'groupId') = 'string'
+        AND jsonb_typeof(${table.intent} -> 'memberId') = 'string'
+      )`,
+    ),
+    check(
+      "identity_mutation_journal_targets_state_check",
+      sql`${table.state} IN ('unattempted', 'unknown', 'applied', 'failed')`,
+    ),
+    check(
+      "identity_mutation_journal_targets_resource_id_check",
+      sql`${table.resourceId} IS NULL OR char_length(${table.resourceId}) BETWEEN 1 AND 255`,
+    ),
+    check(
+      "identity_mutation_journal_targets_lifecycle_check",
+      sql`(
+        ${table.state} = 'unattempted'
+        AND ${table.resourceId} IS NULL
+        AND ${table.startedAt} IS NULL
+        AND ${table.completedAt} IS NULL
+      ) OR (
+        ${table.state} = 'unknown'
+        AND ${table.startedAt} IS NOT NULL
+        AND ${table.completedAt} IS NULL
+      ) OR (
+        ${table.state} = 'applied'
+        AND ${table.startedAt} IS NOT NULL
+        AND ${table.completedAt} IS NOT NULL
+        AND (
+          ${table.targetType} <> 'user'
+          OR ${table.resourceId} IS NOT NULL
+        )
+      ) OR (
+        ${table.state} = 'failed'
+        AND ${table.resourceId} IS NULL
+        AND ${table.startedAt} IS NOT NULL
+        AND ${table.completedAt} IS NOT NULL
+      )`,
+    ),
+    check(
+      "identity_mutation_journal_targets_timestamps_check",
+      sql`${table.updatedAt} >= ${table.createdAt}
+        AND (
+          ${table.startedAt} IS NULL
+          OR ${table.startedAt} >= ${table.createdAt}
+        )
+        AND (
+          ${table.completedAt} IS NULL
+          OR ${table.completedAt} >= ${table.startedAt}
+        )`,
+    ),
+    uniqueIndex("identity_mutation_journal_targets_ordinal_idx").on(
+      table.journalId,
+      table.ordinal,
+    ),
+    uniqueIndex("identity_mutation_journal_targets_identifier_idx").on(
+      table.journalId,
+      table.targetIdentifier,
+    ),
+    index("identity_mutation_journal_targets_state_idx").on(
+      table.journalId,
+      table.state,
+    ),
+  ],
+)
+
 export const consoleSettings = admin.table(
   "console_settings",
   {
@@ -669,6 +925,115 @@ export const backupState = admin.table(
       "backup_state_status_check",
       sql`${table.status} IN ('not_configured', 'idle', 'running', 'succeeded', 'failed')`,
     ),
+  ],
+)
+
+export const emergencyRecoveryFactor = admin.table(
+  "emergency_recovery_factor",
+  {
+    id: text("id").primaryKey(),
+    algorithm: text("algorithm").notNull(),
+    verifierHash: text("verifier_hash").notNull(),
+    salt: text("salt").notNull(),
+    cost: integer("cost").notNull(),
+    blockSize: integer("block_size").notNull(),
+    parallelization: integer("parallelization").notNull(),
+    keyLength: integer("key_length").notNull(),
+    maxMemory: integer("max_memory").notNull(),
+    commissionedBy: text("commissioned_by").notNull(),
+    commissionedAt: timestamp("commissioned_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check("emergency_recovery_factor_id_check", sql`${table.id} = 'appliance'`),
+    check(
+      "emergency_recovery_factor_algorithm_check",
+      sql`${table.algorithm} = 'scrypt'`,
+    ),
+    check(
+      "emergency_recovery_factor_verifier_check",
+      sql`${table.verifierHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "emergency_recovery_factor_salt_check",
+      sql`${table.salt} ~ '^[0-9a-f]{32}$'`,
+    ),
+    check(
+      "emergency_recovery_factor_parameters_check",
+      sql`${table.cost} = 16384
+        AND ${table.blockSize} = 8
+        AND ${table.parallelization} = 1
+        AND ${table.keyLength} = 32
+        AND ${table.maxMemory} = 67108864`,
+    ),
+    check(
+      "emergency_recovery_factor_subject_check",
+      sql`char_length(${table.commissionedBy}) BETWEEN 1 AND 255`,
+    ),
+  ],
+)
+
+export const emergencyRecoverySessions = admin.table(
+  "emergency_recovery_sessions",
+  {
+    id: uuid("id").primaryKey(),
+    keycloakSubjectId: text("keycloak_subject_id").notNull(),
+    reasonCode: text("reason_code").notNull(),
+    status: text("status").default("active").notNull(),
+    activatedAt: timestamp("activated_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: text("revoked_by"),
+    correlationId: text("correlation_id").notNull(),
+  },
+  (table) => [
+    check(
+      "emergency_recovery_sessions_subject_check",
+      sql`char_length(${table.keycloakSubjectId}) BETWEEN 1 AND 255`,
+    ),
+    check(
+      "emergency_recovery_sessions_reason_check",
+      sql`${table.reasonCode} IN ('admin_lockout', 'admin_role_repair', 'admin_mfa_repair')`,
+    ),
+    check(
+      "emergency_recovery_sessions_status_check",
+      sql`${table.status} IN ('active', 'revoked', 'expired')`,
+    ),
+    check(
+      "emergency_recovery_sessions_correlation_check",
+      sql`char_length(${table.correlationId}) BETWEEN 1 AND 128`,
+    ),
+    check(
+      "emergency_recovery_sessions_revoked_by_check",
+      sql`${table.revokedBy} IS NULL OR char_length(${table.revokedBy}) BETWEEN 1 AND 255`,
+    ),
+    check(
+      "emergency_recovery_sessions_ttl_check",
+      sql`${table.expiresAt} = ${table.activatedAt} + interval '15 minutes'`,
+    ),
+    check(
+      "emergency_recovery_sessions_lifecycle_check",
+      sql`(
+        ${table.status} = 'active'
+        AND ${table.revokedAt} IS NULL
+        AND ${table.revokedBy} IS NULL
+      ) OR (
+        ${table.status} = 'revoked'
+        AND ${table.revokedAt} IS NOT NULL
+        AND ${table.revokedBy} IS NOT NULL
+        AND ${table.revokedAt} >= ${table.activatedAt}
+        AND ${table.revokedAt} < ${table.expiresAt}
+      ) OR (
+        ${table.status} = 'expired'
+        AND ${table.revokedAt} IS NULL
+        AND ${table.revokedBy} IS NULL
+      )`,
+    ),
+    uniqueIndex("emergency_recovery_sessions_one_active_idx")
+      .on(table.status)
+      .where(sql`${table.status} = 'active'`),
+    index("emergency_recovery_sessions_expiry_idx").on(table.expiresAt),
   ],
 )
 

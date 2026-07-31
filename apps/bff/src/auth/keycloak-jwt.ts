@@ -6,7 +6,10 @@ export interface KeycloakJwtConfig {
 }
 
 export interface VerifiedKeycloakJwt {
+  acr?: string
+  amr?: string[]
   audience?: string | string[]
+  authTime?: number
   azp?: string
   clientId?: string
   email?: string
@@ -23,7 +26,10 @@ interface JwtHeader {
 }
 
 interface JwtPayload {
+  acr?: string
+  amr?: string[]
   aud?: string | string[]
+  auth_time?: number
   azp?: string
   client_id?: string
   email?: string
@@ -36,6 +42,7 @@ interface JwtPayload {
     roles?: string[]
   }
   sub?: string
+  typ?: string
 }
 
 interface JwksDocument {
@@ -66,12 +73,18 @@ export async function verifyKeycloakJwt(
   }
 
   const { header, payload, signedContent, signature } = parsed
-  if (header.alg !== "RS256" || !header.kid || !payload.sub) {
+  if (
+    header.alg !== "RS256" ||
+    !header.kid ||
+    !payload.sub ||
+    payload.typ !== "Bearer" ||
+    !Number.isSafeInteger(payload.exp)
+  ) {
     return null
   }
 
   const now = Math.floor(Date.now() / 1000)
-  if (payload.exp && payload.exp <= now) {
+  if ((payload.exp ?? 0) <= now) {
     return null
   }
   if (payload.nbf && payload.nbf > now) {
@@ -93,7 +106,10 @@ export async function verifyKeycloakJwt(
   }
 
   return {
+    acr: payload.acr,
+    amr: payload.amr,
     audience: payload.aud,
+    authTime: payload.auth_time,
     azp: payload.azp,
     clientId: payload.client_id,
     email: payload.email ?? payload.preferred_username,
@@ -321,7 +337,11 @@ function parseJwtPayload(value: string): JwtPayload | null {
     : undefined
 
   return {
+    acr: typeof parsed.acr === "string" ? parsed.acr : undefined,
+    amr: Array.isArray(parsed.amr) ? stringArrayValue(parsed.amr) : undefined,
     aud: parseAudience(parsed.aud),
+    auth_time:
+      typeof parsed.auth_time === "number" ? parsed.auth_time : undefined,
     azp: typeof parsed.azp === "string" ? parsed.azp : undefined,
     client_id:
       typeof parsed.client_id === "string" ? parsed.client_id : undefined,
@@ -336,6 +356,7 @@ function parseJwtPayload(value: string): JwtPayload | null {
         : undefined,
     realm_access: realmAccess,
     sub: typeof parsed.sub === "string" ? parsed.sub : undefined,
+    typ: typeof parsed.typ === "string" ? parsed.typ : undefined,
   }
 }
 

@@ -47,7 +47,11 @@ describe("Inference Core empty-install migration", () => {
         "admin.applications",
         "admin.backup_state",
         "admin.console_settings",
+        "admin.emergency_recovery_factor",
+        "admin.emergency_recovery_sessions",
         "admin.idempotency_ledger",
+        "admin.identity_mutation_journal",
+        "admin.identity_mutation_journal_targets",
         "admin.license_state",
         "admin.recovery_state",
         "admin.update_state",
@@ -351,7 +355,7 @@ describe("Inference Core empty-install migration", () => {
         ),
       ).resolves.toBe(true)
 
-      await client.exec("DROP TABLE admin.recovery_state")
+      await client.exec("DROP TABLE admin.identity_mutation_journal_targets")
       await expect(
         checkInferenceCoreDbReadiness(
           database as unknown as NonNullable<

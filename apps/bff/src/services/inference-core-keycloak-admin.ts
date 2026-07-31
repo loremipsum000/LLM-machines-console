@@ -54,6 +54,38 @@ export interface KeycloakAdminRole {
   name: string
 }
 
+export interface KeycloakLiveHumanAuthority {
+  enabled: boolean
+  role: InferenceCoreRole
+  subject: string
+}
+
+export type LiveHumanAuthorityResult =
+  | {
+      authority: KeycloakLiveHumanAuthority
+      status: "ok"
+    }
+  | {
+      authority: null
+      reason:
+        | "ambiguous_role"
+        | "invalid_role_case"
+        | "invalid_subject"
+        | "unclassified_role"
+      status: "denied"
+    }
+  | {
+      authority: null
+      reason: "authority_unavailable"
+      status: KeycloakAdminServiceStatus
+    }
+
+export type RetainedRoleClassification =
+  | { role: InferenceCoreRole; status: "classified" }
+  | { role: null; status: "ambiguous" }
+  | { role: null; status: "invalid_case" }
+  | { role: null; status: "unclassified" }
+
 export interface CreateKeycloakClientInput {
   clientId: string
   description: string
@@ -78,9 +110,23 @@ export class KeycloakAdminError extends Error {
   constructor(
     readonly status: Exclude<KeycloakAdminServiceStatus, "not_configured">,
     message: string,
+    readonly mutationOutcome?: "rejected" | "unknown",
   ) {
     super(message)
     this.name = "KeycloakAdminError"
+  }
+}
+
+class KeycloakHumanAuthorityError extends KeycloakAdminError {
+  constructor(
+    readonly reason:
+      | "ambiguous_role"
+      | "invalid_role_case"
+      | "unclassified_role",
+    message: string,
+  ) {
+    super("invalid", message)
+    this.name = "KeycloakHumanAuthorityError"
   }
 }
 
@@ -91,6 +137,9 @@ interface TokenCache {
 
 type FetchLike = typeof fetch
 
+const KEYCLOAK_USER_GROUP_PAGE_SIZE = 100
+const KEYCLOAK_USER_GROUP_LIMIT = 1_000
+
 export class KeycloakAdminClient {
   private tokenCache: TokenCache | null = null
 
@@ -98,6 +147,7 @@ export class KeycloakAdminClient {
     private readonly config: KeycloakAdminConfig,
     private readonly fetchImpl: FetchLike = fetch,
     private readonly now: () => number = () => Date.now(),
+    private readonly operationSignal?: AbortSignal,
   ) {}
 
   async listUsers(): Promise<KeycloakAdminUser[]> {
@@ -123,7 +173,7 @@ export class KeycloakAdminClient {
         enabled: input.enabled,
         firstName: firstName(input.displayName),
         lastName: lastName(input.displayName),
-        requiredActions: [],
+        requiredActions: ["CONFIGURE_TOTP"],
         username: input.username,
       }),
       headers: { "content-type": "application/json" },
@@ -218,40 +268,76 @@ export class KeycloakAdminClient {
   }
 
   async getUserGroups(id: string): Promise<KeycloakAdminGroup[]> {
-    const rows = await this.requestJson<unknown[]>(
-      `/users/${encodeURIComponent(id)}/groups`,
+    const groups: KeycloakAdminGroup[] = []
+    const path = `/users/${encodeURIComponent(id)}/groups`
+    for (
+      let first = 0;
+      first < KEYCLOAK_USER_GROUP_LIMIT;
+      first += KEYCLOAK_USER_GROUP_PAGE_SIZE
+    ) {
+      const rows = await this.requestJson<unknown[]>(
+        `${path}?first=${first}&max=${KEYCLOAK_USER_GROUP_PAGE_SIZE}`,
+        { method: "GET" },
+      )
+      groups.push(...rows.filter(isRecord).map(groupFromKeycloak))
+      if (rows.length < KEYCLOAK_USER_GROUP_PAGE_SIZE) {
+        return groups
+      }
+    }
+
+    const overflow = await this.requestJson<unknown[]>(
+      `${path}?first=${KEYCLOAK_USER_GROUP_LIMIT}&max=1`,
       { method: "GET" },
     )
-    return rows.filter(isRecord).map(groupFromKeycloak)
+    if (overflow.length > 0) {
+      throw new KeycloakAdminError(
+        "unavailable",
+        "Keycloak user group membership exceeds the bounded verification limit.",
+      )
+    }
+    return groups
   }
 
-  async getUserRealmRoles(id: string): Promise<KeycloakAdminRole[]> {
+  async getUserEffectiveRealmRoles(id: string): Promise<KeycloakAdminRole[]> {
     const rows = await this.requestJson<unknown[]>(
-      `/users/${encodeURIComponent(id)}/role-mappings/realm`,
+      `/users/${encodeURIComponent(id)}/role-mappings/realm/composite`,
       { method: "GET" },
     )
     return rows.filter(isRecord).map(roleFromKeycloak)
   }
 
-  async getRealmRole(name: InferenceCoreRole): Promise<KeycloakAdminRole> {
-    return roleFromKeycloak(
-      await this.requestJson(`/roles/${encodeURIComponent(name)}`, {
-        method: "GET",
-      }),
-    )
+  async getLiveHumanAuthority(id: string): Promise<KeycloakLiveHumanAuthority> {
+    const user = await this.getUser(id)
+    const roles = await this.getUserEffectiveRealmRoles(id)
+    return liveHumanAuthority(user, roles)
   }
 
-  async assignRealmRole(
-    userId: string,
-    role: KeycloakAdminRole,
-  ): Promise<void> {
-    await this.request(
-      `/users/${encodeURIComponent(userId)}/role-mappings/realm`,
-      {
-        body: JSON.stringify([{ id: role.id, name: role.name }]),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      },
+  async listLiveHumanAuthorities(): Promise<KeycloakLiveHumanAuthority[]> {
+    const users = await this.listUsers()
+    const authorities = await Promise.all(
+      users.map(async (user) => {
+        const roles = await this.getUserEffectiveRealmRoles(user.id)
+        const classification = classifyRetainedRealmRoles(
+          roles.map((role) => role.name),
+        )
+        if (
+          classification.status === "ambiguous" ||
+          classification.status === "invalid_case"
+        ) {
+          throw retainedRoleClassificationError(user.id, classification.status)
+        }
+        return classification.status === "classified"
+          ? {
+              enabled: user.enabled,
+              role: classification.role,
+              subject: user.id,
+            }
+          : null
+      }),
+    )
+    return authorities.filter(
+      (authority): authority is KeycloakLiveHumanAuthority =>
+        authority !== null,
     )
   }
 
@@ -391,23 +477,62 @@ export class KeycloakAdminClient {
     if (response.status === 204) {
       return null as T
     }
-    return (await response.json()) as T
+    try {
+      return (await response.json()) as T
+    } catch {
+      throw new KeycloakAdminError(
+        "invalid",
+        "Keycloak Admin API returned an invalid JSON response.",
+      )
+    }
   }
 
   private async request(path: string, init: RequestInit): Promise<Response> {
-    const token = await this.adminToken()
-    const response = await this.fetchImpl(
-      `${adminBaseUrl(this.config)}${path}`,
-      {
+    const isMutation = init.method !== "GET" && init.method !== "HEAD"
+    let token: string
+    try {
+      token = await this.adminToken()
+    } catch (error) {
+      if (isMutation) {
+        throw new KeycloakAdminError(
+          error instanceof KeycloakAdminError ? error.status : "unavailable",
+          "Keycloak mutation was rejected before it was sent.",
+          "rejected",
+        )
+      }
+      if (error instanceof KeycloakAdminError) {
+        throw error
+      }
+      throw new KeycloakAdminError(
+        "unavailable",
+        "Keycloak Admin API authentication is unavailable.",
+      )
+    }
+
+    let response: Response
+    const abort = keycloakRequestAbort(init.signal, this.operationSignal)
+    try {
+      response = await this.fetchImpl(`${adminBaseUrl(this.config)}${path}`, {
         ...init,
         headers: {
           ...(init.headers ?? {}),
           authorization: `Bearer ${token}`,
         },
-      },
-    )
+        signal: abort.signal,
+      })
+    } catch {
+      throw new KeycloakAdminError(
+        "unavailable",
+        isMutation
+          ? "Keycloak mutation outcome could not be confirmed."
+          : "Keycloak Admin API is unavailable.",
+        isMutation ? "unknown" : undefined,
+      )
+    } finally {
+      abort.dispose()
+    }
     if (!response.ok) {
-      throw statusError(response.status)
+      throw statusError(response.status, isMutation)
     }
     return response
   }
@@ -417,17 +542,24 @@ export class KeycloakAdminClient {
       return this.tokenCache.accessToken
     }
 
-    const response = await this.fetchImpl(tokenUrl(this.config), {
-      body: new URLSearchParams({
-        client_id: this.config.clientId,
-        client_secret: this.config.clientSecret,
-        grant_type: "client_credentials",
-      }),
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-      },
-      method: "POST",
-    })
+    const abort = keycloakRequestAbort(this.operationSignal)
+    let response: Response
+    try {
+      response = await this.fetchImpl(tokenUrl(this.config), {
+        body: new URLSearchParams({
+          client_id: this.config.clientId,
+          client_secret: this.config.clientSecret,
+          grant_type: "client_credentials",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        method: "POST",
+        signal: abort.signal,
+      })
+    } finally {
+      abort.dispose()
+    }
     if (!response.ok) {
       throw statusError(response.status)
     }
@@ -494,18 +626,124 @@ export function keycloakAdminClientFromEnv(
   return { client: new KeycloakAdminClient(result.config), status: "ok" }
 }
 
+export async function resolveLiveHumanAuthority(
+  subject: string,
+  options: {
+    env?: NodeJS.ProcessEnv
+    fetchImpl?: FetchLike
+  } = {},
+): Promise<LiveHumanAuthorityResult> {
+  if (!subject.trim()) {
+    return { authority: null, reason: "invalid_subject", status: "denied" }
+  }
+  const configResult = keycloakAdminConfigFromEnv(options.env)
+  if (configResult.status !== "ok") {
+    return {
+      authority: null,
+      reason: "authority_unavailable",
+      status: configResult.status,
+    }
+  }
+
+  try {
+    return {
+      authority: await new KeycloakAdminClient(
+        configResult.config,
+        options.fetchImpl,
+      ).getLiveHumanAuthority(subject),
+      status: "ok",
+    }
+  } catch (error) {
+    if (error instanceof KeycloakHumanAuthorityError) {
+      return { authority: null, reason: error.reason, status: "denied" }
+    }
+    return {
+      authority: null,
+      reason: "authority_unavailable",
+      status:
+        error instanceof KeycloakAdminError ? error.status : "unavailable",
+    }
+  }
+}
+
+export function classifyRetainedRealmRoles(
+  roles: string[],
+): RetainedRoleClassification {
+  if (
+    roles.some((role) => {
+      const normalized = role.toLowerCase()
+      return (
+        (normalized === "admin" || normalized === "operator") &&
+        role !== normalized
+      )
+    })
+  ) {
+    return { role: null, status: "invalid_case" }
+  }
+  const normalized = new Set(roles)
+  const retained = (["admin", "operator"] as const).filter((role) =>
+    normalized.has(role),
+  )
+  if (retained.length === 0) {
+    return { role: null, status: "unclassified" }
+  }
+  if (retained.length > 1) {
+    return { role: null, status: "ambiguous" }
+  }
+  return { role: retained[0] ?? "operator", status: "classified" }
+}
+
 export function roleFromRealmRoles(roles: string[]): InferenceCoreRole | null {
-  const normalized = new Set(roles.map((role) => role.toLowerCase()))
-  if (normalized.has("admin")) {
-    return "admin"
+  const classification = classifyRetainedRealmRoles(roles)
+  return classification.status === "classified" ? classification.role : null
+}
+
+function liveHumanAuthority(
+  user: KeycloakAdminUser,
+  roles: KeycloakAdminRole[],
+): KeycloakLiveHumanAuthority {
+  const classification = classifyRetainedRealmRoles(
+    roles.map((role) => role.name),
+  )
+  if (
+    classification.status === "ambiguous" ||
+    classification.status === "invalid_case"
+  ) {
+    throw retainedRoleClassificationError(user.id, classification.status)
   }
-  if (normalized.has("operator")) {
-    return "operator"
+  if (classification.status === "unclassified") {
+    throw new KeycloakHumanAuthorityError(
+      "unclassified_role",
+      `Keycloak user ${user.id} does not have exactly one retained appliance role.`,
+    )
   }
-  return null
+  return {
+    enabled: user.enabled,
+    role: classification.role,
+    subject: user.id,
+  }
+}
+
+function retainedRoleClassificationError(
+  subject: string,
+  classification: "ambiguous" | "invalid_case",
+): KeycloakAdminError {
+  return new KeycloakHumanAuthorityError(
+    classification === "ambiguous" ? "ambiguous_role" : "invalid_role_case",
+    classification === "ambiguous"
+      ? `Keycloak user ${subject} has ambiguous retained appliance roles.`
+      : `Keycloak user ${subject} has a retained appliance role with invalid casing.`,
+  )
 }
 
 function userFromKeycloak(row: Record<string, unknown>): KeycloakAdminUser {
+  const id = stringField(row, "id")
+  if (!id || typeof row.enabled !== "boolean") {
+    throw new KeycloakAdminError(
+      "invalid",
+      "Keycloak Admin API returned an invalid user authority response.",
+    )
+  }
   const first = stringField(row, "firstName")
   const last = stringField(row, "lastName")
   return {
@@ -515,9 +753,9 @@ function userFromKeycloak(row: Record<string, unknown>): KeycloakAdminUser {
       stringField(row, "username") ||
       "Unknown user",
     email: stringField(row, "email") ?? "unknown@local.invalid",
-    enabled: row.enabled !== false,
+    enabled: row.enabled,
     firstName: first,
-    id: stringField(row, "id") ?? stringField(row, "username") ?? "unknown",
+    id,
     lastName: last,
     username: stringField(row, "username") ?? "unknown",
   }
@@ -546,20 +784,31 @@ function roleFromKeycloak(row: Record<string, unknown>): KeycloakAdminRole {
   }
 }
 
-function statusError(status: number): KeycloakAdminError {
+function statusError(status: number, isMutation = false): KeycloakAdminError {
+  const mutationOutcome = isMutation
+    ? status >= 500
+      ? "unknown"
+      : "rejected"
+    : undefined
   if (status === 401 || status === 403) {
     return new KeycloakAdminError(
       "unauthorized",
       "Keycloak Admin API rejected Console credentials.",
+      mutationOutcome,
     )
   }
   if (status >= 500) {
     return new KeycloakAdminError(
       "unavailable",
       "Keycloak Admin API is unavailable.",
+      mutationOutcome,
     )
   }
-  return new KeycloakAdminError("invalid", "Keycloak Admin API request failed.")
+  return new KeycloakAdminError(
+    "invalid",
+    "Keycloak Admin API request failed.",
+    mutationOutcome,
+  )
 }
 
 function adminBaseUrl(config: KeycloakAdminConfig): string {
@@ -568,6 +817,35 @@ function adminBaseUrl(config: KeycloakAdminConfig): string {
 
 function tokenUrl(config: KeycloakAdminConfig): string {
   return `${config.baseUrl}/realms/${encodeURIComponent(config.realm)}/protocol/openid-connect/token`
+}
+
+function keycloakRequestAbort(
+  ...signals: Array<AbortSignal | null | undefined>
+): { dispose(): void; signal: AbortSignal } {
+  const controller = new AbortController()
+  const sources = signals.filter(
+    (signal): signal is AbortSignal => signal !== null && signal !== undefined,
+  )
+  const listeners = sources.map((source) => {
+    const listener = () => controller.abort(source.reason)
+    source.addEventListener("abort", listener, { once: true })
+    if (source.aborted) {
+      listener()
+    }
+    return { listener, source }
+  })
+  const timer = setTimeout(() => {
+    controller.abort(new Error("Keycloak Admin API request timed out."))
+  }, 5_000)
+  return {
+    dispose: () => {
+      clearTimeout(timer)
+      for (const { listener, source } of listeners) {
+        source.removeEventListener("abort", listener)
+      }
+    },
+    signal: controller.signal,
+  }
 }
 
 function trimTrailingSlash(value: string): string {

@@ -11,7 +11,7 @@ import type {
   ApplyAdminInferenceModelUpdateRequest,
   InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
-import type { Actor } from "../auth/persona"
+import type { Actor } from "../auth/authorization"
 import { canUseBffFixtureData } from "../config/fixture-mode"
 import {
   LiteLlmAdminClient,
