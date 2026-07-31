@@ -2,7 +2,7 @@
   "apiVersion": "inference-core.llm-machines/v1",
   "kind": "LogicalKeycloakCommissioningPlan",
   "metadata": {
-    "changePackage": "PR-05",
+    "changePackage": "PR-06",
     "containsCredentials": false,
     "packagingTarget": "PR-12"
   },
@@ -18,6 +18,8 @@
         "keycloak-version-is-at-least-26.6.0",
         "admin-fine-grained-authz-v2-is-enabled",
         "realm-admin-permissions-are-enabled",
+        "application-admin-is-absent-from-human-realm",
+        "human-admin-has-no-Clients-authority",
         "realm-is-not-master",
         "no-seed-user-exists",
         "no-client-credential-is-in-seed",

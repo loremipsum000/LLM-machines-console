@@ -693,14 +693,6 @@ export const adminSettingsResponseSchema = z
   .strict()
 export type AdminSettingsResponse = z.infer<typeof adminSettingsResponseSchema>
 
-export const adminConnectedAppEnvironmentSchema = z.enum([
-  "staging",
-  "production",
-])
-export type AdminConnectedAppEnvironment = z.infer<
-  typeof adminConnectedAppEnvironmentSchema
->
-
 export const adminConnectedAppAuthMethodSchema = z.enum([
   "api_key",
   "oauth_client_credentials",
@@ -714,15 +706,41 @@ export type AdminConnectedAppStatus = z.infer<
   typeof adminConnectedAppStatusSchema
 >
 
-export const adminConnectedAppTestStatusSchema = z.enum([
-  "not_tested",
-  "passed",
-  "failed",
-  "stale",
+export const adminConnectedAppConnectionStatusSchema = z.enum([
+  "not_connected",
+  "connected",
+  "degraded",
 ])
-export type AdminConnectedAppTestStatus = z.infer<
-  typeof adminConnectedAppTestStatusSchema
+export type AdminConnectedAppConnectionStatus = z.infer<
+  typeof adminConnectedAppConnectionStatusSchema
 >
+
+export const adminConnectedAppCredentialStatusSchema = z.enum([
+  "active",
+  "retiring",
+  "revoked",
+])
+export type AdminConnectedAppCredentialStatus = z.infer<
+  typeof adminConnectedAppCredentialStatusSchema
+>
+
+export const adminConnectedAppModelAliasSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(160)
+
+export const adminConnectedAppAllowedModelsSchema = z
+  .array(adminConnectedAppModelAliasSchema)
+  .min(1)
+  .superRefine((models, ctx) => {
+    if (new Set(models).size !== models.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Application model aliases must be unique.",
+      })
+    }
+  })
 
 export const adminConnectedAppUsageSummarySchema = z
   .object({
@@ -736,58 +754,171 @@ export type AdminConnectedAppUsageSummary = z.infer<
   typeof adminConnectedAppUsageSummarySchema
 >
 
-export const adminConnectedAppEnvironmentStateSchema = z
+export const adminConnectedAppCredentialMetadataSchema = z
   .object({
-    authMethods: z
-      .array(adminConnectedAppAuthMethodSchema)
-      .default(["oauth_client_credentials"]),
+    authMethod: adminConnectedAppAuthMethodSchema,
     clientId: z.string().min(1).nullable(),
-    credentialIssuedAt: z.string().datetime().nullable(),
-    environment: adminConnectedAppEnvironmentSchema,
-    keyPrefix: z.string().min(1).nullable().default(null),
-    lastUsedAt: z.string().datetime().nullable().default(null),
-    lastTestedAt: z.string().datetime().nullable(),
-    primaryAuthMethod: adminConnectedAppAuthMethodSchema.default(
-      "oauth_client_credentials",
-    ),
-    productionReady: z.boolean(),
-    testStatus: adminConnectedAppTestStatusSchema,
+    id: z.string().min(1),
+    issuedAt: z.string().datetime(),
+    keyPrefix: z.string().min(1).nullable(),
+    lastUsedAt: z.string().datetime().nullable(),
+    overlapExpiresAt: z.string().datetime().nullable(),
+    revokedAt: z.string().datetime().nullable(),
+    rotatedAt: z.string().datetime().nullable(),
+    status: adminConnectedAppCredentialStatusSchema,
   })
   .strict()
-export type AdminConnectedAppEnvironmentState = z.infer<
-  typeof adminConnectedAppEnvironmentStateSchema
+  .superRefine((credential, ctx) => {
+    const isStatic = credential.authMethod === "api_key"
+    if (
+      isStatic &&
+      (credential.clientId !== null || credential.keyPrefix === null)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Static credentials require a key prefix and no client id.",
+      })
+    }
+    if (
+      !isStatic &&
+      (credential.clientId === null || credential.keyPrefix !== null)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "OAuth credentials require a client id and no key prefix.",
+      })
+    }
+    if (
+      credential.authMethod === "oauth_client_credentials" &&
+      (credential.status === "retiring" || credential.overlapExpiresAt !== null)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "OAuth credentials cannot retire or overlap.",
+      })
+    }
+    const activeStateIsValid =
+      credential.status !== "active" ||
+      (credential.revokedAt === null &&
+        credential.overlapExpiresAt === null &&
+        (!isStatic || credential.rotatedAt === null))
+    const retiringStateIsValid =
+      credential.status !== "retiring" ||
+      (isStatic &&
+        credential.rotatedAt !== null &&
+        credential.overlapExpiresAt !== null &&
+        credential.revokedAt === null)
+    const revokedStateIsValid =
+      credential.status !== "revoked" ||
+      (credential.revokedAt !== null &&
+        (!isStatic ||
+          (credential.rotatedAt === null) ===
+            (credential.overlapExpiresAt === null)))
+    if (!activeStateIsValid || !retiringStateIsValid || !revokedStateIsValid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Credential lifecycle timestamps do not match its state.",
+      })
+    }
+
+    const issuedAt = Date.parse(credential.issuedAt)
+    const lastUsedAt = credential.lastUsedAt
+      ? Date.parse(credential.lastUsedAt)
+      : null
+    const rotatedAt = credential.rotatedAt
+      ? Date.parse(credential.rotatedAt)
+      : null
+    const overlapExpiresAt = credential.overlapExpiresAt
+      ? Date.parse(credential.overlapExpiresAt)
+      : null
+    const revokedAt = credential.revokedAt
+      ? Date.parse(credential.revokedAt)
+      : null
+    if (
+      (lastUsedAt !== null && lastUsedAt < issuedAt) ||
+      (rotatedAt !== null && rotatedAt < issuedAt) ||
+      (overlapExpiresAt !== null &&
+        (rotatedAt === null || overlapExpiresAt <= rotatedAt)) ||
+      (revokedAt !== null &&
+        (revokedAt < issuedAt || (rotatedAt !== null && revokedAt < rotatedAt)))
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Credential timestamps are out of order.",
+      })
+    }
+  })
+export type AdminConnectedAppCredentialMetadata = z.infer<
+  typeof adminConnectedAppCredentialMetadataSchema
 >
 
-export const adminConnectedAppCredentialSchema = z
-  .object({
-    apiKey: z.string().min(1).optional(),
-    authMethod: adminConnectedAppAuthMethodSchema,
-    bffBaseUrl: z.string().url(),
-    clientId: z.string().min(1).optional(),
-    clientSecret: z.string().min(1).optional(),
-    environment: adminConnectedAppEnvironmentSchema,
-    exampleCurl: z.string().min(1),
-    keyPrefix: z.string().min(1).nullable(),
-    model: z.string().min(1).nullable(),
-    openAiBaseUrl: z.string().url(),
-    tokenUrl: z.string().url().optional(),
-  })
-  .strict()
+const adminConnectedAppEndpointUrlSchema = z
+  .string()
+  .url()
+  .refine((value) => {
+    try {
+      const endpoint = new URL(value)
+      return (
+        (endpoint.protocol === "http:" || endpoint.protocol === "https:") &&
+        endpoint.username === "" &&
+        endpoint.password === "" &&
+        endpoint.search === "" &&
+        endpoint.hash === "" &&
+        !value.includes("?") &&
+        !value.includes("#")
+      )
+    } catch {
+      return false
+    }
+  }, "Application endpoint URLs must use HTTP or HTTPS without userinfo, query, or fragment.")
+
+const adminConnectedAppCredentialRevealBaseSchema = z.object({
+  bffBaseUrl: adminConnectedAppEndpointUrlSchema,
+  credentialId: z.string().min(1),
+  exampleCurl: z.string().min(1),
+  issuedAt: z.string().datetime(),
+  model: z.string().min(1).nullable(),
+  openAiBaseUrl: adminConnectedAppEndpointUrlSchema,
+})
+
+export const adminConnectedAppCredentialSchema = z.discriminatedUnion(
+  "authMethod",
+  [
+    adminConnectedAppCredentialRevealBaseSchema
+      .extend({
+        apiKey: z.string().min(1),
+        authMethod: z.literal("api_key"),
+        keyPrefix: z.string().min(1),
+      })
+      .strict(),
+    adminConnectedAppCredentialRevealBaseSchema
+      .extend({
+        authMethod: z.literal("oauth_client_credentials"),
+        clientId: z.string().min(1),
+        clientSecret: z.string().min(1),
+        keyPrefix: z.null(),
+        tokenUrl: adminConnectedAppEndpointUrlSchema,
+      })
+      .strict(),
+  ],
+)
 export type AdminConnectedAppCredential = z.infer<
   typeof adminConnectedAppCredentialSchema
 >
 
 export const adminConnectedAppSchema = z
   .object({
-    allowedModels: z.array(z.string().min(1)).min(1),
+    allowedModels: adminConnectedAppAllowedModelsSchema,
     auditHref: z.string().min(1),
+    authMethod: adminConnectedAppAuthMethodSchema,
+    connectionStatus: adminConnectedAppConnectionStatusSchema,
     createdAt: z.string().datetime(),
+    credentials: z.array(adminConnectedAppCredentialMetadataSchema).min(1),
     description: z.string().min(1),
     detailHref: z.string().min(1),
-    environments: z.array(adminConnectedAppEnvironmentStateSchema).min(1),
     id: z.string().min(1),
+    lastConnectedAt: z.string().datetime().nullable(),
     name: z.string().min(1),
-    ownerGroup: z.string().min(1),
     rateLimitRpm: z.number().int().min(1).nullable(),
     status: adminConnectedAppStatusSchema,
     tokenBudget7d: z.number().int().min(1).nullable(),
@@ -795,6 +926,43 @@ export const adminConnectedAppSchema = z
     usage: adminConnectedAppUsageSummarySchema,
   })
   .strict()
+  .superRefine((application, ctx) => {
+    if (
+      application.credentials.some(
+        (credential) => credential.authMethod !== application.authMethod,
+      )
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Application credentials must use the immutable auth method.",
+        path: ["credentials"],
+      })
+    }
+    const credentialIds = application.credentials.map(
+      (credential) => credential.id,
+    )
+    if (new Set(credentialIds).size !== credentialIds.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Application credential ids must be unique.",
+        path: ["credentials"],
+      })
+    }
+    const activeCredentialCount = application.credentials.filter(
+      (credential) => credential.status === "active",
+    ).length
+    if (
+      (application.status === "enabled" && activeCredentialCount !== 1) ||
+      (application.status === "disabled" && activeCredentialCount > 1)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Enabled Applications require exactly one active credential; disabled Applications allow at most one.",
+        path: ["credentials"],
+      })
+    }
+  })
 export type AdminConnectedApp = z.infer<typeof adminConnectedAppSchema>
 
 export const adminConnectedAppsResponseSchema = z
@@ -819,11 +987,10 @@ export type AdminConnectedAppDetail = z.infer<
 
 export const adminConnectedAppCreateRequestSchema = z
   .object({
-    allowedModels: z.array(z.string().trim().min(1)).min(1),
+    allowedModels: adminConnectedAppAllowedModelsSchema,
     authMethod: adminConnectedAppAuthMethodSchema.default("api_key"),
     description: z.string().trim().min(1).max(500),
     name: z.string().trim().min(1).max(80),
-    ownerGroup: z.string().trim().min(1).default("Everyone"),
     rateLimitRpm: z.number().int().min(1).max(10_000).nullable().default(null),
     tokenBudget7d: z
       .number()
@@ -838,12 +1005,26 @@ export type AdminConnectedAppCreateRequest = z.infer<
   typeof adminConnectedAppCreateRequestSchema
 >
 
-export const adminConnectedAppUpdateRequestSchema =
-  adminConnectedAppCreateRequestSchema.extend({
-    status: adminConnectedAppStatusSchema.default("enabled"),
+export const adminConnectedAppUpdateRequestSchema = z
+  .object({
+    allowedModels: adminConnectedAppAllowedModelsSchema,
+    description: z.string().trim().min(1).max(500),
+    name: z.string().trim().min(1).max(80),
+    rateLimitRpm: z.number().int().min(1).max(10_000).nullable(),
+    tokenBudget7d: z.number().int().min(1).max(100_000_000).nullable(),
   })
+  .strict()
 export type AdminConnectedAppUpdateRequest = z.infer<
   typeof adminConnectedAppUpdateRequestSchema
+>
+
+export const adminConnectedAppDeleteRequestSchema = z
+  .object({
+    confirmation: z.literal("DELETE APPLICATION"),
+  })
+  .strict()
+export type AdminConnectedAppDeleteRequest = z.infer<
+  typeof adminConnectedAppDeleteRequestSchema
 >
 
 export const adminConnectedAppCreateResponseSchema = z
@@ -860,14 +1041,79 @@ export type AdminConnectedAppCreateResponse = z.infer<
 export const adminConnectedAppTestResultSchema = z
   .object({
     app: adminConnectedAppSchema,
+    connectionStatus: adminConnectedAppConnectionStatusSchema,
     detail: z.string().min(1),
-    environment: adminConnectedAppEnvironmentSchema,
-    status: z.enum(["passed", "failed", "blocked"]),
-    testedAt: z.string().datetime(),
+    observedAt: z.string().datetime().nullable(),
+    status: z.enum(["passed", "waiting", "degraded"]),
   })
   .strict()
+  .superRefine((result, ctx) => {
+    const expectedConnectionStatus = {
+      degraded: "degraded",
+      passed: "connected",
+      waiting: "not_connected",
+    }[result.status]
+    if (
+      result.connectionStatus !== expectedConnectionStatus ||
+      result.app.connectionStatus !== expectedConnectionStatus
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Connection evidence status must match the Application connection state.",
+        path: ["connectionStatus"],
+      })
+    }
+    if (
+      result.observedAt !== result.app.lastConnectedAt ||
+      (result.status === "passed" && result.observedAt === null) ||
+      (result.status === "waiting" && result.observedAt !== null)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Connection evidence time must match the Application connection evidence.",
+        path: ["observedAt"],
+      })
+    }
+  })
 export type AdminConnectedAppTestResult = z.infer<
   typeof adminConnectedAppTestResultSchema
+>
+
+export const adminConnectedAppLifecycleStatusSchema = z.enum([
+  "disabled",
+  "reenabled",
+  "deleted",
+])
+export type AdminConnectedAppLifecycleStatus = z.infer<
+  typeof adminConnectedAppLifecycleStatusSchema
+>
+
+export const adminConnectedAppLifecycleResultSchema = z
+  .object({
+    app: adminConnectedAppSchema.nullable(),
+    applicationId: z.string().min(1),
+    detail: z.string().min(1),
+    status: adminConnectedAppLifecycleStatusSchema,
+  })
+  .strict()
+  .superRefine((result, ctx) => {
+    const appStatusMatches =
+      (result.status === "deleted" && result.app === null) ||
+      (result.status === "disabled" && result.app?.status === "disabled") ||
+      (result.status === "reenabled" && result.app?.status === "enabled")
+    if (!appStatusMatches) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Application lifecycle results must match the returned Application state.",
+        path: ["app"],
+      })
+    }
+  })
+export type AdminConnectedAppLifecycleResult = z.infer<
+  typeof adminConnectedAppLifecycleResultSchema
 >
 
 export const adminConnectedAppRotateCredentialResultSchema = z

@@ -3,11 +3,11 @@ import {
   type ApplicationsView,
 } from "@/components/console-v2/applications-v2-experience"
 import { ConsoleUnavailablePanel } from "@/components/console-v2/console-unavailable-panel"
+import { roleCanAccessConsoleSection } from "@/components/console-v2/console-v2-sections"
 import {
   type ConsoleV2SectionId,
   ConsoleV2Shell,
 } from "@/components/console-v2/console-v2-shell"
-import { roleCanAccessConsoleSection } from "@/components/console-v2/console-v2-sections"
 import { HardwareV2Experience } from "@/components/console-v2/hardware-v2-experience"
 import {
   InferenceV2Experience,
@@ -56,32 +56,46 @@ export async function renderApplicationsConsoleRoute({
     if (applicationsView === "new-app" && role !== "admin") {
       return <ConsoleCapabilityDeniedPanel />
     }
-    const [connectedApps, teamOverview, inference] = await Promise.all([
-      getAdminConnectedApps(),
-      getAdminTeamOverview(),
-      applicationsView === "new-app"
+    if (applicationsView === "overview") {
+      const connectedApps = await getAdminConnectedApps()
+      return (
+        <ApplicationsV2Experience
+          accessRole={role}
+          appAction={resolvedSearchParams?.appAction}
+          connectedApps={connectedApps.apps}
+          view="overview"
+        />
+      )
+    }
+
+    if (applicationsView === "new-app") {
+      const inference = await getAdminInference({ range: "7d" })
+      return (
+        <ApplicationsV2Experience
+          accessRole={role}
+          modelOptions={inference.models}
+          view="new-app"
+        />
+      )
+    }
+
+    const selectedConnectedAppId = section?.[1]
+    if (!selectedConnectedAppId) {
+      notFound()
+    }
+    const [connectedAppDetail, inference] = await Promise.all([
+      getAdminConnectedAppDetail(selectedConnectedAppId),
+      role === "admin"
         ? getAdminInference({ range: "7d" })
         : Promise.resolve(null),
     ])
-    const selectedConnectedAppId =
-      applicationsView === "app-detail" ? section?.[1] : undefined
-    const connectedAppDetail = selectedConnectedAppId
-      ? await getAdminConnectedAppDetail(selectedConnectedAppId)
-      : null
-
-    if (applicationsView === "app-detail" && !selectedConnectedAppId) {
-      notFound()
-    }
-
     return (
       <ApplicationsV2Experience
         accessRole={role}
         appAction={resolvedSearchParams?.appAction}
         connectedAppDetail={connectedAppDetail?.app ?? null}
-        connectedApps={connectedApps.apps}
         modelOptions={inference?.models ?? []}
-        teamGroups={teamOverview.groups}
-        view={applicationsView}
+        view="app-detail"
       />
     )
   })

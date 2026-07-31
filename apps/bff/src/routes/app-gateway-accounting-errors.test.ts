@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 const accountingMocks = vi.hoisted(() => ({
   admit: vi.fn(),
+  recordModelsConnection: vi.fn(),
+  recordUsage: vi.fn(),
   reconcile: vi.fn(),
 }))
 
@@ -13,16 +15,27 @@ vi.mock("../services/admin-connected-apps", async () => {
     actual.reconcileConnectedAppGatewayUsage,
   )
   accountingMocks.admit.mockImplementation(actual.admitConnectedAppGatewayUsage)
+  accountingMocks.recordModelsConnection.mockImplementation(
+    actual.recordConnectedAppModelsConnection,
+  )
+  accountingMocks.recordUsage.mockImplementation(
+    actual.recordConnectedAppGatewayUsage,
+  )
   return {
     ...actual,
     admitConnectedAppGatewayUsage: accountingMocks.admit,
+    recordConnectedAppGatewayUsage: accountingMocks.recordUsage,
+    recordConnectedAppModelsConnection: accountingMocks.recordModelsConnection,
     reconcileConnectedAppGatewayUsage: accountingMocks.reconcile,
   }
 })
 
 import { buildServer } from "../index"
 import { resetConnectedAppsForTest } from "../services/admin-connected-apps"
-import { resetAuditEventsForTest } from "../services/audit"
+import {
+  getAuditEventsForTest,
+  resetAuditEventsForTest,
+} from "../services/audit"
 import { resetIdempotencyForTest } from "../services/idempotency"
 
 const adminHeaders = {
@@ -38,6 +51,8 @@ describe("connected app gateway accounting failures", () => {
   afterEach(async () => {
     accountingMocks.reconcile.mockClear()
     accountingMocks.admit.mockClear()
+    accountingMocks.recordModelsConnection.mockClear()
+    accountingMocks.recordUsage.mockClear()
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
     resetAuditEventsForTest()
@@ -143,6 +158,167 @@ describe("connected app gateway accounting failures", () => {
     await server.close()
   })
 
+  it("records a successful model connection independently when usage persistence fails", async () => {
+    configureGateway()
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      Response.json({
+        data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
+        object: "list",
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const server = buildServer()
+    const loggedErrors = captureRequestErrors(server)
+    const created = await createBoundedApp(server)
+    accountingMocks.recordUsage.mockRejectedValueOnce(
+      new Error("usage persistence failed at postgres://usage.internal:5432"),
+    )
+
+    const response = await server.inject({
+      method: "GET",
+      url: "/api/app-gateway/v1/models",
+      headers: { authorization: `Bearer ${created.apiKey}` },
+    })
+    const detailResponse = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.appId}`,
+      headers: adminHeaders,
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(detailResponse.json().app).toMatchObject({
+      connectionStatus: "connected",
+      lastConnectedAt: expect.any(String),
+      usage: { requests7d: 0 },
+    })
+    expect(accountingMocks.recordModelsConnection).toHaveBeenCalledTimes(1)
+    expect(loggedErrors).toContainEqual([
+      {
+        appId: created.appId,
+        failureClass: "accounting_reconciliation_failed",
+        requestId: response.headers["x-llm-machines-request-id"],
+      },
+      "Connected app gateway accounting failed",
+    ])
+    const serializedErrors = JSON.stringify(loggedErrors)
+    expect(serializedErrors).not.toContain("usage.internal")
+    expect(serializedErrors).not.toContain("environment")
+    const successfulModelEvents = getAuditEventsForTest().filter(
+      (event) =>
+        event.action === "connected_app.gateway.models" &&
+        event.metadata.outcome === "succeeded",
+    )
+    expect(successfulModelEvents).toHaveLength(1)
+    expect(successfulModelEvents[0]?.metadata).not.toHaveProperty("environment")
+    await server.close()
+  })
+
+  it("preserves a successful model list without claiming a connection when passive persistence fails", async () => {
+    configureGateway()
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      Response.json({
+        data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
+        object: "list",
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const server = buildServer()
+    const loggedErrors = captureRequestErrors(server)
+    const created = await createBoundedApp(server)
+    accountingMocks.recordModelsConnection.mockRejectedValueOnce(
+      new Error(
+        "passive recorder secret recorder-key failed at postgres://audit.internal:5432 admin.audit_events",
+      ),
+    )
+
+    const response = await server.inject({
+      method: "GET",
+      url: "/api/app-gateway/v1/models",
+      headers: { authorization: `Bearer ${created.apiKey}` },
+    })
+    const detailResponse = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.appId}`,
+      headers: adminHeaders,
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({
+      data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
+      object: "list",
+    })
+    expect(detailResponse.json().app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+    })
+    expect(accountingMocks.recordModelsConnection).toHaveBeenCalledTimes(1)
+    expect(
+      getAuditEventsForTest().filter(
+        (event) =>
+          event.action === "connected_app.gateway.models" &&
+          event.metadata.outcome === "succeeded",
+      ),
+    ).toHaveLength(0)
+    const serializedErrors = JSON.stringify(loggedErrors)
+    expect(serializedErrors).toContain("connection_recording_failed")
+    expect(serializedErrors).toContain(
+      response.headers["x-llm-machines-request-id"],
+    )
+    expect(loggedErrors).toContainEqual([
+      {
+        appId: created.appId,
+        failureClass: "connection_recording_failed",
+        requestId: response.headers["x-llm-machines-request-id"],
+      },
+      "Connected app gateway accounting failed",
+    ])
+    expect(serializedErrors).not.toContain("recorder-key")
+    expect(serializedErrors).not.toContain("audit.internal")
+    expect(serializedErrors).not.toContain("admin.audit_events")
+    expect(serializedErrors).not.toContain("environment")
+    expect(response.body).not.toContain("recorder-key")
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await server.close()
+  })
+
+  it("diagnoses a stale passive connection without exposing credential details", async () => {
+    configureGateway()
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValueOnce(
+        Response.json({
+          data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
+          object: "list",
+        }),
+      ),
+    )
+    const server = buildServer()
+    const loggedErrors = captureRequestErrors(server)
+    const created = await createBoundedApp(server)
+    accountingMocks.recordModelsConnection.mockResolvedValueOnce(false)
+
+    const response = await server.inject({
+      method: "GET",
+      url: "/api/app-gateway/v1/models",
+      headers: { authorization: `Bearer ${created.apiKey}` },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(loggedErrors).toContainEqual([
+      {
+        appId: created.appId,
+        failureClass: "connection_recording_failed",
+        requestId: response.headers["x-llm-machines-request-id"],
+      },
+      "Connected app gateway accounting failed",
+    ])
+    const serializedErrors = JSON.stringify(loggedErrors)
+    expect(serializedErrors).not.toContain(created.apiKey)
+    expect(serializedErrors).not.toContain("credential")
+    expect(serializedErrors).not.toContain("environment")
+    await server.close()
+  })
+
   it("preserves a completed stream when usage reconciliation fails", async () => {
     configureGateway()
     const fetchMock = vi
@@ -216,16 +392,16 @@ async function createBoundedApp(server: ReturnType<typeof buildServer>) {
       authMethod: "api_key",
       description: "Bounded app used by accounting failure tests.",
       name: "Accounting Failure Test",
-      ownerGroup: "Everyone",
       rateLimitRpm: null,
       tokenBudget7d: null,
     },
   })
   expect(response.statusCode).toBe(201)
   const created = response.json() as {
+    app: { id: string }
     credential: { apiKey: string }
   }
-  return { apiKey: created.credential.apiKey }
+  return { apiKey: created.credential.apiKey, appId: created.app.id }
 }
 
 function sseResponse(chunks: string[]): Response {

@@ -1,7 +1,10 @@
 import { createHash, randomUUID } from "node:crypto"
 import { and, eq, inArray, lte, notExists, notInArray } from "drizzle-orm"
 import { canUseBffFixtureData } from "../config/fixture-mode"
-import { getInferenceCoreDb } from "../db/inference-core-client"
+import {
+  type InferenceCoreTransaction,
+  getInferenceCoreDb,
+} from "../db/inference-core-client"
 import {
   idempotencyLedger,
   identityMutationJournal,
@@ -12,6 +15,13 @@ export interface IdempotencyReceipt {
   outcome: "denied" | "failed" | "succeeded"
   resourceId: string | null
   statusCode: number
+}
+
+export class IdempotencyCompletionError extends Error {
+  constructor(message = "Durable idempotency receipt finalization failed.") {
+    super(message)
+    this.name = "IdempotencyCompletionError"
+  }
 }
 
 interface IdempotencyRecord {
@@ -167,14 +177,17 @@ export async function reserveIdempotency(input: {
   }
 }
 
-export async function completeIdempotency(input: {
-  outcome: IdempotencyReceipt["outcome"]
-  requestHash: string
-  resourceId?: string | null
-  statusCode: number
-  storeKey: string
-}): Promise<boolean> {
-  const db = getInferenceCoreDb()
+export async function completeIdempotency(
+  input: {
+    outcome: IdempotencyReceipt["outcome"]
+    requestHash: string
+    resourceId?: string | null
+    statusCode: number
+    storeKey: string
+  },
+  transaction?: InferenceCoreTransaction | null,
+): Promise<boolean> {
+  const db = transaction ?? getInferenceCoreDb()
   const receipt = {
     correlationId: "",
     outcome: input.outcome,

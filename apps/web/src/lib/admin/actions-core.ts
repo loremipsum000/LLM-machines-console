@@ -15,9 +15,12 @@ import {
   type InferenceCoreHumanRole,
   adminConnectedAppCreateRequestSchema,
   adminConnectedAppCreateResponseSchema,
+  adminConnectedAppDeleteRequestSchema,
+  adminConnectedAppLifecycleResultSchema,
   adminConnectedAppRotateCredentialResultSchema,
   adminConnectedAppSchema,
   adminConnectedAppTestResultSchema,
+  adminConnectedAppUpdateRequestSchema,
   adminInferenceModelUpdateActionResponseSchema,
   adminSettingsResponseSchema,
   adminTeamActionResponseSchema,
@@ -561,8 +564,8 @@ export interface ConnectedAppTestActionState {
   app: AdminConnectedApp | null
   detail: string | null
   error: string | null
-  status: "blocked" | "failed" | "idle" | "passed"
-  testedAt: string | null
+  observedAt: string | null
+  status: "degraded" | "failed" | "idle" | "passed" | "waiting"
 }
 
 export interface ConnectedAppCredentialActionState {
@@ -570,7 +573,7 @@ export interface ConnectedAppCredentialActionState {
   credential: AdminConnectedAppCredential | null
   detail: string | null
   error: string | null
-  status: "blocked" | "failed" | "idle" | "rotated"
+  status: "blocked" | "failed" | "idle" | "revoked" | "rotated"
 }
 
 export async function createAdminConnectedAppAction(
@@ -589,13 +592,12 @@ export async function createAdminConnectedAppAction(
     authMethod: optionalFormValue(formData, "authMethod") ?? "api_key",
     description: optionalFormValue(formData, "description") ?? "",
     name: optionalFormValue(formData, "name") ?? "",
-    ownerGroup: optionalFormValue(formData, "ownerGroup") ?? "Everyone",
-    rateLimitRpm: parseOptionalPositiveInt(
-      optionalFormValue(formData, "rateLimitRpm"),
-    ),
-    tokenBudget7d: parseOptionalPositiveInt(
-      optionalFormValue(formData, "tokenBudget7d"),
-    ),
+    rateLimitRpm: checkboxFormValue(formData, "rateLimitEnabled")
+      ? parseOptionalPositiveInt(optionalFormValue(formData, "rateLimitRpm"))
+      : null,
+    tokenBudget7d: checkboxFormValue(formData, "tokenBudgetEnabled")
+      ? parseOptionalPositiveInt(optionalFormValue(formData, "tokenBudget7d"))
+      : null,
   })
 
   if (!parsed.success) {
@@ -620,18 +622,20 @@ export async function createAdminConnectedAppAction(
       error: null,
       status: "created",
     }
-  } catch {
+  } catch (error) {
     return {
       app: null,
       credential: null,
-      error:
+      error: adminMutationErrorDetail(
+        error,
         "Connected app could not be created. Check the identity configuration and retry.",
+      ),
       status: "failed",
     }
   }
 }
 
-export async function testAdminConnectedAppConnectionAction(
+export async function checkAdminConnectedAppConnectionAction(
   _previousState: ConnectedAppTestActionState,
   formData: FormData,
 ): Promise<ConnectedAppTestActionState> {
@@ -648,16 +652,19 @@ export async function testAdminConnectedAppConnectionAction(
       app: result.app,
       detail: result.detail,
       error: null,
+      observedAt: result.observedAt,
       status: result.status,
-      testedAt: result.testedAt,
     }
-  } catch {
+  } catch (error) {
     return {
       app: null,
       detail: null,
-      error: "Connection test failed.",
+      error: adminMutationErrorDetail(
+        error,
+        "Connection evidence could not be refreshed.",
+      ),
+      observedAt: null,
       status: "failed",
-      testedAt: null,
     }
   }
 }
@@ -684,15 +691,91 @@ export async function rotateAdminConnectedAppCredentialsAction(
       error: null,
       status: result.status,
     }
-  } catch {
+  } catch (error) {
     return {
       app: null,
       credential: null,
       detail: null,
-      error: "Credential rotation failed.",
-      status: "failed",
+      error: adminMutationErrorDetail(error, "Credential rotation failed."),
+      status: error instanceof AdminMutationError ? "blocked" : "failed",
     }
   }
+}
+
+export async function revokeAdminConnectedAppCredentialAction(
+  _previousState: ConnectedAppCredentialActionState,
+  formData: FormData,
+): Promise<ConnectedAppCredentialActionState> {
+  await requireCapability("applications.credentials.test_rotate_revoke")
+  const appId = requiredFormValue(formData, "appId")
+  const credentialId = requiredFormValue(formData, "credentialId")
+
+  try {
+    const app = await postAdminConnectedAppRevokeMutation(
+      `/api/admin/applications/connected-apps/${encodeURIComponent(
+        appId,
+      )}/credentials/${encodeURIComponent(credentialId)}/revoke`,
+    )
+    revalidatePath("/applications")
+    revalidatePath(`/applications/apps/${app.id}`)
+    return {
+      app,
+      credential: null,
+      detail: "Credential revoked immediately.",
+      error: null,
+      status: "revoked",
+    }
+  } catch (error) {
+    return {
+      app: null,
+      credential: null,
+      detail: null,
+      error: adminMutationErrorDetail(error, "Credential revocation failed."),
+      status: error instanceof AdminMutationError ? "blocked" : "failed",
+    }
+  }
+}
+
+export async function updateAdminConnectedAppPolicyAction(
+  formData: FormData,
+): Promise<void> {
+  await requireCapability("applications.policy.change")
+  const appId = requiredFormValue(formData, "appId")
+  const fallback = connectedAppReturnHref(formData, appId)
+  const parsed = adminConnectedAppUpdateRequestSchema.safeParse({
+    allowedModels: formData.getAll("allowedModels").flatMap((value) => {
+      if (typeof value !== "string") {
+        return []
+      }
+      const model = value.trim()
+      return model ? [model] : []
+    }),
+    description: optionalFormValue(formData, "description") ?? "",
+    name: optionalFormValue(formData, "name") ?? "",
+    rateLimitRpm: checkboxFormValue(formData, "rateLimitEnabled")
+      ? parseOptionalPositiveInt(optionalFormValue(formData, "rateLimitRpm"))
+      : null,
+    tokenBudget7d: checkboxFormValue(formData, "tokenBudgetEnabled")
+      ? parseOptionalPositiveInt(optionalFormValue(formData, "tokenBudget7d"))
+      : null,
+  })
+
+  if (!parsed.success) {
+    redirectTo(withActionStatus(fallback, "appAction", "invalid"))
+  }
+
+  try {
+    await patchAdminConnectedAppMutation(
+      `/api/admin/applications/connected-apps/${encodeURIComponent(appId)}`,
+      parsed.data,
+    )
+  } catch {
+    redirectTo(withActionStatus(fallback, "appAction", "failed"))
+  }
+
+  revalidatePath("/applications")
+  revalidatePath(`/applications/apps/${appId}`)
+  redirectTo(withActionStatus(fallback, "appAction", "updated"))
 }
 
 export async function disableAdminConnectedAppAction(
@@ -703,7 +786,7 @@ export async function disableAdminConnectedAppAction(
   const fallback = connectedAppReturnHref(formData, appId)
 
   try {
-    await postAdminConnectedAppDisableMutation(
+    await postAdminConnectedAppLifecycleMutation(
       `/api/admin/applications/connected-apps/${encodeURIComponent(
         appId,
       )}/disable`,
@@ -715,6 +798,67 @@ export async function disableAdminConnectedAppAction(
   revalidatePath("/applications")
   revalidatePath(`/applications/apps/${appId}`)
   redirectTo(withActionStatus(fallback, "appAction", "disabled"))
+}
+
+export async function enableAdminConnectedAppAction(
+  formData: FormData,
+): Promise<void> {
+  await requireCapability("applications.reenable")
+  const appId = requiredFormValue(formData, "appId")
+  const fallback = connectedAppReturnHref(formData, appId)
+
+  try {
+    await postAdminConnectedAppLifecycleMutation(
+      `/api/admin/applications/connected-apps/${encodeURIComponent(
+        appId,
+      )}/enable`,
+    )
+  } catch {
+    redirectTo(withActionStatus(fallback, "appAction", "failed"))
+  }
+
+  revalidatePath("/applications")
+  revalidatePath(`/applications/apps/${appId}`)
+  redirectTo(withActionStatus(fallback, "appAction", "reenabled"))
+}
+
+export async function softDeleteAdminConnectedAppAction(
+  formData: FormData,
+): Promise<void> {
+  await requireCapability("applications.create_delete")
+  const appId = requiredFormValue(formData, "appId")
+  const fallback = "/applications"
+  const parsed = adminConnectedAppDeleteRequestSchema.safeParse({
+    confirmation: optionalFormValue(formData, "confirmation"),
+  })
+  if (!parsed.success) {
+    redirectTo(
+      withActionStatus(
+        connectedAppReturnHref(formData, appId),
+        "appAction",
+        "invalid",
+      ),
+    )
+  }
+
+  try {
+    await deleteAdminConnectedAppMutation(
+      `/api/admin/applications/connected-apps/${encodeURIComponent(appId)}`,
+      parsed.data,
+    )
+  } catch {
+    redirectTo(
+      withActionStatus(
+        connectedAppReturnHref(formData, appId),
+        "appAction",
+        "failed",
+      ),
+    )
+  }
+
+  revalidatePath("/applications")
+  revalidatePath(`/applications/apps/${appId}`)
+  redirectTo(withActionStatus(fallback, "appAction", "deleted"))
 }
 
 async function requireAdmin() {
@@ -763,9 +907,27 @@ async function postAdminConnectedAppRotateMutation(path: string) {
   )
 }
 
-async function postAdminConnectedAppDisableMutation(path: string) {
+async function postAdminConnectedAppRevokeMutation(path: string) {
   return adminConnectedAppSchema.parse(
-    await postAdminMutation(path, undefined, "connected app disable"),
+    await postAdminMutation(path, undefined, "connected app credential revoke"),
+  )
+}
+
+async function patchAdminConnectedAppMutation(path: string, body: unknown) {
+  return adminConnectedAppSchema.parse(
+    await adminMutation(path, body, "connected app policy update", "PATCH"),
+  )
+}
+
+async function postAdminConnectedAppLifecycleMutation(path: string) {
+  return adminConnectedAppLifecycleResultSchema.parse(
+    await postAdminMutation(path, undefined, "connected app lifecycle"),
+  )
+}
+
+async function deleteAdminConnectedAppMutation(path: string, body: unknown) {
+  return adminConnectedAppLifecycleResultSchema.parse(
+    await adminMutation(path, body, "connected app soft delete", "DELETE"),
   )
 }
 
@@ -834,6 +996,15 @@ async function postAdminMutation(
   body: unknown | undefined,
   label: string,
 ): Promise<unknown> {
+  return adminMutation(path, body, label, "POST")
+}
+
+async function adminMutation(
+  path: string,
+  body: unknown | undefined,
+  label: string,
+  method: "DELETE" | "PATCH" | "POST",
+): Promise<unknown> {
   const bffRequest = await getBffRequest()
   if (!bffRequest) {
     throw new Error("Admin BFF is not configured.")
@@ -849,7 +1020,7 @@ async function postAdminMutation(
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
     headers,
-    method: "POST",
+    method,
   })
   if (!response.ok) {
     const detail = await adminProblemDetail(response)

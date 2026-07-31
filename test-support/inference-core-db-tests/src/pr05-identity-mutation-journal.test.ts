@@ -69,7 +69,7 @@ describe("PR-05 PostgreSQL identity mutation journal", () => {
     }
   })
 
-  it("rejects PR-06 target types and inconsistent lifecycle states", async () => {
+  it("admits the PR-06 OAuth target and rejects inconsistent lifecycle states", async () => {
     const database = await PGlite.create()
 
     try {
@@ -79,14 +79,22 @@ describe("PR-05 PostgreSQL identity mutation journal", () => {
         "40000000-0000-4000-8000-000000000001",
         "ledger-key-target",
       )
-      await expect(
-        insertPreparedJournal(
-          database,
-          "41000000-0000-4000-8000-000000000001",
-          "40000000-0000-4000-8000-000000000001",
-          "oauth_client",
-        ),
-      ).rejects.toThrow()
+      await insertPreparedJournal(
+        database,
+        "41000000-0000-4000-8000-000000000001",
+        "40000000-0000-4000-8000-000000000001",
+        "oauth_client",
+      )
+      const oauthTarget = await database.query<{ target_type: string }>(`
+        SELECT target_type
+        FROM admin.identity_mutation_journal
+        WHERE id = '41000000-0000-4000-8000-000000000001'
+      `)
+      expect(oauthTarget.rows).toEqual([{ target_type: "oauth_client" }])
+      await database.exec(`
+        DELETE FROM admin.idempotency_ledger
+        WHERE id = '40000000-0000-4000-8000-000000000001'
+      `)
 
       await insertLedger(
         database,

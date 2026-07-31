@@ -20,7 +20,6 @@ const app: ConnectedAppRuntimeIdentity = {
   authMethod: "api_key",
   clientId: "llmm_test",
   credentialRecordId: "cak-accounting-test",
-  environment: "staging",
   keycloakSubjectId: null,
   rateLimitRpm: 10,
   status: "enabled",
@@ -103,7 +102,6 @@ describe("connected app PostgreSQL coordination", () => {
         appId: app.appId,
         bucketDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
         credentialId: app.credentialRecordId,
-        environment: "staging",
       },
       ok: true,
     })
@@ -119,7 +117,6 @@ describe("connected app PostgreSQL coordination", () => {
     await reconcileConnectedAppGatewayUsage(
       app,
       {
-        environment: "staging",
         latencyMs: 25,
         model: "local-a",
         status: 200,
@@ -129,13 +126,12 @@ describe("connected app PostgreSQL coordination", () => {
         appId: app.appId,
         bucketDate: "2026-07-31",
         credentialId: app.credentialRecordId,
-        environment: "staging",
       },
     )
 
     const query = sqlQuery(execute.mock.calls[0]?.[0])
     expect(query.sql).toContain("admin.application_usage_daily")
-    expect(query.sql).toContain("admin.applications")
+    expect(query.sql).not.toContain("admin.applications")
     expect(query.sql).toContain("admin.application_credentials")
     expect(query.sql).not.toContain("reserved_tokens")
     expect(query.sql).not.toContain("usage_summary")

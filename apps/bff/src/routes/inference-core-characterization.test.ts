@@ -117,6 +117,7 @@ describe("Inference Core route characterization", () => {
   it("matches the reviewed route and control inventories under production registration", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("DATABASE_URL", "postgresql://unused.invalid/characterization")
+    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://console.example.test")
     let server: Awaited<ReturnType<typeof createServer>> | undefined
     try {
       vi.resetModules()
@@ -271,6 +272,14 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     },
     {
       method: "POST",
+      url: "/api/admin/applications/connected-apps/:id/enable",
+    },
+    {
+      method: "POST",
+      url: "/api/admin/applications/connected-apps/:id/credentials/:credentialId/revoke",
+    },
+    {
+      method: "POST",
       url: "/api/admin/inference/model-updates/apply",
     },
     {
@@ -279,6 +288,10 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     },
     {
       method: "PATCH",
+      url: "/api/admin/applications/connected-apps/:id",
+    },
+    {
+      method: "DELETE",
       url: "/api/admin/applications/connected-apps/:id",
     },
   ]

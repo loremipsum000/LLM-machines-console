@@ -26,7 +26,7 @@ describe("expert capability boundary", () => {
 
   it("keeps configured Keycloak and SCIM expert links out of the retained Team projection", async () => {
     vi.stubEnv("KEYCLOAK_ADMIN_BASE_URL", "https://keycloak.example/keycloak")
-    vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_ID", "console-team")
+    vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_ID", "console-human-admin")
     vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_SECRET", "unit-test-credential")
     vi.stubEnv("KEYCLOAK_ADMIN_REALM", "llm-machines")
     vi.stubEnv("TEAM_SCIM_PROVIDER", "customer-directory")

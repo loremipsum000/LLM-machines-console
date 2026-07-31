@@ -74,16 +74,16 @@ corepack pnpm typecheck:inference-core
 corepack pnpm typecheck:inference-core-db
 ```
 
-The package guardrail command compares against the immutable reviewed PR-03
-integration commit `fb36b9de38396af79c82056963ae3f4833a12fef`. It does not follow a moving
-branch ref. The guardrail CLI accepts an explicit `--base-ref` for a separately
-reviewed manual comparison. The comparison is a bootstrap result in PR-01
-because the integration base predates these files. From PR-02 onward, an entry
-or route may disappear, but a new or changed production source file, new route,
-new fingerprint, increased multiplicity, reclassification, resolver change,
-guard-policy change, or protected-guard file change fails. Planned edits, route
-additions, and moves require a visible, reviewed contract revision before their
-implementation is admitted.
+The package guardrail command compares against the immutable reviewed PR-05
+integration commit `da6f0c0a2b5e477449a09527a28c7e51ef432c20`. It does not
+follow a moving branch ref. The guardrail CLI accepts an explicit `--base-ref`
+for a separately reviewed manual comparison. The comparison is a bootstrap
+result in PR-01 because the integration base predates these files. From PR-02
+onward, an entry or route may disappear, but a new or changed production source
+file, new route, new fingerprint, increased multiplicity, reclassification,
+resolver change, guard-policy change, or protected-guard file change fails.
+Planned edits, route additions, and moves require a visible, reviewed contract
+revision before their implementation is admitted.
 
 PR-02 uses one fixed revision at
 `contract-revisions/PR-02.json`. The revision binds the exact integration-base
@@ -279,3 +279,44 @@ node scripts/inference-core/pr05-contract-revision.mjs --write
 The generator accepts no alternate base or output path. It preserves all prior
 reviewed evidence byte-for-byte and atomically replaces only the PR-05
 revision, forbidden allowlist, and route baseline.
+
+PR-06 reduces Applications to one immutable inference-authentication mode per
+Application, removes environment-qualified credentials, and completes static
+key and OAuth client-secret lifecycle and reconciliation. The exact content
+base and lane anchor are the PR-05 integration commit
+`da6f0c0a2b5e477449a09527a28c7e51ef432c20`. PR-06 retains every PR-02 through
+PR-05 revision and evidence file byte-for-byte.
+
+During implementation,
+`pr-06-application-decisions.json` remains
+`pending-final-staged-delta`, its six operation arrays remain empty, and the
+confirmed governance values are already recorded. OAuth access tokens use an
+exact 300-second lifetime, and Application administration uses the
+`dedicated-application-realm` topology. The human realm is `llm-machines`; the
+Application realm is `llm-machines-applications`. Application clients inherit
+the 300-second realm lifetime. The `console-application-admin` service client
+has an exact 60-second client override and uses credentials separate from the
+human administration service, with no credential fallback between them.
+
+PR-06 records and guards these decisions but performs no runtime OAuth
+activation and does not qualify the topology. PR-07 owns OAuth access-token
+validation, runtime limit enforcement, and inference data-plane qualification.
+PR-12 owns deterministic packaging and commissioning of the two-realm Keycloak
+configuration. Once the candidate implementation is stable, stage every
+tracked candidate path with no untracked files, print the canonical operation
+policy, copy its six exact arrays into the decision, review them, and change
+`reviewStatus` to `reviewed` before generation:
+
+```text
+node scripts/inference-core/pr06-contract-revision.mjs --print-operation-policy
+node scripts/inference-core/pr06-contract-revision.mjs --write
+```
+
+Write mode rejects a pending decision, an OAuth token lifetime other than 300
+seconds, a Keycloak Application realm topology other than
+`dedicated-application-realm`, or any difference between the reviewed arrays
+and the staged candidate. It accepts no alternate base or output path and
+atomically replaces only the PR-06 revision, forbidden allowlist, and route
+baseline. Until write mode is explicitly run, `contract-revisions/PR-06.json`
+must not exist and the two generated baselines remain at their reviewed PR-05
+identities.

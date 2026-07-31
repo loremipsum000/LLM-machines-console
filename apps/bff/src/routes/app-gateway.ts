@@ -11,6 +11,7 @@ import {
   consumeConnectedAppGatewayRateLimit,
   reconcileConnectedAppGatewayUsage,
   recordConnectedAppGatewayUsage,
+  recordConnectedAppModelsConnection,
   resolveConnectedAppRuntimeIdentity,
   resolveConnectedAppRuntimeIdentityByApiKey,
 } from "../services/admin-connected-apps"
@@ -81,7 +82,7 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
       )
     }
 
-    await safelyAuditGatewayRequest(request, auth.app, {
+    await safelyRecordSuccessfulModelsRequest(request, auth.app, {
       latencyMs: 0,
       model: null,
       route: "models",
@@ -395,17 +396,17 @@ async function safelyAuditGatewayRequest(
 function logGatewayAccountingFailure(
   request: FastifyRequest,
   app: ConnectedAppRuntimeIdentity,
-  operation: "admit" | "reconcile",
+  operation: "admit" | "connection" | "reconcile",
 ): void {
   request.log.error(
     {
       appId: app.appId,
-      environment: app.environment,
       failureClass:
         operation === "admit"
           ? "accounting_admission_failed"
-          : "accounting_reconciliation_failed",
-      operation,
+          : operation === "connection"
+            ? "connection_recording_failed"
+            : "accounting_reconciliation_failed",
       requestId: request.id,
     },
     "Connected app gateway accounting failed",
@@ -425,7 +426,6 @@ async function auditGatewayRequest(
   usageContext?: ConnectedAppGatewayUsageContext,
 ): Promise<void> {
   const usageInput = {
-    environment: app.environment,
     latencyMs: input.latencyMs,
     model: input.model,
     status: input.status,
@@ -452,6 +452,32 @@ async function auditGatewayRequest(
           : "failed",
     sourceSystem: "console",
   })
+}
+
+async function safelyRecordSuccessfulModelsRequest(
+  request: FastifyRequest,
+  app: ConnectedAppRuntimeIdentity,
+  input: {
+    latencyMs: number
+    model: null
+    route: "models"
+    status: 200
+    tokens: 0
+  },
+): Promise<void> {
+  try {
+    await recordConnectedAppGatewayUsage(app, input)
+  } catch {
+    logGatewayAccountingFailure(request, app, "reconcile")
+  }
+  try {
+    const recorded = await recordConnectedAppModelsConnection(app, request.id)
+    if (!recorded) {
+      logGatewayAccountingFailure(request, app, "connection")
+    }
+  } catch {
+    logGatewayAccountingFailure(request, app, "connection")
+  }
 }
 
 async function pipeOpenAIStream(

@@ -99,6 +99,11 @@ export interface KeycloakConfidentialClientCredential {
   tokenUrl: string
 }
 
+export interface KeycloakConfidentialClient {
+  clientId: string
+  id: string
+}
+
 export interface CreateKeycloakUserInput {
   displayName: string
   email: string
@@ -135,20 +140,204 @@ interface TokenCache {
   expiresAt: number
 }
 
+interface PendingKeycloakResponse {
+  dispose(): void
+  response: Response
+  signal: AbortSignal
+}
+
 type FetchLike = typeof fetch
 
+const KEYCLOAK_ADMIN_RESPONSE_MAX_BYTES = 2 * 1024 * 1024
+const KEYCLOAK_APPLICATION_CLIENT_ID_PATTERN =
+  /^llmm-app-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const KEYCLOAK_USER_GROUP_PAGE_SIZE = 100
 const KEYCLOAK_USER_GROUP_LIMIT = 1_000
+const KEYCLOAK_HUMAN_ADMIN_REALM = "llm-machines"
+const KEYCLOAK_APPLICATION_ADMIN_REALM = "llm-machines-applications"
+const KEYCLOAK_APPLICATION_AUDIENCE = "console-bff"
+export const KEYCLOAK_HUMAN_ADMIN_CLIENT_ID = "console-human-admin"
+export const KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID = "console-application-admin"
 
-export class KeycloakAdminClient {
+abstract class KeycloakAdminApiClient {
   private tokenCache: TokenCache | null = null
 
-  constructor(
-    private readonly config: KeycloakAdminConfig,
+  protected constructor(
+    protected readonly config: KeycloakAdminConfig,
     private readonly fetchImpl: FetchLike = fetch,
     private readonly now: () => number = () => Date.now(),
     private readonly operationSignal?: AbortSignal,
   ) {}
+
+  protected async requestJson<T>(path: string, init: RequestInit): Promise<T> {
+    const pending = await this.requestResponse(path, init)
+    try {
+      if (pending.response.status === 204) {
+        return null as T
+      }
+      return (await boundedResponseJson(pending.response, pending.signal)) as T
+    } catch {
+      const isMutation = init.method !== "GET" && init.method !== "HEAD"
+      if (pending.signal.aborted) {
+        throw new KeycloakAdminError(
+          "unavailable",
+          isMutation
+            ? "Keycloak mutation outcome could not be confirmed."
+            : "Keycloak Admin API is unavailable.",
+          isMutation ? "unknown" : undefined,
+        )
+      }
+      throw new KeycloakAdminError(
+        "invalid",
+        "Keycloak Admin API returned an invalid JSON response.",
+        isMutation ? "unknown" : undefined,
+      )
+    } finally {
+      pending.dispose()
+    }
+  }
+
+  protected async request(path: string, init: RequestInit): Promise<Response> {
+    const pending = await this.requestResponse(path, init)
+    void pending.response.body?.cancel().catch(() => undefined)
+    pending.dispose()
+    return pending.response
+  }
+
+  private async requestResponse(
+    path: string,
+    init: RequestInit,
+  ): Promise<PendingKeycloakResponse> {
+    const isMutation = init.method !== "GET" && init.method !== "HEAD"
+    let token: string
+    try {
+      token = await this.adminToken()
+    } catch (error) {
+      if (isMutation) {
+        throw new KeycloakAdminError(
+          error instanceof KeycloakAdminError ? error.status : "unavailable",
+          "Keycloak mutation was rejected before it was sent.",
+          "rejected",
+        )
+      }
+      if (error instanceof KeycloakAdminError) {
+        throw error
+      }
+      throw new KeycloakAdminError(
+        "unavailable",
+        "Keycloak Admin API authentication is unavailable.",
+      )
+    }
+
+    let response: Response
+    const abort = keycloakRequestAbort(init.signal, this.operationSignal)
+    try {
+      response = await this.fetchImpl(`${adminBaseUrl(this.config)}${path}`, {
+        ...init,
+        headers: {
+          ...(init.headers ?? {}),
+          authorization: `Bearer ${token}`,
+        },
+        redirect: "error",
+        signal: abort.signal,
+      })
+    } catch {
+      abort.dispose()
+      throw new KeycloakAdminError(
+        "unavailable",
+        isMutation
+          ? "Keycloak mutation outcome could not be confirmed."
+          : "Keycloak Admin API is unavailable.",
+        isMutation ? "unknown" : undefined,
+      )
+    }
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => undefined)
+      abort.dispose()
+      throw statusError(response.status, isMutation)
+    }
+    return {
+      dispose: abort.dispose,
+      response,
+      signal: abort.signal,
+    }
+  }
+
+  private async adminToken(): Promise<string> {
+    if (this.tokenCache && this.tokenCache.expiresAt > this.now() + 10_000) {
+      return this.tokenCache.accessToken
+    }
+
+    const abort = keycloakRequestAbort(this.operationSignal)
+    let response: Response
+    try {
+      response = await this.fetchImpl(tokenUrl(this.config), {
+        body: new URLSearchParams({
+          client_id: this.config.clientId,
+          client_secret: this.config.clientSecret,
+          grant_type: "client_credentials",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        method: "POST",
+        redirect: "error",
+        signal: abort.signal,
+      })
+    } catch {
+      abort.dispose()
+      throw new KeycloakAdminError(
+        "unavailable",
+        "Keycloak Admin API authentication is unavailable.",
+      )
+    }
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => undefined)
+      abort.dispose()
+      throw statusError(response.status)
+    }
+    let payload: unknown
+    try {
+      payload = await boundedResponseJson(response, abort.signal)
+    } catch {
+      if (abort.signal.aborted) {
+        throw new KeycloakAdminError(
+          "unavailable",
+          "Keycloak Admin API authentication is unavailable.",
+        )
+      }
+      throw new KeycloakAdminError(
+        "invalid",
+        "Invalid Keycloak token response.",
+      )
+    } finally {
+      abort.dispose()
+    }
+    if (!isRecord(payload) || typeof payload.access_token !== "string") {
+      throw new KeycloakAdminError(
+        "invalid",
+        "Invalid Keycloak token response.",
+      )
+    }
+    const expiresIn =
+      typeof payload.expires_in === "number" ? payload.expires_in : 60
+    this.tokenCache = {
+      accessToken: payload.access_token,
+      expiresAt: this.now() + expiresIn * 1000,
+    }
+    return payload.access_token
+  }
+}
+
+export class KeycloakAdminClient extends KeycloakAdminApiClient {
+  constructor(
+    config: KeycloakAdminConfig,
+    fetchImpl: FetchLike = fetch,
+    now: () => number = () => Date.now(),
+    operationSignal?: AbortSignal,
+  ) {
+    super(config, fetchImpl, now, operationSignal)
+  }
 
   async listUsers(): Promise<KeycloakAdminUser[]> {
     const rows = await this.requestJson<unknown[]>("/users?max=500", {
@@ -354,19 +543,84 @@ export class KeycloakAdminClient {
       { method: "DELETE" },
     )
   }
+}
+
+export class KeycloakApplicationAdminClient extends KeycloakAdminApiClient {
+  constructor(
+    config: KeycloakAdminConfig,
+    fetchImpl: FetchLike = fetch,
+    now: () => number = () => Date.now(),
+    operationSignal?: AbortSignal,
+  ) {
+    super(config, fetchImpl, now, operationSignal)
+    if (
+      config.realm !== KEYCLOAK_APPLICATION_ADMIN_REALM ||
+      config.audience !== KEYCLOAK_APPLICATION_AUDIENCE
+    ) {
+      throw new KeycloakAdminError(
+        "invalid",
+        "Keycloak Application administration configuration is invalid.",
+      )
+    }
+  }
+
+  async findConfidentialClient(
+    clientId: string,
+  ): Promise<KeycloakConfidentialClient | null> {
+    const exactClientId = applicationClientId(clientId)
+    const rows = await this.requestJson<unknown>(
+      `/clients?clientId=${encodeURIComponent(exactClientId)}&exact=true&max=2`,
+      { method: "GET" },
+    )
+    if (!Array.isArray(rows)) {
+      throw new KeycloakAdminError(
+        "invalid",
+        "Keycloak client lookup returned an invalid response.",
+      )
+    }
+    const clients = rows.map(confidentialClientFromKeycloak)
+    if (
+      clients.length > 1 ||
+      clients.some((client) => client.clientId !== exactClientId)
+    ) {
+      throw new KeycloakAdminError(
+        "invalid",
+        `Keycloak client lookup was not exact for ${exactClientId}.`,
+      )
+    }
+    return clients[0] ?? null
+  }
 
   async createConfidentialClient(
     input: CreateKeycloakClientInput,
   ): Promise<KeycloakConfidentialClientCredential> {
+    const existing = await this.preflightClientMutation(
+      null,
+      input.clientId,
+      "creation",
+    )
+    if (existing) {
+      throw new KeycloakAdminError(
+        "invalid",
+        `Keycloak client ${input.clientId} already exists.`,
+        "rejected",
+      )
+    }
+
     let response: Response
     try {
       response = await this.request("/clients", {
         body: JSON.stringify({
+          authorizationServicesEnabled: false,
           clientId: input.clientId,
+          defaultClientScopes: [],
           description: input.description,
           directAccessGrantsEnabled: false,
           enabled: true,
+          fullScopeAllowed: false,
+          implicitFlowEnabled: false,
           name: input.name,
+          optionalClientScopes: [],
           protocol: "openid-connect",
           publicClient: false,
           serviceAccountsEnabled: true,
@@ -375,14 +629,34 @@ export class KeycloakAdminClient {
         headers: { "content-type": "application/json" },
         method: "POST",
       })
-    } catch {
-      throw new KeycloakAdminError(
-        "unavailable",
-        `Keycloak client creation could not be confirmed. Reconcile client ${input.clientId} before retrying; do not use a new idempotency key until Keycloak is checked.`,
-      )
+    } catch (error) {
+      if (
+        error instanceof KeycloakAdminError &&
+        error.mutationOutcome === "rejected"
+      ) {
+        throw error
+      }
+      throw unknownClientMutation("creation", input.clientId)
     }
-    const location = response.headers.get("location") ?? ""
-    const id = location.split("/").filter(Boolean).at(-1) ?? input.clientId
+
+    const locationResourceId = locationId(
+      response.headers.get("location") ?? "",
+    )
+    let confirmedClient: KeycloakConfidentialClient | null
+    try {
+      confirmedClient = await this.findConfidentialClient(input.clientId)
+    } catch {
+      throw unknownClientMutation("creation", input.clientId)
+    }
+    if (
+      !locationResourceId ||
+      !confirmedClient ||
+      confirmedClient.id !== locationResourceId
+    ) {
+      throw unknownClientMutation("creation", input.clientId)
+    }
+    const id = confirmedClient.id
+
     try {
       await this.addAudienceMapper(id)
       const clientSecret = await this.getClientSecret(id)
@@ -394,18 +668,22 @@ export class KeycloakAdminClient {
       }
     } catch (error) {
       try {
-        await this.deleteConfidentialClient(id)
+        await this.request(`/clients/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        })
       } catch {
-        throw new KeycloakAdminError(
-          "unavailable",
-          `Keycloak client provisioning did not complete. Reconcile client ${input.clientId} before retrying; do not use a new idempotency key until Keycloak is checked.`,
-        )
+        throw unknownClientMutation("provisioning", input.clientId)
       }
-      throw error
+      throw new KeycloakAdminError(
+        error instanceof KeycloakAdminError ? error.status : "unavailable",
+        `Keycloak client ${input.clientId} provisioning was rolled back before completion.`,
+        "rejected",
+      )
     }
   }
 
-  async deleteConfidentialClient(id: string): Promise<void> {
+  async deleteConfidentialClient(id: string, clientId: string): Promise<void> {
+    await this.preflightClientMutation(id, clientId, "deletion")
     await this.request(`/clients/${encodeURIComponent(id)}`, {
       method: "DELETE",
     })
@@ -415,16 +693,14 @@ export class KeycloakAdminClient {
     id: string,
     clientId: string,
   ): Promise<KeycloakConfidentialClientCredential> {
+    await this.preflightClientMutation(id, clientId, "secret rotation")
     const payload = await this.requestJson<Record<string, unknown>>(
       `/clients/${encodeURIComponent(id)}/client-secret`,
       { method: "POST" },
     )
     const clientSecret = stringField(payload, "value")
     if (!clientSecret) {
-      throw new KeycloakAdminError(
-        "invalid",
-        "Invalid Keycloak client secret response.",
-      )
+      throw unknownClientMutation("secret rotation", clientId)
     }
     return {
       clientId,
@@ -434,10 +710,32 @@ export class KeycloakAdminClient {
     }
   }
 
-  private async addAudienceMapper(id: string): Promise<void> {
-    if (!this.config.audience) {
-      return
+  private async preflightClientMutation(
+    expectedId: string | null,
+    clientId: string,
+    operation: string,
+  ): Promise<KeycloakConfidentialClient | null> {
+    let client: KeycloakConfidentialClient | null
+    try {
+      client = await this.findConfidentialClient(clientId)
+    } catch (error) {
+      throw new KeycloakAdminError(
+        error instanceof KeycloakAdminError ? error.status : "unavailable",
+        `Keycloak client ${operation} was rejected before it was sent because exact lookup failed.`,
+        "rejected",
+      )
     }
+    if (expectedId !== null && (!client || client.id !== expectedId)) {
+      throw new KeycloakAdminError(
+        "invalid",
+        `Keycloak client ${operation} was rejected because the exact client ID and internal ID did not match.`,
+        "rejected",
+      )
+    }
+    return client
+  }
+
+  private async addAudienceMapper(id: string): Promise<void> {
     await this.request(
       `/clients/${encodeURIComponent(id)}/protocol-mappers/models`,
       {
@@ -445,9 +743,11 @@ export class KeycloakAdminClient {
           config: {
             "access.token.claim": "true",
             "id.token.claim": "false",
-            "included.client.audience": this.config.audience,
+            "included.custom.audience": KEYCLOAK_APPLICATION_AUDIENCE,
+            "introspection.token.claim": "true",
+            "lightweight.claim": "false",
           },
-          name: `${this.config.audience}-audience`,
+          name: `${KEYCLOAK_APPLICATION_AUDIENCE}-audience`,
           protocol: "openid-connect",
           protocolMapper: "oidc-audience-mapper",
         }),
@@ -471,113 +771,6 @@ export class KeycloakAdminClient {
     }
     return clientSecret
   }
-
-  private async requestJson<T>(path: string, init: RequestInit): Promise<T> {
-    const response = await this.request(path, init)
-    if (response.status === 204) {
-      return null as T
-    }
-    try {
-      return (await response.json()) as T
-    } catch {
-      throw new KeycloakAdminError(
-        "invalid",
-        "Keycloak Admin API returned an invalid JSON response.",
-      )
-    }
-  }
-
-  private async request(path: string, init: RequestInit): Promise<Response> {
-    const isMutation = init.method !== "GET" && init.method !== "HEAD"
-    let token: string
-    try {
-      token = await this.adminToken()
-    } catch (error) {
-      if (isMutation) {
-        throw new KeycloakAdminError(
-          error instanceof KeycloakAdminError ? error.status : "unavailable",
-          "Keycloak mutation was rejected before it was sent.",
-          "rejected",
-        )
-      }
-      if (error instanceof KeycloakAdminError) {
-        throw error
-      }
-      throw new KeycloakAdminError(
-        "unavailable",
-        "Keycloak Admin API authentication is unavailable.",
-      )
-    }
-
-    let response: Response
-    const abort = keycloakRequestAbort(init.signal, this.operationSignal)
-    try {
-      response = await this.fetchImpl(`${adminBaseUrl(this.config)}${path}`, {
-        ...init,
-        headers: {
-          ...(init.headers ?? {}),
-          authorization: `Bearer ${token}`,
-        },
-        signal: abort.signal,
-      })
-    } catch {
-      throw new KeycloakAdminError(
-        "unavailable",
-        isMutation
-          ? "Keycloak mutation outcome could not be confirmed."
-          : "Keycloak Admin API is unavailable.",
-        isMutation ? "unknown" : undefined,
-      )
-    } finally {
-      abort.dispose()
-    }
-    if (!response.ok) {
-      throw statusError(response.status, isMutation)
-    }
-    return response
-  }
-
-  private async adminToken(): Promise<string> {
-    if (this.tokenCache && this.tokenCache.expiresAt > this.now() + 10_000) {
-      return this.tokenCache.accessToken
-    }
-
-    const abort = keycloakRequestAbort(this.operationSignal)
-    let response: Response
-    try {
-      response = await this.fetchImpl(tokenUrl(this.config), {
-        body: new URLSearchParams({
-          client_id: this.config.clientId,
-          client_secret: this.config.clientSecret,
-          grant_type: "client_credentials",
-        }),
-        headers: {
-          "content-type": "application/x-www-form-urlencoded",
-        },
-        method: "POST",
-        signal: abort.signal,
-      })
-    } finally {
-      abort.dispose()
-    }
-    if (!response.ok) {
-      throw statusError(response.status)
-    }
-    const payload = await response.json()
-    if (!isRecord(payload) || typeof payload.access_token !== "string") {
-      throw new KeycloakAdminError(
-        "invalid",
-        "Invalid Keycloak token response.",
-      )
-    }
-    const expiresIn =
-      typeof payload.expires_in === "number" ? payload.expires_in : 60
-    this.tokenCache = {
-      accessToken: payload.access_token,
-      expiresAt: this.now() + expiresIn * 1000,
-    }
-    return payload.access_token
-  }
 }
 
 export function keycloakAdminConfigFromEnv(
@@ -596,7 +789,15 @@ export function keycloakAdminConfigFromEnv(
     return { config: null, missing, status: "not_configured" }
   }
   const realm = required.KEYCLOAK_ADMIN_REALM?.trim() ?? ""
-  if (realm.toLowerCase() === "master") {
+  const clientId = required.KEYCLOAK_ADMIN_CLIENT_ID?.trim() ?? ""
+  const baseUrl = normalizeKeycloakAdminBaseUrl(
+    required.KEYCLOAK_ADMIN_BASE_URL?.trim() ?? "",
+  )
+  if (
+    baseUrl === null ||
+    realm !== KEYCLOAK_HUMAN_ADMIN_REALM ||
+    clientId !== KEYCLOAK_HUMAN_ADMIN_CLIENT_ID
+  ) {
     return { config: null, missing: [], status: "invalid" }
   }
 
@@ -604,9 +805,9 @@ export function keycloakAdminConfigFromEnv(
     config: {
       allowedEmailDomains: commaList(env.TEAM_ALLOWED_EMAIL_DOMAINS),
       audience: env.KEYCLOAK_AUDIENCE?.trim() || undefined,
-      baseUrl: trimTrailingSlash(required.KEYCLOAK_ADMIN_BASE_URL ?? ""),
-      clientId: required.KEYCLOAK_ADMIN_CLIENT_ID ?? "",
-      clientSecret: required.KEYCLOAK_ADMIN_CLIENT_SECRET ?? "",
+      baseUrl,
+      clientId,
+      clientSecret: required.KEYCLOAK_ADMIN_CLIENT_SECRET?.trim() ?? "",
       realm,
     },
     missing: [],
@@ -624,6 +825,76 @@ export function keycloakAdminClientFromEnv(
     return { client: null, status: result.status }
   }
   return { client: new KeycloakAdminClient(result.config), status: "ok" }
+}
+
+export function keycloakApplicationAdminConfigFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): KeycloakAdminConfigResult {
+  const required = {
+    KEYCLOAK_ADMIN_BASE_URL: env.KEYCLOAK_ADMIN_BASE_URL,
+    KEYCLOAK_APPLICATION_ADMIN_REALM: env.KEYCLOAK_APPLICATION_ADMIN_REALM,
+    KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID:
+      env.KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID,
+    KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET:
+      env.KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET,
+    KEYCLOAK_AUDIENCE: env.KEYCLOAK_AUDIENCE,
+  }
+  const missing = Object.entries(required)
+    .filter(([, value]) => !value?.trim())
+    .map(([key]) => key)
+  if (missing.length > 0) {
+    return { config: null, missing, status: "not_configured" }
+  }
+
+  const clientId = required.KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID?.trim() ?? ""
+  const realm = required.KEYCLOAK_APPLICATION_ADMIN_REALM?.trim() ?? ""
+  const audience = required.KEYCLOAK_AUDIENCE?.trim() ?? ""
+  const baseUrl = normalizeKeycloakAdminBaseUrl(
+    required.KEYCLOAK_ADMIN_BASE_URL?.trim() ?? "",
+  )
+  if (
+    baseUrl === null ||
+    realm !== KEYCLOAK_APPLICATION_ADMIN_REALM ||
+    audience !== KEYCLOAK_APPLICATION_AUDIENCE ||
+    clientId !== KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID
+  ) {
+    return { config: null, missing: [], status: "invalid" }
+  }
+
+  return {
+    config: {
+      allowedEmailDomains: [],
+      audience,
+      baseUrl,
+      clientId,
+      clientSecret:
+        required.KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET?.trim() ?? "",
+      realm,
+    },
+    missing: [],
+    status: "ok",
+  }
+}
+
+export function keycloakApplicationAdminClientFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+  operationSignal?: AbortSignal,
+):
+  | { client: KeycloakApplicationAdminClient; status: "ok" }
+  | { client: null; status: "invalid" | "not_configured" } {
+  const result = keycloakApplicationAdminConfigFromEnv(env)
+  if (result.status !== "ok") {
+    return { client: null, status: result.status }
+  }
+  return {
+    client: new KeycloakApplicationAdminClient(
+      result.config,
+      undefined,
+      undefined,
+      operationSignal,
+    ),
+    status: "ok",
+  }
 }
 
 export async function resolveLiveHumanAuthority(
@@ -770,6 +1041,49 @@ function groupFromKeycloak(row: Record<string, unknown>): KeycloakAdminGroup {
   }
 }
 
+function confidentialClientFromKeycloak(
+  value: unknown,
+): KeycloakConfidentialClient {
+  if (!isRecord(value)) {
+    throw new KeycloakAdminError(
+      "invalid",
+      "Keycloak client lookup returned a malformed client.",
+    )
+  }
+  const clientId = stringField(value, "clientId")
+  const id = stringField(value, "id")
+  if (!clientId || !id) {
+    throw new KeycloakAdminError(
+      "invalid",
+      "Keycloak client lookup returned a malformed client.",
+    )
+  }
+  return { clientId, id }
+}
+
+function locationId(location: string): string | null {
+  const encoded = location.split("/").filter(Boolean).at(-1)
+  if (!encoded) {
+    return null
+  }
+  try {
+    return decodeURIComponent(encoded)
+  } catch {
+    return null
+  }
+}
+
+function unknownClientMutation(
+  operation: string,
+  clientId: string,
+): KeycloakAdminError {
+  return new KeycloakAdminError(
+    "unavailable",
+    `Keycloak client ${operation} could not be confirmed. Reconcile client ${clientId} before retrying with the same idempotency key.`,
+    "unknown",
+  )
+}
+
 function roleFromKeycloak(row: Record<string, unknown>): KeycloakAdminRole {
   const name = stringField(row, "name")
   if (!name) {
@@ -848,8 +1162,116 @@ function keycloakRequestAbort(
   }
 }
 
-function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/, "")
+async function boundedResponseJson(
+  response: Response,
+  signal: AbortSignal,
+): Promise<unknown> {
+  const contentLength = response.headers.get("content-length")
+  if (contentLength !== null) {
+    const declaredBytes = Number(contentLength)
+    if (
+      !Number.isSafeInteger(declaredBytes) ||
+      declaredBytes < 0 ||
+      declaredBytes > KEYCLOAK_ADMIN_RESPONSE_MAX_BYTES
+    ) {
+      void response.body?.cancel().catch(() => undefined)
+      throw new Error("Keycloak response size is invalid.")
+    }
+  }
+
+  if (!response.body) {
+    return JSON.parse("")
+  }
+
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let totalBytes = 0
+  try {
+    while (true) {
+      const chunk = await readResponseChunk(reader, signal)
+      if (chunk.done) {
+        break
+      }
+      totalBytes += chunk.value.byteLength
+      if (totalBytes > KEYCLOAK_ADMIN_RESPONSE_MAX_BYTES) {
+        throw new Error("Keycloak response exceeded its byte limit.")
+      }
+      chunks.push(chunk.value)
+    }
+  } catch (error) {
+    void reader.cancel().catch(() => undefined)
+    throw error
+  } finally {
+    reader.releaseLock()
+  }
+
+  const body = new Uint8Array(totalBytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    body.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return JSON.parse(new TextDecoder().decode(body))
+}
+
+function readResponseChunk(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal: AbortSignal,
+): Promise<
+  { done: false; value: Uint8Array } | { done: true; value?: Uint8Array }
+> {
+  if (signal.aborted) {
+    return Promise.reject(signal.reason)
+  }
+  return new Promise((resolve, reject) => {
+    const aborted = () => reject(signal.reason)
+    signal.addEventListener("abort", aborted, { once: true })
+    reader
+      .read()
+      .then(resolve, reject)
+      .finally(() => {
+        signal.removeEventListener("abort", aborted)
+      })
+  })
+}
+
+function applicationClientId(clientId: string): string {
+  if (!KEYCLOAK_APPLICATION_CLIENT_ID_PATTERN.test(clientId)) {
+    throw new KeycloakAdminError(
+      "invalid",
+      "Keycloak Application client ID is outside the llmm-app-UUID namespace.",
+    )
+  }
+  return clientId
+}
+
+function normalizeKeycloakAdminBaseUrl(value: string): string | null {
+  const candidate = value.trim()
+  if (!candidate || candidate.includes("?") || candidate.includes("#")) {
+    return null
+  }
+
+  let url: URL
+  try {
+    url = new URL(candidate)
+  } catch {
+    return null
+  }
+
+  const authority = candidate.slice(candidate.indexOf("://") + 3).split("/")[0]
+  if (
+    (url.protocol !== "http:" && url.protocol !== "https:") ||
+    !url.hostname ||
+    url.username !== "" ||
+    url.password !== "" ||
+    authority?.includes("@") ||
+    url.search !== "" ||
+    url.hash !== ""
+  ) {
+    return null
+  }
+
+  return url.toString().replace(/\/+$/, "")
 }
 
 function commaList(value: string | undefined): string[] {

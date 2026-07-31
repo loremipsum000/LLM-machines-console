@@ -95,6 +95,37 @@ describe("Inference Core empty-install migration", () => {
         ]),
       )
 
+      expect(await tableColumns(database, "admin", "applications")).toEqual([
+        "auth_mode",
+        "connection_status",
+        "created_at",
+        "created_by",
+        "description",
+        "id",
+        "last_connected_at",
+        "name",
+        "status",
+        "updated_at",
+        "updated_by",
+      ])
+      expect(
+        await tableColumns(database, "admin", "application_credentials"),
+      ).toEqual([
+        "app_id",
+        "client_identifier",
+        "external_credential_id",
+        "id",
+        "issued_at",
+        "key_prefix",
+        "kind",
+        "last_used_at",
+        "overlap_expires_at",
+        "revoked_at",
+        "rotated_at",
+        "status",
+        "verifier_hash",
+      ])
+
       const idempotencyColumns = await tableColumns(
         database,
         "admin",

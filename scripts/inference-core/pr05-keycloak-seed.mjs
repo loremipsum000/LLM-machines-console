@@ -15,6 +15,18 @@ export const commissioningPlanPath = fileURLToPath(
     import.meta.url,
   ),
 )
+export const applicationRealmSeedPath = fileURLToPath(
+  new URL(
+    "../../infra/keycloak/inference-core-application-realm-seed.json",
+    import.meta.url,
+  ),
+)
+export const applicationCommissioningPlanPath = fileURLToPath(
+  new URL(
+    "../../infra/keycloak/inference-core-application-realm-commissioning.json",
+    import.meta.url,
+  ),
+)
 
 const expectedQueryRoles = ["query-groups", "query-users"]
 const acceptedMfaMethods = ["hwk", "otp", "webauthn", "webauthn-passwordless"]
@@ -32,21 +44,23 @@ const forbiddenCoarseAdminRoles = new Set([
   "view-realm",
   "view-users",
 ])
-const forbiddenValueKeys = new Set([
-  "accessToken",
-  "apiKey",
-  "bootstrapToken",
-  "clientCredentials",
-  "clientSecret",
-  "credential",
-  "credentials",
-  "password",
-  "privateKey",
-  "recoveryFactor",
-  "refreshToken",
-  "secret",
-  "signingKey",
-])
+const forbiddenNormalizedValueKeys = new Set(
+  [
+    "accessToken",
+    "apiKey",
+    "bootstrapToken",
+    "clientCredentials",
+    "clientSecret",
+    "credential",
+    "credentials",
+    "password",
+    "privateKey",
+    "recoveryFactor",
+    "refreshToken",
+    "secret",
+    "signingKey",
+  ].map(normalizeObjectKey),
+)
 
 const expectedRoles = [
   {
@@ -230,13 +244,6 @@ const expectedServicePermissionClasses = [
     fgapPolicy: "console-human-admin-service-account",
     id: "human-identity-admin",
     status: "active-console-only",
-  },
-  {
-    allowedFgapResourceTypes: ["Clients"],
-    assignedClientId: null,
-    fgapPolicy: null,
-    id: "application-oauth-client-admin",
-    status: "reserved-unassigned-until-pr06",
   },
 ]
 
@@ -561,10 +568,305 @@ const expectedTokenNegativeTests = [
   },
 ]
 
+const expectedApplicationRealm = {
+  accessTokenSeconds: 300,
+  adminPermissionsEnabled: true,
+  bruteForceProtected: true,
+  duplicateEmailsAllowed: false,
+  editUsernameAllowed: false,
+  enabled: true,
+  loginWithEmailAllowed: false,
+  masterRealm: false,
+  name: "llm-machines-applications",
+  refreshTokenMaxReuse: 0,
+  registrationAllowed: false,
+  rememberMe: false,
+  resetPasswordAllowed: false,
+  revokeRefreshToken: true,
+  sslRequired: "external",
+}
+
+const expectedApplicationOfflineAccessPolicy = {
+  managedClientDefaultScopes: [],
+  managedClientOptionalScopes: [],
+  realmDefaultRole: {
+    name: "default-roles-llm-machines-applications",
+    realmRoleComposites: [],
+  },
+  realmRoleName: "offline_access",
+  retainedClientOptionalScopes: {
+    "console-application-admin": [],
+  },
+}
+
+const expectedManagedClientContract = {
+  accessTokenPolicy: "inherit-realm-default",
+  audience: "console-bff",
+  audienceMapperField: "included.custom.audience",
+  authorizationServicesEnabled: false,
+  clientAuthentication: "client-secret-generated-by-keycloak",
+  clientCredentialsUseRefreshToken: false,
+  clientIdPattern:
+    "^llmm-app-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+  credentialIncluded: false,
+  defaultClientScopes: [],
+  directAccessGrantsEnabled: false,
+  fullScopeAllowed: false,
+  implicitFlowEnabled: false,
+  optionalClientScopes: [],
+  protocol: "openid-connect",
+  serviceAccountsEnabled: true,
+  standardFlowEnabled: false,
+}
+
+const expectedApplicationClients = [
+  {
+    accessTokenSeconds: 60,
+    authorizationServicesEnabled: false,
+    clientAuthentication: "client-secret-generated-outside-seed",
+    clientCredentialsUseRefreshToken: false,
+    clientId: "console-application-admin",
+    credentialIncluded: false,
+    defaultClientScopes: ["roles"],
+    directAccessGrantsEnabled: false,
+    fullScopeAllowed: false,
+    implicitFlowEnabled: false,
+    optionalClientScopes: [],
+    permissionClass: "application-oauth-client-admin",
+    protocol: "openid-connect",
+    serviceAccountClientRoleMappings: {
+      "realm-management": ["query-clients"],
+    },
+    serviceAccountsEnabled: true,
+    standardFlowEnabled: false,
+  },
+]
+
+const expectedApplicationPermissionClasses = [
+  {
+    allowedFgapResourceTypes: ["Clients"],
+    assignedClientId: "console-application-admin",
+    fgapPolicy: "console-application-admin-service-account",
+    id: "application-oauth-client-admin",
+    status: "active-console-only",
+  },
+]
+
+const expectedApplicationNegativeAuthorityConstraints = {
+  "console-application-admin": {
+    forbiddenFgapResourceTypes: ["Groups", "Organizations", "Roles", "Users"],
+    forbiddenFgapScopes: [
+      "map-role",
+      "map-roles",
+      "map-roles-client-scope",
+      "map-roles-composite",
+    ],
+    forbiddenRealmManagementRoles: [
+      "create-client",
+      "manage-clients",
+      "manage-realm",
+      "realm-admin",
+    ],
+    requiredRealmManagementRoles: ["query-clients"],
+  },
+}
+
+const expectedApplicationFgap = {
+  enabled: true,
+  feature: "admin-fine-grained-authz:v2",
+  permissions: [
+    fgapPermission(
+      "console-application-admin-manage-application-realm-clients",
+      "Clients",
+      ["manage", "view"],
+      ["console-application-admin-service-account"],
+    ),
+  ],
+  policies: [
+    {
+      logic: "POSITIVE",
+      name: "console-application-admin-service-account",
+      type: "user",
+      users: ["service-account:console-application-admin"],
+    },
+  ],
+  resourceServerClientId: "admin-permissions",
+  selectorResolution: {
+    "service-account:console-application-admin":
+      "resolve-service-account-user-uuid",
+  },
+  version: "v2",
+}
+
+const expectedApplicationResiduals = [
+  {
+    accepted: true,
+    appliesToPermission:
+      "console-application-admin-manage-application-realm-clients",
+    compensatingControls: [
+      "dedicated-application-realm-contains-no-human-authority",
+      "managed-client-id-namespace-is-enforced-by-console",
+      "console-identity-mutation-journal-required",
+      "no-coarse-client-or-realm-management-role",
+    ],
+    id: "fgap-clients-manage-application-realm-breadth",
+    reason:
+      "Keycloak FGAP v2 grants Clients manage across the isolated Application realm",
+  },
+]
+
+const expectedApplicationFgapEvaluationMatrix = [
+  evaluation(
+    "console-application-admin-service-account",
+    "Clients",
+    "client:any-in-application-realm",
+    "view",
+    "PERMIT",
+  ),
+  evaluation(
+    "console-application-admin-service-account",
+    "Clients",
+    "client:any-in-application-realm",
+    "manage",
+    "PERMIT",
+  ),
+  evaluation(
+    "console-application-admin-service-account",
+    "Clients",
+    "client:any-in-application-realm",
+    "map-roles",
+    "DENY",
+  ),
+  evaluation(
+    "console-application-admin-service-account",
+    "Users",
+    "user:any",
+    "manage",
+    "DENY",
+  ),
+  evaluation(
+    "console-application-admin-service-account",
+    "Groups",
+    "group:any",
+    "manage",
+    "DENY",
+  ),
+  evaluation(
+    "console-application-admin-service-account",
+    "Roles",
+    "role:any",
+    "map-role",
+    "DENY",
+  ),
+  evaluation(
+    "console-application-admin-service-account",
+    "Organizations",
+    "organization:any",
+    "manage",
+    "DENY",
+  ),
+]
+
+const expectedApplicationTokenLifetimeTests = [
+  {
+    client: "managed-client:llmm-app-UUID",
+    expectedAccessTokenSeconds: 300,
+  },
+  {
+    client: "console-application-admin",
+    expectedAccessTokenSeconds: 60,
+  },
+]
+
+const expectedApplicationTokenNegativeTests = [
+  {
+    expectedGrantedScopeContainsOfflineAccess: false,
+    expectedOfflineToken: false,
+    expectedRefreshToken: false,
+    id: "application-offline-and-refresh-access-not-issued",
+    requestedScope: "offline_access",
+    requestingClients: [
+      "console-application-admin",
+      "managed-client:llmm-app-UUID",
+    ],
+  },
+]
+
+const expectedApplicationMetadata = {
+  changePackage: "PR-06",
+  containsCredentials: false,
+  packagingTarget: "PR-12",
+}
+
+const expectedApplicationKeycloakRuntime = {
+  customProviderPlugins: [],
+  minimumVersion: "26.6.0",
+  requiredFeatures: ["admin-fine-grained-authz:v2"],
+}
+
+const expectedApplicationCommissioningPhases = [
+  {
+    completionAssertions: [
+      "keycloak-version-is-at-least-26.6.0",
+      "admin-fine-grained-authz-v2-is-enabled",
+      "application-realm-admin-permissions-are-enabled",
+      "application-realm-is-not-master",
+      "application-realm-default-access-token-lifetime-is-300-seconds",
+      "application-admin-access-token-lifetime-is-60-seconds",
+      "application-admin-uses-client-credentials-only",
+      "application-admin-has-query-clients-only",
+      "application-admin-fgap-is-Clients-manage-and-view-only",
+      "application-admin-has-no-Users-Groups-Roles-or-Organizations-authority",
+      "human-realm-clients-are-absent",
+      "no-human-user-group-role-or-browser-flow-is-seeded",
+      "no-client-credential-is-in-seed",
+      "offline_access-is-absent-from-retained-client-optional-scopes",
+      "offline_access-is-absent-from-the-realm-default-role-composite",
+    ],
+    id: "validate-application-realm-seed",
+    mutationOwner: "packaging-pr12",
+  },
+  {
+    completionAssertions: [
+      "application-admin-service-client-is-enabled",
+      "application-admin-service-token-expires-after-60-seconds",
+      "application-admin-live-negative-controls-passed",
+      "all-application-fgap-v2-evaluations-match-the-verification-matrix",
+      "service-client-value-stored-outside-git",
+    ],
+    id: "commission-application-admin",
+    mutationOwner: "commissioning-control-plane",
+  },
+  {
+    completionAssertions: [
+      "managed-client-id-matches-llmm-app-UUID",
+      "managed-client-uses-client-credentials-only",
+      "managed-client-has-empty-default-and-optional-scopes",
+      "managed-client-token-audience-is-console-bff",
+      "managed-client-token-expires-after-300-seconds",
+      "managed-client-token-issuer-is-application-realm",
+      "managed-client-does-not-receive-refresh-or-offline-token",
+      "human-realm-remains-outside-application-admin-authority",
+    ],
+    id: "qualify-managed-application-client-contract",
+    mutationOwner: "packaging-pr12",
+  },
+]
+
 export function loadKeycloakArtifacts() {
   const seedBytes = readFileSync(realmSeedPath)
   const commissioningBytes = readFileSync(commissioningPlanPath)
+  const applicationSeedBytes = readFileSync(applicationRealmSeedPath)
+  const applicationCommissioningBytes = readFileSync(
+    applicationCommissioningPlanPath,
+  )
   return {
+    applicationCommissioning: JSON.parse(
+      applicationCommissioningBytes.toString("utf8"),
+    ),
+    applicationCommissioningBytes,
+    applicationSeed: JSON.parse(applicationSeedBytes.toString("utf8")),
+    applicationSeedBytes,
     commissioning: JSON.parse(commissioningBytes.toString("utf8")),
     commissioningBytes,
     seed: JSON.parse(seedBytes.toString("utf8")),
@@ -605,6 +907,12 @@ export function validateKeycloakSeed(seed) {
     "seed apiVersion",
   )
   requireEqual(errors, seed?.kind, "LogicalKeycloakRealmSeed", "seed kind")
+  requireEqual(
+    errors,
+    seed?.metadata?.changePackage,
+    "PR-06",
+    "seed change package",
+  )
   requireEqual(
     errors,
     seed?.metadata?.containsCredentials,
@@ -699,6 +1007,12 @@ export function validateCommissioningPlan(plan) {
   )
   requireEqual(
     errors,
+    plan?.metadata?.changePackage,
+    "PR-06",
+    "commissioning change package",
+  )
+  requireEqual(
+    errors,
     plan?.metadata?.containsCredentials,
     false,
     "commissioning credential marker",
@@ -734,6 +1048,8 @@ export function validateCommissioningPlan(plan) {
     "keycloak-version-is-at-least-26.6.0",
     "admin-fine-grained-authz-v2-is-enabled",
     "realm-admin-permissions-are-enabled",
+    "application-admin-is-absent-from-human-realm",
+    "human-admin-has-no-Clients-authority",
     "fgap-logical-selectors-were-resolved-to-appliance-realm-uuids",
     "no-active-Roles-permission-is-installed",
     "no-Users-map-roles-scope-is-installed",
@@ -861,16 +1177,324 @@ export function validateCommissioningPlan(plan) {
   return errors
 }
 
+export function validateApplicationKeycloakSeed(seed) {
+  const errors = []
+  requireExactStrings(
+    errors,
+    Object.keys(seed ?? {}),
+    [
+      "adminFineGrainedAuthorization",
+      "apiVersion",
+      "authentication",
+      "clientScopes",
+      "clients",
+      "groups",
+      "keycloakRuntime",
+      "kind",
+      "knownResiduals",
+      "managedClientContract",
+      "metadata",
+      "offlineAccessPolicy",
+      "realm",
+      "roles",
+      "serviceNegativeAuthorityConstraints",
+      "servicePermissionClasses",
+      "users",
+    ],
+    "Application seed top-level fields",
+  )
+  requireEqual(
+    errors,
+    seed?.apiVersion,
+    "inference-core.llm-machines/v1",
+    "Application seed apiVersion",
+  )
+  requireEqual(
+    errors,
+    seed?.kind,
+    "LogicalKeycloakApplicationRealmSeed",
+    "Application seed kind",
+  )
+  requireJsonEqual(
+    errors,
+    seed?.metadata,
+    expectedApplicationMetadata,
+    "Application seed metadata",
+  )
+  requireJsonEqual(
+    errors,
+    seed?.keycloakRuntime,
+    expectedApplicationKeycloakRuntime,
+    "Application Keycloak runtime",
+  )
+  requireJsonEqual(
+    errors,
+    seed?.realm,
+    expectedApplicationRealm,
+    "Application realm",
+  )
+  require(errors, seed?.realm?.name !== "master" &&
+    seed?.realm?.masterRealm ===
+      false, "Application realm must never be master")
+  requireEqual(
+    errors,
+    seed?.realm?.accessTokenSeconds,
+    300,
+    "Application access-token lifetime",
+  )
+  requireJsonEqual(
+    errors,
+    seed?.authentication,
+    null,
+    "Application human authentication boundary",
+  )
+  requireJsonEqual(errors, seed?.clientScopes, [], "Application client scopes")
+  requireJsonEqual(errors, seed?.roles, [], "Application realm roles")
+  requireJsonEqual(errors, seed?.groups, [], "Application groups")
+  requireJsonEqual(errors, seed?.users, [], "Application users")
+  requireJsonEqual(
+    errors,
+    seed?.offlineAccessPolicy,
+    expectedApplicationOfflineAccessPolicy,
+    "Application offline-access policy",
+  )
+  requireJsonEqual(
+    errors,
+    seed?.managedClientContract,
+    expectedManagedClientContract,
+    "managed Application client contract",
+  )
+  requireJsonEqual(
+    errors,
+    seed?.clients,
+    expectedApplicationClients,
+    "Application seed clients",
+  )
+  requireEqual(
+    errors,
+    seed?.clients?.[0]?.accessTokenSeconds,
+    60,
+    "Application admin access-token lifetime",
+  )
+  requireJsonEqual(
+    errors,
+    seed?.servicePermissionClasses,
+    expectedApplicationPermissionClasses,
+    "Application service permission classes",
+  )
+  requireJsonEqual(
+    errors,
+    seed?.serviceNegativeAuthorityConstraints,
+    expectedApplicationNegativeAuthorityConstraints,
+    "Application negative authority constraints",
+  )
+  requireJsonEqual(
+    errors,
+    seed?.adminFineGrainedAuthorization,
+    expectedApplicationFgap,
+    "Application FGAP v2 contract",
+  )
+  requireJsonEqual(
+    errors,
+    seed?.knownResiduals,
+    expectedApplicationResiduals,
+    "Application accepted FGAP residuals",
+  )
+  rejectCoarseRoleMappings(errors, seed?.roles, seed?.clients)
+  for (const permission of seed?.adminFineGrainedAuthorization?.permissions ??
+    []) {
+    require(errors, permission.resourceType ===
+      "Clients", `Application FGAP resource type ${permission.resourceType} is forbidden`)
+    for (const scope of permission.scopes ?? []) {
+      require(errors, scope === "manage" ||
+        scope === "view", `Application FGAP scope ${scope} is forbidden`)
+    }
+  }
+  for (const path of findForbiddenCredentialKeys(seed)) {
+    errors.push(`credential-bearing field is forbidden at ${path}`)
+  }
+  for (const path of findCredentialLikeValues(seed)) {
+    errors.push(`credential-like value is forbidden at ${path}`)
+  }
+  return errors
+}
+
+export function validateApplicationCommissioningPlan(plan) {
+  const errors = []
+  requireExactStrings(
+    errors,
+    Object.keys(plan ?? {}),
+    [
+      "apiVersion",
+      "fgapV2EvaluationMatrix",
+      "kind",
+      "metadata",
+      "phases",
+      "preconditions",
+      "realm",
+      "tokenLifetimeTests",
+      "tokenNegativeTests",
+    ],
+    "Application commissioning top-level fields",
+  )
+  requireEqual(
+    errors,
+    plan?.apiVersion,
+    "inference-core.llm-machines/v1",
+    "Application commissioning apiVersion",
+  )
+  requireEqual(
+    errors,
+    plan?.kind,
+    "LogicalKeycloakApplicationRealmCommissioningPlan",
+    "Application commissioning kind",
+  )
+  requireJsonEqual(
+    errors,
+    plan?.metadata,
+    expectedApplicationMetadata,
+    "Application commissioning metadata",
+  )
+  requireEqual(
+    errors,
+    plan?.realm,
+    "llm-machines-applications",
+    "Application commissioning realm",
+  )
+  requireExactStrings(
+    errors,
+    plan?.preconditions,
+    [
+      "empty-application-realm",
+      "offline-application-seed-validation-passed",
+      "human-realm-commissioning-remains-independent",
+    ],
+    "Application commissioning preconditions",
+  )
+  requireJsonEqual(
+    errors,
+    plan?.phases,
+    expectedApplicationCommissioningPhases,
+    "Application commissioning phases",
+  )
+  requireJsonEqual(
+    errors,
+    plan?.fgapV2EvaluationMatrix,
+    expectedApplicationFgapEvaluationMatrix,
+    "Application FGAP v2 evaluation matrix",
+  )
+  requireJsonEqual(
+    errors,
+    plan?.tokenLifetimeTests,
+    expectedApplicationTokenLifetimeTests,
+    "Application token lifetime tests",
+  )
+  requireJsonEqual(
+    errors,
+    plan?.tokenNegativeTests,
+    expectedApplicationTokenNegativeTests,
+    "Application token negative tests",
+  )
+  for (const path of findForbiddenCredentialKeys(plan)) {
+    errors.push(`credential-bearing field is forbidden at ${path}`)
+  }
+  for (const path of findCredentialLikeValues(plan)) {
+    errors.push(`credential-like value is forbidden at ${path}`)
+  }
+  return errors
+}
+
+export function validateRealmIsolation(humanSeed, applicationSeed) {
+  const errors = []
+  require(errors, humanSeed?.realm?.name === "llm-machines" &&
+    applicationSeed?.realm?.name === "llm-machines-applications" &&
+    humanSeed?.realm?.name !==
+      applicationSeed?.realm
+        ?.name, "human and Application realms must remain distinct")
+  const humanClientIds = new Set(
+    (humanSeed?.clients ?? []).map(({ clientId }) => clientId),
+  )
+  const applicationClientIds = new Set(
+    (applicationSeed?.clients ?? []).map(({ clientId }) => clientId),
+  )
+  require(errors, !humanClientIds.has(
+    "console-application-admin",
+  ), "Application admin client leaked into human realm")
+  for (const clientId of [
+    "console-web",
+    "console-bff",
+    "console-human-admin",
+  ]) {
+    require(errors, !applicationClientIds.has(
+      clientId,
+    ), `human client ${clientId} leaked into Application realm`)
+  }
+  require(errors, !(
+    humanSeed?.adminFineGrainedAuthorization?.policies ?? []
+  ).some(
+    ({ name }) => name === "console-application-admin-service-account",
+  ), "Application admin FGAP policy leaked into human realm")
+  require(errors, !(
+    applicationSeed?.adminFineGrainedAuthorization?.policies ?? []
+  ).some(
+    ({ name }) =>
+      name === "console-human-admin-service-account" ||
+      name === "customer-admin-role",
+  ), "human FGAP policy leaked into Application realm")
+  requireJsonEqual(
+    errors,
+    applicationSeed?.roles,
+    [],
+    "Application realm human roles",
+  )
+  requireJsonEqual(
+    errors,
+    applicationSeed?.groups,
+    [],
+    "Application realm human groups",
+  )
+  requireJsonEqual(
+    errors,
+    applicationSeed?.users,
+    [],
+    "Application realm human users",
+  )
+  return errors
+}
+
 export function verificationReport(artifacts = loadKeycloakArtifacts()) {
   const seedErrors = validateKeycloakSeed(artifacts.seed)
   const commissioningErrors = validateCommissioningPlan(artifacts.commissioning)
+  const applicationSeedErrors = validateApplicationKeycloakSeed(
+    artifacts.applicationSeed,
+  )
+  const applicationCommissioningErrors = validateApplicationCommissioningPlan(
+    artifacts.applicationCommissioning,
+  )
+  const crossRealmErrors = validateRealmIsolation(
+    artifacts.seed,
+    artifacts.applicationSeed,
+  )
   return {
+    applicationCommissioning: {
+      errors: applicationCommissioningErrors,
+      sha256: sha256(artifacts.applicationCommissioningBytes),
+    },
+    applicationSeed: {
+      errors: applicationSeedErrors,
+      sha256: sha256(artifacts.applicationSeedBytes),
+    },
     commissioning: {
       errors: commissioningErrors,
       sha256: sha256(artifacts.commissioningBytes),
     },
+    crossRealm: { errors: crossRealmErrors },
     result:
-      seedErrors.length === 0 && commissioningErrors.length === 0
+      seedErrors.length === 0 &&
+      commissioningErrors.length === 0 &&
+      applicationSeedErrors.length === 0 &&
+      applicationCommissioningErrors.length === 0 &&
+      crossRealmErrors.length === 0
         ? "pass"
         : "fail",
     seed: {
@@ -1099,17 +1723,25 @@ function validateFgap(errors, fgap) {
 }
 
 function rejectCoarseRoleMappings(errors, roles, clients) {
-  const mappings = [
-    ...(roles ?? []).flatMap((role) =>
-      Object.values(role.clientRoleMappings ?? {}).flat(),
-    ),
-    ...(clients ?? []).flatMap((client) =>
-      Object.values(client.serviceAccountClientRoleMappings ?? {}).flat(),
-    ),
-  ]
-  for (const role of mappings) {
+  const roleMappings = (roles ?? []).flatMap((role) =>
+    Object.values(role.clientRoleMappings ?? {}).flat(),
+  )
+  for (const role of roleMappings) {
     if (forbiddenCoarseAdminRoles.has(role)) {
       errors.push(`coarse realm-management role ${role} is forbidden`)
+    }
+  }
+  for (const client of clients ?? []) {
+    const clientMappings = Object.values(
+      client.serviceAccountClientRoleMappings ?? {},
+    ).flat()
+    for (const role of clientMappings) {
+      const isApplicationQueryRole =
+        client.clientId === "console-application-admin" &&
+        role === "query-clients"
+      if (forbiddenCoarseAdminRoles.has(role) && !isApplicationQueryRole) {
+        errors.push(`coarse realm-management role ${role} is forbidden`)
+      }
     }
   }
 }
@@ -1122,9 +1754,15 @@ function findForbiddenCredentialKeys(value, path = "$") {
   }
   if (!isRecord(value)) return []
   return Object.entries(value).flatMap(([key, item]) => [
-    ...(forbiddenValueKeys.has(key) ? [`${path}.${key}`] : []),
+    ...(forbiddenNormalizedValueKeys.has(normalizeObjectKey(key))
+      ? [`${path}.${key}`]
+      : []),
     ...findForbiddenCredentialKeys(item, `${path}.${key}`),
   ])
+}
+
+function normalizeObjectKey(key) {
+  return key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()
 }
 
 function findCredentialLikeValues(value, path = "$") {

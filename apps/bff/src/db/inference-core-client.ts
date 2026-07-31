@@ -6,6 +6,16 @@ import * as schema from "./inference-core-schema"
 let client: ReturnType<typeof postgres> | null = null
 let database: ReturnType<typeof drizzle<typeof schema>> | null = null
 
+export type InferenceCoreDatabase = NonNullable<
+  ReturnType<typeof getInferenceCoreDb>
+>
+export type InferenceCoreTransaction = Parameters<
+  Parameters<InferenceCoreDatabase["transaction"]>[0]
+>[0]
+export type InferenceCoreQueryExecutor =
+  | InferenceCoreDatabase
+  | InferenceCoreTransaction
+
 export const INFERENCE_CORE_POSTGRES_OPTIONS = {
   connect_timeout: 3,
   connection: {

@@ -13,6 +13,7 @@ import { TeamV2Experience } from "./team-v2-experience"
 vi.mock("@/lib/admin/actions-core", () => ({
   applyAdminInferenceModelUpdateAction: vi.fn(),
   bulkAssignAdminTeamGroupMembersAction: vi.fn(),
+  checkAdminConnectedAppConnectionAction: vi.fn(async (state) => state),
   commitAdminTeamCsvImportAction: vi.fn(),
   createAdminConnectedAppAction: vi.fn(async (state) => state),
   createAdminTeamGroupAction: vi.fn(),
@@ -21,14 +22,17 @@ vi.mock("@/lib/admin/actions-core", () => ({
   deleteAdminTeamMemberAction: vi.fn(),
   disableAdminConnectedAppAction: vi.fn(),
   disableAdminTeamMemberAction: vi.fn(),
+  enableAdminConnectedAppAction: vi.fn(),
   generateAdminTeamPasswordAction: vi.fn(async (state) => state),
   previewAdminTeamCsvImportAction: vi.fn(async (state) => state),
   reactivateAdminTeamMemberAction: vi.fn(),
   removeAdminTeamGroupMemberAction: vi.fn(),
+  revokeAdminConnectedAppCredentialAction: vi.fn(async (state) => state),
   rotateAdminConnectedAppCredentialsAction: vi.fn(async (state) => state),
   sendAdminTeamInviteAction: vi.fn(),
   sendAdminTeamPasswordResetAction: vi.fn(),
-  testAdminConnectedAppConnectionAction: vi.fn(async (state) => state),
+  softDeleteAdminConnectedAppAction: vi.fn(),
+  updateAdminConnectedAppPolicyAction: vi.fn(),
   updateAdminSettingsOrganizationAction: vi.fn(),
   updateAdminSettingsTelemetryAction: vi.fn(),
   updateAdminTeamGroupAction: vi.fn(),
@@ -59,11 +63,25 @@ describe("role-aware Console presentation", () => {
       />,
     )
 
-    expect(screen.getByRole("button", { name: "Test connection" })).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: "Check connection" }),
+    ).toBeTruthy()
     expect(
       screen.getByRole("button", { name: "Rotate credentials" }),
     ).toBeTruthy()
     expect(screen.getByRole("button", { name: "Disable app" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Revoke now" })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Edit policy" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Delete app" })).toBeNull()
+
+    rerender(
+      <ApplicationsV2Experience
+        accessRole="operator"
+        connectedAppDetail={{ ...connectedApp, status: "disabled" }}
+        view="app-detail"
+      />,
+    )
+    expect(screen.queryByRole("button", { name: "Re-enable app" })).toBeNull()
   })
 
   it("keeps Operator inference reads while blocking updates and native LiteLLM access", () => {
@@ -76,6 +94,9 @@ describe("role-aware Console presentation", () => {
     )
 
     expect(screen.getByText("LiteLLM signal")).toBeTruthy()
+    expect(
+      screen.getByText(/separate from Console Application credentials/),
+    ).toBeTruthy()
     expect(screen.queryByRole("link", { name: /Open LiteLLM/ })).toBeNull()
 
     rerender(
@@ -135,26 +156,28 @@ describe("role-aware Console presentation", () => {
 const connectedApp: AdminConnectedApp = {
   allowedModels: ["qwen"],
   auditHref: "/audit?app=app-1",
+  authMethod: "api_key",
+  connectionStatus: "not_connected",
   createdAt: "2026-07-31T08:00:00.000Z",
-  description: "Third-party desktop harness",
-  detailHref: "/applications/apps/app-1",
-  environments: [
+  credentials: [
     {
-      authMethods: ["api_key"],
+      authMethod: "api_key",
       clientId: null,
-      credentialIssuedAt: "2026-07-31T08:00:00.000Z",
-      environment: "production",
+      id: "credential-1",
+      issuedAt: "2026-07-31T08:00:00.000Z",
       keyPrefix: "llm_app_",
-      lastTestedAt: null,
       lastUsedAt: null,
-      primaryAuthMethod: "api_key",
-      productionReady: true,
-      testStatus: "not_tested",
+      overlapExpiresAt: null,
+      revokedAt: null,
+      rotatedAt: null,
+      status: "active",
     },
   ],
+  description: "Third-party desktop harness",
+  detailHref: "/applications/apps/app-1",
   id: "app-1",
+  lastConnectedAt: null,
   name: "Desktop client",
-  ownerGroup: "Everyone",
   rateLimitRpm: null,
   status: "enabled",
   tokenBudget7d: null,

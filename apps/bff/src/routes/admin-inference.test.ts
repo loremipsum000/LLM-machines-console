@@ -13,6 +13,13 @@ const adminHeaders = {
   "x-llm-machines-user-roles": "admin",
 }
 
+const operatorHeaders = {
+  ...adminHeaders,
+  "x-llm-machines-user-sub": "operator-1",
+  "x-llm-machines-user-email": "operator@example.test",
+  "x-llm-machines-user-roles": "operator",
+}
+
 const unclassifiedHeaders = {
   ...adminHeaders,
   "x-llm-machines-user-sub": "unclassified-1",
@@ -77,7 +84,7 @@ describe("Admin Inference routes", () => {
       virtualKeys: [
         expect.objectContaining({
           alias: "design-workstation",
-          id: "hash-design-workstation",
+          id: expect.stringMatching(/^litellm-vk-[0-9a-f]{64}$/),
           status: "active",
         }),
       ],
@@ -95,7 +102,7 @@ describe("Admin Inference routes", () => {
     await server.close()
   })
 
-  it("enforces Admin-only access for Inference dashboard reads", async () => {
+  it("allows classified dashboard readers and hides native access from Operators", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     const server = buildServer()
 
@@ -108,9 +115,16 @@ describe("Admin Inference routes", () => {
       method: "GET",
       url: "/api/admin/inference",
     })
+    const operator = await server.inject({
+      headers: operatorHeaders,
+      method: "GET",
+      url: "/api/admin/inference",
+    })
 
     expect(unauthenticated.statusCode).toBe(401)
     expect(unclassified.statusCode).toBe(401)
+    expect(operator.statusCode).toBe(200)
+    expect(operator.json()).toMatchObject({ liteLlmUrl: null })
     await server.close()
   })
 
@@ -155,18 +169,18 @@ describe("Admin Inference routes", () => {
       if (url.pathname === "/key/list") {
         expect(url.searchParams.get("include_team_keys")).toBe("true")
         expect(url.searchParams.get("return_full_object")).toBe("true")
-        requestedKeyPages.push(url.searchParams.get("page") ?? "")
+        const page = Number(url.searchParams.get("page") ?? "1")
+        requestedKeyPages.push(String(page))
+        const rowCount = page === 1 ? 100 : 1
         return jsonResponse({
-          current_page: Number(url.searchParams.get("page") ?? "1"),
-          keys: [
-            {
-              key_alias: `runtime-${url.searchParams.get("page")}`,
-              key_hash: `hash-${url.searchParams.get("page")}`,
-              models: ["qwen3-35b-local"],
-              status: "active",
-              user_id: `owner-${url.searchParams.get("page")}`,
-            },
-          ],
+          current_page: page,
+          keys: Array.from({ length: rowCount }, (_, index) => ({
+            blocked: false,
+            key_alias: `runtime-${page}-${index + 1}`,
+            models: ["qwen3-35b-local"],
+            token: `upstream-token-${page}-${index + 1}`,
+          })),
+          total_count: 101,
           total_pages: 2,
         })
       }
@@ -181,12 +195,17 @@ describe("Admin Inference routes", () => {
     })
 
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      virtualKeys: [
-        expect.objectContaining({ alias: "runtime-1", id: "hash-1" }),
-        expect.objectContaining({ alias: "runtime-2", id: "hash-2" }),
-      ],
+    const virtualKeys = response.json().virtualKeys
+    expect(virtualKeys).toHaveLength(101)
+    expect(virtualKeys[0]).toMatchObject({
+      alias: "runtime-1-1",
+      id: expect.stringMatching(/^litellm-vk-[0-9a-f]{64}$/),
     })
+    expect(virtualKeys[100]).toMatchObject({
+      alias: "runtime-2-1",
+      id: expect.stringMatching(/^litellm-vk-[0-9a-f]{64}$/),
+    })
+    expect(response.body).not.toContain("upstream-token-")
     expect(requestedKeyPages).toEqual(["1", "2"])
     await server.close()
   })
@@ -569,18 +588,20 @@ async function mockLiteLlmFetch(
   }
   if (url.pathname === "/key/list") {
     return jsonResponse({
+      current_page: 1,
       keys: [
         {
+          blocked: false,
           key_alias: "design-workstation",
-          key_hash: "hash-design-workstation",
           max_budget: 100,
           models: ["qwen3-35b-local"],
           spend: 4.25,
-          status: "active",
           token: "sk-virtual-secret",
           user_id: "design-workstation",
         },
       ],
+      total_count: 1,
+      total_pages: 1,
     })
   }
   return jsonResponse({ error: "unexpected" }, 500)
