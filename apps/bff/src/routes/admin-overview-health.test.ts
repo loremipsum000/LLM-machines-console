@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
 import { resetAuditEventsForTest } from "../services/audit"
-import { resetHubStateForTest } from "../services/hub"
 
 const adminHeaders = {
   authorization: "Bearer test-service-key",
@@ -16,7 +15,6 @@ describe("Admin overview health federation", () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     resetAuditEventsForTest()
-    resetHubStateForTest()
   })
 
   it("federates Admin overview health from Prometheus when configured", async () => {
@@ -29,7 +27,7 @@ describe("Admin overview health federation", () => {
         return prometheusResponse([
           prometheusSample({ host: "oss-stack", job: "node" }, "1"),
           prometheusSample({ host: "compute-node-a", job: "node" }, "1"),
-          prometheusSample({ host: "agentic", job: "node" }, "0"),
+          prometheusSample({ host: "control-node", job: "node" }, "0"),
         ])
       }
       if (query.startsWith("ALERTS{")) {
@@ -116,7 +114,7 @@ describe("Admin overview health federation", () => {
 })
 
 function healthTile(response: { tiles: Array<{ id: string }> }) {
-  return response.tiles.find((tile) => tile.id === "health")
+  return response.tiles.find((tile) => tile.id === "hardware")
 }
 
 function prometheusResponse(samples: unknown[]): Response {

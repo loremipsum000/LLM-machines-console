@@ -3,8 +3,8 @@ import type {
   AdminHardwareChart,
   AdminHardwareRange,
   AdminHardwareResponse,
-  HubSourceStatus,
-} from "@llm-machines/contracts"
+  InferenceCoreSourceStatus,
+} from "@llm-machines/contracts/inference-core"
 import { ArrowUpRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { HardwareChartPrimitive } from "./hardware-chart-primitives"
@@ -179,7 +179,7 @@ function HardwareChartPanel({ chart }: { chart: AdminHardwareChart }) {
   )
 }
 
-function StatusDot({ status }: { status: HubSourceStatus }) {
+function StatusDot({ status }: { status: InferenceCoreSourceStatus }) {
   return (
     <>
       <span className="sr-only">Status: {status}</span>

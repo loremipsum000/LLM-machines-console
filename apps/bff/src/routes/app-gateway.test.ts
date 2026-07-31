@@ -104,12 +104,44 @@ describe("Connected app gateway routes", () => {
       requests7d: 2,
       tokens7d: 42,
     })
-    const auditText = JSON.stringify(getAuditEventsForTest())
+    const auditEvents = getAuditEventsForTest()
+    const gatewayEvents = auditEvents.filter((event) =>
+      event.action.startsWith("connected_app.gateway."),
+    )
+    const auditText = JSON.stringify(auditEvents)
     expect(auditText).toContain("connected_app.gateway.models")
     expect(auditText).toContain("connected_app.gateway.chat_completions")
-    expect(auditText).toContain("\"tokens\":42")
+    expect(gatewayEvents).toHaveLength(2)
+    for (const event of gatewayEvents) {
+      expect(event.actorId).toBe(event.metadata.credentialRecordId)
+      expect(event.metadata).toMatchObject({
+        applicationId: created.app.id,
+        authMethod: "api_key",
+        correlationId: expect.any(String),
+        credentialRecordId: expect.stringMatching(/^cak-/),
+        outcome: "succeeded",
+        sourceSystem: "console",
+      })
+    }
+    expect(
+      auditEvents.find(
+        (event) => event.action === "admin.connected_app.created",
+      ),
+    ).toMatchObject({
+      actorId: "admin-1",
+      metadata: {
+        applicationId: created.app.id,
+        authMethod: "api_key",
+        credentialRecordId: expect.stringMatching(/^cak-/),
+        keyPrefix: created.credential.keyPrefix,
+        keycloakSubjectId: "admin-1",
+      },
+    })
+    expect(auditText).not.toContain('"tokens"')
+    expect(auditText).not.toContain('"model"')
     expect(auditText).not.toContain("private prompt")
     expect(auditText).not.toContain("private completion")
+    expect(auditText).not.toContain(created.credential.apiKey)
     await server.close()
   })
 
@@ -165,6 +197,168 @@ describe("Connected app gateway routes", () => {
           content: "Reply with exactly pong.\n[tool call content omitted]",
         },
       ],
+    })
+    await server.close()
+  })
+
+  it("passes standard non-streaming tool definitions and tool calls through without executing them", async () => {
+    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+    vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
+    vi.stubEnv("LITELLM_URL", "http://litellm.test")
+    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
+    const upstreamResponse = {
+      choices: [
+        {
+          finish_reason: "tool_calls",
+          index: 0,
+          message: {
+            content: null,
+            role: "assistant",
+            tool_calls: [
+              {
+                function: {
+                  arguments: '{"city":"Zagreb"}',
+                  name: "lookup_weather",
+                },
+                id: "call_weather_1",
+                type: "function",
+              },
+            ],
+          },
+        },
+      ],
+      id: "chatcmpl-tool-call",
+      object: "chat.completion",
+      usage: { completion_tokens: 8, prompt_tokens: 12, total_tokens: 20 },
+    }
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json(upstreamResponse))
+    vi.stubGlobal("fetch", fetchMock)
+    const server = buildServer()
+    const created = await createApp(server, ["local-a"])
+    const token = bearerForCredential(created.credential)
+    const tools = [
+      {
+        function: {
+          description: "Look up the weather for a city.",
+          name: "lookup_weather",
+          parameters: {
+            additionalProperties: false,
+            properties: { city: { type: "string" } },
+            required: ["city"],
+            type: "object",
+          },
+          strict: true,
+        },
+        type: "function",
+      },
+    ]
+    const messages = [
+      { content: "What is the weather?", role: "user" },
+      {
+        content: null,
+        role: "assistant",
+        tool_calls: [
+          {
+            function: {
+              arguments: '{"city":"Zagreb"}',
+              name: "lookup_weather",
+            },
+            id: "call_weather_prior",
+            type: "function",
+          },
+        ],
+      },
+      {
+        content: '{"condition":"sunny"}',
+        role: "tool",
+        tool_call_id: "call_weather_prior",
+      },
+    ]
+
+    const response = await server.inject({
+      method: "POST",
+      url: "/api/app-gateway/v1/chat/completions",
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        messages,
+        model: "local-a",
+        parallel_tool_calls: false,
+        tool_choice: "auto",
+        tools,
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual(upstreamResponse)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const upstreamBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
+    expect(upstreamBody).toMatchObject({
+      messages,
+      parallel_tool_calls: false,
+      tool_choice: "auto",
+      tools,
+    })
+    await server.close()
+  })
+
+  it("passes streaming tool-call deltas through without executing them", async () => {
+    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+    vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
+    vi.stubEnv("LITELLM_URL", "http://litellm.test")
+    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        sseResponse([
+          'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_weather_2","type":"function","function":{"name":"lookup_weather","arguments":"{\\"city\\":\\"Zagreb\\"}"}}]},"finish_reason":"tool_calls","index":0}]}\n\n',
+          'data: {"choices":[],"usage":{"total_tokens":21}}\n\n',
+          "data: [DONE]\n\n",
+        ]),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    const server = buildServer()
+    const created = await createApp(server, ["local-a"])
+    const token = bearerForCredential(created.credential)
+    const tools = [
+      {
+        function: {
+          name: "lookup_weather",
+          parameters: {
+            properties: { city: { type: "string" } },
+            required: ["city"],
+            type: "object",
+          },
+        },
+        type: "function",
+      },
+    ]
+
+    const response = await server.inject({
+      method: "POST",
+      url: "/api/app-gateway/v1/chat/completions",
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        messages: [{ content: "What is the weather?", role: "user" }],
+        model: "local-a",
+        stream: true,
+        tool_choice: "auto",
+        tools,
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toContain('"tool_calls"')
+    expect(response.body).toContain('"lookup_weather"')
+    expect(response.body).toContain("data: [DONE]")
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const upstreamBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
+    expect(upstreamBody).toMatchObject({
+      stream: true,
+      stream_options: { include_usage: true },
+      tool_choice: "auto",
+      tools,
     })
     await server.close()
   })
@@ -248,7 +442,9 @@ describe("Connected app gateway routes", () => {
     expect(disabled.statusCode).toBe(403)
     expect(disabled.json()).toMatchObject({ title: "Connected app disabled" })
     expect(unknown.statusCode).toBe(401)
-    expect(unknown.json()).toMatchObject({ title: "Invalid connected app token" })
+    expect(unknown.json()).toMatchObject({
+      title: "Invalid connected app token",
+    })
     expect(fetchMock).not.toHaveBeenCalled()
     await server.close()
   })
@@ -276,10 +472,41 @@ describe("Connected app gateway routes", () => {
       object: "list",
       data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
     })
+    const event = getAuditEventsForTest().find(
+      (candidate) => candidate.action === "connected_app.gateway.models",
+    )
+    expect(event).toMatchObject({
+      actorId: `fixture-subject:${created.credential.clientId}`,
+      metadata: {
+        applicationId: created.app.id,
+        authMethod: "oauth_client_credentials",
+        correlationId: expect.any(String),
+        credentialRecordId: expect.any(String),
+        keycloakSubjectId: `fixture-subject:${created.credential.clientId}`,
+        outcome: "succeeded",
+        sourceSystem: "console",
+      },
+    })
+    expect(
+      getAuditEventsForTest().find(
+        (candidate) => candidate.action === "admin.connected_app.created",
+      ),
+    ).toMatchObject({
+      actorId: "admin-1",
+      metadata: {
+        applicationId: created.app.id,
+        authMethod: "oauth_client_credentials",
+        credentialRecordId: expect.any(String),
+        keycloakSubjectId: "admin-1",
+      },
+    })
+    expect(JSON.stringify(getAuditEventsForTest())).not.toContain(
+      created.credential.clientSecret,
+    )
     await server.close()
   })
 
-  it("keeps production gateway credentials locked until promotion creates a production client", async () => {
+  it("keeps the retired production promotion route absent", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("BFF_FALLBACK_MODELS", "local-a")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
@@ -293,7 +520,7 @@ describe("Connected app gateway routes", () => {
         authorization: "Bearer llmm_t4_locked_locked-secret",
       },
     })
-    await server.inject({
+    const tested = await server.inject({
       method: "POST",
       url: `/api/admin/applications/connected-apps/${created.app.id}/test`,
       headers: {
@@ -309,25 +536,26 @@ describe("Connected app gateway routes", () => {
         "idempotency-key": "connected-app-gateway-promote",
       },
     })
-    const productionToken = bearerForCredential(promoted.json().credential)
-    const productionModels = await server.inject({
-      method: "GET",
-      url: "/api/app-gateway/v1/models",
-      headers: { authorization: `Bearer ${productionToken}` },
-    })
-
     expect(locked.statusCode).toBe(401)
-    expect(locked.json()).toMatchObject({ title: "Invalid connected app token" })
-    expect(promoted.statusCode).toBe(200)
-    expect(promoted.json()).toMatchObject({
-      credential: expect.objectContaining({ environment: "production" }),
-      status: "promoted",
+    expect(locked.json()).toMatchObject({
+      title: "Invalid connected app token",
     })
-    expect(productionModels.statusCode).toBe(200)
-    expect(productionModels.json()).toEqual({
-      object: "list",
-      data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
+    expect(tested.statusCode).toBe(200)
+    expect(
+      getAuditEventsForTest().find(
+        (event) => event.action === "admin.connected_app.tested",
+      ),
+    ).toMatchObject({
+      actorId: "admin-1",
+      metadata: {
+        applicationId: created.app.id,
+        authMethod: "api_key",
+        credentialRecordId: expect.stringMatching(/^cak-/),
+        keyPrefix: created.credential.keyPrefix,
+        keycloakSubjectId: "admin-1",
+      },
     })
+    expect(promoted.statusCode).toBe(404)
     await server.close()
   })
 
@@ -378,7 +606,9 @@ describe("Connected app gateway routes", () => {
     const newKeyResponse = await server.inject({
       method: "GET",
       url: "/api/app-gateway/v1/models",
-      headers: { authorization: `Bearer ${bearerForCredential(rotated.json().credential)}` },
+      headers: {
+        authorization: `Bearer ${bearerForCredential(rotated.json().credential)}`,
+      },
     })
 
     expect(rotated.statusCode).toBe(200)
@@ -391,6 +621,25 @@ describe("Connected app gateway routes", () => {
       title: "Invalid connected app token",
     })
     expect(newKeyResponse.statusCode).toBe(200)
+    expect(
+      getAuditEventsForTest().find(
+        (event) =>
+          event.action === "admin.connected_app.credentials_rotated",
+      ),
+    ).toMatchObject({
+      actorId: "admin-1",
+      metadata: {
+        applicationId: created.app.id,
+        authMethod: "api_key",
+        credentialRecordId: expect.stringMatching(/^cak-/),
+        keyPrefix: rotated.json().credential.keyPrefix,
+        keycloakSubjectId: "admin-1",
+      },
+    })
+    expect(JSON.stringify(getAuditEventsForTest())).not.toContain(oldToken)
+    expect(JSON.stringify(getAuditEventsForTest())).not.toContain(
+      rotated.json().credential.apiKey,
+    )
     await server.close()
   })
 
@@ -433,14 +682,16 @@ describe("Connected app gateway routes", () => {
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     vi.stubEnv("LITELLM_URL", "http://litellm.test")
     vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
-      sseResponse([
-        'data: {"choices":[{"delta":{"content":"streamed private completion"}}]}\n\n',
-        'data: {"choices":[],"usage":',
-        '{"total_tokens":17}}\n\n',
-        "data: [DONE]\n\n",
-      ]),
-    )
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        sseResponse([
+          'data: {"choices":[{"delta":{"content":"streamed private completion"}}]}\n\n',
+          'data: {"choices":[],"usage":',
+          '{"total_tokens":17}}\n\n',
+          "data: [DONE]\n\n",
+        ]),
+      )
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
     const created = await createApp(server, ["local-a"])
@@ -474,7 +725,8 @@ describe("Connected app gateway routes", () => {
       tokens7d: 17,
     })
     const auditText = JSON.stringify(getAuditEventsForTest())
-    expect(auditText).toContain("\"tokens\":17")
+    expect(auditText).not.toContain('"tokens"')
+    expect(auditText).not.toContain('"model"')
     expect(auditText).not.toContain("streamed private prompt")
     expect(auditText).not.toContain("streamed private completion")
     await server.close()
@@ -879,6 +1131,8 @@ async function createApp(
       apiKey?: string
       authMethod: "api_key" | "oauth_client_credentials"
       clientId?: string
+      clientSecret?: string
+      keyPrefix: string | null
     }
   }
 }

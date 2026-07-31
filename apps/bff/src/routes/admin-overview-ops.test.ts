@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
 import { resetAuditEventsForTest } from "../services/audit"
-import { resetHubStateForTest } from "../services/hub"
 
 const adminHeaders = {
   authorization: "Bearer test-service-key",
@@ -16,7 +15,6 @@ describe("Admin overview LiteLLM ops federation", () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     resetAuditEventsForTest()
-    resetHubStateForTest()
   })
 
   it("federates Admin overview ops from LiteLLM when configured", async () => {
@@ -150,7 +148,7 @@ describe("Admin overview LiteLLM ops federation", () => {
 })
 
 function opsTile(response: { tiles: Array<{ id: string }> }) {
-  return response.tiles.find((tile) => tile.id === "ops")
+  return response.tiles.find((tile) => tile.id === "inference")
 }
 
 function jsonResponse(payload: unknown): Response {

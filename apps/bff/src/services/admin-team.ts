@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto"
 import type {
   AdminTeamActionResponse,
-  AdminTeamBreakGlass,
   AdminTeamBulkGroupAssignmentRequest,
   AdminTeamCsvImportCommitRequest,
   AdminTeamCsvImportCommitResponse,
@@ -18,36 +17,21 @@ import type {
   AdminTeamOverviewResponse,
   CreateAdminTeamGroupRequest,
   CreateAdminTeamMemberRequest,
-  UpdateAdminTeamBreakGlassRequest,
   UpdateAdminTeamGroupRequest,
-} from "@llm-machines/contracts"
-import { eq } from "drizzle-orm"
+} from "@llm-machines/contracts/inference-core"
 import type { Actor } from "../auth/persona"
-import { getDb } from "../db/client"
-import { consoleSettings } from "../db/schema"
 import { emitAudit, getRecentAuditEvents } from "./audit"
-import {
-  adminMcpServerUnlocksForAccessGroup,
-  renameAdminMcpServerAccessGroup,
-} from "./admin-connector-registry"
-import {
-  knowledgeUnlocksForAccessGroup,
-  renameKnowledgeAccessGroup,
-} from "./knowledge/admin"
 import {
   KeycloakAdminClient,
   KeycloakAdminError,
   keycloakAdminConfigFromEnv,
-  roleFromRealmRoles,
   type KeycloakAdminConfig,
   type KeycloakAdminGroup,
   type KeycloakAdminUser,
-} from "./team-keycloak-admin"
-import { upsertActorUser } from "./users"
+} from "./inference-core-keycloak-admin"
 
 export const TEAM_CSV_TEMPLATE =
   "name,username,email,group,role,send_invite,enabled\n"
-const singletonSettingsId = "singleton"
 const TEAM_CSV_HEADERS = [
   "name",
   "username",
@@ -68,27 +52,8 @@ export class AdminTeamError extends Error {
   }
 }
 
-let breakGlassAdminId: string | null = null
-let breakGlassUpdatedAt: string | null = null
-let breakGlassUpdatedBy: string | null = null
-
-interface BreakGlassState {
-  selectedAdminId: string | null
-  updatedAt: string | null
-  updatedBy: string | null
-}
-
 export function resetAdminTeamStateForTest(): void {
-  breakGlassAdminId = null
-  breakGlassUpdatedAt = null
-  breakGlassUpdatedBy = null
   cachedAuditEvents = []
-}
-
-export function setBreakGlassAdminForTest(id: string | null): void {
-  breakGlassAdminId = id
-  breakGlassUpdatedAt = id ? new Date().toISOString() : null
-  breakGlassUpdatedBy = id ? "test" : null
 }
 
 export async function getAdminTeamOverview(
@@ -122,9 +87,7 @@ export async function getAdminTeamOverview(
       returnedCount: members.length,
     })
 
-    const breakGlassState = await readBreakGlassState()
     return {
-      breakGlass: breakGlass(members, breakGlassState),
       generatedAt: new Date().toISOString(),
       groups: teamGroups,
       members,
@@ -147,45 +110,6 @@ export async function getAdminTeamScimStatus(
   return scim
 }
 
-export async function getAdminTeamBreakGlass(
-  actor: Actor,
-): Promise<AdminTeamBreakGlass> {
-  const service = requireTeamService()
-  const members = await listTeamMembers(service)
-  const result = breakGlass(members, await readBreakGlassState())
-  await emitTeamAudit(actor, "team.break_glass.read", "break-glass", {
-    selectedAdminId: result.selectedAdminId,
-  })
-  return result
-}
-
-export async function updateAdminTeamBreakGlass(
-  actor: Actor,
-  request: UpdateAdminTeamBreakGlassRequest,
-): Promise<AdminTeamBreakGlass> {
-  const service = requireTeamService()
-  const members = await listTeamMembers(service)
-  const eligibleAdmins = members.filter(
-    (member) => member.enabled && member.role === "admin",
-  )
-  const selected = eligibleAdmins.find(
-    (member) => member.id === request.selectedAdminId,
-  )
-  if (!selected) {
-    throw new AdminTeamError(
-      400,
-      "Break-glass Admin must be an enabled Admin user.",
-    )
-  }
-
-  const state = await writeBreakGlassState(actor, selected.id)
-  const result = breakGlass(members, state)
-  await emitTeamAudit(actor, "team.break_glass.updated", selected.id, {
-    selectedAdminId: selected.id,
-  })
-  return result
-}
-
 export async function getAdminTeamGroupDetail(
   actor: Actor,
   id: string,
@@ -193,19 +117,14 @@ export async function getAdminTeamGroupDetail(
   const service = requireTeamService()
   await refreshTeamAuditCache()
   const group = await groupById(service, id)
-  const [members, unlocks] = await Promise.all([
-    membersForGroup(service, group),
-    groupUnlocks(group.name),
-  ])
+  const members = await membersForGroup(service, group)
   await emitTeamAudit(actor, "team.group.read", id)
   return {
     group: {
       ...group,
       memberCount: members.length,
-      unlockCount: unlocks.length,
     },
     members,
-    unlocks,
   }
 }
 
@@ -360,14 +279,8 @@ export async function updateAdminTeamGroup(
     await assertGroupNameAvailable(service, request.name)
   }
   await service.client.updateGroup(id, request.name)
-  const [knowledgeChangedCount, mcpChangedCount] = await Promise.all([
-    renameKnowledgeAccessGroup(actor, group.name, request.name),
-    renameAdminMcpServerAccessGroup(actor, group.name, request.name),
-  ])
   const updated = await groupById(service, id)
   await emitTeamAudit(actor, "team.group.updated", id, {
-    knowledgeChangedCount,
-    mcpChangedCount,
     name: request.name,
     previousName: group.name,
   })
@@ -382,15 +295,6 @@ export async function deleteAdminTeamGroup(
   const service = requireTeamService()
   const group = await groupById(service, id)
   assertMutableGroup(group)
-  const unlocks = await groupUnlocks(group.name)
-  if (unlocks.length > 0) {
-    throw new AdminTeamError(
-      409,
-      `Group is still referenced by: ${unlocks
-        .map((unlock) => unlock.name)
-        .join(", ")}.`,
-    )
-  }
   await service.client.deleteGroup(id)
   await emitTeamAudit(actor, "team.group.deleted", id, { name: group.name })
   return { group: null, status: "deleted" }
@@ -499,7 +403,6 @@ export async function commitAdminTeamCsvImport(
     failedCount: response.failedCount,
     rowCount: rows.length,
     skippedCount: response.skippedCount,
-    usernames: rows.map((row) => row.username).filter(Boolean),
   })
   return response
 }
@@ -584,7 +487,7 @@ function csvImportRowFromValues(
     errors.push(`Unknown group: ${group}.`)
   }
   if (!role) {
-    errors.push("Role must be consumer, builder, or admin.")
+    errors.push("Role must be admin or operator.")
   }
   if (sendInvite === null) {
     errors.push("send_invite must be true or false.")
@@ -610,7 +513,7 @@ function csvImportRowFromValues(
     group: normalizedGroup,
     line: row.line,
     name,
-    role: role ?? "consumer",
+    role: role ?? "operator",
     sendInvite: sendInvite ?? false,
     status: errors.length > 0 ? "invalid" : "valid",
     username,
@@ -715,11 +618,9 @@ function sameHeaders(headers: string[]): boolean {
 function parseCsvRole(value: string | undefined): AdminTeamCsvImportRow["role"] | null {
   const role = value?.trim().toLowerCase()
   if (!role) {
-    return "consumer"
+    return "operator"
   }
-  return role === "admin" || role === "builder" || role === "consumer"
-    ? role
-    : null
+  return role === "admin" || role === "operator" ? role : null
 }
 
 function parseCsvBoolean(value: string | undefined, fallback: boolean): boolean | null {
@@ -765,14 +666,29 @@ function teamImportFailureMessage(error: unknown): string {
 
 async function listTeamMembers(service: TeamService): Promise<AdminTeamMember[]> {
   const users = await service.client.listUsers()
-  return Promise.all(users.map((user) => memberFromKeycloak(service, user)))
+  const members = await Promise.all(
+    users.map((user) => memberFromKeycloak(service, user)),
+  )
+  return members.filter(
+    (member): member is AdminTeamMember => member !== null,
+  )
 }
 
 async function memberById(
   service: TeamService,
   id: string,
 ): Promise<AdminTeamMember> {
-  return memberFromKeycloak(service, await service.client.getUser(id))
+  const member = await memberFromKeycloak(
+    service,
+    await service.client.getUser(id),
+  )
+  if (!member) {
+    throw new AdminTeamError(
+      409,
+      "Keycloak user does not have an explicit Admin or Operator role.",
+    )
+  }
+  return member
 }
 
 async function groupById(
@@ -783,16 +699,14 @@ async function groupById(
     return everyoneGroup((await listTeamMembers(service)).length)
   }
   const group = await service.client.getGroup(id)
-  const [members, unlocks] = await Promise.all([
-    service.client.getGroupMembers(group.id).catch(() => []),
-    groupUnlocks(group.name),
-  ])
+  const members = await service.client
+    .getGroupMembers(group.id)
+    .catch(() => [])
   return {
     id: group.id,
-    keycloakHref: keycloakGroupHref(group.id),
+    keycloakHref: null,
     memberCount: members.length,
     name: group.name,
-    unlockCount: unlocks.length,
     virtual: false,
   }
 }
@@ -805,41 +719,39 @@ async function membersForGroup(
     return listTeamMembers(service)
   }
   const members = await service.client.getGroupMembers(group.id)
-  return Promise.all(members.map((member) => memberFromKeycloak(service, member)))
+  const classified = await Promise.all(
+    members.map((member) => memberFromKeycloak(service, member)),
+  )
+  return classified.filter(
+    (member): member is AdminTeamMember => member !== null,
+  )
 }
 
-async function teamGroupFromKeycloak(
+function teamGroupFromKeycloak(
   group: KeycloakAdminGroup,
   memberCount: number,
-): Promise<AdminTeamGroup> {
+): AdminTeamGroup {
   return {
     id: group.id,
-    keycloakHref: keycloakGroupHref(group.id),
+    keycloakHref: null,
     memberCount,
     name: group.name,
-    unlockCount: (await groupUnlocks(group.name)).length,
     virtual: false,
   }
-}
-
-async function groupUnlocks(
-  groupName: string,
-): Promise<AdminTeamGroupDetail["unlocks"]> {
-  const [corpora, mcpServers] = await Promise.all([
-    knowledgeUnlocksForAccessGroup(groupName),
-    adminMcpServerUnlocksForAccessGroup(groupName),
-  ])
-  return [...corpora, ...mcpServers]
 }
 
 async function memberFromKeycloak(
   service: TeamService,
   user: KeycloakAdminUser,
-): Promise<AdminTeamMember> {
+): Promise<AdminTeamMember | null> {
   const [groups, roles] = await Promise.all([
     service.client.getUserGroups(user.id).catch(() => []),
     service.client.getUserRealmRoles(user.id).catch(() => []),
   ])
+  const role = retainedRoleFromRealmRoles(roles.map((item) => item.name))
+  if (!role) {
+    return null
+  }
   return {
     createdAt: user.createdAt,
     displayName: user.displayName,
@@ -847,12 +759,22 @@ async function memberFromKeycloak(
     enabled: user.enabled,
     groups: groups.map((group) => group.name),
     id: user.id,
-    keycloakHref: keycloakUserHref(user.id),
+    keycloakHref: null,
     lastActiveAt: lastActiveAtFor(user),
-    role: roleFromRealmRoles(roles.map((role) => role.name)),
+    role,
     status: user.enabled ? "active" : "disabled",
     username: user.username,
   }
+}
+
+function retainedRoleFromRealmRoles(
+  roles: string[],
+): AdminTeamMember["role"] | null {
+  const normalized = new Set(roles.map((role) => role.toLowerCase()))
+  if (normalized.has("admin")) {
+    return "admin"
+  }
+  return normalized.has("operator") ? "operator" : null
 }
 
 async function assignRoleAndGroups(
@@ -979,13 +901,22 @@ function assertCorporateEmail(
 
 async function assertCanMutateMember(actor: Actor, id: string): Promise<void> {
   if (actor.subject === id) {
-    throw new AdminTeamError(409, "Admins cannot disable or delete themselves.")
+    throw new AdminTeamError(409, "Users cannot disable or delete themselves.")
   }
-  const breakGlassState = await readBreakGlassState()
-  if (breakGlassState.selectedAdminId === id) {
+  const service = requireTeamService()
+  const members = await listTeamMembers(service)
+  const target = members.find((member) => member.id === id)
+  const enabledOperators = members.filter(
+    (member) => member.enabled && member.role === "operator",
+  )
+  if (
+    target?.enabled &&
+    target.role === "operator" &&
+    enabledOperators.length <= 1
+  ) {
     throw new AdminTeamError(
       409,
-      "The selected break-glass Admin cannot be disabled or deleted.",
+      "The last enabled Operator is the automatic break-glass account and cannot be disabled or deleted.",
     )
   }
 }
@@ -1021,7 +952,6 @@ function emptyTeamOverview(
   serviceStatus: AdminTeamOverviewResponse["serviceStatus"],
 ): AdminTeamOverviewResponse {
   return {
-    breakGlass: breakGlass([], memoryBreakGlassState()),
     generatedAt: new Date().toISOString(),
     groups: [everyoneGroup(0)],
     members: [],
@@ -1039,130 +969,13 @@ function unavailableOverview(error: unknown): AdminTeamOverviewResponse {
   return emptyTeamOverview("unavailable")
 }
 
-function breakGlass(
-  members: AdminTeamMember[],
-  state: BreakGlassState,
-): AdminTeamBreakGlass {
-  const eligibleAdmins = members.filter(
-    (member) => member.enabled && member.role === "admin",
-  )
-  const selectedAdminId = eligibleAdmins.some(
-    (member) => member.id === state.selectedAdminId,
-  )
-    ? state.selectedAdminId
-    : null
-  return {
-    eligibleAdmins,
-    selectedAdminId,
-    updatedAt: selectedAdminId ? state.updatedAt : null,
-    updatedBy: selectedAdminId ? state.updatedBy : null,
-  }
-}
-
-function memoryBreakGlassState(): BreakGlassState {
-  return {
-    selectedAdminId: breakGlassAdminId,
-    updatedAt: breakGlassUpdatedAt,
-    updatedBy: breakGlassUpdatedBy,
-  }
-}
-
-function setMemoryBreakGlassState(state: BreakGlassState): BreakGlassState {
-  breakGlassAdminId = state.selectedAdminId
-  breakGlassUpdatedAt = state.updatedAt
-  breakGlassUpdatedBy = state.updatedBy
-  return state
-}
-
-async function readBreakGlassState(): Promise<BreakGlassState> {
-  const db = getDb()
-  if (!db) {
-    return memoryBreakGlassState()
-  }
-
-  const [row] = await db
-    .select({
-      selectedAdminId: consoleSettings.breakGlassAdminId,
-      updatedAt: consoleSettings.breakGlassUpdatedAt,
-      updatedBy: consoleSettings.breakGlassUpdatedBy,
-    })
-    .from(consoleSettings)
-    .where(eq(consoleSettings.id, singletonSettingsId))
-    .limit(1)
-
-  if (!row) {
-    return setMemoryBreakGlassState({
-      selectedAdminId: null,
-      updatedAt: null,
-      updatedBy: null,
-    })
-  }
-
-  return setMemoryBreakGlassState({
-    selectedAdminId: row.selectedAdminId,
-    updatedAt: row.updatedAt?.toISOString() ?? null,
-    updatedBy: row.updatedBy,
-  })
-}
-
-async function writeBreakGlassState(
-  actor: Actor,
-  selectedAdminId: string,
-): Promise<BreakGlassState> {
-  const now = new Date()
-  const state = setMemoryBreakGlassState({
-    selectedAdminId,
-    updatedAt: now.toISOString(),
-    updatedBy: actor.subject,
-  })
-  const db = getDb()
-  if (!db) {
-    return state
-  }
-
-  const persistedActor = await upsertActorUser(actor)
-  await db
-    .insert(consoleSettings)
-    .values({
-      id: singletonSettingsId,
-      organizationName: "LLM Machines",
-      defaultLanguage: "en",
-      telemetryEnabled: false,
-      telemetryPayloadPreview: {},
-      privacyPolicyHref: "/privacy",
-      dataResidencyStatement:
-        "Customer data stays on the deployed appliance by default.",
-      breakGlassAdminId: selectedAdminId,
-      breakGlassUpdatedAt: now,
-      breakGlassUpdatedBy: persistedActor.subject,
-      updatedBy: persistedActor.subject,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: consoleSettings.id,
-      set: {
-        breakGlassAdminId: selectedAdminId,
-        breakGlassUpdatedAt: now,
-        breakGlassUpdatedBy: persistedActor.subject,
-        updatedBy: persistedActor.subject,
-        updatedAt: now,
-      },
-    })
-
-  return setMemoryBreakGlassState({
-    selectedAdminId,
-    updatedAt: now.toISOString(),
-    updatedBy: persistedActor.subject,
-  })
-}
-
 function scimStatus(): AdminTeamOverviewResponse["scim"] {
   const provider = optionalEnv("TEAM_SCIM_PROVIDER")
   if (provider) {
     return {
       detail:
         "SCIM status is read-only in Console. Manage provisioning details in Keycloak.",
-      keycloakHref: keycloakAdminHref(),
+      keycloakHref: null,
       lastSyncAt: validIsoDate(optionalEnv("TEAM_SCIM_LAST_SYNC_AT")),
       provider,
       sourceStatus: "ok",
@@ -1173,7 +986,7 @@ function scimStatus(): AdminTeamOverviewResponse["scim"] {
   return {
     detail:
       "SCIM synchronization is configured directly in Keycloak when available.",
-    keycloakHref: keycloakAdminHref(),
+    keycloakHref: null,
     lastSyncAt: null,
     provider: null,
     sourceStatus: "not_configured",
@@ -1187,7 +1000,6 @@ function everyoneGroup(memberCount: number): AdminTeamGroup {
     keycloakHref: null,
     memberCount,
     name: "Everyone",
-    unlockCount: 0,
     virtual: true,
   }
 }
@@ -1212,7 +1024,6 @@ function usageForMember(member: AdminTeamMember): AdminTeamMemberDetail["usage"]
   const modelCounts = new Map<string, number>()
   let prompts = 0
   let tokens = 0
-  let mcpCalls = 0
   for (const event of getCachedAuditEvents()) {
     if (!eventMatchesMember(event.actorId, member)) {
       continue
@@ -1226,13 +1037,9 @@ function usageForMember(member: AdminTeamMember): AdminTeamMemberDetail["usage"]
     if (model) {
       modelCounts.set(model, (modelCounts.get(model) ?? 0) + 1)
     }
-    if (event.action === "connector.mcp.forwarded") {
-      mcpCalls += 1
-    }
   }
 
   return {
-    mcpCalls,
     mostUsedModel:
       [...modelCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
     prompts,
@@ -1253,13 +1060,7 @@ export async function refreshTeamAuditCache(): Promise<void> {
 }
 
 function eventMatchesMember(actorId: string, member: AdminTeamMember): boolean {
-  const identities = new Set([
-    member.id.toLowerCase(),
-    member.username.toLowerCase(),
-    member.email.toLowerCase(),
-    member.email.split("@")[0]?.toLowerCase() ?? "",
-  ])
-  return identities.has(actorId.toLowerCase())
+  return actorId.toLowerCase() === member.id.toLowerCase()
 }
 
 function lastActiveAtFor(user: KeycloakAdminUser): string | null {
@@ -1273,7 +1074,7 @@ function lastActiveAtFor(user: KeycloakAdminUser): string | null {
       id: user.id,
       keycloakHref: null,
       lastActiveAt: null,
-      role: "consumer",
+      role: "operator",
       status: user.enabled ? "active" : "disabled",
       username: user.username,
     }))?.createdAt ?? null
@@ -1310,37 +1111,9 @@ async function emitTeamAudit(
   await refreshTeamAuditCache()
 }
 
-function keycloakAdminHref(): string | null {
-  const explicit = optionalEnv("KEYCLOAK_ADMIN_PUBLIC_URL")
-  if (explicit) {
-    return trimTrailingSlash(explicit)
-  }
-  const configResult = keycloakAdminConfigFromEnv()
-  if (configResult.status !== "ok") {
-    return null
-  }
-  return `${configResult.config.baseUrl}/admin/${encodeURIComponent(
-    configResult.config.realm,
-  )}/console/#/${encodeURIComponent(configResult.config.realm)}`
-}
-
-function keycloakUserHref(id: string): string | null {
-  const base = keycloakAdminHref()
-  return base ? `${base}/users/${encodeURIComponent(id)}` : null
-}
-
-function keycloakGroupHref(id: string): string | null {
-  const base = keycloakAdminHref()
-  return base ? `${base}/groups/${encodeURIComponent(id)}` : null
-}
-
 function optionalEnv(name: string): string | null {
   const value = process.env[name]?.trim()
   return value ? value : null
-}
-
-function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/, "")
 }
 
 function validIsoDate(value: string | null): string | null {

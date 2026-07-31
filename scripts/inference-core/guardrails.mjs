@@ -1,6 +1,12 @@
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
+import {
+  existsSync,
+  lstatSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import ts from "typescript"
@@ -19,17 +25,187 @@ export const routeBaselinePath =
   "docs/reduction/inference-core/route-baseline.json"
 export const retentionCharacterizationPath =
   "docs/reduction/inference-core/retention-characterization.json"
+export const pr02ContractRevisionPath =
+  "docs/reduction/inference-core/contract-revisions/PR-02.json"
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
+const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
+const pr02RevisionEvidencePaths = [
+  "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+  "scripts/inference-core/pr02-boundaries.test.mjs",
+  "scripts/inference-core/pr02-contract-revision.mjs",
+]
+const generatedContractPaths = new Set([
+  allowlistPath,
+  routeBaselinePath,
+  pr02ContractRevisionPath,
+])
+export const pr02OperationPolicy = {
+  changedSourcePaths: [
+    "apps/bff/src/auth/persona.ts",
+    "apps/bff/src/index.ts",
+    "apps/bff/src/openai/types.ts",
+    "apps/bff/src/routes/admin.ts",
+    "apps/bff/src/routes/app-gateway.ts",
+    "apps/bff/src/services/admin-audit.ts",
+    "apps/bff/src/services/admin-connected-apps.ts",
+    "apps/bff/src/services/admin-hardware.ts",
+    "apps/bff/src/services/admin-health.ts",
+    "apps/bff/src/services/admin-inference.ts",
+    "apps/bff/src/services/admin-ops.ts",
+    "apps/bff/src/services/admin-overview.ts",
+    "apps/bff/src/services/admin-settings-validation.ts",
+    "apps/bff/src/services/admin-team.ts",
+    "apps/bff/src/services/audit.ts",
+    "apps/bff/src/services/users.ts",
+    "apps/web/src/app/applications/[[...section]]/page.tsx",
+    "apps/web/src/app/hardware/page.tsx",
+    "apps/web/src/app/inference/[[...section]]/page.tsx",
+    "apps/web/src/app/page.tsx",
+    "apps/web/src/app/settings/page.tsx",
+    "apps/web/src/app/team/[[...section]]/page.tsx",
+    "apps/web/src/components/console-v2/action-toasts.tsx",
+    "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+    "apps/web/src/components/console-v2/console-v2-icons.tsx",
+    "apps/web/src/components/console-v2/console-v2-sections.ts",
+    "apps/web/src/components/console-v2/console-v2-shell.tsx",
+    "apps/web/src/components/console-v2/hardware-chart-primitives.tsx",
+    "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+    "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+    "apps/web/src/components/console-v2/settings-v2-experience.tsx",
+    "apps/web/src/components/console-v2/team-v2-experience.tsx",
+    "apps/web/src/lib/admin/console-v2-routes.tsx",
+    "apps/web/src/lib/auth/sso-bridge.ts",
+    "packages/contracts/package.json",
+  ],
+  addedSourcePaths: [
+    "apps/bff/src/auth/keycloak-jwt.ts",
+    "apps/bff/src/db/inference-core-client.ts",
+    "apps/bff/src/db/inference-core-schema.ts",
+    "apps/bff/src/inference/chat-completions.ts",
+    "apps/bff/src/services/admin-settings-core.ts",
+    "apps/bff/src/services/application-gateway-policy.ts",
+    "apps/bff/src/services/expert-capabilities.ts",
+    "apps/bff/src/services/inference-core-keycloak-admin.ts",
+    "apps/bff/src/services/litellm-chat-transport.ts",
+    "apps/web/src/lib/admin/actions-core.ts",
+    "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+    "apps/web/src/lib/admin/server-data-core.ts",
+    "packages/contracts/src/inference-core.ts",
+  ],
+  deletedSourcePaths: [],
+  changedRepositoryPaths: [
+    ".env.example",
+    "apps/bff/src/auth/persona-security.test.ts",
+    "apps/bff/src/auth/persona.ts",
+    "apps/bff/src/index.ts",
+    "apps/bff/src/openai/types.ts",
+    "apps/bff/src/routes/admin-hardware.test.ts",
+    "apps/bff/src/routes/admin-inference.test.ts",
+    "apps/bff/src/routes/admin-overview-health.test.ts",
+    "apps/bff/src/routes/admin-overview-ops.test.ts",
+    "apps/bff/src/routes/admin.test.ts",
+    "apps/bff/src/routes/admin.ts",
+    "apps/bff/src/routes/app-gateway.test.ts",
+    "apps/bff/src/routes/app-gateway.ts",
+    "apps/bff/src/routes/inference-core-characterization.test.ts",
+    "apps/bff/src/services/admin-audit.ts",
+    "apps/bff/src/services/admin-connected-apps-accounting.test.ts",
+    "apps/bff/src/services/admin-connected-apps.ts",
+    "apps/bff/src/services/admin-hardware.ts",
+    "apps/bff/src/services/admin-health.ts",
+    "apps/bff/src/services/admin-inference.ts",
+    "apps/bff/src/services/admin-ops.ts",
+    "apps/bff/src/services/admin-overview.ts",
+    "apps/bff/src/services/admin-settings-validation.ts",
+    "apps/bff/src/services/admin-team.ts",
+    "apps/bff/src/services/audit.ts",
+    "apps/bff/src/services/users.test.ts",
+    "apps/bff/src/services/users.ts",
+    "apps/web/src/app/applications/[[...section]]/page.tsx",
+    "apps/web/src/app/hardware/page.tsx",
+    "apps/web/src/app/inference/[[...section]]/page.tsx",
+    "apps/web/src/app/page.test.tsx",
+    "apps/web/src/app/page.tsx",
+    "apps/web/src/app/settings/page.tsx",
+    "apps/web/src/app/team/[[...section]]/page.tsx",
+    "apps/web/src/components/console-v2/action-toasts.test.tsx",
+    "apps/web/src/components/console-v2/action-toasts.tsx",
+    "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+    "apps/web/src/components/console-v2/console-v2-icons.tsx",
+    "apps/web/src/components/console-v2/console-v2-sections.ts",
+    "apps/web/src/components/console-v2/console-v2-shell.test.tsx",
+    "apps/web/src/components/console-v2/console-v2-shell.tsx",
+    "apps/web/src/components/console-v2/hardware-chart-primitives.tsx",
+    "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+    "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+    "apps/web/src/components/console-v2/settings-v2-experience.tsx",
+    "apps/web/src/components/console-v2/team-v2-experience.tsx",
+    "apps/web/src/lib/admin/console-v2-routes.tsx",
+    "apps/web/src/lib/auth/sso-bridge.test.ts",
+    "apps/web/src/lib/auth/sso-bridge.ts",
+    "docs/reduction/inference-core/README.md",
+    "packages/contracts/package.json",
+    "scripts/inference-core/guardrails.mjs",
+    "scripts/inference-core/guardrails.test.mjs",
+  ],
+  addedRepositoryPaths: [
+    "apps/bff/src/auth/keycloak-jwt.ts",
+    "apps/bff/src/db/inference-core-client.ts",
+    "apps/bff/src/db/inference-core-schema.test.ts",
+    "apps/bff/src/db/inference-core-schema.ts",
+    "apps/bff/src/inference/chat-completions.ts",
+    "apps/bff/src/routes/app-gateway-boundary.test.ts",
+    "apps/bff/src/services/admin-settings-core.ts",
+    "apps/bff/src/services/application-gateway-policy.ts",
+    "apps/bff/src/services/expert-capabilities.test.ts",
+    "apps/bff/src/services/expert-capabilities.ts",
+    "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
+    "apps/bff/src/services/inference-core-keycloak-admin.ts",
+    "apps/bff/src/services/litellm-chat-transport.ts",
+    "apps/web/src/lib/admin/actions-core.test.ts",
+    "apps/web/src/lib/admin/actions-core.ts",
+    "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+    "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+    "apps/web/src/lib/admin/server-data-core.test.ts",
+    "apps/web/src/lib/admin/server-data-core.ts",
+    "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+    "packages/contracts/src/inference-core.test.ts",
+    "packages/contracts/src/inference-core.ts",
+    "scripts/inference-core/pr02-boundaries.test.mjs",
+    "scripts/inference-core/pr02-contract-revision.mjs",
+  ],
+  deletedRepositoryPaths: [
+    "apps/bff/src/routes/admin-governance-detail.test.ts",
+    "apps/bff/src/routes/admin-overview-governance.test.ts",
+    "apps/bff/src/routes/agentic-runtime.test.ts",
+    "apps/bff/src/routes/builder.test.ts",
+    "apps/bff/src/routes/hub.test.ts",
+    "apps/bff/src/routes/knowledge-pdf-parser.e2e.test.ts",
+    "apps/bff/src/routes/knowledge.test.ts",
+    "apps/bff/src/routes/mcp-gateway.test.ts",
+    "apps/bff/src/routes/openai-compatible.test.ts",
+  ],
+  mutableEscapeHatchPaths: ["apps/bff/src/auth/persona.ts"],
+}
 
 const guardrailExclusions = new Set([
+  "apps/bff/src/db/inference-core-schema.test.ts",
+  "apps/bff/src/routes/app-gateway-boundary.test.ts",
   "apps/bff/src/routes/inference-core-characterization.test.ts",
+  "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
+  "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
   "packages/contracts/src/inference-core-authorization.test.ts",
+  "packages/contracts/src/inference-core.test.ts",
   "docs/reduction/inference-core/README.md",
   "docs/reduction/inference-core/forbidden-surface-allowlist.yaml",
+  "docs/reduction/inference-core/contract-revisions/PR-02.json",
+  "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "docs/reduction/inference-core/retention-characterization.json",
   "docs/reduction/inference-core/route-baseline.json",
   "scripts/inference-core/guardrails.mjs",
   "scripts/inference-core/guardrails.test.mjs",
+  "scripts/inference-core/pr02-contract-revision.mjs",
+  "scripts/inference-core/pr02-boundaries.test.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -38,11 +214,17 @@ const guardrailExclusions = new Set([
 const protectedGuardrailPaths = [
   "apps/bff/tsconfig.json",
   "apps/bff/vitest.config.ts",
+  "apps/bff/src/db/inference-core-schema.test.ts",
+  "apps/bff/src/routes/app-gateway-boundary.test.ts",
   "apps/bff/src/routes/inference-core-characterization.test.ts",
+  "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
   "apps/web/tsconfig.json",
   "apps/web/vitest.config.ts",
+  "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+  "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "packages/contracts/src/inference-core-authorization.test.ts",
   "packages/contracts/src/inference-core-authorization.ts",
+  "packages/contracts/src/inference-core.test.ts",
   "packages/contracts/tsconfig.build.json",
   "packages/contracts/tsconfig.json",
   "packages/copy/tsconfig.build.json",
@@ -50,6 +232,8 @@ const protectedGuardrailPaths = [
   "pnpm-workspace.yaml",
   "scripts/inference-core/guardrails.mjs",
   "scripts/inference-core/guardrails.test.mjs",
+  "scripts/inference-core/pr02-boundaries.test.mjs",
+  "scripts/inference-core/pr02-contract-revision.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -314,16 +498,124 @@ const legacyEscapeHatchSpecs = [
 ]
 
 export function listCandidatePaths(root = repositoryRoot) {
-  const output = execFileSync(
+  const cachedEntries = listCachedEntries(root)
+  for (const entry of cachedEntries) {
+    if (!["100644", "100755"].includes(entry.mode)) {
+      const kind = entry.mode === "160000" ? "gitlink" : "cached Git mode"
+      throw new Error(`Unsupported ${kind} ${entry.mode} at ${entry.path}`)
+    }
+    const absolutePath = resolve(root, entry.path)
+    if (!existsSync(absolutePath) || !lstatSync(absolutePath).isFile()) {
+      throw new Error(
+        `Cached path is missing or not a regular file ${entry.path}; stage its deletion before verification`,
+      )
+    }
+  }
+  assertCachedEntryIntegrity(root, cachedEntries)
+
+  const untrackedOutput = execFileSync(
     "git",
-    ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+    ["ls-files", "-z", "--others", "--exclude-standard"],
     {
       cwd: root,
       encoding: "buffer",
     },
   )
+  const paths = [
+    ...cachedEntries.map(({ path }) => path),
+    ...untrackedOutput.toString("utf8").split("\0").filter(Boolean),
+  ]
 
-  return output.toString("utf8").split("\0").filter(Boolean).sort()
+  return [...new Set(paths)].sort()
+}
+
+function listCachedEntries(root) {
+  const output = execFileSync("git", ["ls-files", "--stage", "-z"], {
+    cwd: root,
+    encoding: "buffer",
+  })
+  return output
+    .toString("utf8")
+    .split("\0")
+    .filter(Boolean)
+    .map((record) => {
+      const separator = record.indexOf("\t")
+      if (separator < 0) {
+        throw new Error("Malformed cached Git entry")
+      }
+      const [mode, objectId, stage] = record.slice(0, separator).split(" ")
+      const path = record.slice(separator + 1)
+      if (
+        !mode ||
+        !/^[0-9a-f]{40,64}$/.test(objectId ?? "") ||
+        stage !== "0" ||
+        path.length === 0
+      ) {
+        throw new Error(`Unsupported cached Git entry ${path || "<unknown>"}`)
+      }
+      return { mode, objectId, path }
+    })
+}
+
+function assertCachedEntryIntegrity(root, entries) {
+  if (entries.length === 0) {
+    return
+  }
+  const objectChecks = execFileSync(
+    "git",
+    ["cat-file", "--batch-check=%(objectname) %(objecttype)"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: `${entries.map(({ objectId }) => objectId).join("\n")}\n`,
+    },
+  )
+    .trimEnd()
+    .split("\n")
+  if (objectChecks.length !== entries.length) {
+    throw new Error("Cached Git object verification returned an invalid result")
+  }
+  if (entries.some(({ path }) => /[\r\n]/.test(path))) {
+    throw new Error(
+      "Cached Git paths containing line breaks are unsupported by integrity verification",
+    )
+  }
+  const worktreeObjectIds = execFileSync(
+    "git",
+    ["hash-object", "--no-filters", "--stdin-paths"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: `${entries.map(({ path }) => path).join("\n")}\n`,
+    },
+  )
+    .trimEnd()
+    .split("\n")
+  if (worktreeObjectIds.length !== entries.length) {
+    throw new Error(
+      "Worktree Git object verification returned an invalid result",
+    )
+  }
+
+  for (const [index, entry] of entries.entries()) {
+    const [objectId, objectType] = objectChecks[index]?.split(" ") ?? []
+    if (objectId !== entry.objectId || objectType !== "blob") {
+      throw new Error(
+        `Cached Git object is missing or not a blob ${entry.objectId} at ${entry.path}`,
+      )
+    }
+    const absolutePath = resolve(root, entry.path)
+    const worktreeMode =
+      statSync(absolutePath).mode & 0o111 ? "100755" : "100644"
+    if (
+      worktreeObjectIds[index] !== entry.objectId ||
+      worktreeMode !== entry.mode
+    ) {
+      throw new Error(
+        `Cached content differs from the worktree at ${entry.path}; stage the current worktree before verification`,
+      )
+    }
+  }
 }
 
 export function scanForbiddenSurfaces({
@@ -412,7 +704,7 @@ export function buildRouteBaseline({
   baseCommit = currentHead(root),
 } = {}) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 3,
     baseCommit,
     policyDigest: routePolicyDigest(),
     target: targetRouteContract,
@@ -423,9 +715,95 @@ export function buildRouteBaseline({
     fastifyRegistrars: extractFastifyRegistrarManifest({ root, paths }),
     webInferenceConsumers: extractWebInferenceConsumers({ root, paths }),
     sourceClosure: buildProductionSourceClosure({ root, paths }),
+    repositoryClosure: buildRepositoryClosure({ root, paths }),
     fingerprints: buildResolverFingerprints(root),
     escapeHatches: buildLegacyEscapeHatches(root, paths),
+    reviewedRevisions: buildReviewedRevisionFingerprints(root),
   }
+}
+
+export function buildRepositoryClosure({
+  root = repositoryRoot,
+  paths = listCandidatePaths(root),
+} = {}) {
+  const cachedByPath = new Map(
+    listCachedEntries(root).map((entry) => [entry.path, entry]),
+  )
+  return paths
+    .filter((path) => !generatedContractPaths.has(path))
+    .map((path) => {
+      const cached = cachedByPath.get(path)
+      if (cached) {
+        return {
+          path,
+          mode: cached.mode,
+          objectId: cached.objectId,
+        }
+      }
+      const absolutePath = resolve(root, path)
+      if (!existsSync(absolutePath) || !lstatSync(absolutePath).isFile()) {
+        throw new Error(`Untracked candidate is not a regular file ${path}`)
+      }
+      return {
+        path,
+        mode: statSync(absolutePath).mode & 0o111 ? "100755" : "100644",
+        objectId: hashWorktreeBlob(root, absolutePath),
+      }
+    })
+    .sort((left, right) => left.path.localeCompare(right.path))
+}
+
+export function buildRepositoryClosureFromCommit(root, commit) {
+  if (!/^[0-9a-f]{40,64}$/.test(commit)) {
+    throw new Error(`Invalid repository-closure commit ${commit}`)
+  }
+  const output = execFileSync(
+    "git",
+    ["ls-tree", "-r", "-z", "--full-tree", "--end-of-options", commit],
+    {
+      cwd: root,
+      encoding: "buffer",
+    },
+  )
+  return output
+    .toString("utf8")
+    .split("\0")
+    .filter(Boolean)
+    .map((record) => {
+      const separator = record.indexOf("\t")
+      if (separator < 0) {
+        throw new Error("Malformed repository-closure tree entry")
+      }
+      const [mode, type, objectId] = record.slice(0, separator).split(" ")
+      const path = record.slice(separator + 1)
+      if (
+        !["100644", "100755"].includes(mode ?? "") ||
+        type !== "blob" ||
+        !/^[0-9a-f]{40,64}$/.test(objectId ?? "") ||
+        path.length === 0
+      ) {
+        throw new Error(`Unsupported repository-closure tree entry ${path}`)
+      }
+      return { path, mode, objectId }
+    })
+    .filter(({ path }) => !generatedContractPaths.has(path))
+    .sort((left, right) => left.path.localeCompare(right.path))
+}
+
+function hashWorktreeBlob(root, absolutePath) {
+  const objectId = execFileSync(
+    "git",
+    ["hash-object", "--no-filters", "--stdin"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: readFileSync(absolutePath),
+    },
+  ).trim()
+  if (!/^[0-9a-f]{40,64}$/.test(objectId)) {
+    throw new Error(`Git returned an invalid worktree object ID ${objectId}`)
+  }
+  return objectId
 }
 
 function buildProductionSourceClosure({ root, paths }) {
@@ -545,6 +923,29 @@ export function verifyShrinkOnly(baseEntries, currentEntries) {
   return errors.sort()
 }
 
+export function verifyReviewedFindingReduction(baseEntries, currentEntries) {
+  const errors = []
+  const baseByKey = new Map(
+    baseEntries.map((entry) => [findingKey(entry), entry]),
+  )
+
+  for (const entry of currentEntries) {
+    const baseEntry = baseByKey.get(findingKey(entry))
+    if (!baseEntry) {
+      errors.push(`new reviewed legacy finding ${findingKey(entry)}`)
+      continue
+    }
+    if (entry.removeBy !== baseEntry.removeBy) {
+      errors.push(`reviewed legacy disposition changed ${findingKey(entry)}`)
+    }
+    if (entry.count > baseEntry.count) {
+      errors.push(`reviewed legacy finding count grew ${findingKey(entry)}`)
+    }
+  }
+
+  return errors.sort()
+}
+
 export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   const paths = listCandidatePaths(root)
   const expectedAllowlist = readJson(resolve(root, allowlistPath))
@@ -583,6 +984,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       baseStatus = "unavailable"
       errors.push(`base ref is unavailable ${baseRef}`)
     } else if (!baseAllowlist || !baseRoutes) {
+      errors.push(...verifyBaseCommitLineage(root, baseCommit))
       baseStatus = "bootstrap"
       if (baseCommit !== pr01BootstrapBase) {
         errors.push(
@@ -590,21 +992,43 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
         )
       }
     } else {
+      errors.push(...verifyBaseCommitLineage(root, baseCommit))
       baseStatus = "checked"
-      errors.push(
-        ...verifyPolicyStability(
-          baseAllowlist,
-          expectedAllowlist,
-          "forbidden-surface",
-        ),
-      )
-      errors.push(
-        ...verifyProtectedGuardrailStability(baseAllowlist, expectedAllowlist),
-      )
-      errors.push(
-        ...verifyShrinkOnly(baseAllowlist.entries, expectedAllowlist.entries),
-      )
-      errors.push(...verifyLegacyRouteShrink(baseRoutes, expectedRoutes))
+      const reviewedRevision = verifyReviewedContractRevision({
+        root,
+        baseCommit,
+        baseAllowlist,
+        currentAllowlist: expectedAllowlist,
+        baseRoutes,
+        currentRoutes: expectedRoutes,
+      })
+      errors.push(...reviewedRevision.errors)
+      if (reviewedRevision.present) {
+        errors.push(
+          ...verifyReviewedFindingReduction(
+            baseAllowlist.entries,
+            expectedAllowlist.entries,
+          ),
+        )
+      } else {
+        errors.push(
+          ...verifyPolicyStability(
+            baseAllowlist,
+            expectedAllowlist,
+            "forbidden-surface",
+          ),
+        )
+        errors.push(
+          ...verifyProtectedGuardrailStability(
+            baseAllowlist,
+            expectedAllowlist,
+          ),
+        )
+        errors.push(
+          ...verifyShrinkOnly(baseAllowlist.entries, expectedAllowlist.entries),
+        )
+        errors.push(...verifyLegacyRouteShrink(baseRoutes, expectedRoutes))
+      }
     }
   }
 
@@ -622,6 +1046,474 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       (route) => route.classification === "legacy-retired",
     ).length,
   }
+}
+
+export function verifyReviewedContractRevision({
+  root,
+  baseCommit,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+  operationPolicy = pr02OperationPolicy,
+}) {
+  const baseRevisions = baseRoutes.reviewedRevisions ?? []
+  const currentRevisions = currentRoutes.reviewedRevisions ?? []
+  const basePr02Revision = baseRevisions.find(({ id }) => id === "PR-02")
+  const currentPr02Revision = currentRevisions.find(({ id }) => id === "PR-02")
+  const errors = []
+  if (
+    (!currentPr02Revision || !basePr02Revision) &&
+    baseCommit !== pr02IntegrationBase
+  ) {
+    errors.push(
+      `PR-02 contract revision base changed expected=${pr02IntegrationBase} actual=${baseCommit}`,
+    )
+  }
+  if (JSON.stringify(baseRevisions) === JSON.stringify(currentRevisions)) {
+    if (basePr02Revision && currentPr02Revision) {
+      errors.push(
+        ...verifyRetainedPr02RevisionEvidence(root, currentPr02Revision),
+      )
+    }
+    return { present: false, errors: errors.sort() }
+  }
+
+  if (basePr02Revision || !currentPr02Revision) {
+    errors.push("unsupported reviewed contract revision history transition")
+  }
+  if (!isRegularFile(resolve(root, pr02ContractRevisionPath))) {
+    return {
+      present: true,
+      errors: [
+        ...errors,
+        `missing reviewed contract revision ${pr02ContractRevisionPath}`,
+      ].sort(),
+    }
+  }
+
+  const reviewedBaseRoutes = {
+    ...baseRoutes,
+    repositoryClosure:
+      baseRoutes.repositoryClosure ??
+      buildRepositoryClosureFromCommit(root, baseCommit),
+  }
+  const evidenceFiles = buildRevisionEvidenceFingerprints(root)
+  const expected = buildContractRevisionDocument({
+    baseCommit,
+    baseTree: resolveTree(root, baseCommit),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes: reviewedBaseRoutes,
+    currentRoutes,
+    evidenceFiles,
+  })
+  const actual = readJson(resolve(root, pr02ContractRevisionPath))
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    errors.push("PR-02 reviewed contract revision does not match exact changes")
+  }
+
+  const expectedRevisionHistory = [
+    ...baseRevisions,
+    {
+      id: "PR-02",
+      path: pr02ContractRevisionPath,
+      sha256: sha256(readFileSync(resolve(root, pr02ContractRevisionPath))),
+    },
+  ]
+  if (
+    JSON.stringify(currentRevisions) !== JSON.stringify(expectedRevisionHistory)
+  ) {
+    errors.push("reviewed contract revision history changed")
+  }
+  if (
+    JSON.stringify(baseRoutes.target) !== JSON.stringify(currentRoutes.target)
+  ) {
+    errors.push("route target contract changed outside PR-02 scope")
+  }
+  if (
+    JSON.stringify(baseRoutes.fingerprints) !==
+    JSON.stringify(currentRoutes.fingerprints)
+  ) {
+    errors.push("route resolver fingerprints changed outside PR-02 scope")
+  }
+  errors.push(...verifyRequiredRoutes(currentRoutes))
+  errors.push(
+    ...verifyPr02OperationMatrix(
+      reviewedBaseRoutes,
+      currentRoutes,
+      operationPolicy,
+    ),
+  )
+
+  return { present: true, errors: errors.sort() }
+}
+
+function verifyRetainedPr02RevisionEvidence(root, revision) {
+  const errors = []
+  if (
+    revision.id !== "PR-02" ||
+    revision.path !== pr02ContractRevisionPath ||
+    !/^[0-9a-f]{64}$/.test(revision.sha256 ?? "")
+  ) {
+    return ["invalid retained PR-02 revision identity"]
+  }
+  const absolutePath = resolve(root, pr02ContractRevisionPath)
+  if (!isRegularFile(absolutePath)) {
+    return [`missing reviewed contract revision ${pr02ContractRevisionPath}`]
+  }
+  if (sha256(readFileSync(absolutePath)) !== revision.sha256) {
+    errors.push("retained PR-02 revision fingerprint changed")
+  }
+  const document = readJson(absolutePath)
+  if (
+    document.id !== "PR-02" ||
+    document.baseCommit !== pr02IntegrationBase ||
+    document.baseTree !== resolveTree(root, pr02IntegrationBase)
+  ) {
+    errors.push("retained PR-02 revision base identity changed")
+  }
+  if (
+    JSON.stringify(document.evidenceFiles) !==
+    JSON.stringify(buildRevisionEvidenceFingerprints(root))
+  ) {
+    errors.push("retained PR-02 revision evidence changed")
+  }
+  return errors.sort()
+}
+
+export function verifyPr02OperationMatrix(
+  base,
+  current,
+  policy = pr02OperationPolicy,
+) {
+  const errors = [
+    ...verifyExactMultisetSubset(
+      base.routes ?? [],
+      current.routes ?? [],
+      "PR-02 route added or changed",
+    ),
+    ...verifyExactMultisetSubset(
+      base.fastifyRegistrars ?? [],
+      current.fastifyRegistrars ?? [],
+      "PR-02 Fastify registrar added or changed",
+    ),
+    ...verifyExactMultisetSubset(
+      base.webInferenceConsumers ?? [],
+      current.webInferenceConsumers ?? [],
+      "PR-02 Web inference consumer added or changed",
+    ),
+    ...verifyRequiredWebAuthBoundary(base, current),
+  ]
+
+  errors.push(
+    ...verifyPr02EscapeHatches(
+      base.escapeHatches ?? [],
+      current.escapeHatches ?? [],
+      policy.mutableEscapeHatchPaths ?? [],
+    ),
+  )
+  errors.push(
+    ...verifyPr02SourceChanges(
+      base.sourceClosure ?? [],
+      current.sourceClosure ?? [],
+      policy,
+    ),
+  )
+  errors.push(
+    ...verifyPr02RepositoryChanges(
+      base.repositoryClosure ?? [],
+      current.repositoryClosure ?? [],
+      policy,
+    ),
+  )
+
+  return errors.sort()
+}
+
+function verifyExactMultisetSubset(base, current, errorPrefix) {
+  const available = new Map()
+  for (const entry of base) {
+    const serialized = JSON.stringify(entry)
+    available.set(serialized, (available.get(serialized) ?? 0) + 1)
+  }
+  const errors = []
+  for (const entry of current) {
+    const serialized = JSON.stringify(entry)
+    const count = available.get(serialized) ?? 0
+    if (count === 0) {
+      errors.push(`${errorPrefix} ${serialized}`)
+    } else {
+      available.set(serialized, count - 1)
+    }
+  }
+  return errors.sort()
+}
+
+function verifyPr02EscapeHatches(base, current, mutablePaths) {
+  const policyErrors = verifyExactPathPolicy(
+    {
+      mutableEscapeHatchPaths: mutablePaths,
+    },
+    ["mutableEscapeHatchPaths"],
+  )
+  const mutable = new Set(mutablePaths)
+  const baseByPath = uniqueEntriesByPath(
+    base,
+    "base escape hatch",
+    policyErrors,
+  )
+  const currentByPath = uniqueEntriesByPath(
+    current,
+    "current escape hatch",
+    policyErrors,
+  )
+  const changed = []
+  for (const path of [
+    ...new Set([...baseByPath.keys(), ...currentByPath.keys()]),
+  ]) {
+    const before = baseByPath.get(path)
+    const after = currentByPath.get(path)
+    if (JSON.stringify(before) === JSON.stringify(after)) {
+      continue
+    }
+    changed.push(path)
+    if (!mutable.has(path) || !before || !after) {
+      policyErrors.push(`PR-02 escape hatch changed outside policy ${path}`)
+    }
+  }
+  if (JSON.stringify(changed.sort()) !== JSON.stringify([...mutable].sort())) {
+    policyErrors.push(
+      `PR-02 escape hatch change set differs expected=${[...mutable]
+        .sort()
+        .join(",")} actual=${changed.sort().join(",")}`,
+    )
+  }
+  return policyErrors.sort()
+}
+
+function verifyPr02SourceChanges(base, current, policy) {
+  return verifyPr02ClosureChanges(base, current, policy, {
+    addedKey: "addedSourcePaths",
+    changedKey: "changedSourcePaths",
+    deletedKey: "deletedSourcePaths",
+    label: "source closure",
+  })
+}
+
+function verifyPr02RepositoryChanges(base, current, policy) {
+  return verifyPr02ClosureChanges(base, current, policy, {
+    addedKey: "addedRepositoryPaths",
+    changedKey: "changedRepositoryPaths",
+    deletedKey: "deletedRepositoryPaths",
+    label: "repository closure",
+  })
+}
+
+function verifyPr02ClosureChanges(
+  base,
+  current,
+  policy,
+  { addedKey, changedKey, deletedKey, label },
+) {
+  const errors = verifyExactPathPolicy(policy, [
+    addedKey,
+    changedKey,
+    deletedKey,
+  ])
+  const baseByPath = uniqueEntriesByPath(base, `base ${label}`, errors)
+  const currentByPath = uniqueEntriesByPath(current, `current ${label}`, errors)
+  const actual = {
+    [addedKey]: [],
+    [changedKey]: [],
+    [deletedKey]: [],
+  }
+  for (const path of [
+    ...new Set([...baseByPath.keys(), ...currentByPath.keys()]),
+  ]) {
+    const before = baseByPath.get(path)
+    const after = currentByPath.get(path)
+    if (!before) {
+      actual[addedKey].push(path)
+    } else if (!after) {
+      actual[deletedKey].push(path)
+    } else if (JSON.stringify(before) !== JSON.stringify(after)) {
+      actual[changedKey].push(path)
+    }
+  }
+  for (const key of Object.keys(actual)) {
+    const expectedPaths = [...(policy[key] ?? [])].sort()
+    const actualPaths = actual[key].sort()
+    if (JSON.stringify(expectedPaths) !== JSON.stringify(actualPaths)) {
+      errors.push(
+        `PR-02 ${key} differ expected=${expectedPaths.join(",")} actual=${actualPaths.join(",")}`,
+      )
+    }
+  }
+  return errors.sort()
+}
+
+function verifyExactPathPolicy(policy, keys) {
+  const errors = []
+  const allPaths = []
+  for (const key of keys) {
+    const paths = policy[key] ?? []
+    if (
+      !Array.isArray(paths) ||
+      paths.some((path) => typeof path !== "string" || path.length === 0) ||
+      JSON.stringify(paths) !== JSON.stringify([...paths].sort()) ||
+      new Set(paths).size !== paths.length
+    ) {
+      errors.push(`invalid PR-02 operation policy ${key}`)
+    }
+    allPaths.push(...paths.map((path) => `${key}\0${path}`))
+  }
+  const pathsWithoutCategory = allPaths.map((entry) => entry.split("\0")[1])
+  if (new Set(pathsWithoutCategory).size !== pathsWithoutCategory.length) {
+    errors.push("PR-02 operation policy path appears in multiple categories")
+  }
+  return errors
+}
+
+function uniqueEntriesByPath(entries, label, errors) {
+  const byPath = new Map()
+  for (const entry of entries) {
+    if (typeof entry?.path !== "string" || byPath.has(entry.path)) {
+      errors.push(`invalid ${label} ${String(entry?.path)}`)
+      continue
+    }
+    byPath.set(entry.path, entry)
+  }
+  return byPath
+}
+
+export function buildContractRevisionDocument({
+  baseCommit,
+  baseTree,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+  evidenceFiles,
+}) {
+  return {
+    schemaVersion: 1,
+    id: "PR-02",
+    scope: "retained-seam-extraction",
+    baseCommit,
+    baseTree,
+    changes: {
+      forbiddenPolicy: {
+        before: baseAllowlist.policyDigest,
+        after: currentAllowlist.policyDigest,
+      },
+      forbiddenEntries: buildEntryChanges(
+        baseAllowlist.entries ?? [],
+        currentAllowlist.entries ?? [],
+        (entry) => `${entry.ruleId} ${entry.path}`,
+      ),
+      protectedFiles: buildEntryChanges(
+        baseAllowlist.protectedFiles ?? [],
+        currentAllowlist.protectedFiles ?? [],
+        (entry) => entry.path,
+      ),
+      routePolicy: {
+        before: baseRoutes.policyDigest,
+        after: currentRoutes.policyDigest,
+      },
+      routes: buildEntryChanges(
+        baseRoutes.routes ?? [],
+        currentRoutes.routes ?? [],
+        routeManifestKey,
+      ),
+      fastifyRegistrars: buildEntryChanges(
+        baseRoutes.fastifyRegistrars ?? [],
+        currentRoutes.fastifyRegistrars ?? [],
+        (entry) => entry.exportName,
+      ),
+      webInferenceConsumers: buildEntryChanges(
+        baseRoutes.webInferenceConsumers ?? [],
+        currentRoutes.webInferenceConsumers ?? [],
+        (entry) => entry.path,
+      ),
+      sourceClosure: buildEntryChanges(
+        baseRoutes.sourceClosure ?? [],
+        currentRoutes.sourceClosure ?? [],
+        (entry) => entry.path,
+      ),
+      repositoryClosure: buildEntryChanges(
+        baseRoutes.repositoryClosure ?? [],
+        currentRoutes.repositoryClosure ?? [],
+        (entry) => entry.path,
+      ),
+      escapeHatches: buildEntryChanges(
+        baseRoutes.escapeHatches ?? [],
+        currentRoutes.escapeHatches ?? [],
+        (entry) => entry.path,
+      ),
+    },
+    evidenceFiles,
+  }
+}
+
+export function buildEntryChanges(base, current, keyFor) {
+  const baseGroups = groupEntries(base, keyFor)
+  const currentGroups = groupEntries(current, keyFor)
+  const keys = [
+    ...new Set([...baseGroups.keys(), ...currentGroups.keys()]),
+  ].sort()
+  const changes = []
+  for (const key of keys) {
+    const before = baseGroups.get(key) ?? []
+    const after = currentGroups.get(key) ?? []
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      changes.push({ key, before, after })
+    }
+  }
+  return changes
+}
+
+function groupEntries(entries, keyFor) {
+  const groups = new Map()
+  for (const entry of entries) {
+    const key = keyFor(entry)
+    const group = groups.get(key) ?? []
+    group.push(entry)
+    groups.set(key, group)
+  }
+  for (const group of groups.values()) {
+    group.sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    )
+  }
+  return groups
+}
+
+function routeManifestKey(route) {
+  return [route.surface, route.method, route.path, route.source].join(" ")
+}
+
+function buildReviewedRevisionFingerprints(root) {
+  if (!isRegularFile(resolve(root, pr02ContractRevisionPath))) {
+    return []
+  }
+  return [
+    {
+      id: "PR-02",
+      path: pr02ContractRevisionPath,
+      sha256: sha256(readFileSync(resolve(root, pr02ContractRevisionPath))),
+    },
+  ]
+}
+
+function buildRevisionEvidenceFingerprints(root) {
+  return pr02RevisionEvidencePaths.map((path) => {
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      throw new Error(`Missing PR-02 revision evidence file ${path}`)
+    }
+    return { path, sha256: sha256(readFileSync(absolutePath)) }
+  })
 }
 
 export function verifyCorePackageClosure(
@@ -3172,6 +4064,20 @@ export function verifyLegacyRouteShrink(base, current) {
       "production source closure changed",
     ),
   )
+  errors.push(
+    ...verifyExactEntryShrink(
+      base.repositoryClosure ?? [],
+      current.repositoryClosure ?? [],
+      (entry) => entry.path,
+      "repository closure changed",
+    ),
+  )
+  if (
+    JSON.stringify(base.reviewedRevisions ?? []) !==
+    JSON.stringify(current.reviewedRevisions ?? [])
+  ) {
+    errors.push("reviewed contract revision history changed")
+  }
   errors.push(...verifyRequiredWebAuthBoundary(base, current))
 
   return errors.sort()
@@ -3225,13 +4131,15 @@ function verifyExactEntryShrink(base, current, keyFor, errorPrefix) {
   return errors.sort()
 }
 
-function verifyRouteBaselineMetadata(baseline) {
+export function verifyRouteBaselineMetadata(baseline) {
   const expectedKeys = [
     "baseCommit",
     "escapeHatches",
     "fastifyRegistrars",
     "fingerprints",
     "policyDigest",
+    "repositoryClosure",
+    "reviewedRevisions",
     "routes",
     "schemaVersion",
     "sourceClosure",
@@ -3240,7 +4148,7 @@ function verifyRouteBaselineMetadata(baseline) {
   ]
   return JSON.stringify(Object.keys(baseline).sort()) ===
     JSON.stringify(expectedKeys) &&
-    baseline.schemaVersion === 1 &&
+    baseline.schemaVersion === 3 &&
     baseline.baseCommit === pr01BootstrapBase
     ? []
     : ["route baseline metadata changed"]
@@ -3318,10 +4226,15 @@ function forbiddenPolicyDigest() {
       })),
       contentRules,
       implementation: [
+        listCandidatePaths,
+        listCachedEntries,
+        assertCachedEntryIntegrity,
         scanForbiddenSurfaces,
         matchFingerprints,
         isContentScanPath,
         isGuardrailPath,
+        verifyShrinkOnly,
+        verifyReviewedFindingReduction,
         verifyCorePackageClosure,
         assertNoUnexpectedEnvironmentFiles,
       ].map(normalizedFunctionSource),
@@ -3342,10 +4255,23 @@ function routePolicyDigest() {
       reviewedFastifyRegistrarSpecs,
       reviewedFastifySourcePaths: [...reviewedFastifySourcePaths].sort(),
       webInferenceEndpointPattern: webInferenceEndpointPattern.source,
+      repositoryClosureExcludedPaths: [...generatedContractPaths].sort(),
       target: targetRouteContract,
       resolverFingerprintSpecs,
       legacyEscapeHatchSpecs,
+      reviewedContractRevision: {
+        integrationBase: pr02IntegrationBase,
+        path: pr02ContractRevisionPath,
+        evidencePaths: pr02RevisionEvidencePaths,
+        operationPolicy: pr02OperationPolicy,
+      },
       implementation: [
+        listCandidatePaths,
+        listCachedEntries,
+        assertCachedEntryIntegrity,
+        verifyRepository,
+        verifyShrinkOnly,
+        verifyReviewedFindingReduction,
         extractBffRoutes,
         assertNoDynamicCodeLoading,
         assertReviewedFastifyImports,
@@ -3382,6 +4308,9 @@ function routePolicyDigest() {
         isTrackedFastifyReceiver,
         extractWebInferenceConsumers,
         buildProductionSourceClosure,
+        buildRepositoryClosure,
+        buildRepositoryClosureFromCommit,
+        hashWorktreeBlob,
         isProductionSurfacePath,
         collectStaticStringConstants,
         staticStringWithConstants,
@@ -3399,7 +4328,25 @@ function routePolicyDigest() {
         verifyLegacyEscapeHatchShrink,
         verifyRequiredWebAuthBoundary,
         verifyExactEntryShrink,
+        verifyLegacyRouteShrink,
         routeCounts,
+        verifyReviewedContractRevision,
+        verifyRetainedPr02RevisionEvidence,
+        verifyPr02OperationMatrix,
+        verifyExactMultisetSubset,
+        verifyPr02EscapeHatches,
+        verifyPr02SourceChanges,
+        verifyPr02RepositoryChanges,
+        verifyPr02ClosureChanges,
+        verifyExactPathPolicy,
+        uniqueEntriesByPath,
+        verifyBaseCommitLineage,
+        buildContractRevisionDocument,
+        buildEntryChanges,
+        groupEntries,
+        routeManifestKey,
+        buildReviewedRevisionFingerprints,
+        buildRevisionEvidenceFingerprints,
       ].map(normalizedFunctionSource),
     }),
   )
@@ -3502,6 +4449,64 @@ function resolveCommit(root, ref) {
       },
     ).trim()
     return /^[0-9a-f]{40,64}$/.test(commit) ? commit : null
+  } catch {
+    return null
+  }
+}
+
+export function verifyBaseCommitLineage(
+  root,
+  baseCommit,
+  dirtySameHeadBase = pr02IntegrationBase,
+) {
+  const head = currentHead(root)
+  if (baseCommit === head) {
+    if (baseCommit !== dirtySameHeadBase) {
+      return [
+        `base ref must be a proper ancestor outside the fixed PR-02 precommit base ${baseCommit}`,
+      ]
+    }
+    const candidateChanges = execFileSync(
+      "git",
+      ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+      {
+        cwd: root,
+        encoding: "buffer",
+      },
+    )
+    if (candidateChanges.length > 0) {
+      return []
+    }
+    return [
+      `base ref must be a proper ancestor of clean candidate HEAD ${baseCommit}`,
+    ]
+  }
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", baseCommit, head], {
+      cwd: root,
+      stdio: "ignore",
+    })
+    return []
+  } catch {
+    return [`base ref is not an ancestor of candidate HEAD ${baseCommit}`]
+  }
+}
+
+function resolveTree(root, commit) {
+  if (!/^[0-9a-f]{40,64}$/.test(commit)) {
+    return null
+  }
+  try {
+    const tree = execFileSync(
+      "git",
+      ["rev-parse", "--verify", "--end-of-options", `${commit}^{tree}`],
+      {
+        cwd: root,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      },
+    ).trim()
+    return /^[0-9a-f]{40,64}$/.test(tree) ? tree : null
   } catch {
     return null
   }

@@ -1,45 +1,3 @@
-import {
-  fireEvent,
-  render as rtlRender,
-  screen,
-  within,
-} from "@testing-library/react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { axe } from "jest-axe"
-import React from "react"
-import { afterEach, describe, expect, it, vi } from "vitest"
-import type {
-  AdminHardwareResponse,
-  AdminTeamGroupDetail,
-  AdminTeamMemberDetail,
-  AdminTeamOverviewResponse,
-  KnowledgeCorpus,
-  KnowledgeCorpusDetailResponse,
-  KnowledgeSource,
-} from "@llm-machines/contracts"
-import ArtifactDetailPage from "./artifacts/[id]/page"
-import ArtifactsPage from "./artifacts/page"
-import ApplicationsConsolePage from "./applications/[[...section]]/page"
-import BuilderAgentStudioPage from "./builder/agents/[id]/page"
-import BuilderPage from "./builder/page"
-import BuilderResourceDetailPage from "./builder/resources/[id]/page"
-import BuilderSubmissionsPage from "./builder/submissions/page"
-import BuilderTemplateDetailPage from "./builder/templates/[id]/page"
-import BuilderTemplatesPage from "./builder/templates/page"
-import ChatPage from "./chat/page"
-import HardwareConsolePage from "./hardware/page"
-import HomePage from "./page"
-import InferenceConsolePage from "./inference/[[...section]]/page"
-import KnowledgeConsolePage from "./knowledge/page"
-import ProfilePage from "./profile/page"
-import ResourceDetailPage from "./resources/[type]/[id]/page"
-import SignInPage from "./auth/signin/page"
-import ResourcesPage from "./resources/page"
-import SettingsConsolePage from "./settings/page"
-import TaskDetailPage from "./tasks/[id]/page"
-import TasksPage from "./tasks/page"
-import TeamConsolePage from "./team/[[...section]]/page"
-import UsagePage from "./usage/page"
 import { ApplicationsV2Experience } from "@/components/console-v2/applications-v2-experience"
 import { HardwareV2Experience } from "@/components/console-v2/hardware-v2-experience"
 import { InferenceV2Experience } from "@/components/console-v2/inference-v2-experience"
@@ -54,6 +12,54 @@ import {
   adminTeamOverview,
 } from "@/lib/admin/mock-data"
 import * as adminServerData from "@/lib/admin/server-data"
+import type {
+  AdminHardwareResponse,
+  AdminTeamGroupDetail,
+  AdminTeamMemberDetail,
+  AdminTeamOverviewResponse,
+  KnowledgeCorpus,
+  KnowledgeCorpusDetailResponse,
+  KnowledgeSource,
+} from "@llm-machines/contracts"
+import type {
+  AdminSettingsResponse as CoreAdminSettingsResponse,
+  AdminTeamGroupDetail as CoreAdminTeamGroupDetail,
+  AdminTeamMemberDetail as CoreAdminTeamMemberDetail,
+  AdminTeamOverviewResponse as CoreAdminTeamOverviewResponse,
+} from "@llm-machines/contracts/inference-core"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import {
+  fireEvent,
+  render as rtlRender,
+  screen,
+  within,
+} from "@testing-library/react"
+import { axe } from "jest-axe"
+import React from "react"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import ApplicationsConsolePage from "./applications/[[...section]]/page"
+import ArtifactDetailPage from "./artifacts/[id]/page"
+import ArtifactsPage from "./artifacts/page"
+import SignInPage from "./auth/signin/page"
+import BuilderAgentStudioPage from "./builder/agents/[id]/page"
+import BuilderPage from "./builder/page"
+import BuilderResourceDetailPage from "./builder/resources/[id]/page"
+import BuilderSubmissionsPage from "./builder/submissions/page"
+import BuilderTemplateDetailPage from "./builder/templates/[id]/page"
+import BuilderTemplatesPage from "./builder/templates/page"
+import ChatPage from "./chat/page"
+import HardwareConsolePage from "./hardware/page"
+import InferenceConsolePage from "./inference/[[...section]]/page"
+import KnowledgeConsolePage from "./knowledge/page"
+import HomePage from "./page"
+import ProfilePage from "./profile/page"
+import ResourceDetailPage from "./resources/[type]/[id]/page"
+import ResourcesPage from "./resources/page"
+import SettingsConsolePage from "./settings/page"
+import TaskDetailPage from "./tasks/[id]/page"
+import TasksPage from "./tasks/page"
+import TeamConsolePage from "./team/[[...section]]/page"
+import UsagePage from "./usage/page"
 
 const navigationMocks = vi.hoisted(() => ({
   redirect: vi.fn((href: string) => {
@@ -236,6 +242,87 @@ vi.mock("@/lib/admin/server-data", async () => {
   }
 })
 
+vi.mock("@/lib/admin/server-data-core", async () => {
+  const admin = await import("@/lib/admin/mock-data")
+  const allowedServiceIds = new Set([
+    "web",
+    "bff",
+    "postgres",
+    "keycloak",
+    "litellm",
+    "grafana",
+  ])
+  const settings: CoreAdminSettingsResponse = {
+    generatedAt: admin.adminSettings.generatedAt,
+    license: admin.adminSettings.license,
+    organization: admin.adminSettings.organization,
+    privacy: admin.adminSettings.privacy,
+    reachability: admin.adminSettings.reachability.flatMap((service) =>
+      allowedServiceIds.has(service.id)
+        ? [
+            {
+              ...service,
+              id: service.id as
+                | "bff"
+                | "grafana"
+                | "keycloak"
+                | "litellm"
+                | "postgres"
+                | "web",
+            },
+          ]
+        : [],
+    ),
+    sourceStatus: admin.adminSettings.sourceStatus,
+    systemUpdate: admin.adminSettings.systemUpdate,
+  }
+  const team: CoreAdminTeamOverviewResponse = {
+    generatedAt: admin.adminTeamOverview.generatedAt,
+    groups: admin.adminTeamOverview.groups.map(
+      ({ unlockCount: _unlockCount, ...group }) => group,
+    ),
+    members: [],
+    scim: admin.adminTeamOverview.scim,
+    serviceStatus: admin.adminTeamOverview.serviceStatus,
+    sourceStatus: admin.adminTeamOverview.sourceStatus,
+  }
+
+  class ConsoleBffAuthExpiredError extends Error {
+    constructor(path: string) {
+      super(`Console BFF authentication expired for ${path}.`)
+      this.name = "ConsoleBffAuthExpiredError"
+    }
+  }
+
+  return {
+    ConsoleBffAuthExpiredError,
+    getAdminConnectedAppDetail: vi.fn(async (appId: string) => {
+      const app = admin.adminConnectedApps.apps.find(
+        (item) => item.id === appId,
+      )
+      return app ? { app } : null
+    }),
+    getAdminConnectedApps: vi.fn(async () => admin.adminConnectedApps),
+    getAdminHardware: vi.fn(async () => admin.adminHardware),
+    getAdminInference: vi.fn(async (filters: { range?: string } = {}) => ({
+      ...admin.adminInference,
+      range:
+        filters.range === "7d" ||
+        filters.range === "30d" ||
+        filters.range === "90d"
+          ? filters.range
+          : admin.adminInference.range,
+    })),
+    getAdminSettings: vi.fn(async () => settings),
+    getAdminTeamGroupDetail: vi.fn(async () => null),
+    getAdminTeamMemberDetail: vi.fn(async () => null),
+    getAdminTeamOverview: vi.fn(async () => team),
+    isConsoleBffAuthExpiredError: vi.fn(
+      (error: unknown) => error instanceof ConsoleBffAuthExpiredError,
+    ),
+  }
+})
+
 vi.mock("@/lib/hub/server-data", async () => {
   const hub = await import("@/lib/hub/mock-data")
 
@@ -294,6 +381,24 @@ const teamGroupsForPermissions: AdminTeamOverviewResponse["groups"] = [
   },
 ]
 
+const coreAdminSettings: CoreAdminSettingsResponse = {
+  generatedAt: adminSettings.generatedAt,
+  license: adminSettings.license,
+  organization: adminSettings.organization,
+  privacy: adminSettings.privacy,
+  reachability: (
+    ["web", "bff", "postgres", "keycloak", "litellm", "grafana"] as const
+  ).map((id) => {
+    const service = adminSettings.reachability.find((item) => item.id === id)
+    if (!service) {
+      throw new Error(`Missing ${id} Settings fixture.`)
+    }
+    return { ...service, id }
+  }),
+  sourceStatus: adminSettings.sourceStatus,
+  systemUpdate: adminSettings.systemUpdate,
+}
+
 describe("HomePage", () => {
   afterEach(() => {
     navigationMocks.redirect.mockClear()
@@ -302,9 +407,9 @@ describe("HomePage", () => {
     vi.unstubAllGlobals()
   })
 
-  it("redirects the root route to the production Console Knowledge page", () => {
-    expect(() => HomePage()).toThrow("redirect:/knowledge")
-    expect(navigationMocks.redirect).toHaveBeenCalledWith("/knowledge")
+  it("redirects the root route to the retained Applications page", () => {
+    expect(() => HomePage()).toThrow("redirect:/applications")
+    expect(navigationMocks.redirect).toHaveBeenCalledWith("/applications")
   })
 
   it.each([
@@ -563,7 +668,7 @@ describe("HomePage", () => {
     ).toBeTruthy()
   })
 
-  it("renders the redesigned Console navigation shell with Knowledge active", async () => {
+  it("renders the retained Console navigation without Knowledge", async () => {
     vi.stubGlobal("EventSource", TestEventSource)
     const page = await ConsoleV2TestPage({
       params: Promise.resolve({ section: [] }),
@@ -575,7 +680,6 @@ describe("HomePage", () => {
       name: "Console v2 navigation",
     })
     const expectedLinks = [
-      ["Knowledge", "/knowledge"],
       ["Applications", "/applications"],
       ["Inference", "/inference"],
       ["Hardware", "/hardware"],
@@ -592,10 +696,8 @@ describe("HomePage", () => {
     }
 
     expect(
-      within(navigation)
-        .getByRole("link", { name: "Knowledge" })
-        .getAttribute("aria-current"),
-    ).toBe("page")
+      within(navigation).queryByRole("link", { name: "Knowledge" }),
+    ).toBeNull()
     expect(screen.getByRole("heading", { name: "Knowledge" })).toBeTruthy()
     expect(screen.getByText("HR Policies")).toBeTruthy()
     expect(screen.queryByText("Archived Legacy Policies")).toBeNull()
@@ -788,7 +890,6 @@ describe("HomePage", () => {
     for (const heading of [
       "Settings",
       "Organization",
-      "URL Governance",
       "System Status",
       "Updates & License",
       "Privacy",
@@ -878,9 +979,9 @@ describe("HomePage", () => {
 
   it("renders Console V2 Settings organization logos as editable assets", () => {
     const settingsWithLogos = {
-      ...adminSettings,
+      ...coreAdminSettings,
       organization: {
-        ...adminSettings.organization,
+        ...coreAdminSettings.organization,
         fullLogo: {
           checksum:
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -906,7 +1007,7 @@ describe("HomePage", () => {
           width: 512,
         },
       },
-    } satisfies typeof adminSettings
+    } satisfies CoreAdminSettingsResponse
 
     const { container } = render(
       <SettingsV2Experience settings={settingsWithLogos} />,
@@ -932,70 +1033,6 @@ describe("HomePage", () => {
       container.querySelector<HTMLInputElement>('input[name="clearFullLogo"]')
         ?.checked,
     ).toBe(true)
-  })
-
-  it("supports Console V2 Settings URL rule edit, disable, and delete confirmation controls", () => {
-    const settingsWithRules = {
-      ...adminSettings,
-      urlPolicyRules: [
-        {
-          createdAt: "2026-05-29T12:00:00.000Z",
-          createdBy: "admin-1",
-          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-          normalizedPattern: "https://docs.example.com/",
-          pattern: "https://docs.example.com",
-          reason: "Approved documentation source.",
-          scope: "knowledge_ingestion",
-          status: "active",
-          type: "trusted",
-          updatedAt: "2026-05-29T12:00:00.000Z",
-          updatedBy: "admin-1",
-        },
-        {
-          createdAt: "2026-05-29T12:05:00.000Z",
-          createdBy: "admin-1",
-          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-          normalizedPattern: "https://blocked.example.com/",
-          pattern: "https://blocked.example.com",
-          reason: "Blocked by intake policy.",
-          scope: "all",
-          status: "disabled",
-          type: "forbidden",
-          updatedAt: "2026-05-29T12:05:00.000Z",
-          updatedBy: "admin-1",
-        },
-      ],
-    } satisfies typeof adminSettings
-
-    render(<SettingsV2Experience settings={settingsWithRules} />)
-
-    expect(screen.getByRole("table", { name: "URL policy rules" })).toBeTruthy()
-    expect(screen.getByText("https://docs.example.com")).toBeTruthy()
-    expect(screen.getByText("https://blocked.example.com")).toBeTruthy()
-    expect(
-      screen.getByRole("button", {
-        name: "Disable trusted https://docs.example.com",
-      }),
-    ).toBeTruthy()
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Edit trusted https://docs.example.com",
-      }),
-    )
-    expect(
-      screen.getByLabelText("Pattern for https://docs.example.com"),
-    ).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Save rule" })).toBeTruthy()
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Delete trusted https://docs.example.com",
-      }),
-    )
-    expect(screen.getByRole("dialog", { name: "Delete URL rule?" }))
-    expect(screen.getByRole("button", { name: "Delete rule" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy()
   })
 
   it("renders the redesigned Console new-corpus view from query state", async () => {
@@ -1750,26 +1787,9 @@ describe("HomePage", () => {
     expect(screen.queryByRole("option", { name: "HR" })).toBeNull()
 
     unmount()
-    const { unmount: unmountApplicationsMcp } = render(
-      <ApplicationsV2Experience
-        registryItems={[]}
-        teamGroups={teamGroupsForPermissions}
-        view="add-server"
-      />,
-    )
-    const applicationPermissions = screen.getByLabelText(
-      "Permissions",
-    ) as HTMLSelectElement
-    expect(
-      Array.from(applicationPermissions.options).map((option) => option.value),
-    ).toEqual(["Everyone", "Engineering", "Operators"])
-    expect(screen.queryByRole("option", { name: "Finance" })).toBeNull()
-
-    unmountApplicationsMcp()
     render(
       <ApplicationsV2Experience
         modelOptions={adminInference.models}
-        registryItems={[]}
         teamGroups={teamGroupsForPermissions}
         view="new-app"
       />,
@@ -1847,9 +1867,7 @@ describe("HomePage", () => {
         .getAttribute("aria-current"),
     ).toBe("page")
     expect(
-      within(navigation)
-        .getByRole("link", { name: "Knowledge" })
-        .getAttribute("aria-current"),
+      within(navigation).queryByRole("link", { name: "Knowledge" }),
     ).toBeNull()
   })
 
@@ -1961,16 +1979,21 @@ describe("HomePage", () => {
   })
 
   it("renders Team member rows, create form, and member details", () => {
-    const overview = {
-      ...adminTeamOverview,
+    const overview: CoreAdminTeamOverviewResponse = {
+      generatedAt: adminTeamOverview.generatedAt,
       groups: [
-        ...adminTeamOverview.groups,
+        {
+          id: "everyone",
+          keycloakHref: null,
+          memberCount: 0,
+          name: "Everyone",
+          virtual: true,
+        },
         {
           id: "group-engineering",
           keycloakHref: "/keycloak/groups/group-engineering",
           memberCount: 1,
           name: "Engineering",
-          unlockCount: 0,
           virtual: false,
         },
       ],
@@ -1984,48 +2007,35 @@ describe("HomePage", () => {
           id: "kc-user-1",
           keycloakHref: "/keycloak/users/kc-user-1",
           lastActiveAt: "2026-05-29T12:10:00.000Z",
-          role: "builder",
+          role: "operator",
           status: "active",
           username: "ada.lovelace",
         },
       ],
+      scim: adminTeamOverview.scim,
       serviceStatus: "ok",
       sourceStatus: "ok",
-    } satisfies AdminTeamOverviewResponse
-    const breakGlassAdmin = {
-      createdAt: "2026-05-29T11:00:00.000Z",
-      displayName: "Ana Admin",
-      email: "ana@example.test",
-      enabled: true,
-      groups: [],
-      id: "kc-admin-1",
-      keycloakHref: "/keycloak/users/kc-admin-1",
-      lastActiveAt: "2026-05-29T12:05:00.000Z",
-      role: "admin",
-      status: "active",
-      username: "ana.admin",
-    } satisfies AdminTeamOverviewResponse["members"][number]
+    }
     const detail = {
       activity: [
         {
-          action: "knowledge.publish",
+          action: "applications.credentials.rotate",
           createdAt: "2026-05-29T12:20:00.000Z",
           href: "#audit-log-deferred",
           id: "audit-1",
-          targetId: "corpus-1",
-          targetType: "corpus",
+          targetId: "app-1",
+          targetType: "application",
         },
       ],
       member: overview.members[0],
       usage: {
-        mcpCalls: 4,
         mostUsedModel: "llama-3.1",
         prompts: 18,
         sourceStatus: "ok",
         tokens: 8100,
         window: "30d",
       },
-    } satisfies AdminTeamMemberDetail
+    } satisfies CoreAdminTeamMemberDetail
     const engineeringGroup = overview.groups.find(
       (group) => group.id === "group-engineering",
     )
@@ -2035,15 +2045,7 @@ describe("HomePage", () => {
     const groupDetail = {
       group: engineeringGroup,
       members: overview.members,
-      unlocks: [
-        {
-          href: "/knowledge?corpus=corpus-1",
-          id: "corpus-1",
-          name: "Engineering corpus",
-          type: "corpus",
-        },
-      ],
-    } satisfies AdminTeamGroupDetail
+    } satisfies CoreAdminTeamGroupDetail
 
     const { rerender } = render(
       <TeamV2Experience overview={overview} view="overview" />,
@@ -2076,7 +2078,7 @@ describe("HomePage", () => {
 
     rerender(<TeamV2Experience overview={overview} view="new-member" />)
     expect(screen.getByLabelText("Name")).toBeTruthy()
-    expect(screen.getByLabelText("Corporate email")).toBeTruthy()
+    expect(screen.getByLabelText("Company email")).toBeTruthy()
     expect(screen.getByLabelText("Group")).toBeTruthy()
     expect(screen.queryByLabelText("Username")).toBeNull()
     expect(screen.queryByLabelText("Status")).toBeNull()
@@ -2102,7 +2104,7 @@ describe("HomePage", () => {
     expect(screen.getByText("Password reset email sent.")).toBeTruthy()
     expect(screen.getByText("Usage summary")).toBeTruthy()
     expect(screen.getByText("8,100")).toBeTruthy()
-    expect(screen.getByText("knowledge.publish")).toBeTruthy()
+    expect(screen.getByText("applications.credentials.rotate")).toBeTruthy()
     expect(screen.getByRole("button", { name: "Invite by email" })).toBeTruthy()
     expect(
       screen.getByRole("button", { name: "Reset password email" }),
@@ -2141,7 +2143,6 @@ describe("HomePage", () => {
     expect(screen.getByText("Team group updated.")).toBeTruthy()
     expect(screen.getByText("Group basics")).toBeTruthy()
     expect(screen.getByDisplayValue("Engineering")).toBeTruthy()
-    expect(screen.getByText("Engineering corpus")).toBeTruthy()
     expect(screen.getByRole("button", { name: "Assign selected" })).toBeTruthy()
     expect(
       screen
@@ -2153,12 +2154,6 @@ describe("HomePage", () => {
       <TeamV2Experience
         overview={{
           ...overview,
-          breakGlass: {
-            eligibleAdmins: [breakGlassAdmin],
-            selectedAdminId: "kc-admin-1",
-            updatedAt: "2026-05-29T13:10:00.000Z",
-            updatedBy: "admin-1",
-          },
           scim: {
             detail: "Advanced identity settings are managed in Keycloak.",
             keycloakHref: "/keycloak/admin/llm-machines",
@@ -2168,13 +2163,9 @@ describe("HomePage", () => {
             status: "configured",
           },
         }}
-        teamAction="breakGlassUpdated"
         view="overview"
       />,
     )
-    expect(screen.getByText("Break-glass Admin updated.")).toBeTruthy()
-    expect(screen.getByLabelText("Admin")).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy()
     expect(
       screen
         .getByRole("link", {
@@ -2184,7 +2175,7 @@ describe("HomePage", () => {
     ).toBe("/keycloak/admin/llm-machines")
   })
 
-  it("renders Console V2 Applications connected apps above MCP servers", async () => {
+  it("renders Console V2 Applications as connected-app controls only", async () => {
     vi.stubGlobal("EventSource", TestEventSource)
     const page = await ConsoleV2TestPage({
       params: Promise.resolve({ section: ["applications"] }),
@@ -2196,37 +2187,16 @@ describe("HomePage", () => {
       name: "Console v2 navigation",
     })
     expect(screen.getByRole("heading", { name: "Applications" })).toBeTruthy()
-    const connectedAppsHeading = screen.getByRole("heading", {
-      name: "Connected apps",
-    })
-    const mcpServersHeading = screen.getByRole("heading", {
-      name: "MCP servers",
-    })
-    expect(
-      connectedAppsHeading.compareDocumentPosition(mcpServersHeading) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Connected apps" })).toBeTruthy()
     expect(screen.getByText("Claims Portal")).toBeTruthy()
     expect(screen.getByText("Support Desk")).toBeTruthy()
-    expect(screen.getAllByText("Staging").length).toBeGreaterThan(0)
-    expect(screen.getByText("Production")).toBeTruthy()
     expect(screen.getByText("284K")).toBeTruthy()
-    expect(screen.getAllByText("7D requests")).toHaveLength(2)
-    expect(screen.getAllByText("7D tokens")).toHaveLength(2)
+    expect(screen.getAllByText("Requests")).toHaveLength(2)
+    expect(screen.getAllByText("Tokens")).toHaveLength(2)
     expect(screen.getAllByText("Failures")).toHaveLength(2)
     expect(
       screen.getByRole("link", { name: "Add app" }).getAttribute("href"),
     ).toBe("/applications/apps/new")
-    expect(screen.getByRole("heading", { name: "MCP servers" })).toBeTruthy()
-    expect(screen.getByText("Internal Docs")).toBeTruthy()
-    expect(
-      screen.getByRole("link", { name: "Add server" }).getAttribute("href"),
-    ).toBe("/applications/add-server")
-    expect(
-      screen.queryByRole("link", { name: "Configure Internal Docs" }),
-    ).toBeNull()
-    expect(screen.getByText("T2")).toBeTruthy()
-    expect(screen.getByRole("status", { name: "Internal Docs enabled" }))
     expect(
       within(navigation)
         .getByRole("link", { name: "Applications" })
@@ -2235,22 +2205,15 @@ describe("HomePage", () => {
   })
 
   it("renders Console V2 Applications empty connected-app state", () => {
-    render(
-      <ApplicationsV2Experience
-        connectedApps={[]}
-        registryItems={[]}
-        view="overview"
-      />,
-    )
+    render(<ApplicationsV2Experience connectedApps={[]} view="overview" />)
 
     expect(screen.getByRole("heading", { name: "Connected apps" })).toBeTruthy()
     expect(
       screen.getByText(
-        "Add the first connected app to issue staging credentials and route customer-owned workflows through the BFF gateway.",
+        "Add the first connected app to issue a dedicated credential.",
       ),
     ).toBeTruthy()
     expect(screen.getByRole("link", { name: "Add app" })).toBeTruthy()
-    expect(screen.getByText("No MCP servers are available yet.")).toBeTruthy()
     expect(screen.queryByRole("img")).toBeNull()
   })
 
@@ -2270,28 +2233,32 @@ describe("HomePage", () => {
     ).toBe("/applications")
     expect(screen.getByLabelText("Name")).toBeTruthy()
     expect(screen.getByLabelText("Description")).toBeTruthy()
-    expect(screen.getByText("Environment")).toBeTruthy()
-    expect(screen.getByText("Staging")).toBeTruthy()
-    expect(screen.getByText("Auth")).toBeTruthy()
+    expect(screen.getByText("Authentication")).toBeTruthy()
     expect(
       screen
         .getByRole("button", { name: "API key" })
         .getAttribute("aria-pressed"),
     ).toBe("true")
-    expect(screen.getByRole("button", { name: "OAuth Advanced" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "OAuth" })).toBeTruthy()
     expect(screen.getByLabelText("Owner group")).toBeTruthy()
     expect(screen.getByText("Allowed models")).toBeTruthy()
     expect(screen.getByLabelText("qwen3:32b")).toHaveProperty("checked", true)
     expect(screen.getByLabelText("gemma3:27b")).toBeTruthy()
-    expect(screen.getByLabelText("Rate limit")).toHaveProperty("value", "")
-    expect(screen.getByLabelText("Rate limit")).toHaveProperty(
-      "placeholder",
-      "Unlimited",
+    expect(screen.getByLabelText("Rate limit per minute")).toHaveProperty(
+      "value",
+      "",
     )
-    expect(screen.getByLabelText("Token budget")).toHaveProperty("value", "")
-    expect(screen.getByLabelText("Token budget")).toHaveProperty(
+    expect(screen.getByLabelText("Rate limit per minute")).toHaveProperty(
       "placeholder",
-      "Unlimited",
+      "Disabled",
+    )
+    expect(screen.getByLabelText("Seven-day token limit")).toHaveProperty(
+      "value",
+      "",
+    )
+    expect(screen.getByLabelText("Seven-day token limit")).toHaveProperty(
+      "placeholder",
+      "Disabled",
     )
     expect(screen.getByRole("button", { name: "Create app" })).toBeTruthy()
     expect(screen.queryByText("shown-once-secret")).toBeNull()
@@ -2313,159 +2280,22 @@ describe("HomePage", () => {
     ).toBeTruthy()
     expect(screen.getByText("Owner group")).toBeTruthy()
     expect(screen.getByText("Allowed models")).toBeTruthy()
-    expect(screen.getByText(/API key: llmm_t4_claims/)).toBeTruthy()
-    expect(
-      screen
-        .getByRole("button", { name: "Production" })
-        .getAttribute("aria-pressed"),
-    ).toBe("false")
-    expect(screen.getByRole("button", { name: "Production" })).toHaveProperty(
-      "disabled",
-      true,
-    )
-    expect(screen.getByRole("button", { name: "Promote" })).toHaveProperty(
-      "disabled",
-      true,
-    )
+    expect(screen.getByText("Credential age")).toBeTruthy()
+    expect(screen.getByText("Connection status")).toBeTruthy()
     expect(screen.getByRole("button", { name: "Test connection" })).toBeTruthy()
     expect(
       screen.getByRole("button", { name: "Rotate credentials" }),
     ).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Disable app" }))
-    expect(screen.getByRole("dialog", { name: "Disable app?" })).toBeTruthy()
+    expect(
+      screen.getByRole("dialog", { name: "Disable this app?" }),
+    ).toBeTruthy()
     expect(screen.getByRole("button", { name: "Disable" })).toBeTruthy()
     expect(screen.queryByText("Client secret")).toBeNull()
     expect(screen.queryByText(/secret/i)).toBeNull()
   })
 
-  it("renders promoted connected app production tab as available", async () => {
-    vi.stubGlobal("EventSource", TestEventSource)
-    const page = await ConsoleV2TestPage({
-      params: Promise.resolve({
-        section: ["applications", "apps", "connected-app-support-desk"],
-      }),
-    })
-
-    render(page)
-
-    const productionButton = screen.getByRole("button", {
-      name: "Production",
-    })
-    expect(productionButton).toHaveProperty("disabled", false)
-    fireEvent.click(productionButton)
-    expect(productionButton.getAttribute("aria-pressed")).toBe("true")
-    expect(screen.getByText(/llmm-app-connected-app-support-desk-production/))
-    expect(screen.getByRole("button", { name: "Promoted" })).toHaveProperty(
-      "disabled",
-      true,
-    )
-  })
-
-  it("renders Console V2 Applications add MCP server form", async () => {
-    vi.stubGlobal("EventSource", TestEventSource)
-    const page = await ConsoleV2TestPage({
-      params: Promise.resolve({ section: ["applications", "add-server"] }),
-      searchParams: Promise.resolve({ mcpAction: "tested" }),
-    })
-
-    render(page)
-
-    expect(
-      screen.getByRole("heading", { name: "Applications > Add MCP server" }),
-    ).toBeTruthy()
-    expect(
-      screen.getByRole("link", { name: "Go back" }).getAttribute("href"),
-    ).toBe("/applications")
-    expect(screen.getByText("MCP connection test passed.")).toBeTruthy()
-    expect(screen.getByLabelText("Name")).toBeTruthy()
-    expect(screen.getByLabelText("Description")).toBeTruthy()
-    expect(screen.getByLabelText("Chat Command")).toBeTruthy()
-    expect(screen.getByLabelText("URL endpoint")).toBeTruthy()
-    expect(
-      screen.getByRole("button", { name: "URL" }).getAttribute("aria-pressed"),
-    ).toBe("true")
-    expect(screen.getByRole("button", { name: "Test" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Draft" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy()
-  })
-
-  it("links Admin-created MCP server settings and labels them as T3", () => {
-    const internalDocs = adminConnectorRegistry.items.find(
-      (item) => item.id === "internal-docs",
-    )
-    if (!internalDocs) {
-      throw new Error("Internal Docs fixture is required.")
-    }
-    const adminCreated: (typeof adminConnectorRegistry.items)[number] = {
-      ...internalDocs,
-      allowedEndpoints: ["mcp.example.test:443"],
-      auditHref: "#audit-log-deferred",
-      auditEvents: ["connector.docs-mcp.invoke"],
-      checksum: "sha256:docs-mcp",
-      dataClasses: ["admin-configured"],
-      description: "Documentation MCP server.",
-      displayName: "Docs MCP",
-      id: "docs-mcp",
-      license: "Local admin configuration",
-      maintainer: "Console Admin",
-      requiredScopes: ["@docs-mcp"],
-      runtimeProfile: "admin-url-mcp",
-      sourceRef: "admin/mcp-servers/docs-mcp",
-      supportTier: "t3",
-    }
-
-    render(
-      <ApplicationsV2Experience
-        connectedApps={adminConnectedApps.apps}
-        registryItems={[internalDocs, adminCreated]}
-        view="overview"
-      />,
-    )
-
-    expect(
-      screen.queryByRole("link", { name: "Configure Internal Docs" }),
-    ).toBeNull()
-    expect(
-      screen
-        .getByRole("link", { name: "Configure Docs MCP" })
-        .getAttribute("href"),
-    ).toBe("/applications/mcp/docs-mcp/settings")
-    expect(screen.getByText("T2")).toBeTruthy()
-    expect(screen.getByText("T3")).toBeTruthy()
-  })
-
-  it("renders Console V2 Applications MCP server settings for Admin-created servers", async () => {
-    vi.stubGlobal("EventSource", TestEventSource)
-    const page = await ConsoleV2TestPage({
-      params: Promise.resolve({
-        section: ["applications", "mcp", "docs-mcp", "settings"],
-      }),
-      searchParams: Promise.resolve({ mcpAction: "updated" }),
-    })
-
-    render(page)
-
-    expect(
-      screen.getByRole("heading", {
-        name: "Applications > Docs MCP > Settings",
-      }),
-    ).toBeTruthy()
-    expect(
-      screen.getByRole("link", { name: "Go back" }).getAttribute("href"),
-    ).toBe("/applications")
-    expect(screen.getByText("MCP server settings updated.")).toBeTruthy()
-    expect(screen.getByDisplayValue("Docs MCP")).toBeTruthy()
-    expect(
-      (screen.getByLabelText("Chat Command") as HTMLInputElement).disabled,
-    ).toBe(true)
-    expect(
-      (screen.getByLabelText("URL endpoint") as HTMLInputElement).value,
-    ).toBe("https://mcp.example.test/rpc")
-    expect(screen.getByRole("button", { name: "Enabled" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy()
-  })
-
-  it("cuts over Admin Knowledge to the redesigned Console UI", async () => {
+  it("keeps legacy Admin Knowledge isolated from retained navigation", async () => {
     vi.stubGlobal("EventSource", TestEventSource)
     const page = await KnowledgeConsolePage({
       searchParams: Promise.resolve({}),
@@ -2477,15 +2307,8 @@ describe("HomePage", () => {
       name: "Console v2 navigation",
     })
     expect(
-      within(navigation)
-        .getByRole("link", { name: "Knowledge" })
-        .getAttribute("href"),
-    ).toBe("/knowledge")
-    expect(
-      within(navigation)
-        .getByRole("link", { name: "Knowledge" })
-        .getAttribute("aria-current"),
-    ).toBe("page")
+      within(navigation).queryByRole("link", { name: "Knowledge" }),
+    ).toBeNull()
     expect(screen.getByRole("heading", { name: "Knowledge" })).toBeTruthy()
     expect(screen.getAllByText("HR Policies").length).toBeGreaterThan(0)
     expect(screen.queryByText("Archived Legacy Policies")).toBeNull()

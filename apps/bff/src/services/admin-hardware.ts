@@ -7,14 +7,15 @@ import type {
   AdminHardwareSeries,
   AdminHardwareThreshold,
   AdminHardwareUnit,
-  HubSeverity,
-  HubSourceStatus,
-} from "@llm-machines/contracts"
+  InferenceCoreSeverity,
+  InferenceCoreSourceStatus,
+} from "@llm-machines/contracts/inference-core"
 import { canUseBffFixtureData } from "../config/fixture-mode"
 import {
   PrometheusClient,
   type PrometheusMatrixSample,
 } from "./admin-prometheus"
+import { expertCapability } from "./expert-capabilities"
 
 interface HardwareQueryOptions {
   host?: string
@@ -297,7 +298,7 @@ function emptyHardwareResponse({
   grafanaUrl: string | null
   host: string
   range: AdminHardwareRange
-  sourceStatus: HubSourceStatus
+  sourceStatus: InferenceCoreSourceStatus
   step: string
   summary: string
 }): AdminHardwareResponse {
@@ -346,7 +347,9 @@ function collectAvailableHosts(
   return Array.from(hosts).sort((a, b) => a.localeCompare(b))
 }
 
-function hardwareSourceStatus(charts: AdminHardwareChart[]): HubSourceStatus {
+function hardwareSourceStatus(
+  charts: AdminHardwareChart[],
+): InferenceCoreSourceStatus {
   if (charts.every((chart) => chart.series.length === 0)) {
     return "degraded"
   }
@@ -358,7 +361,7 @@ function hardwareSourceStatus(charts: AdminHardwareChart[]): HubSourceStatus {
 
 function hardwareSummary(
   charts: AdminHardwareChart[],
-  sourceStatus: HubSourceStatus,
+  sourceStatus: InferenceCoreSourceStatus,
 ): string {
   if (sourceStatus === "ok") {
     return `Prometheus is returning all ${chartDefinitions.length} curated hardware signals.`
@@ -388,7 +391,7 @@ function escapeLabelValue(value: string): string {
 
 function threshold(
   label: string,
-  severity: HubSeverity,
+  severity: InferenceCoreSeverity,
   value: number,
   unit: AdminHardwareUnit,
 ): AdminHardwareThreshold {
@@ -575,6 +578,9 @@ function metricSource(metric: Record<string, string>): string | null {
 }
 
 function grafanaDashboardUrl(): string | null {
+  if (expertCapability("grafana").directAccess !== "enabled") {
+    return null
+  }
   return configuredExternalUrl("GRAFANA_PUBLIC_URL", "GRAFANA_PUBLIC_ORIGIN")
 }
 

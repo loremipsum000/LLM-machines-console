@@ -1,24 +1,28 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
-import { verifyKeycloakJwt } from "../auth/persona"
-import { canUseBffFixtureData } from "../config/fixture-mode"
+import { verifyKeycloakJwt } from "../auth/keycloak-jwt"
 import {
+  type ChatCompletionsBody,
   isChatCompletionsBody,
-  normalizeTextOnlyChatCompletionsBody,
-} from "../openai/types"
-import type { ChatCompletionsBody } from "../openai/types"
+} from "../inference/chat-completions"
 import {
   type ConnectedAppGatewayReservation,
   type ConnectedAppRuntimeIdentity,
   consumeConnectedAppGatewayRateLimit,
-  recordConnectedAppGatewayUsage,
   reconcileConnectedAppGatewayUsage,
+  recordConnectedAppGatewayUsage,
   reserveConnectedAppGatewayTokens,
   resolveConnectedAppRuntimeIdentity,
   resolveConnectedAppRuntimeIdentityByApiKey,
 } from "../services/admin-connected-apps"
+import { evaluateApplicationGatewayPolicy } from "../services/application-gateway-policy"
 import { emitAudit } from "../services/audit"
+import {
+  createLiteLlmChatTransport,
+  fetchLiteLlmModels,
+  isStreamingChatCompletionsRequest,
+  parseOpenAIUsageTokens,
+} from "../services/litellm-chat-transport"
 
-const fallbackModels = ["llm-machines-default"]
 const DEFAULT_TOKEN_RESERVATION = 2048
 
 export function registerAppGatewayRoutes(server: FastifyInstance): void {
@@ -29,7 +33,7 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
       return sendGatewayProblem(reply, auth.status, auth.title, auth.detail)
     }
 
-    const policy = runtimePolicy(auth.app, null)
+    const policy = evaluateApplicationGatewayPolicy(auth.app, null)
     if (!policy.ok) {
       await safelyAuditGatewayRequest(request, auth.app, {
         latencyMs: 0,
@@ -38,7 +42,12 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
         status: policy.status,
         tokens: 0,
       })
-      return sendGatewayProblem(reply, policy.status, policy.title, policy.detail)
+      return sendGatewayProblem(
+        reply,
+        policy.status,
+        policy.title,
+        policy.detail,
+      )
     }
     const rateLimit = await consumeConnectedAppGatewayRateLimit(auth.app)
     if (!rateLimit.ok) {
@@ -57,7 +66,7 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
       )
     }
 
-    const models = await fetchModels(auth.app.allowedModels)
+    const models = await fetchLiteLlmModels(auth.app.allowedModels)
     if (!models.ok) {
       await safelyAuditGatewayRequest(request, auth.app, {
         latencyMs: 0,
@@ -66,7 +75,12 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
         status: models.status,
         tokens: 0,
       })
-      return sendGatewayProblem(reply, models.status, models.title, models.detail)
+      return sendGatewayProblem(
+        reply,
+        models.status,
+        models.title,
+        models.detail,
+      )
     }
 
     await safelyAuditGatewayRequest(request, auth.app, {
@@ -96,7 +110,10 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
         )
       }
 
-      const policy = runtimePolicy(auth.app, request.body.model)
+      const policy = evaluateApplicationGatewayPolicy(
+        auth.app,
+        request.body.model,
+      )
       if (!policy.ok) {
         await safelyAuditGatewayRequest(request, auth.app, {
           latencyMs: 0,
@@ -105,7 +122,12 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
           status: policy.status,
           tokens: 0,
         })
-        return sendGatewayProblem(reply, policy.status, policy.title, policy.detail)
+        return sendGatewayProblem(
+          reply,
+          policy.status,
+          policy.title,
+          policy.detail,
+        )
       }
       const rateLimit = await consumeConnectedAppGatewayRateLimit(auth.app)
       if (!rateLimit.ok) {
@@ -151,8 +173,8 @@ async function authenticateConnectedApp(
     return { app: staticKeyApp, ok: true }
   }
 
-  const clientId = await clientIdFromToken(token)
-  if (!clientId) {
+  const oauthIdentity = await oauthIdentityFromToken(token)
+  if (!oauthIdentity) {
     return {
       detail: "The connected app bearer token could not be verified.",
       ok: false,
@@ -161,7 +183,7 @@ async function authenticateConnectedApp(
     }
   }
 
-  const app = await resolveConnectedAppRuntimeIdentity(clientId)
+  const app = await resolveConnectedAppRuntimeIdentity(oauthIdentity.clientId)
   if (!app) {
     return {
       detail: "The connected app client is not registered in Console.",
@@ -171,131 +193,43 @@ async function authenticateConnectedApp(
     }
   }
 
-  return { app, ok: true }
+  return {
+    app: {
+      ...app,
+      keycloakSubjectId: oauthIdentity.keycloakSubjectId,
+    },
+    ok: true,
+  }
 }
 
-async function clientIdFromToken(token: string): Promise<string | null> {
+async function oauthIdentityFromToken(token: string): Promise<{
+  clientId: string
+  keycloakSubjectId: string
+} | null> {
   if (
     process.env.NODE_ENV === "test" &&
     token.startsWith("fixture-connected-app:")
   ) {
-    return token.slice("fixture-connected-app:".length).trim() || null
+    const clientId = token.slice("fixture-connected-app:".length).trim()
+    return clientId
+      ? {
+          clientId,
+          keycloakSubjectId: `fixture-subject:${clientId}`,
+        }
+      : null
   }
 
   const payload = await verifyKeycloakJwt(token)
-  return payload?.azp ?? payload?.clientId ?? null
-}
-
-function runtimePolicy(
-  app: ConnectedAppRuntimeIdentity,
-  requestedModel: string | null,
-):
-  | { ok: true }
-  | { detail: string; ok: false; status: 403; title: string } {
-  if (app.status !== "enabled") {
-    return {
-      detail: "The connected app is disabled.",
-      ok: false,
-      status: 403,
-      title: "Connected app disabled",
-    }
+  if (!payload) {
+    return null
   }
-  if (requestedModel && !app.allowedModels.includes(requestedModel)) {
-    return {
-      detail: "The connected app is not allowed to use the requested model.",
-      ok: false,
-      status: 403,
-      title: "Model not allowed",
-    }
+  const clientId = payload.azp ?? payload.clientId
+  if (!clientId) {
+    return null
   }
-  return { ok: true }
-}
-
-type ModelListResult =
-  | {
-      body: {
-        data: Array<{ id: string; object: "model"; owned_by: string }>
-        object: "list"
-      }
-      ok: true
-    }
-  | { detail: string; ok: false; status: 503; title: string }
-
-async function fetchModels(allowedModels: string[]): Promise<ModelListResult> {
-  const litellmUrl = getLiteLlmUrl()
-  const litellmKey = process.env.LITELLM_KEY
-
-  if (litellmUrl && litellmKey) {
-    try {
-      const response = await fetch(`${litellmUrl}/v1/models`, {
-        headers: { Authorization: `Bearer ${litellmKey}` },
-      })
-      if (response.ok) {
-        return filterModelList(
-          (await response.json()) as {
-            data: Array<{ id: string; object: "model"; owned_by: string }>
-            object: "list"
-          },
-          allowedModels,
-        )
-      }
-      return {
-        detail: `LiteLLM returned HTTP ${response.status} while listing models.`,
-        ok: false,
-        status: 503,
-        title: "LiteLLM model list unavailable",
-      }
-    } catch {
-      return {
-        detail: "LiteLLM model list request failed.",
-        ok: false,
-        status: 503,
-        title: "LiteLLM model list unavailable",
-      }
-    }
-  }
-
-  if (!canUseBffFixtureData()) {
-    return {
-      detail: "Set LITELLM_URL and LITELLM_KEY before listing models.",
-      ok: false,
-      status: 503,
-      title: "LiteLLM is not configured",
-    }
-  }
-
-  const configuredModels =
-    process.env.BFF_FALLBACK_MODELS?.split(",")
-      .map((model) => model.trim())
-      .filter(Boolean) ?? fallbackModels
-
-  return filterModelList(
-    {
-      data: configuredModels.map((id) => ({
-        id,
-        object: "model" as const,
-        owned_by: "llm-machines",
-      })),
-      object: "list",
-    },
-    allowedModels,
-  )
-}
-
-function filterModelList(
-  body: {
-    data: Array<{ id: string; object: "model"; owned_by: string }>
-    object: "list"
-  },
-  allowedModels: string[],
-): ModelListResult {
-  const allowed = new Set(allowedModels)
   return {
-    body: {
-      object: "list",
-      data: body.data.filter((model) => allowed.has(model.id)),
-    },
-    ok: true,
+    clientId,
+    keycloakSubjectId: payload.subject,
   }
 }
 
@@ -305,9 +239,8 @@ async function proxyChatCompletions(
   app: ConnectedAppRuntimeIdentity,
   body: ChatCompletionsBody,
 ): Promise<FastifyReply | undefined> {
-  const litellmUrl = getLiteLlmUrl()
-  const litellmKey = process.env.LITELLM_KEY
-  if (!litellmUrl || !litellmKey) {
+  const transport = createLiteLlmChatTransport()
+  if (!transport) {
     const status = 503
     await safelyAuditGatewayRequest(request, app, {
       latencyMs: 0,
@@ -325,9 +258,7 @@ async function proxyChatCompletions(
   }
 
   const startedAt = Date.now()
-  let reservation: Awaited<
-    ReturnType<typeof reserveConnectedAppGatewayTokens>
-  >
+  let reservation: Awaited<ReturnType<typeof reserveConnectedAppGatewayTokens>>
   try {
     reservation = await reserveConnectedAppGatewayTokens(
       app,
@@ -361,18 +292,11 @@ async function proxyChatCompletions(
   const controller = new AbortController()
   request.raw.on("close", () => controller.abort())
 
-  let upstream: Response
-  try {
-    upstream = await fetch(`${litellmUrl}/v1/chat/completions`, {
-      body: JSON.stringify(chatCompletionUpstreamBody(body)),
-      headers: {
-        Authorization: `Bearer ${litellmKey}`,
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-      signal: controller.signal,
-    })
-  } catch {
+  const transportResult = await transport.createChatCompletion(
+    body,
+    controller.signal,
+  )
+  if (!transportResult.ok) {
     await safelyAuditGatewayRequest(
       request,
       app,
@@ -392,6 +316,7 @@ async function proxyChatCompletions(
       "LiteLLM could not complete the connected app request.",
     )
   }
+  const upstream = transportResult.response
 
   if (!upstream.ok || !upstream.body) {
     await safelyAuditGatewayRequest(
@@ -414,9 +339,9 @@ async function proxyChatCompletions(
     )
   }
 
-  if (!isStreamingRequest(body)) {
+  if (!isStreamingChatCompletionsRequest(body)) {
     const responseText = await upstream.text()
-    const tokens = parseUsageTokens(responseText)
+    const tokens = parseOpenAIUsageTokens(responseText)
     await safelyAuditGatewayRequest(
       request,
       app,
@@ -466,7 +391,7 @@ async function safelyAuditGatewayRequest(
   reservation?: ConnectedAppGatewayReservation,
 ): Promise<void> {
   try {
-    await auditGatewayRequest(app, input, reservation)
+    await auditGatewayRequest(app, input, request.id, reservation)
   } catch (error) {
     logGatewayAccountingFailure(request, app, "reconcile", error)
   }
@@ -499,6 +424,7 @@ async function auditGatewayRequest(
     status: number
     tokens: number
   },
+  correlationId: string,
   reservation?: ConnectedAppGatewayReservation,
 ): Promise<void> {
   const usageInput = {
@@ -514,19 +440,23 @@ async function auditGatewayRequest(
     await recordConnectedAppGatewayUsage(app.appId, usageInput)
   }
   await emitAudit({
-    actorId: app.appId,
+    actorId: app.keycloakSubjectId ?? app.credentialRecordId,
     action: `connected_app.gateway.${input.route}`,
     targetType: "connected_app",
     targetId: app.appId,
-      metadata: {
-        appId: app.appId,
-        authMethod: app.authMethod,
-        clientId: app.clientId,
-        environment: app.environment,
-      latencyMs: input.latencyMs,
-      model: input.model,
-      status: input.status,
-      tokens: input.tokens,
+    metadata: {
+      applicationId: app.appId,
+      authMethod: app.authMethod,
+      correlationId,
+      credentialRecordId: app.credentialRecordId,
+      keycloakSubjectId: app.keycloakSubjectId,
+      outcome:
+        input.status >= 200 && input.status < 400
+          ? "succeeded"
+          : input.status === 401 || input.status === 403
+            ? "denied"
+            : "failed",
+      sourceSystem: "console",
     },
   })
 }
@@ -607,34 +537,6 @@ function bearerToken(request: FastifyRequest): string | null {
   return value?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || null
 }
 
-function getLiteLlmUrl(): string | undefined {
-  return process.env.LITELLM_URL?.replace(/\/+$/, "")
-}
-
-function isStreamingRequest(value: unknown): boolean {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "stream" in value &&
-    value.stream === true
-  )
-}
-
-function parseUsageTokens(responseText: string): number {
-  const eventTokens = responseText
-    .split(/\r?\n/)
-    .filter((line) => line.startsWith("data:"))
-    .map((line) => line.slice("data:".length).trim())
-    .filter((line) => line && line !== "[DONE]")
-    .map(usageTokensFromJson)
-  const streamedTokens = Math.max(0, ...eventTokens)
-  if (streamedTokens > 0) {
-    return streamedTokens
-  }
-
-  return usageTokensFromJson(responseText)
-}
-
 function estimateTokenReservation(body: ChatCompletionsBody): number {
   for (const field of ["max_tokens", "max_completion_tokens"]) {
     const value = body[field]
@@ -663,7 +565,7 @@ class SseUsageParser {
   finish(): number {
     const pending = this.buffer
     this.buffer = ""
-    return parseUsageTokens(pending)
+    return parseOpenAIUsageTokens(pending)
   }
 
   private drainCompleteEvents(): number {
@@ -675,7 +577,7 @@ class SseUsageParser {
       }
       const event = this.buffer.slice(0, separator.index)
       this.buffer = this.buffer.slice(separator.index + separator.length)
-      maxTokens = Math.max(maxTokens, parseUsageTokens(event))
+      maxTokens = Math.max(maxTokens, parseOpenAIUsageTokens(event))
     }
   }
 
@@ -689,39 +591,5 @@ class SseUsageParser {
       return { index: windows, length: 4 }
     }
     return { index: unix, length: 2 }
-  }
-}
-
-function usageTokensFromJson(value: string): number {
-  try {
-    const body = JSON.parse(value) as {
-      usage?: {
-        total_tokens?: unknown
-      }
-    }
-    return typeof body.usage?.total_tokens === "number"
-      ? body.usage.total_tokens
-      : 0
-  } catch {
-    return 0
-  }
-}
-
-function chatCompletionUpstreamBody(
-  body: ChatCompletionsBody,
-): ChatCompletionsBody {
-  const normalizedBody = normalizeTextOnlyChatCompletionsBody(body)
-  if (!isStreamingRequest(body)) {
-    return normalizedBody
-  }
-
-  return {
-    ...normalizedBody,
-    stream_options: {
-      ...(typeof body.stream_options === "object" && body.stream_options !== null
-        ? body.stream_options
-        : {}),
-      include_usage: true,
-    },
   }
 }

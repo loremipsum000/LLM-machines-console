@@ -9,9 +9,8 @@ import type {
   AdminInferenceUsagePoint,
   AdminInferenceVirtualKey,
   ApplyAdminInferenceModelUpdateRequest,
-  HubSourceStatus,
-} from "@llm-machines/contracts"
-import { personaCanAccess } from "@llm-machines/contracts"
+  InferenceCoreSourceStatus,
+} from "@llm-machines/contracts/inference-core"
 import type { Actor } from "../auth/persona"
 import { canUseBffFixtureData } from "../config/fixture-mode"
 import {
@@ -20,6 +19,7 @@ import {
   liteLlmDateWindow,
 } from "./admin-litellm-client"
 import { emitAudit } from "./audit"
+import { expertCapability } from "./expert-capabilities"
 
 interface InferenceQueryOptions {
   range?: string
@@ -27,7 +27,7 @@ interface InferenceQueryOptions {
 
 interface LiteLlmReadResult<T> {
   data: T | null
-  status: HubSourceStatus
+  status: InferenceCoreSourceStatus
 }
 
 interface ActivityReadModel {
@@ -49,10 +49,6 @@ export async function getAdminInference(
   actor: Actor,
   options: InferenceQueryOptions = {},
 ): Promise<AdminInferenceDashboard> {
-  if (!personaCanAccess(actor.persona, "admin")) {
-    throw new Error("Admin inference requires admin persona.")
-  }
-
   const range = parseInferenceRange(options.range)
   const generatedAt = new Date()
   const config = liteLlmConfig()
@@ -107,9 +103,6 @@ export async function applyAdminInferenceModelUpdate(
   actor: Actor,
   request: ApplyAdminInferenceModelUpdateRequest,
 ): Promise<AdminInferenceModelUpdateActionResponse> {
-  if (!personaCanAccess(actor.persona, "admin")) {
-    throw new Error("Admin inference model update requires admin persona.")
-  }
   if (request.confirmation !== "UPDATE MODEL") {
     return modelUpdateActionResponse({
       detail: "Model update confirmation is invalid.",
@@ -707,7 +700,9 @@ function totalsFromModelUsage(
   }
 }
 
-function aggregateSourceStatus(statuses: HubSourceStatus[]): HubSourceStatus {
+function aggregateSourceStatus(
+  statuses: InferenceCoreSourceStatus[],
+): InferenceCoreSourceStatus {
   if (statuses.every((status) => status === "unavailable")) {
     return "unavailable"
   }
@@ -727,7 +722,7 @@ function emptyInferenceDashboard({
   generatedAt: Date
   modelUpdate: AdminInferenceModelUpdate | null
   range: AdminInferenceRange
-  sourceStatus: HubSourceStatus
+  sourceStatus: InferenceCoreSourceStatus
   summary: string
 }): AdminInferenceDashboard {
   return {
@@ -750,7 +745,7 @@ function emptyInferenceDashboard({
 
 function inferenceSummary(
   totals: AdminInferenceDashboard["totals"],
-  sourceStatus: HubSourceStatus,
+  sourceStatus: InferenceCoreSourceStatus,
   range: AdminInferenceRange,
 ): string {
   if (sourceStatus === "unavailable") {
@@ -840,6 +835,9 @@ async function emitModelUpdateAudit(
 }
 
 function liteLlmPublicUrl(): string | null {
+  if (expertCapability("litellm").directAccess !== "enabled") {
+    return null
+  }
   const configured =
     process.env.LITELLM_PUBLIC_URL?.trim() ||
     process.env.LITELLM_PUBLIC_ORIGIN?.trim() ||

@@ -28,7 +28,7 @@ describe("Admin Inference routes", () => {
     resetAuditEventsForTest()
   })
 
-  it("returns LiteLLM-backed dashboard data without leaking secrets or raw prompts", async () => {
+  it("returns LiteLLM-backed data without exposing the disabled native expert link", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_LITELLM_BASE_URL", "http://litellm.test")
     vi.stubEnv("ADMIN_LITELLM_API_KEY", "litellm-key")
@@ -45,7 +45,7 @@ describe("Admin Inference routes", () => {
     expect(response.statusCode).toBe(200)
     const body = response.json()
     expect(body).toMatchObject({
-      liteLlmUrl: "https://litellm.example/ui/",
+      liteLlmUrl: null,
       modelUpdate: null,
       modelUsage: [
         expect.objectContaining({
@@ -455,7 +455,9 @@ describe("Admin Inference routes", () => {
   })
 })
 
-async function mockLiteLlmFetch(input: string | URL | Request): Promise<Response> {
+async function mockLiteLlmFetch(
+  input: string | URL | Request,
+): Promise<Response> {
   const url = new URL(input.toString())
   if (url.pathname === "/user/daily/activity/aggregated") {
     return jsonResponse(activityPayload())

@@ -2,48 +2,62 @@ import type {
   AdminActivityEvent,
   AdminOverviewMetric,
   AdminOverviewResponse,
-} from "@llm-machines/contracts"
-import { personaCanAccess } from "@llm-machines/contracts"
+} from "@llm-machines/contracts/inference-core"
 import type { Actor } from "../auth/persona"
-import { canUseBffFixtureData } from "../config/fixture-mode"
-import { getAdminConnectorRegistryReadModel } from "./admin-connector-registry"
-import { getAdminGovernanceSummary } from "./admin-governance"
 import { getAdminHealthSummary } from "./admin-health"
 import { getAdminOpsSummary } from "./admin-ops"
 import type { AuditEventRecord } from "./audit"
 import { getRecentAuditEvents } from "./audit"
-import { getBuilderSubmissions } from "./builder"
-import { getHubUsage } from "./hub"
 
 export async function getAdminOverview(
   actor: Actor,
 ): Promise<AdminOverviewResponse> {
-  if (!personaCanAccess(actor.persona, "admin")) {
-    throw new Error("Admin overview requires admin persona.")
+  if (!canReadAdminOverview(actor)) {
+    throw new Error("Admin overview requires Admin or Operator access.")
   }
 
   const generatedAt = new Date().toISOString()
-  const usage = await getHubUsage(actor)
-  const ops = await getAdminOpsSummary(usage)
-  const health = await getAdminHealthSummary()
-  const submissions = await getBuilderSubmissions(actor)
-  const pendingSubmissions = submissions.filter(
-    (submission) => submission.state === "submitted",
-  )
-  const connectorRegistry = await getAdminConnectorRegistryReadModel()
-  const governance = await getAdminGovernanceSummary({
-    connectorsAwaitingReview: connectorRegistry.summary.pendingCount,
-    pendingSubmissions: pendingSubmissions.length,
-  })
-  const auditEvents = await getRecentAuditEvents(10)
+  const [ops, health, auditEvents] = await Promise.all([
+    getAdminOpsSummary(),
+    getAdminHealthSummary(),
+    getRecentAuditEvents(10),
+  ])
   const activityEvents = auditEvents.map(toAdminActivityEvent)
+  const applicationEvents = auditEvents.filter(isApplicationEvent)
 
   return {
     generatedAt,
     tiles: [
       {
-        id: "ops",
-        title: "LLM operations",
+        id: "applications",
+        title: "Applications",
+        summary:
+          applicationEvents.length > 0
+            ? `${applicationEvents.length} recent application event${applicationEvents.length === 1 ? "" : "s"} are visible in Console audit.`
+            : "Application credentials and connection state are managed in Console.",
+        href: "/applications",
+        sourceStatus: "ok",
+        updatedAt: generatedAt,
+        metrics: [
+          metric(
+            "recent-events",
+            "Recent events",
+            applicationEvents.length,
+            "Latest 10 Console audit rows",
+          ),
+          metric(
+            "credential-rotations",
+            "Credential rotations",
+            applicationEvents.filter((event) =>
+              event.action.includes("credential"),
+            ).length,
+            "Latest 10 Console audit rows",
+          ),
+        ],
+      },
+      {
+        id: "inference",
+        title: "Inference",
         summary: ops.summary,
         href: "/inference",
         sourceStatus: ops.sourceStatus,
@@ -51,40 +65,21 @@ export async function getAdminOverview(
         metrics: ops.metrics,
       },
       {
-        id: "health",
-        title: "Health",
+        id: "hardware",
+        title: "Hardware",
         summary: health.summary,
-        href: externalDashboardUrl(
-          configuredExternalBaseUrl(
-            "GRAFANA_PUBLIC_URL",
-            "GRAFANA_PUBLIC_ORIGIN",
-            "https://grafana.example.test",
-          ),
-          "/d/llmm-infra-overview/llm-machines-infrastructure-overview",
-        ),
+        href: "/hardware",
         sourceStatus: health.sourceStatus,
         updatedAt: generatedAt,
         metrics: health.metrics,
       },
       {
-        id: "governance",
-        title: "Governance",
-        summary: governance.summary,
-        href:
-          pendingSubmissions.length > 0
-            ? "/applications"
-            : "/settings",
-        sourceStatus: governance.sourceStatus,
-        updatedAt: generatedAt,
-        metrics: governance.metrics,
-      },
-      {
-        id: "activity",
-        title: "Activity",
+        id: "system",
+        title: "System",
         summary:
-          "Recent Console audit rows are available; external audit sources remain future federators.",
-        href: "#audit-log-deferred",
-        sourceStatus: activityEvents.length > 0 ? "ok" : "degraded",
+          "Console audit records retained control-plane activity. Native expert-service audit ingestion remains disabled.",
+        href: "/activity",
+        sourceStatus: "ok",
         updatedAt: generatedAt,
         metrics: [
           metric("events", "Audit events", activityEvents.length, "Latest 10"),
@@ -111,28 +106,20 @@ export async function getAdminOverview(
   }
 }
 
-function configuredExternalBaseUrl(
-  primaryEnv: string,
-  fallbackEnv: string,
-  fixtureDefault: string,
-): string {
+function canReadAdminOverview(actor: Actor): boolean {
   return (
-    process.env[primaryEnv]?.trim() ||
-    process.env[fallbackEnv]?.trim() ||
-    (canUseBffFixtureData() ? fixtureDefault : "/hardware")
+    actor.persona === "admin" ||
+    actor.roles.some((role) => role.toLowerCase() === "operator")
   )
 }
 
-function externalDashboardUrl(baseUrl: string, defaultPath: string): string {
-  try {
-    const parsed = new URL(baseUrl)
-    if (parsed.pathname && parsed.pathname !== "/") {
-      return parsed.toString()
-    }
-    return new URL(defaultPath, parsed).toString()
-  } catch {
-    return baseUrl
-  }
+function isApplicationEvent(event: AuditEventRecord): boolean {
+  const scope = `${event.action} ${event.targetType}`.toLowerCase()
+  return (
+    scope.includes("application") ||
+    scope.includes("connected_app") ||
+    scope.includes("app_gateway")
+  )
 }
 
 function metric(
@@ -162,7 +149,7 @@ function toAdminActivityEvent(event: AuditEventRecord): AdminActivityEvent {
       event.action.includes("failed") || event.action.includes("denied")
         ? "warning"
         : "info",
-    href: "#audit-log-deferred",
+    href: `/activity?event=${encodeURIComponent(event.id)}`,
     createdAt: event.createdAt,
   }
 }

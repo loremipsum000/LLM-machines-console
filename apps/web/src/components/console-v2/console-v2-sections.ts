@@ -3,13 +3,11 @@ import {
   ApplicationsIcon,
   HardwareIcon,
   InferenceIcon,
-  KnowledgeIcon,
   SettingsIcon,
   TeamIcon,
 } from "./console-v2-icons"
 
 export type ConsoleV2SectionId =
-  | "knowledge"
   | "applications"
   | "inference"
   | "hardware"
@@ -24,12 +22,6 @@ export interface ConsoleV2Section {
 }
 
 export const consoleV2Sections: ConsoleV2Section[] = [
-  {
-    id: "knowledge",
-    href: "/knowledge",
-    icon: KnowledgeIcon,
-    label: "Knowledge",
-  },
   {
     id: "applications",
     href: "/applications",

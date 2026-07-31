@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs"
 import type { FastifyInstance, FastifyServerOptions } from "fastify"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -205,27 +204,85 @@ async function createServer() {
 }
 
 function reviewedBffRoutes(): RuntimeRoute[] {
-  const baseline = JSON.parse(
-    readFileSync(
-      new URL(
-        "../../../../docs/reduction/inference-core/route-baseline.json",
-        import.meta.url,
-      ),
-      "utf8",
-    ),
-  ) as {
-    routes: Array<{ surface: string; method: string; path: string }>
-  }
+  const routes: RuntimeRoute[] = [
+    { method: "GET", url: "/livez" },
+    { method: "GET", url: "/healthz" },
+    { method: "GET", url: "/readyz" },
+    { method: "GET", url: "/api/admin/audit" },
+    { method: "GET", url: "/api/admin/overview" },
+    { method: "GET", url: "/api/admin/settings" },
+    { method: "GET", url: "/api/admin/team" },
+    { method: "GET", url: "/api/admin/team/scim" },
+    { method: "GET", url: "/api/admin/team/csv-template" },
+    { method: "GET", url: "/api/admin/team/groups/:id" },
+    { method: "GET", url: "/api/admin/team/members/:id" },
+    { method: "GET", url: "/api/admin/applications/connected-apps" },
+    { method: "GET", url: "/api/admin/applications/connected-apps/:id" },
+    { method: "GET", url: "/api/admin/hardware" },
+    { method: "GET", url: "/api/admin/inference" },
+    { method: "GET", url: "/api/app-gateway/v1/models" },
+    { method: "POST", url: "/api/admin/settings/organization" },
+    { method: "POST", url: "/api/admin/settings/telemetry" },
+    { method: "POST", url: "/api/admin/team/import/preview" },
+    { method: "POST", url: "/api/admin/team/import/commit" },
+    { method: "POST", url: "/api/admin/team/groups" },
+    { method: "POST", url: "/api/admin/team/groups/:id/update" },
+    { method: "POST", url: "/api/admin/team/groups/:id/delete" },
+    {
+      method: "POST",
+      url: "/api/admin/team/groups/:id/members/bulk-assign",
+    },
+    {
+      method: "POST",
+      url: "/api/admin/team/groups/:id/members/:memberId/remove",
+    },
+    { method: "POST", url: "/api/admin/team/members" },
+    { method: "POST", url: "/api/admin/team/members/:id/invite" },
+    {
+      method: "POST",
+      url: "/api/admin/team/members/:id/reset-password-email",
+    },
+    {
+      method: "POST",
+      url: "/api/admin/team/members/:id/generate-password",
+    },
+    { method: "POST", url: "/api/admin/team/members/:id/disable" },
+    { method: "POST", url: "/api/admin/team/members/:id/reactivate" },
+    { method: "POST", url: "/api/admin/team/members/:id/delete" },
+    { method: "POST", url: "/api/admin/applications/connected-apps" },
+    {
+      method: "POST",
+      url: "/api/admin/applications/connected-apps/:id/test",
+    },
+    {
+      method: "POST",
+      url: "/api/admin/applications/connected-apps/:id/rotate-credentials",
+    },
+    {
+      method: "POST",
+      url: "/api/admin/applications/connected-apps/:id/disable",
+    },
+    {
+      method: "POST",
+      url: "/api/admin/inference/model-updates/apply",
+    },
+    {
+      method: "POST",
+      url: "/api/app-gateway/v1/chat/completions",
+    },
+    {
+      method: "PATCH",
+      url: "/api/admin/applications/connected-apps/:id",
+    },
+  ]
   return normalizeRoutes(
-    baseline.routes
-      .filter((route) => route.surface === "bff")
-      .flatMap(({ method, path }) =>
+    routes.flatMap(({ method, url }) =>
         method === "GET"
           ? [
-              { method, url: path },
-              { method: "HEAD", url: path },
+              { method, url },
+              { method: "HEAD", url },
             ]
-          : [{ method, url: path }],
+          : [{ method, url }],
       ),
   )
 }

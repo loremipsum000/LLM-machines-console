@@ -4,7 +4,7 @@ import dynamic from "next/dynamic"
 import type {
   AdminHardwareChart,
   AdminHardwareUnit,
-} from "@llm-machines/contracts"
+} from "@llm-machines/contracts/inference-core"
 
 const chartColors = [
   "#009fff",

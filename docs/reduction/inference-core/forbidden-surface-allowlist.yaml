@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "b0307e620d1bdf5009d4630736fc9283db41dc8f8636184086ca162dc16f3644",
+  "policyDigest": "c2f173dbacdffedf3ffc932ceaaedc8e99e7fa827f7b6bded163fc6202dddab1",
   "protectedFiles": [
     {
       "path": "apps/bff/tsconfig.json",
@@ -12,8 +12,20 @@
       "sha256": "76b565f16bb75867fda00201ea1a6fb157103dec0489b4cdf90fd4569e4264a2"
     },
     {
+      "path": "apps/bff/src/db/inference-core-schema.test.ts",
+      "sha256": "7f865e6f3833c4f17788027a691913d45e294a49210317ecb56d486f30c2a530"
+    },
+    {
+      "path": "apps/bff/src/routes/app-gateway-boundary.test.ts",
+      "sha256": "04ed51917aa8de9f7ae69aebabdee36206bcd5d124a8025d22a8dfdd61d1f3f3"
+    },
+    {
       "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
-      "sha256": "8e744fbd12ed43874452c52d434c28c4a20a79e9e2294033aa318d764b819d37"
+      "sha256": "b29bf56955e1571816a7bd0465ab9151e13bc45acacec673cc718712fb850c0e"
+    },
+    {
+      "path": "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
+      "sha256": "0fe671a8f2d0e649a73384968e0fb7fd32caec00b8ce01deef55902ca53f018a"
     },
     {
       "path": "apps/web/tsconfig.json",
@@ -24,12 +36,24 @@
       "sha256": "4d91e2698170d4af92360dec5e08bc115d16ca72cad7a12009821836708d79af"
     },
     {
+      "path": "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+      "sha256": "4cc97cbcf36018ee0250ed90a041fe10e2771b5cccf26f4faeadc2dce35ffed6"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+      "sha256": "17be77fe6e9c755eb3228ecd3eefd2820282f73ef9514f5f6cc849369a24f743"
+    },
+    {
       "path": "packages/contracts/src/inference-core-authorization.test.ts",
       "sha256": "e1145f3b1ad0504876e90b57ee81df2e15cdbdb14bfdf1fa98b83f0c4c49e684"
     },
     {
       "path": "packages/contracts/src/inference-core-authorization.ts",
       "sha256": "0210fa56d27cbea5eac7dd7fcf77ea525bbbc8e7690f3d034139ebbf6f139214"
+    },
+    {
+      "path": "packages/contracts/src/inference-core.test.ts",
+      "sha256": "191d9a03804e11810fd7d772b41e763c226b7ec60b255548abb84875b5bf9331"
     },
     {
       "path": "packages/contracts/tsconfig.build.json",
@@ -53,11 +77,19 @@
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",
-      "sha256": "c5cfa60410d5b004eb5332e790801ccc0c8a4f4b3330b1bca7918e2f0abcdbaa"
+      "sha256": "eeae6d1a825626359ae3d47f1ce0fcaea6e6e01b6766b9fd9c602ad2d4fcac84"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
-      "sha256": "ecff306ca1984fc2b2234d9a93448a09159aabb42cb45746147c796e42718c04"
+      "sha256": "29297e6b8a484b283b2e14912b7a06a390f88275281801041f247d15f065ace3"
+    },
+    {
+      "path": "scripts/inference-core/pr02-boundaries.test.mjs",
+      "sha256": "df5ad5e9ecf3903c407fab85e59268f153cb6d04eceaccbf822c050c25f4b84c"
+    },
+    {
+      "path": "scripts/inference-core/pr02-contract-revision.mjs",
+      "sha256": "ca3f06a4b734c95d8789d0712ee726a0456b24039a650eab14034baed48abab9"
     },
     {
       "path": "scripts/inference-core/retention-canary.mjs",
@@ -110,28 +142,10 @@
     },
     {
       "ruleId": "FS001_RETIRED_BFF_MODULE",
-      "path": "apps/bff/src/routes/agentic-runtime.test.ts",
-      "count": 1,
-      "fingerprints": {
-        "e2d9c7859063054544044d3d171913798268157fbf958d71cc81e9f4b9291537": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS001_RETIRED_BFF_MODULE",
       "path": "apps/bff/src/routes/agentic-runtime.ts",
       "count": 1,
       "fingerprints": {
         "f12f87851d7eb106df74ade93f61061d60aeebe8a93986c8c36ff9515a5877a0": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS001_RETIRED_BFF_MODULE",
-      "path": "apps/bff/src/routes/builder.test.ts",
-      "count": 1,
-      "fingerprints": {
-        "4a99d214498714393b46deaf879c53801ab8d3dea4ec8f6f0a78f6e61173f5d6": 1
       },
       "removeBy": "PR-03"
     },
@@ -146,37 +160,10 @@
     },
     {
       "ruleId": "FS001_RETIRED_BFF_MODULE",
-      "path": "apps/bff/src/routes/hub.test.ts",
-      "count": 1,
-      "fingerprints": {
-        "f87e0f42a939937f1f0535ddaa73f83fbd18ddbc928946e2577b3f507baf6cd6": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS001_RETIRED_BFF_MODULE",
       "path": "apps/bff/src/routes/hub.ts",
       "count": 1,
       "fingerprints": {
         "d743a2f7b81837cc56c64a4382bc6018ce7d29ee3314aed20e2821c3aff45a50": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS001_RETIRED_BFF_MODULE",
-      "path": "apps/bff/src/routes/knowledge-pdf-parser.e2e.test.ts",
-      "count": 1,
-      "fingerprints": {
-        "e27ef9b02ee32914e284643bb031ccbcf03cb1416fc01529ba67acf2be0aab20": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS001_RETIRED_BFF_MODULE",
-      "path": "apps/bff/src/routes/knowledge.test.ts",
-      "count": 1,
-      "fingerprints": {
-        "ca0fe77320d1ff54866bc477eec2b90896ba892f3e4378ba177adb70db40d5f0": 1
       },
       "removeBy": "PR-03"
     },
@@ -191,28 +178,10 @@
     },
     {
       "ruleId": "FS001_RETIRED_BFF_MODULE",
-      "path": "apps/bff/src/routes/mcp-gateway.test.ts",
-      "count": 1,
-      "fingerprints": {
-        "a7308dcb1c6209efb195a340f77c1e1a59f0a099d2e0b72826c05358a8b059d2": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS001_RETIRED_BFF_MODULE",
       "path": "apps/bff/src/routes/mcp-gateway.ts",
       "count": 1,
       "fingerprints": {
         "e2d7277e5245005078e9ff8366a2595232efb1cb9058ca02a8a80a6950755248": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS001_RETIRED_BFF_MODULE",
-      "path": "apps/bff/src/routes/openai-compatible.test.ts",
-      "count": 1,
-      "fingerprints": {
-        "cb5620457097b757662fd28ac59647e6b5e95cc80cf591e815e02a7d8c517f79": 1
       },
       "removeBy": "PR-03"
     },
@@ -1512,16 +1481,6 @@
     },
     {
       "ruleId": "FS101_AGENTIC_RUNTIME",
-      "path": "apps/bff/src/index.ts",
-      "count": 3,
-      "fingerprints": {
-        "2ae4d817cf83769e9435efd5855d3a6524a6c199e01d1780d418ea4738c77359": 1,
-        "c35309e0fbeac5f27bef30b62eaf6522f5d87efb4305b3391f8fae0ee297f434": 2
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS101_AGENTIC_RUNTIME",
       "path": "apps/bff/src/routes/admin-inference.test.ts",
       "count": 7,
       "fingerprints": {
@@ -1537,23 +1496,10 @@
     },
     {
       "ruleId": "FS101_AGENTIC_RUNTIME",
-      "path": "apps/bff/src/routes/admin-overview-health.test.ts",
+      "path": "apps/bff/src/routes/admin.test.ts",
       "count": 1,
       "fingerprints": {
-        "d3687a157f75b9c60366f1c340a789d55bd499c992c1a6dd53e53f9d740a6b30": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS101_AGENTIC_RUNTIME",
-      "path": "apps/bff/src/routes/admin.test.ts",
-      "count": 7,
-      "fingerprints": {
-        "249913cad14be40c76fbfa28a334504ad16df993994dede9db803a02ff14d4bb": 2,
-        "81d096ad9877d948ac430436082ac6667390b66324b295f8b6ae7288d8d898ba": 1,
-        "963b6fb54ceb50cb99e775036cb286f004ce22a979a8dde9711f4f33cdf02d85": 2,
-        "a711e3cee870e4ba3abeb89abb97f9b71d63a6207f74ab0c5ae1672179b53057": 1,
-        "d5225f803f23a6ad19a203e4a54c5a0e853d0f92858a93665ac9a48e547c895f": 1
+        "8e6da46e211bac6c37adae78658495fb285a1620a44c8afbd177b500c5c96022": 1
       },
       "removeBy": "PR-04"
     },
@@ -1808,17 +1754,6 @@
     },
     {
       "ruleId": "FS102_MCP",
-      "path": "apps/bff/src/auth/persona-security.test.ts",
-      "count": 5,
-      "fingerprints": {
-        "efbafd4dd0139c7e67d0076b7a369823f72aff026c22e225ef4803b29e47165f": 2,
-        "f4f34c520b2b84e19572cae867592838702c05ee577c914069418f0014c10954": 1,
-        "f8ad73e0833c5773dbf57e4db792b9f807ea5dec0547b72170dd859eceb0f656": 2
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS102_MCP",
       "path": "apps/bff/src/auth/persona.ts",
       "count": 14,
       "fingerprints": {
@@ -1871,174 +1806,14 @@
     },
     {
       "ruleId": "FS102_MCP",
-      "path": "apps/bff/src/index.ts",
-      "count": 3,
-      "fingerprints": {
-        "384fb48a709a5fc16c3c615cf15eb08fee75b00303abc66a9c139b80d8610932": 2,
-        "81909906b92723b1ca0c95e674df9a6c76177aa60676dab7127542d720c095b5": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS102_MCP",
       "path": "apps/bff/src/routes/admin.test.ts",
-      "count": 137,
+      "count": 5,
       "fingerprints": {
-        "07457832414b71011cb4ddf4b219a194fac8a41ab3c046342e5ae72244d3b84d": 1,
-        "11690823ab1a22c7a2a12162441a0fadc80294ccdd3e5416d9b2384e7416ad2c": 1,
-        "1348cfcaa14511fa5784a9154f2b2663e73c1d265d01359e087e49d30bc5726b": 1,
-        "1d679b67cfef1b6965575df805c560ad1f0cb6d8a4ed16b03220322dbf60951f": 2,
-        "1e1fdd6fc4d5602f1acf79ec3b4688c5aeb116816808f22328e60f7522023a05": 1,
-        "2020f68556cfb616943ab5433ea1c76d9080dbc33cf1d555a8d8b3c5a6727e84": 1,
-        "2070b39b1236f25c1ce8b4bf5498fbb699e1ec3566be6f6a21efbdda05f823b9": 1,
-        "23f2a70461fb223fb55c7bb99789fda86c95251a30717f9db48d8d217bc919e5": 1,
-        "2ad2cd3b3669c80f2f3424ed4cd15d806ba58fcc8369dec5be81caaeaaefe69e": 1,
-        "2d476237313d695a1848928b8a2baddfed5cd7da105a1184e3aba945ac60effb": 1,
-        "2d93b89085d3179f817f533799fb928fd8b1e8549678bc69b76326e6f91e2f60": 1,
-        "33ea9f69e6e427bd0f36fafd62f12e420208821976643b9e61eb6ec89e2d1c5d": 11,
-        "37cd5513313561f171f1c617f1be70ea4a6508e599fe3916e4cb0328b3904113": 1,
-        "399459c49d8edb5e6b11b9ee81f41c19522faf7dfc5c27786e85757539920bcb": 5,
-        "40fda09bda4febb99e5db1b7e2f56a203b155ff262267aabb0cda1914ad2b6db": 1,
-        "477f3eff4d5a2678d676ca8dd3f666525015dd3d1a74ba7edf649f32bf7c295d": 1,
-        "479d660a956f3fef67ad2c33b94826ff523c2c8a3c2b20e342fc7e0f00b67ea3": 1,
-        "4b870f29b6a70e5fd91ba8c3b41de1f27eae51ce58b9c41d0368ccc7ae11f037": 1,
-        "4fe8d78bfc9888fbcf56a943275a0ce8e318d3ca043c25de6e97a02364a16f20": 2,
-        "50057e6dcdb6f04608cb8086db7e2ce75602b80e6d9f8778398376695b5abca7": 1,
-        "5093b76e6fcf447f11f4bba8bb59a46fe5eb2d7cdd68f9285135388be0400f2f": 8,
-        "51ec54c4b3b8ba793a3d1e08971d06b98e9f10aae47c440c9946d03c4d197307": 1,
-        "536b713e4374bd68d3c1de2961e1eabcec886892c49a399e783ed287a59c0f95": 1,
-        "570e8160598a0c99f7d2529836bd6e457224aebbec6e3a37c3d587ca8b6d3638": 3,
-        "5e13b655f7fb54d7bcce294f91eac9a8c4146f413badd0a9e14cfe15955b2683": 1,
-        "5f5e4c45eff2d09833173da56f6d9ffbc28a8e16ec3761231e937ffa3a802889": 1,
-        "6795c120fe9e84c0fa48ac3a70f3556749adb6119f2abe7d72d25276d87538ee": 1,
-        "68c48f0ff5bc4d6299af9e5f2716cb021aed0a6306cd7df458d14f8454ce9c63": 1,
-        "6aade70fa2fc3f78f520347afdca976b6a2e3e08e2646cc1d51d53736c7d2c00": 2,
-        "6af85d05da0c43a143ecbada051ef4b2ab6ecf7791a3d4559556098d59f72f7a": 2,
-        "6bcc3e25e6a9fb0f681c6f7fcc351316712862d3a0f38337a83e9357a8431490": 1,
-        "7537cac87ac36a2df71f1d12add0782c732d5f7397d08494a2017d3ea8c31ed2": 2,
-        "77afa197d7f10df534d6a0f4b8846a478f015af9e5df87234bd514f52cdff07a": 1,
-        "7db3193f3f59ce9904c5f31867560c5c2554c2577addcbe95177b6b93666f7c8": 1,
-        "7e4a9375c2b3b6a0d13d83ddf16452a3872524372b8f28c760fcb0b5b0dd51d8": 1,
-        "7e88dd80b79e04b2978cee8c8a2c41b4b85f917de864a471643a13f3d2e2fbfe": 2,
-        "7f082710311b92caf6060e385645fc4a487ad214bbafe341c23a1b80b9aa9721": 1,
-        "80249d4842710597f49cc84b9bac582a5018f5be1b65e4a042f5b5b311e369a9": 2,
-        "89e6475f66697e89528d6a3d0fb227b844657a73a11c3639f0243a49d473d22e": 1,
-        "8d47579a52c7908e7eed3a37119269aec32d3e739acabd6efd4febf889b494b2": 1,
-        "8e513e286dc744f87fde5e86debe568c487403ea27717201d48dd3f606103ae2": 1,
-        "8f898cd15a7a476aca1b476395a519689bf33292028d61cb2081077839de779d": 5,
-        "94fae22e86ceaf083c914689bc51b06f761003b0f112db034d940f1564a0f88b": 1,
-        "975f47df1bbced4c6876f271b4be7d014e42369846689256745f66220eee77b2": 1,
-        "9b52f2442aca27e0d163d5d7bf76ffc6108c85fb12fca90c5582df0dbfb224b9": 4,
-        "9c79e8cf668a096f1110f936cba3ad96fe7a76a51b31a3effbd060375474da26": 1,
-        "9f9222381e24105fbb3675db58444477049a9d260bbc17f49673109906d01b3f": 1,
-        "9fce4f66383f588c0fd92fb57ac2b5d75ff18faf79d97368af8d45154bae8dfe": 1,
-        "a350097d64502a707e3f167d79ec283f351c8db97a54cdbb2e714a81c93b0f75": 1,
-        "a61347f4b8b493c7987a723735b3ddfbc926188d8f3bf4b7fc0211f5ed3e5670": 1,
-        "a6184405772d48002dde59f3f04d6ec7dc1b88ca1b7275175947e58a17969787": 1,
-        "a677441a817f8a3a8d5ae21330c72260c1f6cf13a8adb4410f333847b6f19683": 1,
-        "a8fdbb2f19e60d599aad8d758841dace1f3f825136bb7d1a42c2340e2668c195": 1,
-        "ab7f4180f180d2587525463ff28418e6d8ea5832d56dd75698d08066a8504acd": 1,
-        "ae4a8a70ad07f79062b96e07079ba62539981be5008111488b20b2f64b871950": 1,
-        "bd8fe6a3681598f20f859a53576aba2ac48ad581b194075b4af3f2e12c01cdf4": 2,
-        "c0d21232cfa47ceb1f6b5f5b3986dc1718b06dfba6da2ac7fd27a5630b54e0e7": 2,
-        "c111e669f7276083d83c901fffa796e576165892b53711eb954cdcc581fa242a": 1,
-        "c5085e7789d843308620dbbb0ef90dc8dcf0d48c512953d34d43749edcb3a2b5": 1,
-        "c6f219266acbfe5ae8a9d3d3f301152cff30328b3d47021b5e38b21662302be7": 5,
-        "c99f7a227695c4d963b4076aa88f5022d1d88ad938b53076567888c4e67b1b96": 1,
-        "cdb0d5a0605761f4d61c069a4f818124be02b98ff8b88f1a1b66b379b3bfdaf5": 1,
-        "cfcce5591678adb1aa9f2c945791d9e8d78d511a3e1f61f6eec07f94831442a5": 1,
-        "d070ed89dd1d42549af1634860df6e4d3f8abf378cd8ffdd21fe1493a1f72869": 2,
-        "d2dbea39ff4ffdcd62f363b247873a4194127eac3df50c5002b5f2384b286fc0": 1,
-        "d3638d1bb1d8733e07bd194da70129d04089d13898636b7e2adf5df4c159833a": 2,
-        "d6b03a6c5ebb53ba0f2be246f8e5bd32b015cbd4b02089ddf9a1974d2cf87b36": 2,
-        "d8299197175888ea59520f2a040c9b94a166a173c57fa5f2282141c1da9bb12f": 1,
-        "d8e2b51518fbc3b489833343f10b60ec9ea1e636a5f9e82411ca7206717c0301": 1,
-        "da0788b80d5833f4fdea2ad02a27320d7336a4b4020321e315c1b71b9d19922a": 1,
-        "da2095a34309d7a82eb66ddfa23527c0485a538198d7135ba2e14dd5a32a85c1": 1,
-        "de3feedf2e353cfeb3bebbca7b22b43ddd0f91c581923c23456a6c9b4e0ea172": 1,
-        "dea1ef95d3276d7224066df8d7eee03bca68b64bdc8e388484e32adb188e57c6": 1,
-        "df5d225b6f19d7b9a42ff81e35306a1e52c954b1fb87a2b8ac4b384099d1250a": 1,
-        "e65dce59a66d00e782dbecf094585163505692a46573ef951c9cb2825053abf4": 1,
-        "e800c834a3744593a8a8fe8c696d5bc196a5624d7f1b197349382abba8e508c6": 2,
-        "e93becd761ea27cb46ccc4b981a3e8114f40e09c18ce477223f43e0ee52e5a86": 1,
-        "ea4cec3231ade85448b0a7a69f9e966aba038753c2d2c3254a7ce3ea3566158a": 1,
-        "ec215af5990977699e03759a8f8a88bbced53563d7435ff3c806cfc7434a62ad": 2,
-        "ed2a98ffef68fb088fc9daf288821c6bd117f24c9e59e851a6f67ae24b7a09e2": 1,
-        "f2cce74b22e491280fdce21ffabbf2d664ef6009dcac928058b408e2a2ccaf84": 2,
-        "f628d45ec0a52ac4f956c3a47cdfd1a74ae852ce580ef4b7fa793ae45787a2db": 1,
-        "f8608191de0e97e677a607797714a2611a13f53ede6992f4461a68b720d007f1": 4,
-        "f90f0464b8cfd4637794c6250a4a633c3006d94a8d2350527b9698f74fe28829": 1,
-        "fe858e0c4da3321667aae3230c7f2851eeb1a7df90be68d1fb425f904365a213": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS102_MCP",
-      "path": "apps/bff/src/routes/admin.ts",
-      "count": 48,
-      "fingerprints": {
-        "077ec4f232a4d80e82c522fd0768d63378b48d8fd8cf2968c59f40e370e7fbe8": 1,
-        "0e5d9bff12900943d84dc41c1b396cc95857c97c3f4dd2d68be523b2f88f1421": 1,
-        "0f20a3c29142a64d4004f46d58874d0b472cae49b79ef365f742b74063dd6c0e": 1,
-        "1219cbdb5517465fa55f4bafb095b1724fcb7dae990061036a7db1b524b95168": 1,
-        "13ee2daa5e5db531a0e2fd3bd503c4134f1f1a015a9f0d1a75f8912747e6a814": 1,
-        "1cd62a1ffb6da80a4101f78a5835cc84b1ed7caea24eb45d6a3387287cd0cfea": 1,
-        "1de1c60441d0d21c21feec513b3b1db2851c899434730027ea4ff5d3081a6077": 1,
-        "2020f68556cfb616943ab5433ea1c76d9080dbc33cf1d555a8d8b3c5a6727e84": 1,
-        "20e62fdcca8bb7c8bc40a46dc512d57fa936191f44e15fbd78609b35bce96e44": 1,
-        "21335eef149b2b8ec70aeee7edb6716d91e587c6653b4c3c8fc6314d6fafab3e": 1,
-        "27702148815999734a97f28868a07aa32de9d1319bce335071149a628719d070": 1,
-        "34fbab46195e740ae3e9e677908d430606a11ea68988087d5b84e125787ae456": 1,
-        "42a0b4badaa7f569203840eb82844b8198efdd494edb1a853c348eaa6925245c": 2,
-        "47915ce9ab7d9d9e5957bc031fe649e3ee2a9ba44662e39a8cba8c26ba52b9fe": 1,
-        "47b17463e4e5756484301ac88fe15ef6bdf2aad658ed5df16d0e4d8c99eef29f": 1,
-        "4eb91f9084cc0a4cc9a8e93f8ec18ffcdd867ed6152209631a18f1ab9a12d6c5": 1,
-        "51212f6162e96e1d69a009d4da8207334a538ef7cd440ae9959c9ed8b41ec793": 1,
-        "513358ecd5d3afa41f88866dc8cf5257215b711e4e0edfb2217b50d8c8b02378": 1,
-        "536b713e4374bd68d3c1de2961e1eabcec886892c49a399e783ed287a59c0f95": 2,
-        "55e5d82e6f6f77db44b3e72870b0bc2d2700be76210465e65c19d2679f599937": 1,
-        "5d9cebf48f9bad855f70e632e7a2aa63ae23dcc096d27202f8c462381c6d47dd": 1,
-        "6af85d05da0c43a143ecbada051ef4b2ab6ecf7791a3d4559556098d59f72f7a": 1,
-        "6f1faadc69f633de92947f6fbf285752b61095862b799a7e23fa114b81e221ef": 1,
-        "8645b526a5aab99eccc307366f073f83822c143331194b93930062ae61d323c2": 1,
-        "8ffbc77ab074591c254f1fde6f93a02a69c74574d84231a6f131eb9d81b8f572": 2,
-        "9226141984ec2284dbe66f004601fd12605065faf166a8e5bcb1400cdd710f14": 1,
-        "97413f63518c03e7455b49c6750968bcfe5de52d09170e35aa9ae4bc305f9941": 2,
-        "97d471f752d8f285250d6e24ccf03bab7114c5215cceecaf10e2c1933b5e229b": 1,
-        "98dd381305bc31be8872e126ffae5a3f7839afda0a4ff2644a4d289e999b3e3d": 1,
-        "a451bff5d1933f43309146dfe93757effe07e7cbc0e632ff3cd9b59231440120": 2,
-        "a5939fc92fc9f2af0b247acdf66b1060cd5979e522722d7c2994104ae0005617": 1,
-        "a8fdbb2f19e60d599aad8d758841dace1f3f825136bb7d1a42c2340e2668c195": 1,
-        "ace2c58217e8877b70fb2c4dc7fbfaf09005f47db070358a841af1f7f3ca00e7": 1,
-        "ae4a8a70ad07f79062b96e07079ba62539981be5008111488b20b2f64b871950": 1,
-        "b56636c44969be67e276d1ba8f2f12f4d73a121f9762e80d9ba02798349c7273": 1,
-        "c85812aab16bc6bf307430c11105a43e3a58a837c0e0d393721a25bcd31b8e12": 1,
-        "d17487ccd60b105d0a867ccfb3c2f8851741782184836f6c9e5d9704dfc11c60": 1,
-        "d49ed0eb2c3e93b57cb38a9dda7746b13abeec63aa389fb11b6ea73f8876af5d": 1,
-        "d599842941c63a46d6f78bdd46a9f8028bac8261102bdff5f0fa362c5266a0c9": 1,
-        "e610577a3ae9b3aed02c3b0b14fd5df39a261a3c39b8f8f353842d2182e00ba9": 1,
-        "fac49e727835deedb67571a9b5779830ea6d8afe72c3f73e7009ab7d45ab3d92": 2,
-        "fd63b9220140940ddbc1319c5661481db92884c46e915dd2c0ee333ccd5070eb": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS102_MCP",
-      "path": "apps/bff/src/services/admin-team.ts",
-      "count": 12,
-      "fingerprints": {
-        "045dd7b85401635f96f62e14df9244c5694d12b98da26b0c0998e64875b7f430": 1,
-        "2b62a9677c76c64fdd70674b0a653621bd463b4d213d444609690a6972ea0420": 1,
-        "32ab198307681b31975688aae8b1d3eb66be2931cf1ab9db1f268ec4bf72b889": 1,
-        "4c034f489fc045dfeac432daeedded3076f084cdd7b1aa8e8a68475c96ba34c0": 1,
-        "5cd51bf96f71d78f7779880c984ab337131741827eb67a0fc06d52ae47509b99": 1,
-        "b3b2148ce818cacd60035f9e3f023973077a19f33ba79aefa766d5c6d8296461": 1,
-        "c89a87aec02d5263d4568f42dbf622af585b5e2590ec0bc9bc80c014da10411b": 1,
-        "cba751fed054b1674446183f4c3c990e7017c6e8bddf7d77d4cf20b8cd10faba": 1,
-        "cfcce5591678adb1aa9f2c945791d9e8d78d511a3e1f61f6eec07f94831442a5": 1,
-        "deaf7f44be2e23597daf4bd454ab24159488fec0567b7935fec673e5fdd970af": 1,
-        "fa08ed2dbda183470ec6f812cc90f28f9b18f17a70993c4a468f31f7dd0ac7e4": 1,
-        "fce8cf5bfbbcdf3766b377be0519efd25dd1f02987c5be8e4723b781b5855611": 1
+        "0a90b1fc3b99c9fe6153d1f4faf29b5a39a38e6465e5060186894c19545f8acb": 1,
+        "175aef5eddf4eb43464a1aca83352c0d92c7e6ae811e02849d23978ae9c8a207": 1,
+        "1d3312cd93f4d88d3e0aa4745a6fe04e27fb0e317a20c2a150929f48b62d6961": 1,
+        "447d346ae3b3b6b9589398c236b6696dbc423834e1157d5c1094d54bc5ad637b": 1,
+        "52f067f743155b8ff7f08d963842ece4e6923135441e6043e048bcc79f32e9c4": 1
       },
       "removeBy": "PR-03"
     },
@@ -2054,133 +1829,12 @@
     {
       "ruleId": "FS102_MCP",
       "path": "apps/web/src/app/page.test.tsx",
-      "count": 39,
-      "fingerprints": {
-        "170d9017f3e9e23d43bfb85ae3d3f727b18d013d65804e2af6cb3fd9641c1ae1": 1,
-        "1f46cc4429c27cac15f897fd8c7e4c3470d4ef08759b62dca76b2a73ea16f054": 1,
-        "2f3a22eb471de6e47699234464d54f4dfc26b82c2ef4bfd7a43ed6414dbdea16": 1,
-        "307d1535289100eb513a30d4028d6020b001f86d2eedb1792ddea9141a8775fd": 1,
-        "357abc526aefc8d720811edaf65e83e5ecb945e830abf7ab2a2d3a2026392125": 2,
-        "399459c49d8edb5e6b11b9ee81f41c19522faf7dfc5c27786e85757539920bcb": 1,
-        "4103c837d6221c03d49a186b5bf9488aa2f414c5ec8d1e36d0f3e05e5d256ee2": 1,
-        "47ccd54208914327b153724e4da94a9a7c2727f1fceeff8463567a2a24cfa324": 1,
-        "4b661987bb4bc32fb23ebfc749793e362623b8b9e7eb4be47ace47be69cc59b1": 1,
-        "52032c10f85ee0a0b5ae3c53faaa97ab46906025a19880b5811a40f4355a8bdf": 1,
-        "570e8160598a0c99f7d2529836bd6e457224aebbec6e3a37c3d587ca8b6d3638": 1,
-        "6164ec6fff95a8ab6e5848a590573f1b525bd49dd0169cbed6b053490c485c77": 1,
-        "6262fe818a9d3994a3affa4153ae95a90a0d92d224a59064d149d0f2afa4ddeb": 1,
-        "628be9bd35d9f48e22ea0015c04d5edf74ea2423fb9688460782b3a8c2f8deba": 1,
-        "702d983f4dc4a0e9583ea3132d139e78c057526e64627b9c2aaaf1b3c437679f": 1,
-        "789fec6ab1a6481c2c9f240d7e81532f6b306e3c8889b0f33644e80886775744": 1,
-        "91135f27233d4eaa9ed80c198442bd4d8e9960bbd1cdd4fba52505d14a52bed6": 1,
-        "936f253599758292e6b6f93b98f3101680d40ab2727e0535376ad8d1a9fdf8ac": 1,
-        "a17bcd2778618853779363b30ea6428959a80964f6f5134d5b10ad014324b534": 1,
-        "ab7f4180f180d2587525463ff28418e6d8ea5832d56dd75698d08066a8504acd": 1,
-        "af2b1190e06916e0b0950c04fe25930d8b45982064b233f4ce3eb566cfce003e": 1,
-        "b41176c3fc5a41dc3a107fdf63b7780b2d1d151d11c49c0cb4e71f0c78ec183e": 1,
-        "b43854b6a28bd1c046e67f5a78d3f079f1a737accf9e0c5a9742bbb0bc7c5538": 1,
-        "b974e0f0186271e1a3b407b1a8d1039f8399b849180eaa9e90647daff2ef86dd": 1,
-        "c16be4e23e2f44b28b4d796a5c49f8963fc600a25268c59528f6552d215e56f6": 1,
-        "c2ff401b64914bda58d90e3d4c9411de17976005d047fc97317b8ab172f36767": 1,
-        "c615ce18d5622be26be7df7c56f6a613b5db58565315292a3b22ecd47242eed5": 2,
-        "cb75a67ab32b77f005949199d2b0ed881064bd194c2bb0571404c7ee777cac19": 1,
-        "cb7eeb399d13529f045eac57d4f5f018fec287c3ba00fa21c0a9a68994816167": 2,
-        "d070ed89dd1d42549af1634860df6e4d3f8abf378cd8ffdd21fe1493a1f72869": 1,
-        "d08c39c3291788571a8a8c4becfa489433e4d0c895af1bd75e0383709833f575": 1,
-        "d63b49d200b18ba254495b501825ef54fd7996a62f296528a4b9c3087c799437": 1,
-        "dbf98c3bb5d9fcefda6382da74b9194af6cd933c2d7bae63fd809cbe73529929": 1,
-        "e579ad1ce9232ae0d3143d6aa88bc7b865667bb826833daaa021e758a4f00b47": 1,
-        "e83ea068bcc0b5b9940a5ffaed520b0c146c3b1f15cb2f387bed65d19c021c74": 1,
-        "fb47e34629fb0b96cab401ccdfe60bf48013b3a71613886913e2e2a6c23899d5": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS102_MCP",
-      "path": "apps/web/src/components/console-v2/action-toasts.tsx",
-      "count": 1,
-      "fingerprints": {
-        "053a7f5c71c5db0e82c44a5d40445ccdc9b36d7d6dd0355d88ac293b0268e01c": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS102_MCP",
-      "path": "apps/web/src/components/console-v2/applications-v2-experience.tsx",
-      "count": 89,
-      "fingerprints": {
-        "06a64faa3941aa2ba889519b9e31f7e1d2ea90d1e07ae7bf1bdfc912a1796238": 1,
-        "0f8f74d233d62a34aa63427096d5b4086f6408f3ea51d9dc4de2609795d914be": 1,
-        "14229e42c5eea2e9a0ae26e4ce4cca5e17fbc56617c189863d6cb0814069112f": 1,
-        "22d6d070dcb0cd49f219a04c0b58a627985490b70e940dac105b1922dee89f35": 1,
-        "24cdcc98ca7f079e7206763b377e0ee2cf728583a1a1268055f2cb84946c2f27": 1,
-        "2a4e18ec8a4cd86e6990e44ed05cb18021619e37ce61748cab379ca43b1831a8": 1,
-        "34c21c49c08dbedf5fe5544f00470b02843437d74351302fd69a9511aa678c56": 1,
-        "38309f3c077da0a960bfdceceedec0bcef4db00f96f973d6414561ecf74938ab": 1,
-        "39c214f4334b99b2a2fd44abb652c0724ef8f30a7bf28d365a8c7ab8976f41c5": 1,
-        "39f30200eee6442d4e0ff32667b0936497930e48351cd7a2aa63b9a27531aee4": 1,
-        "3d14cff169dd8538df37a9cec96bec16ced0edf87f3b6b22ee60af65879e6e22": 3,
-        "4a711592f8ab9e7c6fee99deff5a842cdfd14c3f9376092986cd67409e01375c": 1,
-        "4acc8a12466d9389edb2a05a8e1bcc895abf76c639eed6f481f37f1d4b32d4d3": 3,
-        "4bc57ab036310c4a478136e91cbdf9e62e8ba19613115cbfe6348439312b3db5": 1,
-        "4d1500b7efe65f411bf4c05e67cabb8c467b5f68953a1d126a5501376a3de9fa": 15,
-        "5318b760309206142e8e17a95cbcb5c519c6dc5ea7e79295aee196f0da1bcc37": 1,
-        "54844833e04d979db61c69f9cc928ba831442f409489984cf4cfeea93ffa5f0c": 1,
-        "5ad0678b23f6a7af027d5708a4d1d4d5ad27bf5ec2d8b2b059ac8f618b849fa9": 1,
-        "6161e52e2b80edf9338c40d4a6f843b66010971c9f8f61e8c180529fc09ea4ba": 2,
-        "657722550e3982119a1a2b429db7b1849d9091d07b4a6a98d70da80f27900a26": 2,
-        "65903e94adbc22621d11696d150c8e0ab2f36d5d697200619ea66371ad6b00a7": 1,
-        "67ab2e1b67d9a23e0499a5dcf12c789a2b1d85c5b58e479b84ee331e32369d13": 3,
-        "6c0709a2281c5f2c7ca0469d7d54ba8b7139d0cee535bce103683043d88e2d0a": 1,
-        "6d7dd50f624147800e63500092aa117c8f56804c4a5ba2f848e8968315548373": 1,
-        "7932ea0eaa9d12278e1561fbb9c6f1c13edee5e74ba1347a33e889296d89ea7e": 1,
-        "7b2c1cc66343a937fe8cea7c7a5b2437f42d5d5e79813208fcf2c53f3f9de974": 1,
-        "7bf8adf5348373f2a485d3850e09bcefc175baaef15724247b390a6285b7c5ed": 1,
-        "8173572ef741a587c15bfd025fc88431bf5f005860ab290e63a7495b5bc33569": 1,
-        "832a1719347e37b494349b1bf960ea54ebc6ed9c6651879d4492984d17258b66": 1,
-        "8852f0fa16f9b40b12e7054407847ebf82aaa62aee44d4635d4a9e8096ba974f": 1,
-        "8f7b6ec18f7f5d548984670ca56c3e4ae14c5129b0aabc901fe9b4018faa87ec": 1,
-        "93d04596c50ba2b943752ee646fecab0c09272914f44a05580f295650483e610": 3,
-        "94b819db67528483a5269e5e12e0c6bd46ca33a29fdb0ed57a08a4c57d006538": 2,
-        "94cec56c8431e4806adb490c308f14c5d72cb65485783c6675db2210b8fd66a0": 2,
-        "97046325d7e666fb784113fe9fb4d140ef832f81dc47e861baf45737a25db662": 2,
-        "a2f61a37311db0f16a55a87423865170d7ecfdb0c739733b459454c07d3ce42e": 1,
-        "a9203d4ad1b6c40c6d1ce63437336edc2ac15e78115b3ca87b33dc547847e8df": 1,
-        "aa2272c2cd21b37c6f7456932b1ce9448985aee8f2c748dcdd3d2f2c348248a7": 1,
-        "ade14c1bc538dbd51d9a003794737b4bb97098e36642df36f07f9c61e76f0c53": 2,
-        "b598c89d5b3bbfac5dc2a022af3ef7dc524ee6b39dddaa6e1f7ab7a934cc45f3": 1,
-        "b763f3535f60fc45d6830899ef366c6b68c8a428bd9be2af3b2316ecc4be4d5c": 9,
-        "b982e75c7c10bd0a72c7d3b9120914f66678c930ac893fdd972918e0a3548d98": 1,
-        "ba5c957f2e69d78a01feb40a1eb0ad91b35b6f835f0f421a5164ec4164c38563": 1,
-        "be220371dd538e69240b45dec79cbe7aab631df42594b374cc2670271585160f": 1,
-        "c123124dc13637dcd6b5f60c10104714983e2528ede6fc9940f63862f81f06fa": 2,
-        "c976adc3c1f6c600bfdf5a9d00ca682e0588294c749cc6f5f550702f52d20b24": 1,
-        "cad89bf247c171407adf918ab25b3e11642dcdc395910944ff98939b4d6c7edb": 1,
-        "cc28e9ffc205680840b513b259ce7c4e7a8e187090b04a6a8251f67bd39cca14": 1,
-        "d377cd3acd390eccb6f41c885c2cee99c1a75fd275341a0bce5616dec85c82d6": 1,
-        "e9977b60cd6be969d518998de7bfe9c61c158982fc62760abc6241409d95d39d": 1,
-        "f15b0b260baf2f24be9093f56b108b6ab5513a448b17432c048061021e2d6047": 1,
-        "f2c4b1396864706df1298140a0e7e3223c4c33e323956758cc19bffe8a3e8d4f": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS102_MCP",
-      "path": "apps/web/src/components/console-v2/settings-v2-experience.tsx",
-      "count": 2,
-      "fingerprints": {
-        "16cdbadeed3ef46a4ff5aa40ea9429259dac6b7587191afa35b8f1473f12cd81": 2
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS102_MCP",
-      "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
       "count": 4,
       "fingerprints": {
-        "13dff1cad61ff2ac844debb8692cf67ddea672e8f6a385e1f52950ec529869ed": 1,
-        "619e0c2f2b3899a4d066fbe6e69e32c4f8d3252716f24e73cde1e9debf102317": 1,
-        "b5757009185b8d54b8f4fbe3102096e53be5c21ad143af7a4fab6ed917f4168e": 2
+        "2f3a22eb471de6e47699234464d54f4dfc26b82c2ef4bfd7a43ed6414dbdea16": 1,
+        "789fec6ab1a6481c2c9f240d7e81532f6b306e3c8889b0f33644e80886775744": 1,
+        "c2ff401b64914bda58d90e3d4c9411de17976005d047fc97317b8ab172f36767": 1,
+        "cb75a67ab32b77f005949199d2b0ed881064bd194c2bb0571404c7ee777cac19": 1
       },
       "removeBy": "PR-03"
     },
@@ -2277,23 +1931,6 @@
         "dcf36353d091d6bb82c82d3d39f7b22baf9956138924add6399583bbf4fc2ec9": 1,
         "f4d5be2568b8259d2c7211127ec4e9d74c6eb1025778f6733fc2f755acb4879e": 1,
         "fe4bba157f73e67060c5936ec70993b8e8e2223890ec673f1f2b9d303693baf8": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS102_MCP",
-      "path": "apps/web/src/lib/admin/console-v2-routes.tsx",
-      "count": 13,
-      "fingerprints": {
-        "0617868565a33c4c61bd28c05593c1f66cdb6bd3210e670a6411a4393aeda1b2": 2,
-        "15c2fd2f9540a58c8d40326c55911d43d984a285420129ab8fe825b6601768ea": 1,
-        "67ab2e1b67d9a23e0499a5dcf12c789a2b1d85c5b58e479b84ee331e32369d13": 1,
-        "7803aa4ea4cb5b314b63c4c79977c6bb6fbfe4954c4b60099e36f52d3ddc1b06": 2,
-        "905fab6c937b4fe7f7f751b9e321e840fcc242911553155cf90a4b8a19380149": 1,
-        "95c807b6aee3d69714d9c0e257215e9c002448a842bb50dc6809f14d5a14365f": 2,
-        "aa078316eb318370108a09f9a51b3955cc690fcb336d2d9e6f5706019f202cbd": 1,
-        "d599842941c63a46d6f78bdd46a9f8028bac8261102bdff5f0fa362c5266a0c9": 1,
-        "d795b74a2f0dff857d66ca6d5bde06872c54d3019ed2384a81d3e064513a8a68": 2
       },
       "removeBy": "PR-03"
     },
@@ -2653,62 +2290,14 @@
     },
     {
       "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/bff/src/index.ts",
-      "count": 3,
-      "fingerprints": {
-        "1b9b7535c67f158a7bd2c6959ec3534d397334159329f0b46005cf2ab9be770a": 2,
-        "9822bc2ffd305e1903b8f0b7f0aa7ea200ab62cb4ec76238053d1f4a2a1458df": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/bff/src/routes/admin-governance-detail.test.ts",
-      "count": 9,
-      "fingerprints": {
-        "17636ede7a6b7a92e556866c777960a30df7576c82d8a25109c64b257a99dd7c": 3,
-        "83c111e622248eca30bd57bc1d651e8169e86087f708267adc6c56e46c82cec7": 5,
-        "f4087b1886c399029eb63e57712b85d0309807c68476c69dea8ad238dfcc210a": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
       "path": "apps/bff/src/routes/admin.test.ts",
-      "count": 44,
+      "count": 5,
       "fingerprints": {
-        "0aa338dc15c002ef7af3a2bce37b8f5710913ba8b78e3081ea94577769c0d618": 2,
-        "0ce9a314e4603e34ca466ef36f418a186a28c47bd5e71609b709a83e9a7affa1": 1,
-        "12c35b04465b3acf88cb79369e454d7463e54188dd8b88957de101b6c623edc0": 1,
-        "1870a026e60f684517fb78cb39fd0707be8593e600c470397c6a7bd49917c50e": 1,
-        "3a4242183830242050e624a753651558ad76e728fe0321ace9a39236c9eb99af": 1,
-        "40cba59cd291c13d3965f1c749114b4d178420ef3eb46bab677479b477ed4b48": 2,
-        "4e2ff7d4f8a652b3e0f915b345b787128ee95f59427e2ce8c925cdb7223cb73e": 2,
-        "52a9780d39bf8f30d6f676eeb619badc4773f23e92a12934d2d5588a33b59808": 2,
-        "67683c53e910e1edb4b5f7f4e6394d7ec75810b6434779e2125b980b89d4a6b5": 2,
-        "6cf3bc03c954710132657ab140394392d03d9cd570185f5383722952212d7d98": 1,
-        "7f5b47bc8a8650c7226ce0b0b3a14fb1aee1e43a1d9cbdaa07ff5f29d5dac13d": 1,
-        "8119e63174d83ec26560658d7eef43e70c8bcea4f8de8bd127780531fb3e1041": 8,
-        "85d873efd2ea5c1425e0cb24d30b3e4018479db8b8d699960366ba2e3dbb1c18": 1,
-        "86c0d45db47050bbb073b0d2d2437739d8232b96c5d24df94e81f58b61d6ca04": 1,
-        "8e680e6a70613f39ab1c974eafbebe5417461d7ba1dff803c358e91b0d9286f9": 1,
-        "8ecb3347aa7654b49c926cbdadcb470d8c09ea9692de1aced166cb1969fb5163": 1,
-        "90cf6a525120ec716a455037e834552de35c863fca95b60ee012380d0f72db7f": 1,
-        "953416fe2a6fd6782d11d7ba31855a8291183600776c07f942e9a55ba85da218": 1,
-        "a37ef62afb82f8d29427671c1491d3e25ac1c645153170dfeafbd612f35cfca8": 1,
-        "ad802448be46294f9651dc697eb7446c4a16b79f35f145eae502a689f89f72fc": 1,
-        "c1457aca91a3ada4bb7e0214ffe0d72def1f46057845ffb475ac5ec45ca51087": 1,
-        "c46c1c79a334543e60d85cb945f4131a0c1369e8b546d92bef95e19ca33596cd": 1,
-        "c7d1aed0a718a8bb2df7272db61362b0071cb90c9369567ae2502d7d92ceefc3": 1,
-        "ca49f2891c9d1dbc5b1e10ebff6d6deb5759f5a2ec8e25ca57855ca6870b9826": 1,
-        "cdcf545e4f5d5518df722201398fdad5ddcee939028a6387143e803c38f2c323": 1,
-        "da7d4eb340004895cdfa68ab89a736ec79d74ef39d40e55fd61fc48856bcf516": 1,
-        "ddca5e0c9f9d8a62a99639d5b3238501c1faa99a51861cb5eac63b235ca24acd": 1,
-        "e3bbfc892808cf8b9ee147e4b6b2ea2c0ecf6f93e78d92b6ffe56b60d64ec935": 1,
-        "e5f60c7a1e64bed0602f8038084667205dff1ebbeb41fd10bd920780bc5dc2fb": 1,
-        "eb92a9aeefea3de9d29d10c0dccef048f18c4f933f8a7489e1d51ef0fdefd97c": 1,
-        "f8e57034b392b7f94d16fed51522ce364e0bd8edbe6b82f93d7dc15d439d100f": 1,
-        "fe0c2f4effcb5bfbb6e8f2d7dcdd89f84469e92c4ac6f8ede668bbbf54048ee6": 1
+        "679a28f205ab475b071e6d57c5daf746462e91c84f7b6d8771f96cb6ea63864b": 1,
+        "8272065e8643275bd568c36addabdb617a0cc1ff05d7aadc3134a62fa17540fc": 1,
+        "b2332085f1a6cf904704735970d016291894d451c0575ca85ee4563c474bdd31": 1,
+        "be172f8a615265d3020886cea8edeb3bd2801540026a0e454864e5c7d057c84e": 1,
+        "c537a356b507e7a7565dc4891c21ef2b700b1633b534051b2e6484f5836bdeb4": 1
       },
       "removeBy": "PR-04"
     },
@@ -2717,7 +2306,7 @@
       "path": "apps/bff/src/routes/admin.ts",
       "count": 1,
       "fingerprints": {
-        "128028e62836b8fca71bc1b7aa9993c4d566411f02a45c53048786f528c95947": 1
+        "6f588291891dd5d2561e0c90b87d22fb9d02bb9ee01c74b4b8bc709d683e1095": 1
       },
       "removeBy": "PR-04"
     },
@@ -2758,22 +2347,13 @@
     {
       "ruleId": "FS103_KNOWLEDGE_RAG",
       "path": "apps/bff/src/services/admin-team.ts",
-      "count": 20,
+      "count": 11,
       "fingerprints": {
         "008af08f54f2657f59e3b95a4d73953b5ad7338d28fb0313117d8d5b3a52b882": 1,
-        "1e39147433443317998e490af4f99553d260575b06eb69c13732bb9f7255abd2": 1,
-        "20d49e346a82e8f03b24a9e38499ec336d5d6a7c096a4bd5c6d29936649b9ffc": 1,
         "2e619af1a8f6d7e7c7a07b718233a12ae0e539a70b0e60b3397fd5f5c892c8c3": 2,
         "380273d13990516b9f88d50ceffc46d16b8836f842d6a83736b075079695ce47": 2,
-        "3a4242183830242050e624a753651558ad76e728fe0321ace9a39236c9eb99af": 1,
         "435eaec298828c29208e3571be21bad51ccce6630768ce8cb0445a46e62e5d08": 1,
-        "5fada4e33c3f8302f3f1dbafd37d53078ed6fe803879901253641db923d14858": 1,
-        "794f20629c1b7379e14e9544a59818be02044eb10ea9534715ab4d1e2af9945d": 1,
-        "7cae1e0c114774804c14bb50e19c85e93a27cbaa905fd3f0fe7bf4fe60ab3b73": 1,
         "81d457e91e565585af265602d17b7fb58741eb3083cccb2b2be91e1c859d1c18": 1,
-        "8da1bf01a1f18fe9d0804bcdec3a66d350ae41c95ab69126693f807ba97ef308": 1,
-        "9643495c01749b381406813afde62ef704feffe4bcd8d2d8f29cf4694726b0fd": 1,
-        "9dcb0562774e33027237f183ee2695f2d559141f38cc92e6a9dfd3ac7075d342": 1,
         "b46e4880830462c057c49ff32697e28762b6f0bd7a2962a26c7d45b800c427f7": 1,
         "bd57ec24c6838e7cf0d6bfe8624bdbfbc0890ba9d7aae952f075b7b35aa5c1ca": 1,
         "bff5c3aeb819854fd55f71e6ea7b24c9cea971065a906b8e3b72bc0468d792a0": 1,
@@ -2802,27 +2382,20 @@
     {
       "ruleId": "FS103_KNOWLEDGE_RAG",
       "path": "apps/web/src/app/page.test.tsx",
-      "count": 288,
+      "count": 268,
       "fingerprints": {
         "0266aaccd7007f484865e496e3811a562178d127b9e6dc963775ec87627e276c": 2,
         "02ab24bc4ac5a132cabb181799c4e0a5e6ac4cdd4d619e16983443f0d9ba8d86": 1,
         "0549f372ec0bc418ef0638fc97d5b44ab757bca6d1d55ba4752869c8c6cc4856": 1,
-        "059e26e3e36a18cd63dc30946671e696c434d44e3a5de093e516e4d02eae8022": 1,
         "05b4d501d0ef2e9ca3e06daf5b3778d444d5f20d0739aaf31ebdec6bead612cb": 2,
         "0652155cd2b2bf430a512d311b54535d68eb543b7a65fdeea3731a41aeb6fbf9": 1,
         "0752622f8d590793d3a1099c44ed405833b3a71be3243bcdbe9432397b5dd19d": 1,
         "0a5df754b51d9d0943df55dca206e24166a7ed5b3a63299f58417789692afaee": 1,
         "0dfceed40615d78dcda6bd688826196216d6cce77bdcd1e2e8e6bf6b131c1495": 3,
-        "14b971ef15ec55a05f501ad2b1d8343f06833e0e437cd57d4d06fd75d66192fe": 1,
-        "14c287191636d80a07f357c98a38742b8465fe7a3b5047a1f712585de85388c0": 1,
         "1641a390f58d47ebbb3e5feb6a925be378c455d4eb49c96b8bb7f4bdc91f45c6": 1,
         "1651eaaeed052f3e1501b576165bd2731a1f22251e4a287fd7021a7f470bffcc": 7,
         "17fa7b3fc0dd87ab5b9320104afe4504df79954aab87f5d9c8779b65bc556a70": 1,
         "18919bad9edf771ac07c7af57ae5fa15d3950bdb4919ee467074a12205524a8b": 1,
-        "1971a8dd42a71b3d932c873fa36dbeb63d1ce9dfe03f3f4a745db5a5348210d2": 1,
-        "1a3b76d7363700c9da28ba48546f369e2bcdb0789e24cf9373102d7ff542f252": 1,
-        "1bc2b850aa10f41da0cb2d25e59967c1a4ca9852ffd6d8282668c26055434957": 4,
-        "1cc07d95f66d21cab659d614b86133b0ed19d529c43f9b357b46bc5923496c98": 1,
         "1eda53ad5932679b8db3f6e2bbef40845ecbe8244a9084f88716f56be8819a2d": 1,
         "1fbf19ec924db837779c4e6c8449abb134af914e2c122625a3f780849a853e76": 1,
         "1fc965cb9fde45ae624d0f099c63ddb891380a345dac60c33128616106e7bd08": 1,
@@ -2830,11 +2403,9 @@
         "22fbeda11ac2dd703acf0fd7152cf8c3e39d0c2af852a306b45382c0580de0fc": 1,
         "24bbf3c97c74313124dd83d9dd1a9b325a1f5a382b184206e85c68e95386ca3e": 1,
         "261d4a27d16ff012649ac7ab0f83093c118b95afbaf6a55f190e5c0b4db6de6a": 1,
-        "285f9ec0a8eb36c1770befa06b23bbf05f978c05def6e3fb138b072dd5069135": 1,
         "287afa6262d1ff6a57e502626b7ac6824ed5d2f2c3f6ff3c532ad279745aeb7c": 1,
         "28c790aa0c7208106161aad86121f3a1c942d8a65571cd2fb1d944593fca273b": 3,
         "28f11f63c68f98a7c621271a1afcdc00ff1f262507e729a541bab55f74554d0a": 1,
-        "2bb74473721befc57244e106542cb19c68b3a33e5cdfab690bf2f5ca31d422fb": 1,
         "2f4b897d5119347bfa06cc2f31a4a04332a2771bfe671fbc98df4491f6a3ac9b": 1,
         "2ff28354af6ed93339674ed890fc6a0f4c35781c8e001bb16ee78bbad15c3a84": 2,
         "310e0221edeae38dbdfa1e432db63f145df1ca130493e2e49849049779a17c2d": 1,
@@ -2846,28 +2417,25 @@
         "38f7cc15a0885e6f3fd3576df64171eb79ac837eab0af3336a0f73019605819b": 6,
         "3909d0619792e771c29443994f065eaba18d1cbc73db131d81291021ebfcaab9": 2,
         "39b2e9cd2dce9ee4f80297f34cf16ad1088dd1747c544974400be8992788716c": 1,
-        "39d973180304a59f4805a148382e111cc833555fcb3497ff980d0844f7422e6e": 1,
+        "3c3c69672d3a708599095253dccf28875456da5127da123ec7643a3e86635b4a": 1,
         "3e148c6835ee14abf6f65a04cacb607377e399b7170cee7fcc00c17febb8a094": 3,
         "409a11cf6f52c8b23ba85b59d26db163bb71ef2380e52f96ff52421ef6c3c4c6": 1,
+        "49242efed398f30d7fbb522987ec00b2e48e71d0ceabfd46f13c27f848cb51fa": 1,
         "505ccc54f6732dae1a95c6afb723cf95a414b0ba3e9db79f5262a3d472aaf413": 1,
         "526abe21fcdb1bd5d4b0fd4517f2e51cd2def4661d1570a2594565cdada868cb": 7,
         "52bf3f7a337deced4413fd314f5caa96e32e90cf96a851e58d0f546218ee02e3": 7,
         "5379a7e3b5a1f7c4d095a174a6e2d29b34831dabd17c42339388d125fe29df32": 1,
-        "53b85cb21533fc335e99e1d8a5247c3978e4b7500a01f41ee9a03a28653e2fb3": 1,
         "55dc0d7b6b6ff85868c3a941060ca01eb612561750b44fe1da2aaae8a29fcfb2": 8,
         "567316af8f7c1dd0c4b84654560b09ddd3b6ca9622d63b859847c778eca0754e": 1,
         "56ea5665d2feff2793b2219c2f8df9a2e3d2d75f7a76d82b7108f227a7b48749": 2,
         "5a8f9ed8344941a82c2074bde472d0efce771900d68d6c5084863ebd56a8e340": 2,
         "5b15cd8bdd1a27e54ad3011543c5b32d48854da40dfe79a20bea90640209e3e2": 1,
-        "5b3c4ef446662e2e4d16ed55df7c24fe913e3d2123fc816039c94448a132fdee": 1,
         "5e33e5aa100c6fc5cc8fd078c630e08ff2b5dddca0e4d6fb7eb8d9c6203ce7a8": 1,
         "5f79a8e6bce4f1525bcd3f87985738ac15baef23f4d1056604e0280107d50560": 3,
         "61af5ebea058538c56c2f27a1ca9628e1db8faed923ff9b770991289595f223d": 1,
-        "62260d128988b41c614561b8df3ccc5d4d50de5894ea020f912032d44252c3c0": 2,
         "63777020163e91f0d76121e611923f61ff61d9456aecbe707e47eb38a7cde057": 2,
         "63cad0330912633affcd5207eaa5de509dbbf106ae5cc6f02448a0782203669f": 2,
         "64b11f57fe41e0ef81680a914767e5757921b31368055ebf3b323897263d436b": 1,
-        "65bc88b898b0cd3c2d398ebbd39ab0f6ae2e35103993f32ab479aa4a68354e6b": 1,
         "680118a705af0be77fd89e1e97617917262ec6fd3ed25a94de4c04044e75e54b": 1,
         "6850a4dfb9633ab3187ad85a9c2a85b292704cc24f5b8cbe2544607a8002ded1": 1,
         "690ea5162692c1ee47bc58f0d4707496effb4f8dbe625206b6650b1c8993d483": 7,
@@ -2881,15 +2449,11 @@
         "71813c187e97f5fa80329b86f436dd7954f926c7e7a6641894d6638f85abada5": 1,
         "726ae2b9048606cfdaf564cca98adab9d686cc7529b23cb7f55c8f0507b3b120": 2,
         "76ae8e774b62a8bf7473993b91806292d16c5ac1b33bf59aa11d937843929592": 1,
-        "773ec7185cfb8f6cf5e1a6e91035253dcc306cdb2b863a9dbae1c8b4345dea54": 1,
         "775ec1c768ff102beda3df2ffa566f934200ec391607fd90b38a172134aef814": 1,
         "77cad80139ddc576004b0a33a95e2650888dd8cb3485c99e84231924cd17da35": 2,
-        "79ac0a0512ec797215b83fb9c9e8666dfa13f636d114a8146ba93aba8e2ac435": 1,
         "7b8f13e39c5b10ea642dc4dd3e6efbfc635ec9b9653f1202d4ee9361f4f2f445": 1,
         "7cac2b1fba5a0f23f1bb6ce41f84a789a54d8fb570f36e3a36b81799a29d072b": 1,
         "81140cc98556aeed066424cbf2d75f5c32f5b0c691b157a79a8faadd844e08fd": 1,
-        "8119e63174d83ec26560658d7eef43e70c8bcea4f8de8bd127780531fb3e1041": 1,
-        "83645a5ef09a99d03761a94a099be6bb81e9f9b175821fed59acaacd7a506307": 2,
         "874169a185401e63b6912a8515330cd4634ea2433f66870415b0bdd76f3e77cd": 1,
         "87f181d473c1f5bef2aa9bf799f124cf9b561e9ebe69e384f6b170575feb968b": 1,
         "8a698c6653b957135db5cec0e0077fd492030d3915bf8184352b5a3652cbaa1b": 3,
@@ -2913,7 +2477,6 @@
         "abdc75b520b3afd562e2d63476c6999566e74d7693b8fc707e110f9b2d7cb899": 2,
         "abe5248128e2079de87474ed75b0a4e5c5f9a0f64c81c874ad6cabad15274a3f": 1,
         "ad077f6a8d15eb9c8cb30ae91f61f5f4d13c1bd2c7fff7fd48c64702379645ac": 1,
-        "ad1deaf137ed6c5cc40efb80c92da9c289874a802faf7982742cc14fafbe1850": 1,
         "ae8b9f52c7ea945dec8738f985506c7de455efd97c3adb6f401284697079521c": 1,
         "b04858f55241756c163d7c4268e5e9f715ca132007612d92548abcbc70ba7c90": 1,
         "b239d2ad56d38575f9a5926d0b74cb2d1cdbc1bc6615141b7ec55d00cf18c2c7": 1,
@@ -2930,6 +2493,7 @@
         "c313530e02c688c67a8dc722424decdaaa1de28a976047b66ed1944c2b3e13c7": 1,
         "c424c4f6e16b7726cf3b01e26e87221b0b4afabc86191ff012f9286e8486569b": 6,
         "c4e3d8d0ac7fbc06628ae5e605834699c50dc1c1dcbe368a2deaac83ddc93405": 1,
+        "c640ba14d53f14744d0212af3b21dfba7a5eff15143c3c7511ecbf0de528a98b": 3,
         "c6b9f015daae9d3604c90b0ea55f30aea27d219db9dae94666aac749b859681c": 1,
         "ca75c145872c5e64278d2f70168bc56a09ccb6f38e7103311953903e05786201": 12,
         "cc52b5b6c1f4178876812ba481cd794dffe30bb42a844471631d6464fbaf2dce": 1,
@@ -2939,7 +2503,6 @@
         "da31c209d0117cc8f4af82ffc9be86140ed3d1c4710a66794d59759cd35a940e": 1,
         "da9be66ff2c2aa59e3e680cebfbd0aff4d1e598ed8824de7968571be5d3aec6a": 1,
         "dc038adc1c9fbb9a4df19a3e9ea2cdb2e0ed3779a650bd15d0934422a6737a69": 1,
-        "dcb7c725370fcb4c6c8864f5c80c8259dad4fde13a4d30009b7a4d1f4d935136": 1,
         "e298da6fc465c6d68b8be2730615f3549015705e4523b30c85cf683a60947264": 8,
         "e5deb65e2bc319776fe4ff138196555cb6f32144ce34a0df0f4ac2afec96ac0d": 1,
         "e8e8490b5dd0b5dd1b3d94ff5b625b8074c571269b407e851d79273131439e24": 3,
@@ -2959,98 +2522,10 @@
     },
     {
       "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/web/src/app/page.tsx",
-      "count": 1,
-      "fingerprints": {
-        "0a3ce67a07e96e926d23a89c76f1cd808729a3dbe29e26300bf81292ead72805": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/web/src/components/console-v2/action-toasts.test.tsx",
-      "count": 17,
-      "fingerprints": {
-        "0b61d500ee11ee458f42ff9488efed9b21e3b9685be939c9802b5d863319c238": 1,
-        "10a8236d7c32e3cf16f8069053c4be14ec3a101e5f7f9b76a0a0e95003553812": 1,
-        "4ea2889e28802a8442d7d8d75862926abd59e43b45d7f582179f95d6c6678f28": 1,
-        "605e66f3b72e8da4cafb293e1fa4811a6533b4588186227e4a8e72cc4b5ee780": 2,
-        "7d3446e75170aa0b3abfdc3f17e808de62c05e000b1a3575a4f51b52d7d52db4": 1,
-        "b119e9cc9f0b6f2621b06dc22446847c342db4ff82321e23217e88c4d6756814": 1,
-        "bbf323af429f8b10c74cda140ccd35bb6bdeaf29d16ecd1265fe48f449405fc3": 2,
-        "d0a2179bbfaa913ac586a877952e3652ed5c2755201937bcf50053403a4f9099": 3,
-        "d760bc95a92e2b7b7ef0d9b0e32b3764445ff4649121c105f46bb6d1abe7e111": 1,
-        "e8dfff589d623defa7185a339b6d8aef6c789b15093f37baa3129a7a15c874d4": 1,
-        "fc5c1f00f219a0dd372cfcb1bc2ad77fcbd666720d01ab853fc31e77a428365d": 3
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/web/src/components/console-v2/action-toasts.tsx",
-      "count": 2,
-      "fingerprints": {
-        "37c864ec1162fe8eeea021f7b418c0a606a4a5cc3b38eea2c35bffbe94c60281": 1,
-        "fcb06d31181cabfd36bf6a018c06505f32d2defd43359ed7400c61b70d166328": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/web/src/components/console-v2/console-v2-icons.tsx",
-      "count": 1,
-      "fingerprints": {
-        "c1fb18ec4524f4f2bacafe313916d550ee13abb722fbe58eb38d9a9140432076": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/web/src/components/console-v2/console-v2-sections.ts",
-      "count": 6,
-      "fingerprints": {
-        "16719feefb1f1d6c7bfccacc579f31a9be5ef00ded49f07016039d6c81bead3c": 1,
-        "4261256b33c76133a633191055388ad473991535d9e31de1eef45b7e0d13c83d": 1,
-        "480159a748ccdbe09cf36772cd101290a45e3ad3870389b38780dcb34648e4e2": 1,
-        "8405246b5c55500c7c9683656270d4a691d98ae4696aa5794d7f09944f056a17": 1,
-        "a0323394a0d449a4a5b113ce7fb1cdb92b315e51e7e0812485258873ffc3488e": 1,
-        "cdb6d7058deeac5a908805d97a2c550e3a4ff02a00c54627dd5fcfbca1cd3ebb": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
       "path": "apps/web/src/components/console-v2/console-v2-shell.test.tsx",
-      "count": 13,
+      "count": 1,
       "fingerprints": {
-        "092d9b4cfe830e24e81ef40dad7ae29900f4ab4b7dba8e72422972c32c3510c6": 4,
-        "1bc2b850aa10f41da0cb2d25e59967c1a4ca9852ffd6d8282668c26055434957": 1,
-        "22a1eac608506b1c19a4b8c0a28116b6fd8470b760a3332d059bb89cf487750c": 2,
-        "9d5be3a70028094a3f2b1b84f2156c2dc38b547b2e56867f26147244e0b61ae4": 1,
-        "a6b93c330145d68770d2d5399a0baac84a936991ddcd4a0547bea832387cd5f1": 4,
-        "d710714bd90fe88bead7e6741b4f0210e0d240559f87c39a830f98bf53667ff7": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/web/src/components/console-v2/settings-v2-experience.tsx",
-      "count": 2,
-      "fingerprints": {
-        "d25ced00ebde85d107872c4fc81ead791aa2734b533cc3e532082c254cb3f0d5": 2
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
-      "count": 6,
-      "fingerprints": {
-        "029227e1e113eb64b9ae802e99dcbc8f576db3a5a81cafa921767a26866e5d02": 1,
-        "73147edad1d4d400632fe122445b8c1c9ff20f81499bed8deeefa63813b37880": 1,
-        "9a6a78fff038e700acfc60eb1744e7934a13627d279e811d7f0f050dbff3aa9e": 1,
-        "ae684c300873543974291fdc7f4f38372fa4325898398455e64845628f728c4e": 2,
-        "f2f1980c62b75dfa0a9f2043421eea48495f0cdf3b11bc8689d61aa3588ebc70": 1
+        "5bf8990800bef2541aa286a601aef246d01660a03db2ea1d49b1f8d695601564": 1
       },
       "removeBy": "PR-04"
     },
@@ -3344,11 +2819,11 @@
       "path": "apps/web/src/lib/admin/console-v2-routes.tsx",
       "count": 53,
       "fingerprints": {
+        "0ccb2aa8f8317a2336a899ce71768a1c96bea70118dcb6963d331f6a28d075bb": 1,
         "11119a2347ca21a2911d9fabb99387942e2aedf26d116d25442ac631176c8e19": 1,
         "118a5563a3ff4d5524a257153260be195c5511f3c50e374e574efecad7dfc405": 1,
         "13bffa1c3903f6a6ebf6e68374287eb819fa756597112654cee4cbc005fd77e4": 1,
         "2402147fb5d4426654250a4f13aa4384af2d500fe07c5450fc6e169ff18515e2": 2,
-        "2a98c17549e68723f26ea59cc5303fa261d848fff0f8bf162904688f5eb04835": 1,
         "2e4b108e81dfcc4a095b88fc3bcf06bef021224550a104079977dd8bff6ce6e8": 1,
         "3807b2d2ab7bf0e49f3cb0cfcfaddf2c0a313e27e75d80bd9c97285f912ea994": 1,
         "3d2680b11e7d49e06adc2e180a0a61b758608462383794f6c8439b15e399f78f": 1,
@@ -3734,48 +3209,11 @@
     },
     {
       "ruleId": "FS104_LIBRECHAT",
-      "path": "apps/bff/src/auth/persona-security.test.ts",
-      "count": 3,
-      "fingerprints": {
-        "1b8f95b7fa5ab8848efd89cb60c31db2ee398e31d1dfbce28af8537c9d861c6b": 1,
-        "1f4e0b02e72a8ec6a97136dbf6ab225e2ae17eb9a1878b74686a172cc4f6e36e": 1,
-        "9cd2b6fc3ec56f9eb15f0943b40b03cd8d1b18faac09d18b010aea1fb7fc47e5": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS104_LIBRECHAT",
-      "path": "apps/bff/src/auth/persona.ts",
-      "count": 1,
-      "fingerprints": {
-        "77eea1859a8fd8e8d8fb11fa53d00c20f0c1b6a8a4214239381d379a2216a4a1": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS104_LIBRECHAT",
       "path": "apps/bff/src/routes/admin.test.ts",
-      "count": 7,
+      "count": 2,
       "fingerprints": {
-        "30f4caf38186717ddb2434a3c5008c798a94f5cf847a39b99b972651dc9f73f5": 1,
-        "57fc9d312a9852b6e05baf3e29f4579700da868d0740931cf3036abc2d609c5c": 1,
-        "667f9414220808727fdb5e98131b71994715bff1d07d88b697ea4a715d2d44c9": 1,
-        "9468023bb60e723efac04261be320332dc734f09cdb500dc0833da48f1bec307": 1,
-        "dc1cd4057a6526272a7c3c9a6af6de19c05d9f8b0156e824e507257244051bfc": 1,
-        "ef18c82ea5d9a59e1ca8684680fd3b51d391688dba18c81c8e714c805cd732da": 2
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS104_LIBRECHAT",
-      "path": "apps/bff/src/routes/admin.ts",
-      "count": 6,
-      "fingerprints": {
-        "11942e293d223c8c30d532f8c3cf21a83e31e62ae9a68129f5b9c2610f2548bd": 1,
-        "1a5075a1f6b7b5e78611ab33f2cd4f23c1e97ede7a697b4f1f2477cdb236db5b": 1,
-        "717f29f8c9720bbe12e89e76b681949b2c3c4a6458bf71c9eacd4e1b7c0dccbf": 1,
-        "7475ca22265b0851accf6baf51e889a3ca3cad278af3765f9cabbdcc4a75bb5b": 2,
-        "a5dddb2dae4b1be6aa3684281c4957e0597fa08326060eedfd678ca95e2f7212": 1
+        "3614d44cd2fc925b9171e9813944e956a342913ee31b9c9e1f59e06695f29377": 1,
+        "99cd2e9e1f6dfe9e1854feefaee6fcd93e9f229df089795dac96e163b914a245": 1
       },
       "removeBy": "PR-03"
     },
@@ -3870,8 +3308,8 @@
         "6abe646c113e06ef9046872b97eab72b918214b83437082aa5b50abbb2e2457a": 1,
         "cb3fc77f53645e0bdad7b2e693b131d247ceb102df283876a8ec396caab6861f": 2,
         "d5874b862e14a0f988b0697c4aa62c59d12d911df8600453daf04e5e743cfca6": 1,
-        "def5a8b5e2dd38443edf2403cf9d839aae9d331edde64ddfd5c108d858ff6a47": 1,
-        "f5fc90db7ccf76113e9b555cb79d01d4b8dbdde07f14803b0f291a38beb92de6": 1
+        "dbe7d38a06218c94d8ca896ee52aa54dec79aa8202fe24916ad6b37d1b46153e": 1,
+        "def5a8b5e2dd38443edf2403cf9d839aae9d331edde64ddfd5c108d858ff6a47": 1
       },
       "removeBy": "PR-03"
     },
@@ -3977,36 +3415,6 @@
     },
     {
       "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/index.ts",
-      "count": 6,
-      "fingerprints": {
-        "001a8b4cd44dd2b04cf3adbcc693189ac8c2a0294983bb21bac447d70d09f0dc": 2,
-        "5d8bea4222e1b92e00b30b6f9ef2826f15dbf4d80d7298ec39f553f4990ca29c": 1,
-        "6016ade3f8ab57d0cd570268dc28706ebf2193e31c7adee27a3087206d9aa1e8": 1,
-        "bf8fb877fc3ab7e3da3a9106c0c528092129d5da2f1b35074b448f3ed8969ea6": 2
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/routes/admin-governance-detail.test.ts",
-      "count": 15,
-      "fingerprints": {
-        "2bb54d13046d8fdb459422bfda6158a41a51d503f464cba932bfa8a33afcf489": 3,
-        "2ef3b6c97f2aaf28faead112c5887654d82b4e83873f91ee03660a1b3fe23604": 2,
-        "3b00d49b4c5124935fe8f2927f06f7a34f42f3954af7270397773f1c32762885": 1,
-        "42ff6ed87f575327b18cedd05e00c5784bf75800f4a08c16e4ad89ed2f2a12d0": 1,
-        "9c36835a195427da1aea9cf912db24e5f6bcb11889c4e0d57e87cf77c3008655": 1,
-        "afadd33088f14af0a6d50b6b7bc1e52a7c8a2a37f277c5b4958bd3dcc55d4a6d": 2,
-        "c4b7eba2791cf738886610b7f982759bfe3f41580bac6e26a242054772e1ec67": 2,
-        "da16f5f1db0f297024f7878f56ee3b51583d53be18fbe87f7e10fcfd284e32fe": 1,
-        "e7317469f9ffc062c47a4c2c2022cd72d8fa8b0beebadbe42b5819690b41a78d": 1,
-        "f99fa76194b6c7f62f92603e1e2047d9fe62660074c8082b19c1292bdc4bf0a4": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
       "path": "apps/bff/src/routes/admin-hardware.test.ts",
       "count": 8,
       "fingerprints": {
@@ -4040,114 +3448,29 @@
     },
     {
       "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/routes/admin-overview-governance.test.ts",
-      "count": 4,
-      "fingerprints": {
-        "2ef3b6c97f2aaf28faead112c5887654d82b4e83873f91ee03660a1b3fe23604": 2,
-        "3b00d49b4c5124935fe8f2927f06f7a34f42f3954af7270397773f1c32762885": 1,
-        "afadd33088f14af0a6d50b6b7bc1e52a7c8a2a37f277c5b4958bd3dcc55d4a6d": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/routes/admin-overview-health.test.ts",
-      "count": 3,
-      "fingerprints": {
-        "2ef3b6c97f2aaf28faead112c5887654d82b4e83873f91ee03660a1b3fe23604": 2,
-        "3b00d49b4c5124935fe8f2927f06f7a34f42f3954af7270397773f1c32762885": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
       "path": "apps/bff/src/routes/admin-overview-ops.test.ts",
-      "count": 4,
+      "count": 1,
       "fingerprints": {
-        "2ef3b6c97f2aaf28faead112c5887654d82b4e83873f91ee03660a1b3fe23604": 2,
-        "34874ae0ccf85318dd3c03448f32b7a7b5318dc293fc19aeadfa3fb4049073f5": 1,
-        "3b00d49b4c5124935fe8f2927f06f7a34f42f3954af7270397773f1c32762885": 1
+        "34874ae0ccf85318dd3c03448f32b7a7b5318dc293fc19aeadfa3fb4049073f5": 1
       },
       "removeBy": "PR-03"
     },
     {
       "ruleId": "FS105_BUILDER_HUB",
       "path": "apps/bff/src/routes/admin.test.ts",
-      "count": 84,
+      "count": 11,
       "fingerprints": {
-        "08ce8af6b1642d2e323f8e2d7ff66a5197869ca6f97c5acc6e3957e5515a803e": 1,
-        "0c00a01219a645b4c24bccb9ae6d1c8b326007711570fc645d7126e6302a1ff8": 4,
-        "0c6936fc5841c24babb43fc8535d2da32cd8e06316b338577a3656d59930ac4d": 2,
-        "0c912b759a0638a00a8c9fc7b7e4c39fe7a83e9de3551edc24c0bc22246ed4e2": 1,
-        "10e5dcefab0207d41962fb6b3a0a869f6094758a523586593c0f7b992a8f0c9e": 1,
-        "18aef674ba8d4e59bd160a55eb96b32a27d94000a8207dce43522dcef187b04d": 2,
-        "1b3186afd17fc5de1e652bf054e50a10039f8c8e212dadb93382d02a2d1566ec": 1,
-        "224873b9f330b20fc39f4639cb9a6174afd37cfb8f08e83ead943f8a214d2d61": 1,
-        "286c1510625369c2f02a9551ab5ad7c6800f799da272e11a37b3b5bad49b58b7": 1,
-        "2bb54d13046d8fdb459422bfda6158a41a51d503f464cba932bfa8a33afcf489": 6,
-        "2ef3b6c97f2aaf28faead112c5887654d82b4e83873f91ee03660a1b3fe23604": 2,
-        "31b0c7a8c04072c5199e4850b6876c85186bd60837a5ec02484a58bf77cf3117": 1,
-        "3b00d49b4c5124935fe8f2927f06f7a34f42f3954af7270397773f1c32762885": 1,
-        "3f0ccccf996eb7ac31ae39b68df2248bf9ab5fd82366fdae7803c0f1fb2d0c5e": 1,
-        "42ff6ed87f575327b18cedd05e00c5784bf75800f4a08c16e4ad89ed2f2a12d0": 5,
-        "5b086c6684bc00f2e6a9bc857134cbd1bc43840ecd5ba62592f007e35a5e5797": 1,
-        "65941f1c0f8f76c0d0af071586149ee30ff255dd41722854e2d929698e0abed7": 1,
-        "65b494d975b6bde84eb14ae51a447a60b3222b69e745ada586e834a11efa644d": 2,
-        "739d6703e36c5f37bd89b7871407fed581b725937a7350f7a1285fedea47c47a": 1,
-        "7f0b853e22f08a82b850551725d22697fed13243398fa3172674a5094d5e5616": 2,
-        "81c8c93188cca2fc5927c0f2315ef43486c327b3702fd1b63d4bde254bd92741": 1,
-        "9104f99dfeb89aa3dc45dd2983cb1b3ff454a66aca9cf5be53b06a4b76529239": 1,
-        "9543919427e4f6a84067d81c1f1ddc0772880101f04dd615f254dfd690f9ae66": 1,
-        "95c44c811b71a244d88519a333523af2efd307e729ee2bea47cd703ff36b83fb": 5,
+        "0e445c989d77b13397d92d04b281f9b12edccd64510a96e7591eb6becd99efc4": 1,
+        "3df3f032903132e862520a6d09e7c5a3d5e8c42d8dfd2ab03999d0a9af337c6a": 1,
+        "42ff6ed87f575327b18cedd05e00c5784bf75800f4a08c16e4ad89ed2f2a12d0": 1,
+        "45cbdf852d976e85314c9727bd74f9053c86609ed2618e2e0ba2993f2a51084e": 1,
+        "9bb9d391db2eb565980e6f17ee99ac039776f3c01f92743b1d782df4eb836ec1": 1,
         "9c36835a195427da1aea9cf912db24e5f6bcb11889c4e0d57e87cf77c3008655": 1,
-        "9c9589afc23d7eeabfe4685052439ae6a9b941d55a820159c4c28278c7e8cd48": 1,
-        "9d1788d1f766af8b7c95dc58ccdc188a75247c667bbeb1b292930b8b78c11158": 4,
-        "a1cd34001497155e68047d5d6329e4e53f13ac644091efe12a233f8391140a8d": 1,
-        "a60769675948a17cdb320cb513b83ce975b324a31db9f2ad785f24c5911290cb": 1,
-        "a80bd3dd3198ae5f1c9a34bb8df23e6e17143a28640751c4915adfc38dd4394e": 3,
-        "abd2b48d7a93f663d74c1703228366e2faf76ca9f0adb9c79424f0a1e7e7b8db": 2,
-        "ac08fb9249794757c5c7aa0c8fb013f66b3ec912fd80abfc69b8cc9348387549": 1,
-        "bb43b21fd6d3002acc45fa908853e1e71734f699fc24c78fefb1339022d97105": 1,
-        "c4b7eba2791cf738886610b7f982759bfe3f41580bac6e26a242054772e1ec67": 7,
-        "c4c221c8a811b768e364bacf4b1d1ccee24991730ed00bae70254c7ebc69b546": 1,
-        "c5250ff18340d54b78c8602a5d2fc2d48ca934a7484d8c7821c58cfe7124240f": 2,
-        "d7a6b8ab2f96ab146770230ec75ebc0b7edb33c2f0f83c035f95077b3c2638d9": 2,
+        "a795942c7b5f896f10ed176874aa68e433ed5028bd7d8cad11807ca44e0b0bb0": 1,
+        "c777e9ac2ee87c54e6771ea680735fccd505615fc8dcc3cec9d021e91828529e": 1,
         "da16f5f1db0f297024f7878f56ee3b51583d53be18fbe87f7e10fcfd284e32fe": 1,
-        "e28b86e5ff6b57eddced762944df33b344582e7347fa41c8bea679c9c382f423": 3,
-        "e7317469f9ffc062c47a4c2c2022cd72d8fa8b0beebadbe42b5819690b41a78d": 1,
-        "f64755c782cb5db7358c1dba3fe712c1b084c81f6d66697ff085bffa1913affe": 4,
-        "f99fa76194b6c7f62f92603e1e2047d9fe62660074c8082b19c1292bdc4bf0a4": 1,
-        "fd837ccea01afc6b2f542b3f1a47a2b85705198e0d6f341d4cf7b5ee00e16eb8": 2
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/routes/admin.ts",
-      "count": 13,
-      "fingerprints": {
-        "33ac5a9ae3df9a3d400b9c3e0b37ce270c8c381ab6e924a0f3a84b191107a176": 1,
-        "4843862ad1952debaa4c1a53e49eee09b89b7f8afb0dec336ea62e512c0592cf": 1,
-        "4ecefac62fddb4065e1c086a6baf13df6b816b4e443ae10096f68a273d541b20": 1,
-        "5ae8d561852f42f45ab9b5b61efdd8ca3e13b84d7d19cbe2962c0de575fa9d89": 1,
-        "6dc5f9d378c2b5f04d30b4abdaa5cc98156047bab0229d234cae846c3617f03a": 1,
-        "71b8048eeefcb461bf37a93b81dca7cffb0bf599cd21549da845b94d73aae7b6": 1,
-        "843a5da93737997f8547052210c66d5c9631250c984078e4f0b353ed18d621a3": 2,
-        "a944b53fd14c14141656e9c5bb36d7210fbab3c206164b7f10964017d28fca09": 1,
-        "b4a220165e0bc192d4fd5168b398ccf21f0979f35b195b0d277cdcaebe5c5850": 1,
-        "d3122b4f91d18be4438732539d5c646e4464be3e6a23e1073f4bd6573cca9654": 1,
-        "ee149fa9c16cbb007abbf59077ec639167e0648201db7fb66427c6f2fd69b848": 1,
-        "f59f6d1a5ab558f1c4d1fbc4add25415143750d6cef42b1600961e0f8649cf1d": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/services/admin-audit.ts",
-      "count": 2,
-      "fingerprints": {
-        "3709243bbbff228d3f2179ebd3bbb6c0004a43f820b715f669075c384e127bac": 1,
-        "fd4671dcdbac51be62272e613aef108537b8d32e8eabc71068a3de93753f2b52": 1
+        "dfa2e4e92c8f36aa6a79d9fa75a13fa9327c56463320d9fa4bb8d2275b273d76": 1,
+        "e7317469f9ffc062c47a4c2c2022cd72d8fa8b0beebadbe42b5819690b41a78d": 1
       },
       "removeBy": "PR-03"
     },
@@ -4172,86 +3495,6 @@
         "69de0b3dac03752e89e8b7eccc31a7192a32faac37ca6bc892790b2f0a860989": 1,
         "6ef1640d6993b5c5217d2040d500125b4de21d36879251e6cd0ba8a967443b47": 1,
         "b9e2b7c77823e245a2818f3b0f0e8a6c5b06f0b34e115ff0ae4adcaaae28fb2a": 2
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/services/admin-hardware.ts",
-      "count": 6,
-      "fingerprints": {
-        "69de0b3dac03752e89e8b7eccc31a7192a32faac37ca6bc892790b2f0a860989": 1,
-        "6ef1640d6993b5c5217d2040d500125b4de21d36879251e6cd0ba8a967443b47": 1,
-        "ad5024d40c0e0b74b26c9dc96e0fefa08828bd81ccbaa87ff79ccdc83af6d099": 1,
-        "c63b968f096eac7e3b1cec0628717100c4b21fd2ceb770df11fa6dc029654c8c": 1,
-        "ea19b61811dc36bc556bcd8a6d79a16ea1d8bd4b252164a22cdf388552719c72": 1,
-        "fd4671dcdbac51be62272e613aef108537b8d32e8eabc71068a3de93753f2b52": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/services/admin-health.ts",
-      "count": 3,
-      "fingerprints": {
-        "69de0b3dac03752e89e8b7eccc31a7192a32faac37ca6bc892790b2f0a860989": 1,
-        "6ef1640d6993b5c5217d2040d500125b4de21d36879251e6cd0ba8a967443b47": 1,
-        "b9e2b7c77823e245a2818f3b0f0e8a6c5b06f0b34e115ff0ae4adcaaae28fb2a": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/services/admin-inference.ts",
-      "count": 6,
-      "fingerprints": {
-        "09e1e4d4cc83c6588682d12fc3d3d264362b35e9df17835308a50f0685a56e71": 1,
-        "69de0b3dac03752e89e8b7eccc31a7192a32faac37ca6bc892790b2f0a860989": 1,
-        "6ef1640d6993b5c5217d2040d500125b4de21d36879251e6cd0ba8a967443b47": 1,
-        "8611f0cafb58467b257df95b73142dd590f4e79d39fed712add4cb4dcf36e9b0": 2,
-        "ad5024d40c0e0b74b26c9dc96e0fefa08828bd81ccbaa87ff79ccdc83af6d099": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/services/admin-ops.ts",
-      "count": 14,
-      "fingerprints": {
-        "124dce4d09e161a80ff2fde857174a74147f8eb1fb0e080bbe4a83dc6a225955": 1,
-        "19494a3a5b1af972c111d9e4aa930276b18dfad1e7276c8fa737cbab48ce175c": 1,
-        "2abfdb497abadcc05e7f4ffec20b7b834c2469d35ef8f4248b9b102d008358e5": 2,
-        "43389c6167b5b9fa2324d922e6ea2e54973ca1f387c1d2f59cdaa56fec5f1165": 1,
-        "6393c7e2c943ba2969c9fc9a66be3139c4c14fd098397cc8660f66b0c813db9b": 1,
-        "69de0b3dac03752e89e8b7eccc31a7192a32faac37ca6bc892790b2f0a860989": 1,
-        "6ef1640d6993b5c5217d2040d500125b4de21d36879251e6cd0ba8a967443b47": 1,
-        "aee15917dd7f5cf7023d0b3559aefab5c9fe1c2658445e638590874860c37ca4": 1,
-        "b4a65caee62dd5846b7075f3ee7f5f9c2491e6cfe1bb24842900d86539779a69": 1,
-        "b9e2b7c77823e245a2818f3b0f0e8a6c5b06f0b34e115ff0ae4adcaaae28fb2a": 1,
-        "ba1d1e77451e2772433b84f6ba8dd49a8ec603d6d41267176bc03044e65e587a": 1,
-        "ced57f7853999688f85d198c6facc65db4ea675119280f32ad7c56de14bf1358": 2
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/services/admin-overview.ts",
-      "count": 6,
-      "fingerprints": {
-        "5f2a747bbb0b3a337073606dc7f5976bfc4bd6481d91428dc00eb06e0ed318ab": 1,
-        "743e1cfc4fb8c3b9b40f994a3744a6d7ea647d774abd1e3349e5275a49d89c44": 1,
-        "b8fe901d5d9f51053e9d957d91bb181b21f5ef1a6d40dacdb3c106b4db782710": 2,
-        "caa48ef821a726290f6a72196851203f8d76c8bc8a95aa1aa22d692679d5d86e": 2
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/services/admin-team.ts",
-      "count": 2,
-      "fingerprints": {
-        "93b4303d42771bd023434e152d31c3624ebcbbd10f3a307f5cc2ac1bcfac72e1": 1,
-        "e2e4546cb9c5f40eef841254ddaaff7a393882f8b9186d3e071bebd9b4243c04": 1
       },
       "removeBy": "PR-03"
     },
@@ -4332,11 +3575,10 @@
     {
       "ruleId": "FS105_BUILDER_HUB",
       "path": "apps/web/src/app/page.test.tsx",
-      "count": 55,
+      "count": 54,
       "fingerprints": {
         "01ffe8b2a6085ad5cf12129163992c87d0e441fd44b891f444b9229a0e8546e4": 3,
         "02f423884b3d5469406599b31b90c8b1e32ce23fc7d510eea42f471c6408f22f": 2,
-        "0c00a01219a645b4c24bccb9ae6d1c8b326007711570fc645d7126e6302a1ff8": 1,
         "0ee5c26e2470f7a23cb27999cb2dd9161627474cf3453e72aadcc9d8da89856b": 2,
         "1837a4f33faf351f24f820a9d76670bd4f37ad3d825b0b3a121b126c4be3c1b6": 1,
         "1e4a0f884856476012468db74c5a0e440ac2d126f205971d549b9f7c0e405195": 1,
@@ -4366,46 +3608,6 @@
         "e1c588592ff0093aadd43460ea430d792c5397f6787a41e336a6c59c6b01b717": 2,
         "f78883dd25f612829d2ff08c2de8d960eaf9ca595ae4144ef229be7e0165d837": 3,
         "fa72b602e1b8799039ed15c9ac610b67683e0e576ad59663dca605914f8c4b38": 3
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
-      "count": 2,
-      "fingerprints": {
-        "1bee2e8c06db05af4fc47cbe22642388745ef9980e6430a7764c71b965ebdbca": 1,
-        "6ef1640d6993b5c5217d2040d500125b4de21d36879251e6cd0ba8a967443b47": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/web/src/components/console-v2/inference-v2-experience.tsx",
-      "count": 2,
-      "fingerprints": {
-        "1bee2e8c06db05af4fc47cbe22642388745ef9980e6430a7764c71b965ebdbca": 1,
-        "6ef1640d6993b5c5217d2040d500125b4de21d36879251e6cd0ba8a967443b47": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/web/src/components/console-v2/settings-v2-experience.tsx",
-      "count": 3,
-      "fingerprints": {
-        "6ef1640d6993b5c5217d2040d500125b4de21d36879251e6cd0ba8a967443b47": 1,
-        "8e5586c0c046587475ba1f9bd4fca04037be93855b894fc1cb62093120b8fde0": 1,
-        "9dc213b5faa794098e1a1f0d3aba7c06c638d470b16293ba69277d325973b7bb": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
-      "count": 2,
-      "fingerprints": {
-        "ae136ef5c1460c0c22d8f503b1a7168ef9cf5e16472e90e1d67eea7dcf997d14": 2
       },
       "removeBy": "PR-03"
     },
@@ -4891,8 +4093,8 @@
       "path": "apps/bff/src/routes/admin.test.ts",
       "count": 2,
       "fingerprints": {
-        "0512883beae51516d584c83758b1de58c444593070963ed9c61713845980d2f6": 1,
-        "9f7244cd5f2f236df997a957acf1db423cc367ca0c7d41bd9ec06d028d0c8af5": 1
+        "4daac168ce807a0675ad9a73e1403f0ec40560b23ecbd24ba49089215a90436b": 1,
+        "cd670b5733ee8b7f7b541dc00322ab8ca2a8e4d3b1d4ed11666363e28ea2ee72": 1
       },
       "removeBy": "PR-04"
     },
@@ -5059,174 +4261,17 @@
     },
     {
       "ruleId": "FS108_RETIRED_GOVERNANCE",
-      "path": "apps/bff/src/routes/admin-governance-detail.test.ts",
-      "count": 55,
-      "fingerprints": {
-        "022eeef63e0507110824bf4a8c1e705832654589bc56e335cc8db2691bd8c869": 1,
-        "094faf6edea04cfbb141cf36de3b17418d0eb84dcc95126aa9c514b90cb18838": 1,
-        "1dd68586df32b03104762b73447fdc94f70658274ea1ab960cbd741877d573cf": 1,
-        "1fe32ecd7a579b9f66a2a586fc4e862fbd65c76af80fe1815f734fb8ac02591b": 2,
-        "23764086a13af150a39f5b0fa37fb40465c83ef432afd908aec3d1330cdd7b03": 1,
-        "2a9fb12361402a03abc6a588e684f10768da20812ddad368ac5b9063991ad3c2": 2,
-        "372b42a52a15e7ff6245a554e34f773685aa5626ef9b4a41c70988494698ef46": 5,
-        "412d451617b77a1dc934b3926be58da257c217c59c805611fd7c32fc8ed1e098": 11,
-        "4712dd13c0047ca038224bd88c248da8f66d0c5d1d222f8c3651ba12efce5ca0": 1,
-        "4a30680b23a888edb2787485e7b9a6d1c42722b6b0496e3aee12d69008ca589c": 1,
-        "4fb13fc9ca1bed9e0ec592651d68edc78f663504790b756628f984a5ea860b3a": 1,
-        "5156ef910a5ac37052aaf153f810d09236e3c814edd56aa58e598f688dc1964d": 1,
-        "57e3c98a58928b4217bd4549c52dad8fee6f36ced1392a3148189ca5282b1b24": 1,
-        "60e91054595a03d170f70d20b1a20728ce2af0b29f0eb2fc3c732b8d9163e6c0": 1,
-        "662fdc7e697b7f941ed32bc3e9f144a174efcfea2ef1e3c22a3899e0c11dd84e": 2,
-        "6ab0dc9c26e4e64f8b96c0b73d8d6814bb469d49d94998f621f779d6707d4eab": 2,
-        "7a65ef5f2889eb5cb25cc8e0500ca52131f336625da0f5d85d39ea94818454a9": 1,
-        "9485dd225714fe827a981bbbafecc86450cc4b46b525ac96462bbbb1615d211e": 1,
-        "9b4d7e8cc7485569be1f4a5cdc637900430400362a4f3a3263f1bd8cfc99b776": 1,
-        "a04622f1685676d9fe83bead0d2ee7fa5058db15cf2c1074ebbe2097ad715461": 1,
-        "a66fa707b50444ab0f068f72498c3bdeeeb2e969a6141466acefc578cf6ffd66": 1,
-        "b1470944cfe11b9e2b30f60ac233164ab96a62137f532452d53e4017d267d351": 1,
-        "c4156bfa5e4de6bbfb78df55f99deaf85888d98fb6fbc48ff4f38ae790aaa486": 1,
-        "d19aeee44d0d2a23f4409bdb359cddd4c8e0fea4f7d227a865159dae7c3c6d4f": 1,
-        "d456a11c6387724a6357519eba45a6eadce6cfd4b5302593f34b80267f001fda": 2,
-        "d62ea6c125efa44b1d0cab4fd4ae11c214c70b54bb82fab17aa753a6bd3c82be": 1,
-        "e8df32a74587f02fa9140937568c983af517c58cee7a24ad7801909ab5bc8ee2": 3,
-        "eb58582765fc97eb0902669fa13fb830284f4a74d064f41a44b29795f16fae8f": 1,
-        "ede1699e80ad33cc04afb917a0b0029f4086d17fac8e381eed0ec3e363364493": 1,
-        "efeca66f2ffcf99eb9e0f3bddd5821022124245e1b5ed451603ccba6064ab8c0": 2,
-        "f0f8924ee288b182cf841898bceebd346f66ae8c343c602c864cc72d7deafa27": 1,
-        "f29db2b5dc41995d5de9ff02c68d2190a9ba533f8691bf43aafda3f4999778af": 2
-      },
-      "removeBy": "PR-06"
-    },
-    {
-      "ruleId": "FS108_RETIRED_GOVERNANCE",
-      "path": "apps/bff/src/routes/admin-overview-governance.test.ts",
-      "count": 7,
-      "fingerprints": {
-        "45ff218e17bb9dd4674ef4fe17affd90118d8372538a5acf6a3c932686b379ac": 2,
-        "527564b034f00d4c70749a6c23dfd0e59439ef6d3cfef6927bc529776cd9eb07": 1,
-        "983c0044231cf6c713d2a65220d9411c3dbac4d0eaebbadadb83f0ec8c04c6a0": 1,
-        "bad2a3b06847d49e83e9beab6d42412b4b4d29c2550e47aff3cd6afeb9e79f7a": 1,
-        "e8e96e1829384c1f6b111389fdf31f82015d23028344d9b857b649c5966ce56f": 1,
-        "eb58582765fc97eb0902669fa13fb830284f4a74d064f41a44b29795f16fae8f": 1
-      },
-      "removeBy": "PR-06"
-    },
-    {
-      "ruleId": "FS108_RETIRED_GOVERNANCE",
       "path": "apps/bff/src/routes/admin.test.ts",
-      "count": 57,
+      "count": 8,
       "fingerprints": {
-        "06753cc10bc8387c43350052df398e08edd01b6ca3900a1a24515f5a082c079a": 1,
-        "1088af4640c414ab80cc79eb6bf4e59610dc820a54f4b65ccba523f3798efdef": 1,
-        "13cb730fe060baf4cd808b53ed16bffbd1f0d6bfad841ecdf219c20a573ba5f5": 1,
-        "15d13a0c5cba3d094cbcf29e38dffa55a4b346e213ce8315782cc28ea116d0e3": 1,
-        "1f580aed60c68b2daf1908f1a74cefe50bb1aea5bd9a779f535dd54cf1d62888": 1,
-        "226aaeba520ed8aa51064675154e030851c685890c4b75762e9595bda1d3333a": 2,
-        "2ba30bd4afe3df9799e1909155e6849da9269b59d88f65b5878c2f05a3b7d01a": 1,
-        "2d4221b8340a7aab26cfa14c7110f7d78150a83313c33dbb1808a5f90af41014": 1,
-        "2db90fc9c10cbbe8556906342487bbb713fd0571ebeb36a52abd64344bd2775b": 1,
-        "2fd93259f0d73c646050888014476cef8c96bd47061022db37d4be253a7d4313": 1,
-        "32c9d6f9e751aa05c225c64b88a383a33c85aec58aec17674ba60e8a1aabc4b8": 1,
-        "3819c7c0ff628ff9f7b25a8c5ba682af71ac377b0db603af05e7da997a966a44": 1,
-        "384aa3029b84b7917a5fda91f95132b264f16ed3d31541b3f708d07c0b6d8211": 1,
-        "3ae09f8add29cf12d8e43eabaaeacc20082bec7d8851c7e53f5521035f92e97e": 1,
-        "45eb1901bd3fd048f1da36d7221c3917108a9a91b89d70bf8df277d1fc19f379": 1,
-        "47465b4ceae4ea2be3bf094b4f31a637f2034b800b9282ebc0381c32d41f440a": 1,
-        "48ac99a774a8b1592478c287b0eb77d72644579f643f57dabec8437b76ce2df9": 1,
-        "4a4e36d9e282021a36235391365fc14cb03cb0d51d0c8e5f6c37681e1544081c": 1,
-        "4bea9c5fea82890a520ed0e2f5fa5edcfede89a01eb4400f4388ba5c22dfb76b": 1,
-        "4d4b1267f800f73b9b6fe469d733d48a4ad4083dd8a05788aae08c36adb9370d": 1,
-        "52b85e7148b468c674680042d48360c3e755bf292d055f8cdbd5c34ea53e2c80": 1,
-        "57a4209e3d0f9f3c7461728dd30c533e654188dc1f6f46da607db25cb24e8521": 1,
-        "636d68ee7a4876f22f19d0866db4b77ca386b0501f372c19e009eaa98693912f": 3,
-        "6c84561f90450b68bb02d59a1a3823bb603beafbafc27cd6adf1d4b75e7b919f": 1,
-        "84507f72fa5ac537d8c04c7e655f63c5b1c1353980af188f6d736c6ca80efe73": 1,
-        "8fd330fd93f406d74d9856df9f0fb267adcbe9bcf78fc0d64d378f593226e554": 1,
-        "9007286e890bd6cfc83c7f2a5c8e71d9051a09941b7c655c76712701becb6ecf": 1,
-        "944f9a4a634b870644dc57ccad2ad10cca3651621169992ed4085441d10b1fb9": 1,
-        "96bb881c15aa5aa951088b361e3b90361f7a8801ee2d91e5124abadfa3c002a0": 1,
-        "9e9431717821851f84fe68eed700060c7c70af653115066b0c1dbf581002d9da": 1,
-        "a3166491023f4b38cc95690aa61b1152a0db8b40127ceab1847a1fab892c2d74": 1,
-        "ab71e820318d0fc9c9e877ebe220b9b1fc2e4cf3bea0bd7eb44a070c7ae64472": 1,
-        "ad52789731274a474b427f4445300fb2928698d431e2106d7cac35b3b187fcba": 1,
-        "b8ce3e2fcc559c5bd6b5916181beff5251c2f32b773a92ae61b308a53d8191ac": 7,
-        "befed04755575de03f000353e5a20c420462661e4b2c1684fd93f9b73aaa2191": 1,
-        "c10848ffd33ca8256825a59c2e5cb7f4f4179bd08a5f6803d5ab187c96259114": 1,
-        "c3e3debe1c836322a96bcc467449bdcda9958ca1a78c3fea886e5c5fb9e5c860": 1,
-        "c3ef7a0a977bd91ad4b417978914d1248c07e0040f0191c923b94bfdf25353e6": 1,
-        "c871dac6d8eaf2d62873ef1447ad68887ccd8d48b1c1f99727baf1bbe480f49c": 1,
-        "cb6ac30744d38c0f15d1ea4178396adae7fb26a41e2ba1c3a8d6ca44e6d3c8e4": 1,
-        "cbfe99be88ae25cce0b4755a0b340d6f71f08b1d16264136e5288105e0f69eb8": 1,
-        "cdb428f212216e2ab61838a538eb16ee795d1aa6ef4659ce95ed2b3100c5bea5": 1,
-        "d3767f3fc19b30cd12c1ee945af2da211c72cf30a4c142069eacae00626c37f1": 1,
-        "d467cd18d95010378dc11bac42411a018b27be115f0be9a5369de3282db40720": 1,
-        "d622217ef4a3822f87931d746be4b161c9f4d7644856258d451c7bc6b03c9ecb": 1,
-        "e1ee42b484747904b3e2f435f688b615b2c0d51e288ab02c4edf93a30b0c9bb0": 1,
-        "e80abc64a07fd1057612e44ecc6933d86b63e3e16e482ecdfdd068e00d7bfa3f": 1,
-        "f2574e6d531c2262707aa153cfaeb3f4f7eecbe7232c8a2a1ecd44bf966f999e": 1
-      },
-      "removeBy": "PR-06"
-    },
-    {
-      "ruleId": "FS108_RETIRED_GOVERNANCE",
-      "path": "apps/bff/src/routes/admin.ts",
-      "count": 61,
-      "fingerprints": {
-        "02e6208cb1d677b01f9d34b89814737b77bc714d0596024388463de59c93b055": 1,
-        "02fa58e7c1a53eafca46007ed8e8ed214ed692223865355f62ebf98f92667f66": 1,
-        "042f1eca75b133faee135506fb678dc32625723ab67d3c789659f44aa4487a43": 1,
-        "094faf6edea04cfbb141cf36de3b17418d0eb84dcc95126aa9c514b90cb18838": 1,
-        "0a70aa3d6869f7989b3bb71dda72b0fb6fa1805310330fb5b0395c024d673018": 1,
-        "0cd8c3b9f9399d9b65b5947740f516f2f470f294a89a4f10f371f9785a7ce6fe": 1,
-        "1047c001dbc3f15d86433c10e16adb4ddd1335df8ff30648354003eaf26c0d60": 1,
-        "1c067ecf7f52471a30b1b58a8794cfa47fd7225f2145140d14870b8c30b4477b": 1,
-        "1c8b955a11aca44da6cad1995a8968b0b72ac6ddb667a917b348aefc126c3601": 1,
-        "1f3774601f0f796baf0b58f21b25bf432d5806dc9a91a6943808ade279e833ae": 1,
-        "23c9cadbc0ab5a85f108dd469955481df980c7c73f60c50fb54e3ea62f463785": 1,
-        "25989f4e21c4ef15dab5f80fde0bec331c9f4b510006086e4c75a0db80eb99ad": 1,
-        "26f4582e862009b34f4a722829e825281db14d773511e1a2afdbb0dd35573bfe": 1,
-        "311737a459d381c5764b728739b1f3526b84d97de083420eaa69aaec7baf5317": 1,
-        "317358fae4fece62ab766782f9bc41d4994cf8d2e7b113ec6a59212b66c9b196": 1,
-        "359e629f9d8a72680cbf157bf9f20bbc55ed2f9c769c8539ad9e7e4df9b71708": 1,
-        "35fe339eebee9d50e039b05150a73ac12acb4f9fbc8e3f7881ced7e9e4b75bea": 1,
-        "38f48374d655195173e1061845ad4a6f1f6ae17b138b6d876bbc63f84808b901": 1,
-        "43ecfe5b20cad6fdc7bd3a2d213924b6d554468ac83cbde5af0b3f43aec61d2c": 1,
-        "47c20eee3777a22ee9da57261b14099613f7c222f90109d63a87fd1bdf9ad5b7": 1,
-        "49991ee0038987538db79bef6114a69177c0730f8036346d45eed04ea6124f85": 1,
-        "49b8a67e9a50485e86271752ec10949172859c70e9a36c7d6afab8e0a62ebbbe": 1,
-        "4a19f47ef1b5e0db7ad59fbbe60a509c744920e1375b8506d2c44aaa847bef6e": 1,
-        "51154a45a9418a3b1b6a6aec1512d7791d345cf0734eb53c2b322609c7b3f5e1": 1,
-        "58b3ecaf813b376e71d5c561c938954997f0af53c438d2769ba0bd4703487c0f": 4,
-        "59fd4765b0788761d30d3f06bbb870f75581c193f2c74bb21c193438aa2120fa": 1,
-        "5d467974ffde19a58ffe204187f1984822af21fe28db87f094821fa64638a412": 1,
-        "5eebbe12548e698a5b3bca8199166a3f6ddc9590ebd1482d0975d59da38d93c3": 1,
-        "5f609c7a805c90c56d15bdfa1ea1f373371e1afa13fd1ce28fffeba117a72088": 1,
-        "656cc6e1c505c264c96b75a8b317139133cab705f7744f39657d5d19ce4589cd": 1,
-        "6dfe70361c86fbd58bcd4bb95606cab022ab68b102c507bb84a457ad36f1c548": 1,
-        "7518d5274608073468053af7a72108e89e1a21fc969d743fc898e07a72644d69": 1,
-        "7ab43822b961580bbc270d592bbed677b565d5e5075308e615fbd7ad037447be": 1,
-        "7ac008cdc85be8de15ea2e0c8b45a0760bb5f286b5c8fa6499a55e95686dd28d": 1,
-        "7d6b055c3385c87cb0e3f9485ca7f5f8a73a40787505ad7606a239c225cad4f2": 2,
-        "8337c466065bbb480bea51ca50e56bea1f22bad86d38f11af64a82f86a562d7f": 1,
-        "83e9f03c73d163b6ebd6ff50e5d34004b24dfe67737d4736f140f246ed3b23a7": 1,
-        "8b30b982d1582f173526bea896e38a65756a572b1223c8b6553214959b057d8f": 1,
-        "8bee3eb9defb03886cab466e9197149512153b9ddd6b8a3af7b3b47284f2d3f5": 1,
-        "9497fa4f37748a68a80857580435616412a00df710675928eff6da804e6be01c": 1,
-        "a055f9a6b3fd0a7ff4c657328e737084bff9bf73d71f332bb082472bb99b77c5": 1,
-        "a1a8895afbd2483606d975c56c7283e3001bbc3042d9613ea6e4567e6f55b0f2": 1,
-        "a1b160f8704d712210307f7ac41566bfa3d641c468799a4d6859c79fae7f6d9a": 1,
-        "a2ccb03c284b08e454f105fb66f0733296889da0e50c77e6792dfc1d3696ef0d": 1,
-        "a41b3189063caa842755b04dd082ea46302c0120d994921c84d32cb93a668f5e": 3,
-        "a837b45d11d6c23dd273531692e1b436d934f6dbdcb581a8be539e86d4dab9fa": 1,
-        "b51a5b85576ce627844a204d131bb2bc18ad2f1d91126a9d39ac9e8383ae2435": 1,
-        "bc416db5da1974cddcbde094e5b5bda9f6620318e852bcaeb2b933d0da1925a5": 1,
-        "c8c3cb53facc39cb759020f0e7e7c9795e630d389e302d6b385dbb43d12a8f19": 1,
-        "cbe5bdb52ee403d6b528b7d62d94a2f84239e7a1b2713b640c72f3b2d354dc07": 1,
-        "d21e570286404227927f087fcc0a2a0c273600d3e6879b4e3cbe0062c3c272df": 1,
-        "d6406ca08e0780365da52c2332d9ed5ba1207b691d216822e872f7616d90fc06": 1,
-        "e4a0c8335d2ddc2ecd2e63d7b7cf90ea9e4e2681c0396cf32b631c0fdbbb493d": 1,
-        "e800ae8db961e4a2d3d2b575a0375587ec82cb5e08460c9bacbd4d13e5f5daad": 1,
-        "ef3fcf5c5d1971c8c11725846bc2b32f4472424f1700a1c426658b7c13d276ce": 1
+        "0268dcd59f59301ef549c5cc7b949a11ea42de15b24ccd6688f559aa2ed24c70": 1,
+        "05007445ba6d27cd9aeccb7356543b1ed53b22cdda57f9d863aa5a038b4bef78": 1,
+        "274a5aa0daa073999f3daf3480793443a9e89210c155c2a5c1f652c4b6eca299": 1,
+        "29444b4930bfa1a722c1d5d46993c515c433ea54740f3cae22f81317ac6f3f52": 1,
+        "62c9b20d4c4951e0b1d70568bfc212ace1b2b54f31bf6039709e84138a0173ca": 1,
+        "6fa2a59871775f395cb6978aadfaca2721e4182fb84ccce1741ad974e79291f9": 1,
+        "b535915c021ba867674cc6ba6616cc689fad5eab0af613889b73fb2620f586c8": 1,
+        "c49102dbf2524047f58ae6ca8adb537cfccb5af568a9a8b1e126d5a3b597568c": 1
       },
       "removeBy": "PR-06"
     },
@@ -5438,60 +4483,9 @@
     {
       "ruleId": "FS108_RETIRED_GOVERNANCE",
       "path": "apps/bff/src/services/admin-team.ts",
-      "count": 70,
+      "count": 1,
       "fingerprints": {
-        "02863425a49b24ed09460dad09b06e441211e6f1485255f9eec8b1a0b48773b1": 1,
-        "040e97d15ea02aa56fd7260c89bf7b7ba9d0d4e6f7c05050cfec73a74f60a01f": 1,
-        "04e3c41c57ba7643d83734c75a5f83622f05643a7132b985302cf6b964a57c49": 1,
-        "071558b8c67376469f76a1fe748059fddeb6ea158fcfc4364eead1bf65b33b86": 1,
-        "106e324ecbe30e507ae7cb75d9a4764860fb3901f6d0a8c89b2430e8698b6b07": 1,
-        "1e2d5df8e2f767b41a34cab63a8dadbadbd00ea0d2a728e084b7247160922c4a": 3,
-        "1e5830108a4307cddd453e911ee8bd4b6d92cc76aa215d1ae7cc33d7a831c971": 1,
-        "21ab531dd73ecfb7022d8c034726890a2fabbbe22d1699c8b47a48658307cad6": 1,
-        "29684bde155ff32135f339b03cf0a589a1a5e2afde1724597d650e9b50c56c7d": 1,
-        "2d52d739c1c3cdb5d821f71a2c57f5f320b42b4ff40050db72a42c5d685956ac": 1,
-        "318798ae81f891d79cd4b3135a1d6c3665ed1028cc80cfcdf65faed6edad607f": 1,
-        "3c111a2b058854c0a7b7ec321a6d712be06e960f3079878b662da9822bdd7e87": 1,
-        "3cb48a0fd3a529165aa689146df80390fc3f421947ffda315f36cac4a92d32c8": 1,
-        "4340e335d7676e8b912a2bbdf3cd2b60977723519321896e79cb7f1f04e92cb9": 1,
-        "48ab60bc639bb975a65fb00d864a37cf16596ce05476a784ba3bbce7d60aa27f": 1,
-        "56d365659bb4c897cf4d49e7f6c99a47c13f8aa290ab804a9e477ec5d5a1f343": 1,
-        "57b390a092655d5bc1e2a8f3aa1cbeb85262909f317bd1a566511134edd1ada8": 1,
-        "5d7379ba6a2e1d8363df4366187d0e4fc5fcbf6783d9bce52dc0c74c5fbc6ac0": 2,
-        "65c0232cf972a6bad480940f9a22611ed342918ab916e422dc7001b5ddfacecb": 1,
-        "6da18a8a1e4adfa8449b61cc02094c4d33401b336a918d108c1fe4da075b55e8": 2,
-        "6f4fc7277aa390ba0cff632df31fcc0ab67b30e0e5cc2235f2ce4043ecc3fad8": 3,
-        "705172cf6e021e26e4495558798fdb4255c4bb2cea471c51aeb4ce4902e0ee06": 1,
-        "76d5aeba393e549877f376862f6a30b8e78e1adbaf7ba6a5fcf5655b45b315b9": 1,
-        "85a69e4ac0775babc5e64f5df934c4a71ace15108d9da618ff72b27838f38637": 1,
-        "8aae30423fab7c3b3545d7c308559cfcede8799a7e552dae2a20793427638ae9": 1,
-        "8b3210dde164d1b1abf659c26956bf83c7679cd14092dcc7e158f98f45cb2b76": 1,
-        "9587a8b302b387c01ce70b3665e14bfed7e250283823f1b0c8281c5b0a0292c7": 1,
-        "966461c29c5cc3b760bb7f83dff0ec135872c5b20d0c19f249d986dded2288b7": 1,
-        "9a4f6399408c3c3749ea028f58338cb0b5cdb83a169478fd63aba0d7dbfa49e3": 2,
-        "9f68b6acdfa1980f0320d6a7cd3e3523dd9a958ff0179b6735f0a27397af4946": 2,
-        "a0377044455cbf764024c36f692494e1f758e3540390c09d68b2758f20c78385": 4,
-        "a58e19ade88966c76e6c3be95527a8a80f8bc99c873248c725a69635ce17d591": 2,
-        "a83a099fd4eea82292baf1fb124ddd55948da09977203618245ccb7932d0b0fd": 1,
-        "aaf50f1133d6786685a3638f16fb900e9eb6efe3d9b9cdfe90d797d9cd3e3017": 1,
-        "abc2705965ce411932195ed35d30b1669d05e90a05fac55f57e2e7ef43e0b6c5": 1,
-        "b18ec05a209c4259fe1674445b84bf638b550f1870233886105e7513d080ce08": 1,
-        "b2e240f882ca47f719302e0595f88b21ff1ec7df6b80dcb6b72a7176b1e85345": 1,
-        "b6bff7cf5a1feb78082d517b17afbd475a707a49ae4dc3eb2925f80e07cd9881": 1,
-        "b86e5dce35a449ff2688ae1788b18dea49eb8ff64b04052f6026437570091881": 2,
-        "b8c0be647e6d8dbf0d27ae67573cb1a8a52878c6e6384a62b94b5763e461bdc9": 1,
-        "bb1be6301c55e3233719def4f92919956f7d1d2cd4f2abb6b96a95b877257a8c": 1,
-        "bbb51ef2eebfcd05dda6b91c00d632d9bf5b0530bd3f3c04816a855bb2244184": 1,
-        "c3fa8ea763741218bd2b353e23a62f432441413b364619914b01539dc8022b47": 1,
-        "d144f6838049561c505e33c29130f48b7f08c5b5227f44c4dab65806c582b992": 1,
-        "d5ff27eac0695c6d88a9c4a9840d3e827e5ded308e1596fde88a679bbd09454c": 1,
-        "db5b4f548d2298266896529a9f124553b07d2c6528b5d6bacdbf8b9a1c3e5f01": 3,
-        "dd1e91af045c282996ba4e88666dc91411c6496e64194bf8e0b936a2ebf8968d": 1,
-        "f7be213841f7877beb24c86ec3913fdd2511c2b3f5bbf70a71e2edaceea6712f": 1,
-        "f8c5a26e8a2d1cecc629eee0df2645499a93e9fec661a5d963f78b9b19ef37b0": 1,
-        "fa0b8154a6dd8589cbec8ce12dfe3667737471893afbd634e02cbefa8af9931e": 1,
-        "fddf081f31853f97f954ca6a432db160c680c5b8ccf7d9661bb3ba68f1dd9cf7": 3,
-        "ff060b64e370f9673629d7c6aed8c747a7dc0b8e20cb085345dc10351beb921f": 2
+        "9bae8e68ed000f46763c54328ccd5f9e9677f118475cdcc4641142340f08c776": 1
       },
       "removeBy": "PR-06"
     },
@@ -5653,70 +4647,10 @@
     {
       "ruleId": "FS108_RETIRED_GOVERNANCE",
       "path": "apps/web/src/app/page.test.tsx",
-      "count": 9,
+      "count": 2,
       "fingerprints": {
-        "0ae3e7221d1a08bccf64034bb68486e9f0791480c11e69ff0446671493934906": 1,
-        "2ce1b97d9c1b6eea887e40a45cb4df46b228673f88ee1b5185713bb9c750ec89": 1,
         "48653635d1b2b4ff459a5a9080cab9e90426b6918a252abb6940ae93d3899d61": 1,
-        "6cb36aff019c63d610ffc382b5fe209e96e32f0b7376effa82aab630998ca84d": 1,
-        "70f5c1f544a7839ce0c108e77c89bd5f08e44bdbec5d3fadd78450bab02ba342": 1,
-        "792de6753824798af1f943795be7b471884af06b88fe4685de2dbd169bf05c07": 1,
-        "8d0b0ec96e91d2707fef615f1f230d01a18d2cf8addea911c54ce00de2bda2cc": 1,
-        "91ef29660c9b58437f04290f04afaa2dfb52fef54a7bb7d93f202b1a59ccae63": 1,
         "af9219a61c9af0fc2166b9b82ce993fc140ea6c76a1df2b6ee1443237c1a34cb": 1
-      },
-      "removeBy": "PR-06"
-    },
-    {
-      "ruleId": "FS108_RETIRED_GOVERNANCE",
-      "path": "apps/web/src/components/console-v2/settings-v2-experience.tsx",
-      "count": 25,
-      "fingerprints": {
-        "008dcce528897ef1dac55ed89e039c0ed41aea973ae5fa7352fdf8c665629589": 1,
-        "0d3d09400e718fa0de2a0e367859afbdc98ce818afb6295e82e8f0ede4010673": 1,
-        "0ebb741d1a0842961c709f30736b113d8f9a2da2cf77142e3cf70f403eeafa84": 1,
-        "1473892991d8493f29d916854657bdbc267419ff543096a40ec4260a272584f7": 1,
-        "24ab26366699563611f2201ad0dbbd9518e60599ebee1f9516e8ce6149d67c95": 2,
-        "3c548ef7b50976b7b3f6a4c3438348707aed608899cde0ca3a9feaa8cb85fffd": 1,
-        "3f773303278c1cdcb08bb01ca132afe01bac88a1074d246ecc06f01b2579ae46": 1,
-        "4532f743b4e885b46d5aee06878f7a3f8e55715c9c2e4444c4a306c2719b0f39": 1,
-        "4ddfc3a6654fef95e5d0e80ffb2bd4b1839709a4ccdab939b17789387d7ce8c7": 2,
-        "5e385016e5e842c539a7134b97d4083a02f8e0d2caaae9421881354edf47d082": 1,
-        "5f3b06f9f08327c902d85d569b5003b6d6bcbab38d9373b7922bf027f5e078d1": 1,
-        "6032f7450243bb4b55c2a698c2506c140cc83fd25e3d1e1e9bb0e24d255247b8": 1,
-        "60c0ef2572e6e103eb9712248fa5df7e109cd058864db943c23008fb0a17d769": 1,
-        "7f4a425c0dc027c8af4f240653e5ac1f2aa047646cdbb2b95647e3cc7f1a2489": 1,
-        "8fb3a4b1caeb807eb95764212f6067bfa6f834ca36d6824d41341279a61d7cb5": 1,
-        "907e7a86c2bb52ae4e24674bdb2633ebb695978fab69291cf08c27e07a5c009c": 1,
-        "9c52f4c57e4099d7776697dc1802ea60d84ca1b11282a077ce05b0f28874f5b8": 1,
-        "a4592b6c109385afcc92015f4c5b5e068151094f64422f8323d54f17444a58c2": 1,
-        "a61f6db5a551e6fbe4dcf2583aba134c8a8eecdf070b1713f9b6ede1bc7d64c9": 1,
-        "ab22327372095429d739b5ea272adee5e95485d462a56105056be2b748a6dbaa": 1,
-        "ad02267ffd75514be4e623f1a97d46302875f146b05b1da42aa8aab00e77a35f": 1,
-        "c7771de3bcd637ba5157c64b82c264d82466e8f014c802c77697d65ddf8b86b9": 1,
-        "cf0cf39dfe2c1f2382681f93a7f599bc0e1bd184b30518244a43f4452280451c": 1
-      },
-      "removeBy": "PR-06"
-    },
-    {
-      "ruleId": "FS108_RETIRED_GOVERNANCE",
-      "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
-      "count": 17,
-      "fingerprints": {
-        "0c72f912d9d34b5ed96fe9ec2cc3cf93184993331f3b5a12c43bba53874b6596": 1,
-        "1ba61488956e4c0e7c01c13a44643887f0b4d4c534339c7d2eaf6442ada98d1d": 1,
-        "1e83a875cbaf51b3a3c40097803963a498ef3f33f4b35e3ed21569aa859d6595": 1,
-        "5390b11e44f14e2dc90d2be25a1d9c82d062cfc7f792e80816ac0610a6465f40": 1,
-        "60aedb0aea52e4e05b1a60785ea506c56b22e4972517e7ed0af4344817aecc0e": 1,
-        "6ff1e72df045558e1f7adba7baea3d48286ea7cefec99804e9ed7ae6d1f22e84": 1,
-        "aad934a6f7a37c3530745857888fd8eb8aadbf6ce9a70de948fe0b832c5b2852": 1,
-        "afaa2d5992be27e87a27be0d0ea21ea0f69a64ec6691d2ae7cb53fd4db00229e": 1,
-        "b26de09c700a61f972b01a40da0ce3cc90844588af368d621ce3cfc3c190aceb": 2,
-        "c1692e45f3775038b0eda670585c3cabe5191d59485c4b1989f5d5f9fa3c5db7": 1,
-        "c1e303e70f279aedc8cc2251f8b98362171293eec2f2e9960265382d91686d96": 3,
-        "e7175362dff8ec83ee76c063b85f6a69c664827bd2d64b97b8261f8867d70b65": 1,
-        "f899cbe4cb6139603b84f2ef642aa53e15bdfbe3dc76da1152ad12c3fb2f643e": 1,
-        "fa75ea50e59f73408871c242d75ef32137a3e5b1ddf15bef2587c044e67cf2dc": 1
       },
       "removeBy": "PR-06"
     },
@@ -5782,15 +4716,6 @@
         "f346fc94bb1c31e350a70875a7ff1149b0206d7bffcb9842b56fe819c9486981": 1,
         "f4a35a84fd6354a4c0526ce12ef5b8003e434a11fe6938bf80083ef6524cc657": 1,
         "f99ca31a285fa2fd0b805b45c3097dd79d2eb613451f04d43b76012b3f715911": 1
-      },
-      "removeBy": "PR-06"
-    },
-    {
-      "ruleId": "FS108_RETIRED_GOVERNANCE",
-      "path": "apps/web/src/lib/admin/console-v2-routes.tsx",
-      "count": 1,
-      "fingerprints": {
-        "d0ef5bb59261ce5d5cadfd2e784ee36b5da997337e48e3837300255aca6b2023": 1
       },
       "removeBy": "PR-06"
     },
@@ -5969,11 +4894,11 @@
     {
       "ruleId": "FS109_LEGACY_PERSONA",
       "path": "apps/bff/src/auth/persona-security.test.ts",
-      "count": 11,
+      "count": 9,
       "fingerprints": {
         "5657a515691e6000ad61ac68bd7d25b16c8b95504d8f08b67131db475bb086bf": 1,
         "602223429b71494c2f9ba3b330014a7ba5d12da759c98e999a574aa07a52623d": 1,
-        "60614ec9d708340a59fc3f1ab08b09ebd5f85824bad4dfc541f93081d5f7fe62": 3,
+        "60614ec9d708340a59fc3f1ab08b09ebd5f85824bad4dfc541f93081d5f7fe62": 1,
         "8d3d548949f73e2c99abe4a556d76079ed9b3bc612d40d697377826be2be3159": 2,
         "e397d5a26e36ec254dbbafd889aa0498efe1c08f811641a4e91688b69e3af682": 1,
         "e8e3a4538265205e317cd073e69bbcbdeabce6d61449af1ab61c815038570114": 1,
@@ -5997,32 +4922,8 @@
     },
     {
       "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "apps/bff/src/routes/admin-governance-detail.test.ts",
-      "count": 3,
-      "fingerprints": {
-        "211767a873e09776b831c7f8d8b324aabbf40fbfcb5c7259e0f5d329e9e27b05": 3
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "apps/bff/src/routes/admin.test.ts",
-      "count": 11,
-      "fingerprints": {
-        "09ec7f150cc9e12738a1917437aaf6a8b23f7b3ff8da9c515c6aa830321f8780": 5,
-        "7dd9658598b94043f4a8799b1a8262eeb241a778aa61f35b82a1d701bccafbf7": 1,
-        "8cb9e065c5fa199f8789a4374bef3245a811ae748bba7eaded25debfed50a398": 1,
-        "8e53af17f4509e9c9b0c6904fcef12c5cb4cbeb53f4f8807ec217bcebe0cfb3f": 1,
-        "9b6b6d7f77f9587f56bbe428f1b000bbe2c5f342314adede1e0417e307fdf9a3": 1,
-        "c04547ae7bca46cd4e0edde5327b866a26cdb9136d9013b27aa4b00f0dd020df": 1,
-        "e6e9bdc5935689302155a3b295be48f73d82e19bade046f16dd692cc91143257": 1
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
       "path": "apps/bff/src/routes/admin.ts",
-      "count": 58,
+      "count": 35,
       "fingerprints": {
         "35f80f11a39c0b87ac09ace3dd377df50dfc5f47c0bfe4c1c98686bf9a64ca91": 1,
         "43378b15ac950f46c9fdb0be9536d295bda6dc6604270705642df34a4b13132a": 1,
@@ -6030,20 +4931,9 @@
         "5813d084416e7161b00cc8c5686ca0bbfbd07025b679f7445fb3e85df1928f5e": 1,
         "672652e6d05580f1087f8fe77dca42d4292c00da838ccb5604881e7846ffeffe": 1,
         "96f4a56ee063d6dd531853185b8e0ede9cf67018725921de78031d1106d48d62": 1,
-        "c18ff1a40a134f1b2942d906b804456ad5786adc977b058b8ae4832f70d6bc30": 1,
         "c3d72d2644d8d0eeb0c38bcfbe8c8bb255345d58724cf2f9fa66b3eda553d9d7": 1,
-        "f346f3d73d7f6c7b19ebee3974c1c10d11e8b7b04c69d9fa3aa2d4dd16d88a4f": 49,
+        "f346f3d73d7f6c7b19ebee3974c1c10d11e8b7b04c69d9fa3aa2d4dd16d88a4f": 27,
         "fed2c59e891db390028d2536fc1760b73a5003e62ae2445ec80d360b570db0b3": 1
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "apps/bff/src/services/admin-audit.ts",
-      "count": 2,
-      "fingerprints": {
-        "057810b19555f896358470cd8716d8819be68ec67db1558f7ef5d6d5504b9643": 1,
-        "94ce499d5ec9e6cff97bfa970c3aaba224dbc552a33ccd134e4a051500653288": 1
       },
       "removeBy": "PR-05"
     },
@@ -6068,39 +4958,6 @@
     },
     {
       "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "apps/bff/src/services/admin-inference.ts",
-      "count": 3,
-      "fingerprints": {
-        "057810b19555f896358470cd8716d8819be68ec67db1558f7ef5d6d5504b9643": 2,
-        "94ce499d5ec9e6cff97bfa970c3aaba224dbc552a33ccd134e4a051500653288": 1
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "apps/bff/src/services/admin-overview.ts",
-      "count": 2,
-      "fingerprints": {
-        "057810b19555f896358470cd8716d8819be68ec67db1558f7ef5d6d5504b9643": 1,
-        "94ce499d5ec9e6cff97bfa970c3aaba224dbc552a33ccd134e4a051500653288": 1
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "apps/bff/src/services/admin-team.ts",
-      "count": 5,
-      "fingerprints": {
-        "00f5b46d5e40fcbc8a3242f973ba6a9b49d26be1e2148a29c4dc2b84800e2c36": 1,
-        "3cfcb13e04609410c3fea433accb50f7040ce10be973f8935f2d7c7b617883a4": 1,
-        "50dc81137855f8650d4a45cdb49873f65eb4cd772e58735991258027fc1b6dcd": 1,
-        "bf34af309b9ea52bfea8636bd493d3045a7e0a6c8e296afdb756de7cb6fa4129": 1,
-        "d8dd1a756eb7eebb9805a6d21f3341cbc8e3c2c521f4c8fe88d96851e823f9f9": 1
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
       "path": "apps/bff/src/services/admin/pure-mode.ts",
       "count": 2,
       "fingerprints": {
@@ -6116,15 +4973,6 @@
       "fingerprints": {
         "50dc81137855f8650d4a45cdb49873f65eb4cd772e58735991258027fc1b6dcd": 1,
         "dc19663ba87aab0b0a83ce1cf17f1ebd949bf61d45912b7acdac3982ae2c75d4": 1
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
-      "count": 2,
-      "fingerprints": {
-        "c55e3af436331bf25e5207060c518af88d2ca4b18c8996030c5811292050bc1a": 2
       },
       "removeBy": "PR-05"
     },
@@ -6225,90 +5073,19 @@
     {
       "ruleId": "FS111_CONNECTOR_GOVERNANCE",
       "path": "apps/bff/src/routes/admin.test.ts",
-      "count": 16,
-      "fingerprints": {
-        "281c2188a395032909862772a3570db9be125354b77d9ad68495022abee91622": 1,
-        "39e41d053ed97975175ab67fd91fff7ca8d6889bfd9224673f2584f2c2f0bc43": 1,
-        "4304741e1ce1dccf3a9661d12635493caa39d4879ba6ed7051c7f0c5a90b4355": 1,
-        "472dfc9b0c440a7bf3fd46cde7b3e743e94f30a4f88db795dd24b4efd0b59e28": 1,
-        "51696638e366e38447cf38ba0361d6aabc1896fa6ce4b732d0a82b1f499cd13d": 1,
-        "7d93f49f779345c8b57655c4d8e4300872610432c9e9c364d6c0faae196eee8b": 1,
-        "a78c48686528dda00b384d18d9a54552337c11d7322f72902b1bcdfb98a8a8d7": 1,
-        "ae291bd12ec524ce3e79075525fdf88c1463bcd01f4d2ba4cadc2bb3c894d683": 1,
-        "b8836edfa28ef190f6c9c20941752a21a9907d35ee2bf2662c0bc74e692ab5d5": 1,
-        "bdfdf9bea6cc809331b0a53a4f7eaa58adf1cf05dc604732573e3e38c34f2b80": 1,
-        "cb544c75e5b982be92673aacd3154fcb224d752969bcdaeb455624eae6371ff9": 1,
-        "d061d5fba9e5f1dc8690811a89d4d05ba260222ecaf93a3c9b4ba785d20ed826": 1,
-        "d1a4d322ccea8857828dfdcbfe6d23934fcfc56e6adfe48cf89d134ae6ed3f89": 1,
-        "d4636626ade45bc70ac2e21843263cc460ed0fe5e0935a5293d2504f7fdb61a1": 1,
-        "dcf3237bb35e151ee5d82655a408adb6eff263ab74e30612b8ae354df971d6a3": 1,
-        "e5fd7df9244c9d18b7128a966e7ebf44543911065feb8395d7f327bfdcc23822": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS111_CONNECTOR_GOVERNANCE",
-      "path": "apps/bff/src/routes/admin.ts",
-      "count": 16,
-      "fingerprints": {
-        "1a874734bad4659307cfae029aa352ff0fbefe17a988c89baa2c1e56ebfef4a0": 1,
-        "2dd22d016e3a66154258917cd6ef8c8c13b367e99bcde64f23cd5dfd19e985b8": 1,
-        "5160cf2cc5b8d0ddaceab7bc006cd791a891c6dcd0b5f0e80d014aebcef3b650": 1,
-        "5b082532717a026bbd45544f4974b1f0d75dc1196269560ee632b05c37f6d98a": 1,
-        "627a6598f14d39619a0d28650f35da3af304928cd5c16655bf1497e16a742f0c": 2,
-        "651f76e51aa0236013dfe79ee968a92c0b82d8dea98e8ce0a76537057d0bfc8e": 1,
-        "743a07fe6eb5221efd8d47054a2e4f80a3cfba396db9da426f72274ffa3b8225": 2,
-        "7d82ed5db619b9708ae365494e3a4ce70d78d5ead16d68f1b45c52f25db4620c": 1,
-        "7e2915ca777cc53068f52c1e5f526fea6353368e57a0f2193124ca7968a7404f": 3,
-        "d1a4d322ccea8857828dfdcbfe6d23934fcfc56e6adfe48cf89d134ae6ed3f89": 1,
-        "da788a3843c821d0911d0f92d7c5558705ee1d630cd697d30015a7bc7c41dd95": 1,
-        "e1e405b66895797dcd8751f62ab60873f66b496980d7e5fb6c11440e42f2354e": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS111_CONNECTOR_GOVERNANCE",
-      "path": "apps/bff/src/services/admin-overview.ts",
-      "count": 5,
-      "fingerprints": {
-        "31beed0acb668a65ed9d889ac7418ed29fd59a7eee069876cb539f83892170de": 1,
-        "57e0c4e6d7ddab0fb3361c65a320011ca2748075234fa57e6effb465dcc1d4bd": 1,
-        "ba6fb36a6b1f5289c47d5e9c0dc31edf04d9e0d53117b5fbefb7ae1b169f8d1f": 2,
-        "dd0ba67be83da338e605d06463ce09bd0be4cc2d4333a7692064457dffd8e435": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS111_CONNECTOR_GOVERNANCE",
-      "path": "apps/bff/src/services/admin-team.ts",
       "count": 1,
       "fingerprints": {
-        "b80efe0d37aee929f57f39b75e7b1ddd15be0ef64fce56eace4908a28d3789d2": 1
+        "ee61086112389d48f6991bff61803a7925d48df0677d807388273637487ce641": 1
       },
       "removeBy": "PR-03"
     },
     {
       "ruleId": "FS111_CONNECTOR_GOVERNANCE",
       "path": "apps/web/src/app/page.test.tsx",
-      "count": 5,
+      "count": 3,
       "fingerprints": {
-        "19f2c4b71a72f9c54c1d6abb74253dd66c0de714e47ee556495a11e612c9025a": 1,
-        "3faef2208180fc6cabea3ac488e4ddb209027547711a17bb9ff4e2eecb214c42": 1,
         "4693073f4a2f1d0fb0d243472616a35774409e12b3c2d8c8583d9143dc3a4af1": 1,
         "4d26a31d70e51639089c9995c56f3b9b0d70a2b3806bad31c2a1a8f28bfc4af5": 2
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS111_CONNECTOR_GOVERNANCE",
-      "path": "apps/web/src/components/console-v2/applications-v2-experience.tsx",
-      "count": 5,
-      "fingerprints": {
-        "0b12a8ac0276026c47c57f012cdcdce94d6c28f1c4f37b7fee4411df566ad468": 1,
-        "d1cbdb59971df21b34652310215597f10ce668ad5639e8a0e313219dbafca4ac": 1,
-        "dcbf565b20253dec105576aac8733e0cfbfe6fdac699d9b3e1c6e49a0daa3c61": 1,
-        "e5f1e45031adc3a875fe132a5acae4d289aded3c0036b3d615968c60c8f4b885": 1,
-        "eb5a21c5b18eff57e7fe294499413c43bb95905d5eddfca18bb2811119772110": 1
       },
       "removeBy": "PR-03"
     },
@@ -6331,16 +5108,6 @@
       "fingerprints": {
         "5b082532717a026bbd45544f4974b1f0d75dc1196269560ee632b05c37f6d98a": 1,
         "f7830ea37f586d02fa17f3d0c2675fea5d72dd1637df0d4b4627a31a5648ffb2": 1
-      },
-      "removeBy": "PR-03"
-    },
-    {
-      "ruleId": "FS111_CONNECTOR_GOVERNANCE",
-      "path": "apps/web/src/lib/admin/console-v2-routes.tsx",
-      "count": 2,
-      "fingerprints": {
-        "2dd22d016e3a66154258917cd6ef8c8c13b367e99bcde64f23cd5dfd19e985b8": 1,
-        "4107b046f18808ef166921bc1d762f7ae73435d9b351bc144b2ff10a3ac1d6dc": 1
       },
       "removeBy": "PR-03"
     },

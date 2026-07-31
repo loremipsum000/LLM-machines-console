@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./inference-core": {
+      "types": "./dist/inference-core.d.ts",
+      "import": "./dist/inference-core.js",
+      "default": "./dist/inference-core.js"
     }
   },
   "scripts": {

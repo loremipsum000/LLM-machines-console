@@ -43,8 +43,8 @@ describe("ConsoleV2Shell", () => {
   it("routes to numbered Console sections with Command shortcuts", () => {
     mockNavigatorPlatform("MacIntel")
     render(
-      <ConsoleV2Shell activeSection="knowledge">
-        <h1>Knowledge</h1>
+      <ConsoleV2Shell activeSection="applications">
+        <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
 
@@ -55,9 +55,9 @@ describe("ConsoleV2Shell", () => {
       within(navigation)
         .getByRole("link", { name: "Inference" })
         .getAttribute("aria-keyshortcuts"),
-    ).toBe("Meta+3")
+    ).toBe("Meta+2")
 
-    fireEvent.keyDown(window, { key: "3", metaKey: true })
+    fireEvent.keyDown(window, { key: "2", metaKey: true })
 
     expect(navigationMocks.router.push).toHaveBeenCalledWith("/inference")
 
@@ -67,32 +67,32 @@ describe("ConsoleV2Shell", () => {
   it("shows shortcut hints while the modifier key is held", () => {
     mockNavigatorPlatform("MacIntel")
     render(
-      <ConsoleV2Shell activeSection="knowledge">
-        <h1>Knowledge</h1>
+      <ConsoleV2Shell activeSection="applications">
+        <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
 
-    const knowledgeShortcut = screen.getByText("⌘1")
-    expect(String(knowledgeShortcut.className)).toContain("opacity-0")
+    const applicationsShortcut = screen.getByText("⌘1")
+    expect(String(applicationsShortcut.className)).toContain("opacity-0")
 
     fireEvent.keyDown(window, { key: "Meta", metaKey: true })
 
-    expect(String(knowledgeShortcut.className)).toContain("opacity-100")
+    expect(String(applicationsShortcut.className)).toContain("opacity-100")
 
     fireEvent.keyUp(window, { key: "Meta" })
 
-    expect(String(knowledgeShortcut.className)).toContain("opacity-0")
+    expect(String(applicationsShortcut.className)).toContain("opacity-0")
   })
 
   it("keeps shortcut hints visible across shortcut navigation while Command stays held", () => {
     mockNavigatorPlatform("MacIntel")
     const { unmount } = render(
-      <ConsoleV2Shell activeSection="knowledge">
-        <h1>Knowledge</h1>
+      <ConsoleV2Shell activeSection="applications">
+        <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
 
-    fireEvent.keyDown(window, { key: "3", metaKey: true })
+    fireEvent.keyDown(window, { key: "2", metaKey: true })
     unmount()
 
     render(
@@ -101,7 +101,7 @@ describe("ConsoleV2Shell", () => {
       </ConsoleV2Shell>,
     )
 
-    const inferenceShortcut = screen.getByText("⌘3")
+    const inferenceShortcut = screen.getByText("⌘2")
     expect(String(inferenceShortcut.className)).toContain("opacity-100")
 
     fireEvent.keyUp(window, { key: "Meta" })
@@ -112,8 +112,8 @@ describe("ConsoleV2Shell", () => {
   it("uses Ctrl shortcut hints outside macOS", () => {
     mockNavigatorPlatform("Win32")
     render(
-      <ConsoleV2Shell activeSection="knowledge">
-        <h1>Knowledge</h1>
+      <ConsoleV2Shell activeSection="applications">
+        <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
 
@@ -122,16 +122,28 @@ describe("ConsoleV2Shell", () => {
     })
     expect(
       within(navigation)
-        .getByRole("link", { name: "Knowledge" })
+        .getByRole("link", { name: "Applications" })
         .getAttribute("aria-keyshortcuts"),
     ).toBe("Control+1")
     expect(screen.getByText("Ctrl 1")).toBeTruthy()
 
-    fireEvent.keyDown(window, { ctrlKey: true, key: "6" })
+    fireEvent.keyDown(window, { ctrlKey: true, key: "5" })
 
     expect(navigationMocks.router.push).toHaveBeenCalledWith("/settings")
 
     fireEvent.keyUp(window, { key: "Control" })
+  })
+
+  it("omits retired product navigation and footer links", () => {
+    render(
+      <ConsoleV2Shell activeSection="applications">
+        <h1>Applications</h1>
+      </ConsoleV2Shell>,
+    )
+
+    expect(screen.queryByRole("link", { name: "Knowledge" })).toBeNull()
+    expect(screen.queryByRole("link", { name: "Help" })).toBeNull()
+    expect(screen.queryByRole("link", { name: "Documentation" })).toBeNull()
   })
 })
 

@@ -1,4 +1,9 @@
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto"
+import {
+  createHash,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto"
 import { desc, eq, sql } from "drizzle-orm"
 import Redis from "ioredis"
 import type {
@@ -11,25 +16,24 @@ import type {
   AdminConnectedAppEnvironment,
   AdminConnectedAppEnvironmentState,
   AdminConnectedAppsResponse,
-  AdminConnectedAppPromotionResult,
   AdminConnectedAppRotateCredentialResult,
   AdminConnectedAppTestResult,
   AdminConnectedAppUpdateRequest,
   AdminConnectedAppUsageSummary,
-} from "@llm-machines/contracts"
+} from "@llm-machines/contracts/inference-core"
 import {
   adminConnectedAppEnvironmentStateSchema,
   adminConnectedAppUsageSummarySchema,
-} from "@llm-machines/contracts"
+} from "@llm-machines/contracts/inference-core"
 import type { Actor } from "../auth/persona"
 import { canUseBffFixtureData } from "../config/fixture-mode"
-import { getDb } from "../db/client"
-import { connectedAppApiKeys, connectedApps } from "../db/schema"
+import { getInferenceCoreDb } from "../db/inference-core-client"
+import { connectedAppApiKeys, connectedApps } from "../db/inference-core-schema"
 import { emitAudit } from "./audit"
 import {
   KeycloakAdminError,
   keycloakAdminClientFromEnv,
-} from "./team-keycloak-admin"
+} from "./inference-core-keycloak-admin"
 import { upsertActorUser } from "./users"
 
 export type ConnectedAppCreateResult =
@@ -45,6 +49,13 @@ export type ConnectedAppCredentialMutationResult =
   | AdminConnectedAppRotateCredentialResult
   | { detail: string; status: "blocked" }
   | { status: "not_found" }
+
+interface AdminConnectedAppPromotionResult {
+  app: AdminConnectedApp
+  credential?: AdminConnectedAppCredential
+  detail: string
+  status: "blocked" | "promoted"
+}
 
 interface ConnectedAppRecord {
   allowedModels: string[]
@@ -87,7 +98,9 @@ export interface ConnectedAppRuntimeIdentity {
   appName: string
   authMethod: AdminConnectedAppAuthMethod
   clientId: string
+  credentialRecordId: string
   environment: AdminConnectedAppEnvironment
+  keycloakSubjectId: string | null
   rateLimitRpm: number | null
   status: "disabled" | "enabled"
   tokenBudget7d: number | null
@@ -191,7 +204,8 @@ export async function createAdminConnectedApp(
     environments: [
       {
         authMethods: [authMethod],
-        clientId: authMethod === "oauth_client_credentials" ? oauthClientId : null,
+        clientId:
+          authMethod === "oauth_client_credentials" ? oauthClientId : null,
         credentialIssuedAt: now,
         environment: "staging",
         keyPrefix: apiKey?.record.keyPrefix ?? null,
@@ -218,14 +232,21 @@ export async function createAdminConnectedApp(
   if (apiKey) {
     await saveConnectedAppApiKeyRecord(apiKey.record)
   }
+  const credentialMetadata = await connectedAppAuditCredentialMetadata(
+    saved,
+    "staging",
+  )
   await emitAudit({
     actorId: actor.subject,
     action: "admin.connected_app.created",
     targetType: "connected_app",
     targetId: saved.id,
     metadata: {
+      applicationId: saved.id,
       authMethod,
+      ...credentialMetadata,
       environment: "staging",
+      keycloakSubjectId: actor.subject,
       ownerGroup: saved.ownerGroup,
     },
   })
@@ -307,12 +328,23 @@ export async function testAdminConnectedApp(
     updatedBy: actor.subject,
   }
   const saved = await updateConnectedAppRecord(actor, updated)
+  const credentialMetadata = await connectedAppAuditCredentialMetadata(
+    saved,
+    "staging",
+  )
   await emitAudit({
     actorId: actor.subject,
     action: "admin.connected_app.tested",
     targetType: "connected_app",
     targetId: id,
-    metadata: { environment: "staging", status: "passed" },
+    metadata: {
+      applicationId: id,
+      authMethod: environmentRecord(saved, "staging")?.primaryAuthMethod,
+      ...credentialMetadata,
+      environment: "staging",
+      keycloakSubjectId: actor.subject,
+      status: "passed",
+    },
   })
   return {
     app: toPublicApp(saved),
@@ -400,7 +432,8 @@ export async function promoteAdminConnectedAppToProduction(
     targetId: id,
     metadata: { authMethod, environment: "production" },
   })
-  const credential = apiKey?.credential ?? (created?.ok ? created.credential : null)
+  const credential =
+    apiKey?.credential ?? (created?.ok ? created.credential : null)
   if (!credential) {
     return {
       detail: "Production credentials could not be created.",
@@ -442,7 +475,10 @@ export async function rotateAdminConnectedAppCredentials(
       : null
   const rotated =
     environment.primaryAuthMethod === "oauth_client_credentials"
-      ? await rotateKeycloakCredential(environment, existing.allowedModels[0] ?? null)
+      ? await rotateKeycloakCredential(
+          environment,
+          existing.allowedModels[0] ?? null,
+        )
       : null
   if (rotated && !rotated.ok) {
     return rotated
@@ -468,12 +504,22 @@ export async function rotateAdminConnectedAppCredentials(
     updatedAt: now,
     updatedBy: actor.subject,
   })
+  const credentialMetadata = await connectedAppAuditCredentialMetadata(
+    saved,
+    "staging",
+  )
   await emitAudit({
     actorId: actor.subject,
     action: "admin.connected_app.credentials_rotated",
     targetType: "connected_app",
     targetId: id,
-    metadata: { authMethod: environment.primaryAuthMethod, environment: "staging" },
+    metadata: {
+      applicationId: id,
+      authMethod: environment.primaryAuthMethod,
+      ...credentialMetadata,
+      environment: "staging",
+      keycloakSubjectId: actor.subject,
+    },
   })
   const credential =
     apiKey?.credential ?? (rotated?.ok ? rotated.credential : null)
@@ -539,7 +585,9 @@ export async function resolveConnectedAppRuntimeIdentity(
       appName: record.name,
       authMethod: "oauth_client_credentials",
       clientId,
+      credentialRecordId: environment.keycloakClientUuid ?? clientId,
       environment: environment.environment,
+      keycloakSubjectId: null,
       rateLimitRpm: record.rateLimitRpm,
       status: record.status,
       tokenBudget7d: record.tokenBudget7d,
@@ -575,14 +623,20 @@ export async function resolveConnectedAppRuntimeIdentityByApiKey(
   }
   const usedAt = new Date().toISOString()
   await markApiKeyLastUsed(matched.id, usedAt)
-  await updateConnectedAppEnvironmentLastUsed(record, matched.environment, usedAt)
+  await updateConnectedAppEnvironmentLastUsed(
+    record,
+    matched.environment,
+    usedAt,
+  )
   return {
     allowedModels: record.allowedModels,
     appId: record.id,
     appName: record.name,
     authMethod: "api_key",
     clientId: matched.keyPrefix,
+    credentialRecordId: matched.id,
     environment: matched.environment,
+    keycloakSubjectId: null,
     rateLimitRpm: record.rateLimitRpm,
     status: record.status,
     tokenBudget7d: record.tokenBudget7d,
@@ -604,8 +658,7 @@ export async function recordConnectedAppGatewayUsage(
 export async function consumeConnectedAppGatewayRateLimit(
   app: ConnectedAppRuntimeIdentity,
 ): Promise<
-  | { ok: true }
-  | { detail: string; ok: false; status: 429 | 503; title: string }
+  { ok: true } | { detail: string; ok: false; status: 429 | 503; title: string }
 > {
   if (app.rateLimitRpm === null) {
     return { ok: true }
@@ -621,7 +674,8 @@ export async function consumeConnectedAppGatewayRateLimit(
     return count <= app.rateLimitRpm
       ? { ok: true }
       : {
-          detail: "The connected app has reached its request limit for this minute.",
+          detail:
+            "The connected app has reached its request limit for this minute.",
           ok: false,
           status: 429,
           title: "Rate limit exceeded",
@@ -646,7 +700,8 @@ export async function consumeConnectedAppGatewayRateLimit(
   }
   if (existing.count >= app.rateLimitRpm) {
     return {
-      detail: "The connected app has reached its request limit for this minute.",
+      detail:
+        "The connected app has reached its request limit for this minute.",
       ok: false,
       status: 429,
       title: "Rate limit exceeded",
@@ -675,7 +730,7 @@ export async function reserveConnectedAppGatewayTokens(
   }
 
   const reservedTokens = Math.max(1, Math.floor(requestedTokens))
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (db) {
     const actor = await upsertActorUser(gatewayActor())
     const now = new Date().toISOString()
@@ -747,7 +802,7 @@ export async function reconcileConnectedAppGatewayUsage(
   const tokens = Math.max(0, Math.floor(input.tokens))
   const tokenDelta = tokens - Math.max(0, reservation.reservedTokens)
   const now = new Date().toISOString()
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (db) {
     const actor = await upsertActorUser(gatewayActor())
     await db.execute(sql`
@@ -800,7 +855,7 @@ export async function resetConnectedAppsForTest(): Promise<void> {
 }
 
 async function getConnectedAppRecords(): Promise<ConnectedAppRecord[]> {
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (db) {
     const rows = await db
       .select()
@@ -815,7 +870,7 @@ async function saveConnectedAppRecord(
   actor: Actor,
   record: ConnectedAppRecord,
 ): Promise<ConnectedAppRecord> {
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (db) {
     const storageActor = await upsertActorUser(actor)
     await db.insert(connectedApps).values({
@@ -834,7 +889,11 @@ async function saveConnectedAppRecord(
       updatedBy: storageActor.subject,
       usageSummary: record.usage,
     })
-    return { ...record, createdBy: storageActor.subject, updatedBy: storageActor.subject }
+    return {
+      ...record,
+      createdBy: storageActor.subject,
+      updatedBy: storageActor.subject,
+    }
   }
   memoryConnectedApps.unshift(cloneRecord(record))
   return cloneRecord(record)
@@ -844,7 +903,7 @@ async function updateConnectedAppRecord(
   actor: Actor,
   record: ConnectedAppRecord,
 ): Promise<ConnectedAppRecord> {
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (db) {
     const storageActor = await upsertActorUser(actor)
     await db
@@ -875,7 +934,7 @@ async function updateConnectedAppRecord(
 async function saveConnectedAppApiKeyRecord(
   record: ConnectedAppApiKeyRecord,
 ): Promise<void> {
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (db) {
     await db.insert(connectedAppApiKeys).values({
       appId: record.appId,
@@ -897,7 +956,7 @@ async function saveConnectedAppApiKeyRecord(
 async function getConnectedAppApiKeyRecordsByPrefix(
   keyPrefix: string,
 ): Promise<ConnectedAppApiKeyRecord[]> {
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (db) {
     const rows = await db
       .select()
@@ -910,12 +969,53 @@ async function getConnectedAppApiKeyRecordsByPrefix(
     .map(cloneApiKeyRecord)
 }
 
+async function connectedAppAuditCredentialMetadata(
+  record: ConnectedAppRecord,
+  environment: AdminConnectedAppEnvironment,
+): Promise<{
+  credentialRecordId: string | null
+  keyPrefix: string | null
+}> {
+  const state = environmentRecord(record, environment)
+  if (!state) {
+    return {
+      credentialRecordId: null,
+      keyPrefix: null,
+    }
+  }
+  if (state.keycloakClientUuid) {
+    return {
+      credentialRecordId: state.keycloakClientUuid,
+      keyPrefix: null,
+    }
+  }
+  if (!state.keyPrefix) {
+    return {
+      credentialRecordId: null,
+      keyPrefix: null,
+    }
+  }
+
+  const apiKey = (await getConnectedAppApiKeyRecordsByPrefix(
+    state.keyPrefix,
+  )).find(
+    (candidate) =>
+      candidate.appId === record.id &&
+      candidate.environment === environment &&
+      candidate.status === "active",
+  )
+  return {
+    credentialRecordId: apiKey?.id ?? null,
+    keyPrefix: state.keyPrefix,
+  }
+}
+
 async function revokeActiveApiKeys(
   appId: string,
   environment: AdminConnectedAppEnvironment,
   revokedAt: string,
 ): Promise<void> {
-  const db = getDb()
+  const db = getInferenceCoreDb()
   if (db) {
     const rows = await db
       .select()
@@ -949,8 +1049,11 @@ async function revokeActiveApiKeys(
   }
 }
 
-async function markApiKeyLastUsed(id: string, lastUsedAt: string): Promise<void> {
-  const db = getDb()
+async function markApiKeyLastUsed(
+  id: string,
+  lastUsedAt: string,
+): Promise<void> {
+  const db = getInferenceCoreDb()
   if (db) {
     await db
       .update(connectedAppApiKeys)
@@ -987,7 +1090,9 @@ async function updateConnectedAppEnvironmentLastUsed(
   )
 }
 
-function connectedAppRecordFromRow(row: typeof connectedApps.$inferSelect): ConnectedAppRecord {
+function connectedAppRecordFromRow(
+  row: typeof connectedApps.$inferSelect,
+): ConnectedAppRecord {
   return {
     allowedModels: stringArray(row.allowedModels),
     createdAt: row.createdAt.toISOString(),
@@ -1011,8 +1116,7 @@ function apiKeyRecordFromRow(
 ): ConnectedAppApiKeyRecord {
   return {
     appId: row.appId,
-    environment:
-      row.environment === "production" ? "production" : "staging",
+    environment: row.environment === "production" ? "production" : "staging",
     id: row.id,
     issuedAt: row.issuedAt.toISOString(),
     keyHash: row.keyHash,
@@ -1064,7 +1168,9 @@ function environmentRecord(
   record: ConnectedAppRecord,
   environment: AdminConnectedAppEnvironment,
 ): ConnectedAppEnvironmentRecord | null {
-  return record.environments.find((item) => item.environment === environment) ?? null
+  return (
+    record.environments.find((item) => item.environment === environment) ?? null
+  )
 }
 
 async function createKeycloakCredential(input: {
@@ -1074,10 +1180,17 @@ async function createKeycloakCredential(input: {
   environment: AdminConnectedAppEnvironment
   model: string | null
 }): Promise<
-  | { keycloakClientUuid: string; credential: AdminConnectedAppCredential; ok: true }
+  | {
+      keycloakClientUuid: string
+      credential: AdminConnectedAppCredential
+      ok: true
+    }
   | { detail: string; ok: false; status: "blocked" }
 > {
-  if (canUseBffFixtureData() && process.env.CONNECTED_APPS_KEYCLOAK_FIXTURE === "true") {
+  if (
+    canUseBffFixtureData() &&
+    process.env.CONNECTED_APPS_KEYCLOAK_FIXTURE === "true"
+  ) {
     const secret = `fixture-${input.clientId}-secret`
     return {
       keycloakClientUuid: `${input.clientId}-uuid`,
@@ -1095,7 +1208,8 @@ async function createKeycloakCredential(input: {
   const keycloak = keycloakAdminClientFromEnv()
   if (keycloak.status !== "ok") {
     return {
-      detail: "Keycloak Admin API is not configured for connected app credentials.",
+      detail:
+        "Keycloak Admin API is not configured for connected app credentials.",
       ok: false,
       status: "blocked",
     }
@@ -1130,7 +1244,10 @@ async function rotateKeycloakCredential(
   | { credential: AdminConnectedAppCredential; ok: true }
   | { detail: string; ok: false; status: "blocked" }
 > {
-  if (canUseBffFixtureData() && process.env.CONNECTED_APPS_KEYCLOAK_FIXTURE === "true") {
+  if (
+    canUseBffFixtureData() &&
+    process.env.CONNECTED_APPS_KEYCLOAK_FIXTURE === "true"
+  ) {
     return {
       credential: credentialPayload({
         clientId: environment.clientId ?? "fixture-client",
@@ -1145,7 +1262,8 @@ async function rotateKeycloakCredential(
   const keycloak = keycloakAdminClientFromEnv()
   if (keycloak.status !== "ok") {
     return {
-      detail: "Keycloak Admin API is not configured for connected app credentials.",
+      detail:
+        "Keycloak Admin API is not configured for connected app credentials.",
       ok: false,
       status: "blocked",
     }
@@ -1170,7 +1288,11 @@ async function rotateKeycloakCredential(
   }
 }
 
-function keycloakBlocked(error: unknown): { detail: string; ok: false; status: "blocked" } {
+function keycloakBlocked(error: unknown): {
+  detail: string
+  ok: false
+  status: "blocked"
+} {
   return {
     detail:
       error instanceof KeycloakAdminError
@@ -1209,7 +1331,10 @@ function createStaticApiKeyRecord(
   environment: AdminConnectedAppEnvironment,
   issuedAt: string,
   model: string | null,
-): { credential: AdminConnectedAppCredential; record: ConnectedAppApiKeyRecord } {
+): {
+  credential: AdminConnectedAppCredential
+  record: ConnectedAppApiKeyRecord
+} {
   const apiKey = generateStaticApiKey()
   const keyPrefix = staticApiKeyPrefix(apiKey) ?? apiKey.slice(0, 18)
   return {
@@ -1326,7 +1451,8 @@ function environmentRecords(value: unknown): ConnectedAppEnvironmentRecord[] {
     keycloakClientUuid:
       typeof item === "object" &&
       item !== null &&
-      typeof (item as { keycloakClientUuid?: unknown }).keycloakClientUuid === "string"
+      typeof (item as { keycloakClientUuid?: unknown }).keycloakClientUuid ===
+        "string"
         ? (item as { keycloakClientUuid: string }).keycloakClientUuid
         : null,
   }))

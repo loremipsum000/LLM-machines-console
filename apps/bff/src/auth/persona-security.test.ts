@@ -1,7 +1,7 @@
 import { createSign, generateKeyPairSync } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { resetJwksCachesForTest, verifyKeycloakJwt } from "./persona"
 import { buildServer } from "../index"
+import { resetJwksCachesForTest, verifyKeycloakJwt } from "./keycloak-jwt"
 
 const forgedAdminHeaders = {
   authorization: "Bearer test-service-key",
@@ -57,44 +57,10 @@ describe("persona auth security hardening", () => {
     await server.close()
   })
 
-  it("allows service-forwarded identity only on trusted MCP routes in production mode", async () => {
+  it("rejects unresolved forwarded-token placeholders instead of falling back", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("BFF_ALLOW_HEADER_ONLY_SERVICE_AUTH", "false")
     vi.stubEnv("BFF_REQUIRE_FORWARDED_KEYCLOAK_TOKEN", "true")
-    vi.stubEnv("BFF_MCP_ALLOW_SERVICE_FORWARDED_AUTH", "true")
-
-    const server = buildServer()
-
-    const response = await server.inject({
-      headers: {
-        ...forgedAdminHeaders,
-        "x-llm-machines-user-roles": "consumer",
-      },
-      method: "POST",
-      payload: {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/list",
-      },
-      url: "/api/mcp/internal-docs",
-    })
-
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      result: {
-        tools: expect.arrayContaining([
-          expect.objectContaining({ name: "search_internal_docs" }),
-        ]),
-      },
-    })
-    await server.close()
-  })
-
-  it("rejects unresolved LibreChat token placeholders instead of falling back", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("BFF_ALLOW_HEADER_ONLY_SERVICE_AUTH", "false")
-    vi.stubEnv("BFF_REQUIRE_FORWARDED_KEYCLOAK_TOKEN", "true")
-    vi.stubEnv("BFF_MCP_ALLOW_SERVICE_FORWARDED_AUTH", "true")
     vi.stubEnv("KEYCLOAK_ISSUER_URL", "https://keycloak.example.test/realm")
 
     const server = buildServer()
@@ -102,21 +68,15 @@ describe("persona auth security hardening", () => {
     const response = await server.inject({
       headers: {
         ...forgedAdminHeaders,
-        "x-llm-machines-keycloak-token": "{{LIBRECHAT_OPENID_ACCESS_TOKEN}}",
-        "x-llm-machines-user-roles": "consumer",
+        "x-llm-machines-keycloak-token": "{{FORWARDED_ACCESS_TOKEN}}",
       },
-      method: "POST",
-      payload: {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/list",
-      },
-      url: "/api/mcp/internal-docs",
+      method: "GET",
+      url: "/api/admin/overview",
     })
 
     expect(response.statusCode).toBe(401)
     expect(response.json()).toMatchObject({
-      detail: "Authentication headers contain unresolved LibreChat placeholders.",
+      detail: "Authentication headers contain unresolved placeholders.",
     })
     await server.close()
   })
