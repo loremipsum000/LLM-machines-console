@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "fcdb2174a548808bf07ad6861781cc60f0b5c09fb50694fa04e7a664c7b0b5ec",
+  "policyDigest": "c9ae4a683a56c37fd52f05a02761b977ee1fd4e43630e29a3541707018365a2e",
   "protectedFiles": [
     {
       "path": "apps/bff/tsconfig.json",
@@ -13,7 +13,7 @@
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.test.ts",
-      "sha256": "7f865e6f3833c4f17788027a691913d45e294a49210317ecb56d486f30c2a530"
+      "sha256": "8fccf0e9cea401461d7f01b2fd574ad1203f3f70ecef0a20810fef22f65be779"
     },
     {
       "path": "apps/bff/src/routes/app-gateway-boundary.test.ts",
@@ -21,11 +21,11 @@
     },
     {
       "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
-      "sha256": "b29bf56955e1571816a7bd0465ab9151e13bc45acacec673cc718712fb850c0e"
+      "sha256": "715d354304d5a267b5f772a573c546c59df25d2ec9582f7b2ead391b6a339369"
     },
     {
       "path": "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
-      "sha256": "0fe671a8f2d0e649a73384968e0fb7fd32caec00b8ce01deef55902ca53f018a"
+      "sha256": "c148e8853b7c6e7cff3fee809af899e878d1acd7f7612c8a04a1338c13a2a866"
     },
     {
       "path": "apps/web/tsconfig.json",
@@ -41,7 +41,7 @@
     },
     {
       "path": "apps/web/src/middleware.test.ts",
-      "sha256": "8fdc4be4e1ef7d286eaa7985a924c5490a3377c3d555dbab9047a1fed38341f7"
+      "sha256": "a5071e50a05af74d69455c99a776acad2c55ee8c5b1d907d71f0bc18e3ff7b91"
     },
     {
       "path": "apps/web/src/middleware.ts",
@@ -54,6 +54,10 @@
     {
       "path": "docs/reduction/inference-core/pr-03-removal-decisions.json",
       "sha256": "140ab4cf11e7e4d285a0fa39ec447ce804cc3370f63b893a734f3c41a0af4987"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-04-data-decisions.json",
+      "sha256": "901d7136b9cc5c98b36ba30cc3b2ac00b001ebc4c22de92920167d38191951b1"
     },
     {
       "path": "packages/contracts/src/inference-core-authorization.test.ts",
@@ -89,11 +93,11 @@
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",
-      "sha256": "da040c077a1f5cb75f0ca396379088324661a6a4d4114c8eda04bb1ee4e16cde"
+      "sha256": "5616b3feae4bc3d4c8725f8829102b62abecb807eff55463d32b96cbd7478d58"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
-      "sha256": "4db05b032f613b5ea7df216002bf93049509c5d45b5165f4ccf7329507d6f55f"
+      "sha256": "e4a70ba505251cba7c9b730a64a066648b7414c988948d941645dd394794f54f"
     },
     {
       "path": "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -110,6 +114,14 @@
     {
       "path": "scripts/inference-core/pr03-contract-revision.mjs",
       "sha256": "a5a0767a56830e2c8c68b3470248a929352c05e2135e7083c4486a9ae8323374"
+    },
+    {
+      "path": "scripts/inference-core/pr04-boundaries.test.mjs",
+      "sha256": "a14f089d80553916ebed522825e33701d877ce2e27332aa497e104c706047f8c"
+    },
+    {
+      "path": "scripts/inference-core/pr04-contract-revision.mjs",
+      "sha256": "47b29dc51398eb3eb4c5f9486cfea6ee6c54fd8d03cb4913b22346af7ec5e47f"
     },
     {
       "path": "scripts/inference-core/retention-canary.mjs",
@@ -134,313 +146,6 @@
   ],
   "entries": [
     {
-      "ruleId": "FS006_RETIRED_MIGRATION",
-      "path": "infra/migrations/0001_agentic_audit_remediation.sql",
-      "count": 1,
-      "fingerprints": {
-        "f17999db0b6ef1efc00efd116ce2d75dabc2c641b5e1c8315c2e22b723575f78": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS006_RETIRED_MIGRATION",
-      "path": "infra/migrations/0002_align_egress_expiry_index.sql",
-      "count": 1,
-      "fingerprints": {
-        "247f716d8f79e88c663cba1e10d605e14c59d15c7e5fd563ce574c47dacb63c2": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS006_RETIRED_MIGRATION",
-      "path": "infra/migrations/0009_builder_agent_test_runs.sql",
-      "count": 1,
-      "fingerprints": {
-        "c7fb9bc5a0a284d199ca1436660e5e5eea3c332ac8e3c3a44ee3c7179a94eaff": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS006_RETIRED_MIGRATION",
-      "path": "infra/migrations/0011_agentic_runtime_snapshots.sql",
-      "count": 1,
-      "fingerprints": {
-        "f59d8a26a9590c853245e3866d5ad305621151204b71008a367d6086944b774a": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS006_RETIRED_MIGRATION",
-      "path": "infra/migrations/0015_admin_builder_agent_studio_quota_policy.sql",
-      "count": 1,
-      "fingerprints": {
-        "24b3b685a5540bad8debcfe6ca8b89500228e7f4e7936281032becb61e940bdf": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS006_RETIRED_MIGRATION",
-      "path": "infra/migrations/0016_admin_connector_vetting_decisions.sql",
-      "count": 1,
-      "fingerprints": {
-        "b131fefbde42a3ea17f961a39d5e7d84b0067dd75044444638bb73b12bdc6e10": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS006_RETIRED_MIGRATION",
-      "path": "infra/migrations/0017_connector_vetting_checklist.sql",
-      "count": 1,
-      "fingerprints": {
-        "43e727ab7fd469c14c8953ff109945c7d2dd1e17d3c32fcd3ba7d4b9eb788a7d": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS101_AGENTIC_RUNTIME",
-      "path": "infra/migrations/0000_init_schemas.sql",
-      "count": 14,
-      "fingerprints": {
-        "0af9ae4de6f22da32940d02f02d3669f0e14b9e2040664161e3336731a814714": 2,
-        "27555ea39f74636f7de4389ce54202925a55b3ab3bf32ec9c9d64d7d3505ed99": 1,
-        "48665aa7e577aa7e13af81b59374185e11eb2fc5b1dd8845d7ad1e381b8a59ab": 1,
-        "86a7d0f294420f8844974551024e445dc7d7e25f40d04d3dde016f1a573b0b31": 2,
-        "8f1192ff5e42e8b00fb61eac4154ebca62dcd6b06cbb38b55908c18c549e94c3": 1,
-        "93b2c47ff9677b3c952ab5821016333f42ba51d7e033aa5be83d23127c96720c": 1,
-        "981af2f870a5a4d4d42d31bb05caaebfb3658866858d0e3fd8d9be520c83caef": 1,
-        "b24dad7113a03fbd4bef53698513175f7cbc8cc9add1b8baa9d1d57148bb0a94": 1,
-        "b61064fef05e49c048d11b3788a71e316d7436fe51478c0e25d40fab4ec6020b": 2,
-        "ca71bee14615c36c156906c40b8fef8dc4bc3605792c694844d613321ac5d83f": 2
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS102_MCP",
-      "path": "infra/migrations/0021_admin_mcp_servers.sql",
-      "count": 5,
-      "fingerprints": {
-        "212ced493950b80117babf760c75625ded5a72d25d416978384f992dc4269c7a": 1,
-        "5af5d1735af0741ff2e0e3619577659c96dec08916f9f5969c8e05479482a296": 1,
-        "6c4e934ab47299199e34f3cda2469a1f1faa785de6a5179b6b3c025d81d9af7a": 1,
-        "bc2a2e386a9ec920440ce916329cde6ad87ec32336bf2c1621070afc13326c21": 1,
-        "e7c7dba7633c95792f4183dd2267f7db8e0d1a0a3085799b9c53b297fc581cc8": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS102_MCP",
-      "path": "infra/migrations/0022_admin_settings.sql",
-      "count": 1,
-      "fingerprints": {
-        "88f4f9325daf6b99f74bddf26bb5f1e9370c1b802e083724636cbaca92c72af2": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/bff/src/routes/admin.ts",
-      "count": 1,
-      "fingerprints": {
-        "6f588291891dd5d2561e0c90b87d22fb9d02bb9ee01c74b4b8bc709d683e1095": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/bff/src/services/admin-team.ts",
-      "count": 11,
-      "fingerprints": {
-        "008af08f54f2657f59e3b95a4d73953b5ad7338d28fb0313117d8d5b3a52b882": 1,
-        "2e619af1a8f6d7e7c7a07b718233a12ae0e539a70b0e60b3397fd5f5c892c8c3": 2,
-        "380273d13990516b9f88d50ceffc46d16b8836f842d6a83736b075079695ce47": 2,
-        "435eaec298828c29208e3571be21bad51ccce6630768ce8cb0445a46e62e5d08": 1,
-        "81d457e91e565585af265602d17b7fb58741eb3083cccb2b2be91e1c859d1c18": 1,
-        "b46e4880830462c057c49ff32697e28762b6f0bd7a2962a26c7d45b800c427f7": 1,
-        "bd57ec24c6838e7cf0d6bfe8624bdbfbc0890ba9d7aae952f075b7b35aa5c1ca": 1,
-        "bff5c3aeb819854fd55f71e6ea7b24c9cea971065a906b8e3b72bc0468d792a0": 1,
-        "fd7003147d45a931da1003b2c1924f3151c211223f6956e8dc343f554e8a5da5": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "apps/web/src/middleware.test.ts",
-      "count": 1,
-      "fingerprints": {
-        "3df45b64329ed8f769a003d39a6a26e35715da20e734e16d933e4485b423d168": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "infra/migrations/0000_init_schemas.sql",
-      "count": 2,
-      "fingerprints": {
-        "7e9e21849f0b6dd46dcde7865a817af55465821ef5843d3f50b1654033b936e9": 1,
-        "d150f84736562881e476aff16146eeacfef71edecd260f52247d9cdb98da9014": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "infra/migrations/0008_policy_violation_remediations.sql",
-      "count": 1,
-      "fingerprints": {
-        "d150f84736562881e476aff16146eeacfef71edecd260f52247d9cdb98da9014": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "infra/migrations/0018_knowledge_corpora.sql",
-      "count": 66,
-      "fingerprints": {
-        "01b204bc3df371d6f103f1aa20110d7ad5ffcbe67c8ed2eb559bf769457a0aaf": 1,
-        "08ee8a9cbb22b4f20d7d76cadd16c2caf725ed9a649adc7505df1bfb6d0f4cf0": 1,
-        "0e5b3a3370f0799ccc92f2c54cfab58b23867cef92ae1493a30d9bfd0b6c20da": 1,
-        "1676af191a70f8177d9ca46f6ac0e1ca18f2eeab62d84e5461f56c372c1357e9": 1,
-        "1871c116f1014b8776dbf4911b0898894ca75644a369a9e460b12634b9c59424": 1,
-        "2358acbef1599198eef3f47e0872359bd7820ec50436f61e549835f8e5ecc300": 1,
-        "2fae31670032cf3baf0e2cd66e4362e5d3dc304ba4e8e9413d740ed5fc34a3c0": 1,
-        "3d6948fc8fab7e3a0663e0dbcbf3e74f1a92cb2210c79bfe07392eed6150110a": 6,
-        "3dfd1d6b15a9fcdef9772fcc8d13dc7bde39e9c0562110a04ca181595e83f271": 1,
-        "4129fa1fb9b958bba878f2f06d5789cde3c9c4e204aa216a7bcae81c67258a51": 1,
-        "438c3b8185cdb9cfd43833dd97ee683f43adfbecf07a52f8bbabcb02b8cbfa56": 1,
-        "56b3046eb378a801f378385faa275c4a775fac910cf2dba13f87da4b1077076b": 1,
-        "5705214f742a0cbec61728dcc4a3b986fb59c612d41fba9e774aa6a17dece600": 1,
-        "5accfc8357f9bfc392ba31f2eb5bb9b1a4e17540af57bcedad68481a0630335e": 1,
-        "5e64c55ce87c1516727aab41e9922fdd724b97bc2e0243ed42232ce4901e5e77": 1,
-        "5f3cf77823e12551d0284e684e242b593b7e3912c78b2ed8d5fc100790e4278b": 1,
-        "6060e4a0dd352868264d6132a1b63d3b5f44a52d9df226acc1d271dc7427816c": 1,
-        "63104ba0678d43f1c2f37f250046070a79ae6a165e4493ba28e6fb3012e4b5af": 1,
-        "6b2abe3722cff066a270c721d3cc9ed31b709380319077890360c96c00fbe410": 1,
-        "6c22947750ff7ac714ac8e987a73d16a5b370aa07fafd9f759a78c3000db05ca": 1,
-        "71ee81eefd026045fdbe2677639277b7b83c59e7bc15b4ae271dcc46da4ad223": 1,
-        "7631e4161c9c296ae86284c6a7d6b32312b95d5eee9d115a930fbf88e22ee4b7": 1,
-        "77177ca9a23a82c7f67b44fae471d636a05d16104c158821004099808f2fdf43": 1,
-        "792e77ac75c20ec7d44315312bb0a83208412eb639d098fc6f242621866f0a34": 1,
-        "7ae21243eeb2e85f1f352ff0c69bb32e29e4f483f610464d59a9f46b13dc7549": 1,
-        "7c787c26db6341551121b956fc676a2ba9e05b223a588758f6f7385d9542f003": 6,
-        "7d1df4422e71d09c4245b7eb64e3c9220855021d1bd960c7e8dfdc5a86a316f0": 1,
-        "82e0ce3012929dea7ec27c72076df20015e6e1cd16e2cccb96eafba956cdaa04": 2,
-        "84b9257190360a6004d79fdffa904463d518ecd7db9f36479475a3d3015b0c9c": 1,
-        "8520da73241ab1d5edf57d74f6fbc8ee56b98044f68a787f02ceb7c660f00481": 1,
-        "8c542a91e8282874dc4b275b0f44e7492458a02b8f1b76f0a3dfeb2092c590cb": 1,
-        "953d0eb2ff89a36c563e1954ca0df4a22512d2a3f8beda60e90758e28cad3864": 1,
-        "956290afbc9a694cafaa8869468c0a2b7aea7b9636b017be8ed01ab07f10b72e": 1,
-        "96a051d84bccb390836525ea1afa9f4bb8a7b64d0f13158d667702fe2855bb31": 1,
-        "a0ce73901bccaabb5a057f75c915a8fc07d578b287a03c12a4c29468200b1694": 1,
-        "a47c15383242eb943b3cf3352ed03a9aa7db72a3534cfa9bb1012e24c68518d7": 1,
-        "aa383e707bb58e33342c8fd64bcdf6acf3ce2edb6ea5f7e8e446295c88a22920": 1,
-        "ac90067bd1ef53b8a5a8a2c9918853044aa758e7d8174d1c1df3ea8370190fa7": 1,
-        "ae4e1edd30f57d6185c888d8951c43c9dcbe7e63fc1c5dd5869933c7b123015d": 6,
-        "b310eec09085a2d29e5f1be8d8ad2c7beb02ea597d85807a7dc225a0f3e2409b": 1,
-        "b5b7d44562bcebfd5e1d3b40a2f1364fc5f9a5d94156b2b492f86085c0e17cb8": 1,
-        "bb7a0f264ee14f9491d26b86c1cc9064d10a7b4638ccd5b32853d299e0f4ec05": 1,
-        "bf4a91e8a7ba7613b0cc97992ee4390f18ec46b9f4295ed7354845cd613cfa9d": 1,
-        "c8f80d4ad6a59bfc72e38cee19e54648e4e1d7d9a115b835d1a792defed9ecd2": 1,
-        "cf7e89f42675368beb3ec7bff1ae108c62373003016e2e26bfd1b7f98f96dbec": 1,
-        "d660cb9fba257ae7963318bc3d163e99251335ae0a68ebb0082e7707e9a785bd": 1,
-        "d667f10959892b65563d250584ad9416d3bd4c11bbbd992606f0576ea813794f": 1,
-        "e9ed3223f34b0fd4bcf9ecc3e94901b25b1093e6996ff93cf0514e7833752b0a": 1,
-        "f82ffaedcbb1ce40027487e72720fc02c586f9e2833f68e3251de071381a97cd": 1,
-        "fd64b7b0ae44df498ce5513b3b23f76519c1082a17f18c9ded7d3eb129b0c2a0": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "infra/migrations/0019_knowledge_source_archive.sql",
-      "count": 13,
-      "fingerprints": {
-        "07fbe9b4c772a5abf7fc32e43e63ad28fa9496e390ffe4af375438b37e4f59cb": 1,
-        "23ffbcf36726d3e10a7db6dc9fdbd6305c431a469e1da048fa627b73ded3ade5": 1,
-        "34b5be6866444c93996be9f352c70d7891c64b32fda6606397d3ec490052cbea": 1,
-        "3d6948fc8fab7e3a0663e0dbcbf3e74f1a92cb2210c79bfe07392eed6150110a": 1,
-        "7c787c26db6341551121b956fc676a2ba9e05b223a588758f6f7385d9542f003": 1,
-        "8dd7f9352bbde91b27e6469a54374fdfcf2b160cdfa8bc686fbd2c0d3bc32bc5": 1,
-        "8f219fc69c10dcb8e95f3d21e0c21825d1977b8d5d16fcb18bdd6e749639d354": 1,
-        "a93c4396c8bd230e67f6c98df6f3d4367e3ab1348e494cedbff2a76747d71fa4": 1,
-        "ae4e1edd30f57d6185c888d8951c43c9dcbe7e63fc1c5dd5869933c7b123015d": 1,
-        "b275775318069b8716b3c04fe05d2c6789ebeef05a770ee2daa9626ba425ae4f": 1,
-        "c05ebd66717d756ee7e6458de6ba9c676c9093dd52b7b23cde9d743893574b33": 1,
-        "d1b09ce53a6465c44c4402f2b9e35e931fdeda3d90610adb7595a5d15cb8a302": 1,
-        "ee6ba96fced89f747c1439f80c138dbcd95a858c59cf2b8ecd6e450e272294b8": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "infra/migrations/0020_knowledge_disabled_source_status.sql",
-      "count": 8,
-      "fingerprints": {
-        "15f4671ababff3973da974d5d08ec2d92a7869f7edc056598b9e731328c29d3e": 1,
-        "5810c3b49fcec741802b9b239c2f463cfb829d3476020a83affa81e888a9cf1b": 1,
-        "5ecf771c487e38686e892937405ae7f943478dd3b1477b1f3850e73070c9632c": 1,
-        "603d9bb761acc4bcaf50791eb3472b22dbccff216ee25c5fafa5a3716b67f105": 1,
-        "6b6a322bd51d39d485d1d614b6be52c7da2de987e7ea33af33c81aaf63bbcb0a": 1,
-        "87a559b7e54b57a69c545d74f740a281e39bccc7b4c6d03301d0bbfce3966859": 1,
-        "d43e0eab102e60d24172239943d80739542d3aa423daa882520b8a88043f3efb": 1,
-        "e60fa7261862e9c5bcbdb208698d542e976fbf63bb983f9b2500bd43869cb358": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "infra/migrations/0022_admin_settings.sql",
-      "count": 1,
-      "fingerprints": {
-        "ce495508dda4a415dafb5675cc02c679d2fd207cd0d44e4e426b81f4809eaa15": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "infra/migrations/0025_knowledge_url_acquisition_jobs.sql",
-      "count": 17,
-      "fingerprints": {
-        "065669a54f398d1fd0c50ab4a71bb3de8341f91f44aec445db434bc6f1d39f47": 1,
-        "192e62ae82acbbd6052c1ef00fadfe530bc1f13e84461b126567c81778878f6f": 1,
-        "293d249e17a9610cdb8c7261edff5066d0901a3d43a1bbfab100acbad5beddc9": 1,
-        "2bdcb3e980d865b179de4d4130a78735400ec6ed74370260413ae3d2a5686130": 1,
-        "3953185019cdb3f4ac958a813189733d978545d4c04aa9fb62cba170f7ad090d": 1,
-        "3d6948fc8fab7e3a0663e0dbcbf3e74f1a92cb2210c79bfe07392eed6150110a": 1,
-        "50943122accd08e29aa04876de1212b3f4d67dd1b3b5dce12ff89762c84e310f": 1,
-        "7c787c26db6341551121b956fc676a2ba9e05b223a588758f6f7385d9542f003": 1,
-        "801676d7fc8fde2dd4fb5fb9d8e792697250c4759972bd8a1838fc15e66e57b9": 1,
-        "82e0ce3012929dea7ec27c72076df20015e6e1cd16e2cccb96eafba956cdaa04": 1,
-        "9e7277cb463519a2dff43af309742f2d310cc42ea0231894a778bfaa8d45a04d": 1,
-        "ae4e1edd30f57d6185c888d8951c43c9dcbe7e63fc1c5dd5869933c7b123015d": 1,
-        "bf3473d9b7fc541bdae406c0a4dc6e73119652c4a30d34557650d0d13cb9955c": 1,
-        "c2cde4f90358a6c3bf47da35a5db38b11cd67bee002b533122076846bc3295df": 1,
-        "cee3e716592d71a51be7c9ca2ebc361fc1e3fb2e6ebb676578a553d46ebe8a46": 1,
-        "dab60ce56cd0db2d93ef1c061586791bc1fbde9ffd7d71f855ff63f66b305c23": 1,
-        "dc7917998e6deeab07611fc4f27382d4f9ac3714e33d9ee2f1de75604c31e9dc": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS103_KNOWLEDGE_RAG",
-      "path": "infra/migrations/0026_knowledge_chunk_embeddings.sql",
-      "count": 15,
-      "fingerprints": {
-        "2ebfcc3e4908ff7476107d374127621a575dab12dd87c4e19ce3c52da7950679": 1,
-        "3f280b17c5b8712baede5177682763de7c2f99d63fe75330643e3a4ce4a9a38c": 1,
-        "587412cc3c1bb5612aceddf9f33c8c3dcb84fd7021125b4a4404136234a68c4c": 1,
-        "5b5a94dde529cda0dd7ee971762b216efa204cb61ad58f99cc67db2b20d58321": 1,
-        "5f65cf47cbd90db32093c0dd192b57ea5ff82c569e77f2d4d2a9c13647fa5d9f": 1,
-        "6009ca6c760a4932e42ad854007b00251bc9223cf5de3f78465b5d33614c21f9": 2,
-        "75d11aaca77aabbe13fbc2735f5037aad91aaa950faaf4bfecac0028885a85ab": 1,
-        "9f9178ddf14faec6d27704feeeafc8664a8c42fd41645edd01238de7dba8f6c3": 1,
-        "a85d004d0e727361e9ec3ad72452f80da31df00d5dc9bd41f702d040d9954a2d": 1,
-        "ac4f8e88e27b91e5b4f04c275bb77622e4be50b7302fb6a41a12762d4317fee2": 1,
-        "cce6f6a7b37016fe2fc70160296a9bb2da89a7303b5b85936d2412f1edb97eb4": 1,
-        "de59fdf3635f18ff17e8f1dc3a71157ea220e42da95c17e5bba52d516c9f0765": 2,
-        "fba66f99eb153911f4ac7b3b13ddcac5277443e006a8f9993204fd8fd120bb95": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
       "ruleId": "FS105_BUILDER_HUB",
       "path": "apps/bff/src/auth/persona.ts",
       "count": 2,
@@ -461,130 +166,6 @@
     },
     {
       "ruleId": "FS105_BUILDER_HUB",
-      "path": "infra/migrations/0000_init_schemas.sql",
-      "count": 33,
-      "fingerprints": {
-        "05e7bdb3a1e8d096fac2db5ccaf7fe5065b788e04513001e0f9ec09444dded19": 1,
-        "13b266e324555096f5b09bd124947a34e9003417e067219db364ff67aeb95306": 1,
-        "17f95e7f76afca9f828de75b3f57aa6fd1a0b7d052a74877f69519e276e3aa4c": 1,
-        "1873b30f0190985eb8552e8de397d4e1b07d69f223f0186bf70473fc25dd5b7d": 1,
-        "1d78e7a9b4914e79bddc62bf3332bfaaf08af2a6c1d3cea250d77996a1291a5f": 1,
-        "2054b8ca9fee5d440b32f4912040da4992c9865ba230a94ccf313ea08e9d3802": 1,
-        "251aef47ccdb52628d95dffc4fd7e1dfb06ae15c4f63f4aa474fdf21c91854dc": 1,
-        "41658117575cc87a0aed41ff9c7acd5c90a31ca362e15fc5d5f2192b002f2c7c": 1,
-        "498b25f70a62a37f2f3710e9cdd751891a54ce7fbeb8e20a1f7f186d07deda79": 1,
-        "5152cec87cf26719ed34475dc31267431e0e5a65d17b3ffe8d47f20a6a16a254": 1,
-        "52338da44766bd6c2805d34d89c0ccba1a54caa3abba282e3dcafdad50f9bbf2": 1,
-        "5d716aeee6adc84e00996b61cc2080afdc716e2d9dcdab979ba5014929aceaca": 1,
-        "617b9bf4f2828cb1015ac9510ceb22817819fdfb39f48323915baa650333374f": 1,
-        "681d1f6178bbeb3785c2467826487fb8e5ae430cac5331f70e83c04e3c084fd5": 1,
-        "80840544eb576ed87424c70b1c6fb88aece389af3c5215e606d3ab25cd9c5afa": 1,
-        "8d08cbff52105054593147bc658e1c2da278175d9a5e1e2b2f03ee334a7c8056": 1,
-        "97e0a49ced0b2c207c4a9c7d38d1d33c6b3702225a25d55b68d794ca50302686": 1,
-        "aac94d1e59b0749e9eac1226cf816eabc5123b92587cb550e9934dfc6f4e9187": 1,
-        "c45090ea36e0dcc1a1a457236547f5448f65f14ed11ff255efdfc0d41461fc66": 3,
-        "cece08ca74514115b97f011c980d56891814f58bd087a80ce0218ee703691535": 1,
-        "d04f0072e6f77cd9a3a7ec1dc606d7cc0ddccca5663783f9ca2822c4ff5aaaf9": 1,
-        "d185e81e1078617cb54a1942d449aabe396635496b835cc81e4d1eba22262c39": 1,
-        "d2c19474ebd6831d13bed47a725c8c037519b8f9f91021d9c7a9c4e4d7c78cac": 1,
-        "d9b8c2f0944272341a8635e187c2088f9073503c52a35c35de5c81c52959e9a7": 1,
-        "de918d95bbc4fa80e90e7258720ebcb6a825f52087de1315361dbe8a7a087386": 1,
-        "df197276633624fdb021d31dcd8d4e1c0f6d82799f1a182e7208c760a930257b": 1,
-        "e7bdb85434dd0c6c5851eaf33b1657f9ffbeb914222d7b8c44c6da240b9665de": 1,
-        "e903c4c939b883be91dccbe462cec8e5aabaeb5027bb6fb5f5a7fb24f9cbf680": 1,
-        "edf503b40ae580540257ec05eae092105b85062176231f0e564c06f833f4e01d": 1,
-        "f4355f04961d904f533a9211b99bca6049eb6f9d93953adbab63992fb7e2004d": 1,
-        "fedbac922f4ebce729c839dc5c8da201685e16630fb9ad4544d4984ccdee92e0": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "infra/migrations/0003_builder_lifecycle_tables.sql",
-      "count": 12,
-      "fingerprints": {
-        "17f95e7f76afca9f828de75b3f57aa6fd1a0b7d052a74877f69519e276e3aa4c": 1,
-        "1d78e7a9b4914e79bddc62bf3332bfaaf08af2a6c1d3cea250d77996a1291a5f": 1,
-        "48ae08e88f5de92bbd565112a1ae4586d5d2c38dec664e005ae3345660cda2ae": 1,
-        "52338da44766bd6c2805d34d89c0ccba1a54caa3abba282e3dcafdad50f9bbf2": 1,
-        "617b9bf4f2828cb1015ac9510ceb22817819fdfb39f48323915baa650333374f": 1,
-        "97e0a49ced0b2c207c4a9c7d38d1d33c6b3702225a25d55b68d794ca50302686": 1,
-        "c45090ea36e0dcc1a1a457236547f5448f65f14ed11ff255efdfc0d41461fc66": 2,
-        "d185e81e1078617cb54a1942d449aabe396635496b835cc81e4d1eba22262c39": 1,
-        "d2c19474ebd6831d13bed47a725c8c037519b8f9f91021d9c7a9c4e4d7c78cac": 1,
-        "de918d95bbc4fa80e90e7258720ebcb6a825f52087de1315361dbe8a7a087386": 1,
-        "f4355f04961d904f533a9211b99bca6049eb6f9d93953adbab63992fb7e2004d": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "infra/migrations/0004_builder_withdrawn_lifecycle_state.sql",
-      "count": 2,
-      "fingerprints": {
-        "038079fda4aed33bebcc530654042c9f94d6f0f532b593196bda7b45e5af1784": 2
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "infra/migrations/0005_builder_agent_configs.sql",
-      "count": 2,
-      "fingerprints": {
-        "5d716aeee6adc84e00996b61cc2080afdc716e2d9dcdab979ba5014929aceaca": 1,
-        "edf503b40ae580540257ec05eae092105b85062176231f0e564c06f833f4e01d": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "infra/migrations/0006_hub_chat_threads.sql",
-      "count": 3,
-      "fingerprints": {
-        "e7bdb85434dd0c6c5851eaf33b1657f9ffbeb914222d7b8c44c6da240b9665de": 1,
-        "e903c4c939b883be91dccbe462cec8e5aabaeb5027bb6fb5f5a7fb24f9cbf680": 1,
-        "fedbac922f4ebce729c839dc5c8da201685e16630fb9ad4544d4984ccdee92e0": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "infra/migrations/0010_builder_agent_test_run_accounting.sql",
-      "count": 4,
-      "fingerprints": {
-        "786509a806de5ecf2db53455b146f45acfc263a420a008f95a72058aaebff276": 4
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "infra/migrations/0012_builder_agent_test_run_trace.sql",
-      "count": 1,
-      "fingerprints": {
-        "786509a806de5ecf2db53455b146f45acfc263a420a008f95a72058aaebff276": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "infra/migrations/0013_builder_agent_test_runtime_trace_id.sql",
-      "count": 1,
-      "fingerprints": {
-        "786509a806de5ecf2db53455b146f45acfc263a420a008f95a72058aaebff276": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "infra/migrations/0014_builder_agent_test_tool_calls.sql",
-      "count": 1,
-      "fingerprints": {
-        "786509a806de5ecf2db53455b146f45acfc263a420a008f95a72058aaebff276": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
       "path": "packages/contracts/src/common.ts",
       "count": 2,
       "fingerprints": {
@@ -592,96 +173,6 @@
         "920a133b6369c0e5c525ce14bbcedd56344f92206ef37eea8d26a468b2255d39": 1
       },
       "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS107_RETIRED_DATA_DEPENDENCY",
-      "path": ".env.example",
-      "count": 1,
-      "fingerprints": {
-        "c95d83c7b9a8845d5645cb2e2a0a3b484f77b914376787f3451d2bc4900e1eaf": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS107_RETIRED_DATA_DEPENDENCY",
-      "path": "apps/bff/package.json",
-      "count": 1,
-      "fingerprints": {
-        "6b6757afe8725f245bd3613b049e8b5437459ee8fb47d1864e154a9c494cf7f6": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS107_RETIRED_DATA_DEPENDENCY",
-      "path": "apps/bff/README.md",
-      "count": 1,
-      "fingerprints": {
-        "8a2c7c8fdb02be4eae8aa1c59eb3375b059dd464a90b4846a763c8d693519fb5": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS107_RETIRED_DATA_DEPENDENCY",
-      "path": "apps/bff/src/routes/app-gateway.test.ts",
-      "count": 2,
-      "fingerprints": {
-        "01707563e53d2f9324a3888aeeb7bc0e7f2f79732015374cb6d259b92dd41f9a": 1,
-        "0299771e336bd22ec78d1b810b2a925ccf0ae0f1846e94e2013e4a0aa651197f": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS107_RETIRED_DATA_DEPENDENCY",
-      "path": "apps/bff/src/services/admin-connected-apps.ts",
-      "count": 11,
-      "fingerprints": {
-        "14eb4074eaa521a31c1fcb3047a1d479596a71fddf66e0c3ba5cf99c69e6d297": 1,
-        "5d98272b1dc1e4aba6144fbe99fbb593c0619b59849e55aa380ec1cf8442d30d": 1,
-        "6679acda00934712124164782feb29dd8af38cceb26f3d53fc08af8d8d43f8ae": 1,
-        "85e90df3baeabf625281afd63f740c8a2a22ba5df5626cb2521b043ebc9a8563": 1,
-        "93e6f872a3ea966781d1cac1d91c47dccbeba6e36be60f56f02f85bcce79b0e1": 1,
-        "b90c9bbbc130a95ea7c648ffea46cbcd078b6fdf0b4de46426e8221251c7ad1e": 1,
-        "c19234909743f475e18f37cde4d241e6ed632af9088d67ea4923c03d752470a8": 1,
-        "c641bd96ecb1bdfbc5d0357fbbd1b8474338f9e8a703de2a8dc8eba4e51df815": 1,
-        "cf5326c75a3e532fdc999e5af1d5fc38bbab925bc5d16d3d95fbaaacecdc9972": 1,
-        "d16601fac60f5a8eecf59370fecc6f75af8188c8cb27e543f311bb45fddf71a7": 1,
-        "d5e25fe9d2a1532029e3ce9e2f78ab578c8dccf14ddb32b0c9f9505dcce37dd0": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS107_RETIRED_DATA_DEPENDENCY",
-      "path": "apps/bff/src/services/idempotency.ts",
-      "count": 8,
-      "fingerprints": {
-        "01161320611c002be7b6eed4873ca4d7b905f68e73f352c4475c94e9aac827d6": 2,
-        "3cdaed2b0e22b412dd5a016b6f8bee9267ae06f69060d67834bc1cb6b29f872a": 2,
-        "46e4c1546e1e700819c4f64ff0e233c0c02dfa7791152497fb66beec583302c3": 1,
-        "a6b7adee1ef49e0c68482f193c85c7b6b12678f0f2c39c219065fdf610a77114": 1,
-        "b90c9bbbc130a95ea7c648ffea46cbcd078b6fdf0b4de46426e8221251c7ad1e": 1,
-        "c641bd96ecb1bdfbc5d0357fbbd1b8474338f9e8a703de2a8dc8eba4e51df815": 1
-      },
-      "removeBy": "PR-04"
-    },
-    {
-      "ruleId": "FS107_RETIRED_DATA_DEPENDENCY",
-      "path": "pnpm-lock.yaml",
-      "count": 15,
-      "fingerprints": {
-        "03d2dce9e22d823738e3e809f12c09620447904318995ba88b6578c4836e168e": 2,
-        "2c5d179e30a23a23f23a25c6183ae0c7666540e43ba572e0b3b6da43e7ab7501": 1,
-        "354aceaa759145c165897170084fcee0c24a9b42c736226d2e5403ed8d6cfac0": 1,
-        "4ab2c20927175ce4bf8a4daac34e230729bee937e36119612181ac3de98fe820": 1,
-        "4e1a9f06b693521a5bd1786d012ab728f47c9804aa46e07289d9a93de86ee399": 1,
-        "585f3936d4e98e8648af340e55a7a4c6c39c3935f3f97390c6d26fc1525a3f0c": 1,
-        "58aedd5977ec36205c3fd95c0fcd89f191f3d9c19180d0bada123b1d620038a7": 1,
-        "58d1f8c2f282f58acf974df2ce3003f6619c638a9438b0adab32a6347bab3120": 2,
-        "91695bf50d90d9e6a03e9a08a07fb3b6a16a473c53937fd3bc15cc9e0b7e75e4": 1,
-        "9979ce54d763874eec310f39abcdd13a21bd30bb068a388f25b35950de835786": 1,
-        "eb8f974164109327a73d55d7d5cf43de2f143fbe41377816ef6153f0b7dc30e3": 2,
-        "f7a990a4d76de0003baee2d4c2efae200062f3bf1bab4c9e771550b53e0e2ea4": 1
-      },
-      "removeBy": "PR-04"
     },
     {
       "ruleId": "FS108_RETIRED_GOVERNANCE",
@@ -712,40 +203,6 @@
       "removeBy": "PR-06"
     },
     {
-      "ruleId": "FS108_RETIRED_GOVERNANCE",
-      "path": "infra/migrations/0000_init_schemas.sql",
-      "count": 2,
-      "fingerprints": {
-        "51c4b77e453220b5b8fd10d1916d35acb27e6a7aa530f28db662102719cfde55": 1,
-        "6985d436b45cac217496e50a652f281768055cb9666fddc7c24572726ba02fbf": 1
-      },
-      "removeBy": "PR-06"
-    },
-    {
-      "ruleId": "FS108_RETIRED_GOVERNANCE",
-      "path": "infra/migrations/0007_admin_governance_read_models.sql",
-      "count": 2,
-      "fingerprints": {
-        "51c4b77e453220b5b8fd10d1916d35acb27e6a7aa530f28db662102719cfde55": 1,
-        "6985d436b45cac217496e50a652f281768055cb9666fddc7c24572726ba02fbf": 1
-      },
-      "removeBy": "PR-06"
-    },
-    {
-      "ruleId": "FS108_RETIRED_GOVERNANCE",
-      "path": "infra/migrations/0022_admin_settings.sql",
-      "count": 6,
-      "fingerprints": {
-        "523df236116e3f58215c4254e3359ae0ef5c3dd6c37340217f1c38d69d7c6309": 1,
-        "52ebb2319f686a7e758941dfaea818a759fce345c9af876f956921e53149946f": 1,
-        "65548dab8c65a2c73543ad794060ea9b9416c01b5f31adfd52fd84de4fe3e82a": 1,
-        "7e7de292b615e1975b5da8600ca379da52402b4f6e59c63f3c096f8815c69aa1": 1,
-        "aa81efa0a94680630a3a588057b727696721a72959e16031a4c9030f070a558e": 1,
-        "b36995e2f89839d9573b6512036f6f7c3f6fd2e3f83b0cd21e28aea62f7b5627": 1
-      },
-      "removeBy": "PR-06"
-    },
-    {
       "ruleId": "FS109_LEGACY_PERSONA",
       "path": "apps/bff/src/auth/persona.ts",
       "count": 5,
@@ -772,15 +229,6 @@
         "c3d72d2644d8d0eeb0c38bcfbe8c8bb255345d58724cf2f9fa66b3eda553d9d7": 1,
         "f346f3d73d7f6c7b19ebee3974c1c10d11e8b7b04c69d9fa3aa2d4dd16d88a4f": 27,
         "fed2c59e891db390028d2536fc1760b73a5003e62ae2445ec80d360b570db0b3": 1
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "infra/migrations/0000_init_schemas.sql",
-      "count": 1,
-      "fingerprints": {
-        "98507a683a6ccc4f351201584d0ae82411cb31c391af6034309633349c155483": 1
       },
       "removeBy": "PR-05"
     },

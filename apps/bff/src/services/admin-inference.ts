@@ -117,10 +117,11 @@ export async function applyAdminInferenceModelUpdate(
     !modelUpdate.updateActionEnabled ||
     modelUpdate.status !== "available"
   ) {
-    await emitModelUpdateAudit(actor, "admin.inference.model_update.blocked", {
-      reason: "not_available_or_unconfigured",
-      status: modelUpdate?.status ?? "not_configured",
-    })
+    await emitModelUpdateAudit(
+      actor,
+      "admin.inference.model_update.blocked",
+      "denied",
+    )
     return modelUpdateActionResponse({
       detail:
         "No governed model update adapter is currently available for this appliance.",
@@ -129,11 +130,11 @@ export async function applyAdminInferenceModelUpdate(
     })
   }
 
-  await emitModelUpdateAudit(actor, "admin.inference.model_update.started", {
-    affectedModels: modelUpdate.affectedModels,
-    availableVersion: modelUpdate.availableVersion,
-    currentVersion: modelUpdate.currentVersion,
-  })
+  await emitModelUpdateAudit(
+    actor,
+    "admin.inference.model_update.started",
+    "succeeded",
+  )
 
   const outcome = configuredModelUpdateOutcome()
   if (outcome === "failed") {
@@ -144,11 +145,11 @@ export async function applyAdminInferenceModelUpdate(
       status: "failed",
       updateActionEnabled: false,
     }
-    await emitModelUpdateAudit(actor, "admin.inference.model_update.failed", {
-      affectedModels: modelUpdate.affectedModels,
-      availableVersion: modelUpdate.availableVersion,
-      currentVersion: modelUpdate.currentVersion,
-    })
+    await emitModelUpdateAudit(
+      actor,
+      "admin.inference.model_update.failed",
+      "failed",
+    )
     return modelUpdateActionResponse({
       detail: failedUpdate.detail,
       modelUpdate: failedUpdate,
@@ -164,12 +165,11 @@ export async function applyAdminInferenceModelUpdate(
       status: "blocked",
       updateActionEnabled: false,
     }
-    await emitModelUpdateAudit(actor, "admin.inference.model_update.blocked", {
-      affectedModels: modelUpdate.affectedModels,
-      availableVersion: modelUpdate.availableVersion,
-      currentVersion: modelUpdate.currentVersion,
-      reason: "adapter_blocked",
-    })
+    await emitModelUpdateAudit(
+      actor,
+      "admin.inference.model_update.blocked",
+      "denied",
+    )
     return modelUpdateActionResponse({
       detail: blockedUpdate.detail,
       modelUpdate: blockedUpdate,
@@ -191,11 +191,11 @@ export async function applyAdminInferenceModelUpdate(
     })
   }
 
-  await emitModelUpdateAudit(actor, "admin.inference.model_update.completed", {
-    affectedModels: modelUpdate.affectedModels,
-    availableVersion: modelUpdate.availableVersion,
-    currentVersion: modelUpdate.currentVersion,
-  })
+  await emitModelUpdateAudit(
+    actor,
+    "admin.inference.model_update.completed",
+    "succeeded",
+  )
   return modelUpdateActionResponse({
     detail: "The governed model update completed.",
     modelUpdate: null,
@@ -820,17 +820,13 @@ function modelUpdateActionResponse({
 async function emitModelUpdateAudit(
   actor: Actor,
   action: string,
-  metadata: Record<string, unknown>,
+  outcome: "succeeded" | "failed" | "denied",
 ): Promise<void> {
   await emitAudit({
     action,
-    actorId: actor.subject,
-    metadata: {
-      authMode: actor.authMode,
-      ...metadata,
-    },
-    targetId: "inference-model-update",
-    targetType: "admin.inference",
+    keycloakSubjectId: actor.subject,
+    outcome,
+    sourceSystem: "console",
   })
 }
 

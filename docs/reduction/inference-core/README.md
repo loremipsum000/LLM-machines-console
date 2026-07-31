@@ -68,12 +68,14 @@ Run:
 corepack pnpm check:inference-core
 corepack pnpm check:inference-core:base
 corepack pnpm test:inference-core-guardrails
+corepack pnpm test:inference-core-db
 corepack pnpm build:inference-core
 corepack pnpm typecheck:inference-core
+corepack pnpm typecheck:inference-core-db
 ```
 
-The package guardrail command compares against the immutable reviewed PR-02
-commit `964ff087f39111862c90f72ec57ab33bb937f5d2`. It does not follow a moving
+The package guardrail command compares against the immutable reviewed PR-03
+integration commit `fb36b9de38396af79c82056963ae3f4833a12fef`. It does not follow a moving
 branch ref. The guardrail CLI accepts an explicit `--base-ref` for a separately
 reviewed manual comparison. The comparison is a bootstrap result in PR-01
 because the integration base predates these files. From PR-02 onward, an entry
@@ -138,11 +140,64 @@ authentication boundary remain exact. The middleware implementation and its
 behavioral test are bound by full-file SHA-256. The retired Web inference
 consumer count is zero.
 
-The root `test` command runs the base comparison before any workspace tests.
-Core workspace membership and each Core package build, typecheck, and test
-script are exact-locked. Their pre- and post-lifecycle companions are
-prohibited, so a filtered command cannot succeed without running only the
-intended package command.
+PR-04 appends `contract-revisions/PR-04.json` from the exact content base and
+lane anchor `fb36b9de38396af79c82056963ae3f4833a12fef`. All four PR-02 artifacts and
+all four PR-03 artifacts must remain byte-identical to that commit. The PR-04
+generator has a read-only policy-proposal mode and a reviewed write mode:
+
+```text
+node scripts/inference-core/pr04-contract-revision.mjs --print-operation-policy
+node scripts/inference-core/pr04-contract-revision.mjs --write
+```
+
+Both modes require every tracked candidate change to be staged, no untracked
+path, and exact lane-anchor `HEAD`. Put the first command's canonical six path
+arrays into `pr-04-data-decisions.json`, review them, and set `reviewStatus` to
+`reviewed` before running `--write`. The write mode rejects any staged-path
+drift and atomically replaces only the PR-04 revision, forbidden allowlist,
+and route baseline.
+
+The PR-03 middleware implementation and behavioral-test hashes remain
+immutable historical evidence. PR-04 adds a successor Web-authentication
+evidence pair for the current middleware and test after the retired
+`/knowledge` test case is removed. PR-04 decision validation, route-policy
+revision, target verification, and candidate verification bind those exact
+current bytes. Changing either file requires a later reviewed contract
+revision; this transition does not rewrite the PR-03 evidence or history.
+
+PR-04 requires every finding due by PR-04 to be absent. Drizzle 0.44.2's two
+optional `@upstash/redis` peer-metadata records are retained in each of two
+reviewed lock contexts: the root lock and the standalone database-test lock.
+They are accepted structurally only at those exact lock paths while they
+remain an optional peer with the reviewed range and have no importer,
+installed package, dependency, or snapshot edge. Source imports, runtime
+references, environment variables, and active manifest dependencies still
+fail.
+
+PGlite 0.5.4 is confined to
+`test-support/inference-core-db-tests`, which has its own workspace manifest
+and lockfile and is excluded from the root pnpm workspace. Its exact manifest,
+scripts, configuration files, lockfile hash, and allowed path set are guarded.
+The production BFF manifest cannot depend on PGlite. The root lock may retain
+only Drizzle's two optional PGlite peer-metadata records; a root importer,
+resolved package, dependency, or snapshot edge fails.
+
+Optional Application token-budget values remain persisted, but enabled
+runtime enforcement fails closed until PR-07 qualification. The metadata-only
+PostgreSQL idempotency ledger stores no raw key or request or response payload.
+An expired pending mutation and a failed receipt finalization require
+reconciliation without automatic re-execution. PR-04 does not claim a
+cross-system transaction, and durable Keycloak reconciliation remains deferred
+to PR-06. Audit-producer atomicity remains follow-on work in PR-05, PR-06,
+PR-07, PR-09, and PR-10; PR-04 does not introduce an outbox.
+
+The root `test` command runs the base comparison before the standalone
+database tests and workspace tests. Root test and typecheck commands install
+the nested test workspace from its frozen lock with lifecycle scripts disabled
+before running it. Core workspace membership and each Core package build,
+typecheck, and test script are exact-locked. Their pre- and post-lifecycle
+companions are prohibited, so a filtered command cannot succeed without
+running only the intended package command.
 
 The filtered Core build contains Contracts, Copy, BFF, and Web. It removes
 Agentic-related environment variables from the child process as a

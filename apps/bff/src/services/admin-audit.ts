@@ -5,11 +5,7 @@ import type {
 } from "@llm-machines/contracts/inference-core"
 import type { Actor } from "../auth/persona"
 import type { AuditEventRecord } from "./audit"
-import {
-  emitAudit,
-  getRecentAuditEvents,
-  sanitizeAuditMetadata,
-} from "./audit"
+import { emitAudit, getRecentAuditEvents } from "./audit"
 
 export interface AdminAuditFilters {
   eventId?: string
@@ -41,15 +37,10 @@ export async function getAdminAuditTimeline(
     .map(toAdminAuditEvent)
 
   await emitAudit({
-    actorId: actor.subject,
     action: "admin.audit.read",
-    targetType: "common.audit_events",
-    targetId: selectedEventId ?? "timeline",
-    metadata: {
-      authMode: actor.authMode,
-      selectedEventId,
-      returnedCount: events.length,
-    },
+    keycloakSubjectId: actor.subject,
+    outcome: "succeeded",
+    sourceSystem: "console",
   })
 
   return {
@@ -139,6 +130,7 @@ function toAdminAuditEvent(event: AuditEventRecord): AdminAuditEvent {
 function auditSeverity(event: AuditEventRecord): InferenceCoreSeverity {
   const action = event.action.toLowerCase()
   if (
+    event.outcome !== "succeeded" ||
     action.includes("failed") ||
     action.includes("denied") ||
     action.includes("reject") ||
@@ -152,7 +144,7 @@ function auditSeverity(event: AuditEventRecord): InferenceCoreSeverity {
 function metadataEntries(
   metadata: Record<string, unknown>,
 ): AdminAuditEvent["metadata"] {
-  return Object.entries(sanitizeAuditMetadata(metadata))
+  return Object.entries(metadata)
     .slice(0, 6)
     .map(([label, value]) => ({
       label,
@@ -161,9 +153,7 @@ function metadataEntries(
 }
 
 function metadataValues(metadata: Record<string, unknown>): string[] {
-  return Object.values(sanitizeAuditMetadata(metadata)).map(
-    stringifyMetadataValue,
-  )
+  return Object.values(metadata).map(stringifyMetadataValue)
 }
 
 function stringifyMetadataValue(value: unknown): string {

@@ -361,7 +361,6 @@ describe("Admin Inference routes", () => {
       method: "POST",
       url: "/api/admin/inference/model-updates/apply",
     })
-
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
       modelUpdate: null,
@@ -371,10 +370,16 @@ describe("Admin Inference routes", () => {
       expect.objectContaining({
         action: "admin.inference.model_update.started",
         actorId: "admin-1",
+        keycloakSubjectId: "admin-1",
+        outcome: "succeeded",
+        sourceSystem: "console",
       }),
       expect.objectContaining({
         action: "admin.inference.model_update.completed",
         actorId: "admin-1",
+        keycloakSubjectId: "admin-1",
+        outcome: "succeeded",
+        sourceSystem: "console",
       }),
     ])
     await server.close()
@@ -400,6 +405,17 @@ describe("Admin Inference routes", () => {
       method: "POST",
       url: "/api/admin/inference/model-updates/apply",
     })
+    const replay = await server.inject({
+      body: {
+        confirmation: "UPDATE MODEL",
+      },
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "model-update-failed",
+      },
+      method: "POST",
+      url: "/api/admin/inference/model-updates/apply",
+    })
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
@@ -409,11 +425,20 @@ describe("Admin Inference routes", () => {
       },
       status: "failed",
     })
+    expect(replay.statusCode).toBe(200)
+    expect(replay.json()).toMatchObject({
+      outcome: "failed",
+      status: "already_completed",
+    })
     expect(response.body.toLowerCase()).not.toContain("command")
     expect(response.body.toLowerCase()).not.toContain("secret")
     expect(getAuditEventsForTest().map((event) => event.action)).toEqual([
       "admin.inference.model_update.started",
       "admin.inference.model_update.failed",
+    ])
+    expect(getAuditEventsForTest().map((event) => event.outcome)).toEqual([
+      "succeeded",
+      "failed",
     ])
     await server.close()
   })
@@ -435,6 +460,17 @@ describe("Admin Inference routes", () => {
       method: "POST",
       url: "/api/admin/inference/model-updates/apply",
     })
+    const replay = await server.inject({
+      body: {
+        confirmation: "UPDATE MODEL",
+      },
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "model-update-blocked",
+      },
+      method: "POST",
+      url: "/api/admin/inference/model-updates/apply",
+    })
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
@@ -444,11 +480,19 @@ describe("Admin Inference routes", () => {
       },
       status: "blocked",
     })
+    expect(replay.statusCode).toBe(200)
+    expect(replay.json()).toMatchObject({
+      outcome: "denied",
+      status: "already_completed",
+    })
     expect(response.body.toLowerCase()).not.toContain("command")
     expect(response.body.toLowerCase()).not.toContain("secret")
     expect(getAuditEventsForTest()).toEqual([
       expect.objectContaining({
         action: "admin.inference.model_update.blocked",
+        keycloakSubjectId: "admin-1",
+        outcome: "denied",
+        sourceSystem: "console",
       }),
     ])
     await server.close()

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "31716d08ba18681e367986dc676aa07379a35ae67a086dbe61bb3c27dbafd54c",
+  "policyDigest": "818fdee00d462093cf368330af707cf2c6fe1c74cfa99cd7b5591c9bdb3dc911",
   "target": {
     "requiredPublicInference": [
       {
@@ -628,15 +628,15 @@
     },
     {
       "path": "apps/bff/Dockerfile",
-      "sha256": "81dedabc276ad3120225f0d86c023699fb9464613cd3b8053391741bfa72eaa8"
+      "sha256": "5b211db8674a272aaedf77a54d22297f45cf6895a0a12764643c7ff3b1cba1a7"
     },
     {
       "path": "apps/bff/package.json",
-      "sha256": "7fdaccd7d7fb4b331923abd319616b31dde04aeee6a49cfcffbff0ac223a8283"
+      "sha256": "0551882eed9fb3f013ae4d1957d11383f9e6f8de60956827d71572bb3e217d60"
     },
     {
       "path": "apps/bff/README.md",
-      "sha256": "9a09caf7837a39ea4a9fd8e62b6ac1d0090679116655fff8207678731339c408"
+      "sha256": "d102e36524fc3d006cdbde8e041c3d76cc7dba953ff4da39a2e6ce52321eb28c"
     },
     {
       "path": "apps/bff/src/auth/keycloak-jwt.ts",
@@ -644,7 +644,11 @@
     },
     {
       "path": "apps/bff/src/auth/persona.ts",
-      "sha256": "d3aa0ccd69d8e225e32ac760e4f9e7c7f2eb70bbd922d7caee6dd99fa7881481"
+      "sha256": "f8d1475f3b694c4b5e15dcd743912b0b228e736c8756106d7c99a16360f81916"
+    },
+    {
+      "path": "apps/bff/src/commands/inference-core-retention.ts",
+      "sha256": "4abc21fb75b9c1631f12510665b858459f3dc85013a6253a43e283cc0623466d"
     },
     {
       "path": "apps/bff/src/config/fixture-mode.ts",
@@ -652,15 +656,15 @@
     },
     {
       "path": "apps/bff/src/db/inference-core-client.ts",
-      "sha256": "57be9b52c19a983fad45c0a3a315d32f4ea3f46e783f420ebd73d43c946021bb"
+      "sha256": "70c58dc1a21cac542e9f6636128767c34ee981a9c9d29ea6a4d5fc5a9cdbbcc8"
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.ts",
-      "sha256": "e71833c4e4b5ec23c751412a01fccc2a147119b08f47f0389d631d1e641fc2b7"
+      "sha256": "62136884f5c695f13d45dff56a57952e6a308b1e68748501745145f59c4fd46c"
     },
     {
       "path": "apps/bff/src/index.ts",
-      "sha256": "53c2e7eac1c1c5a2a8b6ab0c8955adab15378767c25d7c7189bfd194180a8ff5"
+      "sha256": "37ad270f3db106d375ef6dc8c61a0cecedb2455a291dd5a40ea8095dcfc18ee4"
     },
     {
       "path": "apps/bff/src/inference/chat-completions.ts",
@@ -668,19 +672,19 @@
     },
     {
       "path": "apps/bff/src/routes/admin.ts",
-      "sha256": "1041d5f714cf63e0e4abda4cc659c588e769acfbb6997601f8f4994bec1fbe1a"
+      "sha256": "ba6dec1e3150bac296d2f6aab8d27e8f0128d16a01c5b2b5fe90d47be5d25763"
     },
     {
       "path": "apps/bff/src/routes/app-gateway.ts",
-      "sha256": "dc4d3b565db74215a443977fa6ef958097808098e0cd8622dd080a1d8aca9451"
+      "sha256": "2e810e11c23387674183d03b4bc4c5376c068ea2f50b5598315259624ad0bbd7"
     },
     {
       "path": "apps/bff/src/services/admin-audit.ts",
-      "sha256": "7122f4686af7fcd4ec7f87548bdfe720f91b36d1c3015c203ed88cf6b99acc55"
+      "sha256": "d4452e2adc15de88450bc57ee5a5046c8d19f8bcf54673cc64285a90e0224912"
     },
     {
       "path": "apps/bff/src/services/admin-connected-apps.ts",
-      "sha256": "0c7715d8a97e96715f2580fd3e34dc2e82c9c8b516ae4f1e69dfd9c83ded32ef"
+      "sha256": "cc52cc5efdaeedb261c938d63991f9759f911f557ab25efd17b3b3fe02fd1cc4"
     },
     {
       "path": "apps/bff/src/services/admin-hardware.ts",
@@ -692,7 +696,7 @@
     },
     {
       "path": "apps/bff/src/services/admin-inference.ts",
-      "sha256": "254bec41a2663fffeab377bb09b14f9675e33054f44e5fef656caeb68fa2234c"
+      "sha256": "442ceb0369539806e962717135489553423fe1f8a17b678f78c4856ceec2e3dc"
     },
     {
       "path": "apps/bff/src/services/admin-litellm-client.ts",
@@ -716,7 +720,7 @@
     },
     {
       "path": "apps/bff/src/services/admin-settings-core.ts",
-      "sha256": "e0a1094ce7a886c3e825a64634cd6e6b13c8a523ea32e8d94af7eec2c68836d4"
+      "sha256": "8f512b93b90ac038f526d98bb5b21da90ccd32920b06e3a0e949fb12c70f1a2f"
     },
     {
       "path": "apps/bff/src/services/admin-settings-validation.ts",
@@ -724,7 +728,7 @@
     },
     {
       "path": "apps/bff/src/services/admin-team.ts",
-      "sha256": "233b095f37b7e8a074513f6ffb0e0d33f7dd60dea21f70a6a62e888c12bd0ace"
+      "sha256": "bd20701922e562e13b7981d2787ba3329bfd0fcc6501f28d5ca13879e20387aa"
     },
     {
       "path": "apps/bff/src/services/application-gateway-policy.ts",
@@ -732,7 +736,7 @@
     },
     {
       "path": "apps/bff/src/services/audit.ts",
-      "sha256": "62c89924ae2b1875b2d42bcd3077663c439ed0061c9fade7c2023143927376c4"
+      "sha256": "126a3afb2e5ace1f6555c8e00f95828115dd9b62343b3a039be5e32d96887765"
     },
     {
       "path": "apps/bff/src/services/expert-capabilities.ts",
@@ -740,11 +744,15 @@
     },
     {
       "path": "apps/bff/src/services/idempotency.ts",
-      "sha256": "3dfd21be8b29b1dd76833864e9927fdd8e7af602b04fc814a4caf85033b0cc46"
+      "sha256": "23e0bf29417b79038189a718e6dbf06f3251906f54f4be6b3fa01be650f5ee34"
     },
     {
       "path": "apps/bff/src/services/inference-core-keycloak-admin.ts",
-      "sha256": "46d4148ceea6ebd0446801ebb3548f31b82f21ce948cc6aec250d99c222bf6eb"
+      "sha256": "d1a0d026b39ebeb6ac61adc49bf1a2cd4e5da24c8aeb9244d3af580fb287b268"
+    },
+    {
+      "path": "apps/bff/src/services/inference-core-retention.ts",
+      "sha256": "bab5ce36400b8694eb8cba507e58581a02355cfb75bc7dec668e4732d45008e7"
     },
     {
       "path": "apps/bff/src/services/litellm-chat-transport.ts",
@@ -752,7 +760,7 @@
     },
     {
       "path": "apps/bff/src/services/users.ts",
-      "sha256": "615387239c4da41d9f71cc8f836be3976a04e561f83132d76168ab30032ff988"
+      "sha256": "39cae8bc464ffd79005178435fde5218584bbb1e85f2b3098febc9eb6505fe50"
     },
     {
       "path": "apps/bff/tsconfig.json",
@@ -1064,7 +1072,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "9ee33e16eabf187d0b9325d5557900b4eacf56cf1f8511d14008f66d39978028"
+      "sha256": "5a9a1c48a1a23e915b95cb3e0de8cd1014e26d4fc2b9a8a5c0c29e4ca82d724d"
     },
     {
       "path": "packages/contracts/package.json",
@@ -1120,7 +1128,7 @@
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "4d86aa71baca9d748959e3e2cb9e55b8c83fd6baa563fe7946c854aed36c7c8a"
+      "sha256": "318122e3f47f0fa371ea303501cde465ec5d97cbeb123b6fc97a358670170583"
     },
     {
       "path": "pnpm-workspace.yaml",
@@ -1136,7 +1144,7 @@
     {
       "path": ".env.example",
       "mode": "100644",
-      "objectId": "9dab3b7677831624fda276f16081ae5c77724f05"
+      "objectId": "95087c2e196a7c95899c5b153fd369745c6d0d02"
     },
     {
       "path": ".gitignore",
@@ -1146,17 +1154,17 @@
     {
       "path": "apps/bff/Dockerfile",
       "mode": "100644",
-      "objectId": "198edaff4d4286a31d2937afe1795b185f6ce086"
+      "objectId": "d38a4727c8920f3a4734214c7ac711c371948ff7"
     },
     {
       "path": "apps/bff/package.json",
       "mode": "100644",
-      "objectId": "aeeb504bc975d267582a039057fe7863893c734f"
+      "objectId": "10322e2795654ba761eb953c098ce1920020697b"
     },
     {
       "path": "apps/bff/README.md",
       "mode": "100644",
-      "objectId": "4efbf87f4fcb3925d1feb22b822772a953639e24"
+      "objectId": "e4ebfdd2b01e8c1b41040c382bf5e1f3ad9b4bfd"
     },
     {
       "path": "apps/bff/src/auth/keycloak-jwt.ts",
@@ -1171,7 +1179,17 @@
     {
       "path": "apps/bff/src/auth/persona.ts",
       "mode": "100644",
-      "objectId": "f918220768b6b8e4bd5995d72b099b8e39c446ff"
+      "objectId": "bc6100ffc1484b0e019526d886c5b350b4acc7e6"
+    },
+    {
+      "path": "apps/bff/src/commands/inference-core-retention.test.ts",
+      "mode": "100644",
+      "objectId": "9e9c64ae2f4385664fcdfe38dcc660230cd482b4"
+    },
+    {
+      "path": "apps/bff/src/commands/inference-core-retention.ts",
+      "mode": "100644",
+      "objectId": "bbf4e11b6e4bec8339aca1905442602872fd58c9"
     },
     {
       "path": "apps/bff/src/config/fixture-mode.ts",
@@ -1181,22 +1199,27 @@
     {
       "path": "apps/bff/src/db/inference-core-client.ts",
       "mode": "100644",
-      "objectId": "a898c9a74531cbd2200c07da538131874438d4c4"
+      "objectId": "2093a225746a80e97bbdde26b8d1853386e23287"
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.test.ts",
       "mode": "100644",
-      "objectId": "a1b8bd28c5f327ec5fa7725dc2b1e532458867a6"
+      "objectId": "e20f192c3f6fcff1c4f7d3e5e343699294053fde"
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.ts",
       "mode": "100644",
-      "objectId": "12418e07310ae9d8f992be455b8c81c5ef9c6b8d"
+      "objectId": "fa8d3eff6ccec2a0d77d99df64f19b25ba19c4df"
+    },
+    {
+      "path": "apps/bff/src/index.test.ts",
+      "mode": "100644",
+      "objectId": "ece6d61d4d72b55ea003d1a14a668a0575ee7e0c"
     },
     {
       "path": "apps/bff/src/index.ts",
       "mode": "100644",
-      "objectId": "70acd1732b1c51f557f64192e724c367a0b3cd42"
+      "objectId": "ad17c35e8dbbf7c863dbdadccbe5162c181b241d"
     },
     {
       "path": "apps/bff/src/inference/chat-completions.ts",
@@ -1211,7 +1234,7 @@
     {
       "path": "apps/bff/src/routes/admin-inference.test.ts",
       "mode": "100644",
-      "objectId": "76e4ae45fb894e1a296b1ccc8ac4cea0a9258026"
+      "objectId": "f4d7210e213c3770a38b9d0190f3f0444cc3e958"
     },
     {
       "path": "apps/bff/src/routes/admin-overview-health.test.ts",
@@ -1226,17 +1249,17 @@
     {
       "path": "apps/bff/src/routes/admin.test.ts",
       "mode": "100644",
-      "objectId": "c215a15874b8f8a4993ed7e19c7f164df8a2b759"
+      "objectId": "32b1603ba8666437de4ee523db54a4f9734efb82"
     },
     {
       "path": "apps/bff/src/routes/admin.ts",
       "mode": "100644",
-      "objectId": "a7325c4547e87f6f9df2068161a836083142e865"
+      "objectId": "3a00f0de0f8a87ff760a2f0d989bf928939901e0"
     },
     {
       "path": "apps/bff/src/routes/app-gateway-accounting-errors.test.ts",
       "mode": "100644",
-      "objectId": "99f6e187e9a515504301005c07a32964c936b51c"
+      "objectId": "b114226d9b08fcb560728370ed63f27184e6e1e0"
     },
     {
       "path": "apps/bff/src/routes/app-gateway-boundary.test.ts",
@@ -1246,32 +1269,37 @@
     {
       "path": "apps/bff/src/routes/app-gateway.test.ts",
       "mode": "100644",
-      "objectId": "e561e3809f2e15ea9c73783f09670045114aeba6"
+      "objectId": "608c2e80bd67a1370d695c15a57b8f10437a0cdf"
     },
     {
       "path": "apps/bff/src/routes/app-gateway.ts",
       "mode": "100644",
-      "objectId": "ab448e762b8a4a121d1c607b75eee08575437289"
+      "objectId": "862ce7e756c983fd5a5595284944e43e15e79be3"
     },
     {
       "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
       "mode": "100644",
-      "objectId": "af05ac6a1216ab51de555cc32cef7d2ac639dbf7"
+      "objectId": "5b51e967e11703c33113608b2697f978c9b76b6a"
     },
     {
       "path": "apps/bff/src/services/admin-audit.ts",
       "mode": "100644",
-      "objectId": "8907809184150d980ff3e26436bf85e586a32efa"
+      "objectId": "6546fca33fb436fb37046e3762b20562371cf982"
     },
     {
       "path": "apps/bff/src/services/admin-connected-apps-accounting.test.ts",
       "mode": "100644",
-      "objectId": "3b7cd03a7254543d3a93fc6da754fcd767c70458"
+      "objectId": "015d066d5c6504da028a80b1051d3297c6bd96a2"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-atomicity.test.ts",
+      "mode": "100644",
+      "objectId": "37a38f8342fb1b4653c6a38b03a8a1d91d2d92c3"
     },
     {
       "path": "apps/bff/src/services/admin-connected-apps.ts",
       "mode": "100644",
-      "objectId": "0d733bfccfe6746b2e6d462c595bb41e3ab950fa"
+      "objectId": "bf4f1d9ac3d3d5a545ce40ade2b1aa442744d514"
     },
     {
       "path": "apps/bff/src/services/admin-hardware.ts",
@@ -1286,7 +1314,7 @@
     {
       "path": "apps/bff/src/services/admin-inference.ts",
       "mode": "100644",
-      "objectId": "fc784e60614fa21957f4cc99ada6c7cbca9d0fbe"
+      "objectId": "e1981940ced0bbf3b7cfebf88eac295ac75f4077"
     },
     {
       "path": "apps/bff/src/services/admin-litellm-client.ts",
@@ -1316,7 +1344,7 @@
     {
       "path": "apps/bff/src/services/admin-settings-core.ts",
       "mode": "100644",
-      "objectId": "513980e34404a0301e65822987d147885490a577"
+      "objectId": "9aaaffadb00d0e135ce0cfba9495439eebccc2aa"
     },
     {
       "path": "apps/bff/src/services/admin-settings-validation.test.ts",
@@ -1331,7 +1359,7 @@
     {
       "path": "apps/bff/src/services/admin-team.ts",
       "mode": "100644",
-      "objectId": "dfacf27bf100569998c8b5b10e0dc87d0d0159b2"
+      "objectId": "e874c2935a52f20b2a8821d436ccc7f5ad75d412"
     },
     {
       "path": "apps/bff/src/services/application-gateway-policy.ts",
@@ -1339,9 +1367,14 @@
       "objectId": "7c14dcd7e871e96b1fc366ca3b1ae3af7fdd6471"
     },
     {
+      "path": "apps/bff/src/services/audit.test.ts",
+      "mode": "100644",
+      "objectId": "13ba395e51177f439fb5f9929c02725162247f67"
+    },
+    {
       "path": "apps/bff/src/services/audit.ts",
       "mode": "100644",
-      "objectId": "f07878e7ce2d32a65688c98fc96bb3881e0e0c72"
+      "objectId": "7e827e0ac536d090dbcb75311e0a3ecbe89bc156"
     },
     {
       "path": "apps/bff/src/services/expert-capabilities.test.ts",
@@ -1356,17 +1389,22 @@
     {
       "path": "apps/bff/src/services/idempotency.ts",
       "mode": "100644",
-      "objectId": "78d8fd922665da36c526dd2be0b0406b04c9dcbc"
+      "objectId": "22e912d37e3b20a5a59a1d40927c83be74500d3c"
     },
     {
       "path": "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
       "mode": "100644",
-      "objectId": "5b4cfdbf0a6a67b9aedd06dcd0b057194ed28ccb"
+      "objectId": "868db830178640b086be49964f173428010355a9"
     },
     {
       "path": "apps/bff/src/services/inference-core-keycloak-admin.ts",
       "mode": "100644",
-      "objectId": "acb86e44f766cbed406ae5bd27480085ca9a3fe3"
+      "objectId": "2976050e27ad8806c7657ccbf783bac5d7f980ab"
+    },
+    {
+      "path": "apps/bff/src/services/inference-core-retention.ts",
+      "mode": "100644",
+      "objectId": "772ed014edf85c331e595e8543e3f27ab12e0348"
     },
     {
       "path": "apps/bff/src/services/litellm-chat-transport.ts",
@@ -1376,12 +1414,12 @@
     {
       "path": "apps/bff/src/services/users.test.ts",
       "mode": "100644",
-      "objectId": "0b7ce5063bb3f39fe74b8fe41f2bc19d6e2d3268"
+      "objectId": "8e0ba106e761c84c90838211f38d0695c4b897ec"
     },
     {
       "path": "apps/bff/src/services/users.ts",
       "mode": "100644",
-      "objectId": "058209b36f080abeecb5065d2c8212835ea5264d"
+      "objectId": "9aaab33a7ba4ce82533ebc682488cbcad3d8937d"
     },
     {
       "path": "apps/bff/tsconfig.json",
@@ -1806,7 +1844,7 @@
     {
       "path": "apps/web/src/middleware.test.ts",
       "mode": "100644",
-      "objectId": "f496b8328cb146d6b84c29e402d815aec5558ea1"
+      "objectId": "945fefe2da550b3c45854915848cf87bd80a7028"
     },
     {
       "path": "apps/web/src/middleware.ts",
@@ -1849,9 +1887,14 @@
       "objectId": "1c187cb89b10d2f062c273ee3b457eb7aca94d97"
     },
     {
+      "path": "docs/reduction/inference-core/pr-04-data-decisions.json",
+      "mode": "100644",
+      "objectId": "b86f7362ebbec5387950efbe1f42ae469a54b676"
+    },
+    {
       "path": "docs/reduction/inference-core/README.md",
       "mode": "100644",
-      "objectId": "ae77ad04f9df66ab27472db5ac69aedfe8bec84f"
+      "objectId": "bb17f76539e85f7df0298247baafe9837f0e1718"
     },
     {
       "path": "docs/reduction/inference-core/retention-characterization.json",
@@ -1859,144 +1902,14 @@
       "objectId": "e0de9bdddcc0cc72eddda4f258b97aa3ace69354"
     },
     {
-      "path": "infra/migrations/0000_init_schemas.sql",
+      "path": "infra/migrations/0000_inference_core.sql",
       "mode": "100644",
-      "objectId": "1cf23c54f0bbcc896bd421c6b6822dfe90ae97c2"
-    },
-    {
-      "path": "infra/migrations/0001_agentic_audit_remediation.sql",
-      "mode": "100644",
-      "objectId": "6f6eb7e8f38a8697bad5948bc5dd5fbc6da3b575"
-    },
-    {
-      "path": "infra/migrations/0002_align_egress_expiry_index.sql",
-      "mode": "100644",
-      "objectId": "8847b21b35872c1139516ca03faab6715c96bfe5"
-    },
-    {
-      "path": "infra/migrations/0003_builder_lifecycle_tables.sql",
-      "mode": "100644",
-      "objectId": "5994cb928f5177690ab045c9ab5996a2bb3f6287"
-    },
-    {
-      "path": "infra/migrations/0004_builder_withdrawn_lifecycle_state.sql",
-      "mode": "100644",
-      "objectId": "630da778dc959b071a57e542aaf2ad75653f060b"
-    },
-    {
-      "path": "infra/migrations/0005_builder_agent_configs.sql",
-      "mode": "100644",
-      "objectId": "27a144f2c6fc1c30fb9094ea601e50e7d1ab9333"
-    },
-    {
-      "path": "infra/migrations/0006_hub_chat_threads.sql",
-      "mode": "100644",
-      "objectId": "72383c0dcd4534401910f026366ab81e35481a6c"
-    },
-    {
-      "path": "infra/migrations/0007_admin_governance_read_models.sql",
-      "mode": "100644",
-      "objectId": "4735960548f2cbd524cf7c6bc8e41c337713bd64"
-    },
-    {
-      "path": "infra/migrations/0008_policy_violation_remediations.sql",
-      "mode": "100644",
-      "objectId": "4497686f417a13f7c8581cfcecdb4d1aef1ff055"
-    },
-    {
-      "path": "infra/migrations/0009_builder_agent_test_runs.sql",
-      "mode": "100644",
-      "objectId": "4a4ece69dee192420ce6d705812506142ae9f53e"
-    },
-    {
-      "path": "infra/migrations/0010_builder_agent_test_run_accounting.sql",
-      "mode": "100644",
-      "objectId": "6fdf0d0e5b661bae9349bb7ec787b298df96666c"
-    },
-    {
-      "path": "infra/migrations/0011_agentic_runtime_snapshots.sql",
-      "mode": "100644",
-      "objectId": "6486ab56863bc20d43b9106fab20bae23a7d8f0f"
-    },
-    {
-      "path": "infra/migrations/0012_builder_agent_test_run_trace.sql",
-      "mode": "100644",
-      "objectId": "989f3239e651464853bf4fdf2e32c96f066124c7"
-    },
-    {
-      "path": "infra/migrations/0013_builder_agent_test_runtime_trace_id.sql",
-      "mode": "100644",
-      "objectId": "81e438198b4db1d56846758aad2935bfa9ad82e7"
-    },
-    {
-      "path": "infra/migrations/0014_builder_agent_test_tool_calls.sql",
-      "mode": "100644",
-      "objectId": "5b8302f8c41f7c7f3e54942bfab5cf6273cd4eee"
-    },
-    {
-      "path": "infra/migrations/0015_admin_builder_agent_studio_quota_policy.sql",
-      "mode": "100644",
-      "objectId": "3f6f49f91acbafff71a8c0d12fe298cf1bb625b4"
-    },
-    {
-      "path": "infra/migrations/0016_admin_connector_vetting_decisions.sql",
-      "mode": "100644",
-      "objectId": "a4b993979449f4a5e2db4e299d44da886e120795"
-    },
-    {
-      "path": "infra/migrations/0017_connector_vetting_checklist.sql",
-      "mode": "100644",
-      "objectId": "bf464ae6bcb3e3fdf6f93a250b34479238b073ea"
-    },
-    {
-      "path": "infra/migrations/0018_knowledge_corpora.sql",
-      "mode": "100644",
-      "objectId": "65231ca39f47add10718443d335b2d21099bb211"
-    },
-    {
-      "path": "infra/migrations/0019_knowledge_source_archive.sql",
-      "mode": "100644",
-      "objectId": "26b7d137bbed7cb4153e9798e691eae4784151af"
-    },
-    {
-      "path": "infra/migrations/0020_knowledge_disabled_source_status.sql",
-      "mode": "100644",
-      "objectId": "7abffc90514060be2846035a86f5a3311160b1f3"
-    },
-    {
-      "path": "infra/migrations/0021_admin_mcp_servers.sql",
-      "mode": "100644",
-      "objectId": "290c11785fb746b658195777bb88460b4c6b06ee"
-    },
-    {
-      "path": "infra/migrations/0022_admin_settings.sql",
-      "mode": "100644",
-      "objectId": "42a7a572da2c86c79ee1146fea68a1e8a0e66bc1"
-    },
-    {
-      "path": "infra/migrations/0023_admin_connected_apps.sql",
-      "mode": "100644",
-      "objectId": "add30440dd433f32bb437bc7c5d7d6eaf3ab8abf"
-    },
-    {
-      "path": "infra/migrations/0024_admin_connected_app_api_keys.sql",
-      "mode": "100644",
-      "objectId": "3950c0988a293c7eb952be885036af65fadebf7c"
-    },
-    {
-      "path": "infra/migrations/0025_knowledge_url_acquisition_jobs.sql",
-      "mode": "100644",
-      "objectId": "b464e8bc07c2804de6b3042325262a0b19929b58"
-    },
-    {
-      "path": "infra/migrations/0026_knowledge_chunk_embeddings.sql",
-      "mode": "100644",
-      "objectId": "fbfaa2b52168b8440b4ec24aea8382d8ac7fd8b9"
+      "objectId": "f20bd4d245df8b807e509dd842c5f5b7e43f46b1"
     },
     {
       "path": "package.json",
       "mode": "100644",
-      "objectId": "94662357ecc29c6c6894fc7654dc1fe0aca5085b"
+      "objectId": "1e027463900919666c4700b16840641458627f03"
     },
     {
       "path": "packages/contracts/package.json",
@@ -2076,7 +1989,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "objectId": "62418c898755d77d7dc0dfa1215041ba0b921314"
+      "objectId": "4b76cba79b8e4465e7e640556a6e2c3dc78be358"
     },
     {
       "path": "pnpm-workspace.yaml",
@@ -2091,12 +2004,12 @@
     {
       "path": "scripts/inference-core/guardrails.mjs",
       "mode": "100644",
-      "objectId": "2f8f3caddeb5d7ac4fc97675c33f0374d51568f2"
+      "objectId": "87a0b77a92c0e21a8bc327d2b2bc7e1ef1d9595c"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
       "mode": "100644",
-      "objectId": "48e47130753693d4b387155200f8c9a59e39f69f"
+      "objectId": "dfa99741f37f916e7a695007ca46f86852172660"
     },
     {
       "path": "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -2119,6 +2032,16 @@
       "objectId": "b42570daf2ef74fb641dbbd2a946d1ea77a455e6"
     },
     {
+      "path": "scripts/inference-core/pr04-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "c0609e796ac08e1ad708453a6c1126d1b478e695"
+    },
+    {
+      "path": "scripts/inference-core/pr04-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "dd62a9b947536505e97a50ace3d3a2384c9fa249"
+    },
+    {
       "path": "scripts/inference-core/retention-canary.mjs",
       "mode": "100644",
       "objectId": "0458fa576e9c1775de9651262342648260b970e7"
@@ -2137,6 +2060,46 @@
       "path": "scripts/inference-core/run-core-command.test.mjs",
       "mode": "100644",
       "objectId": "e623d236adcea1788abac9caa25619a0c68f1d6a"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/package.json",
+      "mode": "100644",
+      "objectId": "cf80ed15195526ad7e0433309ef7c30d9ddb381f"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "mode": "100644",
+      "objectId": "8416c63f5b15e7813de5741182bbe21b2ffc5edd"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "mode": "100644",
+      "objectId": "d05a7e7dc84aba3dc59ec807282d9cf49b5e795f"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "mode": "100644",
+      "objectId": "4fcd18c161d1f6ea1e5259d32ce13f4fd059e34b"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/idempotency.test.ts",
+      "mode": "100644",
+      "objectId": "107b41a333f658e80204261310ead1bb9697e8e4"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "mode": "100644",
+      "objectId": "aa224b5bcb6364f8f7fd26e99a8870b24d944f83"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+      "mode": "100644",
+      "objectId": "2bead6866e8d548cdfea76a17a161d60aba35173"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/tsconfig.json",
+      "mode": "100644",
+      "objectId": "824d57c3c4f2fc16761dbcf744d50fc9e0b60a46"
     },
     {
       "path": "tsconfig.base.json",
@@ -2159,7 +2122,7 @@
   "escapeHatches": [
     {
       "path": "apps/bff/src/auth/persona.ts",
-      "sha256": "d3aa0ccd69d8e225e32ac760e4f9e7c7f2eb70bbd922d7caee6dd99fa7881481",
+      "sha256": "f8d1475f3b694c4b5e15dcd743912b0b228e736c8756106d7c99a16360f81916",
       "removeBy": "PR-05"
     }
   ],
@@ -2173,6 +2136,11 @@
       "id": "PR-03",
       "path": "docs/reduction/inference-core/contract-revisions/PR-03.json",
       "sha256": "1d6a3f93644001c46dd60d1ead41051181d27013292188787f5f80274d0eb66c"
+    },
+    {
+      "id": "PR-04",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-04.json",
+      "sha256": "564116ab0d262989e09a9b1eb3daa74cfd200bf59bf35420925d8f8327a7e429"
     }
   ]
 }

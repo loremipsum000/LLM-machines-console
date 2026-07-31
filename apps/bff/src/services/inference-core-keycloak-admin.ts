@@ -272,31 +272,57 @@ export class KeycloakAdminClient {
   async createConfidentialClient(
     input: CreateKeycloakClientInput,
   ): Promise<KeycloakConfidentialClientCredential> {
-    const response = await this.request("/clients", {
-      body: JSON.stringify({
-        clientId: input.clientId,
-        description: input.description,
-        directAccessGrantsEnabled: false,
-        enabled: true,
-        name: input.name,
-        protocol: "openid-connect",
-        publicClient: false,
-        serviceAccountsEnabled: true,
-        standardFlowEnabled: false,
-      }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    })
+    let response: Response
+    try {
+      response = await this.request("/clients", {
+        body: JSON.stringify({
+          clientId: input.clientId,
+          description: input.description,
+          directAccessGrantsEnabled: false,
+          enabled: true,
+          name: input.name,
+          protocol: "openid-connect",
+          publicClient: false,
+          serviceAccountsEnabled: true,
+          standardFlowEnabled: false,
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      })
+    } catch {
+      throw new KeycloakAdminError(
+        "unavailable",
+        `Keycloak client creation could not be confirmed. Reconcile client ${input.clientId} before retrying; do not use a new idempotency key until Keycloak is checked.`,
+      )
+    }
     const location = response.headers.get("location") ?? ""
     const id = location.split("/").filter(Boolean).at(-1) ?? input.clientId
-    await this.addAudienceMapper(id)
-    const clientSecret = await this.getClientSecret(id)
-    return {
-      clientId: input.clientId,
-      clientSecret,
-      id,
-      tokenUrl: tokenUrl(this.config),
+    try {
+      await this.addAudienceMapper(id)
+      const clientSecret = await this.getClientSecret(id)
+      return {
+        clientId: input.clientId,
+        clientSecret,
+        id,
+        tokenUrl: tokenUrl(this.config),
+      }
+    } catch (error) {
+      try {
+        await this.deleteConfidentialClient(id)
+      } catch {
+        throw new KeycloakAdminError(
+          "unavailable",
+          `Keycloak client provisioning did not complete. Reconcile client ${input.clientId} before retrying; do not use a new idempotency key until Keycloak is checked.`,
+        )
+      }
+      throw error
     }
+  }
+
+  async deleteConfidentialClient(id: string): Promise<void> {
+    await this.request(`/clients/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    })
   }
 
   async rotateConfidentialClientSecret(

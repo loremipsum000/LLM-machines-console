@@ -13,9 +13,11 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { after, test } from "node:test"
 import {
+  analyzeRootPgliteBoundary,
   assertNoUnexpectedEnvironmentFiles,
   buildContractRevisionDocument,
   buildEntryChanges,
+  buildExactClosureOperationPolicy,
   buildForbiddenAllowlist,
   buildRepositoryClosureFromCommit,
   compareExactFindings,
@@ -28,6 +30,9 @@ import {
   pr02ContractRevisionPath,
   pr03ContractRevisionPath,
   pr03DecisionPath,
+  pr04ContractRevisionPath,
+  pr04DecisionPath,
+  pr04StandaloneDbTestBoundary,
   repositoryRoot,
   routeBaselinePath,
   scanForbiddenSurfaces,
@@ -38,14 +43,20 @@ import {
   verifyPr03BaseEvidence,
   verifyPr03DecisionDocument,
   verifyPr03FindingTransition,
+  verifyPr04BaseEvidence,
+  verifyPr04DecisionDocument,
+  verifyPr04FindingTransition,
   verifyProtectedGuardrailStability,
   verifyRepository,
   verifyRetentionCharacterization,
+  verifyRetiredDataDependencyBoundary,
   verifyReviewedContractRevision,
   verifyReviewedFindingReduction,
+  verifyReviewedPr04WebAuthenticationEvidence,
   verifyReviewedWebAuthenticationEvidence,
   verifyRouteBaselineMetadata,
   verifyShrinkOnly,
+  verifyStandaloneDbTestBoundary,
   verifyWebAuthenticationBoundary,
 } from "./guardrails.mjs"
 
@@ -275,6 +286,43 @@ test("PR-03 finding transition permits only reviewed exact-path deferrals", () =
   )
 })
 
+test("PR-04 finding transition requires every due finding to be absent", () => {
+  const due = {
+    ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
+    path: "apps/bff/package.json",
+    count: 1,
+    fingerprints: { before: 1 },
+    removeBy: "PR-04",
+  }
+  const retained = {
+    ruleId: "FS109_LEGACY_PERSONA",
+    path: "apps/bff/src/auth/persona.ts",
+    count: 2,
+    fingerprints: { before: 2 },
+    removeBy: "PR-05",
+  }
+
+  assert.deepEqual(verifyPr04FindingTransition([due, retained], [retained]), [])
+  assert.match(
+    verifyPr04FindingTransition([due, retained], [due, retained]).join("\n"),
+    /PR-04 findings remain/,
+  )
+  assert.match(
+    verifyPr04FindingTransition(
+      [due, retained],
+      [{ ...due, removeBy: "PR-05" }, retained],
+    ).join("\n"),
+    /disposition changed outside policy/,
+  )
+  assert.match(
+    verifyPr04FindingTransition(
+      [retained],
+      [retained, { ...due, path: "apps/bff/src/new.ts" }],
+    ).join("\n"),
+    /new PR-04 reviewed legacy finding/,
+  )
+})
+
 test("PR-03 ignores only the reviewed pnpm integrity false positive", () => {
   const root = temporaryRoot()
   const path = "pnpm-lock.yaml"
@@ -349,6 +397,72 @@ test("PR-03 generation requires byte-identical retained PR-02 evidence", () => {
   ])
 })
 
+test("PR-04 decision evidence requires reviewed exact path matrices", () => {
+  const decision = JSON.parse(
+    readFileSync(join(repositoryRoot, pr04DecisionPath), "utf8"),
+  )
+
+  assert.deepEqual(verifyPr04DecisionDocument(decision), [])
+  assert.deepEqual(
+    verifyPr04DecisionDocument(decision, { requireReady: true }),
+    decision.reviewStatus === "reviewed"
+      ? []
+      : ["PR-04 operation policy is not reviewed"],
+  )
+
+  const invalidDisposition = structuredClone(decision)
+  invalidDisposition.reviewedDispositions.auditProducerAtomicity.pr04Outbox = true
+  assert.match(
+    verifyPr04DecisionDocument(invalidDisposition).join("\n"),
+    /invalid PR-04 reviewed dispositions/,
+  )
+
+  const invalidException = structuredClone(decision)
+  invalidException.structuralExceptions[0].requiredOccurrences = 3
+  assert.match(
+    verifyPr04DecisionDocument(invalidException).join("\n"),
+    /invalid PR-04 structural exceptions/,
+  )
+
+  const invalidTestBoundary = structuredClone(decision)
+  invalidTestBoundary.standaloneDbTestBoundary.allowedPaths.pop()
+  assert.match(
+    verifyPr04DecisionDocument(invalidTestBoundary).join("\n"),
+    /invalid PR-04 standalone DB test boundary/,
+  )
+
+  const invalidWebAuthenticationEvidence = structuredClone(decision)
+  invalidWebAuthenticationEvidence.webAuthenticationEvidence[0].sha256 =
+    "0".repeat(64)
+  assert.match(
+    verifyPr04DecisionDocument(invalidWebAuthenticationEvidence).join("\n"),
+    /invalid PR-04 Web authentication evidence/,
+  )
+})
+
+test("PR-04 generation requires byte-identical retained PR-02 and PR-03 evidence", () => {
+  assert.deepEqual(verifyPr04BaseEvidence(), [])
+
+  for (const path of [pr02ContractRevisionPath, pr03DecisionPath]) {
+    const root = temporaryRoot()
+    execFileSync(
+      "git",
+      ["clone", "--quiet", "--shared", "--no-checkout", repositoryRoot, root],
+      { stdio: "ignore" },
+    )
+    git(root, [
+      "checkout",
+      "--quiet",
+      "fb36b9de38396af79c82056963ae3f4833a12fef",
+    ])
+    assert.deepEqual(verifyPr04BaseEvidence(root), [])
+    writeFixture(root, path, `${readFileSync(join(root, path), "utf8")}\n`)
+    assert.deepEqual(verifyPr04BaseEvidence(root), [
+      `PR-04 retained prior evidence changed ${path}`,
+    ])
+  }
+})
+
 test("PR-03 Web authentication boundary is fail-closed and self-contained", () => {
   const root = temporaryRoot()
   const path = "apps/web/src/middleware.ts"
@@ -408,16 +522,18 @@ test("PR-03 Web authentication boundary is fail-closed and self-contained", () =
 })
 
 test("PR-03 binds exact Web authentication implementation and tests", () => {
-  assert.deepEqual(verifyReviewedWebAuthenticationEvidence(), [])
-
   const root = temporaryRoot()
-  for (const path of [
-    "apps/web/src/middleware.test.ts",
-    "apps/web/src/middleware.ts",
-  ]) {
-    writeFixture(root, path, readFileSync(join(repositoryRoot, path)))
-  }
+  execFileSync(
+    "git",
+    ["clone", "--quiet", "--shared", "--no-checkout", repositoryRoot, root],
+    { stdio: "ignore" },
+  )
+  git(root, ["checkout", "--quiet", "fb36b9de38396af79c82056963ae3f4833a12fef"])
   assert.deepEqual(verifyReviewedWebAuthenticationEvidence(root), [])
+  assert.match(
+    verifyReviewedPr04WebAuthenticationEvidence(root).join("\n"),
+    /PR-04 Web authentication evidence changed apps\/web\/src\/middleware\.test\.ts/,
+  )
 
   writeFixture(
     root,
@@ -428,6 +544,36 @@ test("PR-03 binds exact Web authentication implementation and tests", () => {
     verifyReviewedWebAuthenticationEvidence(root).join("\n"),
     /reviewed Web authentication evidence changed apps\/web\/src\/middleware\.ts/,
   )
+})
+
+test("PR-04 binds its successor Web authentication implementation and tests", () => {
+  assert.deepEqual(verifyReviewedPr04WebAuthenticationEvidence(), [])
+
+  for (const path of [
+    "apps/web/src/middleware.test.ts",
+    "apps/web/src/middleware.ts",
+  ]) {
+    const root = temporaryRoot()
+    for (const evidencePath of [
+      "apps/web/src/middleware.test.ts",
+      "apps/web/src/middleware.ts",
+    ]) {
+      writeFixture(
+        root,
+        evidencePath,
+        readFileSync(join(repositoryRoot, evidencePath)),
+      )
+    }
+    assert.deepEqual(verifyReviewedPr04WebAuthenticationEvidence(root), [])
+
+    writeFixture(root, path, `${readFileSync(join(root, path), "utf8")}\n`)
+    assert.match(
+      verifyReviewedPr04WebAuthenticationEvidence(root).join("\n"),
+      new RegExp(
+        `PR-04 Web authentication evidence changed ${path.replaceAll("/", "\\/").replaceAll(".", "\\.")}`,
+      ),
+    )
+  }
 })
 
 test("guard policy changes require a reviewed contract revision", () => {
@@ -575,6 +721,38 @@ test("entry-change manifests preserve multiplicity and reject silent replacement
         after: current,
       },
     ],
+  )
+})
+
+test("PR-04 operation policy is derived as exact sorted closure paths", () => {
+  const baseRoutes = {
+    sourceClosure: [
+      { path: "changed.ts", sha256: "before" },
+      { path: "deleted.ts", sha256: "before" },
+    ],
+    repositoryClosure: [{ path: "repo-changed.ts", sha256: "before" }],
+  }
+  const currentRoutes = {
+    sourceClosure: [
+      { path: "added.ts", sha256: "after" },
+      { path: "changed.ts", sha256: "after" },
+    ],
+    repositoryClosure: [
+      { path: "repo-added.ts", sha256: "after" },
+      { path: "repo-changed.ts", sha256: "after" },
+    ],
+  }
+
+  assert.deepEqual(
+    buildExactClosureOperationPolicy(baseRoutes, currentRoutes),
+    {
+      addedSourcePaths: ["added.ts"],
+      changedSourcePaths: ["changed.ts"],
+      deletedSourcePaths: ["deleted.ts"],
+      addedRepositoryPaths: ["repo-added.ts"],
+      changedRepositoryPaths: ["repo-changed.ts"],
+      deletedRepositoryPaths: [],
+    },
   )
 })
 
@@ -796,21 +974,10 @@ test("reviewed revision history recognizes only an exact PR-03 append", () => {
   const root = temporaryRoot()
   execFileSync(
     "git",
-    [
-      "clone",
-      "--quiet",
-      "--shared",
-      "--no-checkout",
-      repositoryRoot,
-      root,
-    ],
+    ["clone", "--quiet", "--shared", "--no-checkout", repositoryRoot, root],
     { stdio: "ignore" },
   )
-  git(root, [
-    "checkout",
-    "--quiet",
-    "43c11ace1b80d5241cf2a6a06670fe01f49e3e10",
-  ])
+  git(root, ["checkout", "--quiet", "43c11ace1b80d5241cf2a6a06670fe01f49e3e10"])
 
   const baseAllowlist = JSON.parse(
     readFileSync(
@@ -861,6 +1028,63 @@ test("reviewed revision history recognizes only an exact PR-03 append", () => {
   )
 })
 
+test("reviewed revision history recognizes only an exact PR-04 append", () => {
+  const root = temporaryRoot()
+  execFileSync(
+    "git",
+    ["clone", "--quiet", "--shared", "--no-checkout", repositoryRoot, root],
+    { stdio: "ignore" },
+  )
+  git(root, ["checkout", "--quiet", "fb36b9de38396af79c82056963ae3f4833a12fef"])
+  const baseAllowlist = JSON.parse(
+    readFileSync(
+      join(
+        root,
+        "docs/reduction/inference-core/forbidden-surface-allowlist.yaml",
+      ),
+      "utf8",
+    ),
+  )
+  const baseRoutes = JSON.parse(
+    readFileSync(join(root, routeBaselinePath), "utf8"),
+  )
+  const currentRoutes = structuredClone(baseRoutes)
+  currentRoutes.reviewedRevisions.push({
+    id: "PR-04",
+    path: pr04ContractRevisionPath,
+    sha256: "a".repeat(64),
+  })
+  const result = verifyReviewedContractRevision({
+    root,
+    baseCommit: "fb36b9de38396af79c82056963ae3f4833a12fef",
+    baseAllowlist,
+    currentAllowlist: baseAllowlist,
+    baseRoutes,
+    currentRoutes,
+  })
+
+  assert.equal(result.present, true)
+  assert.equal(result.id, "PR-04")
+  assert.match(
+    result.errors.join("\n"),
+    /missing reviewed contract revision .*PR-04\.json/,
+  )
+
+  const reorderedRoutes = structuredClone(currentRoutes)
+  reorderedRoutes.reviewedRevisions.reverse()
+  assert.match(
+    verifyReviewedContractRevision({
+      root,
+      baseCommit: "fb36b9de38396af79c82056963ae3f4833a12fef",
+      baseAllowlist,
+      currentAllowlist: baseAllowlist,
+      baseRoutes,
+      currentRoutes: reorderedRoutes,
+    }).errors.join("\n"),
+    /unsupported reviewed contract revision history transition/,
+  )
+})
+
 test("base comparison requires a proper ancestor of candidate HEAD", () => {
   const root = initializedGitRoot()
   writeFixture(root, "seed.txt", "base\n")
@@ -875,7 +1099,7 @@ test("base comparison requires a proper ancestor of candidate HEAD", () => {
   assert.deepEqual(verifyBaseCommitLineage(root, base), [])
   assert.match(
     verifyBaseCommitLineage(root, head).join("\n"),
-    /proper ancestor outside the fixed PR-02 precommit base/,
+    /proper ancestor outside the fixed precommit bases/,
   )
   assert.match(
     verifyBaseCommitLineage(root, head, head).join("\n"),
@@ -884,7 +1108,7 @@ test("base comparison requires a proper ancestor of candidate HEAD", () => {
   writeFixture(root, "candidate-untracked.txt", "candidate\n")
   assert.match(
     verifyBaseCommitLineage(root, head).join("\n"),
-    /proper ancestor outside the fixed PR-02 precommit base/,
+    /proper ancestor outside the fixed precommit bases/,
   )
   assert.deepEqual(verifyBaseCommitLineage(root, head, head), [])
   const unrelated = git(root, [
@@ -1196,6 +1420,210 @@ test("the workspace lockfile participates in legacy dependency shrinkage", () =>
       { ruleId: "FS107_RETIRED_DATA_DEPENDENCY", count: 1 },
     ],
   )
+})
+
+test("Drizzle optional Upstash peer metadata is the only structural Redis lock exception", () => {
+  const validLockfile = [
+    "lockfileVersion: '9.0'",
+    "importers:",
+    "  apps/bff:",
+    "    dependencies:",
+    "      drizzle-orm:",
+    "        version: 0.44.2(postgres@3.4.7)",
+    "packages:",
+    "  drizzle-orm@0.44.2:",
+    "    peerDependencies:",
+    "      '@upstash/redis': '>=1.34.7'",
+    "    peerDependenciesMeta:",
+    "      '@upstash/redis':",
+    "        optional: true",
+    "snapshots:",
+    "  drizzle-orm@0.44.2(postgres@3.4.7): {}",
+    "",
+  ].join("\n")
+  const root = temporaryRoot()
+  const rootLockPath = "pnpm-lock.yaml"
+  writeFixture(root, rootLockPath, validLockfile)
+
+  assert.deepEqual(scanForbiddenSurfaces({ root, paths: [rootLockPath] }), [])
+  assert.deepEqual(
+    verifyRetiredDataDependencyBoundary(root, [rootLockPath]),
+    [],
+  )
+
+  const invalidVariants = [
+    validLockfile.replace(
+      "  apps/bff:\n    dependencies:",
+      "  apps/bff:\n    dependencies:\n      '@upstash/redis':\n        version: 1.34.7",
+    ),
+    validLockfile.replace(
+      "snapshots:\n",
+      "snapshots:\n  '@upstash/redis@1.34.7': {}\n",
+    ),
+    validLockfile.replace(">=1.34.7", ">=1.35.0"),
+    validLockfile.replace("        optional: true\n", ""),
+  ]
+  for (const source of invalidVariants) {
+    writeFixture(root, rootLockPath, source)
+    assert.equal(
+      scanForbiddenSurfaces({ root, paths: [rootLockPath] }).some(
+        ({ ruleId }) => ruleId === "FS107_RETIRED_DATA_DEPENDENCY",
+      ),
+      true,
+    )
+    assert.notDeepEqual(
+      verifyRetiredDataDependencyBoundary(root, [rootLockPath]),
+      [],
+    )
+  }
+
+  const nestedLockPath = "test-support/inference-core-db-tests/pnpm-lock.yaml"
+  writeFixture(root, nestedLockPath, validLockfile)
+  assert.deepEqual(scanForbiddenSurfaces({ root, paths: [nestedLockPath] }), [])
+  for (const source of invalidVariants) {
+    writeFixture(root, nestedLockPath, source)
+    assert.equal(
+      scanForbiddenSurfaces({ root, paths: [nestedLockPath] }).some(
+        ({ ruleId }) => ruleId === "FS107_RETIRED_DATA_DEPENDENCY",
+      ),
+      true,
+    )
+  }
+})
+
+test("the standalone PGlite DB test workspace cannot enter production dependency scope", () => {
+  const paths = [
+    ...pr04StandaloneDbTestBoundary.allowedPaths,
+    "apps/bff/package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+  ]
+  assert.deepEqual(verifyStandaloneDbTestBoundary(repositoryRoot, paths), [])
+
+  const rootLock = readFileSync(join(repositoryRoot, "pnpm-lock.yaml"), "utf8")
+  assert.deepEqual(analyzeRootPgliteBoundary(rootLock), [])
+  assert.match(
+    analyzeRootPgliteBoundary(
+      rootLock.replace(
+        "snapshots:\n",
+        "snapshots:\n  '@electric-sql/pglite@0.5.4': {}\n",
+      ),
+    ).join("\n"),
+    /active or resolved PGlite root lock edge/,
+  )
+
+  const root = temporaryRoot()
+  const boundaryPaths = [
+    ...pr04StandaloneDbTestBoundary.allowedPaths,
+    "apps/bff/package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+  ]
+  for (const path of boundaryPaths) {
+    writeFixture(root, path, readFileSync(join(repositoryRoot, path)))
+  }
+  const bffManifest = JSON.parse(
+    readFileSync(join(root, "apps/bff/package.json"), "utf8"),
+  )
+  bffManifest.devDependencies["@electric-sql/pglite"] = "0.5.4"
+  writeFixture(
+    root,
+    "apps/bff/package.json",
+    `${JSON.stringify(bffManifest)}\n`,
+  )
+  assert.match(
+    verifyStandaloneDbTestBoundary(root, boundaryPaths).join("\n"),
+    /PGlite dependency is not allowed/,
+  )
+
+  writeFixture(
+    root,
+    "apps/bff/package.json",
+    readFileSync(join(repositoryRoot, "apps/bff/package.json")),
+  )
+  const nestedManifest = JSON.parse(
+    readFileSync(
+      join(root, pr04StandaloneDbTestBoundary.packageManifest.path),
+      "utf8",
+    ),
+  )
+  nestedManifest.scripts.test = "true"
+  writeFixture(
+    root,
+    pr04StandaloneDbTestBoundary.packageManifest.path,
+    `${JSON.stringify(nestedManifest)}\n`,
+  )
+  assert.match(
+    verifyStandaloneDbTestBoundary(root, boundaryPaths).join("\n"),
+    /invalid standalone DB test package manifest/,
+  )
+
+  writeFixture(
+    root,
+    pr04StandaloneDbTestBoundary.packageManifest.path,
+    readFileSync(
+      join(repositoryRoot, pr04StandaloneDbTestBoundary.packageManifest.path),
+    ),
+  )
+  writeFixture(
+    root,
+    pr04StandaloneDbTestBoundary.lockfile.path,
+    `${readFileSync(
+      join(repositoryRoot, pr04StandaloneDbTestBoundary.lockfile.path),
+      "utf8",
+    )}\n`,
+  )
+  assert.match(
+    verifyStandaloneDbTestBoundary(root, boundaryPaths).join("\n"),
+    /standalone DB test boundary changed .*pnpm-lock\.yaml/,
+  )
+})
+
+test("the structural lock exception does not weaken active dependency checks", () => {
+  const root = temporaryRoot()
+  const lockfilePath = "pnpm-lock.yaml"
+  const manifestPath = "apps/bff/package.json"
+  writeFixture(
+    root,
+    lockfilePath,
+    [
+      "packages:",
+      "  drizzle-orm@0.44.2:",
+      "    peerDependencies:",
+      "      '@upstash/redis': '>=1.34.7'",
+      "    peerDependenciesMeta:",
+      "      '@upstash/redis':",
+      "        optional: true",
+      "",
+    ].join("\n"),
+  )
+  writeFixture(
+    root,
+    manifestPath,
+    `${JSON.stringify({ dependencies: { ioredis: "5.6.1" } })}\n`,
+  )
+  assert.match(
+    verifyRetiredDataDependencyBoundary(root, [
+      lockfilePath,
+      manifestPath,
+    ]).join("\n"),
+    /retired active dependency ioredis/,
+  )
+
+  for (const [path, source] of [
+    ["apps/bff/src/redis.ts", 'import Redis from "ioredis"\n'],
+    ["apps/bff/src/upstash.ts", 'import { Redis } from "@upstash/redis"\n'],
+    [".env.example", "REDIS_URL=redis://localhost:6379\n"],
+    ["apps/bff/src/runtime.ts", "const client = new Redis()\n"],
+  ]) {
+    writeFixture(root, path, source)
+    assert.equal(
+      scanForbiddenSurfaces({ root, paths: [path] }).some(
+        ({ ruleId }) => ruleId === "FS107_RETIRED_DATA_DEPENDENCY",
+      ),
+      true,
+    )
+  }
 })
 
 test("retired binary Knowledge fixtures are frozen by path and hash", () => {
@@ -1690,6 +2118,27 @@ test("unsupported or dynamic Fastify route registration fails closed", () => {
       /Fastify (?:route|shorthand|raw server)|Unsupported Fastify|Dynamic Fastify|Unreviewed Fastify/,
     )
   }
+})
+
+test("the PR-04 database close hook is exact and fail-closed", () => {
+  const root = temporaryRoot()
+  const path = "apps/bff/src/index.ts"
+  const source = readFileSync(join(repositoryRoot, path), "utf8")
+  writeFixture(root, path, source)
+  assert.doesNotThrow(() => extractBffRoutes({ root, paths: [path] }))
+
+  writeFixture(
+    root,
+    path,
+    source.replace(
+      'server.addHook("onClose", closeInferenceCoreDb)',
+      'server.addHook("onClose", unreviewedClose)',
+    ),
+  )
+  assert.throws(
+    () => extractBffRoutes({ root, paths: [path] }),
+    /Unreviewed Fastify route-control API addHook/,
+  )
 })
 
 test("Fastify instances cannot escape to production-only or misbound registrars", () => {
@@ -2384,6 +2833,36 @@ test("Core lifecycle companion scripts cannot bypass locked commands", () => {
   )
 })
 
+test("Core root scripts lock the standalone DB test and typecheck commands", () => {
+  const root = temporaryRoot()
+  const paths = [
+    "apps/bff/package.json",
+    "apps/bff/vitest.config.ts",
+    "apps/web/package.json",
+    "apps/web/vitest.config.ts",
+    "packages/contracts/package.json",
+    "packages/copy/package.json",
+  ]
+  for (const path of [...paths, "package.json", "pnpm-workspace.yaml"]) {
+    writeFixture(root, path, readFileSync(join(repositoryRoot, path)))
+  }
+
+  const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
+  manifest.scripts["test:inference-core-db"] = "true"
+  manifest.scripts["typecheck:inference-core-db"] = "true"
+  writeFixture(root, "package.json", `${JSON.stringify(manifest)}\n`)
+
+  const errors = verifyCorePackageClosure(root, paths)
+  assert.match(
+    errors.join("\n"),
+    /invalid Core-only script test:inference-core-db/,
+  )
+  assert.match(
+    errors.join("\n"),
+    /invalid Core-only script typecheck:inference-core-db/,
+  )
+})
+
 test("retention register rejects unreviewed top-level claims", () => {
   const root = temporaryRoot()
   const path = "docs/reduction/inference-core/retention-characterization.json"
@@ -2401,7 +2880,7 @@ test("the live repository matches its reviewed PR-01 baselines", () => {
   const result = verifyRepository({
     baseRef:
       process.env.INFERENCE_CORE_BASE_REF ??
-      "964ff087f39111862c90f72ec57ab33bb937f5d2",
+      "fb36b9de38396af79c82056963ae3f4833a12fef",
   })
   assert.deepEqual(result.errors, [])
   assert.equal(result.ok, true)

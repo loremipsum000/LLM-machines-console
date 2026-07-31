@@ -61,9 +61,7 @@ export async function getAdminTeamOverview(
 ): Promise<AdminTeamOverviewResponse> {
   const service = teamService()
   if (!service) {
-    await emitTeamAudit(actor, "team.members.read", "overview", {
-      serviceStatus: "not_configured",
-    })
+    await emitTeamAudit(actor, "team.members.read", "failed")
     return emptyTeamOverview("not_configured")
   }
 
@@ -83,9 +81,7 @@ export async function getAdminTeamOverview(
       )),
     ]
 
-    await emitTeamAudit(actor, "team.members.read", "overview", {
-      returnedCount: members.length,
-    })
+    await emitTeamAudit(actor, "team.members.read")
 
     return {
       generatedAt: new Date().toISOString(),
@@ -104,9 +100,7 @@ export async function getAdminTeamScimStatus(
   actor: Actor,
 ): Promise<AdminTeamScimStatus> {
   const scim = scimStatus()
-  await emitTeamAudit(actor, "team.scim.read", "scim", {
-    status: scim.status,
-  })
+  await emitTeamAudit(actor, "team.scim.read")
   return scim
 }
 
@@ -118,7 +112,7 @@ export async function getAdminTeamGroupDetail(
   await refreshTeamAuditCache()
   const group = await groupById(service, id)
   const members = await membersForGroup(service, group)
-  await emitTeamAudit(actor, "team.group.read", id)
+  await emitTeamAudit(actor, "team.group.read")
   return {
     group: {
       ...group,
@@ -135,11 +129,11 @@ export async function getAdminTeamMemberDetail(
   const service = requireTeamService()
   await refreshTeamAuditCache()
   const member = await memberById(service, id)
-  await emitTeamAudit(actor, "team.member.read", id)
+  await emitTeamAudit(actor, "team.member.read")
   return {
     activity: recentActivityForMember(member),
     member,
-    usage: usageForMember(member),
+    usage: usageForMember(),
   }
 }
 
@@ -148,7 +142,7 @@ export async function createAdminTeamMember(
   request: CreateAdminTeamMemberRequest,
 ): Promise<AdminTeamMemberMutationResponse> {
   const service = requireTeamService()
-  assertCorporateEmail(service.config, request.email)
+  assertWorkEmail(service.config, request.email)
   await assertClassifiedGroups(service, request.groups)
   const username =
     request.username ??
@@ -173,12 +167,7 @@ export async function createAdminTeamMember(
   }
 
   const member = await memberById(service, userId)
-  await emitTeamAudit(actor, "team.member.created", userId, {
-    groups: request.groups,
-    role: request.role,
-    sendInvite: request.sendInvite,
-    generatedPassword: Boolean(password),
-  })
+  await emitTeamAudit(actor, "team.member.created")
   return { generatedPassword: password, member }
 }
 
@@ -188,9 +177,9 @@ export async function sendAdminTeamInvite(
 ): Promise<AdminTeamActionResponse> {
   const service = requireTeamService()
   const member = await memberById(service, id)
-  assertCorporateEmail(service.config, member.email)
+  assertWorkEmail(service.config, member.email)
   await service.client.executeEmailActions(id, ["UPDATE_PASSWORD"])
-  await emitTeamAudit(actor, "team.member.invited", id)
+  await emitTeamAudit(actor, "team.member.invited")
   return { member, status: "sent" }
 }
 
@@ -200,9 +189,9 @@ export async function sendAdminTeamPasswordReset(
 ): Promise<AdminTeamActionResponse> {
   const service = requireTeamService()
   const member = await memberById(service, id)
-  assertCorporateEmail(service.config, member.email)
+  assertWorkEmail(service.config, member.email)
   await service.client.executeEmailActions(id, ["UPDATE_PASSWORD"])
-  await emitTeamAudit(actor, "team.member.password_reset_email_sent", id)
+  await emitTeamAudit(actor, "team.member.password_reset_email_sent")
   return { member, status: "sent" }
 }
 
@@ -214,7 +203,7 @@ export async function generateAdminTeamPassword(
   const password = generatePassword()
   await service.client.setPassword(id, password)
   const member = await memberById(service, id)
-  await emitTeamAudit(actor, "team.member.password_generated", id)
+  await emitTeamAudit(actor, "team.member.password_generated")
   return { generatedPassword: password, member }
 }
 
@@ -226,7 +215,7 @@ export async function disableAdminTeamMember(
   const service = requireTeamService()
   await service.client.updateUserEnabled(id, false)
   const member = await memberById(service, id)
-  await emitTeamAudit(actor, "team.member.disabled", id)
+  await emitTeamAudit(actor, "team.member.disabled")
   return { member, status: "disabled" }
 }
 
@@ -237,7 +226,7 @@ export async function reactivateAdminTeamMember(
   const service = requireTeamService()
   await service.client.updateUserEnabled(id, true)
   const member = await memberById(service, id)
-  await emitTeamAudit(actor, "team.member.reactivated", id)
+  await emitTeamAudit(actor, "team.member.reactivated")
   return { member, status: "reactivated" }
 }
 
@@ -248,7 +237,7 @@ export async function deleteAdminTeamMember(
   await assertCanMutateMember(actor, id)
   const service = requireTeamService()
   await service.client.deleteUser(id)
-  await emitTeamAudit(actor, "team.member.deleted", id)
+  await emitTeamAudit(actor, "team.member.deleted")
   return { member: null, status: "deleted" }
 }
 
@@ -261,7 +250,7 @@ export async function createAdminTeamGroup(
   await assertGroupNameAvailable(service, request.name)
   const id = await service.client.createGroup(request.name)
   const group = await groupById(service, id)
-  await emitTeamAudit(actor, "team.group.created", id, { name: request.name })
+  await emitTeamAudit(actor, "team.group.created")
   return { group, status: "created" }
 }
 
@@ -280,10 +269,7 @@ export async function updateAdminTeamGroup(
   }
   await service.client.updateGroup(id, request.name)
   const updated = await groupById(service, id)
-  await emitTeamAudit(actor, "team.group.updated", id, {
-    name: request.name,
-    previousName: group.name,
-  })
+  await emitTeamAudit(actor, "team.group.updated")
   return { group: updated, status: "updated" }
 }
 
@@ -296,7 +282,7 @@ export async function deleteAdminTeamGroup(
   const group = await groupById(service, id)
   assertMutableGroup(group)
   await service.client.deleteGroup(id)
-  await emitTeamAudit(actor, "team.group.deleted", id, { name: group.name })
+  await emitTeamAudit(actor, "team.group.deleted")
   return { group: null, status: "deleted" }
 }
 
@@ -313,10 +299,7 @@ export async function bulkAssignAdminTeamGroupMembers(
     await service.client.joinGroup(memberId, group.id)
   }
   const updated = await groupById(service, id)
-  await emitTeamAudit(actor, "team.group.member_assigned", id, {
-    assignedCount: request.memberIds.length,
-    memberIds: request.memberIds,
-  })
+  await emitTeamAudit(actor, "team.group.member_assigned")
   return { group: updated, status: "assigned" }
 }
 
@@ -331,7 +314,7 @@ export async function removeAdminTeamGroupMember(
   assertMutableGroup(group)
   await service.client.leaveGroup(memberId, group.id)
   const updated = await groupById(service, id)
-  await emitTeamAudit(actor, "team.group.member_removed", id, { memberId })
+  await emitTeamAudit(actor, "team.group.member_removed")
   return { group: updated, status: "removed" }
 }
 
@@ -341,11 +324,7 @@ export async function previewAdminTeamCsvImport(
 ): Promise<AdminTeamCsvImportPreviewResponse> {
   const service = requireTeamService()
   const response = await buildCsvImportPreview(service, request.csv)
-  await emitTeamAudit(actor, "team.csv_import.previewed", "csv-import", {
-    rowCount: response.rows.length,
-    valid: response.valid,
-    validCount: response.rows.filter((row) => row.status === "valid").length,
-  })
+  await emitTeamAudit(actor, "team.csv_import.previewed")
   return response
 }
 
@@ -398,12 +377,7 @@ export async function commitAdminTeamCsvImport(
     skippedCount: rows.filter((row) => row.status === "skipped").length,
     valid: rows.every((row) => row.status === "created"),
   }
-  await emitTeamAudit(actor, "team.csv_import.committed", "csv-import", {
-    createdCount: response.createdCount,
-    failedCount: response.failedCount,
-    rowCount: rows.length,
-    skippedCount: response.skippedCount,
-  })
+  await emitTeamAudit(actor, "team.csv_import.committed")
   return response
 }
 
@@ -472,9 +446,9 @@ function csvImportRowFromValues(
   } else if (!isEmailLike(email)) {
     errors.push("Email is malformed.")
   } else {
-    const corporateError = corporateEmailError(service.config, email)
-    if (corporateError) {
-      errors.push(corporateError)
+    const emailError = workEmailError(service.config, email)
+    if (emailError) {
+      errors.push(emailError)
     }
   }
   if (!group) {
@@ -641,7 +615,7 @@ function isEmailLike(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
-function corporateEmailError(
+function workEmailError(
   config: KeycloakAdminConfig,
   email: string,
 ): string | null {
@@ -651,7 +625,7 @@ function corporateEmailError(
   const domain = email.split("@")[1]?.toLowerCase()
   return domain && config.allowedEmailDomains.includes(domain)
     ? null
-    : "A corporate email address is required."
+    : "A work email address is required."
 }
 
 function teamImportFailureMessage(error: unknown): string {
@@ -886,7 +860,7 @@ function requireTeamService(): TeamService {
   return service
 }
 
-function assertCorporateEmail(
+function assertWorkEmail(
   config: KeycloakAdminConfig,
   email: string,
 ): void {
@@ -895,7 +869,7 @@ function assertCorporateEmail(
   }
   const domain = email.split("@")[1]?.toLowerCase()
   if (!domain || !config.allowedEmailDomains.includes(domain)) {
-    throw new AdminTeamError(400, "A corporate email address is required.")
+    throw new AdminTeamError(400, "A work email address is required.")
   }
 }
 
@@ -1008,7 +982,11 @@ function recentActivityForMember(
   member: AdminTeamMember,
 ): AdminTeamMemberDetail["activity"] {
   return getCachedAuditEvents()
-    .filter((event) => eventMatchesMember(event.actorId, member))
+    .filter((event) =>
+      event.keycloakSubjectId
+        ? eventMatchesMember(event.keycloakSubjectId, member)
+        : false,
+    )
     .slice(0, 20)
     .map((event) => ({
       action: event.action,
@@ -1020,31 +998,12 @@ function recentActivityForMember(
     }))
 }
 
-function usageForMember(member: AdminTeamMember): AdminTeamMemberDetail["usage"] {
-  const modelCounts = new Map<string, number>()
-  let prompts = 0
-  let tokens = 0
-  for (const event of getCachedAuditEvents()) {
-    if (!eventMatchesMember(event.actorId, member)) {
-      continue
-    }
-    prompts += numberMetadata(event.metadata.prompts)
-    prompts += numberMetadata(event.metadata.promptTokens) > 0 ? 1 : 0
-    tokens += numberMetadata(event.metadata.tokens)
-    tokens += numberMetadata(event.metadata.totalTokens)
-    const model =
-      typeof event.metadata.model === "string" ? event.metadata.model : null
-    if (model) {
-      modelCounts.set(model, (modelCounts.get(model) ?? 0) + 1)
-    }
-  }
-
+function usageForMember(): AdminTeamMemberDetail["usage"] {
   return {
-    mostUsedModel:
-      [...modelCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
-    prompts,
-    sourceStatus: "ok",
-    tokens,
+    mostUsedModel: null,
+    prompts: 0,
+    sourceStatus: "not_configured",
+    tokens: 0,
     window: "30d",
   }
 }
@@ -1065,27 +1024,24 @@ function eventMatchesMember(actorId: string, member: AdminTeamMember): boolean {
 
 function lastActiveAtFor(user: KeycloakAdminUser): string | null {
   return (
-    getCachedAuditEvents().find((event) => eventMatchesMember(event.actorId, {
-      createdAt: user.createdAt,
-      displayName: user.displayName,
-      email: user.email,
-      enabled: user.enabled,
-      groups: [],
-      id: user.id,
-      keycloakHref: null,
-      lastActiveAt: null,
-      role: "operator",
-      status: user.enabled ? "active" : "disabled",
-      username: user.username,
-    }))?.createdAt ?? null
+    getCachedAuditEvents().find((event) =>
+      event.keycloakSubjectId
+        ? eventMatchesMember(event.keycloakSubjectId, {
+            createdAt: user.createdAt,
+            displayName: user.displayName,
+            email: user.email,
+            enabled: user.enabled,
+            groups: [],
+            id: user.id,
+            keycloakHref: null,
+            lastActiveAt: null,
+            role: "operator",
+            status: user.enabled ? "active" : "disabled",
+            username: user.username,
+          })
+        : false,
+    )?.createdAt ?? null
   )
-}
-
-function numberMetadata(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return Math.max(0, Math.trunc(value))
-  }
-  return 0
 }
 
 function generatePassword(): string {
@@ -1095,18 +1051,13 @@ function generatePassword(): string {
 async function emitTeamAudit(
   actor: Actor,
   action: string,
-  targetId: string,
-  metadata: Record<string, unknown> = {},
+  outcome: "succeeded" | "failed" | "denied" = "succeeded",
 ): Promise<void> {
   await emitAudit({
-    actorId: actor.subject,
     action,
-    targetId,
-    targetType: "team",
-    metadata: {
-      authMode: actor.authMode,
-      ...metadata,
-    },
+    keycloakSubjectId: actor.subject,
+    outcome,
+    sourceSystem: "console",
   })
   await refreshTeamAuditCache()
 }

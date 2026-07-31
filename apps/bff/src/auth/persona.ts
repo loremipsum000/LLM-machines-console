@@ -78,16 +78,10 @@ const authHook: preHandlerHookHandler = async (request, reply) => {
   const authResult = await authenticateRequest(request)
   if (!authResult.ok) {
     await emitAudit({
-      actorId: "anonymous",
       action: "auth.denied",
-      targetType: "route",
-      targetId: request.routeOptions.url ?? request.url,
-      reason: authResult.reason,
-      metadata: {
-        authMode: "denied",
-        method: request.method,
-        requiredPersona,
-      },
+      correlationId: request.id,
+      outcome: "denied",
+      sourceSystem: "console",
     })
     const detail =
       authResult.reason === "unresolved_placeholder"
@@ -104,17 +98,11 @@ const authHook: preHandlerHookHandler = async (request, reply) => {
   const actor = authResult.actor
   if (!personaCanAccess(actor.persona, requiredPersona)) {
     await emitAudit({
-      actorId: actor.subject,
       action: "auth.denied",
-      targetType: "route",
-      targetId: request.routeOptions.url ?? request.url,
-      reason: "insufficient_persona",
-      metadata: {
-        method: request.method,
-        actualPersona: actor.persona,
-        requiredPersona,
-        authMode: actor.authMode,
-      },
+      correlationId: request.id,
+      keycloakSubjectId: actor.subject,
+      outcome: "denied",
+      sourceSystem: "console",
     })
     return reply.code(403).send({
       type: "about:blank",

@@ -70,7 +70,6 @@ describe("Console middleware", () => {
     for (const pathname of [
       "/unknown",
       "/chat",
-      "/knowledge",
       "/builder",
       "/artifacts/example",
       "/resources",

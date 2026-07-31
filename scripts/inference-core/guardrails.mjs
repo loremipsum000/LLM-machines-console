@@ -31,10 +31,16 @@ export const pr03ContractRevisionPath =
   "docs/reduction/inference-core/contract-revisions/PR-03.json"
 export const pr03DecisionPath =
   "docs/reduction/inference-core/pr-03-removal-decisions.json"
+export const pr04ContractRevisionPath =
+  "docs/reduction/inference-core/contract-revisions/PR-04.json"
+export const pr04DecisionPath =
+  "docs/reduction/inference-core/pr-04-data-decisions.json"
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
 export const pr03LaneAnchor = "43c11ace1b80d5241cf2a6a06670fe01f49e3e10"
+export const pr04ContractBase = "fb36b9de38396af79c82056963ae3f4833a12fef"
+export const pr04LaneAnchor = "fb36b9de38396af79c82056963ae3f4833a12fef"
 const pr02RevisionEvidencePaths = [
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -45,11 +51,23 @@ export const pr03RevisionEvidencePaths = [
   "scripts/inference-core/pr03-boundaries.test.mjs",
   "scripts/inference-core/pr03-contract-revision.mjs",
 ]
+export const pr04RevisionEvidencePaths = [
+  pr04DecisionPath,
+  "scripts/inference-core/pr04-boundaries.test.mjs",
+  "scripts/inference-core/pr04-contract-revision.mjs",
+]
+const pr04ImmutablePriorEvidencePaths = [
+  pr02ContractRevisionPath,
+  ...pr02RevisionEvidencePaths,
+  pr03ContractRevisionPath,
+  ...pr03RevisionEvidencePaths,
+]
 const generatedContractPaths = new Set([
   allowlistPath,
   routeBaselinePath,
   pr02ContractRevisionPath,
   pr03ContractRevisionPath,
+  pr04ContractRevisionPath,
 ])
 export const pr02OperationPolicy = {
   changedSourcePaths: [
@@ -212,8 +230,10 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/forbidden-surface-allowlist.yaml",
   "docs/reduction/inference-core/contract-revisions/PR-02.json",
   "docs/reduction/inference-core/contract-revisions/PR-03.json",
+  "docs/reduction/inference-core/contract-revisions/PR-04.json",
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "docs/reduction/inference-core/pr-03-removal-decisions.json",
+  "docs/reduction/inference-core/pr-04-data-decisions.json",
   "docs/reduction/inference-core/retention-characterization.json",
   "docs/reduction/inference-core/route-baseline.json",
   "scripts/inference-core/guardrails.mjs",
@@ -222,6 +242,8 @@ const guardrailExclusions = new Set([
   "scripts/inference-core/pr02-boundaries.test.mjs",
   "scripts/inference-core/pr03-contract-revision.mjs",
   "scripts/inference-core/pr03-boundaries.test.mjs",
+  "scripts/inference-core/pr04-contract-revision.mjs",
+  "scripts/inference-core/pr04-boundaries.test.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -241,6 +263,7 @@ const protectedGuardrailPaths = [
   "apps/web/src/middleware.ts",
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "docs/reduction/inference-core/pr-03-removal-decisions.json",
+  "docs/reduction/inference-core/pr-04-data-decisions.json",
   "packages/contracts/src/inference-core-authorization.test.ts",
   "packages/contracts/src/inference-core-authorization.ts",
   "packages/contracts/src/inference-core.test.ts",
@@ -255,6 +278,8 @@ const protectedGuardrailPaths = [
   "scripts/inference-core/pr02-contract-revision.mjs",
   "scripts/inference-core/pr03-boundaries.test.mjs",
   "scripts/inference-core/pr03-contract-revision.mjs",
+  "scripts/inference-core/pr04-boundaries.test.mjs",
+  "scripts/inference-core/pr04-contract-revision.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -497,6 +522,108 @@ const ignoredFindingFingerprints = [
   },
 ]
 
+export const pr04RetiredDependencyBoundary = {
+  path: "pnpm-lock.yaml",
+  package: "drizzle-orm@0.44.2",
+  dependency: "@upstash/redis",
+  peerRange: ">=1.34.7",
+  classification: "optional-peer-metadata-only",
+  requiredOccurrences: 2,
+}
+
+export const pr04NestedTestRetiredDependencyBoundary = {
+  path: "test-support/inference-core-db-tests/pnpm-lock.yaml",
+  package: "drizzle-orm@0.44.2",
+  dependency: "@upstash/redis",
+  peerRange: ">=1.34.7",
+  classification: "optional-peer-metadata-only-test-lock",
+  requiredOccurrences: 2,
+}
+
+export const pr04RetiredDependencyBoundaries = [
+  pr04RetiredDependencyBoundary,
+  pr04NestedTestRetiredDependencyBoundary,
+]
+
+export const pr04StandaloneDbTestBoundary = {
+  path: "test-support/inference-core-db-tests",
+  classification: "standalone-test-only-workspace",
+  allowedPaths: [
+    "test-support/inference-core-db-tests/package.json",
+    "test-support/inference-core-db-tests/pnpm-lock.yaml",
+    "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+    "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+    "test-support/inference-core-db-tests/src/idempotency.test.ts",
+    "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+    "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+    "test-support/inference-core-db-tests/tsconfig.json",
+  ],
+  packageManifest: {
+    path: "test-support/inference-core-db-tests/package.json",
+    sha256: "ff725f8972d4a0e4ed349daa1ffbfb4aa10ab40a4c76be60f739125781c85470",
+    name: "@llm-machines/inference-core-db-tests",
+    packageManager: "pnpm@10.0.0",
+    scripts: {
+      test: "vitest run",
+      typecheck: "tsc --project tsconfig.json",
+    },
+    devDependencies: {
+      "@electric-sql/pglite": "0.5.4",
+      "@types/node": "22.15.18",
+      "drizzle-orm": "0.44.2",
+      typescript: "5.8.3",
+      vitest: "3.1.4",
+    },
+  },
+  lockfile: {
+    path: "test-support/inference-core-db-tests/pnpm-lock.yaml",
+    sha256: "a7318f062798050494d0651ba28ca8ae50ab01b1db085bb1bdd884f3e79d5c61",
+  },
+  workspaceManifest: {
+    path: "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+    sha256: "44b627aa58902d12f2b7469e46784fd611bac456409c630d7636c0e7059c14aa",
+  },
+  tsconfig: {
+    path: "test-support/inference-core-db-tests/tsconfig.json",
+    sha256: "28282abe534bce160861ed5c0798292c960cb61c7dfa5636d552a245c7223d09",
+  },
+  rootIsolation: {
+    workspaceManifestPath: "pnpm-workspace.yaml",
+    rootLockfilePath: "pnpm-lock.yaml",
+    productionManifestPath: "apps/bff/package.json",
+    pglitePackage: "@electric-sql/pglite",
+    drizzlePackage: "drizzle-orm@0.44.2",
+    pglitePeerRange: ">=0.2.0",
+    allowedRootMetadataOccurrences: 2,
+  },
+  rootScripts: {
+    "test:inference-core-db":
+      "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test",
+    "typecheck:inference-core-db":
+      "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests typecheck",
+  },
+}
+
+export const pr04ReviewedDispositions = {
+  applicationTokenBudgets: {
+    persistence: "optional-values-retained",
+    runtimeEnforcement: "fail-closed-until-PR-07-qualification",
+  },
+  idempotencyAtomicity: {
+    idempotencyLedger: "postgresql-metadata-only",
+    rawKeysOrPayloadsStored: false,
+    expiredPendingDisposition:
+      "reconciliation-required-no-automatic-reexecution",
+    receiptFinalizationFailure: "fail-closed-reconciliation-required",
+    crossSystemTransaction: false,
+    keycloakDurableReconciliation: "deferred-to-PR-06",
+  },
+  auditProducerAtomicity: {
+    pr04Outbox: false,
+    followOnWorkPackages: ["PR-05", "PR-06", "PR-07", "PR-09", "PR-10"],
+  },
+}
+
 const routeMethods = [
   "get",
   "post",
@@ -645,6 +772,17 @@ const reviewedPr03WebAuthenticationEvidence = [
   {
     path: "apps/web/src/middleware.test.ts",
     sha256: "8fdc4be4e1ef7d286eaa7985a924c5490a3377c3d555dbab9047a1fed38341f7",
+  },
+  {
+    path: "apps/web/src/middleware.ts",
+    sha256: "c1e5c03f612872ad05ed6ddc14b52bc61e3c0dd2864b3f58235c3478872fa661",
+  },
+]
+
+export const reviewedPr04WebAuthenticationEvidence = [
+  {
+    path: "apps/web/src/middleware.test.ts",
+    sha256: "a5071e50a05af74d69455c99a776acad2c55ee8c5b1d907d71f0bc18e3ff7b91",
   },
   {
     path: "apps/web/src/middleware.ts",
@@ -832,6 +970,7 @@ export function scanForbiddenSurfaces({
       const fingerprints = filterIgnoredFindingFingerprints(
         rule,
         path,
+        source,
         matchFingerprints(rule, source),
       )
       if (Object.keys(fingerprints).length === 0) {
@@ -861,16 +1000,402 @@ function findingDisposition(rule, path) {
   )
 }
 
-function filterIgnoredFindingFingerprints(rule, path, fingerprints) {
+function filterIgnoredFindingFingerprints(rule, path, source, fingerprints) {
   const ignored = new Set(
     ignoredFindingFingerprints
       .filter((entry) => entry.ruleId === rule.id && entry.path === path)
       .map(({ fingerprint }) => fingerprint),
   )
+  const retiredDependencyBoundary = pr04RetiredDependencyBoundaries.find(
+    (boundary) => boundary.path === path,
+  )
+  if (
+    rule.id === "FS107_RETIRED_DATA_DEPENDENCY" &&
+    retiredDependencyBoundary
+  ) {
+    for (const fingerprint of structurallyAllowedPnpmLockFingerprints(
+      rule,
+      source,
+      retiredDependencyBoundary,
+    )) {
+      ignored.add(fingerprint)
+    }
+  }
   return Object.fromEntries(
     Object.entries(fingerprints).filter(
       ([fingerprint]) => !ignored.has(fingerprint),
     ),
+  )
+}
+
+function structurallyAllowedPnpmLockFingerprints(rule, source, boundary) {
+  const analysis = analyzePnpmLockRedisBoundary(source, boundary)
+  if (analysis.errors.length > 0) {
+    return []
+  }
+  const fingerprints = new Set()
+  for (const entry of analysis.allowedEntries) {
+    for (const fingerprint of Object.keys(matchFingerprints(rule, entry.raw))) {
+      fingerprints.add(fingerprint)
+    }
+  }
+  return fingerprints
+}
+
+export function verifyRetiredDataDependencyBoundary(
+  root = repositoryRoot,
+  paths = listCandidatePaths(root),
+) {
+  const errors = []
+  const lockfilePath = pr04RetiredDependencyBoundary.path
+  const absoluteLockfilePath = resolve(root, lockfilePath)
+  if (!paths.includes(lockfilePath) || !isRegularFile(absoluteLockfilePath)) {
+    errors.push(`missing reviewed dependency lockfile ${lockfilePath}`)
+  } else {
+    errors.push(
+      ...analyzePnpmLockRedisBoundary(
+        readFileSync(absoluteLockfilePath, "utf8"),
+      ).errors,
+    )
+  }
+
+  for (const path of paths.filter(
+    (candidate) =>
+      /^(?:package\.json|(?:apps|packages)\/[^/]+\/package\.json)$/.test(
+        candidate,
+      ) && isRegularFile(resolve(root, candidate)),
+  )) {
+    const manifest = readJson(resolve(root, path))
+    for (const field of [
+      "dependencies",
+      "devDependencies",
+      "optionalDependencies",
+      "peerDependencies",
+    ]) {
+      for (const dependency of Object.keys(manifest[field] ?? {})) {
+        if (isRetiredDataDependencyPackage(dependency)) {
+          errors.push(
+            `retired active dependency ${dependency} in ${path} ${field}`,
+          )
+        }
+      }
+    }
+  }
+
+  return errors.sort()
+}
+
+function analyzePnpmLockRedisBoundary(
+  source,
+  boundary = pr04RetiredDependencyBoundary,
+) {
+  const entries = parsePnpmLockMappingEntries(source)
+  const redisEntries = entries.filter((entry) => /redis/i.test(entry.key))
+  const expectedPeerPath = [
+    "packages",
+    boundary.package,
+    "peerDependencies",
+    boundary.dependency,
+  ]
+  const expectedMetaPath = [
+    "packages",
+    boundary.package,
+    "peerDependenciesMeta",
+    boundary.dependency,
+  ]
+  const expectedOptionalPath = [...expectedMetaPath, "optional"]
+  const peerEntry = entries.find((entry) =>
+    sameStringArray(entry.path, expectedPeerPath),
+  )
+  const metaEntry = entries.find((entry) =>
+    sameStringArray(entry.path, expectedMetaPath),
+  )
+  const optionalEntry = entries.find((entry) =>
+    sameStringArray(entry.path, expectedOptionalPath),
+  )
+  const errors = []
+
+  if (redisEntries.length !== boundary.requiredOccurrences) {
+    errors.push(
+      `invalid ${boundary.dependency} lockfile occurrence count expected=${boundary.requiredOccurrences} actual=${redisEntries.length}`,
+    )
+  }
+  if (!peerEntry || unquoteYamlScalar(peerEntry.value) !== boundary.peerRange) {
+    errors.push(`missing reviewed optional peer range ${boundary.dependency}`)
+  }
+  if (!metaEntry || metaEntry.value !== "") {
+    errors.push(
+      `missing reviewed optional peer metadata ${boundary.dependency}`,
+    )
+  }
+  if (optionalEntry?.value !== "true") {
+    errors.push(`optional peer metadata is not true ${boundary.dependency}`)
+  }
+  const expectedRedisPaths = new Set([
+    JSON.stringify(expectedPeerPath),
+    JSON.stringify(expectedMetaPath),
+  ])
+  for (const entry of redisEntries) {
+    if (!expectedRedisPaths.has(JSON.stringify(entry.path))) {
+      errors.push(
+        `active or unreviewed Redis lockfile edge ${entry.path.join(" > ")}`,
+      )
+    }
+  }
+
+  return {
+    allowedEntries:
+      errors.length === 0 && peerEntry && metaEntry
+        ? [peerEntry, metaEntry]
+        : [],
+    errors: [...new Set(errors)].sort(),
+  }
+}
+
+export function analyzeRootPgliteBoundary(source) {
+  const { rootIsolation } = pr04StandaloneDbTestBoundary
+  const entries = parsePnpmLockMappingEntries(source)
+  const pgliteEntries = entries.filter((entry) =>
+    entry.raw.toLowerCase().includes(rootIsolation.pglitePackage),
+  )
+  const expectedPeerPath = [
+    "packages",
+    rootIsolation.drizzlePackage,
+    "peerDependencies",
+    rootIsolation.pglitePackage,
+  ]
+  const expectedMetaPath = [
+    "packages",
+    rootIsolation.drizzlePackage,
+    "peerDependenciesMeta",
+    rootIsolation.pglitePackage,
+  ]
+  const expectedOptionalPath = [...expectedMetaPath, "optional"]
+  const peerEntry = entries.find((entry) =>
+    sameStringArray(entry.path, expectedPeerPath),
+  )
+  const metaEntry = entries.find((entry) =>
+    sameStringArray(entry.path, expectedMetaPath),
+  )
+  const optionalEntry = entries.find((entry) =>
+    sameStringArray(entry.path, expectedOptionalPath),
+  )
+  const errors = []
+
+  if (pgliteEntries.length !== rootIsolation.allowedRootMetadataOccurrences) {
+    errors.push(
+      `invalid ${rootIsolation.pglitePackage} root lock occurrence count expected=${rootIsolation.allowedRootMetadataOccurrences} actual=${pgliteEntries.length}`,
+    )
+  }
+  if (
+    !peerEntry ||
+    unquoteYamlScalar(peerEntry.value) !== rootIsolation.pglitePeerRange
+  ) {
+    errors.push(
+      `missing reviewed optional peer range ${rootIsolation.pglitePackage} in root lock`,
+    )
+  }
+  if (!metaEntry || metaEntry.value !== "") {
+    errors.push(
+      `missing reviewed optional peer metadata ${rootIsolation.pglitePackage} in root lock`,
+    )
+  }
+  if (optionalEntry?.value !== "true") {
+    errors.push(
+      `optional peer metadata is not true ${rootIsolation.pglitePackage} in root lock`,
+    )
+  }
+  const expectedPglitePaths = new Set([
+    JSON.stringify(expectedPeerPath),
+    JSON.stringify(expectedMetaPath),
+  ])
+  for (const entry of pgliteEntries) {
+    if (!expectedPglitePaths.has(JSON.stringify(entry.path))) {
+      errors.push(
+        `active or resolved PGlite root lock edge ${entry.path.join(" > ")}`,
+      )
+    }
+  }
+
+  return [...new Set(errors)].sort()
+}
+
+export function verifyStandaloneDbTestBoundary(
+  root = repositoryRoot,
+  paths = listCandidatePaths(root),
+) {
+  const errors = []
+  const boundary = pr04StandaloneDbTestBoundary
+  const actualPaths = paths
+    .filter(
+      (path) => path === boundary.path || path.startsWith(`${boundary.path}/`),
+    )
+    .sort()
+  const expectedPaths = [...boundary.allowedPaths].sort()
+  if (JSON.stringify(actualPaths) !== JSON.stringify(expectedPaths)) {
+    errors.push(
+      `standalone DB test workspace paths changed expected=${expectedPaths.join(",")} actual=${actualPaths.join(",")}`,
+    )
+  }
+
+  for (const evidence of [
+    boundary.packageManifest,
+    boundary.lockfile,
+    boundary.workspaceManifest,
+    boundary.tsconfig,
+  ]) {
+    const absolutePath = resolve(root, evidence.path)
+    if (!paths.includes(evidence.path) || !isRegularFile(absolutePath)) {
+      errors.push(`missing standalone DB test boundary file ${evidence.path}`)
+      continue
+    }
+    const actualSha256 = sha256(readFileSync(absolutePath))
+    if (actualSha256 !== evidence.sha256) {
+      errors.push(
+        `standalone DB test boundary changed ${evidence.path} expected=${evidence.sha256} actual=${actualSha256}`,
+      )
+    }
+  }
+
+  const manifestPath = boundary.packageManifest.path
+  if (isRegularFile(resolve(root, manifestPath))) {
+    const expectedManifest = {
+      name: boundary.packageManifest.name,
+      private: true,
+      version: "0.0.0",
+      type: "module",
+      packageManager: boundary.packageManifest.packageManager,
+      scripts: boundary.packageManifest.scripts,
+      devDependencies: boundary.packageManifest.devDependencies,
+    }
+    const manifest = readJson(resolve(root, manifestPath))
+    if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest)) {
+      errors.push("invalid standalone DB test package manifest")
+    }
+  }
+
+  const nestedLockPath = boundary.lockfile.path
+  if (isRegularFile(resolve(root, nestedLockPath))) {
+    errors.push(
+      ...analyzePnpmLockRedisBoundary(
+        readFileSync(resolve(root, nestedLockPath), "utf8"),
+        pr04NestedTestRetiredDependencyBoundary,
+      ).errors.map((error) => `nested test lock: ${error}`),
+    )
+  }
+
+  const rootWorkspacePath = boundary.rootIsolation.workspaceManifestPath
+  if (isRegularFile(resolve(root, rootWorkspacePath))) {
+    const source = readFileSync(
+      resolve(root, rootWorkspacePath),
+      "utf8",
+    ).replaceAll("\r\n", "\n")
+    if (source !== "packages:\n  - apps/*\n  - packages/*\n") {
+      errors.push("standalone DB tests entered the root pnpm workspace")
+    }
+  } else {
+    errors.push(`missing root workspace manifest ${rootWorkspacePath}`)
+  }
+
+  const rootLockPath = boundary.rootIsolation.rootLockfilePath
+  if (
+    !paths.includes(rootLockPath) ||
+    !isRegularFile(resolve(root, rootLockPath))
+  ) {
+    errors.push(`missing root dependency lockfile ${rootLockPath}`)
+  } else {
+    errors.push(
+      ...analyzeRootPgliteBoundary(
+        readFileSync(resolve(root, rootLockPath), "utf8"),
+      ),
+    )
+  }
+
+  const productionManifestPath = boundary.rootIsolation.productionManifestPath
+  if (
+    !paths.includes(productionManifestPath) ||
+    !isRegularFile(resolve(root, productionManifestPath))
+  ) {
+    errors.push(`missing production manifest ${productionManifestPath}`)
+  } else {
+    const manifest = readJson(resolve(root, productionManifestPath))
+    for (const field of [
+      "dependencies",
+      "devDependencies",
+      "optionalDependencies",
+      "peerDependencies",
+    ]) {
+      for (const [dependency, specifier] of Object.entries(
+        manifest[field] ?? {},
+      )) {
+        if (
+          dependency.toLowerCase() === boundary.rootIsolation.pglitePackage ||
+          String(specifier)
+            .toLowerCase()
+            .includes(boundary.rootIsolation.pglitePackage)
+        ) {
+          errors.push(
+            `PGlite dependency is not allowed in ${productionManifestPath} ${field}`,
+          )
+        }
+      }
+    }
+  }
+
+  return [...new Set(errors)].sort()
+}
+
+function parsePnpmLockMappingEntries(source) {
+  const entries = []
+  const stack = []
+  for (const [index, raw] of source
+    .replaceAll("\r\n", "\n")
+    .split("\n")
+    .entries()) {
+    if (raw.trim().length === 0 || raw.trimStart().startsWith("#")) {
+      continue
+    }
+    const indent = raw.length - raw.trimStart().length
+    const trimmed = raw.trim()
+    const separator = trimmed.indexOf(":")
+    if (separator <= 0) {
+      continue
+    }
+    const key = unquoteYamlScalar(trimmed.slice(0, separator).trim())
+    const value = trimmed.slice(separator + 1).trim()
+    while (stack.at(-1)?.indent >= indent) {
+      stack.pop()
+    }
+    const path = [...stack.map((entry) => entry.key), key]
+    const entry = { indent, key, line: index + 1, path, raw, value }
+    entries.push(entry)
+    if (value === "") {
+      stack.push(entry)
+    }
+  }
+  return entries
+}
+
+function unquoteYamlScalar(value) {
+  if (
+    value.length >= 2 &&
+    ((value.startsWith("'") && value.endsWith("'")) ||
+      (value.startsWith('"') && value.endsWith('"')))
+  ) {
+    return value.slice(1, -1)
+  }
+  return value
+}
+
+function sameStringArray(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function isRetiredDataDependencyPackage(name) {
+  return (
+    /^(?:ioredis|redis|mongodb|minio|pgvector)$/i.test(name) ||
+    /^@upstash\/redis$/i.test(name) ||
+    /^@temporalio(?:\/|$)/i.test(name)
   )
 }
 
@@ -1150,6 +1675,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     paths,
     baseCommit: expectedRoutes.baseCommit,
   })
+  const activeReviewedRevision = expectedRoutes.reviewedRevisions?.at(-1)?.id
 
   const errors = [
     ...compareForbiddenBaselineMetadata(expectedAllowlist, actualAllowlist),
@@ -1159,13 +1685,20 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(expectedRoutes.reviewedRevisions?.at(-1)?.id === "PR-03"
-      ? verifyPr03TargetState({
+    ...(activeReviewedRevision === "PR-04"
+      ? verifyPr04TargetState({
           root,
           currentAllowlist: expectedAllowlist,
           currentRoutes: expectedRoutes,
+          paths,
         })
-      : []),
+      : activeReviewedRevision === "PR-03"
+        ? verifyPr03TargetState({
+            root,
+            currentAllowlist: expectedAllowlist,
+            currentRoutes: expectedRoutes,
+          })
+        : []),
   ]
 
   let baseStatus = "not-requested"
@@ -1201,7 +1734,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       })
       errors.push(...reviewedRevision.errors)
       if (reviewedRevision.present) {
-        if (reviewedRevision.id !== "PR-03") {
+        if (!new Set(["PR-03", "PR-04"]).has(reviewedRevision.id)) {
           errors.push(
             ...verifyReviewedFindingReduction(
               baseAllowlist.entries,
@@ -1262,6 +1795,8 @@ export function verifyReviewedContractRevision({
   const currentPr02Revision = currentRevisions.find(({ id }) => id === "PR-02")
   const basePr03Revision = baseRevisions.find(({ id }) => id === "PR-03")
   const currentPr03Revision = currentRevisions.find(({ id }) => id === "PR-03")
+  const basePr04Revision = baseRevisions.find(({ id }) => id === "PR-04")
+  const currentPr04Revision = currentRevisions.find(({ id }) => id === "PR-04")
   const errors = []
   if (
     (!currentPr02Revision || !basePr02Revision) &&
@@ -1282,7 +1817,30 @@ export function verifyReviewedContractRevision({
         ...verifyRetainedPr03RevisionEvidence(root, currentPr03Revision),
       )
     }
+    if (basePr04Revision && currentPr04Revision) {
+      errors.push(
+        ...verifyRetainedPr04RevisionEvidence(root, currentPr04Revision),
+      )
+    }
     return { present: false, id: null, errors: errors.sort() }
+  }
+
+  if (
+    isExactRevisionAppend(
+      baseRevisions,
+      currentRevisions,
+      "PR-04",
+      pr04ContractRevisionPath,
+    )
+  ) {
+    return verifyIntroducedPr04Revision({
+      root,
+      baseCommit,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+    })
   }
 
   if (
@@ -1511,6 +2069,127 @@ function verifyPr03LaneLineage(root) {
   }
 }
 
+function verifyIntroducedPr04Revision({
+  root,
+  baseCommit,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+}) {
+  const errors = []
+  if (baseCommit !== pr04ContractBase) {
+    errors.push(
+      `PR-04 contract revision base changed expected=${pr04ContractBase} actual=${baseCommit}`,
+    )
+  }
+  errors.push(...verifyPr04LaneLineage(root))
+  errors.push(...verifyPr04BaseEvidence(root))
+  const baseRevisionHistory = baseRoutes.reviewedRevisions ?? []
+  if (
+    baseRevisionHistory.length !== 2 ||
+    baseRevisionHistory[0]?.id !== "PR-02" ||
+    baseRevisionHistory[1]?.id !== "PR-03"
+  ) {
+    errors.push(
+      "PR-04 requires the exact retained PR-02 and PR-03 revision history",
+    )
+  } else {
+    errors.push(
+      ...verifyRetainedPr02RevisionEvidence(root, baseRevisionHistory[0]),
+      ...verifyRetainedPr03RevisionEvidence(root, baseRevisionHistory[1]),
+    )
+  }
+  if (!isRegularFile(resolve(root, pr04ContractRevisionPath))) {
+    return {
+      present: true,
+      id: "PR-04",
+      errors: [
+        ...errors,
+        `missing reviewed contract revision ${pr04ContractRevisionPath}`,
+      ].sort(),
+    }
+  }
+
+  const decision = readPr04DecisionDocument(root)
+  errors.push(
+    ...verifyPr04DecisionDocument(decision, {
+      requireReady: true,
+    }),
+  )
+  const evidenceFiles = buildRevisionEvidenceFingerprints(
+    root,
+    pr04RevisionEvidencePaths,
+    "PR-04",
+  )
+  const expected = buildContractRevisionDocument({
+    revisionId: "PR-04",
+    scope: "data-retention-foundation",
+    baseCommit,
+    baseTree: resolveTree(root, baseCommit),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes: {
+      ...currentRoutes,
+      reviewedRevisions: structuredClone(baseRoutes.reviewedRevisions ?? []),
+    },
+    evidenceFiles,
+  })
+  const actual = readJson(resolve(root, pr04ContractRevisionPath))
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    errors.push("PR-04 reviewed contract revision does not match exact changes")
+  }
+
+  const expectedRevisionHistory = [
+    ...(baseRoutes.reviewedRevisions ?? []),
+    {
+      id: "PR-04",
+      path: pr04ContractRevisionPath,
+      sha256: sha256(readFileSync(resolve(root, pr04ContractRevisionPath))),
+    },
+  ]
+  if (
+    JSON.stringify(currentRoutes.reviewedRevisions ?? []) !==
+    JSON.stringify(expectedRevisionHistory)
+  ) {
+    errors.push("reviewed contract revision history changed")
+  }
+  errors.push(...verifyRequiredRoutes(currentRoutes))
+  errors.push(
+    ...verifyPr04CandidateContract({
+      root,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+      operationPolicy: decision.operationPolicy,
+    }),
+  )
+
+  return { present: true, id: "PR-04", errors: errors.sort() }
+}
+
+function verifyPr04LaneLineage(root) {
+  const anchor = resolveCommit(root, pr04LaneAnchor)
+  if (anchor !== pr04LaneAnchor) {
+    return [`PR-04 lane anchor is unavailable ${pr04LaneAnchor}`]
+  }
+  const head = currentHead(root)
+  if (head === pr04LaneAnchor) {
+    return []
+  }
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", pr04LaneAnchor, head], {
+      cwd: root,
+      stdio: "ignore",
+    })
+    return []
+  } catch {
+    return [`PR-04 lane anchor is not an ancestor ${pr04LaneAnchor}`]
+  }
+}
+
 function verifyRetainedPr02RevisionEvidence(root, revision) {
   const errors = []
   if (
@@ -1586,6 +2265,83 @@ function verifyRetainedPr03RevisionEvidence(root, revision) {
     )
   ) {
     errors.push("retained PR-03 revision evidence changed")
+  }
+  return errors.sort()
+}
+
+function verifyRetainedPr04RevisionEvidence(root, revision) {
+  const errors = []
+  if (
+    revision.id !== "PR-04" ||
+    revision.path !== pr04ContractRevisionPath ||
+    !/^[0-9a-f]{64}$/.test(revision.sha256 ?? "")
+  ) {
+    return ["invalid retained PR-04 revision identity"]
+  }
+  const absolutePath = resolve(root, pr04ContractRevisionPath)
+  if (!isRegularFile(absolutePath)) {
+    return [`missing reviewed contract revision ${pr04ContractRevisionPath}`]
+  }
+  if (sha256(readFileSync(absolutePath)) !== revision.sha256) {
+    errors.push("retained PR-04 revision fingerprint changed")
+  }
+  const document = readJson(absolutePath)
+  if (
+    document.id !== "PR-04" ||
+    document.scope !== "data-retention-foundation" ||
+    document.baseCommit !== pr04ContractBase ||
+    document.baseTree !== resolveTree(root, pr04ContractBase)
+  ) {
+    errors.push("retained PR-04 revision base identity changed")
+  }
+  if (
+    JSON.stringify(document.evidenceFiles) !==
+    JSON.stringify(
+      buildRevisionEvidenceFingerprints(
+        root,
+        pr04RevisionEvidencePaths,
+        "PR-04",
+      ),
+    )
+  ) {
+    errors.push("retained PR-04 revision evidence changed")
+  }
+  errors.push(...verifyPr04BaseEvidence(root))
+  return errors.sort()
+}
+
+export function verifyPr04BaseEvidence(root = repositoryRoot) {
+  const errors = []
+  for (const path of pr04ImmutablePriorEvidencePaths) {
+    let expected
+    try {
+      expected = execFileSync(
+        "git",
+        [
+          "show",
+          "--no-ext-diff",
+          "--no-textconv",
+          "--end-of-options",
+          `${pr04ContractBase}:${path}`,
+        ],
+        {
+          cwd: root,
+          encoding: null,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      )
+    } catch {
+      errors.push(`PR-04 immutable base evidence is unavailable ${path}`)
+      continue
+    }
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-04 retained prior evidence is missing ${path}`)
+      continue
+    }
+    if (!readFileSync(absolutePath).equals(expected)) {
+      errors.push(`PR-04 retained prior evidence changed ${path}`)
+    }
   }
   return errors.sort()
 }
@@ -1946,6 +2702,156 @@ export function verifyPr03DecisionDocument(
   return errors.sort()
 }
 
+export function readPr04DecisionDocument(root = repositoryRoot) {
+  return readJson(resolve(root, pr04DecisionPath))
+}
+
+export function verifyPr04DecisionDocument(
+  decision,
+  { requireReady = false } = {},
+) {
+  const errors = []
+  const expectedKeys = [
+    "contractBaseCommit",
+    "laneAnchorCommit",
+    "operationPolicy",
+    "reviewStatus",
+    "reviewedDispositions",
+    "schemaVersion",
+    "scope",
+    "standaloneDbTestBoundary",
+    "structuralExceptions",
+    "target",
+    "webAuthenticationEvidence",
+    "workPackage",
+  ]
+  const expectedTarget = {
+    findingEntriesDueByPr04: 0,
+    legacyRoutes: 0,
+    routes: 79,
+    fastifyRegistrars: 3,
+    webInferenceConsumers: 0,
+    escapeHatchPaths: ["apps/bff/src/auth/persona.ts"],
+  }
+  if (
+    !decision ||
+    JSON.stringify(Object.keys(decision).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-04" ||
+    decision.scope !== "data-retention-foundation" ||
+    decision.contractBaseCommit !== pr04ContractBase ||
+    decision.laneAnchorCommit !== pr04LaneAnchor
+  ) {
+    errors.push("invalid PR-04 decision identity")
+  }
+  if (
+    JSON.stringify(decision?.reviewedDispositions) !==
+    JSON.stringify(pr04ReviewedDispositions)
+  ) {
+    errors.push("invalid PR-04 reviewed dispositions")
+  }
+  if (
+    JSON.stringify(decision?.structuralExceptions) !==
+    JSON.stringify(pr04RetiredDependencyBoundaries)
+  ) {
+    errors.push("invalid PR-04 structural exceptions")
+  }
+  if (
+    JSON.stringify(decision?.standaloneDbTestBoundary) !==
+    JSON.stringify(pr04StandaloneDbTestBoundary)
+  ) {
+    errors.push("invalid PR-04 standalone DB test boundary")
+  }
+  if (
+    JSON.stringify(decision?.webAuthenticationEvidence) !==
+    JSON.stringify(reviewedPr04WebAuthenticationEvidence)
+  ) {
+    errors.push("invalid PR-04 Web authentication evidence")
+  }
+  if (JSON.stringify(decision?.target) !== JSON.stringify(expectedTarget)) {
+    errors.push("invalid PR-04 target")
+  }
+  if (
+    !["pending-final-staged-delta", "reviewed"].includes(decision?.reviewStatus)
+  ) {
+    errors.push("invalid PR-04 review status")
+  } else if (requireReady && decision.reviewStatus !== "reviewed") {
+    errors.push("PR-04 operation policy is not reviewed")
+  }
+  errors.push(
+    ...verifyExactPathPolicy(
+      decision?.operationPolicy ?? {},
+      ["addedSourcePaths", "changedSourcePaths", "deletedSourcePaths"],
+      "PR-04",
+    ),
+    ...verifyExactPathPolicy(
+      decision?.operationPolicy ?? {},
+      [
+        "addedRepositoryPaths",
+        "changedRepositoryPaths",
+        "deletedRepositoryPaths",
+      ],
+      "PR-04",
+    ),
+  )
+  return errors.sort()
+}
+
+export function buildExactClosureOperationPolicy(baseRoutes, currentRoutes) {
+  return {
+    ...buildClosurePathOperations(
+      baseRoutes.sourceClosure ?? [],
+      currentRoutes.sourceClosure ?? [],
+      {
+        addedKey: "addedSourcePaths",
+        changedKey: "changedSourcePaths",
+        deletedKey: "deletedSourcePaths",
+      },
+    ),
+    ...buildClosurePathOperations(
+      baseRoutes.repositoryClosure ?? [],
+      currentRoutes.repositoryClosure ?? [],
+      {
+        addedKey: "addedRepositoryPaths",
+        changedKey: "changedRepositoryPaths",
+        deletedKey: "deletedRepositoryPaths",
+      },
+    ),
+  }
+}
+
+function buildClosurePathOperations(
+  base,
+  current,
+  { addedKey, changedKey, deletedKey },
+) {
+  const baseByPath = new Map(base.map((entry) => [entry.path, entry]))
+  const currentByPath = new Map(current.map((entry) => [entry.path, entry]))
+  const result = {
+    [addedKey]: [],
+    [changedKey]: [],
+    [deletedKey]: [],
+  }
+  for (const path of [
+    ...new Set([...baseByPath.keys(), ...currentByPath.keys()]),
+  ]) {
+    const before = baseByPath.get(path)
+    const after = currentByPath.get(path)
+    if (!before) {
+      result[addedKey].push(path)
+    } else if (!after) {
+      result[deletedKey].push(path)
+    } else if (JSON.stringify(before) !== JSON.stringify(after)) {
+      result[changedKey].push(path)
+    }
+  }
+  for (const paths of Object.values(result)) {
+    paths.sort()
+  }
+  return result
+}
+
 export function verifyPr03FindingTransition(baseEntries, currentEntries) {
   const errors = []
   const baseByKey = new Map(
@@ -2108,11 +3014,139 @@ function verifyPr03ClosureChanges(
   return errors.sort()
 }
 
+export function verifyPr04FindingTransition(baseEntries, currentEntries) {
+  const errors = []
+  const baseByKey = new Map(
+    baseEntries.map((entry) => [findingKey(entry), entry]),
+  )
+  for (const entry of currentEntries) {
+    const key = findingKey(entry)
+    const baseEntry = baseByKey.get(key)
+    if (!baseEntry) {
+      errors.push(`new PR-04 reviewed legacy finding ${key}`)
+      continue
+    }
+    if (entry.count > baseEntry.count) {
+      errors.push(`PR-04 reviewed legacy finding count grew ${key}`)
+    }
+    if (entry.removeBy !== baseEntry.removeBy) {
+      errors.push(`PR-04 legacy disposition changed outside policy ${key}`)
+    }
+  }
+  const dueEntries = currentEntries.filter(
+    (entry) => entry.removeBy === "PR-04",
+  )
+  if (dueEntries.length > 0) {
+    errors.push(
+      `PR-04 findings remain ${dueEntries.map(findingKey).sort().join(",")}`,
+    )
+  }
+  return errors.sort()
+}
+
+export function verifyPr04CandidateContract({
+  root = repositoryRoot,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+  operationPolicy,
+}) {
+  const errors = [
+    ...verifyPr04FindingTransition(
+      baseAllowlist.entries ?? [],
+      currentAllowlist.entries ?? [],
+    ),
+    ...verifyPr04RetainedRouteContract(baseRoutes, currentRoutes),
+    ...verifyExactClosureChanges(
+      baseRoutes.sourceClosure ?? [],
+      currentRoutes.sourceClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedSourcePaths",
+        changedKey: "changedSourcePaths",
+        deletedKey: "deletedSourcePaths",
+        label: "source closure",
+      },
+      "PR-04",
+    ),
+    ...verifyExactClosureChanges(
+      baseRoutes.repositoryClosure ?? [],
+      currentRoutes.repositoryClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedRepositoryPaths",
+        changedKey: "changedRepositoryPaths",
+        deletedKey: "deletedRepositoryPaths",
+        label: "repository closure",
+      },
+      "PR-04",
+    ),
+    ...verifyPr04TargetState({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths: (currentRoutes.repositoryClosure ?? []).map(({ path }) => path),
+    }),
+  ]
+  return errors.sort()
+}
+
+function verifyPr04RetainedRouteContract(base, current) {
+  const errors = []
+  for (const key of [
+    "target",
+    "routes",
+    "fastifyRegistrars",
+    "webInferenceConsumers",
+    "fingerprints",
+  ]) {
+    if (
+      JSON.stringify(current[key] ?? null) !== JSON.stringify(base[key] ?? null)
+    ) {
+      errors.push(`PR-04 retained route contract changed ${key}`)
+    }
+  }
+  return errors
+}
+
+function verifyExactClosureChanges(
+  base,
+  current,
+  policy,
+  { addedKey, changedKey, deletedKey, label },
+  workPackage,
+) {
+  const errors = verifyExactPathPolicy(
+    policy ?? {},
+    [addedKey, changedKey, deletedKey],
+    workPackage,
+  )
+  const actual = buildClosurePathOperations(base, current, {
+    addedKey,
+    changedKey,
+    deletedKey,
+  })
+  for (const key of Object.keys(actual)) {
+    const expectedPaths = [...(policy?.[key] ?? [])].sort()
+    const actualPaths = actual[key]
+    if (JSON.stringify(expectedPaths) !== JSON.stringify(actualPaths)) {
+      errors.push(
+        `${workPackage} ${key} differ expected=${expectedPaths.join(",")} actual=${actualPaths.join(",")}`,
+      )
+    }
+  }
+  return errors.sort()
+}
+
 export function verifyPr03TargetState({
   root = repositoryRoot,
   currentAllowlist,
   currentRoutes,
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-04") {
+    return []
+  }
   const errors = []
   const classificationCounts = new Map()
   for (const route of currentRoutes.routes ?? []) {
@@ -2184,6 +3218,85 @@ export function verifyPr03TargetState({
   return errors.sort()
 }
 
+export function verifyPr04TargetState({
+  root = repositoryRoot,
+  currentAllowlist,
+  currentRoutes,
+  paths = listCandidatePaths(root),
+}) {
+  const errors = []
+  const classificationCounts = new Map()
+  for (const route of currentRoutes.routes ?? []) {
+    classificationCounts.set(
+      route.classification,
+      (classificationCounts.get(route.classification) ?? 0) + 1,
+    )
+  }
+  const expectedClassificationCounts = {
+    "current-console-seam": 70,
+    "legacy-retired": 0,
+    "operational-auth": 4,
+    "private-operational": 3,
+    "required-now": 2,
+  }
+  for (const [classification, expected] of Object.entries(
+    expectedClassificationCounts,
+  )) {
+    const actual = classificationCounts.get(classification) ?? 0
+    if (actual !== expected) {
+      errors.push(
+        `PR-04 route count changed ${classification} expected=${expected} actual=${actual}`,
+      )
+    }
+  }
+  if ((currentRoutes.routes ?? []).length !== 79) {
+    errors.push(
+      `PR-04 total route count changed expected=79 actual=${(currentRoutes.routes ?? []).length}`,
+    )
+  }
+  const expectedRegistrarNames = [
+    "registerAdminRoutes",
+    "registerAppGatewayRoutes",
+    "registerPersonaAuth",
+  ]
+  const registrarNames = (currentRoutes.fastifyRegistrars ?? [])
+    .map(({ exportName }) => exportName)
+    .sort()
+  if (
+    JSON.stringify(registrarNames) !== JSON.stringify(expectedRegistrarNames)
+  ) {
+    errors.push("PR-04 retained Fastify registrars changed")
+  }
+  if ((currentRoutes.webInferenceConsumers ?? []).length !== 0) {
+    errors.push("PR-04 Web inference consumer count is not zero")
+  }
+  if (
+    JSON.stringify(currentRoutes.fingerprints ?? []) !==
+    JSON.stringify(reviewedPr03ResolverFingerprints)
+  ) {
+    errors.push("PR-04 resolver fingerprints changed")
+  }
+  const escapeHatches = currentRoutes.escapeHatches ?? []
+  if (
+    escapeHatches.length !== 1 ||
+    escapeHatches[0]?.path !== "apps/bff/src/auth/persona.ts" ||
+    escapeHatches[0]?.removeBy !== "PR-05" ||
+    !/^[0-9a-f]{64}$/.test(escapeHatches[0]?.sha256 ?? "")
+  ) {
+    errors.push("PR-04 escape hatch target changed")
+  }
+  if (
+    (currentAllowlist.entries ?? []).some((entry) => entry.removeBy === "PR-04")
+  ) {
+    errors.push("PR-04 due findings remain")
+  }
+  errors.push(...verifyRetiredDataDependencyBoundary(root, paths))
+  errors.push(...verifyStandaloneDbTestBoundary(root, paths))
+  errors.push(...verifyReviewedPr04WebAuthenticationEvidence(root))
+  errors.push(...verifyWebAuthenticationBoundary(root))
+  return errors.sort()
+}
+
 export function verifyReviewedWebAuthenticationEvidence(root = repositoryRoot) {
   const errors = []
   for (const {
@@ -2199,6 +3312,29 @@ export function verifyReviewedWebAuthenticationEvidence(root = repositoryRoot) {
     if (actualSha256 !== expectedSha256) {
       errors.push(
         `reviewed Web authentication evidence changed ${path} expected=${expectedSha256} actual=${actualSha256}`,
+      )
+    }
+  }
+  return errors.sort()
+}
+
+export function verifyReviewedPr04WebAuthenticationEvidence(
+  root = repositoryRoot,
+) {
+  const errors = []
+  for (const {
+    path,
+    sha256: expectedSha256,
+  } of reviewedPr04WebAuthenticationEvidence) {
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`missing PR-04 Web authentication evidence ${path}`)
+      continue
+    }
+    const actualSha256 = sha256(readFileSync(absolutePath))
+    if (actualSha256 !== expectedSha256) {
+      errors.push(
+        `PR-04 Web authentication evidence changed ${path} expected=${expectedSha256} actual=${actualSha256}`,
       )
     }
   }
@@ -2365,18 +3501,20 @@ function routeManifestKey(route) {
 
 function buildReviewedRevisionFingerprints(root) {
   const revisions = []
+  let missingRevision = null
   for (const { id, path } of [
     { id: "PR-02", path: pr02ContractRevisionPath },
     { id: "PR-03", path: pr03ContractRevisionPath },
+    { id: "PR-04", path: pr04ContractRevisionPath },
   ]) {
     if (!isRegularFile(resolve(root, path))) {
-      if (
-        id === "PR-02" &&
-        isRegularFile(resolve(root, pr03ContractRevisionPath))
-      ) {
-        throw new Error("PR-03 contract revision cannot exist without PR-02")
-      }
+      missingRevision ??= id
       continue
+    }
+    if (missingRevision) {
+      throw new Error(
+        `${id} contract revision cannot exist without ${missingRevision}`,
+      )
     }
     revisions.push({
       id,
@@ -2466,14 +3604,20 @@ export function verifyCorePackageClosure(
       "node scripts/inference-core/run-core-command.mjs build",
     "check:inference-core": "node scripts/inference-core/guardrails.mjs",
     "check:inference-core:base":
-      "node scripts/inference-core/guardrails.mjs --base-ref 964ff087f39111862c90f72ec57ab33bb937f5d2",
+      "node scripts/inference-core/guardrails.mjs --base-ref fb36b9de38396af79c82056963ae3f4833a12fef",
     "test:inference-core-authorization":
       "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match exec vitest run src/inference-core-authorization.test.ts",
     "test:inference-core-characterization":
       "corepack pnpm --filter @llm-machines/bff --fail-if-no-match exec vitest run src/routes/inference-core-characterization.test.ts",
+    "test:inference-core-db":
+      pr04StandaloneDbTestBoundary.rootScripts["test:inference-core-db"],
     "test:inference-core-guardrails":
       "node --test scripts/inference-core/*.test.mjs",
-    test: "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm -r --fail-if-no-match test",
+    test: "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test",
+    typecheck:
+      "corepack pnpm -r build && corepack pnpm -r typecheck && corepack pnpm run typecheck:inference-core-db",
+    "typecheck:inference-core-db":
+      pr04StandaloneDbTestBoundary.rootScripts["typecheck:inference-core-db"],
     "typecheck:inference-core":
       "node scripts/inference-core/run-core-command.mjs typecheck",
   }
@@ -3969,6 +5113,17 @@ function assertReviewedFastifyControlCall(path, sourceFile, call, method) {
   ) {
     return
   }
+  if (
+    method === "addHook" &&
+    path === "apps/bff/src/index.ts" &&
+    hook === "onClose" &&
+    call.arguments.length === 2 &&
+    handler &&
+    ts.isIdentifier(handler) &&
+    handler.text === "closeInferenceCoreDb"
+  ) {
+    return
+  }
   throw routeAnalysisError(
     path,
     sourceFile,
@@ -5173,6 +6328,8 @@ function forbiddenPolicyDigest() {
       contentRules,
       findingDispositionOverrides,
       ignoredFindingFingerprints,
+      pr04RetiredDependencyBoundaries,
+      pr04StandaloneDbTestBoundary,
       implementation: [
         listCandidatePaths,
         listCachedEntries,
@@ -5180,6 +6337,15 @@ function forbiddenPolicyDigest() {
         scanForbiddenSurfaces,
         findingDisposition,
         filterIgnoredFindingFingerprints,
+        structurallyAllowedPnpmLockFingerprints,
+        verifyRetiredDataDependencyBoundary,
+        analyzePnpmLockRedisBoundary,
+        analyzeRootPgliteBoundary,
+        verifyStandaloneDbTestBoundary,
+        parsePnpmLockMappingEntries,
+        unquoteYamlScalar,
+        sameStringArray,
+        isRetiredDataDependencyPackage,
         matchFingerprints,
         isContentScanPath,
         isGuardrailPath,
@@ -5228,6 +6394,19 @@ function routePolicyDigest() {
           webMiddlewareMatcher: reviewedPr03WebMiddlewareMatcher,
           operationPolicy:
             readPr03DecisionDocument(repositoryRoot).operationPolicy,
+        },
+        {
+          id: "PR-04",
+          contractBase: pr04ContractBase,
+          laneAnchor: pr04LaneAnchor,
+          path: pr04ContractRevisionPath,
+          evidencePaths: pr04RevisionEvidencePaths,
+          retiredDependencyBoundaries: pr04RetiredDependencyBoundaries,
+          standaloneDbTestBoundary: pr04StandaloneDbTestBoundary,
+          webAuthenticationEvidence: reviewedPr04WebAuthenticationEvidence,
+          reviewedDispositions: pr04ReviewedDispositions,
+          operationPolicy:
+            readPr04DecisionDocument(repositoryRoot).operationPolicy,
         },
       ],
       implementation: [
@@ -5300,8 +6479,12 @@ function routePolicyDigest() {
         verifyIntroducedPr03Revision,
         verifyPr03LaneLineage,
         verifyPr03BaseEvidence,
+        verifyIntroducedPr04Revision,
+        verifyPr04LaneLineage,
+        verifyPr04BaseEvidence,
         verifyRetainedPr02RevisionEvidence,
         verifyRetainedPr03RevisionEvidence,
+        verifyRetainedPr04RevisionEvidence,
         verifyPr02OperationMatrix,
         verifyExactMultisetSubset,
         verifyPr02EscapeHatches,
@@ -5310,12 +6493,22 @@ function routePolicyDigest() {
         verifyPr02ClosureChanges,
         readPr03DecisionDocument,
         verifyPr03DecisionDocument,
+        readPr04DecisionDocument,
+        verifyPr04DecisionDocument,
+        buildExactClosureOperationPolicy,
+        buildClosurePathOperations,
         verifyPr03FindingTransition,
         verifyPr03CandidateContract,
         verifyPr03RetainedRouteContract,
         verifyPr03ClosureChanges,
         verifyPr03TargetState,
+        verifyPr04FindingTransition,
+        verifyPr04CandidateContract,
+        verifyPr04RetainedRouteContract,
+        verifyExactClosureChanges,
+        verifyPr04TargetState,
         verifyReviewedWebAuthenticationEvidence,
+        verifyReviewedPr04WebAuthenticationEvidence,
         verifyWebAuthenticationBoundary,
         verifyExactPathPolicy,
         uniqueEntriesByPath,
@@ -5436,13 +6629,16 @@ function resolveCommit(root, ref) {
 export function verifyBaseCommitLineage(
   root,
   baseCommit,
-  dirtySameHeadBase = pr02IntegrationBase,
+  dirtySameHeadBase = [pr02IntegrationBase, pr04ContractBase],
 ) {
   const head = currentHead(root)
   if (baseCommit === head) {
-    if (baseCommit !== dirtySameHeadBase) {
+    const allowedDirtyBases = Array.isArray(dirtySameHeadBase)
+      ? dirtySameHeadBase
+      : [dirtySameHeadBase]
+    if (!allowedDirtyBases.includes(baseCommit)) {
       return [
-        `base ref must be a proper ancestor outside the fixed PR-02 precommit base ${baseCommit}`,
+        `base ref must be a proper ancestor outside the fixed precommit bases ${baseCommit}`,
       ]
     }
     const candidateChanges = execFileSync(

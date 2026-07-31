@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-04",
+  "scope": "data-retention-foundation",
+  "contractBaseCommit": "fb36b9de38396af79c82056963ae3f4833a12fef",
+  "laneAnchorCommit": "fb36b9de38396af79c82056963ae3f4833a12fef",
+  "reviewStatus": "reviewed",
+  "reviewedDispositions": {
+    "applicationTokenBudgets": {
+      "persistence": "optional-values-retained",
+      "runtimeEnforcement": "fail-closed-until-PR-07-qualification"
+    },
+    "idempotencyAtomicity": {
+      "idempotencyLedger": "postgresql-metadata-only",
+      "rawKeysOrPayloadsStored": false,
+      "expiredPendingDisposition": "reconciliation-required-no-automatic-reexecution",
+      "receiptFinalizationFailure": "fail-closed-reconciliation-required",
+      "crossSystemTransaction": false,
+      "keycloakDurableReconciliation": "deferred-to-PR-06"
+    },
+    "auditProducerAtomicity": {
+      "pr04Outbox": false,
+      "followOnWorkPackages": ["PR-05", "PR-06", "PR-07", "PR-09", "PR-10"]
+    }
+  },
+  "structuralExceptions": [
+    {
+      "path": "pnpm-lock.yaml",
+      "package": "drizzle-orm@0.44.2",
+      "dependency": "@upstash/redis",
+      "peerRange": ">=1.34.7",
+      "classification": "optional-peer-metadata-only",
+      "requiredOccurrences": 2
+    },
+    {
+      "path": "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "package": "drizzle-orm@0.44.2",
+      "dependency": "@upstash/redis",
+      "peerRange": ">=1.34.7",
+      "classification": "optional-peer-metadata-only-test-lock",
+      "requiredOccurrences": 2
+    }
+  ],
+  "standaloneDbTestBoundary": {
+    "path": "test-support/inference-core-db-tests",
+    "classification": "standalone-test-only-workspace",
+    "allowedPaths": [
+      "test-support/inference-core-db-tests/package.json",
+      "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "test-support/inference-core-db-tests/src/idempotency.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+      "test-support/inference-core-db-tests/tsconfig.json"
+    ],
+    "packageManifest": {
+      "path": "test-support/inference-core-db-tests/package.json",
+      "sha256": "ff725f8972d4a0e4ed349daa1ffbfb4aa10ab40a4c76be60f739125781c85470",
+      "name": "@llm-machines/inference-core-db-tests",
+      "packageManager": "pnpm@10.0.0",
+      "scripts": {
+        "test": "vitest run",
+        "typecheck": "tsc --project tsconfig.json"
+      },
+      "devDependencies": {
+        "@electric-sql/pglite": "0.5.4",
+        "@types/node": "22.15.18",
+        "drizzle-orm": "0.44.2",
+        "typescript": "5.8.3",
+        "vitest": "3.1.4"
+      }
+    },
+    "lockfile": {
+      "path": "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "sha256": "a7318f062798050494d0651ba28ca8ae50ab01b1db085bb1bdd884f3e79d5c61"
+    },
+    "workspaceManifest": {
+      "path": "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "sha256": "44b627aa58902d12f2b7469e46784fd611bac456409c630d7636c0e7059c14aa"
+    },
+    "tsconfig": {
+      "path": "test-support/inference-core-db-tests/tsconfig.json",
+      "sha256": "28282abe534bce160861ed5c0798292c960cb61c7dfa5636d552a245c7223d09"
+    },
+    "rootIsolation": {
+      "workspaceManifestPath": "pnpm-workspace.yaml",
+      "rootLockfilePath": "pnpm-lock.yaml",
+      "productionManifestPath": "apps/bff/package.json",
+      "pglitePackage": "@electric-sql/pglite",
+      "drizzlePackage": "drizzle-orm@0.44.2",
+      "pglitePeerRange": ">=0.2.0",
+      "allowedRootMetadataOccurrences": 2
+    },
+    "rootScripts": {
+      "test:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test",
+      "typecheck:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests typecheck"
+    }
+  },
+  "webAuthenticationEvidence": [
+    {
+      "path": "apps/web/src/middleware.test.ts",
+      "sha256": "a5071e50a05af74d69455c99a776acad2c55ee8c5b1d907d71f0bc18e3ff7b91"
+    },
+    {
+      "path": "apps/web/src/middleware.ts",
+      "sha256": "c1e5c03f612872ad05ed6ddc14b52bc61e3c0dd2864b3f58235c3478872fa661"
+    }
+  ],
+  "target": {
+    "findingEntriesDueByPr04": 0,
+    "legacyRoutes": 0,
+    "routes": 79,
+    "fastifyRegistrars": 3,
+    "webInferenceConsumers": 0,
+    "escapeHatchPaths": ["apps/bff/src/auth/persona.ts"]
+  },
+  "operationPolicy": {
+    "addedSourcePaths": [
+      "apps/bff/src/commands/inference-core-retention.ts",
+      "apps/bff/src/services/inference-core-retention.ts"
+    ],
+    "changedSourcePaths": [
+      "apps/bff/Dockerfile",
+      "apps/bff/README.md",
+      "apps/bff/package.json",
+      "apps/bff/src/auth/persona.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/app-gateway.ts",
+      "apps/bff/src/services/admin-audit.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-inference.ts",
+      "apps/bff/src/services/admin-settings-core.ts",
+      "apps/bff/src/services/admin-team.ts",
+      "apps/bff/src/services/audit.ts",
+      "apps/bff/src/services/idempotency.ts",
+      "apps/bff/src/services/inference-core-keycloak-admin.ts",
+      "apps/bff/src/services/users.ts",
+      "package.json",
+      "pnpm-lock.yaml"
+    ],
+    "deletedSourcePaths": [],
+    "addedRepositoryPaths": [
+      "apps/bff/src/commands/inference-core-retention.test.ts",
+      "apps/bff/src/commands/inference-core-retention.ts",
+      "apps/bff/src/index.test.ts",
+      "apps/bff/src/services/admin-connected-apps-atomicity.test.ts",
+      "apps/bff/src/services/audit.test.ts",
+      "apps/bff/src/services/inference-core-retention.ts",
+      "docs/reduction/inference-core/pr-04-data-decisions.json",
+      "infra/migrations/0000_inference_core.sql",
+      "scripts/inference-core/pr04-boundaries.test.mjs",
+      "scripts/inference-core/pr04-contract-revision.mjs",
+      "test-support/inference-core-db-tests/package.json",
+      "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "test-support/inference-core-db-tests/src/idempotency.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+      "test-support/inference-core-db-tests/tsconfig.json"
+    ],
+    "changedRepositoryPaths": [
+      ".env.example",
+      "apps/bff/Dockerfile",
+      "apps/bff/README.md",
+      "apps/bff/package.json",
+      "apps/bff/src/auth/persona.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.test.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin-inference.test.ts",
+      "apps/bff/src/routes/admin.test.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/app-gateway-accounting-errors.test.ts",
+      "apps/bff/src/routes/app-gateway.test.ts",
+      "apps/bff/src/routes/app-gateway.ts",
+      "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "apps/bff/src/services/admin-audit.ts",
+      "apps/bff/src/services/admin-connected-apps-accounting.test.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-inference.ts",
+      "apps/bff/src/services/admin-settings-core.ts",
+      "apps/bff/src/services/admin-team.ts",
+      "apps/bff/src/services/audit.ts",
+      "apps/bff/src/services/idempotency.ts",
+      "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
+      "apps/bff/src/services/inference-core-keycloak-admin.ts",
+      "apps/bff/src/services/users.test.ts",
+      "apps/bff/src/services/users.ts",
+      "apps/web/src/middleware.test.ts",
+      "docs/reduction/inference-core/README.md",
+      "package.json",
+      "pnpm-lock.yaml",
+      "scripts/inference-core/guardrails.mjs",
+      "scripts/inference-core/guardrails.test.mjs"
+    ],
+    "deletedRepositoryPaths": [
+      "infra/migrations/0000_init_schemas.sql",
+      "infra/migrations/0001_agentic_audit_remediation.sql",
+      "infra/migrations/0002_align_egress_expiry_index.sql",
+      "infra/migrations/0003_builder_lifecycle_tables.sql",
+      "infra/migrations/0004_builder_withdrawn_lifecycle_state.sql",
+      "infra/migrations/0005_builder_agent_configs.sql",
+      "infra/migrations/0006_hub_chat_threads.sql",
+      "infra/migrations/0007_admin_governance_read_models.sql",
+      "infra/migrations/0008_policy_violation_remediations.sql",
+      "infra/migrations/0009_builder_agent_test_runs.sql",
+      "infra/migrations/0010_builder_agent_test_run_accounting.sql",
+      "infra/migrations/0011_agentic_runtime_snapshots.sql",
+      "infra/migrations/0012_builder_agent_test_run_trace.sql",
+      "infra/migrations/0013_builder_agent_test_runtime_trace_id.sql",
+      "infra/migrations/0014_builder_agent_test_tool_calls.sql",
+      "infra/migrations/0015_admin_builder_agent_studio_quota_policy.sql",
+      "infra/migrations/0016_admin_connector_vetting_decisions.sql",
+      "infra/migrations/0017_connector_vetting_checklist.sql",
+      "infra/migrations/0018_knowledge_corpora.sql",
+      "infra/migrations/0019_knowledge_source_archive.sql",
+      "infra/migrations/0020_knowledge_disabled_source_status.sql",
+      "infra/migrations/0021_admin_mcp_servers.sql",
+      "infra/migrations/0022_admin_settings.sql",
+      "infra/migrations/0023_admin_connected_apps.sql",
+      "infra/migrations/0024_admin_connected_app_api_keys.sql",
+      "infra/migrations/0025_knowledge_url_acquisition_jobs.sql",
+      "infra/migrations/0026_knowledge_chunk_embeddings.sql"
+    ]
+  }
+}

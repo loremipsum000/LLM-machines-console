@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const accountingMocks = vi.hoisted(() => ({
+  admit: vi.fn(),
   reconcile: vi.fn(),
-  reserve: vi.fn(),
 }))
 
 vi.mock("../services/admin-connected-apps", async () => {
@@ -12,13 +12,11 @@ vi.mock("../services/admin-connected-apps", async () => {
   accountingMocks.reconcile.mockImplementation(
     actual.reconcileConnectedAppGatewayUsage,
   )
-  accountingMocks.reserve.mockImplementation(
-    actual.reserveConnectedAppGatewayTokens,
-  )
+  accountingMocks.admit.mockImplementation(actual.admitConnectedAppGatewayUsage)
   return {
     ...actual,
+    admitConnectedAppGatewayUsage: accountingMocks.admit,
     reconcileConnectedAppGatewayUsage: accountingMocks.reconcile,
-    reserveConnectedAppGatewayTokens: accountingMocks.reserve,
   }
 })
 
@@ -39,7 +37,7 @@ let createCounter = 0
 describe("connected app gateway accounting failures", () => {
   afterEach(async () => {
     accountingMocks.reconcile.mockClear()
-    accountingMocks.reserve.mockClear()
+    accountingMocks.admit.mockClear()
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
     resetAuditEventsForTest()
@@ -47,15 +45,16 @@ describe("connected app gateway accounting failures", () => {
     await resetConnectedAppsForTest()
   })
 
-  it("fails closed with a sanitized correlated error when reservation persistence fails", async () => {
+  it("fails closed with a sanitized correlated error when usage admission fails", async () => {
     configureGateway()
     const fetchMock = vi.fn<typeof fetch>()
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
+    const loggedErrors = captureRequestErrors(server)
     const created = await createBoundedApp(server)
-    accountingMocks.reserve.mockRejectedValueOnce(
+    accountingMocks.admit.mockRejectedValueOnce(
       new Error(
-        'The "string" argument must be of type string. Received an instance of Date',
+        "connect ECONNREFUSED postgres://db.internal:5432 schema admin.application_usage_daily",
       ),
     )
 
@@ -73,14 +72,20 @@ describe("connected app gateway accounting failures", () => {
     expect(response.json()).toMatchObject({
       code: "accounting_unavailable",
       detail:
-        "The connected app request could not reserve its token budget. Retry later.",
+        "The connected app request could not establish usage accounting. Retry later.",
       request_id: expect.any(String),
       title: "Connected app accounting unavailable",
     })
     expect(response.headers["x-llm-machines-request-id"]).toBe(
       response.json().request_id,
     )
-    expect(response.body).not.toContain("instance of Date")
+    const serializedErrors = JSON.stringify(loggedErrors)
+    expect(serializedErrors).toContain("accounting_admission_failed")
+    expect(serializedErrors).toContain(response.json().request_id)
+    expect(serializedErrors).not.toContain("db.internal")
+    expect(serializedErrors).not.toContain("application_usage_daily")
+    expect(serializedErrors).not.toContain("ECONNREFUSED")
+    expect(response.body).not.toContain("db.internal")
     expect(fetchMock).not.toHaveBeenCalled()
     await server.close()
   })
@@ -101,9 +106,12 @@ describe("connected app gateway accounting failures", () => {
     )
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
+    const loggedErrors = captureRequestErrors(server)
     const created = await createBoundedApp(server)
     accountingMocks.reconcile.mockRejectedValueOnce(
-      new Error("raw PostgreSQL reconciliation failure"),
+      new Error(
+        "password authentication failed for db.internal schema admin.audit_events",
+      ),
     )
 
     const response = await server.inject({
@@ -122,6 +130,14 @@ describe("connected app gateway accounting failures", () => {
     expect(response.headers["x-llm-machines-request-id"]).toEqual(
       expect.any(String),
     )
+    const serializedErrors = JSON.stringify(loggedErrors)
+    expect(serializedErrors).toContain("accounting_reconciliation_failed")
+    expect(serializedErrors).toContain(
+      response.headers["x-llm-machines-request-id"],
+    )
+    expect(serializedErrors).not.toContain("db.internal")
+    expect(serializedErrors).not.toContain("admin.audit_events")
+    expect(serializedErrors).not.toContain("password authentication")
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(accountingMocks.reconcile).toHaveBeenCalledTimes(1)
     await server.close()
@@ -175,6 +191,18 @@ function configureGateway(): void {
   vi.stubEnv("LITELLM_URL", "http://litellm.test")
 }
 
+function captureRequestErrors(
+  server: ReturnType<typeof buildServer>,
+): unknown[][] {
+  const loggedErrors: unknown[][] = []
+  server.addHook("onRequest", async (request) => {
+    vi.spyOn(request.log, "error").mockImplementation(((...args: unknown[]) => {
+      loggedErrors.push(args)
+    }) as typeof request.log.error)
+  })
+  return loggedErrors
+}
+
 async function createBoundedApp(server: ReturnType<typeof buildServer>) {
   const response = await server.inject({
     method: "POST",
@@ -190,7 +218,7 @@ async function createBoundedApp(server: ReturnType<typeof buildServer>) {
       name: "Accounting Failure Test",
       ownerGroup: "Everyone",
       rateLimitRpm: null,
-      tokenBudget7d: 100_000,
+      tokenBudget7d: null,
     },
   })
   expect(response.statusCode).toBe(201)

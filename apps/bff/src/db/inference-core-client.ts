@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 import * as schema from "./inference-core-schema"
@@ -14,11 +15,53 @@ export function getInferenceCoreDb(): ReturnType<
   }
 
   if (!client) {
-    client = postgres(databaseUrl, { max: 5 })
+    client = postgres(databaseUrl, { connect_timeout: 3, max: 5 })
     database = drizzle(client, { schema })
   }
 
   return database
+}
+
+export async function checkInferenceCoreDbReadiness(
+  database: ReturnType<typeof getInferenceCoreDb> = getInferenceCoreDb(),
+): Promise<boolean> {
+  if (!database) {
+    return false
+  }
+
+  try {
+    return await database.transaction(async (transaction) => {
+      await transaction.execute(sql`SET LOCAL statement_timeout = '3s'`)
+      const result = await transaction.execute(sql`
+        SELECT count(*)::integer AS missing_relations
+        FROM (
+          VALUES
+            ('common.human_identities'),
+            ('common.human_identity_roles'),
+            ('common.audit_events'),
+            ('admin.applications'),
+            ('admin.application_credentials'),
+            ('admin.application_model_allowlists'),
+            ('admin.application_limits'),
+            ('admin.application_rate_limit_windows'),
+            ('admin.application_usage_daily'),
+            ('admin.idempotency_ledger'),
+            ('admin.console_settings'),
+            ('admin.license_state'),
+            ('admin.update_state'),
+            ('admin.backup_state'),
+            ('admin.recovery_state')
+        ) AS required(relation_name)
+        WHERE to_regclass(relation_name) IS NULL
+      `)
+      const row = resultRows(result)[0] as
+        | { missing_relations?: unknown }
+        | undefined
+      return Number(row?.missing_relations) === 0
+    })
+  } catch {
+    return false
+  }
 }
 
 export async function closeInferenceCoreDb(): Promise<void> {
@@ -27,4 +70,19 @@ export async function closeInferenceCoreDb(): Promise<void> {
     client = null
     database = null
   }
+}
+
+function resultRows(result: unknown): unknown[] {
+  if (Array.isArray(result)) {
+    return result
+  }
+  if (
+    result &&
+    typeof result === "object" &&
+    "rows" in result &&
+    Array.isArray(result.rows)
+  ) {
+    return result.rows
+  }
+  return []
 }
