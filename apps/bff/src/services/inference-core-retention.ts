@@ -135,13 +135,116 @@ export async function runInferenceCoreRetention(
         ) AS expired
         WHERE credential.id = expired.credential_id
         RETURNING credential.id
+      ),
+      firecrawl_expired_requests AS (
+        UPDATE admin.application_firecrawl_request_ledger
+        SET
+          state = 'settled',
+          status_code = 504,
+          latency_ms = LEAST(
+            2147483647,
+            GREATEST(
+              0,
+              floor(
+                extract(epoch FROM (lease_expires_at - started_at)) * 1000
+              )
+            )
+          )::integer,
+          settled_at = clock_timestamp()
+        WHERE state = 'active'
+          AND lease_expires_at <= clock_timestamp()
+        RETURNING
+          app_id,
+          credential_id,
+          (started_at AT TIME ZONE 'UTC')::date AS bucket_date,
+          route_kind,
+          latency_ms,
+          started_at
+      ),
+      firecrawl_usage_rows AS (
+        INSERT INTO admin.application_firecrawl_usage_daily (
+          app_id,
+          credential_id,
+          bucket_date,
+          route_kind,
+          request_count,
+          failure_count,
+          latency_ms_sum,
+          latency_ms_max,
+          updated_at
+        )
+        SELECT
+          app_id,
+          credential_id,
+          bucket_date,
+          route_kind,
+          count(*)::integer,
+          count(*)::integer,
+          sum(latency_ms),
+          max(latency_ms),
+          clock_timestamp()
+        FROM firecrawl_expired_requests
+        GROUP BY
+          app_id,
+          credential_id,
+          bucket_date,
+          route_kind
+        ON CONFLICT (
+          app_id,
+          credential_id,
+          bucket_date,
+          route_kind
+        )
+        DO UPDATE SET
+          request_count =
+            admin.application_firecrawl_usage_daily.request_count
+            + EXCLUDED.request_count,
+          failure_count =
+            admin.application_firecrawl_usage_daily.failure_count
+            + EXCLUDED.failure_count,
+          latency_ms_sum =
+            admin.application_firecrawl_usage_daily.latency_ms_sum
+            + EXCLUDED.latency_ms_sum,
+          latency_ms_max = GREATEST(
+            admin.application_firecrawl_usage_daily.latency_ms_max,
+            EXCLUDED.latency_ms_max
+          ),
+          updated_at = EXCLUDED.updated_at
+        RETURNING app_id
+      ),
+      firecrawl_updated_credentials AS (
+        UPDATE admin.application_firecrawl_credentials AS credential
+        SET last_used_at = GREATEST(
+          COALESCE(credential.last_used_at, '-infinity'::timestamptz),
+          credential.issued_at,
+          expired.last_started_at
+        )
+        FROM (
+          SELECT credential_id, max(started_at) AS last_started_at
+          FROM firecrawl_expired_requests
+          GROUP BY credential_id
+        ) AS expired
+        WHERE credential.id = expired.credential_id
+        RETURNING credential.id
       )
       SELECT
-        (SELECT count(*)::integer FROM expired_requests)
+        (
+          (SELECT count(*)::integer FROM expired_requests)
+          +
+          (SELECT count(*)::integer FROM firecrawl_expired_requests)
+        )
           AS abandoned_requests_settled,
-        (SELECT count(*)::integer FROM usage_rows)
+        (
+          (SELECT count(*)::integer FROM usage_rows)
+          +
+          (SELECT count(*)::integer FROM firecrawl_usage_rows)
+        )
           AS usage_rows_updated,
-        (SELECT count(*)::integer FROM updated_credentials)
+        (
+          (SELECT count(*)::integer FROM updated_credentials)
+          +
+          (SELECT count(*)::integer FROM firecrawl_updated_credentials)
+        )
           AS credentials_updated
     `)
     const abandonedRow = resultRows(abandonedResult)[0] as
@@ -157,6 +260,11 @@ export async function runInferenceCoreRetention(
     const result = await execute(sql`
       WITH deleted_rate_limit_windows AS (
         DELETE FROM admin.application_rate_limit_windows
+        WHERE expires_at <= clock_timestamp()
+        RETURNING 1
+      ),
+      deleted_firecrawl_rate_limit_windows AS (
+        DELETE FROM admin.application_firecrawl_rate_limit_windows
         WHERE expires_at <= clock_timestamp()
         RETURNING 1
       ),
@@ -181,6 +289,14 @@ export async function runInferenceCoreRetention(
         WHERE state = 'settled'
           AND started_at < (
             ${usageCutoff}::date::timestamp AT TIME ZONE 'UTC'
+        )
+        RETURNING 1
+      ),
+      deleted_firecrawl_request_ledger_rows AS (
+        DELETE FROM admin.application_firecrawl_request_ledger
+        WHERE state = 'settled'
+          AND started_at < (
+            ${usageCutoff}::date::timestamp AT TIME ZONE 'UTC'
           )
         RETURNING 1
       ),
@@ -188,15 +304,38 @@ export async function runInferenceCoreRetention(
         DELETE FROM admin.application_usage_daily
         WHERE bucket_date < ${usageCutoff}::date
         RETURNING 1
+      ),
+      deleted_firecrawl_usage_buckets AS (
+        DELETE FROM admin.application_firecrawl_usage_daily
+        WHERE bucket_date < ${usageCutoff}::date
+        RETURNING 1
       )
       SELECT
-        (SELECT count(*)::integer FROM deleted_rate_limit_windows)
+        (
+          (SELECT count(*)::integer FROM deleted_rate_limit_windows)
+          +
+          (
+            SELECT count(*)::integer
+            FROM deleted_firecrawl_rate_limit_windows
+          )
+        )
           AS rate_limit_windows_deleted,
         (SELECT count(*)::integer FROM deleted_idempotency_rows)
           AS idempotency_rows_deleted,
-        (SELECT count(*)::integer FROM deleted_request_ledger_rows)
+        (
+          (SELECT count(*)::integer FROM deleted_request_ledger_rows)
+          +
+          (
+            SELECT count(*)::integer
+            FROM deleted_firecrawl_request_ledger_rows
+          )
+        )
           AS request_ledger_rows_deleted,
-        (SELECT count(*)::integer FROM deleted_usage_buckets)
+        (
+          (SELECT count(*)::integer FROM deleted_usage_buckets)
+          +
+          (SELECT count(*)::integer FROM deleted_firecrawl_usage_buckets)
+        )
           AS usage_buckets_deleted
     `)
     const row = resultRows(result)[0] as

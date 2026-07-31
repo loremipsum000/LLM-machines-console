@@ -1,0 +1,44 @@
+use_default_settings:
+  engines:
+    keep_only:
+      - duckduckgo
+      - wikipedia
+      - wikidata
+
+general:
+  debug: false
+  instance_name: "LLM Machines Firecrawl Search"
+
+search:
+  safe_search: 1
+  autocomplete: ""
+  default_lang: "en"
+  formats:
+    - json
+
+server:
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "%(ENV_SEARXNG_SECRET)s"
+  limiter: false
+  image_proxy: false
+
+outgoing:
+  request_timeout: 4.0
+  max_request_timeout: 8.0
+  pool_connections: 20
+  pool_maxsize: 10
+  proxies:
+    all://:
+      - http://firecrawl-egress:3128
+
+engines:
+  - name: duckduckgo
+    disabled: false
+    timeout: 4.0
+  - name: wikipedia
+    disabled: false
+    timeout: 4.0
+  - name: wikidata
+    disabled: false
+    timeout: 4.0

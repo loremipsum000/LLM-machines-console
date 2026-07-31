@@ -1,0 +1,2 @@
+# Reserved, non-resolving sentinel. A system-generated runtime file replaces it.
+deny-all.invalid

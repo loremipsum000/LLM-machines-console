@@ -4,6 +4,11 @@ import { PgDialect, getTableConfig } from "drizzle-orm/pg-core"
 import { describe, expect, it } from "vitest"
 import {
   applicationCredentials,
+  applicationFirecrawlAccess,
+  applicationFirecrawlCredentials,
+  applicationFirecrawlRateLimitWindows,
+  applicationFirecrawlRequestLedger,
+  applicationFirecrawlUsageDaily,
   applicationLimits,
   applicationModelAllowlists,
   applicationRateLimitWindows,
@@ -87,6 +92,82 @@ const tableDefinitions = [
       "rotated_at",
       "overlap_expires_at",
       "revoked_at",
+    ],
+  },
+  {
+    schema: "admin",
+    table: applicationFirecrawlAccess,
+    columns: [
+      "app_id",
+      "status",
+      "disclaimer_version",
+      "disclaimer_accepted_by",
+      "disclaimer_accepted_at",
+      "connection_status",
+      "last_connected_at",
+      "search_rate_limit_rps",
+      "scrape_rate_limit_rps",
+      "max_concurrent_scrapes",
+      "updated_by",
+      "updated_at",
+    ],
+  },
+  {
+    schema: "admin",
+    table: applicationFirecrawlCredentials,
+    columns: [
+      "id",
+      "app_id",
+      "key_prefix",
+      "verifier_hash",
+      "status",
+      "issued_at",
+      "last_used_at",
+      "rotated_at",
+      "overlap_expires_at",
+      "revoked_at",
+    ],
+  },
+  {
+    schema: "admin",
+    table: applicationFirecrawlRateLimitWindows,
+    columns: [
+      "app_id",
+      "route_kind",
+      "window_started_at",
+      "request_count",
+      "expires_at",
+    ],
+  },
+  {
+    schema: "admin",
+    table: applicationFirecrawlRequestLedger,
+    columns: [
+      "id",
+      "app_id",
+      "credential_id",
+      "route_kind",
+      "state",
+      "status_code",
+      "latency_ms",
+      "started_at",
+      "lease_expires_at",
+      "settled_at",
+    ],
+  },
+  {
+    schema: "admin",
+    table: applicationFirecrawlUsageDaily,
+    columns: [
+      "app_id",
+      "credential_id",
+      "bucket_date",
+      "route_kind",
+      "request_count",
+      "failure_count",
+      "latency_ms_sum",
+      "latency_ms_max",
+      "updated_at",
     ],
   },
   {
@@ -341,6 +422,18 @@ const expectedIndexes = [
   "application_credentials_one_retiring_idx",
   "application_credentials_prefix_status_idx",
   "application_credentials_app_status_idx",
+  "application_firecrawl_access_status_updated_idx",
+  "application_firecrawl_credentials_id_app_idx",
+  "application_firecrawl_credentials_verifier_hash_idx",
+  "application_firecrawl_credentials_one_active_idx",
+  "application_firecrawl_credentials_one_retiring_idx",
+  "application_firecrawl_credentials_prefix_status_idx",
+  "application_firecrawl_credentials_app_status_idx",
+  "application_firecrawl_rate_limit_windows_expiry_idx",
+  "application_firecrawl_request_ledger_active_idx",
+  "application_firecrawl_request_ledger_settled_started_idx",
+  "application_firecrawl_usage_daily_bucket_idx",
+  "application_firecrawl_usage_daily_app_bucket_idx",
   "application_rate_limit_windows_expiry_idx",
   "application_request_ledger_active_idx",
   "application_request_ledger_settled_started_idx",
@@ -378,6 +471,11 @@ describe("inference-core persistence boundary", () => {
       "audit_events",
       "applications",
       "application_credentials",
+      "application_firecrawl_access",
+      "application_firecrawl_credentials",
+      "application_firecrawl_rate_limit_windows",
+      "application_firecrawl_request_ledger",
+      "application_firecrawl_usage_daily",
       "application_model_allowlists",
       "application_limits",
       "application_rate_limit_windows",
@@ -407,6 +505,11 @@ describe("inference-core persistence boundary", () => {
       "auditEvents",
       "applications",
       "applicationCredentials",
+      "applicationFirecrawlAccess",
+      "applicationFirecrawlCredentials",
+      "applicationFirecrawlRateLimitWindows",
+      "applicationFirecrawlRequestLedger",
+      "applicationFirecrawlUsageDaily",
       "applicationModelAllowlists",
       "applicationLimits",
       "applicationRateLimitWindows",
@@ -555,6 +658,23 @@ describe("inference-core persistence boundary", () => {
     )
     expect(requestLedgerTable).not.toMatch(
       /\b(?:correlation_id|prompt|request_body|response_body|tool_call|tool_result)\b/i,
+    )
+    const firecrawlTables = migration.slice(
+      migration.indexOf("CREATE TABLE admin.application_firecrawl_access"),
+      migration.indexOf("CREATE TABLE admin.application_model_allowlists"),
+    )
+    expect(firecrawlTables).not.toMatch(
+      /\b(?:query|url|page|request_body|response_body|result_content|secret)\b/i,
+    )
+    const firecrawlCredentialTable = migration.slice(
+      migration.indexOf("CREATE TABLE admin.application_firecrawl_credentials"),
+      migration.indexOf(
+        "CREATE TABLE admin.application_firecrawl_rate_limit_windows",
+      ),
+    )
+    expect(firecrawlCredentialTable).not.toMatch(/^ {2}expires_at\b/m)
+    expect(firecrawlCredentialTable).toContain(
+      "overlap_expires_at = rotated_at + interval '86400 seconds'",
     )
   })
 

@@ -34,9 +34,15 @@ import {
   resetIdentityMutationJournalForTest,
 } from "../../../apps/bff/src/services/identity-mutation-journal"
 
-vi.mock("../../../apps/bff/src/db/inference-core-client", () => ({
-  getInferenceCoreDb: vi.fn(),
-}))
+vi.mock(
+  "../../../apps/bff/src/db/inference-core-client",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("../../../apps/bff/src/db/inference-core-client")
+    >()),
+    getInferenceCoreDb: vi.fn(),
+  }),
+)
 
 const migration = readFileSync(
   fileURLToPath(
@@ -670,7 +676,7 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     ) {
       throw new Error("Expected a static Application credential.")
     }
-    const paused = pauseNextTransaction(inferenceDb)
+    const paused = pauseTransaction(inferenceDb, 2)
     vi.mocked(getInferenceCoreDb).mockReturnValue(paused.db)
     const rotating = rotateAdminConnectedAppCredentials(actor, created.app.id)
 
@@ -1121,6 +1127,13 @@ async function identityJournalCount(): Promise<number> {
 function pauseNextTransaction(
   db: NonNullable<ReturnType<typeof getInferenceCoreDb>>,
 ) {
+  return pauseTransaction(db, 1)
+}
+
+function pauseTransaction(
+  db: NonNullable<ReturnType<typeof getInferenceCoreDb>>,
+  ordinal: number,
+) {
   let release: () => void = () => {}
   let signalStarted: () => void = () => {}
   const released = new Promise<void>((resolve) => {
@@ -1129,13 +1142,13 @@ function pauseNextTransaction(
   const started = new Promise<void>((resolve) => {
     signalStarted = resolve
   })
-  let paused = false
+  let transactionCount = 0
   const proxy = new Proxy(db, {
     get(target, property) {
       if (property === "transaction") {
         return async (...args: unknown[]) => {
-          if (!paused) {
-            paused = true
+          transactionCount += 1
+          if (transactionCount === ordinal) {
             signalStarted()
             await released
           }

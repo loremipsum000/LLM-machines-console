@@ -16,6 +16,16 @@ export type InferenceCoreQueryExecutor =
   | InferenceCoreDatabase
   | InferenceCoreTransaction
 
+export function runInferenceCoreReadSnapshot<T>(
+  database: InferenceCoreDatabase,
+  read: (transaction: InferenceCoreTransaction) => Promise<T>,
+): Promise<T> {
+  return database.transaction(read, {
+    accessMode: "read only",
+    isolationLevel: "repeatable read",
+  })
+}
+
 export const INFERENCE_CORE_POSTGRES_OPTIONS = {
   connect_timeout: 3,
   connection: {
@@ -61,6 +71,11 @@ export async function checkInferenceCoreDbReadiness(
             ('common.audit_events'),
             ('admin.applications'),
             ('admin.application_credentials'),
+            ('admin.application_firecrawl_access'),
+            ('admin.application_firecrawl_credentials'),
+            ('admin.application_firecrawl_rate_limit_windows'),
+            ('admin.application_firecrawl_request_ledger'),
+            ('admin.application_firecrawl_usage_daily'),
             ('admin.application_model_allowlists'),
             ('admin.application_limits'),
             ('admin.application_rate_limit_windows'),

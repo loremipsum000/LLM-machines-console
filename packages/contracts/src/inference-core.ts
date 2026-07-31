@@ -914,6 +914,251 @@ export type AdminConnectedAppCredential = z.infer<
   typeof adminConnectedAppCredentialSchema
 >
 
+export const firecrawlScopeSchema = z.enum([
+  "firecrawl.search",
+  "firecrawl.scrape",
+])
+export type FirecrawlScope = z.infer<typeof firecrawlScopeSchema>
+
+export const firecrawlSearchRequestSchema = z
+  .object({
+    limit: z.number().int().min(1).max(5).default(5),
+    origin: z.string().trim().min(1).max(128).optional(),
+    query: z.string().trim().min(1).max(512),
+  })
+  .strict()
+  .transform(({ limit, query }) => ({ limit, query }))
+export type FirecrawlSearchRequest = z.infer<
+  typeof firecrawlSearchRequestSchema
+>
+
+export const firecrawlScrapeFormatSchema = z.enum(["markdown", "html"])
+export type FirecrawlScrapeFormat = z.infer<typeof firecrawlScrapeFormatSchema>
+
+export const firecrawlScrapeRequestSchema = z
+  .object({
+    blockAds: z.boolean().optional(),
+    fastMode: z.boolean().optional(),
+    formats: z
+      .array(firecrawlScrapeFormatSchema)
+      .min(1)
+      .max(2)
+      .refine((formats) => new Set(formats).size === formats.length, {
+        message: "Scrape formats must be unique.",
+      })
+      .default(["markdown"]),
+    maxAge: z.number().int().min(0).optional(),
+    mobile: z.boolean().optional(),
+    onlyMainContent: z.boolean().optional(),
+    origin: z.string().trim().min(1).max(128).optional(),
+    removeBase64Images: z.boolean().optional(),
+    skipTlsVerification: z.boolean().optional(),
+    storeInCache: z.boolean().optional(),
+    url: z.string().trim().min(1).max(4096),
+  })
+  .strict()
+  .transform((request) => ({
+    blockAds: request.blockAds ?? true,
+    fastMode: request.fastMode ?? false,
+    formats: request.formats,
+    maxAge: 0,
+    mobile: request.mobile ?? false,
+    onlyMainContent: request.onlyMainContent ?? true,
+    removeBase64Images: true,
+    skipTlsVerification: false,
+    storeInCache: false,
+    url: request.url,
+  }))
+export type FirecrawlScrapeRequest = z.infer<
+  typeof firecrawlScrapeRequestSchema
+>
+
+export type FirecrawlJsonValue =
+  | boolean
+  | number
+  | string
+  | null
+  | FirecrawlJsonValue[]
+  | { [key: string]: FirecrawlJsonValue }
+
+export const firecrawlJsonValueSchema: z.ZodType<FirecrawlJsonValue> = z.lazy(
+  () =>
+    z.union([
+      z.boolean(),
+      z.number(),
+      z.string(),
+      z.null(),
+      z.array(firecrawlJsonValueSchema),
+      z.record(firecrawlJsonValueSchema),
+    ]),
+)
+
+export const firecrawlV2ResponseSchema = z
+  .object({ success: z.boolean() })
+  .catchall(firecrawlJsonValueSchema)
+export type FirecrawlV2Response = z.infer<typeof firecrawlV2ResponseSchema>
+
+export const adminConnectedAppFirecrawlStatusSchema = z.enum([
+  "disabled",
+  "enabled",
+])
+export type AdminConnectedAppFirecrawlStatus = z.infer<
+  typeof adminConnectedAppFirecrawlStatusSchema
+>
+
+export const adminConnectedAppFirecrawlCredentialMetadataSchema = z
+  .object({
+    id: z.string().min(1),
+    issuedAt: z.string().datetime(),
+    keyPrefix: z.string().regex(/^llmm_fc_[0-9a-f]{16}$/),
+    lastUsedAt: z.string().datetime().nullable(),
+    overlapExpiresAt: z.string().datetime().nullable(),
+    revokedAt: z.string().datetime().nullable(),
+    rotatedAt: z.string().datetime().nullable(),
+    status: adminConnectedAppCredentialStatusSchema,
+  })
+  .strict()
+  .superRefine((credential, ctx) => {
+    const activeStateIsValid =
+      credential.status !== "active" ||
+      (credential.rotatedAt === null &&
+        credential.overlapExpiresAt === null &&
+        credential.revokedAt === null)
+    const retiringStateIsValid =
+      credential.status !== "retiring" ||
+      (credential.rotatedAt !== null &&
+        credential.overlapExpiresAt !== null &&
+        credential.revokedAt === null)
+    const revokedStateIsValid =
+      credential.status !== "revoked" ||
+      (credential.revokedAt !== null &&
+        (credential.rotatedAt === null) ===
+          (credential.overlapExpiresAt === null))
+    if (!activeStateIsValid || !retiringStateIsValid || !revokedStateIsValid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Firecrawl credential timestamps do not match its state.",
+      })
+    }
+
+    const issuedAt = Date.parse(credential.issuedAt)
+    const lastUsedAt = credential.lastUsedAt
+      ? Date.parse(credential.lastUsedAt)
+      : null
+    const rotatedAt = credential.rotatedAt
+      ? Date.parse(credential.rotatedAt)
+      : null
+    const overlapExpiresAt = credential.overlapExpiresAt
+      ? Date.parse(credential.overlapExpiresAt)
+      : null
+    const revokedAt = credential.revokedAt
+      ? Date.parse(credential.revokedAt)
+      : null
+    if (
+      (lastUsedAt !== null && lastUsedAt < issuedAt) ||
+      (rotatedAt !== null && rotatedAt < issuedAt) ||
+      (overlapExpiresAt !== null &&
+        (rotatedAt === null || overlapExpiresAt <= rotatedAt)) ||
+      (revokedAt !== null &&
+        (revokedAt < issuedAt || (rotatedAt !== null && revokedAt < rotatedAt)))
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Firecrawl credential timestamps are out of order.",
+      })
+    }
+  })
+export type AdminConnectedAppFirecrawlCredentialMetadata = z.infer<
+  typeof adminConnectedAppFirecrawlCredentialMetadataSchema
+>
+
+export const adminConnectedAppFirecrawlSchema = z
+  .object({
+    connectionStatus: adminConnectedAppConnectionStatusSchema,
+    credentials: z.array(adminConnectedAppFirecrawlCredentialMetadataSchema),
+    disclaimerAcceptedAt: z.string().datetime().nullable(),
+    disclaimerVersion: z.string().min(1).nullable(),
+    lastConnectedAt: z.string().datetime().nullable(),
+    maxConcurrentScrapes: z.number().int().min(1).max(100).nullable(),
+    scrapeRateLimitRps: z.number().int().min(1).max(1000).nullable(),
+    searchRateLimitRps: z.number().int().min(1).max(1000).nullable(),
+    status: adminConnectedAppFirecrawlStatusSchema,
+  })
+  .strict()
+  .superRefine((firecrawl, ctx) => {
+    if (
+      (firecrawl.disclaimerAcceptedAt === null) !==
+      (firecrawl.disclaimerVersion === null)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Firecrawl disclaimer acceptance time and version must be recorded together.",
+        path: ["disclaimerAcceptedAt"],
+      })
+    }
+    if (
+      firecrawl.status === "enabled" &&
+      firecrawl.disclaimerAcceptedAt === null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enabled Firecrawl access requires disclaimer acceptance.",
+        path: ["disclaimerAcceptedAt"],
+      })
+    }
+    const credentialIds = firecrawl.credentials.map(
+      (credential) => credential.id,
+    )
+    if (new Set(credentialIds).size !== credentialIds.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Firecrawl credential ids must be unique.",
+        path: ["credentials"],
+      })
+    }
+    const activeCredentialCount = firecrawl.credentials.filter(
+      (credential) => credential.status === "active",
+    ).length
+    if (
+      (firecrawl.status === "enabled" && activeCredentialCount !== 1) ||
+      (firecrawl.status === "disabled" && activeCredentialCount > 1)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Enabled Firecrawl access requires exactly one active credential; disabled access allows at most one.",
+        path: ["credentials"],
+      })
+    }
+    if (
+      (firecrawl.connectionStatus === "not_connected") !==
+      (firecrawl.lastConnectedAt === null)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Firecrawl connection evidence time must match its connection state.",
+        path: ["lastConnectedAt"],
+      })
+    }
+  })
+export type AdminConnectedAppFirecrawl = z.infer<
+  typeof adminConnectedAppFirecrawlSchema
+>
+
+const defaultAdminConnectedAppFirecrawl = {
+  connectionStatus: "not_connected" as const,
+  credentials: [],
+  disclaimerAcceptedAt: null,
+  disclaimerVersion: null,
+  lastConnectedAt: null,
+  maxConcurrentScrapes: null,
+  scrapeRateLimitRps: null,
+  searchRateLimitRps: null,
+  status: "disabled" as const,
+}
+
 export const adminConnectedAppSchema = z
   .object({
     allowedModels: adminConnectedAppAllowedModelsSchema,
@@ -924,6 +1169,9 @@ export const adminConnectedAppSchema = z
     credentials: z.array(adminConnectedAppCredentialMetadataSchema).min(1),
     description: z.string().min(1),
     detailHref: z.string().min(1),
+    firecrawl: adminConnectedAppFirecrawlSchema.default(
+      defaultAdminConnectedAppFirecrawl,
+    ),
     id: z.string().min(1),
     lastConnectedAt: z.string().datetime().nullable(),
     maxConcurrentRequests: z.number().int().min(1).nullable(),
@@ -1158,6 +1406,116 @@ export const adminConnectedAppRotateCredentialResultSchema = z
   .strict()
 export type AdminConnectedAppRotateCredentialResult = z.infer<
   typeof adminConnectedAppRotateCredentialResultSchema
+>
+
+export const adminConnectedAppFirecrawlEnableRequestSchema = z
+  .object({
+    disclaimerAccepted: z.literal(true),
+    maxConcurrentScrapes: z
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .nullable()
+      .default(null),
+    scrapeRateLimitRps: z
+      .number()
+      .int()
+      .min(1)
+      .max(1000)
+      .nullable()
+      .default(null),
+    searchRateLimitRps: z
+      .number()
+      .int()
+      .min(1)
+      .max(1000)
+      .nullable()
+      .default(null),
+  })
+  .strict()
+export type AdminConnectedAppFirecrawlEnableRequest = z.infer<
+  typeof adminConnectedAppFirecrawlEnableRequestSchema
+>
+
+export const adminConnectedAppFirecrawlPolicyRequestSchema = z
+  .object({
+    maxConcurrentScrapes: z.number().int().min(1).max(100).nullable(),
+    scrapeRateLimitRps: z.number().int().min(1).max(1000).nullable(),
+    searchRateLimitRps: z.number().int().min(1).max(1000).nullable(),
+  })
+  .strict()
+export type AdminConnectedAppFirecrawlPolicyRequest = z.infer<
+  typeof adminConnectedAppFirecrawlPolicyRequestSchema
+>
+
+export const adminConnectedAppFirecrawlCredentialSchema = z
+  .object({
+    apiKey: z.string().regex(/^llmm_fc_[0-9a-f]{16}_[A-Za-z0-9_-]{43}$/),
+    credentialId: z.string().min(1),
+    exampleCurl: z.string().min(1),
+    firecrawlBaseUrl: adminConnectedAppEndpointUrlSchema,
+    issuedAt: z.string().datetime(),
+    keyPrefix: z.string().regex(/^llmm_fc_[0-9a-f]{16}$/),
+  })
+  .strict()
+export type AdminConnectedAppFirecrawlCredential = z.infer<
+  typeof adminConnectedAppFirecrawlCredentialSchema
+>
+
+export const adminConnectedAppFirecrawlCredentialResultSchema = z
+  .object({
+    app: adminConnectedAppSchema,
+    credential: adminConnectedAppFirecrawlCredentialSchema.nullable(),
+    detail: z.string().min(1),
+    status: z.enum(["enabled", "rotated"]),
+  })
+  .strict()
+export type AdminConnectedAppFirecrawlCredentialResult = z.infer<
+  typeof adminConnectedAppFirecrawlCredentialResultSchema
+>
+
+export const adminConnectedAppFirecrawlLifecycleResultSchema = z
+  .object({
+    app: adminConnectedAppSchema,
+    detail: z.string().min(1),
+    status: z.enum(["disabled", "revoked", "updated"]),
+  })
+  .strict()
+export type AdminConnectedAppFirecrawlLifecycleResult = z.infer<
+  typeof adminConnectedAppFirecrawlLifecycleResultSchema
+>
+
+export const adminConnectedAppFirecrawlTestResultSchema = z
+  .object({
+    app: adminConnectedAppSchema,
+    connectionStatus: adminConnectedAppConnectionStatusSchema,
+    detail: z.string().min(1),
+    observedAt: z.string().datetime().nullable(),
+    status: z.enum(["passed", "waiting", "degraded"]),
+  })
+  .strict()
+  .superRefine((result, ctx) => {
+    const expectedConnectionStatus = {
+      degraded: "degraded",
+      passed: "connected",
+      waiting: "not_connected",
+    }[result.status]
+    if (
+      result.connectionStatus !== expectedConnectionStatus ||
+      result.app.firecrawl.connectionStatus !== expectedConnectionStatus ||
+      result.observedAt !== result.app.firecrawl.lastConnectedAt
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Firecrawl test status must match passive client connection evidence.",
+        path: ["connectionStatus"],
+      })
+    }
+  })
+export type AdminConnectedAppFirecrawlTestResult = z.infer<
+  typeof adminConnectedAppFirecrawlTestResultSchema
 >
 
 export const adminHardwareRangeSchema = z.enum(["1h", "6h", "24h", "7d"])

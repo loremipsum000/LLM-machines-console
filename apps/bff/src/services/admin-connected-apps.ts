@@ -13,6 +13,7 @@ import type {
   AdminConnectedAppCredential,
   AdminConnectedAppCredentialMetadata,
   AdminConnectedAppDetail,
+  AdminConnectedAppFirecrawl,
   AdminConnectedAppLifecycleResult,
   AdminConnectedAppRotateCredentialResult,
   AdminConnectedAppTestResult,
@@ -46,6 +47,7 @@ import {
   type InferenceCoreQueryExecutor,
   type InferenceCoreTransaction,
   getInferenceCoreDb,
+  runInferenceCoreReadSnapshot,
 } from "../db/inference-core-client"
 import {
   applicationCredentials,
@@ -55,6 +57,14 @@ import {
   applications,
   auditEvents,
 } from "../db/inference-core-schema"
+import {
+  deleteAdminConnectedAppFirecrawlForParent,
+  disableAdminConnectedAppFirecrawlForParent,
+  getAdminConnectedAppFirecrawlProjection,
+  initializeAdminConnectedAppFirecrawlForParent,
+  markAdminConnectedAppFirecrawlParentEnabled,
+  resetAdminConnectedAppFirecrawlForTest,
+} from "./admin-connected-apps-firecrawl"
 import { emitAudit } from "./audit"
 import {
   type IdentityMutationRouteContext,
@@ -130,6 +140,7 @@ interface ConnectedAppCredentialRecord {
 
 interface ConnectedAppBundle {
   credentials: ConnectedAppCredentialRecord[]
+  firecrawl: AdminConnectedAppFirecrawl
   record: ConnectedAppRecord
 }
 
@@ -255,6 +266,14 @@ export async function getAdminConnectedAppDetail(
     sourceSystem: "console",
   })
   return { app: toPublicApp(bundle) }
+}
+
+export async function getAdminConnectedAppProjection(
+  id: string,
+  executor?: InferenceCoreQueryExecutor | null,
+): Promise<AdminConnectedApp | null> {
+  const bundle = await getConnectedAppBundle(id, executor)
+  return bundle ? toPublicApp(bundle) : null
 }
 
 export async function createAdminConnectedApp(
@@ -1354,6 +1373,7 @@ export async function resetConnectedAppsForTest(): Promise<void> {
   memoryOAuthClients.clear()
   memoryRateLimitWindows.clear()
   memoryGatewayRequests.clear()
+  resetAdminConnectedAppFirecrawlForTest()
 }
 
 async function commitConnectedAppCredentialReveal<T>(
@@ -1386,36 +1406,49 @@ class StaleConnectedAppIdentityError extends Error {
 async function getConnectedAppBundles(): Promise<ConnectedAppBundle[]> {
   const db = getInferenceCoreDb()
   if (db) {
-    const rows = await db
-      .select()
-      .from(applications)
-      .where(ne(applications.status, "deleted"))
-      .orderBy(desc(applications.updatedAt))
-    return Promise.all(rows.map((row) => loadConnectedAppBundle(row)))
+    return runInferenceCoreReadSnapshot(db, async (transaction) => {
+      const rows = await transaction
+        .select()
+        .from(applications)
+        .where(ne(applications.status, "deleted"))
+        .orderBy(desc(applications.updatedAt))
+      return Promise.all(
+        rows.map((row) => loadConnectedAppBundle(row, transaction)),
+      )
+    })
   }
   assertFixtureApplicationStorage()
-  return memoryConnectedApps
-    .filter((record) => record.status !== "deleted")
-    .map(memoryBundle)
+  return Promise.all(
+    memoryConnectedApps
+      .filter((record) => record.status !== "deleted")
+      .map(memoryBundle),
+  )
 }
 
 async function getConnectedAppBundle(
   id: string,
+  executor?: InferenceCoreQueryExecutor | null,
 ): Promise<ConnectedAppBundle | null> {
-  const db = getInferenceCoreDb()
-  if (db) {
-    const rows = await db
+  const load = async (database: InferenceCoreQueryExecutor) => {
+    const rows = await database
       .select()
       .from(applications)
       .where(and(eq(applications.id, id), ne(applications.status, "deleted")))
       .limit(1)
-    return rows[0] ? loadConnectedAppBundle(rows[0]) : null
+    return rows[0] ? loadConnectedAppBundle(rows[0], database) : null
+  }
+  if (executor) {
+    return load(executor)
+  }
+  const db = getInferenceCoreDb()
+  if (db) {
+    return runInferenceCoreReadSnapshot(db, load)
   }
   assertFixtureApplicationStorage()
   const record = memoryConnectedApps.find(
     (candidate) => candidate.id === id && candidate.status !== "deleted",
   )
-  return record ? memoryBundle(record) : null
+  return record ? await memoryBundle(record) : null
 }
 
 async function lockConnectedAppForMutation(
@@ -1570,6 +1603,11 @@ async function saveConnectedAppRecord(
       await executor
         .insert(applicationCredentials)
         .values(credentialInsertValues(credential))
+      await initializeAdminConnectedAppFirecrawlForParent(
+        actor,
+        storedRecord.id,
+        executor,
+      )
       await executor.insert(auditEvents).values(
         auditValues({
           action: auditAction,
@@ -1601,6 +1639,7 @@ async function saveConnectedAppRecord(
   })
   memoryConnectedApps.unshift(cloneRecord(record))
   memoryConnectedAppCredentials.unshift(cloneCredentialRecord(credential))
+  await initializeAdminConnectedAppFirecrawlForParent(actor, record.id)
   return memoryBundle(record)
 }
 
@@ -1782,6 +1821,9 @@ async function setConnectedAppLifecycleStatus(
       if (changed.length === 0) {
         return { status: "not_found" } as const
       }
+      if (targetStatus === "disabled") {
+        await disableAdminConnectedAppFirecrawlForParent(actor, id, transaction)
+      }
       await transaction.insert(auditEvents).values(
         auditValues({
           action: auditAction,
@@ -1844,7 +1886,12 @@ async function setConnectedAppLifecycleStatus(
   current.status = targetStatus
   current.updatedAt = occurredAt.toISOString()
   current.updatedBy = actor.subject
-  return { bundle: memoryBundle(current), status: "updated" }
+  if (targetStatus === "disabled") {
+    await disableAdminConnectedAppFirecrawlForParent(actor, id)
+  } else {
+    await markAdminConnectedAppFirecrawlParentEnabled(id)
+  }
+  return { bundle: await memoryBundle(current), status: "updated" }
 }
 
 async function rotateStaticConnectedAppCredential(
@@ -2428,6 +2475,11 @@ async function persistCredentialRevocation(
         if (disabled.length !== 1) {
           throw new Error("Application changed before credential revocation.")
         }
+        await disableAdminConnectedAppFirecrawlForParent(
+          actor,
+          existing.record.id,
+          transaction,
+        )
       }
       await transaction.insert(auditEvents).values(
         auditValues({
@@ -2477,6 +2529,7 @@ async function persistCredentialRevocation(
     storedApp.status = "disabled"
     storedApp.updatedAt = timestamp
     storedApp.updatedBy = actor.subject
+    await disableAdminConnectedAppFirecrawlForParent(actor, existing.record.id)
   }
   return memoryBundle(storedApp)
 }
@@ -2622,6 +2675,11 @@ async function persistSoftDelete(
       if (deleted.length !== 1) {
         throw new Error("Application changed before deletion.")
       }
+      await deleteAdminConnectedAppFirecrawlForParent(
+        actor,
+        existing.record.id,
+        transaction,
+      )
       await transaction.insert(auditEvents).values(
         auditValues({
           action: "admin.connected_app.deleted",
@@ -2665,6 +2723,7 @@ async function persistSoftDelete(
   storedApp.status = "deleted"
   storedApp.updatedAt = timestamp
   storedApp.updatedBy = actor.subject
+  await deleteAdminConnectedAppFirecrawlForParent(actor, existing.record.id)
 }
 
 async function loadConnectedAppBundle(
@@ -2674,35 +2733,40 @@ async function loadConnectedAppBundle(
   if (!database) {
     throw new Error("PostgreSQL Application storage is unavailable.")
   }
-  const [modelRows, limitRows, credentialRows, usageRows] = await Promise.all([
-    database
-      .select()
-      .from(applicationModelAllowlists)
-      .where(eq(applicationModelAllowlists.appId, row.id)),
-    database
-      .select()
-      .from(applicationLimits)
-      .where(eq(applicationLimits.appId, row.id))
-      .limit(1),
-    database
-      .select()
-      .from(applicationCredentials)
-      .where(eq(applicationCredentials.appId, row.id))
-      .orderBy(desc(applicationCredentials.issuedAt)),
-    database
-      .select()
-      .from(applicationUsageDaily)
-      .where(
-        and(
-          eq(applicationUsageDaily.appId, row.id),
-          gte(applicationUsageDaily.bucketDate, utcDate(-6)),
+  const [modelRows, limitRows, credentialRows, usageRows, firecrawl] =
+    await Promise.all([
+      database
+        .select()
+        .from(applicationModelAllowlists)
+        .where(eq(applicationModelAllowlists.appId, row.id)),
+      database
+        .select()
+        .from(applicationLimits)
+        .where(eq(applicationLimits.appId, row.id))
+        .limit(1),
+      database
+        .select()
+        .from(applicationCredentials)
+        .where(eq(applicationCredentials.appId, row.id))
+        .orderBy(desc(applicationCredentials.issuedAt)),
+      database
+        .select()
+        .from(applicationUsageDaily)
+        .where(
+          and(
+            eq(applicationUsageDaily.appId, row.id),
+            gte(applicationUsageDaily.bucketDate, utcDate(-6)),
+          ),
         ),
-      ),
-  ])
+      getAdminConnectedAppFirecrawlProjection(row.id, database),
+    ])
   const credentials = credentialRows.map(credentialRecordFromRow)
   const limits = limitRows[0]
   if (!limits) {
     throw new Error("Application protection policy storage is incomplete.")
+  }
+  if (!firecrawl) {
+    throw new Error("Application Firecrawl projection is unavailable.")
   }
   const lastUsedAt = latestTimestamp(
     credentials.map((credential) => credential.lastUsedAt),
@@ -2715,6 +2779,7 @@ async function loadConnectedAppBundle(
   })
   return {
     credentials,
+    firecrawl,
     record: {
       allowedModels: normalizeList(
         modelRows.map((modelRow) => modelRow.modelAlias),
@@ -2810,6 +2875,7 @@ function toPublicApp(bundle: ConnectedAppBundle): AdminConnectedApp {
     credentials: bundle.credentials.map(credentialMetadata),
     description: record.description,
     detailHref: `/applications/apps/${encodeURIComponent(record.id)}`,
+    firecrawl: bundle.firecrawl,
     id: record.id,
     lastConnectedAt: record.lastConnectedAt,
     maxConcurrentRequests: record.maxConcurrentRequests,
@@ -3134,12 +3200,19 @@ function auditValues(input: {
   }
 }
 
-function memoryBundle(record: ConnectedAppRecord): ConnectedAppBundle {
+async function memoryBundle(
+  record: ConnectedAppRecord,
+): Promise<ConnectedAppBundle> {
+  const firecrawl = await getAdminConnectedAppFirecrawlProjection(record.id)
+  if (!firecrawl) {
+    throw new Error("Application Firecrawl projection is unavailable.")
+  }
   return {
     credentials: memoryConnectedAppCredentials
       .filter((credential) => credential.appId === record.id)
       .map(cloneCredentialRecord)
       .sort((left, right) => right.issuedAt.localeCompare(left.issuedAt)),
+    firecrawl,
     record: cloneRecord(record),
   }
 }
@@ -3203,11 +3276,8 @@ function generateStaticApiKey(): string {
 }
 
 function staticApiKeyPrefix(apiKey: string): string | null {
-  const parts = apiKey.split("_")
-  if (parts.length < 4 || parts[0] !== "llmm" || parts[1] !== "t4") {
-    return null
-  }
-  return parts.slice(0, 3).join("_")
+  const match = /^llmm_t4_([0-9a-f]{18})_[A-Za-z0-9_-]{43}$/u.exec(apiKey)
+  return match?.[1] ? `llmm_t4_${match[1]}` : null
 }
 
 function staticApiKeyHash(apiKey: string): string {

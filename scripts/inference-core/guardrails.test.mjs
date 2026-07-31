@@ -36,6 +36,7 @@ import {
   pr05ContractBase,
   pr06ContractBase,
   pr07ContractBase,
+  pr08ContractBase,
   repositoryRoot,
   routeBaselinePath,
   scanForbiddenSurfaces,
@@ -54,6 +55,7 @@ import {
   verifyPr04TargetState,
   verifyPr05TargetState,
   verifyPr06TargetState,
+  verifyPr07TargetState,
   verifyProtectedGuardrailStability,
   verifyRepository,
   verifyRetentionCharacterization,
@@ -1158,6 +1160,13 @@ test("PR-06 base comparison accepts its dirty same-head candidate", () => {
 test("PR-07 base comparison accepts its dirty same-head candidate", () => {
   assert.deepEqual(
     verifyBaseCommitLineage(repositoryRoot, pr07ContractBase),
+    [],
+  )
+})
+
+test("PR-08 base comparison accepts its dirty same-head candidate", () => {
+  assert.deepEqual(
+    verifyBaseCommitLineage(repositoryRoot, pr08ContractBase),
     [],
   )
 })
@@ -2934,7 +2943,7 @@ test("retention register rejects unreviewed top-level claims", () => {
 
 test("the live repository matches its current reviewed baselines", () => {
   const result = verifyRepository({
-    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr07ContractBase,
+    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr08ContractBase,
   })
   assert.deepEqual(result.errors, [])
   assert.equal(result.ok, true)
@@ -3036,30 +3045,46 @@ test("historical target verifiers defer only to reviewed successors", () => {
     [],
   )
 
-  const unknownSuccessor = structuredClone(currentRoutes)
-  unknownSuccessor.reviewedRevisions = [{ id: "PR-08" }]
-  assert.match(
+  const pr08Successor = structuredClone(currentRoutes)
+  pr08Successor.reviewedRevisions = [{ id: "PR-08" }]
+  assert.deepEqual(
     verifyPr03TargetState({
       currentAllowlist,
-      currentRoutes: unknownSuccessor,
-    }).join("\n"),
-    /PR-03 total route count changed/,
+      currentRoutes: pr08Successor,
+    }),
+    [],
   )
-  assert.match(
+  assert.deepEqual(
     verifyPr04TargetState({
       currentAllowlist,
-      currentRoutes: unknownSuccessor,
+      currentRoutes: pr08Successor,
       paths: [],
-    }).join("\n"),
-    /PR-04 total route count changed/,
+    }),
+    [],
   )
-  assert.match(
+  assert.deepEqual(
     verifyPr05TargetState({
       currentAllowlist,
-      currentRoutes: unknownSuccessor,
+      currentRoutes: pr08Successor,
       paths: [],
-    }).join("\n"),
-    /PR-05 total route count changed/,
+    }),
+    [],
+  )
+  assert.deepEqual(
+    verifyPr06TargetState({
+      currentAllowlist,
+      currentRoutes: pr08Successor,
+      paths: [],
+    }),
+    [],
+  )
+  assert.deepEqual(
+    verifyPr07TargetState({
+      currentAllowlist,
+      currentRoutes: pr08Successor,
+      paths: [],
+    }),
+    [],
   )
 })
 
@@ -3067,9 +3092,10 @@ test("unknown active reviewed revisions fail closed", () => {
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-02"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-06"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-07"), [])
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-08"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId(undefined), [])
-  assert.deepEqual(verifyActiveReviewedRevisionId("PR-08"), [
-    "unsupported active reviewed revision PR-08",
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-09"), [
+    "unsupported active reviewed revision PR-09",
   ])
 })
 

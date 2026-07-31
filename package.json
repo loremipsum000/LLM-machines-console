@@ -9,8 +9,8 @@
   "scripts": {
     "build": "corepack pnpm -r build",
     "build:inference-core": "node scripts/inference-core/run-core-command.mjs build",
-    "check:inference-core": "node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base": "node scripts/inference-core/guardrails.mjs --base-ref cd5a389cde949d07aa64ef7a0513cb585bb8bb7a",
+    "check:inference-core": "node infra/firecrawl/validate-profile.mjs && node scripts/inference-core/guardrails.mjs",
+    "check:inference-core:base": "node infra/firecrawl/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref c47ffd38661ce9a7561f967aecbb9bae15cdadf5",
     "contract:inference-core:pr07:policy": "node scripts/inference-core/pr07-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr07:write": "node scripts/inference-core/pr07-contract-revision.mjs --write",
     "dev": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && corepack pnpm --filter @llm-machines/web dev",
@@ -21,7 +21,7 @@
     "test:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test",
     "test:inference-core-authorization": "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match exec vitest run src/inference-core-authorization.test.ts",
     "test:inference-core-characterization": "corepack pnpm --filter @llm-machines/bff --fail-if-no-match exec vitest run src/routes/inference-core-characterization.test.ts",
-    "test:inference-core-guardrails": "node --test scripts/inference-core/*.test.mjs",
+    "test:inference-core-guardrails": "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs",
     "typecheck": "corepack pnpm -r build && corepack pnpm -r typecheck && corepack pnpm run typecheck:inference-core-db",
     "typecheck:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests typecheck",
     "typecheck:inference-core": "node scripts/inference-core/run-core-command.mjs typecheck"

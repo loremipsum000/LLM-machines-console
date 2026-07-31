@@ -4,7 +4,7 @@ This directory records the PR-01 target contract and the exact legacy
 characterization that later reduction pull requests must shrink.
 
 PR-01 was the bootstrap characterization, not a claim that the Product already
-implemented the target. The accepted PR-06 baseline now retains only the two
+implemented the target. The accepted PR-07 baseline now retains only the two
 human roles, has no legacy registered route, and records connection evidence
 only from an authenticated real client request to
 `GET /api/app-gateway/v1/models`. Runtime
@@ -68,8 +68,8 @@ Run:
 ```text
 corepack pnpm check:inference-core
 corepack pnpm check:inference-core:base
-corepack pnpm contract:inference-core:pr07:policy
-corepack pnpm contract:inference-core:pr07:write
+node scripts/inference-core/pr08-contract-revision.mjs --print-operation-policy
+node scripts/inference-core/pr08-contract-revision.mjs --write
 corepack pnpm test:inference-core-guardrails
 corepack pnpm test:inference-core-db
 corepack pnpm build:inference-core
@@ -77,8 +77,8 @@ corepack pnpm typecheck:inference-core
 corepack pnpm typecheck:inference-core-db
 ```
 
-The package guardrail command compares against the immutable accepted PR-06
-integration commit `cd5a389cde949d07aa64ef7a0513cb585bb8bb7a`. It does not
+The package guardrail command compares against the immutable accepted PR-07
+integration commit `c47ffd38661ce9a7561f967aecbb9bae15cdadf5`. It does not
 follow a moving branch ref. The guardrail CLI accepts an explicit `--base-ref`
 for a separately reviewed manual comparison. The comparison is a bootstrap
 result in PR-01 because the integration base predates these files. From PR-02
@@ -367,3 +367,62 @@ Both commands require exact lane-anchor `HEAD`. Write mode rejects pending or
 drifted decisions and atomically replaces only the PR-07 revision, forbidden
 allowlist, and route baseline. The generated revision and baselines must not be
 created from a partial or unstaged candidate.
+
+PR-08 reconstructs only reviewed semantic units from private Firecrawl
+checkpoint `ff74f3c94c563627929af31c46d48dda8e7d6192`, tree
+`8a978eb0f6d0ef04a896ec29f138a84a7cf14d79`, over private base
+`eeab335ab3e46add36e4efcfb4dad2b3b47a8202`, tree
+`c38ca6e7ea85e454f7c191441ade7679b7ee4c41`. The Product content base and lane
+anchor are the accepted PR-07 integration commit
+`c47ffd38661ce9a7561f967aecbb9bae15cdadf5`, tree
+`6071f1aa62690c509346cf1af7017a4cc669d28b`. Pilot commits are not merged or
+cherry-picked, pilot ancestry is forbidden, and migration `0027` is excluded.
+The source manifest binds exact reviewed commits and source artifacts. The
+JSONL source map binds each reconstructed target file to its reviewed semantic
+units.
+
+The public T2 surface adds exactly authenticated `POST /v2/search` and
+`POST /v2/scrape`; every other Firecrawl route and method remains absent. The
+public inference routes do not change. Six authenticated Application admin
+routes cover enable, policy update, passive test, credential rotation,
+disable, and credential revoke. They remain control-plane routes and do not
+expand public T2. Firecrawl is installed but disabled per Application by
+default and uses its own static credential namespace with no automatic expiry
+and an exact 86,400-second retiring overlap. Admin accepts a versioned
+outbound-processing disclaimer to enable or re-enable. Admin and Operator may
+view, passively test, rotate, revoke, or disable existing access; Operator
+cannot enable it or change LiteLLM routing.
+
+System-managed exact-host egress allowlisting and public-address validation do
+not introduce customer URL Governance. The governed internal upstream is
+exactly `http://firecrawl-api:3002`; hosted, HTTPS, alternate-host, and
+alternate-port upstreams fail closed. Query terms, target and final URLs,
+pages, bodies, results, tool arguments, cookies, screenshots, and history are
+prohibited from retained Product state. BFF source-level request logging is
+query-free and collapses every unsupported `/v2` pathname to
+`/v2/[unsupported]`. PR-08 does not claim that the native Firecrawl runtime has
+proven zero retention: removal or isolation of its content-bearing logger and
+span sinks, followed by runtime canaries, remains a PR-12 release gate. PR-08
+is source-only and never deploys an intermediate candidate. The combined
+Application UI remains hidden until PR-11. Three exact Web test fixtures may
+add the disabled Firecrawl contract projection for compatibility, but every
+Web production path remains forbidden. Final images, signing, offline packet,
+SBOM, corresponding-source delivery, runtime deployment, and runtime
+qualification remain PR-12.
+
+The reviewed PR-08 decision binds the six exact operation arrays generated
+from the final staged delta. Contract generation is staged-only and
+deterministic. From exact lane-anchor `HEAD`, stage every tracked candidate
+path, leave no untracked path, verify that the printed policy matches the
+reviewed decision, and run write mode:
+
+```text
+node scripts/inference-core/pr08-contract-revision.mjs --print-operation-policy
+node scripts/inference-core/pr08-contract-revision.mjs --write
+```
+
+Write mode verifies immutable PR-02 through PR-07 evidence, source manifest
+and source map bindings, no pilot ancestry, the exact route and registrar
+surface, the source-only package boundary, and the reviewed operation policy.
+It atomically writes only `contract-revisions/PR-08.json`, the forbidden
+allowlist, and the route baseline. Do not run it for a partial candidate.

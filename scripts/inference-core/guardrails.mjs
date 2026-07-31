@@ -47,6 +47,14 @@ export const pr07ContractRevisionPath =
   "docs/reduction/inference-core/contract-revisions/PR-07.json"
 export const pr07DecisionPath =
   "docs/reduction/inference-core/pr-07-data-plane-decisions.json"
+export const pr08ContractRevisionPath =
+  "docs/reduction/inference-core/contract-revisions/PR-08.json"
+export const pr08DecisionPath =
+  "docs/reduction/inference-core/pr-08-firecrawl-decisions.json"
+export const pr08SourceManifestPath =
+  "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json"
+export const pr08SourceMapPath =
+  "docs/reduction/inference-core/source-map.jsonl"
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -59,6 +67,78 @@ export const pr06ContractBase = "da6f0c0a2b5e477449a09527a28c7e51ef432c20"
 export const pr06LaneAnchor = "da6f0c0a2b5e477449a09527a28c7e51ef432c20"
 export const pr07ContractBase = "cd5a389cde949d07aa64ef7a0513cb585bb8bb7a"
 export const pr07LaneAnchor = "cd5a389cde949d07aa64ef7a0513cb585bb8bb7a"
+export const pr08ContractBase = "c47ffd38661ce9a7561f967aecbb9bae15cdadf5"
+export const pr08LaneAnchor = "c47ffd38661ce9a7561f967aecbb9bae15cdadf5"
+export const pr08ContractBaseTree = "6071f1aa62690c509346cf1af7017a4cc669d28b"
+export const pr08PrivateCheckpoint = {
+  baseCommit: "eeab335ab3e46add36e4efcfb4dad2b3b47a8202",
+  baseTree: "c38ca6e7ea85e454f7c191441ade7679b7ee4c41",
+  commit: "ff74f3c94c563627929af31c46d48dda8e7d6192",
+  tree: "8a978eb0f6d0ef04a896ec29f138a84a7cf14d79",
+}
+export const pr08PrivatePreservationBinding = {
+  privateHoldRef: "refs/heads/hold/firecrawl-hermes-pilot",
+  selectedManifestV2Sha256:
+    "889c8c50f1debc1b8f5c6cf2bc096135e7dbcde23a2af9567ceacc39ecf5c604",
+  exclusionLedgerV2Sha256:
+    "058ef3baff0939b20abea31f5d4b7674aa8b2fb735eb0c97da11c392490e1337",
+  combinedBindingV2Sha256:
+    "1e067a3be0d3309d6fee6e5c5d63680621b2da9883100d5931ab5bf86d81e520",
+}
+export const pr08SourceArtifacts = [
+  {
+    path: "infra/librechat/web-search/hermes-firecrawl/docker-compose.yml",
+    blob: "6766a13139ebec3cfd6d17934ecaccfd3714d2a5",
+    bytes: 16447,
+    sha256: "760561f9c9204cd7d83181f13a404cf5ee718ca82d53e3f68319b5d8b1e49cdd",
+  },
+  {
+    path: "infra/librechat/web-search/hermes-firecrawl/searxng/settings.yml",
+    blob: "646fb8b16fe19956911f9986cf181740c02eaad0",
+    bytes: 1024,
+    sha256: "e78c0b13422ff413e09357161d795e1e05ff4eef92c1dc0bd93f189f80d456da",
+  },
+  {
+    path: "infra/librechat/web-search/hermes-firecrawl/egress-proxy/squid.conf",
+    blob: "10031f476cde1dbed5b2c172bbc8983962e1ea36",
+    bytes: 2250,
+    sha256: "abb846b8355aad7f9e0df7c47a719c0e8ba39be2842c62a5e345fb5e2df7a2b9",
+  },
+  {
+    path: "infra/librechat/web-search/hermes-firecrawl/supply-chain/source-lock.env",
+    blob: "8dfb98ef212dd53ccf6844947929c94d045305e5",
+    bytes: 2593,
+    sha256: "018eed1e85812fbaff922bf4b07d343ae91eb02490e616dddd8874f39c90732f",
+  },
+  {
+    path: "infra/librechat/web-search/hermes-firecrawl/supply-chain/image-lock.env",
+    blob: "2c7c1b680c58068d18d9de5d149bccccbb95a6d7",
+    bytes: 3387,
+    sha256: "e8c687045f9b07692c6b63cf6e2dd0338f601a35f677c9bfde52557753871a38",
+  },
+  {
+    path: "infra/librechat/web-search/hermes-firecrawl/supply-chain/third-party-source-ledger.json",
+    blob: "ff8494a2df1df5234f4bef9008981712cd410b60",
+    bytes: 6718,
+    sha256: "3b81614a6c05b4f106785d29088edc1217addd3969432a3cd0057425995900e1",
+  },
+  {
+    path: "infra/librechat/web-search/hermes-firecrawl/supply-chain/patches/runtime-policy.patch",
+    blob: "aa2281e4d98e5ee0c6010b3e5f54bf8c70e10d8a",
+    bytes: 26547,
+    sha256: "eb110989c841107d1c55ba50ef4ae3e3710bb27b27fde3dc8881f34b7e3dabdd",
+  },
+]
+export const pr08SourceManifestBinding = {
+  path: pr08SourceManifestPath,
+  productBase: {
+    commit: pr08ContractBase,
+    tree: pr08ContractBaseTree,
+  },
+  privateCheckpoint: pr08PrivateCheckpoint,
+  method: "reviewed-semantic-unit-reconstruction",
+  pilotAncestryAllowed: false,
+}
 const pr02RevisionEvidencePaths = [
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -89,6 +169,15 @@ export const pr07RevisionEvidencePaths = [
   "scripts/inference-core/pr07-boundaries.test.mjs",
   "scripts/inference-core/pr07-contract-revision.mjs",
 ]
+export const pr08RevisionEvidencePaths = [
+  pr08DecisionPath,
+  pr08SourceManifestPath,
+  pr08SourceMapPath,
+  "docs/reduction/inference-core/decision-register.md",
+  "docs/reduction/inference-core/validation-register.md",
+  "scripts/inference-core/pr08-boundaries.test.mjs",
+  "scripts/inference-core/pr08-contract-revision.mjs",
+]
 const pr04ImmutablePriorEvidencePaths = [
   pr02ContractRevisionPath,
   ...pr02RevisionEvidencePaths,
@@ -113,6 +202,11 @@ const pr07ImmutablePriorEvidencePaths = [
   pr06ContractRevisionPath,
   ...pr06RevisionEvidencePaths,
 ]
+const pr08ImmutablePriorEvidencePaths = [
+  ...pr07ImmutablePriorEvidencePaths,
+  pr07ContractRevisionPath,
+  ...pr07RevisionEvidencePaths,
+]
 const generatedContractPaths = new Set([
   allowlistPath,
   routeBaselinePath,
@@ -122,6 +216,7 @@ const generatedContractPaths = new Set([
   pr05ContractRevisionPath,
   pr06ContractRevisionPath,
   pr07ContractRevisionPath,
+  pr08ContractRevisionPath,
 ])
 export const pr02OperationPolicy = {
   changedSourcePaths: [
@@ -288,12 +383,18 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/contract-revisions/PR-05.json",
   "docs/reduction/inference-core/contract-revisions/PR-06.json",
   "docs/reduction/inference-core/contract-revisions/PR-07.json",
+  "docs/reduction/inference-core/contract-revisions/PR-08.json",
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "docs/reduction/inference-core/pr-03-removal-decisions.json",
   "docs/reduction/inference-core/pr-04-data-decisions.json",
   "docs/reduction/inference-core/pr-05-identity-decisions.json",
   "docs/reduction/inference-core/pr-06-application-decisions.json",
   "docs/reduction/inference-core/pr-07-data-plane-decisions.json",
+  "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
+  "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
+  "docs/reduction/inference-core/decision-register.md",
+  "docs/reduction/inference-core/source-map.jsonl",
+  "docs/reduction/inference-core/validation-register.md",
   "docs/reduction/inference-core/retention-characterization.json",
   "docs/reduction/inference-core/route-baseline.json",
   "scripts/inference-core/guardrails.mjs",
@@ -310,6 +411,8 @@ const guardrailExclusions = new Set([
   "scripts/inference-core/pr06-boundaries.test.mjs",
   "scripts/inference-core/pr07-contract-revision.mjs",
   "scripts/inference-core/pr07-boundaries.test.mjs",
+  "scripts/inference-core/pr08-contract-revision.mjs",
+  "scripts/inference-core/pr08-boundaries.test.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -333,6 +436,11 @@ const protectedGuardrailPaths = [
   "docs/reduction/inference-core/pr-05-identity-decisions.json",
   "docs/reduction/inference-core/pr-06-application-decisions.json",
   "docs/reduction/inference-core/pr-07-data-plane-decisions.json",
+  "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
+  "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
+  "docs/reduction/inference-core/decision-register.md",
+  "docs/reduction/inference-core/source-map.jsonl",
+  "docs/reduction/inference-core/validation-register.md",
   "packages/contracts/src/inference-core-authorization.test.ts",
   "packages/contracts/src/inference-core-authorization.ts",
   "packages/contracts/src/inference-core.test.ts",
@@ -355,6 +463,8 @@ const protectedGuardrailPaths = [
   "scripts/inference-core/pr06-contract-revision.mjs",
   "scripts/inference-core/pr07-boundaries.test.mjs",
   "scripts/inference-core/pr07-contract-revision.mjs",
+  "scripts/inference-core/pr08-boundaries.test.mjs",
+  "scripts/inference-core/pr08-contract-revision.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -597,6 +707,93 @@ const ignoredFindingFingerprints = [
   },
 ]
 
+const pr08IgnoredFindingFingerprints = [
+  {
+    ruleId: "FS106_RETIRED_PROCESSING",
+    path: "infra/firecrawl/README.md",
+    fingerprint:
+      "f1ec2b758aca1637ab1223eed5ebee9cdfc02458b56b2d9bd8ddae1998793252",
+    reason: "Negative reduced-profile dependency exclusion.",
+  },
+  {
+    ruleId: "FS106_RETIRED_PROCESSING",
+    path: "infra/firecrawl/provenance/source-lock.json",
+    fingerprint:
+      "a238ba4555d968c8189cf515f550eba4658e26fe576685a4ed44922e846adde4",
+    reason: "Bound negative dependency inventory in source provenance.",
+  },
+  {
+    ruleId: "FS106_RETIRED_PROCESSING",
+    path: "infra/firecrawl/validate-profile.mjs",
+    fingerprint:
+      "a238ba4555d968c8189cf515f550eba4658e26fe576685a4ed44922e846adde4",
+    reason: "Static validator rejects the named excluded dependency.",
+  },
+  {
+    ruleId: "FS106_RETIRED_PROCESSING",
+    path: "infra/firecrawl/validate-profile.mjs",
+    fingerprint:
+      "b70ac085e76d8b7336faac62693cc162f4da176dcbdec0be7ae7b8e783d3f1f7",
+    reason: "Static validator rejects retired processing variables.",
+  },
+  {
+    ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
+    path: "apps/bff/src/services/inference-core-retention.test.ts",
+    fingerprint:
+      "e48dc57e4197ffd82b68af5bbaf0651b9db5d85d050a715ff1b92aa80288a05c",
+    reason: "Negative test proves the retired dependency is absent.",
+  },
+  {
+    ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
+    path: "infra/firecrawl/README.md",
+    fingerprint:
+      "8474cb09d1e9562a0472ea2d8c22474523602366941145552eebd0cb15f060ec",
+    reason: "Negative reduced-profile dependency exclusion.",
+  },
+  {
+    ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
+    path: "infra/firecrawl/provenance/source-lock.json",
+    fingerprint:
+      "86a8ebc333d58e1633448e579f64d6a9223c5291ef994c695dd3ef2bb4cf7630",
+    reason: "Bound negative dependency inventory in source provenance.",
+  },
+  {
+    ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
+    path: "infra/firecrawl/validate-profile.mjs",
+    fingerprint:
+      "00c71abd7195245ed5b3ce94d115879fe4ce3ff313d93bcf1776b8ecf876122c",
+    reason: "Static validator rejects retired data-service variables.",
+  },
+  {
+    ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
+    path: "infra/firecrawl/validate-profile.mjs",
+    fingerprint:
+      "13cfef723dab099301a34d58a99a5e2596cc0276e5337f5eb37d78bc28e21ff7",
+    reason: "Static validator rejects a retired service name.",
+  },
+  {
+    ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
+    path: "infra/firecrawl/validate-profile.mjs",
+    fingerprint:
+      "64a4f42a926f362f46b3470d25d66ce5ecfeca5ed63d7ff6281e9d70d2f33615",
+    reason: "Static validator rejects embedded retired cache settings.",
+  },
+  {
+    ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
+    path: "infra/firecrawl/validate-profile.mjs",
+    fingerprint:
+      "d6efbbd4eabc6ebe79839e90f1b4adedc11813bc17a1c5653efafeedb1c84bfa",
+    reason: "Static validator binds the negative dependency inventory.",
+  },
+  {
+    ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
+    path: "infra/firecrawl/validate-profile.test.mjs",
+    fingerprint:
+      "235c8890986b013c2504bcad040d590910d45fcb3b83f97a62f08fcd23da1aac",
+    reason: "Negative fixture proves retired cache settings fail closed.",
+  },
+]
+
 export const pr04RetiredDependencyBoundary = {
   path: "pnpm-lock.yaml",
   package: "drizzle-orm@0.44.2",
@@ -701,6 +898,14 @@ export const pr07StandaloneDbTestBoundary = {
   allowedPaths: [
     ...pr06StandaloneDbTestBoundary.allowedPaths,
     "test-support/inference-core-db-tests/src/pr07-inference-data-plane.test.ts",
+  ].sort(),
+}
+
+export const pr08StandaloneDbTestBoundary = {
+  ...pr07StandaloneDbTestBoundary,
+  allowedPaths: [
+    ...pr07StandaloneDbTestBoundary.allowedPaths,
+    "test-support/inference-core-db-tests/src/pr08-firecrawl-schema.test.ts",
   ].sort(),
 }
 
@@ -961,6 +1166,113 @@ export const pr07ReviewedDispositions = {
   },
 }
 
+export const pr08ReviewedDispositions = {
+  publicCapability: {
+    classification: "public-t2-generic-third-party-application",
+    routes: [
+      { method: "POST", path: "/v2/search" },
+      { method: "POST", path: "/v2/scrape" },
+    ],
+    additionalRoutesOrMethods: false,
+    scopes: ["firecrawl.search", "firecrawl.scrape"],
+    searchMode: "bounded-search",
+    scrapeMode: "bounded-static-scrape",
+    inferenceRoutes: "unchanged",
+    hermesDependency: false,
+  },
+  installationAndActivation: {
+    applianceProfile: "always-installed",
+    perApplicationDefault: "disabled",
+    noEnabledApplicationBehavior: "cold-and-egress-sealed",
+    uiVisibilityOwner: "PR-11",
+    uiVisibleInPr08: false,
+  },
+  credentialLifecycle: {
+    authentication: "dedicated-per-application-static-bearer",
+    namespaces: [
+      "inference-static-key",
+      "application-oauth-client",
+      "firecrawl-static-key",
+      "litellm-native-key",
+    ],
+    namespacesInterchangeable: false,
+    automaticExpiry: false,
+    retiringOverlapSeconds: 86400,
+    rotationIndependent: true,
+    revocationIndependent: true,
+    lastUseMetadataIndependent: true,
+  },
+  authority: {
+    disclaimer: "versioned-outbound-web-processing-acceptance-required",
+    adminOnly: ["enable", "re-enable", "accept-disclaimer"],
+    adminOrOperator: ["view", "passive-test", "rotate", "revoke", "disable"],
+    operatorForbidden: [
+      "enable",
+      "re-enable",
+      "accept-disclaimer",
+      "change-litellm-routes",
+      "enable-outbound-web",
+    ],
+    connectionEvidence: "passive-authenticated-real-client-request",
+    activeProbe: false,
+  },
+  egressAndUrlSafety: {
+    ownership: "system-managed",
+    destinationPolicy:
+      "exact-host-egress-allowlist-plus-public-address-validation",
+    customerUrlGovernance: false,
+    directCloudFirecrawl: false,
+    governedPrivateUpstream: "http://firecrawl-api:3002",
+    nativePortsPublic: false,
+    directWorkloadEgress: false,
+    controlledProxyOnly: true,
+  },
+  retention: {
+    workloadContentPersistence: false,
+    prohibitedContentClasses: [
+      "query-terms",
+      "target-urls",
+      "final-urls",
+      "pages",
+      "request-bodies",
+      "response-bodies",
+      "results",
+      "tool-arguments",
+      "cookies",
+      "screenshots",
+      "history",
+    ],
+    retainedMetadataClasses: [
+      "subject",
+      "application",
+      "credential",
+      "action",
+      "status",
+      "time",
+      "rate",
+      "concurrency",
+      "latency",
+      "count",
+    ],
+    runtimeQualificationOwner: "PR-12",
+  },
+  sourceProvenance: {
+    method: "reviewed-semantic-unit-reconstruction",
+    privateCheckpoint: pr08PrivateCheckpoint,
+    wholesaleMerge: false,
+    wholesaleCherryPick: false,
+    pilotAncestryAllowed: false,
+    migration0027Allowed: false,
+  },
+  scopeBoundaries: {
+    sourceOnly: true,
+    intermediateDeployment: false,
+    finalCombinedApplicationUiOwner: "PR-11",
+    finalImagesSigningOfflinePacketSbomAndCorrespondingSourceOwner: "PR-12",
+    runtimeDeploymentAndQualificationOwner: "PR-12",
+  },
+}
+
 export const pr05AdminOnlyRoutePolicyKeys = [
   "GET /api/admin/recovery/status",
   "POST /api/admin/recovery/factor/commission",
@@ -1030,6 +1342,178 @@ export const pr07AllowedRepositoryPathPatterns = [
   /^scripts\/inference-core\/(?:guardrails(?:\.test)?|pr07-(?:boundaries\.test|contract-revision))\.mjs$/,
   /^test-support\/inference-core-db-tests\/src\/(?:admin-connected-apps-storage|inference-core-migration|inference-core-retention|pr05-identity-mutation-journal|pr06-application-credential-reconciliation|pr07-inference-data-plane)\.test\.ts$/,
 ]
+
+export const pr08AllowedRepositoryPathPatterns = [
+  /^\.env\.example$/,
+  /^apps\/bff\/src\/db\/inference-core-(?:client|schema)(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/index(?:-firecrawl-(?:credential-isolation|logging)\.test|\.test)?\.ts$/,
+  /^apps\/bff\/src\/routes\/(?:admin(?:-[a-z0-9-]+)?|firecrawl-gateway|inference-core-characterization)(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/services\/(?:admin-connected-apps(?:-[a-z0-9-]+)?|admin-settings-core|admin-settings-firecrawl-readiness|application-gateway-policy|firecrawl-gateway-runtime|firecrawl-url-safety|inference-core-retention)(?:\.test)?\.ts$/,
+  /^apps\/web\/src\/components\/console-v2\/(?:applications-v2-experience|role-aware-presentation)\.test\.tsx$/,
+  /^apps\/web\/src\/lib\/admin\/actions-core\.test\.ts$/,
+  /^docs\/reduction\/inference-core\/(?:README\.md|decision-register\.md|pr-08-firecrawl-(?:decisions\.json|source-manifest\.json)|source-map\.jsonl|validation-register\.md)$/,
+  /^infra\/firecrawl\/(?:README\.md|THIRD_PARTY_NOTICES\.md|compose\.yaml|validate-profile(?:\.test)?\.mjs|egress\/(?:squid\.conf|allowlists\/default\/allowed-hosts\.txt)|provenance\/source-lock\.json|searxng\/settings\.yml)$/,
+  /^infra\/migrations\/0000_inference_core\.sql$/,
+  /^package\.json$/,
+  /^packages\/contracts\/src\/inference-core(?:-firecrawl\.test)?\.ts$/,
+  /^scripts\/inference-core\/(?:guardrails(?:\.test)?|pr08-(?:boundaries\.test|contract-revision))\.mjs$/,
+  /^test-support\/inference-core-db-tests\/src\/(?:admin-connected-apps-storage|inference-core-migration|pr07-inference-data-plane|pr08-firecrawl-schema)\.test\.ts$/,
+]
+
+export const pr08WebContractCompatibilityTestPaths = [
+  "apps/web/src/components/console-v2/applications-v2-experience.test.tsx",
+  "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+  "apps/web/src/lib/admin/actions-core.test.ts",
+]
+
+export const pr08ExpectedMappedTargetPaths = [
+  ".env.example",
+  "apps/bff/src/db/inference-core-client.test.ts",
+  "apps/bff/src/db/inference-core-client.ts",
+  "apps/bff/src/db/inference-core-schema.test.ts",
+  "apps/bff/src/db/inference-core-schema.ts",
+  "apps/bff/src/index-firecrawl-credential-isolation.test.ts",
+  "apps/bff/src/index.ts",
+  "apps/bff/src/index-firecrawl-logging.test.ts",
+  "apps/bff/src/routes/admin-authorization.test.ts",
+  "apps/bff/src/routes/admin-firecrawl-lifecycle.test.ts",
+  "apps/bff/src/routes/admin.ts",
+  "apps/bff/src/routes/firecrawl-gateway.test.ts",
+  "apps/bff/src/routes/firecrawl-gateway.ts",
+  "apps/bff/src/routes/inference-core-characterization.test.ts",
+  "apps/bff/src/services/admin-connected-apps-firecrawl.test.ts",
+  "apps/bff/src/services/admin-connected-apps-firecrawl-settlement.test.ts",
+  "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+  "apps/bff/src/services/admin-connected-apps.ts",
+  "apps/bff/src/services/admin-settings-core.ts",
+  "apps/bff/src/services/admin-settings-firecrawl-readiness.test.ts",
+  "apps/bff/src/services/firecrawl-gateway-runtime.test.ts",
+  "apps/bff/src/services/firecrawl-gateway-runtime.ts",
+  "apps/bff/src/services/firecrawl-url-safety.test.ts",
+  "apps/bff/src/services/firecrawl-url-safety.ts",
+  "apps/bff/src/services/inference-core-retention.test.ts",
+  "apps/bff/src/services/inference-core-retention.ts",
+  ...pr08WebContractCompatibilityTestPaths,
+  "infra/firecrawl/README.md",
+  "infra/firecrawl/THIRD_PARTY_NOTICES.md",
+  "infra/firecrawl/compose.yaml",
+  "infra/firecrawl/egress/allowlists/default/allowed-hosts.txt",
+  "infra/firecrawl/egress/squid.conf",
+  "infra/firecrawl/provenance/source-lock.json",
+  "infra/firecrawl/searxng/settings.yml",
+  "infra/firecrawl/validate-profile.mjs",
+  "infra/firecrawl/validate-profile.test.mjs",
+  "infra/migrations/0000_inference_core.sql",
+  "package.json",
+  "packages/contracts/src/inference-core-firecrawl.test.ts",
+  "packages/contracts/src/inference-core.ts",
+  "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+  "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+  "test-support/inference-core-db-tests/src/pr07-inference-data-plane.test.ts",
+  "test-support/inference-core-db-tests/src/pr08-firecrawl-schema.test.ts",
+].sort()
+
+export const pr08ReviewedSourceMapSemanticBindings = {
+  ".env.example":
+    "da90b370884b92411898eac77d5dcb481d9823ea1f9cd8d62a23fefecee14d18",
+  "apps/bff/src/db/inference-core-client.test.ts":
+    "604ff9e608626f66bdf4fc32ba12a24db28fd4104e05f9a2020ed84d2822a8de",
+  "apps/bff/src/db/inference-core-client.ts":
+    "604ff9e608626f66bdf4fc32ba12a24db28fd4104e05f9a2020ed84d2822a8de",
+  "apps/bff/src/db/inference-core-schema.test.ts":
+    "604ff9e608626f66bdf4fc32ba12a24db28fd4104e05f9a2020ed84d2822a8de",
+  "apps/bff/src/db/inference-core-schema.ts":
+    "604ff9e608626f66bdf4fc32ba12a24db28fd4104e05f9a2020ed84d2822a8de",
+  "apps/bff/src/index-firecrawl-credential-isolation.test.ts":
+    "9c1b5a179831a9d5bad3d501c12d6ab582673a129bff24d6830d0bca5f6b4ca3",
+  "apps/bff/src/index-firecrawl-logging.test.ts":
+    "ce245d990f8ed08162000a5f6d5c6345421c9c6d31df2d85c63a72f72e3d97f4",
+  "apps/bff/src/index.ts":
+    "5c5358f9bb19763318686c3a0874ebee843054352c3ef803a2515068be948441",
+  "apps/bff/src/routes/admin-authorization.test.ts":
+    "b95aba0412ec7fd83ff00164cb9ef873f392ce450afb5c64da2240f040143b1a",
+  "apps/bff/src/routes/admin-firecrawl-lifecycle.test.ts":
+    "25f0061406bded9e84411e3e8149b161e867c66accfb0d62d9a0412fcb387a14",
+  "apps/bff/src/routes/admin.ts":
+    "e60293e81ebfa00db052a7196ee107caf53bb1ecddfd34f107e24b563128c2f9",
+  "apps/bff/src/routes/firecrawl-gateway.test.ts":
+    "edb2f8d7bafd7f26271af97097a523c92d74cd78bf8677a0cc79766867a25891",
+  "apps/bff/src/routes/firecrawl-gateway.ts":
+    "edb2f8d7bafd7f26271af97097a523c92d74cd78bf8677a0cc79766867a25891",
+  "apps/bff/src/routes/inference-core-characterization.test.ts":
+    "c478e3ecec22d0513e177a9bfe09a21f04fc7f483344496ec47e72c402a82bf7",
+  "apps/bff/src/services/admin-connected-apps-firecrawl.test.ts":
+    "659edd9fd2bfe16750e54613ed1fc3b6da9ecfd96da09b3200da569f9391ec10",
+  "apps/bff/src/services/admin-connected-apps-firecrawl-settlement.test.ts":
+    "b11245341bfd38dea44da52d5b06135edf3fcc8a1a152753307ff1ba3df11b2e",
+  "apps/bff/src/services/admin-connected-apps-firecrawl.ts":
+    "c6bb2c90a4d80de3807680a7ad0ed67983e7313e406143fa83b5ce4b0e8a464b",
+  "apps/bff/src/services/admin-connected-apps.ts":
+    "ffdbbd9b7d3e5d6e0f31c8fef58fb37b05081405d2d634f51637ce8bfd5c2689",
+  "apps/bff/src/services/admin-settings-core.ts":
+    "835194c2559293885bb9186f3786f05d86f0e63f72abfe2023c4092a2fe34efc",
+  "apps/bff/src/services/admin-settings-firecrawl-readiness.test.ts":
+    "d3477f9d6548df5149d1321603316fe83ec8502af2d79b2238be9549e96c2766",
+  "apps/bff/src/services/firecrawl-gateway-runtime.test.ts":
+    "2d507ced7ac9d7223d84233bb63fc24ac9844ea70e9af4d17e5614563e78c3cd",
+  "apps/bff/src/services/firecrawl-gateway-runtime.ts":
+    "31b8b436de463b698ad00287e92846830a2361f9dd19eeae99af55fd98757cb1",
+  "apps/bff/src/services/firecrawl-url-safety.test.ts":
+    "e7df0bf1b103fa1ee97b4cfbcd748e945205b8c7d5858210ec88b3e867e15bd5",
+  "apps/bff/src/services/firecrawl-url-safety.ts":
+    "e7df0bf1b103fa1ee97b4cfbcd748e945205b8c7d5858210ec88b3e867e15bd5",
+  "apps/bff/src/services/inference-core-retention.test.ts":
+    "e369645d5fa03a0a1790adfc43ea2b2e73a305129f304febca035b2ca5d99706",
+  "apps/bff/src/services/inference-core-retention.ts":
+    "e369645d5fa03a0a1790adfc43ea2b2e73a305129f304febca035b2ca5d99706",
+  "apps/web/src/components/console-v2/applications-v2-experience.test.tsx":
+    "7a0aa95f6f4dbb5533949181ccf31b0b23f61385571e4f5e78af25055b23fb3a",
+  "apps/web/src/components/console-v2/role-aware-presentation.test.tsx":
+    "7a0aa95f6f4dbb5533949181ccf31b0b23f61385571e4f5e78af25055b23fb3a",
+  "apps/web/src/lib/admin/actions-core.test.ts":
+    "7a0aa95f6f4dbb5533949181ccf31b0b23f61385571e4f5e78af25055b23fb3a",
+  "infra/firecrawl/README.md":
+    "d6f6eac03192398c49e144a4326a5edbbe5c9da00db5feba871581b3a7e2c088",
+  "infra/firecrawl/THIRD_PARTY_NOTICES.md":
+    "290548225fd5fd8c161461221b836847828e4f2762607dbe9456002e242a2a03",
+  "infra/firecrawl/compose.yaml":
+    "e1a85bca04035f08fffd741cd4f6b2fcef9a62f4f030a907e0bf3d8d479eb269",
+  "infra/firecrawl/egress/allowlists/default/allowed-hosts.txt":
+    "a3d0c36b3ec9c75e6e59ecf97fda0a76e4c63ee064eed491549ed0088a404267",
+  "infra/firecrawl/egress/squid.conf":
+    "d09d98be555f250981924f3c60304a18a285094dea6af7deff8f2faf0900b436",
+  "infra/firecrawl/provenance/source-lock.json":
+    "0f317a70a6fc024c98436c9b9020b1894caa4b8493f149106c18641609dd58dd",
+  "infra/firecrawl/searxng/settings.yml":
+    "39b627455014a047a9b86d6a87c6e065e43bedf2f1645de7d1ce03026da40205",
+  "infra/firecrawl/validate-profile.mjs":
+    "163c5dfb422de24835c6b2b9dbff601d4c86a06881a3187d4edc89d28807453b",
+  "infra/firecrawl/validate-profile.test.mjs":
+    "163c5dfb422de24835c6b2b9dbff601d4c86a06881a3187d4edc89d28807453b",
+  "infra/migrations/0000_inference_core.sql":
+    "e8e46e27af1fced20206c778e01af6db79bcee8123bb75f513f30478444f6ccc",
+  "package.json":
+    "28c55ac1cacbf7c0a0aed19ee0635db933f33a6938bfc4f36a405fc33ed6fb50",
+  "packages/contracts/src/inference-core-firecrawl.test.ts":
+    "49ad56b6430206e6d47c0f0db09d7c56c0c21e02d7132c17d975fbe8abd5a0af",
+  "packages/contracts/src/inference-core.ts":
+    "49ad56b6430206e6d47c0f0db09d7c56c0c21e02d7132c17d975fbe8abd5a0af",
+  "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts":
+    "ed8dadc8ff8452595e193573f3a4350026f6717143a1f42912d9ccc4c01960f6",
+  "test-support/inference-core-db-tests/src/inference-core-migration.test.ts":
+    "2248e1258e89bed88b500ab816493378fe93a55fc68ea64673ed602a72dddb74",
+  "test-support/inference-core-db-tests/src/pr07-inference-data-plane.test.ts":
+    "7182deb3bc1c9c2145c2f2c31b7d75c9e76fdb7f3a0dd2457ed4dccb58c5f0a4",
+  "test-support/inference-core-db-tests/src/pr08-firecrawl-schema.test.ts":
+    "2248e1258e89bed88b500ab816493378fe93a55fc68ea64673ed602a72dddb74",
+}
+
+export const pr08SourceMapBinding = {
+  path: pr08SourceMapPath,
+  method: "reviewed-semantic-unit-reconstruction",
+  targetBaseCommit: pr08ContractBase,
+  targetPaths: pr08ExpectedMappedTargetPaths,
+}
 
 export const pr07RetainedFirecrawlBoundaryPaths = [
   ".env.example",
@@ -1191,6 +1675,125 @@ export const pr07TargetContract = {
   escapeHatchPaths: [],
 }
 
+export const pr08FirecrawlRouteContract = [
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/v2/scrape",
+    source: "apps/bff/src/routes/firecrawl-gateway.ts",
+    classification: "public-t2",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/v2/search",
+    source: "apps/bff/src/routes/firecrawl-gateway.ts",
+    classification: "public-t2",
+  },
+]
+
+export const pr08FirecrawlAdminRouteContract = [
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/applications/connected-apps/:id/firecrawl/enable",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "PATCH",
+    path: "/api/admin/applications/connected-apps/:id/firecrawl",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/applications/connected-apps/:id/firecrawl/test",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/applications/connected-apps/:id/firecrawl/disable",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/applications/connected-apps/:id/firecrawl/credentials/:credentialId/revoke",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+]
+
+export const pr08TargetContract = {
+  findingEntriesDueByPr08: 0,
+  remainingFindingEntries: 1,
+  fs105BuilderHubTombstones: [
+    {
+      path: "apps/web/src/middleware.test.ts",
+      removeBy: "PR-12",
+    },
+  ],
+  legacyRoutes: 0,
+  routes: 94,
+  routeClassifications: {
+    "current-console-seam": 83,
+    "operational-auth": 4,
+    "private-operational": 3,
+    "public-t2": 2,
+    "required-now": 2,
+  },
+  publicInferenceRoutes: pr07PublicInferenceRouteContract,
+  publicFirecrawlRoutes: pr08FirecrawlRouteContract,
+  firecrawlAdminRoutes: pr08FirecrawlAdminRouteContract,
+  adminOnlyRoutePolicyKeys: pr05AdminOnlyRoutePolicyKeys,
+  fastifyRegistrars: [
+    ...pr07TargetContract.fastifyRegistrars,
+    {
+      exportName: "registerFirecrawlGatewayRoutes",
+      importSource: "./routes/firecrawl-gateway",
+      sourcePath: "apps/bff/src/routes/firecrawl-gateway.ts",
+    },
+  ].sort((left, right) => left.exportName.localeCompare(right.exportName)),
+  webInferenceConsumers: 0,
+  escapeHatchPaths: [],
+  webUiVisible: false,
+  webContractCompatibilityTestPaths: pr08WebContractCompatibilityTestPaths,
+  sourceOnly: true,
+  runtimeQualified: false,
+}
+
+export const pr08QueryFreeLoggingFingerprints = [
+  {
+    symbol: "logQueryFreeIncomingRequest",
+    sha256: "87795b8fbca2642a692bd2e18840a6782c1be51bca3c5dca2ccf886901bd556e",
+  },
+  {
+    symbol: "logQueryFreeCompletedRequest",
+    sha256: "299ecf5e9e910a8be07cb3befcb76f789022a559da58553716defe89fd4b1967",
+  },
+  {
+    symbol: "queryFreeRequestLogSerializer",
+    sha256: "57fefc44f7e1f28fc627704a8e1678cd6170dab822250a2bd8a065809e57a5e4",
+  },
+  {
+    symbol: "requestPathname",
+    sha256: "ed6f6ab093136d99df160312ebfa95bf3c0e726339e1602c18330bfbe4ae5f9c",
+  },
+]
+
 const routeMethods = [
   "get",
   "post",
@@ -1215,6 +1818,7 @@ const reviewedAdminRouteCapabilities = new Set([
   "applications.policy.change",
   "applications.reenable",
   "console.operational.view",
+  "firecrawl.enable_reenable",
   "team.identity.view",
   "team.local_password.manage",
   "team.users_roles.manage",
@@ -1242,6 +1846,13 @@ const reviewedFastifyRegistrarSpecs = [
     exportName: "registerAppGatewayRoutes",
     importSource: "./routes/app-gateway",
     sourcePath: "apps/bff/src/routes/app-gateway.ts",
+  },
+  {
+    exportName: "registerFirecrawlGatewayRoutes",
+    importSource: "./routes/firecrawl-gateway",
+    optionsInitializer: "{}",
+    optionsParameterType: "FirecrawlGatewayRouteOptions",
+    sourcePath: "apps/bff/src/routes/firecrawl-gateway.ts",
   },
   {
     exportName: "registerAdminRoutes",
@@ -1643,7 +2254,7 @@ function findingDisposition(rule, path) {
 
 function filterIgnoredFindingFingerprints(rule, path, source, fingerprints) {
   const ignored = new Set(
-    ignoredFindingFingerprints
+    [...ignoredFindingFingerprints, ...pr08IgnoredFindingFingerprints]
       .filter((entry) => entry.ruleId === rule.id && entry.path === path)
       .map(({ fingerprint }) => fingerprint),
   )
@@ -2306,7 +2917,9 @@ export function verifyActiveReviewedRevisionId(revisionId) {
   if (
     revisionId === undefined ||
     revisionId === null ||
-    ["PR-02", "PR-03", "PR-04", "PR-05", "PR-06", "PR-07"].includes(revisionId)
+    ["PR-02", "PR-03", "PR-04", "PR-05", "PR-06", "PR-07", "PR-08"].includes(
+      revisionId,
+    )
   ) {
     return []
   }
@@ -2337,41 +2950,48 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(activeReviewedRevision === "PR-07"
-      ? verifyPr07TargetState({
+    ...(activeReviewedRevision === "PR-08"
+      ? verifyPr08TargetState({
           root,
           currentAllowlist: expectedAllowlist,
           currentRoutes: expectedRoutes,
           paths,
         })
-      : activeReviewedRevision === "PR-06"
-        ? verifyPr06TargetState({
+      : activeReviewedRevision === "PR-07"
+        ? verifyPr07TargetState({
             root,
             currentAllowlist: expectedAllowlist,
             currentRoutes: expectedRoutes,
             paths,
           })
-        : activeReviewedRevision === "PR-05"
-          ? verifyPr05TargetState({
+        : activeReviewedRevision === "PR-06"
+          ? verifyPr06TargetState({
               root,
               currentAllowlist: expectedAllowlist,
               currentRoutes: expectedRoutes,
               paths,
             })
-          : activeReviewedRevision === "PR-04"
-            ? verifyPr04TargetState({
+          : activeReviewedRevision === "PR-05"
+            ? verifyPr05TargetState({
                 root,
                 currentAllowlist: expectedAllowlist,
                 currentRoutes: expectedRoutes,
                 paths,
               })
-            : activeReviewedRevision === "PR-03"
-              ? verifyPr03TargetState({
+            : activeReviewedRevision === "PR-04"
+              ? verifyPr04TargetState({
                   root,
                   currentAllowlist: expectedAllowlist,
                   currentRoutes: expectedRoutes,
+                  paths,
                 })
-              : verifyActiveReviewedRevisionId(activeReviewedRevision)),
+              : activeReviewedRevision === "PR-03"
+                ? verifyPr03TargetState({
+                    root,
+                    currentAllowlist: expectedAllowlist,
+                    currentRoutes: expectedRoutes,
+                  })
+                : verifyActiveReviewedRevisionId(activeReviewedRevision)),
   ]
 
   let baseStatus = "not-requested"
@@ -2408,7 +3028,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       errors.push(...reviewedRevision.errors)
       if (reviewedRevision.present) {
         if (
-          !new Set(["PR-03", "PR-04", "PR-05", "PR-06", "PR-07"]).has(
+          !new Set(["PR-03", "PR-04", "PR-05", "PR-06", "PR-07", "PR-08"]).has(
             reviewedRevision.id,
           )
         ) {
@@ -2480,6 +3100,8 @@ export function verifyReviewedContractRevision({
   const currentPr06Revision = currentRevisions.find(({ id }) => id === "PR-06")
   const basePr07Revision = baseRevisions.find(({ id }) => id === "PR-07")
   const currentPr07Revision = currentRevisions.find(({ id }) => id === "PR-07")
+  const basePr08Revision = baseRevisions.find(({ id }) => id === "PR-08")
+  const currentPr08Revision = currentRevisions.find(({ id }) => id === "PR-08")
   const errors = []
   if (
     (!currentPr02Revision || !basePr02Revision) &&
@@ -2520,7 +3142,30 @@ export function verifyReviewedContractRevision({
         ...verifyRetainedPr07RevisionEvidence(root, currentPr07Revision),
       )
     }
+    if (basePr08Revision && currentPr08Revision) {
+      errors.push(
+        ...verifyRetainedPr08RevisionEvidence(root, currentPr08Revision),
+      )
+    }
     return { present: false, id: null, errors: errors.sort() }
+  }
+
+  if (
+    isExactRevisionAppend(
+      baseRevisions,
+      currentRevisions,
+      "PR-08",
+      pr08ContractRevisionPath,
+    )
+  ) {
+    return verifyIntroducedPr08Revision({
+      root,
+      baseCommit,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+    })
   }
 
   if (
@@ -3065,6 +3710,146 @@ function verifyPr05LaneLineage(root) {
   }
 }
 
+function verifyIntroducedPr08Revision({
+  root,
+  baseCommit,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+}) {
+  const errors = []
+  if (baseCommit !== pr08ContractBase) {
+    errors.push(
+      `PR-08 contract revision base changed expected=${pr08ContractBase} actual=${baseCommit}`,
+    )
+  }
+  if (resolveTree(root, baseCommit) !== pr08ContractBaseTree) {
+    errors.push("PR-08 contract base tree changed")
+  }
+  errors.push(...verifyPr08LaneLineage(root))
+  errors.push(...verifyPr08BaseEvidence(root))
+  errors.push(...verifyPr08PilotAncestry(root))
+  const baseRevisionHistory = baseRoutes.reviewedRevisions ?? []
+  const expectedPriorIds = [
+    "PR-02",
+    "PR-03",
+    "PR-04",
+    "PR-05",
+    "PR-06",
+    "PR-07",
+  ]
+  if (
+    baseRevisionHistory.length !== expectedPriorIds.length ||
+    expectedPriorIds.some((id, index) => baseRevisionHistory[index]?.id !== id)
+  ) {
+    errors.push(
+      "PR-08 requires the exact retained PR-02 through PR-07 revision history",
+    )
+  } else {
+    errors.push(
+      ...verifyRetainedPr02RevisionEvidence(root, baseRevisionHistory[0]),
+      ...verifyRetainedPr03RevisionEvidence(root, baseRevisionHistory[1]),
+      ...verifyRetainedPr04RevisionEvidence(root, baseRevisionHistory[2]),
+      ...verifyRetainedPr05RevisionEvidence(root, baseRevisionHistory[3]),
+      ...verifyRetainedPr06RevisionEvidence(root, baseRevisionHistory[4]),
+      ...verifyRetainedPr07RevisionEvidence(root, baseRevisionHistory[5]),
+    )
+  }
+  if (!isRegularFile(resolve(root, pr08ContractRevisionPath))) {
+    return {
+      present: true,
+      id: "PR-08",
+      errors: [
+        ...errors,
+        `missing reviewed contract revision ${pr08ContractRevisionPath}`,
+      ].sort(),
+    }
+  }
+
+  const decision = readPr08DecisionDocument(root)
+  errors.push(...verifyPr08DecisionDocument(decision, { requireReady: true }))
+  errors.push(
+    ...verifyPr08SourceManifestDocument(readPr08SourceManifestDocument(root)),
+  )
+  errors.push(
+    ...verifyPr08SourceMapDocument(
+      readFileSync(resolve(root, pr08SourceMapPath), "utf8"),
+    ),
+  )
+  const evidenceFiles = buildRevisionEvidenceFingerprints(
+    root,
+    pr08RevisionEvidencePaths,
+    "PR-08",
+  )
+  const expected = buildContractRevisionDocument({
+    revisionId: "PR-08",
+    scope: "firecrawl-search-static-scrape-source-only",
+    baseCommit,
+    baseTree: resolveTree(root, baseCommit),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes: {
+      ...currentRoutes,
+      reviewedRevisions: structuredClone(baseRoutes.reviewedRevisions ?? []),
+    },
+    evidenceFiles,
+  })
+  const actual = readJson(resolve(root, pr08ContractRevisionPath))
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    errors.push("PR-08 reviewed contract revision does not match exact changes")
+  }
+
+  const expectedRevisionHistory = [
+    ...(baseRoutes.reviewedRevisions ?? []),
+    {
+      id: "PR-08",
+      path: pr08ContractRevisionPath,
+      sha256: sha256(readFileSync(resolve(root, pr08ContractRevisionPath))),
+    },
+  ]
+  if (
+    JSON.stringify(currentRoutes.reviewedRevisions ?? []) !==
+    JSON.stringify(expectedRevisionHistory)
+  ) {
+    errors.push("reviewed contract revision history changed")
+  }
+  errors.push(...verifyRequiredRoutes(currentRoutes))
+  errors.push(
+    ...verifyPr08CandidateContract({
+      root,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+      operationPolicy: decision.operationPolicy,
+    }),
+  )
+
+  return { present: true, id: "PR-08", errors: errors.sort() }
+}
+
+function verifyPr08LaneLineage(root) {
+  const anchor = resolveCommit(root, pr08LaneAnchor)
+  if (anchor !== pr08LaneAnchor) {
+    return [`PR-08 lane anchor is unavailable ${pr08LaneAnchor}`]
+  }
+  const head = currentHead(root)
+  if (head === pr08LaneAnchor) {
+    return []
+  }
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", pr08LaneAnchor, head], {
+      cwd: root,
+      stdio: "ignore",
+    })
+    return []
+  } catch {
+    return [`PR-08 lane anchor is not an ancestor ${pr08LaneAnchor}`]
+  }
+}
+
 function verifyIntroducedPr07Revision({
   root,
   baseCommit,
@@ -3557,6 +4342,83 @@ function verifyRetainedPr07RevisionEvidence(root, revision) {
     errors.push("retained PR-07 revision evidence changed")
   }
   errors.push(...verifyPr07BaseEvidence(root))
+  return errors.sort()
+}
+
+function verifyRetainedPr08RevisionEvidence(root, revision) {
+  const errors = []
+  if (
+    revision.id !== "PR-08" ||
+    revision.path !== pr08ContractRevisionPath ||
+    !/^[0-9a-f]{64}$/.test(revision.sha256 ?? "")
+  ) {
+    return ["invalid retained PR-08 revision identity"]
+  }
+  const absolutePath = resolve(root, pr08ContractRevisionPath)
+  if (!isRegularFile(absolutePath)) {
+    return [`missing reviewed contract revision ${pr08ContractRevisionPath}`]
+  }
+  if (sha256(readFileSync(absolutePath)) !== revision.sha256) {
+    errors.push("retained PR-08 revision fingerprint changed")
+  }
+  const document = readJson(absolutePath)
+  if (
+    document.id !== "PR-08" ||
+    document.scope !== "firecrawl-search-static-scrape-source-only" ||
+    document.baseCommit !== pr08ContractBase ||
+    document.baseTree !== pr08ContractBaseTree
+  ) {
+    errors.push("retained PR-08 revision base identity changed")
+  }
+  if (
+    JSON.stringify(document.evidenceFiles) !==
+    JSON.stringify(
+      buildRevisionEvidenceFingerprints(
+        root,
+        pr08RevisionEvidencePaths,
+        "PR-08",
+      ),
+    )
+  ) {
+    errors.push("retained PR-08 revision evidence changed")
+  }
+  errors.push(...verifyPr08BaseEvidence(root))
+  return errors.sort()
+}
+
+export function verifyPr08BaseEvidence(root = repositoryRoot) {
+  const errors = []
+  for (const path of pr08ImmutablePriorEvidencePaths) {
+    let expected
+    try {
+      expected = execFileSync(
+        "git",
+        [
+          "show",
+          "--no-ext-diff",
+          "--no-textconv",
+          "--end-of-options",
+          `${pr08ContractBase}:${path}`,
+        ],
+        {
+          cwd: root,
+          encoding: null,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      )
+    } catch {
+      errors.push(`PR-08 immutable base evidence is unavailable ${path}`)
+      continue
+    }
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-08 retained prior evidence is missing ${path}`)
+      continue
+    }
+    if (!readFileSync(absolutePath).equals(expected)) {
+      errors.push(`PR-08 retained prior evidence changed ${path}`)
+    }
+  }
   return errors.sort()
 }
 
@@ -4679,6 +5541,361 @@ export function verifyPr07OperationBoundary(operationPolicy) {
   return [...new Set(errors)].sort()
 }
 
+export function readPr08DecisionDocument(root = repositoryRoot) {
+  return readJson(resolve(root, pr08DecisionPath))
+}
+
+export function readPr08SourceManifestDocument(root = repositoryRoot) {
+  return readJson(resolve(root, pr08SourceManifestPath))
+}
+
+export function verifyPr08SourceManifestDocument(manifest) {
+  const errors = []
+  const expectedKeys = [
+    "hardExclusions",
+    "privateCheckpoint",
+    "productBase",
+    "reviewStatus",
+    "schemaVersion",
+    "scope",
+    "semanticSelections",
+    "sourceArtifacts",
+    "sourceCommits",
+    "targetContract",
+    "workPackage",
+  ]
+  if (
+    !manifest ||
+    JSON.stringify(Object.keys(manifest).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    manifest.schemaVersion !== 1 ||
+    manifest.workPackage !== "PR-08" ||
+    manifest.scope !== "firecrawl-search-static-scrape-source-only" ||
+    manifest.reviewStatus !== "reviewed-for-reconstruction"
+  ) {
+    errors.push("invalid PR-08 source manifest identity")
+  }
+  if (
+    manifest?.productBase?.commit !== pr08ContractBase ||
+    manifest?.productBase?.tree !== pr08ContractBaseTree
+  ) {
+    errors.push("invalid PR-08 Product base identity")
+  }
+  const checkpoint = manifest?.privateCheckpoint
+  if (
+    checkpoint?.base !== pr08PrivateCheckpoint.baseCommit ||
+    checkpoint?.baseTree !== pr08PrivateCheckpoint.baseTree ||
+    checkpoint?.commit !== pr08PrivateCheckpoint.commit ||
+    checkpoint?.tree !== pr08PrivateCheckpoint.tree ||
+    checkpoint?.privateHoldRef !==
+      pr08PrivatePreservationBinding.privateHoldRef ||
+    checkpoint?.selectedManifestV2Sha256 !==
+      pr08PrivatePreservationBinding.selectedManifestV2Sha256 ||
+    checkpoint?.exclusionLedgerV2Sha256 !==
+      pr08PrivatePreservationBinding.exclusionLedgerV2Sha256 ||
+    checkpoint?.combinedBindingV2Sha256 !==
+      pr08PrivatePreservationBinding.combinedBindingV2Sha256 ||
+    checkpoint?.readOnly !== true ||
+    checkpoint?.wholesaleMergeAllowed !== false ||
+    checkpoint?.wholesaleCherryPickAllowed !== false
+  ) {
+    errors.push("invalid PR-08 private checkpoint binding")
+  }
+  const sourceCommits = (manifest?.sourceCommits ?? []).map(
+    ({ commit }) => commit,
+  )
+  if (
+    JSON.stringify(sourceCommits) !==
+    JSON.stringify([
+      "842e8ebdc16c0dbb33b4288ca5887170d38e0198",
+      "97777cc96d44ca9bf086e656a517e9706698e766",
+      "fdd7dc06c92486a94e9e42a22b98615f8159f381",
+      "cf41824a55148be12fcfd67dc62722040e0c8573",
+      "ff74f3c94c563627929af31c46d48dda8e7d6192",
+    ])
+  ) {
+    errors.push("invalid PR-08 reviewed source commit sequence")
+  }
+  if (
+    JSON.stringify(manifest?.sourceArtifacts) !==
+    JSON.stringify(pr08SourceArtifacts)
+  ) {
+    errors.push("invalid PR-08 source artifact provenance")
+  }
+  const hardExclusions = new Set(manifest?.hardExclusions ?? [])
+  for (const exclusion of [
+    "infra/migrations/0027_admin_firecrawl_gateway_clients.sql",
+    "credential-expiry",
+    "librechat-hub-builder-knowledge-rag-mcp-coupling",
+    "native-and-excluded-firecrawl-public-routes",
+    "request-or-response-content-in-databases-audit-usage-logs-metrics-queues-caches-crash-output-or-backups",
+    "pilot-branch-ancestry",
+    "pr-08-web-ui",
+    "pr-08-runtime-deployment-and-qualification",
+  ]) {
+    if (!hardExclusions.has(exclusion)) {
+      errors.push(`missing PR-08 hard exclusion ${exclusion}`)
+    }
+  }
+  const target = manifest?.targetContract
+  if (
+    JSON.stringify(target?.publicRoutes) !==
+      JSON.stringify(pr08ReviewedDispositions.publicCapability.routes) ||
+    target?.surfaceClassification !== "public-t2" ||
+    target?.inferenceRoutes !== "unchanged" ||
+    target?.defaultOffPerApplication !== true ||
+    target?.credentialAutomaticExpiry !== false ||
+    target?.credentialOverlapSeconds !== 86400 ||
+    target?.testConnection !== "passive-real-client-authentication-evidence" ||
+    target?.governedPrivateUpstream !== "http://firecrawl-api:3002" ||
+    target?.customerUrlGovernance !== false ||
+    target?.workloadContentRetention !== false ||
+    target?.uiVisibility !== "hidden-until-PR-11" ||
+    target?.runtimeAndFinalQualification !== "PR-12"
+  ) {
+    errors.push("invalid PR-08 source manifest target")
+  }
+  return errors.sort()
+}
+
+export function verifyPr08SourceMapDocument(source) {
+  const errors = []
+  const lines = String(source)
+    .split("\n")
+    .filter((line) => line.length > 0)
+  let rows = []
+  try {
+    rows = lines.map((line) => JSON.parse(line))
+  } catch {
+    return ["invalid PR-08 source map JSONL"]
+  }
+  const binding = rows[0]
+  if (
+    binding?.kind !== "binding" ||
+    binding?.schemaVersion !== 1 ||
+    binding?.workPackage !== "PR-08" ||
+    binding?.method !== "reviewed-semantic-unit-reconstruction" ||
+    binding?.source?.commit !== pr08PrivateCheckpoint.commit ||
+    binding?.source?.tree !== pr08PrivateCheckpoint.tree ||
+    binding?.source?.baseCommit !== pr08PrivateCheckpoint.baseCommit ||
+    binding?.source?.baseTree !== pr08PrivateCheckpoint.baseTree ||
+    binding?.target?.baseCommit !== pr08ContractBase ||
+    binding?.target?.baseTree !== pr08ContractBaseTree ||
+    binding?.wholesaleMerge !== false ||
+    binding?.wholesaleCherryPick !== false ||
+    binding?.pilotAncestryAllowed !== false
+  ) {
+    errors.push("invalid PR-08 source map binding")
+  }
+  const mappings = rows.slice(1)
+  const targetPaths = mappings.map((row) => row?.targetPath)
+  if (
+    JSON.stringify(targetPaths) !==
+    JSON.stringify([...pr08ExpectedMappedTargetPaths].sort())
+  ) {
+    errors.push("invalid PR-08 source map target path closure")
+  }
+  for (const row of mappings) {
+    const semanticBinding = sha256(
+      JSON.stringify({
+        sourcePaths: row?.sourcePaths,
+        semanticUnits: row?.semanticUnits,
+      }),
+    )
+    if (
+      row?.kind !== "semantic-mapping" ||
+      row?.schemaVersion !== 1 ||
+      row?.workPackage !== "PR-08" ||
+      row?.method !== "reviewed-semantic-unit-reconstruction" ||
+      !Array.isArray(row?.sourcePaths) ||
+      row.sourcePaths.length === 0 ||
+      row.sourcePaths.some(
+        (path) =>
+          typeof path !== "string" ||
+          path === "infra/migrations/0027_admin_firecrawl_gateway_clients.sql",
+      ) ||
+      !Array.isArray(row?.semanticUnits) ||
+      row.semanticUnits.length === 0 ||
+      semanticBinding !==
+        pr08ReviewedSourceMapSemanticBindings[row?.targetPath] ||
+      row?.pilotContentImported !== false
+    ) {
+      errors.push(`invalid PR-08 source map row ${String(row?.targetPath)}`)
+    }
+  }
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr08DecisionDocument(
+  decision,
+  { requireReady = false } = {},
+) {
+  const errors = []
+  const expectedKeys = [
+    "contractBaseCommit",
+    "contractBaseTree",
+    "laneAnchorCommit",
+    "operationPolicy",
+    "reviewStatus",
+    "reviewedDispositions",
+    "schemaVersion",
+    "scope",
+    "sourceManifest",
+    "sourceMap",
+    "standaloneDbTestBoundary",
+    "target",
+    "webAuthenticationEvidence",
+    "workPackage",
+  ]
+  if (
+    !decision ||
+    JSON.stringify(Object.keys(decision).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-08" ||
+    decision.scope !== "firecrawl-search-static-scrape-source-only" ||
+    decision.contractBaseCommit !== pr08ContractBase ||
+    decision.contractBaseTree !== pr08ContractBaseTree ||
+    decision.laneAnchorCommit !== pr08LaneAnchor
+  ) {
+    errors.push("invalid PR-08 decision identity")
+  }
+  if (
+    JSON.stringify(decision?.reviewedDispositions) !==
+    JSON.stringify(pr08ReviewedDispositions)
+  ) {
+    errors.push("invalid PR-08 reviewed dispositions")
+  }
+  if (
+    JSON.stringify(decision?.sourceManifest) !==
+    JSON.stringify(pr08SourceManifestBinding)
+  ) {
+    errors.push("invalid PR-08 source manifest binding")
+  }
+  if (
+    JSON.stringify(decision?.sourceMap) !== JSON.stringify(pr08SourceMapBinding)
+  ) {
+    errors.push("invalid PR-08 source map binding")
+  }
+  if (
+    JSON.stringify(decision?.standaloneDbTestBoundary) !==
+    JSON.stringify(pr08StandaloneDbTestBoundary)
+  ) {
+    errors.push("invalid PR-08 standalone DB test boundary")
+  }
+  if (
+    JSON.stringify(decision?.webAuthenticationEvidence) !==
+    JSON.stringify(reviewedPr05WebAuthenticationEvidence)
+  ) {
+    errors.push("invalid PR-08 Web authentication evidence")
+  }
+  if (JSON.stringify(decision?.target) !== JSON.stringify(pr08TargetContract)) {
+    errors.push("invalid PR-08 target")
+  }
+  if (
+    !["pending-final-staged-delta", "reviewed"].includes(decision?.reviewStatus)
+  ) {
+    errors.push("invalid PR-08 review status")
+  } else if (requireReady && decision.reviewStatus !== "reviewed") {
+    errors.push("PR-08 operation policy is not reviewed")
+  }
+  errors.push(...verifyPr08OperationBoundary(decision?.operationPolicy ?? {}))
+  return errors.sort()
+}
+
+export function verifyPr08OperationBoundary(operationPolicy) {
+  const sourceKeys = [
+    "addedSourcePaths",
+    "changedSourcePaths",
+    "deletedSourcePaths",
+  ]
+  const repositoryKeys = [
+    "addedRepositoryPaths",
+    "changedRepositoryPaths",
+    "deletedRepositoryPaths",
+  ]
+  const expectedKeys = [...sourceKeys, ...repositoryKeys].sort()
+  const errors = [
+    ...verifyExactPathPolicy(operationPolicy, sourceKeys, "PR-08"),
+    ...verifyExactPathPolicy(operationPolicy, repositoryKeys, "PR-08"),
+  ]
+  if (
+    JSON.stringify(Object.keys(operationPolicy).sort()) !==
+    JSON.stringify(expectedKeys)
+  ) {
+    errors.push("invalid PR-08 operation policy keys")
+  }
+  if (
+    (operationPolicy.deletedSourcePaths ?? []).length > 0 ||
+    (operationPolicy.deletedRepositoryPaths ?? []).length > 0
+  ) {
+    errors.push(
+      "PR-08 source-only reconstruction must not delete Product paths",
+    )
+  }
+
+  const repositoryPathByOperation = new Map()
+  for (const key of repositoryKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      repositoryPathByOperation.set(path, key.replace("Repository", "Source"))
+      if (
+        !pr08AllowedRepositoryPathPatterns.some((pattern) => pattern.test(path))
+      ) {
+        errors.push(`PR-08 repository path is outside package boundary ${path}`)
+      }
+      if (pr08ImmutablePriorEvidencePaths.includes(path)) {
+        errors.push(
+          `PR-08 immutable prior evidence appears in operation policy ${path}`,
+        )
+      }
+      if (
+        path.startsWith("apps/web/") &&
+        !pr08WebContractCompatibilityTestPaths.includes(path)
+      ) {
+        errors.push(
+          `PR-08 Web production path is forbidden until PR-11 ${path}`,
+        )
+      }
+      if (
+        path === "infra/migrations/0027_admin_firecrawl_gateway_clients.sql" ||
+        /(?:^|\/)(?:hermes|librechat|rag|knowledge|mcp)(?:\/|[-_.])/i.test(path)
+      ) {
+        errors.push(`PR-08 excluded pilot path is forbidden ${path}`)
+      }
+    }
+  }
+  for (const key of sourceKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      if (repositoryPathByOperation.get(path) !== key) {
+        errors.push(
+          `PR-08 source operation lacks matching repository operation ${key} ${path}`,
+        )
+      }
+    }
+  }
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr08PilotAncestry(root = repositoryRoot) {
+  let commits
+  try {
+    commits = execFileSync("git", ["rev-list", "HEAD"], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+      .trim()
+      .split("\n")
+  } catch {
+    return ["PR-08 candidate ancestry is unavailable"]
+  }
+  return commits.includes(pr08PrivateCheckpoint.commit)
+    ? [
+        `PR-08 candidate contains pilot ancestry ${pr08PrivateCheckpoint.commit}`,
+      ]
+    : []
+}
+
 export function buildExactClosureOperationPolicy(baseRoutes, currentRoutes) {
   return {
     ...buildClosurePathOperations(
@@ -5026,7 +6243,7 @@ export function verifyPr03TargetState({
   currentRoutes,
 }) {
   if (
-    ["PR-04", "PR-05", "PR-06", "PR-07"].includes(
+    ["PR-04", "PR-05", "PR-06", "PR-07", "PR-08"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
     )
   ) {
@@ -5110,7 +6327,7 @@ export function verifyPr04TargetState({
   paths = listCandidatePaths(root),
 }) {
   if (
-    ["PR-05", "PR-06", "PR-07"].includes(
+    ["PR-05", "PR-06", "PR-07", "PR-08"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
     )
   ) {
@@ -5335,7 +6552,9 @@ export function verifyPr05TargetState({
   paths = listCandidatePaths(root),
 }) {
   if (
-    ["PR-06", "PR-07"].includes(currentRoutes.reviewedRevisions?.at(-1)?.id)
+    ["PR-06", "PR-07", "PR-08"].includes(
+      currentRoutes.reviewedRevisions?.at(-1)?.id,
+    )
   ) {
     return []
   }
@@ -5580,7 +6799,9 @@ export function verifyPr06TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
-  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-07") {
+  if (
+    ["PR-07", "PR-08"].includes(currentRoutes.reviewedRevisions?.at(-1)?.id)
+  ) {
     return []
   }
   const errors = []
@@ -5808,6 +7029,9 @@ export function verifyPr07TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-08") {
+    return []
+  }
   const errors = []
   if (
     (currentRoutes.routes ?? []).some(
@@ -5908,8 +7132,12 @@ export function verifyPr07TargetState({
 }
 
 export function verifyPr07RetainedFirecrawlBoundary(root = repositoryRoot) {
+  const hasPr08Successor = hasExactPr08FirecrawlSourceSuccessor(root)
   const errors = []
   for (const path of pr07RetainedFirecrawlBoundaryPaths) {
+    if (hasPr08Successor && pr08ExpectedMappedTargetPaths.includes(path)) {
+      continue
+    }
     let baseSource
     try {
       baseSource = execFileSync(
@@ -5946,6 +7174,428 @@ export function verifyPr07RetainedFirecrawlBoundary(root = repositoryRoot) {
     if (JSON.stringify(currentLines) !== JSON.stringify(baseLines)) {
       errors.push(`PR-07 Firecrawl boundary changed ${path}`)
     }
+  }
+  return errors.sort()
+}
+
+function hasExactPr08FirecrawlSourceSuccessor(root) {
+  try {
+    if (
+      verifyPr08DecisionDocument(readPr08DecisionDocument(root)).length > 0 ||
+      verifyPr08SourceManifestDocument(readPr08SourceManifestDocument(root))
+        .length > 0 ||
+      verifyPr08SourceMapDocument(
+        readFileSync(resolve(root, pr08SourceMapPath), "utf8"),
+      ).length > 0
+    ) {
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function verifyPr08FindingTransition(baseEntries, currentEntries) {
+  const errors = []
+  const baseByKey = new Map(
+    baseEntries.map((entry) => [findingKey(entry), entry]),
+  )
+  for (const entry of currentEntries) {
+    const key = findingKey(entry)
+    const baseEntry = baseByKey.get(key)
+    if (!baseEntry) {
+      errors.push(`new PR-08 reviewed legacy finding ${key}`)
+      continue
+    }
+    if (entry.count > baseEntry.count) {
+      errors.push(`PR-08 reviewed legacy finding count grew ${key}`)
+    }
+    if (entry.removeBy !== baseEntry.removeBy) {
+      errors.push(`PR-08 legacy disposition changed outside policy ${key}`)
+    }
+  }
+  const dueEntries = currentEntries.filter(
+    (entry) => entry.removeBy === "PR-08",
+  )
+  if (dueEntries.length > 0) {
+    errors.push(
+      `PR-08 findings remain ${dueEntries.map(findingKey).sort().join(",")}`,
+    )
+  }
+  if (
+    currentEntries.length !== 1 ||
+    currentEntries[0]?.ruleId !== "FS105_BUILDER_HUB" ||
+    currentEntries[0]?.path !== "apps/web/src/middleware.test.ts" ||
+    currentEntries[0]?.removeBy !== "PR-12"
+  ) {
+    errors.push("PR-08 remaining finding boundary changed")
+  }
+  return errors.sort()
+}
+
+export function verifyPr08CandidateContract({
+  root = repositoryRoot,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+  operationPolicy,
+}) {
+  const errors = [
+    ...verifyPr08FindingTransition(
+      baseAllowlist.entries ?? [],
+      currentAllowlist.entries ?? [],
+    ),
+    ...verifyPr08RetainedRouteContract(baseRoutes, currentRoutes),
+    ...verifyPr08OperationBoundary(operationPolicy ?? {}),
+    ...verifyExactClosureChanges(
+      baseRoutes.sourceClosure ?? [],
+      currentRoutes.sourceClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedSourcePaths",
+        changedKey: "changedSourcePaths",
+        deletedKey: "deletedSourcePaths",
+        label: "source closure",
+      },
+      "PR-08",
+    ),
+    ...verifyExactClosureChanges(
+      baseRoutes.repositoryClosure ?? [],
+      currentRoutes.repositoryClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedRepositoryPaths",
+        changedKey: "changedRepositoryPaths",
+        deletedKey: "deletedRepositoryPaths",
+        label: "repository closure",
+      },
+      "PR-08",
+    ),
+    ...verifyPr08TargetState({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths: (currentRoutes.repositoryClosure ?? []).map(({ path }) => path),
+    }),
+  ]
+  return errors.sort()
+}
+
+function verifyPr08RetainedRouteContract(base, current) {
+  const errors = []
+  if (JSON.stringify(current.target ?? null) !== JSON.stringify(base.target)) {
+    errors.push("PR-08 retained route target changed")
+  }
+  if (
+    JSON.stringify(current.webInferenceConsumers ?? []) !==
+    JSON.stringify(base.webInferenceConsumers ?? [])
+  ) {
+    errors.push("PR-08 Web inference consumer boundary changed")
+  }
+  const baseCounts = routeCounts(base.routes ?? [])
+  const currentCounts = routeCounts(current.routes ?? [])
+  const currentByKey = new Map(
+    (current.routes ?? []).map((route) => [routeKey(route), route]),
+  )
+  for (const [key, count] of baseCounts) {
+    if (currentCounts.get(key) !== count) {
+      errors.push(`PR-08 retained route changed ${key}`)
+    }
+    const baseRoute = (base.routes ?? []).find(
+      (route) => routeKey(route) === key,
+    )
+    if (JSON.stringify(currentByKey.get(key)) !== JSON.stringify(baseRoute)) {
+      errors.push(`PR-08 retained route reclassified ${key}`)
+    }
+  }
+  const addedRoutes = []
+  for (const route of current.routes ?? []) {
+    const key = routeKey(route)
+    const remaining = baseCounts.get(key) ?? 0
+    if (remaining > 0) {
+      baseCounts.set(key, remaining - 1)
+    } else {
+      addedRoutes.push(route)
+    }
+  }
+  const expectedAddedRoutes = structuredClone([
+    ...pr08FirecrawlAdminRouteContract,
+    ...pr08FirecrawlRouteContract,
+  ]).sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  )
+  addedRoutes.sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  )
+  if (JSON.stringify(addedRoutes) !== JSON.stringify(expectedAddedRoutes)) {
+    errors.push("PR-08 added route inventory differs from reviewed target")
+  }
+  const baseRegistrars = new Map(
+    (base.fastifyRegistrars ?? []).map((entry) => [entry.exportName, entry]),
+  )
+  const addedRegistrars = (current.fastifyRegistrars ?? []).filter(
+    (entry) => !baseRegistrars.has(entry.exportName),
+  )
+  for (const entry of base.fastifyRegistrars ?? []) {
+    const currentEntry = (current.fastifyRegistrars ?? []).find(
+      (candidate) => candidate.exportName === entry.exportName,
+    )
+    if (JSON.stringify(currentEntry) !== JSON.stringify(entry)) {
+      errors.push(
+        `PR-08 retained Fastify registrar changed ${entry.exportName}`,
+      )
+    }
+  }
+  if (
+    JSON.stringify(addedRegistrars) !==
+    JSON.stringify([
+      {
+        exportName: "registerFirecrawlGatewayRoutes",
+        importSource: "./routes/firecrawl-gateway",
+        sourcePath: "apps/bff/src/routes/firecrawl-gateway.ts",
+      },
+    ])
+  ) {
+    errors.push("PR-08 Firecrawl registrar differs from reviewed target")
+  }
+  return errors.sort()
+}
+
+export function verifyPr08TargetState({
+  root = repositoryRoot,
+  currentAllowlist,
+  currentRoutes,
+  paths = listCandidatePaths(root),
+}) {
+  const errors = []
+  if (
+    (currentRoutes.routes ?? []).some(
+      (route) => route.classification === "legacy-retired",
+    )
+  ) {
+    errors.push("PR-08 legacy routes remain")
+  }
+  if ((currentRoutes.routes ?? []).length !== pr08TargetContract.routes) {
+    errors.push(
+      `PR-08 total route count changed expected=${pr08TargetContract.routes} actual=${(currentRoutes.routes ?? []).length}`,
+    )
+  }
+  const classificationCounts = Object.fromEntries(
+    [...routeCountsByClassification(currentRoutes.routes ?? [])].sort(),
+  )
+  if (
+    JSON.stringify(classificationCounts) !==
+    JSON.stringify(pr08TargetContract.routeClassifications)
+  ) {
+    errors.push("PR-08 route classification counts changed")
+  }
+  if (
+    JSON.stringify(currentRoutes.fastifyRegistrars ?? []) !==
+    JSON.stringify(pr08TargetContract.fastifyRegistrars)
+  ) {
+    errors.push("PR-08 Fastify registrar target changed")
+  }
+  if ((currentRoutes.webInferenceConsumers ?? []).length !== 0) {
+    errors.push("PR-08 Web inference consumer count is not zero")
+  }
+  if ((currentRoutes.escapeHatches ?? []).length !== 0) {
+    errors.push("PR-08 mutable legacy escape hatch remains")
+  }
+  const publicInferenceRoutes = (currentRoutes.routes ?? [])
+    .filter((route) => route.classification === "required-now")
+    .sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    )
+  const expectedPublicInferenceRoutes = structuredClone(
+    pr07PublicInferenceRouteContract,
+  ).sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  )
+  if (
+    JSON.stringify(publicInferenceRoutes) !==
+    JSON.stringify(expectedPublicInferenceRoutes)
+  ) {
+    errors.push("PR-08 changed the public inference route contract")
+  }
+  const publicFirecrawlRoutes = (currentRoutes.routes ?? [])
+    .filter((route) => route.classification === "public-t2")
+    .sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    )
+  const expectedPublicFirecrawlRoutes = structuredClone(
+    pr08FirecrawlRouteContract,
+  ).sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  )
+  if (
+    JSON.stringify(publicFirecrawlRoutes) !==
+    JSON.stringify(expectedPublicFirecrawlRoutes)
+  ) {
+    errors.push("PR-08 must expose exactly two public T2 Firecrawl routes")
+  }
+  const firecrawlAdminRoutes = (currentRoutes.routes ?? [])
+    .filter(
+      (route) =>
+        route.source === "apps/bff/src/routes/admin.ts" &&
+        route.path.includes("/firecrawl"),
+    )
+    .sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    )
+  const expectedFirecrawlAdminRoutes = structuredClone(
+    pr08FirecrawlAdminRouteContract,
+  ).sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  )
+  if (
+    JSON.stringify(firecrawlAdminRoutes) !==
+    JSON.stringify(expectedFirecrawlAdminRoutes)
+  ) {
+    errors.push("PR-08 Firecrawl admin route inventory changed")
+  }
+  if (
+    (currentRoutes.routes ?? []).some(
+      (route) =>
+        route.path.startsWith("/v2/") &&
+        !pr08FirecrawlRouteContract.some(
+          (allowed) =>
+            route.surface === allowed.surface &&
+            route.method === allowed.method &&
+            route.path === allowed.path &&
+            route.source === allowed.source,
+        ),
+    )
+  ) {
+    errors.push("PR-08 native or excluded Firecrawl route is public")
+  }
+  const priorFingerprints = new Map(
+    reviewedPr06ResolverFingerprints.map((entry) => [entry.path, entry]),
+  )
+  for (const entry of currentRoutes.fingerprints ?? []) {
+    if (entry.path === "apps/bff/src/index.ts") {
+      if (!/^[0-9a-f]{64}$/.test(entry.sha256 ?? "")) {
+        errors.push("PR-08 index resolver fingerprint is invalid")
+      }
+      continue
+    }
+    if (
+      JSON.stringify(entry) !==
+      JSON.stringify(priorFingerprints.get(entry.path))
+    ) {
+      errors.push(`PR-08 retained resolver fingerprint changed ${entry.path}`)
+    }
+  }
+  if ((currentRoutes.fingerprints ?? []).length !== priorFingerprints.size) {
+    errors.push("PR-08 resolver fingerprint closure changed")
+  }
+  if (
+    (currentAllowlist.entries ?? []).some((entry) => entry.removeBy === "PR-08")
+  ) {
+    errors.push("PR-08 due findings remain")
+  }
+  if (
+    (currentAllowlist.entries ?? []).length !== 1 ||
+    currentAllowlist.entries[0]?.ruleId !== "FS105_BUILDER_HUB" ||
+    currentAllowlist.entries[0]?.path !== "apps/web/src/middleware.test.ts" ||
+    currentAllowlist.entries[0]?.removeBy !== "PR-12"
+  ) {
+    errors.push("PR-08 remaining finding boundary changed")
+  }
+  for (const path of pr08ExpectedMappedTargetPaths) {
+    if (!isRegularFile(resolve(root, path))) {
+      errors.push(`PR-08 mapped target path is missing ${path}`)
+    }
+  }
+  try {
+    errors.push(
+      ...verifyPr08SourceManifestDocument(readPr08SourceManifestDocument(root)),
+    )
+  } catch {
+    errors.push(`missing PR-08 source manifest ${pr08SourceManifestPath}`)
+  }
+  try {
+    errors.push(
+      ...verifyPr08SourceMapDocument(
+        readFileSync(resolve(root, pr08SourceMapPath), "utf8"),
+      ),
+    )
+  } catch {
+    errors.push(`missing PR-08 source map ${pr08SourceMapPath}`)
+  }
+  errors.push(...verifyPr08QueryFreeLoggingBoundary(root))
+  errors.push(...verifyPr08PilotAncestry(root))
+  errors.push(...verifyPr06RetiredApplicationBoundary(root))
+  errors.push(...verifyRetiredDataDependencyBoundary(root, paths))
+  errors.push(
+    ...verifyStandaloneDbTestBoundary(
+      root,
+      paths,
+      pr08StandaloneDbTestBoundary,
+    ),
+  )
+  errors.push(...verifyReviewedPr05WebAuthenticationEvidence(root))
+  errors.push(...verifyWebAuthenticationBoundary(root))
+  return [...new Set(errors)].sort()
+}
+
+function routeCountsByClassification(routes) {
+  const counts = new Map()
+  for (const route of routes) {
+    counts.set(
+      route.classification,
+      (counts.get(route.classification) ?? 0) + 1,
+    )
+  }
+  return counts
+}
+
+export function verifyPr08QueryFreeLoggingBoundary(root = repositoryRoot) {
+  const path = "apps/bff/src/index.ts"
+  const absolutePath = resolve(root, path)
+  if (!isRegularFile(absolutePath)) {
+    return [`PR-08 query-free request logging entrypoint is missing ${path}`]
+  }
+  const source = readFileSync(absolutePath, "utf8")
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  )
+  const errors = []
+  for (const expected of pr08QueryFreeLoggingFingerprints) {
+    const matches = sourceFile.statements.filter(
+      (statement) =>
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === expected.symbol,
+    )
+    if (matches.length !== 1) {
+      errors.push(
+        `PR-08 query-free logging symbol is missing ${expected.symbol}`,
+      )
+      continue
+    }
+    const normalized = matches[0].getText(sourceFile).replace(/\s+/g, " ")
+    if (sha256(normalized) !== expected.sha256) {
+      errors.push(`PR-08 query-free logging symbol changed ${expected.symbol}`)
+    }
+  }
+  if ((source.match(/request\.log\./g) ?? []).length !== 2) {
+    errors.push("PR-08 index request-log call boundary changed")
+  }
+  const gatewayPath = "apps/bff/src/routes/firecrawl-gateway.ts"
+  const gatewaySource = isRegularFile(resolve(root, gatewayPath))
+    ? readFileSync(resolve(root, gatewayPath), "utf8")
+    : ""
+  if (
+    /request\.log\.|console\.(?:debug|error|info|log|warn)\s*\(/.test(
+      gatewaySource,
+    )
+  ) {
+    errors.push("PR-08 Firecrawl gateway contains unreviewed request logging")
   }
   return errors.sort()
 }
@@ -6205,6 +7855,7 @@ function buildReviewedRevisionFingerprints(root) {
     { id: "PR-05", path: pr05ContractRevisionPath },
     { id: "PR-06", path: pr06ContractRevisionPath },
     { id: "PR-07", path: pr07ContractRevisionPath },
+    { id: "PR-08", path: pr08ContractRevisionPath },
   ]) {
     if (!isRegularFile(resolve(root, path))) {
       missingRevision ??= id
@@ -6301,8 +7952,9 @@ export function verifyCorePackageClosure(
   const exactCoreScripts = {
     "build:inference-core":
       "node scripts/inference-core/run-core-command.mjs build",
-    "check:inference-core": "node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base": `node scripts/inference-core/guardrails.mjs --base-ref ${pr07ContractBase}`,
+    "check:inference-core":
+      "node infra/firecrawl/validate-profile.mjs && node scripts/inference-core/guardrails.mjs",
+    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr08ContractBase}`,
     "contract:inference-core:pr07:policy":
       "node scripts/inference-core/pr07-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr07:write":
@@ -6314,7 +7966,7 @@ export function verifyCorePackageClosure(
     "test:inference-core-db":
       pr04StandaloneDbTestBoundary.rootScripts["test:inference-core-db"],
     "test:inference-core-guardrails":
-      "node --test scripts/inference-core/*.test.mjs",
+      "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs",
     test: "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test",
     typecheck:
       "corepack pnpm -r build && corepack pnpm -r typecheck && corepack pnpm run typecheck:inference-core-db",
@@ -6731,13 +8383,26 @@ function assertReviewedFastifyImports(path, sourceFile) {
       namedBindings && ts.isNamedImports(namedBindings)
         ? namedBindings.elements
         : []
+    const namedImportNames = namedImports.map(({ name }) => name.text)
+    const reviewedNamedImportSets = [
+      ["FastifyInstance"],
+      [
+        "FastifyInstance",
+        "FastifyReply",
+        "FastifyRequest",
+        "HookHandlerDoneFunction",
+      ],
+    ]
     if (
       importClause.isTypeOnly ||
       importClause.name?.text !== "Fastify" ||
-      namedImports.length !== 1 ||
-      !namedImports[0]?.isTypeOnly ||
-      namedImports[0]?.name.text !== "FastifyInstance" ||
-      namedImports[0]?.propertyName
+      !reviewedNamedImportSets.some(
+        (expected) =>
+          JSON.stringify(namedImportNames) === JSON.stringify(expected),
+      ) ||
+      namedImports.some(
+        (specifier) => !specifier.isTypeOnly || specifier.propertyName,
+      )
     ) {
       throw routeAnalysisError(
         path,
@@ -6799,7 +8464,7 @@ function assertReviewedFastifyFactoryUse(path, sourceFile) {
         buildServer &&
         ts.isFunctionDeclaration(buildServer) &&
         buildServer.name?.text === "buildServer" &&
-        isReviewedFastifyFactoryOptions(call.arguments[0])
+        isReviewedFastifyFactoryOptions(call.arguments[0], sourceFile)
       if (!reviewed) {
         throw routeAnalysisError(
           path,
@@ -6818,7 +8483,7 @@ function assertReviewedFastifyFactoryUse(path, sourceFile) {
   }
 }
 
-function isReviewedFastifyFactoryOptions(node) {
+function isReviewedFastifyFactoryOptions(node, sourceFile) {
   const options = unwrapExpression(node)
   if (
     !options ||
@@ -6839,15 +8504,25 @@ function isReviewedFastifyFactoryOptions(node) {
     properties.set(name, unwrapExpression(property.initializer))
   }
   const bodyLimit = properties.get("bodyLimit")
+  const disableRequestLogging = properties.get("disableRequestLogging")
   const logger = properties.get("logger")
-  return Boolean(
-    properties.size === 2 &&
-      bodyLimit &&
+  const reviewedBodyLimit = Boolean(
+    bodyLimit &&
       ts.isCallExpression(bodyLimit) &&
       ts.isIdentifier(unwrapExpression(bodyLimit.expression)) &&
       unwrapExpression(bodyLimit.expression).text === "bffBodyLimitBytes" &&
-      bodyLimit.arguments.length === 0 &&
-      logger?.kind === ts.SyntaxKind.TrueKeyword,
+      bodyLimit.arguments.length === 0,
+  )
+  return Boolean(
+    (properties.size === 2 &&
+      reviewedBodyLimit &&
+      logger?.kind === ts.SyntaxKind.TrueKeyword) ||
+      (properties.size === 3 &&
+        reviewedBodyLimit &&
+        disableRequestLogging?.kind === ts.SyntaxKind.TrueKeyword &&
+        logger &&
+        normalizedNodeText(logger, sourceFile) ===
+          "{serializers:{req:queryFreeRequestLogSerializer},...(testRuntime&&options.testLoggerStream?{stream:options.testLoggerStream}:{}),}"),
   )
 }
 
@@ -7041,12 +8716,10 @@ export function extractFastifyRegistrarManifest({ root, paths }) {
         })
       ) {
         if (!candidates.has(spec.sourcePath)) {
-          throw routeAnalysisError(
-            indexPath,
-            sourceFile,
-            node,
-            `Reviewed Fastify registrar source is missing ${spec.sourcePath}`,
-          )
+          // Partial historical fixtures intentionally supply only their reviewed
+          // candidate paths. Live target verification compares the resulting
+          // manifest against the exact current registrar contract.
+          return
         }
         entries.push({
           exportName: spec.exportName,
@@ -7697,7 +9370,58 @@ function hasReviewedFastifyRegistrarArguments(spec, call, sourceFile) {
           "{emergencyRecoveryService}",
     )
   }
+  if (spec.exportName === "registerFirecrawlGatewayRoutes") {
+    return hasReviewedFirecrawlGatewayRegistrarArguments(call, sourceFile)
+  }
   return call.arguments.length === 1
+}
+
+function hasReviewedFirecrawlGatewayRegistrarArguments(call, sourceFile) {
+  if (
+    call.arguments.length !== 2 ||
+    normalizedNodeText(call.arguments[1], sourceFile) !==
+      "testRuntime&&options.testFirecrawlGateway?{...firecrawlGateway,...options.testFirecrawlGateway}:firecrawlGateway"
+  ) {
+    return false
+  }
+  const statement = call.parent
+  const body = statement?.parent
+  if (
+    !statement ||
+    !ts.isExpressionStatement(statement) ||
+    !body ||
+    !ts.isBlock(body)
+  ) {
+    return false
+  }
+  const statementIndex = body.statements.indexOf(statement)
+  const declarationStatement = body.statements[statementIndex - 1]
+  if (
+    !declarationStatement ||
+    !ts.isVariableStatement(declarationStatement) ||
+    declarationStatement.declarationList.declarations.length !== 1
+  ) {
+    return false
+  }
+  const declaration = declarationStatement.declarationList.declarations[0]
+  const initializer = unwrapExpression(declaration?.initializer)
+  const binding = collectNamedImportBindings(sourceFile).get(
+    "firecrawlGatewayOptionsFromRuntime",
+  )
+  return Boolean(
+    declaration &&
+      ts.isIdentifier(declaration.name) &&
+      declaration.name.text === "firecrawlGateway" &&
+      isConstVariableDeclaration(declaration) &&
+      initializer &&
+      ts.isCallExpression(initializer) &&
+      ts.isIdentifier(unwrapExpression(initializer.expression)) &&
+      unwrapExpression(initializer.expression).text ===
+        "firecrawlGatewayOptionsFromRuntime" &&
+      initializer.arguments.length === 0 &&
+      binding?.importedName === "firecrawlGatewayOptionsFromRuntime" &&
+      binding.importSource === "./services/firecrawl-gateway-runtime",
+  )
 }
 
 function isDirectBuildServerStatement(call) {
@@ -7949,6 +9673,17 @@ function assertReviewedShorthandRouteOptions(
     }
   }
   if (
+    path === "apps/bff/src/routes/firecrawl-gateway.ts" &&
+    method === "POST" &&
+    ["/v2/search", "/v2/scrape"].includes(routePath) &&
+    options &&
+    ts.isIdentifier(options) &&
+    options.text === "routeOptions" &&
+    hasReviewedFirecrawlRouteOptions(sourceFile)
+  ) {
+    return
+  }
+  if (
     !options ||
     !ts.isObjectLiteralExpression(options) ||
     options.properties.some((property) => ts.isSpreadAssignment(property))
@@ -7961,6 +9696,28 @@ function assertReviewedShorthandRouteOptions(
     )
   }
   assertNoFastifyRouteConstraints(path, sourceFile, options)
+}
+
+function hasReviewedFirecrawlRouteOptions(sourceFile) {
+  const declarations = []
+  const visit = (node) => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "routeOptions" &&
+      node.initializer
+    ) {
+      declarations.push(node)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return Boolean(
+    declarations.length === 1 &&
+      isConstVariableDeclaration(declarations[0]) &&
+      normalizedNodeText(declarations[0].initializer, sourceFile) ===
+        '{bodyLimit:FIRECRAWL_REQUEST_BODY_LIMIT_BYTES,errorHandler:firecrawlRouteErrorHandler,logLevel:"silent"asconst,}',
+  )
 }
 
 function parseRouteOptions(path, sourceFile, call, staticStrings) {
@@ -8025,6 +9782,34 @@ function assertReviewedFastifyControlCall(path, sourceFile, call, method) {
     ts.isIdentifier(handler.expression) &&
     handler.expression.text === "authorizationHook" &&
     handler.arguments.length === 1
+  ) {
+    return
+  }
+  if (
+    method === "addHook" &&
+    path === "apps/bff/src/routes/firecrawl-gateway.ts" &&
+    hook === "onSend" &&
+    call.arguments.length === 2 &&
+    handler &&
+    ts.isIdentifier(handler) &&
+    handler.text === "applyFirecrawlNoStoreHeader"
+  ) {
+    return
+  }
+  if (
+    method === "addHook" &&
+    path === "apps/bff/src/index.ts" &&
+    [
+      ["onRequest", "logQueryFreeIncomingRequest"],
+      ["onResponse", "logQueryFreeCompletedRequest"],
+    ].some(
+      ([reviewedHook, reviewedHandler]) =>
+        hook === reviewedHook &&
+        call.arguments.length === 2 &&
+        handler &&
+        ts.isIdentifier(handler) &&
+        handler.text === reviewedHandler,
+    )
   ) {
     return
   }
@@ -8973,6 +10758,12 @@ function classifyBffRoute(source, path) {
   ) {
     return "required-now"
   }
+  if (
+    source === "apps/bff/src/routes/firecrawl-gateway.ts" &&
+    ["/v2/search", "/v2/scrape"].includes(path)
+  ) {
+    return "public-t2"
+  }
   if (source === "apps/bff/src/routes/admin.ts") {
     if (
       /^\/api\/admin\/(?:approvals|agents\/registry|connectors\/registry|librechat\/|internal-docs\/mcp\/|mcp-servers(?:\/|$)|builder(?:\/|$)|resources(?:\/|$)|settings\/url-policy(?:\/|$)|team\/break-glass$)/.test(
@@ -9251,6 +11042,7 @@ function forbiddenPolicyDigest() {
       contentRules,
       findingDispositionOverrides,
       ignoredFindingFingerprints,
+      pr08IgnoredFindingFingerprints,
       pr04RetiredDependencyBoundaries,
       pr04StandaloneDbTestBoundary,
       implementation: [
@@ -9388,6 +11180,27 @@ function routePolicyDigest() {
           operationPolicy:
             readPr07DecisionDocument(repositoryRoot).operationPolicy,
         },
+        {
+          id: "PR-08",
+          contractBase: pr08ContractBase,
+          contractBaseTree: pr08ContractBaseTree,
+          laneAnchor: pr08LaneAnchor,
+          path: pr08ContractRevisionPath,
+          evidencePaths: pr08RevisionEvidencePaths,
+          reviewedDispositions: pr08ReviewedDispositions,
+          sourceManifest: pr08SourceManifestBinding,
+          sourceArtifacts: pr08SourceArtifacts,
+          sourceMap: pr08SourceMapBinding,
+          queryFreeLoggingFingerprints: pr08QueryFreeLoggingFingerprints,
+          target: pr08TargetContract,
+          standaloneDbTestBoundary: pr08StandaloneDbTestBoundary,
+          allowedRepositoryPathPatterns: pr08AllowedRepositoryPathPatterns.map(
+            ({ source, flags }) => ({ source, flags }),
+          ),
+          webAuthenticationEvidence: reviewedPr05WebAuthenticationEvidence,
+          operationPolicy:
+            readPr08DecisionDocument(repositoryRoot).operationPolicy,
+        },
       ],
       implementation: [
         listCandidatePaths,
@@ -9419,6 +11232,7 @@ function routePolicyDigest() {
         isValueIdentifier,
         isReviewedFastifyRegistrarCall,
         hasReviewedFastifyRegistrarArguments,
+        hasReviewedFirecrawlGatewayRegistrarArguments,
         isDirectBuildServerStatement,
         isReviewedFastifyAlias,
         isReviewedBuildServerReturn,
@@ -9427,6 +11241,7 @@ function routePolicyDigest() {
         parseRouteCall,
         parseShorthandRoute,
         assertReviewedShorthandRouteOptions,
+        hasReviewedFirecrawlRouteOptions,
         parseRouteOptions,
         assertReviewedFastifyControlCall,
         assertNoFastifyRouteConstraints,
@@ -9474,12 +11289,16 @@ function routePolicyDigest() {
         verifyIntroducedPr07Revision,
         verifyPr07LaneLineage,
         verifyPr07BaseEvidence,
+        verifyIntroducedPr08Revision,
+        verifyPr08LaneLineage,
+        verifyPr08BaseEvidence,
         verifyRetainedPr02RevisionEvidence,
         verifyRetainedPr03RevisionEvidence,
         verifyRetainedPr04RevisionEvidence,
         verifyRetainedPr05RevisionEvidence,
         verifyRetainedPr06RevisionEvidence,
         verifyRetainedPr07RevisionEvidence,
+        verifyRetainedPr08RevisionEvidence,
         verifyPr02OperationMatrix,
         verifyExactMultisetSubset,
         verifyPr02EscapeHatches,
@@ -9499,6 +11318,14 @@ function routePolicyDigest() {
         readPr07DecisionDocument,
         verifyPr07DecisionDocument,
         verifyPr07OperationBoundary,
+        readPr08DecisionDocument,
+        readPr08SourceManifestDocument,
+        verifyPr08SourceManifestDocument,
+        verifyPr08SourceMapDocument,
+        verifyPr08DecisionDocument,
+        verifyPr08OperationBoundary,
+        verifyPr08PilotAncestry,
+        verifyPr08QueryFreeLoggingBoundary,
         buildExactClosureOperationPolicy,
         buildClosurePathOperations,
         verifyPr03FindingTransition,
@@ -9525,6 +11352,11 @@ function routePolicyDigest() {
         verifyPr07RetainedRouteContract,
         verifyPr07TargetState,
         verifyPr07RetainedFirecrawlBoundary,
+        verifyPr08FindingTransition,
+        verifyPr08CandidateContract,
+        verifyPr08RetainedRouteContract,
+        verifyPr08TargetState,
+        routeCountsByClassification,
         verifyReviewedWebAuthenticationEvidence,
         verifyReviewedPr04WebAuthenticationEvidence,
         verifyReviewedPr05WebAuthenticationEvidence,
@@ -9654,6 +11486,7 @@ export function verifyBaseCommitLineage(
     pr05ContractBase,
     pr06ContractBase,
     pr07ContractBase,
+    pr08ContractBase,
   ],
 ) {
   const head = currentHead(root)

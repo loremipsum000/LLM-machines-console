@@ -17,9 +17,15 @@ import {
   updateAdminConnectedApp,
 } from "../../../apps/bff/src/services/admin-connected-apps"
 
-vi.mock("../../../apps/bff/src/db/inference-core-client", () => ({
-  getInferenceCoreDb: vi.fn(),
-}))
+vi.mock(
+  "../../../apps/bff/src/db/inference-core-client",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("../../../apps/bff/src/db/inference-core-client")
+    >()),
+    getInferenceCoreDb: vi.fn(),
+  }),
+)
 
 const migration = readFileSync(
   fileURLToPath(
