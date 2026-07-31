@@ -90,6 +90,13 @@ export function normalizeTextOnlyChatCompletionsBody(
   }
 }
 
+export function normalizedChatCompletionsBodyUtf8Bytes(
+  body: ChatCompletionsBody,
+): number {
+  const serialized = JSON.stringify(normalizeTextOnlyChatCompletionsBody(body))
+  return new TextEncoder().encode(serialized).byteLength
+}
+
 function isOpenAIChatMessage(value: unknown): value is OpenAIChatMessage {
   if (!isRecord(value)) {
     return false

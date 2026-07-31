@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises"
 import { describe, expect, it } from "vitest"
-import { verifyKeycloakJwt } from "../auth/keycloak-jwt"
+import { verifyApplicationAccessToken } from "../auth/application-access-token"
 import { isChatCompletionsBody } from "../inference/chat-completions"
 import { evaluateApplicationGatewayPolicy } from "../services/application-gateway-policy"
 import { createLiteLlmChatTransport } from "../services/litellm-chat-transport"
@@ -12,7 +12,7 @@ describe("retained application gateway import boundary", () => {
       "utf8",
     )
 
-    expect(source).toContain('from "../auth/keycloak-jwt"')
+    expect(source).toContain('from "../auth/application-access-token"')
     expect(source).toContain('from "../inference/chat-completions"')
     expect(source).toContain('from "../services/application-gateway-policy"')
     expect(source).toContain('from "../services/litellm-chat-transport"')
@@ -21,7 +21,7 @@ describe("retained application gateway import boundary", () => {
     expect(source).not.toContain("agentic")
     expect(source).not.toContain("slash")
 
-    expect(typeof verifyKeycloakJwt).toBe("function")
+    expect(typeof verifyApplicationAccessToken).toBe("function")
     expect(typeof isChatCompletionsBody).toBe("function")
     expect(typeof evaluateApplicationGatewayPolicy).toBe("function")
     expect(typeof createLiteLlmChatTransport).toBe("function")

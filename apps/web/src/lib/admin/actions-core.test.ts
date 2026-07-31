@@ -32,10 +32,13 @@ const connectedApp: AdminConnectedApp = {
   detailHref: "/applications/apps/app-1",
   id: "app-1",
   lastConnectedAt: null,
+  maxConcurrentRequests: null,
+  maxContextBytes: null,
   name: "Retained App",
-  rateLimitRpm: null,
+  rateLimitRps: null,
   status: "enabled",
-  tokenBudget7d: null,
+  tokenAlertState: null,
+  tokenAlertThreshold7d: null,
   updatedAt: "2026-07-31T08:00:00.000Z",
   usage: {
     failures7d: 0,
@@ -219,13 +222,82 @@ describe("inference-core Admin actions", () => {
         body: JSON.stringify({
           allowedModels: ["stable-alias"],
           description: "Updated policy",
+          maxConcurrentRequests: null,
+          maxContextBytes: null,
           name: "Updated Application",
-          rateLimitRpm: null,
-          tokenBudget7d: null,
+          rateLimitRps: null,
+          tokenAlertThreshold7d: null,
         }),
         method: "PATCH",
       }),
     )
+  })
+
+  it("submits enabled service protections and the non-blocking token threshold", async () => {
+    mocks.auth.mockResolvedValue({
+      user: { id: "admin-1", roles: ["admin"] },
+    })
+    const fetchSpy = vi.fn(async () =>
+      Promise.resolve(
+        new Response(JSON.stringify(connectedApp), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        }),
+      ),
+    )
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+    formData.set("name", "Protected Application")
+    formData.set("description", "Explicit service protections")
+    formData.append("allowedModels", "stable-alias")
+    formData.set("rateLimitRpsEnabled", "on")
+    formData.set("rateLimitRps", "25")
+    formData.set("maxConcurrentRequestsEnabled", "on")
+    formData.set("maxConcurrentRequests", "8")
+    formData.set("maxContextBytesEnabled", "on")
+    formData.set("maxContextBytes", "65536")
+    formData.set("tokenAlertThreshold7dEnabled", "on")
+    formData.set("tokenAlertThreshold7d", "1000000")
+
+    await expect(updateAdminConnectedAppPolicyAction(formData)).rejects.toThrow(
+      `redirect:/applications/apps/${connectedApp.id}?appAction=updated`,
+    )
+    expect(fetchSpy).toHaveBeenCalledWith(
+      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}`,
+      expect.objectContaining({
+        body: JSON.stringify({
+          allowedModels: ["stable-alias"],
+          description: "Explicit service protections",
+          maxConcurrentRequests: 8,
+          maxContextBytes: 65_536,
+          name: "Protected Application",
+          rateLimitRps: 25,
+          tokenAlertThreshold7d: 1_000_000,
+        }),
+        method: "PATCH",
+      }),
+    )
+  })
+
+  it("rejects a context byte maximum outside JavaScript's safe integer range", async () => {
+    mocks.auth.mockResolvedValue({
+      user: { id: "admin-1", roles: ["admin"] },
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+    formData.set("name", "Unsafe context application")
+    formData.set("description", "Must fail before the BFF call")
+    formData.append("allowedModels", "stable-alias")
+    formData.set("maxContextBytesEnabled", "on")
+    formData.set("maxContextBytes", "9007199254740992")
+
+    await expect(updateAdminConnectedAppPolicyAction(formData)).rejects.toThrow(
+      `redirect:/applications/apps/${connectedApp.id}?appAction=invalid`,
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it("requires Admin authority and exact confirmation for soft deletion", async () => {

@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
+import {
+  type ChatCompletionsBody,
+  normalizedChatCompletionsBodyUtf8Bytes,
+} from "../inference/chat-completions"
 import { resetConnectedAppsForTest } from "../services/admin-connected-apps"
 import {
   getAuditEventsForTest,
@@ -151,6 +155,130 @@ describe("Connected app gateway routes", () => {
     expect(gatewayAuditText).not.toContain("private completion")
     expect(gatewayAuditText).not.toContain(created.credential.apiKey)
     expect(auditText).not.toContain('"environment"')
+    await server.close()
+  })
+
+  it("PR-07 rejects normalized chat context over the byte limit before LiteLLM and accounts the failure", async () => {
+    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+    vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
+    vi.stubEnv("LITELLM_URL", "http://litellm.test")
+    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal("fetch", fetchMock)
+    const payload = {
+      messages: [
+        {
+          content: [
+            { text: "oversized Ž context", type: "text" },
+            { type: "image_url", image_url: { url: "private://omitted" } },
+          ],
+          role: "user",
+        },
+      ],
+      model: "local-a",
+      tools: [
+        {
+          function: {
+            name: "lookup",
+            parameters: {
+              properties: { id: { type: "string" } },
+              type: "object",
+            },
+          },
+          type: "function",
+        },
+      ],
+    } satisfies ChatCompletionsBody
+    const normalizedBytes = normalizedChatCompletionsBodyUtf8Bytes(payload)
+    const server = buildServer()
+    const created = await createApp(server, ["local-a"], {
+      maxContextBytes: normalizedBytes - 1,
+    })
+    const token = bearerForCredential(created.credential)
+
+    const response = await server.inject({
+      method: "POST",
+      url: "/api/app-gateway/v1/chat/completions",
+      headers: { authorization: `Bearer ${token}` },
+      payload,
+    })
+    const detailResponse = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
+
+    expect(response.statusCode).toBe(413)
+    expect(response.json()).toMatchObject({
+      detail:
+        "The request exceeds this connected app's maximum context size in bytes.",
+      title: "Context limit exceeded",
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(detailResponse.json().app).toMatchObject({
+      connectionStatus: "not_connected",
+      lastConnectedAt: null,
+      maxContextBytes: normalizedBytes - 1,
+      usage: {
+        failures7d: 1,
+        lastUsedAt: expect.any(String),
+        requests7d: 1,
+        tokens7d: 0,
+      },
+    })
+    const gatewayEvents = getAuditEventsForTest().filter(
+      (event) => event.action === "connected_app.gateway.chat_completions",
+    )
+    expect(gatewayEvents).toHaveLength(1)
+    expect(gatewayEvents[0]?.metadata).toMatchObject({ outcome: "failed" })
+    await server.close()
+  })
+
+  it("PR-07 fails the model list without partial data when an allowed alias is absent", async () => {
+    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+    vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
+    vi.stubEnv("LITELLM_URL", "http://litellm.test")
+    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({
+        data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
+        object: "list",
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const server = buildServer()
+    const created = await createApp(server, ["local-a", "local-b"])
+    const token = bearerForCredential(created.credential)
+
+    const response = await server.inject({
+      method: "GET",
+      url: "/api/app-gateway/v1/models",
+      headers: { authorization: `Bearer ${token}` },
+    })
+    const detailResponse = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      headers: adminHeaders,
+    })
+
+    expect(response.statusCode).toBe(503)
+    expect(response.json()).toMatchObject({
+      detail: "One or more allowed LiteLLM model aliases are unavailable.",
+      title: "Allowed model unavailable",
+    })
+    expect(response.json()).not.toHaveProperty("data")
+    expect(response.body).not.toContain("local-a")
+    expect(response.body).not.toContain("local-b")
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(detailResponse.json().app).toMatchObject({
+      connectionStatus: "degraded",
+      lastConnectedAt: null,
+      usage: {
+        failures7d: 1,
+        requests7d: 1,
+        tokens7d: 0,
+      },
+    })
     await server.close()
   })
 
@@ -408,7 +536,7 @@ describe("Connected app gateway routes", () => {
     expect(response.body).not.toContain("litellm.example.test")
     expect(response.body).not.toContain("internal-litellm-key")
     expect(detailResponse.json().app).toMatchObject({
-      connectionStatus: "not_connected",
+      connectionStatus: "degraded",
       lastConnectedAt: null,
     })
     const modelEvents = getAuditEventsForTest().filter(
@@ -420,7 +548,7 @@ describe("Connected app gateway routes", () => {
     await server.close()
   })
 
-  it("keeps authentication resolution side-effect-free when the request is rejected before accounting", async () => {
+  it("accounts for authenticated invalid requests without forwarding content", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     const server = buildServer()
@@ -444,9 +572,9 @@ describe("Connected app gateway routes", () => {
       connectionStatus: "not_connected",
       lastConnectedAt: null,
       usage: {
-        failures7d: 0,
-        lastUsedAt: null,
-        requests7d: 0,
+        failures7d: 1,
+        lastUsedAt: expect.any(String),
+        requests7d: 1,
         tokens7d: 0,
       },
     })
@@ -456,12 +584,20 @@ describe("Connected app gateway routes", () => {
         .app.credentials.find(
           (credential: { status: string }) => credential.status === "active",
         ),
-    ).toMatchObject({ lastUsedAt: null })
-    expect(
-      getAuditEventsForTest().filter((event) =>
-        event.action.startsWith("connected_app.gateway."),
-      ),
-    ).toHaveLength(0)
+    ).toMatchObject({ lastUsedAt: expect.any(String) })
+    const gatewayEvents = getAuditEventsForTest().filter((event) =>
+      event.action.startsWith("connected_app.gateway."),
+    )
+    expect(gatewayEvents).toHaveLength(1)
+    expect(gatewayEvents[0]).toMatchObject({
+      action: "connected_app.gateway.chat_completions",
+      metadata: {
+        applicationId: created.app.id,
+        credentialRecordId: expect.stringMatching(/^cak-/),
+        outcome: "failed",
+        sourceSystem: "console",
+      },
+    })
     await server.close()
   })
 
@@ -1015,7 +1151,7 @@ describe("Connected app gateway routes", () => {
     await server.close()
   })
 
-  it("enforces RPM and fails closed for unqualified token budgets", async () => {
+  it("enforces RPS while the seven-day token threshold remains non-blocking", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     vi.stubEnv("LITELLM_URL", "http://litellm.test")
@@ -1035,8 +1171,7 @@ describe("Connected app gateway routes", () => {
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
     const rateLimitedApp = await createApp(server, ["local-a"], {
-      rateLimitRpm: 1,
-      tokenBudget7d: null,
+      rateLimitRps: 1,
     })
     const rateLimitedToken = bearerForCredential(rateLimitedApp.credential)
 
@@ -1059,30 +1194,34 @@ describe("Connected app gateway routes", () => {
       url: `/api/admin/applications/connected-apps/${rateLimitedApp.app.id}`,
       headers: adminHeaders,
     })
-    const budgetedApp = await createApp(server, ["local-a"], {
-      rateLimitRpm: 10,
-      tokenBudget7d: 4,
+    const thresholdApp = await createApp(server, ["local-a"], {
+      tokenAlertThreshold7d: 4,
     })
-    const budgetedToken = bearerForCredential(budgetedApp.credential)
-    const budgetPrimer = await server.inject({
+    const thresholdToken = bearerForCredential(thresholdApp.credential)
+    const thresholdPrimer = await server.inject({
       method: "POST",
       url: "/api/app-gateway/v1/chat/completions",
-      headers: { authorization: `Bearer ${budgetedToken}` },
+      headers: { authorization: `Bearer ${thresholdToken}` },
       payload: {
         model: "local-a",
         max_tokens: 4,
-        messages: [{ role: "user", content: "budget primer" }],
+        messages: [{ role: "user", content: "threshold primer" }],
       },
     })
-    const overBudget = await server.inject({
+    const afterThreshold = await server.inject({
       method: "POST",
       url: "/api/app-gateway/v1/chat/completions",
-      headers: { authorization: `Bearer ${budgetedToken}` },
+      headers: { authorization: `Bearer ${thresholdToken}` },
       payload: {
         model: "local-a",
         max_tokens: 4,
-        messages: [{ role: "user", content: "over budget" }],
+        messages: [{ role: "user", content: "after threshold" }],
       },
+    })
+    const thresholdDetail = await server.inject({
+      method: "GET",
+      url: `/api/admin/applications/connected-apps/${thresholdApp.app.id}`,
+      headers: adminHeaders,
     })
 
     expect(first.statusCode).toBe(200)
@@ -1092,19 +1231,21 @@ describe("Connected app gateway routes", () => {
       connectionStatus: "not_connected",
       lastConnectedAt: null,
     })
-    expect(budgetPrimer.statusCode).toBe(503)
-    expect(budgetPrimer.json()).toMatchObject({
-      title: "Token budget enforcement not qualified",
+    expect(thresholdPrimer.statusCode).toBe(200)
+    expect(afterThreshold.statusCode).toBe(200)
+    expect(thresholdDetail.json().app).toMatchObject({
+      tokenAlertState: "reached",
+      tokenAlertThreshold7d: 4,
+      usage: {
+        requests7d: 2,
+        tokens7d: 8,
+      },
     })
-    expect(overBudget.statusCode).toBe(503)
-    expect(overBudget.json()).toMatchObject({
-      title: "Token budget enforcement not qualified",
-    })
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
     await server.close()
   })
 
-  it("does not exceed RPM under concurrent connected-app traffic", async () => {
+  it("does not exceed RPS under concurrent connected-app traffic", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     vi.stubEnv("LITELLM_URL", "http://litellm.test")
@@ -1131,8 +1272,7 @@ describe("Connected app gateway routes", () => {
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
     const created = await createApp(server, ["local-a"], {
-      rateLimitRpm: 1,
-      tokenBudget7d: null,
+      rateLimitRps: 1,
     })
     const token = bearerForCredential(created.credential)
     const request = {
@@ -1157,7 +1297,7 @@ describe("Connected app gateway routes", () => {
     await server.close()
   })
 
-  it("does not forward concurrent traffic with an unqualified token budget", async () => {
+  it("does not forward traffic beyond the configured concurrency protection", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     vi.stubEnv("LITELLM_URL", "http://litellm.test")
@@ -1184,8 +1324,7 @@ describe("Connected app gateway routes", () => {
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
     const created = await createApp(server, ["local-a"], {
-      rateLimitRpm: 10,
-      tokenBudget7d: 4,
+      maxConcurrentRequests: 1,
     })
     const token = bearerForCredential(created.credential)
     const request = {
@@ -1195,7 +1334,7 @@ describe("Connected app gateway routes", () => {
       payload: {
         model: "local-a",
         max_tokens: 4,
-        messages: [{ role: "user", content: "budget concurrent" }],
+        messages: [{ role: "user", content: "concurrency protection" }],
       },
     }
 
@@ -1210,13 +1349,16 @@ describe("Connected app gateway routes", () => {
     })
 
     expect(responses.map((response) => response.statusCode).sort()).toEqual([
-      503, 503,
+      200, 429,
     ])
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(
+      responses.find((response) => response.statusCode === 429)?.json(),
+    ).toMatchObject({ title: "Concurrency limit exceeded" })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(detailResponse.json().app.usage).toMatchObject({
-      failures7d: 2,
+      failures7d: 1,
       requests7d: 2,
-      tokens7d: 0,
+      tokens7d: 4,
     })
     await server.close()
   })
@@ -1227,8 +1369,7 @@ describe("Connected app gateway routes", () => {
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     const firstServer = buildServer()
     const created = await createApp(firstServer, ["local-a"], {
-      rateLimitRpm: 1,
-      tokenBudget7d: null,
+      rateLimitRps: 1,
     })
     const token = bearerForCredential(created.credential)
 
@@ -1251,7 +1392,7 @@ describe("Connected app gateway routes", () => {
     await secondServer.close()
   })
 
-  it("records known usage when token limits are disabled", async () => {
+  it("records known usage when the token alert threshold is disabled", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     vi.stubEnv("LITELLM_URL", "http://litellm.test")
@@ -1274,8 +1415,7 @@ describe("Connected app gateway routes", () => {
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
     const created = await createApp(server, ["local-a"], {
-      rateLimitRpm: 10,
-      tokenBudget7d: null,
+      rateLimitRps: 10,
     })
     const token = bearerForCredential(created.credential)
     const payload = {
@@ -1322,23 +1462,33 @@ async function createApp(
   models: string[],
   overrides: {
     authMethod?: "api_key" | "oauth_client_credentials"
-    rateLimitRpm?: number | null
-    tokenBudget7d?: number | null
+    maxConcurrentRequests?: number | null
+    maxContextBytes?: number | null
+    rateLimitRps?: number | null
+    tokenAlertThreshold7d?: number | null
   } = {},
 ) {
   const limitPayload: {
     authMethod?: "api_key" | "oauth_client_credentials"
-    rateLimitRpm?: number | null
-    tokenBudget7d?: number | null
+    maxConcurrentRequests?: number | null
+    maxContextBytes?: number | null
+    rateLimitRps?: number | null
+    tokenAlertThreshold7d?: number | null
   } = {}
   if (overrides.authMethod !== undefined) {
     limitPayload.authMethod = overrides.authMethod
   }
-  if (overrides.rateLimitRpm !== undefined) {
-    limitPayload.rateLimitRpm = overrides.rateLimitRpm
+  if (overrides.maxConcurrentRequests !== undefined) {
+    limitPayload.maxConcurrentRequests = overrides.maxConcurrentRequests
   }
-  if (overrides.tokenBudget7d !== undefined) {
-    limitPayload.tokenBudget7d = overrides.tokenBudget7d
+  if (overrides.maxContextBytes !== undefined) {
+    limitPayload.maxContextBytes = overrides.maxContextBytes
+  }
+  if (overrides.rateLimitRps !== undefined) {
+    limitPayload.rateLimitRps = overrides.rateLimitRps
+  }
+  if (overrides.tokenAlertThreshold7d !== undefined) {
+    limitPayload.tokenAlertThreshold7d = overrides.tokenAlertThreshold7d
   }
   const response = await server.inject({
     method: "POST",

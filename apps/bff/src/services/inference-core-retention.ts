@@ -1,4 +1,4 @@
-import { sql, type SQL } from "drizzle-orm"
+import { type SQL, sql } from "drizzle-orm"
 import type { getInferenceCoreDb } from "../db/inference-core-client"
 
 type InferenceCoreDatabase = NonNullable<ReturnType<typeof getInferenceCoreDb>>
@@ -6,8 +6,10 @@ type RetentionExecute = (statement: SQL) => Promise<unknown>
 
 export type InferenceCoreRetentionResult =
   | {
+      abandonedRequestsSettled: number
       idempotencyRowsDeleted: number
       rateLimitWindowsDeleted: number
+      requestLedgerRowsDeleted: number
       status: "completed"
       usageBucketsDeleted: number
     }
@@ -31,6 +33,127 @@ export async function runInferenceCoreRetention(
       return { status: "lock_busy" }
     }
 
+    const abandonedResult = await execute(sql`
+      WITH expired_requests AS (
+        UPDATE admin.application_request_ledger
+        SET
+          state = 'settled',
+          status_code = 504,
+          latency_ms = LEAST(
+            2147483647,
+            GREATEST(
+              0,
+              floor(
+                extract(epoch FROM (lease_expires_at - started_at)) * 1000
+              )
+            )
+          )::integer,
+          settled_at = clock_timestamp()
+        WHERE state = 'active'
+          AND lease_expires_at <= clock_timestamp()
+        RETURNING
+          app_id,
+          credential_id,
+          (started_at AT TIME ZONE 'UTC')::date AS bucket_date,
+          route_kind,
+          COALESCE(model_alias, '') AS model_alias,
+          latency_ms,
+          started_at
+      ),
+      usage_rows AS (
+        INSERT INTO admin.application_usage_daily (
+          app_id,
+          credential_id,
+          bucket_date,
+          route_kind,
+          model_alias,
+          request_count,
+          failure_count,
+          input_tokens,
+          output_tokens,
+          total_tokens,
+          latency_ms_sum,
+          latency_ms_max,
+          updated_at
+        )
+        SELECT
+          app_id,
+          credential_id,
+          bucket_date,
+          route_kind,
+          model_alias,
+          count(*)::integer,
+          count(*)::integer,
+          0,
+          0,
+          0,
+          sum(latency_ms),
+          max(latency_ms),
+          clock_timestamp()
+        FROM expired_requests
+        GROUP BY
+          app_id,
+          credential_id,
+          bucket_date,
+          route_kind,
+          model_alias
+        ON CONFLICT (
+          app_id,
+          credential_id,
+          bucket_date,
+          route_kind,
+          model_alias
+        )
+        DO UPDATE SET
+          request_count =
+            admin.application_usage_daily.request_count
+            + EXCLUDED.request_count,
+          failure_count =
+            admin.application_usage_daily.failure_count
+            + EXCLUDED.failure_count,
+          latency_ms_sum =
+            admin.application_usage_daily.latency_ms_sum
+            + EXCLUDED.latency_ms_sum,
+          latency_ms_max = GREATEST(
+            admin.application_usage_daily.latency_ms_max,
+            EXCLUDED.latency_ms_max
+          ),
+          updated_at = EXCLUDED.updated_at
+        RETURNING app_id
+      ),
+      updated_credentials AS (
+        UPDATE admin.application_credentials AS credential
+        SET last_used_at = GREATEST(
+          COALESCE(credential.last_used_at, '-infinity'::timestamptz),
+          credential.issued_at,
+          expired.last_started_at
+        )
+        FROM (
+          SELECT credential_id, max(started_at) AS last_started_at
+          FROM expired_requests
+          GROUP BY credential_id
+        ) AS expired
+        WHERE credential.id = expired.credential_id
+        RETURNING credential.id
+      )
+      SELECT
+        (SELECT count(*)::integer FROM expired_requests)
+          AS abandoned_requests_settled,
+        (SELECT count(*)::integer FROM usage_rows)
+          AS usage_rows_updated,
+        (SELECT count(*)::integer FROM updated_credentials)
+          AS credentials_updated
+    `)
+    const abandonedRow = resultRows(abandonedResult)[0] as
+      | { abandoned_requests_settled?: unknown }
+      | undefined
+    if (!abandonedRow) {
+      throw new Error("Inference Core abandonment returned no count row.")
+    }
+    const abandonedRequestsSettled = countValue(
+      abandonedRow.abandoned_requests_settled,
+    )
+
     const result = await execute(sql`
       WITH deleted_rate_limit_windows AS (
         DELETE FROM admin.application_rate_limit_windows
@@ -53,6 +176,14 @@ export async function runInferenceCoreRetention(
           )
         RETURNING 1
       ),
+      deleted_request_ledger_rows AS (
+        DELETE FROM admin.application_request_ledger
+        WHERE state = 'settled'
+          AND started_at < (
+            ${usageCutoff}::date::timestamp AT TIME ZONE 'UTC'
+          )
+        RETURNING 1
+      ),
       deleted_usage_buckets AS (
         DELETE FROM admin.application_usage_daily
         WHERE bucket_date < ${usageCutoff}::date
@@ -63,6 +194,8 @@ export async function runInferenceCoreRetention(
           AS rate_limit_windows_deleted,
         (SELECT count(*)::integer FROM deleted_idempotency_rows)
           AS idempotency_rows_deleted,
+        (SELECT count(*)::integer FROM deleted_request_ledger_rows)
+          AS request_ledger_rows_deleted,
         (SELECT count(*)::integer FROM deleted_usage_buckets)
           AS usage_buckets_deleted
     `)
@@ -70,6 +203,7 @@ export async function runInferenceCoreRetention(
       | {
           idempotency_rows_deleted?: unknown
           rate_limit_windows_deleted?: unknown
+          request_ledger_rows_deleted?: unknown
           usage_buckets_deleted?: unknown
         }
       | undefined
@@ -77,8 +211,10 @@ export async function runInferenceCoreRetention(
       throw new Error("Inference Core retention returned no count row.")
     }
     return {
+      abandonedRequestsSettled,
       idempotencyRowsDeleted: countValue(row.idempotency_rows_deleted),
       rateLimitWindowsDeleted: countValue(row.rate_limit_windows_deleted),
+      requestLedgerRowsDeleted: countValue(row.request_ledger_rows_deleted),
       status: "completed",
       usageBucketsDeleted: countValue(row.usage_buckets_deleted),
     }

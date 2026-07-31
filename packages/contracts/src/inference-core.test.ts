@@ -312,10 +312,13 @@ describe("Inference Core contract boundary", () => {
       detailHref: "/applications/apps/app-1",
       id: "app-1",
       lastConnectedAt: null,
+      maxConcurrentRequests: null,
+      maxContextBytes: null,
       name: "Desktop",
-      rateLimitRpm: null,
+      rateLimitRps: null,
       status: "enabled",
-      tokenBudget7d: null,
+      tokenAlertState: null,
+      tokenAlertThreshold7d: null,
       updatedAt: timestamp,
       usage: {
         failures7d: 0,
@@ -406,27 +409,78 @@ describe("Inference Core contract boundary", () => {
       }),
     ).toMatchObject({
       authMethod: "api_key",
-      rateLimitRpm: null,
-      tokenBudget7d: null,
+      maxConcurrentRequests: null,
+      maxContextBytes: null,
+      rateLimitRps: null,
+      tokenAlertThreshold7d: null,
     })
     expect(
       adminConnectedAppUpdateRequestSchema.safeParse({
         allowedModels: ["local-chat"],
         authMethod: "oauth_client_credentials",
         description: "Changed",
+        maxConcurrentRequests: null,
+        maxContextBytes: null,
         name: "Desktop",
-        rateLimitRpm: null,
-        tokenBudget7d: null,
+        rateLimitRps: null,
+        tokenAlertThreshold7d: null,
       }).success,
     ).toBe(false)
     expect(
       adminConnectedAppUpdateRequestSchema.safeParse({
         allowedModels: ["local-chat"],
         description: "Changed",
+        maxConcurrentRequests: null,
+        maxContextBytes: null,
         name: "Desktop",
-        rateLimitRpm: null,
+        rateLimitRps: null,
         status: "disabled",
-        tokenBudget7d: null,
+        tokenAlertThreshold7d: null,
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppUpdateRequestSchema.safeParse({
+        allowedModels: ["local-chat"],
+        description: "Changed",
+        maxConcurrentRequests: 10_000,
+        maxContextBytes: Number.MAX_SAFE_INTEGER,
+        name: "Desktop",
+        rateLimitRps: 10_000,
+        tokenAlertThreshold7d: 100_000_000,
+      }).success,
+    ).toBe(true)
+    expect(
+      adminConnectedAppUpdateRequestSchema.safeParse({
+        allowedModels: ["local-chat"],
+        description: "Changed",
+        maxConcurrentRequests: 10_001,
+        maxContextBytes: Number.MAX_SAFE_INTEGER + 1,
+        name: "Desktop",
+        rateLimitRps: 10_001,
+        tokenAlertThreshold7d: 100_000_001,
+      }).success,
+    ).toBe(false)
+
+    expect(
+      adminConnectedAppUpdateRequestSchema.safeParse({
+        allowedModels: ["local-chat"],
+        description: "Changed",
+        maxConcurrentRequests: 2,
+        maxContextBytes: 65_536,
+        name: "Desktop",
+        rateLimitRps: 5,
+        tokenAlertThreshold7d: 1_000_000,
+      }).success,
+    ).toBe(true)
+    expect(
+      adminConnectedAppUpdateRequestSchema.safeParse({
+        allowedModels: ["local-chat"],
+        description: "Changed",
+        maxConcurrentRequests: 0,
+        maxContextBytes: 1.5,
+        name: "Desktop",
+        rateLimitRps: 0,
+        tokenAlertThreshold7d: 0,
       }).success,
     ).toBe(false)
 

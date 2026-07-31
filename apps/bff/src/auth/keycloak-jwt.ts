@@ -13,8 +13,11 @@ export interface VerifiedKeycloakJwt {
   azp?: string
   clientId?: string
   email?: string
+  expiresAt: number
   groups: string[]
+  issuedAt?: number
   issuer?: string
+  notBefore?: number
   roles: string[]
   subject: string
 }
@@ -35,6 +38,7 @@ interface JwtPayload {
   email?: string
   exp?: number
   groups?: string[]
+  iat?: number
   iss?: string
   nbf?: number
   preferred_username?: string
@@ -62,6 +66,9 @@ const defaultNegativeKidCacheMs = 60 * 1000
 const defaultJwksTimeoutMs = 2000
 const defaultJwksFetchLimit = 4
 const defaultJwksFetchWindowMs = 60 * 1000
+const jwksMaxBytes = 2 * 1024 * 1024
+const maxJwksKidLength = 256
+const maxNegativeKidCacheEntries = 1024
 
 export async function verifyKeycloakJwt(
   token: string,
@@ -78,6 +85,7 @@ export async function verifyKeycloakJwt(
     !header.kid ||
     !payload.sub ||
     payload.typ !== "Bearer" ||
+    typeof payload.exp !== "number" ||
     !Number.isSafeInteger(payload.exp)
   ) {
     return null
@@ -87,7 +95,10 @@ export async function verifyKeycloakJwt(
   if ((payload.exp ?? 0) <= now) {
     return null
   }
-  if (payload.nbf && payload.nbf > now) {
+  if (
+    payload.nbf !== undefined &&
+    (!Number.isSafeInteger(payload.nbf) || payload.nbf > now)
+  ) {
     return null
   }
   if (config.keycloakIssuerUrl && payload.iss !== config.keycloakIssuerUrl) {
@@ -100,7 +111,12 @@ export async function verifyKeycloakJwt(
     return null
   }
 
-  const key = await getSigningKey(header.kid, config)
+  let key: KeyObject | null
+  try {
+    key = await getSigningKey(header.kid, config)
+  } catch {
+    return null
+  }
   if (!key || !verifyRs256(signedContent, signature, key)) {
     return null
   }
@@ -113,8 +129,11 @@ export async function verifyKeycloakJwt(
     azp: payload.azp,
     clientId: payload.client_id,
     email: payload.email ?? payload.preferred_username,
+    expiresAt: payload.exp,
     groups: payload.groups ?? [],
+    issuedAt: payload.iat,
     issuer: payload.iss,
+    notBefore: payload.nbf,
     roles: payload.realm_access?.roles ?? [],
     subject: payload.sub,
   }
@@ -126,6 +145,12 @@ export function resetJwksCachesForTest(): void {
   negativeKidCache.clear()
   jwksFetchWindows.clear()
   jwksFetchPromises.clear()
+}
+
+export function getJwksCacheSizesForTest(): {
+  negativeKidEntries: number
+} {
+  return { negativeKidEntries: negativeKidCache.size }
 }
 
 function keycloakJwtConfigFromEnv(): KeycloakJwtConfig {
@@ -153,27 +178,55 @@ async function getSigningKey(
   if (negativeUntil && negativeUntil > Date.now()) {
     return null
   }
+  if (negativeUntil !== undefined) {
+    negativeKidCache.delete(cacheKey)
+  }
 
-  const jwks = await getJwksDocument(config.keycloakIssuerUrl)
-  const jwk = jwks?.keys.find((candidate) => candidate.kid === kid)
+  const cachedDocument = jwksCache.get(config.keycloakIssuerUrl)
+  const hadFreshCachedDocument =
+    cachedDocument !== undefined && cachedDocument.expiresAt > Date.now()
+  let jwks = await getJwksDocument(config.keycloakIssuerUrl)
+  let jwk = jwks?.keys.find((candidate) => candidate.kid === kid)
+  if (!jwk && hadFreshCachedDocument) {
+    jwks = await getJwksDocument(config.keycloakIssuerUrl, true)
+    jwk = jwks?.keys.find((candidate) => candidate.kid === kid)
+  }
   if (!jwk) {
-    negativeKidCache.set(cacheKey, Date.now() + jwksNegativeCacheMs())
+    cacheMissingKid(cacheKey)
     return null
   }
 
   const key = createPublicKey({ key: jwk, format: "jwk" })
   keyCache.set(cacheKey, {
-    expiresAt: Date.now() + defaultJwksCacheMs,
+    expiresAt: Date.now() + jwksCacheMs(),
     key,
   })
   return key
 }
 
+function cacheMissingKid(cacheKey: string): void {
+  const now = Date.now()
+  for (const [candidate, expiresAt] of negativeKidCache) {
+    if (expiresAt <= now) {
+      negativeKidCache.delete(candidate)
+    }
+  }
+  while (negativeKidCache.size >= maxNegativeKidCacheEntries) {
+    const oldest = negativeKidCache.keys().next()
+    if (oldest.done) {
+      break
+    }
+    negativeKidCache.delete(oldest.value)
+  }
+  negativeKidCache.set(cacheKey, now + jwksNegativeCacheMs())
+}
+
 async function getJwksDocument(
   issuerUrl: string,
+  forceRefresh = false,
 ): Promise<JwksDocument | null> {
   const cached = jwksCache.get(issuerUrl)
-  if (cached && cached.expiresAt > Date.now()) {
+  if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
     return cached.document
   }
 
@@ -200,12 +253,16 @@ async function fetchJwksDocument(
   const timeout = setTimeout(() => controller.abort(), jwksTimeoutMs())
   try {
     const response = await fetch(`${issuerUrl}/protocol/openid-connect/certs`, {
+      headers: { Accept: "application/json" },
+      redirect: "error",
       signal: controller.signal,
     })
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined)
       return null
     }
-    const jwks = parseJwks(await response.json())
+    const body = await readBoundedJwksJson(response)
+    const jwks = parseJwks(body)
     if (!jwks) {
       return null
     }
@@ -218,6 +275,49 @@ async function fetchJwksDocument(
     return null
   } finally {
     clearTimeout(timeout)
+  }
+}
+
+async function readBoundedJwksJson(response: Response): Promise<unknown> {
+  const contentLength = response.headers.get("content-length")
+  if (
+    contentLength !== null &&
+    Number.isSafeInteger(Number(contentLength)) &&
+    Number(contentLength) > jwksMaxBytes
+  ) {
+    await response.body?.cancel().catch(() => undefined)
+    return null
+  }
+
+  const reader = response.body?.getReader()
+  if (!reader) {
+    return null
+  }
+  const chunks: Uint8Array[] = []
+  let bytesRead = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+    bytesRead += value.byteLength
+    if (bytesRead > jwksMaxBytes) {
+      await reader.cancel().catch(() => undefined)
+      return null
+    }
+    chunks.push(value)
+  }
+
+  const body = new Uint8Array(bytesRead)
+  let offset = 0
+  for (const chunk of chunks) {
+    body.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(body))
+  } catch {
+    return null
   }
 }
 
@@ -313,9 +413,11 @@ function parseJwtHeader(value: string): JwtHeader | null {
     return null
   }
 
+  const kid = typeof parsed.kid === "string" ? parsed.kid : undefined
+
   return {
     alg: parsed.alg,
-    kid: typeof parsed.kid === "string" ? parsed.kid : undefined,
+    kid: kid !== undefined && kid.length <= maxJwksKidLength ? kid : undefined,
     typ: typeof parsed.typ === "string" ? parsed.typ : undefined,
   }
 }
@@ -348,6 +450,7 @@ function parseJwtPayload(value: string): JwtPayload | null {
     email: typeof parsed.email === "string" ? parsed.email : undefined,
     exp: typeof parsed.exp === "number" ? parsed.exp : undefined,
     groups: stringArrayValue(parsed.groups).map(normalizeGroupName),
+    iat: typeof parsed.iat === "number" ? parsed.iat : undefined,
     iss: typeof parsed.iss === "string" ? parsed.iss : undefined,
     nbf: typeof parsed.nbf === "number" ? parsed.nbf : undefined,
     preferred_username:

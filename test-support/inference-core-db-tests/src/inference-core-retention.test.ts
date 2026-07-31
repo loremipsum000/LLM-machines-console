@@ -36,10 +36,26 @@ describe("Inference Core one-shot retention", () => {
           now: new Date("2026-07-31T00:30:00.000Z"),
         }),
       ).resolves.toEqual({
+        abandonedRequestsSettled: 2,
         idempotencyRowsDeleted: 1,
         rateLimitWindowsDeleted: 1,
+        requestLedgerRowsDeleted: 2,
         status: "completed",
-        usageBucketsDeleted: 1,
+        usageBucketsDeleted: 2,
+      })
+
+      await expect(
+        runInferenceCoreRetention(database, {
+          acquireLock: async () => true,
+          now: new Date("2026-07-31T00:30:00.000Z"),
+        }),
+      ).resolves.toEqual({
+        abandonedRequestsSettled: 0,
+        idempotencyRowsDeleted: 0,
+        rateLimitWindowsDeleted: 0,
+        requestLedgerRowsDeleted: 0,
+        status: "completed",
+        usageBucketsDeleted: 0,
       })
 
       const windows = await client.query<{ expired: boolean }>(`
@@ -89,7 +105,49 @@ describe("Inference Core one-shot retention", () => {
         FROM admin.application_usage_daily
         ORDER BY bucket_date
       `)
-      expect(usage.rows).toEqual([{ age_days: 89 }, { age_days: 0 }])
+      expect(usage.rows).toEqual([
+        { age_days: 89 },
+        { age_days: 0 },
+        { age_days: 0 },
+      ])
+
+      const requestLedger = await client.query<{
+        id: string
+        state: string
+      }>(`
+        SELECT id, state
+        FROM admin.application_request_ledger
+        ORDER BY id
+      `)
+      expect(requestLedger.rows).toEqual([
+        { id: "00000000-0000-4000-8000-000000000073", state: "settled" },
+        { id: "00000000-0000-4000-8000-000000000074", state: "active" },
+        { id: "00000000-0000-4000-8000-000000000075", state: "settled" },
+      ])
+
+      const abandonedUsage = await client.query<{
+        failure_count: number
+        latency_ms_max: number
+        latency_ms_sum: number
+        request_count: number
+      }>(`
+        SELECT
+          request_count,
+          failure_count,
+          latency_ms_sum,
+          latency_ms_max
+        FROM admin.application_usage_daily
+        WHERE route_kind = 'chat_completions'
+          AND bucket_date = DATE '2026-07-31'
+      `)
+      expect(abandonedUsage.rows).toEqual([
+        {
+          failure_count: 1,
+          latency_ms_max: 900000,
+          latency_ms_sum: 900000,
+          request_count: 1,
+        },
+      ])
     } finally {
       await client.close()
     }
@@ -184,12 +242,108 @@ async function seedRetentionRows(client: PGlite): Promise<void> {
     INSERT INTO admin.application_usage_daily (
       app_id,
       credential_id,
-      bucket_date
+      bucket_date,
+      route_kind
     )
     VALUES
-      ('retention-test-app', 'retention-test-credential', DATE '2026-05-02'),
-      ('retention-test-app', 'retention-test-credential', DATE '2026-05-03'),
-      ('retention-test-app', 'retention-test-credential', DATE '2026-07-31');
+      (
+        'retention-test-app',
+        'retention-test-credential',
+        DATE '2026-05-02',
+        'models'
+      ),
+      (
+        'retention-test-app',
+        'retention-test-credential',
+        DATE '2026-05-03',
+        'models'
+      ),
+      (
+        'retention-test-app',
+        'retention-test-credential',
+        DATE '2026-07-31',
+        'models'
+      );
+
+    INSERT INTO admin.application_request_ledger (
+      id,
+      app_id,
+      credential_id,
+      route_kind,
+      model_alias,
+      state,
+      status_code,
+      latency_ms,
+      started_at,
+      lease_expires_at,
+      settled_at
+    )
+    VALUES
+      (
+        '00000000-0000-4000-8000-000000000071',
+        'retention-test-app',
+        'retention-test-credential',
+        'chat_completions',
+        'local-a',
+        'settled',
+        200,
+        10,
+        TIMESTAMPTZ '2026-05-02T12:30:00Z',
+        TIMESTAMPTZ '2026-05-02T12:45:00Z',
+        TIMESTAMPTZ '2026-05-02T12:30:01Z'
+      ),
+      (
+        '00000000-0000-4000-8000-000000000072',
+        'retention-test-app',
+        'retention-test-credential',
+        'chat_completions',
+        'local-a',
+        'active',
+        NULL,
+        NULL,
+        TIMESTAMPTZ '2026-05-02T12:30:00Z',
+        TIMESTAMPTZ '2026-05-02T12:45:00Z',
+        NULL
+      ),
+      (
+        '00000000-0000-4000-8000-000000000073',
+        'retention-test-app',
+        'retention-test-credential',
+        'chat_completions',
+        'local-a',
+        'settled',
+        200,
+        10,
+        TIMESTAMPTZ '2026-05-03T00:00:00Z',
+        TIMESTAMPTZ '2026-05-03T00:15:00Z',
+        TIMESTAMPTZ '2026-05-03T00:00:01Z'
+      ),
+      (
+        '00000000-0000-4000-8000-000000000074',
+        'retention-test-app',
+        'retention-test-credential',
+        'models',
+        NULL,
+        'active',
+        NULL,
+        NULL,
+        clock_timestamp(),
+        clock_timestamp() + interval '15 minutes',
+        NULL
+      ),
+      (
+        '00000000-0000-4000-8000-000000000075',
+        'retention-test-app',
+        'retention-test-credential',
+        'chat_completions',
+        'local-a',
+        'active',
+        NULL,
+        NULL,
+        clock_timestamp() - interval '20 minutes',
+        clock_timestamp() - interval '5 minutes',
+        NULL
+      );
 
     INSERT INTO admin.idempotency_ledger (
       id,

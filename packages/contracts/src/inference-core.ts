@@ -754,6 +754,14 @@ export type AdminConnectedAppUsageSummary = z.infer<
   typeof adminConnectedAppUsageSummarySchema
 >
 
+export const adminConnectedAppTokenAlertStateSchema = z.enum([
+  "below",
+  "reached",
+])
+export type AdminConnectedAppTokenAlertState = z.infer<
+  typeof adminConnectedAppTokenAlertStateSchema
+>
+
 export const adminConnectedAppCredentialMetadataSchema = z
   .object({
     authMethod: adminConnectedAppAuthMethodSchema,
@@ -918,10 +926,13 @@ export const adminConnectedAppSchema = z
     detailHref: z.string().min(1),
     id: z.string().min(1),
     lastConnectedAt: z.string().datetime().nullable(),
+    maxConcurrentRequests: z.number().int().min(1).nullable(),
+    maxContextBytes: z.number().int().min(1).nullable(),
     name: z.string().min(1),
-    rateLimitRpm: z.number().int().min(1).nullable(),
+    rateLimitRps: z.number().int().min(1).nullable(),
     status: adminConnectedAppStatusSchema,
-    tokenBudget7d: z.number().int().min(1).nullable(),
+    tokenAlertState: adminConnectedAppTokenAlertStateSchema.nullable(),
+    tokenAlertThreshold7d: z.number().int().min(1).nullable(),
     updatedAt: z.string().datetime(),
     usage: adminConnectedAppUsageSummarySchema,
   })
@@ -990,9 +1001,23 @@ export const adminConnectedAppCreateRequestSchema = z
     allowedModels: adminConnectedAppAllowedModelsSchema,
     authMethod: adminConnectedAppAuthMethodSchema.default("api_key"),
     description: z.string().trim().min(1).max(500),
+    maxConcurrentRequests: z
+      .number()
+      .int()
+      .min(1)
+      .max(10_000)
+      .nullable()
+      .default(null),
+    maxContextBytes: z
+      .number()
+      .int()
+      .min(1)
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable()
+      .default(null),
     name: z.string().trim().min(1).max(80),
-    rateLimitRpm: z.number().int().min(1).max(10_000).nullable().default(null),
-    tokenBudget7d: z
+    rateLimitRps: z.number().int().min(1).max(10_000).nullable().default(null),
+    tokenAlertThreshold7d: z
       .number()
       .int()
       .min(1)
@@ -1009,9 +1034,16 @@ export const adminConnectedAppUpdateRequestSchema = z
   .object({
     allowedModels: adminConnectedAppAllowedModelsSchema,
     description: z.string().trim().min(1).max(500),
+    maxConcurrentRequests: z.number().int().min(1).max(10_000).nullable(),
+    maxContextBytes: z
+      .number()
+      .int()
+      .min(1)
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
     name: z.string().trim().min(1).max(80),
-    rateLimitRpm: z.number().int().min(1).max(10_000).nullable(),
-    tokenBudget7d: z.number().int().min(1).max(100_000_000).nullable(),
+    rateLimitRps: z.number().int().min(1).max(10_000).nullable(),
+    tokenAlertThreshold7d: z.number().int().min(1).max(100_000_000).nullable(),
   })
   .strict()
 export type AdminConnectedAppUpdateRequest = z.infer<

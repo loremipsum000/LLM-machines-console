@@ -32,13 +32,16 @@ Application realm's 300-second access-token lifetime. The
 `console-application-admin` service client has an exact 60-second client
 override.
 
-Application-gateway requests use static credentials issued per connected
-application. PR-06 also provides OAuth client creation, rotation, revocation,
-and reconciliation. OAuth access-token validation, runtime limit enforcement,
-and inference data-plane qualification remain PR-07 work. Deterministic
-packaging and commissioning of the two-realm Keycloak configuration remain
-PR-12 work. PR-06 records the governance choice but performs no runtime OAuth
-activation and does not qualify the topology.
+Application-gateway requests use static credentials or Application-realm OAuth
+access tokens issued per connected application. OAuth validation requires the
+explicit `KEYCLOAK_APPLICATION_ISSUER_URL`, whose realm must be exactly
+`llm-machines-applications`; it never falls back to the human-realm issuer or
+either Admin API credential. Tokens must carry the exact `console-bff`
+audience, a canonical `azp` in the `llmm-app-UUID` namespace, a matching
+`client_id` when that claim is present, and an issued lifetime no longer than
+300 seconds. PR-06 provides OAuth client creation, rotation, revocation, and
+reconciliation. Deterministic packaging and commissioning of the two-realm
+Keycloak configuration remain PR-12 work.
 
 The Admin Inference projection reads LiteLLM with the separate
 `ADMIN_LITELLM_BASE_URL` and `ADMIN_LITELLM_API_KEY` configuration. It does not
@@ -51,8 +54,8 @@ Audit records retain only the metadata needed to attribute and operate
 application requests.
 
 PostgreSQL coordinates metadata-only idempotency and usage accounting across
-BFF instances. Application limit values remain optional and disabled by
-default. PR-06 does not qualify their runtime enforcement. A non-null seven-day
-token limit currently fails closed with HTTP 503; total-token admission,
-streaming reconciliation, and runtime-limit qualification remain PR-07 work.
-With the token limit disabled, the BFF records only known upstream usage totals.
+BFF instances. Requests, failures, input and output tokens, total tokens,
+latency, route, and allowed model aliases are accounting metadata, not workload
+content. Optional requests-per-second, concurrent-request, and normalized
+context-size protections are disabled by default. The optional seven-day token
+threshold is visibility only and never blocks inference.

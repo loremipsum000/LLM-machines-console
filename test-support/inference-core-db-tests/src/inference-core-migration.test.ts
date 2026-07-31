@@ -43,6 +43,7 @@ describe("Inference Core empty-install migration", () => {
         "admin.application_limits",
         "admin.application_model_allowlists",
         "admin.application_rate_limit_windows",
+        "admin.application_request_ledger",
         "admin.application_usage_daily",
         "admin.applications",
         "admin.backup_state",

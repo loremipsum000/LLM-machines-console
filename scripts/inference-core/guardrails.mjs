@@ -43,6 +43,10 @@ export const pr06ContractRevisionPath =
   "docs/reduction/inference-core/contract-revisions/PR-06.json"
 export const pr06DecisionPath =
   "docs/reduction/inference-core/pr-06-application-decisions.json"
+export const pr07ContractRevisionPath =
+  "docs/reduction/inference-core/contract-revisions/PR-07.json"
+export const pr07DecisionPath =
+  "docs/reduction/inference-core/pr-07-data-plane-decisions.json"
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -53,6 +57,8 @@ export const pr05ContractBase = "9c502a6d4d79435f469288aa66001db7c4be4aa5"
 export const pr05LaneAnchor = "9c502a6d4d79435f469288aa66001db7c4be4aa5"
 export const pr06ContractBase = "da6f0c0a2b5e477449a09527a28c7e51ef432c20"
 export const pr06LaneAnchor = "da6f0c0a2b5e477449a09527a28c7e51ef432c20"
+export const pr07ContractBase = "cd5a389cde949d07aa64ef7a0513cb585bb8bb7a"
+export const pr07LaneAnchor = "cd5a389cde949d07aa64ef7a0513cb585bb8bb7a"
 const pr02RevisionEvidencePaths = [
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -78,6 +84,11 @@ export const pr06RevisionEvidencePaths = [
   "scripts/inference-core/pr06-boundaries.test.mjs",
   "scripts/inference-core/pr06-contract-revision.mjs",
 ]
+export const pr07RevisionEvidencePaths = [
+  pr07DecisionPath,
+  "scripts/inference-core/pr07-boundaries.test.mjs",
+  "scripts/inference-core/pr07-contract-revision.mjs",
+]
 const pr04ImmutablePriorEvidencePaths = [
   pr02ContractRevisionPath,
   ...pr02RevisionEvidencePaths,
@@ -97,6 +108,11 @@ const pr06ImmutablePriorEvidencePaths = [
   pr05ContractRevisionPath,
   ...pr05RevisionEvidencePaths,
 ]
+const pr07ImmutablePriorEvidencePaths = [
+  ...pr06ImmutablePriorEvidencePaths,
+  pr06ContractRevisionPath,
+  ...pr06RevisionEvidencePaths,
+]
 const generatedContractPaths = new Set([
   allowlistPath,
   routeBaselinePath,
@@ -105,6 +121,7 @@ const generatedContractPaths = new Set([
   pr04ContractRevisionPath,
   pr05ContractRevisionPath,
   pr06ContractRevisionPath,
+  pr07ContractRevisionPath,
 ])
 export const pr02OperationPolicy = {
   changedSourcePaths: [
@@ -270,11 +287,13 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/contract-revisions/PR-04.json",
   "docs/reduction/inference-core/contract-revisions/PR-05.json",
   "docs/reduction/inference-core/contract-revisions/PR-06.json",
+  "docs/reduction/inference-core/contract-revisions/PR-07.json",
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "docs/reduction/inference-core/pr-03-removal-decisions.json",
   "docs/reduction/inference-core/pr-04-data-decisions.json",
   "docs/reduction/inference-core/pr-05-identity-decisions.json",
   "docs/reduction/inference-core/pr-06-application-decisions.json",
+  "docs/reduction/inference-core/pr-07-data-plane-decisions.json",
   "docs/reduction/inference-core/retention-characterization.json",
   "docs/reduction/inference-core/route-baseline.json",
   "scripts/inference-core/guardrails.mjs",
@@ -289,6 +308,8 @@ const guardrailExclusions = new Set([
   "scripts/inference-core/pr05-boundaries.test.mjs",
   "scripts/inference-core/pr06-contract-revision.mjs",
   "scripts/inference-core/pr06-boundaries.test.mjs",
+  "scripts/inference-core/pr07-contract-revision.mjs",
+  "scripts/inference-core/pr07-boundaries.test.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -311,6 +332,7 @@ const protectedGuardrailPaths = [
   "docs/reduction/inference-core/pr-04-data-decisions.json",
   "docs/reduction/inference-core/pr-05-identity-decisions.json",
   "docs/reduction/inference-core/pr-06-application-decisions.json",
+  "docs/reduction/inference-core/pr-07-data-plane-decisions.json",
   "packages/contracts/src/inference-core-authorization.test.ts",
   "packages/contracts/src/inference-core-authorization.ts",
   "packages/contracts/src/inference-core.test.ts",
@@ -331,6 +353,8 @@ const protectedGuardrailPaths = [
   "scripts/inference-core/pr05-contract-revision.mjs",
   "scripts/inference-core/pr06-boundaries.test.mjs",
   "scripts/inference-core/pr06-contract-revision.mjs",
+  "scripts/inference-core/pr07-boundaries.test.mjs",
+  "scripts/inference-core/pr07-contract-revision.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -672,6 +696,14 @@ export const pr06StandaloneDbTestBoundary = {
   ].sort(),
 }
 
+export const pr07StandaloneDbTestBoundary = {
+  ...pr06StandaloneDbTestBoundary,
+  allowedPaths: [
+    ...pr06StandaloneDbTestBoundary.allowedPaths,
+    "test-support/inference-core-db-tests/src/pr07-inference-data-plane.test.ts",
+  ].sort(),
+}
+
 export const pr04ReviewedDispositions = {
   applicationTokenBudgets: {
     persistence: "optional-values-retained",
@@ -866,6 +898,69 @@ export const pr06ReviewedDispositions = {
   },
 }
 
+export const pr07ReviewedDispositions = {
+  publicInferenceApi: {
+    routes: [
+      { method: "GET", path: "/api/app-gateway/v1/models" },
+      { method: "POST", path: "/api/app-gateway/v1/chat/completions" },
+    ],
+    additionalPublicRoutes: false,
+    chatCompletionModes: ["non-stream", "stream"],
+    toolCalls: "transport-only-never-executed",
+  },
+  applicationAuthentication: {
+    supportedModes: ["api_key", "oauth_client_credentials"],
+    realmTopology: "dedicated-application-realm",
+    applicationRealm: "llm-machines-applications",
+    humanRealmTokensAccepted: false,
+    oauthAccessTokenMaximumLifetimeSeconds: 300,
+  },
+  modelAliasPolicy: {
+    stableAliasAllowlistRequired: true,
+    missingOrUnhealthyAlias: "degraded-and-fail-closed",
+    silentSubstitution: false,
+  },
+  customerOwnedHardwarePolicy: {
+    priorityOrder: [
+      "usage-accounting",
+      "rate-protection",
+      "application-permissions",
+      "operational-alerts",
+    ],
+    usageOrTokenThreshold: "metadata-signal-non-blocking",
+    usageAccountingSignals: [
+      "requests",
+      "failures",
+      "input-output-total-tokens",
+      "latency",
+      "exact-allowed-model-alias",
+    ],
+    optionalRateProtectionControls: ["requests-per-second", "concurrency"],
+    applicationPermissions: ["model-alias-allowlist", "max-context-size"],
+    operationalAlertSignals: ["gpu-saturation", "queue-depth", "failures"],
+    rateProtectionPurpose:
+      "protect-appliance-without-arbitrary-usage-rationing",
+    disabledControlBehavior: "no-block",
+    firecrawlPermissionOwner: "PR-08",
+    metadataSignalOwner: "PR-07",
+    alertPresentationAndDeliveryOwner: "PR-09",
+  },
+  retention: {
+    workloadContentPersistence: false,
+    promptsPersisted: false,
+    completionsPersisted: false,
+    streamedChunksPersisted: false,
+    toolArgumentsPersisted: false,
+    metadataOnly: true,
+    runtimeQualificationOwner: "PR-12",
+  },
+  scopeBoundaries: {
+    firecrawl: "excluded-PR-08",
+    alertPresentationAndDelivery: "excluded-PR-09",
+    runtimeDeploymentAndQualification: "excluded-PR-12",
+  },
+}
+
 export const pr05AdminOnlyRoutePolicyKeys = [
   "GET /api/admin/recovery/status",
   "POST /api/admin/recovery/factor/commission",
@@ -914,6 +1009,33 @@ export const pr06AllowedRepositoryPathPatterns = [
   /^packages\/contracts\/src\/(?:index|inference-core(?:\.test)?)\.ts$/,
   /^scripts\/inference-core\/(?:guardrails(?:\.test)?|pr05-keycloak-seed(?:\.test)?|pr06-(?:boundaries\.test|contract-revision))\.mjs$/,
   /^test-support\/inference-core-db-tests\/src\/(?:admin-connected-apps-storage|inference-core-migration|pr05-identity-mutation-journal|pr06-application-credential-reconciliation)\.test\.ts$/,
+]
+
+export const pr07AllowedRepositoryPathPatterns = [
+  /^\.env\.example$/,
+  /^apps\/bff\/README\.md$/,
+  /^apps\/bff\/src\/auth\/(?:application-access-token(?:\.test)?|keycloak-jwt(?:-token-type)?(?:\.test)?)\.ts$/,
+  /^apps\/bff\/src\/commands\/inference-core-retention(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/db\/inference-core-(?:client|schema)(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/inference\/chat-completions(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/routes\/(?:app-gateway|app-gateway(?:-accounting-errors|-boundary|-oauth-access-token)?\.test|inference-core-characterization\.test)\.ts$/,
+  /^apps\/bff\/src\/services\/(?:admin-connected-apps(?:-(?:accounting|atomicity))?|application-gateway-(?:policy|runtime-limits)|inference-core-retention|litellm-chat-transport)(?:\.test)?\.ts$/,
+  /^apps\/web\/src\/components\/console-v2\/applications-v2-experience(?:\.test)?\.tsx$/,
+  /^apps\/web\/src\/components\/console-v2\/role-aware-presentation\.test\.tsx$/,
+  /^apps\/web\/src\/lib\/admin\/actions-core(?:\.test)?\.ts$/,
+  /^docs\/reduction\/inference-core\/(?:README\.md|pr-07-data-plane-decisions\.json|retention-characterization\.json)$/,
+  /^infra\/migrations\/0000_inference_core\.sql$/,
+  /^package\.json$/,
+  /^packages\/contracts\/src\/(?:index|inference-core(?:\.test)?)\.ts$/,
+  /^scripts\/inference-core\/(?:guardrails(?:\.test)?|pr07-(?:boundaries\.test|contract-revision))\.mjs$/,
+  /^test-support\/inference-core-db-tests\/src\/(?:admin-connected-apps-storage|inference-core-migration|inference-core-retention|pr05-identity-mutation-journal|pr06-application-credential-reconciliation|pr07-inference-data-plane)\.test\.ts$/,
+]
+
+export const pr07RetainedFirecrawlBoundaryPaths = [
+  ".env.example",
+  "apps/bff/README.md",
+  "package.json",
+  "packages/contracts/src/inference-core.ts",
 ]
 
 export const pr06AddedApplicationRouteContract = [
@@ -1024,6 +1146,47 @@ export const pr06TargetContract = {
       sourcePath: "apps/bff/src/auth/authorization.ts",
     },
   ],
+  webInferenceConsumers: 0,
+  escapeHatchPaths: [],
+}
+
+export const pr07PublicInferenceRouteContract = [
+  {
+    surface: "bff",
+    method: "GET",
+    path: "/api/app-gateway/v1/models",
+    source: "apps/bff/src/routes/app-gateway.ts",
+    classification: "required-now",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/app-gateway/v1/chat/completions",
+    source: "apps/bff/src/routes/app-gateway.ts",
+    classification: "required-now",
+  },
+]
+
+export const pr07TargetContract = {
+  findingEntriesDueByPr07: 0,
+  remainingFindingEntries: 1,
+  fs105BuilderHubTombstones: [
+    {
+      path: "apps/web/src/middleware.test.ts",
+      removeBy: "PR-12",
+    },
+  ],
+  legacyRoutes: 0,
+  routes: 86,
+  routeClassifications: {
+    "current-console-seam": 77,
+    "operational-auth": 4,
+    "private-operational": 3,
+    "required-now": 2,
+  },
+  publicInferenceRoutes: pr07PublicInferenceRouteContract,
+  adminOnlyRoutePolicyKeys: pr05AdminOnlyRoutePolicyKeys,
+  fastifyRegistrars: pr06TargetContract.fastifyRegistrars,
   webInferenceConsumers: 0,
   escapeHatchPaths: [],
 }
@@ -2143,7 +2306,7 @@ export function verifyActiveReviewedRevisionId(revisionId) {
   if (
     revisionId === undefined ||
     revisionId === null ||
-    ["PR-02", "PR-03", "PR-04", "PR-05", "PR-06"].includes(revisionId)
+    ["PR-02", "PR-03", "PR-04", "PR-05", "PR-06", "PR-07"].includes(revisionId)
   ) {
     return []
   }
@@ -2174,34 +2337,41 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(activeReviewedRevision === "PR-06"
-      ? verifyPr06TargetState({
+    ...(activeReviewedRevision === "PR-07"
+      ? verifyPr07TargetState({
           root,
           currentAllowlist: expectedAllowlist,
           currentRoutes: expectedRoutes,
           paths,
         })
-      : activeReviewedRevision === "PR-05"
-        ? verifyPr05TargetState({
+      : activeReviewedRevision === "PR-06"
+        ? verifyPr06TargetState({
             root,
             currentAllowlist: expectedAllowlist,
             currentRoutes: expectedRoutes,
             paths,
           })
-        : activeReviewedRevision === "PR-04"
-          ? verifyPr04TargetState({
+        : activeReviewedRevision === "PR-05"
+          ? verifyPr05TargetState({
               root,
               currentAllowlist: expectedAllowlist,
               currentRoutes: expectedRoutes,
               paths,
             })
-          : activeReviewedRevision === "PR-03"
-            ? verifyPr03TargetState({
+          : activeReviewedRevision === "PR-04"
+            ? verifyPr04TargetState({
                 root,
                 currentAllowlist: expectedAllowlist,
                 currentRoutes: expectedRoutes,
+                paths,
               })
-            : verifyActiveReviewedRevisionId(activeReviewedRevision)),
+            : activeReviewedRevision === "PR-03"
+              ? verifyPr03TargetState({
+                  root,
+                  currentAllowlist: expectedAllowlist,
+                  currentRoutes: expectedRoutes,
+                })
+              : verifyActiveReviewedRevisionId(activeReviewedRevision)),
   ]
 
   let baseStatus = "not-requested"
@@ -2238,7 +2408,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       errors.push(...reviewedRevision.errors)
       if (reviewedRevision.present) {
         if (
-          !new Set(["PR-03", "PR-04", "PR-05", "PR-06"]).has(
+          !new Set(["PR-03", "PR-04", "PR-05", "PR-06", "PR-07"]).has(
             reviewedRevision.id,
           )
         ) {
@@ -2308,6 +2478,8 @@ export function verifyReviewedContractRevision({
   const currentPr05Revision = currentRevisions.find(({ id }) => id === "PR-05")
   const basePr06Revision = baseRevisions.find(({ id }) => id === "PR-06")
   const currentPr06Revision = currentRevisions.find(({ id }) => id === "PR-06")
+  const basePr07Revision = baseRevisions.find(({ id }) => id === "PR-07")
+  const currentPr07Revision = currentRevisions.find(({ id }) => id === "PR-07")
   const errors = []
   if (
     (!currentPr02Revision || !basePr02Revision) &&
@@ -2343,7 +2515,30 @@ export function verifyReviewedContractRevision({
         ...verifyRetainedPr06RevisionEvidence(root, currentPr06Revision),
       )
     }
+    if (basePr07Revision && currentPr07Revision) {
+      errors.push(
+        ...verifyRetainedPr07RevisionEvidence(root, currentPr07Revision),
+      )
+    }
     return { present: false, id: null, errors: errors.sort() }
+  }
+
+  if (
+    isExactRevisionAppend(
+      baseRevisions,
+      currentRevisions,
+      "PR-07",
+      pr07ContractRevisionPath,
+    )
+  ) {
+    return verifyIntroducedPr07Revision({
+      root,
+      baseCommit,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+    })
   }
 
   if (
@@ -2870,6 +3065,133 @@ function verifyPr05LaneLineage(root) {
   }
 }
 
+function verifyIntroducedPr07Revision({
+  root,
+  baseCommit,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+}) {
+  const errors = []
+  if (baseCommit !== pr07ContractBase) {
+    errors.push(
+      `PR-07 contract revision base changed expected=${pr07ContractBase} actual=${baseCommit}`,
+    )
+  }
+  errors.push(...verifyPr07LaneLineage(root))
+  errors.push(...verifyPr07BaseEvidence(root))
+  const baseRevisionHistory = baseRoutes.reviewedRevisions ?? []
+  if (
+    baseRevisionHistory.length !== 5 ||
+    baseRevisionHistory[0]?.id !== "PR-02" ||
+    baseRevisionHistory[1]?.id !== "PR-03" ||
+    baseRevisionHistory[2]?.id !== "PR-04" ||
+    baseRevisionHistory[3]?.id !== "PR-05" ||
+    baseRevisionHistory[4]?.id !== "PR-06"
+  ) {
+    errors.push(
+      "PR-07 requires the exact retained PR-02 through PR-06 revision history",
+    )
+  } else {
+    errors.push(
+      ...verifyRetainedPr02RevisionEvidence(root, baseRevisionHistory[0]),
+      ...verifyRetainedPr03RevisionEvidence(root, baseRevisionHistory[1]),
+      ...verifyRetainedPr04RevisionEvidence(root, baseRevisionHistory[2]),
+      ...verifyRetainedPr05RevisionEvidence(root, baseRevisionHistory[3]),
+      ...verifyRetainedPr06RevisionEvidence(root, baseRevisionHistory[4]),
+    )
+  }
+  if (!isRegularFile(resolve(root, pr07ContractRevisionPath))) {
+    return {
+      present: true,
+      id: "PR-07",
+      errors: [
+        ...errors,
+        `missing reviewed contract revision ${pr07ContractRevisionPath}`,
+      ].sort(),
+    }
+  }
+
+  const decision = readPr07DecisionDocument(root)
+  errors.push(
+    ...verifyPr07DecisionDocument(decision, {
+      requireReady: true,
+    }),
+  )
+  const evidenceFiles = buildRevisionEvidenceFingerprints(
+    root,
+    pr07RevisionEvidencePaths,
+    "PR-07",
+  )
+  const expected = buildContractRevisionDocument({
+    revisionId: "PR-07",
+    scope: "inference-data-plane",
+    baseCommit,
+    baseTree: resolveTree(root, baseCommit),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes: {
+      ...currentRoutes,
+      reviewedRevisions: structuredClone(baseRoutes.reviewedRevisions ?? []),
+    },
+    evidenceFiles,
+  })
+  const actual = readJson(resolve(root, pr07ContractRevisionPath))
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    errors.push("PR-07 reviewed contract revision does not match exact changes")
+  }
+
+  const expectedRevisionHistory = [
+    ...(baseRoutes.reviewedRevisions ?? []),
+    {
+      id: "PR-07",
+      path: pr07ContractRevisionPath,
+      sha256: sha256(readFileSync(resolve(root, pr07ContractRevisionPath))),
+    },
+  ]
+  if (
+    JSON.stringify(currentRoutes.reviewedRevisions ?? []) !==
+    JSON.stringify(expectedRevisionHistory)
+  ) {
+    errors.push("reviewed contract revision history changed")
+  }
+  errors.push(...verifyRequiredRoutes(currentRoutes))
+  errors.push(
+    ...verifyPr07CandidateContract({
+      root,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+      operationPolicy: decision.operationPolicy,
+    }),
+  )
+
+  return { present: true, id: "PR-07", errors: errors.sort() }
+}
+
+function verifyPr07LaneLineage(root) {
+  const anchor = resolveCommit(root, pr07LaneAnchor)
+  if (anchor !== pr07LaneAnchor) {
+    return [`PR-07 lane anchor is unavailable ${pr07LaneAnchor}`]
+  }
+  const head = currentHead(root)
+  if (head === pr07LaneAnchor) {
+    return []
+  }
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", pr07LaneAnchor, head], {
+      cwd: root,
+      stdio: "ignore",
+    })
+    return []
+  } catch {
+    return [`PR-07 lane anchor is not an ancestor ${pr07LaneAnchor}`]
+  }
+}
+
 function verifyIntroducedPr06Revision({
   root,
   baseCommit,
@@ -3194,6 +3516,83 @@ function verifyRetainedPr06RevisionEvidence(root, revision) {
     errors.push("retained PR-06 revision evidence changed")
   }
   errors.push(...verifyPr06BaseEvidence(root))
+  return errors.sort()
+}
+
+function verifyRetainedPr07RevisionEvidence(root, revision) {
+  const errors = []
+  if (
+    revision.id !== "PR-07" ||
+    revision.path !== pr07ContractRevisionPath ||
+    !/^[0-9a-f]{64}$/.test(revision.sha256 ?? "")
+  ) {
+    return ["invalid retained PR-07 revision identity"]
+  }
+  const absolutePath = resolve(root, pr07ContractRevisionPath)
+  if (!isRegularFile(absolutePath)) {
+    return [`missing reviewed contract revision ${pr07ContractRevisionPath}`]
+  }
+  if (sha256(readFileSync(absolutePath)) !== revision.sha256) {
+    errors.push("retained PR-07 revision fingerprint changed")
+  }
+  const document = readJson(absolutePath)
+  if (
+    document.id !== "PR-07" ||
+    document.scope !== "inference-data-plane" ||
+    document.baseCommit !== pr07ContractBase ||
+    document.baseTree !== resolveTree(root, pr07ContractBase)
+  ) {
+    errors.push("retained PR-07 revision base identity changed")
+  }
+  if (
+    JSON.stringify(document.evidenceFiles) !==
+    JSON.stringify(
+      buildRevisionEvidenceFingerprints(
+        root,
+        pr07RevisionEvidencePaths,
+        "PR-07",
+      ),
+    )
+  ) {
+    errors.push("retained PR-07 revision evidence changed")
+  }
+  errors.push(...verifyPr07BaseEvidence(root))
+  return errors.sort()
+}
+
+export function verifyPr07BaseEvidence(root = repositoryRoot) {
+  const errors = []
+  for (const path of pr07ImmutablePriorEvidencePaths) {
+    let expected
+    try {
+      expected = execFileSync(
+        "git",
+        [
+          "show",
+          "--no-ext-diff",
+          "--no-textconv",
+          "--end-of-options",
+          `${pr07ContractBase}:${path}`,
+        ],
+        {
+          cwd: root,
+          encoding: null,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      )
+    } catch {
+      errors.push(`PR-07 immutable base evidence is unavailable ${path}`)
+      continue
+    }
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-07 retained prior evidence is missing ${path}`)
+      continue
+    }
+    if (!readFileSync(absolutePath).equals(expected)) {
+      errors.push(`PR-07 retained prior evidence changed ${path}`)
+    }
+  }
   return errors.sort()
 }
 
@@ -4098,6 +4497,188 @@ export function verifyPr06OperationBoundary(operationPolicy) {
   return [...new Set(errors)].sort()
 }
 
+export function readPr07DecisionDocument(root = repositoryRoot) {
+  return readJson(resolve(root, pr07DecisionPath))
+}
+
+export function verifyPr07DecisionDocument(
+  decision,
+  { requireReady = false } = {},
+) {
+  const errors = []
+  const expectedKeys = [
+    "contractBaseCommit",
+    "laneAnchorCommit",
+    "operationPolicy",
+    "resolverFingerprints",
+    "reviewStatus",
+    "reviewedDispositions",
+    "schemaVersion",
+    "scope",
+    "standaloneDbTestBoundary",
+    "target",
+    "webAuthenticationEvidence",
+    "workPackage",
+  ]
+  if (
+    !decision ||
+    JSON.stringify(Object.keys(decision).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-07" ||
+    decision.scope !== "inference-data-plane" ||
+    decision.contractBaseCommit !== pr07ContractBase ||
+    decision.laneAnchorCommit !== pr07LaneAnchor
+  ) {
+    errors.push("invalid PR-07 decision identity")
+  }
+  if (
+    JSON.stringify(decision?.reviewedDispositions) !==
+    JSON.stringify(pr07ReviewedDispositions)
+  ) {
+    errors.push("invalid PR-07 reviewed dispositions")
+  }
+  if (
+    JSON.stringify(decision?.standaloneDbTestBoundary) !==
+    JSON.stringify(pr07StandaloneDbTestBoundary)
+  ) {
+    errors.push("invalid PR-07 standalone DB test boundary")
+  }
+  if (
+    JSON.stringify(decision?.resolverFingerprints) !==
+    JSON.stringify(reviewedPr06ResolverFingerprints)
+  ) {
+    errors.push("invalid PR-07 resolver fingerprints")
+  }
+  if (
+    JSON.stringify(decision?.webAuthenticationEvidence) !==
+    JSON.stringify(reviewedPr05WebAuthenticationEvidence)
+  ) {
+    errors.push("invalid PR-07 Web authentication evidence")
+  }
+  if (JSON.stringify(decision?.target) !== JSON.stringify(pr07TargetContract)) {
+    errors.push("invalid PR-07 target")
+  }
+  if (
+    !["pending-final-staged-delta", "reviewed"].includes(decision?.reviewStatus)
+  ) {
+    errors.push("invalid PR-07 review status")
+  } else if (requireReady && decision.reviewStatus !== "reviewed") {
+    errors.push("PR-07 operation policy is not reviewed")
+  }
+
+  const dispositions = decision?.reviewedDispositions
+  if (
+    dispositions?.applicationAuthentication
+      ?.oauthAccessTokenMaximumLifetimeSeconds !== 300
+  ) {
+    errors.push("PR-07 OAuth access-token lifetime must not exceed 300 seconds")
+  }
+  if (
+    dispositions?.applicationAuthentication?.realmTopology !==
+    "dedicated-application-realm"
+  ) {
+    errors.push(
+      "PR-07 Application authentication must use the dedicated Application realm",
+    )
+  }
+  if (
+    JSON.stringify(dispositions?.publicInferenceApi?.routes) !==
+      JSON.stringify(pr07ReviewedDispositions.publicInferenceApi.routes) ||
+    dispositions?.publicInferenceApi?.additionalPublicRoutes !== false
+  ) {
+    errors.push("PR-07 must expose exactly two public inference routes")
+  }
+  if (
+    dispositions?.publicInferenceApi?.toolCalls !==
+    "transport-only-never-executed"
+  ) {
+    errors.push("PR-07 must not execute transported tool calls")
+  }
+  if (
+    dispositions?.modelAliasPolicy?.silentSubstitution !== false ||
+    dispositions?.modelAliasPolicy?.missingOrUnhealthyAlias !==
+      "degraded-and-fail-closed"
+  ) {
+    errors.push("PR-07 must not substitute model aliases")
+  }
+  if (
+    JSON.stringify(dispositions?.customerOwnedHardwarePolicy) !==
+    JSON.stringify(pr07ReviewedDispositions.customerOwnedHardwarePolicy)
+  ) {
+    errors.push("PR-07 customer-owned-hardware signal boundary changed")
+  }
+  if (
+    dispositions?.retention?.workloadContentPersistence !== false ||
+    dispositions?.retention?.promptsPersisted !== false ||
+    dispositions?.retention?.completionsPersisted !== false ||
+    dispositions?.retention?.streamedChunksPersisted !== false ||
+    dispositions?.retention?.toolArgumentsPersisted !== false
+  ) {
+    errors.push("PR-07 workload content retention must remain disabled")
+  }
+  if (
+    dispositions?.scopeBoundaries?.firecrawl !== "excluded-PR-08" ||
+    dispositions?.scopeBoundaries?.runtimeDeploymentAndQualification !==
+      "excluded-PR-12"
+  ) {
+    errors.push("PR-07 excluded scope boundary changed")
+  }
+  errors.push(...verifyPr07OperationBoundary(decision?.operationPolicy ?? {}))
+  return errors.sort()
+}
+
+export function verifyPr07OperationBoundary(operationPolicy) {
+  const sourceKeys = [
+    "addedSourcePaths",
+    "changedSourcePaths",
+    "deletedSourcePaths",
+  ]
+  const repositoryKeys = [
+    "addedRepositoryPaths",
+    "changedRepositoryPaths",
+    "deletedRepositoryPaths",
+  ]
+  const expectedKeys = [...sourceKeys, ...repositoryKeys].sort()
+  const errors = [
+    ...verifyExactPathPolicy(operationPolicy, sourceKeys, "PR-07"),
+    ...verifyExactPathPolicy(operationPolicy, repositoryKeys, "PR-07"),
+  ]
+  if (
+    JSON.stringify(Object.keys(operationPolicy).sort()) !==
+    JSON.stringify(expectedKeys)
+  ) {
+    errors.push("invalid PR-07 operation policy keys")
+  }
+
+  const repositoryPathByOperation = new Map()
+  for (const key of repositoryKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      repositoryPathByOperation.set(path, key.replace("Repository", "Source"))
+      if (
+        !pr07AllowedRepositoryPathPatterns.some((pattern) => pattern.test(path))
+      ) {
+        errors.push(`PR-07 repository path is outside package boundary ${path}`)
+      }
+      if (pr07ImmutablePriorEvidencePaths.includes(path)) {
+        errors.push(
+          `PR-07 immutable prior evidence appears in operation policy ${path}`,
+        )
+      }
+    }
+  }
+  for (const key of sourceKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      if (repositoryPathByOperation.get(path) !== key) {
+        errors.push(
+          `PR-07 source operation lacks matching repository operation ${key} ${path}`,
+        )
+      }
+    }
+  }
+  return [...new Set(errors)].sort()
+}
+
 export function buildExactClosureOperationPolicy(baseRoutes, currentRoutes) {
   return {
     ...buildClosurePathOperations(
@@ -4445,7 +5026,7 @@ export function verifyPr03TargetState({
   currentRoutes,
 }) {
   if (
-    ["PR-04", "PR-05", "PR-06"].includes(
+    ["PR-04", "PR-05", "PR-06", "PR-07"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
     )
   ) {
@@ -4529,7 +5110,9 @@ export function verifyPr04TargetState({
   paths = listCandidatePaths(root),
 }) {
   if (
-    ["PR-05", "PR-06"].includes(currentRoutes.reviewedRevisions?.at(-1)?.id)
+    ["PR-05", "PR-06", "PR-07"].includes(
+      currentRoutes.reviewedRevisions?.at(-1)?.id,
+    )
   ) {
     return []
   }
@@ -4751,7 +5334,9 @@ export function verifyPr05TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
-  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-06") {
+  if (
+    ["PR-06", "PR-07"].includes(currentRoutes.reviewedRevisions?.at(-1)?.id)
+  ) {
     return []
   }
   const errors = []
@@ -4995,6 +5580,9 @@ export function verifyPr06TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-07") {
+    return []
+  }
   const errors = []
   if (
     (currentRoutes.routes ?? []).some(
@@ -5105,6 +5693,258 @@ export function verifyPr06RetiredApplicationBoundary(root = repositoryRoot) {
           `PR-06 retired Application identifier remains ${identifier} ${path}`,
         )
       }
+    }
+  }
+  return errors.sort()
+}
+
+export function verifyPr07FindingTransition(baseEntries, currentEntries) {
+  const errors = []
+  const baseByKey = new Map(
+    baseEntries.map((entry) => [findingKey(entry), entry]),
+  )
+  for (const entry of currentEntries) {
+    const key = findingKey(entry)
+    const baseEntry = baseByKey.get(key)
+    if (!baseEntry) {
+      errors.push(`new PR-07 reviewed legacy finding ${key}`)
+      continue
+    }
+    if (entry.count > baseEntry.count) {
+      errors.push(`PR-07 reviewed legacy finding count grew ${key}`)
+    }
+    if (entry.removeBy !== baseEntry.removeBy) {
+      errors.push(`PR-07 legacy disposition changed outside policy ${key}`)
+    }
+  }
+  const dueEntries = currentEntries.filter(
+    (entry) => entry.removeBy === "PR-07",
+  )
+  if (dueEntries.length > 0) {
+    errors.push(
+      `PR-07 findings remain ${dueEntries.map(findingKey).sort().join(",")}`,
+    )
+  }
+  if (
+    currentEntries.length !== 1 ||
+    currentEntries[0]?.ruleId !== "FS105_BUILDER_HUB" ||
+    currentEntries[0]?.path !== "apps/web/src/middleware.test.ts" ||
+    currentEntries[0]?.removeBy !== "PR-12"
+  ) {
+    errors.push("PR-07 remaining finding boundary changed")
+  }
+  return errors.sort()
+}
+
+export function verifyPr07CandidateContract({
+  root = repositoryRoot,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+  operationPolicy,
+}) {
+  const errors = [
+    ...verifyPr07FindingTransition(
+      baseAllowlist.entries ?? [],
+      currentAllowlist.entries ?? [],
+    ),
+    ...verifyPr07RetainedRouteContract(baseRoutes, currentRoutes),
+    ...verifyPr07OperationBoundary(operationPolicy ?? {}),
+    ...verifyExactClosureChanges(
+      baseRoutes.sourceClosure ?? [],
+      currentRoutes.sourceClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedSourcePaths",
+        changedKey: "changedSourcePaths",
+        deletedKey: "deletedSourcePaths",
+        label: "source closure",
+      },
+      "PR-07",
+    ),
+    ...verifyExactClosureChanges(
+      baseRoutes.repositoryClosure ?? [],
+      currentRoutes.repositoryClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedRepositoryPaths",
+        changedKey: "changedRepositoryPaths",
+        deletedKey: "deletedRepositoryPaths",
+        label: "repository closure",
+      },
+      "PR-07",
+    ),
+    ...verifyPr07TargetState({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths: (currentRoutes.repositoryClosure ?? []).map(({ path }) => path),
+    }),
+  ]
+  return errors.sort()
+}
+
+function verifyPr07RetainedRouteContract(base, current) {
+  const errors = []
+  for (const key of [
+    "target",
+    "routes",
+    "fastifyRegistrars",
+    "webInferenceConsumers",
+  ]) {
+    if (
+      JSON.stringify(current[key] ?? null) !== JSON.stringify(base[key] ?? null)
+    ) {
+      errors.push(`PR-07 retained route contract changed ${key}`)
+    }
+  }
+  return errors.sort()
+}
+
+export function verifyPr07TargetState({
+  root = repositoryRoot,
+  currentAllowlist,
+  currentRoutes,
+  paths = listCandidatePaths(root),
+}) {
+  const errors = []
+  if (
+    (currentRoutes.routes ?? []).some(
+      (route) => route.classification === "legacy-retired",
+    )
+  ) {
+    errors.push("PR-07 legacy routes remain")
+  }
+  if ((currentRoutes.routes ?? []).length !== pr07TargetContract.routes) {
+    errors.push(
+      `PR-07 total route count changed expected=${pr07TargetContract.routes} actual=${(currentRoutes.routes ?? []).length}`,
+    )
+  }
+  const classificationCounts = new Map()
+  for (const route of currentRoutes.routes ?? []) {
+    classificationCounts.set(
+      route.classification,
+      (classificationCounts.get(route.classification) ?? 0) + 1,
+    )
+  }
+  for (const [classification, expected] of Object.entries(
+    pr07TargetContract.routeClassifications,
+  )) {
+    const actual = classificationCounts.get(classification) ?? 0
+    if (actual !== expected) {
+      errors.push(
+        `PR-07 route count changed ${classification} expected=${expected} actual=${actual}`,
+      )
+    }
+  }
+  if (
+    JSON.stringify(currentRoutes.fastifyRegistrars ?? []) !==
+    JSON.stringify(pr07TargetContract.fastifyRegistrars)
+  ) {
+    errors.push("PR-07 retained Fastify registrars changed")
+  }
+  if ((currentRoutes.webInferenceConsumers ?? []).length !== 0) {
+    errors.push("PR-07 Web inference consumer count is not zero")
+  }
+  if (
+    JSON.stringify(currentRoutes.fingerprints ?? []) !==
+    JSON.stringify(reviewedPr06ResolverFingerprints)
+  ) {
+    errors.push("PR-07 resolver fingerprints changed")
+  }
+  if ((currentRoutes.escapeHatches ?? []).length !== 0) {
+    errors.push("PR-07 mutable legacy escape hatch remains")
+  }
+  const publicInferenceRoutes = (currentRoutes.routes ?? [])
+    .filter((route) => route.classification === "required-now")
+    .sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    )
+  const expectedPublicInferenceRoutes = structuredClone(
+    pr07PublicInferenceRouteContract,
+  ).sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  )
+  if (
+    JSON.stringify(publicInferenceRoutes) !==
+    JSON.stringify(expectedPublicInferenceRoutes)
+  ) {
+    errors.push("PR-07 must expose exactly two public inference routes")
+  }
+  if (
+    (currentRoutes.routes ?? []).some((route) =>
+      ["/v2/search", "/v2/scrape"].includes(route.path),
+    )
+  ) {
+    errors.push("PR-07 must not introduce Firecrawl routes")
+  }
+  if (
+    (currentAllowlist.entries ?? []).some((entry) => entry.removeBy === "PR-07")
+  ) {
+    errors.push("PR-07 due findings remain")
+  }
+  if (
+    (currentAllowlist.entries ?? []).length !== 1 ||
+    currentAllowlist.entries[0]?.ruleId !== "FS105_BUILDER_HUB" ||
+    currentAllowlist.entries[0]?.path !== "apps/web/src/middleware.test.ts" ||
+    currentAllowlist.entries[0]?.removeBy !== "PR-12"
+  ) {
+    errors.push("PR-07 remaining finding boundary changed")
+  }
+  errors.push(...verifyPr06RetiredApplicationBoundary(root))
+  errors.push(...verifyPr07RetainedFirecrawlBoundary(root))
+  errors.push(...verifyRetiredDataDependencyBoundary(root, paths))
+  errors.push(
+    ...verifyStandaloneDbTestBoundary(
+      root,
+      paths,
+      pr07StandaloneDbTestBoundary,
+    ),
+  )
+  errors.push(...verifyReviewedPr05WebAuthenticationEvidence(root))
+  errors.push(...verifyWebAuthenticationBoundary(root))
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr07RetainedFirecrawlBoundary(root = repositoryRoot) {
+  const errors = []
+  for (const path of pr07RetainedFirecrawlBoundaryPaths) {
+    let baseSource
+    try {
+      baseSource = execFileSync(
+        "git",
+        [
+          "show",
+          "--no-ext-diff",
+          "--no-textconv",
+          "--end-of-options",
+          `${pr07ContractBase}:${path}`,
+        ],
+        {
+          cwd: root,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      )
+    } catch {
+      errors.push(`PR-07 Firecrawl base boundary is unavailable ${path}`)
+      continue
+    }
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-07 Firecrawl boundary is missing ${path}`)
+      continue
+    }
+    const currentSource = readFileSync(absolutePath, "utf8")
+    const baseLines = baseSource
+      .split("\n")
+      .filter((line) => /firecrawl/i.test(line))
+    const currentLines = currentSource
+      .split("\n")
+      .filter((line) => /firecrawl/i.test(line))
+    if (JSON.stringify(currentLines) !== JSON.stringify(baseLines)) {
+      errors.push(`PR-07 Firecrawl boundary changed ${path}`)
     }
   }
   return errors.sort()
@@ -5364,6 +6204,7 @@ function buildReviewedRevisionFingerprints(root) {
     { id: "PR-04", path: pr04ContractRevisionPath },
     { id: "PR-05", path: pr05ContractRevisionPath },
     { id: "PR-06", path: pr06ContractRevisionPath },
+    { id: "PR-07", path: pr07ContractRevisionPath },
   ]) {
     if (!isRegularFile(resolve(root, path))) {
       missingRevision ??= id
@@ -5461,7 +6302,11 @@ export function verifyCorePackageClosure(
     "build:inference-core":
       "node scripts/inference-core/run-core-command.mjs build",
     "check:inference-core": "node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base": `node scripts/inference-core/guardrails.mjs --base-ref ${pr06ContractBase}`,
+    "check:inference-core:base": `node scripts/inference-core/guardrails.mjs --base-ref ${pr07ContractBase}`,
+    "contract:inference-core:pr07:policy":
+      "node scripts/inference-core/pr07-contract-revision.mjs --print-operation-policy",
+    "contract:inference-core:pr07:write":
+      "node scripts/inference-core/pr07-contract-revision.mjs --write",
     "test:inference-core-authorization":
       "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match exec vitest run src/inference-core-authorization.test.ts",
     "test:inference-core-characterization":
@@ -5572,6 +6417,7 @@ export function verifyRetentionCharacterization(root = repositoryRoot) {
     "schemaVersion",
     "scope",
     "sourceCoverage",
+    "sourceRetentionContract",
   ]
   const expectedSourceCoverage = [
     {
@@ -5595,11 +6441,6 @@ export function verifyRetentionCharacterization(root = repositoryRoot) {
     { scenario: "restore", status: "NOT_EVALUATED_RUNTIME" },
   ]
   const expectedLegacyGaps = [
-    {
-      id: "ZR-LEGACY-001",
-      summary: "Gateway accounting failures log raw Error message and stack.",
-      retireBy: "PR-07",
-    },
     {
       id: "ZR-LEGACY-002",
       summary: "Audit reason and metadata accept unrestricted content.",
@@ -5643,7 +6484,14 @@ export function verifyRetentionCharacterization(root = repositoryRoot) {
     register.scope !== "pr01-source-characterization" ||
     register.overallVerdict !== "PR01_SOURCE_CHARACTERIZATION_INCOMPLETE" ||
     register.runtimeZeroRetentionCompliance !== "NOT_EVALUATED" ||
-    register.d2aRcRetentionEvidence !== "NOT_DUE"
+    register.d2aRcRetentionEvidence !== "NOT_DUE" ||
+    JSON.stringify(register.sourceRetentionContract) !==
+      JSON.stringify({
+        scope: "public-inference-data-plane",
+        workloadContentPersistence: false,
+        metadataOnly: true,
+        runtimeQualificationOwner: "PR-12",
+      })
   ) {
     errors.push("retention characterization overstates PR-01 evidence")
   }
@@ -8522,6 +9370,24 @@ function routePolicyDigest() {
           operationPolicy:
             readPr06DecisionDocument(repositoryRoot).operationPolicy,
         },
+        {
+          id: "PR-07",
+          contractBase: pr07ContractBase,
+          laneAnchor: pr07LaneAnchor,
+          path: pr07ContractRevisionPath,
+          evidencePaths: pr07RevisionEvidencePaths,
+          reviewedDispositions: pr07ReviewedDispositions,
+          target: pr07TargetContract,
+          standaloneDbTestBoundary: pr07StandaloneDbTestBoundary,
+          allowedRepositoryPathPatterns: pr07AllowedRepositoryPathPatterns.map(
+            ({ source, flags }) => ({ source, flags }),
+          ),
+          retainedFirecrawlBoundaryPaths: pr07RetainedFirecrawlBoundaryPaths,
+          resolverFingerprints: reviewedPr06ResolverFingerprints,
+          webAuthenticationEvidence: reviewedPr05WebAuthenticationEvidence,
+          operationPolicy:
+            readPr07DecisionDocument(repositoryRoot).operationPolicy,
+        },
       ],
       implementation: [
         listCandidatePaths,
@@ -8605,11 +9471,15 @@ function routePolicyDigest() {
         verifyIntroducedPr06Revision,
         verifyPr06LaneLineage,
         verifyPr06BaseEvidence,
+        verifyIntroducedPr07Revision,
+        verifyPr07LaneLineage,
+        verifyPr07BaseEvidence,
         verifyRetainedPr02RevisionEvidence,
         verifyRetainedPr03RevisionEvidence,
         verifyRetainedPr04RevisionEvidence,
         verifyRetainedPr05RevisionEvidence,
         verifyRetainedPr06RevisionEvidence,
+        verifyRetainedPr07RevisionEvidence,
         verifyPr02OperationMatrix,
         verifyExactMultisetSubset,
         verifyPr02EscapeHatches,
@@ -8626,6 +9496,9 @@ function routePolicyDigest() {
         readPr06DecisionDocument,
         verifyPr06DecisionDocument,
         verifyPr06OperationBoundary,
+        readPr07DecisionDocument,
+        verifyPr07DecisionDocument,
+        verifyPr07OperationBoundary,
         buildExactClosureOperationPolicy,
         buildClosurePathOperations,
         verifyPr03FindingTransition,
@@ -8647,6 +9520,11 @@ function routePolicyDigest() {
         verifyPr06RetainedRouteContract,
         verifyPr06TargetState,
         verifyPr06RetiredApplicationBoundary,
+        verifyPr07FindingTransition,
+        verifyPr07CandidateContract,
+        verifyPr07RetainedRouteContract,
+        verifyPr07TargetState,
+        verifyPr07RetainedFirecrawlBoundary,
         verifyReviewedWebAuthenticationEvidence,
         verifyReviewedPr04WebAuthenticationEvidence,
         verifyReviewedPr05WebAuthenticationEvidence,
@@ -8775,6 +9653,7 @@ export function verifyBaseCommitLineage(
     pr04ContractBase,
     pr05ContractBase,
     pr06ContractBase,
+    pr07ContractBase,
   ],
 ) {
   const head = currentHead(root)

@@ -1,15 +1,18 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
-import { verifyKeycloakJwt } from "../auth/keycloak-jwt"
+import { verifyApplicationAccessToken } from "../auth/application-access-token"
 import {
   type ChatCompletionsBody,
   isChatCompletionsBody,
+  normalizedChatCompletionsBodyUtf8Bytes,
 } from "../inference/chat-completions"
 import {
   type ConnectedAppGatewayUsageContext,
+  type ConnectedAppGatewayUsageInput,
   type ConnectedAppRuntimeIdentity,
   admitConnectedAppGatewayUsage,
   consumeConnectedAppGatewayRateLimit,
   reconcileConnectedAppGatewayUsage,
+  recordConnectedAppGatewayAccountingDegraded,
   recordConnectedAppGatewayUsage,
   recordConnectedAppModelsConnection,
   resolveConnectedAppRuntimeIdentity,
@@ -18,14 +21,20 @@ import {
 import { evaluateApplicationGatewayPolicy } from "../services/application-gateway-policy"
 import { emitAudit } from "../services/audit"
 import {
+  type LiteLlmTransportFailureReason,
+  type OpenAIUsage,
   createLiteLlmChatTransport,
+  createOpenAIStreamingUsageParser,
   fetchLiteLlmModels,
+  getLiteLlmTransportErrorReason,
   isStreamingChatCompletionsRequest,
-  parseOpenAIUsageTokens,
+  readLiteLlmNonStreamingResponse,
+  waitForWritableDrainOrAbort,
 } from "../services/litellm-chat-transport"
 
 export function registerAppGatewayRoutes(server: FastifyInstance): void {
   server.get("/api/app-gateway/v1/models", async (request, reply) => {
+    const startedAt = Date.now()
     reply.header("x-llm-machines-request-id", request.id)
     const auth = await authenticateConnectedApp(request)
     if (!auth.ok) {
@@ -35,11 +44,13 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
     const policy = evaluateApplicationGatewayPolicy(auth.app, null)
     if (!policy.ok) {
       await safelyAuditGatewayRequest(request, auth.app, {
+        inputTokens: 0,
         latencyMs: 0,
         model: null,
+        outputTokens: 0,
         route: "models",
         status: policy.status,
-        tokens: 0,
+        totalTokens: 0,
       })
       return sendGatewayProblem(
         reply,
@@ -51,11 +62,13 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
     const rateLimit = await consumeConnectedAppGatewayRateLimit(auth.app)
     if (!rateLimit.ok) {
       await safelyAuditGatewayRequest(request, auth.app, {
+        inputTokens: 0,
         latencyMs: 0,
         model: null,
+        outputTokens: 0,
         route: "models",
         status: rateLimit.status,
-        tokens: 0,
+        totalTokens: 0,
       })
       return sendGatewayProblem(
         reply,
@@ -65,15 +78,61 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
       )
     }
 
-    const models = await fetchLiteLlmModels(auth.app.allowedModels)
-    if (!models.ok) {
-      await safelyAuditGatewayRequest(request, auth.app, {
-        latencyMs: 0,
+    let admission: Awaited<ReturnType<typeof admitConnectedAppGatewayUsage>>
+    try {
+      admission = await admitConnectedAppGatewayUsage(auth.app, {
+        contextBytes: 0,
         model: null,
         route: "models",
-        status: models.status,
-        tokens: 0,
       })
+    } catch {
+      logGatewayAccountingFailure(request, auth.app, "admit")
+      await safelyAuditGatewayRequest(request, auth.app, {
+        inputTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        model: null,
+        outputTokens: 0,
+        route: "models",
+        status: 503,
+        totalTokens: 0,
+      })
+      return sendAccountingUnavailable(reply)
+    }
+    if (!admission.ok) {
+      await safelyAuditGatewayRequest(request, auth.app, {
+        inputTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        model: null,
+        outputTokens: 0,
+        route: "models",
+        status: admission.status,
+        totalTokens: 0,
+      })
+      return sendGatewayProblem(
+        reply,
+        admission.status,
+        admission.title,
+        admission.detail,
+      )
+    }
+
+    const models = await fetchLiteLlmModels(auth.app.allowedModels)
+    if (!models.ok) {
+      await safelyMarkGatewayDegraded(request, auth.app)
+      await safelyAuditGatewayRequest(
+        request,
+        auth.app,
+        {
+          inputTokens: 0,
+          latencyMs: Date.now() - startedAt,
+          model: null,
+          outputTokens: 0,
+          route: "models",
+          status: models.status,
+          totalTokens: 0,
+        },
+        admission.context,
+      )
       return sendGatewayProblem(
         reply,
         models.status,
@@ -82,13 +141,21 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
       )
     }
 
-    await safelyRecordSuccessfulModelsRequest(request, auth.app, {
-      latencyMs: 0,
-      model: null,
-      route: "models",
-      status: 200,
-      tokens: 0,
-    })
+    await safelyReconcileGatewayUsage(
+      request,
+      auth.app,
+      {
+        inputTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        model: null,
+        outputTokens: 0,
+        route: "models",
+        status: 200,
+        totalTokens: 0,
+      },
+      admission.context,
+    )
+    await safelyRecordSuccessfulModelsRequest(request, auth.app)
     return reply.send(models.body)
   })
 
@@ -100,7 +167,54 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
       if (!auth.ok) {
         return sendGatewayProblem(reply, auth.status, auth.title, auth.detail)
       }
+      const enabledPolicy = evaluateApplicationGatewayPolicy(auth.app, null)
+      if (!enabledPolicy.ok) {
+        await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
+          latencyMs: 0,
+          model: null,
+          outputTokens: 0,
+          route: "chat_completions",
+          status: enabledPolicy.status,
+          totalTokens: 0,
+        })
+        return sendGatewayProblem(
+          reply,
+          enabledPolicy.status,
+          enabledPolicy.title,
+          enabledPolicy.detail,
+        )
+      }
+
+      const rateLimit = await consumeConnectedAppGatewayRateLimit(auth.app)
+      if (!rateLimit.ok) {
+        await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
+          latencyMs: 0,
+          model: null,
+          outputTokens: 0,
+          route: "chat_completions",
+          status: rateLimit.status,
+          totalTokens: 0,
+        })
+        return sendGatewayProblem(
+          reply,
+          rateLimit.status,
+          rateLimit.title,
+          rateLimit.detail,
+        )
+      }
+
       if (!isChatCompletionsBody(request.body)) {
+        await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
+          latencyMs: 0,
+          model: null,
+          outputTokens: 0,
+          route: "chat_completions",
+          status: 400,
+          totalTokens: 0,
+        })
         return sendGatewayProblem(
           reply,
           400,
@@ -115,11 +229,13 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
       )
       if (!policy.ok) {
         await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
           latencyMs: 0,
-          model: request.body.model,
+          model: null,
+          outputTokens: 0,
           route: "chat_completions",
           status: policy.status,
-          tokens: 0,
+          totalTokens: 0,
         })
         return sendGatewayProblem(
           reply,
@@ -128,24 +244,53 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
           policy.detail,
         )
       }
-      const rateLimit = await consumeConnectedAppGatewayRateLimit(auth.app)
-      if (!rateLimit.ok) {
-        await safelyAuditGatewayRequest(request, auth.app, {
-          latencyMs: 0,
+
+      const contextBytes = normalizedChatCompletionsBodyUtf8Bytes(request.body)
+      let admission: Awaited<ReturnType<typeof admitConnectedAppGatewayUsage>>
+      try {
+        admission = await admitConnectedAppGatewayUsage(auth.app, {
+          contextBytes,
           model: request.body.model,
           route: "chat_completions",
-          status: rateLimit.status,
-          tokens: 0,
+        })
+      } catch {
+        logGatewayAccountingFailure(request, auth.app, "admit")
+        await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
+          latencyMs: 0,
+          model: request.body.model,
+          outputTokens: 0,
+          route: "chat_completions",
+          status: 503,
+          totalTokens: 0,
+        })
+        return sendAccountingUnavailable(reply)
+      }
+      if (!admission.ok) {
+        await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
+          latencyMs: 0,
+          model: request.body.model,
+          outputTokens: 0,
+          route: "chat_completions",
+          status: admission.status,
+          totalTokens: 0,
         })
         return sendGatewayProblem(
           reply,
-          rateLimit.status,
-          rateLimit.title,
-          rateLimit.detail,
+          admission.status,
+          admission.title,
+          admission.detail,
         )
       }
 
-      return proxyChatCompletions(request, reply, auth.app, request.body)
+      return proxyChatCompletions(
+        request,
+        reply,
+        auth.app,
+        request.body,
+        admission.context,
+      )
     },
   )
 }
@@ -218,18 +363,7 @@ async function oauthIdentityFromToken(token: string): Promise<{
       : null
   }
 
-  const payload = await verifyKeycloakJwt(token)
-  if (!payload) {
-    return null
-  }
-  const clientId = payload.azp ?? payload.clientId
-  if (!clientId) {
-    return null
-  }
-  return {
-    clientId,
-    keycloakSubjectId: payload.subject,
-  }
+  return verifyApplicationAccessToken(token)
 }
 
 async function proxyChatCompletions(
@@ -237,17 +371,17 @@ async function proxyChatCompletions(
   reply: FastifyReply,
   app: ConnectedAppRuntimeIdentity,
   body: ChatCompletionsBody,
+  usageContext: ConnectedAppGatewayUsageContext,
 ): Promise<FastifyReply | undefined> {
   const transport = createLiteLlmChatTransport()
   if (!transport) {
     const status = 503
-    await safelyAuditGatewayRequest(request, app, {
-      latencyMs: 0,
-      model: body.model,
-      route: "chat_completions",
-      status,
-      tokens: 0,
-    })
+    await safelyAuditGatewayRequest(
+      request,
+      app,
+      gatewayUsageInput(body.model, status, 0),
+      usageContext,
+    )
     return sendGatewayProblem(
       reply,
       status,
@@ -257,133 +391,125 @@ async function proxyChatCompletions(
   }
 
   const startedAt = Date.now()
-  let admission: Awaited<ReturnType<typeof admitConnectedAppGatewayUsage>>
-  try {
-    admission = await admitConnectedAppGatewayUsage(app)
-  } catch {
-    logGatewayAccountingFailure(request, app, "admit")
-    return sendGatewayProblem(
-      reply,
-      503,
-      "Connected app accounting unavailable",
-      "The connected app request could not establish usage accounting. Retry later.",
-      "accounting_unavailable",
-    )
-  }
-  if (!admission.ok) {
-    await safelyAuditGatewayRequest(request, app, {
-      latencyMs: 0,
-      model: body.model,
-      route: "chat_completions",
-      status: admission.status,
-      tokens: 0,
-    })
-    return sendGatewayProblem(
-      reply,
-      admission.status,
-      admission.title,
-      admission.detail,
-    )
-  }
   const controller = new AbortController()
-  request.raw.on("close", () => controller.abort())
+  const detachClientAbort = bindClientAbort(request, reply, controller)
 
-  const transportResult = await transport.createChatCompletion(
-    body,
-    controller.signal,
-  )
-  if (!transportResult.ok) {
-    await safelyAuditGatewayRequest(
-      request,
-      app,
-      {
-        latencyMs: Date.now() - startedAt,
-        model: body.model,
-        route: "chat_completions",
-        status: 502,
-        tokens: 0,
-      },
-      admission.context,
+  try {
+    const transportResult = await transport.createChatCompletion(
+      body,
+      controller.signal,
     )
-    return sendGatewayProblem(
+    if (!transportResult.ok) {
+      const status = transportFailureStatus(transportResult.reason)
+      if (transportResult.reason !== "cancelled") {
+        await safelyMarkGatewayDegraded(request, app)
+      }
+      await safelyAuditGatewayRequest(
+        request,
+        app,
+        gatewayUsageInput(body.model, status, Date.now() - startedAt),
+        usageContext,
+      )
+      return canSendGatewayProblem(reply)
+        ? sendTransportFailureProblem(reply, transportResult.reason)
+        : undefined
+    }
+    const upstream = transportResult.response
+    const transportSignal = transportResult.signal
+
+    if (!upstream.ok || !upstream.body) {
+      const status = upstream.ok ? 502 : upstream.status
+      if (status === 404 || status >= 500) {
+        await safelyMarkGatewayDegraded(request, app)
+      }
+      await safelyAuditGatewayRequest(
+        request,
+        app,
+        gatewayUsageInput(body.model, status, Date.now() - startedAt),
+        usageContext,
+      )
+      return canSendGatewayProblem(reply)
+        ? sendGatewayProblem(
+            reply,
+            status,
+            "LiteLLM chat completion failed",
+            upstream.ok
+              ? "LiteLLM returned no completion body for the connected app request."
+              : `LiteLLM returned HTTP ${upstream.status} for the connected app request.`,
+          )
+        : undefined
+    }
+
+    if (!isStreamingChatCompletionsRequest(body)) {
+      const response = await readLiteLlmNonStreamingResponse(upstream)
+      if (!response.ok) {
+        const status = transportFailureStatus(response.reason)
+        if (response.reason !== "cancelled") {
+          await safelyMarkGatewayDegraded(request, app)
+        }
+        await safelyAuditGatewayRequest(
+          request,
+          app,
+          gatewayUsageInput(body.model, status, Date.now() - startedAt),
+          usageContext,
+        )
+        return canSendGatewayProblem(reply)
+          ? sendTransportFailureProblem(reply, response.reason)
+          : undefined
+      }
+
+      await safelyAuditGatewayRequest(
+        request,
+        app,
+        gatewayUsageInput(
+          body.model,
+          upstream.status,
+          Date.now() - startedAt,
+          response.usage,
+        ),
+        usageContext,
+      )
+      reply.code(upstream.status)
+      reply.header(
+        "Content-Type",
+        upstream.headers.get("content-type") ?? "application/json",
+      )
+      return reply.send(response.body)
+    }
+
+    const streamed = await pipeOpenAIStream(
+      request,
       reply,
-      502,
-      "LiteLLM chat completion failed",
-      "LiteLLM could not complete the connected app request.",
+      upstream,
+      transportSignal,
     )
-  }
-  const upstream = transportResult.response
-
-  if (!upstream.ok || !upstream.body) {
+    const status = streamed.failureReason
+      ? transportFailureStatus(streamed.failureReason)
+      : upstream.status
+    if (streamed.failureReason && streamed.failureReason !== "cancelled") {
+      await safelyMarkGatewayDegraded(request, app)
+    }
     await safelyAuditGatewayRequest(
       request,
       app,
-      {
-        latencyMs: Date.now() - startedAt,
-        model: body.model,
-        route: "chat_completions",
-        status: upstream.status,
-        tokens: 0,
-      },
-      admission.context,
+      gatewayUsageInput(
+        body.model,
+        status,
+        Date.now() - startedAt,
+        streamed.usage,
+      ),
+      usageContext,
     )
-    return sendGatewayProblem(
-      reply,
-      upstream.status,
-      "LiteLLM chat completion failed",
-      `LiteLLM returned HTTP ${upstream.status} for the connected app request.`,
-    )
+    return undefined
+  } finally {
+    detachClientAbort()
   }
-
-  if (!isStreamingChatCompletionsRequest(body)) {
-    const responseText = await upstream.text()
-    const tokens = parseOpenAIUsageTokens(responseText)
-    await safelyAuditGatewayRequest(
-      request,
-      app,
-      {
-        latencyMs: Date.now() - startedAt,
-        model: body.model,
-        route: "chat_completions",
-        status: upstream.status,
-        tokens,
-      },
-      admission.context,
-    )
-    reply.code(upstream.status)
-    reply.header(
-      "Content-Type",
-      upstream.headers.get("content-type") ?? "application/json",
-    )
-    return reply.send(responseText)
-  }
-
-  const streamedUsage = await pipeOpenAIStream(request, reply, upstream)
-  await safelyAuditGatewayRequest(
-    request,
-    app,
-    {
-      latencyMs: Date.now() - startedAt,
-      model: body.model,
-      route: "chat_completions",
-      status: upstream.status,
-      tokens: streamedUsage.tokens,
-    },
-    admission.context,
-  )
-  return undefined
 }
 
 async function safelyAuditGatewayRequest(
   request: FastifyRequest,
   app: ConnectedAppRuntimeIdentity,
-  input: {
-    latencyMs: number
-    model: string | null
-    route: "chat_completions" | "models"
-    status: number
-    tokens: number
-  },
+  input: ConnectedAppGatewayUsageInput,
   usageContext?: ConnectedAppGatewayUsageContext,
 ): Promise<void> {
   try {
@@ -396,17 +522,18 @@ async function safelyAuditGatewayRequest(
 function logGatewayAccountingFailure(
   request: FastifyRequest,
   app: ConnectedAppRuntimeIdentity,
-  operation: "admit" | "connection" | "reconcile",
+  operation: "admit" | "connection" | "degraded" | "reconcile",
 ): void {
+  const failureClass = {
+    admit: "accounting_admission_failed",
+    connection: "connection_recording_failed",
+    degraded: "degraded_state_recording_failed",
+    reconcile: "accounting_reconciliation_failed",
+  }[operation]
   request.log.error(
     {
       appId: app.appId,
-      failureClass:
-        operation === "admit"
-          ? "accounting_admission_failed"
-          : operation === "connection"
-            ? "connection_recording_failed"
-            : "accounting_reconciliation_failed",
+      failureClass,
       requestId: request.id,
     },
     "Connected app gateway accounting failed",
@@ -415,26 +542,14 @@ function logGatewayAccountingFailure(
 
 async function auditGatewayRequest(
   app: ConnectedAppRuntimeIdentity,
-  input: {
-    latencyMs: number
-    model: string | null
-    route: "chat_completions" | "models"
-    status: number
-    tokens: number
-  },
+  input: ConnectedAppGatewayUsageInput,
   correlationId: string,
   usageContext?: ConnectedAppGatewayUsageContext,
 ): Promise<void> {
-  const usageInput = {
-    latencyMs: input.latencyMs,
-    model: input.model,
-    status: input.status,
-    tokens: input.tokens,
-  }
   if (usageContext) {
-    await reconcileConnectedAppGatewayUsage(app, usageInput, usageContext)
+    await reconcileConnectedAppGatewayUsage(app, input, usageContext)
   } else {
-    await recordConnectedAppGatewayUsage(app, usageInput)
+    await recordConnectedAppGatewayUsage(app, input)
   }
   await emitAudit({
     action: `connected_app.gateway.${input.route}`,
@@ -454,22 +569,23 @@ async function auditGatewayRequest(
   })
 }
 
-async function safelyRecordSuccessfulModelsRequest(
+async function safelyReconcileGatewayUsage(
   request: FastifyRequest,
   app: ConnectedAppRuntimeIdentity,
-  input: {
-    latencyMs: number
-    model: null
-    route: "models"
-    status: 200
-    tokens: 0
-  },
+  input: ConnectedAppGatewayUsageInput,
+  usageContext: ConnectedAppGatewayUsageContext,
 ): Promise<void> {
   try {
-    await recordConnectedAppGatewayUsage(app, input)
+    await reconcileConnectedAppGatewayUsage(app, input, usageContext)
   } catch {
     logGatewayAccountingFailure(request, app, "reconcile")
   }
+}
+
+async function safelyRecordSuccessfulModelsRequest(
+  request: FastifyRequest,
+  app: ConnectedAppRuntimeIdentity,
+): Promise<void> {
   try {
     const recorded = await recordConnectedAppModelsConnection(app, request.id)
     if (!recorded) {
@@ -480,13 +596,31 @@ async function safelyRecordSuccessfulModelsRequest(
   }
 }
 
+async function safelyMarkGatewayDegraded(
+  request: FastifyRequest,
+  app: ConnectedAppRuntimeIdentity,
+): Promise<void> {
+  try {
+    const recorded = await recordConnectedAppGatewayAccountingDegraded(app)
+    if (!recorded) {
+      logGatewayAccountingFailure(request, app, "degraded")
+    }
+  } catch {
+    logGatewayAccountingFailure(request, app, "degraded")
+  }
+}
+
 async function pipeOpenAIStream(
   request: FastifyRequest,
   reply: FastifyReply,
   upstream: Response,
-): Promise<{ tokens: number }> {
+  transportSignal: AbortSignal,
+): Promise<{
+  failureReason: LiteLlmTransportFailureReason | null
+  usage: OpenAIUsage | null
+}> {
   reply.hijack()
-  reply.raw.writeHead(200, {
+  reply.raw.writeHead(upstream.status, {
     "Cache-Control": "no-cache, no-transform",
     Connection: "keep-alive",
     "Content-Encoding": "identity",
@@ -497,39 +631,145 @@ async function pipeOpenAIStream(
 
   const reader = upstream.body?.getReader()
   if (!reader) {
-    reply.raw.write("data: [DONE]\n\n")
     reply.raw.end()
-    return { tokens: 0 }
+    return { failureReason: "read_failed", usage: null }
   }
 
-  request.raw.on("close", () => {
-    reader.cancel().catch(() => undefined)
-  })
-
-  const decoder = new TextDecoder()
-  const parser = new SseUsageParser()
-  let usageTokens = 0
+  const parser = createOpenAIStreamingUsageParser()
+  let failureReason: LiteLlmTransportFailureReason | null = null
+  let usage: OpenAIUsage | null = null
   try {
     while (true) {
       const { done, value } = await reader.read()
       if (done) {
         break
       }
-      usageTokens = Math.max(
-        usageTokens,
-        parser.push(decoder.decode(value, { stream: true })),
-      )
+      usage = parser.push(value) ?? usage
       if (!reply.raw.write(value)) {
-        await new Promise<void>((resolve) => {
-          reply.raw.once("drain", resolve)
-        })
+        await waitForWritableDrainOrAbort(reply.raw, transportSignal)
       }
     }
+  } catch (error) {
+    failureReason =
+      getLiteLlmTransportErrorReason(error) ??
+      (reply.raw.destroyed ? "cancelled" : "read_failed")
+    await reader.cancel(error).catch(() => undefined)
   } finally {
-    usageTokens = Math.max(usageTokens, parser.finish())
-    reply.raw.end()
+    if (failureReason === null) {
+      try {
+        usage = parser.finish() ?? usage
+      } catch (error) {
+        failureReason =
+          getLiteLlmTransportErrorReason(error) ?? "stream_event_too_large"
+      }
+    }
+    if (!reply.raw.destroyed && !reply.raw.writableEnded) {
+      reply.raw.end()
+    }
   }
-  return { tokens: usageTokens }
+  return { failureReason, usage }
+}
+
+function bindClientAbort(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  controller: AbortController,
+): () => void {
+  const abort = (): void => {
+    if (!controller.signal.aborted) {
+      controller.abort()
+    }
+  }
+  const onResponseClose = (): void => {
+    if (!reply.raw.writableEnded) {
+      abort()
+    }
+  }
+  request.raw.once("aborted", abort)
+  reply.raw.once("close", onResponseClose)
+  if (request.raw.aborted) {
+    abort()
+  }
+  return () => {
+    request.raw.off("aborted", abort)
+    reply.raw.off("close", onResponseClose)
+  }
+}
+
+function gatewayUsageInput(
+  model: string | null,
+  status: number,
+  latencyMs: number,
+  usage: OpenAIUsage | null = null,
+): ConnectedAppGatewayUsageInput {
+  const inputTokens = usage?.inputTokens ?? 0
+  const outputTokens = usage?.outputTokens ?? 0
+  return {
+    inputTokens,
+    latencyMs: Math.max(0, Math.floor(latencyMs)),
+    model,
+    outputTokens,
+    route: "chat_completions",
+    status,
+    totalTokens: Math.max(inputTokens + outputTokens, usage?.totalTokens ?? 0),
+  }
+}
+
+function transportFailureStatus(reason: LiteLlmTransportFailureReason): number {
+  if (reason === "cancelled") {
+    return 499
+  }
+  if (reason === "deadline_exceeded") {
+    return 504
+  }
+  return 502
+}
+
+function sendTransportFailureProblem(
+  reply: FastifyReply,
+  reason: LiteLlmTransportFailureReason,
+): FastifyReply {
+  const status = transportFailureStatus(reason)
+  if (reason === "deadline_exceeded") {
+    return sendGatewayProblem(
+      reply,
+      status,
+      "LiteLLM request deadline exceeded",
+      "LiteLLM did not complete the connected app request before the gateway deadline.",
+    )
+  }
+  if (reason === "response_too_large" || reason === "stream_event_too_large") {
+    return sendGatewayProblem(
+      reply,
+      status,
+      "LiteLLM response limit exceeded",
+      "LiteLLM returned more data than the connected app gateway can safely transport.",
+    )
+  }
+  return sendGatewayProblem(
+    reply,
+    status,
+    reason === "cancelled"
+      ? "Connected app request cancelled"
+      : "LiteLLM chat completion failed",
+    reason === "cancelled"
+      ? "The connected app closed the request before completion."
+      : "LiteLLM could not complete the connected app request.",
+  )
+}
+
+function canSendGatewayProblem(reply: FastifyReply): boolean {
+  return !reply.sent && !reply.raw.destroyed && !reply.raw.writableEnded
+}
+
+function sendAccountingUnavailable(reply: FastifyReply): FastifyReply {
+  return sendGatewayProblem(
+    reply,
+    503,
+    "Connected app accounting unavailable",
+    "The connected app request could not establish usage accounting. Retry later.",
+    "accounting_unavailable",
+  )
 }
 
 function sendGatewayProblem(
@@ -554,44 +794,4 @@ function sendGatewayProblem(
 function bearerToken(request: FastifyRequest): string | null {
   const value = request.headers.authorization
   return value?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || null
-}
-
-class SseUsageParser {
-  private buffer = ""
-
-  push(chunk: string): number {
-    this.buffer += chunk
-    return this.drainCompleteEvents()
-  }
-
-  finish(): number {
-    const pending = this.buffer
-    this.buffer = ""
-    return parseOpenAIUsageTokens(pending)
-  }
-
-  private drainCompleteEvents(): number {
-    let maxTokens = 0
-    while (true) {
-      const separator = this.nextSeparator()
-      if (!separator) {
-        return maxTokens
-      }
-      const event = this.buffer.slice(0, separator.index)
-      this.buffer = this.buffer.slice(separator.index + separator.length)
-      maxTokens = Math.max(maxTokens, parseOpenAIUsageTokens(event))
-    }
-  }
-
-  private nextSeparator(): { index: number; length: number } | null {
-    const unix = this.buffer.indexOf("\n\n")
-    const windows = this.buffer.indexOf("\r\n\r\n")
-    if (unix < 0 && windows < 0) {
-      return null
-    }
-    if (windows >= 0 && (unix < 0 || windows < unix)) {
-      return { index: windows, length: 4 }
-    }
-    return { index: unix, length: 2 }
-  }
 }

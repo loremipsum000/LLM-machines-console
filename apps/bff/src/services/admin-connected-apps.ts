@@ -101,10 +101,12 @@ interface ConnectedAppRecord {
   description: string
   id: string
   lastConnectedAt: string | null
+  maxConcurrentRequests: number | null
+  maxContextBytes: number | null
   name: string
-  rateLimitRpm: number | null
+  rateLimitRps: number | null
   status: "deleted" | "disabled" | "enabled"
-  tokenBudget7d: number | null
+  tokenAlertThreshold7d: number | null
   updatedAt: string
   updatedBy: string
   usage: AdminConnectedAppUsageSummary
@@ -131,6 +133,12 @@ interface ConnectedAppBundle {
   record: ConnectedAppRecord
 }
 
+interface ConnectedAppGatewayCurrentPolicy {
+  maxConcurrentRequests: number | null
+  maxContextBytes: number | null
+  requestsPerSecond: number | null
+}
+
 export interface ConnectedAppRuntimeIdentity {
   allowedModels: string[]
   appId: string
@@ -139,23 +147,43 @@ export interface ConnectedAppRuntimeIdentity {
   clientId: string
   credentialRecordId: string
   keycloakSubjectId: string | null
-  rateLimitRpm: number | null
+  maxConcurrentRequests: number | null
+  maxContextBytes: number | null
+  rateLimitRps: number | null
   status: "disabled" | "enabled"
-  tokenBudget7d: number | null
+  tokenAlertState: "below" | "reached" | null
+  tokenAlertThreshold7d: number | null
   usage: AdminConnectedAppUsageSummary
 }
 
+export type ConnectedAppGatewayRoute = "chat_completions" | "models"
+
+export interface ConnectedAppGatewayAdmissionInput {
+  contextBytes: number
+  model: string | null
+  route: ConnectedAppGatewayRoute
+}
+
 export interface ConnectedAppGatewayUsageInput {
+  inputTokens: number
   latencyMs: number
   model: string | null
+  outputTokens: number
+  route: ConnectedAppGatewayRoute
   status: number
-  tokens: number
+  totalTokens: number
 }
 
 export interface ConnectedAppGatewayUsageContext {
   appId: string
   bucketDate: string
+  contextBytes: number
   credentialId: string
+  leaseExpiresAt: string
+  model: string | null
+  requestId: string
+  route: ConnectedAppGatewayRoute
+  startedAt: string
 }
 
 export interface ConnectedAppCredentialRevealEndpoints {
@@ -176,12 +204,22 @@ export type ConnectedAppCredentialRotationPreflight =
   | { status: "not_found" }
 
 const STATIC_KEY_OVERLAP_SECONDS = 86_400
+const GATEWAY_REQUEST_LEASE_SECONDS = 15 * 60
 
 const memoryConnectedApps: ConnectedAppRecord[] = []
 const memoryConnectedAppCredentials: ConnectedAppCredentialRecord[] = []
 const memoryRateLimitWindows = new Map<
   string,
   { count: number; startedAt: number }
+>()
+const memoryGatewayRequests = new Map<
+  string,
+  {
+    appId: string
+    credentialId: string
+    leaseExpiresAt: number
+    settled: boolean
+  }
 >()
 
 export async function getAdminConnectedApps(
@@ -245,10 +283,12 @@ export async function createAdminConnectedApp(
     description: request.description,
     id,
     lastConnectedAt: null,
+    maxConcurrentRequests: request.maxConcurrentRequests,
+    maxContextBytes: request.maxContextBytes,
     name: request.name,
-    rateLimitRpm: request.rateLimitRpm,
+    rateLimitRps: request.rateLimitRps,
     status: "enabled",
-    tokenBudget7d: request.tokenBudget7d,
+    tokenAlertThreshold7d: request.tokenAlertThreshold7d,
     updatedAt: now,
     updatedBy: actor.subject,
     usage: emptyUsage(),
@@ -736,15 +776,116 @@ export async function recordConnectedAppModelsConnection(
   return true
 }
 
+export async function recordConnectedAppGatewayAccountingDegraded(
+  identity: ConnectedAppRuntimeIdentity,
+): Promise<boolean> {
+  const now = new Date()
+  const db = getInferenceCoreDb()
+  if (db) {
+    try {
+      return await db.transaction(async (transaction) => {
+        const locked = await lockConnectedAppForMutation(
+          transaction,
+          identity.appId,
+          identity.authMethod,
+          "enabled",
+        )
+        if (!locked) {
+          return false
+        }
+        const credentialStatusCondition =
+          identity.authMethod === "api_key"
+            ? or(
+                eq(applicationCredentials.status, "active"),
+                and(
+                  eq(applicationCredentials.status, "retiring"),
+                  isNull(applicationCredentials.revokedAt),
+                  gt(applicationCredentials.overlapExpiresAt, now),
+                ),
+              )
+            : eq(applicationCredentials.status, "active")
+        const credential = await transaction
+          .select({ id: applicationCredentials.id })
+          .from(applicationCredentials)
+          .where(
+            and(
+              eq(applicationCredentials.id, identity.credentialRecordId),
+              eq(applicationCredentials.appId, identity.appId),
+              eq(applicationCredentials.kind, identity.authMethod),
+              isNull(applicationCredentials.revokedAt),
+              credentialStatusCondition,
+              identity.authMethod === "api_key"
+                ? eq(applicationCredentials.keyPrefix, identity.clientId)
+                : eq(
+                    applicationCredentials.clientIdentifier,
+                    identity.clientId,
+                  ),
+            ),
+          )
+          .limit(1)
+        if (credential.length !== 1) {
+          return false
+        }
+        const updated = await transaction
+          .update(applications)
+          .set({ connectionStatus: "degraded" })
+          .where(
+            and(
+              eq(applications.id, identity.appId),
+              eq(applications.authMode, identity.authMethod),
+              eq(applications.status, "enabled"),
+            ),
+          )
+          .returning({ id: applications.id })
+        return updated.length === 1
+      })
+    } catch (error) {
+      if (error instanceof StaleConnectedAppIdentityError) {
+        return false
+      }
+      throw error
+    }
+  }
+  if (!canUseBffFixtureData()) {
+    throw new Error("PostgreSQL Application connection storage is unavailable.")
+  }
+  const record = memoryConnectedApps.find(
+    (candidate) =>
+      candidate.id === identity.appId &&
+      candidate.authMethod === identity.authMethod &&
+      candidate.status === "enabled",
+  )
+  const credential = memoryConnectedAppCredentials.find(
+    (candidate) =>
+      candidate.id === identity.credentialRecordId &&
+      candidate.appId === identity.appId &&
+      candidate.authMethod === identity.authMethod &&
+      credentialIsUsable(candidate) &&
+      (identity.authMethod === "api_key"
+        ? candidate.keyPrefix === identity.clientId
+        : candidate.clientId === identity.clientId),
+  )
+  if (!record || !credential) {
+    return false
+  }
+  record.connectionStatus = "degraded"
+  return true
+}
+
 export async function recordConnectedAppGatewayUsage(
   app: ConnectedAppRuntimeIdentity,
   input: ConnectedAppGatewayUsageInput,
 ): Promise<void> {
-  await reconcileConnectedAppGatewayUsage(app, input, {
-    appId: app.appId,
-    bucketDate: utcDate(),
-    credentialId: app.credentialRecordId,
-  })
+  await reconcileConnectedAppGatewayUsageInternal(
+    app,
+    input,
+    gatewayUsageContext(app, {
+      contextBytes: 0,
+      model: input.model,
+      route: input.route,
+    }),
+    "database",
+  )
 }
 
 export async function consumeConnectedAppGatewayRateLimit(
@@ -752,59 +893,90 @@ export async function consumeConnectedAppGatewayRateLimit(
 ): Promise<
   { ok: true } | { detail: string; ok: false; status: 429 | 503; title: string }
 > {
-  if (app.rateLimitRpm === null) {
-    return { ok: true }
-  }
   const db = getInferenceCoreDb()
-  if (!db && !canUseBffFixtureData()) {
-    return rateLimitUnavailable()
-  }
-
   if (db) {
     try {
-      const rows = await db.execute(sql<{ request_count: number }>`
-        WITH expired_windows AS (
-          DELETE FROM admin.application_rate_limit_windows
-          WHERE app_id = ${app.appId}
-            AND expires_at <= clock_timestamp()
-          RETURNING app_id
-        )
-        INSERT INTO admin.application_rate_limit_windows (
-          app_id,
-          window_started_at,
-          request_count,
-          expires_at
-        )
-        VALUES (
-          ${app.appId},
-          date_trunc('minute', clock_timestamp()),
-          1,
-          date_trunc('minute', clock_timestamp()) + interval '2 minutes'
-        )
-        ON CONFLICT (app_id, window_started_at)
-        DO UPDATE SET
-          request_count =
-            admin.application_rate_limit_windows.request_count + 1,
-          expires_at = EXCLUDED.expires_at
-        WHERE admin.application_rate_limit_windows.request_count
-          < ${app.rateLimitRpm}
-        RETURNING request_count
-      `)
-      return Array.isArray(rows) && rows.length > 0
-        ? { ok: true }
-        : rateLimitExceeded()
+      return await db.transaction(async (transaction) => {
+        const current = await lockConnectedAppGatewayPolicy(transaction, app)
+        if (!current) {
+          return rateLimitUnavailable()
+        }
+        if (current.requestsPerSecond === null) {
+          return { ok: true } as const
+        }
+        const rows = await transaction.execute(sql<{
+          request_count: number
+        }>`
+          WITH expired_windows AS (
+            DELETE FROM admin.application_rate_limit_windows
+            WHERE app_id = ${app.appId}
+              AND expires_at <= clock_timestamp()
+            RETURNING app_id
+          )
+          INSERT INTO admin.application_rate_limit_windows (
+            app_id,
+            window_started_at,
+            request_count,
+            expires_at
+          )
+          VALUES (
+            ${app.appId},
+            date_trunc('second', statement_timestamp()),
+            1,
+            date_trunc('second', statement_timestamp()) + interval '2 seconds'
+          )
+          ON CONFLICT (app_id, window_started_at)
+          DO UPDATE SET
+            request_count =
+              admin.application_rate_limit_windows.request_count + 1,
+            expires_at = EXCLUDED.expires_at
+          WHERE admin.application_rate_limit_windows.request_count
+            < ${current.requestsPerSecond}
+          RETURNING request_count
+        `)
+        return resultRows(rows).length > 0
+          ? ({ ok: true } as const)
+          : rateLimitExceeded()
+      })
     } catch {
       return rateLimitUnavailable()
     }
   }
 
+  if (!canUseBffFixtureData()) {
+    return rateLimitUnavailable()
+  }
+
+  const record = memoryConnectedApps.find(
+    (candidate) =>
+      candidate.id === app.appId &&
+      candidate.authMethod === app.authMethod &&
+      candidate.status === "enabled",
+  )
+  const credential = memoryConnectedAppCredentials.find(
+    (candidate) =>
+      candidate.id === app.credentialRecordId &&
+      candidate.appId === app.appId &&
+      candidate.authMethod === app.authMethod &&
+      credentialIsUsable(candidate) &&
+      (app.authMethod === "api_key"
+        ? candidate.keyPrefix === app.clientId
+        : candidate.clientId === app.clientId),
+  )
+  if (!record || !credential) {
+    return rateLimitUnavailable()
+  }
+  if (record.rateLimitRps === null) {
+    return { ok: true }
+  }
+
   const now = Date.now()
   const existing = memoryRateLimitWindows.get(app.appId)
-  if (!existing || now - existing.startedAt >= 60_000) {
+  if (!existing || now - existing.startedAt >= 1_000) {
     memoryRateLimitWindows.set(app.appId, { count: 1, startedAt: now })
     return { ok: true }
   }
-  if (existing.count >= app.rateLimitRpm) {
+  if (existing.count >= record.rateLimitRps) {
     return rateLimitExceeded()
   }
   existing.count += 1
@@ -813,21 +985,149 @@ export async function consumeConnectedAppGatewayRateLimit(
 
 export async function admitConnectedAppGatewayUsage(
   app: ConnectedAppRuntimeIdentity,
+  input: ConnectedAppGatewayAdmissionInput,
 ): Promise<
   | { context: ConnectedAppGatewayUsageContext; ok: true }
-  | { detail: string; ok: false; status: 503; title: string }
+  | {
+      detail: string
+      ok: false
+      status: 413 | 429 | 503
+      title: string
+    }
 > {
-  if (app.tokenBudget7d !== null) {
-    return tokenBudgetNotQualified()
+  assertGatewayAdmissionInput(input)
+  let context = gatewayUsageContext(app, input)
+
+  const db = getInferenceCoreDb()
+  if (db) {
+    try {
+      return await db.transaction(async (transaction) => {
+        const current = await lockConnectedAppGatewayPolicy(transaction, app)
+        if (!current) {
+          return gatewayAdmissionStateChanged()
+        }
+
+        const maxContextBytes = current.maxContextBytes
+        if (maxContextBytes !== null && input.contextBytes > maxContextBytes) {
+          return contextLimitExceeded()
+        }
+
+        const maxConcurrentRequests = current.maxConcurrentRequests
+        if (maxConcurrentRequests !== null) {
+          const activeRows = await transaction.execute(sql<{
+            active_count: number
+          }>`
+            SELECT count(*)::integer AS active_count
+            FROM admin.application_request_ledger
+            WHERE app_id = ${app.appId}
+              AND state = 'active'
+              AND lease_expires_at > clock_timestamp()
+          `)
+          const active = Number(
+            (
+              resultRows(activeRows)[0] as
+                | { active_count?: unknown }
+                | undefined
+            )?.active_count,
+          )
+          if (!Number.isSafeInteger(active) || active < 0) {
+            throw new Error("Invalid connected app concurrency count.")
+          }
+          if (active >= maxConcurrentRequests) {
+            return concurrencyLimitExceeded()
+          }
+        }
+
+        const insertedRows = await transaction.execute(sql<{
+          lease_expires_at: Date | string
+          started_at: Date | string
+        }>`
+          INSERT INTO admin.application_request_ledger (
+            id,
+            app_id,
+            credential_id,
+            route_kind,
+            model_alias,
+            context_bytes,
+            state,
+            started_at,
+            lease_expires_at
+          )
+          VALUES (
+            ${context.requestId}::uuid,
+            ${app.appId},
+            ${app.credentialRecordId},
+            ${input.route},
+            ${input.model},
+            ${input.contextBytes},
+            'active',
+            statement_timestamp(),
+            statement_timestamp()
+              + ${GATEWAY_REQUEST_LEASE_SECONDS} * interval '1 second'
+          )
+          RETURNING started_at, lease_expires_at
+        `)
+        const inserted = resultRows(insertedRows)[0] as
+          | { lease_expires_at?: unknown; started_at?: unknown }
+          | undefined
+        if (!inserted) {
+          throw new Error("Connected app request lease was not persisted.")
+        }
+        const startedAt = storedTimestamp(inserted.started_at)
+        context = {
+          ...context,
+          bucketDate: startedAt.slice(0, 10),
+          leaseExpiresAt: storedTimestamp(inserted.lease_expires_at),
+          startedAt,
+        }
+        return { context, ok: true } as const
+      })
+    } catch {
+      return gatewayAdmissionUnavailable()
+    }
   }
-  return {
-    context: {
-      appId: app.appId,
-      bucketDate: utcDate(),
-      credentialId: app.credentialRecordId,
-    },
-    ok: true,
+
+  if (!canUseBffFixtureData()) {
+    return gatewayAdmissionUnavailable()
   }
+
+  const record = memoryConnectedApps.find(
+    (candidate) => candidate.id === app.appId && candidate.status === "enabled",
+  )
+  const credential = memoryConnectedAppCredentials.find(
+    (candidate) =>
+      candidate.id === app.credentialRecordId &&
+      candidate.appId === app.appId &&
+      credentialIsUsable(candidate),
+  )
+  if (!record || !credential) {
+    return gatewayAdmissionStateChanged()
+  }
+  if (
+    record.maxContextBytes !== null &&
+    input.contextBytes > record.maxContextBytes
+  ) {
+    return contextLimitExceeded()
+  }
+  if (record.maxConcurrentRequests !== null) {
+    const now = Date.now()
+    const active = [...memoryGatewayRequests.values()].filter(
+      (request) =>
+        request.appId === app.appId &&
+        !request.settled &&
+        request.leaseExpiresAt > now,
+    ).length
+    if (active >= record.maxConcurrentRequests) {
+      return concurrencyLimitExceeded()
+    }
+  }
+  memoryGatewayRequests.set(context.requestId, {
+    appId: app.appId,
+    credentialId: app.credentialRecordId,
+    leaseExpiresAt: new Date(context.leaseExpiresAt).getTime(),
+    settled: false,
+  })
+  return { context, ok: true }
 }
 
 export async function reconcileConnectedAppGatewayUsage(
@@ -835,35 +1135,138 @@ export async function reconcileConnectedAppGatewayUsage(
   input: ConnectedAppGatewayUsageInput,
   context: ConnectedAppGatewayUsageContext,
 ): Promise<void> {
-  const tokens = Math.max(0, Math.floor(input.tokens))
-  const now = new Date().toISOString()
+  return reconcileConnectedAppGatewayUsageInternal(
+    app,
+    input,
+    context,
+    "context",
+  )
+}
+
+async function reconcileConnectedAppGatewayUsageInternal(
+  app: ConnectedAppRuntimeIdentity,
+  input: ConnectedAppGatewayUsageInput,
+  context: ConnectedAppGatewayUsageContext,
+  clockSource: "context" | "database",
+): Promise<void> {
+  assertGatewayUsageInput(app, input, context)
   const db = getInferenceCoreDb()
   if (db) {
+    const startedAt =
+      clockSource === "database"
+        ? sql`clock_timestamp()`
+        : sql`${context.startedAt}::timestamptz`
+    const leaseExpiresAt =
+      clockSource === "database"
+        ? sql`request_clock.started_at
+            + ${GATEWAY_REQUEST_LEASE_SECONDS} * interval '1 second'`
+        : sql`${context.leaseExpiresAt}::timestamptz`
     await db.execute(sql`
-      WITH usage_row AS (
+      WITH request_clock AS (
+        SELECT ${startedAt} AS started_at
+      ),
+      settled_request AS (
+        INSERT INTO admin.application_request_ledger (
+          id,
+          app_id,
+          credential_id,
+          route_kind,
+          model_alias,
+          context_bytes,
+          state,
+          status_code,
+          input_tokens,
+          output_tokens,
+          total_tokens,
+          latency_ms,
+          started_at,
+          lease_expires_at,
+          settled_at
+        )
+        SELECT
+          ${context.requestId}::uuid,
+          ${context.appId},
+          ${context.credentialId},
+          ${context.route},
+          ${context.model},
+          ${context.contextBytes},
+          'settled',
+          ${input.status},
+          ${input.inputTokens},
+          ${input.outputTokens},
+          ${input.totalTokens},
+          ${input.latencyMs},
+          request_clock.started_at,
+          ${leaseExpiresAt},
+          clock_timestamp()
+        FROM request_clock
+        ON CONFLICT (id)
+        DO UPDATE SET
+          state = 'settled',
+          status_code = EXCLUDED.status_code,
+          input_tokens = EXCLUDED.input_tokens,
+          output_tokens = EXCLUDED.output_tokens,
+          total_tokens = EXCLUDED.total_tokens,
+          latency_ms = EXCLUDED.latency_ms,
+          settled_at = EXCLUDED.settled_at
+        WHERE admin.application_request_ledger.state = 'active'
+          AND admin.application_request_ledger.app_id = EXCLUDED.app_id
+          AND admin.application_request_ledger.credential_id =
+            EXCLUDED.credential_id
+          AND admin.application_request_ledger.route_kind =
+            EXCLUDED.route_kind
+          AND admin.application_request_ledger.model_alias
+            IS NOT DISTINCT FROM EXCLUDED.model_alias
+        RETURNING
+          app_id,
+          credential_id,
+          route_kind,
+          COALESCE(model_alias, '') AS model_alias,
+          status_code,
+          input_tokens,
+          output_tokens,
+          total_tokens,
+          latency_ms,
+          (started_at AT TIME ZONE 'UTC')::date AS bucket_date
+      ),
+      usage_row AS (
         INSERT INTO admin.application_usage_daily (
           app_id,
           credential_id,
           bucket_date,
+          route_kind,
+          model_alias,
           request_count,
           failure_count,
           input_tokens,
           output_tokens,
           total_tokens,
+          latency_ms_sum,
+          latency_ms_max,
           updated_at
         )
-        VALUES (
-          ${app.appId},
-          ${context.credentialId},
-          ${context.bucketDate}::date,
+        SELECT
+          app_id,
+          credential_id,
+          bucket_date,
+          route_kind,
+          model_alias,
           1,
-          ${input.status >= 400 ? 1 : 0},
-          0,
-          0,
-          ${tokens},
-          ${now}::timestamptz
+          CASE WHEN status_code >= 400 THEN 1 ELSE 0 END,
+          input_tokens,
+          output_tokens,
+          total_tokens,
+          latency_ms,
+          latency_ms,
+          clock_timestamp()
+        FROM settled_request
+        ON CONFLICT (
+          app_id,
+          credential_id,
+          bucket_date,
+          route_kind,
+          model_alias
         )
-        ON CONFLICT (app_id, credential_id, bucket_date)
         DO UPDATE SET
           request_count =
             admin.application_usage_daily.request_count + 1,
@@ -873,18 +1276,54 @@ export async function reconcileConnectedAppGatewayUsage(
           total_tokens =
             admin.application_usage_daily.total_tokens
             + EXCLUDED.total_tokens,
+          input_tokens =
+            admin.application_usage_daily.input_tokens
+            + EXCLUDED.input_tokens,
+          output_tokens =
+            admin.application_usage_daily.output_tokens
+            + EXCLUDED.output_tokens,
+          latency_ms_sum =
+            admin.application_usage_daily.latency_ms_sum
+            + EXCLUDED.latency_ms_sum,
+          latency_ms_max = GREATEST(
+            admin.application_usage_daily.latency_ms_max,
+            EXCLUDED.latency_ms_max
+          ),
           updated_at = EXCLUDED.updated_at
         RETURNING app_id
       )
       UPDATE admin.application_credentials
-      SET last_used_at = ${now}::timestamptz
+      SET last_used_at = GREATEST(
+        COALESCE(last_used_at, '-infinity'::timestamptz),
+        clock_timestamp()
+      )
       WHERE id = ${context.credentialId}
+        AND EXISTS (SELECT 1 FROM settled_request)
     `)
     return
   }
   if (!canUseBffFixtureData()) {
     throw new Error("PostgreSQL usage accounting is unavailable.")
   }
+  const now = new Date().toISOString()
+
+  const existingRequest = memoryGatewayRequests.get(context.requestId)
+  if (existingRequest?.settled) {
+    return
+  }
+  if (
+    existingRequest &&
+    (existingRequest.appId !== context.appId ||
+      existingRequest.credentialId !== context.credentialId)
+  ) {
+    throw new Error("Connected app usage context does not match its lease.")
+  }
+  memoryGatewayRequests.set(context.requestId, {
+    appId: context.appId,
+    credentialId: context.credentialId,
+    leaseExpiresAt: new Date(context.leaseExpiresAt).getTime(),
+    settled: true,
+  })
 
   const record = memoryConnectedApps.find((item) => item.id === app.appId)
   if (!record) {
@@ -899,7 +1338,7 @@ export async function reconcileConnectedAppGatewayUsage(
         : record.usage.failures7d,
     lastUsedAt: now,
     requests7d: record.usage.requests7d + 1,
-    tokens7d: record.usage.tokens7d + tokens,
+    tokens7d: record.usage.tokens7d + input.totalTokens,
   }
   const credential = memoryConnectedAppCredentials.find(
     (candidate) => candidate.id === context.credentialId,
@@ -914,6 +1353,7 @@ export async function resetConnectedAppsForTest(): Promise<void> {
   memoryConnectedAppCredentials.splice(0)
   memoryOAuthClients.clear()
   memoryRateLimitWindows.clear()
+  memoryGatewayRequests.clear()
 }
 
 async function commitConnectedAppCredentialReveal<T>(
@@ -1003,6 +1443,78 @@ async function lockConnectedAppForMutation(
   return current
 }
 
+async function lockConnectedAppGatewayPolicy(
+  transaction: InferenceCoreTransaction,
+  app: ConnectedAppRuntimeIdentity,
+): Promise<ConnectedAppGatewayCurrentPolicy | null> {
+  const lockedRows = await transaction.execute(sql<{ id: string }>`
+    SELECT application.id
+    FROM admin.applications AS application
+    WHERE application.id = ${app.appId}
+      AND application.auth_mode = ${app.authMethod}
+      AND application.status = 'enabled'
+    FOR UPDATE OF application
+  `)
+  if (resultRows(lockedRows).length !== 1) {
+    return null
+  }
+
+  const policyRows = await transaction.execute(sql<{
+    max_concurrent_requests: number | null
+    max_context_bytes: number | string | null
+    requests_per_second: number | null
+  }>`
+    SELECT
+      limits.max_concurrent_requests,
+      limits.max_context_bytes,
+      limits.requests_per_second
+    FROM admin.application_limits AS limits
+    JOIN admin.application_credentials AS credential
+      ON credential.app_id = limits.app_id
+    WHERE limits.app_id = ${app.appId}
+      AND credential.id = ${app.credentialRecordId}
+      AND credential.kind = ${app.authMethod}
+      AND credential.revoked_at IS NULL
+      AND (
+        credential.status = 'active'
+        OR (
+          credential.kind = 'api_key'
+          AND credential.status = 'retiring'
+          AND credential.overlap_expires_at > clock_timestamp()
+        )
+      )
+      AND (
+        (
+          ${app.authMethod} = 'api_key'
+          AND credential.key_prefix = ${app.clientId}
+        )
+        OR (
+          ${app.authMethod} = 'oauth_client_credentials'
+          AND credential.client_identifier = ${app.clientId}
+        )
+      )
+  `)
+  const policy = resultRows(policyRows)[0] as
+    | {
+        max_concurrent_requests?: unknown
+        max_context_bytes?: unknown
+        requests_per_second?: unknown
+      }
+    | undefined
+  if (!policy) {
+    return null
+  }
+  return {
+    maxConcurrentRequests: storedOptionalPositiveInteger(
+      policy.max_concurrent_requests,
+    ),
+    maxContextBytes: storedOptionalPositiveInteger(policy.max_context_bytes),
+    requestsPerSecond: storedOptionalPositiveInteger(
+      policy.requests_per_second,
+    ),
+  }
+}
+
 async function saveConnectedAppRecord(
   actor: Actor,
   record: ConnectedAppRecord,
@@ -1049,8 +1561,10 @@ async function saveConnectedAppRecord(
       )
       await executor.insert(applicationLimits).values({
         appId: storedRecord.id,
-        requestsPerMinute: storedRecord.rateLimitRpm,
-        tokensPer7d: storedRecord.tokenBudget7d,
+        maxConcurrentRequests: storedRecord.maxConcurrentRequests,
+        maxContextBytes: storedRecord.maxContextBytes,
+        requestsPerSecond: storedRecord.rateLimitRps,
+        tokenAlertThreshold7d: storedRecord.tokenAlertThreshold7d,
         updatedAt: occurredAt,
       })
       await executor
@@ -1138,15 +1652,19 @@ async function updateConnectedAppPolicy(
         .insert(applicationLimits)
         .values({
           appId: id,
-          requestsPerMinute: request.rateLimitRpm,
-          tokensPer7d: request.tokenBudget7d,
+          maxConcurrentRequests: request.maxConcurrentRequests,
+          maxContextBytes: request.maxContextBytes,
+          requestsPerSecond: request.rateLimitRps,
+          tokenAlertThreshold7d: request.tokenAlertThreshold7d,
           updatedAt: occurredAt,
         })
         .onConflictDoUpdate({
           target: applicationLimits.appId,
           set: {
-            requestsPerMinute: request.rateLimitRpm,
-            tokensPer7d: request.tokenBudget7d,
+            maxConcurrentRequests: request.maxConcurrentRequests,
+            maxContextBytes: request.maxContextBytes,
+            requestsPerSecond: request.rateLimitRps,
+            tokenAlertThreshold7d: request.tokenAlertThreshold7d,
             updatedAt: occurredAt,
           },
         })
@@ -1198,9 +1716,11 @@ async function updateConnectedAppPolicy(
   }
   stored.allowedModels = allowedModels
   stored.description = request.description
+  stored.maxConcurrentRequests = request.maxConcurrentRequests
+  stored.maxContextBytes = request.maxContextBytes
   stored.name = request.name
-  stored.rateLimitRpm = request.rateLimitRpm
-  stored.tokenBudget7d = request.tokenBudget7d
+  stored.rateLimitRps = request.rateLimitRps
+  stored.tokenAlertThreshold7d = request.tokenAlertThreshold7d
   stored.updatedAt = occurredAt.toISOString()
   stored.updatedBy = actor.subject
   return memoryBundle(stored)
@@ -2180,6 +2700,10 @@ async function loadConnectedAppBundle(
       ),
   ])
   const credentials = credentialRows.map(credentialRecordFromRow)
+  const limits = limitRows[0]
+  if (!limits) {
+    throw new Error("Application protection policy storage is incomplete.")
+  }
   const lastUsedAt = latestTimestamp(
     credentials.map((credential) => credential.lastUsedAt),
   )
@@ -2202,10 +2726,12 @@ async function loadConnectedAppBundle(
       description: row.description,
       id: row.id,
       lastConnectedAt: row.lastConnectedAt?.toISOString() ?? null,
+      maxConcurrentRequests: limits.maxConcurrentRequests,
+      maxContextBytes: limits.maxContextBytes,
       name: row.name,
-      rateLimitRpm: limitRows[0]?.requestsPerMinute ?? null,
+      rateLimitRps: limits.requestsPerSecond,
       status: applicationStatusFromStorage(row.status),
-      tokenBudget7d: limitRows[0]?.tokensPer7d ?? null,
+      tokenAlertThreshold7d: limits.tokenAlertThreshold7d,
       updatedAt: row.updatedAt.toISOString(),
       updatedBy: row.updatedBy,
       usage,
@@ -2286,10 +2812,13 @@ function toPublicApp(bundle: ConnectedAppBundle): AdminConnectedApp {
     detailHref: `/applications/apps/${encodeURIComponent(record.id)}`,
     id: record.id,
     lastConnectedAt: record.lastConnectedAt,
+    maxConcurrentRequests: record.maxConcurrentRequests,
+    maxContextBytes: record.maxContextBytes,
     name: record.name,
-    rateLimitRpm: record.rateLimitRpm,
+    rateLimitRps: record.rateLimitRps,
     status: record.status,
-    tokenBudget7d: record.tokenBudget7d,
+    tokenAlertState: tokenAlertState(record),
+    tokenAlertThreshold7d: record.tokenAlertThreshold7d,
     updatedAt: record.updatedAt,
     usage: { ...record.usage },
   }
@@ -2328,9 +2857,12 @@ function runtimeIdentity(
     clientId,
     credentialRecordId: credential.id,
     keycloakSubjectId: null,
-    rateLimitRpm: bundle.record.rateLimitRpm,
+    maxConcurrentRequests: bundle.record.maxConcurrentRequests,
+    maxContextBytes: bundle.record.maxContextBytes,
+    rateLimitRps: bundle.record.rateLimitRps,
     status: bundle.record.status,
-    tokenBudget7d: bundle.record.tokenBudget7d,
+    tokenAlertState: tokenAlertState(bundle.record),
+    tokenAlertThreshold7d: bundle.record.tokenAlertThreshold7d,
     usage: { ...bundle.record.usage },
   }
 }
@@ -2868,6 +3400,163 @@ function normalizeList(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))]
 }
 
+function gatewayUsageContext(
+  app: ConnectedAppRuntimeIdentity,
+  input: ConnectedAppGatewayAdmissionInput,
+): ConnectedAppGatewayUsageContext {
+  const startedAt = new Date()
+  return {
+    appId: app.appId,
+    bucketDate: startedAt.toISOString().slice(0, 10),
+    contextBytes: input.contextBytes,
+    credentialId: app.credentialRecordId,
+    leaseExpiresAt: new Date(
+      startedAt.getTime() + GATEWAY_REQUEST_LEASE_SECONDS * 1_000,
+    ).toISOString(),
+    model: input.model,
+    requestId: randomUUID(),
+    route: input.route,
+    startedAt: startedAt.toISOString(),
+  }
+}
+
+function assertGatewayAdmissionInput(
+  input: ConnectedAppGatewayAdmissionInput,
+): void {
+  if (!isNonNegativeSafeInteger(input.contextBytes)) {
+    throw new Error("Connected app context bytes must be an exact integer.")
+  }
+  assertGatewayRouteModel(input.route, input.model, false)
+}
+
+function assertGatewayUsageInput(
+  app: ConnectedAppRuntimeIdentity,
+  input: ConnectedAppGatewayUsageInput,
+  context: ConnectedAppGatewayUsageContext,
+): void {
+  if (
+    context.appId !== app.appId ||
+    context.credentialId !== app.credentialRecordId ||
+    context.appId.length === 0 ||
+    context.credentialId.length === 0 ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      context.requestId,
+    ) ||
+    !isNonNegativeSafeInteger(context.contextBytes)
+  ) {
+    throw new Error("Connected app usage context is invalid.")
+  }
+  const allowRejectedChatWithoutModel = input.status >= 400
+  assertGatewayRouteModel(
+    context.route,
+    context.model,
+    allowRejectedChatWithoutModel,
+  )
+  assertGatewayRouteModel(
+    input.route,
+    input.model,
+    allowRejectedChatWithoutModel,
+  )
+  if (input.route !== context.route || input.model !== context.model) {
+    throw new Error("Connected app usage metadata changed after admission.")
+  }
+  const startedAt = new Date(context.startedAt)
+  const leaseExpiresAt = new Date(context.leaseExpiresAt)
+  const componentTokens = input.inputTokens + input.outputTokens
+  if (
+    !Number.isFinite(startedAt.getTime()) ||
+    !Number.isFinite(leaseExpiresAt.getTime()) ||
+    leaseExpiresAt <= startedAt ||
+    context.bucketDate !== startedAt.toISOString().slice(0, 10)
+  ) {
+    throw new Error("Connected app usage timestamps are invalid.")
+  }
+  if (
+    !Number.isInteger(input.status) ||
+    input.status < 100 ||
+    input.status > 599 ||
+    !isNonNegativeSafeInteger(input.inputTokens) ||
+    !isNonNegativeSafeInteger(input.outputTokens) ||
+    !isNonNegativeSafeInteger(input.totalTokens) ||
+    !isNonNegativeSafeInteger(input.latencyMs) ||
+    !Number.isSafeInteger(componentTokens) ||
+    input.totalTokens < componentTokens
+  ) {
+    throw new Error("Connected app usage counters are invalid.")
+  }
+}
+
+function assertGatewayRouteModel(
+  route: ConnectedAppGatewayRoute,
+  model: string | null,
+  allowRejectedChatWithoutModel: boolean,
+): void {
+  if (
+    (route === "models" && model === null) ||
+    (route === "chat_completions" &&
+      ((typeof model === "string" &&
+        model.length >= 1 &&
+        model.length <= 160) ||
+        (allowRejectedChatWithoutModel && model === null)))
+  ) {
+    return
+  }
+  throw new Error("Connected app route metadata is invalid.")
+}
+
+function isNonNegativeSafeInteger(value: number): boolean {
+  return Number.isSafeInteger(value) && value >= 0
+}
+
+function storedOptionalPositiveInteger(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+  const parsed = typeof value === "string" ? Number(value) : value
+  if (
+    typeof parsed !== "number" ||
+    !Number.isSafeInteger(parsed) ||
+    parsed <= 0
+  ) {
+    throw new Error("Connected app limits storage returned an invalid value.")
+  }
+  return parsed
+}
+
+function storedTimestamp(value: unknown): string {
+  const date = value instanceof Date ? value : new Date(String(value))
+  if (!Number.isFinite(date.getTime())) {
+    throw new Error("Connected app request storage returned an invalid clock.")
+  }
+  return date.toISOString()
+}
+
+function resultRows(result: unknown): unknown[] {
+  if (Array.isArray(result)) {
+    return result
+  }
+  if (
+    result &&
+    typeof result === "object" &&
+    "rows" in result &&
+    Array.isArray(result.rows)
+  ) {
+    return result.rows
+  }
+  return []
+}
+
+function tokenAlertState(
+  record: ConnectedAppRecord,
+): "below" | "reached" | null {
+  if (record.tokenAlertThreshold7d === null) {
+    return null
+  }
+  return record.usage.tokens7d >= record.tokenAlertThreshold7d
+    ? "reached"
+    : "below"
+}
+
 function emptyUsage(): AdminConnectedAppUsageSummary {
   return {
     failures7d: 0,
@@ -2884,7 +3573,7 @@ function rateLimitExceeded(): {
   title: string
 } {
   return {
-    detail: "The connected app has reached its requests-per-minute limit.",
+    detail: "The connected app has reached its requests-per-second limit.",
     ok: false,
     status: 429,
     title: "Rate limit exceeded",
@@ -2906,7 +3595,37 @@ function rateLimitUnavailable(): {
   }
 }
 
-function tokenBudgetNotQualified(): {
+function contextLimitExceeded(): {
+  detail: string
+  ok: false
+  status: 413
+  title: string
+} {
+  return {
+    detail:
+      "The request exceeds this connected app's maximum context size in bytes.",
+    ok: false,
+    status: 413,
+    title: "Context limit exceeded",
+  }
+}
+
+function concurrencyLimitExceeded(): {
+  detail: string
+  ok: false
+  status: 429
+  title: string
+} {
+  return {
+    detail:
+      "The connected app has reached its concurrent request limit. Retry after an active request completes.",
+    ok: false,
+    status: 429,
+    title: "Concurrency limit exceeded",
+  }
+}
+
+function gatewayAdmissionUnavailable(): {
   detail: string
   ok: false
   status: 503
@@ -2914,10 +3633,25 @@ function tokenBudgetNotQualified(): {
 } {
   return {
     detail:
-      "Seven-day token-budget enforcement is unavailable until total-token admission and streaming reconciliation are qualified.",
+      "PostgreSQL coordination is required before enforcing connected app request protection.",
     ok: false,
     status: 503,
-    title: "Token budget enforcement not qualified",
+    title: "Request protection backend unavailable",
+  }
+}
+
+function gatewayAdmissionStateChanged(): {
+  detail: string
+  ok: false
+  status: 503
+  title: string
+} {
+  return {
+    detail:
+      "The connected app or credential changed during request admission. Authenticate again.",
+    ok: false,
+    status: 503,
+    title: "Connected app state changed",
   }
 }
 

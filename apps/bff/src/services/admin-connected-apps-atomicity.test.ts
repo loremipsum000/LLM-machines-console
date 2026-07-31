@@ -4,6 +4,7 @@ import type { Actor } from "../auth/authorization"
 import {
   createAdminConnectedApp,
   getAdminConnectedAppDetail,
+  recordConnectedAppGatewayAccountingDegraded,
   recordConnectedAppModelsConnection,
   resetConnectedAppsForTest,
   resolveConnectedAppRuntimeIdentity,
@@ -318,6 +319,46 @@ describe("connected app credential mutation boundaries", () => {
     })
     expect(detail?.app.credentials[0]?.lastUsedAt).toBeNull()
   })
+
+  it("marks accounting degraded only for a current app and credential", async () => {
+    const created = await createAdminConnectedApp(
+      actor,
+      connectedAppRequest("api_key"),
+    )
+    if (
+      created.status !== "created" ||
+      created.credential.authMethod !== "api_key"
+    ) {
+      throw new Error("Expected a static Application credential.")
+    }
+    const identity = await resolveConnectedAppRuntimeIdentityByApiKey(
+      created.credential.apiKey,
+    )
+    if (!identity) {
+      throw new Error("Expected a runtime identity.")
+    }
+
+    await expect(
+      recordConnectedAppGatewayAccountingDegraded(identity),
+    ).resolves.toBe(true)
+    await expect(
+      getAdminConnectedAppDetail(actor, created.app.id),
+    ).resolves.toMatchObject({
+      app: {
+        connectionStatus: "degraded",
+        lastConnectedAt: null,
+      },
+    })
+
+    await revokeAdminConnectedAppCredential(
+      actor,
+      created.app.id,
+      created.credential.credentialId,
+    )
+    await expect(
+      recordConnectedAppGatewayAccountingDegraded(identity),
+    ).resolves.toBe(false)
+  })
 })
 
 function connectedAppRequest(
@@ -327,9 +368,11 @@ function connectedAppRequest(
     allowedModels: ["local-a"],
     authMethod,
     description: "Credential mutation boundary test.",
+    maxConcurrentRequests: null,
+    maxContextBytes: null,
     name: `Atomicity ${authMethod}`,
-    rateLimitRpm: null,
-    tokenBudget7d: null,
+    rateLimitRps: null,
+    tokenAlertThreshold7d: null,
   }
 }
 
