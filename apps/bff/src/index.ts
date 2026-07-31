@@ -2,7 +2,12 @@ import {
   type HealthResponse,
   healthResponseSchema,
 } from "@llm-machines/contracts/inference-core"
-import Fastify, { type FastifyInstance } from "fastify"
+import Fastify, {
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
+  type HookHandlerDoneFunction,
+} from "fastify"
 import {
   type AuthorizationOptions,
   registerAuthorization,
@@ -24,12 +29,19 @@ import {
   registerAdminRoutes,
 } from "./routes/admin"
 import { registerAppGatewayRoutes } from "./routes/app-gateway"
+import {
+  type FirecrawlGatewayRouteOptions,
+  registerFirecrawlGatewayRoutes,
+} from "./routes/firecrawl-gateway"
 import { assertProductionConnectedAppRevealEndpoints } from "./services/admin-connected-apps"
 import { emergencyRecoveryServiceFromRuntime } from "./services/emergency-recovery"
+import { firecrawlGatewayOptionsFromRuntime } from "./services/firecrawl-gateway-runtime"
 
 export interface BuildServerOptions {
   testAuthorization?: AuthorizationOptions
   testEmergencyRecoveryService?: AdminEmergencyRecoveryService | null
+  testFirecrawlGateway?: FirecrawlGatewayRouteOptions
+  testLoggerStream?: { write(message: string): void }
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
@@ -40,13 +52,21 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     throw new Error("DATABASE_URL is required for the Console BFF.")
   }
 
+  const testRuntime = process.env.NODE_ENV === "test"
   const server = Fastify({
     bodyLimit: bffBodyLimitBytes(),
-    logger: true,
+    disableRequestLogging: true,
+    logger: {
+      serializers: { req: queryFreeRequestLogSerializer },
+      ...(testRuntime && options.testLoggerStream
+        ? { stream: options.testLoggerStream }
+        : {}),
+    },
   })
+  server.addHook("onRequest", logQueryFreeIncomingRequest)
+  server.addHook("onResponse", logQueryFreeCompletedRequest)
   server.addHook("onClose", closeInferenceCoreDb)
 
-  const testRuntime = process.env.NODE_ENV === "test"
   const emergencyRecoveryService =
     testRuntime && options.testEmergencyRecoveryService !== undefined
       ? options.testEmergencyRecoveryService
@@ -79,9 +99,68 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   })
 
   registerAppGatewayRoutes(server)
+  const firecrawlGateway = firecrawlGatewayOptionsFromRuntime()
+  registerFirecrawlGatewayRoutes(
+    server,
+    testRuntime && options.testFirecrawlGateway
+      ? { ...firecrawlGateway, ...options.testFirecrawlGateway }
+      : firecrawlGateway,
+  )
   registerAdminRoutes(server, { emergencyRecoveryService })
 
   return server
+}
+
+function logQueryFreeIncomingRequest(
+  request: FastifyRequest,
+  _reply: FastifyReply,
+  done: HookHandlerDoneFunction,
+): void {
+  request.log.info({ req: request }, "incoming request")
+  done()
+}
+
+function logQueryFreeCompletedRequest(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  done: HookHandlerDoneFunction,
+): void {
+  request.log.info(
+    { responseTime: reply.elapsedTime, statusCode: reply.statusCode },
+    "request completed",
+  )
+  done()
+}
+
+export function queryFreeRequestLogSerializer(request: FastifyRequest): {
+  method: string
+  remoteAddress: string
+  url: string
+} {
+  return {
+    method: request.method,
+    remoteAddress: request.ip,
+    url: requestPathname(request.raw.url),
+  }
+}
+
+function requestPathname(rawUrl: string | undefined): string {
+  if (!rawUrl) {
+    return "[missing-request-target]"
+  }
+  try {
+    const pathname = new URL(rawUrl, "http://request.invalid").pathname
+    if (
+      pathname !== "/v2/search" &&
+      pathname !== "/v2/scrape" &&
+      (pathname === "/v2" || pathname.startsWith("/v2/"))
+    ) {
+      return "/v2/[unsupported]"
+    }
+    return pathname
+  } catch {
+    return "[invalid-request-target]"
+  }
 }
 
 function bffBodyLimitBytes(): number {

@@ -264,6 +264,262 @@ CREATE INDEX application_credentials_prefix_status_idx
 CREATE INDEX application_credentials_app_status_idx
   ON admin.application_credentials (app_id, status);
 
+CREATE TABLE admin.application_firecrawl_access (
+  app_id text PRIMARY KEY REFERENCES admin.applications(id) ON DELETE RESTRICT,
+  status text NOT NULL DEFAULT 'disabled',
+  disclaimer_version text,
+  disclaimer_accepted_by text REFERENCES common.human_identities(subject_id) ON DELETE RESTRICT,
+  disclaimer_accepted_at timestamptz,
+  connection_status text NOT NULL DEFAULT 'not_connected',
+  last_connected_at timestamptz,
+  search_rate_limit_rps integer,
+  scrape_rate_limit_rps integer,
+  max_concurrent_scrapes integer,
+  updated_by text NOT NULL REFERENCES common.human_identities(subject_id) ON DELETE RESTRICT,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT application_firecrawl_access_status_check
+    CHECK (status IN ('disabled', 'enabled')),
+  CONSTRAINT application_firecrawl_access_disclaimer_version_check
+    CHECK (
+      disclaimer_version IS NULL
+      OR char_length(disclaimer_version) BETWEEN 1 AND 64
+    ),
+  CONSTRAINT application_firecrawl_access_disclaimer_pair_check
+    CHECK (
+      num_nonnulls(
+        disclaimer_version,
+        disclaimer_accepted_by,
+        disclaimer_accepted_at
+      ) IN (0, 3)
+    ),
+  CONSTRAINT application_firecrawl_access_enabled_disclaimer_check
+    CHECK (
+      status = 'disabled'
+      OR disclaimer_accepted_at IS NOT NULL
+    ),
+  CONSTRAINT application_firecrawl_access_connection_check
+    CHECK (
+      (
+        connection_status = 'not_connected'
+        AND last_connected_at IS NULL
+      )
+      OR (
+        connection_status IN ('connected', 'degraded')
+        AND last_connected_at IS NOT NULL
+      )
+    ),
+  CONSTRAINT application_firecrawl_access_search_rate_check
+    CHECK (
+      search_rate_limit_rps IS NULL
+      OR search_rate_limit_rps BETWEEN 1 AND 1000
+    ),
+  CONSTRAINT application_firecrawl_access_scrape_rate_check
+    CHECK (
+      scrape_rate_limit_rps IS NULL
+      OR scrape_rate_limit_rps BETWEEN 1 AND 1000
+    ),
+  CONSTRAINT application_firecrawl_access_concurrency_check
+    CHECK (
+      max_concurrent_scrapes IS NULL
+      OR max_concurrent_scrapes BETWEEN 1 AND 100
+    )
+);
+
+CREATE INDEX application_firecrawl_access_status_updated_idx
+  ON admin.application_firecrawl_access (status, updated_at);
+
+CREATE TABLE admin.application_firecrawl_credentials (
+  id text PRIMARY KEY,
+  app_id text NOT NULL REFERENCES admin.application_firecrawl_access(app_id) ON DELETE RESTRICT,
+  key_prefix text NOT NULL,
+  verifier_hash text NOT NULL,
+  status text NOT NULL DEFAULT 'active',
+  issued_at timestamptz NOT NULL DEFAULT now(),
+  last_used_at timestamptz,
+  rotated_at timestamptz,
+  overlap_expires_at timestamptz,
+  revoked_at timestamptz,
+  CONSTRAINT application_firecrawl_credentials_id_check
+    CHECK (char_length(id) BETWEEN 1 AND 128),
+  CONSTRAINT application_firecrawl_credentials_prefix_check
+    CHECK (key_prefix ~ '^llmm_fc_[0-9a-f]{16}$'),
+  CONSTRAINT application_firecrawl_credentials_hash_check
+    CHECK (verifier_hash ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT application_firecrawl_credentials_status_check
+    CHECK (status IN ('active', 'retiring', 'revoked')),
+  CONSTRAINT application_firecrawl_credentials_lifecycle_check
+    CHECK (
+      (
+        status = 'active'
+        AND rotated_at IS NULL
+        AND overlap_expires_at IS NULL
+        AND revoked_at IS NULL
+      )
+      OR (
+        status = 'retiring'
+        AND rotated_at IS NOT NULL
+        AND overlap_expires_at IS NOT NULL
+        AND revoked_at IS NULL
+      )
+      OR (
+        status = 'revoked'
+        AND revoked_at IS NOT NULL
+        AND (
+          (
+            rotated_at IS NULL
+            AND overlap_expires_at IS NULL
+          )
+          OR (
+            rotated_at IS NOT NULL
+            AND overlap_expires_at IS NOT NULL
+          )
+        )
+      )
+    ),
+  CONSTRAINT application_firecrawl_credentials_timestamps_check
+    CHECK (
+      (last_used_at IS NULL OR last_used_at >= issued_at)
+      AND (rotated_at IS NULL OR rotated_at >= issued_at)
+      AND (
+        overlap_expires_at IS NULL
+        OR (
+          rotated_at IS NOT NULL
+          AND overlap_expires_at = rotated_at + interval '86400 seconds'
+        )
+      )
+      AND (
+        revoked_at IS NULL
+        OR (
+          revoked_at >= issued_at
+          AND (rotated_at IS NULL OR revoked_at >= rotated_at)
+        )
+      )
+    )
+);
+
+CREATE UNIQUE INDEX application_firecrawl_credentials_id_app_idx
+  ON admin.application_firecrawl_credentials (id, app_id);
+CREATE UNIQUE INDEX application_firecrawl_credentials_verifier_hash_idx
+  ON admin.application_firecrawl_credentials (verifier_hash);
+CREATE UNIQUE INDEX application_firecrawl_credentials_one_active_idx
+  ON admin.application_firecrawl_credentials (app_id)
+  WHERE status = 'active';
+CREATE UNIQUE INDEX application_firecrawl_credentials_one_retiring_idx
+  ON admin.application_firecrawl_credentials (app_id)
+  WHERE status = 'retiring';
+CREATE INDEX application_firecrawl_credentials_prefix_status_idx
+  ON admin.application_firecrawl_credentials (key_prefix, status);
+CREATE INDEX application_firecrawl_credentials_app_status_idx
+  ON admin.application_firecrawl_credentials (app_id, status);
+
+CREATE TABLE admin.application_firecrawl_rate_limit_windows (
+  app_id text NOT NULL REFERENCES admin.application_firecrawl_access(app_id) ON DELETE RESTRICT,
+  route_kind text NOT NULL,
+  window_started_at timestamptz NOT NULL,
+  request_count integer NOT NULL DEFAULT 0,
+  expires_at timestamptz NOT NULL,
+  CONSTRAINT application_firecrawl_rate_limit_windows_pkey
+    PRIMARY KEY (app_id, route_kind, window_started_at),
+  CONSTRAINT application_firecrawl_rate_limit_windows_route_check
+    CHECK (route_kind IN ('search', 'scrape')),
+  CONSTRAINT application_firecrawl_rate_limit_windows_count_check
+    CHECK (request_count >= 0),
+  CONSTRAINT application_firecrawl_rate_limit_windows_expiry_check
+    CHECK (expires_at > window_started_at)
+);
+
+CREATE INDEX application_firecrawl_rate_limit_windows_expiry_idx
+  ON admin.application_firecrawl_rate_limit_windows (expires_at);
+
+CREATE TABLE admin.application_firecrawl_request_ledger (
+  id uuid PRIMARY KEY,
+  app_id text NOT NULL,
+  credential_id text NOT NULL,
+  route_kind text NOT NULL,
+  state text NOT NULL DEFAULT 'active',
+  status_code integer,
+  latency_ms integer,
+  started_at timestamptz NOT NULL DEFAULT now(),
+  lease_expires_at timestamptz NOT NULL,
+  settled_at timestamptz,
+  CONSTRAINT application_firecrawl_request_ledger_credential_app_fk
+    FOREIGN KEY (credential_id, app_id)
+    REFERENCES admin.application_firecrawl_credentials(id, app_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT application_firecrawl_request_ledger_route_check
+    CHECK (route_kind IN ('search', 'scrape')),
+  CONSTRAINT application_firecrawl_request_ledger_state_check
+    CHECK (state IN ('active', 'settled')),
+  CONSTRAINT application_firecrawl_request_ledger_status_code_check
+    CHECK (status_code IS NULL OR status_code BETWEEN 100 AND 599),
+  CONSTRAINT application_firecrawl_request_ledger_latency_check
+    CHECK (latency_ms IS NULL OR latency_ms >= 0),
+  CONSTRAINT application_firecrawl_request_ledger_lifecycle_check
+    CHECK (
+      (
+        state = 'active'
+        AND status_code IS NULL
+        AND latency_ms IS NULL
+        AND settled_at IS NULL
+      )
+      OR (
+        state = 'settled'
+        AND status_code IS NOT NULL
+        AND latency_ms IS NOT NULL
+        AND settled_at IS NOT NULL
+      )
+    ),
+  CONSTRAINT application_firecrawl_request_ledger_timestamps_check
+    CHECK (
+      lease_expires_at > started_at
+      AND (settled_at IS NULL OR settled_at >= started_at)
+    )
+);
+
+CREATE INDEX application_firecrawl_request_ledger_active_idx
+  ON admin.application_firecrawl_request_ledger (app_id, route_kind, lease_expires_at)
+  WHERE state = 'active';
+CREATE INDEX application_firecrawl_request_ledger_settled_started_idx
+  ON admin.application_firecrawl_request_ledger (started_at)
+  WHERE state = 'settled';
+
+CREATE TABLE admin.application_firecrawl_usage_daily (
+  app_id text NOT NULL,
+  credential_id text NOT NULL,
+  bucket_date date NOT NULL,
+  route_kind text NOT NULL,
+  request_count integer NOT NULL DEFAULT 0,
+  failure_count integer NOT NULL DEFAULT 0,
+  latency_ms_sum bigint NOT NULL DEFAULT 0,
+  latency_ms_max integer NOT NULL DEFAULT 0,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT application_firecrawl_usage_daily_credential_app_fk
+    FOREIGN KEY (credential_id, app_id)
+    REFERENCES admin.application_firecrawl_credentials(id, app_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT application_firecrawl_usage_daily_pkey
+    PRIMARY KEY (app_id, credential_id, bucket_date, route_kind),
+  CONSTRAINT application_firecrawl_usage_daily_route_check
+    CHECK (route_kind IN ('search', 'scrape')),
+  CONSTRAINT application_firecrawl_usage_daily_counts_check
+    CHECK (
+      request_count >= 0
+      AND failure_count >= 0
+      AND failure_count <= request_count
+    ),
+  CONSTRAINT application_firecrawl_usage_daily_latency_check
+    CHECK (
+      latency_ms_sum >= 0
+      AND latency_ms_max >= 0
+      AND latency_ms_max <= latency_ms_sum
+    )
+);
+
+CREATE INDEX application_firecrawl_usage_daily_bucket_idx
+  ON admin.application_firecrawl_usage_daily (bucket_date);
+CREATE INDEX application_firecrawl_usage_daily_app_bucket_idx
+  ON admin.application_firecrawl_usage_daily (app_id, bucket_date);
+
 CREATE TABLE admin.application_model_allowlists (
   app_id text NOT NULL REFERENCES admin.applications(id) ON DELETE RESTRICT,
   model_alias text NOT NULL,

@@ -1,0 +1,58 @@
+{
+  "schema": "llm-machines.firecrawl-source-lock.v1",
+  "status": "source-candidate-not-release-admitted",
+  "checkpoint": {
+    "commit": "ff74f3c94c563627929af31c46d48dda8e7d6192",
+    "tree": "8a978eb0f6d0ef04a896ec29f138a84a7cf14d79"
+  },
+  "upstream": {
+    "repository": "https://github.com/firecrawl/firecrawl.git",
+    "tag": "v2.11.0",
+    "commit": "ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+    "sourceArchive": "https://codeload.github.com/firecrawl/firecrawl/tar.gz/ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+    "sourceArchiveSha256": "b7c6df0b8b692397c8a19e84f94b85ce0a2d961b36fc1d5ff78088db88819f59",
+    "declaredLicense": "AGPL-3.0-only",
+    "licenseSha256": "9b4649365c4f29d8f41301f4cda1e5bd9da51cf1bbb19ab9d568ff57d56e3b33",
+    "apiDockerfileSha256": "5cb37d2bfbe194d7e2d3182339caa893c7ce9565d64e9a0a725f510e621bf77e",
+    "browserDockerfileSha256": "1ec8e56cb87a68b6be133ebed56772defd6b9c300763ab838ebd9895f6ef5b7d",
+    "apiPnpmLockSha256": "3272bc145b57f6de7b7aae029654096e0c759669b959f002b523e1f8dcf305aa",
+    "browserPnpmLockSha256": "a31eadee851a634dd864310871e8d5679fa86869848314d6c4d8f85e89086b48"
+  },
+  "historicalPatchEvidence": {
+    "admittedToThisProfile": false,
+    "reason": "The preserved patches target a wider queued runtime and must be regenerated against the reduced boundary before release.",
+    "sha256": {
+      "runtimePolicy": "eb110989c841107d1c55ba50ef4ae3e3710bb27b27fde3dc8881f34b7e3dabdd",
+      "digestBuildInputs": "70e4fa4f5448cfa76011e84089ba63c02a0fe04f4060533b30a6afeb13f14ab8",
+      "securityHardening": "079b5ab71d0f3a7a7d7afca0a2deb3008f7c7e77baf00ac597a40a804a603fac",
+      "cargoLock": "dd723e1829fb911aa8c3ccc4e1d06690ffd91a5fbc8d67cfa3b0a63e377ab2ef"
+    }
+  },
+  "reducedRuntime": {
+    "included": [
+      "synchronous search",
+      "static scrape",
+      "private browser service",
+      "private search service",
+      "fail-closed egress proxy"
+    ],
+    "omitted": [
+      "PostgreSQL",
+      "NuQ",
+      "RabbitMQ",
+      "reranker",
+      "asynchronous jobs",
+      "persistent cache",
+      "BFF coordination Redis"
+    ]
+  },
+  "releaseAdmissionOwner": "PR-12",
+  "releaseAdmissionRequired": [
+    "reviewed reduced-source patches",
+    "exact private-registry image digests",
+    "signed image provenance",
+    "SBOM and vulnerability disposition",
+    "complete license and notice set",
+    "recipient-accessible corresponding source"
+  ]
+}

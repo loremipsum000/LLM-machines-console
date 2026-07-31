@@ -8,6 +8,11 @@ import {
   adminConnectedAppCreateResponseSchema,
   adminConnectedAppDeleteRequestSchema,
   adminConnectedAppDetailSchema,
+  adminConnectedAppFirecrawlCredentialResultSchema,
+  adminConnectedAppFirecrawlEnableRequestSchema,
+  adminConnectedAppFirecrawlLifecycleResultSchema,
+  adminConnectedAppFirecrawlPolicyRequestSchema,
+  adminConnectedAppFirecrawlTestResultSchema,
   adminConnectedAppLifecycleResultSchema,
   adminConnectedAppRotateCredentialResultSchema,
   adminConnectedAppSchema,
@@ -55,6 +60,7 @@ import {
   disableAdminConnectedApp,
   enableAdminConnectedApp,
   getAdminConnectedAppDetail,
+  getAdminConnectedAppProjection,
   getAdminConnectedApps,
   preflightAdminConnectedAppCredentialRotation,
   preflightConnectedAppCredentialReveal,
@@ -63,6 +69,16 @@ import {
   testAdminConnectedApp,
   updateAdminConnectedApp,
 } from "../services/admin-connected-apps"
+import {
+  AdminConnectedAppFirecrawlCredentialCommitRaceError,
+  disableAdminConnectedAppFirecrawl,
+  enableAdminConnectedAppFirecrawl,
+  preflightAdminConnectedAppFirecrawlReadiness,
+  revokeAdminConnectedAppFirecrawlCredential,
+  rotateAdminConnectedAppFirecrawlCredential,
+  testAdminConnectedAppFirecrawl,
+  updateAdminConnectedAppFirecrawlPolicy,
+} from "../services/admin-connected-apps-firecrawl"
 import { getAdminHardware } from "../services/admin-hardware"
 import {
   applyAdminInferenceModelUpdate,
@@ -1020,6 +1036,292 @@ export function registerAdminRoutes(
     },
   )
 
+  server.post(
+    "/api/admin/applications/connected-apps/:id/firecrawl/enable",
+    withCapability("firecrawl.enable_reenable"),
+    async (request, reply) => {
+      reply.header("cache-control", "no-store")
+      const id = routeId(request)
+      const body = adminConnectedAppFirecrawlEnableRequestSchema.safeParse(
+        request.body ?? {},
+      )
+      if (!id) {
+        return missingId(reply, "Connected app")
+      }
+      if (!body.success) {
+        return invalidRequest(
+          reply,
+          "Invalid Firecrawl enable request",
+          "Current outbound web processing acceptance is required.",
+        )
+      }
+      return withAdminIdempotentMutation(
+        request,
+        reply,
+        "POST /api/admin/applications/connected-apps/:id/firecrawl/enable",
+        { body: body.data, id },
+        async (actor, identityContext) => {
+          const readiness = preflightAdminConnectedAppFirecrawlReadiness()
+          if (readiness.status === "blocked") {
+            return serviceUnavailable(
+              "Firecrawl is unavailable",
+              readiness.detail,
+            )
+          }
+          const result = await enableAdminConnectedAppFirecrawl(
+            actor,
+            id,
+            body.data,
+            identityContext,
+            async (mutation, transaction) => {
+              const app = await getAdminConnectedAppProjection(id, transaction)
+              if (!app) {
+                throw new Error("Updated Application could not be read back.")
+              }
+              return {
+                idempotencyResourceId: app.id,
+                payload: adminConnectedAppFirecrawlCredentialResultSchema.parse(
+                  {
+                    app,
+                    credential: mutation.credential,
+                    detail: mutation.detail,
+                    status: mutation.status,
+                  },
+                ),
+                statusCode: 200,
+              }
+            },
+          )
+          if ("statusCode" in result) {
+            return result
+          }
+          if (result.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          if (result.status === "blocked") {
+            return connectedAppBlocked(result.detail)
+          }
+          const app = await connectedAppAfterFirecrawlMutation(actor, id)
+          return {
+            idempotencyResourceId: app.id,
+            payload: adminConnectedAppFirecrawlCredentialResultSchema.parse({
+              app,
+              credential: result.credential,
+              detail: result.detail,
+              status: result.status,
+            }),
+            statusCode: 200,
+          }
+        },
+      )
+    },
+  )
+
+  server.patch(
+    "/api/admin/applications/connected-apps/:id/firecrawl",
+    withCapability("applications.policy.change"),
+    async (request, reply) => {
+      const id = routeId(request)
+      const body = adminConnectedAppFirecrawlPolicyRequestSchema.safeParse(
+        request.body ?? {},
+      )
+      if (!id) {
+        return missingId(reply, "Connected app")
+      }
+      if (!body.success) {
+        return invalidRequest(
+          reply,
+          "Invalid Firecrawl policy",
+          "Optional Firecrawl protection limits must be positive values or null.",
+        )
+      }
+      return withAdminIdempotentMutation(
+        request,
+        reply,
+        "PATCH /api/admin/applications/connected-apps/:id/firecrawl",
+        { body: body.data, id },
+        async (actor) => {
+          const result = await updateAdminConnectedAppFirecrawlPolicy(
+            actor,
+            id,
+            body.data,
+          )
+          if (result.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          if (result.status === "blocked") {
+            return connectedAppBlocked(result.detail)
+          }
+          return {
+            payload: adminConnectedAppFirecrawlLifecycleResultSchema.parse({
+              app: await connectedAppAfterFirecrawlMutation(actor, id),
+              detail: result.detail,
+              status: result.status,
+            }),
+            statusCode: 200,
+          }
+        },
+      )
+    },
+  )
+
+  server.post(
+    "/api/admin/applications/connected-apps/:id/firecrawl/test",
+    withCapability("applications.credentials.test_rotate_revoke"),
+    async (request, reply) =>
+      connectedAppActionResult(
+        request,
+        reply,
+        "POST /api/admin/applications/connected-apps/:id/firecrawl/test",
+        async (actor, id) => {
+          const result = await testAdminConnectedAppFirecrawl(actor, id)
+          if (result.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          return {
+            payload: adminConnectedAppFirecrawlTestResultSchema.parse({
+              app: await connectedAppAfterFirecrawlMutation(actor, id),
+              connectionStatus: result.connectionStatus,
+              detail: result.detail,
+              observedAt: result.observedAt,
+              status: result.status,
+            }),
+            statusCode: 200,
+          }
+        },
+      ),
+  )
+
+  server.post(
+    "/api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials",
+    withCapability("applications.credentials.test_rotate_revoke"),
+    async (request, reply) => {
+      reply.header("cache-control", "no-store")
+      const id = routeId(request)
+      if (!id) {
+        return missingId(reply, "Connected app")
+      }
+      return withAdminIdempotentMutation(
+        request,
+        reply,
+        "POST /api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials",
+        { id },
+        async (actor, identityContext) => {
+          const result = await rotateAdminConnectedAppFirecrawlCredential(
+            actor,
+            id,
+            identityContext,
+            async (mutation, transaction) => {
+              const app = await getAdminConnectedAppProjection(id, transaction)
+              if (!app) {
+                throw new Error("Updated Application could not be read back.")
+              }
+              return {
+                idempotencyResourceId: app.id,
+                payload: adminConnectedAppFirecrawlCredentialResultSchema.parse(
+                  {
+                    app,
+                    credential: mutation.credential,
+                    detail: mutation.detail,
+                    status: mutation.status,
+                  },
+                ),
+                statusCode: 200,
+              }
+            },
+          )
+          if ("statusCode" in result) {
+            return result
+          }
+          if (result.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          if (result.status === "blocked") {
+            return connectedAppBlocked(result.detail)
+          }
+          const app = await connectedAppAfterFirecrawlMutation(actor, id)
+          return {
+            idempotencyResourceId: app.id,
+            payload: adminConnectedAppFirecrawlCredentialResultSchema.parse({
+              app,
+              credential: result.credential,
+              detail: result.detail,
+              status: result.status,
+            }),
+            statusCode: 200,
+          }
+        },
+      )
+    },
+  )
+
+  server.post(
+    "/api/admin/applications/connected-apps/:id/firecrawl/disable",
+    withCapability("applications.disable"),
+    async (request, reply) =>
+      connectedAppActionResult(
+        request,
+        reply,
+        "POST /api/admin/applications/connected-apps/:id/firecrawl/disable",
+        async (actor, id) => {
+          const result = await disableAdminConnectedAppFirecrawl(actor, id)
+          if (result.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          if (result.status === "blocked") {
+            return connectedAppBlocked(result.detail)
+          }
+          return {
+            payload: adminConnectedAppFirecrawlLifecycleResultSchema.parse({
+              app: await connectedAppAfterFirecrawlMutation(actor, id),
+              detail: result.detail,
+              status: result.status,
+            }),
+            statusCode: 200,
+          }
+        },
+      ),
+  )
+
+  server.post(
+    "/api/admin/applications/connected-apps/:id/firecrawl/credentials/:credentialId/revoke",
+    withCapability("applications.credentials.test_rotate_revoke"),
+    async (request, reply) => {
+      const id = routeId(request)
+      const credentialId = routeCredentialId(request)
+      if (!id || !credentialId) {
+        return missingId(reply, "Firecrawl credential")
+      }
+      return withAdminIdempotentMutation(
+        request,
+        reply,
+        "POST /api/admin/applications/connected-apps/:id/firecrawl/credentials/:credentialId/revoke",
+        { credentialId, id },
+        async (actor) => {
+          const result = await revokeAdminConnectedAppFirecrawlCredential(
+            actor,
+            id,
+            credentialId,
+          )
+          if (result.status === "not_found") {
+            return connectedAppNotFound()
+          }
+          if (result.status === "blocked") {
+            return connectedAppBlocked(result.detail)
+          }
+          return {
+            payload: adminConnectedAppFirecrawlLifecycleResultSchema.parse({
+              app: await connectedAppAfterFirecrawlMutation(actor, id),
+              detail: result.detail,
+              status: result.status,
+            }),
+            statusCode: 200,
+          }
+        },
+      )
+    },
+  )
+
   server.delete(
     "/api/admin/applications/connected-apps/:id",
     withCapability("applications.create_delete"),
@@ -1501,6 +1803,14 @@ function connectedAppBlocked(detail: string): {
   }
 }
 
+async function connectedAppAfterFirecrawlMutation(actor: Actor, id: string) {
+  const detail = await getAdminConnectedAppDetail(actor, id)
+  if (!detail) {
+    throw new Error("Updated Application could not be read back.")
+  }
+  return detail.app
+}
+
 function serviceUnavailable(
   title: string,
   detail: string,
@@ -1667,23 +1977,23 @@ async function withAdminIdempotentMutation(
   try {
     result = await run(actor, identityContext)
   } catch (error) {
-    const identityError = identityMutationErrorResult(error)
-    if (identityError) {
+    const mutationError = adminMutationErrorResult(error)
+    if (mutationError) {
       if (
         !identityReceiptFinalized &&
-        shouldCompleteFailedIdentityReceipt(error)
+        shouldCompleteFailedAdminMutationReceipt(error)
       ) {
         const completed = await completeIdempotency({
           outcome: "failed",
           storeKey: reservation.storeKey,
           requestHash,
-          statusCode: identityError.statusCode,
+          statusCode: mutationError.statusCode,
         })
         if (!completed) {
           return idempotencyCompletionUnavailable(reply)
         }
       }
-      return reply.code(identityError.statusCode).send(identityError.payload)
+      return reply.code(mutationError.statusCode).send(mutationError.payload)
     }
     if (error instanceof IdempotencyCompletionError) {
       return idempotencyCompletionUnavailable(reply)
@@ -1725,10 +2035,18 @@ async function withAdminIdempotentMutation(
   return reply.code(result.statusCode).send(result.payload)
 }
 
-function identityMutationErrorResult(error: unknown): {
+function adminMutationErrorResult(error: unknown): {
   payload: unknown
-  statusCode: 409 | 503
+  statusCode: 404 | 409 | 503
 } | null {
+  if (error instanceof AdminConnectedAppFirecrawlCredentialCommitRaceError) {
+    return error.failure.status === "not_found"
+      ? { payload: notFoundPayload("Connected app"), statusCode: 404 }
+      : {
+          payload: connectedAppBlocked(error.failure.detail).payload,
+          statusCode: 409,
+        }
+  }
   if (error instanceof IdentityMutationReconciliationRequiredError) {
     return {
       payload: {
@@ -1762,10 +2080,11 @@ function identityMutationErrorResult(error: unknown): {
   }
 }
 
-function shouldCompleteFailedIdentityReceipt(error: unknown): boolean {
+function shouldCompleteFailedAdminMutationReceipt(error: unknown): boolean {
   return (
-    error instanceof IdentityMutationExecutionError &&
-    error.status !== "reconciliation_required"
+    error instanceof AdminConnectedAppFirecrawlCredentialCommitRaceError ||
+    (error instanceof IdentityMutationExecutionError &&
+      error.status !== "reconciliation_required")
   )
 }
 

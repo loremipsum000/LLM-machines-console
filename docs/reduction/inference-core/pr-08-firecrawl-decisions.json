@@ -1,0 +1,484 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-08",
+  "scope": "firecrawl-search-static-scrape-source-only",
+  "contractBaseCommit": "c47ffd38661ce9a7561f967aecbb9bae15cdadf5",
+  "contractBaseTree": "6071f1aa62690c509346cf1af7017a4cc669d28b",
+  "laneAnchorCommit": "c47ffd38661ce9a7561f967aecbb9bae15cdadf5",
+  "sourceManifest": {
+    "path": "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
+    "productBase": {
+      "commit": "c47ffd38661ce9a7561f967aecbb9bae15cdadf5",
+      "tree": "6071f1aa62690c509346cf1af7017a4cc669d28b"
+    },
+    "privateCheckpoint": {
+      "baseCommit": "eeab335ab3e46add36e4efcfb4dad2b3b47a8202",
+      "baseTree": "c38ca6e7ea85e454f7c191441ade7679b7ee4c41",
+      "commit": "ff74f3c94c563627929af31c46d48dda8e7d6192",
+      "tree": "8a978eb0f6d0ef04a896ec29f138a84a7cf14d79"
+    },
+    "method": "reviewed-semantic-unit-reconstruction",
+    "pilotAncestryAllowed": false
+  },
+  "sourceMap": {
+    "path": "docs/reduction/inference-core/source-map.jsonl",
+    "method": "reviewed-semantic-unit-reconstruction",
+    "targetBaseCommit": "c47ffd38661ce9a7561f967aecbb9bae15cdadf5",
+    "targetPaths": [
+      ".env.example",
+      "apps/bff/src/db/inference-core-client.test.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.test.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index-firecrawl-credential-isolation.test.ts",
+      "apps/bff/src/index-firecrawl-logging.test.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin-authorization.test.ts",
+      "apps/bff/src/routes/admin-firecrawl-lifecycle.test.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/firecrawl-gateway.test.ts",
+      "apps/bff/src/routes/firecrawl-gateway.ts",
+      "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl-settlement.test.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl.test.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-settings-core.ts",
+      "apps/bff/src/services/admin-settings-firecrawl-readiness.test.ts",
+      "apps/bff/src/services/firecrawl-gateway-runtime.test.ts",
+      "apps/bff/src/services/firecrawl-gateway-runtime.ts",
+      "apps/bff/src/services/firecrawl-url-safety.test.ts",
+      "apps/bff/src/services/firecrawl-url-safety.ts",
+      "apps/bff/src/services/inference-core-retention.test.ts",
+      "apps/bff/src/services/inference-core-retention.ts",
+      "apps/web/src/components/console-v2/applications-v2-experience.test.tsx",
+      "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+      "apps/web/src/lib/admin/actions-core.test.ts",
+      "infra/firecrawl/README.md",
+      "infra/firecrawl/THIRD_PARTY_NOTICES.md",
+      "infra/firecrawl/compose.yaml",
+      "infra/firecrawl/egress/allowlists/default/allowed-hosts.txt",
+      "infra/firecrawl/egress/squid.conf",
+      "infra/firecrawl/provenance/source-lock.json",
+      "infra/firecrawl/searxng/settings.yml",
+      "infra/firecrawl/validate-profile.mjs",
+      "infra/firecrawl/validate-profile.test.mjs",
+      "infra/migrations/0000_inference_core.sql",
+      "package.json",
+      "packages/contracts/src/inference-core-firecrawl.test.ts",
+      "packages/contracts/src/inference-core.ts",
+      "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/pr07-inference-data-plane.test.ts",
+      "test-support/inference-core-db-tests/src/pr08-firecrawl-schema.test.ts"
+    ]
+  },
+  "reviewedDispositions": {
+    "publicCapability": {
+      "classification": "public-t2-generic-third-party-application",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/v2/search"
+        },
+        {
+          "method": "POST",
+          "path": "/v2/scrape"
+        }
+      ],
+      "additionalRoutesOrMethods": false,
+      "scopes": ["firecrawl.search", "firecrawl.scrape"],
+      "searchMode": "bounded-search",
+      "scrapeMode": "bounded-static-scrape",
+      "inferenceRoutes": "unchanged",
+      "hermesDependency": false
+    },
+    "installationAndActivation": {
+      "applianceProfile": "always-installed",
+      "perApplicationDefault": "disabled",
+      "noEnabledApplicationBehavior": "cold-and-egress-sealed",
+      "uiVisibilityOwner": "PR-11",
+      "uiVisibleInPr08": false
+    },
+    "credentialLifecycle": {
+      "authentication": "dedicated-per-application-static-bearer",
+      "namespaces": [
+        "inference-static-key",
+        "application-oauth-client",
+        "firecrawl-static-key",
+        "litellm-native-key"
+      ],
+      "namespacesInterchangeable": false,
+      "automaticExpiry": false,
+      "retiringOverlapSeconds": 86400,
+      "rotationIndependent": true,
+      "revocationIndependent": true,
+      "lastUseMetadataIndependent": true
+    },
+    "authority": {
+      "disclaimer": "versioned-outbound-web-processing-acceptance-required",
+      "adminOnly": ["enable", "re-enable", "accept-disclaimer"],
+      "adminOrOperator": [
+        "view",
+        "passive-test",
+        "rotate",
+        "revoke",
+        "disable"
+      ],
+      "operatorForbidden": [
+        "enable",
+        "re-enable",
+        "accept-disclaimer",
+        "change-litellm-routes",
+        "enable-outbound-web"
+      ],
+      "connectionEvidence": "passive-authenticated-real-client-request",
+      "activeProbe": false
+    },
+    "egressAndUrlSafety": {
+      "ownership": "system-managed",
+      "destinationPolicy": "exact-host-egress-allowlist-plus-public-address-validation",
+      "customerUrlGovernance": false,
+      "directCloudFirecrawl": false,
+      "governedPrivateUpstream": "http://firecrawl-api:3002",
+      "nativePortsPublic": false,
+      "directWorkloadEgress": false,
+      "controlledProxyOnly": true
+    },
+    "retention": {
+      "workloadContentPersistence": false,
+      "prohibitedContentClasses": [
+        "query-terms",
+        "target-urls",
+        "final-urls",
+        "pages",
+        "request-bodies",
+        "response-bodies",
+        "results",
+        "tool-arguments",
+        "cookies",
+        "screenshots",
+        "history"
+      ],
+      "retainedMetadataClasses": [
+        "subject",
+        "application",
+        "credential",
+        "action",
+        "status",
+        "time",
+        "rate",
+        "concurrency",
+        "latency",
+        "count"
+      ],
+      "runtimeQualificationOwner": "PR-12"
+    },
+    "sourceProvenance": {
+      "method": "reviewed-semantic-unit-reconstruction",
+      "privateCheckpoint": {
+        "baseCommit": "eeab335ab3e46add36e4efcfb4dad2b3b47a8202",
+        "baseTree": "c38ca6e7ea85e454f7c191441ade7679b7ee4c41",
+        "commit": "ff74f3c94c563627929af31c46d48dda8e7d6192",
+        "tree": "8a978eb0f6d0ef04a896ec29f138a84a7cf14d79"
+      },
+      "wholesaleMerge": false,
+      "wholesaleCherryPick": false,
+      "pilotAncestryAllowed": false,
+      "migration0027Allowed": false
+    },
+    "scopeBoundaries": {
+      "sourceOnly": true,
+      "intermediateDeployment": false,
+      "finalCombinedApplicationUiOwner": "PR-11",
+      "finalImagesSigningOfflinePacketSbomAndCorrespondingSourceOwner": "PR-12",
+      "runtimeDeploymentAndQualificationOwner": "PR-12"
+    }
+  },
+  "standaloneDbTestBoundary": {
+    "path": "test-support/inference-core-db-tests",
+    "classification": "standalone-test-only-workspace",
+    "allowedPaths": [
+      "test-support/inference-core-db-tests/package.json",
+      "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "test-support/inference-core-db-tests/src/idempotency.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+      "test-support/inference-core-db-tests/src/pr05-emergency-recovery.test.ts",
+      "test-support/inference-core-db-tests/src/pr05-identity-mutation-journal.test.ts",
+      "test-support/inference-core-db-tests/src/pr06-application-credential-reconciliation.test.ts",
+      "test-support/inference-core-db-tests/src/pr07-inference-data-plane.test.ts",
+      "test-support/inference-core-db-tests/src/pr08-firecrawl-schema.test.ts",
+      "test-support/inference-core-db-tests/tsconfig.json"
+    ],
+    "packageManifest": {
+      "path": "test-support/inference-core-db-tests/package.json",
+      "sha256": "ff725f8972d4a0e4ed349daa1ffbfb4aa10ab40a4c76be60f739125781c85470",
+      "name": "@llm-machines/inference-core-db-tests",
+      "packageManager": "pnpm@10.0.0",
+      "scripts": {
+        "test": "vitest run",
+        "typecheck": "tsc --project tsconfig.json"
+      },
+      "devDependencies": {
+        "@electric-sql/pglite": "0.5.4",
+        "@types/node": "22.15.18",
+        "drizzle-orm": "0.44.2",
+        "typescript": "5.8.3",
+        "vitest": "3.1.4"
+      }
+    },
+    "lockfile": {
+      "path": "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "sha256": "a7318f062798050494d0651ba28ca8ae50ab01b1db085bb1bdd884f3e79d5c61"
+    },
+    "workspaceManifest": {
+      "path": "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "sha256": "44b627aa58902d12f2b7469e46784fd611bac456409c630d7636c0e7059c14aa"
+    },
+    "tsconfig": {
+      "path": "test-support/inference-core-db-tests/tsconfig.json",
+      "sha256": "28282abe534bce160861ed5c0798292c960cb61c7dfa5636d552a245c7223d09"
+    },
+    "rootIsolation": {
+      "workspaceManifestPath": "pnpm-workspace.yaml",
+      "rootLockfilePath": "pnpm-lock.yaml",
+      "productionManifestPath": "apps/bff/package.json",
+      "pglitePackage": "@electric-sql/pglite",
+      "drizzlePackage": "drizzle-orm@0.44.2",
+      "pglitePeerRange": ">=0.2.0",
+      "allowedRootMetadataOccurrences": 2
+    },
+    "rootScripts": {
+      "test:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test",
+      "typecheck:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests typecheck"
+    }
+  },
+  "webAuthenticationEvidence": [
+    {
+      "path": "apps/web/src/middleware.test.ts",
+      "sha256": "40e62e44aaddcbc2a3a6f5f2602751405e3c5dc23244ee218fb9cedaa257aec5"
+    },
+    {
+      "path": "apps/web/src/middleware.ts",
+      "sha256": "c31e5f8b645586166ad3e1a829adb4384a96e80cd218b26be61574b61117fc84"
+    }
+  ],
+  "target": {
+    "findingEntriesDueByPr08": 0,
+    "remainingFindingEntries": 1,
+    "fs105BuilderHubTombstones": [
+      {
+        "path": "apps/web/src/middleware.test.ts",
+        "removeBy": "PR-12"
+      }
+    ],
+    "legacyRoutes": 0,
+    "routes": 94,
+    "routeClassifications": {
+      "current-console-seam": 83,
+      "operational-auth": 4,
+      "private-operational": 3,
+      "public-t2": 2,
+      "required-now": 2
+    },
+    "publicInferenceRoutes": [
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/api/app-gateway/v1/models",
+        "source": "apps/bff/src/routes/app-gateway.ts",
+        "classification": "required-now"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/app-gateway/v1/chat/completions",
+        "source": "apps/bff/src/routes/app-gateway.ts",
+        "classification": "required-now"
+      }
+    ],
+    "publicFirecrawlRoutes": [
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/v2/scrape",
+        "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+        "classification": "public-t2"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/v2/search",
+        "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+        "classification": "public-t2"
+      }
+    ],
+    "firecrawlAdminRoutes": [
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl/enable",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "PATCH",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl/test",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl/disable",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl/credentials/:credentialId/revoke",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      }
+    ],
+    "adminOnlyRoutePolicyKeys": [
+      "GET /api/admin/recovery/status",
+      "POST /api/admin/recovery/factor/commission",
+      "POST /api/admin/settings/organization",
+      "POST /api/admin/settings/telemetry"
+    ],
+    "fastifyRegistrars": [
+      {
+        "exportName": "registerAdminRoutes",
+        "importSource": "./routes/admin",
+        "sourcePath": "apps/bff/src/routes/admin.ts"
+      },
+      {
+        "exportName": "registerAppGatewayRoutes",
+        "importSource": "./routes/app-gateway",
+        "sourcePath": "apps/bff/src/routes/app-gateway.ts"
+      },
+      {
+        "exportName": "registerAuthorization",
+        "importSource": "./auth/authorization",
+        "sourcePath": "apps/bff/src/auth/authorization.ts"
+      },
+      {
+        "exportName": "registerFirecrawlGatewayRoutes",
+        "importSource": "./routes/firecrawl-gateway",
+        "sourcePath": "apps/bff/src/routes/firecrawl-gateway.ts"
+      }
+    ],
+    "webInferenceConsumers": 0,
+    "escapeHatchPaths": [],
+    "webUiVisible": false,
+    "webContractCompatibilityTestPaths": [
+      "apps/web/src/components/console-v2/applications-v2-experience.test.tsx",
+      "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+      "apps/web/src/lib/admin/actions-core.test.ts"
+    ],
+    "sourceOnly": true,
+    "runtimeQualified": false
+  },
+  "operationPolicy": {
+    "addedSourcePaths": [
+      "apps/bff/src/routes/firecrawl-gateway.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "apps/bff/src/services/firecrawl-gateway-runtime.ts",
+      "apps/bff/src/services/firecrawl-url-safety.ts"
+    ],
+    "changedSourcePaths": [
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-settings-core.ts",
+      "apps/bff/src/services/inference-core-retention.ts",
+      "package.json",
+      "packages/contracts/src/inference-core.ts"
+    ],
+    "deletedSourcePaths": [],
+    "addedRepositoryPaths": [
+      "apps/bff/src/index-firecrawl-credential-isolation.test.ts",
+      "apps/bff/src/index-firecrawl-logging.test.ts",
+      "apps/bff/src/routes/admin-firecrawl-lifecycle.test.ts",
+      "apps/bff/src/routes/firecrawl-gateway.test.ts",
+      "apps/bff/src/routes/firecrawl-gateway.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl-settlement.test.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl.test.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "apps/bff/src/services/admin-settings-firecrawl-readiness.test.ts",
+      "apps/bff/src/services/firecrawl-gateway-runtime.test.ts",
+      "apps/bff/src/services/firecrawl-gateway-runtime.ts",
+      "apps/bff/src/services/firecrawl-url-safety.test.ts",
+      "apps/bff/src/services/firecrawl-url-safety.ts",
+      "apps/bff/src/services/inference-core-retention.test.ts",
+      "docs/reduction/inference-core/decision-register.md",
+      "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
+      "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
+      "docs/reduction/inference-core/source-map.jsonl",
+      "docs/reduction/inference-core/validation-register.md",
+      "infra/firecrawl/README.md",
+      "infra/firecrawl/THIRD_PARTY_NOTICES.md",
+      "infra/firecrawl/compose.yaml",
+      "infra/firecrawl/egress/allowlists/default/allowed-hosts.txt",
+      "infra/firecrawl/egress/squid.conf",
+      "infra/firecrawl/provenance/source-lock.json",
+      "infra/firecrawl/searxng/settings.yml",
+      "infra/firecrawl/validate-profile.mjs",
+      "infra/firecrawl/validate-profile.test.mjs",
+      "packages/contracts/src/inference-core-firecrawl.test.ts",
+      "scripts/inference-core/pr08-boundaries.test.mjs",
+      "scripts/inference-core/pr08-contract-revision.mjs",
+      "test-support/inference-core-db-tests/src/pr08-firecrawl-schema.test.ts"
+    ],
+    "changedRepositoryPaths": [
+      ".env.example",
+      "apps/bff/src/db/inference-core-client.test.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.test.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin-authorization.test.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-settings-core.ts",
+      "apps/bff/src/services/inference-core-retention.ts",
+      "apps/web/src/components/console-v2/applications-v2-experience.test.tsx",
+      "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+      "apps/web/src/lib/admin/actions-core.test.ts",
+      "docs/reduction/inference-core/README.md",
+      "infra/migrations/0000_inference_core.sql",
+      "package.json",
+      "packages/contracts/src/inference-core.ts",
+      "scripts/inference-core/guardrails.mjs",
+      "scripts/inference-core/guardrails.test.mjs",
+      "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/pr07-inference-data-plane.test.ts"
+    ],
+    "deletedRepositoryPaths": []
+  },
+  "reviewStatus": "reviewed"
+}

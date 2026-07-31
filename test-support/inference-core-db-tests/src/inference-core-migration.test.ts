@@ -40,6 +40,11 @@ describe("Inference Core empty-install migration", () => {
         ),
       ).toEqual([
         "admin.application_credentials",
+        "admin.application_firecrawl_access",
+        "admin.application_firecrawl_credentials",
+        "admin.application_firecrawl_rate_limit_windows",
+        "admin.application_firecrawl_request_ledger",
+        "admin.application_firecrawl_usage_daily",
         "admin.application_limits",
         "admin.application_model_allowlists",
         "admin.application_rate_limit_windows",
@@ -126,6 +131,65 @@ describe("Inference Core empty-install migration", () => {
         "status",
         "verifier_hash",
       ])
+      expect(
+        await tableColumns(database, "admin", "application_firecrawl_access"),
+      ).toEqual([
+        "app_id",
+        "connection_status",
+        "disclaimer_accepted_at",
+        "disclaimer_accepted_by",
+        "disclaimer_version",
+        "last_connected_at",
+        "max_concurrent_scrapes",
+        "scrape_rate_limit_rps",
+        "search_rate_limit_rps",
+        "status",
+        "updated_at",
+        "updated_by",
+      ])
+      expect(
+        await tableColumns(
+          database,
+          "admin",
+          "application_firecrawl_credentials",
+        ),
+      ).toEqual([
+        "app_id",
+        "id",
+        "issued_at",
+        "key_prefix",
+        "last_used_at",
+        "overlap_expires_at",
+        "revoked_at",
+        "rotated_at",
+        "status",
+        "verifier_hash",
+      ])
+
+      const firecrawlTables = [
+        "application_firecrawl_access",
+        "application_firecrawl_credentials",
+        "application_firecrawl_rate_limit_windows",
+        "application_firecrawl_request_ledger",
+        "application_firecrawl_usage_daily",
+      ]
+      const forbiddenFirecrawlColumns = new Set([
+        "body",
+        "page",
+        "query",
+        "request_body",
+        "response_body",
+        "result_content",
+        "secret",
+        "url",
+      ])
+      for (const table of firecrawlTables) {
+        expect(
+          (await tableColumns(database, "admin", table)).filter((column) =>
+            forbiddenFirecrawlColumns.has(column),
+          ),
+        ).toEqual([])
+      }
 
       const idempotencyColumns = await tableColumns(
         database,

@@ -35,7 +35,18 @@ vi.mock("fastify", async (importOriginal) => {
         configurable: true,
         value: ((hook: string, ...args: unknown[]) => {
           runtimeControls.push({ method: "addHook", subject: hook })
-          if (hook !== "preHandler" && hook !== "onClose") {
+          const handler = args[0]
+          const handlerName =
+            typeof handler === "function" ? handler.name : undefined
+          const reviewed =
+            hook === "preHandler" ||
+            (hook === "onClose" && handlerName === "closeInferenceCoreDb") ||
+            (hook === "onRequest" &&
+              handlerName === "logQueryFreeIncomingRequest") ||
+            (hook === "onResponse" &&
+              handlerName === "logQueryFreeCompletedRequest") ||
+            (hook === "onSend" && handlerName === "applyFirecrawlNoStoreHeader")
+          if (!reviewed) {
             throw new Error(`Unreviewed Fastify runtime hook ${hook}`)
           }
           return Reflect.apply(addHook, server, [hook, ...args])
@@ -78,8 +89,11 @@ describe("Inference Core route characterization", () => {
 
       expect(normalizeRoutes(runtimeRoutes)).toEqual(reviewedBffRoutes())
       expect(runtimeControls).toEqual([
+        { method: "addHook", subject: "onRequest" },
+        { method: "addHook", subject: "onResponse" },
         { method: "addHook", subject: "onClose" },
         { method: "addHook", subject: "preHandler" },
+        { method: "addHook", subject: "onSend" },
       ])
 
       for (const url of ["/livez", "/healthz", "/readyz"]) {
@@ -125,8 +139,11 @@ describe("Inference Core route characterization", () => {
       await server.ready()
       expect(normalizeRoutes(runtimeRoutes)).toEqual(reviewedBffRoutes())
       expect(runtimeControls).toEqual([
+        { method: "addHook", subject: "onRequest" },
+        { method: "addHook", subject: "onResponse" },
         { method: "addHook", subject: "onClose" },
         { method: "addHook", subject: "preHandler" },
+        { method: "addHook", subject: "onSend" },
       ])
     } finally {
       if (server) {
@@ -135,18 +152,23 @@ describe("Inference Core route characterization", () => {
     }
   })
 
-  it("keeps unapproved public API routes absent", async () => {
+  it("keeps the exact Firecrawl public route and method boundary", async () => {
     const server = await createServer()
     try {
+      for (const url of ["/v2/search", "/v2/scrape"]) {
+        const response = await server.inject({ method: "POST", url })
+        expect(response.statusCode).toBe(401)
+      }
       for (const route of [
         { method: "POST", url: "/v1/responses" },
         { method: "POST", url: "/v1/embeddings" },
         { method: "POST", url: "/v1/assistants" },
         { method: "POST", url: "/v1/files" },
         { method: "POST", url: "/v1/batches" },
-        { method: "POST", url: "/v2/search" },
-        { method: "POST", url: "/v2/scrape" },
+        { method: "GET", url: "/v2/search" },
+        { method: "GET", url: "/v2/scrape" },
         { method: "POST", url: "/v2/crawl" },
+        { method: "POST", url: "/v2/map" },
       ] as const) {
         const response = await server.inject(route)
         expect(response.statusCode).toBe(404)
@@ -177,6 +199,8 @@ describe("Inference Core route characterization", () => {
     const controls = [
       (server: FastifyInstance) =>
         server.addHook("onRequest", async () => undefined),
+      (server: FastifyInstance) =>
+        server.addHook("onSend", async () => undefined),
       (server: FastifyInstance) =>
         server.setErrorHandler(async () => undefined),
       (server: FastifyInstance) =>
@@ -280,12 +304,38 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     },
     {
       method: "POST",
+      url: "/api/admin/applications/connected-apps/:id/firecrawl/enable",
+    },
+    {
+      method: "PATCH",
+      url: "/api/admin/applications/connected-apps/:id/firecrawl",
+    },
+    {
+      method: "POST",
+      url: "/api/admin/applications/connected-apps/:id/firecrawl/test",
+    },
+    {
+      method: "POST",
+      url: "/api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials",
+    },
+    {
+      method: "POST",
+      url: "/api/admin/applications/connected-apps/:id/firecrawl/disable",
+    },
+    {
+      method: "POST",
+      url: "/api/admin/applications/connected-apps/:id/firecrawl/credentials/:credentialId/revoke",
+    },
+    {
+      method: "POST",
       url: "/api/admin/inference/model-updates/apply",
     },
     {
       method: "POST",
       url: "/api/app-gateway/v1/chat/completions",
     },
+    { method: "POST", url: "/v2/scrape" },
+    { method: "POST", url: "/v2/search" },
     {
       method: "PATCH",
       url: "/api/admin/applications/connected-apps/:id",

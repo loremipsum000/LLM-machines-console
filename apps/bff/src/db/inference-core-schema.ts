@@ -338,6 +338,369 @@ export const applicationCredentials = admin.table(
   ],
 )
 
+export const applicationFirecrawlAccess = admin.table(
+  "application_firecrawl_access",
+  {
+    appId: text("app_id")
+      .primaryKey()
+      .references(() => applications.id, { onDelete: "restrict" }),
+    status: text("status").default("disabled").notNull(),
+    disclaimerVersion: text("disclaimer_version"),
+    disclaimerAcceptedBy: text("disclaimer_accepted_by").references(
+      () => humanIdentities.subjectId,
+      { onDelete: "restrict" },
+    ),
+    disclaimerAcceptedAt: timestamp("disclaimer_accepted_at", {
+      withTimezone: true,
+    }),
+    connectionStatus: text("connection_status")
+      .default("not_connected")
+      .notNull(),
+    lastConnectedAt: timestamp("last_connected_at", { withTimezone: true }),
+    searchRateLimitRps: integer("search_rate_limit_rps"),
+    scrapeRateLimitRps: integer("scrape_rate_limit_rps"),
+    maxConcurrentScrapes: integer("max_concurrent_scrapes"),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => humanIdentities.subjectId, { onDelete: "restrict" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "application_firecrawl_access_status_check",
+      sql`${table.status} IN ('disabled', 'enabled')`,
+    ),
+    check(
+      "application_firecrawl_access_disclaimer_version_check",
+      sql`${table.disclaimerVersion} IS NULL
+        OR char_length(${table.disclaimerVersion}) BETWEEN 1 AND 64`,
+    ),
+    check(
+      "application_firecrawl_access_disclaimer_pair_check",
+      sql`num_nonnulls(
+          ${table.disclaimerVersion},
+          ${table.disclaimerAcceptedBy},
+          ${table.disclaimerAcceptedAt}
+        ) IN (0, 3)`,
+    ),
+    check(
+      "application_firecrawl_access_enabled_disclaimer_check",
+      sql`${table.status} = 'disabled'
+        OR ${table.disclaimerAcceptedAt} IS NOT NULL`,
+    ),
+    check(
+      "application_firecrawl_access_connection_check",
+      sql`(
+          ${table.connectionStatus} = 'not_connected'
+          AND ${table.lastConnectedAt} IS NULL
+        ) OR (
+          ${table.connectionStatus} IN ('connected', 'degraded')
+          AND ${table.lastConnectedAt} IS NOT NULL
+        )`,
+    ),
+    check(
+      "application_firecrawl_access_search_rate_check",
+      sql`${table.searchRateLimitRps} IS NULL
+        OR ${table.searchRateLimitRps} BETWEEN 1 AND 1000`,
+    ),
+    check(
+      "application_firecrawl_access_scrape_rate_check",
+      sql`${table.scrapeRateLimitRps} IS NULL
+        OR ${table.scrapeRateLimitRps} BETWEEN 1 AND 1000`,
+    ),
+    check(
+      "application_firecrawl_access_concurrency_check",
+      sql`${table.maxConcurrentScrapes} IS NULL
+        OR ${table.maxConcurrentScrapes} BETWEEN 1 AND 100`,
+    ),
+    index("application_firecrawl_access_status_updated_idx").on(
+      table.status,
+      table.updatedAt,
+    ),
+  ],
+)
+
+export const applicationFirecrawlCredentials = admin.table(
+  "application_firecrawl_credentials",
+  {
+    id: text("id").primaryKey(),
+    appId: text("app_id")
+      .notNull()
+      .references(() => applicationFirecrawlAccess.appId, {
+        onDelete: "restrict",
+      }),
+    keyPrefix: text("key_prefix").notNull(),
+    verifierHash: text("verifier_hash").notNull(),
+    status: text("status").default("active").notNull(),
+    issuedAt: timestamp("issued_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    rotatedAt: timestamp("rotated_at", { withTimezone: true }),
+    overlapExpiresAt: timestamp("overlap_expires_at", {
+      withTimezone: true,
+    }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "application_firecrawl_credentials_id_check",
+      sql`char_length(${table.id}) BETWEEN 1 AND 128`,
+    ),
+    check(
+      "application_firecrawl_credentials_prefix_check",
+      sql`${table.keyPrefix} ~ '^llmm_fc_[0-9a-f]{16}$'`,
+    ),
+    check(
+      "application_firecrawl_credentials_hash_check",
+      sql`${table.verifierHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "application_firecrawl_credentials_status_check",
+      sql`${table.status} IN ('active', 'retiring', 'revoked')`,
+    ),
+    check(
+      "application_firecrawl_credentials_lifecycle_check",
+      sql`(
+          ${table.status} = 'active'
+          AND ${table.rotatedAt} IS NULL
+          AND ${table.overlapExpiresAt} IS NULL
+          AND ${table.revokedAt} IS NULL
+        ) OR (
+          ${table.status} = 'retiring'
+          AND ${table.rotatedAt} IS NOT NULL
+          AND ${table.overlapExpiresAt} IS NOT NULL
+          AND ${table.revokedAt} IS NULL
+        ) OR (
+          ${table.status} = 'revoked'
+          AND ${table.revokedAt} IS NOT NULL
+          AND (
+            (
+              ${table.rotatedAt} IS NULL
+              AND ${table.overlapExpiresAt} IS NULL
+            ) OR (
+              ${table.rotatedAt} IS NOT NULL
+              AND ${table.overlapExpiresAt} IS NOT NULL
+            )
+          )
+        )`,
+    ),
+    check(
+      "application_firecrawl_credentials_timestamps_check",
+      sql`(${table.lastUsedAt} IS NULL OR ${table.lastUsedAt} >= ${table.issuedAt})
+        AND (${table.rotatedAt} IS NULL OR ${table.rotatedAt} >= ${table.issuedAt})
+        AND (
+          ${table.overlapExpiresAt} IS NULL
+          OR (
+            ${table.rotatedAt} IS NOT NULL
+            AND ${table.overlapExpiresAt} = ${table.rotatedAt} + interval '86400 seconds'
+          )
+        )
+        AND (
+          ${table.revokedAt} IS NULL
+          OR (
+            ${table.revokedAt} >= ${table.issuedAt}
+            AND (
+              ${table.rotatedAt} IS NULL
+              OR ${table.revokedAt} >= ${table.rotatedAt}
+            )
+          )
+        )`,
+    ),
+    uniqueIndex("application_firecrawl_credentials_id_app_idx").on(
+      table.id,
+      table.appId,
+    ),
+    uniqueIndex("application_firecrawl_credentials_verifier_hash_idx").on(
+      table.verifierHash,
+    ),
+    uniqueIndex("application_firecrawl_credentials_one_active_idx")
+      .on(table.appId)
+      .where(sql`${table.status} = 'active'`),
+    uniqueIndex("application_firecrawl_credentials_one_retiring_idx")
+      .on(table.appId)
+      .where(sql`${table.status} = 'retiring'`),
+    index("application_firecrawl_credentials_prefix_status_idx").on(
+      table.keyPrefix,
+      table.status,
+    ),
+    index("application_firecrawl_credentials_app_status_idx").on(
+      table.appId,
+      table.status,
+    ),
+  ],
+)
+
+export const applicationFirecrawlRateLimitWindows = admin.table(
+  "application_firecrawl_rate_limit_windows",
+  {
+    appId: text("app_id")
+      .notNull()
+      .references(() => applicationFirecrawlAccess.appId, {
+        onDelete: "restrict",
+      }),
+    routeKind: text("route_kind").notNull(),
+    windowStartedAt: timestamp("window_started_at", {
+      withTimezone: true,
+    }).notNull(),
+    requestCount: integer("request_count").default(0).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.appId, table.routeKind, table.windowStartedAt],
+      name: "application_firecrawl_rate_limit_windows_pkey",
+    }),
+    check(
+      "application_firecrawl_rate_limit_windows_route_check",
+      sql`${table.routeKind} IN ('search', 'scrape')`,
+    ),
+    check(
+      "application_firecrawl_rate_limit_windows_count_check",
+      sql`${table.requestCount} >= 0`,
+    ),
+    check(
+      "application_firecrawl_rate_limit_windows_expiry_check",
+      sql`${table.expiresAt} > ${table.windowStartedAt}`,
+    ),
+    index("application_firecrawl_rate_limit_windows_expiry_idx").on(
+      table.expiresAt,
+    ),
+  ],
+)
+
+export const applicationFirecrawlRequestLedger = admin.table(
+  "application_firecrawl_request_ledger",
+  {
+    id: uuid("id").primaryKey(),
+    appId: text("app_id").notNull(),
+    credentialId: text("credential_id").notNull(),
+    routeKind: text("route_kind").notNull(),
+    state: text("state").default("active").notNull(),
+    statusCode: integer("status_code"),
+    latencyMs: integer("latency_ms"),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    leaseExpiresAt: timestamp("lease_expires_at", {
+      withTimezone: true,
+    }).notNull(),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.credentialId, table.appId],
+      foreignColumns: [
+        applicationFirecrawlCredentials.id,
+        applicationFirecrawlCredentials.appId,
+      ],
+      name: "application_firecrawl_request_ledger_credential_app_fk",
+    }).onDelete("restrict"),
+    check(
+      "application_firecrawl_request_ledger_route_check",
+      sql`${table.routeKind} IN ('search', 'scrape')`,
+    ),
+    check(
+      "application_firecrawl_request_ledger_state_check",
+      sql`${table.state} IN ('active', 'settled')`,
+    ),
+    check(
+      "application_firecrawl_request_ledger_status_code_check",
+      sql`${table.statusCode} IS NULL OR ${table.statusCode} BETWEEN 100 AND 599`,
+    ),
+    check(
+      "application_firecrawl_request_ledger_latency_check",
+      sql`${table.latencyMs} IS NULL OR ${table.latencyMs} >= 0`,
+    ),
+    check(
+      "application_firecrawl_request_ledger_lifecycle_check",
+      sql`(
+          ${table.state} = 'active'
+          AND ${table.statusCode} IS NULL
+          AND ${table.latencyMs} IS NULL
+          AND ${table.settledAt} IS NULL
+        ) OR (
+          ${table.state} = 'settled'
+          AND ${table.statusCode} IS NOT NULL
+          AND ${table.latencyMs} IS NOT NULL
+          AND ${table.settledAt} IS NOT NULL
+        )`,
+    ),
+    check(
+      "application_firecrawl_request_ledger_timestamps_check",
+      sql`${table.leaseExpiresAt} > ${table.startedAt}
+        AND (${table.settledAt} IS NULL OR ${table.settledAt} >= ${table.startedAt})`,
+    ),
+    index("application_firecrawl_request_ledger_active_idx")
+      .on(table.appId, table.routeKind, table.leaseExpiresAt)
+      .where(sql`${table.state} = 'active'`),
+    index("application_firecrawl_request_ledger_settled_started_idx")
+      .on(table.startedAt)
+      .where(sql`${table.state} = 'settled'`),
+  ],
+)
+
+export const applicationFirecrawlUsageDaily = admin.table(
+  "application_firecrawl_usage_daily",
+  {
+    appId: text("app_id").notNull(),
+    credentialId: text("credential_id").notNull(),
+    bucketDate: date("bucket_date").notNull(),
+    routeKind: text("route_kind").notNull(),
+    requestCount: integer("request_count").default(0).notNull(),
+    failureCount: integer("failure_count").default(0).notNull(),
+    latencyMsSum: bigint("latency_ms_sum", { mode: "number" })
+      .default(0)
+      .notNull(),
+    latencyMsMax: integer("latency_ms_max").default(0).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.credentialId, table.appId],
+      foreignColumns: [
+        applicationFirecrawlCredentials.id,
+        applicationFirecrawlCredentials.appId,
+      ],
+      name: "application_firecrawl_usage_daily_credential_app_fk",
+    }).onDelete("restrict"),
+    primaryKey({
+      columns: [
+        table.appId,
+        table.credentialId,
+        table.bucketDate,
+        table.routeKind,
+      ],
+      name: "application_firecrawl_usage_daily_pkey",
+    }),
+    check(
+      "application_firecrawl_usage_daily_route_check",
+      sql`${table.routeKind} IN ('search', 'scrape')`,
+    ),
+    check(
+      "application_firecrawl_usage_daily_counts_check",
+      sql`${table.requestCount} >= 0
+        AND ${table.failureCount} >= 0
+        AND ${table.failureCount} <= ${table.requestCount}`,
+    ),
+    check(
+      "application_firecrawl_usage_daily_latency_check",
+      sql`${table.latencyMsSum} >= 0
+        AND ${table.latencyMsMax} >= 0
+        AND ${table.latencyMsMax} <= ${table.latencyMsSum}`,
+    ),
+    index("application_firecrawl_usage_daily_bucket_idx").on(table.bucketDate),
+    index("application_firecrawl_usage_daily_app_bucket_idx").on(
+      table.appId,
+      table.bucketDate,
+    ),
+  ],
+)
+
 export const applicationModelAllowlists = admin.table(
   "application_model_allowlists",
   {

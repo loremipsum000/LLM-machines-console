@@ -1,29 +1,27 @@
 import {
-  adminSettingsLogoAssetSchema,
-  adminSettingsResponseSchema,
-  adminSettingsTelemetryPayloadPreviewSchema,
   type AdminSettingsLicenseState,
   type AdminSettingsOrganization,
   type AdminSettingsPrivacy,
   type AdminSettingsResponse,
   type UpdateAdminSettingsOrganizationRequest,
   type UpdateAdminSettingsTelemetryRequest,
+  adminSettingsLogoAssetSchema,
+  adminSettingsResponseSchema,
+  adminSettingsTelemetryPayloadPreviewSchema,
 } from "@llm-machines/contracts/inference-core"
 import { eq } from "drizzle-orm"
 import type { Actor } from "../auth/authorization"
 import { getInferenceCoreDb } from "../db/inference-core-client"
 import { consoleSettings, licenseState } from "../db/inference-core-schema"
-import {
-  LiteLlmAdminClient,
-  liteLlmConfig,
-} from "./admin-litellm-client"
+import { LiteLlmAdminClient, liteLlmConfig } from "./admin-litellm-client"
 import { PrometheusClient } from "./admin-prometheus"
-import { emitAudit } from "./audit"
-import { keycloakAdminConfigFromEnv } from "./inference-core-keycloak-admin"
 import {
   type SettingsLogoKind,
   validateSettingsLogoAsset,
 } from "./admin-settings-validation"
+import { emitAudit } from "./audit"
+import { parseFirecrawlEgressAllowedHosts } from "./firecrawl-url-safety"
+import { keycloakAdminConfigFromEnv } from "./inference-core-keycloak-admin"
 import { upsertActorUser } from "./users"
 
 const singletonSettingsId = "singleton"
@@ -182,9 +180,7 @@ export async function updateAdminSettingsTelemetry(
           supportState: license.supportState,
           applianceId: license.applianceId,
           certificateExpiresAt: dateOrNull(license.certificateExpiresAt),
-          lastEntitlementCheckAt: dateOrNull(
-            license.lastEntitlementCheckAt,
-          ),
+          lastEntitlementCheckAt: dateOrNull(license.lastEntitlementCheckAt),
           offlineMode: license.offlineMode,
           telemetryOptIn: license.telemetryOptIn,
           allowedUpdateChannels: license.allowedUpdateChannels,
@@ -284,9 +280,7 @@ async function readSettings(): Promise<AdminSettingsResponse> {
             licenseRow.lastEntitlementCheckAt?.toISOString() ?? null,
           offlineMode: licenseRow.offlineMode,
           telemetryOptIn: licenseRow.telemetryOptIn,
-          allowedUpdateChannels: Array.isArray(
-            licenseRow.allowedUpdateChannels,
-          )
+          allowedUpdateChannels: Array.isArray(licenseRow.allowedUpdateChannels)
             ? licenseRow.allowedUpdateChannels
             : [],
         }
@@ -320,11 +314,7 @@ async function resolveReachability(
     [
       "postgres",
       postgresReachable
-        ? checked(
-            "ok",
-            "Product metadata persistence is reachable.",
-            checkedAt,
-          )
+        ? checked("ok", "Product metadata persistence is reachable.", checkedAt)
         : notConfigured("Product metadata persistence is not configured."),
     ],
   ])
@@ -451,19 +441,158 @@ async function checkPrometheus(
 async function checkFirecrawl(
   checkedAt: string,
 ): Promise<readonly ["firecrawl", ReachabilityCheck]> {
-  if (process.env.FIRECRAWL_ENABLED?.trim().toLowerCase() !== "true") {
+  if (environmentBoolean("FIRECRAWL_INSTALLED") !== true) {
     return [
       "firecrawl",
-      notConfigured("Firecrawl is installed and disabled by default."),
+      notConfigured("Firecrawl is not installed on this appliance."),
     ]
   }
-  return checkHttpService(
-    "FIRECRAWL_API_URL",
-    "/",
-    "Firecrawl",
-    checkedAt,
-    "firecrawl",
+
+  if (environmentBoolean("FIRECRAWL_APPLIANCE_KILL_SWITCH") !== false) {
+    return [
+      "firecrawl",
+      checked(
+        "unavailable",
+        "Firecrawl is installed but the appliance kill switch is active or not confirmed inactive.",
+        checkedAt,
+      ),
+    ]
+  }
+
+  if (environmentBoolean("FIRECRAWL_RESOURCE_PROFILE_QUALIFIED") !== true) {
+    return [
+      "firecrawl",
+      checked(
+        "unavailable",
+        "Firecrawl is installed but its appliance resource profile is not qualified.",
+        checkedAt,
+      ),
+    ]
+  }
+
+  if (environmentBoolean("FIRECRAWL_EGRESS_POLICY_READY") !== true) {
+    return [
+      "firecrawl",
+      checked(
+        "unavailable",
+        "Firecrawl is installed but its appliance egress policy is not ready.",
+        checkedAt,
+      ),
+    ]
+  }
+
+  if (
+    !parseFirecrawlEgressAllowedHosts(
+      process.env.FIRECRAWL_EGRESS_ALLOWED_HOSTS,
+    )
+  ) {
+    return [
+      "firecrawl",
+      checked(
+        "unavailable",
+        "Firecrawl is installed but its exact-host egress allowlist is missing or invalid.",
+        checkedAt,
+      ),
+    ]
+  }
+
+  if (!firecrawlEgressAllowlistDirectoryIsValid()) {
+    return [
+      "firecrawl",
+      checked(
+        "unavailable",
+        "Firecrawl is installed but its volatile egress allowlist directory is missing or invalid.",
+        checkedAt,
+      ),
+    ]
+  }
+
+  const healthUrls = firecrawlUpstreamHealthUrls(
+    process.env.FIRECRAWL_UPSTREAM_BASE_URL,
   )
+  if (!healthUrls) {
+    return [
+      "firecrawl",
+      checked(
+        "unavailable",
+        "Firecrawl is installed but its internal upstream URL is missing or invalid.",
+        checkedAt,
+      ),
+    ]
+  }
+
+  const available = await probeFirecrawlUpstream(healthUrls)
+  return [
+    "firecrawl",
+    available
+      ? checked(
+          "ok",
+          "Firecrawl is installed and available; internal liveness and readiness checks passed.",
+          checkedAt,
+        )
+      : checked(
+          "unavailable",
+          "Firecrawl is installed but its internal liveness or readiness check did not pass.",
+          checkedAt,
+        ),
+  ]
+}
+
+function firecrawlEgressAllowlistDirectoryIsValid(): boolean {
+  return /^\/run\/llm-machines\/firecrawl\/[a-z0-9][a-z0-9-]*$/.test(
+    process.env.FIRECRAWL_EGRESS_ALLOWLIST_DIR?.trim() ?? "",
+  )
+}
+
+function firecrawlUpstreamHealthUrls(
+  configuredBaseUrl: string | undefined,
+): readonly [URL, URL] | null {
+  const value = configuredBaseUrl?.trim()
+  if (!value || value.includes("?") || value.includes("#")) {
+    return null
+  }
+  try {
+    const baseUrl = new URL(value)
+    if (
+      baseUrl.protocol !== "http:" ||
+      baseUrl.hostname.toLowerCase() !== "firecrawl-api" ||
+      baseUrl.port !== "3002" ||
+      baseUrl.username !== "" ||
+      baseUrl.password !== "" ||
+      baseUrl.pathname !== "/"
+    ) {
+      return null
+    }
+    return [
+      new URL("/v0/health/liveness", baseUrl),
+      new URL("/v0/health/readiness", baseUrl),
+    ]
+  } catch {
+    return null
+  }
+}
+
+async function probeFirecrawlUpstream(urls: readonly URL[]): Promise<boolean> {
+  try {
+    const responses = await Promise.all(
+      urls.map((url) =>
+        fetch(url, {
+          method: "GET",
+          redirect: "error",
+          signal: AbortSignal.timeout(reachabilityTimeoutMs()),
+        }),
+      ),
+    )
+    const available = responses.every((response) => response.ok)
+    await Promise.all(
+      responses.map(async (response) => {
+        await response.body?.cancel()
+      }),
+    )
+    return available
+  } catch {
+    return false
+  }
 }
 
 async function checkHttpService<T extends string>(
@@ -637,6 +766,17 @@ function reachabilityTimeoutMs(): number {
     10,
   )
   return Number.isFinite(value) && value > 0 ? value : 2500
+}
+
+function environmentBoolean(name: string): boolean | null {
+  const value = process.env[name]?.trim().toLowerCase()
+  if (value === "true") {
+    return true
+  }
+  if (value === "false") {
+    return false
+  }
+  return null
 }
 
 function validateOptionalLogo(

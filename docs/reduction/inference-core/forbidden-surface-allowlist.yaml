@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "228357579d4adc6357312538da5b27760e9d455ab3060ea23adaa44452d1ee02",
+  "policyDigest": "f42ea9a55e642c529dcf2a9928fca2f7dfbe4bcaf9b43f3b28a10d59880eec37",
   "protectedFiles": [
     {
       "path": "apps/bff/tsconfig.json",
@@ -13,7 +13,7 @@
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.test.ts",
-      "sha256": "9ad38f11130b7826aafd7c1747f8c396ed73df040fd27773bd2a189137ffcf30"
+      "sha256": "646fd0724635d09cea1eed3ca3b205b9eaee125e99d9c13b314e3620de54c07b"
     },
     {
       "path": "apps/bff/src/routes/app-gateway-boundary.test.ts",
@@ -21,7 +21,7 @@
     },
     {
       "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
-      "sha256": "340ad3b87d4d4be585bf41563edcb5b0d9cfe36638983e02258ab25784115b3c"
+      "sha256": "d53abec705df47cd132f449bd2bdf17ff525ed709cadbc013d085a1ac41c30a4"
     },
     {
       "path": "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
@@ -72,6 +72,26 @@
       "sha256": "6330008bb11b0d095ea6ce3c80b35c2aca9939f0cca61927988b91dcb1f99a26"
     },
     {
+      "path": "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
+      "sha256": "5775ccce2f1b15b46004c3fc1ec1cefbb9e9a9caeae12a3909f13b616c831a45"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
+      "sha256": "68b3c404616c2c6e8a56e5ef184dc6409b0375990d393d34db6792ed19bf7817"
+    },
+    {
+      "path": "docs/reduction/inference-core/decision-register.md",
+      "sha256": "a1e131f84d1508aa8d513573ddfca4a47a6ad9a96d4c7effebb365572f1bc2dd"
+    },
+    {
+      "path": "docs/reduction/inference-core/source-map.jsonl",
+      "sha256": "d303f49d9238bd305da4f3addcda2efddee7752d9c511ba4fa471e03e958ee58"
+    },
+    {
+      "path": "docs/reduction/inference-core/validation-register.md",
+      "sha256": "cb3c4b970ffe1f99f60b2d3b8757f2c922c215e693dde506c6a9ea0ab2916811"
+    },
+    {
       "path": "packages/contracts/src/inference-core-authorization.test.ts",
       "sha256": "e1145f3b1ad0504876e90b57ee81df2e15cdbdb14bfdf1fa98b83f0c4c49e684"
     },
@@ -105,11 +125,11 @@
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",
-      "sha256": "d8c51820bdbecf61b84929ef84bb72f7f33994fa6a48210132127004aef6df6e"
+      "sha256": "07a7757fc6f5c34b927a03005dd60e0ef732abcc5d48cbd87bd84f3e80f5fa80"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
-      "sha256": "367b5c1cfe25dd05f950ecccc18d43d2385a22b886b57a86740f5a7f2d20d1af"
+      "sha256": "8aa09e33db2d8053d966dd8574b6a85ce81c3aa43f069720a1c4196e548c2909"
     },
     {
       "path": "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -158,6 +178,14 @@
     {
       "path": "scripts/inference-core/pr07-contract-revision.mjs",
       "sha256": "8501c249af53d1e106f1fe2bff65d710bbb7ffee882061da4abd0418509b6ba6"
+    },
+    {
+      "path": "scripts/inference-core/pr08-boundaries.test.mjs",
+      "sha256": "9624d3b279b022b0277e3bfd7eaab037e6bb6f773b4c5c9dfbcaf82990d6f6a2"
+    },
+    {
+      "path": "scripts/inference-core/pr08-contract-revision.mjs",
+      "sha256": "6cf4fbaf95e1e47d8169ebe2b826cd20a305051ccfe32ce76d732e4ee3d0e418"
     },
     {
       "path": "scripts/inference-core/retention-canary.mjs",

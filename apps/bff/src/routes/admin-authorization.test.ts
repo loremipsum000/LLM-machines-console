@@ -79,6 +79,20 @@ const expectedAdminRoutePolicies = {
   ),
   "POST /api/admin/applications/connected-apps/:id/credentials/:credentialId/revoke":
     capability("applications.credentials.test_rotate_revoke"),
+  "POST /api/admin/applications/connected-apps/:id/firecrawl/enable":
+    capability("firecrawl.enable_reenable"),
+  "PATCH /api/admin/applications/connected-apps/:id/firecrawl": capability(
+    "applications.policy.change",
+  ),
+  "POST /api/admin/applications/connected-apps/:id/firecrawl/test": capability(
+    "applications.credentials.test_rotate_revoke",
+  ),
+  "POST /api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials":
+    capability("applications.credentials.test_rotate_revoke"),
+  "POST /api/admin/applications/connected-apps/:id/firecrawl/disable":
+    capability("applications.disable"),
+  "POST /api/admin/applications/connected-apps/:id/firecrawl/credentials/:credentialId/revoke":
+    capability("applications.credentials.test_rotate_revoke"),
   "DELETE /api/admin/applications/connected-apps/:id": capability(
     "applications.create_delete",
   ),

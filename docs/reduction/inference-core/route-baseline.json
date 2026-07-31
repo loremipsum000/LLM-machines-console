@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "7e661a18f94a63e5a65fc29576a3ff5cb729b32df19047ba41ed3f2fd3a31796",
+  "policyDigest": "7376ac6d657ad4da3bd6e230367676b50b63dd392ba4878bcc74828209c3979e",
   "target": {
     "requiredPublicInference": [
       {
@@ -178,6 +178,13 @@
     {
       "surface": "bff",
       "method": "PATCH",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "PATCH",
       "path": "/api/admin/applications/connected-apps/:id",
       "source": "apps/bff/src/routes/admin.ts",
       "classification": "current-console-seam"
@@ -200,6 +207,41 @@
       "surface": "bff",
       "method": "POST",
       "path": "/api/admin/applications/connected-apps/:id/enable",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl/credentials/:credentialId/revoke",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl/disable",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl/enable",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl/test",
       "source": "apps/bff/src/routes/admin.ts",
       "classification": "current-console-seam"
     },
@@ -370,6 +412,20 @@
       "path": "/api/app-gateway/v1/chat/completions",
       "source": "apps/bff/src/routes/app-gateway.ts",
       "classification": "required-now"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/v2/scrape",
+      "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+      "classification": "public-t2"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/v2/search",
+      "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+      "classification": "public-t2"
     },
     {
       "surface": "web-handler",
@@ -667,6 +723,11 @@
       "exportName": "registerAuthorization",
       "importSource": "./auth/authorization",
       "sourcePath": "apps/bff/src/auth/authorization.ts"
+    },
+    {
+      "exportName": "registerFirecrawlGatewayRoutes",
+      "importSource": "./routes/firecrawl-gateway",
+      "sourcePath": "apps/bff/src/routes/firecrawl-gateway.ts"
     }
   ],
   "webInferenceConsumers": [],
@@ -713,15 +774,15 @@
     },
     {
       "path": "apps/bff/src/db/inference-core-client.ts",
-      "sha256": "221a5841f9a738ccc924289f2173af0e26366402529bb38666f8c017ed9d1534"
+      "sha256": "768858d44c87db763e395b121d1e64d09dc975a4ee8bac3a2e6399e6ca72c403"
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.ts",
-      "sha256": "32a2e04be064aa78599d6a5d1a364a2f8c4dc58121e5126ef79b9f0ca76be258"
+      "sha256": "9248c7eaceb28944a0a67d90addfce474f37ef2f680d07d4f37841f9b8b0380a"
     },
     {
       "path": "apps/bff/src/index.ts",
-      "sha256": "974afcd0994618fb4b0db88e8fa84058e5f5fe387e353dce6aef594b17507642"
+      "sha256": "bd0d3b5a0f0eff4f3cf0ea6427db3ed825c493659b7674f7b9367d5f372ba476"
     },
     {
       "path": "apps/bff/src/inference/chat-completions.ts",
@@ -729,19 +790,27 @@
     },
     {
       "path": "apps/bff/src/routes/admin.ts",
-      "sha256": "59cded0171affe0dc0e1302890632dc9d1d87c1e4a44fa2339b56851ad7fe884"
+      "sha256": "aeb24fe1126e022f1e0fd26fa7a82a82adaf2e16fe41c7c2106a4deb65341ca8"
     },
     {
       "path": "apps/bff/src/routes/app-gateway.ts",
       "sha256": "edad483babcf714dd1bb47e86027ffe0197536f62757c60e99a87aaee375c927"
     },
     {
+      "path": "apps/bff/src/routes/firecrawl-gateway.ts",
+      "sha256": "9ada6b38305af2e8f97a6cd1c1137379e4eb73693d38f53c7d5da638cc639465"
+    },
+    {
       "path": "apps/bff/src/services/admin-audit.ts",
       "sha256": "37c19f182dff58b45429ac75b2bcf515f5e08ad0abf1baed130ddd8de32ee3af"
     },
     {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "sha256": "44e97b884350846b23f74b96b96c79bc72597bf88f8bd207530c475602aeb05a"
+    },
+    {
       "path": "apps/bff/src/services/admin-connected-apps.ts",
-      "sha256": "be86a948610dd19c1c9cf5ac3730fbcc8aff0323cd3b28b16f1ac4548e6ef387"
+      "sha256": "1eae5a81e264fa351b7dbf5714fbdbe6d213b9f9326e1418638da6c1229e7512"
     },
     {
       "path": "apps/bff/src/services/admin-hardware.ts",
@@ -777,7 +846,7 @@
     },
     {
       "path": "apps/bff/src/services/admin-settings-core.ts",
-      "sha256": "7b208da0e84ae43bf51c08ef0a40521e726896fa09c6f7492436d6356bda67e6"
+      "sha256": "5afc194b1bb32a6f301166169c265d2dc9c6ed89d8915320c665797103c61d15"
     },
     {
       "path": "apps/bff/src/services/admin-settings-validation.ts",
@@ -804,6 +873,14 @@
       "sha256": "08fe59f639e8f498faeb69ace9c4abaa87bc8e5afd49cfcf914bc350227c5650"
     },
     {
+      "path": "apps/bff/src/services/firecrawl-gateway-runtime.ts",
+      "sha256": "098ba03c5f2525acc2e6ba4a79567f0a9b4222f8413e829581f0357ff71f15f2"
+    },
+    {
+      "path": "apps/bff/src/services/firecrawl-url-safety.ts",
+      "sha256": "5ade1a95c360d02caffc3738e76a473fed371b7e3f95349d363d2afba1689bac"
+    },
+    {
       "path": "apps/bff/src/services/idempotency.ts",
       "sha256": "90e6e1cfed575f4e03eb36d60ba39effe370142459e39bac10545e20709001eb"
     },
@@ -817,7 +894,7 @@
     },
     {
       "path": "apps/bff/src/services/inference-core-retention.ts",
-      "sha256": "21c93e2edccfb56259467a9f7aaf420e4492510f9069951b419b4002cadd28f5"
+      "sha256": "7f8d99fd5b2334b52ca3bf5d9321041e29b106fa6052e9b26498f48274070a3c"
     },
     {
       "path": "apps/bff/src/services/litellm-chat-transport.ts",
@@ -1137,7 +1214,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "7a85ecac035ed63e8a126eb472845f90e24300729e4863da1bc6c9e10941ee87"
+      "sha256": "b5274b3311b9602b746bf88073514db2ab89a9e1ba02414a79bfc126b1c6fc3b"
     },
     {
       "path": "packages/contracts/package.json",
@@ -1165,7 +1242,7 @@
     },
     {
       "path": "packages/contracts/src/inference-core.ts",
-      "sha256": "ccacb32df83728361235b483704f99c82c279342cebf0e095a25e50e413e5a5b"
+      "sha256": "4fc7acf59fd65a8d652869fd3c5f4805e3bd94c7c03b1e6ae92439e2abe06dcb"
     },
     {
       "path": "packages/contracts/tsconfig.build.json",
@@ -1213,7 +1290,7 @@
     {
       "path": ".env.example",
       "mode": "100644",
-      "objectId": "f183d26a4cd917adf39dd108be9a57779cec2cbe"
+      "objectId": "4c43cbdf9d47c3fb1bae107ac7628b882987acca"
     },
     {
       "path": ".gitignore",
@@ -1298,22 +1375,32 @@
     {
       "path": "apps/bff/src/db/inference-core-client.test.ts",
       "mode": "100644",
-      "objectId": "1b8d30fb65c68e874dd7ac13828f84fcc99893c9"
+      "objectId": "093b38d845fe4f4a95dc2d782531cc35359fef17"
     },
     {
       "path": "apps/bff/src/db/inference-core-client.ts",
       "mode": "100644",
-      "objectId": "599de4ec9bc448f466fd3135de8637c001f5e607"
+      "objectId": "ce2635150d2ec6ddf5aa216bb38b7fdc6eaa0d3d"
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.test.ts",
       "mode": "100644",
-      "objectId": "3c0d892dbd9d6856e3ca50034dd33944c0b945b0"
+      "objectId": "1668a78b0ec565833512dae6c00cd07e74970325"
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.ts",
       "mode": "100644",
-      "objectId": "3583c712f66c496dfe1edb328c0d74334f2bad5f"
+      "objectId": "f49b50609e88069f634cdbd1188e0f64e3b8ba69"
+    },
+    {
+      "path": "apps/bff/src/index-firecrawl-credential-isolation.test.ts",
+      "mode": "100644",
+      "objectId": "0502c0bb23b92f019f7524af8901c2ef641a96bb"
+    },
+    {
+      "path": "apps/bff/src/index-firecrawl-logging.test.ts",
+      "mode": "100644",
+      "objectId": "685270fd7837dc7933ff6b1176e024fc6d803427"
     },
     {
       "path": "apps/bff/src/index.test.ts",
@@ -1323,7 +1410,7 @@
     {
       "path": "apps/bff/src/index.ts",
       "mode": "100644",
-      "objectId": "97a9b360658bc43cebeacbef4cb9fdb430bf03af"
+      "objectId": "50f7283a92d474ab35a2d4f8b51d3bf41e066efc"
     },
     {
       "path": "apps/bff/src/inference/chat-completions.test.ts",
@@ -1338,7 +1425,7 @@
     {
       "path": "apps/bff/src/routes/admin-authorization.test.ts",
       "mode": "100644",
-      "objectId": "d0267a56e3ec44312aa54414ea67f2c07757917c"
+      "objectId": "ac9b81f426819e8a05857d27fe903d9fe9e89141"
     },
     {
       "path": "apps/bff/src/routes/admin-connected-apps-lifecycle.test.ts",
@@ -1349,6 +1436,11 @@
       "path": "apps/bff/src/routes/admin-csv-body-limit.test.ts",
       "mode": "100644",
       "objectId": "66d4103b560cb8caacafa327c3785e1521bd9f26"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-firecrawl-lifecycle.test.ts",
+      "mode": "100644",
+      "objectId": "ad7abd1e34f077549bc74400c97822aa4f9ba8b3"
     },
     {
       "path": "apps/bff/src/routes/admin-hardware.test.ts",
@@ -1383,7 +1475,7 @@
     {
       "path": "apps/bff/src/routes/admin.ts",
       "mode": "100644",
-      "objectId": "68c1a42b73e4c93ecb326f55cb41fe9e16f96709"
+      "objectId": "d82b73472e4d26766befcd1ff0c470e2b34a49ff"
     },
     {
       "path": "apps/bff/src/routes/app-gateway-accounting-errors.test.ts",
@@ -1411,9 +1503,19 @@
       "objectId": "48465ebd4c51e54a27519096cab0292c688dfb0c"
     },
     {
+      "path": "apps/bff/src/routes/firecrawl-gateway.test.ts",
+      "mode": "100644",
+      "objectId": "cbbde6bda8183a910338781b4cb7e27b53103827"
+    },
+    {
+      "path": "apps/bff/src/routes/firecrawl-gateway.ts",
+      "mode": "100644",
+      "objectId": "3dcf76a22b690fc15052624e2bd6aea801608ddb"
+    },
+    {
       "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
       "mode": "100644",
-      "objectId": "9161b6e5db3ada0b8cae42ca81b99d2e53043f28"
+      "objectId": "bb7d9e85c7d56d65d4762c8b095200a0aa735fd4"
     },
     {
       "path": "apps/bff/src/services/admin-audit.ts",
@@ -1431,9 +1533,24 @@
       "objectId": "b36d448ba7cfe905b6d3b85cb6a118207c953d38"
     },
     {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl-settlement.test.ts",
+      "mode": "100644",
+      "objectId": "2e758fc5db56d1b0b7421e633fc25d2168a37868"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl.test.ts",
+      "mode": "100644",
+      "objectId": "70433c61a8f1f03e3fe96b91cfaba389424cbb48"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "mode": "100644",
+      "objectId": "ef1dd909f0de2ca7da5defb100629df736199518"
+    },
+    {
       "path": "apps/bff/src/services/admin-connected-apps.ts",
       "mode": "100644",
-      "objectId": "5980da0dc72d9d1851581e381079d007f78946a2"
+      "objectId": "5cded78aeee0ff1a7214dcfca5c78e860f82b777"
     },
     {
       "path": "apps/bff/src/services/admin-hardware.ts",
@@ -1488,7 +1605,12 @@
     {
       "path": "apps/bff/src/services/admin-settings-core.ts",
       "mode": "100644",
-      "objectId": "01308c4e9793727b79898b27ffbb3d1b1446e074"
+      "objectId": "2a2067bb6a305ce5546e0ab5e12941ab3f76d868"
+    },
+    {
+      "path": "apps/bff/src/services/admin-settings-firecrawl-readiness.test.ts",
+      "mode": "100644",
+      "objectId": "d25c69cab31b4747c9d7ad41de60149ffca04433"
     },
     {
       "path": "apps/bff/src/services/admin-settings-validation.test.ts",
@@ -1546,6 +1668,26 @@
       "objectId": "925d12a6494f67999b8ef2d8421894699aad21e5"
     },
     {
+      "path": "apps/bff/src/services/firecrawl-gateway-runtime.test.ts",
+      "mode": "100644",
+      "objectId": "5a9a639d158561647f054a4d975b4eafc73ed4d0"
+    },
+    {
+      "path": "apps/bff/src/services/firecrawl-gateway-runtime.ts",
+      "mode": "100644",
+      "objectId": "f24b243565301c7f6b598335cdfb46d53d68461e"
+    },
+    {
+      "path": "apps/bff/src/services/firecrawl-url-safety.test.ts",
+      "mode": "100644",
+      "objectId": "acd040a75077d62341412411b8bf02eee5c4c43e"
+    },
+    {
+      "path": "apps/bff/src/services/firecrawl-url-safety.ts",
+      "mode": "100644",
+      "objectId": "041ea1b250d691f3bc0c223d576e8c84c20da9cf"
+    },
+    {
       "path": "apps/bff/src/services/idempotency.ts",
       "mode": "100644",
       "objectId": "7390e8eaa2f9e0ce5bedc9e9ea83a001270b5c85"
@@ -1571,9 +1713,14 @@
       "objectId": "0c3f4acbc4bacef78be67d070d2e388644299bb1"
     },
     {
+      "path": "apps/bff/src/services/inference-core-retention.test.ts",
+      "mode": "100644",
+      "objectId": "edf3e737babe70e96d322d9a0fcf5e23449a074e"
+    },
+    {
       "path": "apps/bff/src/services/inference-core-retention.ts",
       "mode": "100644",
-      "objectId": "82a08b970fa897daaff6b18e436c3377f8bb0ec2"
+      "objectId": "312a938f1c3c86a1f48aea8b98f12186b110f62e"
     },
     {
       "path": "apps/bff/src/services/litellm-chat-transport.test.ts",
@@ -1868,7 +2015,7 @@
     {
       "path": "apps/web/src/components/console-v2/applications-v2-experience.test.tsx",
       "mode": "100644",
-      "objectId": "8845db7626b690193f454b207e3a78005c1e08e5"
+      "objectId": "727fc3d8bd230316cb781f4ae6e6b03697f5ea64"
     },
     {
       "path": "apps/web/src/components/console-v2/applications-v2-experience.tsx",
@@ -1923,7 +2070,7 @@
     {
       "path": "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
       "mode": "100644",
-      "objectId": "dadd41ca07374eb45df4b11315678f686c300278"
+      "objectId": "68a52702abd11255fb40879fa422558d36d7de89"
     },
     {
       "path": "apps/web/src/components/console-v2/settings-v2-experience.tsx",
@@ -1948,7 +2095,7 @@
     {
       "path": "apps/web/src/lib/admin/actions-core.test.ts",
       "mode": "100644",
-      "objectId": "03668f51600572ffafefc7081a12efc2d5b387bb"
+      "objectId": "6202aebab8a13b0429041752ed55c1a02ba9afb5"
     },
     {
       "path": "apps/web/src/lib/admin/actions-core.ts",
@@ -2066,6 +2213,11 @@
       "objectId": "604a88ec5ba46c85a6557b7b25eaa19f6fec299e"
     },
     {
+      "path": "docs/reduction/inference-core/decision-register.md",
+      "mode": "100644",
+      "objectId": "002aeaeb896d4fe4fb1a7bf067f1d28539f7bf9c"
+    },
+    {
       "path": "docs/reduction/inference-core/pr-02-boundary-decisions.json",
       "mode": "100644",
       "objectId": "848c9fad9c79e1e9b8ae585292d7c41ef471898e"
@@ -2096,14 +2248,79 @@
       "objectId": "949b221ad24c5086a5219bbfa8423602a3877925"
     },
     {
+      "path": "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
+      "mode": "100644",
+      "objectId": "fd85fc30835b858ab15fcea6742b5b05fafea5ac"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
+      "mode": "100644",
+      "objectId": "cacff1eb65c2feb5ed9425d121b02bf98b843fc2"
+    },
+    {
       "path": "docs/reduction/inference-core/README.md",
       "mode": "100644",
-      "objectId": "0099dcc5a7a455179e64b0ae0238aefddb78deaa"
+      "objectId": "a5582a99a713e8b357a4b7a2fe705994e5b2e86e"
     },
     {
       "path": "docs/reduction/inference-core/retention-characterization.json",
       "mode": "100644",
       "objectId": "0dd0bffdbf3244a2803b9dce98e2b28d6af72c15"
+    },
+    {
+      "path": "docs/reduction/inference-core/source-map.jsonl",
+      "mode": "100644",
+      "objectId": "e716e2a2b777eea05d48eaa0c0f2a8b628ba135d"
+    },
+    {
+      "path": "docs/reduction/inference-core/validation-register.md",
+      "mode": "100644",
+      "objectId": "09bfcff42c2c02ffdd265a61c0afda3eeeab1282"
+    },
+    {
+      "path": "infra/firecrawl/compose.yaml",
+      "mode": "100644",
+      "objectId": "3d97c9c8c2f8ee53df8e3cd053fb520edc4c3a46"
+    },
+    {
+      "path": "infra/firecrawl/egress/allowlists/default/allowed-hosts.txt",
+      "mode": "100644",
+      "objectId": "855b2c43f592229ba416139e01876b30941bd5d8"
+    },
+    {
+      "path": "infra/firecrawl/egress/squid.conf",
+      "mode": "100644",
+      "objectId": "f3f54284d43fe2e4f4ee16c4eca78e0080c30925"
+    },
+    {
+      "path": "infra/firecrawl/provenance/source-lock.json",
+      "mode": "100644",
+      "objectId": "c884d50a1cb3916b2e777ff94e3a523c8eb1932a"
+    },
+    {
+      "path": "infra/firecrawl/README.md",
+      "mode": "100644",
+      "objectId": "1b3572557d47379c8bd01e15dae80e03a8af9ce1"
+    },
+    {
+      "path": "infra/firecrawl/searxng/settings.yml",
+      "mode": "100644",
+      "objectId": "b784086a7d6c996f1a2948d56d623fca3fc28f46"
+    },
+    {
+      "path": "infra/firecrawl/THIRD_PARTY_NOTICES.md",
+      "mode": "100644",
+      "objectId": "be73c7edc0880112e9add050e85ed10e906da8a8"
+    },
+    {
+      "path": "infra/firecrawl/validate-profile.mjs",
+      "mode": "100644",
+      "objectId": "cbc6674dd7f9be17dea3c1fa5574ad6edb83aa12"
+    },
+    {
+      "path": "infra/firecrawl/validate-profile.test.mjs",
+      "mode": "100644",
+      "objectId": "89e59aa8a2d0732022fb77c50480fd0ca0d75788"
     },
     {
       "path": "infra/keycloak/inference-core-application-realm-commissioning.json",
@@ -2133,12 +2350,12 @@
     {
       "path": "infra/migrations/0000_inference_core.sql",
       "mode": "100644",
-      "objectId": "aa89c1ae0c19e69ed036a9c74d16346615eb86c1"
+      "objectId": "4a47676714f36b846ccf6d6a8d2f3a84ba971ef4"
     },
     {
       "path": "package.json",
       "mode": "100644",
-      "objectId": "24484dbc8408fecc88a5b4490919cdda5dc968a0"
+      "objectId": "c019e7cfda27fce495e40826fd6bb6ced50c0734"
     },
     {
       "path": "packages/contracts/package.json",
@@ -2171,6 +2388,11 @@
       "objectId": "5f0fab213b2e444fe6bae3ab68f7b228d305ef05"
     },
     {
+      "path": "packages/contracts/src/inference-core-firecrawl.test.ts",
+      "mode": "100644",
+      "objectId": "6c45a3867e6c66fcb5524e2648f27fde6241e6a2"
+    },
+    {
       "path": "packages/contracts/src/inference-core-recovery.test.ts",
       "mode": "100644",
       "objectId": "b0855d1c1264d7c74c86ac3e921446092fbfa698"
@@ -2188,7 +2410,7 @@
     {
       "path": "packages/contracts/src/inference-core.ts",
       "mode": "100644",
-      "objectId": "687a4ad325c48b6581e159ef5c82e31e276ad69c"
+      "objectId": "58de854bfed34aba13dcc6d281c3ef4cdfa08b5e"
     },
     {
       "path": "packages/contracts/tsconfig.build.json",
@@ -2243,12 +2465,12 @@
     {
       "path": "scripts/inference-core/guardrails.mjs",
       "mode": "100644",
-      "objectId": "2170ad0e2ef5537abe0ba7011161798033660fa8"
+      "objectId": "31510d53228b32ac84e01944a7b4b3862726f6ce"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
       "mode": "100644",
-      "objectId": "f7941f915d9652ab1925da5f1553dd50d80b9004"
+      "objectId": "9150a13f5955623f0e1e777db3992bef2f31f396"
     },
     {
       "path": "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -2321,6 +2543,16 @@
       "objectId": "16e49d463f6afb3287acb4751b422d15c94cbf5f"
     },
     {
+      "path": "scripts/inference-core/pr08-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "38740f7ee10afcf11f21b8cb4707f1d07b60e882"
+    },
+    {
+      "path": "scripts/inference-core/pr08-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "190aed94235c353d1b88593c15b9ef3924474d7f"
+    },
+    {
       "path": "scripts/inference-core/retention-canary.mjs",
       "mode": "100644",
       "objectId": "0458fa576e9c1775de9651262342648260b970e7"
@@ -2358,7 +2590,7 @@
     {
       "path": "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
       "mode": "100644",
-      "objectId": "bf15eb37a3250cd705fb5205d68b1367de1973b9"
+      "objectId": "83e4a2145753e925736896722d39483d528bec1e"
     },
     {
       "path": "test-support/inference-core-db-tests/src/idempotency.test.ts",
@@ -2368,7 +2600,7 @@
     {
       "path": "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
       "mode": "100644",
-      "objectId": "248523d81d94bc126472435a98ca7150874236a4"
+      "objectId": "f92f25cc0063a49123e582ee2a75609c4bed5083"
     },
     {
       "path": "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
@@ -2393,7 +2625,12 @@
     {
       "path": "test-support/inference-core-db-tests/src/pr07-inference-data-plane.test.ts",
       "mode": "100644",
-      "objectId": "e4062c1764d05c0dea34d1a6ffc38d8acb5ad6b9"
+      "objectId": "4c26ffeca85f37b503f97c702ebe9bddc12827e9"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr08-firecrawl-schema.test.ts",
+      "mode": "100644",
+      "objectId": "862142a1d42d23e1b71a5b27788d1108d7d7315d"
     },
     {
       "path": "test-support/inference-core-db-tests/tsconfig.json",
@@ -2420,7 +2657,7 @@
     {
       "path": "apps/bff/src/index.ts",
       "symbol": "<file>",
-      "sha256": "86e9f1722a5fef97f64aadd09b61eb51cc4f028a54c91595e6d633bc5273c475"
+      "sha256": "dce2bdfc89d80acf0a0d3a306bdf8b7d479fafe74ee8e047cf10193c902eb52c"
     },
     {
       "path": "apps/web/next.config.ts",
@@ -2464,6 +2701,11 @@
       "id": "PR-07",
       "path": "docs/reduction/inference-core/contract-revisions/PR-07.json",
       "sha256": "ab0a98d8cd748e4fb1da88a83d5cf36d4c04ab19621ee16af4a16ce1dd5a1745"
+    },
+    {
+      "id": "PR-08",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-08.json",
+      "sha256": "1c79c804ee16a98fc765e93bc1fb15f40509690f902f6bfec41e237946884101"
     }
   ]
 }
