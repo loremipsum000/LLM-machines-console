@@ -134,16 +134,34 @@ describe("ConsoleV2Shell", () => {
     fireEvent.keyUp(window, { key: "Control" })
   })
 
-  it("omits retired product navigation and footer links", () => {
+  it("renders only the retained Console navigation", () => {
     render(
       <ConsoleV2Shell activeSection="applications">
         <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
 
-    expect(screen.queryByRole("link", { name: "Knowledge" })).toBeNull()
-    expect(screen.queryByRole("link", { name: "Help" })).toBeNull()
-    expect(screen.queryByRole("link", { name: "Documentation" })).toBeNull()
+    const navigation = screen.getByRole("navigation", {
+      name: "Console v2 navigation",
+    })
+    const expectedNavigation = [
+      ["Applications", "/applications"],
+      ["Inference", "/inference"],
+      ["Hardware", "/hardware"],
+      ["Team", "/team"],
+      ["Settings", "/settings"],
+    ] as const
+
+    expect(within(navigation).getAllByRole("link")).toHaveLength(
+      expectedNavigation.length,
+    )
+    for (const [label, href] of expectedNavigation) {
+      expect(
+        within(navigation)
+          .getByRole("link", { name: label })
+          .getAttribute("href"),
+      ).toBe(href)
+    }
   })
 })
 

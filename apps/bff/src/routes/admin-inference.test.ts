@@ -13,11 +13,11 @@ const adminHeaders = {
   "x-llm-machines-user-roles": "admin",
 }
 
-const builderHeaders = {
+const unclassifiedHeaders = {
   ...adminHeaders,
-  "x-llm-machines-user-sub": "builder-1",
-  "x-llm-machines-user-email": "builder@example.test",
-  "x-llm-machines-user-roles": "builder",
+  "x-llm-machines-user-sub": "unclassified-1",
+  "x-llm-machines-user-email": "unclassified@example.test",
+  "x-llm-machines-user-roles": "unclassified",
 }
 
 describe("Admin Inference routes", () => {
@@ -76,8 +76,8 @@ describe("Admin Inference routes", () => {
       },
       virtualKeys: [
         expect.objectContaining({
-          alias: "agentic-openclaw",
-          id: "hash-openclaw",
+          alias: "design-workstation",
+          id: "hash-design-workstation",
           status: "active",
         }),
       ],
@@ -103,14 +103,14 @@ describe("Admin Inference routes", () => {
       method: "GET",
       url: "/api/admin/inference",
     })
-    const builder = await server.inject({
-      headers: builderHeaders,
+    const unclassified = await server.inject({
+      headers: unclassifiedHeaders,
       method: "GET",
       url: "/api/admin/inference",
     })
 
     expect(unauthenticated.statusCode).toBe(401)
-    expect(builder.statusCode).toBe(403)
+    expect(unclassified.statusCode).toBe(401)
     await server.close()
   })
 
@@ -324,20 +324,20 @@ describe("Admin Inference routes", () => {
       method: "POST",
       url: "/api/admin/inference/model-updates/apply",
     })
-    const builder = await server.inject({
+    const unclassified = await server.inject({
       body: {
         confirmation: "UPDATE MODEL",
       },
       headers: {
-        ...builderHeaders,
-        "idempotency-key": "builder-update",
+        ...unclassifiedHeaders,
+        "idempotency-key": "unclassified-update",
       },
       method: "POST",
       url: "/api/admin/inference/model-updates/apply",
     })
 
     expect(unauthenticated.statusCode).toBe(401)
-    expect(builder.statusCode).toBe(403)
+    expect(unclassified.statusCode).toBe(401)
     await server.close()
   })
 
@@ -479,7 +479,7 @@ async function mockLiteLlmFetch(
           response_cost: 0.02,
           startTime: "2026-05-30T11:58:00.000Z",
           total_tokens: 500,
-          user: "demo-builder",
+          user: "app-user",
         },
         {
           model: "openai/gemma4",
@@ -527,14 +527,14 @@ async function mockLiteLlmFetch(
     return jsonResponse({
       keys: [
         {
-          key_alias: "agentic-openclaw",
-          key_hash: "hash-openclaw",
+          key_alias: "design-workstation",
+          key_hash: "hash-design-workstation",
           max_budget: 100,
           models: ["qwen3-35b-local"],
           spend: 4.25,
           status: "active",
           token: "sk-virtual-secret",
-          user_id: "openclaw",
+          user_id: "design-workstation",
         },
       ],
     })

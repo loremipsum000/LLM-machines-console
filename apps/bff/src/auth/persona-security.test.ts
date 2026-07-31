@@ -111,8 +111,8 @@ describe("persona auth security hardening", () => {
       headers: {
         ...forgedAdminHeaders,
         "x-llm-machines-keycloak-token": token,
-        "x-llm-machines-user-roles": "consumer",
-        "x-llm-machines-user-sub": "forged-consumer",
+        "x-llm-machines-user-roles": "unclassified",
+        "x-llm-machines-user-sub": "forged-unclassified",
       },
       method: "GET",
       url: "/api/admin/overview",
@@ -204,12 +204,12 @@ describe("persona auth security hardening", () => {
       subject: "keycloak-admin",
     })
     const second = signedKeycloakJwt({
-      email: "consumer@example.test",
+      email: "operator@example.test",
       groups: ["/Everyone"],
       issuer,
-      kid: "cache-consumer-kid",
-      roles: ["consumer"],
-      subject: "keycloak-consumer",
+      kid: "cache-operator-kid",
+      roles: ["operator"],
+      subject: "keycloak-operator",
     })
     const fetchMock = vi.fn<typeof fetch>(async () =>
       Response.json({ keys: [first.jwk, second.jwk] }),
@@ -226,8 +226,8 @@ describe("persona auth security hardening", () => {
       roles: ["admin"],
     })
     expect(secondPayload).toMatchObject({
-      subject: "keycloak-consumer",
-      roles: ["consumer"],
+      subject: "keycloak-operator",
+      roles: ["operator"],
     })
     expect(firstAgain).toMatchObject({
       subject: "keycloak-admin",
@@ -285,7 +285,7 @@ function unsignedJwt(input: {
     base64UrlJson({
       exp: Math.floor(Date.now() / 1000) + 3600,
       iss: input.issuer,
-      realm_access: { roles: ["consumer"] },
+      realm_access: { roles: ["admin"] },
       sub: input.subject,
     }),
     Buffer.from("invalid-signature").toString("base64url"),

@@ -12,34 +12,33 @@ describe("auth role claim helpers", () => {
   it("extracts realm roles from the profile payload", () => {
     expect(
       extractRealmRoles({
-        realm_access: { roles: ["admin", "builder", 42, null] },
+        realm_access: { roles: ["admin", "operator", 42, null] },
       }),
-    ).toEqual(["admin", "builder"])
+    ).toEqual(["admin", "operator"])
   })
 
   it("extracts realm roles from a Keycloak access token payload", () => {
     const token = makeUnsignedJwt({
-      realm_access: { roles: ["admin", "consumer"] },
+      realm_access: { roles: ["admin", "operator"] },
     })
 
     expect(extractRealmRolesFromAccessToken(token)).toEqual([
       "admin",
-      "consumer",
+      "operator",
     ])
   })
 
   it("deduplicates roles from multiple sources", () => {
-    expect(mergeRoles(["admin", "consumer"], ["admin", "builder"])).toEqual([
+    expect(mergeRoles(["admin"], ["admin", "operator"])).toEqual([
       "admin",
-      "consumer",
-      "builder",
+      "operator",
     ])
   })
 
   it("extracts normalized Keycloak groups separately from realm roles", () => {
     const token = makeUnsignedJwt({
       groups: ["/Security", "/Parent/Engineering", 42, null],
-      realm_access: { roles: ["consumer"] },
+      realm_access: { roles: ["operator"] },
     })
 
     expect(extractGroups({ groups: ["/Security", "Engineering"] })).toEqual([

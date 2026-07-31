@@ -1,3 +1,0 @@
-Title: English PDF Fixture
-
-This text fixture is stored with a PDF extension so the ingestion path can verify page-aware extraction behavior in the MVP harness. Key phrase: immutable corpus snapshot.

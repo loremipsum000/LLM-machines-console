@@ -1,9 +1,44 @@
-import { adminConnectedApps } from "@/lib/admin/mock-data"
+import type { AdminConnectedApp } from "@llm-machines/contracts/inference-core"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   createAdminConnectedAppAction,
   testAdminConnectedAppConnectionAction,
 } from "./actions-core"
+
+const connectedApp: AdminConnectedApp = {
+  allowedModels: ["local-model"],
+  auditHref: "#audit",
+  createdAt: "2026-07-31T08:00:00.000Z",
+  description: "Retained connected application test fixture.",
+  detailHref: "/applications/apps/app-1",
+  environments: [
+    {
+      authMethods: ["api_key"],
+      clientId: "app-1-client",
+      credentialIssuedAt: "2026-07-31T08:00:00.000Z",
+      environment: "staging",
+      keyPrefix: "llmm_t4_test",
+      lastTestedAt: null,
+      lastUsedAt: null,
+      primaryAuthMethod: "api_key",
+      productionReady: false,
+      testStatus: "not_tested",
+    },
+  ],
+  id: "app-1",
+  name: "Retained App",
+  ownerGroup: "Everyone",
+  rateLimitRpm: null,
+  status: "enabled",
+  tokenBudget7d: null,
+  updatedAt: "2026-07-31T08:00:00.000Z",
+  usage: {
+    failures7d: 0,
+    lastUsedAt: null,
+    requests7d: 0,
+    tokens7d: 0,
+  },
+}
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
@@ -53,7 +88,7 @@ describe("inference-core Admin actions", () => {
   })
 
   it("allows an operator to test a dedicated application credential", async () => {
-    const app = adminConnectedApps.apps[0]
+    const app = connectedApp
     vi.stubGlobal(
       "fetch",
       vi.fn(

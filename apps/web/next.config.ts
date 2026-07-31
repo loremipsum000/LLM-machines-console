@@ -2,22 +2,9 @@ import type { NextConfig } from "next"
 
 const frameSrc = splitOrigins(process.env.WEB_FRAME_SRC_ORIGINS)
 const connectSrc = splitOrigins(process.env.WEB_CONNECT_SRC_ORIGINS)
-type ServerActionsConfig = Extract<
-  NonNullable<NextConfig["experimental"]>["serverActions"],
-  object
->
-const configuredServerActionsBodySizeLimit =
-  process.env.WEB_SERVER_ACTION_BODY_SIZE_LIMIT ?? "75mb"
-const serverActionsBodySizeLimit =
-  configuredServerActionsBodySizeLimit as ServerActionsConfig["bodySizeLimit"]
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  experimental: {
-    serverActions: {
-      bodySizeLimit: serverActionsBodySizeLimit,
-    },
-  },
   images: {
     remotePatterns: [],
   },

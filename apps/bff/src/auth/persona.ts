@@ -14,10 +14,7 @@ export {
 } from "./keycloak-jwt"
 export type { VerifiedKeycloakJwt } from "./keycloak-jwt"
 
-export type AuthMode =
-  | "keycloak"
-  | "service-forwarded"
-  | "service-forwarded-mcp"
+export type AuthMode = "keycloak" | "service-forwarded"
 
 export interface Actor {
   subject: string
@@ -30,7 +27,6 @@ export interface Actor {
 
 declare module "fastify" {
   interface FastifyContextConfig {
-    allowMcpServiceForwardedAuth?: boolean
     persona?: Persona
   }
 
@@ -43,7 +39,6 @@ interface AuthConfig {
   keycloakIssuerUrl?: string
   keycloakAudience?: string
   allowHeaderOnlyServiceAuth: boolean
-  allowMcpServiceForwardedAuth: boolean
   requireForwardedKeycloakToken: boolean
   serviceApiKey?: string
   serviceKeyAccessTokenHeader: string
@@ -70,25 +65,8 @@ export function registerPersonaAuth(server: FastifyInstance): void {
 
 export function withPersona(persona: Persona): {
   config: { persona: Persona }
-}
-export function withPersona(
-  persona: Persona,
-  options: { allowMcpServiceForwardedAuth?: boolean },
-): {
-  config: { allowMcpServiceForwardedAuth?: boolean; persona: Persona }
-}
-export function withPersona(
-  persona: Persona,
-  options: { allowMcpServiceForwardedAuth?: boolean } = {},
-): {
-  config: { allowMcpServiceForwardedAuth?: boolean; persona: Persona }
 } {
-  return {
-    config: {
-      allowMcpServiceForwardedAuth: options.allowMcpServiceForwardedAuth,
-      persona,
-    },
-  }
+  return { config: { persona } }
 }
 
 const authHook: preHandlerHookHandler = async (request, reply) => {
@@ -181,20 +159,6 @@ async function authenticateRequest(
       return { ok: false, reason: "invalid_forwarded_token" }
     }
 
-    if (
-      request.routeOptions.config?.allowMcpServiceForwardedAuth &&
-      config.allowMcpServiceForwardedAuth
-    ) {
-      const actor = actorFromForwardedHeaders(
-        request,
-        config,
-        "service-forwarded-mcp",
-      )
-      return actor
-        ? { ok: true, actor }
-        : { ok: false, reason: "invalid_forwarded_identity" }
-    }
-
     if (config.requireForwardedKeycloakToken) {
       return { ok: false, reason: "invalid_forwarded_token" }
     }
@@ -225,10 +189,6 @@ function getAuthConfig(): AuthConfig {
     allowHeaderOnlyServiceAuth: envFlag(
       "BFF_ALLOW_HEADER_ONLY_SERVICE_AUTH",
       process.env.NODE_ENV === "test",
-    ),
-    allowMcpServiceForwardedAuth: envFlag(
-      "BFF_MCP_ALLOW_SERVICE_FORWARDED_AUTH",
-      true,
     ),
     keycloakIssuerUrl: trimTrailingSlash(process.env.KEYCLOAK_ISSUER_URL),
     keycloakAudience: process.env.KEYCLOAK_AUDIENCE,

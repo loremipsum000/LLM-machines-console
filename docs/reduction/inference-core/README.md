@@ -72,16 +72,16 @@ corepack pnpm build:inference-core
 corepack pnpm typecheck:inference-core
 ```
 
-The package guardrail command always compares against
-`origin/codex/inference-core-stack-reduction`. The guardrail CLI accepts an
-explicit `--base-ref` for a separately reviewed manual comparison. The
-comparison is a bootstrap result in PR-01 because the integration base
-predates these files. From PR-02 onward, an entry or route may disappear, but
-a new or changed production source file, new route, new fingerprint, increased
-multiplicity, reclassification, resolver change, guard-policy change, or
-protected-guard file change fails. Planned edits, route additions, and moves
-require a visible, reviewed contract revision before their implementation is
-admitted.
+The package guardrail command compares against the immutable reviewed PR-02
+commit `964ff087f39111862c90f72ec57ab33bb937f5d2`. It does not follow a moving
+branch ref. The guardrail CLI accepts an explicit `--base-ref` for a separately
+reviewed manual comparison. The comparison is a bootstrap result in PR-01
+because the integration base predates these files. From PR-02 onward, an entry
+or route may disappear, but a new or changed production source file, new route,
+new fingerprint, increased multiplicity, reclassification, resolver change,
+guard-policy change, or protected-guard file change fails. Planned edits, route
+additions, and moves require a visible, reviewed contract revision before their
+implementation is admitted.
 
 PR-02 uses one fixed revision at
 `contract-revisions/PR-02.json`. The revision binds the exact integration-base
@@ -109,6 +109,35 @@ are constrained to explicit path matrices in the guard. Reviewed PR-02
 evidence is protected and rehashed on later comparisons. The ordinary
 shrink-only comparison applies again when no new reviewed revision is present.
 
+PR-03 appends one fixed revision at `contract-revisions/PR-03.json`. Its
+content base is the immutable PR-02 commit above, and its lane anchor is the
+tree-identical PR-02 merge commit
+`43c11ace1b80d5241cf2a6a06670fe01f49e3e10`. The generator runs only from that
+lane anchor with every candidate change staged and no untracked path:
+
+```text
+node scripts/inference-core/pr03-contract-revision.mjs --write
+```
+
+Before generation, `pr-03-removal-decisions.json` must contain the reviewed
+exact source and repository path matrices and have `reviewStatus` set to
+`reviewed`. The generator retains the PR-01 metadata base in both generated
+baselines, precomputes all three outputs, appends PR-03 after PR-02, and
+replaces the revision, allowlist, and route baseline as one rollback-safe
+transaction. It first proves that the PR-02 revision and its three evidence
+files are byte-identical to the immutable PR-02 commit. PR-03 requires every
+finding still due in PR-03 and every legacy route to be absent. Exact
+disposition changes retain historical migration evidence until PR-04, the
+legacy Persona seam until PR-05, and the negative `/builder` route tombstone
+until PR-12 final product qualification. One exact lockfile fingerprint is
+suppressed because it is a random `mcP` substring inside a pinned
+`lightningcss` integrity digest; any other MCP fingerprint still fails. The
+retained 79 routes, three Fastify registrars, public inference and health
+routes, revised Next configuration fingerprint, and refactored Web
+authentication boundary remain exact. The middleware implementation and its
+behavioral test are bound by full-file SHA-256. The retired Web inference
+consumer count is zero.
+
 The root `test` command runs the base comparison before any workspace tests.
 Core workspace membership and each Core package build, typecheck, and test
 script are exact-locked. Their pre- and post-lifecycle companions are
@@ -116,12 +145,10 @@ prohibited, so a filtered command cannot succeed without running only the
 intended package command.
 
 The filtered Core build contains Contracts, Copy, BFF, and Web. It removes
-Agentic-related environment variables from the child process and excludes
-the separate legacy Agentic adapter and reranker workspaces. Eight legacy
-Agentic BFF route implementations still exist as unregistered legacy source
-scheduled for removal in PR-03. They are not part of the retained runtime
-registrar inventory, so this remains dependency-lane evidence rather than
-final source-tree independence.
+Agentic-related environment variables from the child process as a
+defense-in-depth boundary. PR-03 removes the legacy Agentic adapter, reranker,
+and unregistered Agentic BFF route implementations from the product source and
+workspace closure.
 
 The Core build and typecheck runner forwards only basic process paths and
 locale values. Product credentials, cloud tokens, service configuration, and
