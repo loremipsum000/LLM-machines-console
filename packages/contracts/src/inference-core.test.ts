@@ -57,9 +57,7 @@ describe("Inference Core contract boundary", () => {
     ])
 
     const retiredExport = Object.keys(inferenceCoreContracts).find((name) =>
-      /(BreakGlass|Builder|Hub|Knowledge|Mcp|Persona|Promotion|UrlPolicy)/.test(
-        name,
-      ),
+      /(BreakGlass|Builder|Hub|Knowledge|Mcp|Promotion|UrlPolicy)/.test(name),
     )
     expect(retiredExport).toBeUndefined()
   })
@@ -147,6 +145,49 @@ describe("Inference Core contract boundary", () => {
         },
         serviceStatus: "ok",
         sourceStatus: "ok",
+      }).success,
+    ).toBe(false)
+  })
+
+  it("bounds Team bulk membership and CSV request payloads", () => {
+    const memberIds = Array.from(
+      { length: inferenceCoreContracts.adminTeamBatchLimit },
+      (_, index) => `member-${index}`,
+    )
+    expect(
+      inferenceCoreContracts.adminTeamBulkGroupAssignmentRequestSchema.safeParse(
+        { memberIds },
+      ).success,
+    ).toBe(true)
+    expect(
+      inferenceCoreContracts.adminTeamBulkGroupAssignmentRequestSchema.safeParse(
+        { memberIds: [...memberIds, "member-over-limit"] },
+      ).success,
+    ).toBe(false)
+    expect(
+      inferenceCoreContracts.adminTeamBulkGroupAssignmentRequestSchema.safeParse(
+        { memberIds: ["member-1", "member-1"] },
+      ).success,
+    ).toBe(false)
+
+    const maximumAsciiCsv = "a".repeat(
+      inferenceCoreContracts.adminTeamCsvMaxBytes,
+    )
+    expect(
+      inferenceCoreContracts.adminTeamCsvImportPreviewRequestSchema.safeParse({
+        csv: maximumAsciiCsv,
+      }).success,
+    ).toBe(true)
+    expect(
+      inferenceCoreContracts.adminTeamCsvImportPreviewRequestSchema.safeParse({
+        csv: `${maximumAsciiCsv}a`,
+      }).success,
+    ).toBe(false)
+    expect(
+      inferenceCoreContracts.adminTeamCsvImportPreviewRequestSchema.safeParse({
+        csv: "é".repeat(
+          Math.floor(inferenceCoreContracts.adminTeamCsvMaxBytes / 2) + 1,
+        ),
       }).success,
     ).toBe(false)
   })
@@ -348,9 +389,9 @@ describe("Inference Core contract boundary", () => {
   })
 
   it("fails closed on unproven expert-system audit ingestion", () => {
-    expect(inferenceCoreExpertAuditCapabilitySchema.shape.source.options).toEqual(
-      ["litellm", "grafana", "keycloak", "alertmanager"],
-    )
+    expect(
+      inferenceCoreExpertAuditCapabilitySchema.shape.source.options,
+    ).toEqual(["litellm", "grafana", "keycloak", "alertmanager"])
     expect(
       inferenceCoreExpertAuditCapabilitySchema.parse({
         detail: "Native LiteLLM audit ingestion is not proven.",

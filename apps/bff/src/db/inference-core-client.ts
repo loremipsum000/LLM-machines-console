@@ -6,6 +6,16 @@ import * as schema from "./inference-core-schema"
 let client: ReturnType<typeof postgres> | null = null
 let database: ReturnType<typeof drizzle<typeof schema>> | null = null
 
+export const INFERENCE_CORE_POSTGRES_OPTIONS = {
+  connect_timeout: 3,
+  connection: {
+    idle_in_transaction_session_timeout: 60_000,
+    lock_timeout: 2_000,
+    statement_timeout: 10_000,
+  },
+  max: 5,
+} as const
+
 export function getInferenceCoreDb(): ReturnType<
   typeof drizzle<typeof schema>
 > | null {
@@ -15,7 +25,7 @@ export function getInferenceCoreDb(): ReturnType<
   }
 
   if (!client) {
-    client = postgres(databaseUrl, { connect_timeout: 3, max: 5 })
+    client = postgres(databaseUrl, INFERENCE_CORE_POSTGRES_OPTIONS)
     database = drizzle(client, { schema })
   }
 
@@ -46,10 +56,14 @@ export async function checkInferenceCoreDbReadiness(
             ('admin.application_rate_limit_windows'),
             ('admin.application_usage_daily'),
             ('admin.idempotency_ledger'),
+            ('admin.identity_mutation_journal'),
+            ('admin.identity_mutation_journal_targets'),
             ('admin.console_settings'),
             ('admin.license_state'),
             ('admin.update_state'),
             ('admin.backup_state'),
+            ('admin.emergency_recovery_factor'),
+            ('admin.emergency_recovery_sessions'),
             ('admin.recovery_state')
         ) AS required(relation_name)
         WHERE to_regclass(relation_name) IS NULL

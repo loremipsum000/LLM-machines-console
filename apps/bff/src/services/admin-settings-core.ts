@@ -10,7 +10,7 @@ import {
   type UpdateAdminSettingsTelemetryRequest,
 } from "@llm-machines/contracts/inference-core"
 import { eq } from "drizzle-orm"
-import type { Actor } from "../auth/persona"
+import type { Actor } from "../auth/authorization"
 import { getInferenceCoreDb } from "../db/inference-core-client"
 import { consoleSettings, licenseState } from "../db/inference-core-schema"
 import {

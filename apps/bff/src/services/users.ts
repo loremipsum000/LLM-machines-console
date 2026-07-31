@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm"
-import type { Actor } from "../auth/persona"
+import type { Actor } from "../auth/authorization"
 import { getInferenceCoreDb } from "../db/inference-core-client"
 import {
   humanIdentities,
@@ -13,13 +13,7 @@ export async function upsertActorUser(actor: Actor): Promise<Actor> {
   }
 
   const now = new Date()
-  const projectedRoles = [
-    ...new Set(
-      actor.roles
-        .map((role) => role.trim().toLowerCase())
-        .filter((role) => role === "admin" || role === "operator"),
-    ),
-  ].sort()
+  const projectedRoles = [actor.role]
 
   await db.transaction(async (transaction) => {
     await transaction

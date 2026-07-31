@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import type { Actor } from "../auth/persona"
+import type { Actor } from "../auth/authorization"
 import { getAdminTeamOverview, resetAdminTeamStateForTest } from "./admin-team"
 import { expertCapabilities, expertSystemIds } from "./expert-capabilities"
 
@@ -56,8 +56,7 @@ describe("expert capability boundary", () => {
 const adminActor: Actor = {
   authMode: "keycloak",
   groups: ["Everyone"],
-  persona: "admin",
-  roles: ["admin"],
+  role: "admin",
   subject: "admin-1",
 }
 
@@ -86,7 +85,9 @@ async function keycloakTeamResponse(
       { id: "group-1", name: "Operations", path: "/Operations" },
     ])
   }
-  if (url.pathname.endsWith("/users/operator-1/role-mappings/realm")) {
+  if (
+    url.pathname.endsWith("/users/operator-1/role-mappings/realm/composite")
+  ) {
     return Response.json([{ id: "role-operator", name: "operator" }])
   }
   if (url.pathname.endsWith("/groups")) {

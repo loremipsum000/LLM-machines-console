@@ -1,4 +1,5 @@
 import type { ComponentType, SVGProps } from "react"
+import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import {
   ApplicationsIcon,
   HardwareIcon,
@@ -53,3 +54,18 @@ export const consoleV2Sections: ConsoleV2Section[] = [
     label: "Settings",
   },
 ]
+
+export function consoleV2SectionsForRole(
+  role: RetainedConsoleRole,
+): ConsoleV2Section[] {
+  return consoleV2Sections.filter((section) =>
+    roleCanAccessConsoleSection(role, section.id),
+  )
+}
+
+export function roleCanAccessConsoleSection(
+  role: RetainedConsoleRole,
+  section: ConsoleV2SectionId,
+): boolean {
+  return role === "admin" || section !== "settings"
+}

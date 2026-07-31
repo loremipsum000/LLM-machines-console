@@ -3,7 +3,7 @@ import type {
   AdminAuditResponse,
   InferenceCoreSeverity,
 } from "@llm-machines/contracts/inference-core"
-import type { Actor } from "../auth/persona"
+import type { Actor } from "../auth/authorization"
 import type { AuditEventRecord } from "./audit"
 import { emitAudit, getRecentAuditEvents } from "./audit"
 
@@ -20,8 +20,8 @@ export async function getAdminAuditTimeline(
   filters: AdminAuditFilters = {},
 ): Promise<AdminAuditResponse> {
   if (
-    actor.persona !== "admin" &&
-    !actor.roles.some((role) => role.toLowerCase() === "operator")
+    actor.role !== "admin" &&
+    actor.role !== "operator"
   ) {
     throw new Error("Admin audit requires Admin or Operator access.")
   }

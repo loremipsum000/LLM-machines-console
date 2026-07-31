@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 import { PGlite } from "@electric-sql/pglite"
 import { drizzle } from "drizzle-orm/pglite"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { Actor } from "../../../apps/bff/src/auth/persona"
+import type { Actor } from "../../../apps/bff/src/auth/authorization"
 import { getInferenceCoreDb } from "../../../apps/bff/src/db/inference-core-client"
 import * as schema from "../../../apps/bff/src/db/inference-core-schema"
 import {
@@ -27,8 +27,7 @@ const migration = readFileSync(
 )
 const actor: Actor = {
   authMode: "service-forwarded",
-  persona: "admin",
-  roles: ["admin"],
+  role: "admin",
   subject: "admin-storage-test",
 }
 

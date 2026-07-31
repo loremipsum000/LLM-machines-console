@@ -38,9 +38,19 @@ export async function runInferenceCoreRetention(
         RETURNING 1
       ),
       deleted_idempotency_rows AS (
-        DELETE FROM admin.idempotency_ledger
-        WHERE expires_at <= clock_timestamp()
-          AND state IN ('completed', 'failed')
+        DELETE FROM admin.idempotency_ledger AS ledger
+        WHERE ledger.expires_at <= clock_timestamp()
+          AND ledger.state IN ('completed', 'failed')
+          AND NOT EXISTS (
+            SELECT 1
+            FROM admin.identity_mutation_journal AS journal
+            WHERE journal.idempotency_ledger_id = ledger.id
+              AND journal.state IN (
+                'prepared',
+                'keycloak_applied',
+                'reconciliation_required'
+              )
+          )
         RETURNING 1
       ),
       deleted_usage_buckets AS (

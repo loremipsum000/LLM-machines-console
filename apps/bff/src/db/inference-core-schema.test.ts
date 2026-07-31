@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from "node:fs"
-import { getTableColumns, getTableName } from "drizzle-orm"
+import { type SQL, getTableColumns, getTableName } from "drizzle-orm"
 import { PgDialect, getTableConfig } from "drizzle-orm/pg-core"
 import { describe, expect, it } from "vitest"
 import {
@@ -12,9 +12,13 @@ import {
   auditEvents,
   backupState,
   consoleSettings,
+  emergencyRecoveryFactor,
+  emergencyRecoverySessions,
   humanIdentities,
   humanIdentityRoles,
   idempotencyLedger,
+  identityMutationJournal,
+  identityMutationJournalTargets,
   licenseState,
   recoveryState,
   updateState,
@@ -136,6 +140,45 @@ const tableDefinitions = [
   },
   {
     schema: "admin",
+    table: identityMutationJournal,
+    columns: [
+      "id",
+      "idempotency_ledger_id",
+      "keycloak_subject_id",
+      "operation_code",
+      "request_fingerprint",
+      "target_type",
+      "target_identifier",
+      "state",
+      "resource_id",
+      "reconciliation_reason",
+      "keycloak_applied_at",
+      "reconciliation_required_at",
+      "completed_at",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    schema: "admin",
+    table: identityMutationJournalTargets,
+    columns: [
+      "id",
+      "journal_id",
+      "ordinal",
+      "target_type",
+      "target_identifier",
+      "intent",
+      "state",
+      "resource_id",
+      "started_at",
+      "completed_at",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    schema: "admin",
     table: consoleSettings,
     columns: [
       "id",
@@ -204,6 +247,38 @@ const tableDefinitions = [
   },
   {
     schema: "admin",
+    table: emergencyRecoveryFactor,
+    columns: [
+      "id",
+      "algorithm",
+      "verifier_hash",
+      "salt",
+      "cost",
+      "block_size",
+      "parallelization",
+      "key_length",
+      "max_memory",
+      "commissioned_by",
+      "commissioned_at",
+    ],
+  },
+  {
+    schema: "admin",
+    table: emergencyRecoverySessions,
+    columns: [
+      "id",
+      "keycloak_subject_id",
+      "reason_code",
+      "status",
+      "activated_at",
+      "expires_at",
+      "revoked_at",
+      "revoked_by",
+      "correlation_id",
+    ],
+  },
+  {
+    schema: "admin",
     table: recoveryState,
     columns: [
       "id",
@@ -238,6 +313,13 @@ const expectedIndexes = [
   "application_usage_daily_app_bucket_idx",
   "idempotency_ledger_identity_key_idx",
   "idempotency_ledger_expiry_idx",
+  "identity_mutation_journal_state_updated_idx",
+  "identity_mutation_journal_one_unresolved_idx",
+  "identity_mutation_journal_targets_ordinal_idx",
+  "identity_mutation_journal_targets_identifier_idx",
+  "identity_mutation_journal_targets_state_idx",
+  "emergency_recovery_sessions_one_active_idx",
+  "emergency_recovery_sessions_expiry_idx",
 ]
 
 const migrationDirectory = new URL(
@@ -266,10 +348,14 @@ describe("inference-core persistence boundary", () => {
       "application_rate_limit_windows",
       "application_usage_daily",
       "idempotency_ledger",
+      "identity_mutation_journal",
+      "identity_mutation_journal_targets",
       "console_settings",
       "license_state",
       "update_state",
       "backup_state",
+      "emergency_recovery_factor",
+      "emergency_recovery_sessions",
       "recovery_state",
     ])
 
@@ -290,10 +376,14 @@ describe("inference-core persistence boundary", () => {
       "applicationRateLimitWindows",
       "applicationUsageDaily",
       "idempotencyLedger",
+      "identityMutationJournal",
+      "identityMutationJournalTargets",
       "consoleSettings",
       "licenseState",
       "updateState",
       "backupState",
+      "emergencyRecoveryFactor",
+      "emergencyRecoverySessions",
       "recoveryState",
     ])
   })
@@ -527,9 +617,7 @@ function migrationCheckNames(schema: string, table: string): string[] {
 function drizzleIndexes() {
   return tableDefinitions.flatMap(({ schema, table }) =>
     getTableConfig(table).indexes.map((index) => ({
-      columns: index.config.columns.map(
-        (column) => (column as { name: string }).name,
-      ),
+      columns: index.config.columns.map(drizzleIndexColumn),
       name: index.config.name,
       predicate: index.config.where
         ? normalizeSql(dialect.sqlToQuery(index.config.where).sql)
@@ -544,7 +632,7 @@ function drizzleIndexes() {
 function migrationIndexes() {
   return [
     ...migration.matchAll(
-      /^CREATE (UNIQUE )?INDEX ([a-z_]+)\n {2}ON ([a-z_]+)\.([a-z_]+) \(([^)]+)\)(?:\n {2}WHERE ([^;]+))?;/gm,
+      /^CREATE (UNIQUE )?INDEX ([a-z_]+)\n {2}ON ([a-z_]+)\.([a-z_]+) \(((?:\([^()]*\)|[^)])+)\)(?:\n {2}WHERE ([^;]+))?;/gm,
     ),
   ].map((match) => ({
     columns: match[5]
@@ -556,6 +644,13 @@ function migrationIndexes() {
     table: match[4],
     unique: Boolean(match[1]),
   }))
+}
+
+function drizzleIndexColumn(column: unknown): string {
+  const name = (column as { name?: unknown }).name
+  return typeof name === "string"
+    ? name
+    : normalizeSql(dialect.sqlToQuery(column as SQL).sql)
 }
 
 function migrationDefinition(schema: string, table: string): string {

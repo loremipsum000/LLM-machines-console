@@ -187,7 +187,7 @@ describe("Inference Core Admin routes", () => {
         if (url.pathname.includes("/groups")) {
           return jsonResponse([])
         }
-        if (url.pathname.endsWith("/role-mappings/realm")) {
+        if (url.pathname.endsWith("/role-mappings/realm/composite")) {
           return jsonResponse(
             url.pathname.includes("operator-1")
               ? [{ id: "role-operator", name: "operator" }]
@@ -276,7 +276,7 @@ describe("Inference Core Admin routes", () => {
         if (url.pathname.includes("/groups")) {
           return jsonResponse([])
         }
-        if (url.pathname.endsWith("/role-mappings/realm")) {
+        if (url.pathname.endsWith("/role-mappings/realm/composite")) {
           return jsonResponse([{ id: "role-operator", name: "operator" }])
         }
         return jsonResponse({})

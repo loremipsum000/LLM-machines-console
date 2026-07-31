@@ -16,7 +16,7 @@ describe("retained application gateway import boundary", () => {
     expect(source).toContain('from "../inference/chat-completions"')
     expect(source).toContain('from "../services/application-gateway-policy"')
     expect(source).toContain('from "../services/litellm-chat-transport"')
-    expect(source).not.toContain('from "../auth/persona"')
+    expect(source).not.toContain('from "../auth/authorization"')
     expect(source).not.toContain('from "../openai/types"')
     expect(source).not.toContain("agentic")
     expect(source).not.toContain("slash")

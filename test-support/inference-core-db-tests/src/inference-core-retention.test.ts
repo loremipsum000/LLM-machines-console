@@ -50,16 +50,39 @@ describe("Inference Core one-shot retention", () => {
 
       const ledger = await client.query<{
         expired: boolean
+        operation_code: string
         state: string
       }>(`
-        SELECT expires_at <= clock_timestamp() AS expired, state
+        SELECT
+          expires_at <= clock_timestamp() AS expired,
+          operation_code,
+          state
         FROM admin.idempotency_ledger
-        ORDER BY state
+        ORDER BY operation_code
       `)
       expect(ledger.rows).toEqual([
-        { expired: false, state: "completed" },
-        { expired: true, state: "pending" },
+        {
+          expired: false,
+          operation_code: "POST /active-terminal",
+          state: "completed",
+        },
+        {
+          expired: true,
+          operation_code: "POST /expired-linked-terminal",
+          state: "completed",
+        },
+        {
+          expired: true,
+          operation_code: "POST /expired-pending",
+          state: "pending",
+        },
       ])
+
+      const journal = await client.query<{ state: string }>(`
+        SELECT state
+        FROM admin.identity_mutation_journal
+      `)
+      expect(journal.rows).toEqual([{ state: "prepared" }])
 
       const usage = await client.query<{ age_days: number }>(`
         SELECT (DATE '2026-07-31' - bucket_date)::integer AS age_days
@@ -185,7 +208,7 @@ async function seedRetentionRows(client: PGlite): Promise<void> {
       (
         '00000000-0000-4000-8000-000000000001',
         'retention-test-actor',
-        'POST /expired-terminal',
+        'POST /expired-linked-terminal',
         repeat('b', 64),
         repeat('c', 64),
         'completed',
@@ -220,7 +243,39 @@ async function seedRetentionRows(client: PGlite): Promise<void> {
         201,
         clock_timestamp() + interval '1 day',
         clock_timestamp()
+      ),
+      (
+        '00000000-0000-4000-8000-000000000004',
+        'retention-test-actor',
+        'POST /expired-terminal',
+        repeat('1', 64),
+        repeat('2', 64),
+        'completed',
+        'succeeded',
+        'correlation-expired-terminal',
+        201,
+        clock_timestamp() - interval '1 day',
+        clock_timestamp() - interval '2 days'
       );
+
+    INSERT INTO admin.identity_mutation_journal (
+      id,
+      idempotency_ledger_id,
+      keycloak_subject_id,
+      operation_code,
+      request_fingerprint,
+      target_type,
+      target_identifier
+    )
+    VALUES (
+      '10000000-0000-4000-8000-000000000001',
+      '00000000-0000-4000-8000-000000000001',
+      'retention-test-actor',
+      'POST /expired-linked-terminal',
+      repeat('c', 64),
+      'user',
+      'protected-user'
+    );
   `)
 }
 

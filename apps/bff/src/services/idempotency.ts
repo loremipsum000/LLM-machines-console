@@ -1,8 +1,11 @@
 import { createHash, randomUUID } from "node:crypto"
-import { and, eq, inArray, lte } from "drizzle-orm"
+import { and, eq, inArray, lte, notExists, notInArray } from "drizzle-orm"
 import { canUseBffFixtureData } from "../config/fixture-mode"
 import { getInferenceCoreDb } from "../db/inference-core-client"
-import { idempotencyLedger } from "../db/inference-core-schema"
+import {
+  idempotencyLedger,
+  identityMutationJournal,
+} from "../db/inference-core-schema"
 
 export interface IdempotencyReceipt {
   correlationId: string
@@ -46,6 +49,21 @@ export async function reserveIdempotency(input: {
   const now = new Date()
   const expiresAt = new Date(now.getTime() + ttlMs)
   const id = randomUUID()
+  const candidate = {
+    correlationId: input.correlationId,
+    createdAt: now,
+    expiresAt,
+    id,
+    idempotencyKeyDigest: idempotencyKey,
+    keycloakSubjectId: input.actorId,
+    operationCode: input.route,
+    outcome: null,
+    requestFingerprint: input.requestHash,
+    resourceId: null,
+    state: "pending",
+    statusCode: null,
+    updatedAt: now,
+  } satisfies typeof idempotencyLedger.$inferInsert
   const db = getInferenceCoreDb()
 
   if (!db) {
@@ -65,58 +83,73 @@ export async function reserveIdempotency(input: {
   try {
     const inserted = await db
       .insert(idempotencyLedger)
-      .values({
-        correlationId: input.correlationId,
-        createdAt: now,
-        expiresAt,
-        id,
-        idempotencyKeyDigest: idempotencyKey,
-        keycloakSubjectId: input.actorId,
-        operationCode: input.route,
-        outcome: null,
-        requestFingerprint: input.requestHash,
-        resourceId: null,
-        state: "pending",
-        statusCode: null,
-        updatedAt: now,
-      })
+      .values(candidate)
       .onConflictDoNothing()
       .returning({ id: idempotencyLedger.id })
     if (inserted.length > 0) {
       return { status: "reserved", storeKey: id }
     }
 
-    const reclaimed = await db
-      .update(idempotencyLedger)
-      .set({
-        correlationId: input.correlationId,
-        createdAt: now,
-        expiresAt,
-        id,
-        outcome: null,
-        requestFingerprint: input.requestHash,
-        resourceId: null,
-        state: "pending",
-        statusCode: null,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(idempotencyLedger.keycloakSubjectId, input.actorId),
-          eq(idempotencyLedger.operationCode, input.route),
-          eq(idempotencyLedger.idempotencyKeyDigest, idempotencyKey),
-          lte(idempotencyLedger.expiresAt, now),
-          inArray(idempotencyLedger.state, ["completed", "failed"]),
-        ),
-      )
-      .returning({ id: idempotencyLedger.id })
-    if (reclaimed[0]) {
-      return { status: "reserved", storeKey: reclaimed[0].id }
+    const reclaimedId = await db.transaction(async (transaction) => {
+      const protectedIdentityMutation = transaction
+        .select({ id: identityMutationJournal.id })
+        .from(identityMutationJournal)
+        .where(
+          and(
+            eq(
+              identityMutationJournal.idempotencyLedgerId,
+              idempotencyLedger.id,
+            ),
+            notInArray(identityMutationJournal.state, ["completed", "failed"]),
+          ),
+        )
+      const deleted = await transaction
+        .delete(idempotencyLedger)
+        .where(
+          and(
+            eq(idempotencyLedger.keycloakSubjectId, input.actorId),
+            eq(idempotencyLedger.operationCode, input.route),
+            eq(idempotencyLedger.idempotencyKeyDigest, idempotencyKey),
+            lte(idempotencyLedger.expiresAt, now),
+            inArray(idempotencyLedger.state, ["completed", "failed"]),
+            notExists(protectedIdentityMutation),
+          ),
+        )
+        .returning({ id: idempotencyLedger.id })
+      if (!deleted[0]) {
+        return null
+      }
+
+      const replacement = await transaction
+        .insert(idempotencyLedger)
+        .values(candidate)
+        .returning({ id: idempotencyLedger.id })
+      if (!replacement[0]) {
+        throw new Error("Idempotency reclaim did not create a replacement.")
+      }
+      return replacement[0].id
+    })
+    if (reclaimedId) {
+      return { status: "reserved", storeKey: reclaimedId }
     }
 
     const existing = await db
-      .select()
+      .select({
+        correlationId: idempotencyLedger.correlationId,
+        expiresAt: idempotencyLedger.expiresAt,
+        id: idempotencyLedger.id,
+        identityMutationState: identityMutationJournal.state,
+        outcome: idempotencyLedger.outcome,
+        requestFingerprint: idempotencyLedger.requestFingerprint,
+        resourceId: idempotencyLedger.resourceId,
+        state: idempotencyLedger.state,
+        statusCode: idempotencyLedger.statusCode,
+      })
       .from(idempotencyLedger)
+      .leftJoin(
+        identityMutationJournal,
+        eq(identityMutationJournal.idempotencyLedgerId, idempotencyLedger.id),
+      )
       .where(
         and(
           eq(idempotencyLedger.keycloakSubjectId, input.actorId),
@@ -227,7 +260,17 @@ function reserveInMemory(
 }
 
 function persistedRecordToResult(
-  record: typeof idempotencyLedger.$inferSelect,
+  record: Pick<
+    typeof idempotencyLedger.$inferSelect,
+    | "correlationId"
+    | "expiresAt"
+    | "id"
+    | "outcome"
+    | "requestFingerprint"
+    | "resourceId"
+    | "state"
+    | "statusCode"
+  > & { identityMutationState?: string | null },
   requestFingerprint: string,
 ):
   | { receipt: IdempotencyReceipt; status: "replay" }
@@ -237,6 +280,13 @@ function persistedRecordToResult(
   | { status: "unavailable" } {
   if (record.requestFingerprint !== requestFingerprint) {
     return { status: "conflict" }
+  }
+  if (
+    record.identityMutationState &&
+    record.identityMutationState !== "completed" &&
+    record.identityMutationState !== "failed"
+  ) {
+    return { status: "reconciliation_required" }
   }
   if (record.state === "pending") {
     return record.expiresAt.getTime() <= Date.now()

@@ -212,3 +212,70 @@ other ambient environment values are not passed to the build.
 Baseline generation runs the same environment-file and symlink preflight as
 normal verification. Final candidate validation must run from a clean checkout
 of the exact commit so the tested bytes and published Git tree are identical.
+
+PR-05 replaces the legacy Persona seam with the two retained human roles,
+`admin` and `operator`. Every registered `/api/admin/**` route has an explicit
+capability or reviewed standing-Admin policy. A registered protected route
+without one fails closed. Unregistered paths continue to return the normal 404
+tombstone. Outside tests, every protected request resolves the subject's
+current enabled state and exact effective retained role from Keycloak without
+caching the identity decision. An unavailable identity authority returns 503.
+Web refresh replaces role and group claims from the current access token and
+does not merge stale authority.
+
+PR-05 also introduces appliance emergency recovery. One customer-held factor
+is displayed only when commissioned; only its scrypt verifier is persisted.
+An enabled Operator with a current live Operator role, MFA evidence, and an
+authentication age of at most 300 seconds may activate one fixed 15-minute
+session for an approved reason code. The session grants Console Admin
+capabilities only. It does not grant a standing Admin identity or native
+Grafana, LiteLLM, or Keycloak access. Expiry and revocation are durable across
+restart, and the feature has no Web UI.
+
+Recovery-factor activation uses a process-local, non-queued verifier gate with
+capacity one and a fixed limit of five admitted attempts per Operator subject
+per 60 seconds. PR-12 runtime qualification supports exactly one BFF process.
+Enabling multiple BFF replicas is blocked until the activation gate and attempt
+window are replaced by a PostgreSQL-backed atomic counter and lease.
+
+All Console Team mutations now reserve durable identity intent before the
+live preflight and first Keycloak write. One committed unresolved journal row
+is the cross-process mutex; a two-second FIFO process queue bounds local load,
+and the cooperative mutation deadline is 30 seconds. Confirmed pre-write
+rejection is recorded as failed. An unknown or partially applied outcome
+becomes reconciliation-required and is never automatically re-executed. CSV
+commit and multi-member assignment also persist an allowlisted child manifest
+before any write. Each child starts unattempted, becomes conservatively unknown
+before its possible write, and reaches applied only after its complete
+postcondition; confirmed no-write rejection becomes failed. Parent completion
+atomically requires every applicable child to be applied. Admins and Operators
+are reserved role-bearing groups, and generic group operations cannot rename,
+delete, or change their membership. The last enabled Operator cannot be
+disabled, deleted, or changed out of the Operator role.
+
+`infra/keycloak/inference-core-realm-seed.json` is a credential-free logical
+seed for Keycloak 26.6 or later with fine-grained admin permissions v2. It
+separates customer-human administration from the Console human-identity
+service account, requires MFA and the `console-bff` audience, and excludes
+offline access. The broad Users and non-system Groups operations that Keycloak
+cannot subdivide further are recorded as accepted, service-credential-only
+residuals protected by the Console single-writer and journal boundaries.
+PR-12 must translate the seed into deterministic runtime packaging and pass the
+exact live commissioning matrix before deployment qualification. PR-05 makes
+no runtime qualification claim. Application OAuth lifecycle remains PR-06.
+
+PR-05 appends `contract-revisions/PR-05.json` from the immutable content base
+and lane anchor `9c502a6d4d79435f469288aa66001db7c4be4aa5`. Once the implementation is
+stable, stage every tracked candidate path with no untracked files, print the
+canonical operation policy, copy its six exact arrays into
+`pr-05-identity-decisions.json`, review them, set `reviewStatus` to `reviewed`,
+and generate the revision:
+
+```text
+node scripts/inference-core/pr05-contract-revision.mjs --print-operation-policy
+node scripts/inference-core/pr05-contract-revision.mjs --write
+```
+
+The generator accepts no alternate base or output path. It preserves all prior
+reviewed evidence byte-for-byte and atomically replaces only the PR-05
+revision, forbidden allowlist, and route baseline.

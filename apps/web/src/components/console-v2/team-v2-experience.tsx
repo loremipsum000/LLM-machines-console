@@ -1,5 +1,6 @@
 "use client"
 
+import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import type {
   AdminTeamCsvImportPreviewResponse,
   AdminTeamGroup,
@@ -71,18 +72,25 @@ const initialCsvImportState: TeamCsvImportActionState = {
 }
 
 export function TeamV2Experience({
+  accessRole,
   detail,
   groupDetail,
   overview,
   teamAction,
   view,
 }: {
+  accessRole: RetainedConsoleRole
   detail?: AdminTeamMemberDetail | null
   groupDetail?: AdminTeamGroupDetail | null
   overview: AdminTeamOverviewResponse
   teamAction?: string
   view: TeamView
 }) {
+  const canManageTeam = accessRole === "admin"
+  if (!canManageTeam && isTeamMutationView(view)) {
+    return <TeamMutationAccessDenied />
+  }
+
   if (view === "new-group") {
     return <NewGroupView />
   }
@@ -91,6 +99,7 @@ export function TeamV2Experience({
     return (
       <GroupDetailView
         detail={groupDetail ?? null}
+        canManageTeam={canManageTeam}
         members={overview.members}
         teamAction={teamAction}
       />
@@ -107,21 +116,60 @@ export function TeamV2Experience({
 
   if (view === "manage-users") {
     return (
-      <ManageUsersView members={overview.members} teamAction={teamAction} />
+      <ManageUsersView
+        canManageTeam={canManageTeam}
+        members={overview.members}
+        teamAction={teamAction}
+      />
     )
   }
 
   if (view === "member-detail") {
-    return <MemberDetailView detail={detail ?? null} teamAction={teamAction} />
+    return (
+      <MemberDetailView
+        canManageTeam={canManageTeam}
+        detail={detail ?? null}
+        teamAction={teamAction}
+      />
+    )
   }
 
-  return <TeamOverviewView overview={overview} teamAction={teamAction} />
+  return (
+    <TeamOverviewView
+      canManageTeam={canManageTeam}
+      overview={overview}
+      teamAction={teamAction}
+    />
+  )
+}
+
+function TeamMutationAccessDenied() {
+  return (
+    <div className="relative w-full pb-16 lg:min-h-[1024px]">
+      <PageHeader title="Team" />
+      <section className="mt-10 rounded-lg border border-[#353535] bg-[#232323] p-5 lg:w-[640px]">
+        <h2 className="text-xl font-semibold text-white">
+          Admin access required
+        </h2>
+        <p className="mt-2 text-sm leading-5 text-[#b2b2b2]">
+          Operators can view Team identities, but only Admins can change users,
+          groups, roles, or passwords.
+        </p>
+      </section>
+    </div>
+  )
+}
+
+function isTeamMutationView(view: TeamView): boolean {
+  return view === "import" || view === "new-group" || view === "new-member"
 }
 
 function TeamOverviewView({
+  canManageTeam,
   overview,
   teamAction,
 }: {
+  canManageTeam: boolean
   overview: AdminTeamOverviewResponse
   teamAction?: string
 }) {
@@ -148,19 +196,23 @@ function TeamOverviewView({
               >
                 Manage users
               </Link>
-              <Link
-                className="flex h-5 items-center text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                href="/team/import"
-              >
-                Import CSV
-              </Link>
-              <Link
-                className="flex h-5 items-center gap-0.5 text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                href="/team/members/new"
-              >
-                <Plus aria-hidden className="size-5" />
-                Create user
-              </Link>
+              {canManageTeam ? (
+                <>
+                  <Link
+                    className="flex h-5 items-center text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+                    href="/team/import"
+                  >
+                    Import CSV
+                  </Link>
+                  <Link
+                    className="flex h-5 items-center gap-0.5 text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+                    href="/team/members/new"
+                  >
+                    <Plus aria-hidden className="size-5" />
+                    Create user
+                  </Link>
+                </>
+              ) : null}
             </div>
           </div>
           <ServiceStatusBanner overview={overview} />
@@ -179,13 +231,15 @@ function TeamOverviewView({
               Groups
             </h2>
             <div className="flex items-center gap-3">
-              <Link
-                className="flex h-5 items-center gap-0.5 text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                href="/team/groups/new"
-              >
-                <Plus aria-hidden className="size-5" />
-                Create group
-              </Link>
+              {canManageTeam ? (
+                <Link
+                  className="flex h-5 items-center gap-0.5 text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+                  href="/team/groups/new"
+                >
+                  <Plus aria-hidden className="size-5" />
+                  Create group
+                </Link>
+              ) : null}
             </div>
           </div>
           <GroupsList groups={overview.groups} />
@@ -201,7 +255,7 @@ function TeamOverviewView({
           >
             Identity controls
           </h2>
-          {overview.scim.keycloakHref ? (
+          {canManageTeam && overview.scim.keycloakHref ? (
             <a
               className="inline-flex h-5 w-fit items-center gap-1 text-sm font-medium text-[#b2b2b2] transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
               href={overview.scim.keycloakHref}
@@ -248,10 +302,12 @@ function NewGroupView() {
 }
 
 function GroupDetailView({
+  canManageTeam,
   detail,
   members,
   teamAction,
 }: {
+  canManageTeam: boolean
   detail: AdminTeamGroupDetail | null
   members: AdminTeamMember[]
   teamAction?: string
@@ -299,14 +355,18 @@ function GroupDetailView({
               />
             </dl>
           </div>
-          <GroupActions group={group} />
+          {canManageTeam ? <GroupActions group={group} /> : null}
         </div>
         <section className="rounded-lg border border-[#353535] bg-[#232323] p-5">
           <h2 className="text-2xl font-semibold leading-none text-white">
             Members
           </h2>
-          <GroupMembersTable group={group} members={detail.members} />
-          {!group.virtual ? (
+          <GroupMembersTable
+            canManageTeam={canManageTeam}
+            group={group}
+            members={detail.members}
+          />
+          {canManageTeam && !group.virtual ? (
             <form
               action={bulkAssignAdminTeamGroupMembersAction}
               className="mt-5 grid gap-3 rounded-md border border-[#353535] p-4"
@@ -514,9 +574,11 @@ function CsvImportRowsTable({
 }
 
 function ManageUsersView({
+  canManageTeam,
   members,
   teamAction,
 }: {
+  canManageTeam: boolean
   members: AdminTeamMember[]
   teamAction?: string
 }) {
@@ -530,21 +592,29 @@ function ManageUsersView({
           <h2 className="text-[28px] font-semibold leading-none text-white">
             Manage users
           </h2>
-          <Link
-            className="inline-flex h-10 items-center gap-2 rounded-md px-3 text-[22px] font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-            href="/team/members/new"
-          >
-            <Plus aria-hidden className="size-6" />
-            Create user
-          </Link>
+          {canManageTeam ? (
+            <Link
+              className="inline-flex h-10 items-center gap-2 rounded-md px-3 text-[22px] font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+              href="/team/members/new"
+            >
+              <Plus aria-hidden className="size-6" />
+              Create user
+            </Link>
+          ) : null}
         </div>
-        <ManageUsersTable members={members} />
+        <ManageUsersTable canManageTeam={canManageTeam} members={members} />
       </section>
     </div>
   )
 }
 
-function ManageUsersTable({ members }: { members: AdminTeamMember[] }) {
+function ManageUsersTable({
+  canManageTeam,
+  members,
+}: {
+  canManageTeam: boolean
+  members: AdminTeamMember[]
+}) {
   if (members.length === 0) {
     return (
       <div className="rounded-lg border border-[#353535] bg-[#232323] p-5 text-base leading-6 text-[#b2b2b2]">
@@ -562,7 +632,9 @@ function ManageUsersTable({ members }: { members: AdminTeamMember[] }) {
             <th className="px-4 py-3 font-semibold">Email</th>
             <th className="px-4 py-3 font-semibold">Group</th>
             <th className="px-4 py-3 font-semibold">Status</th>
-            <th className="px-4 py-3 font-semibold">Actions</th>
+            {canManageTeam ? (
+              <th className="px-4 py-3 font-semibold">Actions</th>
+            ) : null}
           </tr>
         </thead>
         <tbody className="divide-y divide-[#353535] text-sm leading-5 text-white">
@@ -588,12 +660,14 @@ function ManageUsersTable({ members }: { members: AdminTeamMember[] }) {
                   {member.status}
                 </span>
               </td>
-              <td className="p-4">
-                <UserLifecycleActions
-                  member={member}
-                  returnTo="/team/members"
-                />
-              </td>
+              {canManageTeam ? (
+                <td className="p-4">
+                  <UserLifecycleActions
+                    member={member}
+                    returnTo="/team/members"
+                  />
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>
@@ -753,9 +827,11 @@ function NewMemberView({ groups }: { groups: AdminTeamGroup[] }) {
 }
 
 function MemberDetailView({
+  canManageTeam,
   detail,
   teamAction,
 }: {
+  canManageTeam: boolean
   detail: AdminTeamMemberDetail | null
   teamAction?: string
 }) {
@@ -807,7 +883,7 @@ function MemberDetailView({
               />
             </dl>
           </div>
-          <MemberActions member={member} />
+          {canManageTeam ? <MemberActions member={member} /> : null}
         </div>
         <section className="rounded-lg border border-[#353535] bg-[#232323] p-5">
           <h2 className="text-2xl font-semibold leading-none text-white">
@@ -1092,9 +1168,11 @@ function GroupActions({ group }: { group: AdminTeamGroup }) {
 }
 
 function GroupMembersTable({
+  canManageTeam,
   group,
   members,
 }: {
+  canManageTeam: boolean
   group: AdminTeamGroup
   members: AdminTeamMember[]
 }) {
@@ -1114,7 +1192,9 @@ function GroupMembersTable({
             <th className="px-4 py-3 font-semibold">Name</th>
             <th className="px-4 py-3 font-semibold">Username</th>
             <th className="px-4 py-3 font-semibold">Role</th>
-            <th className="px-4 py-3 font-semibold">Action</th>
+            {canManageTeam ? (
+              <th className="px-4 py-3 font-semibold">Action</th>
+            ) : null}
           </tr>
         </thead>
         <tbody className="divide-y divide-[#353535] text-sm leading-5 text-white">
@@ -1123,27 +1203,29 @@ function GroupMembersTable({
               <td className="p-4">{member.displayName}</td>
               <td className="p-4 text-[#d9d9d9]">{member.username}</td>
               <td className="p-4 text-[#d9d9d9]">{capitalize(member.role)}</td>
-              <td className="p-4">
-                {!group.virtual ? (
-                  <form action={removeAdminTeamGroupMemberAction}>
-                    <input name="groupId" type="hidden" value={group.id} />
-                    <input name="memberId" type="hidden" value={member.id} />
-                    <input
-                      name="returnTo"
-                      type="hidden"
-                      value={`/team/groups/${group.id}`}
-                    />
-                    <button
-                      className="rounded-md bg-[#2e2e2e] px-3 py-2 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                      type="submit"
-                    >
-                      Remove
-                    </button>
-                  </form>
-                ) : (
-                  <span className="text-[#8f8f8f]">Virtual</span>
-                )}
-              </td>
+              {canManageTeam ? (
+                <td className="p-4">
+                  {!group.virtual ? (
+                    <form action={removeAdminTeamGroupMemberAction}>
+                      <input name="groupId" type="hidden" value={group.id} />
+                      <input name="memberId" type="hidden" value={member.id} />
+                      <input
+                        name="returnTo"
+                        type="hidden"
+                        value={`/team/groups/${group.id}`}
+                      />
+                      <button
+                        className="rounded-md bg-[#2e2e2e] px-3 py-2 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+                        type="submit"
+                      >
+                        Remove
+                      </button>
+                    </form>
+                  ) : (
+                    <span className="text-[#8f8f8f]">Virtual</span>
+                  )}
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>

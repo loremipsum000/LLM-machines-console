@@ -43,7 +43,7 @@ describe("ConsoleV2Shell", () => {
   it("routes to numbered Console sections with Command shortcuts", () => {
     mockNavigatorPlatform("MacIntel")
     render(
-      <ConsoleV2Shell activeSection="applications">
+      <ConsoleV2Shell accessRole="admin" activeSection="applications">
         <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
@@ -67,7 +67,7 @@ describe("ConsoleV2Shell", () => {
   it("shows shortcut hints while the modifier key is held", () => {
     mockNavigatorPlatform("MacIntel")
     render(
-      <ConsoleV2Shell activeSection="applications">
+      <ConsoleV2Shell accessRole="admin" activeSection="applications">
         <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
@@ -87,7 +87,7 @@ describe("ConsoleV2Shell", () => {
   it("keeps shortcut hints visible across shortcut navigation while Command stays held", () => {
     mockNavigatorPlatform("MacIntel")
     const { unmount } = render(
-      <ConsoleV2Shell activeSection="applications">
+      <ConsoleV2Shell accessRole="admin" activeSection="applications">
         <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
@@ -96,7 +96,7 @@ describe("ConsoleV2Shell", () => {
     unmount()
 
     render(
-      <ConsoleV2Shell activeSection="inference">
+      <ConsoleV2Shell accessRole="admin" activeSection="inference">
         <h1>Inference</h1>
       </ConsoleV2Shell>,
     )
@@ -112,7 +112,7 @@ describe("ConsoleV2Shell", () => {
   it("uses Ctrl shortcut hints outside macOS", () => {
     mockNavigatorPlatform("Win32")
     render(
-      <ConsoleV2Shell activeSection="applications">
+      <ConsoleV2Shell accessRole="admin" activeSection="applications">
         <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
@@ -136,7 +136,7 @@ describe("ConsoleV2Shell", () => {
 
   it("renders only the retained Console navigation", () => {
     render(
-      <ConsoleV2Shell activeSection="applications">
+      <ConsoleV2Shell accessRole="admin" activeSection="applications">
         <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
@@ -162,6 +162,36 @@ describe("ConsoleV2Shell", () => {
           .getAttribute("href"),
       ).toBe(href)
     }
+    expect(screen.getByText("Administrator")).toBeTruthy()
+  })
+
+  it("filters Operator navigation and keeps shortcut indexes aligned", () => {
+    mockNavigatorPlatform("MacIntel")
+    render(
+      <ConsoleV2Shell accessRole="operator" activeSection="team">
+        <h1>Team</h1>
+      </ConsoleV2Shell>,
+    )
+
+    const navigation = screen.getByRole("navigation", {
+      name: "Console v2 navigation",
+    })
+    expect(
+      within(navigation).queryByRole("link", { name: "Settings" }),
+    ).toBeNull()
+    expect(within(navigation).getAllByRole("link")).toHaveLength(4)
+    expect(
+      within(navigation)
+        .getByRole("link", { name: "Team" })
+        .getAttribute("aria-keyshortcuts"),
+    ).toBe("Meta+4")
+
+    fireEvent.keyDown(window, { key: "4", metaKey: true })
+    fireEvent.keyDown(window, { key: "5", metaKey: true })
+
+    expect(navigationMocks.router.push).toHaveBeenCalledTimes(1)
+    expect(navigationMocks.router.push).toHaveBeenCalledWith("/team")
+    expect(screen.getByText("Operator")).toBeTruthy()
   })
 })
 

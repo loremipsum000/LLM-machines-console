@@ -21,7 +21,7 @@ import type {
 } from "@llm-machines/contracts/inference-core"
 import { adminConnectedAppUsageSummarySchema } from "@llm-machines/contracts/inference-core"
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm"
-import type { Actor } from "../auth/persona"
+import type { Actor } from "../auth/authorization"
 import { canUseBffFixtureData } from "../config/fixture-mode"
 import { getInferenceCoreDb } from "../db/inference-core-client"
 import {

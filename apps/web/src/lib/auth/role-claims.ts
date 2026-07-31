@@ -1,3 +1,5 @@
+import type { InferenceCoreHumanRole } from "@llm-machines/contracts/inference-core"
+
 export function extractRealmRoles(profile: unknown): string[] {
   if (!profile || typeof profile !== "object") {
     return []
@@ -65,6 +67,35 @@ export function mergeRoles(...roleSets: string[][]): string[] {
     }
   }
   return [...roles]
+}
+
+export type RetainedConsoleRole = InferenceCoreHumanRole
+
+export function retainedConsoleRoles(value: unknown): RetainedConsoleRole[] {
+  const roles = mergeRoles(stringArrayValue(value))
+  if (
+    roles.some((role) => {
+      const lowercase = role.toLowerCase()
+      return (
+        (lowercase === "admin" || lowercase === "operator") &&
+        role !== lowercase
+      )
+    })
+  ) {
+    return []
+  }
+  const retained = roles.filter(
+    (role): role is RetainedConsoleRole =>
+      role === "admin" || role === "operator",
+  )
+  return retained.length === 1 ? retained : []
+}
+
+export function primaryRetainedConsoleRole(
+  value: unknown,
+): RetainedConsoleRole | null {
+  const roles = retainedConsoleRoles(value)
+  return roles[0] ?? null
 }
 
 export function stringArrayValue(value: unknown): string[] {

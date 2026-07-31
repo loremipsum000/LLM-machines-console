@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "c9ae4a683a56c37fd52f05a02761b977ee1fd4e43630e29a3541707018365a2e",
+  "policyDigest": "d52357bca53cd7a82acf04e35bc93d6bdba58514a728891488da77fdcfd1905f",
   "protectedFiles": [
     {
       "path": "apps/bff/tsconfig.json",
@@ -13,19 +13,19 @@
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.test.ts",
-      "sha256": "8fccf0e9cea401461d7f01b2fd574ad1203f3f70ecef0a20810fef22f65be779"
+      "sha256": "345ad7821a00716ce389e42221154e8d9bda350a259bb1a0d7377d9e4225f294"
     },
     {
       "path": "apps/bff/src/routes/app-gateway-boundary.test.ts",
-      "sha256": "04ed51917aa8de9f7ae69aebabdee36206bcd5d124a8025d22a8dfdd61d1f3f3"
+      "sha256": "91e94539a82352e0efce8fcf7b08c49ba3af90214decacf4c0e6e3c903d0fd1d"
     },
     {
       "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
-      "sha256": "715d354304d5a267b5f772a573c546c59df25d2ec9582f7b2ead391b6a339369"
+      "sha256": "0f80640715b2b852d7c73a1a2f0d1bc36eafcd952ca5d08ec1aa288d97d3a29d"
     },
     {
       "path": "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
-      "sha256": "c148e8853b7c6e7cff3fee809af899e878d1acd7f7612c8a04a1338c13a2a866"
+      "sha256": "9325815c30106702790b431579f9e52d018fb7674491247a02a1fc9e041a3fc2"
     },
     {
       "path": "apps/web/tsconfig.json",
@@ -41,11 +41,11 @@
     },
     {
       "path": "apps/web/src/middleware.test.ts",
-      "sha256": "a5071e50a05af74d69455c99a776acad2c55ee8c5b1d907d71f0bc18e3ff7b91"
+      "sha256": "40e62e44aaddcbc2a3a6f5f2602751405e3c5dc23244ee218fb9cedaa257aec5"
     },
     {
       "path": "apps/web/src/middleware.ts",
-      "sha256": "c1e5c03f612872ad05ed6ddc14b52bc61e3c0dd2864b3f58235c3478872fa661"
+      "sha256": "c31e5f8b645586166ad3e1a829adb4384a96e80cd218b26be61574b61117fc84"
     },
     {
       "path": "docs/reduction/inference-core/pr-02-boundary-decisions.json",
@@ -60,6 +60,10 @@
       "sha256": "901d7136b9cc5c98b36ba30cc3b2ac00b001ebc4c22de92920167d38191951b1"
     },
     {
+      "path": "docs/reduction/inference-core/pr-05-identity-decisions.json",
+      "sha256": "bb39a6a8587df43c5aad0fb28b3bd17be5e4782893cb004f3582b84234bca84c"
+    },
+    {
       "path": "packages/contracts/src/inference-core-authorization.test.ts",
       "sha256": "e1145f3b1ad0504876e90b57ee81df2e15cdbdb14bfdf1fa98b83f0c4c49e684"
     },
@@ -69,7 +73,7 @@
     },
     {
       "path": "packages/contracts/src/inference-core.test.ts",
-      "sha256": "191d9a03804e11810fd7d772b41e763c226b7ec60b255548abb84875b5bf9331"
+      "sha256": "8390ef25b4382b68741bdd19e515b29688ef2495f366bfa0c3921fe30c9b7de4"
     },
     {
       "path": "packages/contracts/tsconfig.build.json",
@@ -93,11 +97,11 @@
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",
-      "sha256": "5616b3feae4bc3d4c8725f8829102b62abecb807eff55463d32b96cbd7478d58"
+      "sha256": "cb88a91e68e8861757d0a7fc08c84f2f3ee7af64bb16370bc65baa00f2e91998"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
-      "sha256": "e4a70ba505251cba7c9b730a64a066648b7414c988948d941645dd394794f54f"
+      "sha256": "fea3c09cb46a8825f38e212fcc8ad0db0623c082e797ee0a4994bd97a531b312"
     },
     {
       "path": "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -124,6 +128,14 @@
       "sha256": "47b29dc51398eb3eb4c5f9486cfea6ee6c54fd8d03cb4913b22346af7ec5e47f"
     },
     {
+      "path": "scripts/inference-core/pr05-boundaries.test.mjs",
+      "sha256": "b579eef81fadfd2fb2c9a60f40b136e91bae0ffd17437e6668c3f9596c258090"
+    },
+    {
+      "path": "scripts/inference-core/pr05-contract-revision.mjs",
+      "sha256": "69b815982ceaa4791d8a026bb5281a74a86a2ebcb70137f2a9ae7eeffeb4f565"
+    },
+    {
       "path": "scripts/inference-core/retention-canary.mjs",
       "sha256": "223dbb3a1544fd7c82f370f1bb9c2c647adbad25403ddbb1f2108d3d471fd52a"
     },
@@ -147,32 +159,12 @@
   "entries": [
     {
       "ruleId": "FS105_BUILDER_HUB",
-      "path": "apps/bff/src/auth/persona.ts",
-      "count": 2,
-      "fingerprints": {
-        "74d48e9693ad6f0b103819db73a79b1c1cf699834b16d18cdcd5015bbf76d9ee": 1,
-        "88526b5031716107e13c6e723d382d5857870537fbd112d8e6ceba8cb734fc21": 1
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
       "path": "apps/web/src/middleware.test.ts",
       "count": 1,
       "fingerprints": {
         "9c44a0853099d038b8ee6b801fc303a2f61257830666d6a0e5b51413562a58cd": 1
       },
       "removeBy": "PR-12"
-    },
-    {
-      "ruleId": "FS105_BUILDER_HUB",
-      "path": "packages/contracts/src/common.ts",
-      "count": 2,
-      "fingerprints": {
-        "8285e943a380604b60416664f5f96538217a3fbb6ed280b4072a39e9aedd5d6d": 1,
-        "920a133b6369c0e5c525ce14bbcedd56344f92206ef37eea8d26a468b2255d39": 1
-      },
-      "removeBy": "PR-05"
     },
     {
       "ruleId": "FS108_RETIRED_GOVERNANCE",
@@ -192,60 +184,6 @@
         "f474e385ac164ae0629f8fb17a37aef5e1da717de277b9e73647baaf1cd779e8": 1
       },
       "removeBy": "PR-06"
-    },
-    {
-      "ruleId": "FS108_RETIRED_GOVERNANCE",
-      "path": "apps/bff/src/services/admin-team.ts",
-      "count": 1,
-      "fingerprints": {
-        "9bae8e68ed000f46763c54328ccd5f9e9677f118475cdcc4641142340f08c776": 1
-      },
-      "removeBy": "PR-06"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "apps/bff/src/auth/persona.ts",
-      "count": 5,
-      "fingerprints": {
-        "50dc81137855f8650d4a45cdb49873f65eb4cd772e58735991258027fc1b6dcd": 1,
-        "73efcc55c3026f722de6e097c82b59f3e2ab1ca2f9127c41cd3c00df70242c8b": 1,
-        "7ca47005007896d47cc165dde9707d98becd0ab67ba9e7703f21d5603de476dd": 1,
-        "9a40a5c5d5d6c809d744416d4ae8596b9b19bc764afa14a2b31d438e3cf6fbe3": 1,
-        "c46440f195e7ae69eaff69a16f146f5c3a4e7d1fa27aed24e58a2024c9d57e4a": 1
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "apps/bff/src/routes/admin.ts",
-      "count": 35,
-      "fingerprints": {
-        "35f80f11a39c0b87ac09ace3dd377df50dfc5f47c0bfe4c1c98686bf9a64ca91": 1,
-        "43378b15ac950f46c9fdb0be9536d295bda6dc6604270705642df34a4b13132a": 1,
-        "4364665434c2ceb86dfbd1f6d158740d84b5338656316fb5ef63aed137767701": 1,
-        "5813d084416e7161b00cc8c5686ca0bbfbd07025b679f7445fb3e85df1928f5e": 1,
-        "672652e6d05580f1087f8fe77dca42d4292c00da838ccb5604881e7846ffeffe": 1,
-        "96f4a56ee063d6dd531853185b8e0ede9cf67018725921de78031d1106d48d62": 1,
-        "c3d72d2644d8d0eeb0c38bcfbe8c8bb255345d58724cf2f9fa66b3eda553d9d7": 1,
-        "f346f3d73d7f6c7b19ebee3974c1c10d11e8b7b04c69d9fa3aa2d4dd16d88a4f": 27,
-        "fed2c59e891db390028d2536fc1760b73a5003e62ae2445ec80d360b570db0b3": 1
-      },
-      "removeBy": "PR-05"
-    },
-    {
-      "ruleId": "FS109_LEGACY_PERSONA",
-      "path": "packages/contracts/src/common.ts",
-      "count": 8,
-      "fingerprints": {
-        "67494ab1117387587c8d8be64f38c31a71f2a2fe1c1ac13d9ad84cee9f1251da": 1,
-        "78afcc174aa0324b5dca0ac00ad5f4ded0d4eafc2be6838c7b493057a94644aa": 1,
-        "8f1b022d3fe730de95721141a1bd56c7467f2756e2a06872b7ebd8bbe78a270a": 1,
-        "9ffc5587950d0fa44b8ce1630d0d6bc5f004b291746aecd795837de02128c8b7": 1,
-        "c852a34102d0ceee301929a1d4b32d1d432cce80828105a556e80f4c29c8f226": 1,
-        "cce2664d982718cad7e8577e570aa73913a1510c3d458c795237b183cfea581e": 1,
-        "d08a4cad29a89227517b3477df8f3179d5cc6ecdee1a77e3d3fee78b66a8b172": 2
-      },
-      "removeBy": "PR-05"
     }
   ]
 }

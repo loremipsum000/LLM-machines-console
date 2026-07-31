@@ -10,7 +10,7 @@
     "build": "corepack pnpm -r build",
     "build:inference-core": "node scripts/inference-core/run-core-command.mjs build",
     "check:inference-core": "node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base": "node scripts/inference-core/guardrails.mjs --base-ref fb36b9de38396af79c82056963ae3f4833a12fef",
+    "check:inference-core:base": "node scripts/inference-core/guardrails.mjs --base-ref 9c502a6d4d79435f469288aa66001db7c4be4aa5",
     "dev": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && corepack pnpm --filter @llm-machines/web dev",
     "format": "biome format --write . && corepack pnpm -r format",
     "lint": "biome lint . && corepack pnpm -r lint",

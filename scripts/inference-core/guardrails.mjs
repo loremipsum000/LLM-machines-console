@@ -35,12 +35,18 @@ export const pr04ContractRevisionPath =
   "docs/reduction/inference-core/contract-revisions/PR-04.json"
 export const pr04DecisionPath =
   "docs/reduction/inference-core/pr-04-data-decisions.json"
+export const pr05ContractRevisionPath =
+  "docs/reduction/inference-core/contract-revisions/PR-05.json"
+export const pr05DecisionPath =
+  "docs/reduction/inference-core/pr-05-identity-decisions.json"
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
 export const pr03LaneAnchor = "43c11ace1b80d5241cf2a6a06670fe01f49e3e10"
 export const pr04ContractBase = "fb36b9de38396af79c82056963ae3f4833a12fef"
 export const pr04LaneAnchor = "fb36b9de38396af79c82056963ae3f4833a12fef"
+export const pr05ContractBase = "9c502a6d4d79435f469288aa66001db7c4be4aa5"
+export const pr05LaneAnchor = "9c502a6d4d79435f469288aa66001db7c4be4aa5"
 const pr02RevisionEvidencePaths = [
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -56,11 +62,24 @@ export const pr04RevisionEvidencePaths = [
   "scripts/inference-core/pr04-boundaries.test.mjs",
   "scripts/inference-core/pr04-contract-revision.mjs",
 ]
+export const pr05RevisionEvidencePaths = [
+  pr05DecisionPath,
+  "scripts/inference-core/pr05-boundaries.test.mjs",
+  "scripts/inference-core/pr05-contract-revision.mjs",
+]
 const pr04ImmutablePriorEvidencePaths = [
   pr02ContractRevisionPath,
   ...pr02RevisionEvidencePaths,
   pr03ContractRevisionPath,
   ...pr03RevisionEvidencePaths,
+]
+const pr05ImmutablePriorEvidencePaths = [
+  pr02ContractRevisionPath,
+  ...pr02RevisionEvidencePaths,
+  pr03ContractRevisionPath,
+  ...pr03RevisionEvidencePaths,
+  pr04ContractRevisionPath,
+  ...pr04RevisionEvidencePaths,
 ]
 const generatedContractPaths = new Set([
   allowlistPath,
@@ -68,6 +87,7 @@ const generatedContractPaths = new Set([
   pr02ContractRevisionPath,
   pr03ContractRevisionPath,
   pr04ContractRevisionPath,
+  pr05ContractRevisionPath,
 ])
 export const pr02OperationPolicy = {
   changedSourcePaths: [
@@ -231,9 +251,11 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/contract-revisions/PR-02.json",
   "docs/reduction/inference-core/contract-revisions/PR-03.json",
   "docs/reduction/inference-core/contract-revisions/PR-04.json",
+  "docs/reduction/inference-core/contract-revisions/PR-05.json",
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "docs/reduction/inference-core/pr-03-removal-decisions.json",
   "docs/reduction/inference-core/pr-04-data-decisions.json",
+  "docs/reduction/inference-core/pr-05-identity-decisions.json",
   "docs/reduction/inference-core/retention-characterization.json",
   "docs/reduction/inference-core/route-baseline.json",
   "scripts/inference-core/guardrails.mjs",
@@ -244,6 +266,8 @@ const guardrailExclusions = new Set([
   "scripts/inference-core/pr03-boundaries.test.mjs",
   "scripts/inference-core/pr04-contract-revision.mjs",
   "scripts/inference-core/pr04-boundaries.test.mjs",
+  "scripts/inference-core/pr05-contract-revision.mjs",
+  "scripts/inference-core/pr05-boundaries.test.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -264,6 +288,7 @@ const protectedGuardrailPaths = [
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "docs/reduction/inference-core/pr-03-removal-decisions.json",
   "docs/reduction/inference-core/pr-04-data-decisions.json",
+  "docs/reduction/inference-core/pr-05-identity-decisions.json",
   "packages/contracts/src/inference-core-authorization.test.ts",
   "packages/contracts/src/inference-core-authorization.ts",
   "packages/contracts/src/inference-core.test.ts",
@@ -280,6 +305,8 @@ const protectedGuardrailPaths = [
   "scripts/inference-core/pr03-contract-revision.mjs",
   "scripts/inference-core/pr04-boundaries.test.mjs",
   "scripts/inference-core/pr04-contract-revision.mjs",
+  "scripts/inference-core/pr05-boundaries.test.mjs",
+  "scripts/inference-core/pr05-contract-revision.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -604,6 +631,15 @@ export const pr04StandaloneDbTestBoundary = {
   },
 }
 
+export const pr05StandaloneDbTestBoundary = {
+  ...pr04StandaloneDbTestBoundary,
+  allowedPaths: [
+    ...pr04StandaloneDbTestBoundary.allowedPaths,
+    "test-support/inference-core-db-tests/src/pr05-emergency-recovery.test.ts",
+    "test-support/inference-core-db-tests/src/pr05-identity-mutation-journal.test.ts",
+  ].sort(),
+}
+
 export const pr04ReviewedDispositions = {
   applicationTokenBudgets: {
     persistence: "optional-values-retained",
@@ -624,6 +660,133 @@ export const pr04ReviewedDispositions = {
   },
 }
 
+export const pr05ReviewedDispositions = {
+  humanAuthorization: {
+    roles: ["admin", "operator"],
+    rankedPersonasRetained: false,
+    serverAuthorization: "explicit-capability-default-deny",
+    liveRoleResolution: {
+      source: "keycloak-current-user-and-realm-role-state",
+      cache: "none",
+      keycloakUnavailable: "fail-closed",
+    },
+    webRoleRefresh: "replace-from-current-token-never-merge-stale-authority",
+  },
+  delegatedKeycloakAdministration: {
+    customerAdminClass: "delegated-realm-administrator",
+    allowedBuiltInNavigationRoles: ["query-users", "query-groups"],
+    forbiddenBypassRoles: [
+      "admin",
+      "realm-admin",
+      "manage-realm",
+      "manage-users",
+      "manage-clients",
+    ],
+    nativeOperatorVisibility: "read-only",
+    nativeOperatorMutations: "denied",
+    operatorMutations: "console-only",
+    masterRealmAuthority: false,
+    humanAndApplicationClientAdministrationSeparated: true,
+  },
+  emergencyRecovery: {
+    purpose:
+      "admin-lockout-recovery-while-keycloak-and-control-plane-are-healthy",
+    factorScope: "one-per-appliance",
+    factorHolder: "customer-offline",
+    plaintextPersistence: false,
+    oneTimeDisplay: true,
+    eligibleActors: "enabled-operators-with-current-live-operator-role",
+    reauthenticationMaximumAgeSeconds: 300,
+    mfaProofRequired: true,
+    reasonCodes: ["admin_lockout", "admin_role_repair", "admin_mfa_repair"],
+    activationAbuseControl: {
+      concurrentVerifierCapacity: 1,
+      admittedAttemptsPerSubject: 5,
+      windowSeconds: 60,
+      subjectStateCapacity: 1024,
+      implementation: "process-local",
+      qualification: {
+        workPackage: "PR-12",
+        exactBffProcessCount: 1,
+        multiReplicaRequires: "postgresql-backed-atomic-counter-and-lease",
+      },
+    },
+    sessionTtlSeconds: 900,
+    renewalAllowed: false,
+    maximumConcurrentSessions: 1,
+    restartSafeExpiry: true,
+    explicitRevocation: true,
+    automaticExpiry: true,
+    grantedAuthority: "console-admin-capabilities",
+    persistentKeycloakAdminRole: false,
+    nativeExpertAccess: false,
+  },
+  lastOperatorProtection: {
+    console: "deny-disable-delete-or-role-removal-of-last-enabled-operator",
+    nativeKeycloak:
+      "operators-and-operators-group-not-mutable-by-customer-admin",
+    customKeycloakExtension: false,
+  },
+  auditAndReconciliation: {
+    metadataOnly: true,
+    freeTextRecoveryReason: false,
+    durableIntentBeforeExternalIdentityMutation: true,
+    ambiguousCompletion: "reconciliation-required-no-automatic-reexecution",
+  },
+  identityMutationBounds: {
+    maximumUnresolvedMutations: 1,
+    cooperativeDeadlineMs: 30_000,
+    queueAcquireTimeoutMs: 2_000,
+    teamBatchMaxItems: 100,
+    csvContractMaxBytes: 240 * 1024,
+    csvRouteBodyMaxBytes: 256 * 1024,
+  },
+  packageBoundaries: {
+    pr05: [
+      "human-authorization",
+      "delegated-keycloak-logical-seed",
+      "bootstrap-admin-and-first-operator-commissioning",
+      "emergency-recovery",
+      "identity-mutation-audit-producer",
+    ],
+    pr06: [
+      "application-oauth-client-lifecycle",
+      "application-credential-reconciliation",
+    ],
+    pr09: ["cross-system-audit-ingestion", "signed-audit-export"],
+    pr12: ["deterministic-runtime-packaging-of-keycloak-seed"],
+  },
+}
+
+export const pr05AdminOnlyRoutePolicyKeys = [
+  "GET /api/admin/recovery/status",
+  "POST /api/admin/recovery/factor/commission",
+  "POST /api/admin/settings/organization",
+  "POST /api/admin/settings/telemetry",
+]
+
+export const pr05AllowedRepositoryPathPatterns = [
+  /^\.env\.example$/,
+  /^apps\/bff\/src\/auth\/(?:authorization(?:-security\.test)?|keycloak-jwt(?:-token-type\.test)?|runtime-live-authority(?:\.test)?|persona(?:-security\.test)?)\.ts$/,
+  /^apps\/bff\/src\/db\/inference-core-(?:client|schema)(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/index(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/routes\/app-gateway-boundary\.test\.ts$/,
+  /^apps\/bff\/src\/routes\/inference-core-characterization\.test\.ts$/,
+  /^apps\/bff\/src\/routes\/admin(?:-[a-z0-9-]+)?(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/services\/(?:admin-audit|admin-connected-apps(?:-atomicity)?|admin-inference|admin-overview|admin-settings-core|admin-team(?:-[a-z0-9-]+)?|expert-capabilities|idempotency|identity-mutation-journal|inference-core-keycloak-admin|inference-core-retention|users|[a-z0-9-]*recovery[a-z0-9-]*)(?:\.test)?\.ts$/,
+  /^apps\/web\/src\/components\/console-v2\/(?:applications-v2-experience|console-v2-sections|console-v2-shell|inference-v2-experience|role-aware-presentation|settings-v2-experience|team-v2-experience)(?:\.test)?\.tsx?$/,
+  /^apps\/web\/src\/lib\/admin\/console-v2-routes-core\.tsx$/,
+  /^apps\/web\/src\/lib\/auth\/(?:auth|role-claims|session|token-refresh)(?:\.test)?\.ts$/,
+  /^apps\/web\/src\/middleware(?:\.test)?\.ts$/,
+  /^docs\/reduction\/inference-core\/(?:README\.md|pr-05-identity-decisions\.json)$/,
+  /^infra\/keycloak\/(?:README\.md|[a-z0-9-]+\.json)$/,
+  /^infra\/migrations\/(?:0000_inference_core|\d+_[a-z0-9_]*(?:identity|recovery|operator)[a-z0-9_]*)\.sql$/,
+  /^package\.json$/,
+  /^packages\/contracts\/src\/(?:common|index|inference-core(?:\.test)?|inference-core-recovery(?:\.test)?)\.ts$/,
+  /^scripts\/inference-core\/(?:guardrails(?:\.test)?|pr05-(?:boundaries\.test|contract-revision|keycloak-seed(?:\.test)?))\.mjs$/,
+  /^test-support\/inference-core-db-tests\/src\/(?:admin-connected-apps-storage|idempotency|inference-core-migration|inference-core-retention|pr05-[a-z0-9-]+)\.test\.ts$/,
+]
+
 const routeMethods = [
   "get",
   "post",
@@ -641,6 +804,17 @@ const unsupportedFastifyMethods = new Set([
   "setNotFoundHandler",
 ])
 const controlledFastifyMethods = new Set(["addHook"])
+const reviewedAdminRouteCapabilities = new Set([
+  "applications.create_delete",
+  "applications.credentials.test_rotate_revoke",
+  "applications.disable",
+  "applications.policy.change",
+  "console.operational.view",
+  "team.identity.view",
+  "team.local_password.manage",
+  "team.users_roles.manage",
+  "updates.apply",
+])
 const routeReceiverNamePattern = /^(?:api|app|fastify|router|server)$/i
 const bffProductionSourcePattern =
   /^(?:apps\/bff|packages\/(?:contracts|copy)\/src)\/.*\.(?:cjs|cts|js|jsx|mjs|mts|ts|tsx)$/
@@ -648,9 +822,11 @@ const productionSurfaceTestPathPattern =
   /(?:^|\/)(?:__tests__|test-fixtures)(?:\/|$)|\.(?:e2e\.)?(?:test|spec)\.[^/]+$|\.d\.(?:cts|mts|ts)$/
 const reviewedFastifyRegistrarSpecs = [
   {
-    exportName: "registerPersonaAuth",
-    importSource: "./auth/persona",
-    sourcePath: "apps/bff/src/auth/persona.ts",
+    exportName: "registerAuthorization",
+    importSource: "./auth/authorization",
+    optionsInitializer: null,
+    optionsParameterType: "AuthorizationOptions",
+    sourcePath: "apps/bff/src/auth/authorization.ts",
   },
   {
     exportName: "registerOpenAICompatibleRoutes",
@@ -665,6 +841,8 @@ const reviewedFastifyRegistrarSpecs = [
   {
     exportName: "registerAdminRoutes",
     importSource: "./routes/admin",
+    optionsInitializer: "{emergencyRecoveryService:null}",
+    optionsParameterType: "AdminRouteOptions",
     sourcePath: "apps/bff/src/routes/admin.ts",
   },
   {
@@ -746,6 +924,21 @@ export const targetRouteContract = {
 
 const resolverFingerprintSpecs = [
   {
+    enabledWhenPath: "apps/bff/src/auth/runtime-live-authority.ts",
+    path: "apps/bff/src/auth/authorization.ts",
+    symbol: "<file>",
+  },
+  {
+    enabledWhenPath: "apps/bff/src/auth/runtime-live-authority.ts",
+    path: "apps/bff/src/auth/runtime-live-authority.ts",
+    symbol: "<file>",
+  },
+  {
+    enabledWhenPath: "apps/bff/src/auth/runtime-live-authority.ts",
+    path: "apps/bff/src/index.ts",
+    symbol: "<file>",
+  },
+  {
     path: "apps/web/next.config.ts",
     symbol: "<file>",
   },
@@ -790,15 +983,49 @@ export const reviewedPr04WebAuthenticationEvidence = [
   },
 ]
 
+export const reviewedPr05ResolverFingerprints = [
+  {
+    path: "apps/bff/src/auth/authorization.ts",
+    symbol: "<file>",
+    sha256: "003776367928a1bebcc77b2f181393eb63eb6651dcaa4085135a3da11b557470",
+  },
+  {
+    path: "apps/bff/src/auth/runtime-live-authority.ts",
+    symbol: "<file>",
+    sha256: "0ca02d54900a9f645b0abad5269164fbdf97affd2d3f67126d7c5fa158169799",
+  },
+  {
+    path: "apps/bff/src/index.ts",
+    symbol: "<file>",
+    sha256: "cc35892e495e0701a4b55bd4c77a009762f8d7b92068a1e3741adf100e95a4e4",
+  },
+  {
+    path: "apps/web/next.config.ts",
+    symbol: "<file>",
+    sha256: "58f841f6ee4170e90c110e33727d85dabe6a2c096784b05940319d770a958f8b",
+  },
+  {
+    path: "apps/web/src/lib/auth/auth.ts",
+    symbol: "<file>",
+    sha256: "142c783a7ab90c05a56bad8c2283f8cb4b900cc9eb7b32624697bc71f4ff8b66",
+  },
+]
+
+export const reviewedPr05WebAuthenticationEvidence = [
+  {
+    path: "apps/web/src/middleware.test.ts",
+    sha256: "40e62e44aaddcbc2a3a6f5f2602751405e3c5dc23244ee218fb9cedaa257aec5",
+  },
+  {
+    path: "apps/web/src/middleware.ts",
+    sha256: "c31e5f8b645586166ad3e1a829adb4384a96e80cd218b26be61574b61117fc84",
+  },
+]
+
 const reviewedPr03WebMiddlewareMatcher =
   "/((?!api|_next/static|_next/image|apple-touch-icon.png|favicon.ico|favicon-16x16.png|favicon-32x32.png|favicon-48x48.png|icon.svg).*)"
 
-const legacyEscapeHatchSpecs = [
-  {
-    path: "apps/bff/src/auth/persona.ts",
-    removeBy: "PR-05",
-  },
-]
+const legacyEscapeHatchSpecs = []
 
 export function listCandidatePaths(root = repositoryRoot) {
   const cachedEntries = listCachedEntries(root)
@@ -1223,9 +1450,9 @@ export function analyzeRootPgliteBoundary(source) {
 export function verifyStandaloneDbTestBoundary(
   root = repositoryRoot,
   paths = listCandidatePaths(root),
+  boundary = pr04StandaloneDbTestBoundary,
 ) {
   const errors = []
-  const boundary = pr04StandaloneDbTestBoundary
   const actualPaths = paths
     .filter(
       (path) => path === boundary.path || path.startsWith(`${boundary.path}/`),
@@ -1685,20 +1912,27 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(activeReviewedRevision === "PR-04"
-      ? verifyPr04TargetState({
+    ...(activeReviewedRevision === "PR-05"
+      ? verifyPr05TargetState({
           root,
           currentAllowlist: expectedAllowlist,
           currentRoutes: expectedRoutes,
           paths,
         })
-      : activeReviewedRevision === "PR-03"
-        ? verifyPr03TargetState({
+      : activeReviewedRevision === "PR-04"
+        ? verifyPr04TargetState({
             root,
             currentAllowlist: expectedAllowlist,
             currentRoutes: expectedRoutes,
+            paths,
           })
-        : []),
+        : activeReviewedRevision === "PR-03"
+          ? verifyPr03TargetState({
+              root,
+              currentAllowlist: expectedAllowlist,
+              currentRoutes: expectedRoutes,
+            })
+          : []),
   ]
 
   let baseStatus = "not-requested"
@@ -1734,7 +1968,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       })
       errors.push(...reviewedRevision.errors)
       if (reviewedRevision.present) {
-        if (!new Set(["PR-03", "PR-04"]).has(reviewedRevision.id)) {
+        if (!new Set(["PR-03", "PR-04", "PR-05"]).has(reviewedRevision.id)) {
           errors.push(
             ...verifyReviewedFindingReduction(
               baseAllowlist.entries,
@@ -1797,6 +2031,8 @@ export function verifyReviewedContractRevision({
   const currentPr03Revision = currentRevisions.find(({ id }) => id === "PR-03")
   const basePr04Revision = baseRevisions.find(({ id }) => id === "PR-04")
   const currentPr04Revision = currentRevisions.find(({ id }) => id === "PR-04")
+  const basePr05Revision = baseRevisions.find(({ id }) => id === "PR-05")
+  const currentPr05Revision = currentRevisions.find(({ id }) => id === "PR-05")
   const errors = []
   if (
     (!currentPr02Revision || !basePr02Revision) &&
@@ -1822,7 +2058,30 @@ export function verifyReviewedContractRevision({
         ...verifyRetainedPr04RevisionEvidence(root, currentPr04Revision),
       )
     }
+    if (basePr05Revision && currentPr05Revision) {
+      errors.push(
+        ...verifyRetainedPr05RevisionEvidence(root, currentPr05Revision),
+      )
+    }
     return { present: false, id: null, errors: errors.sort() }
+  }
+
+  if (
+    isExactRevisionAppend(
+      baseRevisions,
+      currentRevisions,
+      "PR-05",
+      pr05ContractRevisionPath,
+    )
+  ) {
+    return verifyIntroducedPr05Revision({
+      root,
+      baseCommit,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+    })
   }
 
   if (
@@ -2190,6 +2449,129 @@ function verifyPr04LaneLineage(root) {
   }
 }
 
+function verifyIntroducedPr05Revision({
+  root,
+  baseCommit,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+}) {
+  const errors = []
+  if (baseCommit !== pr05ContractBase) {
+    errors.push(
+      `PR-05 contract revision base changed expected=${pr05ContractBase} actual=${baseCommit}`,
+    )
+  }
+  errors.push(...verifyPr05LaneLineage(root))
+  errors.push(...verifyPr05BaseEvidence(root))
+  const baseRevisionHistory = baseRoutes.reviewedRevisions ?? []
+  if (
+    baseRevisionHistory.length !== 3 ||
+    baseRevisionHistory[0]?.id !== "PR-02" ||
+    baseRevisionHistory[1]?.id !== "PR-03" ||
+    baseRevisionHistory[2]?.id !== "PR-04"
+  ) {
+    errors.push(
+      "PR-05 requires the exact retained PR-02, PR-03, and PR-04 revision history",
+    )
+  } else {
+    errors.push(
+      ...verifyRetainedPr02RevisionEvidence(root, baseRevisionHistory[0]),
+      ...verifyRetainedPr03RevisionEvidence(root, baseRevisionHistory[1]),
+      ...verifyRetainedPr04RevisionEvidence(root, baseRevisionHistory[2]),
+    )
+  }
+  if (!isRegularFile(resolve(root, pr05ContractRevisionPath))) {
+    return {
+      present: true,
+      id: "PR-05",
+      errors: [
+        ...errors,
+        `missing reviewed contract revision ${pr05ContractRevisionPath}`,
+      ].sort(),
+    }
+  }
+
+  const decision = readPr05DecisionDocument(root)
+  errors.push(
+    ...verifyPr05DecisionDocument(decision, {
+      requireReady: true,
+    }),
+  )
+  const evidenceFiles = buildRevisionEvidenceFingerprints(
+    root,
+    pr05RevisionEvidencePaths,
+    "PR-05",
+  )
+  const expected = buildContractRevisionDocument({
+    revisionId: "PR-05",
+    scope: "identity-authorization-emergency-recovery",
+    baseCommit,
+    baseTree: resolveTree(root, baseCommit),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes: {
+      ...currentRoutes,
+      reviewedRevisions: structuredClone(baseRoutes.reviewedRevisions ?? []),
+    },
+    evidenceFiles,
+  })
+  const actual = readJson(resolve(root, pr05ContractRevisionPath))
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    errors.push("PR-05 reviewed contract revision does not match exact changes")
+  }
+
+  const expectedRevisionHistory = [
+    ...(baseRoutes.reviewedRevisions ?? []),
+    {
+      id: "PR-05",
+      path: pr05ContractRevisionPath,
+      sha256: sha256(readFileSync(resolve(root, pr05ContractRevisionPath))),
+    },
+  ]
+  if (
+    JSON.stringify(currentRoutes.reviewedRevisions ?? []) !==
+    JSON.stringify(expectedRevisionHistory)
+  ) {
+    errors.push("reviewed contract revision history changed")
+  }
+  errors.push(...verifyRequiredRoutes(currentRoutes))
+  errors.push(
+    ...verifyPr05CandidateContract({
+      root,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+      operationPolicy: decision.operationPolicy,
+    }),
+  )
+
+  return { present: true, id: "PR-05", errors: errors.sort() }
+}
+
+function verifyPr05LaneLineage(root) {
+  const anchor = resolveCommit(root, pr05LaneAnchor)
+  if (anchor !== pr05LaneAnchor) {
+    return [`PR-05 lane anchor is unavailable ${pr05LaneAnchor}`]
+  }
+  const head = currentHead(root)
+  if (head === pr05LaneAnchor) {
+    return []
+  }
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", pr05LaneAnchor, head], {
+      cwd: root,
+      stdio: "ignore",
+    })
+    return []
+  } catch {
+    return [`PR-05 lane anchor is not an ancestor ${pr05LaneAnchor}`]
+  }
+}
+
 function verifyRetainedPr02RevisionEvidence(root, revision) {
   const errors = []
   if (
@@ -2307,6 +2689,83 @@ function verifyRetainedPr04RevisionEvidence(root, revision) {
     errors.push("retained PR-04 revision evidence changed")
   }
   errors.push(...verifyPr04BaseEvidence(root))
+  return errors.sort()
+}
+
+function verifyRetainedPr05RevisionEvidence(root, revision) {
+  const errors = []
+  if (
+    revision.id !== "PR-05" ||
+    revision.path !== pr05ContractRevisionPath ||
+    !/^[0-9a-f]{64}$/.test(revision.sha256 ?? "")
+  ) {
+    return ["invalid retained PR-05 revision identity"]
+  }
+  const absolutePath = resolve(root, pr05ContractRevisionPath)
+  if (!isRegularFile(absolutePath)) {
+    return [`missing reviewed contract revision ${pr05ContractRevisionPath}`]
+  }
+  if (sha256(readFileSync(absolutePath)) !== revision.sha256) {
+    errors.push("retained PR-05 revision fingerprint changed")
+  }
+  const document = readJson(absolutePath)
+  if (
+    document.id !== "PR-05" ||
+    document.scope !== "identity-authorization-emergency-recovery" ||
+    document.baseCommit !== pr05ContractBase ||
+    document.baseTree !== resolveTree(root, pr05ContractBase)
+  ) {
+    errors.push("retained PR-05 revision base identity changed")
+  }
+  if (
+    JSON.stringify(document.evidenceFiles) !==
+    JSON.stringify(
+      buildRevisionEvidenceFingerprints(
+        root,
+        pr05RevisionEvidencePaths,
+        "PR-05",
+      ),
+    )
+  ) {
+    errors.push("retained PR-05 revision evidence changed")
+  }
+  errors.push(...verifyPr05BaseEvidence(root))
+  return errors.sort()
+}
+
+export function verifyPr05BaseEvidence(root = repositoryRoot) {
+  const errors = []
+  for (const path of pr05ImmutablePriorEvidencePaths) {
+    let expected
+    try {
+      expected = execFileSync(
+        "git",
+        [
+          "show",
+          "--no-ext-diff",
+          "--no-textconv",
+          "--end-of-options",
+          `${pr05ContractBase}:${path}`,
+        ],
+        {
+          cwd: root,
+          encoding: null,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      )
+    } catch {
+      errors.push(`PR-05 immutable base evidence is unavailable ${path}`)
+      continue
+    }
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-05 retained prior evidence is missing ${path}`)
+      continue
+    }
+    if (!readFileSync(absolutePath).equals(expected)) {
+      errors.push(`PR-05 retained prior evidence changed ${path}`)
+    }
+  }
   return errors.sort()
 }
 
@@ -2798,6 +3257,194 @@ export function verifyPr04DecisionDocument(
   return errors.sort()
 }
 
+export const pr05RecoveryRouteContract = [
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/recovery/factor/commission",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/recovery/sessions",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/recovery/sessions/:id/revoke",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "GET",
+    path: "/api/admin/recovery/status",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+]
+
+export const pr05TargetContract = {
+  findingEntriesDueByPr05: 0,
+  fs109LegacyPersonaFindingEntries: 0,
+  fs105BuilderHubTombstones: [
+    {
+      path: "apps/web/src/middleware.test.ts",
+      removeBy: "PR-12",
+    },
+  ],
+  legacyRoutes: 0,
+  routes: 83,
+  routeClassifications: {
+    "current-console-seam": 74,
+    "operational-auth": 4,
+    "private-operational": 3,
+    "required-now": 2,
+  },
+  recoveryRoutes: pr05RecoveryRouteContract,
+  adminOnlyRoutePolicyKeys: pr05AdminOnlyRoutePolicyKeys,
+  fastifyRegistrars: [
+    {
+      exportName: "registerAdminRoutes",
+      importSource: "./routes/admin",
+      sourcePath: "apps/bff/src/routes/admin.ts",
+    },
+    {
+      exportName: "registerAppGatewayRoutes",
+      importSource: "./routes/app-gateway",
+      sourcePath: "apps/bff/src/routes/app-gateway.ts",
+    },
+    {
+      exportName: "registerAuthorization",
+      importSource: "./auth/authorization",
+      sourcePath: "apps/bff/src/auth/authorization.ts",
+    },
+  ],
+  webInferenceConsumers: 0,
+  escapeHatchPaths: [],
+}
+
+export function readPr05DecisionDocument(root = repositoryRoot) {
+  return readJson(resolve(root, pr05DecisionPath))
+}
+
+export function verifyPr05DecisionDocument(
+  decision,
+  { requireReady = false } = {},
+) {
+  const errors = []
+  const expectedKeys = [
+    "contractBaseCommit",
+    "laneAnchorCommit",
+    "operationPolicy",
+    "resolverFingerprints",
+    "reviewStatus",
+    "reviewedDispositions",
+    "schemaVersion",
+    "scope",
+    "target",
+    "webAuthenticationEvidence",
+    "workPackage",
+  ]
+  if (
+    !decision ||
+    JSON.stringify(Object.keys(decision).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-05" ||
+    decision.scope !== "identity-authorization-emergency-recovery" ||
+    decision.contractBaseCommit !== pr05ContractBase ||
+    decision.laneAnchorCommit !== pr05LaneAnchor
+  ) {
+    errors.push("invalid PR-05 decision identity")
+  }
+  if (
+    JSON.stringify(decision?.reviewedDispositions) !==
+    JSON.stringify(pr05ReviewedDispositions)
+  ) {
+    errors.push("invalid PR-05 reviewed dispositions")
+  }
+  if (
+    JSON.stringify(decision?.resolverFingerprints) !==
+    JSON.stringify(reviewedPr05ResolverFingerprints)
+  ) {
+    errors.push("invalid PR-05 resolver fingerprints")
+  }
+  if (
+    JSON.stringify(decision?.webAuthenticationEvidence) !==
+    JSON.stringify(reviewedPr05WebAuthenticationEvidence)
+  ) {
+    errors.push("invalid PR-05 Web authentication evidence")
+  }
+  if (JSON.stringify(decision?.target) !== JSON.stringify(pr05TargetContract)) {
+    errors.push("invalid PR-05 target")
+  }
+  if (
+    !["pending-final-staged-delta", "reviewed"].includes(decision?.reviewStatus)
+  ) {
+    errors.push("invalid PR-05 review status")
+  } else if (requireReady && decision.reviewStatus !== "reviewed") {
+    errors.push("PR-05 operation policy is not reviewed")
+  }
+  errors.push(...verifyPr05OperationBoundary(decision?.operationPolicy ?? {}))
+  return errors.sort()
+}
+
+export function verifyPr05OperationBoundary(operationPolicy) {
+  const sourceKeys = [
+    "addedSourcePaths",
+    "changedSourcePaths",
+    "deletedSourcePaths",
+  ]
+  const repositoryKeys = [
+    "addedRepositoryPaths",
+    "changedRepositoryPaths",
+    "deletedRepositoryPaths",
+  ]
+  const expectedKeys = [...sourceKeys, ...repositoryKeys].sort()
+  const errors = [
+    ...verifyExactPathPolicy(operationPolicy, sourceKeys, "PR-05"),
+    ...verifyExactPathPolicy(operationPolicy, repositoryKeys, "PR-05"),
+  ]
+  if (
+    JSON.stringify(Object.keys(operationPolicy).sort()) !==
+    JSON.stringify(expectedKeys)
+  ) {
+    errors.push("invalid PR-05 operation policy keys")
+  }
+
+  const repositoryPathByOperation = new Map()
+  for (const key of repositoryKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      repositoryPathByOperation.set(path, key.replace("Repository", "Source"))
+      if (
+        !pr05AllowedRepositoryPathPatterns.some((pattern) => pattern.test(path))
+      ) {
+        errors.push(`PR-05 repository path is outside package boundary ${path}`)
+      }
+      if (pr05ImmutablePriorEvidencePaths.includes(path)) {
+        errors.push(
+          `PR-05 immutable prior evidence appears in operation policy ${path}`,
+        )
+      }
+    }
+  }
+  for (const key of sourceKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      if (repositoryPathByOperation.get(path) !== key) {
+        errors.push(
+          `PR-05 source operation lacks matching repository operation ${key} ${path}`,
+        )
+      }
+    }
+  }
+  return [...new Set(errors)].sort()
+}
+
 export function buildExactClosureOperationPolicy(baseRoutes, currentRoutes) {
   return {
     ...buildClosurePathOperations(
@@ -3144,7 +3791,9 @@ export function verifyPr03TargetState({
   currentAllowlist,
   currentRoutes,
 }) {
-  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-04") {
+  if (
+    ["PR-04", "PR-05"].includes(currentRoutes.reviewedRevisions?.at(-1)?.id)
+  ) {
     return []
   }
   const errors = []
@@ -3224,6 +3873,9 @@ export function verifyPr04TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-05") {
+    return []
+  }
   const errors = []
   const classificationCounts = new Map()
   for (const route of currentRoutes.routes ?? []) {
@@ -3297,6 +3949,250 @@ export function verifyPr04TargetState({
   return errors.sort()
 }
 
+export function verifyPr05FindingTransition(baseEntries, currentEntries) {
+  const errors = []
+  const baseByKey = new Map(
+    baseEntries.map((entry) => [findingKey(entry), entry]),
+  )
+  for (const entry of currentEntries) {
+    const key = findingKey(entry)
+    const baseEntry = baseByKey.get(key)
+    if (!baseEntry) {
+      errors.push(`new PR-05 reviewed legacy finding ${key}`)
+      continue
+    }
+    if (entry.count > baseEntry.count) {
+      errors.push(`PR-05 reviewed legacy finding count grew ${key}`)
+    }
+    if (entry.removeBy !== baseEntry.removeBy) {
+      errors.push(`PR-05 legacy disposition changed outside policy ${key}`)
+    }
+  }
+  const dueEntries = currentEntries.filter(
+    (entry) => entry.removeBy === "PR-05",
+  )
+  if (dueEntries.length > 0) {
+    errors.push(
+      `PR-05 findings remain ${dueEntries.map(findingKey).sort().join(",")}`,
+    )
+  }
+  const builderHubEntries = currentEntries.filter(
+    (entry) => entry.ruleId === "FS105_BUILDER_HUB",
+  )
+  if (
+    builderHubEntries.length !== 1 ||
+    builderHubEntries[0]?.path !== "apps/web/src/middleware.test.ts" ||
+    builderHubEntries[0]?.removeBy !== "PR-12"
+  ) {
+    errors.push("PR-05 Builder/Hub tombstone boundary changed")
+  }
+  if (currentEntries.some((entry) => entry.ruleId === "FS109_LEGACY_PERSONA")) {
+    errors.push("PR-05 legacy Persona findings remain")
+  }
+  return errors.sort()
+}
+
+export function verifyPr05CandidateContract({
+  root = repositoryRoot,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+  operationPolicy,
+}) {
+  const errors = [
+    ...verifyPr05FindingTransition(
+      baseAllowlist.entries ?? [],
+      currentAllowlist.entries ?? [],
+    ),
+    ...verifyPr05RetainedRouteContract(baseRoutes, currentRoutes),
+    ...verifyPr05OperationBoundary(operationPolicy ?? {}),
+    ...verifyExactClosureChanges(
+      baseRoutes.sourceClosure ?? [],
+      currentRoutes.sourceClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedSourcePaths",
+        changedKey: "changedSourcePaths",
+        deletedKey: "deletedSourcePaths",
+        label: "source closure",
+      },
+      "PR-05",
+    ),
+    ...verifyExactClosureChanges(
+      baseRoutes.repositoryClosure ?? [],
+      currentRoutes.repositoryClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedRepositoryPaths",
+        changedKey: "changedRepositoryPaths",
+        deletedKey: "deletedRepositoryPaths",
+        label: "repository closure",
+      },
+      "PR-05",
+    ),
+    ...verifyPr05TargetState({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths: (currentRoutes.repositoryClosure ?? []).map(({ path }) => path),
+    }),
+  ]
+  return errors.sort()
+}
+
+function verifyPr05RetainedRouteContract(base, current) {
+  const errors = []
+  for (const key of ["target", "webInferenceConsumers"]) {
+    if (
+      JSON.stringify(current[key] ?? null) !== JSON.stringify(base[key] ?? null)
+    ) {
+      errors.push(`PR-05 retained route contract changed ${key}`)
+    }
+  }
+
+  const availableCurrentRoutes = new Map()
+  for (const route of current.routes ?? []) {
+    const serialized = JSON.stringify(route)
+    availableCurrentRoutes.set(
+      serialized,
+      (availableCurrentRoutes.get(serialized) ?? 0) + 1,
+    )
+  }
+  for (const route of base.routes ?? []) {
+    const serialized = JSON.stringify(route)
+    const count = availableCurrentRoutes.get(serialized) ?? 0
+    if (count === 0) {
+      errors.push(
+        `PR-05 retained route disappeared ${route.method} ${route.path} ${route.source}`,
+      )
+      continue
+    }
+    availableCurrentRoutes.set(serialized, count - 1)
+  }
+  const addedRoutes = []
+  for (const [serialized, count] of availableCurrentRoutes) {
+    for (let index = 0; index < count; index += 1) {
+      addedRoutes.push(JSON.parse(serialized))
+    }
+  }
+  addedRoutes.sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  )
+  const expectedAddedRoutes = structuredClone(pr05RecoveryRouteContract).sort(
+    (left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  )
+  if (JSON.stringify(addedRoutes) !== JSON.stringify(expectedAddedRoutes)) {
+    errors.push("PR-05 recovery route inventory differs from reviewed target")
+  }
+  return errors.sort()
+}
+
+export function verifyPr05TargetState({
+  root = repositoryRoot,
+  currentAllowlist,
+  currentRoutes,
+  paths = listCandidatePaths(root),
+}) {
+  const errors = []
+  if (
+    (currentRoutes.routes ?? []).some(
+      (route) => route.classification === "legacy-retired",
+    )
+  ) {
+    errors.push("PR-05 legacy routes remain")
+  }
+  if ((currentRoutes.routes ?? []).length !== pr05TargetContract.routes) {
+    errors.push(
+      `PR-05 total route count changed expected=${pr05TargetContract.routes} actual=${(currentRoutes.routes ?? []).length}`,
+    )
+  }
+  const classificationCounts = new Map()
+  for (const route of currentRoutes.routes ?? []) {
+    classificationCounts.set(
+      route.classification,
+      (classificationCounts.get(route.classification) ?? 0) + 1,
+    )
+  }
+  for (const [classification, expected] of Object.entries(
+    pr05TargetContract.routeClassifications,
+  )) {
+    const actual = classificationCounts.get(classification) ?? 0
+    if (actual !== expected) {
+      errors.push(
+        `PR-05 route count changed ${classification} expected=${expected} actual=${actual}`,
+      )
+    }
+  }
+  if (
+    JSON.stringify(currentRoutes.fastifyRegistrars ?? []) !==
+    JSON.stringify(pr05TargetContract.fastifyRegistrars)
+  ) {
+    errors.push("PR-05 retained Fastify registrars changed")
+  }
+  if ((currentRoutes.webInferenceConsumers ?? []).length !== 0) {
+    errors.push("PR-05 Web inference consumer count is not zero")
+  }
+  if (
+    JSON.stringify(currentRoutes.fingerprints ?? []) !==
+    JSON.stringify(reviewedPr05ResolverFingerprints)
+  ) {
+    errors.push("PR-05 resolver fingerprints changed")
+  }
+  if ((currentRoutes.escapeHatches ?? []).length !== 0) {
+    errors.push("PR-05 mutable legacy escape hatch remains")
+  }
+  const recoveryRoutes = (currentRoutes.routes ?? [])
+    .filter((route) => route.path.startsWith("/api/admin/recovery"))
+    .sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    )
+  const expectedRecoveryRoutes = structuredClone(
+    pr05RecoveryRouteContract,
+  ).sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  )
+  if (
+    JSON.stringify(recoveryRoutes) !== JSON.stringify(expectedRecoveryRoutes)
+  ) {
+    errors.push("PR-05 recovery route target changed")
+  }
+  const dueEntries = (currentAllowlist.entries ?? []).filter(
+    (entry) => entry.removeBy === "PR-05",
+  )
+  if (dueEntries.length > 0) {
+    errors.push("PR-05 due findings remain")
+  }
+  const builderHubEntries = (currentAllowlist.entries ?? []).filter(
+    (entry) => entry.ruleId === "FS105_BUILDER_HUB",
+  )
+  if (
+    builderHubEntries.length !== 1 ||
+    builderHubEntries[0]?.path !== "apps/web/src/middleware.test.ts" ||
+    builderHubEntries[0]?.removeBy !== "PR-12"
+  ) {
+    errors.push("PR-05 Builder/Hub tombstone boundary changed")
+  }
+  if (
+    (currentAllowlist.entries ?? []).some(
+      (entry) => entry.ruleId === "FS109_LEGACY_PERSONA",
+    )
+  ) {
+    errors.push("PR-05 legacy Persona findings remain")
+  }
+  errors.push(...verifyRetiredDataDependencyBoundary(root, paths))
+  errors.push(
+    ...verifyStandaloneDbTestBoundary(
+      root,
+      paths,
+      pr05StandaloneDbTestBoundary,
+    ),
+  )
+  errors.push(...verifyReviewedPr05WebAuthenticationEvidence(root))
+  errors.push(...verifyWebAuthenticationBoundary(root))
+  return [...new Set(errors)].sort()
+}
+
 export function verifyReviewedWebAuthenticationEvidence(root = repositoryRoot) {
   const errors = []
   for (const {
@@ -3327,14 +4223,57 @@ export function verifyReviewedPr04WebAuthenticationEvidence(
     sha256: expectedSha256,
   } of reviewedPr04WebAuthenticationEvidence) {
     const absolutePath = resolve(root, path)
-    if (!isRegularFile(absolutePath)) {
+    let evidence
+    if (root === repositoryRoot) {
+      try {
+        evidence = execFileSync(
+          "git",
+          [
+            "show",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--end-of-options",
+            `${pr05ContractBase}:${path}`,
+          ],
+          { cwd: root, encoding: null, stdio: ["ignore", "pipe", "pipe"] },
+        )
+      } catch {
+        errors.push(`missing PR-04 Web authentication evidence ${path}`)
+        continue
+      }
+    } else if (!isRegularFile(absolutePath)) {
       errors.push(`missing PR-04 Web authentication evidence ${path}`)
+      continue
+    } else {
+      evidence = readFileSync(absolutePath)
+    }
+    const actualSha256 = sha256(evidence)
+    if (actualSha256 !== expectedSha256) {
+      errors.push(
+        `PR-04 Web authentication evidence changed ${path} expected=${expectedSha256} actual=${actualSha256}`,
+      )
+    }
+  }
+  return errors.sort()
+}
+
+export function verifyReviewedPr05WebAuthenticationEvidence(
+  root = repositoryRoot,
+) {
+  const errors = []
+  for (const {
+    path,
+    sha256: expectedSha256,
+  } of reviewedPr05WebAuthenticationEvidence) {
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`missing PR-05 Web authentication evidence ${path}`)
       continue
     }
     const actualSha256 = sha256(readFileSync(absolutePath))
     if (actualSha256 !== expectedSha256) {
       errors.push(
-        `PR-04 Web authentication evidence changed ${path} expected=${expectedSha256} actual=${actualSha256}`,
+        `PR-05 Web authentication evidence changed ${path} expected=${expectedSha256} actual=${actualSha256}`,
       )
     }
   }
@@ -3506,6 +4445,7 @@ function buildReviewedRevisionFingerprints(root) {
     { id: "PR-02", path: pr02ContractRevisionPath },
     { id: "PR-03", path: pr03ContractRevisionPath },
     { id: "PR-04", path: pr04ContractRevisionPath },
+    { id: "PR-05", path: pr05ContractRevisionPath },
   ]) {
     if (!isRegularFile(resolve(root, path))) {
       missingRevision ??= id
@@ -3603,8 +4543,7 @@ export function verifyCorePackageClosure(
     "build:inference-core":
       "node scripts/inference-core/run-core-command.mjs build",
     "check:inference-core": "node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base":
-      "node scripts/inference-core/guardrails.mjs --base-ref fb36b9de38396af79c82056963ae3f4833a12fef",
+    "check:inference-core:base": `node scripts/inference-core/guardrails.mjs --base-ref ${pr05ContractBase}`,
     "test:inference-core-authorization":
       "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match exec vitest run src/inference-core-authorization.test.ts",
     "test:inference-core-characterization":
@@ -4158,15 +5097,32 @@ function assertReviewedBuildServerDefinition(path, sourceFile) {
         (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
       ),
   )
+  const definition = definitions[0]
+  const optionsParameter = definition?.parameters[0]
+  const hasReviewedOptionsParameter =
+    definition?.parameters.length === 0 ||
+    Boolean(
+      definition?.parameters.length === 1 &&
+        optionsParameter &&
+        ts.isIdentifier(optionsParameter.name) &&
+        optionsParameter.name.text === "options" &&
+        optionsParameter.type &&
+        ts.isTypeReferenceNode(optionsParameter.type) &&
+        ts.isIdentifier(optionsParameter.type.typeName) &&
+        optionsParameter.type.typeName.text === "BuildServerOptions" &&
+        optionsParameter.initializer &&
+        ts.isObjectLiteralExpression(optionsParameter.initializer) &&
+        optionsParameter.initializer.properties.length === 0,
+    )
   if (
     definitions.length !== 1 ||
-    !definitions[0]?.body ||
-    definitions[0].parameters.length !== 0
+    !definition?.body ||
+    !hasReviewedOptionsParameter
   ) {
     throw routeAnalysisError(
       path,
       sourceFile,
-      definitions[0] ?? sourceFile,
+      definition ?? sourceFile,
       "Reviewed buildServer definition changed",
     )
   }
@@ -4208,14 +5164,31 @@ function assertReviewedFastifyRegistrarDefinition(path, sourceFile) {
   )
   const definition = definitions[0]
   const parameter = definition?.parameters[0]
+  const optionsParameter = definition?.parameters[1]
   const routeHostTypes = collectRouteHostTypeNames(sourceFile)
+  const hasReviewedOptionsParameter = spec.optionsParameterType
+    ? Boolean(
+        optionsParameter &&
+          ts.isIdentifier(optionsParameter.name) &&
+          optionsParameter.name.text === "options" &&
+          optionsParameter.type &&
+          ts.isTypeReferenceNode(optionsParameter.type) &&
+          ts.isIdentifier(optionsParameter.type.typeName) &&
+          optionsParameter.type.typeName.text === spec.optionsParameterType &&
+          (spec.optionsInitializer === null
+            ? !optionsParameter.initializer
+            : normalizedNodeText(optionsParameter.initializer, sourceFile) ===
+              spec.optionsInitializer),
+      )
+    : !optionsParameter
   if (
     definitions.length !== 1 ||
     !definition?.body ||
-    definition.parameters.length !== 1 ||
+    definition.parameters.length !== (spec.optionsParameterType ? 2 : 1) ||
     !parameter ||
     !ts.isIdentifier(parameter.name) ||
-    !isRouteHostType(parameter.type, sourceFile, routeHostTypes)
+    !isRouteHostType(parameter.type, sourceFile, routeHostTypes) ||
+    !hasReviewedOptionsParameter
   ) {
     throw routeAnalysisError(
       path,
@@ -4273,6 +5246,11 @@ export function extractFastifyRegistrarManifest({ root, paths }) {
   assertReviewedBuildServerDefinition(indexPath, sourceFile)
   const receiverNames = collectFastifyReceiverNames(sourceFile)
   const importedBindings = collectNamedImportBindings(sourceFile)
+  assertReviewedPr05RuntimeAuthorityWiring(
+    indexPath,
+    sourceFile,
+    importedBindings,
+  )
   const candidates = new Set(paths)
   const entries = []
   const visit = (node) => {
@@ -4329,6 +5307,114 @@ export function extractFastifyRegistrarManifest({ root, paths }) {
   return entries.sort((left, right) =>
     left.exportName.localeCompare(right.exportName),
   )
+}
+
+function assertReviewedPr05RuntimeAuthorityWiring(
+  path,
+  sourceFile,
+  importedBindings,
+) {
+  const authorizationBinding = importedBindings.get("registerAuthorization")
+  if (
+    authorizationBinding?.importedName !== "registerAuthorization" ||
+    authorizationBinding.importSource !== "./auth/authorization"
+  ) {
+    return
+  }
+
+  const requiredImports = [
+    ["createRuntimeAuthorizationOptions", "./auth/runtime-live-authority"],
+    ["createTestFixtureAuthorizationOptions", "./auth/runtime-live-authority"],
+    ["emergencyRecoveryServiceFromRuntime", "./services/emergency-recovery"],
+  ]
+  for (const [name, importSource] of requiredImports) {
+    const binding = importedBindings.get(name)
+    if (
+      binding?.importedName !== name ||
+      binding.importSource !== importSource
+    ) {
+      throw routeAnalysisError(
+        path,
+        sourceFile,
+        sourceFile,
+        `PR-05 runtime authority import changed for ${name}`,
+      )
+    }
+  }
+
+  const buildServer = sourceFile.statements.find(
+    (statement) =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text === "buildServer",
+  )
+  const expectedInitializers = new Map([
+    ["testRuntime", 'process.env.NODE_ENV==="test"'],
+    [
+      "emergencyRecoveryService",
+      "testRuntime&&options.testEmergencyRecoveryService!==undefined?options.testEmergencyRecoveryService:emergencyRecoveryServiceFromRuntime()",
+    ],
+    [
+      "authorizationOptions",
+      "testRuntime?(options.testAuthorization??createTestFixtureAuthorizationOptions(emergencyRecoveryService)):createRuntimeAuthorizationOptions(emergencyRecoveryService)",
+    ],
+  ])
+  for (const [name, initializer] of expectedInitializers) {
+    const declarations = []
+    const visit = (node) => {
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === name
+      ) {
+        declarations.push(node)
+      }
+      ts.forEachChild(node, visit)
+    }
+    if (buildServer?.body) {
+      visit(buildServer.body)
+    }
+    const declaration = declarations[0]
+    const directStatement = declaration?.parent?.parent
+    if (
+      declarations.length !== 1 ||
+      !declaration?.initializer ||
+      !isConstVariableDeclaration(declaration) ||
+      !directStatement ||
+      !ts.isVariableStatement(directStatement) ||
+      directStatement.parent !== buildServer?.body ||
+      normalizedNodeText(declaration.initializer, sourceFile) !== initializer
+    ) {
+      throw routeAnalysisError(
+        path,
+        sourceFile,
+        declaration ?? buildServer ?? sourceFile,
+        `PR-05 runtime authority binding changed for ${name}`,
+      )
+    }
+  }
+
+  const protectedBindings = new Set([
+    "createRuntimeAuthorizationOptions",
+    "createTestFixtureAuthorizationOptions",
+    "emergencyRecoveryServiceFromRuntime",
+    "process",
+  ])
+  const visit = (node) => {
+    if (
+      ts.isIdentifier(node) &&
+      protectedBindings.has(node.text) &&
+      isShadowingBindingIdentifier(node)
+    ) {
+      throw routeAnalysisError(
+        path,
+        sourceFile,
+        node,
+        `PR-05 runtime authority binding may not be shadowed ${node.text}`,
+      )
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
 }
 
 function collectFastifyReceiverNames(sourceFile) {
@@ -4793,7 +5879,6 @@ function isReviewedFastifyRegistrarCall({
   if (
     path !== "apps/bff/src/index.ts" ||
     !ts.isIdentifier(callee) ||
-    call.arguments.length !== 1 ||
     !receiver ||
     !ts.isIdentifier(receiver) ||
     !isTrackedFastifyReceiver(receiver, receiverNames)
@@ -4810,6 +5895,14 @@ function isReviewedFastifyRegistrarCall({
   if (!spec) {
     return false
   }
+  if (!hasReviewedFastifyRegistrarArguments(spec, call, sourceFile)) {
+    throw routeAnalysisError(
+      path,
+      sourceFile,
+      call,
+      `Reviewed Fastify registrar arguments changed for ${spec.exportName}`,
+    )
+  }
   if (!isDirectBuildServerStatement(call)) {
     throw routeAnalysisError(
       path,
@@ -4819,6 +5912,26 @@ function isReviewedFastifyRegistrarCall({
     )
   }
   return true
+}
+
+function hasReviewedFastifyRegistrarArguments(spec, call, sourceFile) {
+  if (spec.exportName === "registerAuthorization") {
+    const options = unwrapExpression(call.arguments[1])
+    return Boolean(
+      call.arguments.length === 2 &&
+        options &&
+        ts.isIdentifier(options) &&
+        options.text === "authorizationOptions",
+    )
+  }
+  if (spec.exportName === "registerAdminRoutes") {
+    return Boolean(
+      call.arguments.length === 2 &&
+        normalizedNodeText(call.arguments[1], sourceFile) ===
+          "{emergencyRecoveryService}",
+    )
+  }
+  return call.arguments.length === 1
 }
 
 function isDirectBuildServerStatement(call) {
@@ -5010,12 +6123,29 @@ function parseShorthandRoute(path, sourceFile, call, method, staticStrings) {
       "Fastify shorthand route path must be a static absolute literal",
     )
   }
-  assertReviewedShorthandRouteOptions(path, sourceFile, call)
+  assertReviewedShorthandRouteOptions(path, sourceFile, call, method, routePath)
   return { method, path: routePath }
 }
 
-function assertReviewedShorthandRouteOptions(path, sourceFile, call) {
+function assertReviewedShorthandRouteOptions(
+  path,
+  sourceFile,
+  call,
+  method,
+  routePath,
+) {
   if (call.arguments.length === 2) {
+    if (
+      path === "apps/bff/src/routes/admin.ts" &&
+      routePath.startsWith("/api/admin")
+    ) {
+      throw routeAnalysisError(
+        path,
+        sourceFile,
+        call,
+        "Protected Admin route requires a reviewed authorization policy",
+      )
+    }
     return
   }
   if (call.arguments.length !== 3) {
@@ -5028,12 +6158,29 @@ function assertReviewedShorthandRouteOptions(path, sourceFile, call) {
   }
   const options = unwrapExpression(call.arguments[1])
   if (
+    path === "apps/bff/src/routes/admin.ts" &&
     options &&
     ts.isCallExpression(options) &&
-    ts.isIdentifier(unwrapExpression(options.expression)) &&
-    unwrapExpression(options.expression).text === "withPersona"
+    ts.isIdentifier(unwrapExpression(options.expression))
   ) {
-    return
+    const factory = unwrapExpression(options.expression).text
+    const argument = staticString(options.arguments[0])
+    if (
+      factory === "withCapability" &&
+      options.arguments.length === 1 &&
+      argument &&
+      reviewedAdminRouteCapabilities.has(argument)
+    ) {
+      return
+    }
+    if (
+      factory === "reviewedAdminOnly" &&
+      options.arguments.length === 1 &&
+      argument === `${method} ${routePath}` &&
+      pr05AdminOnlyRoutePolicyKeys.includes(argument)
+    ) {
+      return
+    }
   }
   if (
     !options ||
@@ -5104,12 +6251,14 @@ function assertReviewedFastifyControlCall(path, sourceFile, call, method) {
   const handler = unwrapExpression(call.arguments[1])
   if (
     method === "addHook" &&
-    path === "apps/bff/src/auth/persona.ts" &&
+    path === "apps/bff/src/auth/authorization.ts" &&
     hook === "preHandler" &&
     call.arguments.length === 2 &&
     handler &&
-    ts.isIdentifier(handler) &&
-    handler.text === "authHook"
+    ts.isCallExpression(handler) &&
+    ts.isIdentifier(handler.expression) &&
+    handler.expression.text === "authorizationHook" &&
+    handler.arguments.length === 1
   ) {
     return
   }
@@ -5944,6 +7093,10 @@ function isConstVariableDeclaration(node) {
   )
 }
 
+function normalizedNodeText(node, sourceFile) {
+  return node.getText(sourceFile).replace(/\s+/g, "")
+}
+
 function isShadowingBindingIdentifier(node) {
   const parent = node.parent
   return Boolean(
@@ -5988,6 +7141,10 @@ function extractNextHandlerMethods(source) {
 
 function buildResolverFingerprints(root) {
   return resolverFingerprintSpecs
+    .filter(
+      ({ enabledWhenPath }) =>
+        !enabledWhenPath || isRegularFile(resolve(root, enabledWhenPath)),
+    )
     .map(({ path, symbol }) => {
       const source = readFileSync(resolve(root, path), "utf8").replaceAll(
         "\r\n",
@@ -6369,6 +7526,9 @@ function routePolicyDigest() {
       bffProductionSourcePattern: bffProductionSourcePattern.source,
       productionSurfaceTestPathPattern: productionSurfaceTestPathPattern.source,
       reviewedFastifyRegistrarSpecs,
+      reviewedAdminRouteCapabilities: [
+        ...reviewedAdminRouteCapabilities,
+      ].sort(),
       reviewedFastifySourcePaths: [...reviewedFastifySourcePaths].sort(),
       webInferenceEndpointPattern: webInferenceEndpointPattern.source,
       repositoryClosureExcludedPaths: [...generatedContractPaths].sort(),
@@ -6408,6 +7568,23 @@ function routePolicyDigest() {
           operationPolicy:
             readPr04DecisionDocument(repositoryRoot).operationPolicy,
         },
+        {
+          id: "PR-05",
+          contractBase: pr05ContractBase,
+          laneAnchor: pr05LaneAnchor,
+          path: pr05ContractRevisionPath,
+          evidencePaths: pr05RevisionEvidencePaths,
+          reviewedDispositions: pr05ReviewedDispositions,
+          target: pr05TargetContract,
+          standaloneDbTestBoundary: pr05StandaloneDbTestBoundary,
+          allowedRepositoryPathPatterns: pr05AllowedRepositoryPathPatterns.map(
+            ({ source, flags }) => ({ source, flags }),
+          ),
+          resolverFingerprints: reviewedPr05ResolverFingerprints,
+          webAuthenticationEvidence: reviewedPr05WebAuthenticationEvidence,
+          operationPolicy:
+            readPr05DecisionDocument(repositoryRoot).operationPolicy,
+        },
       ],
       implementation: [
         listCandidatePaths,
@@ -6425,6 +7602,7 @@ function routePolicyDigest() {
         assertReviewedFastifyRegistrarDefinition,
         collectNamedImportBindings,
         extractFastifyRegistrarManifest,
+        assertReviewedPr05RuntimeAuthorityWiring,
         collectFastifyReceiverNames,
         collectRouteHostTypeNames,
         containsRouteHostMember,
@@ -6436,6 +7614,7 @@ function routePolicyDigest() {
         containsKnownFastifyReceiver,
         isValueIdentifier,
         isReviewedFastifyRegistrarCall,
+        hasReviewedFastifyRegistrarArguments,
         isDirectBuildServerStatement,
         isReviewedFastifyAlias,
         isReviewedBuildServerReturn,
@@ -6482,9 +7661,13 @@ function routePolicyDigest() {
         verifyIntroducedPr04Revision,
         verifyPr04LaneLineage,
         verifyPr04BaseEvidence,
+        verifyIntroducedPr05Revision,
+        verifyPr05LaneLineage,
+        verifyPr05BaseEvidence,
         verifyRetainedPr02RevisionEvidence,
         verifyRetainedPr03RevisionEvidence,
         verifyRetainedPr04RevisionEvidence,
+        verifyRetainedPr05RevisionEvidence,
         verifyPr02OperationMatrix,
         verifyExactMultisetSubset,
         verifyPr02EscapeHatches,
@@ -6495,6 +7678,9 @@ function routePolicyDigest() {
         verifyPr03DecisionDocument,
         readPr04DecisionDocument,
         verifyPr04DecisionDocument,
+        readPr05DecisionDocument,
+        verifyPr05DecisionDocument,
+        verifyPr05OperationBoundary,
         buildExactClosureOperationPolicy,
         buildClosurePathOperations,
         verifyPr03FindingTransition,
@@ -6507,8 +7693,13 @@ function routePolicyDigest() {
         verifyPr04RetainedRouteContract,
         verifyExactClosureChanges,
         verifyPr04TargetState,
+        verifyPr05FindingTransition,
+        verifyPr05CandidateContract,
+        verifyPr05RetainedRouteContract,
+        verifyPr05TargetState,
         verifyReviewedWebAuthenticationEvidence,
         verifyReviewedPr04WebAuthenticationEvidence,
+        verifyReviewedPr05WebAuthenticationEvidence,
         verifyWebAuthenticationBoundary,
         verifyExactPathPolicy,
         uniqueEntriesByPath,
@@ -6629,7 +7820,7 @@ function resolveCommit(root, ref) {
 export function verifyBaseCommitLineage(
   root,
   baseCommit,
-  dirtySameHeadBase = [pr02IntegrationBase, pr04ContractBase],
+  dirtySameHeadBase = [pr02IntegrationBase, pr04ContractBase, pr05ContractBase],
 ) {
   const head = currentHead(root)
   if (baseCommit === head) {

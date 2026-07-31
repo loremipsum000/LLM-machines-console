@@ -6,6 +6,7 @@ import {
 } from "next/server"
 import type { NextAuthRequest } from "next-auth"
 import { auth } from "@/lib/auth/auth"
+import { retainedConsoleRoles } from "@/lib/auth/role-claims"
 
 type AuthMiddlewareFactory = (
   middleware: (
@@ -37,7 +38,7 @@ export default function middleware(
   }
 
   const requireAuthenticatedSession = createAuthMiddleware((request) => {
-    if (request.auth) {
+    if (retainedConsoleRoles(request.auth?.user?.roles).length > 0) {
       return NextResponse.next()
     }
 

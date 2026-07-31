@@ -96,13 +96,28 @@ describe("Console middleware", () => {
     expect(authSpies.auth).not.toHaveBeenCalled()
   })
 
-  it("allows authenticated sessions through retained protected routes", async () => {
-    authSpies.session.current = { user: { id: "admin-1" } }
+  it("allows retained Admin and Operator sessions through protected routes", async () => {
+    for (const role of ["admin", "operator"]) {
+      authSpies.session.current = { user: { id: `${role}-1`, roles: [role] } }
 
-    const response = await runMiddleware("/applications")
+      const response = await runMiddleware("/applications")
 
-    expect(response.headers.get("x-middleware-next")).toBe("1")
-    expect(authSpies.auth).toHaveBeenCalledTimes(1)
+      expect(response.headers.get("x-middleware-next"), role).toBe("1")
+    }
+    expect(authSpies.auth).toHaveBeenCalledTimes(2)
+  })
+
+  it("redirects authenticated sessions that have only retired or unknown roles", async () => {
+    for (const roles of [["auditor"], ["support"], ["realm-admin"], []]) {
+      authSpies.session.current = { user: { id: "user-1", roles } }
+
+      const response = await runMiddleware("/team")
+
+      expect(response.status, roles.join(",")).toBe(307)
+      expect(response.headers.get("location"), roles.join(",")).toContain(
+        "/auth/signin?callbackUrl=",
+      )
+    }
   })
 })
 

@@ -33,6 +33,7 @@ import {
   pr04ContractRevisionPath,
   pr04DecisionPath,
   pr04StandaloneDbTestBoundary,
+  pr05ContractBase,
   repositoryRoot,
   routeBaselinePath,
   scanForbiddenSurfaces,
@@ -43,9 +44,11 @@ import {
   verifyPr03BaseEvidence,
   verifyPr03DecisionDocument,
   verifyPr03FindingTransition,
+  verifyPr03TargetState,
   verifyPr04BaseEvidence,
   verifyPr04DecisionDocument,
   verifyPr04FindingTransition,
+  verifyPr04TargetState,
   verifyProtectedGuardrailStability,
   verifyRepository,
   verifyRetentionCharacterization,
@@ -561,7 +564,17 @@ test("PR-04 binds its successor Web authentication implementation and tests", ()
       writeFixture(
         root,
         evidencePath,
-        readFileSync(join(repositoryRoot, evidencePath)),
+        execFileSync(
+          "git",
+          [
+            "show",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--end-of-options",
+            `${pr05ContractBase}:${evidencePath}`,
+          ],
+          { cwd: repositoryRoot },
+        ),
       )
     }
     assert.deepEqual(verifyReviewedPr04WebAuthenticationEvidence(root), [])
@@ -1120,6 +1133,13 @@ test("base comparison requires a proper ancestor of candidate HEAD", () => {
   assert.match(
     verifyBaseCommitLineage(root, unrelated).join("\n"),
     /not an ancestor/,
+  )
+})
+
+test("PR-05 base comparison accepts its dirty same-head candidate", () => {
+  assert.deepEqual(
+    verifyBaseCommitLineage(repositoryRoot, pr05ContractBase),
+    [],
   )
 })
 
@@ -2330,7 +2350,8 @@ test("reviewed Fastify registrar wiring is exact and shrink-only", () => {
       'import { registerAdminRoutes } from "./routes/admin"',
       "export function buildServer(): FastifyInstance {",
       "  const server = Fastify({ bodyLimit: bffBodyLimitBytes(), logger: true })",
-      "  registerAdminRoutes(server)",
+      "  const emergencyRecoveryService = null",
+      "  registerAdminRoutes(server, { emergencyRecoveryService })",
       "  return server",
       "}",
       "",
@@ -2341,8 +2362,13 @@ test("reviewed Fastify registrar wiring is exact and shrink-only", () => {
     adminPath,
     [
       'import type { FastifyInstance } from "fastify"',
-      "export function registerAdminRoutes(server: FastifyInstance): void {",
-      '  server.get("/api/admin/overview", async () => null)',
+      "declare function withCapability(capability: string): unknown",
+      "export interface AdminRouteOptions { emergencyRecoveryService: unknown }",
+      "export function registerAdminRoutes(",
+      "  server: FastifyInstance,",
+      "  options: AdminRouteOptions = { emergencyRecoveryService: null },",
+      "): void {",
+      '  server.get("/api/admin/overview", withCapability("console.operational.view"), async () => options.emergencyRecoveryService)',
       "}",
       "",
     ].join("\n"),
@@ -2833,7 +2859,7 @@ test("Core lifecycle companion scripts cannot bypass locked commands", () => {
   )
 })
 
-test("Core root scripts lock the standalone DB test and typecheck commands", () => {
+test("Core root scripts lock the current base and standalone DB commands", () => {
   const root = temporaryRoot()
   const paths = [
     "apps/bff/package.json",
@@ -2847,12 +2873,23 @@ test("Core root scripts lock the standalone DB test and typecheck commands", () 
     writeFixture(root, path, readFileSync(join(repositoryRoot, path)))
   }
 
+  assert.doesNotMatch(
+    verifyCorePackageClosure(root, paths).join("\n"),
+    /invalid Core-only script check:inference-core:base/,
+  )
+
   const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
+  manifest.scripts["check:inference-core:base"] =
+    "node scripts/inference-core/guardrails.mjs --base-ref fb36b9de38396af79c82056963ae3f4833a12fef"
   manifest.scripts["test:inference-core-db"] = "true"
   manifest.scripts["typecheck:inference-core-db"] = "true"
   writeFixture(root, "package.json", `${JSON.stringify(manifest)}\n`)
 
   const errors = verifyCorePackageClosure(root, paths)
+  assert.match(
+    errors.join("\n"),
+    /invalid Core-only script check:inference-core:base/,
+  )
   assert.match(
     errors.join("\n"),
     /invalid Core-only script test:inference-core-db/,
@@ -2876,16 +2913,67 @@ test("retention register rejects unreviewed top-level claims", () => {
   )
 })
 
-test("the live repository matches its reviewed PR-01 baselines", () => {
+test("the live repository matches its current reviewed baselines", () => {
   const result = verifyRepository({
-    baseRef:
-      process.env.INFERENCE_CORE_BASE_REF ??
-      "fb36b9de38396af79c82056963ae3f4833a12fef",
+    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr05ContractBase,
   })
   assert.deepEqual(result.errors, [])
   assert.equal(result.ok, true)
   assert.equal(result.routeCount > 0, true)
   assert.equal(result.findingCount > 0, true)
+})
+
+test("historical target verifiers defer only to reviewed successors", () => {
+  const currentAllowlist = { entries: [] }
+  const currentRoutes = {
+    routes: [],
+    fastifyRegistrars: [],
+    webInferenceConsumers: [],
+    fingerprints: [],
+    escapeHatches: [],
+    reviewedRevisions: [{ id: "PR-05" }],
+  }
+
+  assert.deepEqual(
+    verifyPr03TargetState({ currentAllowlist, currentRoutes }),
+    [],
+  )
+  assert.deepEqual(
+    verifyPr04TargetState({
+      currentAllowlist,
+      currentRoutes,
+      paths: [],
+    }),
+    [],
+  )
+
+  const pr04Successor = structuredClone(currentRoutes)
+  pr04Successor.reviewedRevisions = [{ id: "PR-04" }]
+  assert.deepEqual(
+    verifyPr03TargetState({
+      currentAllowlist,
+      currentRoutes: pr04Successor,
+    }),
+    [],
+  )
+
+  const unknownSuccessor = structuredClone(currentRoutes)
+  unknownSuccessor.reviewedRevisions = [{ id: "PR-06" }]
+  assert.match(
+    verifyPr03TargetState({
+      currentAllowlist,
+      currentRoutes: unknownSuccessor,
+    }).join("\n"),
+    /PR-03 total route count changed/,
+  )
+  assert.match(
+    verifyPr04TargetState({
+      currentAllowlist,
+      currentRoutes: unknownSuccessor,
+      paths: [],
+    }).join("\n"),
+    /PR-04 total route count changed/,
+  )
 })
 
 test("the production closure contains every package and container entrypoint", () => {

@@ -3,7 +3,7 @@ import type {
   AdminOverviewMetric,
   AdminOverviewResponse,
 } from "@llm-machines/contracts/inference-core"
-import type { Actor } from "../auth/persona"
+import type { Actor } from "../auth/authorization"
 import { getAdminHealthSummary } from "./admin-health"
 import { getAdminOpsSummary } from "./admin-ops"
 import type { AuditEventRecord } from "./audit"
@@ -107,10 +107,7 @@ export async function getAdminOverview(
 }
 
 function canReadAdminOverview(actor: Actor): boolean {
-  return (
-    actor.persona === "admin" ||
-    actor.roles.some((role) => role.toLowerCase() === "operator")
-  )
+  return actor.role === "admin" || actor.role === "operator"
 }
 
 function isApplicationEvent(event: AuditEventRecord): boolean {

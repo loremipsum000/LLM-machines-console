@@ -3,16 +3,32 @@ import {
   healthResponseSchema,
 } from "@llm-machines/contracts/inference-core"
 import Fastify, { type FastifyInstance } from "fastify"
-import { registerPersonaAuth } from "./auth/persona"
+import {
+  type AuthorizationOptions,
+  registerAuthorization,
+} from "./auth/authorization"
+import {
+  createRuntimeAuthorizationOptions,
+  createTestFixtureAuthorizationOptions,
+} from "./auth/runtime-live-authority"
 import { isProductionRuntime } from "./config/fixture-mode"
 import {
   checkInferenceCoreDbReadiness,
   closeInferenceCoreDb,
 } from "./db/inference-core-client"
-import { registerAdminRoutes } from "./routes/admin"
+import {
+  type AdminEmergencyRecoveryService,
+  registerAdminRoutes,
+} from "./routes/admin"
 import { registerAppGatewayRoutes } from "./routes/app-gateway"
+import { emergencyRecoveryServiceFromRuntime } from "./services/emergency-recovery"
 
-export function buildServer(): FastifyInstance {
+export interface BuildServerOptions {
+  testAuthorization?: AuthorizationOptions
+  testEmergencyRecoveryService?: AdminEmergencyRecoveryService | null
+}
+
+export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   if (isProductionRuntime() && !process.env.DATABASE_URL?.trim()) {
     throw new Error("DATABASE_URL is required for the Console BFF.")
   }
@@ -23,7 +39,17 @@ export function buildServer(): FastifyInstance {
   })
   server.addHook("onClose", closeInferenceCoreDb)
 
-  registerPersonaAuth(server)
+  const testRuntime = process.env.NODE_ENV === "test"
+  const emergencyRecoveryService =
+    testRuntime && options.testEmergencyRecoveryService !== undefined
+      ? options.testEmergencyRecoveryService
+      : emergencyRecoveryServiceFromRuntime()
+  const authorizationOptions = testRuntime
+    ? (options.testAuthorization ??
+      createTestFixtureAuthorizationOptions(emergencyRecoveryService))
+    : createRuntimeAuthorizationOptions(emergencyRecoveryService)
+
+  registerAuthorization(server, authorizationOptions)
 
   const liveness = async (): Promise<HealthResponse> =>
     healthResponseSchema.parse({
@@ -46,7 +72,7 @@ export function buildServer(): FastifyInstance {
   })
 
   registerAppGatewayRoutes(server)
-  registerAdminRoutes(server)
+  registerAdminRoutes(server, { emergencyRecoveryService })
 
   return server
 }
