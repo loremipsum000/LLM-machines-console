@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "e31f3ad10f2183387b1830ee049730098dcf6da64bf901cda99d0399df8e3248",
+  "policyDigest": "228357579d4adc6357312538da5b27760e9d455ab3060ea23adaa44452d1ee02",
   "protectedFiles": [
     {
       "path": "apps/bff/tsconfig.json",
@@ -13,11 +13,11 @@
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.test.ts",
-      "sha256": "bd46de2bc88572f3db0caf7d0efb237ff61d151903d95d1e44abc4988847b80b"
+      "sha256": "9ad38f11130b7826aafd7c1747f8c396ed73df040fd27773bd2a189137ffcf30"
     },
     {
       "path": "apps/bff/src/routes/app-gateway-boundary.test.ts",
-      "sha256": "91e94539a82352e0efce8fcf7b08c49ba3af90214decacf4c0e6e3c903d0fd1d"
+      "sha256": "5b40b8a68cdcb4821c989aa61cd7f8abed4437ad89d2f3c27cc4e798e84d319d"
     },
     {
       "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
@@ -68,6 +68,10 @@
       "sha256": "4333d02896bd1af9700d4f1d95da79ae932bf72735213783b8cfe5c4f4488afc"
     },
     {
+      "path": "docs/reduction/inference-core/pr-07-data-plane-decisions.json",
+      "sha256": "6330008bb11b0d095ea6ce3c80b35c2aca9939f0cca61927988b91dcb1f99a26"
+    },
+    {
       "path": "packages/contracts/src/inference-core-authorization.test.ts",
       "sha256": "e1145f3b1ad0504876e90b57ee81df2e15cdbdb14bfdf1fa98b83f0c4c49e684"
     },
@@ -77,7 +81,7 @@
     },
     {
       "path": "packages/contracts/src/inference-core.test.ts",
-      "sha256": "8bc6dece693f4eddd315a1889bfac64e40452f685f639e7cb7c95143de693efd"
+      "sha256": "f9025fe90f7e6f58fffba586207e417213615d6997c51ab2246327084ee3a870"
     },
     {
       "path": "packages/contracts/tsconfig.build.json",
@@ -101,11 +105,11 @@
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",
-      "sha256": "70d856c4c4e6e33caaa8333ef88668e3dd1243d51a993f696dd29e44d1cc5227"
+      "sha256": "d8c51820bdbecf61b84929ef84bb72f7f33994fa6a48210132127004aef6df6e"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
-      "sha256": "9af04fec31f8ab41031f3665587df14e4b866c2c9d03eabe89e92f622316a383"
+      "sha256": "367b5c1cfe25dd05f950ecccc18d43d2385a22b886b57a86740f5a7f2d20d1af"
     },
     {
       "path": "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -146,6 +150,14 @@
     {
       "path": "scripts/inference-core/pr06-contract-revision.mjs",
       "sha256": "bbb1e75e720b4bb7ed421f8c30e48f8e8b3743a56e93f7666f071679a662e107"
+    },
+    {
+      "path": "scripts/inference-core/pr07-boundaries.test.mjs",
+      "sha256": "e9a1ed8060623ea73273f5a794c0a4c121f242e130d038b63fd54552dd3998bd"
+    },
+    {
+      "path": "scripts/inference-core/pr07-contract-revision.mjs",
+      "sha256": "8501c249af53d1e106f1fe2bff65d710bbb7ffee882061da4abd0418509b6ba6"
     },
     {
       "path": "scripts/inference-core/retention-canary.mjs",

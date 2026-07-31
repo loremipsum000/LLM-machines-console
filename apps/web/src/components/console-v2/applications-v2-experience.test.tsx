@@ -97,8 +97,8 @@ afterEach(() => {
   )
 })
 
-describe("PR-06 Applications experience", () => {
-  it("submits stable aliases and keeps optional limits disabled by default", () => {
+describe("PR-07 Applications experience", () => {
+  it("submits stable aliases and keeps optional protections disabled by default", () => {
     render(
       <ApplicationsV2Experience
         accessRole="admin"
@@ -114,28 +114,46 @@ describe("PR-06 Applications experience", () => {
     expect(modelCheckbox.value).not.toBe(model.id)
     expect(modelCheckbox.checked).toBe(true)
 
-    const requestToggle = screen.getByRole("checkbox", {
-      name: "Requests per minute",
-    }) as HTMLInputElement
-    const tokenToggle = screen.getByRole("checkbox", {
-      name: "Tokens per seven days",
-    }) as HTMLInputElement
-    expect(requestToggle.checked).toBe(false)
-    expect(tokenToggle.checked).toBe(false)
+    for (const label of [
+      "Requests per second",
+      "Concurrent requests",
+      "Context bytes per request",
+      "Seven-day token alert threshold",
+    ]) {
+      expect(
+        (screen.getByRole("checkbox", { name: label }) as HTMLInputElement)
+          .checked,
+      ).toBe(false)
+      expect(
+        (
+          screen.getByRole("spinbutton", {
+            name: `${label} value`,
+          }) as HTMLInputElement
+        ).disabled,
+      ).toBe(true)
+    }
     expect(
-      (
-        screen.getByRole("spinbutton", {
-          name: "Requests per minute value",
-        }) as HTMLInputElement
-      ).disabled,
-    ).toBe(true)
+      screen.getByText(
+        /customer owns the hardware and may use available compute/i,
+      ),
+    ).toBeTruthy()
     expect(
-      (
-        screen.getByRole("spinbutton", {
-          name: "Tokens per seven days value",
-        }) as HTMLInputElement
-      ).disabled,
-    ).toBe(true)
+      screen.getByText(
+        /request-rate and concurrency controls protect service health/i,
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(
+        /model access and context-size controls define each Application's permissions/i,
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(
+        /token threshold is visibility only and never blocks inference/i,
+      ),
+    ).toBeTruthy()
+    expect(screen.queryByText(/Firecrawl/i)).toBeNull()
+    expect(screen.queryByText(/alert delivery/i)).toBeNull()
     expect(screen.queryByText("Owner group")).toBeNull()
   })
 
@@ -290,6 +308,24 @@ describe("PR-06 Applications experience", () => {
     expect(screen.getByText("retiring")).toBeTruthy()
     expect(screen.getByText("llmm_old_")).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Disable app" })).toBeNull()
+  })
+
+  it("shows a reached token threshold as non-blocking visibility", () => {
+    render(
+      <ApplicationsV2Experience
+        accessRole="admin"
+        connectedAppDetail={{
+          ...application,
+          tokenAlertState: "reached",
+          tokenAlertThreshold7d: 1_000_000,
+        }}
+        modelOptions={[model]}
+        view="app-detail"
+      />,
+    )
+
+    expect(screen.getByText("Token alert status")).toBeTruthy()
+    expect(screen.getByText("Reached (non-blocking)")).toBeTruthy()
   })
 
   it("uses the rotation snapshot after an earlier revoke", async () => {
@@ -643,10 +679,13 @@ const application: AdminConnectedApp = {
   detailHref: "/applications/apps/app-1",
   id: "app-1",
   lastConnectedAt: null,
+  maxConcurrentRequests: null,
+  maxContextBytes: null,
   name: "Desktop client",
-  rateLimitRpm: null,
+  rateLimitRps: null,
   status: "enabled",
-  tokenBudget7d: null,
+  tokenAlertState: null,
+  tokenAlertThreshold7d: null,
   updatedAt: "2026-07-31T08:00:00.000Z",
   usage: {
     failures7d: 0,

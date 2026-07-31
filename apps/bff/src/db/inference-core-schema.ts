@@ -367,8 +367,12 @@ export const applicationLimits = admin.table(
     appId: text("app_id")
       .primaryKey()
       .references(() => applications.id, { onDelete: "restrict" }),
-    requestsPerMinute: integer("requests_per_minute"),
-    tokensPer7d: bigint("tokens_per_7d", { mode: "number" }),
+    requestsPerSecond: integer("requests_per_second"),
+    tokenAlertThreshold7d: bigint("token_alert_threshold_7d", {
+      mode: "number",
+    }),
+    maxConcurrentRequests: integer("max_concurrent_requests"),
+    maxContextBytes: bigint("max_context_bytes", { mode: "number" }),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -376,11 +380,23 @@ export const applicationLimits = admin.table(
   (table) => [
     check(
       "application_limits_requests_check",
-      sql`${table.requestsPerMinute} IS NULL OR ${table.requestsPerMinute} > 0`,
+      sql`${table.requestsPerSecond} IS NULL
+        OR ${table.requestsPerSecond} BETWEEN 1 AND 10000`,
     ),
     check(
-      "application_limits_tokens_check",
-      sql`${table.tokensPer7d} IS NULL OR ${table.tokensPer7d} > 0`,
+      "application_limits_token_alert_check",
+      sql`${table.tokenAlertThreshold7d} IS NULL
+        OR ${table.tokenAlertThreshold7d} BETWEEN 1 AND 100000000`,
+    ),
+    check(
+      "application_limits_concurrency_check",
+      sql`${table.maxConcurrentRequests} IS NULL
+        OR ${table.maxConcurrentRequests} BETWEEN 1 AND 10000`,
+    ),
+    check(
+      "application_limits_context_bytes_check",
+      sql`${table.maxContextBytes} IS NULL
+        OR ${table.maxContextBytes} BETWEEN 1 AND 9007199254740991`,
     ),
   ],
 )
@@ -414,6 +430,117 @@ export const applicationRateLimitWindows = admin.table(
   ],
 )
 
+export const applicationRequestLedger = admin.table(
+  "application_request_ledger",
+  {
+    id: uuid("id").primaryKey(),
+    appId: text("app_id").notNull(),
+    credentialId: text("credential_id").notNull(),
+    routeKind: text("route_kind").notNull(),
+    modelAlias: text("model_alias"),
+    contextBytes: bigint("context_bytes", { mode: "number" })
+      .default(0)
+      .notNull(),
+    state: text("state").default("active").notNull(),
+    statusCode: integer("status_code"),
+    inputTokens: bigint("input_tokens", { mode: "number" })
+      .default(0)
+      .notNull(),
+    outputTokens: bigint("output_tokens", { mode: "number" })
+      .default(0)
+      .notNull(),
+    totalTokens: bigint("total_tokens", { mode: "number" })
+      .default(0)
+      .notNull(),
+    latencyMs: integer("latency_ms"),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    leaseExpiresAt: timestamp("lease_expires_at", {
+      withTimezone: true,
+    }).notNull(),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.credentialId, table.appId],
+      foreignColumns: [applicationCredentials.id, applicationCredentials.appId],
+      name: "application_request_ledger_credential_app_fk",
+    }).onDelete("restrict"),
+    check(
+      "application_request_ledger_route_check",
+      sql`${table.routeKind} IN ('models', 'chat_completions')`,
+    ),
+    check(
+      "application_request_ledger_model_check",
+      sql`(
+        ${table.routeKind} = 'models'
+        AND ${table.modelAlias} IS NULL
+      ) OR (
+        ${table.routeKind} = 'chat_completions'
+        AND (
+          char_length(${table.modelAlias}) BETWEEN 1 AND 160
+          OR (
+            ${table.state} = 'settled'
+            AND ${table.modelAlias} IS NULL
+            AND ${table.statusCode} >= 400
+          )
+        )
+      )`,
+    ),
+    check(
+      "application_request_ledger_context_bytes_check",
+      sql`${table.contextBytes} >= 0`,
+    ),
+    check(
+      "application_request_ledger_state_check",
+      sql`${table.state} IN ('active', 'settled')`,
+    ),
+    check(
+      "application_request_ledger_status_code_check",
+      sql`${table.statusCode} IS NULL OR ${table.statusCode} BETWEEN 100 AND 599`,
+    ),
+    check(
+      "application_request_ledger_tokens_check",
+      sql`${table.inputTokens} >= 0
+        AND ${table.outputTokens} >= 0
+        AND ${table.totalTokens} >= ${table.inputTokens} + ${table.outputTokens}`,
+    ),
+    check(
+      "application_request_ledger_latency_check",
+      sql`${table.latencyMs} IS NULL OR ${table.latencyMs} >= 0`,
+    ),
+    check(
+      "application_request_ledger_lifecycle_check",
+      sql`(
+        ${table.state} = 'active'
+        AND ${table.statusCode} IS NULL
+        AND ${table.inputTokens} = 0
+        AND ${table.outputTokens} = 0
+        AND ${table.totalTokens} = 0
+        AND ${table.latencyMs} IS NULL
+        AND ${table.settledAt} IS NULL
+      ) OR (
+        ${table.state} = 'settled'
+        AND ${table.statusCode} IS NOT NULL
+        AND ${table.latencyMs} IS NOT NULL
+        AND ${table.settledAt} IS NOT NULL
+      )`,
+    ),
+    check(
+      "application_request_ledger_timestamps_check",
+      sql`${table.leaseExpiresAt} > ${table.startedAt}
+        AND (${table.settledAt} IS NULL OR ${table.settledAt} >= ${table.startedAt})`,
+    ),
+    index("application_request_ledger_active_idx")
+      .on(table.appId, table.leaseExpiresAt)
+      .where(sql`${table.state} = 'active'`),
+    index("application_request_ledger_settled_started_idx")
+      .on(table.startedAt)
+      .where(sql`${table.state} = 'settled'`),
+  ],
+)
+
 export const applicationUsageDaily = admin.table(
   "application_usage_daily",
   {
@@ -422,6 +549,8 @@ export const applicationUsageDaily = admin.table(
       .references(() => applications.id, { onDelete: "restrict" }),
     credentialId: text("credential_id").notNull(),
     bucketDate: date("bucket_date").notNull(),
+    routeKind: text("route_kind").notNull(),
+    modelAlias: text("model_alias").default("").notNull(),
     requestCount: integer("request_count").default(0).notNull(),
     failureCount: integer("failure_count").default(0).notNull(),
     inputTokens: bigint("input_tokens", { mode: "number" })
@@ -433,6 +562,10 @@ export const applicationUsageDaily = admin.table(
     totalTokens: bigint("total_tokens", { mode: "number" })
       .default(0)
       .notNull(),
+    latencyMsSum: bigint("latency_ms_sum", { mode: "number" })
+      .default(0)
+      .notNull(),
+    latencyMsMax: integer("latency_ms_max").default(0).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -444,18 +577,52 @@ export const applicationUsageDaily = admin.table(
       name: "application_usage_daily_credential_app_fk",
     }).onDelete("restrict"),
     primaryKey({
-      columns: [table.appId, table.credentialId, table.bucketDate],
+      columns: [
+        table.appId,
+        table.credentialId,
+        table.bucketDate,
+        table.routeKind,
+        table.modelAlias,
+      ],
       name: "application_usage_daily_pkey",
     }),
     check(
+      "application_usage_daily_route_check",
+      sql`${table.routeKind} IN ('models', 'chat_completions')`,
+    ),
+    check(
+      "application_usage_daily_model_check",
+      sql`(
+        ${table.routeKind} = 'models'
+        AND ${table.modelAlias} = ''
+      ) OR (
+        ${table.routeKind} = 'chat_completions'
+        AND (
+          char_length(${table.modelAlias}) BETWEEN 1 AND 160
+          OR (
+            ${table.modelAlias} = ''
+            AND ${table.failureCount} = ${table.requestCount}
+          )
+        )
+      )`,
+    ),
+    check(
       "application_usage_daily_counts_check",
-      sql`${table.requestCount} >= 0 AND ${table.failureCount} >= 0`,
+      sql`${table.requestCount} >= 0
+        AND ${table.failureCount} >= 0
+        AND ${table.failureCount} <= ${table.requestCount}`,
     ),
     check(
       "application_usage_daily_tokens_check",
       sql`${table.inputTokens} >= 0
         AND ${table.outputTokens} >= 0
-        AND ${table.totalTokens} >= 0`,
+        AND ${table.totalTokens} >= ${table.inputTokens} + ${table.outputTokens}`,
+    ),
+    check(
+      "application_usage_daily_latency_check",
+      sql`${table.latencyMsSum} >= 0
+        AND ${table.latencyMsMax} >= 0
+        AND ${table.latencyMsMax} <= ${table.latencyMsSum}`,
     ),
     index("application_usage_daily_bucket_idx").on(table.bucketDate),
     index("application_usage_daily_app_bucket_idx").on(

@@ -276,13 +276,31 @@ CREATE TABLE admin.application_model_allowlists (
 
 CREATE TABLE admin.application_limits (
   app_id text PRIMARY KEY REFERENCES admin.applications(id) ON DELETE RESTRICT,
-  requests_per_minute integer,
-  tokens_per_7d bigint,
+  requests_per_second integer,
+  token_alert_threshold_7d bigint,
+  max_concurrent_requests integer,
+  max_context_bytes bigint,
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT application_limits_requests_check
-    CHECK (requests_per_minute IS NULL OR requests_per_minute > 0),
-  CONSTRAINT application_limits_tokens_check
-    CHECK (tokens_per_7d IS NULL OR tokens_per_7d > 0)
+    CHECK (
+      requests_per_second IS NULL
+      OR requests_per_second BETWEEN 1 AND 10000
+    ),
+  CONSTRAINT application_limits_token_alert_check
+    CHECK (
+      token_alert_threshold_7d IS NULL
+      OR token_alert_threshold_7d BETWEEN 1 AND 100000000
+    ),
+  CONSTRAINT application_limits_concurrency_check
+    CHECK (
+      max_concurrent_requests IS NULL
+      OR max_concurrent_requests BETWEEN 1 AND 10000
+    ),
+  CONSTRAINT application_limits_context_bytes_check
+    CHECK (
+      max_context_bytes IS NULL
+      OR max_context_bytes BETWEEN 1 AND 9007199254740991
+    )
 );
 
 CREATE TABLE admin.application_rate_limit_windows (
@@ -301,29 +319,148 @@ CREATE TABLE admin.application_rate_limit_windows (
 CREATE INDEX application_rate_limit_windows_expiry_idx
   ON admin.application_rate_limit_windows (expires_at);
 
+CREATE TABLE admin.application_request_ledger (
+  id uuid PRIMARY KEY,
+  app_id text NOT NULL,
+  credential_id text NOT NULL,
+  route_kind text NOT NULL,
+  model_alias text,
+  context_bytes bigint NOT NULL DEFAULT 0,
+  state text NOT NULL DEFAULT 'active',
+  status_code integer,
+  input_tokens bigint NOT NULL DEFAULT 0,
+  output_tokens bigint NOT NULL DEFAULT 0,
+  total_tokens bigint NOT NULL DEFAULT 0,
+  latency_ms integer,
+  started_at timestamptz NOT NULL DEFAULT now(),
+  lease_expires_at timestamptz NOT NULL,
+  settled_at timestamptz,
+  CONSTRAINT application_request_ledger_credential_app_fk
+    FOREIGN KEY (credential_id, app_id)
+    REFERENCES admin.application_credentials(id, app_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT application_request_ledger_route_check
+    CHECK (route_kind IN ('models', 'chat_completions')),
+  CONSTRAINT application_request_ledger_model_check
+    CHECK (
+      (route_kind = 'models' AND model_alias IS NULL)
+      OR (
+        route_kind = 'chat_completions'
+        AND (
+          char_length(model_alias) BETWEEN 1 AND 160
+          OR (
+            state = 'settled'
+            AND model_alias IS NULL
+            AND status_code >= 400
+          )
+        )
+      )
+    ),
+  CONSTRAINT application_request_ledger_context_bytes_check
+    CHECK (context_bytes >= 0),
+  CONSTRAINT application_request_ledger_state_check
+    CHECK (state IN ('active', 'settled')),
+  CONSTRAINT application_request_ledger_status_code_check
+    CHECK (status_code IS NULL OR status_code BETWEEN 100 AND 599),
+  CONSTRAINT application_request_ledger_tokens_check
+    CHECK (
+      input_tokens >= 0
+      AND output_tokens >= 0
+      AND total_tokens >= input_tokens + output_tokens
+    ),
+  CONSTRAINT application_request_ledger_latency_check
+    CHECK (latency_ms IS NULL OR latency_ms >= 0),
+  CONSTRAINT application_request_ledger_lifecycle_check
+    CHECK (
+      (
+        state = 'active'
+        AND status_code IS NULL
+        AND input_tokens = 0
+        AND output_tokens = 0
+        AND total_tokens = 0
+        AND latency_ms IS NULL
+        AND settled_at IS NULL
+      )
+      OR (
+        state = 'settled'
+        AND status_code IS NOT NULL
+        AND latency_ms IS NOT NULL
+        AND settled_at IS NOT NULL
+      )
+    ),
+  CONSTRAINT application_request_ledger_timestamps_check
+    CHECK (
+      lease_expires_at > started_at
+      AND (settled_at IS NULL OR settled_at >= started_at)
+    )
+);
+
+CREATE INDEX application_request_ledger_active_idx
+  ON admin.application_request_ledger (app_id, lease_expires_at)
+  WHERE state = 'active';
+CREATE INDEX application_request_ledger_settled_started_idx
+  ON admin.application_request_ledger (started_at)
+  WHERE state = 'settled';
+
 CREATE TABLE admin.application_usage_daily (
   app_id text NOT NULL REFERENCES admin.applications(id) ON DELETE RESTRICT,
   credential_id text NOT NULL,
   bucket_date date NOT NULL,
+  route_kind text NOT NULL,
+  model_alias text NOT NULL DEFAULT '',
   request_count integer NOT NULL DEFAULT 0,
   failure_count integer NOT NULL DEFAULT 0,
   input_tokens bigint NOT NULL DEFAULT 0,
   output_tokens bigint NOT NULL DEFAULT 0,
   total_tokens bigint NOT NULL DEFAULT 0,
+  latency_ms_sum bigint NOT NULL DEFAULT 0,
+  latency_ms_max integer NOT NULL DEFAULT 0,
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT application_usage_daily_credential_app_fk
     FOREIGN KEY (credential_id, app_id)
     REFERENCES admin.application_credentials(id, app_id)
     ON DELETE RESTRICT,
   CONSTRAINT application_usage_daily_pkey
-    PRIMARY KEY (app_id, credential_id, bucket_date),
+    PRIMARY KEY (
+      app_id,
+      credential_id,
+      bucket_date,
+      route_kind,
+      model_alias
+    ),
+  CONSTRAINT application_usage_daily_route_check
+    CHECK (route_kind IN ('models', 'chat_completions')),
+  CONSTRAINT application_usage_daily_model_check
+    CHECK (
+      (route_kind = 'models' AND model_alias = '')
+      OR (
+        route_kind = 'chat_completions'
+        AND (
+          char_length(model_alias) BETWEEN 1 AND 160
+          OR (
+            model_alias = ''
+            AND failure_count = request_count
+          )
+        )
+      )
+    ),
   CONSTRAINT application_usage_daily_counts_check
-    CHECK (request_count >= 0 AND failure_count >= 0),
+    CHECK (
+      request_count >= 0
+      AND failure_count >= 0
+      AND failure_count <= request_count
+    ),
   CONSTRAINT application_usage_daily_tokens_check
     CHECK (
       input_tokens >= 0
       AND output_tokens >= 0
-      AND total_tokens >= 0
+      AND total_tokens >= input_tokens + output_tokens
+    ),
+  CONSTRAINT application_usage_daily_latency_check
+    CHECK (
+      latency_ms_sum >= 0
+      AND latency_ms_max >= 0
+      AND latency_ms_max <= latency_ms_sum
     )
 );
 

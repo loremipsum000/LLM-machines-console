@@ -591,12 +591,28 @@ export async function createAdminConnectedAppAction(
     }),
     authMethod: optionalFormValue(formData, "authMethod") ?? "api_key",
     description: optionalFormValue(formData, "description") ?? "",
-    name: optionalFormValue(formData, "name") ?? "",
-    rateLimitRpm: checkboxFormValue(formData, "rateLimitEnabled")
-      ? parseOptionalPositiveInt(optionalFormValue(formData, "rateLimitRpm"))
+    maxConcurrentRequests: checkboxFormValue(
+      formData,
+      "maxConcurrentRequestsEnabled",
+    )
+      ? parseOptionalPositiveInt(
+          optionalFormValue(formData, "maxConcurrentRequests"),
+        )
       : null,
-    tokenBudget7d: checkboxFormValue(formData, "tokenBudgetEnabled")
-      ? parseOptionalPositiveInt(optionalFormValue(formData, "tokenBudget7d"))
+    maxContextBytes: checkboxFormValue(formData, "maxContextBytesEnabled")
+      ? parseOptionalPositiveInt(optionalFormValue(formData, "maxContextBytes"))
+      : null,
+    name: optionalFormValue(formData, "name") ?? "",
+    rateLimitRps: checkboxFormValue(formData, "rateLimitRpsEnabled")
+      ? parseOptionalPositiveInt(optionalFormValue(formData, "rateLimitRps"))
+      : null,
+    tokenAlertThreshold7d: checkboxFormValue(
+      formData,
+      "tokenAlertThreshold7dEnabled",
+    )
+      ? parseOptionalPositiveInt(
+          optionalFormValue(formData, "tokenAlertThreshold7d"),
+        )
       : null,
   })
 
@@ -751,12 +767,28 @@ export async function updateAdminConnectedAppPolicyAction(
       return model ? [model] : []
     }),
     description: optionalFormValue(formData, "description") ?? "",
-    name: optionalFormValue(formData, "name") ?? "",
-    rateLimitRpm: checkboxFormValue(formData, "rateLimitEnabled")
-      ? parseOptionalPositiveInt(optionalFormValue(formData, "rateLimitRpm"))
+    maxConcurrentRequests: checkboxFormValue(
+      formData,
+      "maxConcurrentRequestsEnabled",
+    )
+      ? parseOptionalPositiveInt(
+          optionalFormValue(formData, "maxConcurrentRequests"),
+        )
       : null,
-    tokenBudget7d: checkboxFormValue(formData, "tokenBudgetEnabled")
-      ? parseOptionalPositiveInt(optionalFormValue(formData, "tokenBudget7d"))
+    maxContextBytes: checkboxFormValue(formData, "maxContextBytesEnabled")
+      ? parseOptionalPositiveInt(optionalFormValue(formData, "maxContextBytes"))
+      : null,
+    name: optionalFormValue(formData, "name") ?? "",
+    rateLimitRps: checkboxFormValue(formData, "rateLimitRpsEnabled")
+      ? parseOptionalPositiveInt(optionalFormValue(formData, "rateLimitRps"))
+      : null,
+    tokenAlertThreshold7d: checkboxFormValue(
+      formData,
+      "tokenAlertThreshold7dEnabled",
+    )
+      ? parseOptionalPositiveInt(
+          optionalFormValue(formData, "tokenAlertThreshold7d"),
+        )
       : null,
   })
 
@@ -1211,7 +1243,7 @@ function parseOptionalPositiveInt(value: string | null): number | null {
     return null
   }
   const parsed = Number(trimmed)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : Number.NaN
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : Number.NaN
 }
 
 function connectedAppReturnHref(formData: FormData, appId: string): string {

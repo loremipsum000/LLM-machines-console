@@ -105,6 +105,39 @@ describe("connected app gateway accounting failures", () => {
     await server.close()
   })
 
+  it("does not retain a caller-controlled model value rejected by the allowlist", async () => {
+    configureGateway()
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal("fetch", fetchMock)
+    const server = buildServer()
+    const created = await createBoundedApp(server)
+    const canary = "private-content-canary-not-a-model"
+
+    const response = await server.inject({
+      method: "POST",
+      url: "/api/app-gateway/v1/chat/completions",
+      headers: { authorization: `Bearer ${created.apiKey}` },
+      payload: {
+        model: canary,
+        messages: [{ role: "user", content: "do not send upstream" }],
+      },
+    })
+
+    expect(response.statusCode).toBe(403)
+    expect(response.body).not.toContain(canary)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(accountingMocks.recordUsage).toHaveBeenCalledTimes(1)
+    expect(accountingMocks.recordUsage.mock.calls[0]?.[1]).toMatchObject({
+      model: null,
+      route: "chat_completions",
+      status: 403,
+    })
+    expect(
+      JSON.stringify(accountingMocks.recordUsage.mock.calls),
+    ).not.toContain(canary)
+    await server.close()
+  })
+
   it("preserves a successful completion when usage reconciliation fails", async () => {
     configureGateway()
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
@@ -170,7 +203,7 @@ describe("connected app gateway accounting failures", () => {
     const server = buildServer()
     const loggedErrors = captureRequestErrors(server)
     const created = await createBoundedApp(server)
-    accountingMocks.recordUsage.mockRejectedValueOnce(
+    accountingMocks.reconcile.mockRejectedValueOnce(
       new Error("usage persistence failed at postgres://usage.internal:5432"),
     )
 
@@ -391,9 +424,11 @@ async function createBoundedApp(server: ReturnType<typeof buildServer>) {
       allowedModels: ["local-a"],
       authMethod: "api_key",
       description: "Bounded app used by accounting failure tests.",
+      maxConcurrentRequests: null,
+      maxContextBytes: null,
       name: "Accounting Failure Test",
-      rateLimitRpm: null,
-      tokenBudget7d: null,
+      rateLimitRps: null,
+      tokenAlertThreshold7d: null,
     },
   })
   expect(response.statusCode).toBe(201)

@@ -15,11 +15,12 @@ describe("Inference Core PostgreSQL client bounds", () => {
     })
   })
 
-  it("requires the batch target manifest relation for readiness", () => {
+  it("requires the batch target and request-ledger relations for readiness", () => {
     const source = readFileSync(
       new URL("inference-core-client.ts", import.meta.url),
       "utf8",
     )
     expect(source).toContain("admin.identity_mutation_journal_targets")
+    expect(source).toContain("admin.application_request_ledger")
   })
 })

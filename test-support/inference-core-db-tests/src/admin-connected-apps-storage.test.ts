@@ -549,9 +549,11 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     const updating = updateAdminConnectedApp(actor, created.app.id, {
       allowedModels: ["local-b"],
       description: "Concurrent policy update.",
+      maxConcurrentRequests: null,
+      maxContextBytes: null,
       name: "Concurrent policy",
-      rateLimitRpm: 10,
-      tokenBudget7d: null,
+      rateLimitRps: 10,
+      tokenAlertThreshold7d: null,
     })
 
     await paused.started
@@ -635,9 +637,11 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     const updating = updateAdminConnectedApp(actor, created.app.id, {
       allowedModels: ["local-b"],
       description: "Concurrent connection policy.",
+      maxConcurrentRequests: null,
+      maxContextBytes: null,
       name: "Connection policy",
-      rateLimitRpm: null,
-      tokenBudget7d: null,
+      rateLimitRps: null,
+      tokenAlertThreshold7d: null,
     })
 
     await paused.started
@@ -791,9 +795,11 @@ function connectedAppRequest(
     allowedModels: ["local-a"],
     authMethod,
     description: "PostgreSQL lifecycle test.",
+    maxConcurrentRequests: null,
+    maxContextBytes: null,
     name: `Lifecycle ${authMethod}`,
-    rateLimitRpm: null,
-    tokenBudget7d: null,
+    rateLimitRps: null,
+    tokenAlertThreshold7d: null,
   }
 }
 

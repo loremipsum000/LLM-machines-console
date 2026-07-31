@@ -3,12 +3,13 @@
 This directory records the PR-01 target contract and the exact legacy
 characterization that later reduction pull requests must shrink.
 
-PR-01 does not claim that the current Product already implements the target.
-The current authorization system still uses the legacy personas, retired
-routes remain registered, and runtime zero-content-retention compliance is
-not evaluated. The current connected-app test action records status metadata
-but does not prove network reachability. A later reduction pull request must
-replace it with a content-free connection probe.
+PR-01 was the bootstrap characterization, not a claim that the Product already
+implemented the target. The accepted PR-06 baseline now retains only the two
+human roles, has no legacy registered route, and records connection evidence
+only from an authenticated real client request to
+`GET /api/app-gateway/v1/models`. Runtime
+zero-content-retention compliance remains unevaluated. PR-07 binds the source
+no-content-retention contract without claiming deployed-runtime qualification.
 
 The enforceable boundaries are:
 
@@ -67,6 +68,8 @@ Run:
 ```text
 corepack pnpm check:inference-core
 corepack pnpm check:inference-core:base
+corepack pnpm contract:inference-core:pr07:policy
+corepack pnpm contract:inference-core:pr07:write
 corepack pnpm test:inference-core-guardrails
 corepack pnpm test:inference-core-db
 corepack pnpm build:inference-core
@@ -74,8 +77,8 @@ corepack pnpm typecheck:inference-core
 corepack pnpm typecheck:inference-core-db
 ```
 
-The package guardrail command compares against the immutable reviewed PR-05
-integration commit `da6f0c0a2b5e477449a09527a28c7e51ef432c20`. It does not
+The package guardrail command compares against the immutable accepted PR-06
+integration commit `cd5a389cde949d07aa64ef7a0513cb585bb8bb7a`. It does not
 follow a moving branch ref. The guardrail CLI accepts an explicit `--base-ref`
 for a separately reviewed manual comparison. The comparison is a bootstrap
 result in PR-01 because the integration base predates these files. From PR-02
@@ -182,9 +185,11 @@ The production BFF manifest cannot depend on PGlite. The root lock may retain
 only Drizzle's two optional PGlite peer-metadata records; a root importer,
 resolved package, dependency, or snapshot edge fails.
 
-Optional Application token-budget values remain persisted, but enabled
-runtime enforcement fails closed until PR-07 qualification. The metadata-only
-PostgreSQL idempotency ledger stores no raw key or request or response payload.
+PR-04 persisted the earlier optional Application threshold field without
+qualifying data-plane enforcement. PR-07 replaces its former token-budget
+meaning with a non-blocking alert threshold and separately qualifies optional
+service-protection controls. The metadata-only PostgreSQL idempotency ledger
+stores no raw key or request or response payload.
 An expired pending mutation and a failed receipt finalization require
 reconciliation without automatic re-execution. PR-04 does not claim a
 cross-system transaction, and durable Keycloak reconciliation remains deferred
@@ -287,11 +292,9 @@ base and lane anchor are the PR-05 integration commit
 `da6f0c0a2b5e477449a09527a28c7e51ef432c20`. PR-06 retains every PR-02 through
 PR-05 revision and evidence file byte-for-byte.
 
-During implementation,
-`pr-06-application-decisions.json` remains
-`pending-final-staged-delta`, its six operation arrays remain empty, and the
-confirmed governance values are already recorded. OAuth access tokens use an
-exact 300-second lifetime, and Application administration uses the
+The reviewed `pr-06-application-decisions.json` records its exact six operation
+arrays and confirmed governance values. OAuth access tokens use an exact
+300-second lifetime, and Application administration uses the
 `dedicated-application-realm` topology. The human realm is `llm-machines`; the
 Application realm is `llm-machines-applications`. Application clients inherit
 the 300-second realm lifetime. The `console-application-admin` service client
@@ -302,10 +305,9 @@ PR-06 records and guards these decisions but performs no runtime OAuth
 activation and does not qualify the topology. PR-07 owns OAuth access-token
 validation, runtime limit enforcement, and inference data-plane qualification.
 PR-12 owns deterministic packaging and commissioning of the two-realm Keycloak
-configuration. Once the candidate implementation is stable, stage every
-tracked candidate path with no untracked files, print the canonical operation
-policy, copy its six exact arrays into the decision, review them, and change
-`reviewStatus` to `reviewed` before generation:
+configuration. Its revision was generated only after every tracked candidate
+path was staged, no untracked file remained, and the canonical operation policy
+matched the reviewed six arrays:
 
 ```text
 node scripts/inference-core/pr06-contract-revision.mjs --print-operation-policy
@@ -317,6 +319,51 @@ seconds, a Keycloak Application realm topology other than
 `dedicated-application-realm`, or any difference between the reviewed arrays
 and the staged candidate. It accepts no alternate base or output path and
 atomically replaces only the PR-06 revision, forbidden allowlist, and route
-baseline. Until write mode is explicitly run, `contract-revisions/PR-06.json`
-must not exist and the two generated baselines remain at their reviewed PR-05
-identities.
+baseline. The accepted PR-06 merge and all of its revision evidence are the
+immutable base for PR-07.
+
+PR-07 is scoped to qualify the public inference data plane from the exact
+accepted PR-06 commit and lane anchor
+`cd5a389cde949d07aa64ef7a0513cb585bb8bb7a`. It retains
+every PR-02 through PR-06 revision and evidence file byte-for-byte. The public
+surface remains exactly `GET /api/app-gateway/v1/models` and
+`POST /api/app-gateway/v1/chat/completions`. Both static Application keys and
+OAuth client-credentials tokens are accepted. OAuth validation is bound to
+the dedicated `llm-machines-applications` realm and an access-token lifetime
+of at most 300 seconds; human-realm tokens are not accepted for Applications.
+
+Stable model aliases fail closed when missing or unhealthy and are never
+silently substituted. Chat completions support streaming and non-streaming
+transport. Tool calls are protocol payloads only and are never executed by
+the appliance. Prompts, completions, streamed chunks, and tool arguments are
+not retained. Only content-free accounting, health-control, and audit metadata
+may persist. The source contract does not claim deployed-runtime zero-retention
+qualification; that evidence remains PR-12 work.
+
+PR-07's PostgreSQL lease and counter state is cross-process-capable by design;
+independent-process and live PostgreSQL qualification remains PR-12.
+
+Because the appliance runs on customer-owned hardware, a usage or token
+threshold is a non-blocking metadata signal. Optional requests-per-second and
+concurrency controls may reject work only to protect service health. Model
+allowlists and context-size limits enforce per-Application permissions, and a
+missing allowed alias fails closed without substitution. PR-07 produces the
+metadata signals. PR-09 owns their alert presentation and delivery. PR-07 adds
+no Firecrawl route, performs no Firecrawl work, and performs no runtime
+deployment or qualification.
+
+During implementation, `pr-07-data-plane-decisions.json` remains
+`pending-final-staged-delta` with six empty operation arrays. After the complete
+candidate is stable, stage every tracked path and leave no untracked file. Then
+print the exact operation policy, copy its six arrays into the decision, review
+them, set `reviewStatus` to `reviewed`, and run write mode:
+
+```text
+corepack pnpm contract:inference-core:pr07:policy
+corepack pnpm contract:inference-core:pr07:write
+```
+
+Both commands require exact lane-anchor `HEAD`. Write mode rejects pending or
+drifted decisions and atomically replaces only the PR-07 revision, forbidden
+allowlist, and route baseline. The generated revision and baselines must not be
+created from a partial or unstaged candidate.

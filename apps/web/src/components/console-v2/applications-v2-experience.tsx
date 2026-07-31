@@ -172,18 +172,32 @@ function AddConnectedAppView({
           <ModelAliasFields modelOptions={modelOptions} />
           <div className="grid gap-3 sm:grid-cols-2">
             <OptionalLimitField
-              checkboxName="rateLimitEnabled"
-              inputName="rateLimitRpm"
-              label="Requests per minute"
+              checkboxName="rateLimitRpsEnabled"
+              inputName="rateLimitRps"
+              label="Requests per second"
               max={10_000}
             />
             <OptionalLimitField
-              checkboxName="tokenBudgetEnabled"
-              inputName="tokenBudget7d"
-              label="Tokens per seven days"
+              checkboxName="maxConcurrentRequestsEnabled"
+              inputName="maxConcurrentRequests"
+              label="Concurrent requests"
+              max={10_000}
+            />
+            <OptionalLimitField
+              checkboxName="maxContextBytesEnabled"
+              inputName="maxContextBytes"
+              label="Context bytes per request"
+              max={Number.MAX_SAFE_INTEGER}
+            />
+            <OptionalLimitField
+              checkboxName="tokenAlertThreshold7dEnabled"
+              enabledLabel="Visibility threshold enabled"
+              inputName="tokenAlertThreshold7d"
+              label="Seven-day token alert threshold"
               max={100_000_000}
             />
           </div>
+          <ApplicationCapacityPolicyCopy />
           <ConnectedAppCreateStatus state={createState} />
           <div className="flex justify-end gap-2">
             <Link className={secondaryButtonClass} href="/applications">
@@ -365,13 +379,32 @@ function ConnectedAppDetailView({
             value={currentApp.allowedModels.join(", ")}
           />
           <DetailRow
-            label="Request limit"
-            value={formatNullableLimit(currentApp.rateLimitRpm, " rpm")}
+            label="Requests per second"
+            value={formatNullableLimit(currentApp.rateLimitRps, " rps")}
           />
           <DetailRow
-            label="Token limit"
-            value={formatNullableLimit(currentApp.tokenBudget7d, " / 7 days")}
+            label="Concurrent requests"
+            value={formatNullableLimit(currentApp.maxConcurrentRequests, "")}
           />
+          <DetailRow
+            label="Context per request"
+            value={formatNullableLimit(currentApp.maxContextBytes, " bytes")}
+          />
+          <DetailRow
+            label="Token alert threshold"
+            value={formatNullableLimit(
+              currentApp.tokenAlertThreshold7d,
+              " / 7 days",
+            )}
+          />
+          <DetailRow
+            label="Token alert status"
+            value={tokenAlertStateLabel(
+              currentApp.tokenAlertState,
+              currentApp.tokenAlertThreshold7d,
+            )}
+          />
+          <ApplicationCapacityPolicyCopy />
           <DetailRow
             label="Connection"
             value={connectionStatusLabel(currentApp.connectionStatus)}
@@ -622,20 +655,36 @@ function ConnectedAppPolicyEditor({
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <OptionalLimitField
-          checkboxName="rateLimitEnabled"
-          initialValue={app.rateLimitRpm}
-          inputName="rateLimitRpm"
-          label="Requests per minute"
+          checkboxName="rateLimitRpsEnabled"
+          initialValue={app.rateLimitRps}
+          inputName="rateLimitRps"
+          label="Requests per second"
           max={10_000}
         />
         <OptionalLimitField
-          checkboxName="tokenBudgetEnabled"
-          initialValue={app.tokenBudget7d}
-          inputName="tokenBudget7d"
-          label="Tokens per seven days"
+          checkboxName="maxConcurrentRequestsEnabled"
+          initialValue={app.maxConcurrentRequests}
+          inputName="maxConcurrentRequests"
+          label="Concurrent requests"
+          max={10_000}
+        />
+        <OptionalLimitField
+          checkboxName="maxContextBytesEnabled"
+          initialValue={app.maxContextBytes}
+          inputName="maxContextBytes"
+          label="Context bytes per request"
+          max={Number.MAX_SAFE_INTEGER}
+        />
+        <OptionalLimitField
+          checkboxName="tokenAlertThreshold7dEnabled"
+          enabledLabel="Visibility threshold enabled"
+          initialValue={app.tokenAlertThreshold7d}
+          inputName="tokenAlertThreshold7d"
+          label="Seven-day token alert threshold"
           max={100_000_000}
         />
       </div>
+      <ApplicationCapacityPolicyCopy />
       <div className="flex justify-end">
         <button className={primaryButtonClass} type="submit">
           Save policy
@@ -978,12 +1027,14 @@ function ModelAliasFields({
 
 function OptionalLimitField({
   checkboxName,
+  enabledLabel = "Protection enabled",
   initialValue = null,
   inputName,
   label,
   max,
 }: {
   checkboxName: string
+  enabledLabel?: string
   initialValue?: number | null
   inputName: string
   label: string
@@ -1014,9 +1065,20 @@ function OptionalLimitField({
         type="number"
       />
       <p className="text-xs text-[#8b8b8b]">
-        {enabled ? "Limit enabled" : "Disabled by default"}
+        {enabled ? enabledLabel : "Disabled by default"}
       </p>
     </div>
+  )
+}
+
+function ApplicationCapacityPolicyCopy() {
+  return (
+    <p className="text-xs leading-5 text-[#8b8b8b]">
+      The customer owns the hardware and may use available compute. Optional
+      request-rate and concurrency controls protect service health. Model access
+      and context-size controls define each Application&apos;s permissions. The
+      seven-day token threshold is visibility only and never blocks inference.
+    </p>
   )
 }
 
@@ -1481,6 +1543,22 @@ function connectionStatusLabel(
     return "Degraded"
   }
   return "Not connected"
+}
+
+function tokenAlertStateLabel(
+  state: AdminConnectedApp["tokenAlertState"],
+  threshold: number | null,
+): string {
+  if (threshold === null) {
+    return "Disabled"
+  }
+  if (state === "reached") {
+    return "Reached (non-blocking)"
+  }
+  if (state === "below") {
+    return "Below threshold"
+  }
+  return "Awaiting usage data"
 }
 
 function rotationDescription(

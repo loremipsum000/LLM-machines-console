@@ -4,6 +4,12 @@
   "overallVerdict": "PR01_SOURCE_CHARACTERIZATION_INCOMPLETE",
   "runtimeZeroRetentionCompliance": "NOT_EVALUATED",
   "d2aRcRetentionEvidence": "NOT_DUE",
+  "sourceRetentionContract": {
+    "scope": "public-inference-data-plane",
+    "workloadContentPersistence": false,
+    "metadataOnly": true,
+    "runtimeQualificationOwner": "PR-12"
+  },
   "requiredTerminalStates": [
     "success",
     "rejection",
@@ -80,11 +86,6 @@
     }
   ],
   "legacyGaps": [
-    {
-      "id": "ZR-LEGACY-001",
-      "summary": "Gateway accounting failures log raw Error message and stack.",
-      "retireBy": "PR-07"
-    },
     {
       "id": "ZR-LEGACY-002",
       "summary": "Audit reason and metadata accept unrestricted content.",

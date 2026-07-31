@@ -7,6 +7,7 @@ import {
   applicationLimits,
   applicationModelAllowlists,
   applicationRateLimitWindows,
+  applicationRequestLedger,
   applicationUsageDaily,
   applications,
   auditEvents,
@@ -96,7 +97,14 @@ const tableDefinitions = [
   {
     schema: "admin",
     table: applicationLimits,
-    columns: ["app_id", "requests_per_minute", "tokens_per_7d", "updated_at"],
+    columns: [
+      "app_id",
+      "requests_per_second",
+      "token_alert_threshold_7d",
+      "max_concurrent_requests",
+      "max_context_bytes",
+      "updated_at",
+    ],
   },
   {
     schema: "admin",
@@ -105,16 +113,41 @@ const tableDefinitions = [
   },
   {
     schema: "admin",
+    table: applicationRequestLedger,
+    columns: [
+      "id",
+      "app_id",
+      "credential_id",
+      "route_kind",
+      "model_alias",
+      "context_bytes",
+      "state",
+      "status_code",
+      "input_tokens",
+      "output_tokens",
+      "total_tokens",
+      "latency_ms",
+      "started_at",
+      "lease_expires_at",
+      "settled_at",
+    ],
+  },
+  {
+    schema: "admin",
     table: applicationUsageDaily,
     columns: [
       "app_id",
       "credential_id",
       "bucket_date",
+      "route_kind",
+      "model_alias",
       "request_count",
       "failure_count",
       "input_tokens",
       "output_tokens",
       "total_tokens",
+      "latency_ms_sum",
+      "latency_ms_max",
       "updated_at",
     ],
   },
@@ -309,6 +342,8 @@ const expectedIndexes = [
   "application_credentials_prefix_status_idx",
   "application_credentials_app_status_idx",
   "application_rate_limit_windows_expiry_idx",
+  "application_request_ledger_active_idx",
+  "application_request_ledger_settled_started_idx",
   "application_usage_daily_bucket_idx",
   "application_usage_daily_app_bucket_idx",
   "idempotency_ledger_identity_key_idx",
@@ -346,6 +381,7 @@ describe("inference-core persistence boundary", () => {
       "application_model_allowlists",
       "application_limits",
       "application_rate_limit_windows",
+      "application_request_ledger",
       "application_usage_daily",
       "idempotency_ledger",
       "identity_mutation_journal",
@@ -374,6 +410,7 @@ describe("inference-core persistence boundary", () => {
       "applicationModelAllowlists",
       "applicationLimits",
       "applicationRateLimitWindows",
+      "applicationRequestLedger",
       "applicationUsageDaily",
       "idempotencyLedger",
       "identityMutationJournal",
@@ -511,6 +548,13 @@ describe("inference-core persistence boundary", () => {
     )
     expect(credentialTable).not.toMatch(
       /\b(?:api_key_plaintext|client_secret|raw_key|secret_value)\b/i,
+    )
+    const requestLedgerTable = migration.slice(
+      migration.indexOf("CREATE TABLE admin.application_request_ledger"),
+      migration.indexOf("CREATE TABLE admin.application_usage_daily"),
+    )
+    expect(requestLedgerTable).not.toMatch(
+      /\b(?:correlation_id|prompt|request_body|response_body|tool_call|tool_result)\b/i,
     )
   })
 

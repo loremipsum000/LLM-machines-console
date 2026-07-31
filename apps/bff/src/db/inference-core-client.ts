@@ -64,6 +64,7 @@ export async function checkInferenceCoreDbReadiness(
             ('admin.application_model_allowlists'),
             ('admin.application_limits'),
             ('admin.application_rate_limit_windows'),
+            ('admin.application_request_ledger'),
             ('admin.application_usage_daily'),
             ('admin.idempotency_ledger'),
             ('admin.identity_mutation_journal'),
