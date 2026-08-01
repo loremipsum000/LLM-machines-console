@@ -7,6 +7,7 @@ type RetentionExecute = (statement: SQL) => Promise<unknown>
 export type InferenceCoreRetentionResult =
   | {
       abandonedRequestsSettled: number
+      auditEventsDeleted: number
       idempotencyRowsDeleted: number
       rateLimitWindowsDeleted: number
       requestLedgerRowsDeleted: number
@@ -22,7 +23,9 @@ export async function runInferenceCoreRetention(
     now?: Date
   } = {},
 ): Promise<InferenceCoreRetentionResult> {
-  const usageCutoff = utcUsageCutoff(options.now ?? new Date())
+  const now = options.now ?? new Date()
+  const usageCutoff = utcUsageCutoff(now)
+  const auditCutoff = auditRetentionCutoff(now)
   return database.transaction(async (transaction) => {
     const execute: RetentionExecute = async (statement) =>
       transaction.execute(statement)
@@ -309,6 +312,11 @@ export async function runInferenceCoreRetention(
         DELETE FROM admin.application_firecrawl_usage_daily
         WHERE bucket_date < ${usageCutoff}::date
         RETURNING 1
+      ),
+      deleted_audit_events AS (
+        DELETE FROM common.audit_events
+        WHERE occurred_at < ${auditCutoff}::timestamptz
+        RETURNING 1
       )
       SELECT
         (
@@ -322,6 +330,8 @@ export async function runInferenceCoreRetention(
           AS rate_limit_windows_deleted,
         (SELECT count(*)::integer FROM deleted_idempotency_rows)
           AS idempotency_rows_deleted,
+        (SELECT count(*)::integer FROM deleted_audit_events)
+          AS audit_events_deleted,
         (
           (SELECT count(*)::integer FROM deleted_request_ledger_rows)
           +
@@ -340,6 +350,7 @@ export async function runInferenceCoreRetention(
     `)
     const row = resultRows(result)[0] as
       | {
+          audit_events_deleted?: unknown
           idempotency_rows_deleted?: unknown
           rate_limit_windows_deleted?: unknown
           request_ledger_rows_deleted?: unknown
@@ -351,6 +362,7 @@ export async function runInferenceCoreRetention(
     }
     return {
       abandonedRequestsSettled,
+      auditEventsDeleted: countValue(row.audit_events_deleted),
       idempotencyRowsDeleted: countValue(row.idempotency_rows_deleted),
       rateLimitWindowsDeleted: countValue(row.rate_limit_windows_deleted),
       requestLedgerRowsDeleted: countValue(row.request_ledger_rows_deleted),
@@ -358,6 +370,13 @@ export async function runInferenceCoreRetention(
       usageBucketsDeleted: countValue(row.usage_buckets_deleted),
     }
   })
+}
+
+function auditRetentionCutoff(now: Date): string {
+  if (!Number.isFinite(now.getTime())) {
+    throw new Error("Inference Core retention requires a valid clock value.")
+  }
+  return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString()
 }
 
 function utcUsageCutoff(now: Date): string {

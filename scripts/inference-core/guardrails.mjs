@@ -55,6 +55,10 @@ export const pr08SourceManifestPath =
   "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json"
 export const pr08SourceMapPath =
   "docs/reduction/inference-core/source-map.jsonl"
+export const pr09ContractRevisionPath =
+  "docs/reduction/inference-core/contract-revisions/PR-09.json"
+export const pr09DecisionPath =
+  "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json"
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -70,6 +74,9 @@ export const pr07LaneAnchor = "cd5a389cde949d07aa64ef7a0513cb585bb8bb7a"
 export const pr08ContractBase = "c47ffd38661ce9a7561f967aecbb9bae15cdadf5"
 export const pr08LaneAnchor = "c47ffd38661ce9a7561f967aecbb9bae15cdadf5"
 export const pr08ContractBaseTree = "6071f1aa62690c509346cf1af7017a4cc669d28b"
+export const pr09ContractBase = "c07d651b1f7d16f777839c3c15783a61271239c3"
+export const pr09LaneAnchor = pr09ContractBase
+export const pr09ContractBaseTree = "0b2e55ce2f4c9be726dde4443a9f0bee91556b69"
 export const pr08PrivateCheckpoint = {
   baseCommit: "eeab335ab3e46add36e4efcfb4dad2b3b47a8202",
   baseTree: "c38ca6e7ea85e454f7c191441ade7679b7ee4c41",
@@ -178,6 +185,20 @@ export const pr08RevisionEvidencePaths = [
   "scripts/inference-core/pr08-boundaries.test.mjs",
   "scripts/inference-core/pr08-contract-revision.mjs",
 ]
+export const pr09SuccessorAwareHistoricalTestPaths = [
+  "scripts/inference-core/pr02-boundaries.test.mjs",
+  "scripts/inference-core/pr05-boundaries.test.mjs",
+]
+const pr09HistoricalTestEvidenceCommitByPath = new Map([
+  [pr09SuccessorAwareHistoricalTestPaths[0], pr03ContractBase],
+  [pr09SuccessorAwareHistoricalTestPaths[1], pr06ContractBase],
+])
+export const pr09RevisionEvidencePaths = [
+  pr09DecisionPath,
+  ...pr09SuccessorAwareHistoricalTestPaths,
+  "scripts/inference-core/pr09-boundaries.test.mjs",
+  "scripts/inference-core/pr09-contract-revision.mjs",
+]
 const pr04ImmutablePriorEvidencePaths = [
   pr02ContractRevisionPath,
   ...pr02RevisionEvidencePaths,
@@ -207,6 +228,11 @@ const pr08ImmutablePriorEvidencePaths = [
   pr07ContractRevisionPath,
   ...pr07RevisionEvidencePaths,
 ]
+const pr09ImmutablePriorEvidencePaths = [
+  ...pr08ImmutablePriorEvidencePaths,
+  pr08ContractRevisionPath,
+  ...pr08RevisionEvidencePaths,
+]
 const generatedContractPaths = new Set([
   allowlistPath,
   routeBaselinePath,
@@ -217,6 +243,7 @@ const generatedContractPaths = new Set([
   pr06ContractRevisionPath,
   pr07ContractRevisionPath,
   pr08ContractRevisionPath,
+  pr09ContractRevisionPath,
 ])
 export const pr02OperationPolicy = {
   changedSourcePaths: [
@@ -384,6 +411,7 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/contract-revisions/PR-06.json",
   "docs/reduction/inference-core/contract-revisions/PR-07.json",
   "docs/reduction/inference-core/contract-revisions/PR-08.json",
+  "docs/reduction/inference-core/contract-revisions/PR-09.json",
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "docs/reduction/inference-core/pr-03-removal-decisions.json",
   "docs/reduction/inference-core/pr-04-data-decisions.json",
@@ -392,6 +420,7 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/pr-07-data-plane-decisions.json",
   "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
   "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
+  "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
   "docs/reduction/inference-core/decision-register.md",
   "docs/reduction/inference-core/source-map.jsonl",
   "docs/reduction/inference-core/validation-register.md",
@@ -413,6 +442,8 @@ const guardrailExclusions = new Set([
   "scripts/inference-core/pr07-boundaries.test.mjs",
   "scripts/inference-core/pr08-contract-revision.mjs",
   "scripts/inference-core/pr08-boundaries.test.mjs",
+  "scripts/inference-core/pr09-contract-revision.mjs",
+  "scripts/inference-core/pr09-boundaries.test.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -438,6 +469,7 @@ const protectedGuardrailPaths = [
   "docs/reduction/inference-core/pr-07-data-plane-decisions.json",
   "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
   "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
+  "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
   "docs/reduction/inference-core/decision-register.md",
   "docs/reduction/inference-core/source-map.jsonl",
   "docs/reduction/inference-core/validation-register.md",
@@ -465,6 +497,8 @@ const protectedGuardrailPaths = [
   "scripts/inference-core/pr07-contract-revision.mjs",
   "scripts/inference-core/pr08-boundaries.test.mjs",
   "scripts/inference-core/pr08-contract-revision.mjs",
+  "scripts/inference-core/pr09-boundaries.test.mjs",
+  "scripts/inference-core/pr09-contract-revision.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -509,6 +543,18 @@ const pathRules = [
   },
 ]
 
+const fs103LowerIdentifierTerms =
+  "(?:knowledge|corpus|corpora|ragflow|rag|embeddings?)"
+const fs103TitleIdentifierTerms =
+  "(?:Knowledge|Corpus|Corpora|RAGFlow|RagFlow|Ragflow|Rag|Embeddings?)"
+const fs103UpperIdentifierTerms =
+  "(?:KNOWLEDGE|CORPUS|CORPORA|RAGFLOW|RAG|EMBEDDINGS?)"
+const fs103IdentifierAwarePattern = [
+  `(?<![A-Za-z0-9])(?:${fs103LowerIdentifierTerms}|${fs103TitleIdentifierTerms}|${fs103UpperIdentifierTerms})(?![A-Za-z0-9])`,
+  `(?<![A-Za-z0-9])${fs103LowerIdentifierTerms}(?=[A-Z])`,
+  `${fs103TitleIdentifierTerms}(?=$|[^a-z0-9])`,
+].join("|")
+
 const contentRules = [
   {
     id: "FS101_AGENTIC_RUNTIME",
@@ -524,8 +570,8 @@ const contentRules = [
   },
   {
     id: "FS103_KNOWLEDGE_RAG",
-    pattern: "knowledge|corpus|corpora|ragflow|\\brag\\b|embedding",
-    flags: "giu",
+    pattern: fs103IdentifierAwarePattern,
+    flags: "gu",
     removeBy: "PR-04",
   },
   {
@@ -909,6 +955,15 @@ export const pr08StandaloneDbTestBoundary = {
   ].sort(),
 }
 
+export const pr09StandaloneDbTestBoundary = {
+  ...pr08StandaloneDbTestBoundary,
+  allowedPaths: [
+    ...pr08StandaloneDbTestBoundary.allowedPaths,
+    "test-support/inference-core-db-tests/src/pr09-alert-egress.test.ts",
+    "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
+  ].sort(),
+}
+
 export const pr04ReviewedDispositions = {
   applicationTokenBudgets: {
     persistence: "optional-values-retained",
@@ -1273,6 +1328,328 @@ export const pr08ReviewedDispositions = {
   },
 }
 
+export const pr09ReviewedDispositions = {
+  activityAudit: {
+    sources: [
+      "console",
+      "keycloak",
+      "litellm",
+      "grafana",
+      "alertmanager",
+      "firecrawl",
+      "lifecycle",
+    ],
+    nativeIngressSources: [
+      "keycloak",
+      "litellm",
+      "grafana",
+      "alertmanager",
+    ],
+    ingressMechanism: "product_owned_audited_ingress",
+    ingressState: "implemented_pending_runtime_qualification",
+    nativeEventIdentity: {
+      suppliedBy: "product-owned-native-adapter",
+      adapterContract: "source-namespaced-deterministic-uuidv5",
+      pr09Validation: "canonical-uuidv5-shape-only",
+      namespaceDerivationProvenInPr09: false,
+      configuredNativeAdaptersInPr09: 0,
+      persistedAs: "audit_events.id",
+      idempotencyBoundary: "audit_events-primary-key",
+      replay: "idempotent-only-for-identical-canonical-metadata",
+      collision: "reject-different-canonical-metadata",
+      rawSourceEventIdRetained: false,
+      rawSourceEventIdExported: false,
+      deduplicateByCorrelationId: false,
+    },
+    nativeCursor: {
+      format: "v1-canonical-utc-watermark-uuidv5-tie-breaker",
+      storage: ["cursor_version", "cursor_watermark", "cursor_tie_breaker"],
+      order: ["watermark_asc", "tie_breaker_asc"],
+      monotonic: true,
+      establishedCursorMayClear: false,
+      concurrency: "row-lock-compare-and-set",
+      attemptOrdering: "older-attempt-cannot-overwrite-newer-attempt",
+      batchCursor: "must-match-final-event-watermark-and-id",
+    },
+    activityAndExportPageCursor: {
+      encoding: "base64url-json",
+      fields: ["id", "occurredAt"],
+      pagination: "deterministic-live-keyset",
+      crossPageSnapshot: false,
+    },
+    timelineOrder: ["occurred_at_desc", "id_desc"],
+    exportOrder: ["occurred_at_asc", "id_asc"],
+    maxNativeEventsPerRun: 1000,
+    nativeIdentifiers: {
+      correlationId: "required-canonical-uuid",
+      keycloakSubjectId: "nullable-for-system-originated-events",
+      opaqueIdentifierPattern: "^[A-Za-z0-9][A-Za-z0-9_:-]*$",
+      prohibitedIdentifierPrefixes: [
+        "llmm_",
+        "bearer",
+        "token",
+        "secret",
+        "password",
+        "api-key",
+      ],
+      providerTokenWholeValuePolicy: {
+        disposition: "reject",
+        matching: "anchored-whole-value",
+        appliesTo: [
+          "keycloakSubjectId",
+          "applicationId",
+          "credentialRecordId",
+        ],
+        families: "reviewed-provider-token-shape-set",
+        valuesRecordedInGovernance: false,
+      },
+      credentialPrefixPatterns: [
+        "^llmm_t4_[0-9a-f]{18}$",
+        "^llmm_fc_[0-9a-f]{16}$",
+      ],
+      credentialIdentifierCardinality: "record-id-or-prefix-never-both",
+    },
+    nativeActions: {
+      keycloak: [
+        "keycloak.authentication.failed",
+        "keycloak.authentication.succeeded",
+        "keycloak.credential.updated",
+        "keycloak.role.assigned",
+        "keycloak.role.revoked",
+        "keycloak.user.created",
+        "keycloak.user.deleted",
+        "keycloak.user.updated",
+      ],
+      litellm: [
+        "litellm.request.denied",
+        "litellm.request.failed",
+        "litellm.request.succeeded",
+        "litellm.route.created",
+        "litellm.route.deleted",
+        "litellm.route.updated",
+        "litellm.virtual_key.created",
+        "litellm.virtual_key.revoked",
+        "litellm.virtual_key.rotated",
+        "litellm.virtual_key.updated",
+      ],
+      grafana: [
+        "grafana.alert_rule.created",
+        "grafana.alert_rule.deleted",
+        "grafana.alert_rule.updated",
+        "grafana.dashboard.created",
+        "grafana.dashboard.deleted",
+        "grafana.dashboard.updated",
+        "grafana.datasource.updated",
+        "grafana.folder.created",
+        "grafana.folder.deleted",
+        "grafana.folder.updated",
+      ],
+      alertmanager: [
+        "alertmanager.configuration.reloaded",
+        "alertmanager.notification.failed",
+        "alertmanager.notification.succeeded",
+        "alertmanager.silence.created",
+        "alertmanager.silence.deleted",
+        "alertmanager.silence.expired",
+      ],
+    },
+    nativeRecoveryReasonCodes: {
+      keycloak: [
+        "account_disabled",
+        "authentication_failed",
+        "authorization_denied",
+        "invalid_credentials",
+        "policy_rejected",
+      ],
+      litellm: [
+        "model_denied",
+        "rate_limited",
+        "request_failed",
+        "route_unavailable",
+      ],
+      grafana: [
+        "operation_failed",
+        "permission_denied",
+        "validation_failed",
+      ],
+      alertmanager: [
+        "delivery_failed",
+        "receiver_unavailable",
+        "silence_rejected",
+      ],
+    },
+    allowedMetadataFields: [
+      "id",
+      "occurredAt",
+      "ingestedAt",
+      "action",
+      "outcome",
+      "sourceSystem",
+      "correlationId",
+      "keycloakSubjectId",
+      "applicationId",
+      "credentialRecordId",
+      "credentialPrefix",
+      "recoveryReasonCode",
+    ],
+    compatibilityTargetProjection: {
+      persistence: false,
+      export: false,
+      mode: "derived-read-only",
+      fields: ["targetType", "targetId"],
+      derivedOnlyFrom: [
+        "keycloakSubjectId",
+        "applicationId",
+        "credentialRecordId",
+        "credentialPrefix",
+        "correlationId",
+      ],
+    },
+    prohibitedContentFields: [
+      "prompt",
+      "response",
+      "completion",
+      "requestBody",
+      "responseBody",
+      "headers",
+      "toolArguments",
+      "toolResults",
+      "searchTerms",
+      "url",
+      "pageContent",
+    ],
+    authorization: {
+      admin: ["view", "filter", "signed-export"],
+      operator: ["view", "filter"],
+      operatorExport: false,
+    },
+    retentionDays: 365,
+  },
+  auditExport: {
+    formats: ["json", "csv"],
+    envelope: "compact-jws",
+    algorithm: "Ed25519",
+    deterministicPayloadBytes: true,
+    maximumEventsPerPage: 5000,
+    maximumPayloadBytes: 8388608,
+    maximumRangeDays: 365,
+    pagination: "deterministic-live-keyset",
+    cursorEncoding: "base64url-json-id-occurredAt",
+    crossPageSnapshot: false,
+    privateKeySource: "mounted-file-only",
+    publicVerificationKeySource: "mounted-jwks-file",
+    privateKeyInGit: false,
+    privateKeyInEnvironment: false,
+    missingOrInvalidMaterial: "signed-export-surface-only-http-503",
+    unaffectedSurfaces: ["inference", "audit-ingestion", "audit-view"],
+  },
+  expertAccess: {
+    systems: ["keycloak", "litellm", "grafana", "alertmanager"],
+    auditIngestion: "implemented_pending_runtime_qualification",
+    mechanism: "product_owned_audited_ingress",
+    consoleProjection: "read_only",
+    directAccess: "disabled",
+    nativeMutation: "disabled",
+    enablementOwner: "PR-12",
+    noBypassProofRequired: true,
+  },
+  grafanaOss: {
+    adminRole: "Editor",
+    operatorRole: "Viewer",
+    retainedRoleCardinality: "exactly-one",
+    ambiguousRetainedRoles: "deny",
+    baseline: "provisioned-locked",
+    customerFolder: "unprovisioned-customer-editable",
+    customerFolderAdminPermission: "Edit",
+    customerFolderOperatorPermission: "View",
+    strictFolderConfinementClaim: false,
+    runtimeActivationOwner: "PR-12",
+  },
+  observability: {
+    metricsEndpoint: {
+      method: "GET",
+      path: "/internal/observability/metrics",
+      exposure: "private-authenticated",
+      authentication: "mounted-private-file-bearer",
+      queryAllowed: false,
+      additionalExporterService: false,
+    },
+    prometheusQueryApi: {
+      authentication: "mounted-private-file-bearer",
+      runtimeEnvironmentCredentialAllowed: false,
+    },
+    accountingMetrics: [
+      "llm_machines_inference_requests_5m",
+      "llm_machines_inference_failures_5m",
+      "llm_machines_inference_server_failures_5m",
+      "llm_machines_inference_in_flight_requests",
+      "llm_machines_inference_retained_requests",
+      "llm_machines_inference_retained_failures",
+      "llm_machines_inference_retained_input_tokens",
+      "llm_machines_inference_retained_output_tokens",
+      "llm_machines_inference_retained_total_tokens",
+      "llm_machines_inference_retained_latency_milliseconds_sum",
+      "llm_machines_inference_retained_latency_milliseconds_max",
+    ],
+    queueDepth: {
+      stateMetric:
+        'llm_machines_inference_queue_depth_source_info{status="not_configured"}',
+      valueMetric: "llm_machines_inference_queue_depth",
+      valueEmittedInPr09: false,
+      concurrencyOrInFlightIsSubstitute: false,
+      genuineSignalOwner: "PR-12",
+    },
+    alerts: [
+      "LLMMGpuSaturation",
+      "LLMMInferenceFailureRatioHigh",
+      "LLMMInferenceQueueDepthPersisting",
+      "LLMMInferenceQueueDepthSignalMissing",
+    ],
+    localDefaultReceiver: "local-null",
+    llmMachinesCloudRelay: false,
+  },
+  alertEgress: {
+    pr09Scope: "redacted-transport-intent-and-warning-acknowledgement-only",
+    transports: ["disabled", "smtp", "webhook"],
+    warningVersion: "alert-egress-v1",
+    mutationAuthority: "admin-only-no-breakglass-operator",
+    operatorRead: true,
+    deliveryStates: ["disabled", "prepared_pending_runtime_qualification"],
+    persistedDestination: false,
+    persistedEmailOrUrl: false,
+    persistedSecret: false,
+    runtimeDelivery: false,
+    defaultState: "disabled",
+    dedicatedUpdaterFields: [
+      "alert_egress_revision",
+      "alert_egress_updated_at",
+      "alert_egress_updated_by",
+      "alert_egress_acknowledged_at",
+      "alert_egress_acknowledged_by",
+      "alert_egress_warning_version",
+    ],
+    stateAuditReceiptAtomicity: "single-postgresql-transaction",
+    receiptFinalization: "same-transaction",
+    receiptFailureRollsBackStateAndAudit: true,
+    customerDestinationAndSecretInjectionOwner: "PR-12",
+    nativeReloadDeliveryAndNoBypassQualificationOwner: "PR-12",
+  },
+  retention: {
+    workloadContentDays: 0,
+    auditMetadataDays: 365,
+    applicationAndUsageMetadataDays: 90,
+    metricsAndAlertStateDays: 30,
+    alertmanagerNotificationAndSilenceHours: 720,
+    runtimeQualificationOwner: "PR-12",
+  },
+  scopeBoundaries: {
+    sourceOnly: true,
+    intermediateDeployment: false,
+    finalNavigationOwner: "PR-11",
+    nativeLinksMountedSecretsRuntimeAndNoBypassOwner: "PR-12",
+  },
+}
+
 export const pr05AdminOnlyRoutePolicyKeys = [
   "GET /api/admin/recovery/status",
   "POST /api/admin/recovery/factor/commission",
@@ -1358,6 +1735,145 @@ export const pr08AllowedRepositoryPathPatterns = [
   /^packages\/contracts\/src\/inference-core(?:-firecrawl\.test)?\.ts$/,
   /^scripts\/inference-core\/(?:guardrails(?:\.test)?|pr08-(?:boundaries\.test|contract-revision))\.mjs$/,
   /^test-support\/inference-core-db-tests\/src\/(?:admin-connected-apps-storage|inference-core-migration|pr07-inference-data-plane|pr08-firecrawl-schema)\.test\.ts$/,
+]
+
+export const pr09ObservabilityProfilePaths = [
+  "infra/observability/README.md",
+  "infra/observability/alertmanager/alertmanager.yml",
+  "infra/observability/grafana/customer-folder-contract.json",
+  "infra/observability/grafana/dashboards/baseline/inference-core-overview.json",
+  "infra/observability/grafana/grafana.ini",
+  "infra/observability/grafana/provisioning/dashboards/baseline.yml",
+  "infra/observability/grafana/provisioning/datasources/prometheus.yml",
+  "infra/observability/prometheus/file-sd/inference-core.json",
+  "infra/observability/prometheus/prometheus.yml",
+  "infra/observability/prometheus/rules/alert-rules.yml",
+  "infra/observability/prometheus/rules/recording-rules.yml",
+  "infra/observability/runtime-contract.json",
+  "infra/observability/validate-profile.mjs",
+  "infra/observability/validate-profile.test.mjs",
+].sort()
+
+export const pr09WebActivityPaths = [
+  "apps/web/src/app/activity/page.tsx",
+  "apps/web/src/app/api/admin/audit/export/route.test.ts",
+  "apps/web/src/app/api/admin/audit/export/route.ts",
+  "apps/web/src/app/api/admin/audit/export/verification-keys/route.test.ts",
+  "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+  "apps/web/src/app/page.test.tsx",
+  "apps/web/src/components/console-v2/activity-v2-experience.test.tsx",
+  "apps/web/src/components/console-v2/activity-v2-experience.tsx",
+  "apps/web/src/components/console-v2/console-v2-sections.ts",
+  "apps/web/src/components/console-v2/hardware-v2-experience.test.tsx",
+  "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+  "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+  "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+  "apps/web/src/lib/admin/server-data-core.test.ts",
+  "apps/web/src/lib/admin/server-data-core.ts",
+  "apps/web/src/middleware.test.ts",
+  "apps/web/src/middleware.ts",
+].sort()
+
+export const pr09BffObservabilityPaths = [
+  "apps/bff/src/routes/admin-hardware.test.ts",
+  "apps/bff/src/routes/admin-overview-health.test.ts",
+  "apps/bff/src/routes/observability-metrics.test.ts",
+  "apps/bff/src/routes/observability-metrics.ts",
+  "apps/bff/src/services/admin-alertmanager.test.ts",
+  "apps/bff/src/services/admin-alertmanager.ts",
+  "apps/bff/src/services/admin-hardware.ts",
+  "apps/bff/src/services/admin-health.ts",
+  "apps/bff/src/services/admin-observability-metrics.test.ts",
+  "apps/bff/src/services/admin-observability-metrics.ts",
+  "apps/bff/src/services/admin-overview.ts",
+  "apps/bff/src/services/admin-prometheus.test.ts",
+  "apps/bff/src/services/admin-prometheus.ts",
+  "apps/bff/src/services/expert-capabilities.test.ts",
+  "apps/bff/src/services/expert-capabilities.ts",
+].sort()
+
+export const pr09AuditPaths = [
+  "apps/bff/src/commands/audit-ingestion.test.ts",
+  "apps/bff/src/commands/audit-ingestion.ts",
+  "apps/bff/src/db/inference-core-client.test.ts",
+  "apps/bff/src/db/inference-core-client.ts",
+  "apps/bff/src/db/inference-core-schema.test.ts",
+  "apps/bff/src/db/inference-core-schema.ts",
+  "apps/bff/src/routes/admin-audit-export.test.ts",
+  "apps/bff/src/routes/admin-authorization.test.ts",
+  "apps/bff/src/routes/admin.ts",
+  "apps/bff/src/services/admin-audit.test.ts",
+  "apps/bff/src/services/admin-audit.ts",
+  "apps/bff/src/services/audit-export-signing.test.ts",
+  "apps/bff/src/services/audit-export-signing.ts",
+  "apps/bff/src/services/audit-export.test.ts",
+  "apps/bff/src/services/audit-export.ts",
+  "apps/bff/src/services/audit-ingestion.test.ts",
+  "apps/bff/src/services/audit-ingestion.ts",
+  "apps/bff/src/services/audit.test.ts",
+  "apps/bff/src/services/audit.ts",
+  "apps/bff/src/services/inference-core-retention.test.ts",
+  "apps/bff/src/services/inference-core-retention.ts",
+  "infra/migrations/0000_inference_core.sql",
+  "packages/contracts/src/inference-core.test.ts",
+  "packages/contracts/src/inference-core.ts",
+  "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+  "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+  "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
+].sort()
+
+export const pr09RootIntegrationPaths = [
+  ".env.example",
+  "apps/bff/package.json",
+  "apps/bff/src/index.ts",
+  "infra/keycloak/README.md",
+  "infra/keycloak/inference-core-commissioning.json",
+  "infra/keycloak/inference-core-realm-seed.json",
+  "package.json",
+  "scripts/inference-core/pr05-keycloak-seed.mjs",
+  "scripts/inference-core/pr05-keycloak-seed.test.mjs",
+].sort()
+
+export const pr09RequiredFrozenRepositoryPaths = [
+  ...pr09ObservabilityProfilePaths,
+  ...pr09WebActivityPaths,
+  ...pr09BffObservabilityPaths,
+  ...pr09AuditPaths,
+  ...pr09RootIntegrationPaths,
+  "apps/bff/src/services/admin-alert-egress.test.ts",
+  "apps/bff/src/services/admin-alert-egress.ts",
+  "apps/bff/src/routes/admin-alert-egress.test.ts",
+  "apps/bff/src/routes/inference-core-characterization.test.ts",
+  "apps/bff/src/services/admin-inference.test.ts",
+  pr09DecisionPath,
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/guardrails.test.mjs",
+  ...pr09SuccessorAwareHistoricalTestPaths,
+  "scripts/inference-core/pr09-boundaries.test.mjs",
+  "scripts/inference-core/pr09-contract-revision.mjs",
+  "test-support/inference-core-db-tests/src/pr09-alert-egress.test.ts",
+].sort()
+
+export const pr09AllowedRepositoryPathPatterns = [
+  /^\.env\.example$/,
+  /^apps\/bff\/package\.json$/,
+  /^apps\/bff\/src\/commands\/audit-ingestion(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/db\/inference-core-(?:client|schema)(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/index\.ts$/,
+  /^apps\/bff\/src\/routes\/(?:admin(?:-[a-z0-9-]+)?|inference-core-characterization|observability-metrics)(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/services\/(?:admin-alert-egress|admin-alertmanager|admin-audit|admin-hardware|admin-health|admin-inference|admin-observability-metrics|admin-overview|admin-prometheus|audit|audit-export|audit-export-signing|audit-ingestion|expert-capabilities|inference-core-retention)(?:\.test)?\.ts$/,
+  /^apps\/web\/src\/app\/(?:activity\/page|api\/admin\/audit\/export\/(?:route|verification-keys\/route)(?:\.test)?|page\.test)\.tsx?$/,
+  /^apps\/web\/src\/components\/console-v2\/(?:activity-v2-experience|console-v2-sections|hardware-v2-experience)(?:\.test)?\.tsx?$/,
+  /^apps\/web\/src\/lib\/admin\/(?:console-v2-routes-core|retained-core-boundaries|server-data-core)(?:\.test)?\.tsx?$/,
+  /^apps\/web\/src\/middleware(?:\.test)?\.ts$/,
+  /^docs\/reduction\/inference-core\/pr-09-activity-audit-observability-decisions\.json$/,
+  /^infra\/migrations\/0000_inference_core\.sql$/,
+  /^infra\/keycloak\/(?:README\.md|inference-core-(?:commissioning|realm-seed)\.json)$/,
+  /^infra\/observability\/(?:README\.md|runtime-contract\.json|validate-profile(?:\.test)?\.mjs|alertmanager\/alertmanager\.yml|grafana\/(?:grafana\.ini|customer-folder-contract\.json|dashboards\/baseline\/inference-core-overview\.json|provisioning\/(?:dashboards\/baseline\.yml|datasources\/prometheus\.yml))|prometheus\/(?:prometheus\.yml|file-sd\/inference-core\.json|rules\/(?:alert-rules|recording-rules)\.yml))$/,
+  /^package\.json$/,
+  /^packages\/contracts\/src\/inference-core(?:-authorization)?(?:\.test)?\.ts$/,
+  /^scripts\/inference-core\/(?:guardrails(?:\.test)?|pr02-boundaries\.test|pr05-(?:boundaries\.test|keycloak-seed(?:\.test)?)|pr09-(?:boundaries\.test|contract-revision))\.mjs$/,
+  /^test-support\/inference-core-db-tests\/src\/(?:admin-connected-apps-storage|inference-core-migration|inference-core-retention|pr07-inference-data-plane|pr08-firecrawl-schema|pr09-alert-egress|pr09-audit-ingestion)\.test\.ts$/,
 ]
 
 export const pr08WebContractCompatibilityTestPaths = [
@@ -1775,6 +2291,115 @@ export const pr08TargetContract = {
   runtimeQualified: false,
 }
 
+export const pr09AdminOnlyRoutePolicyKeys = [
+  "GET /api/admin/recovery/status",
+  "POST /api/admin/recovery/factor/commission",
+  "POST /api/admin/observability/alert-egress",
+  "POST /api/admin/settings/organization",
+  "POST /api/admin/settings/telemetry",
+]
+
+export const pr09AddedRouteContract = [
+  {
+    surface: "bff",
+    method: "GET",
+    path: "/api/admin/audit/export",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "GET",
+    path: "/api/admin/audit/export/verification-keys",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "GET",
+    path: "/api/admin/observability/alert-egress",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "GET",
+    path: "/internal/observability/metrics",
+    source: "apps/bff/src/routes/observability-metrics.ts",
+    classification: "private-operational",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/observability/alert-egress",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "web-handler",
+    method: "GET",
+    path: "/api/admin/audit/export",
+    source: "apps/web/src/app/api/admin/audit/export/route.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "web-handler",
+    method: "GET",
+    path: "/api/admin/audit/export/verification-keys",
+    source:
+      "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "web-page",
+    method: "PAGE",
+    path: "/activity",
+    source: "apps/web/src/app/activity/page.tsx",
+    classification: "current-console-seam",
+  },
+].sort(compareRoutes)
+
+export const pr09TargetContract = {
+  findingEntriesDueByPr09: 0,
+  remainingFindingEntries: 1,
+  fs105BuilderHubTombstones: [
+    {
+      path: "apps/web/src/middleware.test.ts",
+      removeBy: "PR-12",
+    },
+  ],
+  legacyRoutes: 0,
+  routes: 102,
+  routeClassifications: {
+    "current-console-seam": 90,
+    "operational-auth": 4,
+    "private-operational": 4,
+    "public-t2": 2,
+    "required-now": 2,
+  },
+  publicInferenceRoutes: pr07PublicInferenceRouteContract,
+  publicFirecrawlRoutes: pr08FirecrawlRouteContract,
+  firecrawlAdminRoutes: pr08FirecrawlAdminRouteContract,
+  addedRoutes: pr09AddedRouteContract,
+  activityAuditPath: "/activity",
+  adminOnlyRoutePolicyKeys: pr09AdminOnlyRoutePolicyKeys,
+  fastifyRegistrars: [
+    ...pr08TargetContract.fastifyRegistrars,
+    {
+      exportName: "registerObservabilityMetricsRoutes",
+      importSource: "./routes/observability-metrics",
+      sourcePath: "apps/bff/src/routes/observability-metrics.ts",
+    },
+  ].sort((left, right) => left.exportName.localeCompare(right.exportName)),
+  webInferenceConsumers: 0,
+  escapeHatchPaths: [],
+  activityPageAvailable: true,
+  globalNavigationOwner: "PR-11",
+  nativeExpertLinksEnabled: false,
+  sourceOnly: true,
+  runtimeQualified: false,
+}
+
 export const pr08QueryFreeLoggingFingerprints = [
   {
     symbol: "logQueryFreeIncomingRequest",
@@ -1812,6 +2437,7 @@ const unsupportedFastifyMethods = new Set([
 ])
 const controlledFastifyMethods = new Set(["addHook"])
 const reviewedAdminRouteCapabilities = new Set([
+  "activity_audit.export",
   "applications.create_delete",
   "applications.credentials.test_rotate_revoke",
   "applications.disable",
@@ -1853,6 +2479,13 @@ const reviewedFastifyRegistrarSpecs = [
     optionsInitializer: "{}",
     optionsParameterType: "FirecrawlGatewayRouteOptions",
     sourcePath: "apps/bff/src/routes/firecrawl-gateway.ts",
+  },
+  {
+    exportName: "registerObservabilityMetricsRoutes",
+    importSource: "./routes/observability-metrics",
+    optionsInitializer: "{}",
+    optionsParameterType: "ObservabilityMetricsRouteOptions",
+    sourcePath: "apps/bff/src/routes/observability-metrics.ts",
   },
   {
     exportName: "registerAdminRoutes",
@@ -1915,6 +2548,7 @@ export const targetRouteContract = {
     { method: "GET", path: "/livez" },
     { method: "GET", path: "/healthz" },
     { method: "GET", path: "/readyz" },
+    { method: "GET", path: "/internal/observability/metrics" },
   ],
   futureFirecrawl: [
     {
@@ -1935,7 +2569,7 @@ export const targetRouteContract = {
     "activity-audit",
     "settings",
   ],
-  activityAuditPath: null,
+  activityAuditPath: "/activity",
 }
 
 const resolverFingerprintSpecs = [
@@ -2036,6 +2670,171 @@ export const reviewedPr06ResolverFingerprints =
         : fingerprint.sha256,
   }))
 
+export const reviewedPr09ResolverFingerprints =
+  reviewedPr06ResolverFingerprints.map((fingerprint) => ({
+    ...fingerprint,
+    sha256:
+      fingerprint.path === "apps/bff/src/index.ts"
+        ? "34861ad68b99b3ff2eb927daa76b8b9157a62e5841365e456c4335a168c34293"
+        : fingerprint.sha256,
+  }))
+
+export const reviewedPr09SourceFingerprints = [
+  [
+    "apps/bff/src/services/audit.ts",
+    "nativeAuditActions",
+    "6c0bb9bc896cdd685532e9d73d8bddda67d57c2b844d42255d0efcbfd07d9981",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "nativeAuditRecoveryReasonCodes",
+    "b35b0e11671e71fff66f90d0808a7853a8565a66cf57b7e607f07e402d7c35c3",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "parseAuditEventInput",
+    "5d423079e238e3fc00bdf4d487023da33f3db04722aa56c768d912e35d4a3595",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "auditEventValues",
+    "7ed6cd673e2a195d6fdff463afb9bf3133a10a7e0b4298880f7e75636789da78",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "toAuditEventRecord",
+    "feb629ba383c7cb8ebf2af4fbe1b09d297fc1abc0007c0902a578f7cfc05bf87",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "auditEventInputKeys",
+    "0c4dfa73fdd8f1385e6c1c64fb72ff6190c0dbc4c650c165dad443bba9aeb351",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "NATIVE_PROVIDER_TOKEN_SHAPED_IDENTIFIER_PATTERN",
+    "b5a3d5775c58f4dafb111406097037938fa48b868506184b3b17fceea810cfb2",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "assertNativeIdentifier",
+    "20c960d730ae046cf42fea581487134d5c77f1ba99c76f1a25d24c0d8c8059ab",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "getDatabaseAuditEvents",
+    "1b0a535a3c3ad3ce5d3085f42fab690949538c265c55b7f166bca10d20b0299a",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "getDatabaseAuditEventsAscending",
+    "6c7ef6768f7b77080d93ab4ddec52432000f6bd868634dc392cc78d5f0a0d08d",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "databaseAuditConditions",
+    "b99221a5d32c0b9d4327fa2de1070e9651c7c86c5e5759e2e8598ea181541763",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "encodeAuditCursor",
+    "d2e10caab5375187322b9169e32874befe4f4eb0b0cb6625767a5157ebc069f9",
+  ],
+  [
+    "apps/bff/src/services/audit.ts",
+    "decodeAuditCursor",
+    "03e1c5c1c704ee628107721f0afd0e9b6c3cb62d05460d03527084dadd9d6e86",
+  ],
+  [
+    "apps/bff/src/services/audit-ingestion.ts",
+    "ingestOneSource",
+    "60a4d795803f69db74ed1f662199d883eefc218566f8535ea3aed2f03641bf4c",
+  ],
+  [
+    "apps/bff/src/services/audit-ingestion.ts",
+    "recordSourceFailure",
+    "bcbeb418be3b57abd166a6a97c80a541bd2810cc7b2f89487b77071236de6cd4",
+  ],
+  [
+    "apps/bff/src/services/audit-ingestion.ts",
+    "validateNativeAuditSourceBatch",
+    "f2518c2a350122ea67a4a3a8fb1bdde1ab0952d173aef0cbc7e1306fac8063b1",
+  ],
+  [
+    "apps/bff/src/services/audit-ingestion.ts",
+    "canonicalNativeEventId",
+    "142a8ad38d914bb1726bb19bf985219dda306c4a9044fa8a814bc490816b3fe1",
+  ],
+  [
+    "apps/bff/src/services/audit-ingestion.ts",
+    "sameStoredNativeAuditEvent",
+    "28dbc64af9caec02bdfea706c61140d0de24bdc3719b52177e3522c052e5249b",
+  ],
+  [
+    "apps/bff/src/services/audit-ingestion.ts",
+    "storedCursor",
+    "8e95fa7f5819fc09a11361ae94dd37cb8bb3be2d0d67ea193d84f1eb61f444a3",
+  ],
+  [
+    "apps/bff/src/services/audit-ingestion.ts",
+    "compareCanonicalCursors",
+    "9baa751d128a371fc84861ce45306a0b5b18817dbed91b27c50d18fc4e4ceb6d",
+  ],
+  [
+    "apps/bff/src/services/audit-export.ts",
+    "canonicalExportEvent",
+    "3584a43adf5cfc009134c298551eb3a880970798477565d58ee153b6cab22514",
+  ],
+  [
+    "apps/bff/src/services/audit-export.ts",
+    "csvExport",
+    "9de905ddc40c0f6015360e30b9292d94cde4b3b1a5cdc12101fd97fd6ef9a6f5",
+  ],
+  [
+    "apps/bff/src/services/admin-alert-egress.ts",
+    "updateAdminAlertEgress",
+    "4da64ffd2a555f05a481e3cf21571ccfd3e4d961d8c68e53e38bc52249a4cb82",
+  ],
+  [
+    "apps/bff/src/routes/admin.ts",
+    "withAdminIdempotentMutation",
+    "7c9339373a79d23afe641ca694b28e9c0bf8ba1f7f9873e254012d0c33b2c6e7",
+  ],
+  [
+    "apps/bff/src/services/idempotency.ts",
+    "completeIdempotency",
+    "594f42252426ffd8a9b26fbb1520976bc99c7be9820096caf39e1c96ed198dc3",
+  ],
+  [
+    "apps/bff/src/db/inference-core-schema.ts",
+    "auditEvents",
+    "4c8924f39a8bf86bdb7c6335ad4475cff48fc5b7550b80c15509f955b2246c52",
+  ],
+].map(([path, symbol, sha256]) => ({ path, symbol, sha256 }))
+
+export const reviewedPr09NativeIdentifierEvidence = [
+  {
+    path: "apps/bff/src/services/audit.ts",
+    sha256: "a4b06232244c09d0e6db38faab162cfc56d45e83466fbd6107a9233b4612aefc",
+  },
+  {
+    path: "apps/bff/src/db/inference-core-schema.ts",
+    sha256: "16fc48c5bff4fb2f63dd816de44365b70bab6d42fbedd5e9d090c6a4089c2995",
+  },
+  {
+    path: "infra/migrations/0000_inference_core.sql",
+    sha256: "b71b11531d671d26130c55f533f33e802aa2555d5f913fd56a26cc1cfb6448ff",
+  },
+  {
+    path: "apps/bff/src/services/audit.test.ts",
+    sha256: "21d0cc54565cbdd2469842eca493a3165833bd225a294afd249a0a88a5091c4d",
+  },
+  {
+    path: "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
+    sha256: "209db6339f4cee48e25a01849e5fad1ffcf48df3e8269d7cdc1de963c220af85",
+  },
+]
+
 export const reviewedPr05WebAuthenticationEvidence = [
   {
     path: "apps/web/src/middleware.test.ts",
@@ -2044,6 +2843,17 @@ export const reviewedPr05WebAuthenticationEvidence = [
   {
     path: "apps/web/src/middleware.ts",
     sha256: "c31e5f8b645586166ad3e1a829adb4384a96e80cd218b26be61574b61117fc84",
+  },
+]
+
+export const reviewedPr09WebAuthenticationEvidence = [
+  {
+    path: "apps/web/src/middleware.test.ts",
+    sha256: "635f7c7c3ec01318170ec785546b4e05db0cb7e0f63e452e327e84ede1c51867",
+  },
+  {
+    path: "apps/web/src/middleware.ts",
+    sha256: "c3ffb281c0dd538123fb476bc36c682c50693f9c06f637fc92627ec56fa9b0a9",
   },
 ]
 
@@ -2917,9 +3727,16 @@ export function verifyActiveReviewedRevisionId(revisionId) {
   if (
     revisionId === undefined ||
     revisionId === null ||
-    ["PR-02", "PR-03", "PR-04", "PR-05", "PR-06", "PR-07", "PR-08"].includes(
-      revisionId,
-    )
+    [
+      "PR-02",
+      "PR-03",
+      "PR-04",
+      "PR-05",
+      "PR-06",
+      "PR-07",
+      "PR-08",
+      "PR-09",
+    ].includes(revisionId)
   ) {
     return []
   }
@@ -2950,48 +3767,55 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(activeReviewedRevision === "PR-08"
-      ? verifyPr08TargetState({
+    ...(activeReviewedRevision === "PR-09"
+      ? verifyPr09TargetState({
           root,
           currentAllowlist: expectedAllowlist,
           currentRoutes: expectedRoutes,
           paths,
         })
-      : activeReviewedRevision === "PR-07"
-        ? verifyPr07TargetState({
+      : activeReviewedRevision === "PR-08"
+        ? verifyPr08TargetState({
             root,
             currentAllowlist: expectedAllowlist,
             currentRoutes: expectedRoutes,
             paths,
           })
-        : activeReviewedRevision === "PR-06"
-          ? verifyPr06TargetState({
+        : activeReviewedRevision === "PR-07"
+          ? verifyPr07TargetState({
               root,
               currentAllowlist: expectedAllowlist,
               currentRoutes: expectedRoutes,
               paths,
             })
-          : activeReviewedRevision === "PR-05"
-            ? verifyPr05TargetState({
+          : activeReviewedRevision === "PR-06"
+            ? verifyPr06TargetState({
                 root,
                 currentAllowlist: expectedAllowlist,
                 currentRoutes: expectedRoutes,
                 paths,
               })
-            : activeReviewedRevision === "PR-04"
-              ? verifyPr04TargetState({
+            : activeReviewedRevision === "PR-05"
+              ? verifyPr05TargetState({
                   root,
                   currentAllowlist: expectedAllowlist,
                   currentRoutes: expectedRoutes,
                   paths,
                 })
-              : activeReviewedRevision === "PR-03"
-                ? verifyPr03TargetState({
+              : activeReviewedRevision === "PR-04"
+                ? verifyPr04TargetState({
                     root,
                     currentAllowlist: expectedAllowlist,
                     currentRoutes: expectedRoutes,
+                    paths,
                   })
-                : verifyActiveReviewedRevisionId(activeReviewedRevision)),
+                : activeReviewedRevision === "PR-03"
+                  ? verifyPr03TargetState({
+                      root,
+                      currentAllowlist: expectedAllowlist,
+                      currentRoutes: expectedRoutes,
+                    })
+                  : verifyActiveReviewedRevisionId(activeReviewedRevision)),
   ]
 
   let baseStatus = "not-requested"
@@ -3028,9 +3852,15 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       errors.push(...reviewedRevision.errors)
       if (reviewedRevision.present) {
         if (
-          !new Set(["PR-03", "PR-04", "PR-05", "PR-06", "PR-07", "PR-08"]).has(
-            reviewedRevision.id,
-          )
+          !new Set([
+            "PR-03",
+            "PR-04",
+            "PR-05",
+            "PR-06",
+            "PR-07",
+            "PR-08",
+            "PR-09",
+          ]).has(reviewedRevision.id)
         ) {
           errors.push(
             ...verifyReviewedFindingReduction(
@@ -3102,6 +3932,8 @@ export function verifyReviewedContractRevision({
   const currentPr07Revision = currentRevisions.find(({ id }) => id === "PR-07")
   const basePr08Revision = baseRevisions.find(({ id }) => id === "PR-08")
   const currentPr08Revision = currentRevisions.find(({ id }) => id === "PR-08")
+  const basePr09Revision = baseRevisions.find(({ id }) => id === "PR-09")
+  const currentPr09Revision = currentRevisions.find(({ id }) => id === "PR-09")
   const errors = []
   if (
     (!currentPr02Revision || !basePr02Revision) &&
@@ -3147,7 +3979,30 @@ export function verifyReviewedContractRevision({
         ...verifyRetainedPr08RevisionEvidence(root, currentPr08Revision),
       )
     }
+    if (basePr09Revision && currentPr09Revision) {
+      errors.push(
+        ...verifyRetainedPr09RevisionEvidence(root, currentPr09Revision),
+      )
+    }
     return { present: false, id: null, errors: errors.sort() }
+  }
+
+  if (
+    isExactRevisionAppend(
+      baseRevisions,
+      currentRevisions,
+      "PR-09",
+      pr09ContractRevisionPath,
+    )
+  ) {
+    return verifyIntroducedPr09Revision({
+      root,
+      baseCommit,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+    })
   }
 
   if (
@@ -3710,6 +4565,139 @@ function verifyPr05LaneLineage(root) {
   }
 }
 
+function verifyIntroducedPr09Revision({
+  root,
+  baseCommit,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+}) {
+  const errors = []
+  if (baseCommit !== pr09ContractBase) {
+    errors.push(
+      `PR-09 contract revision base changed expected=${pr09ContractBase} actual=${baseCommit}`,
+    )
+  }
+  if (resolveTree(root, baseCommit) !== pr09ContractBaseTree) {
+    errors.push("PR-09 contract base tree changed")
+  }
+  errors.push(...verifyPr09LaneLineage(root))
+  errors.push(...verifyPr09BaseEvidence(root))
+  const baseRevisionHistory = baseRoutes.reviewedRevisions ?? []
+  const expectedPriorIds = [
+    "PR-02",
+    "PR-03",
+    "PR-04",
+    "PR-05",
+    "PR-06",
+    "PR-07",
+    "PR-08",
+  ]
+  if (
+    baseRevisionHistory.length !== expectedPriorIds.length ||
+    expectedPriorIds.some((id, index) => baseRevisionHistory[index]?.id !== id)
+  ) {
+    errors.push(
+      "PR-09 requires the exact retained PR-02 through PR-08 revision history",
+    )
+  } else {
+    errors.push(
+      ...verifyRetainedPr02RevisionEvidence(root, baseRevisionHistory[0]),
+      ...verifyRetainedPr03RevisionEvidence(root, baseRevisionHistory[1]),
+      ...verifyRetainedPr04RevisionEvidence(root, baseRevisionHistory[2]),
+      ...verifyRetainedPr05RevisionEvidence(root, baseRevisionHistory[3]),
+      ...verifyRetainedPr06RevisionEvidence(root, baseRevisionHistory[4]),
+      ...verifyRetainedPr07RevisionEvidence(root, baseRevisionHistory[5]),
+      ...verifyRetainedPr08RevisionEvidence(root, baseRevisionHistory[6]),
+    )
+  }
+  if (!isRegularFile(resolve(root, pr09ContractRevisionPath))) {
+    return {
+      present: true,
+      id: "PR-09",
+      errors: [
+        ...errors,
+        `missing reviewed contract revision ${pr09ContractRevisionPath}`,
+      ].sort(),
+    }
+  }
+
+  const decision = readPr09DecisionDocument(root)
+  errors.push(...verifyPr09DecisionDocument(decision, { requireReady: true }))
+  const evidenceFiles = buildRevisionEvidenceFingerprints(
+    root,
+    pr09RevisionEvidencePaths,
+    "PR-09",
+  )
+  const expected = buildContractRevisionDocument({
+    revisionId: "PR-09",
+    scope: "activity-audit-observability-source-only",
+    baseCommit,
+    baseTree: resolveTree(root, baseCommit),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes: {
+      ...currentRoutes,
+      reviewedRevisions: structuredClone(baseRoutes.reviewedRevisions ?? []),
+    },
+    evidenceFiles,
+  })
+  const actual = readJson(resolve(root, pr09ContractRevisionPath))
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    errors.push("PR-09 reviewed contract revision does not match exact changes")
+  }
+
+  const expectedRevisionHistory = [
+    ...(baseRoutes.reviewedRevisions ?? []),
+    {
+      id: "PR-09",
+      path: pr09ContractRevisionPath,
+      sha256: sha256(readFileSync(resolve(root, pr09ContractRevisionPath))),
+    },
+  ]
+  if (
+    JSON.stringify(currentRoutes.reviewedRevisions ?? []) !==
+    JSON.stringify(expectedRevisionHistory)
+  ) {
+    errors.push("reviewed contract revision history changed")
+  }
+  errors.push(...verifyRequiredRoutes(currentRoutes))
+  errors.push(
+    ...verifyPr09CandidateContract({
+      root,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+      operationPolicy: decision.operationPolicy,
+    }),
+  )
+
+  return { present: true, id: "PR-09", errors: errors.sort() }
+}
+
+function verifyPr09LaneLineage(root) {
+  const anchor = resolveCommit(root, pr09LaneAnchor)
+  if (anchor !== pr09LaneAnchor) {
+    return [`PR-09 lane anchor is unavailable ${pr09LaneAnchor}`]
+  }
+  const head = currentHead(root)
+  if (head === pr09LaneAnchor) {
+    return []
+  }
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", pr09LaneAnchor, head], {
+      cwd: root,
+      stdio: "ignore",
+    })
+    return []
+  } catch {
+    return [`PR-09 lane anchor is not an ancestor ${pr09LaneAnchor}`]
+  }
+}
+
 function verifyIntroducedPr08Revision({
   root,
   baseCommit,
@@ -4133,6 +5121,11 @@ function verifyRetainedPr02RevisionEvidence(root, revision) {
         root,
         pr02RevisionEvidencePaths,
         "PR-02",
+        {
+          useHistoricalSuccessorTests: isRegularFile(
+            resolve(root, pr09DecisionPath),
+          ),
+        },
       ),
     )
   ) {
@@ -4254,6 +5247,11 @@ function verifyRetainedPr05RevisionEvidence(root, revision) {
         root,
         pr05RevisionEvidencePaths,
         "PR-05",
+        {
+          useHistoricalSuccessorTests: isRegularFile(
+            resolve(root, pr09DecisionPath),
+          ),
+        },
       ),
     )
   ) {
@@ -4386,6 +5384,83 @@ function verifyRetainedPr08RevisionEvidence(root, revision) {
   return errors.sort()
 }
 
+function verifyRetainedPr09RevisionEvidence(root, revision) {
+  const errors = []
+  if (
+    revision.id !== "PR-09" ||
+    revision.path !== pr09ContractRevisionPath ||
+    !/^[0-9a-f]{64}$/.test(revision.sha256 ?? "")
+  ) {
+    return ["invalid retained PR-09 revision identity"]
+  }
+  const absolutePath = resolve(root, pr09ContractRevisionPath)
+  if (!isRegularFile(absolutePath)) {
+    return [`missing reviewed contract revision ${pr09ContractRevisionPath}`]
+  }
+  if (sha256(readFileSync(absolutePath)) !== revision.sha256) {
+    errors.push("retained PR-09 revision fingerprint changed")
+  }
+  const document = readJson(absolutePath)
+  if (
+    document.id !== "PR-09" ||
+    document.scope !== "activity-audit-observability-source-only" ||
+    document.baseCommit !== pr09ContractBase ||
+    document.baseTree !== pr09ContractBaseTree
+  ) {
+    errors.push("retained PR-09 revision base identity changed")
+  }
+  if (
+    JSON.stringify(document.evidenceFiles) !==
+    JSON.stringify(
+      buildRevisionEvidenceFingerprints(
+        root,
+        pr09RevisionEvidencePaths,
+        "PR-09",
+      ),
+    )
+  ) {
+    errors.push("retained PR-09 revision evidence changed")
+  }
+  errors.push(...verifyPr09BaseEvidence(root))
+  return errors.sort()
+}
+
+export function verifyPr09BaseEvidence(root = repositoryRoot) {
+  const errors = []
+  for (const path of pr09ImmutablePriorEvidencePaths) {
+    let expected
+    try {
+      expected = execFileSync(
+        "git",
+        [
+          "show",
+          "--no-ext-diff",
+          "--no-textconv",
+          "--end-of-options",
+          `${pr09ContractBase}:${path}`,
+        ],
+        {
+          cwd: root,
+          encoding: null,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      )
+    } catch {
+      errors.push(`PR-09 immutable base evidence is unavailable ${path}`)
+      continue
+    }
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-09 retained prior evidence is missing ${path}`)
+      continue
+    }
+    if (!readRetainedEvidenceBytes(root, path, absolutePath).equals(expected)) {
+      errors.push(`PR-09 retained prior evidence changed ${path}`)
+    }
+  }
+  return errors.sort()
+}
+
 export function verifyPr08BaseEvidence(root = repositoryRoot) {
   const errors = []
   for (const path of pr08ImmutablePriorEvidencePaths) {
@@ -4415,7 +5490,7 @@ export function verifyPr08BaseEvidence(root = repositoryRoot) {
       errors.push(`PR-08 retained prior evidence is missing ${path}`)
       continue
     }
-    if (!readFileSync(absolutePath).equals(expected)) {
+    if (!readRetainedEvidenceBytes(root, path, absolutePath).equals(expected)) {
       errors.push(`PR-08 retained prior evidence changed ${path}`)
     }
   }
@@ -4451,7 +5526,7 @@ export function verifyPr07BaseEvidence(root = repositoryRoot) {
       errors.push(`PR-07 retained prior evidence is missing ${path}`)
       continue
     }
-    if (!readFileSync(absolutePath).equals(expected)) {
+    if (!readRetainedEvidenceBytes(root, path, absolutePath).equals(expected)) {
       errors.push(`PR-07 retained prior evidence changed ${path}`)
     }
   }
@@ -4487,7 +5562,7 @@ export function verifyPr06BaseEvidence(root = repositoryRoot) {
       errors.push(`PR-06 retained prior evidence is missing ${path}`)
       continue
     }
-    if (!readFileSync(absolutePath).equals(expected)) {
+    if (!readRetainedEvidenceBytes(root, path, absolutePath).equals(expected)) {
       errors.push(`PR-06 retained prior evidence changed ${path}`)
     }
   }
@@ -4523,7 +5598,7 @@ export function verifyPr05BaseEvidence(root = repositoryRoot) {
       errors.push(`PR-05 retained prior evidence is missing ${path}`)
       continue
     }
-    if (!readFileSync(absolutePath).equals(expected)) {
+    if (!readRetainedEvidenceBytes(root, path, absolutePath).equals(expected)) {
       errors.push(`PR-05 retained prior evidence changed ${path}`)
     }
   }
@@ -4559,7 +5634,7 @@ export function verifyPr04BaseEvidence(root = repositoryRoot) {
       errors.push(`PR-04 retained prior evidence is missing ${path}`)
       continue
     }
-    if (!readFileSync(absolutePath).equals(expected)) {
+    if (!readRetainedEvidenceBytes(root, path, absolutePath).equals(expected)) {
       errors.push(`PR-04 retained prior evidence changed ${path}`)
     }
   }
@@ -4595,7 +5670,7 @@ export function verifyPr03BaseEvidence(root = repositoryRoot) {
       errors.push(`PR-03 retained PR-02 evidence is missing ${path}`)
       continue
     }
-    if (!readFileSync(absolutePath).equals(expected)) {
+    if (!readRetainedEvidenceBytes(root, path, absolutePath).equals(expected)) {
       errors.push(`PR-03 retained PR-02 evidence changed ${path}`)
     }
   }
@@ -5896,6 +6971,404 @@ export function verifyPr08PilotAncestry(root = repositoryRoot) {
     : []
 }
 
+export function readPr09DecisionDocument(root = repositoryRoot) {
+  return readJson(resolve(root, pr09DecisionPath))
+}
+
+export function verifyPr09DecisionDocument(
+  decision,
+  { requireReady = false } = {},
+) {
+  const errors = []
+  const expectedKeys = [
+    "contractBaseCommit",
+    "contractBaseTree",
+    "laneAnchorCommit",
+    "nativeIdentifierEvidence",
+    "operationPolicy",
+    "resolverFingerprints",
+    "reviewStatus",
+    "reviewedDispositions",
+    "schemaVersion",
+    "scope",
+    "sourceFingerprints",
+    "standaloneDbTestBoundary",
+    "target",
+    "webAuthenticationEvidence",
+    "workPackage",
+  ]
+  if (
+    !decision ||
+    JSON.stringify(Object.keys(decision).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-09" ||
+    decision.scope !== "activity-audit-observability-source-only" ||
+    decision.contractBaseCommit !== pr09ContractBase ||
+    decision.contractBaseTree !== pr09ContractBaseTree ||
+    decision.laneAnchorCommit !== pr09LaneAnchor
+  ) {
+    errors.push("invalid PR-09 decision identity")
+  }
+  if (
+    JSON.stringify(decision?.reviewedDispositions) !==
+    JSON.stringify(pr09ReviewedDispositions)
+  ) {
+    errors.push("invalid PR-09 reviewed dispositions")
+  }
+  if (
+    JSON.stringify(decision?.standaloneDbTestBoundary) !==
+    JSON.stringify(pr09StandaloneDbTestBoundary)
+  ) {
+    errors.push("invalid PR-09 standalone DB test boundary")
+  }
+  if (
+    JSON.stringify(decision?.webAuthenticationEvidence) !==
+    JSON.stringify(reviewedPr09WebAuthenticationEvidence)
+  ) {
+    errors.push("invalid PR-09 Web authentication evidence")
+  }
+  if (
+    JSON.stringify(decision?.resolverFingerprints) !==
+    JSON.stringify(reviewedPr09ResolverFingerprints)
+  ) {
+    errors.push("invalid PR-09 resolver fingerprints")
+  }
+  if (
+    JSON.stringify(decision?.sourceFingerprints) !==
+    JSON.stringify(reviewedPr09SourceFingerprints)
+  ) {
+    errors.push("invalid PR-09 source fingerprints")
+  }
+  if (
+    JSON.stringify(decision?.nativeIdentifierEvidence) !==
+    JSON.stringify(reviewedPr09NativeIdentifierEvidence)
+  ) {
+    errors.push("invalid PR-09 native identifier evidence")
+  }
+  if (JSON.stringify(decision?.target) !== JSON.stringify(pr09TargetContract)) {
+    errors.push("invalid PR-09 target")
+  }
+  if (
+    !["pending-final-staged-delta", "reviewed"].includes(
+      decision?.reviewStatus,
+    )
+  ) {
+    errors.push("invalid PR-09 review status")
+  } else if (requireReady && decision.reviewStatus !== "reviewed") {
+    errors.push("PR-09 operation policy is not reviewed")
+  }
+
+  const dispositions = decision?.reviewedDispositions
+  if (
+    dispositions?.activityAudit?.ingressMechanism !==
+      "product_owned_audited_ingress" ||
+    dispositions?.activityAudit?.ingressState !==
+      "implemented_pending_runtime_qualification" ||
+    dispositions?.activityAudit?.retentionDays !== 365 ||
+    dispositions?.activityAudit?.nativeEventIdentity?.adapterContract !==
+      "source-namespaced-deterministic-uuidv5" ||
+    dispositions?.activityAudit?.nativeEventIdentity?.suppliedBy !==
+      "product-owned-native-adapter" ||
+    dispositions?.activityAudit?.nativeEventIdentity?.pr09Validation !==
+      "canonical-uuidv5-shape-only" ||
+    dispositions?.activityAudit?.nativeEventIdentity
+      ?.namespaceDerivationProvenInPr09 !== false ||
+    dispositions?.activityAudit?.nativeEventIdentity
+      ?.configuredNativeAdaptersInPr09 !== 0 ||
+    dispositions?.activityAudit?.nativeEventIdentity?.persistedAs !==
+      "audit_events.id" ||
+    dispositions?.activityAudit?.nativeEventIdentity?.idempotencyBoundary !==
+      "audit_events-primary-key" ||
+    dispositions?.activityAudit?.nativeEventIdentity?.replay !==
+      "idempotent-only-for-identical-canonical-metadata" ||
+    dispositions?.activityAudit?.nativeEventIdentity?.collision !==
+      "reject-different-canonical-metadata" ||
+    dispositions?.activityAudit?.nativeEventIdentity?.rawSourceEventIdRetained !==
+      false ||
+    dispositions?.activityAudit?.nativeEventIdentity?.rawSourceEventIdExported !==
+      false ||
+    dispositions?.activityAudit?.nativeEventIdentity
+      ?.deduplicateByCorrelationId !== false ||
+    dispositions?.activityAudit?.nativeCursor?.format !==
+      "v1-canonical-utc-watermark-uuidv5-tie-breaker" ||
+    JSON.stringify(dispositions?.activityAudit?.nativeCursor?.storage) !==
+      JSON.stringify([
+        "cursor_version",
+        "cursor_watermark",
+        "cursor_tie_breaker",
+      ]) ||
+    JSON.stringify(dispositions?.activityAudit?.nativeCursor?.order) !==
+      JSON.stringify(["watermark_asc", "tie_breaker_asc"]) ||
+    dispositions?.activityAudit?.nativeCursor?.monotonic !== true ||
+    dispositions?.activityAudit?.nativeCursor?.establishedCursorMayClear !==
+      false ||
+    dispositions?.activityAudit?.nativeCursor?.concurrency !==
+      "row-lock-compare-and-set" ||
+    dispositions?.activityAudit?.nativeCursor?.attemptOrdering !==
+      "older-attempt-cannot-overwrite-newer-attempt" ||
+    dispositions?.activityAudit?.nativeCursor?.batchCursor !==
+      "must-match-final-event-watermark-and-id" ||
+    dispositions?.activityAudit?.activityAndExportPageCursor?.encoding !==
+      "base64url-json" ||
+    JSON.stringify(
+      dispositions?.activityAudit?.activityAndExportPageCursor?.fields,
+    ) !== JSON.stringify(["id", "occurredAt"]) ||
+    dispositions?.activityAudit?.activityAndExportPageCursor?.pagination !==
+      "deterministic-live-keyset" ||
+    dispositions?.activityAudit?.activityAndExportPageCursor
+      ?.crossPageSnapshot !== false ||
+    dispositions?.activityAudit?.nativeIdentifiers?.correlationId !==
+      "required-canonical-uuid" ||
+    dispositions?.activityAudit?.nativeIdentifiers?.keycloakSubjectId !==
+      "nullable-for-system-originated-events" ||
+    dispositions?.activityAudit?.nativeIdentifiers?.opaqueIdentifierPattern !==
+      "^[A-Za-z0-9][A-Za-z0-9_:-]*$" ||
+    JSON.stringify(
+      dispositions?.activityAudit?.nativeIdentifiers
+        ?.prohibitedIdentifierPrefixes,
+    ) !==
+      JSON.stringify([
+        "llmm_",
+        "bearer",
+        "token",
+        "secret",
+        "password",
+        "api-key",
+      ]) ||
+    dispositions?.activityAudit?.nativeIdentifiers
+      ?.providerTokenWholeValuePolicy?.disposition !== "reject" ||
+    dispositions?.activityAudit?.nativeIdentifiers
+      ?.providerTokenWholeValuePolicy?.matching !== "anchored-whole-value" ||
+    JSON.stringify(
+      dispositions?.activityAudit?.nativeIdentifiers
+        ?.providerTokenWholeValuePolicy?.appliesTo,
+    ) !==
+      JSON.stringify([
+        "keycloakSubjectId",
+        "applicationId",
+        "credentialRecordId",
+      ]) ||
+    dispositions?.activityAudit?.nativeIdentifiers
+      ?.providerTokenWholeValuePolicy?.families !==
+      "reviewed-provider-token-shape-set" ||
+    dispositions?.activityAudit?.nativeIdentifiers
+      ?.providerTokenWholeValuePolicy?.valuesRecordedInGovernance !== false ||
+    JSON.stringify(
+      dispositions?.activityAudit?.nativeIdentifiers?.credentialPrefixPatterns,
+    ) !==
+      JSON.stringify([
+        "^llmm_t4_[0-9a-f]{18}$",
+        "^llmm_fc_[0-9a-f]{16}$",
+      ]) ||
+    dispositions?.activityAudit?.nativeIdentifiers
+      ?.credentialIdentifierCardinality !==
+      "record-id-or-prefix-never-both" ||
+    dispositions?.activityAudit?.compatibilityTargetProjection?.persistence !==
+      false ||
+    dispositions?.activityAudit?.compatibilityTargetProjection?.export !==
+      false ||
+    dispositions?.activityAudit?.compatibilityTargetProjection?.mode !==
+      "derived-read-only" ||
+    JSON.stringify(
+      dispositions?.activityAudit?.compatibilityTargetProjection?.fields,
+    ) !== JSON.stringify(["targetType", "targetId"]) ||
+    JSON.stringify(
+      dispositions?.activityAudit?.compatibilityTargetProjection
+        ?.derivedOnlyFrom,
+    ) !==
+      JSON.stringify([
+        "keycloakSubjectId",
+        "applicationId",
+        "credentialRecordId",
+        "credentialPrefix",
+        "correlationId",
+      ]) ||
+    Object.hasOwn(dispositions?.activityAudit ?? {}, "idempotencyKey") ||
+    dispositions?.activityAudit?.allowedMetadataFields?.includes(
+      "sourceEventId",
+    ) ||
+    dispositions?.activityAudit?.allowedMetadataFields?.includes("targetType") ||
+    dispositions?.activityAudit?.allowedMetadataFields?.includes("targetId")
+  ) {
+    errors.push("PR-09 activity and audit boundary changed")
+  }
+  if (
+    dispositions?.auditExport?.algorithm !== "Ed25519" ||
+    dispositions?.auditExport?.envelope !== "compact-jws" ||
+    dispositions?.auditExport?.privateKeySource !== "mounted-file-only" ||
+    dispositions?.auditExport?.privateKeyInGit !== false ||
+    dispositions?.auditExport?.privateKeyInEnvironment !== false ||
+    dispositions?.auditExport?.pagination !==
+      "deterministic-live-keyset" ||
+    dispositions?.auditExport?.cursorEncoding !==
+      "base64url-json-id-occurredAt" ||
+    dispositions?.auditExport?.crossPageSnapshot !== false ||
+    dispositions?.auditExport?.missingOrInvalidMaterial !==
+      "signed-export-surface-only-http-503"
+  ) {
+    errors.push("PR-09 signed audit export boundary changed")
+  }
+  if (
+    dispositions?.expertAccess?.directAccess !== "disabled" ||
+    dispositions?.expertAccess?.nativeMutation !== "disabled" ||
+    dispositions?.expertAccess?.enablementOwner !== "PR-12"
+  ) {
+    errors.push("PR-09 native expert access boundary changed")
+  }
+  if (
+    dispositions?.grafanaOss?.adminRole !== "Editor" ||
+    dispositions?.grafanaOss?.operatorRole !== "Viewer" ||
+    dispositions?.grafanaOss?.retainedRoleCardinality !== "exactly-one" ||
+    dispositions?.grafanaOss?.ambiguousRetainedRoles !== "deny" ||
+    dispositions?.grafanaOss?.strictFolderConfinementClaim !== false
+  ) {
+    errors.push("PR-09 Grafana OSS boundary changed")
+  }
+  if (
+    dispositions?.observability?.metricsEndpoint?.exposure !==
+      "private-authenticated" ||
+    dispositions?.observability?.metricsEndpoint?.authentication !==
+      "mounted-private-file-bearer" ||
+    dispositions?.observability?.metricsEndpoint?.additionalExporterService !==
+      false ||
+    dispositions?.observability?.prometheusQueryApi?.authentication !==
+      "mounted-private-file-bearer" ||
+    dispositions?.observability?.prometheusQueryApi
+      ?.runtimeEnvironmentCredentialAllowed !== false ||
+    dispositions?.observability?.queueDepth?.valueEmittedInPr09 !== false ||
+    dispositions?.observability?.queueDepth
+      ?.concurrencyOrInFlightIsSubstitute !== false
+  ) {
+    errors.push("PR-09 metrics and queue-depth boundary changed")
+  }
+  if (
+    dispositions?.alertEgress?.pr09Scope !==
+      "redacted-transport-intent-and-warning-acknowledgement-only" ||
+    dispositions?.alertEgress?.persistedDestination !== false ||
+    dispositions?.alertEgress?.persistedEmailOrUrl !== false ||
+    dispositions?.alertEgress?.persistedSecret !== false ||
+    dispositions?.alertEgress?.runtimeDelivery !== false ||
+    dispositions?.alertEgress?.defaultState !== "disabled" ||
+    JSON.stringify(dispositions?.alertEgress?.dedicatedUpdaterFields) !==
+      JSON.stringify([
+        "alert_egress_revision",
+        "alert_egress_updated_at",
+        "alert_egress_updated_by",
+        "alert_egress_acknowledged_at",
+        "alert_egress_acknowledged_by",
+        "alert_egress_warning_version",
+      ]) ||
+    dispositions?.alertEgress?.stateAuditReceiptAtomicity !==
+      "single-postgresql-transaction" ||
+    dispositions?.alertEgress?.receiptFinalization !== "same-transaction" ||
+    dispositions?.alertEgress?.receiptFailureRollsBackStateAndAudit !== true
+  ) {
+    errors.push("PR-09 alert egress preparation boundary changed")
+  }
+  if (
+    dispositions?.retention?.workloadContentDays !== 0 ||
+    dispositions?.retention?.auditMetadataDays !== 365 ||
+    dispositions?.retention?.applicationAndUsageMetadataDays !== 90 ||
+    dispositions?.retention?.metricsAndAlertStateDays !== 30
+  ) {
+    errors.push("PR-09 retention boundary changed")
+  }
+  if (
+    dispositions?.scopeBoundaries?.sourceOnly !== true ||
+    dispositions?.scopeBoundaries?.intermediateDeployment !== false ||
+    dispositions?.scopeBoundaries?.finalNavigationOwner !== "PR-11" ||
+    dispositions?.scopeBoundaries
+      ?.nativeLinksMountedSecretsRuntimeAndNoBypassOwner !== "PR-12"
+  ) {
+    errors.push("PR-09 source-only scope boundary changed")
+  }
+  errors.push(...verifyPr09OperationBoundary(decision?.operationPolicy ?? {}))
+  return errors.sort()
+}
+
+export function verifyPr09OperationBoundary(operationPolicy) {
+  const sourceKeys = [
+    "addedSourcePaths",
+    "changedSourcePaths",
+    "deletedSourcePaths",
+  ]
+  const repositoryKeys = [
+    "addedRepositoryPaths",
+    "changedRepositoryPaths",
+    "deletedRepositoryPaths",
+  ]
+  const expectedKeys = [...sourceKeys, ...repositoryKeys].sort()
+  const errors = [
+    ...verifyExactPathPolicy(operationPolicy, sourceKeys, "PR-09"),
+    ...verifyExactPathPolicy(operationPolicy, repositoryKeys, "PR-09"),
+  ]
+  if (
+    JSON.stringify(Object.keys(operationPolicy).sort()) !==
+    JSON.stringify(expectedKeys)
+  ) {
+    errors.push("invalid PR-09 operation policy keys")
+  }
+  if (
+    (operationPolicy.deletedSourcePaths ?? []).length > 0 ||
+    (operationPolicy.deletedRepositoryPaths ?? []).length > 0
+  ) {
+    errors.push("PR-09 source-only package must not delete Product paths")
+  }
+
+  const repositoryPathByOperation = new Map()
+  const repositoryPaths = new Set()
+  for (const key of repositoryKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      repositoryPaths.add(path)
+      repositoryPathByOperation.set(path, key.replace("Repository", "Source"))
+      if (
+        !pr09AllowedRepositoryPathPatterns.some((pattern) => pattern.test(path))
+      ) {
+        errors.push(`PR-09 repository path is outside package boundary ${path}`)
+      }
+      if (
+        pr09ImmutablePriorEvidencePaths.includes(path) &&
+        !pr09SuccessorAwareHistoricalTestPaths.includes(path)
+      ) {
+        errors.push(
+          `PR-09 immutable prior evidence appears in operation policy ${path}`,
+        )
+      }
+      if (
+        /(?:^|\/)(?:librechat|rag|corpora|knowledge|mcp|agentic)(?:\/|[-_.])/i.test(
+          path,
+        )
+      ) {
+        errors.push(`PR-09 retired or deferred product path is forbidden ${path}`)
+      }
+      if (
+        path !== ".env.example" &&
+        /(?:^|\/)(?:\.env(?:\.|$)|[^/]+\.(?:key|pem|p12|pfx|jwk|jwks))$/i.test(
+          path,
+        )
+      ) {
+        errors.push(`PR-09 secret or key material path is forbidden ${path}`)
+      }
+    }
+  }
+  for (const requiredPath of pr09RequiredFrozenRepositoryPaths) {
+    if (!repositoryPaths.has(requiredPath)) {
+      errors.push(`PR-09 frozen repository path is missing ${requiredPath}`)
+    }
+  }
+  for (const key of sourceKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      if (repositoryPathByOperation.get(path) !== key) {
+        errors.push(
+          `PR-09 source operation lacks matching repository operation ${key} ${path}`,
+        )
+      }
+    }
+  }
+  return [...new Set(errors)].sort()
+}
+
 export function buildExactClosureOperationPolicy(baseRoutes, currentRoutes) {
   return {
     ...buildClosurePathOperations(
@@ -6243,7 +7716,7 @@ export function verifyPr03TargetState({
   currentRoutes,
 }) {
   if (
-    ["PR-04", "PR-05", "PR-06", "PR-07", "PR-08"].includes(
+    ["PR-04", "PR-05", "PR-06", "PR-07", "PR-08", "PR-09"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
     )
   ) {
@@ -6327,7 +7800,7 @@ export function verifyPr04TargetState({
   paths = listCandidatePaths(root),
 }) {
   if (
-    ["PR-05", "PR-06", "PR-07", "PR-08"].includes(
+    ["PR-05", "PR-06", "PR-07", "PR-08", "PR-09"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
     )
   ) {
@@ -6552,7 +8025,7 @@ export function verifyPr05TargetState({
   paths = listCandidatePaths(root),
 }) {
   if (
-    ["PR-06", "PR-07", "PR-08"].includes(
+    ["PR-06", "PR-07", "PR-08", "PR-09"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
     )
   ) {
@@ -6800,7 +8273,9 @@ export function verifyPr06TargetState({
   paths = listCandidatePaths(root),
 }) {
   if (
-    ["PR-07", "PR-08"].includes(currentRoutes.reviewedRevisions?.at(-1)?.id)
+    ["PR-07", "PR-08", "PR-09"].includes(
+      currentRoutes.reviewedRevisions?.at(-1)?.id,
+    )
   ) {
     return []
   }
@@ -7029,7 +8504,7 @@ export function verifyPr07TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
-  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-08") {
+  if (["PR-08", "PR-09"].includes(currentRoutes.reviewedRevisions?.at(-1)?.id)) {
     return []
   }
   const errors = []
@@ -7369,6 +8844,9 @@ export function verifyPr08TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-09") {
+    return []
+  }
   const errors = []
   if (
     (currentRoutes.routes ?? []).some(
@@ -7540,6 +9018,806 @@ export function verifyPr08TargetState({
   return [...new Set(errors)].sort()
 }
 
+export function verifyPr09FindingTransition(baseEntries, currentEntries) {
+  const errors = []
+  const baseByKey = new Map(
+    baseEntries.map((entry) => [findingKey(entry), entry]),
+  )
+  for (const entry of currentEntries) {
+    const key = findingKey(entry)
+    const baseEntry = baseByKey.get(key)
+    if (!baseEntry) {
+      errors.push(`new PR-09 reviewed legacy finding ${key}`)
+      continue
+    }
+    if (entry.count > baseEntry.count) {
+      errors.push(`PR-09 reviewed legacy finding count grew ${key}`)
+    }
+    if (entry.removeBy !== baseEntry.removeBy) {
+      errors.push(`PR-09 legacy disposition changed outside policy ${key}`)
+    }
+  }
+  const dueEntries = currentEntries.filter(
+    (entry) => entry.removeBy === "PR-09",
+  )
+  if (dueEntries.length > 0) {
+    errors.push(
+      `PR-09 findings remain ${dueEntries.map(findingKey).sort().join(",")}`,
+    )
+  }
+  if (
+    currentEntries.length !== 1 ||
+    currentEntries[0]?.ruleId !== "FS105_BUILDER_HUB" ||
+    currentEntries[0]?.path !== "apps/web/src/middleware.test.ts" ||
+    currentEntries[0]?.removeBy !== "PR-12"
+  ) {
+    errors.push("PR-09 remaining finding boundary changed")
+  }
+  return errors.sort()
+}
+
+export function verifyPr09CandidateContract({
+  root = repositoryRoot,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+  operationPolicy,
+}) {
+  const errors = [
+    ...verifyPr09FindingTransition(
+      baseAllowlist.entries ?? [],
+      currentAllowlist.entries ?? [],
+    ),
+    ...verifyPr09RetainedRouteContract(baseRoutes, currentRoutes),
+    ...verifyPr09OperationBoundary(operationPolicy ?? {}),
+    ...verifyExactClosureChanges(
+      baseRoutes.sourceClosure ?? [],
+      currentRoutes.sourceClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedSourcePaths",
+        changedKey: "changedSourcePaths",
+        deletedKey: "deletedSourcePaths",
+        label: "source closure",
+      },
+      "PR-09",
+    ),
+    ...verifyExactClosureChanges(
+      baseRoutes.repositoryClosure ?? [],
+      currentRoutes.repositoryClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedRepositoryPaths",
+        changedKey: "changedRepositoryPaths",
+        deletedKey: "deletedRepositoryPaths",
+        label: "repository closure",
+      },
+      "PR-09",
+    ),
+    ...verifyPr09TargetState({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths: (currentRoutes.repositoryClosure ?? []).map(({ path }) => path),
+    }),
+  ]
+  return errors.sort()
+}
+
+export function verifyPr09RetainedRouteContract(base, current) {
+  const errors = []
+  const expectedTarget = structuredClone(current.target ?? null)
+  if (expectedTarget) {
+    expectedTarget.activityAuditPath = null
+    expectedTarget.requiredPrivateOperational = (
+      expectedTarget.requiredPrivateOperational ?? []
+    ).filter(
+      ({ method, path }) =>
+        method !== "GET" || path !== "/internal/observability/metrics",
+    )
+  }
+  if (JSON.stringify(expectedTarget) !== JSON.stringify(base.target ?? null)) {
+    errors.push("PR-09 route target changed outside reviewed deltas")
+  }
+  if (JSON.stringify(current.target) !== JSON.stringify(targetRouteContract)) {
+    errors.push("PR-09 route target differs from reviewed target")
+  }
+  if (
+    JSON.stringify(current.webInferenceConsumers ?? []) !==
+    JSON.stringify(base.webInferenceConsumers ?? [])
+  ) {
+    errors.push("PR-09 Web inference consumer boundary changed")
+  }
+
+  const baseCounts = routeCounts(base.routes ?? [])
+  const currentCounts = routeCounts(current.routes ?? [])
+  const currentByKey = new Map(
+    (current.routes ?? []).map((route) => [routeKey(route), route]),
+  )
+  for (const [key, count] of baseCounts) {
+    if (currentCounts.get(key) !== count) {
+      errors.push(`PR-09 retained route changed ${key}`)
+    }
+    const baseRoute = (base.routes ?? []).find(
+      (route) => routeKey(route) === key,
+    )
+    if (JSON.stringify(currentByKey.get(key)) !== JSON.stringify(baseRoute)) {
+      errors.push(`PR-09 retained route reclassified ${key}`)
+    }
+  }
+  const addedRoutes = []
+  for (const route of current.routes ?? []) {
+    const key = routeKey(route)
+    const remaining = baseCounts.get(key) ?? 0
+    if (remaining > 0) {
+      baseCounts.set(key, remaining - 1)
+    } else {
+      addedRoutes.push(route)
+    }
+  }
+  addedRoutes.sort(compareRoutes)
+  if (JSON.stringify(addedRoutes) !== JSON.stringify(pr09AddedRouteContract)) {
+    errors.push("PR-09 added route inventory differs from reviewed target")
+  }
+
+  const baseRegistrars = new Map(
+    (base.fastifyRegistrars ?? []).map((entry) => [entry.exportName, entry]),
+  )
+  for (const entry of base.fastifyRegistrars ?? []) {
+    const currentEntry = (current.fastifyRegistrars ?? []).find(
+      (candidate) => candidate.exportName === entry.exportName,
+    )
+    if (JSON.stringify(currentEntry) !== JSON.stringify(entry)) {
+      errors.push(
+        `PR-09 retained Fastify registrar changed ${entry.exportName}`,
+      )
+    }
+  }
+  const addedRegistrars = (current.fastifyRegistrars ?? []).filter(
+    (entry) => !baseRegistrars.has(entry.exportName),
+  )
+  if (
+    JSON.stringify(addedRegistrars) !==
+    JSON.stringify([
+      {
+        exportName: "registerObservabilityMetricsRoutes",
+        importSource: "./routes/observability-metrics",
+        sourcePath: "apps/bff/src/routes/observability-metrics.ts",
+      },
+    ])
+  ) {
+    errors.push("PR-09 observability registrar differs from reviewed target")
+  }
+  return errors.sort()
+}
+
+export function verifyPr09TargetState({
+  root = repositoryRoot,
+  currentAllowlist,
+  currentRoutes,
+  paths = listCandidatePaths(root),
+}) {
+  const errors = []
+  if (
+    (currentRoutes.routes ?? []).some(
+      (route) => route.classification === "legacy-retired",
+    )
+  ) {
+    errors.push("PR-09 legacy routes remain")
+  }
+  if ((currentRoutes.routes ?? []).length !== pr09TargetContract.routes) {
+    errors.push(
+      `PR-09 total route count changed expected=${pr09TargetContract.routes} actual=${(currentRoutes.routes ?? []).length}`,
+    )
+  }
+  const classificationCounts = Object.fromEntries(
+    [...routeCountsByClassification(currentRoutes.routes ?? [])].sort(),
+  )
+  if (
+    JSON.stringify(classificationCounts) !==
+    JSON.stringify(pr09TargetContract.routeClassifications)
+  ) {
+    errors.push("PR-09 route classification counts changed")
+  }
+  if (
+    JSON.stringify(currentRoutes.fastifyRegistrars ?? []) !==
+    JSON.stringify(pr09TargetContract.fastifyRegistrars)
+  ) {
+    errors.push("PR-09 Fastify registrar target changed")
+  }
+  if ((currentRoutes.webInferenceConsumers ?? []).length !== 0) {
+    errors.push("PR-09 Web inference consumer count is not zero")
+  }
+  if (
+    JSON.stringify(currentRoutes.fingerprints ?? []) !==
+    JSON.stringify(reviewedPr09ResolverFingerprints)
+  ) {
+    errors.push("PR-09 resolver fingerprints changed")
+  }
+  if ((currentRoutes.escapeHatches ?? []).length !== 0) {
+    errors.push("PR-09 mutable legacy escape hatch remains")
+  }
+  if (JSON.stringify(currentRoutes.target) !== JSON.stringify(targetRouteContract)) {
+    errors.push("PR-09 route target contract changed")
+  }
+
+  const exactSubsets = [
+    [
+      (currentRoutes.routes ?? []).filter(
+        (route) => route.classification === "required-now",
+      ),
+      pr07PublicInferenceRouteContract,
+      "public inference",
+    ],
+    [
+      (currentRoutes.routes ?? []).filter(
+        (route) => route.classification === "public-t2",
+      ),
+      pr08FirecrawlRouteContract,
+      "public Firecrawl",
+    ],
+    [
+      (currentRoutes.routes ?? []).filter((route) =>
+        pr09AddedRouteContract.some(
+          (expected) => routeKey(route) === routeKey(expected),
+        ),
+      ),
+      pr09AddedRouteContract,
+      "PR-09 added",
+    ],
+  ]
+  for (const [actual, expected, label] of exactSubsets) {
+    actual.sort(compareRoutes)
+    const sortedExpected = structuredClone(expected).sort(compareRoutes)
+    if (JSON.stringify(actual) !== JSON.stringify(sortedExpected)) {
+      errors.push(`PR-09 ${label} route inventory changed`)
+    }
+  }
+  if (
+    (currentAllowlist.entries ?? []).some((entry) => entry.removeBy === "PR-09")
+  ) {
+    errors.push("PR-09 due findings remain")
+  }
+  if (
+    (currentAllowlist.entries ?? []).length !== 1 ||
+    currentAllowlist.entries[0]?.ruleId !== "FS105_BUILDER_HUB" ||
+    currentAllowlist.entries[0]?.path !== "apps/web/src/middleware.test.ts" ||
+    currentAllowlist.entries[0]?.removeBy !== "PR-12"
+  ) {
+    errors.push("PR-09 remaining finding boundary changed")
+  }
+  for (const path of new Set(pr09RequiredFrozenRepositoryPaths)) {
+    if (!isRegularFile(resolve(root, path))) {
+      errors.push(`PR-09 frozen repository path is missing ${path}`)
+    }
+  }
+  errors.push(...verifyPr09BaseEvidence(root))
+  errors.push(...verifyPr09SourceBoundary(root))
+  errors.push(...verifyPr08QueryFreeLoggingBoundary(root))
+  errors.push(...verifyPr06RetiredApplicationBoundary(root))
+  errors.push(...verifyRetiredDataDependencyBoundary(root, paths))
+  errors.push(
+    ...verifyStandaloneDbTestBoundary(
+      root,
+      paths,
+      pr09StandaloneDbTestBoundary,
+    ),
+  )
+  errors.push(...verifyReviewedPr09WebAuthenticationEvidence(root))
+  errors.push(...verifyWebAuthenticationBoundary(root))
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr09SourceBoundary(root = repositoryRoot) {
+  const errors = []
+  const read = (path) => {
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-09 source boundary path is missing ${path}`)
+      return ""
+    }
+    return readFileSync(absolutePath, "utf8")
+  }
+  const section = (source, start, end, label) => {
+    const startIndex = source.indexOf(start)
+    const endIndex = source.indexOf(end, startIndex + start.length)
+    if (startIndex < 0 || endIndex < 0) {
+      errors.push(`PR-09 source boundary section is missing ${label}`)
+      return ""
+    }
+    return source.slice(startIndex, endIndex)
+  }
+
+  errors.push(...verifyReviewedPr09SourceFingerprints(root))
+  errors.push(...verifyReviewedPr09NativeIdentifierEvidence(root))
+
+  const expertSource = read("apps/bff/src/services/expert-capabilities.ts")
+  for (const fingerprint of [
+    'auditIngestion: "implemented_pending_runtime_qualification"',
+    'consoleProjection: "read_only"',
+    'directAccess: "disabled"',
+    'mechanism: "product_owned_audited_ingress"',
+    'nativeMutation: "disabled"',
+  ]) {
+    if (!expertSource.includes(fingerprint)) {
+      errors.push(`PR-09 expert ingress boundary is missing ${fingerprint}`)
+    }
+  }
+  if (
+    !expertSource.includes("eventId: string") ||
+    !expertSource.includes("keycloakSubjectId: string | null") ||
+    /sourceEventId|source_event_id/.test(expertSource)
+  ) {
+    errors.push("PR-09 native event interface changed")
+  }
+
+  const auditSource = read("apps/bff/src/services/audit.ts")
+  const ingestionSource = read("apps/bff/src/services/audit-ingestion.ts")
+  const exportSource = read("apps/bff/src/services/audit-export.ts")
+  const schemaSource = read("apps/bff/src/db/inference-core-schema.ts")
+  const migrationSource = read("infra/migrations/0000_inference_core.sql")
+  const auditSchema = section(
+    schemaSource,
+    "export const auditEvents = common.table(",
+    "export const auditSourceCursors = common.table(",
+    "audit event schema",
+  )
+  const auditMigration = section(
+    migrationSource,
+    "CREATE TABLE common.audit_events (",
+    "CREATE TABLE common.audit_source_cursors (",
+    "audit event migration",
+  )
+  const cursorSchema = section(
+    schemaSource,
+    "export const auditSourceCursors = common.table(",
+    "export const applications = admin.table(",
+    "audit cursor schema",
+  )
+  const cursorMigration = section(
+    migrationSource,
+    "CREATE TABLE common.audit_source_cursors (",
+    "CREATE TABLE admin.applications (",
+    "audit cursor migration",
+  )
+  if (
+    !auditSchema.includes('id: uuid("id").primaryKey()') ||
+    !auditMigration.includes("id uuid PRIMARY KEY") ||
+    /sourceEventId|source_event_id|targetType|targetId|target_type|target_id/.test(
+      `${auditSchema}\n${auditMigration}`,
+    ) ||
+    /uniqueIndex\([^)]*correlation|CREATE UNIQUE INDEX[^;]*correlation/is.test(
+      `${auditSchema}\n${auditMigration}`,
+    )
+  ) {
+    errors.push("PR-09 audit persistence identity boundary changed")
+  }
+  if (
+    /sourceEventId|source_event_id/.test(
+      `${auditSource}\n${ingestionSource}\n${exportSource}`,
+    ) ||
+    /\btarget(?:Type|Id)\b|target_(?:type|id)\b/.test(exportSource)
+  ) {
+    errors.push("PR-09 raw source or generic target metadata is persisted or exported")
+  }
+  for (const fingerprint of [
+    "eventId: canonicalNativeEventId(event.eventId)",
+    "id: eventId",
+    ".onConflictDoNothing()",
+    "sameStoredNativeAuditEvent",
+    "Native audit event ID collided with different canonical metadata.",
+    "Native audit eventId must be a canonical deterministic UUID.",
+  ]) {
+    if (!ingestionSource.includes(fingerprint)) {
+      errors.push(`PR-09 native event identity boundary is missing ${fingerprint}`)
+    }
+  }
+  for (const fingerprint of [
+    "NATIVE_AUDIT_CURSOR_PATTERN",
+    'super("Audit source state changed during collection.")',
+    '.for("update")',
+    "storedCursor(current) !== beforeCursor",
+    "current.lastAttemptAt && current.lastAttemptAt > now",
+    "events.length === 0 && nextCursor !== beforeCursor",
+    "Native audit cursor must match the final event watermark.",
+  ]) {
+    if (!ingestionSource.includes(fingerprint)) {
+      errors.push(`PR-09 native cursor boundary is missing ${fingerprint}`)
+    }
+  }
+  if (
+    (ingestionSource.match(/\.for\("update"\)/g) ?? []).length !== 2 ||
+    (
+      ingestionSource.match(
+        /current\.lastAttemptAt\s*&&\s*current\.lastAttemptAt\s*>\s*now/g,
+      ) ?? []
+    ).length !== 2 ||
+    !cursorSchema.includes('cursorVersion: integer("cursor_version")') ||
+    !cursorSchema.includes('cursorWatermark: timestamp("cursor_watermark"') ||
+    !cursorSchema.includes('cursorTieBreaker: uuid("cursor_tie_breaker")') ||
+    !cursorMigration.includes(
+      "num_nonnulls(cursor_version, cursor_watermark, cursor_tie_breaker)",
+    )
+  ) {
+    errors.push("PR-09 native cursor concurrency or storage boundary changed")
+  }
+  if (
+    !auditSource.includes(
+      'throw new TypeError("Native audit events require a correlation ID.")',
+    ) ||
+    !auditSource.includes(
+      'throw new TypeError("Native audit correlationId must be a canonical UUID.")',
+    ) ||
+    !auditSource.includes("assertNativeCredentialPrefix(credentialPrefix)") ||
+    !auditSource.includes("if (credentialRecordId && credentialPrefix)")
+  ) {
+    errors.push("PR-09 native identifier boundary changed")
+  }
+  if (
+    !auditSource.includes(
+      "NATIVE_PROVIDER_TOKEN_SHAPED_IDENTIFIER_PATTERN.test(value)",
+    ) ||
+    (auditSchema.match(/!~ '\^\(sk\[-_\]/g) ?? []).length !== 3 ||
+    (auditMigration.match(/!~ '\^\(sk\[-_\]/g) ?? []).length !== 3
+  ) {
+    errors.push("PR-09 provider-token-shaped native identifier boundary changed")
+  }
+
+  const signingSource = read("apps/bff/src/services/audit-export-signing.ts")
+  for (const fingerprint of [
+    "AUDIT_EXPORT_SIGNING_PRIVATE_KEY_FILE",
+    "AUDIT_EXPORT_SIGNING_PUBLIC_JWKS_FILE",
+    'asymmetricKeyType !== "ed25519"',
+    'alg: "EdDSA"',
+    "constants.O_NOFOLLOW",
+  ]) {
+    if (!signingSource.includes(fingerprint)) {
+      errors.push(`PR-09 audit signing boundary is missing ${fingerprint}`)
+    }
+  }
+  if (
+    /process\.env\.AUDIT_EXPORT_SIGNING_PRIVATE_KEY(?!_FILE)/.test(
+      signingSource,
+    ) ||
+    /(?:BEGIN (?:EC |RSA )?PRIVATE KEY|PRIVATE_KEY\s*=)/.test(signingSource)
+  ) {
+    errors.push("PR-09 audit private key material may not come from source or env")
+  }
+  if (
+    /\bsourceEventId\b|\bsource_event_id\b|\btargetType\b|\btargetId\b|\btarget_type\b|\btarget_id\b/.test(
+      exportSource,
+    )
+  ) {
+    errors.push("PR-09 signed audit export contains forbidden raw metadata")
+  }
+
+  const metricsRoute = read("apps/bff/src/routes/observability-metrics.ts")
+  for (const fingerprint of [
+    'const METRICS_PATH = "/internal/observability/metrics"',
+    "BFF_OBSERVABILITY_METRICS_TOKEN_FILE",
+    "constants.O_NOFOLLOW",
+    "timingSafeEqual",
+    "hasQueryString(request)",
+  ]) {
+    if (!metricsRoute.includes(fingerprint)) {
+      errors.push(`PR-09 private metrics boundary is missing ${fingerprint}`)
+    }
+  }
+  const prometheusSource = read("apps/bff/src/services/admin-prometheus.ts")
+  const environmentExample = read(".env.example")
+  if (
+    !prometheusSource.includes("ADMIN_PROMETHEUS_BEARER_TOKEN_FILE") ||
+    !prometheusSource.includes("constants.O_NOFOLLOW") ||
+    /process\.env\.ADMIN_PROMETHEUS_BEARER_TOKEN(?!_FILE)/.test(
+      prometheusSource,
+    ) ||
+    !environmentExample.includes(
+      "ADMIN_PROMETHEUS_BEARER_TOKEN_FILE=/run/secrets/llmm_prometheus_query_bearer",
+    ) ||
+    !environmentExample.includes(
+      "BFF_OBSERVABILITY_METRICS_TOKEN_FILE=/run/secrets/llmm_prometheus_scrape_bearer",
+    ) ||
+    /^ADMIN_PROMETHEUS_BEARER_TOKEN=/m.test(environmentExample) ||
+    /^BFF_OBSERVABILITY_METRICS_TOKEN=/m.test(environmentExample)
+  ) {
+    errors.push("PR-09 Prometheus credential mount boundary changed")
+  }
+  const metricsSource = read(
+    "apps/bff/src/services/admin-observability-metrics.ts",
+  )
+  for (const metric of [
+    ...pr09ReviewedDispositions.observability.accountingMetrics,
+    "llm_machines_inference_queue_depth_source_info",
+  ]) {
+    if (!metricsSource.includes(metric)) {
+      errors.push(`PR-09 accounting metric is missing ${metric}`)
+    }
+  }
+  if (
+    metricsSource.includes("llmm_inference_") ||
+    metricsSource.includes("`llm_machines_inference_queue_depth ${") ||
+    !metricsSource.includes(
+      'llm_machines_inference_queue_depth_source_info{status="not_configured"} 1',
+    )
+  ) {
+    errors.push("PR-09 queue-depth emitter boundary changed")
+  }
+
+  const alertmanagerSource = read(
+    "apps/bff/src/services/admin-alertmanager.ts",
+  )
+  const expectedAlerts = pr09ReviewedDispositions.observability.alerts
+  const actualAlertNames = [
+    ...new Set(alertmanagerSource.match(/LLMM[A-Za-z]+/g) ?? []),
+  ].sort()
+  if (JSON.stringify(actualAlertNames) !== JSON.stringify([...expectedAlerts].sort())) {
+    errors.push("PR-09 Alertmanager alert-name allowlist changed")
+  }
+
+  let runtimeContract = null
+  try {
+    runtimeContract = JSON.parse(
+      read("infra/observability/runtime-contract.json"),
+    )
+  } catch {
+    errors.push("PR-09 observability runtime contract is invalid JSON")
+  }
+  const normalizedMetrics = runtimeContract?.prometheus?.normalizedMetrics ?? []
+  const runtimeMetricNames = normalizedMetrics.map(({ name }) => name)
+  for (const metric of [
+    ...pr09ReviewedDispositions.observability.accountingMetrics,
+    "llm_machines_inference_queue_depth_source_info",
+    "llm_machines_inference_queue_depth",
+    "llm_machines_gpu_utilization_ratio",
+  ]) {
+    if (!runtimeMetricNames.includes(metric)) {
+      errors.push(`PR-09 observability contract metric is missing ${metric}`)
+    }
+  }
+  if (
+    runtimeContract?.metadata?.activation !== "PR-12" ||
+    runtimeContract?.metadata?.sourceOnly !== true ||
+    runtimeContract?.metadata?.containsCredentials !== false ||
+    runtimeContract?.prometheus?.retention !== "30d" ||
+    runtimeContract?.prometheus?.scrapeTimeout !== "20s" ||
+    runtimeContract?.prometheus?.scrapeAuthentication?.credentialSource !==
+      "mounted-file" ||
+    runtimeContract?.prometheus?.scrapeDiscovery?.seedTargetCount !== 0 ||
+    runtimeContract?.prometheus?.queueDepthFallback !== "none" ||
+    runtimeContract?.alertmanager?.defaultReceiver !== "local-null" ||
+    runtimeContract?.alertmanager?.externalReceiverState !== "disabled" ||
+    runtimeContract?.grafana?.oidc?.adminRole !== "Editor" ||
+    runtimeContract?.grafana?.oidc?.operatorRole !== "Viewer" ||
+    runtimeContract?.grafana?.oidc?.ambiguousRetainedRoles !== "deny" ||
+    runtimeContract?.grafana?.oidc?.unknownRole !== "deny" ||
+    runtimeContract?.grafana?.customerFolder?.adminPermission !== "Edit" ||
+    runtimeContract?.grafana?.customerFolder?.operatorPermission !== "View"
+  ) {
+    errors.push("PR-09 observability runtime contract changed")
+  }
+  const queueMetric = normalizedMetrics.find(
+    ({ name }) => name === "llm_machines_inference_queue_depth",
+  )
+  if (queueMetric?.availability !== "pr12-qualified-adapter") {
+    errors.push("PR-09 genuine queue-depth metric is not deferred to PR-12")
+  }
+
+  const grafanaSource = read("infra/observability/grafana/grafana.ini")
+  const observabilityValidator = read("infra/observability/validate-profile.mjs")
+  const exactGrafanaRoleExpression =
+    "contains(realm_access.roles[*], 'admin') && !contains(realm_access.roles[*], 'operator') && 'Editor' || contains(realm_access.roles[*], 'operator') && !contains(realm_access.roles[*], 'admin') && 'Viewer'"
+  if (
+    !grafanaSource.includes(
+      `role_attribute_path = ${exactGrafanaRoleExpression}`,
+    ) ||
+    !observabilityValidator.includes("if (admin === operator) return null") ||
+    !observabilityValidator.includes(exactGrafanaRoleExpression)
+  ) {
+    errors.push("PR-09 exact-one retained Grafana role boundary changed")
+  }
+
+  const alertmanagerConfig = read(
+    "infra/observability/alertmanager/alertmanager.yml",
+  )
+  const prometheusTargets = read(
+    "infra/observability/prometheus/file-sd/inference-core.json",
+  )
+  if (
+    !alertmanagerConfig.includes("receiver: local-null") ||
+    !alertmanagerConfig.includes("- name: local-null") ||
+    /(?:email_configs|webhook_configs|smtp_smarthost|slack_configs):/.test(
+      alertmanagerConfig,
+    ) ||
+    prometheusTargets.trim() !== "[]"
+  ) {
+    errors.push("PR-09 local-null default-off observability boundary changed")
+  }
+
+  const alertRules = read(
+    "infra/observability/prometheus/rules/alert-rules.yml",
+  )
+  for (const alertName of expectedAlerts) {
+    if (!alertRules.includes(`alert: ${alertName}`)) {
+      errors.push(`PR-09 provisioned alert rule is missing ${alertName}`)
+    }
+  }
+  if (
+    !alertRules.includes("absent(llm_machines_inference_queue_depth) == 1") ||
+    alertRules.includes("queue_depth_source_info") ||
+    /queue.*in_flight|in_flight.*queue/i.test(alertRules)
+  ) {
+    errors.push("PR-09 queue-depth alert uses an unqualified substitute")
+  }
+
+  const egressContracts = read("packages/contracts/src/inference-core.ts")
+  const egressService = read("apps/bff/src/services/admin-alert-egress.ts")
+  const adminRoutes = read("apps/bff/src/routes/admin.ts")
+  for (const fingerprint of [
+    'z.literal("alert-egress-v1")',
+    'z.literal("disabled")',
+    'z.enum(["smtp", "webhook"])',
+    'z.literal("not_stored")',
+    "outboundDeliveryEnabled: z.literal(false)",
+    "runtimeQualified: z.literal(false)",
+  ]) {
+    if (!egressContracts.includes(fingerprint)) {
+      errors.push(`PR-09 redacted alert-egress contract is missing ${fingerprint}`)
+    }
+  }
+  for (const fingerprint of [
+    'destinationState: "not_stored"',
+    "outboundDeliveryEnabled: false",
+    "runtimeQualified: false",
+    'secretState: "not_stored"',
+    'action: "admin.observability.alert_egress.updated"',
+  ]) {
+    if (!egressService.includes(fingerprint)) {
+      errors.push(`PR-09 alert-egress service is missing ${fingerprint}`)
+    }
+  }
+  if (
+    !adminRoutes.includes(
+      'withCapability("console.operational.view")',
+    ) ||
+    !adminRoutes.includes(
+      'reviewedAdminOnly("POST /api/admin/observability/alert-egress")',
+    )
+  ) {
+    errors.push("PR-09 alert-egress route authorization changed")
+  }
+  const schemaAndMigration = `${read(
+    "apps/bff/src/db/inference-core-schema.ts",
+  )}\n${read("infra/migrations/0000_inference_core.sql")}`
+  if (
+    /alert_(?:delivery|egress)_(?:destination|email|url|host|port|recipient|password|secret|token)/i.test(
+      schemaAndMigration,
+    )
+  ) {
+    errors.push("PR-09 alert-egress persistence contains destination or secret fields")
+  }
+  for (const field of pr09ReviewedDispositions.alertEgress
+    .dedicatedUpdaterFields) {
+    if (!schemaAndMigration.includes(field)) {
+      errors.push(`PR-09 alert-egress updater field is missing ${field}`)
+    }
+  }
+  if (
+    !egressService.includes("return commitWithReceipt({") ||
+    !egressService.includes("await transaction.insert(auditEvents).values({") ||
+    !adminRoutes.includes(
+      "await db.transaction((transaction) => commit(transaction))",
+    ) ||
+    !adminRoutes.includes("await completeIdempotency(")
+  ) {
+    errors.push("PR-09 alert-egress state, audit, and receipt atomicity changed")
+  }
+
+  const retentionSource = read(
+    "apps/bff/src/services/inference-core-retention.ts",
+  )
+  if (
+    !retentionSource.includes("365 * 24 * 60 * 60 * 1000") ||
+    !retentionSource.includes("cutoff.setUTCDate(cutoff.getUTCDate() - 89)")
+  ) {
+    errors.push("PR-09 audit or usage retention boundary changed")
+  }
+  const navigationSource = read(
+    "apps/web/src/components/console-v2/console-v2-sections.ts",
+  )
+  if (navigationSource.includes('href: "/activity"')) {
+    errors.push("PR-09 added Activity to global navigation before PR-11")
+  }
+
+  return [...new Set(errors)].sort()
+}
+
+export function verifyReviewedPr09SourceFingerprints(
+  root = repositoryRoot,
+) {
+  const errors = []
+  const parsedFiles = new Map()
+
+  for (const expected of reviewedPr09SourceFingerprints) {
+    let sourceFile = parsedFiles.get(expected.path)
+    if (!sourceFile) {
+      const absolutePath = resolve(root, expected.path)
+      if (!isRegularFile(absolutePath)) {
+        errors.push(`PR-09 reviewed source is missing ${expected.path}`)
+        continue
+      }
+      const source = readFileSync(absolutePath, "utf8")
+      sourceFile = ts.createSourceFile(
+        expected.path,
+        source,
+        ts.ScriptTarget.Latest,
+        true,
+        scriptKindForPath(expected.path),
+      )
+      if (sourceFile.parseDiagnostics.length > 0) {
+        errors.push(`PR-09 reviewed source is invalid ${expected.path}`)
+        continue
+      }
+      parsedFiles.set(expected.path, sourceFile)
+    }
+
+    const matches = []
+    for (const statement of sourceFile.statements) {
+      if (
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === expected.symbol
+      ) {
+        matches.push(statement)
+      }
+      if (ts.isVariableStatement(statement)) {
+        for (const declaration of statement.declarationList.declarations) {
+          if (
+            ts.isIdentifier(declaration.name) &&
+            declaration.name.text === expected.symbol
+          ) {
+            matches.push(declaration)
+          }
+        }
+      }
+    }
+    if (matches.length !== 1) {
+      errors.push(
+        `PR-09 reviewed source symbol is missing or ambiguous ${expected.path}#${expected.symbol}`,
+      )
+      continue
+    }
+    const normalized = matches[0].getText(sourceFile).replace(/\s+/g, " ")
+    const actualSha256 = sha256(normalized)
+    if (actualSha256 !== expected.sha256) {
+      errors.push(
+        `PR-09 reviewed source symbol changed ${expected.path}#${expected.symbol} expected=${expected.sha256} actual=${actualSha256}`,
+      )
+    }
+  }
+
+  return errors.sort()
+}
+
+export function verifyReviewedPr09NativeIdentifierEvidence(
+  root = repositoryRoot,
+) {
+  const errors = []
+  for (const expected of reviewedPr09NativeIdentifierEvidence) {
+    const absolutePath = resolve(root, expected.path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-09 native identifier evidence is missing ${expected.path}`)
+      continue
+    }
+    const actualSha256 = sha256(readFileSync(absolutePath))
+    if (actualSha256 !== expected.sha256) {
+      errors.push(
+        `PR-09 native identifier evidence changed ${expected.path} expected=${expected.sha256} actual=${actualSha256}`,
+      )
+    }
+  }
+  return errors.sort()
+}
+
 function routeCountsByClassification(routes) {
   const counts = new Map()
   for (const route of routes) {
@@ -7687,6 +9965,29 @@ export function verifyReviewedPr05WebAuthenticationEvidence(
   return errors.sort()
 }
 
+export function verifyReviewedPr09WebAuthenticationEvidence(
+  root = repositoryRoot,
+) {
+  const errors = []
+  for (const {
+    path,
+    sha256: expectedSha256,
+  } of reviewedPr09WebAuthenticationEvidence) {
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`missing PR-09 Web authentication evidence ${path}`)
+      continue
+    }
+    const actualSha256 = sha256(readFileSync(absolutePath))
+    if (actualSha256 !== expectedSha256) {
+      errors.push(
+        `PR-09 Web authentication evidence changed ${path} expected=${expectedSha256} actual=${actualSha256}`,
+      )
+    }
+  }
+  return errors.sort()
+}
+
 export function verifyWebAuthenticationBoundary(root = repositoryRoot) {
   const path = "apps/web/src/middleware.ts"
   const absolutePath = resolve(root, path)
@@ -7711,6 +10012,7 @@ export function verifyWebAuthenticationBoundary(root = repositoryRoot) {
     [/["']\/inference["']/, "Inference protection"],
     [/["']\/settings["']/, "Settings protection"],
     [/["']\/team["']/, "Team protection"],
+    [/["']\/activity["']/, "Activity protection"],
   ]
   const errors = []
   for (const [pattern, label] of requiredPatterns) {
@@ -7856,6 +10158,7 @@ function buildReviewedRevisionFingerprints(root) {
     { id: "PR-06", path: pr06ContractRevisionPath },
     { id: "PR-07", path: pr07ContractRevisionPath },
     { id: "PR-08", path: pr08ContractRevisionPath },
+    { id: "PR-09", path: pr09ContractRevisionPath },
   ]) {
     if (!isRegularFile(resolve(root, path))) {
       missingRevision ??= id
@@ -7879,14 +10182,49 @@ function buildRevisionEvidenceFingerprints(
   root,
   paths = pr02RevisionEvidencePaths,
   revisionId = "PR-02",
+  { useHistoricalSuccessorTests = false } = {},
 ) {
   return paths.map((path) => {
+    const historicalCommit = useHistoricalSuccessorTests
+      ? pr09HistoricalTestEvidenceCommitByPath.get(path)
+      : undefined
+    if (historicalCommit) {
+      return {
+        path,
+        sha256: sha256(readRepositoryPathAtCommit(root, historicalCommit, path)),
+      }
+    }
     const absolutePath = resolve(root, path)
     if (!isRegularFile(absolutePath)) {
       throw new Error(`Missing ${revisionId} revision evidence file ${path}`)
     }
     return { path, sha256: sha256(readFileSync(absolutePath)) }
   })
+}
+
+function readRetainedEvidenceBytes(root, path, absolutePath) {
+  const historicalCommit = pr09HistoricalTestEvidenceCommitByPath.get(path)
+  return historicalCommit
+    ? readRepositoryPathAtCommit(root, historicalCommit, path)
+    : readFileSync(absolutePath)
+}
+
+function readRepositoryPathAtCommit(root, commit, path) {
+  return execFileSync(
+    "git",
+    [
+      "show",
+      "--no-ext-diff",
+      "--no-textconv",
+      "--end-of-options",
+      `${commit}:${path}`,
+    ],
+    {
+      cwd: root,
+      encoding: null,
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  )
 }
 
 export function verifyCorePackageClosure(
@@ -7953,12 +10291,16 @@ export function verifyCorePackageClosure(
     "build:inference-core":
       "node scripts/inference-core/run-core-command.mjs build",
     "check:inference-core":
-      "node infra/firecrawl/validate-profile.mjs && node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr08ContractBase}`,
+      "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node scripts/inference-core/guardrails.mjs",
+    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr09ContractBase}`,
     "contract:inference-core:pr07:policy":
       "node scripts/inference-core/pr07-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr07:write":
       "node scripts/inference-core/pr07-contract-revision.mjs --write",
+    "contract:inference-core:pr09:policy":
+      "node scripts/inference-core/pr09-contract-revision.mjs --print-operation-policy",
+    "contract:inference-core:pr09:write":
+      "node scripts/inference-core/pr09-contract-revision.mjs --write",
     "test:inference-core-authorization":
       "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match exec vitest run src/inference-core-authorization.test.ts",
     "test:inference-core-characterization":
@@ -7966,7 +10308,7 @@ export function verifyCorePackageClosure(
     "test:inference-core-db":
       pr04StandaloneDbTestBoundary.rootScripts["test:inference-core-db"],
     "test:inference-core-guardrails":
-      "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs",
+      "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs infra/observability/validate-profile.test.mjs",
     test: "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test",
     typecheck:
       "corepack pnpm -r build && corepack pnpm -r typecheck && corepack pnpm run typecheck:inference-core-db",
@@ -7989,8 +10331,10 @@ export function verifyCorePackageClosure(
 
   const exactPackageScripts = {
     "@llm-machines/bff": {
+      "audit:ingest": "tsx src/commands/audit-ingestion.ts",
       build:
         "corepack pnpm --filter @llm-machines/contracts build && tsc --project tsconfig.json",
+      "retention:prune": "tsx src/commands/inference-core-retention.ts",
       test: "corepack pnpm --filter @llm-machines/contracts build && vitest run",
       typecheck: "tsc --project tsconfig.json",
     },
@@ -8568,7 +10912,10 @@ function assertReviewedBuildServerDefinition(path, sourceFile) {
     )
   }
   const importedNames = new Set(
-    reviewedFastifyRegistrarSpecs.map(({ exportName }) => exportName),
+    [
+      ...reviewedFastifyRegistrarSpecs.map(({ exportName }) => exportName),
+      "observabilityMetricsRouteOptionsFromRuntime",
+    ],
   )
   const visit = (node) => {
     if (
@@ -9334,7 +11681,14 @@ function isReviewedFastifyRegistrarCall({
   if (!spec) {
     return false
   }
-  if (!hasReviewedFastifyRegistrarArguments(spec, call, sourceFile)) {
+  if (
+    !hasReviewedFastifyRegistrarArguments(
+      spec,
+      call,
+      sourceFile,
+      importedBindings,
+    )
+  ) {
     throw routeAnalysisError(
       path,
       sourceFile,
@@ -9353,7 +11707,12 @@ function isReviewedFastifyRegistrarCall({
   return true
 }
 
-function hasReviewedFastifyRegistrarArguments(spec, call, sourceFile) {
+function hasReviewedFastifyRegistrarArguments(
+  spec,
+  call,
+  sourceFile,
+  importedBindings = collectNamedImportBindings(sourceFile),
+) {
   if (spec.exportName === "registerAuthorization") {
     const options = unwrapExpression(call.arguments[1])
     return Boolean(
@@ -9372,6 +11731,28 @@ function hasReviewedFastifyRegistrarArguments(spec, call, sourceFile) {
   }
   if (spec.exportName === "registerFirecrawlGatewayRoutes") {
     return hasReviewedFirecrawlGatewayRegistrarArguments(call, sourceFile)
+  }
+  if (spec.exportName === "registerObservabilityMetricsRoutes") {
+    const optionsCall = unwrapExpression(call.arguments[1])
+    const optionsFactory = optionsCall
+      ? unwrapExpression(optionsCall.expression)
+      : null
+    const binding =
+      optionsFactory && ts.isIdentifier(optionsFactory)
+        ? importedBindings.get(optionsFactory.text)
+        : null
+    return Boolean(
+      call.arguments.length === 2 &&
+        optionsCall &&
+        ts.isCallExpression(optionsCall) &&
+        optionsCall.arguments.length === 0 &&
+        optionsFactory &&
+        ts.isIdentifier(optionsFactory) &&
+        optionsFactory.text === "observabilityMetricsRouteOptionsFromRuntime" &&
+        binding?.importedName ===
+          "observabilityMetricsRouteOptionsFromRuntime" &&
+        binding.importSource === "./routes/observability-metrics",
+    )
   }
   return call.arguments.length === 1
 }
@@ -9667,7 +12048,7 @@ function assertReviewedShorthandRouteOptions(
       factory === "reviewedAdminOnly" &&
       options.arguments.length === 1 &&
       argument === `${method} ${routePath}` &&
-      pr05AdminOnlyRoutePolicyKeys.includes(argument)
+      pr09AdminOnlyRoutePolicyKeys.includes(argument)
     ) {
       return
     }
@@ -10750,6 +13131,12 @@ function classifyBffRoute(source, path) {
     return "private-operational"
   }
   if (
+    source === "apps/bff/src/routes/observability-metrics.ts" &&
+    path === "/internal/observability/metrics"
+  ) {
+    return "private-operational"
+  }
+  if (
     source === "apps/bff/src/routes/app-gateway.ts" &&
     [
       "/api/app-gateway/v1/models",
@@ -10799,7 +13186,10 @@ function classifyWebRoute(path) {
     path.startsWith("/hardware") ||
     path.startsWith("/inference") ||
     path.startsWith("/settings") ||
-    path.startsWith("/team")
+    path.startsWith("/team") ||
+    path === "/activity" ||
+    path === "/api/admin/audit/export" ||
+    path === "/api/admin/audit/export/verification-keys"
   ) {
     return "current-console-seam"
   }
@@ -11201,6 +13591,26 @@ function routePolicyDigest() {
           operationPolicy:
             readPr08DecisionDocument(repositoryRoot).operationPolicy,
         },
+        {
+          id: "PR-09",
+          contractBase: pr09ContractBase,
+          contractBaseTree: pr09ContractBaseTree,
+          laneAnchor: pr09LaneAnchor,
+          path: pr09ContractRevisionPath,
+          evidencePaths: pr09RevisionEvidencePaths,
+          reviewedDispositions: pr09ReviewedDispositions,
+          target: pr09TargetContract,
+          standaloneDbTestBoundary: pr09StandaloneDbTestBoundary,
+          allowedRepositoryPathPatterns: pr09AllowedRepositoryPathPatterns.map(
+            ({ source, flags }) => ({ source, flags }),
+          ),
+          resolverFingerprints: reviewedPr09ResolverFingerprints,
+          sourceFingerprints: reviewedPr09SourceFingerprints,
+          nativeIdentifierEvidence: reviewedPr09NativeIdentifierEvidence,
+          webAuthenticationEvidence: reviewedPr09WebAuthenticationEvidence,
+          operationPolicy:
+            readPr09DecisionDocument(repositoryRoot).operationPolicy,
+        },
       ],
       implementation: [
         listCandidatePaths,
@@ -11292,6 +13702,9 @@ function routePolicyDigest() {
         verifyIntroducedPr08Revision,
         verifyPr08LaneLineage,
         verifyPr08BaseEvidence,
+        verifyIntroducedPr09Revision,
+        verifyPr09LaneLineage,
+        verifyPr09BaseEvidence,
         verifyRetainedPr02RevisionEvidence,
         verifyRetainedPr03RevisionEvidence,
         verifyRetainedPr04RevisionEvidence,
@@ -11299,6 +13712,7 @@ function routePolicyDigest() {
         verifyRetainedPr06RevisionEvidence,
         verifyRetainedPr07RevisionEvidence,
         verifyRetainedPr08RevisionEvidence,
+        verifyRetainedPr09RevisionEvidence,
         verifyPr02OperationMatrix,
         verifyExactMultisetSubset,
         verifyPr02EscapeHatches,
@@ -11326,6 +13740,9 @@ function routePolicyDigest() {
         verifyPr08OperationBoundary,
         verifyPr08PilotAncestry,
         verifyPr08QueryFreeLoggingBoundary,
+        readPr09DecisionDocument,
+        verifyPr09DecisionDocument,
+        verifyPr09OperationBoundary,
         buildExactClosureOperationPolicy,
         buildClosurePathOperations,
         verifyPr03FindingTransition,
@@ -11356,6 +13773,13 @@ function routePolicyDigest() {
         verifyPr08CandidateContract,
         verifyPr08RetainedRouteContract,
         verifyPr08TargetState,
+        verifyPr09FindingTransition,
+        verifyPr09CandidateContract,
+        verifyPr09RetainedRouteContract,
+        verifyPr09TargetState,
+        verifyPr09SourceBoundary,
+        verifyReviewedPr09SourceFingerprints,
+        verifyReviewedPr09NativeIdentifierEvidence,
         routeCountsByClassification,
         verifyReviewedWebAuthenticationEvidence,
         verifyReviewedPr04WebAuthenticationEvidence,
@@ -11487,6 +13911,7 @@ export function verifyBaseCommitLineage(
     pr06ContractBase,
     pr07ContractBase,
     pr08ContractBase,
+    pr09ContractBase,
   ],
 ) {
   const head = currentHead(root)

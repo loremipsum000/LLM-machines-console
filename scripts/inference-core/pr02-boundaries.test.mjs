@@ -111,14 +111,17 @@ test("shared dependency and expert-system decisions are complete", () => {
   }
 })
 
-test("native expert access is fail-closed in the retained capability seam", () => {
+test("native expert access remains fail-closed in the PR-09 successor seam", () => {
   const source = readFileSync(
     resolve(repositoryRoot, "apps/bff/src/services/expert-capabilities.ts"),
     "utf8",
   )
   assert.doesNotMatch(source, /directAccess:\s*"enabled"/)
   assert.doesNotMatch(source, /nativeMutation:\s*"enabled"/)
-  assert.match(source, /auditIngestion:\s*"not_proven"/)
+  assert.match(
+    source,
+    /auditIngestion:\s*"implemented_pending_runtime_qualification"/,
+  )
 })
 
 function staticImports(path) {

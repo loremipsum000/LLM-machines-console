@@ -1,6 +1,6 @@
+import middleware from "@/middleware"
 import { type NextFetchEvent, NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import middleware from "@/middleware"
 
 type TestAuthRequest = NextRequest & { auth: object | null }
 type AuthCallback = (
@@ -39,6 +39,7 @@ describe("Console middleware", () => {
   it("always protects every retained Console route", async () => {
     const protectedPaths = [
       "/",
+      "/activity",
       "/applications",
       "/applications/add",
       "/hardware",

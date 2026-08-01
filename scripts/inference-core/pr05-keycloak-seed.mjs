@@ -98,6 +98,7 @@ const expectedOfflineAccessPolicy = {
     "console-bff": [],
     "console-human-admin": [],
     "console-web": [],
+    grafana: [],
   },
 }
 
@@ -234,6 +235,43 @@ const expectedClients = [
       "realm-management": expectedQueryRoles,
     },
     serviceAccountsEnabled: true,
+  },
+  {
+    accessTokenClaims: ["amr", "auth_time", "realm_access.roles", "sub"],
+    clientAuthentication: "client-secret-generated-outside-seed",
+    clientId: "grafana",
+    credentialIncluded: false,
+    defaultClientScopes: ["basic", "email", "llm-machines-amr", "profile"],
+    flows: ["authorization-code-pkce"],
+    fullScopeAllowed: false,
+    idTokenClaims: ["email", "email_verified", "realm_access.roles", "sub"],
+    optionalClientScopes: [],
+    pkceCodeChallengeMethod: "S256",
+    protocol: "openid-connect",
+    protocolMappers: [
+      {
+        config: {
+          "access.token.claim": "true",
+          "claim.name": "realm_access.roles",
+          "id.token.claim": "true",
+          "jsonType.label": "String",
+          multivalued: "true",
+          "userinfo.token.claim": "true",
+        },
+        consentRequired: false,
+        name: "grafana-realm-roles",
+        protocol: "openid-connect",
+        protocolMapper: "oidc-usermodel-realm-role-mapper",
+      },
+    ],
+    runtimeBindings: {
+      redirectUri: "grafana-root-plus-login-generic-oauth",
+      webOrigin: "grafana-root-origin",
+    },
+    scopeMappings: {
+      realmRoles: ["admin", "operator"],
+    },
+    serviceAccountsEnabled: false,
   },
 ]
 
@@ -564,7 +602,7 @@ const expectedTokenNegativeTests = [
     expectedOfflineToken: false,
     id: "offline-access-not-issued",
     requestedScope: "offline_access",
-    requestingClients: ["console-human-admin", "console-web"],
+    requestingClients: ["console-human-admin", "console-web", "grafana"],
   },
 ]
 
@@ -910,7 +948,7 @@ export function validateKeycloakSeed(seed) {
   requireEqual(
     errors,
     seed?.metadata?.changePackage,
-    "PR-06",
+    "PR-09",
     "seed change package",
   )
   requireEqual(
@@ -1008,7 +1046,7 @@ export function validateCommissioningPlan(plan) {
   requireEqual(
     errors,
     plan?.metadata?.changePackage,
-    "PR-06",
+    "PR-09",
     "commissioning change package",
   )
   requireEqual(
@@ -1072,6 +1110,10 @@ export function validateCommissioningPlan(plan) {
     "basic-client-scope-adds-auth_time-to-access-token",
     "console-web-audience-mapper-hardcodes-console-bff",
     "scope-offline_access-does-not-yield-an-offline-token",
+    "grafana-admin-token-maps-to-Editor",
+    "grafana-operator-token-maps-to-Viewer",
+    "grafana-unrecognized-role-is-denied",
+    "grafana-dual-retained-role-token-is-denied",
   ]) {
     requireIncludes(
       errors,

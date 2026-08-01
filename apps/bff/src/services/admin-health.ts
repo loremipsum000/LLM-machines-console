@@ -3,9 +3,13 @@ import type {
   InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
 import {
-  firstFiniteValue,
+  type AdminAlertmanagerSummary,
+  getAdminAlertmanagerSummary,
+} from "./admin-alertmanager"
+import {
   PrometheusClient,
   type PrometheusVectorSample,
+  firstFiniteValue,
 } from "./admin-prometheus"
 
 export interface AdminHealthSummary {
@@ -14,72 +18,129 @@ export interface AdminHealthSummary {
   summary: string
 }
 
+interface PrometheusHealthRead {
+  gpuValue: number | null
+  sourceStatus: InferenceCoreSourceStatus
+  storageValue: number | null
+  summary: string
+  targets: { down: number; total: number; up: number } | null
+}
+
 const TARGET_UP_QUERY = 'up{job=~"node|dcgm|ipmi|infra_https_endpoint"}'
-const ACTIVE_ALERTS_QUERY = 'ALERTS{alertstate="firing"}'
 const DCGM_GPU_QUERY = "max(DCGM_FI_DEV_GPU_UTIL)"
 const TEXTFILE_GPU_QUERY = "max(llmm_nvidia_gpu_utilization_percent)"
 const STORAGE_QUERY =
   'max(100 * (1 - (node_filesystem_avail_bytes{job="node",fstype!~"tmpfs|devtmpfs|overlay|squashfs",mountpoint!~"/run.*|/var/lib/docker/.+"} / node_filesystem_size_bytes{job="node",fstype!~"tmpfs|devtmpfs|overlay|squashfs",mountpoint!~"/run.*|/var/lib/docker/.+"})))'
 
 export async function getAdminHealthSummary(): Promise<AdminHealthSummary> {
+  const [prometheus, alertmanager] = await Promise.all([
+    readPrometheusHealth(),
+    getAdminAlertmanagerSummary(),
+  ])
+  const targetValue = prometheus.targets
+    ? `${prometheus.targets.up}/${prometheus.targets.total}`
+    : sourceValue(prometheus.sourceStatus)
+  const targetDetail = prometheus.targets
+    ? `${prometheus.targets.down} down`
+    : "Prometheus API"
+  const alertValue =
+    alertmanager.sourceStatus === "ok" ||
+    alertmanager.sourceStatus === "degraded"
+      ? alertmanager.alerts.length
+      : sourceValue(alertmanager.sourceStatus)
+
+  return {
+    sourceStatus: combinedHealthStatus(prometheus, alertmanager),
+    summary: `${prometheus.summary} ${alertmanager.summary}`,
+    metrics: [
+      metric(
+        "gpu",
+        "GPU utilization",
+        prometheus.sourceStatus === "ok" ||
+          prometheus.sourceStatus === "degraded"
+          ? formatPercent(prometheus.gpuValue)
+          : sourceValue(prometheus.sourceStatus),
+        "Peak observed GPU",
+        prometheus.gpuValue === null ? "neutral" : "good",
+      ),
+      metric(
+        "alerts",
+        "Alerts",
+        alertValue,
+        alertmanager.sourceStatus === "degraded"
+          ? alertmanager.summary
+          : "Alertmanager active alerts",
+        alertTone(alertmanager),
+      ),
+      metric(
+        "uptime",
+        "Targets up",
+        targetValue,
+        targetDetail,
+        targetTone(prometheus),
+      ),
+      metric(
+        "storage",
+        "Max disk used",
+        prometheus.sourceStatus === "ok" ||
+          prometheus.sourceStatus === "degraded"
+          ? formatPercent(prometheus.storageValue)
+          : sourceValue(prometheus.sourceStatus),
+        "Node filesystems",
+        storageTone(prometheus.storageValue),
+      ),
+    ],
+  }
+}
+
+async function readPrometheusHealth(): Promise<PrometheusHealthRead> {
   const baseUrl = process.env.ADMIN_PROMETHEUS_BASE_URL?.trim()
   if (!baseUrl) {
-    return notConfiguredHealth()
+    return {
+      gpuValue: null,
+      sourceStatus: "not_configured",
+      storageValue: null,
+      summary: "Prometheus health federation is not configured for this BFF.",
+      targets: null,
+    }
   }
 
   try {
     const client = new PrometheusClient(baseUrl)
-    const [targets, alerts, dcgmGpu, textfileGpu, storage] = await Promise.all([
+    const [targets, dcgmGpu, textfileGpu, storage] = await Promise.all([
       client.query(TARGET_UP_QUERY),
-      client.query(ACTIVE_ALERTS_QUERY),
       client.query(DCGM_GPU_QUERY),
       client.query(TEXTFILE_GPU_QUERY),
       client.query(STORAGE_QUERY),
     ])
-
     const targetSummary = summarizeTargets(targets)
-    const alertSummary = summarizeAlerts(alerts)
     const gpuValue = firstFiniteValue(dcgmGpu) ?? firstFiniteValue(textfileGpu)
     const storageValue = firstFiniteValue(storage)
-
     return {
-      sourceStatus: healthSourceStatus(targetSummary.down, alertSummary),
-      summary: healthSummary(targetSummary, alertSummary),
-      metrics: [
-        metric(
-          "gpu",
-          "GPU utilization",
-          formatPercent(gpuValue),
-          "Peak observed GPU",
-          gpuValue === null ? "neutral" : "good",
-        ),
-        metric(
-          "alerts",
-          "Alerts",
-          alertSummary.total,
-          alertSummary.critical > 0
-            ? `${alertSummary.critical} critical`
-            : "Active firing alerts",
-          alertTone(alertSummary),
-        ),
-        metric(
-          "uptime",
-          "Targets up",
-          `${targetSummary.up}/${targetSummary.total}`,
-          `${targetSummary.down} down`,
-          targetSummary.down > 0 ? "warning" : "good",
-        ),
-        metric(
-          "storage",
-          "Max disk used",
-          formatPercent(storageValue),
-          "Node filesystems",
-          storageTone(storageValue),
-        ),
-      ],
+      gpuValue,
+      sourceStatus:
+        targetSummary.total === 0 ||
+        targetSummary.down > 0 ||
+        gpuValue === null ||
+        storageValue === null
+          ? "degraded"
+          : "ok",
+      storageValue,
+      summary:
+        targetSummary.total === 0
+          ? "Prometheus is reachable, but no infrastructure targets are reporting yet."
+          : `Prometheus reports ${targetSummary.up}/${targetSummary.total} monitored targets up.`,
+      targets: targetSummary,
     }
   } catch {
-    return unavailableHealth()
+    return {
+      gpuValue: null,
+      sourceStatus: "unavailable",
+      storageValue: null,
+      summary:
+        "Prometheus health federation is configured, but the BFF could not read it.",
+      targets: null,
+    }
   }
 }
 
@@ -97,66 +158,21 @@ function summarizeTargets(samples: PrometheusVectorSample[]): {
   }
 }
 
-function summarizeAlerts(samples: PrometheusVectorSample[]): {
-  critical: number
-  total: number
-  warning: number
-} {
-  return {
-    critical: samples.filter((sample) => sample.metric.severity === "critical")
-      .length,
-    total: samples.length,
-    warning: samples.filter((sample) => sample.metric.severity === "warning")
-      .length,
-  }
-}
-
-function healthSourceStatus(
-  downTargets: number,
-  alerts: { critical: number; total: number },
+function combinedHealthStatus(
+  prometheus: PrometheusHealthRead,
+  alertmanager: AdminAlertmanagerSummary,
 ): InferenceCoreSourceStatus {
-  if (downTargets > 0 || alerts.total > 0) {
-    return "degraded"
+  const statuses = [prometheus.sourceStatus, alertmanager.sourceStatus]
+  if (statuses.every((status) => status === "not_configured")) {
+    return "not_configured"
   }
-  return "ok"
-}
-
-function healthSummary(
-  targets: { down: number; total: number; up: number },
-  alerts: { total: number },
-): string {
-  if (targets.total === 0) {
-    return "Prometheus is reachable, but no infrastructure targets are reporting yet."
+  if (prometheus.sourceStatus === "unavailable") {
+    return "unavailable"
   }
-  return `Prometheus reports ${targets.up}/${targets.total} monitored targets up with ${alerts.total} active alert${alerts.total === 1 ? "" : "s"}.`
-}
-
-function notConfiguredHealth(): AdminHealthSummary {
-  return {
-    sourceStatus: "not_configured",
-    summary:
-      "Operational drilldowns are linked; Prometheus/Grafana summary federation is not configured for this BFF.",
-    metrics: [
-      metric("gpu", "GPU utilization", "Pending", "Prometheus API"),
-      metric("alerts", "Alerts", 0, "No BFF alert feed", "good"),
-      metric("uptime", "Targets up", "Pending", "Prometheus API"),
-      metric("storage", "Max disk used", "Pending", "Prometheus API"),
-    ],
+  if (statuses.every((status) => status === "ok")) {
+    return "ok"
   }
-}
-
-function unavailableHealth(): AdminHealthSummary {
-  return {
-    sourceStatus: "unavailable",
-    summary:
-      "Prometheus health federation is configured, but the BFF could not read it.",
-    metrics: [
-      metric("gpu", "GPU utilization", "Unavailable", "Prometheus API"),
-      metric("alerts", "Alerts", "Unavailable", "Prometheus API", "warning"),
-      metric("uptime", "Targets up", "Unavailable", "Prometheus API"),
-      metric("storage", "Max disk used", "Unavailable", "Prometheus API"),
-    ],
-  }
+  return "degraded"
 }
 
 function metric(
@@ -175,17 +191,19 @@ function metric(
   }
 }
 
-function alertTone(alerts: {
-  critical: number
-  total: number
-}): AdminOverviewMetric["tone"] {
-  if (alerts.critical > 0) {
-    return "critical"
-  }
-  if (alerts.total > 0) {
+function alertTone(
+  alertmanager: AdminAlertmanagerSummary,
+): AdminOverviewMetric["tone"] {
+  if (alertmanager.sourceStatus === "unavailable") {
     return "warning"
   }
-  return "good"
+  if (alertmanager.alerts.some((alert) => alert.severity === "critical")) {
+    return "critical"
+  }
+  if (alertmanager.alerts.length > 0) {
+    return "warning"
+  }
+  return alertmanager.sourceStatus === "ok" ? "good" : "neutral"
 }
 
 function storageTone(value: number | null): AdminOverviewMetric["tone"] {
@@ -201,9 +219,33 @@ function storageTone(value: number | null): AdminOverviewMetric["tone"] {
   return "good"
 }
 
+function targetTone(
+  prometheus: PrometheusHealthRead,
+): AdminOverviewMetric["tone"] {
+  if (prometheus.sourceStatus === "unavailable") {
+    return "warning"
+  }
+  if (!prometheus.targets) {
+    return "neutral"
+  }
+  return prometheus.targets.total === 0 || prometheus.targets.down > 0
+    ? "warning"
+    : "good"
+}
+
 function formatPercent(value: number | null): string {
   if (value === null) {
     return "Pending"
   }
   return `${Math.round(value)}%`
+}
+
+function sourceValue(status: InferenceCoreSourceStatus): string {
+  if (status === "not_configured") {
+    return "Pending"
+  }
+  if (status === "unavailable") {
+    return "Unavailable"
+  }
+  return "Pending"
 }

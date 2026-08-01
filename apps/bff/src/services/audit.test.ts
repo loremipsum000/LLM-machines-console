@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   emitAudit,
+  getAuditEventPage,
   getAuditEventsForTest,
+  parseAuditEventInput,
   resetAuditEventsForTest,
 } from "./audit"
 
@@ -57,6 +59,7 @@ describe("strict audit persistence boundary", () => {
 
   it.each([
     "actorId",
+    "sourceEventId",
     "targetType",
     "targetId",
     "reason",
@@ -87,7 +90,7 @@ describe("strict audit persistence boundary", () => {
     ["action", "contains spaces"],
     ["outcome", "blocked"],
     ["sourceSystem", "unknown"],
-    ["correlationId", "10.0.0.3"],
+    ["correlationId", "192.0.2.3"],
     ["keycloakSubjectId", "person@example.test"],
     ["applicationId", "a".repeat(64)],
     ["credentialRecordId", "llmm_t4_prefix_secret"],
@@ -112,6 +115,76 @@ describe("strict audit persistence boundary", () => {
     })
   })
 
+  it("searches only the canonical permitted metadata fields in fixture mode", async () => {
+    const event = await emitAudit({
+      action: "admin.audit.tested",
+      applicationId: "app-search",
+      correlationId: "request-search",
+      credentialRecordId: "credential-search",
+      keycloakSubjectId: "subject-search",
+      outcome: "succeeded",
+      recoveryReasonCode: "policy_checked",
+      sourceSystem: "console",
+    })
+    const canonicalQueries = [
+      event.id,
+      "audit.tested",
+      "request-search",
+      "subject-search",
+      "app-search",
+      "credential-search",
+      "policy_checked",
+    ]
+    for (const query of canonicalQueries) {
+      await expect(getAuditEventPage({ query })).resolves.toMatchObject({
+        events: [expect.objectContaining({ id: event.id })],
+      })
+    }
+    for (const query of ["console", "succeeded"] as const) {
+      await expect(getAuditEventPage({ query })).resolves.toMatchObject({
+        events: [],
+      })
+    }
+  })
+
+  it.each([
+    ["correlationId", "correlation-not-a-uuid"],
+    ["keycloakSubjectId", "admin.internal"],
+    ["keycloakSubjectId", "token_secret-value"],
+    ["applicationId", "app.internal"],
+    ["credentialRecordId", "llmm_private-token"],
+    ["credentialRecordId", ["sk", "live", "syntheticvalue"].join("-")],
+    ["applicationId", ["github", "pat", "syntheticvalue0000"].join("_")],
+    ["keycloakSubjectId", ["ghp", "syntheticvalue0000"].join("_")],
+    ["applicationId", ["xoxb", "syntheticvalue0000"].join("-")],
+    [
+      "keycloakSubjectId",
+      ["eyJsynthetic", "payloadvalue", "signaturevalue"].join("."),
+    ],
+    ["credentialRecordId", `AKIA${"0".repeat(16)}`],
+    ["credentialRecordId", `AIza${"A".repeat(24)}`],
+  ])("rejects unsafe native %s values", async (field, value) => {
+    expect(() =>
+      parseAuditEventInput({
+        ...nativeEvent(),
+        [field]: value,
+      }),
+    ).toThrow(new RegExp(field))
+  })
+
+  it.each([
+    ["applicationId", "app-customer-1"],
+    ["credentialRecordId", "cak-1"],
+    ["keycloakSubjectId", "20000000-0000-4000-8000-000000000001"],
+  ] as const)("accepts legitimate native %s values", (field, value) => {
+    const parsed = parseAuditEventInput({
+      ...nativeEvent(),
+      [field]: value,
+    })
+
+    expect(parsed[field]).toBe(value)
+  })
+
   it("fails closed without PostgreSQL outside fixture or test mode", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("BFF_FIXTURE_MODE", "true")
@@ -130,6 +203,16 @@ function baseEvent() {
     correlationId: "req-test",
     outcome: "succeeded",
     sourceSystem: "console",
+  } as const
+}
+
+function nativeEvent() {
+  return {
+    action: "grafana.dashboard.updated",
+    correlationId: "00000000-0000-4000-8000-000000000001",
+    keycloakSubjectId: "admin-1",
+    outcome: "succeeded",
+    sourceSystem: "grafana",
   } as const
 }
 

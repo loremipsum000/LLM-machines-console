@@ -1,4 +1,5 @@
 import type {
+  AdminHardwareAlert,
   AdminHardwareChart,
   AdminHardwareChartId,
   AdminHardwareChartType,
@@ -10,10 +11,14 @@ import type {
   InferenceCoreSeverity,
   InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
-import { canUseBffFixtureData } from "../config/fixture-mode"
+import {
+  type AdminAlertmanagerSummary,
+  getAdminAlertmanagerSummary,
+} from "./admin-alertmanager"
 import {
   PrometheusClient,
   type PrometheusMatrixSample,
+  validatedHttpBaseUrl,
 } from "./admin-prometheus"
 import { expertCapability } from "./expert-capabilities"
 
@@ -167,43 +172,58 @@ export async function getAdminHardware(
   const host = normalizeHost(options.host)
   const baseUrl = process.env.ADMIN_PROMETHEUS_BASE_URL?.trim()
   const grafanaUrl = grafanaDashboardUrl()
+  const alertmanagerUrl = alertmanagerPublicUrl()
   const generatedAt = new Date()
   const stepSeconds = resolveStepSeconds(range, options.step)
   const step = `${stepSeconds}s`
+  const alertmanagerPromise = getAdminAlertmanagerSummary()
 
   if (!baseUrl) {
+    const alertmanager = await alertmanagerPromise
     return emptyHardwareResponse({
+      alertmanager,
+      alertmanagerUrl,
+      chartSourceStatus: "not_configured",
       generatedAt,
       grafanaUrl,
       host,
       range,
-      sourceStatus: "not_configured",
+      sourceStatus: combinedHardwareSourceStatus(
+        "not_configured",
+        alertmanager.sourceStatus,
+      ),
       step,
-      summary:
-        "Prometheus federation is not configured for this BFF, so live hardware graphs are unavailable.",
+      summary: `Prometheus federation is not configured for this BFF, so live hardware graphs are unavailable. ${alertmanager.summary}`,
     })
   }
 
-  const client = new PrometheusClient(baseUrl)
   const start = new Date(generatedAt.getTime() - RANGE_SECONDS[range] * 1000)
 
   try {
-    const chartSamples = await Promise.all(
-      chartDefinitions.map(async (definition) => ({
-        definition,
-        samples: await client.queryRange({
-          end: generatedAt,
-          query: definition.promql(host),
-          start,
-          step,
-        }),
-      })),
-    )
+    const client = new PrometheusClient(baseUrl)
+    const [chartSamples, alertmanager] = await Promise.all([
+      Promise.all(
+        chartDefinitions.map(async (definition) => ({
+          definition,
+          samples: await client.queryRange({
+            end: generatedAt,
+            query: definition.promql(host),
+            start,
+            step,
+          }),
+        })),
+      ),
+      alertmanagerPromise,
+    ])
     const charts = chartSamples.map(({ definition, samples }) =>
       toHardwareChart(definition, samples, host),
     )
     const availableHosts = collectAvailableHosts(charts, host)
-    const sourceStatus = hardwareSourceStatus(charts)
+    const metricsSourceStatus = hardwareSourceStatus(charts)
+    const sourceStatus = combinedHardwareSourceStatus(
+      metricsSourceStatus,
+      alertmanager.sourceStatus,
+    )
 
     return {
       generatedAt: generatedAt.toISOString(),
@@ -212,22 +232,33 @@ export async function getAdminHardware(
       selectedHost: host,
       availableHosts,
       sourceStatus,
-      summary: hardwareSummary(charts, sourceStatus),
+      alertSourceStatus: alertmanager.sourceStatus,
+      summary: `${hardwareSummary(charts, metricsSourceStatus)} ${alertmanager.summary}`,
       grafanaUrl,
-      alertmanagerUrl: null,
+      alertmanagerUrl,
       charts,
-      activeAlerts: [],
+      activeAlerts: alertLinks(
+        alertmanager.alerts,
+        grafanaUrl,
+        alertmanagerUrl,
+      ),
     }
   } catch {
+    const alertmanager = await alertmanagerPromise
     return emptyHardwareResponse({
+      alertmanager,
+      alertmanagerUrl,
+      chartSourceStatus: "unavailable",
       generatedAt,
       grafanaUrl,
       host,
       range,
-      sourceStatus: "unavailable",
+      sourceStatus: combinedHardwareSourceStatus(
+        "unavailable",
+        alertmanager.sourceStatus,
+      ),
       step,
-      summary:
-        "Prometheus federation is configured, but hardware metrics could not be read.",
+      summary: `Prometheus federation is configured, but hardware metrics could not be read. ${alertmanager.summary}`,
     })
   }
 }
@@ -286,6 +317,9 @@ function toHardwareSeries(
 }
 
 function emptyHardwareResponse({
+  alertmanager,
+  alertmanagerUrl,
+  chartSourceStatus,
   generatedAt,
   grafanaUrl,
   host,
@@ -294,6 +328,9 @@ function emptyHardwareResponse({
   step,
   summary,
 }: {
+  alertmanager: AdminAlertmanagerSummary
+  alertmanagerUrl: string | null
+  chartSourceStatus: InferenceCoreSourceStatus
   generatedAt: Date
   grafanaUrl: string | null
   host: string
@@ -309,9 +346,10 @@ function emptyHardwareResponse({
     selectedHost: host,
     availableHosts: host === DEFAULT_HOST ? [] : [host],
     sourceStatus,
+    alertSourceStatus: alertmanager.sourceStatus,
     summary,
     grafanaUrl,
-    alertmanagerUrl: null,
+    alertmanagerUrl,
     charts: chartDefinitions.map((definition) => ({
       id: definition.id,
       title: definition.title,
@@ -319,14 +357,42 @@ function emptyHardwareResponse({
       chartType: definition.chartType,
       unit: definition.unit,
       promql: definition.promql(host),
-      sourceStatus,
+      sourceStatus: chartSourceStatus,
       emptyMessage: definition.emptyMessage,
       grafanaUrl: null,
       thresholds: definition.thresholds,
       series: [],
     })),
-    activeAlerts: [],
+    activeAlerts: alertLinks(alertmanager.alerts, grafanaUrl, alertmanagerUrl),
   }
+}
+
+function alertLinks(
+  alerts: AdminHardwareAlert[],
+  grafanaUrl: string | null,
+  alertmanagerUrl: string | null,
+): AdminHardwareAlert[] {
+  return alerts.map((alert) => ({
+    ...alert,
+    grafanaUrl,
+    alertmanagerUrl,
+  }))
+}
+
+function combinedHardwareSourceStatus(
+  metricsStatus: InferenceCoreSourceStatus,
+  alertStatus: InferenceCoreSourceStatus,
+): InferenceCoreSourceStatus {
+  if (metricsStatus === "not_configured" && alertStatus === "not_configured") {
+    return "not_configured"
+  }
+  if (metricsStatus === "unavailable") {
+    return "unavailable"
+  }
+  if (metricsStatus === "ok" && alertStatus === "ok") {
+    return "ok"
+  }
+  return "degraded"
 }
 
 function collectAvailableHosts(
@@ -386,7 +452,12 @@ function hostMatcher(host: string): string[] {
 }
 
 function escapeLabelValue(value: string): string {
-  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')
+  return value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("\n", "\\n")
+    .replaceAll("\r", "\\r")
+    .replaceAll("\t", "\\t")
+    .replaceAll('"', '\\"')
 }
 
 function threshold(
@@ -411,7 +482,19 @@ function parseHardwareRange(range?: string): AdminHardwareRange {
 
 function normalizeHost(host?: string): string {
   const trimmed = host?.trim()
-  return trimmed && trimmed !== "" ? trimmed : DEFAULT_HOST
+  return trimmed &&
+    trimmed !== "" &&
+    trimmed.length <= 255 &&
+    hasNoControlCharacters(trimmed)
+    ? trimmed
+    : DEFAULT_HOST
+}
+
+function hasNoControlCharacters(value: string): boolean {
+  return Array.from(value).every((character) => {
+    const codePoint = character.codePointAt(0) ?? 0
+    return codePoint >= 32 && codePoint !== 127
+  })
 }
 
 function resolveStepSeconds(
@@ -439,13 +522,9 @@ function parseStepSeconds(step?: string): number | null {
     return null
   }
   const unit = match[2]
-  if (unit === "h") {
-    return value * 60 * 60
-  }
-  if (unit === "m") {
-    return value * 60
-  }
-  return value
+  const seconds =
+    unit === "h" ? value * 60 * 60 : unit === "m" ? value * 60 : value
+  return seconds >= 30 && seconds <= 86_400 ? seconds : null
 }
 
 function finiteNumber(rawValue: string): number | null {
@@ -581,35 +660,44 @@ function grafanaDashboardUrl(): string | null {
   if (expertCapability("grafana").directAccess !== "enabled") {
     return null
   }
-  return configuredExternalUrl("GRAFANA_PUBLIC_URL", "GRAFANA_PUBLIC_ORIGIN")
+  return configuredExternalUrl(
+    "GRAFANA_PUBLIC_URL",
+    "GRAFANA_PUBLIC_ORIGIN",
+    true,
+  )
+}
+
+function alertmanagerPublicUrl(): string | null {
+  if (expertCapability("alertmanager").directAccess !== "enabled") {
+    return null
+  }
+  return configuredExternalUrl("ALERTMANAGER_PUBLIC_URL")
 }
 
 function configuredExternalUrl(
   primaryEnv: string,
   fallbackEnv?: string,
+  dashboard = false,
 ): string | null {
   const configured =
     process.env[primaryEnv]?.trim() ||
     (fallbackEnv ? process.env[fallbackEnv]?.trim() : "")
   if (configured) {
-    return primaryEnv.startsWith("GRAFANA")
-      ? withDashboardPath(configured)
-      : configured
-  }
-  if (primaryEnv.startsWith("GRAFANA") && canUseBffFixtureData()) {
-    return withDashboardPath("https://grafana.example.test")
+    try {
+      const parsed = validatedHttpBaseUrl(configured, primaryEnv)
+      return dashboard ? withDashboardPath(parsed) : parsed.toString()
+    } catch {
+      return null
+    }
   }
   return null
 }
 
-function withDashboardPath(baseUrl: string): string {
-  try {
-    const parsed = new URL(baseUrl)
-    if (!parsed.pathname || parsed.pathname === "/") {
-      return new URL(HARDWARE_DASHBOARD_PATH, parsed).toString()
-    }
-    return parsed.toString()
-  } catch {
-    return baseUrl
+function withDashboardPath(parsed: URL): string {
+  if (!parsed.pathname || parsed.pathname === "/") {
+    const dashboard = new URL(parsed)
+    dashboard.pathname = HARDWARE_DASHBOARD_PATH
+    return dashboard.toString()
   }
+  return parsed.toString()
 }

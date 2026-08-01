@@ -52,6 +52,7 @@ describe("Inference Core PostgreSQL client bounds", () => {
     )
     expect(source).toContain("admin.identity_mutation_journal_targets")
     expect(source).toContain("admin.application_request_ledger")
+    expect(source).toContain("('common.audit_source_cursors')")
     for (const relation of [
       "admin.application_firecrawl_access",
       "admin.application_firecrawl_credentials",

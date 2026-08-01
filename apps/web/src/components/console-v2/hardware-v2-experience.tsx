@@ -1,12 +1,13 @@
-import Link from "next/link"
+import { cn } from "@/lib/utils"
 import type {
+  AdminHardwareAlert,
   AdminHardwareChart,
   AdminHardwareRange,
   AdminHardwareResponse,
   InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
 import { ArrowUpRight } from "lucide-react"
-import { cn } from "@/lib/utils"
+import Link from "next/link"
 import { HardwareChartPrimitive } from "./hardware-chart-primitives"
 
 const rangeOptions: Array<{ label: string; value: AdminHardwareRange }> = [
@@ -46,6 +47,7 @@ export function HardwareV2Experience({
       <section className="mt-8 flex flex-col gap-4 lg:w-[640px]">
         <HardwareToolbar basePath={basePath} hardware={hardware} />
         <HardwareSummary hardware={hardware} />
+        <HardwareAlertsPanel hardware={hardware} />
         <div className="flex flex-col gap-3">
           {hardware.charts.map((chart) => (
             <HardwareChartPanel chart={chart} key={chart.id} />
@@ -95,6 +97,15 @@ function HardwareToolbar({
           <ArrowUpRight aria-hidden className="size-4" />
         </Link>
       ) : null}
+      {hardware.alertmanagerUrl ? (
+        <Link
+          className="flex items-center gap-1.5 rounded-md bg-[#2e2e2e] px-3 py-2 text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#353535] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+          href={hardware.alertmanagerUrl}
+        >
+          Open Alertmanager
+          <ArrowUpRight aria-hidden className="size-4" />
+        </Link>
+      ) : null}
     </div>
   )
 }
@@ -121,6 +132,170 @@ function HardwareSummary({ hardware }: { hardware: AdminHardwareResponse }) {
       </div>
     </section>
   )
+}
+
+function HardwareAlertsPanel({
+  hardware,
+}: {
+  hardware: AdminHardwareResponse
+}) {
+  const status = hardware.alertSourceStatus
+
+  return (
+    <section
+      aria-labelledby="hardware-active-alerts-title"
+      className="rounded-lg border border-[#353535] bg-[#232323] p-3"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <StatusDot status={status} />
+          <h2
+            className="text-base font-semibold leading-[19px] text-white"
+            id="hardware-active-alerts-title"
+          >
+            Active alerts
+          </h2>
+        </div>
+        <span className="rounded-full border border-[#454545] bg-[#181818] px-2 py-1 text-xs font-medium leading-none text-[#b2b2b2]">
+          {sourceStatusLabel(status)}
+        </span>
+      </div>
+
+      {hardware.activeAlerts.length === 0 ? (
+        <p className="mt-3 text-sm leading-5 text-[#b2b2b2]">
+          {emptyAlertMessage(status)}
+        </p>
+      ) : (
+        <div className="mt-3 flex flex-col gap-2">
+          {hardware.activeAlerts.map((alert) => (
+            <HardwareAlertRow alert={alert} key={alert.id} />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function HardwareAlertRow({ alert }: { alert: AdminHardwareAlert }) {
+  const context = [alert.host, alert.device].filter(Boolean).join(" · ")
+  const labels = Object.entries(alert.labels)
+
+  return (
+    <article className="rounded-lg border border-[#3d3d3d] bg-[#1d1d1d] p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "rounded-full border px-2 py-1 text-xs font-medium leading-none",
+                alert.severity === "critical" &&
+                  "border-[#5e2424] bg-[#351d1d] text-[#ff6565]",
+                alert.severity === "warning" &&
+                  "border-[#5b4a18] bg-[#302914] text-[#ffcc4d]",
+                alert.severity === "info" &&
+                  "border-[#244b5e] bg-[#1d3038] text-[#7dd8ff]",
+              )}
+            >
+              {alert.severity}
+            </span>
+            <h3 className="text-sm font-semibold leading-5 text-white">
+              {alert.alertName}
+            </h3>
+          </div>
+          <p className="mt-2 text-sm leading-5 text-[#dfdfdf]">
+            {alert.summary}
+          </p>
+          {alert.description ? (
+            <p className="mt-1 text-xs leading-5 text-[#b2b2b2]">
+              {alert.description}
+            </p>
+          ) : null}
+        </div>
+        <div className="shrink-0 text-right text-xs leading-5 text-[#9f9f9f]">
+          {context ? <p>{context}</p> : null}
+          {alert.startedAt ? (
+            <time dateTime={alert.startedAt}>
+              Since {formatTimestamp(alert.startedAt)}
+            </time>
+          ) : null}
+        </div>
+      </div>
+
+      {labels.length > 0 ? (
+        <dl className="mt-3 flex flex-wrap gap-1.5">
+          {labels.map(([label, value]) => (
+            <div
+              className="rounded border border-[#353535] bg-[#232323] px-2 py-1 text-xs leading-none text-[#b2b2b2]"
+              key={label}
+            >
+              <dt className="inline font-medium text-[#9f9f9f]">{label}: </dt>
+              <dd className="inline">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+
+      {alert.grafanaUrl || alert.alertmanagerUrl ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {alert.grafanaUrl ? (
+            <AlertDeepLink href={alert.grafanaUrl} label="Open in Grafana" />
+          ) : null}
+          {alert.alertmanagerUrl ? (
+            <AlertDeepLink
+              href={alert.alertmanagerUrl}
+              label="Open in Alertmanager"
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </article>
+  )
+}
+
+function AlertDeepLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      className="inline-flex items-center gap-1.5 rounded-md bg-[#2e2e2e] px-3 py-2 text-xs font-medium leading-none text-white transition-colors hover:bg-[#353535] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+      href={href}
+    >
+      {label}
+      <ArrowUpRight aria-hidden className="size-3.5" />
+    </Link>
+  )
+}
+
+function emptyAlertMessage(status: InferenceCoreSourceStatus): string {
+  if (status === "not_configured") {
+    return "Alertmanager federation is not configured for this appliance."
+  }
+  if (status === "unavailable") {
+    return "Alert federation is configured, but its current state could not be read."
+  }
+  if (status === "degraded") {
+    return "No active alerts were returned, but some alert payload items were rejected."
+  }
+  return "No active firing alerts were reported."
+}
+
+function sourceStatusLabel(status: InferenceCoreSourceStatus): string {
+  if (status === "not_configured") {
+    return "Not configured"
+  }
+  if (status === "unavailable") {
+    return "Unavailable"
+  }
+  if (status === "degraded") {
+    return "Degraded"
+  }
+  return "Healthy"
+}
+
+function formatTimestamp(value: string): string {
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(value))
 }
 
 function HardwareChartPanel({ chart }: { chart: AdminHardwareChart }) {

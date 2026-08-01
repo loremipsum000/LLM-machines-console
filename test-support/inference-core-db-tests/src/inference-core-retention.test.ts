@@ -37,6 +37,7 @@ describe("Inference Core one-shot retention", () => {
         }),
       ).resolves.toEqual({
         abandonedRequestsSettled: 2,
+        auditEventsDeleted: 1,
         idempotencyRowsDeleted: 1,
         rateLimitWindowsDeleted: 1,
         requestLedgerRowsDeleted: 2,
@@ -51,6 +52,7 @@ describe("Inference Core one-shot retention", () => {
         }),
       ).resolves.toEqual({
         abandonedRequestsSettled: 0,
+        auditEventsDeleted: 0,
         idempotencyRowsDeleted: 0,
         rateLimitWindowsDeleted: 0,
         requestLedgerRowsDeleted: 0,
@@ -188,6 +190,35 @@ async function seedRetentionRows(client: PGlite): Promise<void> {
   await client.exec(`
     INSERT INTO common.human_identities (subject_id)
     VALUES ('retention-test-actor');
+
+    INSERT INTO common.audit_events (
+      id,
+      occurred_at,
+      action,
+      outcome,
+      source_system,
+      correlation_id,
+      keycloak_subject_id
+    )
+    VALUES
+      (
+        '00000000-0000-4000-8000-000000000061',
+        TIMESTAMPTZ '2025-07-30T00:30:00Z',
+        'retention.audit.old',
+        'succeeded',
+        'console',
+        'retention-old',
+        'retention-test-actor'
+      ),
+      (
+        '00000000-0000-4000-8000-000000000062',
+        TIMESTAMPTZ '2025-07-31T00:30:00Z',
+        'retention.audit.boundary',
+        'succeeded',
+        'console',
+        'retention-boundary',
+        'retention-test-actor'
+      );
 
     INSERT INTO admin.applications (
       id,
@@ -327,8 +358,8 @@ async function seedRetentionRows(client: PGlite): Promise<void> {
         'active',
         NULL,
         NULL,
-        clock_timestamp(),
-        clock_timestamp() + interval '15 minutes',
+        TIMESTAMPTZ '2026-08-02T00:00:00Z',
+        TIMESTAMPTZ '2026-08-02T00:15:00Z',
         NULL
       ),
       (
@@ -340,8 +371,8 @@ async function seedRetentionRows(client: PGlite): Promise<void> {
         'active',
         NULL,
         NULL,
-        clock_timestamp() - interval '20 minutes',
-        clock_timestamp() - interval '5 minutes',
+        TIMESTAMPTZ '2026-07-31T00:00:00Z',
+        TIMESTAMPTZ '2026-07-31T00:15:00Z',
         NULL
       );
 

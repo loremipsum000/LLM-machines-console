@@ -62,6 +62,7 @@ describe("Inference Core empty-install migration", () => {
         "admin.recovery_state",
         "admin.update_state",
         "common.audit_events",
+        "common.audit_source_cursors",
         "common.human_identities",
         "common.human_identity_roles",
       ])
@@ -85,6 +86,7 @@ describe("Inference Core empty-install migration", () => {
         "credential_prefix",
         "credential_record_id",
         "id",
+        "ingested_at",
         "keycloak_subject_id",
         "occurred_at",
         "outcome",
@@ -96,10 +98,25 @@ describe("Inference Core empty-install migration", () => {
           "actor_id",
           "metadata",
           "reason",
+          "source_event_id",
           "target_id",
           "target_type",
         ]),
       )
+
+      expect(
+        await tableColumns(database, "common", "audit_source_cursors"),
+      ).toEqual([
+        "cursor_tie_breaker",
+        "cursor_version",
+        "cursor_watermark",
+        "last_attempt_at",
+        "last_error_code",
+        "last_event_occurred_at",
+        "last_success_at",
+        "source_system",
+        "updated_at",
+      ])
 
       expect(await tableColumns(database, "admin", "applications")).toEqual([
         "auth_mode",
@@ -131,6 +148,29 @@ describe("Inference Core empty-install migration", () => {
         "status",
         "verifier_hash",
       ])
+      expect(await tableColumns(database, "admin", "console_settings")).toEqual(
+        [
+          "alert_delivery_mode",
+          "alert_delivery_transport",
+          "alert_egress_acknowledged_at",
+          "alert_egress_acknowledged_by",
+          "alert_egress_revision",
+          "alert_egress_updated_at",
+          "alert_egress_updated_by",
+          "alert_egress_warning_version",
+          "data_residency_statement",
+          "default_language",
+          "full_logo",
+          "icon_logo",
+          "id",
+          "organization_name",
+          "privacy_policy_href",
+          "telemetry_enabled",
+          "telemetry_payload_preview",
+          "updated_at",
+          "updated_by",
+        ],
+      )
       expect(
         await tableColumns(database, "admin", "application_firecrawl_access"),
       ).toEqual([
@@ -251,6 +291,44 @@ describe("Inference Core empty-install migration", () => {
       await database.exec(`
         INSERT INTO common.human_identities (subject_id)
         VALUES ('subject-1')
+      `)
+      const alertDeliveryDefault = await database.query<{
+        alert_delivery_mode: string
+        alert_egress_revision: number
+      }>(`
+        SELECT alert_delivery_mode, alert_egress_revision
+        FROM admin.console_settings
+        WHERE id = 'singleton'
+      `)
+      expect(alertDeliveryDefault.rows).toEqual([
+        { alert_delivery_mode: "local_only", alert_egress_revision: 0 },
+      ])
+      await expect(
+        database.exec(`
+          UPDATE admin.console_settings
+          SET alert_delivery_mode = 'customer_owned'
+          WHERE id = 'singleton'
+        `),
+      ).rejects.toThrow()
+      await expect(
+        database.exec(`
+          UPDATE admin.console_settings
+          SET alert_egress_revision = -1
+          WHERE id = 'singleton'
+        `),
+      ).rejects.toThrow()
+      await database.exec(`
+        UPDATE admin.console_settings
+        SET
+          alert_delivery_mode = 'customer_owned',
+          alert_delivery_transport = 'webhook',
+          alert_egress_warning_version = 'alert-egress-v1',
+          alert_egress_acknowledged_at = TIMESTAMPTZ '2026-08-01T10:00:00Z',
+          alert_egress_acknowledged_by = 'subject-1',
+          alert_egress_revision = 1,
+          alert_egress_updated_at = TIMESTAMPTZ '2026-08-01T10:00:00Z',
+          alert_egress_updated_by = 'subject-1'
+        WHERE id = 'singleton'
       `)
       await expect(
         database.exec(`

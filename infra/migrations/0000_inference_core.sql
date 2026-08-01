@@ -22,6 +22,7 @@ CREATE TABLE common.human_identity_roles (
 CREATE TABLE common.audit_events (
   id uuid PRIMARY KEY,
   occurred_at timestamptz NOT NULL DEFAULT now(),
+  ingested_at timestamptz NOT NULL DEFAULT now(),
   action text NOT NULL,
   outcome text NOT NULL,
   source_system text NOT NULL,
@@ -45,6 +46,133 @@ CREATE TABLE common.audit_events (
         'alertmanager',
         'firecrawl',
         'lifecycle'
+      )
+    ),
+  CONSTRAINT audit_events_native_metadata_check
+    CHECK (
+      source_system NOT IN ('keycloak', 'litellm', 'grafana', 'alertmanager')
+      OR (
+        id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        AND correlation_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        AND (
+          (
+            source_system = 'keycloak'
+            AND action IN (
+              'keycloak.authentication.failed',
+              'keycloak.authentication.succeeded',
+              'keycloak.credential.updated',
+              'keycloak.role.assigned',
+              'keycloak.role.revoked',
+              'keycloak.user.created',
+              'keycloak.user.deleted',
+              'keycloak.user.updated'
+            )
+            AND (
+              recovery_reason_code IS NULL
+              OR recovery_reason_code IN (
+                'account_disabled',
+                'authentication_failed',
+                'authorization_denied',
+                'invalid_credentials',
+                'policy_rejected'
+              )
+            )
+          ) OR (
+            source_system = 'litellm'
+            AND action IN (
+              'litellm.request.denied',
+              'litellm.request.failed',
+              'litellm.request.succeeded',
+              'litellm.route.created',
+              'litellm.route.deleted',
+              'litellm.route.updated',
+              'litellm.virtual_key.created',
+              'litellm.virtual_key.revoked',
+              'litellm.virtual_key.rotated',
+              'litellm.virtual_key.updated'
+            )
+            AND (
+              recovery_reason_code IS NULL
+              OR recovery_reason_code IN (
+                'model_denied',
+                'rate_limited',
+                'request_failed',
+                'route_unavailable'
+              )
+            )
+          ) OR (
+            source_system = 'grafana'
+            AND action IN (
+              'grafana.alert_rule.created',
+              'grafana.alert_rule.deleted',
+              'grafana.alert_rule.updated',
+              'grafana.dashboard.created',
+              'grafana.dashboard.deleted',
+              'grafana.dashboard.updated',
+              'grafana.datasource.updated',
+              'grafana.folder.created',
+              'grafana.folder.deleted',
+              'grafana.folder.updated'
+            )
+            AND (
+              recovery_reason_code IS NULL
+              OR recovery_reason_code IN (
+                'operation_failed',
+                'permission_denied',
+                'validation_failed'
+              )
+            )
+          ) OR (
+            source_system = 'alertmanager'
+            AND action IN (
+              'alertmanager.configuration.reloaded',
+              'alertmanager.notification.failed',
+              'alertmanager.notification.succeeded',
+              'alertmanager.silence.created',
+              'alertmanager.silence.deleted',
+              'alertmanager.silence.expired'
+            )
+            AND (
+              recovery_reason_code IS NULL
+              OR recovery_reason_code IN (
+                'delivery_failed',
+                'receiver_unavailable',
+                'silence_rejected'
+              )
+            )
+          )
+        )
+        AND (
+          keycloak_subject_id IS NULL
+          OR (
+            keycloak_subject_id ~ '^[A-Za-z0-9][A-Za-z0-9_:-]{0,254}$'
+            AND keycloak_subject_id !~* '^(llmm_|bearer[:_-]|token[:_-]|secret[:_-]|password[:_-]|api[_-]?key[:_-])'
+            AND keycloak_subject_id !~* '^[0-9a-f]{64,}$'
+            AND keycloak_subject_id !~ '^(sk[-_](live|test|proj)[-_][A-Za-z0-9_-]{1,120}|github_pat_[A-Za-z0-9_]{1,120}|gh[pousr]_[A-Za-z0-9]{1,120}|xox[baprs]-[A-Za-z0-9-]{1,120}|eyJ[A-Za-z0-9_-]{5,120}[.][A-Za-z0-9_-]{4,120}[.][A-Za-z0-9_-]{4,120}|(AKIA|ASIA)[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{20,120})$'
+          )
+        )
+        AND (
+          application_id IS NULL
+          OR (
+            application_id ~ '^[A-Za-z0-9][A-Za-z0-9_:-]{0,127}$'
+            AND application_id !~* '^(llmm_|bearer[:_-]|token[:_-]|secret[:_-]|password[:_-]|api[_-]?key[:_-])'
+            AND application_id !~* '^[0-9a-f]{64,}$'
+            AND application_id !~ '^(sk[-_](live|test|proj)[-_][A-Za-z0-9_-]{1,120}|github_pat_[A-Za-z0-9_]{1,120}|gh[pousr]_[A-Za-z0-9]{1,120}|xox[baprs]-[A-Za-z0-9-]{1,120}|eyJ[A-Za-z0-9_-]{5,120}[.][A-Za-z0-9_-]{4,120}[.][A-Za-z0-9_-]{4,120}|(AKIA|ASIA)[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{20,120})$'
+          )
+        )
+        AND (
+          credential_record_id IS NULL
+          OR (
+            credential_record_id ~ '^[A-Za-z0-9][A-Za-z0-9_:-]{0,127}$'
+            AND credential_record_id !~* '^(llmm_|bearer[:_-]|token[:_-]|secret[:_-]|password[:_-]|api[_-]?key[:_-])'
+            AND credential_record_id !~* '^[0-9a-f]{64,}$'
+            AND credential_record_id !~ '^(sk[-_](live|test|proj)[-_][A-Za-z0-9_-]{1,120}|github_pat_[A-Za-z0-9_]{1,120}|gh[pousr]_[A-Za-z0-9]{1,120}|xox[baprs]-[A-Za-z0-9-]{1,120}|eyJ[A-Za-z0-9_-]{5,120}[.][A-Za-z0-9_-]{4,120}[.][A-Za-z0-9_-]{4,120}|(AKIA|ASIA)[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{20,120})$'
+          )
+        )
+        AND (
+          credential_prefix IS NULL
+          OR credential_prefix ~ '^(llmm_t4_[0-9a-f]{18}|llmm_fc_[0-9a-f]{16})$'
+        )
       )
     ),
   CONSTRAINT audit_events_correlation_id_check
@@ -80,10 +208,48 @@ CREATE TABLE common.audit_events (
 
 CREATE INDEX audit_events_occurred_at_idx
   ON common.audit_events (occurred_at);
+CREATE INDEX audit_events_stable_order_idx
+  ON common.audit_events (occurred_at, id);
 CREATE INDEX audit_events_correlation_id_idx
   ON common.audit_events (correlation_id);
 CREATE INDEX audit_events_application_occurred_idx
   ON common.audit_events (application_id, occurred_at);
+CREATE TABLE common.audit_source_cursors (
+  source_system text PRIMARY KEY,
+  cursor_version integer,
+  cursor_watermark timestamptz,
+  cursor_tie_breaker uuid,
+  last_attempt_at timestamptz,
+  last_success_at timestamptz,
+  last_event_occurred_at timestamptz,
+  last_error_code text,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT audit_source_cursors_source_check
+    CHECK (
+      source_system IN ('keycloak', 'litellm', 'grafana', 'alertmanager')
+    ),
+  CONSTRAINT audit_source_cursors_cursor_check
+    CHECK (
+      num_nonnulls(cursor_version, cursor_watermark, cursor_tie_breaker)
+        IN (0, 3)
+      AND (cursor_version IS NULL OR cursor_version = 1)
+      AND (
+        cursor_tie_breaker IS NULL
+        OR cursor_tie_breaker::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      )
+    ),
+  CONSTRAINT audit_source_cursors_error_code_check
+    CHECK (
+      last_error_code IS NULL
+      OR (
+        char_length(last_error_code) BETWEEN 1 AND 64
+        AND last_error_code ~ '^[a-z][a-z0-9._:-]*$'
+      )
+    )
+);
+
+CREATE INDEX audit_source_cursors_health_idx
+  ON common.audit_source_cursors (last_success_at, last_attempt_at);
 
 CREATE TABLE admin.applications (
   id text PRIMARY KEY,
@@ -1035,11 +1201,67 @@ CREATE TABLE admin.console_settings (
   privacy_policy_href text NOT NULL DEFAULT '/privacy',
   data_residency_statement text NOT NULL DEFAULT
     'LLM Machines managed components do not retain inference request or response content.',
+  alert_delivery_mode text NOT NULL DEFAULT 'local_only',
+  alert_delivery_transport text,
+  alert_egress_warning_version text,
+  alert_egress_revision bigint NOT NULL DEFAULT 0,
+  alert_egress_acknowledged_at timestamptz,
+  alert_egress_acknowledged_by text REFERENCES common.human_identities(subject_id) ON DELETE RESTRICT,
+  alert_egress_updated_by text REFERENCES common.human_identities(subject_id) ON DELETE RESTRICT,
+  alert_egress_updated_at timestamptz,
   updated_by text REFERENCES common.human_identities(subject_id) ON DELETE RESTRICT,
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT console_settings_id_check CHECK (id = 'singleton'),
   CONSTRAINT console_settings_language_check
-    CHECK (default_language IN ('en', 'hr'))
+    CHECK (default_language IN ('en', 'hr')),
+  CONSTRAINT console_settings_alert_delivery_mode_check
+    CHECK (alert_delivery_mode IN ('local_only', 'customer_owned')),
+  CONSTRAINT console_settings_alert_transport_check
+    CHECK (
+      alert_delivery_transport IS NULL
+      OR alert_delivery_transport IN ('smtp', 'webhook')
+    ),
+  CONSTRAINT console_settings_alert_warning_check
+    CHECK (
+      alert_egress_warning_version IS NULL
+      OR char_length(alert_egress_warning_version) BETWEEN 1 AND 64
+    ),
+  CONSTRAINT console_settings_alert_revision_check
+    CHECK (alert_egress_revision >= 0),
+  CONSTRAINT console_settings_alert_updater_check
+    CHECK (
+      (
+        alert_egress_revision = 0
+        AND num_nonnulls(alert_egress_updated_at, alert_egress_updated_by) = 0
+      )
+      OR
+      (
+        alert_egress_revision > 0
+        AND num_nonnulls(alert_egress_updated_at, alert_egress_updated_by) = 2
+      )
+    ),
+  CONSTRAINT console_settings_alert_delivery_lifecycle_check
+    CHECK (
+      (
+        alert_delivery_mode = 'local_only'
+        AND num_nonnulls(
+          alert_delivery_transport,
+          alert_egress_warning_version,
+          alert_egress_acknowledged_at,
+          alert_egress_acknowledged_by
+        ) = 0
+      )
+      OR
+      (
+        alert_delivery_mode = 'customer_owned'
+        AND num_nonnulls(
+          alert_delivery_transport,
+          alert_egress_warning_version,
+          alert_egress_acknowledged_at,
+          alert_egress_acknowledged_by
+        ) = 4
+      )
+    )
 );
 
 CREATE TABLE admin.license_state (

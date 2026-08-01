@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import * as inferenceCoreContracts from "./inference-core"
 import {
+  adminAuditResponseSchema,
+  adminAuditVerificationKeysResponseSchema,
+  adminAlertEgressResponseSchema,
   adminConnectedAppCreateRequestSchema,
   adminConnectedAppCredentialMetadataSchema,
   adminConnectedAppCredentialSchema,
@@ -22,6 +25,7 @@ import {
   inferenceCoreExpertAuditCapabilitySchema,
   inferenceCoreSeveritySchema,
   inferenceCoreSourceStatusSchema,
+  updateAdminAlertEgressRequestSchema,
 } from "./inference-core"
 
 const timestamp = "2026-07-31T08:00:00.000Z"
@@ -106,6 +110,59 @@ describe("Inference Core contract boundary", () => {
         id: "governance",
       }).success,
     ).toBe(false)
+  })
+
+  it("models alert egress as redacted intent pending runtime qualification", () => {
+    expect(
+      updateAdminAlertEgressRequestSchema.parse({
+        expectedRevision: 0,
+        transport: "webhook",
+        warningAcknowledgement: {
+          accepted: true,
+          version: "alert-egress-v1",
+        },
+      }),
+    ).toMatchObject({ transport: "webhook" })
+    expect(
+      updateAdminAlertEgressRequestSchema.safeParse({
+        expectedRevision: 0,
+        transport: "webhook",
+        url: "https://destination.example.test/hook",
+        warningAcknowledgement: {
+          accepted: true,
+          version: "alert-egress-v1",
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      updateAdminAlertEgressRequestSchema.safeParse({
+        expectedRevision: 0,
+        transport: "disabled",
+        warningAcknowledgement: {
+          accepted: true,
+          version: "alert-egress-v1",
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      adminAlertEgressResponseSchema.parse({
+        deliveryState: "prepared_pending_runtime_qualification",
+        destinationState: "not_stored",
+        outboundDeliveryEnabled: false,
+        revision: 1,
+        runtimeQualified: false,
+        secretState: "not_stored",
+        transport: "smtp",
+        updatedAt: timestamp,
+        updatedBySubjectId: "admin-1",
+        warningAcknowledgedAt: timestamp,
+        warningAcknowledgedBySubjectId: "admin-1",
+        warningVersion: "alert-egress-v1",
+      }),
+    ).toMatchObject({
+      outboundDeliveryEnabled: false,
+      runtimeQualified: false,
+    })
   })
 
   it("limits Team to Admin and Operator without retired unlock or break-glass fields", () => {
@@ -663,6 +720,7 @@ describe("Inference Core contract boundary", () => {
     expect(
       adminHardwareResponseSchema.safeParse({
         activeAlerts: [],
+        alertSourceStatus: "ok",
         alertmanagerUrl: null,
         availableHosts: ["appliance"],
         charts,
@@ -725,6 +783,80 @@ describe("Inference Core contract boundary", () => {
         mechanism: "polling",
         nativeIngestionState: "enabled",
         source: "grafana",
+      }).success,
+    ).toBe(false)
+  })
+
+  it("models the metadata-only paginated audit and signed-export verification contract", () => {
+    expect(
+      inferenceCoreExpertAuditCapabilitySchema.parse({
+        detail: "Ingress source exists but runtime no-bypass proof is pending.",
+        ingestionEnabled: false,
+        mechanism: "product_owned_audited_ingress",
+        nativeIngestionState: "implemented_pending_runtime_qualification",
+        source: "grafana",
+      }),
+    ).toMatchObject({
+      ingestionEnabled: false,
+      mechanism: "product_owned_audited_ingress",
+      nativeIngestionState: "implemented_pending_runtime_qualification",
+    })
+    expect(
+      adminAuditResponseSchema.parse({
+        events: [
+          {
+            action: "admin.audit.read",
+            actorId: "subject-1",
+            createdAt: timestamp,
+            href: "/activity?eventId=00000000-0000-4000-8000-000000000001",
+            id: "00000000-0000-4000-8000-000000000001",
+            metadata: [],
+            outcome: "succeeded",
+            reason: null,
+            severity: "info",
+            sourceSystem: "console",
+            targetId: "subject-1",
+            targetType: "keycloak_subject",
+          },
+        ],
+        generatedAt: timestamp,
+        nextCursor: "cursor_1",
+        query: null,
+        selectedApplicationId: "app-1",
+        selectedEventId: null,
+        selectedOutcome: "succeeded",
+        selectedSeverity: "info",
+        selectedSource: "console",
+        sourceStatus: "ok",
+        sources: [
+          {
+            cursorHealth: "not_applicable",
+            id: "console",
+            ingressReadiness: "not_applicable",
+            label: "Console",
+            lastAttemptAt: null,
+            lastErrorCode: null,
+            lastEventAt: null,
+            lastSuccessAt: null,
+            sourceStatus: "ok",
+          },
+        ],
+      }),
+    ).toMatchObject({ selectedApplicationId: "app-1" })
+    expect(
+      adminAuditVerificationKeysResponseSchema.safeParse({
+        activeKid: "audit-2026-08",
+        keys: [
+          {
+            alg: "EdDSA",
+            crv: "Ed25519",
+            d: "private-material",
+            kid: "audit-2026-08",
+            kty: "OKP",
+            use: "sig",
+            x: "A".repeat(43),
+          },
+        ],
       }).success,
     ).toBe(false)
   })

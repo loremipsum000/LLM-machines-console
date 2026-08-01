@@ -2,7 +2,7 @@
   "apiVersion": "inference-core.llm-machines/v1",
   "kind": "LogicalKeycloakRealmSeed",
   "metadata": {
-    "changePackage": "PR-06",
+    "changePackage": "PR-09",
     "containsCredentials": false,
     "packagingTarget": "PR-12"
   },
@@ -40,7 +40,8 @@
     "retainedClientOptionalScopes": {
       "console-bff": [],
       "console-human-admin": [],
-      "console-web": []
+      "console-web": [],
+      "grafana": []
     }
   },
   "roles": [
@@ -238,6 +239,43 @@
         "realm-management": ["query-groups", "query-users"]
       },
       "serviceAccountsEnabled": true
+    },
+    {
+      "accessTokenClaims": ["amr", "auth_time", "realm_access.roles", "sub"],
+      "clientAuthentication": "client-secret-generated-outside-seed",
+      "clientId": "grafana",
+      "credentialIncluded": false,
+      "defaultClientScopes": ["basic", "email", "llm-machines-amr", "profile"],
+      "flows": ["authorization-code-pkce"],
+      "fullScopeAllowed": false,
+      "idTokenClaims": ["email", "email_verified", "realm_access.roles", "sub"],
+      "optionalClientScopes": [],
+      "pkceCodeChallengeMethod": "S256",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "config": {
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "id.token.claim": "true",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "userinfo.token.claim": "true"
+          },
+          "consentRequired": false,
+          "name": "grafana-realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper"
+        }
+      ],
+      "runtimeBindings": {
+        "redirectUri": "grafana-root-plus-login-generic-oauth",
+        "webOrigin": "grafana-root-origin"
+      },
+      "scopeMappings": {
+        "realmRoles": ["admin", "operator"]
+      },
+      "serviceAccountsEnabled": false
     }
   ],
   "servicePermissionClasses": [

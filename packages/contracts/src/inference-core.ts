@@ -96,11 +96,35 @@ export type AdminAuditMetadataEntry = z.infer<
   typeof adminAuditMetadataEntrySchema
 >
 
+export const inferenceCoreAuditOutcomeSchema = z.enum([
+  "succeeded",
+  "failed",
+  "denied",
+])
+export type InferenceCoreAuditOutcome = z.infer<
+  typeof inferenceCoreAuditOutcomeSchema
+>
+
+export const inferenceCoreAuditSourceSystemSchema = z.enum([
+  "console",
+  "keycloak",
+  "litellm",
+  "grafana",
+  "alertmanager",
+  "firecrawl",
+  "lifecycle",
+])
+export type InferenceCoreAuditSourceSystem = z.infer<
+  typeof inferenceCoreAuditSourceSystemSchema
+>
+
 export const adminAuditEventSchema = z
   .object({
     id: z.string().min(1),
     actorId: z.string().min(1),
     action: z.string().min(1),
+    outcome: inferenceCoreAuditOutcomeSchema,
+    sourceSystem: inferenceCoreAuditSourceSystemSchema,
     targetType: z.string().min(1),
     targetId: z.string().min(1),
     reason: z.string().min(1).nullable(),
@@ -112,11 +136,35 @@ export const adminAuditEventSchema = z
   .strict()
 export type AdminAuditEvent = z.infer<typeof adminAuditEventSchema>
 
+export const adminAuditIngressReadinessSchema = z.enum([
+  "not_applicable",
+  "implemented_pending_runtime_qualification",
+])
+export type AdminAuditIngressReadiness = z.infer<
+  typeof adminAuditIngressReadinessSchema
+>
+
+export const adminAuditCursorHealthSchema = z.enum([
+  "not_applicable",
+  "never_run",
+  "healthy",
+  "degraded",
+])
+export type AdminAuditCursorHealth = z.infer<
+  typeof adminAuditCursorHealthSchema
+>
+
 export const adminAuditSourceSchema = z
   .object({
-    id: z.string().min(1),
+    id: inferenceCoreAuditSourceSystemSchema,
     label: z.string().min(1),
     sourceStatus: inferenceCoreSourceStatusSchema,
+    ingressReadiness: adminAuditIngressReadinessSchema,
+    cursorHealth: adminAuditCursorHealthSchema,
+    lastAttemptAt: z.string().datetime().nullable(),
+    lastSuccessAt: z.string().datetime().nullable(),
+    lastEventAt: z.string().datetime().nullable(),
+    lastErrorCode: z.string().min(1).max(64).nullable(),
   })
   .strict()
 export type AdminAuditSource = z.infer<typeof adminAuditSourceSchema>
@@ -126,12 +174,46 @@ export const adminAuditResponseSchema = z
     generatedAt: z.string().datetime(),
     query: z.string().min(1).nullable(),
     selectedEventId: z.string().min(1).nullable(),
+    selectedApplicationId: z.string().min(1).nullable(),
+    selectedSource: inferenceCoreAuditSourceSystemSchema.nullable(),
+    selectedOutcome: inferenceCoreAuditOutcomeSchema.nullable(),
+    selectedSeverity: inferenceCoreSeveritySchema.nullable(),
+    nextCursor: z.string().min(1).nullable(),
     sourceStatus: inferenceCoreSourceStatusSchema,
     sources: z.array(adminAuditSourceSchema).min(1),
     events: z.array(adminAuditEventSchema),
   })
   .strict()
 export type AdminAuditResponse = z.infer<typeof adminAuditResponseSchema>
+
+export const adminAuditExportFormatSchema = z.enum(["json", "csv"])
+export type AdminAuditExportFormat = z.infer<
+  typeof adminAuditExportFormatSchema
+>
+
+export const adminAuditVerificationJwkSchema = z
+  .object({
+    alg: z.literal("EdDSA"),
+    crv: z.literal("Ed25519"),
+    kid: z.string().min(1).max(128),
+    kty: z.literal("OKP"),
+    use: z.literal("sig"),
+    x: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  })
+  .strict()
+export type AdminAuditVerificationJwk = z.infer<
+  typeof adminAuditVerificationJwkSchema
+>
+
+export const adminAuditVerificationKeysResponseSchema = z
+  .object({
+    activeKid: z.string().min(1).max(128),
+    keys: z.array(adminAuditVerificationJwkSchema).min(1).max(32),
+  })
+  .strict()
+export type AdminAuditVerificationKeysResponse = z.infer<
+  typeof adminAuditVerificationKeysResponseSchema
+>
 
 export const inferenceCoreExpertAuditSourceSchema = z.enum([
   "litellm",
@@ -146,6 +228,7 @@ export type InferenceCoreExpertAuditSource = z.infer<
 export const inferenceCoreExpertAuditIngestionStateSchema = z.enum([
   "disabled",
   "unproven",
+  "implemented_pending_runtime_qualification",
 ])
 export type InferenceCoreExpertAuditIngestionState = z.infer<
   typeof inferenceCoreExpertAuditIngestionStateSchema
@@ -156,7 +239,7 @@ export const inferenceCoreExpertAuditCapabilitySchema = z
     source: inferenceCoreExpertAuditSourceSchema,
     nativeIngestionState: inferenceCoreExpertAuditIngestionStateSchema,
     ingestionEnabled: z.literal(false),
-    mechanism: z.null(),
+    mechanism: z.enum(["product_owned_audited_ingress"]).nullable(),
     detail: z.string().min(1),
   })
   .strict()
@@ -692,6 +775,79 @@ export const adminSettingsResponseSchema = z
   })
   .strict()
 export type AdminSettingsResponse = z.infer<typeof adminSettingsResponseSchema>
+
+export const adminAlertEgressTransportSchema = z.enum([
+  "disabled",
+  "smtp",
+  "webhook",
+])
+export type AdminAlertEgressTransport = z.infer<
+  typeof adminAlertEgressTransportSchema
+>
+
+export const adminAlertEgressWarningVersionSchema = z.literal("alert-egress-v1")
+export type AdminAlertEgressWarningVersion = z.infer<
+  typeof adminAlertEgressWarningVersionSchema
+>
+
+const adminAlertEgressExpectedRevisionSchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(Number.MAX_SAFE_INTEGER)
+
+const adminAlertEgressWarningAcknowledgementSchema = z
+  .object({
+    accepted: z.literal(true),
+    version: adminAlertEgressWarningVersionSchema,
+  })
+  .strict()
+
+export const updateAdminAlertEgressRequestSchema = z.discriminatedUnion(
+  "transport",
+  [
+    z
+      .object({
+        expectedRevision: adminAlertEgressExpectedRevisionSchema,
+        transport: z.literal("disabled"),
+        warningAcknowledgement: z.null(),
+      })
+      .strict(),
+    z
+      .object({
+        expectedRevision: adminAlertEgressExpectedRevisionSchema,
+        transport: z.enum(["smtp", "webhook"]),
+        warningAcknowledgement: adminAlertEgressWarningAcknowledgementSchema,
+      })
+      .strict(),
+  ],
+)
+export type UpdateAdminAlertEgressRequest = z.infer<
+  typeof updateAdminAlertEgressRequestSchema
+>
+
+export const adminAlertEgressResponseSchema = z
+  .object({
+    deliveryState: z.enum([
+      "disabled",
+      "prepared_pending_runtime_qualification",
+    ]),
+    destinationState: z.literal("not_stored"),
+    outboundDeliveryEnabled: z.literal(false),
+    revision: adminAlertEgressExpectedRevisionSchema,
+    runtimeQualified: z.literal(false),
+    secretState: z.literal("not_stored"),
+    transport: adminAlertEgressTransportSchema,
+    updatedAt: z.string().datetime().nullable(),
+    updatedBySubjectId: z.string().min(1).nullable(),
+    warningAcknowledgedAt: z.string().datetime().nullable(),
+    warningAcknowledgedBySubjectId: z.string().min(1).nullable(),
+    warningVersion: adminAlertEgressWarningVersionSchema.nullable(),
+  })
+  .strict()
+export type AdminAlertEgressResponse = z.infer<
+  typeof adminAlertEgressResponseSchema
+>
 
 export const adminConnectedAppAuthMethodSchema = z.enum([
   "api_key",
@@ -1620,6 +1776,7 @@ export const adminHardwareResponseSchema = z
     selectedHost: z.string().min(1),
     availableHosts: z.array(z.string().min(1)),
     sourceStatus: inferenceCoreSourceStatusSchema,
+    alertSourceStatus: inferenceCoreSourceStatusSchema,
     summary: z.string().min(1),
     grafanaUrl: z.string().min(1).nullable(),
     alertmanagerUrl: z.string().min(1).nullable(),

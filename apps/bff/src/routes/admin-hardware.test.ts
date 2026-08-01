@@ -27,21 +27,24 @@ describe("Admin hardware", () => {
   it("returns seven curated hardware charts while native expert links remain disabled", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_PROMETHEUS_BASE_URL", "http://prometheus.test")
+    vi.stubEnv("ADMIN_ALERTMANAGER_BASE_URL", "http://alertmanager.test")
     vi.stubEnv("GRAFANA_PUBLIC_URL", "https://grafana.example")
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = new URL(input.toString())
       const query = url.searchParams.get("query") ?? ""
-      if (url.pathname.endsWith("/query")) {
-        return prometheusVectorResponse([
-          prometheusVectorSample(
-            {
-              alertname: "InfraGpuTemperatureHigh",
-              gpu: "0",
-              host: "compute-node-b",
+      if (url.hostname === "alertmanager.test") {
+        return Response.json([
+          {
+            labels: {
+              alertname: "LLMMGpuSaturation",
+              component: "inference",
+              host_role: "inference",
+              rule_id: "gpu-temperature-high",
               severity: "warning",
             },
-            "1",
-          ),
+            startsAt: "2026-08-01T08:00:00.000Z",
+            status: { state: "active" },
+          },
         ])
       }
       return prometheusMatrixResponse(matrixSamplesForQuery(query))
@@ -61,6 +64,7 @@ describe("Admin hardware", () => {
       step: "180s",
       selectedHost: "all",
       sourceStatus: "ok",
+      alertSourceStatus: "ok",
       alertmanagerUrl: null,
       grafanaUrl: null,
       availableHosts: [
@@ -119,7 +123,17 @@ describe("Admin hardware", () => {
       "inference-nat · root (/dev/sda1)",
       "core-appliance · root (/dev/sda1)",
     ])
-    expect(body.activeAlerts).toEqual([])
+    expect(body.activeAlerts).toEqual([
+      expect.objectContaining({
+        alertName: "LLMMGpuSaturation",
+        alertmanagerUrl: null,
+        description: null,
+        device: null,
+        grafanaUrl: null,
+        host: null,
+        severity: "warning",
+      }),
+    ])
     await server.close()
   })
 

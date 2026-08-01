@@ -10,15 +10,18 @@ describe("expert capability boundary", () => {
     resetAdminTeamStateForTest()
   })
 
-  it("keeps every native mutation surface disabled until audit proof exists", () => {
+  it("keeps native access disabled while ingress awaits runtime qualification", () => {
+    expect(Object.isFrozen(expertCapabilities)).toBe(true)
     expect(Object.keys(expertCapabilities).sort()).toEqual(
       [...expertSystemIds].sort(),
     )
     for (const capability of Object.values(expertCapabilities)) {
+      expect(Object.isFrozen(capability)).toBe(true)
       expect(capability).toEqual({
-        auditIngestion: "not_proven",
+        auditIngestion: "implemented_pending_runtime_qualification",
         consoleProjection: "read_only",
         directAccess: "disabled",
+        mechanism: "product_owned_audited_ingress",
         nativeMutation: "disabled",
       })
     }

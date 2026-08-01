@@ -22,9 +22,11 @@ import {
   pr05RecoveryRouteContract,
   pr05ReviewedDispositions,
   pr05StandaloneDbTestBoundary,
+  pr06ContractBase,
   repositoryRoot,
   reviewedPr05ResolverFingerprints,
   reviewedPr05WebAuthenticationEvidence,
+  reviewedPr09WebAuthenticationEvidence,
   routeBaselinePath,
   verifyPr05BaseEvidence,
   verifyPr05DecisionDocument,
@@ -33,6 +35,7 @@ import {
   verifyPr05TargetState,
   verifyReviewedContractRevision,
   verifyReviewedPr05WebAuthenticationEvidence,
+  verifyReviewedPr09WebAuthenticationEvidence,
 } from "./guardrails.mjs"
 
 test("PR-05 is anchored to the reviewed PR-04 integration tree", () => {
@@ -401,9 +404,23 @@ test("PR-05 removes every due Persona finding and retains only the builder tombs
   )
 })
 
-test("PR-05 binds the successor Web authentication evidence", () => {
-  assert.equal(reviewedPr05WebAuthenticationEvidence.length, 2)
-  assert.deepEqual(verifyReviewedPr05WebAuthenticationEvidence(), [])
+test("PR-05 evidence remains historical while PR-09 owns the live successor", () => {
+  const root = mkdtempSync(join(tmpdir(), "inference-core-pr05-web-evidence-"))
+  try {
+    execFileSync(
+      "git",
+      ["clone", "--quiet", "--shared", "--no-checkout", repositoryRoot, root],
+      { stdio: "ignore" },
+    )
+    gitAt(root, ["checkout", "--quiet", pr06ContractBase])
+    assert.equal(reviewedPr05WebAuthenticationEvidence.length, 2)
+    assert.deepEqual(verifyReviewedPr05WebAuthenticationEvidence(root), [])
+  } finally {
+    rmSync(root, { force: true, recursive: true })
+  }
+
+  assert.equal(reviewedPr09WebAuthenticationEvidence.length, 2)
+  assert.deepEqual(verifyReviewedPr09WebAuthenticationEvidence(), [])
 })
 
 test("an activated PR-05 baseline satisfies the identity target", () => {
