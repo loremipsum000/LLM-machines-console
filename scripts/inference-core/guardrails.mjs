@@ -59,6 +59,10 @@ export const pr09ContractRevisionPath =
   "docs/reduction/inference-core/contract-revisions/PR-09.json"
 export const pr09DecisionPath =
   "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json"
+export const pr10ContractRevisionPath =
+  "docs/reduction/inference-core/contract-revisions/PR-10.json"
+export const pr10DecisionPath =
+  "docs/reduction/inference-core/pr-10-lifecycle-foundation-decisions.json"
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -77,6 +81,9 @@ export const pr08ContractBaseTree = "6071f1aa62690c509346cf1af7017a4cc669d28b"
 export const pr09ContractBase = "c07d651b1f7d16f777839c3c15783a61271239c3"
 export const pr09LaneAnchor = pr09ContractBase
 export const pr09ContractBaseTree = "0b2e55ce2f4c9be726dde4443a9f0bee91556b69"
+export const pr10ContractBase = "e9f2516585dccec69317fd0426ac4fcf6fa0d9b1"
+export const pr10LaneAnchor = pr10ContractBase
+export const pr10ContractBaseTree = "e0046213fa9641f606a575c3dd85407806ba2874"
 export const pr08PrivateCheckpoint = {
   baseCommit: "eeab335ab3e46add36e4efcfb4dad2b3b47a8202",
   baseTree: "c38ca6e7ea85e454f7c191441ade7679b7ee4c41",
@@ -199,6 +206,11 @@ export const pr09RevisionEvidencePaths = [
   "scripts/inference-core/pr09-boundaries.test.mjs",
   "scripts/inference-core/pr09-contract-revision.mjs",
 ]
+export const pr10RevisionEvidencePaths = [
+  pr10DecisionPath,
+  "scripts/inference-core/pr10-boundaries.test.mjs",
+  "scripts/inference-core/pr10-contract-revision.mjs",
+]
 const pr04ImmutablePriorEvidencePaths = [
   pr02ContractRevisionPath,
   ...pr02RevisionEvidencePaths,
@@ -233,6 +245,11 @@ const pr09ImmutablePriorEvidencePaths = [
   pr08ContractRevisionPath,
   ...pr08RevisionEvidencePaths,
 ]
+const pr10ImmutablePriorEvidencePaths = [
+  ...pr09ImmutablePriorEvidencePaths,
+  pr09ContractRevisionPath,
+  ...pr09RevisionEvidencePaths,
+]
 const generatedContractPaths = new Set([
   allowlistPath,
   routeBaselinePath,
@@ -244,6 +261,7 @@ const generatedContractPaths = new Set([
   pr07ContractRevisionPath,
   pr08ContractRevisionPath,
   pr09ContractRevisionPath,
+  pr10ContractRevisionPath,
 ])
 export const pr02OperationPolicy = {
   changedSourcePaths: [
@@ -412,6 +430,7 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/contract-revisions/PR-07.json",
   "docs/reduction/inference-core/contract-revisions/PR-08.json",
   "docs/reduction/inference-core/contract-revisions/PR-09.json",
+  "docs/reduction/inference-core/contract-revisions/PR-10.json",
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "docs/reduction/inference-core/pr-03-removal-decisions.json",
   "docs/reduction/inference-core/pr-04-data-decisions.json",
@@ -421,6 +440,7 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
   "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
   "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
+  "docs/reduction/inference-core/pr-10-lifecycle-foundation-decisions.json",
   "docs/reduction/inference-core/decision-register.md",
   "docs/reduction/inference-core/source-map.jsonl",
   "docs/reduction/inference-core/validation-register.md",
@@ -444,6 +464,8 @@ const guardrailExclusions = new Set([
   "scripts/inference-core/pr08-boundaries.test.mjs",
   "scripts/inference-core/pr09-contract-revision.mjs",
   "scripts/inference-core/pr09-boundaries.test.mjs",
+  "scripts/inference-core/pr10-contract-revision.mjs",
+  "scripts/inference-core/pr10-boundaries.test.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -470,6 +492,7 @@ const protectedGuardrailPaths = [
   "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
   "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
   "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
+  "docs/reduction/inference-core/pr-10-lifecycle-foundation-decisions.json",
   "docs/reduction/inference-core/decision-register.md",
   "docs/reduction/inference-core/source-map.jsonl",
   "docs/reduction/inference-core/validation-register.md",
@@ -499,6 +522,8 @@ const protectedGuardrailPaths = [
   "scripts/inference-core/pr08-contract-revision.mjs",
   "scripts/inference-core/pr09-boundaries.test.mjs",
   "scripts/inference-core/pr09-contract-revision.mjs",
+  "scripts/inference-core/pr10-boundaries.test.mjs",
+  "scripts/inference-core/pr10-contract-revision.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -1339,12 +1364,7 @@ export const pr09ReviewedDispositions = {
       "firecrawl",
       "lifecycle",
     ],
-    nativeIngressSources: [
-      "keycloak",
-      "litellm",
-      "grafana",
-      "alertmanager",
-    ],
+    nativeIngressSources: ["keycloak", "litellm", "grafana", "alertmanager"],
     ingressMechanism: "product_owned_audited_ingress",
     ingressState: "implemented_pending_runtime_qualification",
     nativeEventIdentity: {
@@ -1395,11 +1415,7 @@ export const pr09ReviewedDispositions = {
       providerTokenWholeValuePolicy: {
         disposition: "reject",
         matching: "anchored-whole-value",
-        appliesTo: [
-          "keycloakSubjectId",
-          "applicationId",
-          "credentialRecordId",
-        ],
+        appliesTo: ["keycloakSubjectId", "applicationId", "credentialRecordId"],
         families: "reviewed-provider-token-shape-set",
         valuesRecordedInGovernance: false,
       },
@@ -1467,11 +1483,7 @@ export const pr09ReviewedDispositions = {
         "request_failed",
         "route_unavailable",
       ],
-      grafana: [
-        "operation_failed",
-        "permission_denied",
-        "validation_failed",
-      ],
+      grafana: ["operation_failed", "permission_denied", "validation_failed"],
       alertmanager: [
         "delivery_failed",
         "receiver_unavailable",
@@ -1649,6 +1661,296 @@ export const pr09ReviewedDispositions = {
     nativeLinksMountedSecretsRuntimeAndNoBypassOwner: "PR-12",
   },
 }
+
+export const pr10LifecycleComponents = [
+  "console_database",
+  "keycloak",
+  "litellm",
+  "grafana",
+]
+
+export const pr10LifecycleOperationStates = [
+  "prepared",
+  "quiescing",
+  "capturing",
+  "validating",
+  "restoring",
+  "verifying",
+  "resuming",
+  "rolling_back",
+  "succeeded",
+  "rolled_back",
+  "failed",
+  "recovery_required",
+]
+
+export const pr10LifecycleFailureCodes = [
+  "adapter_unavailable",
+  "quiesce_failed",
+  "capture_failed",
+  "manifest_invalid",
+  "consistency_mismatch",
+  "restore_failed",
+  "verification_failed",
+  "rollback_failed",
+  "resume_failed",
+  "journal_failed",
+]
+
+export const pr10Pr06FixtureRepair = {
+  path: "test-support/inference-core-db-tests/src/pr06-application-credential-reconciliation.test.ts",
+  classification: "test-only-fixed-expiry-repair",
+  baseSha256:
+    "22dc477125f09de476d1da13126c1868b31117c0ef87687ebd7000892e2dc09e",
+  removedFragment: "'pr06-correlation',\n        '2026-08-01T12:00:00Z'",
+  replacementFragment: "'pr06-correlation',\n        now() + interval '1 day'",
+  productBehaviorChanged: false,
+}
+
+export const pr10ReviewedDispositions = {
+  lifecycleFoundation: {
+    components: pr10LifecycleComponents,
+    componentOrdinals: {
+      console_database: 0,
+      keycloak: 1,
+      litellm: 2,
+      grafana: 3,
+    },
+    consistencyModel: "coordinated-quiescence-not-cross-service-acid",
+    operationKinds: ["snapshot", "restore"],
+    operationStates: pr10LifecycleOperationStates,
+    failureCodes: pr10LifecycleFailureCodes,
+    oneUnresolvedOperation: true,
+    recoveryRequiredBlocksNewWork: true,
+    orderedJournalEvents: true,
+    rawErrorTextPersisted: false,
+  },
+  snapshotManifest: {
+    schemaVersion: 1,
+    canonicalEncoding: "deterministic-json",
+    fixedComponentOrder: pr10LifecycleComponents,
+    componentFields: ["component", "ordinal", "revision", "artifactSha256"],
+    manifestFields: [
+      "schemaVersion",
+      "snapshotId",
+      "operationId",
+      "capturedAt",
+      "contentFree",
+      "workloadContentIncluded",
+      "plaintextSecretsIncluded",
+      "emergencySessionsIncluded",
+      "components",
+      "manifestSha256",
+    ],
+    contentFree: true,
+    workloadContentIncluded: false,
+    plaintextSecretsIncluded: false,
+    emergencySessionsIncluded: false,
+    artifactBytesPersistedByFoundation: false,
+    runtimeArtifactComplianceProven: false,
+  },
+  restoreSafety: {
+    validateManifestBeforeOperationAdmission: true,
+    prepareEveryComponentBeforeActiveRestore: true,
+    preparationMutatesActiveState: false,
+    rollbackCapabilityRequiredBeforeActiveRestore: true,
+    restoreOrder: pr10LifecycleComponents,
+    rollbackOrder: [...pr10LifecycleComponents].reverse(),
+    preparationDiscardOrder: "reverse",
+    uncertainResumeAttemptState: "possibly-live",
+    reQuiescePossiblyLiveComponentsBeforeRollback: true,
+    activationFence: {
+      acquisition: "before-first-active-restore",
+      hold: "through-active-restore-verification-and-safe-resume-or-compensation",
+      close: "only-after-safe-resume-or-compensation",
+      reopenBeforeRollbackAfterClose: true,
+      resetImmediatelyAfterReopen: true,
+      reopenOrResetFailure: "recovery_required-with-fence-held-when-acquired",
+    },
+    zeroEmergencySessionsBeforeActiveRestore: true,
+    zeroEmergencySessionsAfterRestoreOrCompensation: true,
+    inconsistentCredentialState: "fail-closed-and-rollback",
+    rollingBackAdmissionFailure:
+      "recovery_required-preserve-quiescence-and-held-fence",
+    rollbackFailureState: "recovery_required",
+  },
+  zeroContentRetention: {
+    workloadContentDays: 0,
+    allowedPersistentClasses: [
+      "operation-identifiers",
+      "actor-subject-identifier",
+      "correlation-identifier",
+      "bounded-operation-state",
+      "bounded-phase-outcome",
+      "bounded-failure-code",
+      "timestamps",
+      "component-identifier",
+      "opaque-component-revision",
+      "sha256-digests",
+    ],
+    prohibitedPersistentClasses: [
+      "prompt",
+      "response",
+      "completion",
+      "request-body",
+      "response-body",
+      "headers",
+      "tool-arguments",
+      "tool-results",
+      "search-terms",
+      "url",
+      "page-content",
+      "artifact-bytes",
+      "raw-error",
+      "stack-trace",
+      "plaintext-secret",
+      "emergency-session",
+    ],
+    runtimeQualificationOwner: "PR-12",
+  },
+  deferredBindings: {
+    configuredRuntimeAdapters: 0,
+    componentEndpointsConfigured: false,
+    componentCredentialsConfigured: false,
+    componentPathsConfigured: false,
+    backupDestinationConfigured: false,
+    backupEncryptionKeyConfigured: false,
+    signingKeyConfigured: false,
+    schedulerConfigured: false,
+    lifecycleRoutesRegistered: 0,
+    signingTrustAndCustodyOwner: "PR-10A",
+    backupDestinationEncryptionRetentionAndRecoveryOwner: "PR-10B",
+    productionBindingsDeploymentAndQualificationOwner: "PR-12",
+  },
+  historicalTestRepair: pr10Pr06FixtureRepair,
+  scopeBoundaries: {
+    sourceOnly: true,
+    intermediateDeployment: false,
+    runtimeQualified: false,
+    configuredRuntimeAdapters: 0,
+    lifecycleRoutes: 0,
+  },
+}
+
+export const pr10StandaloneDbTestBoundary = {
+  ...pr09StandaloneDbTestBoundary,
+  allowedPaths: [
+    ...pr09StandaloneDbTestBoundary.allowedPaths,
+    "test-support/inference-core-db-tests/src/pr10-lifecycle-foundation.test.ts",
+    "test-support/inference-core-db-tests/src/pr10-lifecycle-journal.test.ts",
+  ].sort(),
+}
+
+export const pr10LifecycleCodePaths = [
+  "apps/bff/src/db/inference-core-client.test.ts",
+  "apps/bff/src/db/inference-core-client.ts",
+  "apps/bff/src/db/inference-core-schema.test.ts",
+  "apps/bff/src/db/inference-core-schema.ts",
+  "apps/bff/src/services/lifecycle-component-adapters.test.ts",
+  "apps/bff/src/services/lifecycle-component-adapters.ts",
+  "apps/bff/src/services/lifecycle-operation-journal.test.ts",
+  "apps/bff/src/services/lifecycle-operation-journal.ts",
+  "apps/bff/src/services/lifecycle-orchestration.test.ts",
+  "apps/bff/src/services/lifecycle-orchestration.ts",
+  "apps/bff/src/services/lifecycle-snapshot-manifest.test.ts",
+  "apps/bff/src/services/lifecycle-snapshot-manifest.ts",
+  "infra/migrations/0000_inference_core.sql",
+  "packages/contracts/src/index.ts",
+  "packages/contracts/src/inference-core-lifecycle.test.ts",
+  "packages/contracts/src/inference-core-lifecycle.ts",
+  "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+  pr10Pr06FixtureRepair.path,
+  "test-support/inference-core-db-tests/src/pr10-lifecycle-foundation.test.ts",
+  "test-support/inference-core-db-tests/src/pr10-lifecycle-journal.test.ts",
+].sort()
+
+export const pr10GovernancePaths = [
+  pr10DecisionPath,
+  "package.json",
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/guardrails.test.mjs",
+  "scripts/inference-core/pr10-boundaries.test.mjs",
+  "scripts/inference-core/pr10-contract-revision.mjs",
+].sort()
+
+export const pr10AllowedRepositoryPaths = [
+  ...pr10LifecycleCodePaths,
+  ...pr10GovernancePaths,
+].sort()
+
+export const pr10RequiredFrozenRepositoryPaths = [...pr10AllowedRepositoryPaths]
+
+export const pr10ExpectedOperationPolicy = {
+  addedSourcePaths: [
+    "apps/bff/src/services/lifecycle-component-adapters.ts",
+    "apps/bff/src/services/lifecycle-operation-journal.ts",
+    "apps/bff/src/services/lifecycle-orchestration.ts",
+    "apps/bff/src/services/lifecycle-snapshot-manifest.ts",
+    "packages/contracts/src/inference-core-lifecycle.ts",
+  ].sort(),
+  changedSourcePaths: [
+    "apps/bff/src/db/inference-core-client.ts",
+    "apps/bff/src/db/inference-core-schema.ts",
+    "package.json",
+    "packages/contracts/src/index.ts",
+  ].sort(),
+  deletedSourcePaths: [],
+  addedRepositoryPaths: [
+    "apps/bff/src/services/lifecycle-component-adapters.test.ts",
+    "apps/bff/src/services/lifecycle-component-adapters.ts",
+    "apps/bff/src/services/lifecycle-operation-journal.test.ts",
+    "apps/bff/src/services/lifecycle-operation-journal.ts",
+    "apps/bff/src/services/lifecycle-orchestration.test.ts",
+    "apps/bff/src/services/lifecycle-orchestration.ts",
+    "apps/bff/src/services/lifecycle-snapshot-manifest.test.ts",
+    "apps/bff/src/services/lifecycle-snapshot-manifest.ts",
+    pr10DecisionPath,
+    "packages/contracts/src/inference-core-lifecycle.test.ts",
+    "packages/contracts/src/inference-core-lifecycle.ts",
+    "scripts/inference-core/pr10-boundaries.test.mjs",
+    "scripts/inference-core/pr10-contract-revision.mjs",
+    "test-support/inference-core-db-tests/src/pr10-lifecycle-foundation.test.ts",
+    "test-support/inference-core-db-tests/src/pr10-lifecycle-journal.test.ts",
+  ].sort(),
+  changedRepositoryPaths: [
+    "apps/bff/src/db/inference-core-client.test.ts",
+    "apps/bff/src/db/inference-core-client.ts",
+    "apps/bff/src/db/inference-core-schema.test.ts",
+    "apps/bff/src/db/inference-core-schema.ts",
+    "infra/migrations/0000_inference_core.sql",
+    "package.json",
+    "packages/contracts/src/index.ts",
+    "scripts/inference-core/guardrails.mjs",
+    "scripts/inference-core/guardrails.test.mjs",
+    "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+    pr10Pr06FixtureRepair.path,
+  ].sort(),
+  deletedRepositoryPaths: [],
+}
+
+export const pr10ProductionSourcePaths = [
+  ...pr10ExpectedOperationPolicy.addedSourcePaths,
+  ...pr10ExpectedOperationPolicy.changedSourcePaths,
+].sort()
+
+export const pr10GeneratedDestinationPaths = [
+  allowlistPath,
+  routeBaselinePath,
+  pr10ContractRevisionPath,
+].sort()
+
+export const pr10SourceEvidencePaths = [
+  "apps/bff/src/services/lifecycle-component-adapters.ts",
+  "apps/bff/src/services/lifecycle-operation-journal.ts",
+  "apps/bff/src/services/lifecycle-orchestration.ts",
+  "apps/bff/src/services/lifecycle-snapshot-manifest.ts",
+  "packages/contracts/src/inference-core-lifecycle.ts",
+]
+
+const pr10Pr09HistoricalNativeEvidencePaths = new Set([
+  "apps/bff/src/db/inference-core-schema.ts",
+  "infra/migrations/0000_inference_core.sql",
+])
 
 export const pr05AdminOnlyRoutePolicyKeys = [
   "GET /api/admin/recovery/status",
@@ -2398,6 +2700,31 @@ export const pr09TargetContract = {
   nativeExpertLinksEnabled: false,
   sourceOnly: true,
   runtimeQualified: false,
+}
+
+export const pr10TargetContract = {
+  findingEntriesDueByPr10: 0,
+  remainingFindingEntries: pr09TargetContract.remainingFindingEntries,
+  fs105BuilderHubTombstones: pr09TargetContract.fs105BuilderHubTombstones,
+  legacyRoutes: 0,
+  routes: pr09TargetContract.routes,
+  routeClassifications: pr09TargetContract.routeClassifications,
+  publicInferenceRoutes: pr09TargetContract.publicInferenceRoutes,
+  publicFirecrawlRoutes: pr09TargetContract.publicFirecrawlRoutes,
+  firecrawlAdminRoutes: pr09TargetContract.firecrawlAdminRoutes,
+  addedRoutes: [],
+  activityAuditPath: pr09TargetContract.activityAuditPath,
+  adminOnlyRoutePolicyKeys: pr09TargetContract.adminOnlyRoutePolicyKeys,
+  fastifyRegistrars: pr09TargetContract.fastifyRegistrars,
+  webInferenceConsumers: 0,
+  escapeHatchPaths: [],
+  activityPageAvailable: true,
+  globalNavigationOwner: "PR-11",
+  nativeExpertLinksEnabled: false,
+  sourceOnly: true,
+  runtimeQualified: false,
+  configuredRuntimeAdapters: 0,
+  lifecycleRoutes: 0,
 }
 
 export const pr08QueryFreeLoggingFingerprints = [
@@ -3483,7 +3810,7 @@ export function buildRouteBaseline({
   return {
     schemaVersion: 3,
     baseCommit,
-    policyDigest: routePolicyDigest(),
+    policyDigest: routePolicyDigest(root),
     target: targetRouteContract,
     routes: [
       ...extractBffRoutes({ root, paths }),
@@ -3736,6 +4063,7 @@ export function verifyActiveReviewedRevisionId(revisionId) {
       "PR-07",
       "PR-08",
       "PR-09",
+      "PR-10",
     ].includes(revisionId)
   ) {
     return []
@@ -3767,55 +4095,62 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(activeReviewedRevision === "PR-09"
-      ? verifyPr09TargetState({
+    ...(activeReviewedRevision === "PR-10"
+      ? verifyPr10TargetState({
           root,
           currentAllowlist: expectedAllowlist,
           currentRoutes: expectedRoutes,
           paths,
         })
-      : activeReviewedRevision === "PR-08"
-        ? verifyPr08TargetState({
+      : activeReviewedRevision === "PR-09"
+        ? verifyPr09TargetState({
             root,
             currentAllowlist: expectedAllowlist,
             currentRoutes: expectedRoutes,
             paths,
           })
-        : activeReviewedRevision === "PR-07"
-          ? verifyPr07TargetState({
+        : activeReviewedRevision === "PR-08"
+          ? verifyPr08TargetState({
               root,
               currentAllowlist: expectedAllowlist,
               currentRoutes: expectedRoutes,
               paths,
             })
-          : activeReviewedRevision === "PR-06"
-            ? verifyPr06TargetState({
+          : activeReviewedRevision === "PR-07"
+            ? verifyPr07TargetState({
                 root,
                 currentAllowlist: expectedAllowlist,
                 currentRoutes: expectedRoutes,
                 paths,
               })
-            : activeReviewedRevision === "PR-05"
-              ? verifyPr05TargetState({
+            : activeReviewedRevision === "PR-06"
+              ? verifyPr06TargetState({
                   root,
                   currentAllowlist: expectedAllowlist,
                   currentRoutes: expectedRoutes,
                   paths,
                 })
-              : activeReviewedRevision === "PR-04"
-                ? verifyPr04TargetState({
+              : activeReviewedRevision === "PR-05"
+                ? verifyPr05TargetState({
                     root,
                     currentAllowlist: expectedAllowlist,
                     currentRoutes: expectedRoutes,
                     paths,
                   })
-                : activeReviewedRevision === "PR-03"
-                  ? verifyPr03TargetState({
+                : activeReviewedRevision === "PR-04"
+                  ? verifyPr04TargetState({
                       root,
                       currentAllowlist: expectedAllowlist,
                       currentRoutes: expectedRoutes,
+                      paths,
                     })
-                  : verifyActiveReviewedRevisionId(activeReviewedRevision)),
+                  : activeReviewedRevision === "PR-03"
+                    ? verifyPr03TargetState({
+                        root,
+                        currentAllowlist: expectedAllowlist,
+                        currentRoutes: expectedRoutes,
+                      })
+                    : verifyActiveReviewedRevisionId(activeReviewedRevision)),
   ]
 
   let baseStatus = "not-requested"
@@ -3860,6 +4195,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
             "PR-07",
             "PR-08",
             "PR-09",
+            "PR-10",
           ]).has(reviewedRevision.id)
         ) {
           errors.push(
@@ -3934,6 +4270,8 @@ export function verifyReviewedContractRevision({
   const currentPr08Revision = currentRevisions.find(({ id }) => id === "PR-08")
   const basePr09Revision = baseRevisions.find(({ id }) => id === "PR-09")
   const currentPr09Revision = currentRevisions.find(({ id }) => id === "PR-09")
+  const basePr10Revision = baseRevisions.find(({ id }) => id === "PR-10")
+  const currentPr10Revision = currentRevisions.find(({ id }) => id === "PR-10")
   const errors = []
   if (
     (!currentPr02Revision || !basePr02Revision) &&
@@ -3984,7 +4322,30 @@ export function verifyReviewedContractRevision({
         ...verifyRetainedPr09RevisionEvidence(root, currentPr09Revision),
       )
     }
+    if (basePr10Revision && currentPr10Revision) {
+      errors.push(
+        ...verifyRetainedPr10RevisionEvidence(root, currentPr10Revision),
+      )
+    }
     return { present: false, id: null, errors: errors.sort() }
+  }
+
+  if (
+    isExactRevisionAppend(
+      baseRevisions,
+      currentRevisions,
+      "PR-10",
+      pr10ContractRevisionPath,
+    )
+  ) {
+    return verifyIntroducedPr10Revision({
+      root,
+      baseCommit,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+    })
   }
 
   if (
@@ -4562,6 +4923,143 @@ function verifyPr05LaneLineage(root) {
     return []
   } catch {
     return [`PR-05 lane anchor is not an ancestor ${pr05LaneAnchor}`]
+  }
+}
+
+function verifyIntroducedPr10Revision({
+  root,
+  baseCommit,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+}) {
+  const errors = []
+  if (baseCommit !== pr10ContractBase) {
+    errors.push(
+      `PR-10 contract revision base changed expected=${pr10ContractBase} actual=${baseCommit}`,
+    )
+  }
+  if (resolveTree(root, baseCommit) !== pr10ContractBaseTree) {
+    errors.push("PR-10 contract base tree changed")
+  }
+  errors.push(...verifyPr10LaneLineage(root))
+  errors.push(...verifyPr10BaseEvidence(root))
+  const baseRevisionHistory = baseRoutes.reviewedRevisions ?? []
+  const expectedPriorIds = [
+    "PR-02",
+    "PR-03",
+    "PR-04",
+    "PR-05",
+    "PR-06",
+    "PR-07",
+    "PR-08",
+    "PR-09",
+  ]
+  if (
+    baseRevisionHistory.length !== expectedPriorIds.length ||
+    expectedPriorIds.some((id, index) => baseRevisionHistory[index]?.id !== id)
+  ) {
+    errors.push(
+      "PR-10 requires the exact retained PR-02 through PR-09 revision history",
+    )
+  } else {
+    errors.push(
+      ...verifyRetainedPr02RevisionEvidence(root, baseRevisionHistory[0]),
+      ...verifyRetainedPr03RevisionEvidence(root, baseRevisionHistory[1]),
+      ...verifyRetainedPr04RevisionEvidence(root, baseRevisionHistory[2]),
+      ...verifyRetainedPr05RevisionEvidence(root, baseRevisionHistory[3]),
+      ...verifyRetainedPr06RevisionEvidence(root, baseRevisionHistory[4]),
+      ...verifyRetainedPr07RevisionEvidence(root, baseRevisionHistory[5]),
+      ...verifyRetainedPr08RevisionEvidence(root, baseRevisionHistory[6]),
+      ...verifyRetainedPr09RevisionEvidence(root, baseRevisionHistory[7]),
+    )
+  }
+  if (!isRegularFile(resolve(root, pr10ContractRevisionPath))) {
+    return {
+      present: true,
+      id: "PR-10",
+      errors: [
+        ...errors,
+        `missing reviewed contract revision ${pr10ContractRevisionPath}`,
+      ].sort(),
+    }
+  }
+
+  const decision = readPr10DecisionDocument(root)
+  errors.push(
+    ...verifyPr10DecisionDocument(decision, { requireReady: true, root }),
+  )
+  const evidenceFiles = buildRevisionEvidenceFingerprints(
+    root,
+    pr10RevisionEvidencePaths,
+    "PR-10",
+  )
+  const expected = buildContractRevisionDocument({
+    revisionId: "PR-10",
+    scope: "lifecycle-snapshot-restore-foundation-source-only",
+    baseCommit,
+    baseTree: resolveTree(root, baseCommit),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes: {
+      ...currentRoutes,
+      reviewedRevisions: structuredClone(baseRoutes.reviewedRevisions ?? []),
+    },
+    evidenceFiles,
+  })
+  const actual = readJson(resolve(root, pr10ContractRevisionPath))
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    errors.push("PR-10 reviewed contract revision does not match exact changes")
+  }
+
+  const expectedRevisionHistory = [
+    ...(baseRoutes.reviewedRevisions ?? []),
+    {
+      id: "PR-10",
+      path: pr10ContractRevisionPath,
+      sha256: sha256(readFileSync(resolve(root, pr10ContractRevisionPath))),
+    },
+  ]
+  if (
+    JSON.stringify(currentRoutes.reviewedRevisions ?? []) !==
+    JSON.stringify(expectedRevisionHistory)
+  ) {
+    errors.push("reviewed contract revision history changed")
+  }
+  errors.push(...verifyRequiredRoutes(currentRoutes))
+  errors.push(
+    ...verifyPr10CandidateContract({
+      root,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+      operationPolicy: decision.operationPolicy,
+    }),
+  )
+
+  return { present: true, id: "PR-10", errors: errors.sort() }
+}
+
+function verifyPr10LaneLineage(root) {
+  const anchor = resolveCommit(root, pr10LaneAnchor)
+  if (anchor !== pr10LaneAnchor) {
+    return [`PR-10 lane anchor is unavailable ${pr10LaneAnchor}`]
+  }
+  const head = currentHead(root)
+  if (head === pr10LaneAnchor) {
+    return []
+  }
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", pr10LaneAnchor, head], {
+      cwd: root,
+      stdio: "ignore",
+    })
+    return []
+  } catch {
+    return [`PR-10 lane anchor is not an ancestor ${pr10LaneAnchor}`]
   }
 }
 
@@ -5422,6 +5920,83 @@ function verifyRetainedPr09RevisionEvidence(root, revision) {
     errors.push("retained PR-09 revision evidence changed")
   }
   errors.push(...verifyPr09BaseEvidence(root))
+  return errors.sort()
+}
+
+function verifyRetainedPr10RevisionEvidence(root, revision) {
+  const errors = []
+  if (
+    revision.id !== "PR-10" ||
+    revision.path !== pr10ContractRevisionPath ||
+    !/^[0-9a-f]{64}$/.test(revision.sha256 ?? "")
+  ) {
+    return ["invalid retained PR-10 revision identity"]
+  }
+  const absolutePath = resolve(root, pr10ContractRevisionPath)
+  if (!isRegularFile(absolutePath)) {
+    return [`missing reviewed contract revision ${pr10ContractRevisionPath}`]
+  }
+  if (sha256(readFileSync(absolutePath)) !== revision.sha256) {
+    errors.push("retained PR-10 revision fingerprint changed")
+  }
+  const document = readJson(absolutePath)
+  if (
+    document.id !== "PR-10" ||
+    document.scope !== "lifecycle-snapshot-restore-foundation-source-only" ||
+    document.baseCommit !== pr10ContractBase ||
+    document.baseTree !== pr10ContractBaseTree
+  ) {
+    errors.push("retained PR-10 revision base identity changed")
+  }
+  if (
+    JSON.stringify(document.evidenceFiles) !==
+    JSON.stringify(
+      buildRevisionEvidenceFingerprints(
+        root,
+        pr10RevisionEvidencePaths,
+        "PR-10",
+      ),
+    )
+  ) {
+    errors.push("retained PR-10 revision evidence changed")
+  }
+  errors.push(...verifyPr10BaseEvidence(root))
+  return errors.sort()
+}
+
+export function verifyPr10BaseEvidence(root = repositoryRoot) {
+  const errors = []
+  for (const path of pr10ImmutablePriorEvidencePaths) {
+    let expected
+    try {
+      expected = execFileSync(
+        "git",
+        [
+          "show",
+          "--no-ext-diff",
+          "--no-textconv",
+          "--end-of-options",
+          `${pr10ContractBase}:${path}`,
+        ],
+        {
+          cwd: root,
+          encoding: null,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      )
+    } catch {
+      errors.push(`PR-10 immutable base evidence is unavailable ${path}`)
+      continue
+    }
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-10 retained prior evidence is missing ${path}`)
+      continue
+    }
+    if (!readFileSync(absolutePath).equals(expected)) {
+      errors.push(`PR-10 retained prior evidence changed ${path}`)
+    }
+  }
   return errors.sort()
 }
 
@@ -7050,9 +7625,7 @@ export function verifyPr09DecisionDocument(
     errors.push("invalid PR-09 target")
   }
   if (
-    !["pending-final-staged-delta", "reviewed"].includes(
-      decision?.reviewStatus,
-    )
+    !["pending-final-staged-delta", "reviewed"].includes(decision?.reviewStatus)
   ) {
     errors.push("invalid PR-09 review status")
   } else if (requireReady && decision.reviewStatus !== "reviewed") {
@@ -7084,10 +7657,10 @@ export function verifyPr09DecisionDocument(
       "idempotent-only-for-identical-canonical-metadata" ||
     dispositions?.activityAudit?.nativeEventIdentity?.collision !==
       "reject-different-canonical-metadata" ||
-    dispositions?.activityAudit?.nativeEventIdentity?.rawSourceEventIdRetained !==
-      false ||
-    dispositions?.activityAudit?.nativeEventIdentity?.rawSourceEventIdExported !==
-      false ||
+    dispositions?.activityAudit?.nativeEventIdentity
+      ?.rawSourceEventIdRetained !== false ||
+    dispositions?.activityAudit?.nativeEventIdentity
+      ?.rawSourceEventIdExported !== false ||
     dispositions?.activityAudit?.nativeEventIdentity
       ?.deduplicateByCorrelationId !== false ||
     dispositions?.activityAudit?.nativeCursor?.format !==
@@ -7157,13 +7730,9 @@ export function verifyPr09DecisionDocument(
     JSON.stringify(
       dispositions?.activityAudit?.nativeIdentifiers?.credentialPrefixPatterns,
     ) !==
-      JSON.stringify([
-        "^llmm_t4_[0-9a-f]{18}$",
-        "^llmm_fc_[0-9a-f]{16}$",
-      ]) ||
+      JSON.stringify(["^llmm_t4_[0-9a-f]{18}$", "^llmm_fc_[0-9a-f]{16}$"]) ||
     dispositions?.activityAudit?.nativeIdentifiers
-      ?.credentialIdentifierCardinality !==
-      "record-id-or-prefix-never-both" ||
+      ?.credentialIdentifierCardinality !== "record-id-or-prefix-never-both" ||
     dispositions?.activityAudit?.compatibilityTargetProjection?.persistence !==
       false ||
     dispositions?.activityAudit?.compatibilityTargetProjection?.export !==
@@ -7188,7 +7757,9 @@ export function verifyPr09DecisionDocument(
     dispositions?.activityAudit?.allowedMetadataFields?.includes(
       "sourceEventId",
     ) ||
-    dispositions?.activityAudit?.allowedMetadataFields?.includes("targetType") ||
+    dispositions?.activityAudit?.allowedMetadataFields?.includes(
+      "targetType",
+    ) ||
     dispositions?.activityAudit?.allowedMetadataFields?.includes("targetId")
   ) {
     errors.push("PR-09 activity and audit boundary changed")
@@ -7199,8 +7770,7 @@ export function verifyPr09DecisionDocument(
     dispositions?.auditExport?.privateKeySource !== "mounted-file-only" ||
     dispositions?.auditExport?.privateKeyInGit !== false ||
     dispositions?.auditExport?.privateKeyInEnvironment !== false ||
-    dispositions?.auditExport?.pagination !==
-      "deterministic-live-keyset" ||
+    dispositions?.auditExport?.pagination !== "deterministic-live-keyset" ||
     dispositions?.auditExport?.cursorEncoding !==
       "base64url-json-id-occurredAt" ||
     dispositions?.auditExport?.crossPageSnapshot !== false ||
@@ -7340,7 +7910,9 @@ export function verifyPr09OperationBoundary(operationPolicy) {
           path,
         )
       ) {
-        errors.push(`PR-09 retired or deferred product path is forbidden ${path}`)
+        errors.push(
+          `PR-09 retired or deferred product path is forbidden ${path}`,
+        )
       }
       if (
         path !== ".env.example" &&
@@ -7367,6 +7939,317 @@ export function verifyPr09OperationBoundary(operationPolicy) {
     }
   }
   return [...new Set(errors)].sort()
+}
+
+export function readPr10DecisionDocument(root = repositoryRoot) {
+  return readJson(resolve(root, pr10DecisionPath))
+}
+
+export function buildPr10SourceEvidence(root = repositoryRoot) {
+  return pr10SourceEvidencePaths.map((path) => {
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      throw new Error(`Missing PR-10 source evidence file ${path}`)
+    }
+    return { path, sha256: sha256(readFileSync(absolutePath)) }
+  })
+}
+
+export function verifyPr10DecisionDocument(
+  decision,
+  { requireReady = false, root = repositoryRoot } = {},
+) {
+  const errors = []
+  const expectedKeys = [
+    "contractBaseCommit",
+    "contractBaseTree",
+    "laneAnchorCommit",
+    "operationPolicy",
+    "reviewStatus",
+    "reviewedDispositions",
+    "schemaVersion",
+    "scope",
+    "sourceEvidence",
+    "standaloneDbTestBoundary",
+    "target",
+    "workPackage",
+  ]
+  if (
+    !decision ||
+    JSON.stringify(Object.keys(decision).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-10" ||
+    decision.scope !== "lifecycle-snapshot-restore-foundation-source-only" ||
+    decision.contractBaseCommit !== pr10ContractBase ||
+    decision.contractBaseTree !== pr10ContractBaseTree ||
+    decision.laneAnchorCommit !== pr10LaneAnchor
+  ) {
+    errors.push("invalid PR-10 decision identity")
+  }
+  if (
+    JSON.stringify(decision?.reviewedDispositions) !==
+    JSON.stringify(pr10ReviewedDispositions)
+  ) {
+    errors.push("invalid PR-10 reviewed dispositions")
+  }
+  if (
+    JSON.stringify(decision?.standaloneDbTestBoundary) !==
+    JSON.stringify(pr10StandaloneDbTestBoundary)
+  ) {
+    errors.push("invalid PR-10 standalone DB test boundary")
+  }
+  let expectedSourceEvidence = []
+  try {
+    expectedSourceEvidence = buildPr10SourceEvidence(root)
+  } catch (error) {
+    errors.push(String(error instanceof Error ? error.message : error))
+  }
+  if (
+    JSON.stringify(decision?.sourceEvidence) !==
+    JSON.stringify(expectedSourceEvidence)
+  ) {
+    errors.push("invalid PR-10 source evidence")
+  }
+  if (JSON.stringify(decision?.target) !== JSON.stringify(pr10TargetContract)) {
+    errors.push("invalid PR-10 target")
+  }
+  if (
+    !["pending-final-staged-delta", "reviewed"].includes(decision?.reviewStatus)
+  ) {
+    errors.push("invalid PR-10 review status")
+  } else if (requireReady && decision.reviewStatus !== "reviewed") {
+    errors.push("PR-10 operation policy is not reviewed")
+  }
+
+  const dispositions = decision?.reviewedDispositions
+  if (
+    JSON.stringify(dispositions?.lifecycleFoundation?.components) !==
+      JSON.stringify(pr10LifecycleComponents) ||
+    dispositions?.lifecycleFoundation?.consistencyModel !==
+      "coordinated-quiescence-not-cross-service-acid" ||
+    dispositions?.lifecycleFoundation?.oneUnresolvedOperation !== true ||
+    dispositions?.lifecycleFoundation?.recoveryRequiredBlocksNewWork !== true ||
+    dispositions?.lifecycleFoundation?.rawErrorTextPersisted !== false
+  ) {
+    errors.push("PR-10 lifecycle foundation boundary changed")
+  }
+  if (
+    dispositions?.snapshotManifest?.contentFree !== true ||
+    dispositions?.snapshotManifest?.workloadContentIncluded !== false ||
+    dispositions?.snapshotManifest?.plaintextSecretsIncluded !== false ||
+    dispositions?.snapshotManifest?.emergencySessionsIncluded !== false ||
+    dispositions?.snapshotManifest?.artifactBytesPersistedByFoundation !==
+      false ||
+    dispositions?.snapshotManifest?.runtimeArtifactComplianceProven !== false
+  ) {
+    errors.push("PR-10 content-free manifest boundary changed")
+  }
+  if (
+    dispositions?.restoreSafety?.prepareEveryComponentBeforeActiveRestore !==
+      true ||
+    dispositions?.restoreSafety?.preparationMutatesActiveState !== false ||
+    dispositions?.restoreSafety
+      ?.rollbackCapabilityRequiredBeforeActiveRestore !== true ||
+    dispositions?.restoreSafety?.preparationDiscardOrder !== "reverse" ||
+    dispositions?.restoreSafety?.uncertainResumeAttemptState !==
+      "possibly-live" ||
+    dispositions?.restoreSafety
+      ?.reQuiescePossiblyLiveComponentsBeforeRollback !== true ||
+    dispositions?.restoreSafety?.activationFence?.acquisition !==
+      "before-first-active-restore" ||
+    dispositions?.restoreSafety?.activationFence?.hold !==
+      "through-active-restore-verification-and-safe-resume-or-compensation" ||
+    dispositions?.restoreSafety?.activationFence?.close !==
+      "only-after-safe-resume-or-compensation" ||
+    dispositions?.restoreSafety?.activationFence
+      ?.reopenBeforeRollbackAfterClose !== true ||
+    dispositions?.restoreSafety?.activationFence
+      ?.resetImmediatelyAfterReopen !== true ||
+    dispositions?.restoreSafety?.activationFence?.reopenOrResetFailure !==
+      "recovery_required-with-fence-held-when-acquired" ||
+    dispositions?.restoreSafety?.zeroEmergencySessionsBeforeActiveRestore !==
+      true ||
+    dispositions?.restoreSafety
+      ?.zeroEmergencySessionsAfterRestoreOrCompensation !== true ||
+    dispositions?.restoreSafety?.inconsistentCredentialState !==
+      "fail-closed-and-rollback" ||
+    dispositions?.restoreSafety?.rollingBackAdmissionFailure !==
+      "recovery_required-preserve-quiescence-and-held-fence" ||
+    dispositions?.restoreSafety?.rollbackFailureState !== "recovery_required"
+  ) {
+    errors.push("PR-10 restore safety boundary changed")
+  }
+  if (
+    dispositions?.zeroContentRetention?.workloadContentDays !== 0 ||
+    dispositions?.zeroContentRetention?.runtimeQualificationOwner !== "PR-12"
+  ) {
+    errors.push("PR-10 zero-content retention boundary changed")
+  }
+  if (
+    dispositions?.deferredBindings?.configuredRuntimeAdapters !== 0 ||
+    dispositions?.deferredBindings?.componentEndpointsConfigured !== false ||
+    dispositions?.deferredBindings?.componentCredentialsConfigured !== false ||
+    dispositions?.deferredBindings?.componentPathsConfigured !== false ||
+    dispositions?.deferredBindings?.backupDestinationConfigured !== false ||
+    dispositions?.deferredBindings?.backupEncryptionKeyConfigured !== false ||
+    dispositions?.deferredBindings?.signingKeyConfigured !== false ||
+    dispositions?.deferredBindings?.schedulerConfigured !== false ||
+    dispositions?.deferredBindings?.lifecycleRoutesRegistered !== 0 ||
+    dispositions?.deferredBindings?.signingTrustAndCustodyOwner !== "PR-10A" ||
+    dispositions?.deferredBindings
+      ?.backupDestinationEncryptionRetentionAndRecoveryOwner !== "PR-10B" ||
+    dispositions?.deferredBindings
+      ?.productionBindingsDeploymentAndQualificationOwner !== "PR-12"
+  ) {
+    errors.push("PR-10 deferred runtime binding boundary changed")
+  }
+  if (
+    JSON.stringify(dispositions?.historicalTestRepair) !==
+    JSON.stringify(pr10Pr06FixtureRepair)
+  ) {
+    errors.push("PR-10 historical test-only repair boundary changed")
+  }
+  if (
+    dispositions?.scopeBoundaries?.sourceOnly !== true ||
+    dispositions?.scopeBoundaries?.intermediateDeployment !== false ||
+    dispositions?.scopeBoundaries?.runtimeQualified !== false ||
+    dispositions?.scopeBoundaries?.configuredRuntimeAdapters !== 0 ||
+    dispositions?.scopeBoundaries?.lifecycleRoutes !== 0
+  ) {
+    errors.push("PR-10 source-only scope boundary changed")
+  }
+  errors.push(
+    ...verifyPr10OperationBoundary(decision?.operationPolicy ?? {}, {
+      requireComplete: requireReady,
+    }),
+  )
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr10OperationBoundary(
+  operationPolicy,
+  { requireComplete = true } = {},
+) {
+  const sourceKeys = [
+    "addedSourcePaths",
+    "changedSourcePaths",
+    "deletedSourcePaths",
+  ]
+  const repositoryKeys = [
+    "addedRepositoryPaths",
+    "changedRepositoryPaths",
+    "deletedRepositoryPaths",
+  ]
+  const expectedKeys = [...sourceKeys, ...repositoryKeys].sort()
+  const errors = [
+    ...verifyExactPathPolicy(operationPolicy, sourceKeys, "PR-10"),
+    ...verifyExactPathPolicy(operationPolicy, repositoryKeys, "PR-10"),
+  ]
+  if (
+    JSON.stringify(Object.keys(operationPolicy).sort()) !==
+    JSON.stringify(expectedKeys)
+  ) {
+    errors.push("invalid PR-10 operation policy keys")
+  }
+  if (
+    (operationPolicy.deletedSourcePaths ?? []).length > 0 ||
+    (operationPolicy.deletedRepositoryPaths ?? []).length > 0
+  ) {
+    errors.push("PR-10 source-only foundation must not delete Product paths")
+  }
+
+  const allowedPaths = new Set(pr10AllowedRepositoryPaths)
+  const repositoryPathByOperation = new Map()
+  const repositoryPaths = new Set()
+  for (const key of repositoryKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      repositoryPaths.add(path)
+      repositoryPathByOperation.set(path, key.replace("Repository", "Source"))
+      if (!allowedPaths.has(path)) {
+        errors.push(`PR-10 repository path is outside package boundary ${path}`)
+      }
+      if (pr10ImmutablePriorEvidencePaths.includes(path)) {
+        errors.push(
+          `PR-10 immutable prior evidence appears in operation policy ${path}`,
+        )
+      }
+    }
+  }
+  if (requireComplete) {
+    for (const key of expectedKeys) {
+      if (
+        JSON.stringify(operationPolicy[key] ?? []) !==
+        JSON.stringify(pr10ExpectedOperationPolicy[key])
+      ) {
+        errors.push(`PR-10 exact operation policy changed ${key}`)
+      }
+    }
+    for (const requiredPath of pr10RequiredFrozenRepositoryPaths) {
+      if (!repositoryPaths.has(requiredPath)) {
+        errors.push(`PR-10 frozen repository path is missing ${requiredPath}`)
+      }
+    }
+  }
+  for (const key of sourceKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      if (repositoryPathByOperation.get(path) !== key) {
+        errors.push(
+          `PR-10 source operation lacks matching repository operation ${key} ${path}`,
+        )
+      }
+    }
+  }
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr10GeneratedDestinationBoundary(stagedPaths) {
+  const stagedPathSet = new Set(stagedPaths)
+  return pr10GeneratedDestinationPaths
+    .filter((path) => stagedPathSet.has(path))
+    .map(
+      (path) =>
+        `PR-10 generated destination must not be staged before generation ${path}`,
+    )
+}
+
+export function verifyPr10HistoricalFixtureRepair(root = repositoryRoot) {
+  const errors = []
+  let baseSource
+  try {
+    baseSource = readRepositoryPathAtCommit(
+      root,
+      pr10ContractBase,
+      pr10Pr06FixtureRepair.path,
+    ).toString("utf8")
+  } catch {
+    return ["PR-10 historical PR-06 fixture base is unavailable"]
+  }
+  const absolutePath = resolve(root, pr10Pr06FixtureRepair.path)
+  if (!isRegularFile(absolutePath)) {
+    return [
+      `PR-10 historical fixture repair is missing ${pr10Pr06FixtureRepair.path}`,
+    ]
+  }
+  const currentSource = readFileSync(absolutePath, "utf8")
+  if (sha256(baseSource) !== pr10Pr06FixtureRepair.baseSha256) {
+    errors.push("PR-10 historical PR-06 fixture base fingerprint changed")
+  }
+  const occurrences =
+    baseSource.split(pr10Pr06FixtureRepair.removedFragment).length - 1
+  if (occurrences !== 1) {
+    errors.push("PR-10 historical PR-06 expiry repair hunk is not unique")
+  } else if (
+    baseSource.replace(
+      pr10Pr06FixtureRepair.removedFragment,
+      pr10Pr06FixtureRepair.replacementFragment,
+    ) !== currentSource
+  ) {
+    errors.push(
+      "PR-10 PR-06 fixture repair differs from the exact reviewed replacement",
+    )
+  }
+  return errors.sort()
 }
 
 export function buildExactClosureOperationPolicy(baseRoutes, currentRoutes) {
@@ -7716,7 +8599,7 @@ export function verifyPr03TargetState({
   currentRoutes,
 }) {
   if (
-    ["PR-04", "PR-05", "PR-06", "PR-07", "PR-08", "PR-09"].includes(
+    ["PR-04", "PR-05", "PR-06", "PR-07", "PR-08", "PR-09", "PR-10"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
     )
   ) {
@@ -7800,7 +8683,7 @@ export function verifyPr04TargetState({
   paths = listCandidatePaths(root),
 }) {
   if (
-    ["PR-05", "PR-06", "PR-07", "PR-08", "PR-09"].includes(
+    ["PR-05", "PR-06", "PR-07", "PR-08", "PR-09", "PR-10"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
     )
   ) {
@@ -8025,7 +8908,7 @@ export function verifyPr05TargetState({
   paths = listCandidatePaths(root),
 }) {
   if (
-    ["PR-06", "PR-07", "PR-08", "PR-09"].includes(
+    ["PR-06", "PR-07", "PR-08", "PR-09", "PR-10"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
     )
   ) {
@@ -8273,7 +9156,7 @@ export function verifyPr06TargetState({
   paths = listCandidatePaths(root),
 }) {
   if (
-    ["PR-07", "PR-08", "PR-09"].includes(
+    ["PR-07", "PR-08", "PR-09", "PR-10"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
     )
   ) {
@@ -8504,7 +9387,11 @@ export function verifyPr07TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
-  if (["PR-08", "PR-09"].includes(currentRoutes.reviewedRevisions?.at(-1)?.id)) {
+  if (
+    ["PR-08", "PR-09", "PR-10"].includes(
+      currentRoutes.reviewedRevisions?.at(-1)?.id,
+    )
+  ) {
     return []
   }
   const errors = []
@@ -8844,7 +9731,9 @@ export function verifyPr08TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
-  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-09") {
+  if (
+    ["PR-09", "PR-10"].includes(currentRoutes.reviewedRevisions?.at(-1)?.id)
+  ) {
     return []
   }
   const errors = []
@@ -9056,6 +9945,970 @@ export function verifyPr09FindingTransition(baseEntries, currentEntries) {
   return errors.sort()
 }
 
+export function verifyPr10CandidateContract({
+  root = repositoryRoot,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+  operationPolicy,
+}) {
+  const errors = [
+    ...verifyPr10RetainedRouteContract(baseRoutes, currentRoutes),
+    ...verifyPr10OperationBoundary(operationPolicy ?? {}, {
+      requireComplete: true,
+    }),
+    ...verifyExactClosureChanges(
+      baseRoutes.sourceClosure ?? [],
+      currentRoutes.sourceClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedSourcePaths",
+        changedKey: "changedSourcePaths",
+        deletedKey: "deletedSourcePaths",
+        label: "source closure",
+      },
+      "PR-10",
+    ),
+    ...verifyExactClosureChanges(
+      baseRoutes.repositoryClosure ?? [],
+      currentRoutes.repositoryClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedRepositoryPaths",
+        changedKey: "changedRepositoryPaths",
+        deletedKey: "deletedRepositoryPaths",
+        label: "repository closure",
+      },
+      "PR-10",
+    ),
+    ...verifyPr10TargetState({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths: (currentRoutes.repositoryClosure ?? []).map(({ path }) => path),
+    }),
+  ]
+  if (
+    JSON.stringify(baseAllowlist.entries ?? []) !==
+    JSON.stringify(currentAllowlist.entries ?? [])
+  ) {
+    errors.push("PR-10 forbidden finding inventory changed")
+  }
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr10RetainedRouteContract(base, current) {
+  const errors = []
+  for (const key of [
+    "baseCommit",
+    "target",
+    "routes",
+    "fastifyRegistrars",
+    "fingerprints",
+    "webInferenceConsumers",
+    "escapeHatches",
+  ]) {
+    if (JSON.stringify(current?.[key]) !== JSON.stringify(base?.[key])) {
+      errors.push(`PR-10 retained route boundary changed ${key}`)
+    }
+  }
+  return errors.sort()
+}
+
+export function verifyPr10TargetState({
+  root = repositoryRoot,
+  currentAllowlist,
+  currentRoutes,
+  paths = listCandidatePaths(root),
+}) {
+  const errors = []
+  const activeRevision = currentRoutes.reviewedRevisions?.at(-1)?.id
+  if (!["PR-09", "PR-10"].includes(activeRevision)) {
+    errors.push(
+      `PR-10 target has invalid active predecessor ${String(activeRevision)}`,
+    )
+  }
+  if ((currentRoutes.routes ?? []).length !== pr10TargetContract.routes) {
+    errors.push(
+      `PR-10 total route count changed expected=${pr10TargetContract.routes} actual=${(currentRoutes.routes ?? []).length}`,
+    )
+  }
+  const classificationCounts = Object.fromEntries(
+    [...routeCountsByClassification(currentRoutes.routes ?? [])].sort(),
+  )
+  if (
+    JSON.stringify(classificationCounts) !==
+    JSON.stringify(pr10TargetContract.routeClassifications)
+  ) {
+    errors.push("PR-10 route classification counts changed")
+  }
+  if (
+    JSON.stringify(currentRoutes.fastifyRegistrars ?? []) !==
+    JSON.stringify(pr10TargetContract.fastifyRegistrars)
+  ) {
+    errors.push("PR-10 Fastify registrar target changed")
+  }
+  if ((currentRoutes.webInferenceConsumers ?? []).length !== 0) {
+    errors.push("PR-10 Web inference consumer count is not zero")
+  }
+  if ((currentRoutes.escapeHatches ?? []).length !== 0) {
+    errors.push("PR-10 mutable legacy escape hatch remains")
+  }
+  if (
+    JSON.stringify(currentRoutes.target) !== JSON.stringify(targetRouteContract)
+  ) {
+    errors.push("PR-10 route target contract changed")
+  }
+  for (const [actual, expected, label] of [
+    [
+      (currentRoutes.routes ?? []).filter(
+        (route) => route.classification === "required-now",
+      ),
+      pr10TargetContract.publicInferenceRoutes,
+      "public inference",
+    ],
+    [
+      (currentRoutes.routes ?? []).filter(
+        (route) => route.classification === "public-t2",
+      ),
+      pr10TargetContract.publicFirecrawlRoutes,
+      "public Firecrawl",
+    ],
+  ]) {
+    actual.sort(compareRoutes)
+    const sortedExpected = structuredClone(expected).sort(compareRoutes)
+    if (JSON.stringify(actual) !== JSON.stringify(sortedExpected)) {
+      errors.push(`PR-10 ${label} route inventory changed`)
+    }
+  }
+  const currentEntries = currentAllowlist.entries ?? []
+  if (
+    currentEntries.length !== 1 ||
+    currentEntries[0]?.ruleId !== "FS105_BUILDER_HUB" ||
+    currentEntries[0]?.path !== "apps/web/src/middleware.test.ts" ||
+    currentEntries[0]?.removeBy !== "PR-12"
+  ) {
+    errors.push("PR-10 remaining finding boundary changed")
+  }
+  for (const path of pr10RequiredFrozenRepositoryPaths) {
+    if (!isRegularFile(resolve(root, path))) {
+      errors.push(`PR-10 frozen repository path is missing ${path}`)
+    }
+  }
+  errors.push(...verifyPr10BaseEvidence(root))
+  errors.push(...verifyPr10HistoricalFixtureRepair(root))
+  errors.push(...verifyPr10SourceBoundary(root, paths))
+  errors.push(
+    ...verifyStandaloneDbTestBoundary(
+      root,
+      paths,
+      pr10StandaloneDbTestBoundary,
+    ),
+  )
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr10SourceBoundary(
+  root = repositoryRoot,
+  paths = listCandidatePaths(root),
+) {
+  const errors = []
+  const read = (path) => {
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-10 source boundary path is missing ${path}`)
+      return ""
+    }
+    return readFileSync(absolutePath, "utf8")
+  }
+  const lifecycleTables = [
+    {
+      schemaSymbol: "lifecycleOperations",
+      tableName: "lifecycle_operations",
+      schemaColumns: [
+        "id",
+        "kind",
+        "state",
+        "actorSubjectId",
+        "correlationId",
+        "snapshotId",
+        "failureCode",
+        "createdAt",
+        "updatedAt",
+        "completedAt",
+      ],
+      migrationColumns: [
+        "id",
+        "kind",
+        "state",
+        "actor_subject_id",
+        "correlation_id",
+        "snapshot_id",
+        "failure_code",
+        "created_at",
+        "updated_at",
+        "completed_at",
+      ],
+    },
+    {
+      schemaSymbol: "lifecycleOperationEvents",
+      tableName: "lifecycle_operation_events",
+      schemaColumns: [
+        "operationId",
+        "sequence",
+        "operationState",
+        "phase",
+        "component",
+        "outcome",
+        "occurredAt",
+        "failureCode",
+      ],
+      migrationColumns: [
+        "operation_id",
+        "sequence",
+        "operation_state",
+        "phase",
+        "component",
+        "outcome",
+        "occurred_at",
+        "failure_code",
+      ],
+    },
+    {
+      schemaSymbol: "lifecycleSnapshotManifests",
+      tableName: "lifecycle_snapshot_manifests",
+      schemaColumns: [
+        "snapshotId",
+        "operationId",
+        "schemaVersion",
+        "manifestSha256",
+        "capturedAt",
+        "contentFree",
+        "workloadContentIncluded",
+        "plaintextSecretsIncluded",
+        "emergencySessionsIncluded",
+        "componentCount",
+      ],
+      migrationColumns: [
+        "snapshot_id",
+        "operation_id",
+        "schema_version",
+        "manifest_sha256",
+        "captured_at",
+        "content_free",
+        "workload_content_included",
+        "plaintext_secrets_included",
+        "emergency_sessions_included",
+        "component_count",
+      ],
+    },
+    {
+      schemaSymbol: "lifecycleSnapshotComponents",
+      tableName: "lifecycle_snapshot_components",
+      schemaColumns: [
+        "snapshotId",
+        "component",
+        "ordinal",
+        "revision",
+        "artifactSha256",
+      ],
+      migrationColumns: [
+        "snapshot_id",
+        "component",
+        "ordinal",
+        "revision",
+        "artifact_sha256",
+      ],
+    },
+  ]
+  const schemaColumns = (source, schemaSymbol, tableName) => {
+    const sourceFile = ts.createSourceFile(
+      "inference-core-schema.ts",
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    )
+    const declarations = []
+    for (const statement of sourceFile.statements) {
+      if (!ts.isVariableStatement(statement)) {
+        continue
+      }
+      for (const declaration of statement.declarationList.declarations) {
+        if (
+          ts.isIdentifier(declaration.name) &&
+          declaration.name.text === schemaSymbol
+        ) {
+          declarations.push(declaration)
+        }
+      }
+    }
+    if (declarations.length !== 1) {
+      errors.push(
+        `PR-10 lifecycle schema symbol is missing or ambiguous ${schemaSymbol}`,
+      )
+      return []
+    }
+    const initializer = declarations[0].initializer
+    if (
+      !initializer ||
+      !ts.isCallExpression(initializer) ||
+      !ts.isStringLiteral(initializer.arguments[0]) ||
+      initializer.arguments[0].text !== tableName ||
+      !ts.isObjectLiteralExpression(initializer.arguments[1])
+    ) {
+      errors.push(
+        `PR-10 lifecycle schema table binding changed ${schemaSymbol}`,
+      )
+      return []
+    }
+    const columns = []
+    for (const property of initializer.arguments[1].properties) {
+      if (
+        !ts.isPropertyAssignment(property) ||
+        (!ts.isIdentifier(property.name) && !ts.isStringLiteral(property.name))
+      ) {
+        errors.push(
+          `PR-10 lifecycle schema column shape changed ${schemaSymbol}`,
+        )
+        return []
+      }
+      columns.push(property.name.text)
+    }
+    return columns
+  }
+  const sqlTableColumns = (source, tableName) => {
+    const marker = `CREATE TABLE admin.${tableName} (`
+    const markerOccurrences = source.split(marker).length - 1
+    if (markerOccurrences !== 1) {
+      errors.push(
+        `PR-10 lifecycle migration table occurrence changed ${tableName}`,
+      )
+    }
+    const markerIndex = source.indexOf(marker)
+    if (markerIndex < 0) {
+      errors.push(`PR-10 lifecycle migration table is missing ${tableName}`)
+      return { body: "", columns: [] }
+    }
+    const bodyStart = markerIndex + marker.length
+    let depth = 1
+    let quoted = false
+    let bodyEnd = -1
+    for (let index = bodyStart; index < source.length; index += 1) {
+      const character = source[index]
+      if (character === "'") {
+        if (quoted && source[index + 1] === "'") {
+          index += 1
+        } else {
+          quoted = !quoted
+        }
+        continue
+      }
+      if (quoted) {
+        continue
+      }
+      if (character === "(") {
+        depth += 1
+      } else if (character === ")") {
+        depth -= 1
+        if (depth === 0) {
+          bodyEnd = index
+          break
+        }
+      }
+    }
+    if (bodyEnd < 0) {
+      errors.push(
+        `PR-10 lifecycle migration table is unterminated ${tableName}`,
+      )
+      return { body: "", columns: [] }
+    }
+    const body = source.slice(bodyStart, bodyEnd)
+    const entries = []
+    let entryStart = 0
+    let nestedDepth = 0
+    quoted = false
+    for (let index = 0; index <= body.length; index += 1) {
+      const character = body[index]
+      if (character === "'") {
+        if (quoted && body[index + 1] === "'") {
+          index += 1
+        } else {
+          quoted = !quoted
+        }
+      } else if (!quoted && character === "(") {
+        nestedDepth += 1
+      } else if (!quoted && character === ")") {
+        nestedDepth -= 1
+      } else if (
+        index === body.length ||
+        (!quoted && nestedDepth === 0 && character === ",")
+      ) {
+        entries.push(body.slice(entryStart, index).trim())
+        entryStart = index + 1
+      }
+    }
+    const columns = []
+    for (const entry of entries) {
+      if (
+        !entry ||
+        /^(?:CONSTRAINT|PRIMARY|UNIQUE|FOREIGN|CHECK)\b/i.test(entry)
+      ) {
+        continue
+      }
+      const match =
+        /^(?:"([A-Za-z_][A-Za-z0-9_]*)"|([A-Za-z_][A-Za-z0-9_]*))(?:\s|$)/.exec(
+          entry,
+        )
+      if (!match) {
+        errors.push(
+          `PR-10 lifecycle migration column shape changed ${tableName}`,
+        )
+        return { body, columns: [] }
+      }
+      columns.push(match[1] ?? match[2])
+    }
+    return { body, columns }
+  }
+  const stripSqlComments = (source) => {
+    let stripped = source
+    let previous
+    do {
+      previous = stripped
+      stripped = stripped.replace(/\/\*(?:(?!\/\*|\*\/)[\s\S])*?\*\//g, " ")
+    } while (stripped !== previous)
+    return stripped.replace(/--[^\r\n]*(?:\r?\n|$)/g, "\n")
+  }
+
+  const contractSource = read(
+    "packages/contracts/src/inference-core-lifecycle.ts",
+  )
+  const clientSource = read("apps/bff/src/db/inference-core-client.ts")
+  const adapterSource = read(
+    "apps/bff/src/services/lifecycle-component-adapters.ts",
+  )
+  const journalSource = read(
+    "apps/bff/src/services/lifecycle-operation-journal.ts",
+  )
+  const orchestrationSource = read(
+    "apps/bff/src/services/lifecycle-orchestration.ts",
+  )
+  const manifestSource = read(
+    "apps/bff/src/services/lifecycle-snapshot-manifest.ts",
+  )
+  const schemaSource = read("apps/bff/src/db/inference-core-schema.ts")
+  const migrationSource = read("infra/migrations/0000_inference_core.sql")
+  const packageSource = read("package.json")
+  const contractIndexSource = read("packages/contracts/src/index.ts")
+  const orchestrationTest = read(
+    "apps/bff/src/services/lifecycle-orchestration.test.ts",
+  )
+
+  const expectedLifecycleTableNames = lifecycleTables.map(
+    ({ tableName }) => tableName,
+  )
+  const schemaLifecycleTableNames = [
+    ...schemaSource.matchAll(/\badmin\.table\(\s*"(lifecycle_[A-Za-z0-9_]*)"/g),
+  ].map((match) => match[1])
+  if (
+    JSON.stringify(schemaLifecycleTableNames) !==
+    JSON.stringify(expectedLifecycleTableNames)
+  ) {
+    errors.push("PR-10 lifecycle schema table inventory changed")
+  }
+  const migrationLifecycleTableNames = [
+    ...migrationSource.matchAll(
+      /\bCREATE\s+TABLE\s+admin\.(lifecycle_[A-Za-z0-9_]*)\s*\(/gi,
+    ),
+  ].map((match) => match[1])
+  if (
+    JSON.stringify(migrationLifecycleTableNames) !==
+    JSON.stringify(expectedLifecycleTableNames)
+  ) {
+    errors.push("PR-10 lifecycle migration table inventory changed")
+  }
+  if (/\bALTER\s+TABLE\s+admin\.lifecycle_/i.test(migrationSource)) {
+    errors.push("PR-10 lifecycle migration alteration is forbidden")
+  }
+
+  const lifecyclePersistenceSections = []
+  for (const table of lifecycleTables) {
+    const actualSchemaColumns = schemaColumns(
+      schemaSource,
+      table.schemaSymbol,
+      table.tableName,
+    )
+    if (
+      JSON.stringify(actualSchemaColumns) !==
+      JSON.stringify(table.schemaColumns)
+    ) {
+      errors.push(`PR-10 lifecycle schema columns changed ${table.tableName}`)
+    }
+    const migrationTable = sqlTableColumns(migrationSource, table.tableName)
+    lifecyclePersistenceSections.push(migrationTable.body)
+    if (
+      JSON.stringify(migrationTable.columns) !==
+      JSON.stringify(table.migrationColumns)
+    ) {
+      errors.push(
+        `PR-10 lifecycle migration columns changed ${table.tableName}`,
+      )
+    }
+  }
+
+  for (const component of pr10LifecycleComponents) {
+    for (const [label, source] of [
+      ["contract", contractSource],
+      ["schema", schemaSource],
+      ["migration", migrationSource],
+      ["adapter", adapterSource],
+    ]) {
+      if (!source.includes(component)) {
+        errors.push(`PR-10 ${label} component boundary is missing ${component}`)
+      }
+    }
+  }
+  for (const fingerprint of [
+    "contentFree: z.literal(true)",
+    "workloadContentIncluded: z.literal(false)",
+    "plaintextSecretsIncluded: z.literal(false)",
+    "emergencySessionsIncluded: z.literal(false)",
+    "lifecycleSnapshotComponentsSchema = z.tuple",
+  ]) {
+    if (!contractSource.includes(fingerprint)) {
+      errors.push(`PR-10 lifecycle contract is missing ${fingerprint}`)
+    }
+  }
+  for (const table of [
+    "lifecycle_operations",
+    "lifecycle_operation_events",
+    "lifecycle_snapshot_manifests",
+    "lifecycle_snapshot_components",
+  ]) {
+    if (
+      !schemaSource.includes(`\"${table}\"`) ||
+      !migrationSource.includes(table)
+    ) {
+      errors.push(`PR-10 lifecycle persistence is missing ${table}`)
+    }
+  }
+  for (const fingerprint of [
+    "contentFree: true",
+    "workloadContentIncluded: false",
+    "plaintextSecretsIncluded: false",
+    "emergencySessionsIncluded: false",
+    "timingSafeEqual",
+    "JSON.stringify(canonical)",
+  ]) {
+    if (!manifestSource.includes(fingerprint)) {
+      errors.push(
+        `PR-10 deterministic manifest boundary is missing ${fingerprint}`,
+      )
+    }
+  }
+  for (const fingerprint of [
+    "activeStateMutated: false",
+    'rollbackCapability: "established"',
+    "drivers: LifecycleComponentDriverMap",
+    "deployment configuration stay outside this source boundary",
+  ]) {
+    if (!adapterSource.includes(fingerprint)) {
+      errors.push(`PR-10 deferred adapter boundary is missing ${fingerprint}`)
+    }
+  }
+  for (const fingerprint of [
+    "Live cross-service atomicity",
+    "is deliberately not claimed",
+    "prepareRestore(capture, context)",
+    "openEmergencySessionActivationFence(context)",
+    "resetEmergencySessions(context)",
+    "verifyCredentialConsistency",
+    "rollbackRestore(preparation, context)",
+    "for (const adapter of [...this.adapters].reverse())",
+    "const resumedSet = new Set(resumed)",
+    "() => adapter.resume(context)",
+    "onAttempted?.()",
+    "Compensation was not durably admitted",
+    "The reopened fence stays held until explicit recovery clears the gap.",
+  ]) {
+    if (!orchestrationSource.includes(fingerprint)) {
+      errors.push(`PR-10 orchestration boundary is missing ${fingerprint}`)
+    }
+  }
+  for (const fingerprint of [
+    "recovery_required",
+    "FOR UPDATE",
+    "onConflictDoNothing",
+    "nextEventSequence",
+    "verifyLifecycleSnapshotManifestDigest",
+  ]) {
+    if (!journalSource.includes(fingerprint)) {
+      errors.push(`PR-10 operation journal boundary is missing ${fingerprint}`)
+    }
+  }
+  for (const fingerprint of [
+    "prepare_restore:${component}",
+    "reset_emergency_sessions",
+    "rollback_restore:litellm",
+    "credentials:inconsistent",
+    'status: "recovery_required"',
+    "discards earlier staged preparations in reverse when a later preparation fails",
+    "re-quiesces resumed components before compensating a failed success journal transition",
+    "keeps quiescence and the activation fence when rollback admission fails",
+  ]) {
+    if (!orchestrationTest.includes(fingerprint)) {
+      errors.push(`PR-10 orchestration evidence is missing ${fingerprint}`)
+    }
+  }
+
+  const schemaLifecycleStart = schemaSource.indexOf(
+    "export const lifecycleOperations",
+  )
+  if (schemaLifecycleStart < 0) {
+    errors.push("PR-10 lifecycle schema section marker is missing")
+  }
+  const migrationLifecycleStart = migrationSource.indexOf(
+    "CREATE TABLE admin.lifecycle_operations",
+  )
+  const migrationLifecycleEnd = migrationSource.indexOf(
+    "INSERT INTO admin.console_settings",
+    migrationLifecycleStart,
+  )
+  if (
+    migrationLifecycleStart < 0 ||
+    migrationLifecycleEnd <= migrationLifecycleStart
+  ) {
+    errors.push("PR-10 lifecycle migration section markers changed")
+  } else {
+    const migrationLifecycleSection = migrationSource.slice(
+      migrationLifecycleStart,
+      migrationLifecycleEnd,
+    )
+    if (
+      (migrationLifecycleSection.match(/\bCREATE\s+TABLE\b/gi) ?? []).length !==
+      lifecycleTables.length
+    ) {
+      errors.push("PR-10 lifecycle migration statement inventory changed")
+    }
+    if (
+      /\bALTER\s+TABLE\b/i.test(stripSqlComments(migrationLifecycleSection))
+    ) {
+      errors.push("PR-10 lifecycle migration alteration is forbidden")
+    }
+  }
+  if (schemaLifecycleStart >= 0) {
+    const schemaFile = ts.createSourceFile(
+      "inference-core-schema.ts",
+      schemaSource,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    )
+    const appendedStatements = schemaFile.statements.filter(
+      (statement) => statement.getStart(schemaFile) >= schemaLifecycleStart,
+    )
+    const appendedSymbols = appendedStatements.flatMap((statement) =>
+      ts.isVariableStatement(statement)
+        ? statement.declarationList.declarations
+            .map((declaration) =>
+              ts.isIdentifier(declaration.name) ? declaration.name.text : null,
+            )
+            .filter(Boolean)
+        : [],
+    )
+    if (
+      appendedStatements.length !== lifecycleTables.length ||
+      JSON.stringify(appendedSymbols) !==
+        JSON.stringify(lifecycleTables.map(({ schemaSymbol }) => schemaSymbol))
+    ) {
+      errors.push("PR-10 lifecycle schema statement inventory changed")
+    }
+  }
+  try {
+    const baseSchemaSource = readRepositoryPathAtCommit(
+      root,
+      pr10ContractBase,
+      "apps/bff/src/db/inference-core-schema.ts",
+    ).toString("utf8")
+    if (
+      schemaLifecycleStart >= 0 &&
+      schemaSource.slice(0, schemaLifecycleStart) !== `${baseSchemaSource}\n`
+    ) {
+      errors.push(
+        "PR-10 predecessor schema bytes changed outside the lifecycle append",
+      )
+    }
+
+    const baseMigrationSource = readRepositoryPathAtCommit(
+      root,
+      pr10ContractBase,
+      "infra/migrations/0000_inference_core.sql",
+    ).toString("utf8")
+    if (
+      migrationLifecycleStart >= 0 &&
+      migrationLifecycleEnd > migrationLifecycleStart &&
+      `${migrationSource.slice(0, migrationLifecycleStart)}${migrationSource.slice(
+        migrationLifecycleEnd,
+      )}` !== baseMigrationSource
+    ) {
+      errors.push(
+        "PR-10 predecessor migration bytes changed outside the lifecycle append",
+      )
+    }
+  } catch {
+    errors.push("PR-10 predecessor persistence base is unavailable")
+  }
+  const lifecyclePersistence = `${
+    schemaLifecycleStart < 0 ? "" : schemaSource.slice(schemaLifecycleStart)
+  }\n${
+    migrationLifecycleStart < 0 ||
+    migrationLifecycleEnd <= migrationLifecycleStart
+      ? lifecyclePersistenceSections.join("\n")
+      : migrationSource.slice(migrationLifecycleStart, migrationLifecycleEnd)
+  }`
+  if (
+    /(?:prompt|completion|request[_-]?body|response[_-]?body|request[_-]?headers?|response[_-]?headers?|tool[_-]?arguments?|tool[_-]?results?|search[_-]?terms?|\burls?\b|page[_-]?content|artifact[_-]?bytes|raw[_-]?errors?|stack[_-]?traces?|endpoint|hostname|destination)/i.test(
+      lifecyclePersistence,
+    )
+  ) {
+    errors.push("PR-10 lifecycle persistence contains forbidden content fields")
+  }
+
+  const productionSources = new Map([
+    ["apps/bff/src/db/inference-core-client.ts", clientSource],
+    ["apps/bff/src/db/inference-core-schema.ts", schemaSource],
+    ["apps/bff/src/services/lifecycle-component-adapters.ts", adapterSource],
+    ["apps/bff/src/services/lifecycle-operation-journal.ts", journalSource],
+    ["apps/bff/src/services/lifecycle-orchestration.ts", orchestrationSource],
+    ["apps/bff/src/services/lifecycle-snapshot-manifest.ts", manifestSource],
+    ["package.json", packageSource],
+    ["packages/contracts/src/index.ts", contractIndexSource],
+    ["packages/contracts/src/inference-core-lifecycle.ts", contractSource],
+  ])
+  if (
+    JSON.stringify([...productionSources.keys()].sort()) !==
+    JSON.stringify(pr10ProductionSourcePaths)
+  ) {
+    errors.push("PR-10 production source inventory changed")
+  }
+
+  const forbiddenRuntimeBinding =
+    /process\s*(?:\.\s*env|\[\s*["']env["']\s*\])|Bun\s*\.\s*env|Deno\s*\.\s*env|https?:\/\/|\bfetch\s*\(|\baxios\b|\bundici\b|\bFunction\s*\(|\beval\s*\(|\bimport\s*\(|\brequire\s*\(|node:(?:child_process|net|tls|http|https|fs)(?:\/|["'])|from\s+["'](?:child_process|net|tls|http|https|fs)(?:\/[^"']*)?["']/i
+  const runtimeBindingLines = (source) =>
+    source
+      .replaceAll("\r\n", "\n")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => forbiddenRuntimeBinding.test(line))
+      .sort()
+  const runtimeGlobalIdentifiers = new Set([
+    "Bun",
+    "Deno",
+    "EventSource",
+    "Function",
+    "WebSocket",
+    "XMLHttpRequest",
+    "axios",
+    "eval",
+    "fetch",
+    "globalThis",
+    "process",
+    "require",
+    "undici",
+  ])
+  const runtimeModulePattern =
+    /^(?:node:)?(?:child_process|net|tls|http|https|fs)(?:\/|$)/
+  const astRuntimeBindings = (path, source) => {
+    if (!path.endsWith(".ts")) {
+      return []
+    }
+    const sourceFile = ts.createSourceFile(
+      path,
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    )
+    const findings = []
+    const visit = (node) => {
+      if (ts.isIdentifier(node) && runtimeGlobalIdentifiers.has(node.text)) {
+        findings.push(`identifier:${node.text}`)
+      } else if (
+        (ts.isStringLiteral(node) ||
+          ts.isNoSubstitutionTemplateLiteral(node)) &&
+        (/^https?:\/\//i.test(node.text) ||
+          runtimeModulePattern.test(node.text))
+      ) {
+        findings.push(`string:${node.text}`)
+      } else if (node.kind === ts.SyntaxKind.ImportKeyword) {
+        findings.push("dynamic-import")
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sourceFile)
+    return findings.sort()
+  }
+  const importSignatures = (path, source) => {
+    const sourceFile = ts.createSourceFile(
+      path,
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    )
+    return sourceFile.statements
+      .filter(
+        (statement) =>
+          ts.isImportDeclaration(statement) &&
+          ts.isStringLiteral(statement.moduleSpecifier),
+      )
+      .map((statement) => {
+        const clause = statement.importClause
+        const namedBindings = clause?.namedBindings
+        return {
+          source: statement.moduleSpecifier.text,
+          typeOnly: clause?.isTypeOnly ?? false,
+          default: clause?.name?.text ?? null,
+          namespace:
+            namedBindings && ts.isNamespaceImport(namedBindings)
+              ? namedBindings.name.text
+              : null,
+          named:
+            namedBindings && ts.isNamedImports(namedBindings)
+              ? namedBindings.elements.map((specifier) => ({
+                  imported: specifier.propertyName?.text ?? specifier.name.text,
+                  local: specifier.name.text,
+                  typeOnly: specifier.isTypeOnly,
+                }))
+              : [],
+        }
+      })
+  }
+  const expectedAddedImportDigests = new Map([
+    [
+      "apps/bff/src/services/lifecycle-component-adapters.ts",
+      "93e9dbfcd48be175d38760561ea3e2b23a805d55b22d4f629252c607ef68bde7",
+    ],
+    [
+      "apps/bff/src/services/lifecycle-operation-journal.ts",
+      "e8688bbb9fbafd79a67940eb887e43720cceddf9228e4503a0cf304eae42a876",
+    ],
+    [
+      "apps/bff/src/services/lifecycle-orchestration.ts",
+      "14c0ba5ea3448399d48aef2cbd63e8937f0f01c6d83331e28989dffd12ecfd0f",
+    ],
+    [
+      "apps/bff/src/services/lifecycle-snapshot-manifest.ts",
+      "739aca8b9ea8aed3855a12dbc3f388022ce610d9edf5ae986fc23bc24c5df1e4",
+    ],
+    [
+      "packages/contracts/src/inference-core-lifecycle.ts",
+      "5ca59deca81e0ad823647126c727a8f4fbb3607fd213e0fbe783dd1ea5e52152",
+    ],
+  ])
+  const changedProductionPaths = new Set(
+    pr10ExpectedOperationPolicy.changedSourcePaths,
+  )
+  const baseProductionSources = new Map()
+  for (const [path, source] of productionSources) {
+    let baseSource = ""
+    if (changedProductionPaths.has(path)) {
+      try {
+        baseSource = readRepositoryPathAtCommit(
+          root,
+          pr10ContractBase,
+          path,
+        ).toString("utf8")
+      } catch {
+        errors.push(`PR-10 runtime binding base is unavailable ${path}`)
+        continue
+      }
+      baseProductionSources.set(path, baseSource)
+    }
+    if (
+      JSON.stringify({
+        ast: astRuntimeBindings(path, source),
+        lines: runtimeBindingLines(source),
+      }) !==
+      JSON.stringify({
+        ast: astRuntimeBindings(path, baseSource),
+        lines: runtimeBindingLines(baseSource),
+      })
+    ) {
+      errors.push(
+        `PR-10 lifecycle foundation contains a concrete runtime binding change ${path}`,
+      )
+    }
+  }
+
+  for (const [path, source] of productionSources) {
+    if (!path.endsWith(".ts")) {
+      continue
+    }
+    const actualImportDigest = sha256(
+      JSON.stringify(importSignatures(path, source)),
+    )
+    const expectedImportDigest = changedProductionPaths.has(path)
+      ? sha256(
+          JSON.stringify(
+            importSignatures(path, baseProductionSources.get(path) ?? ""),
+          ),
+        )
+      : expectedAddedImportDigests.get(path)
+    if (!expectedImportDigest || actualImportDigest !== expectedImportDigest) {
+      errors.push(`PR-10 lifecycle import binding boundary changed ${path}`)
+    }
+  }
+
+  const productionCallSites = paths.filter(
+    (path) =>
+      path.startsWith("apps/bff/src/") &&
+      path.endsWith(".ts") &&
+      !path.endsWith(".test.ts") &&
+      path !== "apps/bff/src/services/lifecycle-component-adapters.ts",
+  )
+  for (const path of productionCallSites) {
+    const source = read(path)
+    const sourceFile = ts.createSourceFile(
+      path,
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    )
+    const valueAdapterImport = sourceFile.statements.some(
+      (statement) =>
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        statement.moduleSpecifier.text.endsWith(
+          "/lifecycle-component-adapters",
+        ) &&
+        statement.importClause?.isTypeOnly !== true,
+    )
+    if (valueAdapterImport) {
+      errors.push(`PR-10 runtime adapter value import is forbidden ${path}`)
+    }
+    if (/\bcreateLifecycleComponentAdapters\s*\(/.test(source)) {
+      errors.push(`PR-10 runtime adapter configured outside tests ${path}`)
+    }
+  }
+  const routeLifecyclePaths = (paths ?? []).filter(
+    (path) =>
+      /(?:^|\/)routes\//.test(path) &&
+      /lifecycle|snapshot|restore/.test(path) &&
+      !path.endsWith(".test.ts"),
+  )
+  if (routeLifecyclePaths.length > 0) {
+    errors.push(
+      `PR-10 lifecycle route path is forbidden ${routeLifecyclePaths.join(",")}`,
+    )
+  }
+
+  errors.push(...verifyPr09SourceBoundary(root))
+  return [...new Set(errors)].sort()
+}
+
 export function verifyPr09CandidateContract({
   root = repositoryRoot,
   baseAllowlist,
@@ -9198,6 +11051,9 @@ export function verifyPr09TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-10") {
+    return []
+  }
   const errors = []
   if (
     (currentRoutes.routes ?? []).some(
@@ -9238,7 +11094,9 @@ export function verifyPr09TargetState({
   if ((currentRoutes.escapeHatches ?? []).length !== 0) {
     errors.push("PR-09 mutable legacy escape hatch remains")
   }
-  if (JSON.stringify(currentRoutes.target) !== JSON.stringify(targetRouteContract)) {
+  if (
+    JSON.stringify(currentRoutes.target) !== JSON.stringify(targetRouteContract)
+  ) {
     errors.push("PR-09 route target contract changed")
   }
 
@@ -9399,7 +11257,9 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
     ) ||
     /\btarget(?:Type|Id)\b|target_(?:type|id)\b/.test(exportSource)
   ) {
-    errors.push("PR-09 raw source or generic target metadata is persisted or exported")
+    errors.push(
+      "PR-09 raw source or generic target metadata is persisted or exported",
+    )
   }
   for (const fingerprint of [
     "eventId: canonicalNativeEventId(event.eventId)",
@@ -9410,7 +11270,9 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
     "Native audit eventId must be a canonical deterministic UUID.",
   ]) {
     if (!ingestionSource.includes(fingerprint)) {
-      errors.push(`PR-09 native event identity boundary is missing ${fingerprint}`)
+      errors.push(
+        `PR-09 native event identity boundary is missing ${fingerprint}`,
+      )
     }
   }
   for (const fingerprint of [
@@ -9461,7 +11323,9 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
     (auditSchema.match(/!~ '\^\(sk\[-_\]/g) ?? []).length !== 3 ||
     (auditMigration.match(/!~ '\^\(sk\[-_\]/g) ?? []).length !== 3
   ) {
-    errors.push("PR-09 provider-token-shaped native identifier boundary changed")
+    errors.push(
+      "PR-09 provider-token-shaped native identifier boundary changed",
+    )
   }
 
   const signingSource = read("apps/bff/src/services/audit-export-signing.ts")
@@ -9482,7 +11346,9 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
     ) ||
     /(?:BEGIN (?:EC |RSA )?PRIVATE KEY|PRIVATE_KEY\s*=)/.test(signingSource)
   ) {
-    errors.push("PR-09 audit private key material may not come from source or env")
+    errors.push(
+      "PR-09 audit private key material may not come from source or env",
+    )
   }
   if (
     /\bsourceEventId\b|\bsource_event_id\b|\btargetType\b|\btargetId\b|\btarget_type\b|\btarget_id\b/.test(
@@ -9544,14 +11410,15 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
     errors.push("PR-09 queue-depth emitter boundary changed")
   }
 
-  const alertmanagerSource = read(
-    "apps/bff/src/services/admin-alertmanager.ts",
-  )
+  const alertmanagerSource = read("apps/bff/src/services/admin-alertmanager.ts")
   const expectedAlerts = pr09ReviewedDispositions.observability.alerts
   const actualAlertNames = [
     ...new Set(alertmanagerSource.match(/LLMM[A-Za-z]+/g) ?? []),
   ].sort()
-  if (JSON.stringify(actualAlertNames) !== JSON.stringify([...expectedAlerts].sort())) {
+  if (
+    JSON.stringify(actualAlertNames) !==
+    JSON.stringify([...expectedAlerts].sort())
+  ) {
     errors.push("PR-09 Alertmanager alert-name allowlist changed")
   }
 
@@ -9604,7 +11471,9 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
   }
 
   const grafanaSource = read("infra/observability/grafana/grafana.ini")
-  const observabilityValidator = read("infra/observability/validate-profile.mjs")
+  const observabilityValidator = read(
+    "infra/observability/validate-profile.mjs",
+  )
   const exactGrafanaRoleExpression =
     "contains(realm_access.roles[*], 'admin') && !contains(realm_access.roles[*], 'operator') && 'Editor' || contains(realm_access.roles[*], 'operator') && !contains(realm_access.roles[*], 'admin') && 'Viewer'"
   if (
@@ -9662,7 +11531,9 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
     "runtimeQualified: z.literal(false)",
   ]) {
     if (!egressContracts.includes(fingerprint)) {
-      errors.push(`PR-09 redacted alert-egress contract is missing ${fingerprint}`)
+      errors.push(
+        `PR-09 redacted alert-egress contract is missing ${fingerprint}`,
+      )
     }
   }
   for (const fingerprint of [
@@ -9677,9 +11548,7 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
     }
   }
   if (
-    !adminRoutes.includes(
-      'withCapability("console.operational.view")',
-    ) ||
+    !adminRoutes.includes('withCapability("console.operational.view")') ||
     !adminRoutes.includes(
       'reviewedAdminOnly("POST /api/admin/observability/alert-egress")',
     )
@@ -9694,7 +11563,9 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
       schemaAndMigration,
     )
   ) {
-    errors.push("PR-09 alert-egress persistence contains destination or secret fields")
+    errors.push(
+      "PR-09 alert-egress persistence contains destination or secret fields",
+    )
   }
   for (const field of pr09ReviewedDispositions.alertEgress
     .dedicatedUpdaterFields) {
@@ -9710,7 +11581,9 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
     ) ||
     !adminRoutes.includes("await completeIdempotency(")
   ) {
-    errors.push("PR-09 alert-egress state, audit, and receipt atomicity changed")
+    errors.push(
+      "PR-09 alert-egress state, audit, and receipt atomicity changed",
+    )
   }
 
   const retentionSource = read(
@@ -9732,9 +11605,7 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
   return [...new Set(errors)].sort()
 }
 
-export function verifyReviewedPr09SourceFingerprints(
-  root = repositoryRoot,
-) {
+export function verifyReviewedPr09SourceFingerprints(root = repositoryRoot) {
   const errors = []
   const parsedFiles = new Map()
 
@@ -9805,10 +11676,25 @@ export function verifyReviewedPr09NativeIdentifierEvidence(
   for (const expected of reviewedPr09NativeIdentifierEvidence) {
     const absolutePath = resolve(root, expected.path)
     if (!isRegularFile(absolutePath)) {
-      errors.push(`PR-09 native identifier evidence is missing ${expected.path}`)
+      errors.push(
+        `PR-09 native identifier evidence is missing ${expected.path}`,
+      )
       continue
     }
-    const actualSha256 = sha256(readFileSync(absolutePath))
+    let evidenceBytes
+    try {
+      evidenceBytes =
+        isRegularFile(resolve(root, pr10DecisionPath)) &&
+        pr10Pr09HistoricalNativeEvidencePaths.has(expected.path)
+          ? readRepositoryPathAtCommit(root, pr10ContractBase, expected.path)
+          : readFileSync(absolutePath)
+    } catch {
+      errors.push(
+        `PR-09 successor-historical evidence is unavailable ${expected.path}`,
+      )
+      continue
+    }
+    const actualSha256 = sha256(evidenceBytes)
     if (actualSha256 !== expected.sha256) {
       errors.push(
         `PR-09 native identifier evidence changed ${expected.path} expected=${expected.sha256} actual=${actualSha256}`,
@@ -10159,6 +12045,7 @@ function buildReviewedRevisionFingerprints(root) {
     { id: "PR-07", path: pr07ContractRevisionPath },
     { id: "PR-08", path: pr08ContractRevisionPath },
     { id: "PR-09", path: pr09ContractRevisionPath },
+    { id: "PR-10", path: pr10ContractRevisionPath },
   ]) {
     if (!isRegularFile(resolve(root, path))) {
       missingRevision ??= id
@@ -10191,7 +12078,9 @@ function buildRevisionEvidenceFingerprints(
     if (historicalCommit) {
       return {
         path,
-        sha256: sha256(readRepositoryPathAtCommit(root, historicalCommit, path)),
+        sha256: sha256(
+          readRepositoryPathAtCommit(root, historicalCommit, path),
+        ),
       }
     }
     const absolutePath = resolve(root, path)
@@ -10292,7 +12181,7 @@ export function verifyCorePackageClosure(
       "node scripts/inference-core/run-core-command.mjs build",
     "check:inference-core":
       "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr09ContractBase}`,
+    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr10ContractBase}`,
     "contract:inference-core:pr07:policy":
       "node scripts/inference-core/pr07-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr07:write":
@@ -10301,6 +12190,10 @@ export function verifyCorePackageClosure(
       "node scripts/inference-core/pr09-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr09:write":
       "node scripts/inference-core/pr09-contract-revision.mjs --write",
+    "contract:inference-core:pr10:policy":
+      "node scripts/inference-core/pr10-contract-revision.mjs --print-operation-policy",
+    "contract:inference-core:pr10:write":
+      "node scripts/inference-core/pr10-contract-revision.mjs --write",
     "test:inference-core-authorization":
       "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match exec vitest run src/inference-core-authorization.test.ts",
     "test:inference-core-characterization":
@@ -10911,12 +12804,10 @@ function assertReviewedBuildServerDefinition(path, sourceFile) {
       "Reviewed buildServer definition changed",
     )
   }
-  const importedNames = new Set(
-    [
-      ...reviewedFastifyRegistrarSpecs.map(({ exportName }) => exportName),
-      "observabilityMetricsRouteOptionsFromRuntime",
-    ],
-  )
+  const importedNames = new Set([
+    ...reviewedFastifyRegistrarSpecs.map(({ exportName }) => exportName),
+    "observabilityMetricsRouteOptionsFromRuntime",
+  ])
   const visit = (node) => {
     if (
       ts.isIdentifier(node) &&
@@ -13463,7 +15354,7 @@ function forbiddenPolicyDigest() {
   )
 }
 
-function routePolicyDigest() {
+function routePolicyDigest(root = repositoryRoot) {
   return sha256(
     JSON.stringify({
       revision: "PR01_ROUTE_POLICY_V1",
@@ -13500,8 +15391,7 @@ function routePolicyDigest() {
           resolverFingerprints: reviewedPr03ResolverFingerprints,
           webAuthenticationEvidence: reviewedPr03WebAuthenticationEvidence,
           webMiddlewareMatcher: reviewedPr03WebMiddlewareMatcher,
-          operationPolicy:
-            readPr03DecisionDocument(repositoryRoot).operationPolicy,
+          operationPolicy: readPr03DecisionDocument(root).operationPolicy,
         },
         {
           id: "PR-04",
@@ -13513,8 +15403,7 @@ function routePolicyDigest() {
           standaloneDbTestBoundary: pr04StandaloneDbTestBoundary,
           webAuthenticationEvidence: reviewedPr04WebAuthenticationEvidence,
           reviewedDispositions: pr04ReviewedDispositions,
-          operationPolicy:
-            readPr04DecisionDocument(repositoryRoot).operationPolicy,
+          operationPolicy: readPr04DecisionDocument(root).operationPolicy,
         },
         {
           id: "PR-05",
@@ -13530,8 +15419,7 @@ function routePolicyDigest() {
           ),
           resolverFingerprints: reviewedPr05ResolverFingerprints,
           webAuthenticationEvidence: reviewedPr05WebAuthenticationEvidence,
-          operationPolicy:
-            readPr05DecisionDocument(repositoryRoot).operationPolicy,
+          operationPolicy: readPr05DecisionDocument(root).operationPolicy,
         },
         {
           id: "PR-06",
@@ -13549,8 +15437,7 @@ function routePolicyDigest() {
           retiredApplicationIdentifiers: pr06RetiredApplicationIdentifiers,
           resolverFingerprints: reviewedPr06ResolverFingerprints,
           webAuthenticationEvidence: reviewedPr05WebAuthenticationEvidence,
-          operationPolicy:
-            readPr06DecisionDocument(repositoryRoot).operationPolicy,
+          operationPolicy: readPr06DecisionDocument(root).operationPolicy,
         },
         {
           id: "PR-07",
@@ -13567,8 +15454,7 @@ function routePolicyDigest() {
           retainedFirecrawlBoundaryPaths: pr07RetainedFirecrawlBoundaryPaths,
           resolverFingerprints: reviewedPr06ResolverFingerprints,
           webAuthenticationEvidence: reviewedPr05WebAuthenticationEvidence,
-          operationPolicy:
-            readPr07DecisionDocument(repositoryRoot).operationPolicy,
+          operationPolicy: readPr07DecisionDocument(root).operationPolicy,
         },
         {
           id: "PR-08",
@@ -13588,8 +15474,7 @@ function routePolicyDigest() {
             ({ source, flags }) => ({ source, flags }),
           ),
           webAuthenticationEvidence: reviewedPr05WebAuthenticationEvidence,
-          operationPolicy:
-            readPr08DecisionDocument(repositoryRoot).operationPolicy,
+          operationPolicy: readPr08DecisionDocument(root).operationPolicy,
         },
         {
           id: "PR-09",
@@ -13608,8 +15493,24 @@ function routePolicyDigest() {
           sourceFingerprints: reviewedPr09SourceFingerprints,
           nativeIdentifierEvidence: reviewedPr09NativeIdentifierEvidence,
           webAuthenticationEvidence: reviewedPr09WebAuthenticationEvidence,
-          operationPolicy:
-            readPr09DecisionDocument(repositoryRoot).operationPolicy,
+          operationPolicy: readPr09DecisionDocument(root).operationPolicy,
+        },
+        {
+          id: "PR-10",
+          contractBase: pr10ContractBase,
+          contractBaseTree: pr10ContractBaseTree,
+          laneAnchor: pr10LaneAnchor,
+          path: pr10ContractRevisionPath,
+          evidencePaths: pr10RevisionEvidencePaths,
+          reviewedDispositions: pr10ReviewedDispositions,
+          target: pr10TargetContract,
+          standaloneDbTestBoundary: pr10StandaloneDbTestBoundary,
+          allowedRepositoryPaths: pr10AllowedRepositoryPaths,
+          expectedOperationPolicy: pr10ExpectedOperationPolicy,
+          productionSourcePaths: pr10ProductionSourcePaths,
+          generatedDestinationPaths: pr10GeneratedDestinationPaths,
+          sourceEvidence: buildPr10SourceEvidence(root),
+          operationPolicy: readPr10DecisionDocument(root).operationPolicy,
         },
       ],
       implementation: [
@@ -13705,6 +15606,9 @@ function routePolicyDigest() {
         verifyIntroducedPr09Revision,
         verifyPr09LaneLineage,
         verifyPr09BaseEvidence,
+        verifyIntroducedPr10Revision,
+        verifyPr10LaneLineage,
+        verifyPr10BaseEvidence,
         verifyRetainedPr02RevisionEvidence,
         verifyRetainedPr03RevisionEvidence,
         verifyRetainedPr04RevisionEvidence,
@@ -13713,6 +15617,7 @@ function routePolicyDigest() {
         verifyRetainedPr07RevisionEvidence,
         verifyRetainedPr08RevisionEvidence,
         verifyRetainedPr09RevisionEvidence,
+        verifyRetainedPr10RevisionEvidence,
         verifyPr02OperationMatrix,
         verifyExactMultisetSubset,
         verifyPr02EscapeHatches,
@@ -13743,6 +15648,12 @@ function routePolicyDigest() {
         readPr09DecisionDocument,
         verifyPr09DecisionDocument,
         verifyPr09OperationBoundary,
+        readPr10DecisionDocument,
+        buildPr10SourceEvidence,
+        verifyPr10DecisionDocument,
+        verifyPr10OperationBoundary,
+        verifyPr10GeneratedDestinationBoundary,
+        verifyPr10HistoricalFixtureRepair,
         buildExactClosureOperationPolicy,
         buildClosurePathOperations,
         verifyPr03FindingTransition,
@@ -13780,6 +15691,10 @@ function routePolicyDigest() {
         verifyPr09SourceBoundary,
         verifyReviewedPr09SourceFingerprints,
         verifyReviewedPr09NativeIdentifierEvidence,
+        verifyPr10CandidateContract,
+        verifyPr10RetainedRouteContract,
+        verifyPr10TargetState,
+        verifyPr10SourceBoundary,
         routeCountsByClassification,
         verifyReviewedWebAuthenticationEvidence,
         verifyReviewedPr04WebAuthenticationEvidence,
@@ -13912,6 +15827,7 @@ export function verifyBaseCommitLineage(
     pr07ContractBase,
     pr08ContractBase,
     pr09ContractBase,
+    pr10ContractBase,
   ],
 ) {
   const head = currentHead(root)

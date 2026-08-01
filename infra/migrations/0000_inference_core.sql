@@ -1459,6 +1459,376 @@ CREATE TABLE admin.recovery_state (
     )
 );
 
+CREATE TABLE admin.lifecycle_operations (
+  id uuid PRIMARY KEY,
+  kind text NOT NULL,
+  state text NOT NULL DEFAULT 'prepared',
+  actor_subject_id text NOT NULL REFERENCES common.human_identities(subject_id) ON DELETE RESTRICT,
+  correlation_id text NOT NULL,
+  snapshot_id uuid NOT NULL,
+  failure_code text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  completed_at timestamptz,
+  CONSTRAINT lifecycle_operations_kind_check
+    CHECK (kind IN ('snapshot', 'restore')),
+  CONSTRAINT lifecycle_operations_state_check
+    CHECK (
+      state IN (
+        'prepared',
+        'quiescing',
+        'capturing',
+        'validating',
+        'restoring',
+        'verifying',
+        'resuming',
+        'rolling_back',
+        'succeeded',
+        'rolled_back',
+        'failed',
+        'recovery_required'
+      )
+    ),
+  CONSTRAINT lifecycle_operations_failure_code_check
+    CHECK (
+      failure_code IS NULL
+      OR failure_code IN (
+        'adapter_unavailable',
+        'quiesce_failed',
+        'capture_failed',
+        'manifest_invalid',
+        'consistency_mismatch',
+        'restore_failed',
+        'verification_failed',
+        'rollback_failed',
+        'resume_failed',
+        'journal_failed'
+      )
+    ),
+  CONSTRAINT lifecycle_operations_kind_state_check
+    CHECK (
+      (
+        kind = 'snapshot'
+        AND state IN (
+          'prepared',
+          'quiescing',
+          'capturing',
+          'validating',
+          'resuming',
+          'succeeded',
+          'failed',
+          'recovery_required'
+        )
+      ) OR (
+        kind = 'restore'
+        AND state IN (
+          'prepared',
+          'quiescing',
+          'validating',
+          'restoring',
+          'verifying',
+          'resuming',
+          'rolling_back',
+          'succeeded',
+          'rolled_back',
+          'failed',
+          'recovery_required'
+        )
+      )
+    ),
+  CONSTRAINT lifecycle_operations_terminal_check
+    CHECK (
+      (
+        state IN (
+          'prepared',
+          'quiescing',
+          'capturing',
+          'validating',
+          'restoring',
+          'verifying',
+          'resuming'
+        )
+        AND completed_at IS NULL
+        AND failure_code IS NULL
+      ) OR (
+        state = 'rolling_back'
+        AND completed_at IS NULL
+        AND failure_code IS NOT NULL
+      ) OR (
+        state = 'succeeded'
+        AND completed_at IS NOT NULL
+        AND failure_code IS NULL
+      ) OR (
+        state IN ('rolled_back', 'failed', 'recovery_required')
+        AND completed_at IS NOT NULL
+        AND failure_code IS NOT NULL
+      )
+    ),
+  CONSTRAINT lifecycle_operations_correlation_id_check
+    CHECK (char_length(correlation_id) BETWEEN 1 AND 128),
+  CONSTRAINT lifecycle_operations_timestamps_check
+    CHECK (
+      updated_at >= created_at
+      AND (
+        completed_at IS NULL
+        OR (
+          completed_at >= created_at
+          AND completed_at <= updated_at
+        )
+      )
+    )
+);
+
+CREATE UNIQUE INDEX lifecycle_operations_one_active_idx
+  ON admin.lifecycle_operations ((true))
+  WHERE state IN (
+    'prepared',
+    'quiescing',
+    'capturing',
+    'validating',
+    'restoring',
+    'verifying',
+    'resuming',
+    'rolling_back',
+    'recovery_required'
+  );
+
+CREATE UNIQUE INDEX lifecycle_operations_id_snapshot_idx
+  ON admin.lifecycle_operations (id, snapshot_id);
+
+CREATE TABLE admin.lifecycle_operation_events (
+  operation_id uuid NOT NULL REFERENCES admin.lifecycle_operations(id) ON DELETE CASCADE,
+  sequence integer NOT NULL,
+  operation_state text NOT NULL,
+  phase text NOT NULL,
+  component text,
+  outcome text NOT NULL,
+  occurred_at timestamptz NOT NULL DEFAULT now(),
+  failure_code text,
+  CONSTRAINT lifecycle_operation_events_pkey PRIMARY KEY (operation_id, sequence),
+  CONSTRAINT lifecycle_operation_events_sequence_check
+    CHECK (sequence >= 0),
+  CONSTRAINT lifecycle_operation_events_state_check
+    CHECK (
+      operation_state IN (
+        'prepared',
+        'quiescing',
+        'capturing',
+        'validating',
+        'restoring',
+        'verifying',
+        'resuming',
+        'rolling_back',
+        'succeeded',
+        'rolled_back',
+        'failed',
+        'recovery_required'
+      )
+    ),
+  CONSTRAINT lifecycle_operation_events_phase_check
+    CHECK (
+      phase IN (
+        'operation',
+        'quiesce',
+        'capture',
+        'validate',
+        'restore',
+        'verify',
+        'resume',
+        'rollback',
+        'emergency_session_fence',
+        'emergency_session_reset',
+        'credential_consistency',
+        'discard_preparation'
+      )
+    ),
+  CONSTRAINT lifecycle_operation_events_component_check
+    CHECK (
+      component IS NULL
+      OR component IN (
+        'console_database',
+        'keycloak',
+        'litellm',
+        'grafana'
+      )
+    ),
+  CONSTRAINT lifecycle_operation_events_phase_component_check
+    CHECK (
+      (
+        phase IN (
+          'operation',
+          'emergency_session_fence',
+          'emergency_session_reset',
+          'credential_consistency'
+        )
+        AND component IS NULL
+      ) OR (
+        phase IN (
+          'quiesce',
+          'capture',
+          'validate',
+          'restore',
+          'verify',
+          'resume',
+          'rollback',
+          'discard_preparation'
+        )
+        AND component IS NOT NULL
+      )
+    ),
+  CONSTRAINT lifecycle_operation_events_phase_state_check
+    CHECK (
+      (phase = 'operation')
+      OR (
+        phase = 'quiesce'
+        AND operation_state IN ('quiescing', 'rolling_back')
+      )
+      OR (
+        phase = 'capture'
+        AND operation_state = 'capturing'
+      )
+      OR (
+        phase = 'validate'
+        AND operation_state = 'validating'
+      )
+      OR (
+        phase = 'restore'
+        AND operation_state = 'restoring'
+      )
+      OR (
+        phase = 'verify'
+        AND operation_state = 'verifying'
+      )
+      OR (
+        phase = 'resume'
+        AND operation_state = 'resuming'
+      )
+      OR (
+        phase = 'rollback'
+        AND operation_state = 'rolling_back'
+      )
+      OR (
+        phase = 'emergency_session_fence'
+        AND operation_state IN (
+          'quiescing',
+          'resuming',
+          'rolling_back'
+        )
+      )
+      OR (
+        phase = 'emergency_session_reset'
+        AND operation_state IN (
+          'quiescing',
+          'restoring',
+          'resuming',
+          'rolling_back'
+        )
+      )
+      OR (
+        phase = 'credential_consistency'
+        AND operation_state = 'verifying'
+      )
+      OR (
+        phase = 'discard_preparation'
+        AND operation_state IN (
+          'validating',
+          'verifying',
+          'rolling_back'
+        )
+      )
+    ),
+  CONSTRAINT lifecycle_operation_events_outcome_check
+    CHECK (outcome IN ('started', 'succeeded', 'failed')),
+  CONSTRAINT lifecycle_operation_events_failure_code_check
+    CHECK (
+      failure_code IS NULL
+      OR failure_code IN (
+        'adapter_unavailable',
+        'quiesce_failed',
+        'capture_failed',
+        'manifest_invalid',
+        'consistency_mismatch',
+        'restore_failed',
+        'verification_failed',
+        'rollback_failed',
+        'resume_failed',
+        'journal_failed'
+      )
+    ),
+  CONSTRAINT lifecycle_operation_events_outcome_failure_check
+    CHECK (
+      (
+        outcome = 'failed'
+        AND failure_code IS NOT NULL
+      ) OR (
+        outcome IN ('started', 'succeeded')
+        AND failure_code IS NULL
+      )
+    )
+);
+
+CREATE TABLE admin.lifecycle_snapshot_manifests (
+  snapshot_id uuid PRIMARY KEY,
+  operation_id uuid NOT NULL UNIQUE,
+  schema_version integer NOT NULL DEFAULT 1,
+  manifest_sha256 text NOT NULL,
+  captured_at timestamptz NOT NULL,
+  content_free boolean NOT NULL DEFAULT true,
+  workload_content_included boolean NOT NULL DEFAULT false,
+  plaintext_secrets_included boolean NOT NULL DEFAULT false,
+  emergency_sessions_included boolean NOT NULL DEFAULT false,
+  component_count integer NOT NULL DEFAULT 4,
+  CONSTRAINT lifecycle_snapshot_manifests_operation_snapshot_fkey
+    FOREIGN KEY (operation_id, snapshot_id)
+    REFERENCES admin.lifecycle_operations(id, snapshot_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT lifecycle_snapshot_manifests_schema_version_check
+    CHECK (schema_version = 1),
+  CONSTRAINT lifecycle_snapshot_manifests_hash_check
+    CHECK (manifest_sha256 ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT lifecycle_snapshot_manifests_content_boundary_check
+    CHECK (
+      content_free = true
+      AND workload_content_included = false
+      AND plaintext_secrets_included = false
+      AND emergency_sessions_included = false
+    ),
+  CONSTRAINT lifecycle_snapshot_manifests_component_count_check
+    CHECK (component_count = 4)
+);
+
+CREATE TABLE admin.lifecycle_snapshot_components (
+  snapshot_id uuid NOT NULL REFERENCES admin.lifecycle_snapshot_manifests(snapshot_id) ON DELETE CASCADE,
+  component text NOT NULL,
+  ordinal integer NOT NULL,
+  revision text NOT NULL,
+  artifact_sha256 text NOT NULL,
+  CONSTRAINT lifecycle_snapshot_components_pkey PRIMARY KEY (snapshot_id, component),
+  CONSTRAINT lifecycle_snapshot_components_mapping_check
+    CHECK (
+      (
+        component = 'console_database'
+        AND ordinal = 0
+      ) OR (
+        component = 'keycloak'
+        AND ordinal = 1
+      ) OR (
+        component = 'litellm'
+        AND ordinal = 2
+      ) OR (
+        component = 'grafana'
+        AND ordinal = 3
+      )
+    ),
+  CONSTRAINT lifecycle_snapshot_components_revision_check
+    CHECK (revision ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$'),
+  CONSTRAINT lifecycle_snapshot_components_hash_check
+    CHECK (artifact_sha256 ~ '^[0-9a-f]{64}$')
+);
+
+CREATE UNIQUE INDEX lifecycle_snapshot_components_snapshot_ordinal_idx
+  ON admin.lifecycle_snapshot_components (snapshot_id, ordinal);
+
 INSERT INTO admin.console_settings (id) VALUES ('singleton');
 INSERT INTO admin.license_state (id) VALUES ('singleton');
 INSERT INTO admin.update_state (id) VALUES ('singleton');

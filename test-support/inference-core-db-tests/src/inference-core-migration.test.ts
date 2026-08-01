@@ -59,6 +59,10 @@ describe("Inference Core empty-install migration", () => {
         "admin.identity_mutation_journal",
         "admin.identity_mutation_journal_targets",
         "admin.license_state",
+        "admin.lifecycle_operation_events",
+        "admin.lifecycle_operations",
+        "admin.lifecycle_snapshot_components",
+        "admin.lifecycle_snapshot_manifests",
         "admin.recovery_state",
         "admin.update_state",
         "common.audit_events",
@@ -259,6 +263,56 @@ describe("Inference Core empty-install migration", () => {
           "response_payload",
         ]),
       )
+
+      expect(
+        await tableColumns(database, "admin", "lifecycle_operations"),
+      ).toEqual([
+        "actor_subject_id",
+        "completed_at",
+        "correlation_id",
+        "created_at",
+        "failure_code",
+        "id",
+        "kind",
+        "snapshot_id",
+        "state",
+        "updated_at",
+      ])
+      expect(
+        await tableColumns(database, "admin", "lifecycle_operation_events"),
+      ).toEqual([
+        "component",
+        "failure_code",
+        "occurred_at",
+        "operation_id",
+        "operation_state",
+        "outcome",
+        "phase",
+        "sequence",
+      ])
+      expect(
+        await tableColumns(database, "admin", "lifecycle_snapshot_manifests"),
+      ).toEqual([
+        "captured_at",
+        "component_count",
+        "content_free",
+        "emergency_sessions_included",
+        "manifest_sha256",
+        "operation_id",
+        "plaintext_secrets_included",
+        "schema_version",
+        "snapshot_id",
+        "workload_content_included",
+      ])
+      expect(
+        await tableColumns(database, "admin", "lifecycle_snapshot_components"),
+      ).toEqual([
+        "artifact_sha256",
+        "component",
+        "ordinal",
+        "revision",
+        "snapshot_id",
+      ])
 
       const singletonRows = await database.query<{
         relation: string
@@ -529,7 +583,7 @@ describe("Inference Core empty-install migration", () => {
         ),
       ).resolves.toBe(true)
 
-      await client.exec("DROP TABLE admin.identity_mutation_journal_targets")
+      await client.exec("DROP TABLE admin.lifecycle_snapshot_components")
       await expect(
         checkInferenceCoreDbReadiness(
           database as unknown as NonNullable<

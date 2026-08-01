@@ -91,7 +91,11 @@ export async function checkInferenceCoreDbReadiness(
             ('admin.backup_state'),
             ('admin.emergency_recovery_factor'),
             ('admin.emergency_recovery_sessions'),
-            ('admin.recovery_state')
+            ('admin.recovery_state'),
+            ('admin.lifecycle_operations'),
+            ('admin.lifecycle_operation_events'),
+            ('admin.lifecycle_snapshot_manifests'),
+            ('admin.lifecycle_snapshot_components')
         ) AS required(relation_name)
         WHERE to_regclass(relation_name) IS NULL
       `)
