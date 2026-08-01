@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest"
 
 const webSourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const retainedEntryPaths = [
+  "app/activity/page.tsx",
+  "app/api/admin/audit/export/route.ts",
+  "app/api/admin/audit/export/verification-keys/route.ts",
   "app/applications/[[...section]]/page.tsx",
   "app/hardware/page.tsx",
   "app/inference/[[...section]]/page.tsx",
@@ -76,6 +79,7 @@ describe("retained Web inference-core boundaries", () => {
 
   it("routes retained Next pages through the core route owner", () => {
     for (const path of [
+      "../../app/activity/page.tsx",
       "../../app/applications/[[...section]]/page.tsx",
       "../../app/hardware/page.tsx",
       "../../app/inference/[[...section]]/page.tsx",

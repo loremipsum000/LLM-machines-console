@@ -399,7 +399,7 @@ test("offline access is removed through real client-scope and default-role contr
       expectedOfflineToken: false,
       id: "offline-access-not-issued",
       requestedScope: "offline_access",
-      requestingClients: ["console-human-admin", "console-web"],
+      requestingClients: ["console-human-admin", "console-web", "grafana"],
     },
   ])
   assert.deepEqual(artifacts.applicationCommissioning.tokenNegativeTests, [
@@ -576,6 +576,58 @@ test("console-web hardcodes the console-bff audience", () => {
   seed.clients[0].protocolMappers[0].config["included.client.audience"] =
     "realm-management"
   assert.match(validateKeycloakSeed(seed).join("\n"), /seed clients/)
+})
+
+test("Grafana uses credential-free PKCE with an exact retained-role mapper", () => {
+  const grafana = artifacts.seed.clients.find(
+    ({ clientId }) => clientId === "grafana",
+  )
+  assert.equal(grafana.credentialIncluded, false)
+  assert.deepEqual(grafana.flows, ["authorization-code-pkce"])
+  assert.equal(grafana.pkceCodeChallengeMethod, "S256")
+  assert.equal(grafana.serviceAccountsEnabled, false)
+  assert.equal(grafana.fullScopeAllowed, false)
+  assert.deepEqual(grafana.optionalClientScopes, [])
+  assert.deepEqual(grafana.scopeMappings, {
+    realmRoles: ["admin", "operator"],
+  })
+  assert.deepEqual(grafana.runtimeBindings, {
+    redirectUri: "grafana-root-plus-login-generic-oauth",
+    webOrigin: "grafana-root-origin",
+  })
+  assert.equal(
+    grafana.protocolMappers[0].config["claim.name"],
+    "realm_access.roles",
+  )
+  const grafanaAssertions = artifacts.commissioning.phases.find(
+    ({ id }) => id === "commission-bootstrap-admin",
+  ).completionAssertions
+  assert.ok(
+    grafanaAssertions.includes("grafana-dual-retained-role-token-is-denied"),
+  )
+
+  const seed = clone(artifacts.seed)
+  const mutatedGrafana = seed.clients.find(
+    ({ clientId }) => clientId === "grafana",
+  )
+  mutatedGrafana.optionalClientScopes.push("offline_access")
+  mutatedGrafana.scopeMappings.realmRoles.push("realm-admin")
+  assert.match(
+    validateKeycloakSeed(seed).join("\n"),
+    /offline-access policy|seed clients|realm-admin/,
+  )
+
+  const commissioning = clone(artifacts.commissioning)
+  const bootstrap = commissioning.phases.find(
+    ({ id }) => id === "commission-bootstrap-admin",
+  )
+  bootstrap.completionAssertions = bootstrap.completionAssertions.filter(
+    (assertion) => assertion !== "grafana-dual-retained-role-token-is-denied",
+  )
+  assert.match(
+    validateCommissioningPlan(commissioning).join("\n"),
+    /bootstrap Admin commissioning/,
+  )
 })
 
 test("embedded credential fields are rejected without printing their values", () => {

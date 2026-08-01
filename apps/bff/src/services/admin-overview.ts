@@ -77,7 +77,7 @@ export async function getAdminOverview(
         id: "system",
         title: "System",
         summary:
-          "Console audit records retained control-plane activity. Native expert-service audit ingestion remains disabled.",
+          "Console retains metadata-only control-plane audit. Product-owned expert audit ingress is implemented; native expert access remains disabled pending runtime qualification.",
         href: "/activity",
         sourceStatus: "ok",
         updatedAt: generatedAt,

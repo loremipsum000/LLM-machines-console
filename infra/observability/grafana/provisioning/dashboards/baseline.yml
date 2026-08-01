@@ -1,0 +1,14 @@
+apiVersion: 1
+
+providers:
+  - name: llmm-baseline
+    orgId: 1
+    folder: LLM Machines Baseline
+    folderUid: llmm-baseline
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/baseline
+      foldersFromFilesStructure: false

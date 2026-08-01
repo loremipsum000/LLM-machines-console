@@ -2,7 +2,7 @@
   "apiVersion": "inference-core.llm-machines/v1",
   "kind": "LogicalKeycloakCommissioningPlan",
   "metadata": {
-    "changePackage": "PR-06",
+    "changePackage": "PR-09",
     "containsCredentials": false,
     "packagingTarget": "PR-12"
   },
@@ -29,7 +29,13 @@
         "no-Users-map-roles-scope-is-installed",
         "no-Users-reset-password-permission-is-installed",
         "offline_access-is-absent-from-retained-client-optional-scopes",
-        "offline_access-is-absent-from-the-realm-default-role-composite"
+        "offline_access-is-absent-from-the-realm-default-role-composite",
+        "grafana-client-is-confidential-and-credential-free-in-source",
+        "grafana-client-uses-authorization-code-pkce-s256-only",
+        "grafana-client-has-no-service-account-or-direct-grant",
+        "grafana-client-scope-is-limited-to-admin-and-operator",
+        "grafana-client-emits-realm-access-roles-to-id-and-access-tokens",
+        "grafana-client-has-no-offline-scope"
       ],
       "id": "validate-logical-seed",
       "mutationOwner": "packaging-pr12"
@@ -49,7 +55,12 @@
         "CONFIGURE_TOTP-completed",
         "access-token-amr-proves-mfa",
         "access-token-auth_time-is-recent",
-        "scope-offline_access-does-not-yield-an-offline-token"
+        "scope-offline_access-does-not-yield-an-offline-token",
+        "grafana-exact-root-origin-and-callback-were-bound-outside-git",
+        "grafana-admin-token-maps-to-Editor",
+        "grafana-operator-token-maps-to-Viewer",
+        "grafana-unrecognized-role-is-denied",
+        "grafana-dual-retained-role-token-is-denied"
       ],
       "id": "commission-bootstrap-admin",
       "mutationOwner": "commissioning-control-plane",
@@ -82,7 +93,11 @@
         "delegated-admin-can-only-view-Operators-members",
         "delegated-service-non-system-group-scopes-are-active",
         "canonical-groups-are-the-only-role-assignment-path",
-        "operator-has-no-standing-admin-authority"
+        "operator-has-no-standing-admin-authority",
+        "grafana-client-secret-is-stored-outside-git",
+        "grafana-admin-is-not-Grafana-Admin",
+        "grafana-operator-is-read-only",
+        "grafana-native-access-remains-inactive-until-PR-12-admission"
       ],
       "id": "close-commissioning",
       "mutationOwner": "commissioning-control-plane"
@@ -306,7 +321,7 @@
       "expectedOfflineToken": false,
       "id": "offline-access-not-issued",
       "requestedScope": "offline_access",
-      "requestingClients": ["console-human-admin", "console-web"]
+      "requestingClients": ["console-human-admin", "console-web", "grafana"]
     }
   ],
   "recoveryMfaEvidence": {

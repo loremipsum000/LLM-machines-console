@@ -3,7 +3,10 @@ import {
   type EmergencyRecoveryActivationResult,
   type EmergencyRecoveryCommissionResult,
   type EmergencyRecoveryReasonCode,
+  adminAlertEgressResponseSchema,
+  adminAuditExportFormatSchema,
   adminAuditResponseSchema,
+  adminAuditVerificationKeysResponseSchema,
   adminConnectedAppCreateRequestSchema,
   adminConnectedAppCreateResponseSchema,
   adminConnectedAppDeleteRequestSchema,
@@ -45,6 +48,7 @@ import {
   emergencyRecoveryReasonCodeSchema,
   emergencyRecoveryRevocationResultSchema,
   emergencyRecoveryStatusResultSchema,
+  updateAdminAlertEgressRequestSchema,
   updateAdminSettingsOrganizationRequestSchema,
   updateAdminSettingsTelemetryRequestSchema,
   updateAdminTeamGroupRequestSchema,
@@ -53,7 +57,17 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Actor } from "../auth/authorization"
 import { withAdminOnly, withCapability } from "../auth/authorization"
 import { getInferenceCoreDb } from "../db/inference-core-client"
-import { getAdminAuditTimeline } from "../services/admin-audit"
+import {
+  AdminAlertEgressConflictError,
+  AdminAlertEgressUnavailableError,
+  getAdminAlertEgress,
+  updateAdminAlertEgress,
+} from "../services/admin-alert-egress"
+import {
+  AdminAuditFilterError,
+  getAdminAuditTimeline,
+  normalizeAdminAuditFilters,
+} from "../services/admin-audit"
 import {
   createAdminConnectedApp,
   deleteAdminConnectedApp,
@@ -113,6 +127,14 @@ import {
   sendAdminTeamPasswordReset,
   updateAdminTeamGroup,
 } from "../services/admin-team"
+import { InvalidAuditCursorError } from "../services/audit"
+import {
+  AuditExportLimitError,
+  AuditExportRangeError,
+  createSignedAuditExport,
+  getAuditExportVerificationKeys,
+} from "../services/audit-export"
+import { AuditExportSigningUnavailableError } from "../services/audit-export-signing"
 import type { EmergencyRecoveryService } from "../services/emergency-recovery"
 import {
   IdempotencyCompletionError,
@@ -128,6 +150,7 @@ import {
 export const adminOnlyAdminRoutePolicyKeys = [
   "GET /api/admin/recovery/status",
   "POST /api/admin/recovery/factor/commission",
+  "POST /api/admin/observability/alert-egress",
   "POST /api/admin/settings/organization",
   "POST /api/admin/settings/telemetry",
 ] as const
@@ -282,13 +305,132 @@ export function registerAdminRoutes(
   server.get(
     "/api/admin/audit",
     withCapability("console.operational.view"),
-    async (request) =>
-      adminAuditResponseSchema.parse(
-        await getAdminAuditTimeline(
+    async (request, reply) => {
+      try {
+        return adminAuditResponseSchema.parse(
+          await getAdminAuditTimeline(
+            requireActor(request),
+            getAuditQuery(request),
+          ),
+        )
+      } catch (error) {
+        if (
+          error instanceof AdminAuditFilterError ||
+          error instanceof InvalidAuditCursorError
+        ) {
+          return invalidRequest(
+            reply,
+            "Invalid audit filters",
+            "Use bounded audit filters and an unmodified page cursor.",
+          )
+        }
+        throw error
+      }
+    },
+  )
+
+  server.get(
+    "/api/admin/audit/export/verification-keys",
+    withCapability("activity_audit.export"),
+    async (_request, reply) => {
+      try {
+        const keys = adminAuditVerificationKeysResponseSchema.parse(
+          await getAuditExportVerificationKeys(requireActor(_request)),
+        )
+        return reply.type("application/jwk-set+json").send(keys)
+      } catch (error) {
+        if (error instanceof AuditExportSigningUnavailableError) {
+          return auditExportUnavailable(reply)
+        }
+        throw error
+      }
+    },
+  )
+
+  server.get(
+    "/api/admin/audit/export",
+    withCapability("activity_audit.export"),
+    async (request, reply) => {
+      const rawFormat = stringQuery(objectQuery(request), "format")
+      const format = adminAuditExportFormatSchema.safeParse(rawFormat)
+      if (!format.success) {
+        return invalidRequest(
+          reply,
+          "Invalid audit export format",
+          "Audit export format must be json or csv.",
+        )
+      }
+      try {
+        const normalized = normalizeAdminAuditFilters(getAuditQuery(request))
+        const exportWindow = getAuditExportWindow(request)
+        if (!exportWindow) {
+          return invalidRequest(
+            reply,
+            "Invalid audit export filters",
+            "Canonical UTC from and to timestamps are required, with a maximum 365-day range.",
+          )
+        }
+        const requestStartedAt = new Date()
+        const result = await createSignedAuditExport(
           requireActor(request),
-          getAuditQuery(request),
-        ),
-      ),
+          format.data,
+          {
+            applicationId: normalized.applicationId,
+            eventId: normalized.eventId,
+            outcome: normalized.outcome,
+            query: normalized.query,
+            severity: normalized.severity,
+            sourceSystem: normalized.sourceSystem,
+          },
+          {
+            cursor: normalized.cursor,
+            from: exportWindow.from,
+            limit: exportWindow.limit,
+            to: exportWindow.to,
+          },
+          { now: requestStartedAt },
+        )
+        const response = reply
+          .type("application/jose")
+          .header(
+            "content-disposition",
+            `attachment; filename="${result.filename}"`,
+          )
+          .header("x-llm-machines-audit-content-type", result.contentType)
+          .header("x-llm-machines-audit-event-count", result.eventCount)
+          .header("x-llm-machines-audit-format", result.format)
+          .header("x-llm-machines-audit-payload-bytes", result.payloadBytes)
+        if (result.nextCursor) {
+          response.header("x-llm-machines-audit-next-cursor", result.nextCursor)
+        }
+        return response.send(result.compactJws)
+      } catch (error) {
+        if (
+          error instanceof AdminAuditFilterError ||
+          error instanceof InvalidAuditCursorError ||
+          error instanceof AuditExportRangeError
+        ) {
+          return invalidRequest(
+            reply,
+            "Invalid audit export filters",
+            "Use bounded metadata-only audit filters.",
+          )
+        }
+        if (error instanceof AuditExportLimitError) {
+          return reply.code(413).send({
+            type: "about:blank",
+            title: "Audit export is too large",
+            status: 413,
+            detail:
+              "Narrow the audit filters to at most 5000 events and 8 MiB.",
+          })
+        }
+        if (error instanceof AuditExportSigningUnavailableError) {
+          return auditExportUnavailable(reply)
+        }
+        throw error
+      }
+    },
   )
 
   server.get(
@@ -307,6 +449,56 @@ export function registerAdminRoutes(
       adminSettingsResponseSchema.parse(
         await getAdminSettings(requireActor(request)),
       ),
+  )
+
+  server.get(
+    "/api/admin/observability/alert-egress",
+    withCapability("console.operational.view"),
+    async (_request, reply) => {
+      try {
+        return adminAlertEgressResponseSchema.parse(await getAdminAlertEgress())
+      } catch (error) {
+        if (error instanceof AdminAlertEgressUnavailableError) {
+          return alertEgressUnavailable(reply)
+        }
+        throw error
+      }
+    },
+  )
+
+  server.post(
+    "/api/admin/observability/alert-egress",
+    reviewedAdminOnly("POST /api/admin/observability/alert-egress"),
+    async (request, reply) => {
+      const body = updateAdminAlertEgressRequestSchema.safeParse(
+        request.body ?? {},
+      )
+      if (!body.success) {
+        return invalidRequest(
+          reply,
+          "Invalid alert egress request",
+          "Only disabled, SMTP, or webhook intent is accepted; outbound delivery requires the exact current warning acknowledgement.",
+        )
+      }
+      return withAdminIdempotentMutation(
+        request,
+        reply,
+        "POST /api/admin/observability/alert-egress",
+        body.data,
+        async (actor, identityContext) => ({
+          idempotencyResourceId: "singleton",
+          payload: adminAlertEgressResponseSchema.parse(
+            await updateAdminAlertEgress(
+              actor,
+              request.id,
+              body.data,
+              identityContext.commitWithReceipt,
+            ),
+          ),
+          statusCode: 200,
+        }),
+      )
+    },
   )
 
   server.post(
@@ -1573,18 +1765,74 @@ function recoveryUnavailable(reply: FastifyReply) {
 }
 
 function getAuditQuery(request: FastifyRequest): {
+  applicationId?: string
+  cursor?: string
   eventId?: string
   limit?: number
+  outcome?: string
   query?: string
+  severity?: string
+  sourceSystem?: string
 } {
   const query = objectQuery(request)
   return {
-    eventId: stringQuery(query, "event"),
+    applicationId: stringQuery(query, "applicationId"),
+    cursor: stringQuery(query, "cursor"),
+    eventId: stringQuery(query, "eventId") ?? stringQuery(query, "event"),
     limit: stringQuery(query, "limit")
       ? Number.parseInt(stringQuery(query, "limit") ?? "", 10)
       : undefined,
+    outcome: stringQuery(query, "outcome"),
     query: stringQuery(query, "q"),
+    severity: stringQuery(query, "severity"),
+    sourceSystem: stringQuery(query, "source"),
   }
+}
+
+function getAuditExportWindow(request: FastifyRequest): {
+  from: Date
+  limit?: number
+  to: Date
+} | null {
+  const query = objectQuery(request)
+  const from = canonicalUtcTimestamp(stringQuery(query, "from"))
+  const to = canonicalUtcTimestamp(stringQuery(query, "to"))
+  const rawLimit = stringQuery(query, "limit")
+  const limit = rawLimit ? Number(rawLimit) : undefined
+  if (!from || !to || (limit !== undefined && !Number.isSafeInteger(limit))) {
+    return null
+  }
+  return { from, limit, to }
+}
+
+function canonicalUtcTimestamp(value: string | undefined): Date | null {
+  if (!value) {
+    return null
+  }
+  const parsed = new Date(value)
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString() === value
+    ? parsed
+    : null
+}
+
+function auditExportUnavailable(reply: FastifyReply) {
+  return reply.code(503).send({
+    type: "about:blank",
+    title: "Audit export signing unavailable",
+    status: 503,
+    detail:
+      "Mounted Ed25519 signing material and its public verification key set are unavailable or inconsistent.",
+  })
+}
+
+function alertEgressUnavailable(reply: FastifyReply) {
+  return reply.code(503).send({
+    type: "about:blank",
+    title: "Alert egress state unavailable",
+    status: 503,
+    detail:
+      "The redacted alert-delivery intent cannot be read. Outbound delivery remains disabled.",
+  })
 }
 
 function getHardwareQuery(request: FastifyRequest): {
@@ -2039,6 +2287,30 @@ function adminMutationErrorResult(error: unknown): {
   payload: unknown
   statusCode: 404 | 409 | 503
 } | null {
+  if (error instanceof AdminAlertEgressConflictError) {
+    return {
+      payload: {
+        type: "about:blank",
+        title: "Alert egress state changed",
+        status: 409,
+        detail:
+          "Refresh the redacted alert-egress state before retrying this mutation.",
+      },
+      statusCode: 409,
+    }
+  }
+  if (error instanceof AdminAlertEgressUnavailableError) {
+    return {
+      payload: {
+        type: "about:blank",
+        title: "Alert egress state unavailable",
+        status: 503,
+        detail:
+          "Outbound delivery remains disabled because its intent state is unavailable.",
+      },
+      statusCode: 503,
+    }
+  }
   if (error instanceof AdminConnectedAppFirecrawlCredentialCommitRaceError) {
     return error.failure.status === "not_found"
       ? { payload: notFoundPayload("Connected app"), statusCode: 404 }
@@ -2082,6 +2354,8 @@ function adminMutationErrorResult(error: unknown): {
 
 function shouldCompleteFailedAdminMutationReceipt(error: unknown): boolean {
   return (
+    error instanceof AdminAlertEgressConflictError ||
+    error instanceof AdminAlertEgressUnavailableError ||
     error instanceof AdminConnectedAppFirecrawlCredentialCommitRaceError ||
     (error instanceof IdentityMutationExecutionError &&
       error.status !== "reconciliation_required")

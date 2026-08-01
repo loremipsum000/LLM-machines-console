@@ -69,6 +69,7 @@ export async function checkInferenceCoreDbReadiness(
             ('common.human_identities'),
             ('common.human_identity_roles'),
             ('common.audit_events'),
+            ('common.audit_source_cursors'),
             ('admin.applications'),
             ('admin.application_credentials'),
             ('admin.application_firecrawl_access'),

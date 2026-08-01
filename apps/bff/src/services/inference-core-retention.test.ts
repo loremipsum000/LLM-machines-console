@@ -47,4 +47,11 @@ describe("Inference Core Firecrawl retention boundary", () => {
     )
     expect(source).not.toMatch(/\bredis\b/i)
   })
+
+  it("retains audit events for 365 rolling days without deleting source cursors", () => {
+    expect(source).toContain("DELETE FROM common.audit_events")
+    expect(source).toContain("WHERE occurred_at < ${auditCutoff}::timestamptz")
+    expect(source).toContain("365 * 24 * 60 * 60 * 1000")
+    expect(source).not.toContain("DELETE FROM common.audit_source_cursors")
+  })
 })

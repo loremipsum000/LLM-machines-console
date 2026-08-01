@@ -231,6 +231,12 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     { method: "GET", url: "/healthz" },
     { method: "GET", url: "/readyz" },
     { method: "GET", url: "/api/admin/audit" },
+    { method: "GET", url: "/api/admin/audit/export" },
+    {
+      method: "GET",
+      url: "/api/admin/audit/export/verification-keys",
+    },
+    { method: "GET", url: "/api/admin/observability/alert-egress" },
     { method: "GET", url: "/api/admin/overview" },
     { method: "GET", url: "/api/admin/recovery/status" },
     { method: "GET", url: "/api/admin/settings" },
@@ -244,6 +250,8 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     { method: "GET", url: "/api/admin/hardware" },
     { method: "GET", url: "/api/admin/inference" },
     { method: "GET", url: "/api/app-gateway/v1/models" },
+    { method: "GET", url: "/internal/observability/metrics" },
+    { method: "POST", url: "/api/admin/observability/alert-egress" },
     { method: "POST", url: "/api/admin/settings/organization" },
     { method: "POST", url: "/api/admin/settings/telemetry" },
     {

@@ -37,6 +37,7 @@ import {
   pr06ContractBase,
   pr07ContractBase,
   pr08ContractBase,
+  pr09ContractBase,
   repositoryRoot,
   routeBaselinePath,
   scanForbiddenSurfaces,
@@ -56,6 +57,8 @@ import {
   verifyPr05TargetState,
   verifyPr06TargetState,
   verifyPr07TargetState,
+  verifyPr08TargetState,
+  verifyPr09TargetState,
   verifyProtectedGuardrailStability,
   verifyRepository,
   verifyRetentionCharacterization,
@@ -493,6 +496,7 @@ test("PR-03 Web authentication boundary is fail-closed and self-contained", () =
     "function isProtectedConsolePath(pathname) {",
     "  return (",
     '    pathname === "/" ||',
+    '    pathname === "/activity" ||',
     '    pathname === "/applications" ||',
     '    pathname === "/hardware" ||',
     '    pathname === "/inference" ||',
@@ -1171,6 +1175,13 @@ test("PR-08 base comparison accepts its dirty same-head candidate", () => {
   )
 })
 
+test("PR-09 base comparison accepts its dirty same-head candidate", () => {
+  assert.deepEqual(
+    verifyBaseCommitLineage(repositoryRoot, pr09ContractBase),
+    [],
+  )
+})
+
 test("PR-02 revision operation matrix rejects added runtime surfaces", () => {
   const scenarios = [
     {
@@ -1338,6 +1349,53 @@ test("self-describing exclusions are exact and text scanning is extension indepe
       { ruleId: "FS103_KNOWLEDGE_RAG", path: "tools/unreviewed.sh" },
       { ruleId: "FS104_LIBRECHAT", path: "web/unreviewed.html" },
     ],
+  )
+})
+
+test("FS103 uses identifier-aware retired-surface boundaries", () => {
+  const root = temporaryRoot()
+  const negativePath = "tools/fs103-ordinary-words.txt"
+  const positiveFixtures = new Map([
+    ["tools/fs103-positive-01.txt", "knowledge\n"],
+    ["tools/fs103-positive-02.txt", "config/corpus/index\n"],
+    ["tools/fs103-positive-03.txt", "corpora_index\n"],
+    ["tools/fs103-positive-04.txt", "ragflowGateway\n"],
+    ["tools/fs103-positive-05.txt", "nativeRagFlowAdapter\n"],
+    ["tools/fs103-positive-06.txt", "rag\n"],
+    ["tools/fs103-positive-07.txt", "embedding_store\n"],
+    ["tools/fs103-positive-08.txt", "NativeEmbeddingsStore\n"],
+    ["tools/fs103-positive-09.txt", "KNOWLEDGE_BASE\n"],
+  ])
+  writeFixture(
+    root,
+    negativePath,
+    [
+      "acknowledge",
+      "acknowledged",
+      "acknowledgement",
+      "corporate",
+      "corporation",
+      "corpuscle",
+      "ragged",
+      "embeddingly",
+    ].join("\n"),
+  )
+  for (const [path, source] of positiveFixtures) {
+    writeFixture(root, path, source)
+  }
+
+  const findings = scanForbiddenSurfaces({
+    root,
+    paths: [negativePath, ...positiveFixtures.keys()],
+  })
+  assert.equal(findings.some(({ path }) => path === negativePath), false)
+  assert.deepEqual(
+    findings.map(({ count, path, ruleId }) => ({ count, path, ruleId })),
+    [...positiveFixtures.keys()].map((path) => ({
+      count: 1,
+      path,
+      ruleId: "FS103_KNOWLEDGE_RAG",
+    })),
   )
 })
 
@@ -2418,6 +2476,47 @@ test("reviewed Fastify registrar wiring is exact and shrink-only", () => {
   ])
 })
 
+test("observability metrics registrar requires its reviewed mounted-file options factory", () => {
+  const root = temporaryRoot()
+  const indexPath = "apps/bff/src/index.ts"
+  const metricsPath = "apps/bff/src/routes/observability-metrics.ts"
+  const indexSource = [
+    'import Fastify, { type FastifyInstance } from "fastify"',
+    'import { observabilityMetricsRouteOptionsFromRuntime, registerObservabilityMetricsRoutes } from "./routes/observability-metrics"',
+    "export function buildServer(): FastifyInstance {",
+    "  const server = Fastify({ bodyLimit: bffBodyLimitBytes(), logger: true })",
+    "  registerObservabilityMetricsRoutes(server, observabilityMetricsRouteOptionsFromRuntime())",
+    "  return server",
+    "}",
+    "",
+  ].join("\n")
+  writeFixture(root, indexPath, indexSource)
+  writeFixture(
+    root,
+    metricsPath,
+    readFileSync(join(repositoryRoot, metricsPath), "utf8"),
+  )
+  assert.deepEqual(
+    extractBffRoutes({ root, paths: [indexPath, metricsPath] }).map(
+      ({ method, path }) => ({ method, path }),
+    ),
+    [{ method: "GET", path: "/internal/observability/metrics" }],
+  )
+
+  writeFixture(
+    root,
+    indexPath,
+    indexSource.replace(
+      "observabilityMetricsRouteOptionsFromRuntime()",
+      "{ tokenFile: '/tmp/unreviewed' }",
+    ),
+  )
+  assert.throws(
+    () => extractBffRoutes({ root, paths: [indexPath, metricsPath] }),
+    /Reviewed Fastify registrar arguments changed for registerObservabilityMetricsRoutes/,
+  )
+})
+
 test("unreviewed Fastify imports and dynamic code loading fail closed", () => {
   const root = temporaryRoot()
   const importPath = "packages/contracts/src/fastify.ts"
@@ -2841,7 +2940,7 @@ test("Core package scripts cannot be replaced with no-op commands", () => {
   )
   assert.equal(
     errors.filter((error) => error.startsWith("invalid @llm-machines/")).length,
-    12,
+    14,
   )
 })
 
@@ -2943,7 +3042,7 @@ test("retention register rejects unreviewed top-level claims", () => {
 
 test("the live repository matches its current reviewed baselines", () => {
   const result = verifyRepository({
-    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr08ContractBase,
+    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr09ContractBase,
   })
   assert.deepEqual(result.errors, [])
   assert.equal(result.ok, true)
@@ -3086,6 +3185,45 @@ test("historical target verifiers defer only to reviewed successors", () => {
     }),
     [],
   )
+
+  const pr09Successor = structuredClone(currentRoutes)
+  pr09Successor.reviewedRevisions = [{ id: "PR-09" }]
+  for (const verifyHistoricalTarget of [
+    (routes) =>
+      verifyPr03TargetState({ currentAllowlist, currentRoutes: routes }),
+    (routes) =>
+      verifyPr04TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr05TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr06TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr07TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr08TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+  ]) {
+    assert.deepEqual(verifyHistoricalTarget(pr09Successor), [])
+  }
 })
 
 test("unknown active reviewed revisions fail closed", () => {
@@ -3093,9 +3231,10 @@ test("unknown active reviewed revisions fail closed", () => {
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-06"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-07"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-08"), [])
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-09"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId(undefined), [])
-  assert.deepEqual(verifyActiveReviewedRevisionId("PR-09"), [
-    "unsupported active reviewed revision PR-09",
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-10"), [
+    "unsupported active reviewed revision PR-10",
   ])
 })
 

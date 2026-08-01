@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Actor } from "../auth/authorization"
 import { getAdminInference } from "./admin-inference"
-import { expertCapabilities } from "./expert-capabilities"
 
 const actor: Actor = {
   authMode: "service-forwarded",
@@ -11,61 +10,29 @@ const actor: Actor = {
 
 describe("Admin Inference LiteLLM virtual-key projection", () => {
   afterEach(() => {
-    expertCapabilities.litellm.directAccess = "disabled"
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     vi.useRealTimers()
   })
 
-  it("exposes only validated native links to Admins when direct access is enabled", async () => {
-    expertCapabilities.litellm.directAccess = "enabled"
-    vi.stubEnv("LITELLM_PUBLIC_URL", "javascript:alert(1)")
-
-    await expect(getAdminInference(actor)).resolves.toMatchObject({
-      liteLlmUrl: null,
-    })
-
-    vi.stubEnv(
-      "LITELLM_PUBLIC_URL",
-      "https://embedded:credential@litellm.example",
-    )
-    await expect(getAdminInference(actor)).resolves.toMatchObject({
-      liteLlmUrl: null,
-    })
-
-    vi.stubEnv(
-      "LITELLM_PUBLIC_URL",
-      "https://litellm.example/ui/?token=sk-secret",
-    )
-    await expect(getAdminInference(actor)).resolves.toMatchObject({
-      liteLlmUrl: null,
-    })
-
-    vi.stubEnv(
-      "LITELLM_PUBLIC_URL",
-      "https://litellm.example/ui/#access_token=hidden",
-    )
-    await expect(getAdminInference(actor)).resolves.toMatchObject({
-      liteLlmUrl: null,
-    })
-
+  it("keeps native LiteLLM links disabled pending PR-12 qualification", async () => {
     for (const publicUrl of [
+      "javascript:alert(1)",
+      "https://embedded:credential@litellm.example",
+      "https://litellm.example/ui/?token=sk-secret",
+      "https://litellm.example/ui/#access_token=hidden",
       "https://litellm.example/ui/?",
       "https://litellm.example/ui/#",
+      "https://litellm.example",
     ]) {
       vi.stubEnv("LITELLM_PUBLIC_URL", publicUrl)
       await expect(getAdminInference(actor)).resolves.toMatchObject({
         liteLlmUrl: null,
       })
     }
-
-    vi.stubEnv("LITELLM_PUBLIC_URL", "https://litellm.example")
     await expect(
       getAdminInference({ ...actor, role: "operator", subject: "operator-1" }),
     ).resolves.toMatchObject({ liteLlmUrl: null })
-    await expect(getAdminInference(actor)).resolves.toMatchObject({
-      liteLlmUrl: "https://litellm.example/ui/",
-    })
   })
 
   it("projects opaque stable IDs, bounded labels, authoritative last use, and native states", async () => {

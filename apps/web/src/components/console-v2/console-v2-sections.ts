@@ -1,5 +1,5 @@
-import type { ComponentType, SVGProps } from "react"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
+import type { ComponentType, SVGProps } from "react"
 import {
   ApplicationsIcon,
   HardwareIcon,
@@ -9,6 +9,7 @@ import {
 } from "./console-v2-icons"
 
 export type ConsoleV2SectionId =
+  | "activity"
   | "applications"
   | "inference"
   | "hardware"

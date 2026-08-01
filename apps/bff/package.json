@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "audit:ingest": "tsx src/commands/audit-ingestion.ts",
     "build": "corepack pnpm --filter @llm-machines/contracts build && tsc --project tsconfig.json",
     "dev": "tsx watch src/index.ts",
     "format": "biome format --write .",

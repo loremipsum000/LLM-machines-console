@@ -3,7 +3,8 @@
 This directory defines separate logical seeds and ordered commissioning
 contracts for the human appliance realm and the Application realm. The human
 identity contract originates in PR-05. PR-06 removes Application client
-authority from it and defines that authority in a dedicated realm. These files
+authority from it and defines that authority in a dedicated realm. PR-09 adds
+the human-realm Grafana OIDC client and its role-claim boundary. These files
 are not Keycloak realm exports and do not perform an import. PR-12 packaging
 must translate the reviewed selectors into the pinned Keycloak release,
 resolve realm resource UUIDs, and prove both live permission matrices before
@@ -18,6 +19,23 @@ resource server must use FGAP v2. Version 26.6.0 is the minimum because its new
 Groups `manage-membership-of-members` scope supplies the group-side bridge for
 the Users `manage-group-membership` scope. No custom Keycloak provider plugin
 is required or permitted by this seed.
+
+## Grafana OIDC boundary
+
+The human realm contains one credential-free logical client named `grafana`.
+It uses only the authorization-code flow with PKCE S256, has no service
+account or direct grant, and receives only the `admin` and `operator` realm
+roles through an explicit mapper. The exact callback, web origin, and client
+secret are bound outside Git during PR-12 packaging. `offline_access` is not a
+default or optional scope.
+
+Grafana evaluates `realm_access.roles` with strict role synchronization:
+`admin` maps to Grafana Editor and `operator` maps to Grafana Viewer. Admin is
+not mapped to Grafana organization Admin or server Admin. A principal with
+neither retained role, or with both retained roles, is denied. The Grafana
+source configuration is under
+`infra/observability`; it remains inactive until PR-12 proves the callback,
+secret-file mount, OIDC claims, and direct-access boundary.
 
 The human realm is `llm-machines`. The `master` realm is never a customer
 administration target. Its only human roles are `admin` and `operator`, mapped

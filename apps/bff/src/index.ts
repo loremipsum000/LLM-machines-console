@@ -33,6 +33,10 @@ import {
   type FirecrawlGatewayRouteOptions,
   registerFirecrawlGatewayRoutes,
 } from "./routes/firecrawl-gateway"
+import {
+  observabilityMetricsRouteOptionsFromRuntime,
+  registerObservabilityMetricsRoutes,
+} from "./routes/observability-metrics"
 import { assertProductionConnectedAppRevealEndpoints } from "./services/admin-connected-apps"
 import { emergencyRecoveryServiceFromRuntime } from "./services/emergency-recovery"
 import { firecrawlGatewayOptionsFromRuntime } from "./services/firecrawl-gateway-runtime"
@@ -105,6 +109,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     testRuntime && options.testFirecrawlGateway
       ? { ...firecrawlGateway, ...options.testFirecrawlGateway }
       : firecrawlGateway,
+  )
+  registerObservabilityMetricsRoutes(
+    server,
+    observabilityMetricsRouteOptionsFromRuntime(),
   )
   registerAdminRoutes(server, { emergencyRecoveryService })
 

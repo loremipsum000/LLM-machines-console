@@ -68,6 +68,9 @@ export const auditEvents = common.table(
     occurredAt: timestamp("occurred_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    ingestedAt: timestamp("ingested_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     action: text("action").notNull(),
     outcome: text("outcome").notNull(),
     sourceSystem: text("source_system").notNull(),
@@ -90,6 +93,130 @@ export const auditEvents = common.table(
     check(
       "audit_events_source_system_check",
       sql`${table.sourceSystem} IN ('console', 'keycloak', 'litellm', 'grafana', 'alertmanager', 'firecrawl', 'lifecycle')`,
+    ),
+    check(
+      "audit_events_native_metadata_check",
+      sql`${table.sourceSystem} NOT IN ('keycloak', 'litellm', 'grafana', 'alertmanager') OR (
+        ${table.id}::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        AND
+        ${table.correlationId} ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        AND (
+          (
+            ${table.sourceSystem} = 'keycloak'
+            AND ${table.action} IN (
+              'keycloak.authentication.failed',
+              'keycloak.authentication.succeeded',
+              'keycloak.credential.updated',
+              'keycloak.role.assigned',
+              'keycloak.role.revoked',
+              'keycloak.user.created',
+              'keycloak.user.deleted',
+              'keycloak.user.updated'
+            )
+            AND (
+              ${table.recoveryReasonCode} IS NULL
+              OR ${table.recoveryReasonCode} IN (
+                'account_disabled',
+                'authentication_failed',
+                'authorization_denied',
+                'invalid_credentials',
+                'policy_rejected'
+              )
+            )
+          ) OR (
+            ${table.sourceSystem} = 'litellm'
+            AND ${table.action} IN (
+              'litellm.request.denied',
+              'litellm.request.failed',
+              'litellm.request.succeeded',
+              'litellm.route.created',
+              'litellm.route.deleted',
+              'litellm.route.updated',
+              'litellm.virtual_key.created',
+              'litellm.virtual_key.revoked',
+              'litellm.virtual_key.rotated',
+              'litellm.virtual_key.updated'
+            )
+            AND (
+              ${table.recoveryReasonCode} IS NULL
+              OR ${table.recoveryReasonCode} IN (
+                'model_denied',
+                'rate_limited',
+                'request_failed',
+                'route_unavailable'
+              )
+            )
+          ) OR (
+            ${table.sourceSystem} = 'grafana'
+            AND ${table.action} IN (
+              'grafana.alert_rule.created',
+              'grafana.alert_rule.deleted',
+              'grafana.alert_rule.updated',
+              'grafana.dashboard.created',
+              'grafana.dashboard.deleted',
+              'grafana.dashboard.updated',
+              'grafana.datasource.updated',
+              'grafana.folder.created',
+              'grafana.folder.deleted',
+              'grafana.folder.updated'
+            )
+            AND (
+              ${table.recoveryReasonCode} IS NULL
+              OR ${table.recoveryReasonCode} IN (
+                'operation_failed',
+                'permission_denied',
+                'validation_failed'
+              )
+            )
+          ) OR (
+            ${table.sourceSystem} = 'alertmanager'
+            AND ${table.action} IN (
+              'alertmanager.configuration.reloaded',
+              'alertmanager.notification.failed',
+              'alertmanager.notification.succeeded',
+              'alertmanager.silence.created',
+              'alertmanager.silence.deleted',
+              'alertmanager.silence.expired'
+            )
+            AND (
+              ${table.recoveryReasonCode} IS NULL
+              OR ${table.recoveryReasonCode} IN (
+                'delivery_failed',
+                'receiver_unavailable',
+                'silence_rejected'
+              )
+            )
+          )
+        )
+        AND (
+          ${table.keycloakSubjectId} IS NULL OR (
+            ${table.keycloakSubjectId} ~ '^[A-Za-z0-9][A-Za-z0-9_:-]{0,254}$'
+            AND ${table.keycloakSubjectId} !~* '^(llmm_|bearer[:_-]|token[:_-]|secret[:_-]|password[:_-]|api[_-]?key[:_-])'
+            AND ${table.keycloakSubjectId} !~* '^[0-9a-f]{64,}$'
+            AND ${table.keycloakSubjectId} !~ '^(sk[-_](live|test|proj)[-_][A-Za-z0-9_-]{1,120}|github_pat_[A-Za-z0-9_]{1,120}|gh[pousr]_[A-Za-z0-9]{1,120}|xox[baprs]-[A-Za-z0-9-]{1,120}|eyJ[A-Za-z0-9_-]{5,120}[.][A-Za-z0-9_-]{4,120}[.][A-Za-z0-9_-]{4,120}|(AKIA|ASIA)[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{20,120})$'
+          )
+        )
+        AND (
+          ${table.applicationId} IS NULL OR (
+            ${table.applicationId} ~ '^[A-Za-z0-9][A-Za-z0-9_:-]{0,127}$'
+            AND ${table.applicationId} !~* '^(llmm_|bearer[:_-]|token[:_-]|secret[:_-]|password[:_-]|api[_-]?key[:_-])'
+            AND ${table.applicationId} !~* '^[0-9a-f]{64,}$'
+            AND ${table.applicationId} !~ '^(sk[-_](live|test|proj)[-_][A-Za-z0-9_-]{1,120}|github_pat_[A-Za-z0-9_]{1,120}|gh[pousr]_[A-Za-z0-9]{1,120}|xox[baprs]-[A-Za-z0-9-]{1,120}|eyJ[A-Za-z0-9_-]{5,120}[.][A-Za-z0-9_-]{4,120}[.][A-Za-z0-9_-]{4,120}|(AKIA|ASIA)[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{20,120})$'
+          )
+        )
+        AND (
+          ${table.credentialRecordId} IS NULL OR (
+            ${table.credentialRecordId} ~ '^[A-Za-z0-9][A-Za-z0-9_:-]{0,127}$'
+            AND ${table.credentialRecordId} !~* '^(llmm_|bearer[:_-]|token[:_-]|secret[:_-]|password[:_-]|api[_-]?key[:_-])'
+            AND ${table.credentialRecordId} !~* '^[0-9a-f]{64,}$'
+            AND ${table.credentialRecordId} !~ '^(sk[-_](live|test|proj)[-_][A-Za-z0-9_-]{1,120}|github_pat_[A-Za-z0-9_]{1,120}|gh[pousr]_[A-Za-z0-9]{1,120}|xox[baprs]-[A-Za-z0-9-]{1,120}|eyJ[A-Za-z0-9_-]{5,120}[.][A-Za-z0-9_-]{4,120}[.][A-Za-z0-9_-]{4,120}|(AKIA|ASIA)[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{20,120})$'
+          )
+        )
+        AND (
+          ${table.credentialPrefix} IS NULL
+          OR ${table.credentialPrefix} ~ '^(llmm_t4_[0-9a-f]{18}|llmm_fc_[0-9a-f]{16})$'
+        )
+      )`,
     ),
     check(
       "audit_events_correlation_id_check",
@@ -120,10 +247,60 @@ export const auditEvents = common.table(
       sql`${table.recoveryReasonCode} IS NULL OR char_length(${table.recoveryReasonCode}) BETWEEN 1 AND 64`,
     ),
     index("audit_events_occurred_at_idx").on(table.occurredAt),
+    index("audit_events_stable_order_idx").on(table.occurredAt, table.id),
     index("audit_events_correlation_id_idx").on(table.correlationId),
     index("audit_events_application_occurred_idx").on(
       table.applicationId,
       table.occurredAt,
+    ),
+  ],
+)
+
+export const auditSourceCursors = common.table(
+  "audit_source_cursors",
+  {
+    sourceSystem: text("source_system").primaryKey(),
+    cursorVersion: integer("cursor_version"),
+    cursorWatermark: timestamp("cursor_watermark", { withTimezone: true }),
+    cursorTieBreaker: uuid("cursor_tie_breaker"),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+    lastEventOccurredAt: timestamp("last_event_occurred_at", {
+      withTimezone: true,
+    }),
+    lastErrorCode: text("last_error_code"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "audit_source_cursors_source_check",
+      sql`${table.sourceSystem} IN ('keycloak', 'litellm', 'grafana', 'alertmanager')`,
+    ),
+    check(
+      "audit_source_cursors_cursor_check",
+      sql`num_nonnulls(
+        ${table.cursorVersion},
+        ${table.cursorWatermark},
+        ${table.cursorTieBreaker}
+      ) IN (0, 3) AND (
+        ${table.cursorVersion} IS NULL OR ${table.cursorVersion} = 1
+      ) AND (
+        ${table.cursorTieBreaker} IS NULL OR
+        ${table.cursorTieBreaker}::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      )`,
+    ),
+    check(
+      "audit_source_cursors_error_code_check",
+      sql`${table.lastErrorCode} IS NULL OR (
+        char_length(${table.lastErrorCode}) BETWEEN 1 AND 64
+        AND ${table.lastErrorCode} ~ '^[a-z][a-z0-9._:-]*$'
+      )`,
+    ),
+    index("audit_source_cursors_health_idx").on(
+      table.lastSuccessAt,
+      table.lastAttemptAt,
     ),
   ],
 )
@@ -1361,6 +1538,28 @@ export const consoleSettings = admin.table(
         "LLM Machines managed components do not retain inference request or response content.",
       )
       .notNull(),
+    alertDeliveryMode: text("alert_delivery_mode")
+      .default("local_only")
+      .notNull(),
+    alertDeliveryTransport: text("alert_delivery_transport"),
+    alertEgressWarningVersion: text("alert_egress_warning_version"),
+    alertEgressRevision: bigint("alert_egress_revision", { mode: "number" })
+      .default(0)
+      .notNull(),
+    alertEgressAcknowledgedAt: timestamp("alert_egress_acknowledged_at", {
+      withTimezone: true,
+    }),
+    alertEgressAcknowledgedBy: text("alert_egress_acknowledged_by").references(
+      () => humanIdentities.subjectId,
+      { onDelete: "restrict" },
+    ),
+    alertEgressUpdatedBy: text("alert_egress_updated_by").references(
+      () => humanIdentities.subjectId,
+      { onDelete: "restrict" },
+    ),
+    alertEgressUpdatedAt: timestamp("alert_egress_updated_at", {
+      withTimezone: true,
+    }),
     updatedBy: text("updated_by").references(() => humanIdentities.subjectId, {
       onDelete: "restrict",
     }),
@@ -1373,6 +1572,58 @@ export const consoleSettings = admin.table(
     check(
       "console_settings_language_check",
       sql`${table.defaultLanguage} IN ('en', 'hr')`,
+    ),
+    check(
+      "console_settings_alert_delivery_mode_check",
+      sql`${table.alertDeliveryMode} IN ('local_only', 'customer_owned')`,
+    ),
+    check(
+      "console_settings_alert_transport_check",
+      sql`${table.alertDeliveryTransport} IS NULL OR ${table.alertDeliveryTransport} IN ('smtp', 'webhook')`,
+    ),
+    check(
+      "console_settings_alert_warning_check",
+      sql`${table.alertEgressWarningVersion} IS NULL OR char_length(${table.alertEgressWarningVersion}) BETWEEN 1 AND 64`,
+    ),
+    check(
+      "console_settings_alert_revision_check",
+      sql`${table.alertEgressRevision} >= 0`,
+    ),
+    check(
+      "console_settings_alert_updater_check",
+      sql`(
+        ${table.alertEgressRevision} = 0
+        AND num_nonnulls(
+          ${table.alertEgressUpdatedAt},
+          ${table.alertEgressUpdatedBy}
+        ) = 0
+      ) OR (
+        ${table.alertEgressRevision} > 0
+        AND num_nonnulls(
+          ${table.alertEgressUpdatedAt},
+          ${table.alertEgressUpdatedBy}
+        ) = 2
+      )`,
+    ),
+    check(
+      "console_settings_alert_delivery_lifecycle_check",
+      sql`(
+        ${table.alertDeliveryMode} = 'local_only'
+        AND num_nonnulls(
+          ${table.alertDeliveryTransport},
+          ${table.alertEgressWarningVersion},
+          ${table.alertEgressAcknowledgedAt},
+          ${table.alertEgressAcknowledgedBy}
+        ) = 0
+      ) OR (
+        ${table.alertDeliveryMode} = 'customer_owned'
+        AND num_nonnulls(
+          ${table.alertDeliveryTransport},
+          ${table.alertEgressWarningVersion},
+          ${table.alertEgressAcknowledgedAt},
+          ${table.alertEgressAcknowledgedBy}
+        ) = 4
+      )`,
     ),
   ],
 )

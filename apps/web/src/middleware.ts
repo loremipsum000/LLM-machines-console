@@ -1,12 +1,12 @@
+import { auth } from "@/lib/auth/auth"
+import { retainedConsoleRoles } from "@/lib/auth/role-claims"
+import type { NextAuthRequest } from "next-auth"
 import {
   type NextFetchEvent,
   type NextMiddleware,
   type NextRequest,
   NextResponse,
 } from "next/server"
-import type { NextAuthRequest } from "next-auth"
-import { auth } from "@/lib/auth/auth"
-import { retainedConsoleRoles } from "@/lib/auth/role-claims"
 
 type AuthMiddlewareFactory = (
   middleware: (
@@ -51,6 +51,7 @@ export default function middleware(
 function isProtectedConsolePath(pathname: string): boolean {
   return (
     pathname === "/" ||
+    pathname === "/activity" ||
     pathname === "/hardware" ||
     pathname === "/settings" ||
     isPathWithin(pathname, "/applications") ||

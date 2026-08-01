@@ -11,14 +11,14 @@ export interface NativeAuditEvent {
   action: string
   applicationId: string | null
   correlationId: string
+  credentialPrefix: string | null
   credentialRecordId: string | null
-  keycloakSubjectId: string
+  eventId: string
+  keycloakSubjectId: string | null
   occurredAt: string
   outcome: "succeeded" | "failed" | "denied"
-  sourceEventId: string
+  recoveryReasonCode: string | null
   sourceSystem: ExpertSystemId
-  targetId: string
-  targetType: string
 }
 
 export interface NativeAuditSource {
@@ -30,27 +30,32 @@ export interface NativeAuditSource {
 }
 
 export interface ExpertCapability {
-  auditIngestion: "not_proven" | "proven"
+  auditIngestion:
+    | "not_proven"
+    | "implemented_pending_runtime_qualification"
+    | "proven"
   consoleProjection: "read_only"
   directAccess: "disabled" | "enabled"
+  mechanism: "product_owned_audited_ingress" | null
   nativeMutation: "disabled" | "enabled"
 }
 
-const disabledCapability: ExpertCapability = {
-  auditIngestion: "not_proven",
+const pendingRuntimeCapability = Object.freeze<ExpertCapability>({
+  auditIngestion: "implemented_pending_runtime_qualification",
   consoleProjection: "read_only",
   directAccess: "disabled",
+  mechanism: "product_owned_audited_ingress",
   nativeMutation: "disabled",
-}
+})
 
 export const expertCapabilities: Readonly<
   Record<ExpertSystemId, ExpertCapability>
-> = {
-  alertmanager: disabledCapability,
-  grafana: disabledCapability,
-  keycloak: disabledCapability,
-  litellm: disabledCapability,
-}
+> = Object.freeze({
+  alertmanager: pendingRuntimeCapability,
+  grafana: pendingRuntimeCapability,
+  keycloak: pendingRuntimeCapability,
+  litellm: pendingRuntimeCapability,
+})
 
 export function expertCapability(system: ExpertSystemId): ExpertCapability {
   return expertCapabilities[system]
