@@ -38,6 +38,7 @@ import {
   pr07ContractBase,
   pr08ContractBase,
   pr09ContractBase,
+  pr10ContractBase,
   repositoryRoot,
   routeBaselinePath,
   scanForbiddenSurfaces,
@@ -1182,6 +1183,13 @@ test("PR-09 base comparison accepts its dirty same-head candidate", () => {
   )
 })
 
+test("PR-10 base comparison accepts its dirty same-head candidate", () => {
+  assert.deepEqual(
+    verifyBaseCommitLineage(repositoryRoot, pr10ContractBase),
+    [],
+  )
+})
+
 test("PR-02 revision operation matrix rejects added runtime surfaces", () => {
   const scenarios = [
     {
@@ -1388,7 +1396,10 @@ test("FS103 uses identifier-aware retired-surface boundaries", () => {
     root,
     paths: [negativePath, ...positiveFixtures.keys()],
   })
-  assert.equal(findings.some(({ path }) => path === negativePath), false)
+  assert.equal(
+    findings.some(({ path }) => path === negativePath),
+    false,
+  )
   assert.deepEqual(
     findings.map(({ count, path, ruleId }) => ({ count, path, ruleId })),
     [...positiveFixtures.keys()].map((path) => ({
@@ -3042,7 +3053,7 @@ test("retention register rejects unreviewed top-level claims", () => {
 
 test("the live repository matches its current reviewed baselines", () => {
   const result = verifyRepository({
-    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr09ContractBase,
+    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr10ContractBase,
   })
   assert.deepEqual(result.errors, [])
   assert.equal(result.ok, true)
@@ -3224,6 +3235,51 @@ test("historical target verifiers defer only to reviewed successors", () => {
   ]) {
     assert.deepEqual(verifyHistoricalTarget(pr09Successor), [])
   }
+
+  const pr10Successor = structuredClone(currentRoutes)
+  pr10Successor.reviewedRevisions = [{ id: "PR-10" }]
+  for (const verifyHistoricalTarget of [
+    (routes) =>
+      verifyPr03TargetState({ currentAllowlist, currentRoutes: routes }),
+    (routes) =>
+      verifyPr04TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr05TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr06TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr07TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr08TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr09TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+  ]) {
+    assert.deepEqual(verifyHistoricalTarget(pr10Successor), [])
+  }
 })
 
 test("unknown active reviewed revisions fail closed", () => {
@@ -3232,9 +3288,10 @@ test("unknown active reviewed revisions fail closed", () => {
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-07"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-08"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-09"), [])
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-10"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId(undefined), [])
-  assert.deepEqual(verifyActiveReviewedRevisionId("PR-10"), [
-    "unsupported active reviewed revision PR-10",
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-11"), [
+    "unsupported active reviewed revision PR-11",
   ])
 })
 

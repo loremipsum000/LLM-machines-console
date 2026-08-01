@@ -435,7 +435,7 @@ describe("PR-06 Application credential reconciliation boundary", () => {
         '${"d".repeat(64)}',
         '${"e".repeat(64)}',
         'pr06-correlation',
-        '2026-08-01T12:00:00Z'
+        now() + interval '1 day'
       )
     `)
     await database.exec(`

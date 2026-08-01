@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "01c612ab4298daccd9284baf1c7663e5337b35f8640ea6020a26104454c57963",
+  "policyDigest": "c0ece5efba2e809aab00b1de8bc5998530496c76254cca987222d5e80ac469ac",
   "protectedFiles": [
     {
       "path": "apps/bff/tsconfig.json",
@@ -13,7 +13,7 @@
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.test.ts",
-      "sha256": "8ebea7f55a0c0b6da14267f575f8db9f484941d6c5d376c579720aeead2bf59b"
+      "sha256": "236dfd5a84bd1cfdbb332adfb477bdd44d387d1f42d7e201b3fdb9b325b4e016"
     },
     {
       "path": "apps/bff/src/routes/app-gateway-boundary.test.ts",
@@ -84,6 +84,10 @@
       "sha256": "b60cbfaf47ebccfcc94d54c903ac5f2a4d07a2ef5c8cb0c54701317291361727"
     },
     {
+      "path": "docs/reduction/inference-core/pr-10-lifecycle-foundation-decisions.json",
+      "sha256": "ddce640668e8e982fc54ba310bb485cf767a731dc0e40526f4bf3c68c81ef140"
+    },
+    {
       "path": "docs/reduction/inference-core/decision-register.md",
       "sha256": "a1e131f84d1508aa8d513573ddfca4a47a6ad9a96d4c7effebb365572f1bc2dd"
     },
@@ -129,11 +133,11 @@
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",
-      "sha256": "97bad17b01bb3dc9c5c3e484ed478951e95a3cdf527f95e2c872048a8460491b"
+      "sha256": "f8ce1c85131a37a8308fb754a29a56d3c1b3eebe9363b5bf954fd4d14ea42bfa"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
-      "sha256": "44e368cc4bb119e74b0451b886393622ed22cc20f938db35a3b614028654aa69"
+      "sha256": "196a426bd3f17ec32e2d238ef52e69a78d373bec8a5b3753dcdbf0e16a3ee3d1"
     },
     {
       "path": "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -198,6 +202,14 @@
     {
       "path": "scripts/inference-core/pr09-contract-revision.mjs",
       "sha256": "62783799dee67dd6ad15f1b0ed6c930754c6a0fb3d49fcc9662a11f1dad92ad5"
+    },
+    {
+      "path": "scripts/inference-core/pr10-boundaries.test.mjs",
+      "sha256": "a358ba505de02ec438dd8d66c7f2fa56f20a5d148d4785b2930622542a495752"
+    },
+    {
+      "path": "scripts/inference-core/pr10-contract-revision.mjs",
+      "sha256": "1225bfd9951815c30b7d5c0de4130928fc1d990a07e360c78e7263d242f77139"
     },
     {
       "path": "scripts/inference-core/retention-canary.mjs",

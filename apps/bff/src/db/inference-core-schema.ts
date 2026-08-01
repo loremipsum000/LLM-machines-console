@@ -1873,3 +1873,429 @@ export const recoveryState = admin.table(
     ),
   ],
 )
+
+export const lifecycleOperations = admin.table(
+  "lifecycle_operations",
+  {
+    id: uuid("id").primaryKey(),
+    kind: text("kind").notNull(),
+    state: text("state").default("prepared").notNull(),
+    actorSubjectId: text("actor_subject_id")
+      .notNull()
+      .references(() => humanIdentities.subjectId, { onDelete: "restrict" }),
+    correlationId: text("correlation_id").notNull(),
+    snapshotId: uuid("snapshot_id").notNull(),
+    failureCode: text("failure_code"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "lifecycle_operations_kind_check",
+      sql`${table.kind} IN ('snapshot', 'restore')`,
+    ),
+    check(
+      "lifecycle_operations_state_check",
+      sql`${table.state} IN (
+        'prepared',
+        'quiescing',
+        'capturing',
+        'validating',
+        'restoring',
+        'verifying',
+        'resuming',
+        'rolling_back',
+        'succeeded',
+        'rolled_back',
+        'failed',
+        'recovery_required'
+      )`,
+    ),
+    check(
+      "lifecycle_operations_failure_code_check",
+      sql`${table.failureCode} IS NULL OR ${table.failureCode} IN (
+        'adapter_unavailable',
+        'quiesce_failed',
+        'capture_failed',
+        'manifest_invalid',
+        'consistency_mismatch',
+        'restore_failed',
+        'verification_failed',
+        'rollback_failed',
+        'resume_failed',
+        'journal_failed'
+      )`,
+    ),
+    check(
+      "lifecycle_operations_kind_state_check",
+      sql`(
+        ${table.kind} = 'snapshot'
+        AND ${table.state} IN (
+          'prepared',
+          'quiescing',
+          'capturing',
+          'validating',
+          'resuming',
+          'succeeded',
+          'failed',
+          'recovery_required'
+        )
+      ) OR (
+        ${table.kind} = 'restore'
+        AND ${table.state} IN (
+          'prepared',
+          'quiescing',
+          'validating',
+          'restoring',
+          'verifying',
+          'resuming',
+          'rolling_back',
+          'succeeded',
+          'rolled_back',
+          'failed',
+          'recovery_required'
+        )
+      )`,
+    ),
+    check(
+      "lifecycle_operations_terminal_check",
+      sql`(
+        ${table.state} IN (
+          'prepared',
+          'quiescing',
+          'capturing',
+          'validating',
+          'restoring',
+          'verifying',
+          'resuming'
+        )
+        AND ${table.completedAt} IS NULL
+        AND ${table.failureCode} IS NULL
+      ) OR (
+        ${table.state} = 'rolling_back'
+        AND ${table.completedAt} IS NULL
+        AND ${table.failureCode} IS NOT NULL
+      ) OR (
+        ${table.state} = 'succeeded'
+        AND ${table.completedAt} IS NOT NULL
+        AND ${table.failureCode} IS NULL
+      ) OR (
+        ${table.state} IN ('rolled_back', 'failed', 'recovery_required')
+        AND ${table.completedAt} IS NOT NULL
+        AND ${table.failureCode} IS NOT NULL
+      )`,
+    ),
+    check(
+      "lifecycle_operations_correlation_id_check",
+      sql`char_length(${table.correlationId}) BETWEEN 1 AND 128`,
+    ),
+    check(
+      "lifecycle_operations_timestamps_check",
+      sql`${table.updatedAt} >= ${table.createdAt}
+        AND (
+          ${table.completedAt} IS NULL
+          OR (
+            ${table.completedAt} >= ${table.createdAt}
+            AND ${table.completedAt} <= ${table.updatedAt}
+          )
+        )`,
+    ),
+    uniqueIndex("lifecycle_operations_one_active_idx")
+      .on(sql`(true)`)
+      .where(
+        sql`${table.state} IN (
+          'prepared',
+          'quiescing',
+          'capturing',
+          'validating',
+          'restoring',
+          'verifying',
+          'resuming',
+          'rolling_back',
+          'recovery_required'
+        )`,
+      ),
+    uniqueIndex("lifecycle_operations_id_snapshot_idx").on(
+      table.id,
+      table.snapshotId,
+    ),
+  ],
+)
+
+export const lifecycleOperationEvents = admin.table(
+  "lifecycle_operation_events",
+  {
+    operationId: uuid("operation_id")
+      .notNull()
+      .references(() => lifecycleOperations.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    operationState: text("operation_state").notNull(),
+    phase: text("phase").notNull(),
+    component: text("component"),
+    outcome: text("outcome").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    failureCode: text("failure_code"),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.operationId, table.sequence],
+      name: "lifecycle_operation_events_pkey",
+    }),
+    check(
+      "lifecycle_operation_events_sequence_check",
+      sql`${table.sequence} >= 0`,
+    ),
+    check(
+      "lifecycle_operation_events_state_check",
+      sql`${table.operationState} IN (
+        'prepared',
+        'quiescing',
+        'capturing',
+        'validating',
+        'restoring',
+        'verifying',
+        'resuming',
+        'rolling_back',
+        'succeeded',
+        'rolled_back',
+        'failed',
+        'recovery_required'
+      )`,
+    ),
+    check(
+      "lifecycle_operation_events_phase_check",
+      sql`${table.phase} IN (
+        'operation',
+        'quiesce',
+        'capture',
+        'validate',
+        'restore',
+        'verify',
+        'resume',
+        'rollback',
+        'emergency_session_fence',
+        'emergency_session_reset',
+        'credential_consistency',
+        'discard_preparation'
+      )`,
+    ),
+    check(
+      "lifecycle_operation_events_component_check",
+      sql`${table.component} IS NULL OR ${table.component} IN (
+        'console_database',
+        'keycloak',
+        'litellm',
+        'grafana'
+      )`,
+    ),
+    check(
+      "lifecycle_operation_events_phase_component_check",
+      sql`(
+        ${table.phase} IN (
+          'operation',
+          'emergency_session_fence',
+          'emergency_session_reset',
+          'credential_consistency'
+        )
+        AND ${table.component} IS NULL
+      ) OR (
+        ${table.phase} IN (
+          'quiesce',
+          'capture',
+          'validate',
+          'restore',
+          'verify',
+          'resume',
+          'rollback',
+          'discard_preparation'
+        )
+        AND ${table.component} IS NOT NULL
+      )`,
+    ),
+    check(
+      "lifecycle_operation_events_phase_state_check",
+      sql`(
+        ${table.phase} = 'operation'
+      ) OR (
+        ${table.phase} = 'quiesce'
+        AND ${table.operationState} IN ('quiescing', 'rolling_back')
+      ) OR (
+        ${table.phase} = 'capture'
+        AND ${table.operationState} = 'capturing'
+      ) OR (
+        ${table.phase} = 'validate'
+        AND ${table.operationState} = 'validating'
+      ) OR (
+        ${table.phase} = 'restore'
+        AND ${table.operationState} = 'restoring'
+      ) OR (
+        ${table.phase} = 'verify'
+        AND ${table.operationState} = 'verifying'
+      ) OR (
+        ${table.phase} = 'resume'
+        AND ${table.operationState} = 'resuming'
+      ) OR (
+        ${table.phase} = 'rollback'
+        AND ${table.operationState} = 'rolling_back'
+      ) OR (
+        ${table.phase} = 'emergency_session_fence'
+        AND ${table.operationState} IN (
+          'quiescing',
+          'resuming',
+          'rolling_back'
+        )
+      ) OR (
+        ${table.phase} = 'emergency_session_reset'
+        AND ${table.operationState} IN (
+          'quiescing',
+          'restoring',
+          'resuming',
+          'rolling_back'
+        )
+      ) OR (
+        ${table.phase} = 'credential_consistency'
+        AND ${table.operationState} = 'verifying'
+      ) OR (
+        ${table.phase} = 'discard_preparation'
+        AND ${table.operationState} IN (
+          'validating',
+          'verifying',
+          'rolling_back'
+        )
+      )`,
+    ),
+    check(
+      "lifecycle_operation_events_outcome_check",
+      sql`${table.outcome} IN ('started', 'succeeded', 'failed')`,
+    ),
+    check(
+      "lifecycle_operation_events_failure_code_check",
+      sql`${table.failureCode} IS NULL OR ${table.failureCode} IN (
+        'adapter_unavailable',
+        'quiesce_failed',
+        'capture_failed',
+        'manifest_invalid',
+        'consistency_mismatch',
+        'restore_failed',
+        'verification_failed',
+        'rollback_failed',
+        'resume_failed',
+        'journal_failed'
+      )`,
+    ),
+    check(
+      "lifecycle_operation_events_outcome_failure_check",
+      sql`(
+        ${table.outcome} = 'failed'
+        AND ${table.failureCode} IS NOT NULL
+      ) OR (
+        ${table.outcome} IN ('started', 'succeeded')
+        AND ${table.failureCode} IS NULL
+      )`,
+    ),
+  ],
+)
+
+export const lifecycleSnapshotManifests = admin.table(
+  "lifecycle_snapshot_manifests",
+  {
+    snapshotId: uuid("snapshot_id").primaryKey(),
+    operationId: uuid("operation_id").notNull().unique(),
+    schemaVersion: integer("schema_version").default(1).notNull(),
+    manifestSha256: text("manifest_sha256").notNull(),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull(),
+    contentFree: boolean("content_free").default(true).notNull(),
+    workloadContentIncluded: boolean("workload_content_included")
+      .default(false)
+      .notNull(),
+    plaintextSecretsIncluded: boolean("plaintext_secrets_included")
+      .default(false)
+      .notNull(),
+    emergencySessionsIncluded: boolean("emergency_sessions_included")
+      .default(false)
+      .notNull(),
+    componentCount: integer("component_count").default(4).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.operationId, table.snapshotId],
+      foreignColumns: [lifecycleOperations.id, lifecycleOperations.snapshotId],
+      name: "lifecycle_snapshot_manifests_operation_snapshot_fkey",
+    }).onDelete("restrict"),
+    check(
+      "lifecycle_snapshot_manifests_schema_version_check",
+      sql`${table.schemaVersion} = 1`,
+    ),
+    check(
+      "lifecycle_snapshot_manifests_hash_check",
+      sql`${table.manifestSha256} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "lifecycle_snapshot_manifests_content_boundary_check",
+      sql`${table.contentFree} = true
+        AND ${table.workloadContentIncluded} = false
+        AND ${table.plaintextSecretsIncluded} = false
+        AND ${table.emergencySessionsIncluded} = false`,
+    ),
+    check(
+      "lifecycle_snapshot_manifests_component_count_check",
+      sql`${table.componentCount} = 4`,
+    ),
+  ],
+)
+
+export const lifecycleSnapshotComponents = admin.table(
+  "lifecycle_snapshot_components",
+  {
+    snapshotId: uuid("snapshot_id")
+      .notNull()
+      .references(() => lifecycleSnapshotManifests.snapshotId, {
+        onDelete: "cascade",
+      }),
+    component: text("component").notNull(),
+    ordinal: integer("ordinal").notNull(),
+    revision: text("revision").notNull(),
+    artifactSha256: text("artifact_sha256").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.snapshotId, table.component],
+      name: "lifecycle_snapshot_components_pkey",
+    }),
+    check(
+      "lifecycle_snapshot_components_mapping_check",
+      sql`(
+        ${table.component} = 'console_database'
+        AND ${table.ordinal} = 0
+      ) OR (
+        ${table.component} = 'keycloak'
+        AND ${table.ordinal} = 1
+      ) OR (
+        ${table.component} = 'litellm'
+        AND ${table.ordinal} = 2
+      ) OR (
+        ${table.component} = 'grafana'
+        AND ${table.ordinal} = 3
+      )`,
+    ),
+    check(
+      "lifecycle_snapshot_components_revision_check",
+      sql`${table.revision} ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$'`,
+    ),
+    check(
+      "lifecycle_snapshot_components_hash_check",
+      sql`${table.artifactSha256} ~ '^[0-9a-f]{64}$'`,
+    ),
+    uniqueIndex("lifecycle_snapshot_components_snapshot_ordinal_idx").on(
+      table.snapshotId,
+      table.ordinal,
+    ),
+  ],
+)

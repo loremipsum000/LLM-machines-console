@@ -27,6 +27,10 @@ import {
   identityMutationJournal,
   identityMutationJournalTargets,
   licenseState,
+  lifecycleOperationEvents,
+  lifecycleOperations,
+  lifecycleSnapshotComponents,
+  lifecycleSnapshotManifests,
   recoveryState,
   updateState,
 } from "./inference-core-schema"
@@ -431,6 +435,63 @@ const tableDefinitions = [
       "updated_at",
     ],
   },
+  {
+    schema: "admin",
+    table: lifecycleOperations,
+    columns: [
+      "id",
+      "kind",
+      "state",
+      "actor_subject_id",
+      "correlation_id",
+      "snapshot_id",
+      "failure_code",
+      "created_at",
+      "updated_at",
+      "completed_at",
+    ],
+  },
+  {
+    schema: "admin",
+    table: lifecycleOperationEvents,
+    columns: [
+      "operation_id",
+      "sequence",
+      "operation_state",
+      "phase",
+      "component",
+      "outcome",
+      "occurred_at",
+      "failure_code",
+    ],
+  },
+  {
+    schema: "admin",
+    table: lifecycleSnapshotManifests,
+    columns: [
+      "snapshot_id",
+      "operation_id",
+      "schema_version",
+      "manifest_sha256",
+      "captured_at",
+      "content_free",
+      "workload_content_included",
+      "plaintext_secrets_included",
+      "emergency_sessions_included",
+      "component_count",
+    ],
+  },
+  {
+    schema: "admin",
+    table: lifecycleSnapshotComponents,
+    columns: [
+      "snapshot_id",
+      "component",
+      "ordinal",
+      "revision",
+      "artifact_sha256",
+    ],
+  },
 ] as const
 
 const expectedIndexes = [
@@ -475,6 +536,9 @@ const expectedIndexes = [
   "identity_mutation_journal_targets_state_idx",
   "emergency_recovery_sessions_one_active_idx",
   "emergency_recovery_sessions_expiry_idx",
+  "lifecycle_operations_one_active_idx",
+  "lifecycle_operations_id_snapshot_idx",
+  "lifecycle_snapshot_components_snapshot_ordinal_idx",
 ]
 
 const migrationDirectory = new URL(
@@ -519,6 +583,10 @@ describe("inference-core persistence boundary", () => {
       "emergency_recovery_factor",
       "emergency_recovery_sessions",
       "recovery_state",
+      "lifecycle_operations",
+      "lifecycle_operation_events",
+      "lifecycle_snapshot_manifests",
+      "lifecycle_snapshot_components",
     ])
 
     expect(
@@ -554,6 +622,10 @@ describe("inference-core persistence boundary", () => {
       "emergencyRecoveryFactor",
       "emergencyRecoverySessions",
       "recoveryState",
+      "lifecycleOperations",
+      "lifecycleOperationEvents",
+      "lifecycleSnapshotManifests",
+      "lifecycleSnapshotComponents",
     ])
   })
 
@@ -704,6 +776,22 @@ describe("inference-core persistence boundary", () => {
     expect(firecrawlCredentialTable).not.toMatch(/^ {2}expires_at\b/m)
     expect(firecrawlCredentialTable).toContain(
       "overlap_expires_at = rotated_at + interval '86400 seconds'",
+    )
+    expect(
+      getTableColumns(lifecycleSnapshotManifests).operationId.isUnique,
+    ).toBe(true)
+    expect(
+      migrationDefinition("admin", "lifecycle_snapshot_manifests"),
+    ).toContain("operation_id uuid NOT NULL UNIQUE")
+    for (const phase of ["emergency_session_fence", "discard_preparation"]) {
+      expect(schemaSource).toContain(`'${phase}'`)
+      expect(migration).toContain(`'${phase}'`)
+    }
+    expect(schemaSource).toContain(
+      '"lifecycle_operation_events_phase_state_check"',
+    )
+    expect(migration).toContain(
+      "CONSTRAINT lifecycle_operation_events_phase_state_check",
     )
   })
 

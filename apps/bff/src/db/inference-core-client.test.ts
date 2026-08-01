@@ -45,7 +45,7 @@ describe("Inference Core PostgreSQL client bounds", () => {
     })
   })
 
-  it("requires the batch, inference, and Firecrawl relations for readiness", () => {
+  it("requires the batch, inference, Firecrawl, and lifecycle relations for readiness", () => {
     const source = readFileSync(
       new URL("inference-core-client.ts", import.meta.url),
       "utf8",
@@ -59,6 +59,10 @@ describe("Inference Core PostgreSQL client bounds", () => {
       "admin.application_firecrawl_rate_limit_windows",
       "admin.application_firecrawl_request_ledger",
       "admin.application_firecrawl_usage_daily",
+      "admin.lifecycle_operations",
+      "admin.lifecycle_operation_events",
+      "admin.lifecycle_snapshot_manifests",
+      "admin.lifecycle_snapshot_components",
     ]) {
       expect(source).toContain(`('${relation}')`)
     }
