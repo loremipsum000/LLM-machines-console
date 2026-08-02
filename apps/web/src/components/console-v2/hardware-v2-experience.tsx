@@ -6,7 +6,6 @@ import type {
   AdminHardwareResponse,
   InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
-import { ArrowUpRight } from "lucide-react"
 import Link from "next/link"
 import { HardwareChartPrimitive } from "./hardware-chart-primitives"
 
@@ -88,24 +87,12 @@ function HardwareToolbar({
         </div>
       </div>
 
-      {hardware.grafanaUrl ? (
-        <Link
-          className="flex items-center gap-1.5 rounded-md bg-[#2e2e2e] px-3 py-2 text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#353535] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-          href={hardware.grafanaUrl}
-        >
-          Open Grafana
-          <ArrowUpRight aria-hidden className="size-4" />
-        </Link>
-      ) : null}
-      {hardware.alertmanagerUrl ? (
-        <Link
-          className="flex items-center gap-1.5 rounded-md bg-[#2e2e2e] px-3 py-2 text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#353535] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-          href={hardware.alertmanagerUrl}
-        >
-          Open Alertmanager
-          <ArrowUpRight aria-hidden className="size-4" />
-        </Link>
-      ) : null}
+      <span
+        aria-disabled="true"
+        className="rounded-md border border-[#353535] px-3 py-2 text-sm font-medium leading-[18px] text-[#777]"
+      >
+        Direct Grafana access is pending qualification
+      </span>
     </div>
   )
 }
@@ -234,33 +221,7 @@ function HardwareAlertRow({ alert }: { alert: AdminHardwareAlert }) {
           ))}
         </dl>
       ) : null}
-
-      {alert.grafanaUrl || alert.alertmanagerUrl ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {alert.grafanaUrl ? (
-            <AlertDeepLink href={alert.grafanaUrl} label="Open in Grafana" />
-          ) : null}
-          {alert.alertmanagerUrl ? (
-            <AlertDeepLink
-              href={alert.alertmanagerUrl}
-              label="Open in Alertmanager"
-            />
-          ) : null}
-        </div>
-      ) : null}
     </article>
-  )
-}
-
-function AlertDeepLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      className="inline-flex items-center gap-1.5 rounded-md bg-[#2e2e2e] px-3 py-2 text-xs font-medium leading-none text-white transition-colors hover:bg-[#353535] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-      href={href}
-    >
-      {label}
-      <ArrowUpRight aria-hidden className="size-3.5" />
-    </Link>
   )
 }
 

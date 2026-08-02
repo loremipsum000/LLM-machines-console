@@ -7,6 +7,7 @@ import { getBffRequest } from "@/lib/bff/server-request"
 import {
   type AdminConnectedApp,
   type AdminConnectedAppCredential,
+  type AdminConnectedAppFirecrawlCredential,
   type AdminSettingsLanguage,
   type AdminSettingsLogoAsset,
   type AdminTeamCsvImportCommitResponse,
@@ -16,12 +17,16 @@ import {
   adminConnectedAppCreateRequestSchema,
   adminConnectedAppCreateResponseSchema,
   adminConnectedAppDeleteRequestSchema,
+  adminConnectedAppFirecrawlCredentialResultSchema,
+  adminConnectedAppFirecrawlEnableRequestSchema,
+  adminConnectedAppFirecrawlLifecycleResultSchema,
+  adminConnectedAppFirecrawlPolicyRequestSchema,
+  adminConnectedAppFirecrawlTestResultSchema,
   adminConnectedAppLifecycleResultSchema,
   adminConnectedAppRotateCredentialResultSchema,
   adminConnectedAppSchema,
   adminConnectedAppTestResultSchema,
   adminConnectedAppUpdateRequestSchema,
-  adminInferenceModelUpdateActionResponseSchema,
   adminSettingsResponseSchema,
   adminTeamActionResponseSchema,
   adminTeamBulkGroupAssignmentRequestSchema,
@@ -96,27 +101,6 @@ export async function updateAdminSettingsTelemetryAction(
       enabled ? "telemetryEnabled" : "telemetryDisabled",
     ),
   )
-}
-
-export async function applyAdminInferenceModelUpdateAction(
-  formData: FormData,
-): Promise<void> {
-  await requireCapability("updates.apply")
-  const fallback = inferenceReturnHref(formData)
-  const confirmation = requiredFormValue(formData, "confirmation")
-  let result: Awaited<ReturnType<typeof postAdminInferenceMutation>>
-
-  try {
-    result = await postAdminInferenceMutation(
-      "/api/admin/inference/model-updates/apply",
-      { confirmation },
-    )
-  } catch {
-    redirectTo(withActionStatus(fallback, "inferenceAction", "failed"))
-  }
-
-  revalidatePath("/inference")
-  redirectTo(withActionStatus(fallback, "inferenceAction", result.status))
 }
 
 export interface TeamMemberActionState {
@@ -576,6 +560,23 @@ export interface ConnectedAppCredentialActionState {
   status: "blocked" | "failed" | "idle" | "revoked" | "rotated"
 }
 
+export interface ConnectedAppFirecrawlCredentialActionState {
+  app: AdminConnectedApp | null
+  credential: AdminConnectedAppFirecrawlCredential | null
+  detail: string | null
+  error: string | null
+  status: "blocked" | "enabled" | "failed" | "idle" | "rotated"
+}
+
+export interface ConnectedAppFirecrawlLifecycleActionState {
+  app: AdminConnectedApp | null
+  detail: string | null
+  error: string | null
+  status: "blocked" | "disabled" | "failed" | "idle" | "revoked"
+}
+
+export type ConnectedAppFirecrawlTestActionState = ConnectedAppTestActionState
+
 export async function createAdminConnectedAppAction(
   _previousState: ConnectedAppCreateActionState,
   formData: FormData,
@@ -750,6 +751,264 @@ export async function revokeAdminConnectedAppCredentialAction(
       status: error instanceof AdminMutationError ? "blocked" : "failed",
     }
   }
+}
+
+export async function enableAdminConnectedAppFirecrawlAction(
+  _previousState: ConnectedAppFirecrawlCredentialActionState,
+  formData: FormData,
+): Promise<ConnectedAppFirecrawlCredentialActionState> {
+  await requireCapability("firecrawl.enable_reenable")
+  const appId = requiredFormValue(formData, "appId")
+  const parsed = adminConnectedAppFirecrawlEnableRequestSchema.safeParse({
+    disclaimerAccepted: checkboxFormValue(formData, "disclaimerAccepted"),
+    maxConcurrentScrapes: checkboxFormValue(
+      formData,
+      "firecrawlMaxConcurrentScrapesEnabled",
+    )
+      ? parseOptionalPositiveInt(
+          optionalFormValue(formData, "firecrawlMaxConcurrentScrapes"),
+        )
+      : null,
+    scrapeRateLimitRps: checkboxFormValue(
+      formData,
+      "firecrawlScrapeRateLimitRpsEnabled",
+    )
+      ? parseOptionalPositiveInt(
+          optionalFormValue(formData, "firecrawlScrapeRateLimitRps"),
+        )
+      : null,
+    searchRateLimitRps: checkboxFormValue(
+      formData,
+      "firecrawlSearchRateLimitRpsEnabled",
+    )
+      ? parseOptionalPositiveInt(
+          optionalFormValue(formData, "firecrawlSearchRateLimitRps"),
+        )
+      : null,
+  })
+  if (!parsed.success) {
+    return {
+      app: null,
+      credential: null,
+      detail: null,
+      error:
+        "Accept the outbound web access disclaimer and check each enabled protection.",
+      status: "failed",
+    }
+  }
+
+  try {
+    const result = await postAdminConnectedAppFirecrawlCredentialMutation(
+      `/api/admin/applications/connected-apps/${encodeURIComponent(
+        appId,
+      )}/firecrawl/enable`,
+      parsed.data,
+    )
+    revalidateConnectedApp(appId)
+    return {
+      app: result.app,
+      credential: result.credential,
+      detail: result.detail,
+      error: null,
+      status: result.status,
+    }
+  } catch (error) {
+    return {
+      app: null,
+      credential: null,
+      detail: null,
+      error: adminMutationErrorDetail(error, "Firecrawl could not be enabled."),
+      status: error instanceof AdminMutationError ? "blocked" : "failed",
+    }
+  }
+}
+
+export async function checkAdminConnectedAppFirecrawlConnectionAction(
+  _previousState: ConnectedAppFirecrawlTestActionState,
+  formData: FormData,
+): Promise<ConnectedAppFirecrawlTestActionState> {
+  await requireCapability("applications.credentials.test_rotate_revoke")
+  const appId = requiredFormValue(formData, "appId")
+
+  try {
+    const result = await postAdminConnectedAppFirecrawlTestMutation(
+      `/api/admin/applications/connected-apps/${encodeURIComponent(
+        appId,
+      )}/firecrawl/test`,
+    )
+    revalidateConnectedApp(appId)
+    return {
+      app: result.app,
+      detail: result.detail,
+      error: null,
+      observedAt: result.observedAt,
+      status: result.status,
+    }
+  } catch (error) {
+    return {
+      app: null,
+      detail: null,
+      error: adminMutationErrorDetail(
+        error,
+        "Firecrawl connection evidence could not be refreshed.",
+      ),
+      observedAt: null,
+      status: "failed",
+    }
+  }
+}
+
+export async function rotateAdminConnectedAppFirecrawlCredentialAction(
+  _previousState: ConnectedAppFirecrawlCredentialActionState,
+  formData: FormData,
+): Promise<ConnectedAppFirecrawlCredentialActionState> {
+  await requireCapability("applications.credentials.test_rotate_revoke")
+  const appId = requiredFormValue(formData, "appId")
+
+  try {
+    const result = await postAdminConnectedAppFirecrawlCredentialMutation(
+      `/api/admin/applications/connected-apps/${encodeURIComponent(
+        appId,
+      )}/firecrawl/rotate-credentials`,
+    )
+    revalidateConnectedApp(appId)
+    return {
+      app: result.app,
+      credential: result.credential,
+      detail: result.detail,
+      error: null,
+      status: result.status,
+    }
+  } catch (error) {
+    return {
+      app: null,
+      credential: null,
+      detail: null,
+      error: adminMutationErrorDetail(
+        error,
+        "Firecrawl credential rotation failed.",
+      ),
+      status: error instanceof AdminMutationError ? "blocked" : "failed",
+    }
+  }
+}
+
+export async function revokeAdminConnectedAppFirecrawlCredentialAction(
+  _previousState: ConnectedAppFirecrawlLifecycleActionState,
+  formData: FormData,
+): Promise<ConnectedAppFirecrawlLifecycleActionState> {
+  await requireCapability("applications.credentials.test_rotate_revoke")
+  const appId = requiredFormValue(formData, "appId")
+  const credentialId = requiredFormValue(formData, "credentialId")
+
+  try {
+    const result = await postAdminConnectedAppFirecrawlLifecycleMutation(
+      `/api/admin/applications/connected-apps/${encodeURIComponent(
+        appId,
+      )}/firecrawl/credentials/${encodeURIComponent(credentialId)}/revoke`,
+    )
+    revalidateConnectedApp(appId)
+    return {
+      app: result.app,
+      detail: result.detail,
+      error: null,
+      status: "revoked",
+    }
+  } catch (error) {
+    return {
+      app: null,
+      detail: null,
+      error: adminMutationErrorDetail(
+        error,
+        "Firecrawl credential revocation failed.",
+      ),
+      status: error instanceof AdminMutationError ? "blocked" : "failed",
+    }
+  }
+}
+
+export async function disableAdminConnectedAppFirecrawlAction(
+  _previousState: ConnectedAppFirecrawlLifecycleActionState,
+  formData: FormData,
+): Promise<ConnectedAppFirecrawlLifecycleActionState> {
+  await requireCapability("applications.disable")
+  const appId = requiredFormValue(formData, "appId")
+
+  try {
+    const result = await postAdminConnectedAppFirecrawlLifecycleMutation(
+      `/api/admin/applications/connected-apps/${encodeURIComponent(
+        appId,
+      )}/firecrawl/disable`,
+    )
+    revalidateConnectedApp(appId)
+    return {
+      app: result.app,
+      detail: result.detail,
+      error: null,
+      status: "disabled",
+    }
+  } catch (error) {
+    return {
+      app: null,
+      detail: null,
+      error: adminMutationErrorDetail(
+        error,
+        "Firecrawl could not be disabled.",
+      ),
+      status: error instanceof AdminMutationError ? "blocked" : "failed",
+    }
+  }
+}
+
+export async function updateAdminConnectedAppFirecrawlPolicyAction(
+  formData: FormData,
+): Promise<void> {
+  await requireCapability("applications.policy.change")
+  const appId = requiredFormValue(formData, "appId")
+  const fallback = connectedAppReturnHref(formData, appId)
+  const parsed = adminConnectedAppFirecrawlPolicyRequestSchema.safeParse({
+    maxConcurrentScrapes: checkboxFormValue(
+      formData,
+      "firecrawlMaxConcurrentScrapesEnabled",
+    )
+      ? parseOptionalPositiveInt(
+          optionalFormValue(formData, "firecrawlMaxConcurrentScrapes"),
+        )
+      : null,
+    scrapeRateLimitRps: checkboxFormValue(
+      formData,
+      "firecrawlScrapeRateLimitRpsEnabled",
+    )
+      ? parseOptionalPositiveInt(
+          optionalFormValue(formData, "firecrawlScrapeRateLimitRps"),
+        )
+      : null,
+    searchRateLimitRps: checkboxFormValue(
+      formData,
+      "firecrawlSearchRateLimitRpsEnabled",
+    )
+      ? parseOptionalPositiveInt(
+          optionalFormValue(formData, "firecrawlSearchRateLimitRps"),
+        )
+      : null,
+  })
+  if (!parsed.success) {
+    redirectTo(withActionStatus(fallback, "appAction", "firecrawlInvalid"))
+  }
+
+  try {
+    await patchAdminConnectedAppFirecrawlMutation(
+      `/api/admin/applications/connected-apps/${encodeURIComponent(
+        appId,
+      )}/firecrawl`,
+      parsed.data,
+    )
+  } catch {
+    redirectTo(withActionStatus(fallback, "appAction", "firecrawlFailed"))
+  }
+
+  revalidateConnectedApp(appId)
+  redirectTo(withActionStatus(fallback, "appAction", "firecrawlUpdated"))
 }
 
 export async function updateAdminConnectedAppPolicyAction(
@@ -945,6 +1204,41 @@ async function postAdminConnectedAppRevokeMutation(path: string) {
   )
 }
 
+async function postAdminConnectedAppFirecrawlCredentialMutation(
+  path: string,
+  body?: unknown,
+) {
+  return adminConnectedAppFirecrawlCredentialResultSchema.parse(
+    await postAdminMutation(path, body, "connected app Firecrawl credential"),
+  )
+}
+
+async function postAdminConnectedAppFirecrawlTestMutation(path: string) {
+  return adminConnectedAppFirecrawlTestResultSchema.parse(
+    await postAdminMutation(path, undefined, "connected app Firecrawl test"),
+  )
+}
+
+async function postAdminConnectedAppFirecrawlLifecycleMutation(path: string) {
+  return adminConnectedAppFirecrawlLifecycleResultSchema.parse(
+    await postAdminMutation(path, undefined, "connected app Firecrawl"),
+  )
+}
+
+async function patchAdminConnectedAppFirecrawlMutation(
+  path: string,
+  body: unknown,
+) {
+  return adminConnectedAppFirecrawlLifecycleResultSchema.parse(
+    await adminMutation(path, body, "connected app Firecrawl policy", "PATCH"),
+  )
+}
+
+function revalidateConnectedApp(appId: string): void {
+  revalidatePath("/applications")
+  revalidatePath(`/applications/apps/${appId}`)
+}
+
 async function patchAdminConnectedAppMutation(path: string, body: unknown) {
   return adminConnectedAppSchema.parse(
     await adminMutation(path, body, "connected app policy update", "PATCH"),
@@ -960,12 +1254,6 @@ async function postAdminConnectedAppLifecycleMutation(path: string) {
 async function deleteAdminConnectedAppMutation(path: string, body: unknown) {
   return adminConnectedAppLifecycleResultSchema.parse(
     await adminMutation(path, body, "connected app soft delete", "DELETE"),
-  )
-}
-
-async function postAdminInferenceMutation(path: string, body: unknown) {
-  return adminInferenceModelUpdateActionResponseSchema.parse(
-    await postAdminMutation(path, body, "inference"),
   )
 }
 
@@ -1255,30 +1543,6 @@ function connectedAppReturnHref(formData: FormData, appId: string): string {
 
 function settingsReturnHref(formData: FormData): string {
   return sanitizeSettingsReturnTo(optionalFormValue(formData, "returnTo"))
-}
-
-function inferenceReturnHref(formData: FormData): string {
-  return sanitizeInferenceReturnTo(optionalFormValue(formData, "returnTo"))
-}
-
-function sanitizeInferenceReturnTo(value: string | null): string {
-  if (!value) {
-    return "/inference"
-  }
-  const [path, query = ""] = value.split("?")
-  if (path !== "/inference" && path !== "/inference/update") {
-    return "/inference"
-  }
-  const allowed = new URLSearchParams()
-  const params = new URLSearchParams(query)
-  for (const key of ["range", "inferenceAction"]) {
-    const current = params.get(key)
-    if (current) {
-      allowed.set(key, current)
-    }
-  }
-  const queryString = allowed.toString()
-  return `${path}${queryString ? `?${queryString}` : ""}`
 }
 
 function sanitizeSettingsReturnTo(value: string | null): string {

@@ -22,6 +22,7 @@ import {
 } from "../config/fixture-mode"
 import {
   type InferenceCoreDatabase,
+  type InferenceCoreQueryExecutor,
   getInferenceCoreDb,
 } from "../db/inference-core-client"
 import { auditEvents } from "../db/inference-core-schema"
@@ -189,6 +190,7 @@ export class InvalidAuditCursorError extends Error {
 
 export async function emitAudit(
   event: AuditEventInput,
+  database: InferenceCoreQueryExecutor | null = getInferenceCoreDb(),
 ): Promise<AuditEventRecord> {
   const parsed = parseAuditEventInput(event)
   if (isNativeAuditSourceSystem(parsed.sourceSystem)) {
@@ -204,9 +206,8 @@ export async function emitAudit(
     ...parsed,
   })
 
-  const db = getInferenceCoreDb()
-  if (db) {
-    await db.insert(auditEvents).values(auditEventValues(record))
+  if (database) {
+    await database.insert(auditEvents).values(auditEventValues(record))
   } else {
     assertFixtureAuditStorage()
     memoryAuditEvents.push(record)

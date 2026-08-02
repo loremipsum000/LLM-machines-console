@@ -73,6 +73,22 @@ describe("Admin overview LiteLLM ops federation", () => {
           ],
         })
       }
+      if (url.pathname === "/model/info") {
+        return jsonResponse({
+          data: [
+            { model_info: { id: "model-1" }, model_name: "qwen3-35b-local" },
+            { model_info: { id: "model-2" }, model_name: "gemma4" },
+          ],
+        })
+      }
+      if (url.pathname === "/key/list") {
+        return jsonResponse({
+          current_page: 1,
+          keys: [],
+          total_count: 0,
+          total_pages: 0,
+        })
+      }
       return new Response("{}", { status: 500 })
     })
     const server = buildServer()
@@ -87,8 +103,7 @@ describe("Admin overview LiteLLM ops federation", () => {
     expect(opsTile(response.json())).toMatchObject({
       href: "/inference",
       sourceStatus: "ok",
-      summary:
-        "LiteLLM reports 12 requests, 1,800 tokens, and 0 failed requests in the last 30 days.",
+      summary: "LiteLLM reports 12 requests and 1,800 tokens in the last 30d.",
       metrics: expect.arrayContaining([
         expect.objectContaining({
           id: "requests",
@@ -103,13 +118,8 @@ describe("Admin overview LiteLLM ops federation", () => {
           value: "qwen3-35b-local",
         }),
         expect.objectContaining({
-          id: "p95-latency",
-          tone: "good",
-          value: "5.5s",
-        }),
-        expect.objectContaining({
-          id: "top-user",
-          value: "demo-admin",
+          id: "models",
+          value: "2",
         }),
       ]),
     })
@@ -134,11 +144,11 @@ describe("Admin overview LiteLLM ops federation", () => {
       sourceStatus: "unavailable",
       metrics: expect.arrayContaining([
         expect.objectContaining({
-          id: "p95-latency",
+          id: "requests",
           value: "Unavailable",
         }),
         expect.objectContaining({
-          id: "top-user",
+          id: "models",
           value: "Unavailable",
         }),
       ]),

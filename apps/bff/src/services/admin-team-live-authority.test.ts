@@ -8,19 +8,69 @@ import {
   createAdminTeamMember,
   deleteAdminTeamGroup,
   disableAdminTeamMember,
+  getAdminTeamMemberDetail,
   previewAdminTeamCsvImport,
   reactivateAdminTeamMember,
   removeAdminTeamGroupMember,
+  resetAdminTeamStateForTest,
   sendAdminTeamInvite,
   updateAdminTeamGroup,
 } from "./admin-team"
+import { emitAudit, resetAuditEventsForTest } from "./audit"
 import { resetIdentityMutationJournalForTest } from "./identity-mutation-journal"
 
 describe("Admin Team live authority protection", () => {
   afterEach(() => {
+    resetAdminTeamStateForTest()
+    resetAuditEventsForTest()
     resetIdentityMutationJournalForTest()
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
+  })
+
+  it("returns identity and audit metadata without synthetic member usage", async () => {
+    stubKeycloakAdminEnv()
+    const activity = await emitAudit({
+      action: "team.member.activity",
+      keycloakSubjectId: "operator-1",
+      outcome: "succeeded",
+      sourceSystem: "console",
+    })
+    const fetchMock = vi.fn<typeof fetch>(async (request) => {
+      const url = new URL(request.toString())
+      if (url.pathname.endsWith("/protocol/openid-connect/token")) {
+        return jsonResponse({ access_token: "unit-test-token", expires_in: 60 })
+      }
+      if (url.pathname.endsWith("/users/operator-1")) {
+        return jsonResponse(keycloakUser("operator-1", true))
+      }
+      if (url.pathname.endsWith("/users/operator-1/groups")) {
+        return jsonResponse([])
+      }
+      if (url.pathname.endsWith("/role-mappings/realm/composite")) {
+        return jsonResponse([{ id: "role-operator", name: "operator" }])
+      }
+      return new Response(null, { status: 404 })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const detail = await getAdminTeamMemberDetail(adminActor, "operator-1")
+
+    expect(Object.keys(detail).sort()).toEqual(["activity", "member"])
+    expect(detail.member).toMatchObject({
+      id: "operator-1",
+      lastActiveAt: activity.createdAt,
+      role: "operator",
+    })
+    expect(detail.activity).toEqual([
+      {
+        action: activity.action,
+        createdAt: activity.createdAt,
+        id: activity.id,
+        targetId: activity.targetId,
+        targetType: activity.targetType,
+      },
+    ])
   })
 
   it("counts only enabled live Operators as recovery-ready", async () => {

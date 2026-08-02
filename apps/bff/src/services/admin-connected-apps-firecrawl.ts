@@ -260,6 +260,7 @@ export function preflightAdminConnectedAppFirecrawlReadiness(
     env.FIRECRAWL_UPSTREAM_BASE_URL,
     false,
     true,
+    true,
   )
   if (!upstreamBaseUrl || !isGovernedFirecrawlUpstream(upstreamBaseUrl)) {
     return blocked("The Firecrawl internal upstream URL is missing or invalid.")
@@ -2048,6 +2049,7 @@ function normalizeFirecrawlBaseUrl(
   value: string | undefined,
   rejectLoopback: boolean,
   requireRootPath = false,
+  allowPlaintextNonLoopback = false,
 ): string | null {
   const candidate = value?.trim()
   if (
@@ -2067,6 +2069,9 @@ function normalizeFirecrawlBaseUrl(
       url.password ||
       url.search ||
       url.hash ||
+      (!allowPlaintextNonLoopback &&
+        url.protocol === "http:" &&
+        !isLoopbackHostname(url.hostname)) ||
       (requireRootPath && url.pathname !== "/") ||
       (requireRootPath &&
         url.hostname.toLowerCase().replace(/\.$/, "") ===

@@ -236,13 +236,18 @@ const memoryGatewayRequests = new Map<
 export async function getAdminConnectedApps(
   actor: Actor,
 ): Promise<AdminConnectedAppsResponse> {
-  const apps = (await getConnectedAppBundles()).map(toPublicApp)
+  const projection = await getAdminConnectedAppsProjection()
   await emitAudit({
     action: "admin.connected_app.read",
     keycloakSubjectId: actor.subject,
     outcome: "succeeded",
     sourceSystem: "console",
   })
+  return projection
+}
+
+export async function getAdminConnectedAppsProjection(): Promise<AdminConnectedAppsResponse> {
+  const apps = (await getConnectedAppBundles()).map(toPublicApp)
   return {
     apps,
     generatedAt: new Date().toISOString(),

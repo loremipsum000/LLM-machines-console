@@ -1,9 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
-import {
-  getAuditEventsForTest,
-  resetAuditEventsForTest,
-} from "../services/audit"
 
 const adminHeaders = {
   authorization: "Bearer test-service-key",
@@ -32,7 +28,6 @@ describe("Admin Inference routes", () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     vi.useRealTimers()
-    resetAuditEventsForTest()
   })
 
   it("returns LiteLLM-backed data without exposing the disabled native expert link", async () => {
@@ -53,7 +48,6 @@ describe("Admin Inference routes", () => {
     const body = response.json()
     expect(body).toMatchObject({
       liteLlmUrl: null,
-      modelUpdate: null,
       modelUsage: [
         expect.objectContaining({
           model: "qwen3-35b-local",
@@ -223,47 +217,18 @@ describe("Admin Inference routes", () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
-      modelUpdate: null,
+      aggregateUsageSourceStatus: "not_configured",
+      modelInventorySourceStatus: "not_configured",
       modelUsage: [],
       models: [],
       range: "90d",
       sourceStatus: "not_configured",
-      totals: {
-        requests: 0,
-        tokens: 0,
-      },
+      totals: null,
       usagePoints: [],
       virtualKeys: [],
+      virtualKeysSourceStatus: "not_configured",
     })
     expect(fetchSpy).not.toHaveBeenCalled()
-    await server.close()
-  })
-
-  it("surfaces an available model update in the dashboard", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_STATUS", "available")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_ACTION_ENABLED", "true")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_CURRENT_VERSION", "2026.05.01")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_AVAILABLE_VERSION", "2026.05.30")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_AFFECTED_MODELS", "qwen3-35b-local")
-    const server = buildServer()
-
-    const response = await server.inject({
-      headers: adminHeaders,
-      method: "GET",
-      url: "/api/admin/inference",
-    })
-
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      modelUpdate: {
-        affectedModels: ["qwen3-35b-local"],
-        availableVersion: "2026.05.30",
-        currentVersion: "2026.05.01",
-        status: "available",
-        updateActionEnabled: true,
-      },
-    })
     await server.close()
   })
 
@@ -288,232 +253,37 @@ describe("Admin Inference routes", () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
+      aggregateUsageSourceStatus: "ok",
+      modelInventorySourceStatus: "unavailable",
       modelUsage: expect.arrayContaining([
         expect.objectContaining({
           model: "qwen3-35b-local",
           requests: 10,
         }),
       ]),
-      models: expect.arrayContaining([
-        expect.objectContaining({
-          name: "qwen3-35b-local",
-          sourceStatus: "degraded",
-        }),
-      ]),
+      models: [],
       sourceStatus: "degraded",
       virtualKeys: [],
+      virtualKeysSourceStatus: "unavailable",
     })
     await server.close()
   })
 
-  it("rejects model update apply without exact confirmation", async () => {
+  it("does not expose the simulated model-update mutation", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     const server = buildServer()
 
     const response = await server.inject({
-      body: {
-        confirmation: "UPDATE",
-      },
+      body: { confirmation: "UPDATE MODEL" },
       headers: {
         ...adminHeaders,
-        "idempotency-key": "bad-confirmation",
+        "idempotency-key": "removed-model-update",
       },
       method: "POST",
       url: "/api/admin/inference/model-updates/apply",
     })
 
-    expect(response.statusCode).toBe(400)
-    expect(response.json()).toMatchObject({
-      title: "Invalid model update request",
-    })
-    await server.close()
-  })
-
-  it("enforces Admin-only access for model update apply", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    const server = buildServer()
-
-    const unauthenticated = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        "idempotency-key": "unauthenticated-update",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-    const unclassified = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        ...unclassifiedHeaders,
-        "idempotency-key": "unclassified-update",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-
-    expect(unauthenticated.statusCode).toBe(401)
-    expect(unclassified.statusCode).toBe(401)
-    await server.close()
-  })
-
-  it("applies a configured model update and emits started/completed audit events", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_STATUS", "available")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_ACTION_ENABLED", "true")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_CURRENT_VERSION", "2026.05.01")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_AVAILABLE_VERSION", "2026.05.30")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_AFFECTED_MODELS", "qwen3-35b-local")
-    const server = buildServer()
-
-    const response = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "model-update-success",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      modelUpdate: null,
-      status: "completed",
-    })
-    expect(getAuditEventsForTest()).toEqual([
-      expect.objectContaining({
-        action: "admin.inference.model_update.started",
-        actorId: "admin-1",
-        keycloakSubjectId: "admin-1",
-        outcome: "succeeded",
-        sourceSystem: "console",
-      }),
-      expect.objectContaining({
-        action: "admin.inference.model_update.completed",
-        actorId: "admin-1",
-        keycloakSubjectId: "admin-1",
-        outcome: "succeeded",
-        sourceSystem: "console",
-      }),
-    ])
-    await server.close()
-  })
-
-  it("returns controlled failure and audit evidence when adapter fails", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_STATUS", "available")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_ACTION_ENABLED", "true")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_APPLY_RESULT", "failed")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_CURRENT_VERSION", "2026.05.01")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_AVAILABLE_VERSION", "2026.05.30")
-    const server = buildServer()
-
-    const response = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "model-update-failed",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-    const replay = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "model-update-failed",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      modelUpdate: {
-        status: "failed",
-        updateActionEnabled: false,
-      },
-      status: "failed",
-    })
-    expect(replay.statusCode).toBe(200)
-    expect(replay.json()).toMatchObject({
-      outcome: "failed",
-      status: "already_completed",
-    })
-    expect(response.body.toLowerCase()).not.toContain("command")
-    expect(response.body.toLowerCase()).not.toContain("secret")
-    expect(getAuditEventsForTest().map((event) => event.action)).toEqual([
-      "admin.inference.model_update.started",
-      "admin.inference.model_update.failed",
-    ])
-    expect(getAuditEventsForTest().map((event) => event.outcome)).toEqual([
-      "succeeded",
-      "failed",
-    ])
-    await server.close()
-  })
-
-  it("blocks unconfigured model update apply without backend details", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_STATUS", "available")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_ACTION_ENABLED", "false")
-    const server = buildServer()
-
-    const response = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "model-update-blocked",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-    const replay = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "model-update-blocked",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      modelUpdate: {
-        status: "available",
-        updateActionEnabled: false,
-      },
-      status: "blocked",
-    })
-    expect(replay.statusCode).toBe(200)
-    expect(replay.json()).toMatchObject({
-      outcome: "denied",
-      status: "already_completed",
-    })
-    expect(response.body.toLowerCase()).not.toContain("command")
-    expect(response.body.toLowerCase()).not.toContain("secret")
-    expect(getAuditEventsForTest()).toEqual([
-      expect.objectContaining({
-        action: "admin.inference.model_update.blocked",
-        keycloakSubjectId: "admin-1",
-        outcome: "denied",
-        sourceSystem: "console",
-      }),
-    ])
+    expect(response.statusCode).toBe(404)
     await server.close()
   })
 })

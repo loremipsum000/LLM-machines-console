@@ -234,13 +234,7 @@ describe("Inference Core Admin routes", () => {
       expect.objectContaining({ id: "operator-1", role: "operator" }),
     ])
     expect(operator.statusCode).toBe(200)
-    expect(operator.json().usage).toEqual({
-      mostUsedModel: null,
-      prompts: 0,
-      sourceStatus: "not_configured",
-      tokens: 0,
-      window: "30d",
-    })
+    expect(operator.json()).not.toHaveProperty("usage")
     expect(JSON.stringify(getAuditEventsForTest())).not.toMatch(
       /model|promptTokens|totalTokens/,
     )

@@ -11,6 +11,7 @@ import {
 } from "@llm-machines/contracts/inference-core"
 import { eq } from "drizzle-orm"
 import type { Actor } from "../auth/authorization"
+import { canUseBffFixtureData } from "../config/fixture-mode"
 import { getInferenceCoreDb } from "../db/inference-core-client"
 import { consoleSettings, licenseState } from "../db/inference-core-schema"
 import { LiteLlmAdminClient, liteLlmConfig } from "./admin-litellm-client"
@@ -21,6 +22,7 @@ import {
 } from "./admin-settings-validation"
 import { emitAudit } from "./audit"
 import { parseFirecrawlEgressAllowedHosts } from "./firecrawl-url-safety"
+import type { IdentityMutationRouteContext } from "./identity-mutation-journal"
 import { keycloakAdminConfigFromEnv } from "./inference-core-keycloak-admin"
 import { upsertActorUser } from "./users"
 
@@ -30,12 +32,20 @@ const singletonLicenseId = "singleton"
 type SettingsMutationResult =
   | { settings: AdminSettingsResponse; status: "ok" }
   | { detail: string; status: "invalid" }
+  | { detail: string; status: "unavailable" }
+
+type CommitWithReceipt = NonNullable<
+  IdentityMutationRouteContext["commitWithReceipt"]
+>
 
 type ReachabilityService = AdminSettingsResponse["reachability"][number]
 type ReachabilityCheck = Pick<
   ReachabilityService,
   "detail" | "lastCheckedAt" | "status"
 >
+
+const settingsPersistenceUnavailableDetail =
+  "Settings persistence is not configured. Configure PostgreSQL before changing settings."
 
 let memoryOrganization = defaultSettings().organization
 let memoryPrivacy = defaultSettings().privacy
@@ -45,18 +55,22 @@ export async function getAdminSettings(
   actor: Actor,
 ): Promise<AdminSettingsResponse> {
   const settings = await readSettings()
-  await emitAudit({
-    action: "admin.settings.read",
-    keycloakSubjectId: actor.subject,
-    outcome: "succeeded",
-    sourceSystem: "console",
-  })
+  if (settings.sourceStatus === "ok" || canUseBffFixtureData()) {
+    await emitAudit({
+      action: "admin.settings.read",
+      keycloakSubjectId: actor.subject,
+      outcome: "succeeded",
+      sourceSystem: "console",
+    })
+  }
   return settings
 }
 
 export async function updateAdminSettingsOrganization(
   actor: Actor,
   request: UpdateAdminSettingsOrganizationRequest,
+  correlationId?: string,
+  commitWithReceipt?: CommitWithReceipt,
 ): Promise<SettingsMutationResult> {
   const fullLogo = validateOptionalLogo(request.fullLogo, "full")
   if (!fullLogo.valid) {
@@ -67,6 +81,13 @@ export async function updateAdminSettingsOrganization(
     return { status: "invalid", detail: iconLogo.detail }
   }
 
+  const db = getInferenceCoreDb()
+  if (!db && !canUseBffFixtureData()) {
+    return {
+      status: "unavailable",
+      detail: settingsPersistenceUnavailableDetail,
+    }
+  }
   const existing = await readSettings()
   const now = new Date()
   const organization: AdminSettingsOrganization = {
@@ -84,52 +105,89 @@ export async function updateAdminSettingsOrganization(
     updatedBy: actor.subject,
   }
 
-  const db = getInferenceCoreDb()
-  if (db) {
-    const actorId = (await upsertActorUser(actor)).subject
-    await db
-      .insert(consoleSettings)
-      .values({
-        id: singletonSettingsId,
-        organizationName: organization.organizationName,
-        defaultLanguage: organization.defaultLanguage,
-        fullLogo: organization.fullLogo,
-        iconLogo: organization.iconLogo,
-        telemetryEnabled: existing.privacy.telemetryEnabled,
-        telemetryPayloadPreview: existing.privacy.telemetryPayloadPreview,
-        privacyPolicyHref: existing.privacy.privacyPolicyHref,
-        dataResidencyStatement: existing.privacy.dataResidencyStatement,
-        updatedBy: actorId,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: consoleSettings.id,
-        set: {
-          organizationName: organization.organizationName,
-          defaultLanguage: organization.defaultLanguage,
-          fullLogo: organization.fullLogo,
-          iconLogo: organization.iconLogo,
-          updatedBy: actorId,
-          updatedAt: now,
-        },
-      })
-  } else {
-    memoryOrganization = organization
+  const settings = adminSettingsResponseSchema.parse({
+    ...existing,
+    generatedAt: now.toISOString(),
+    organization,
+  })
+  const auditEvent = {
+    action: "admin.settings.organization.updated",
+    correlationId,
+    keycloakSubjectId: actor.subject,
+    outcome: "succeeded" as const,
+    sourceSystem: "console" as const,
   }
 
-  await emitAudit({
-    action: "admin.settings.organization.updated",
-    keycloakSubjectId: actor.subject,
-    outcome: "succeeded",
-    sourceSystem: "console",
-  })
-  return { status: "ok", settings: await readSettings() }
+  if (db) {
+    if (!commitWithReceipt) {
+      return {
+        status: "unavailable",
+        detail: settingsPersistenceUnavailableDetail,
+      }
+    }
+    const persistedSettings = await commitWithReceipt({
+      resourceId: singletonSettingsId,
+      run: async (transaction) => {
+        if (!transaction) {
+          throw new Error(settingsPersistenceUnavailableDetail)
+        }
+        const actorId = (await upsertActorUser(actor, transaction)).subject
+        await transaction
+          .insert(consoleSettings)
+          .values({
+            id: singletonSettingsId,
+            organizationName: organization.organizationName,
+            defaultLanguage: organization.defaultLanguage,
+            fullLogo: organization.fullLogo,
+            iconLogo: organization.iconLogo,
+            telemetryEnabled: existing.privacy.telemetryEnabled,
+            telemetryPayloadPreview: existing.privacy.telemetryPayloadPreview,
+            dataResidencyStatement: existing.privacy.dataResidencyStatement,
+            updatedBy: actorId,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: consoleSettings.id,
+            set: {
+              organizationName: organization.organizationName,
+              defaultLanguage: organization.defaultLanguage,
+              fullLogo: organization.fullLogo,
+              iconLogo: organization.iconLogo,
+              updatedBy: actorId,
+              updatedAt: now,
+            },
+          })
+        await emitAudit(auditEvent, transaction)
+        return settings
+      },
+    })
+    if (!persistedSettings) {
+      return {
+        status: "unavailable",
+        detail: settingsPersistenceUnavailableDetail,
+      }
+    }
+    return { status: "ok", settings: persistedSettings }
+  }
+
+  await emitAudit(auditEvent)
+  memoryOrganization = organization
+  return { status: "ok", settings }
 }
 
 export async function updateAdminSettingsTelemetry(
   actor: Actor,
   request: UpdateAdminSettingsTelemetryRequest,
+  correlationId?: string,
+  commitWithReceipt?: CommitWithReceipt,
 ): Promise<SettingsMutationResult> {
+  const db = getInferenceCoreDb()
+  if (!db && !canUseBffFixtureData()) {
+    return {
+      status: "unavailable",
+      detail: settingsPersistenceUnavailableDetail,
+    }
+  }
   const existing = await readSettings()
   const now = new Date()
   const privacy: AdminSettingsPrivacy = {
@@ -143,71 +201,98 @@ export async function updateAdminSettingsTelemetry(
     telemetryOptIn: request.enabled,
   }
 
-  const db = getInferenceCoreDb()
-  if (db) {
-    const actorId = (await upsertActorUser(actor)).subject
-    await db.transaction(async (transaction) => {
-      await transaction
-        .insert(consoleSettings)
-        .values({
-          id: singletonSettingsId,
-          organizationName: existing.organization.organizationName,
-          defaultLanguage: existing.organization.defaultLanguage,
-          fullLogo: existing.organization.fullLogo,
-          iconLogo: existing.organization.iconLogo,
-          telemetryEnabled: request.enabled,
-          telemetryPayloadPreview: privacy.telemetryPayloadPreview,
-          privacyPolicyHref: privacy.privacyPolicyHref,
-          dataResidencyStatement: privacy.dataResidencyStatement,
-          updatedBy: actorId,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: consoleSettings.id,
-          set: {
-            telemetryEnabled: request.enabled,
-            updatedBy: actorId,
-            updatedAt: now,
-          },
-        })
-
-      await transaction
-        .insert(licenseState)
-        .values({
-          id: singletonLicenseId,
-          sourceStatus: license.sourceStatus,
-          subscriptionState: license.subscriptionState,
-          supportState: license.supportState,
-          applianceId: license.applianceId,
-          certificateExpiresAt: dateOrNull(license.certificateExpiresAt),
-          lastEntitlementCheckAt: dateOrNull(license.lastEntitlementCheckAt),
-          offlineMode: license.offlineMode,
-          telemetryOptIn: license.telemetryOptIn,
-          allowedUpdateChannels: license.allowedUpdateChannels,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: licenseState.id,
-          set: {
-            telemetryOptIn: license.telemetryOptIn,
-            updatedAt: now,
-          },
-        })
-    })
-  } else {
-    memoryPrivacy = privacy
-    memoryLicense = license
-  }
-
-  await emitAudit({
+  const settings = adminSettingsResponseSchema.parse({
+    ...existing,
+    generatedAt: now.toISOString(),
+    license,
+    privacy,
+  })
+  const auditEvent = {
     action: request.enabled
       ? "admin.settings.telemetry.enabled"
       : "admin.settings.telemetry.disabled",
+    correlationId,
     keycloakSubjectId: actor.subject,
-    outcome: "succeeded",
-    sourceSystem: "console",
-  })
-  return { status: "ok", settings: await readSettings() }
+    outcome: "succeeded" as const,
+    sourceSystem: "console" as const,
+  }
+
+  if (db) {
+    if (!commitWithReceipt) {
+      return {
+        status: "unavailable",
+        detail: settingsPersistenceUnavailableDetail,
+      }
+    }
+    const persistedSettings = await commitWithReceipt({
+      resourceId: singletonSettingsId,
+      run: async (transaction) => {
+        if (!transaction) {
+          throw new Error(settingsPersistenceUnavailableDetail)
+        }
+        const actorId = (await upsertActorUser(actor, transaction)).subject
+        await transaction
+          .insert(consoleSettings)
+          .values({
+            id: singletonSettingsId,
+            organizationName: existing.organization.organizationName,
+            defaultLanguage: existing.organization.defaultLanguage,
+            fullLogo: existing.organization.fullLogo,
+            iconLogo: existing.organization.iconLogo,
+            telemetryEnabled: request.enabled,
+            telemetryPayloadPreview: privacy.telemetryPayloadPreview,
+            dataResidencyStatement: privacy.dataResidencyStatement,
+            updatedBy: actorId,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: consoleSettings.id,
+            set: {
+              telemetryEnabled: request.enabled,
+              updatedBy: actorId,
+              updatedAt: now,
+            },
+          })
+
+        await transaction
+          .insert(licenseState)
+          .values({
+            id: singletonLicenseId,
+            sourceStatus: license.sourceStatus,
+            subscriptionState: license.subscriptionState,
+            supportState: license.supportState,
+            applianceId: license.applianceId,
+            certificateExpiresAt: dateOrNull(license.certificateExpiresAt),
+            lastEntitlementCheckAt: dateOrNull(license.lastEntitlementCheckAt),
+            offlineMode: license.offlineMode,
+            telemetryOptIn: license.telemetryOptIn,
+            allowedUpdateChannels: license.allowedUpdateChannels,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: licenseState.id,
+            set: {
+              telemetryOptIn: license.telemetryOptIn,
+              updatedAt: now,
+            },
+          })
+        await emitAudit(auditEvent, transaction)
+        return settings
+      },
+    })
+    if (!persistedSettings) {
+      return {
+        status: "unavailable",
+        detail: settingsPersistenceUnavailableDetail,
+      }
+    }
+    return { status: "ok", settings: persistedSettings }
+  }
+
+  await emitAudit(auditEvent)
+  memoryPrivacy = privacy
+  memoryLicense = license
+  return { status: "ok", settings }
 }
 
 export function resetAdminSettingsCoreForTest(): void {
@@ -221,11 +306,14 @@ async function readSettings(): Promise<AdminSettingsResponse> {
   const defaults = defaultSettings()
   const db = getInferenceCoreDb()
   if (!db) {
+    const useFixtureMemory = canUseBffFixtureData()
     return adminSettingsResponseSchema.parse({
       ...defaults,
-      organization: memoryOrganization,
-      privacy: memoryPrivacy,
-      license: memoryLicense,
+      organization: useFixtureMemory
+        ? memoryOrganization
+        : defaults.organization,
+      privacy: useFixtureMemory ? memoryPrivacy : defaults.privacy,
+      license: useFixtureMemory ? memoryLicense : defaults.license,
       reachability: await resolveReachability(defaults.reachability, false),
     })
   }
@@ -262,7 +350,6 @@ async function readSettings(): Promise<AdminSettingsResponse> {
             adminSettingsTelemetryPayloadPreviewSchema.parse(
               settingsRow.telemetryPayloadPreview,
             ),
-          privacyPolicyHref: settingsRow.privacyPolicyHref,
           dataResidencyStatement: settingsRow.dataResidencyStatement,
           updatedAt: settingsRow.updatedAt.toISOString(),
           updatedBy: settingsRow.updatedBy,
@@ -705,7 +792,6 @@ function defaultSettings(
     },
     privacy: {
       telemetryEnabled: false,
-      privacyPolicyHref: "/privacy",
       dataResidencyStatement:
         "LLM Machines managed components do not retain inference request or response content.",
       telemetryDescription:

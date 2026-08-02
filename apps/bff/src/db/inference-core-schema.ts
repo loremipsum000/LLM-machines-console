@@ -1528,7 +1528,14 @@ export const consoleSettings = admin.table(
     iconLogo: jsonb("icon_logo"),
     telemetryEnabled: boolean("telemetry_enabled").default(false).notNull(),
     telemetryPayloadPreview: jsonb("telemetry_payload_preview")
-      .default({})
+      .default({
+        applianceId: null,
+        installedVersion: null,
+        updateAgentVersion: null,
+        lastUpdateCheck: null,
+        lastAppliedUpdate: null,
+        subscriptionStateSeenByAppliance: "not_configured",
+      })
       .notNull(),
     privacyPolicyHref: text("privacy_policy_href")
       .default("/privacy")

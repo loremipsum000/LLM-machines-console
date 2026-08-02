@@ -1197,7 +1197,8 @@ CREATE TABLE admin.console_settings (
   full_logo jsonb,
   icon_logo jsonb,
   telemetry_enabled boolean NOT NULL DEFAULT false,
-  telemetry_payload_preview jsonb NOT NULL DEFAULT '{}'::jsonb,
+  telemetry_payload_preview jsonb NOT NULL DEFAULT
+    '{"applianceId": null, "installedVersion": null, "updateAgentVersion": null, "lastUpdateCheck": null, "lastAppliedUpdate": null, "subscriptionStateSeenByAppliance": "not_configured"}'::jsonb,
   privacy_policy_href text NOT NULL DEFAULT '/privacy',
   data_residency_statement text NOT NULL DEFAULT
     'LLM Machines managed components do not retain inference request or response content.',

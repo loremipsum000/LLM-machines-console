@@ -9,6 +9,10 @@ artifacts.
 | --- | --- | --- |
 | PR-02 through PR-07 | Accepted integration history | Bound by reviewed per-package decisions and contract revisions |
 | PR-08 | Firecrawl search and static scrape | Passed on the reviewed PR-08 candidate; PR-12 runtime gates retained |
+| PR-09 | Activity, audit, and observability | Passed on the reviewed PR-09 candidate; runtime delivery remains PR-12 |
+| PR-10 | Lifecycle snapshot and restore foundation | Passed on the reviewed PR-10 candidate; configured adapters and runtime qualification remain PR-12 |
+| PR-10C | Emergency isolation | Passed on the reviewed PR-10C source candidate; live topology and runtime qualification remain PR-12 |
+| PR-11 | Retained Console information architecture | Passed on the reviewed PR-11 source candidate; deployment and runtime qualification remain PR-12 |
 
 ## PR-08 required evidence
 
@@ -51,3 +55,55 @@ artifacts.
 Runtime deployment, image and source qualification, signing, the offline
 packet, SBOM, corresponding-source delivery, and final release qualification
 are PR-12 evidence, not PR-08 evidence.
+
+## PR-11 required evidence
+
+- The exact accepted base is commit
+  `6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7`, tree
+  `44d6fb34db5f3d35e8b2f9bd2259756aec63b8a8`.
+- Every PR-02 through PR-10C revision and evidence file remains immutable. The
+  two live register transitions retain their original PR-08 fingerprints from
+  the accepted base through an explicit successor-historical binding.
+- Global navigation contains exactly the seven accepted surfaces in the fixed
+  order, and `/` renders a source-backed Overview rather than redirecting.
+- Applications presents inference and Firecrawl together without merging their
+  credential namespaces or changing Firecrawl's default-off policy.
+- Grafana, LiteLLM, and Keycloak remain reduced previews. No live native href,
+  native URL, or expert-session activation is present before PR-12. The exact
+  production href manifest, internal-only Overview href schemas, BFF Overview
+  response parsing, and null-only expert URL fields fail closed against
+  literal, aliased, or BFF-supplied external links.
+- `.env.example` differs from the accepted base only by deletion of the exact
+  retired `INFERENCE_MODEL_UPDATE_*` block. It has no added lines, retained
+  value changes, or unrelated removals, and no other environment path enters
+  the package.
+- Settings persistence, receipt, and audit tests prove that production
+  mutations require PostgreSQL and commit the settings row, idempotency
+  receipt, and success audit in one transaction. Missing persistence,
+  transaction, or receipt coordination returns unavailable without a false
+  success audit; memory state remains fixture-only. Fresh-database telemetry
+  preview defaults pass the strict production schema with no fallback data.
+- Content security policy tests and production browser gates prove that a
+  per-request script nonce reaches Next.js and the response policy unchanged,
+  while production `script-src` contains neither `unsafe-inline` nor
+  `unsafe-eval`. The route resolver fingerprint transition is exact and
+  limited to `apps/web/next.config.ts`, from
+  `58f841f6ee4170e90c110e33727d85dabe6a2c096784b05940319d770a958f8b` to
+  `79a28582d628e566baa4231d4a718173cf4e9dde14242bc40e214d502262dbb3`.
+- Portainer, Agentic, Chat, Knowledge, MCP, Builder, Hub, retired loaders,
+  redirects, links, mocks, fixtures, and bundle imports remain outside the
+  retained product surface.
+- The BFF inventory removes exactly the simulated
+  `POST /api/admin/inference/model-updates/apply` route. The resulting 104
+  routes include 92 `current-console-seam` routes; no route is added or
+  reclassified, and every other classification count and Fastify registrar
+  remains unchanged. Public inference, Firecrawl, isolation, authorization,
+  and zero-content-retention boundaries remain unchanged.
+- The reviewed staged operation policy is exact, source-only, contains no
+  deletion, secret, key, runtime, deployment, signing, or vendor-maintenance
+  path, and matches the generated source and repository closure deltas.
+- The reviewed operation policy binds 2 added and 27 changed source-closure
+  paths, 11 added and 54 changed repository paths, no deleted path, and exact
+  hashes for 56 changed product-source and test files.
+- Full guardrail, Web, BFF, Contracts, database, build, typecheck, formatting,
+  security, and clean-clone checks pass before publication.

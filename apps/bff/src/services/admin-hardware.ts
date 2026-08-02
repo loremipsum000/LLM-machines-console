@@ -18,9 +18,7 @@ import {
 import {
   PrometheusClient,
   type PrometheusMatrixSample,
-  validatedHttpBaseUrl,
 } from "./admin-prometheus"
-import { expertCapability } from "./expert-capabilities"
 
 interface HardwareQueryOptions {
   host?: string
@@ -41,8 +39,6 @@ interface HardwareChartDefinition {
 
 const DEFAULT_RANGE: AdminHardwareRange = "6h"
 const DEFAULT_HOST = "all"
-const HARDWARE_DASHBOARD_PATH =
-  "/d/llmm-infra-overview/llm-machines-infrastructure-overview"
 
 const RANGE_SECONDS: Record<AdminHardwareRange, number> = {
   "1h": 60 * 60,
@@ -171,8 +167,6 @@ export async function getAdminHardware(
   const range = parseHardwareRange(options.range)
   const host = normalizeHost(options.host)
   const baseUrl = process.env.ADMIN_PROMETHEUS_BASE_URL?.trim()
-  const grafanaUrl = grafanaDashboardUrl()
-  const alertmanagerUrl = alertmanagerPublicUrl()
   const generatedAt = new Date()
   const stepSeconds = resolveStepSeconds(range, options.step)
   const step = `${stepSeconds}s`
@@ -182,10 +176,8 @@ export async function getAdminHardware(
     const alertmanager = await alertmanagerPromise
     return emptyHardwareResponse({
       alertmanager,
-      alertmanagerUrl,
       chartSourceStatus: "not_configured",
       generatedAt,
-      grafanaUrl,
       host,
       range,
       sourceStatus: combinedHardwareSourceStatus(
@@ -234,23 +226,17 @@ export async function getAdminHardware(
       sourceStatus,
       alertSourceStatus: alertmanager.sourceStatus,
       summary: `${hardwareSummary(charts, metricsSourceStatus)} ${alertmanager.summary}`,
-      grafanaUrl,
-      alertmanagerUrl,
+      grafanaUrl: null,
+      alertmanagerUrl: null,
       charts,
-      activeAlerts: alertLinks(
-        alertmanager.alerts,
-        grafanaUrl,
-        alertmanagerUrl,
-      ),
+      activeAlerts: alertLinks(alertmanager.alerts),
     }
   } catch {
     const alertmanager = await alertmanagerPromise
     return emptyHardwareResponse({
       alertmanager,
-      alertmanagerUrl,
       chartSourceStatus: "unavailable",
       generatedAt,
-      grafanaUrl,
       host,
       range,
       sourceStatus: combinedHardwareSourceStatus(
@@ -318,10 +304,8 @@ function toHardwareSeries(
 
 function emptyHardwareResponse({
   alertmanager,
-  alertmanagerUrl,
   chartSourceStatus,
   generatedAt,
-  grafanaUrl,
   host,
   range,
   sourceStatus,
@@ -329,10 +313,8 @@ function emptyHardwareResponse({
   summary,
 }: {
   alertmanager: AdminAlertmanagerSummary
-  alertmanagerUrl: string | null
   chartSourceStatus: InferenceCoreSourceStatus
   generatedAt: Date
-  grafanaUrl: string | null
   host: string
   range: AdminHardwareRange
   sourceStatus: InferenceCoreSourceStatus
@@ -348,8 +330,8 @@ function emptyHardwareResponse({
     sourceStatus,
     alertSourceStatus: alertmanager.sourceStatus,
     summary,
-    grafanaUrl,
-    alertmanagerUrl,
+    grafanaUrl: null,
+    alertmanagerUrl: null,
     charts: chartDefinitions.map((definition) => ({
       id: definition.id,
       title: definition.title,
@@ -363,19 +345,15 @@ function emptyHardwareResponse({
       thresholds: definition.thresholds,
       series: [],
     })),
-    activeAlerts: alertLinks(alertmanager.alerts, grafanaUrl, alertmanagerUrl),
+    activeAlerts: alertLinks(alertmanager.alerts),
   }
 }
 
-function alertLinks(
-  alerts: AdminHardwareAlert[],
-  grafanaUrl: string | null,
-  alertmanagerUrl: string | null,
-): AdminHardwareAlert[] {
+function alertLinks(alerts: AdminHardwareAlert[]): AdminHardwareAlert[] {
   return alerts.map((alert) => ({
     ...alert,
-    grafanaUrl,
-    alertmanagerUrl,
+    grafanaUrl: null,
+    alertmanagerUrl: null,
   }))
 }
 
@@ -654,50 +632,4 @@ function metricSource(metric: Record<string, string>): string | null {
     return "ipmi_exporter"
   }
   return null
-}
-
-function grafanaDashboardUrl(): string | null {
-  if (expertCapability("grafana").directAccess !== "enabled") {
-    return null
-  }
-  return configuredExternalUrl(
-    "GRAFANA_PUBLIC_URL",
-    "GRAFANA_PUBLIC_ORIGIN",
-    true,
-  )
-}
-
-function alertmanagerPublicUrl(): string | null {
-  if (expertCapability("alertmanager").directAccess !== "enabled") {
-    return null
-  }
-  return configuredExternalUrl("ALERTMANAGER_PUBLIC_URL")
-}
-
-function configuredExternalUrl(
-  primaryEnv: string,
-  fallbackEnv?: string,
-  dashboard = false,
-): string | null {
-  const configured =
-    process.env[primaryEnv]?.trim() ||
-    (fallbackEnv ? process.env[fallbackEnv]?.trim() : "")
-  if (configured) {
-    try {
-      const parsed = validatedHttpBaseUrl(configured, primaryEnv)
-      return dashboard ? withDashboardPath(parsed) : parsed.toString()
-    } catch {
-      return null
-    }
-  }
-  return null
-}
-
-function withDashboardPath(parsed: URL): string {
-  if (!parsed.pathname || parsed.pathname === "/") {
-    const dashboard = new URL(parsed)
-    dashboard.pathname = HARDWARE_DASHBOARD_PATH
-    return dashboard.toString()
-  }
-  return parsed.toString()
 }

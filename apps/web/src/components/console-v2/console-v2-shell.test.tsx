@@ -9,6 +9,16 @@ const navigationMocks = vi.hoisted(() => ({
   },
 }))
 
+const expectedNavigation = [
+  ["Overview", "/"],
+  ["Applications", "/applications"],
+  ["Inference", "/inference"],
+  ["Hardware", "/hardware"],
+  ["Team", "/team"],
+  ["Activity & Audit", "/activity"],
+  ["Settings", "/settings"],
+] as const
+
 vi.mock("next/link", () => ({
   default: ({
     children,
@@ -49,15 +59,15 @@ describe("ConsoleV2Shell", () => {
     )
 
     const navigation = screen.getByRole("navigation", {
-      name: "Console v2 navigation",
+      name: "Console navigation",
     })
     expect(
       within(navigation)
         .getByRole("link", { name: "Inference" })
         .getAttribute("aria-keyshortcuts"),
-    ).toBe("Meta+2")
+    ).toBe("Meta+3")
 
-    fireEvent.keyDown(window, { key: "2", metaKey: true })
+    fireEvent.keyDown(window, { key: "3", metaKey: true })
 
     expect(navigationMocks.router.push).toHaveBeenCalledWith("/inference")
 
@@ -72,7 +82,7 @@ describe("ConsoleV2Shell", () => {
       </ConsoleV2Shell>,
     )
 
-    const applicationsShortcut = screen.getByText("⌘1")
+    const applicationsShortcut = screen.getByText("⌘2")
     expect(String(applicationsShortcut.className)).toContain("opacity-0")
 
     fireEvent.keyDown(window, { key: "Meta", metaKey: true })
@@ -92,7 +102,7 @@ describe("ConsoleV2Shell", () => {
       </ConsoleV2Shell>,
     )
 
-    fireEvent.keyDown(window, { key: "2", metaKey: true })
+    fireEvent.keyDown(window, { key: "3", metaKey: true })
     unmount()
 
     render(
@@ -101,7 +111,7 @@ describe("ConsoleV2Shell", () => {
       </ConsoleV2Shell>,
     )
 
-    const inferenceShortcut = screen.getByText("⌘2")
+    const inferenceShortcut = screen.getByText("⌘3")
     expect(String(inferenceShortcut.className)).toContain("opacity-100")
 
     fireEvent.keyUp(window, { key: "Meta" })
@@ -118,16 +128,16 @@ describe("ConsoleV2Shell", () => {
     )
 
     const navigation = screen.getByRole("navigation", {
-      name: "Console v2 navigation",
+      name: "Console navigation",
     })
     expect(
       within(navigation)
         .getByRole("link", { name: "Applications" })
         .getAttribute("aria-keyshortcuts"),
-    ).toBe("Control+1")
-    expect(screen.getByText("Ctrl 1")).toBeTruthy()
+    ).toBe("Control+2")
+    expect(screen.getByText("Ctrl 2")).toBeTruthy()
 
-    fireEvent.keyDown(window, { ctrlKey: true, key: "5" })
+    fireEvent.keyDown(window, { ctrlKey: true, key: "7" })
 
     expect(navigationMocks.router.push).toHaveBeenCalledWith("/settings")
 
@@ -142,18 +152,11 @@ describe("ConsoleV2Shell", () => {
     )
 
     const navigation = screen.getByRole("navigation", {
-      name: "Console v2 navigation",
+      name: "Console navigation",
     })
-    const expectedNavigation = [
-      ["Applications", "/applications"],
-      ["Inference", "/inference"],
-      ["Hardware", "/hardware"],
-      ["Team", "/team"],
-      ["Settings", "/settings"],
-    ] as const
-
-    expect(within(navigation).getAllByRole("link")).toHaveLength(
-      expectedNavigation.length,
+    const navigationLinks = within(navigation).getAllByRole("link")
+    expect(navigationLinks.map((link) => link.getAttribute("href"))).toEqual(
+      expectedNavigation.map(([, href]) => href),
     )
     for (const [label, href] of expectedNavigation) {
       expect(
@@ -165,7 +168,7 @@ describe("ConsoleV2Shell", () => {
     expect(screen.getByText("Administrator")).toBeTruthy()
   })
 
-  it("filters Operator navigation and keeps shortcut indexes aligned", () => {
+  it("gives Operator the same retained navigation and shortcut indexes", () => {
     mockNavigatorPlatform("MacIntel")
     render(
       <ConsoleV2Shell accessRole="operator" activeSection="team">
@@ -174,23 +177,37 @@ describe("ConsoleV2Shell", () => {
     )
 
     const navigation = screen.getByRole("navigation", {
-      name: "Console v2 navigation",
+      name: "Console navigation",
     })
     expect(
-      within(navigation).queryByRole("link", { name: "Settings" }),
-    ).toBeNull()
-    expect(within(navigation).getAllByRole("link")).toHaveLength(4)
+      within(navigation).getByRole("link", { name: "Settings" }),
+    ).toBeTruthy()
+    const navigationLinks = within(navigation).getAllByRole("link")
+    expect(navigationLinks.map((link) => link.getAttribute("href"))).toEqual(
+      expectedNavigation.map(([, href]) => href),
+    )
+    expect(
+      navigationLinks.map((link) => link.getAttribute("aria-keyshortcuts")),
+    ).toEqual([
+      "Meta+1",
+      "Meta+2",
+      "Meta+3",
+      "Meta+4",
+      "Meta+5",
+      "Meta+6",
+      "Meta+7",
+    ])
     expect(
       within(navigation)
         .getByRole("link", { name: "Team" })
         .getAttribute("aria-keyshortcuts"),
-    ).toBe("Meta+4")
+    ).toBe("Meta+5")
 
-    fireEvent.keyDown(window, { key: "4", metaKey: true })
     fireEvent.keyDown(window, { key: "5", metaKey: true })
+    fireEvent.keyDown(window, { key: "7", metaKey: true })
 
-    expect(navigationMocks.router.push).toHaveBeenCalledTimes(1)
-    expect(navigationMocks.router.push).toHaveBeenCalledWith("/team")
+    expect(navigationMocks.router.push).toHaveBeenNthCalledWith(1, "/team")
+    expect(navigationMocks.router.push).toHaveBeenNthCalledWith(2, "/settings")
     expect(screen.getByText("Operator")).toBeTruthy()
   })
 })

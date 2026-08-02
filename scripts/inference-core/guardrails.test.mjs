@@ -44,6 +44,10 @@ import {
   pr10cContractBaseTree,
   pr10cDecisionPath,
   pr10cSuccessorAwareHistoricalTestBindings,
+  pr10cSuccessorEvidenceCommit,
+  pr10cSuccessorEvidenceTree,
+  pr10cSuccessorHistoricalEvidenceBindings,
+  pr11ContractBase,
   repositoryRoot,
   routeBaselinePath,
   scanForbiddenSurfaces,
@@ -66,6 +70,7 @@ import {
   verifyPr08TargetState,
   verifyPr09TargetState,
   verifyPr10TargetState,
+  verifyPr10cBaseEvidence,
   verifyProtectedGuardrailStability,
   verifyRepository,
   verifyRetentionCharacterization,
@@ -1200,6 +1205,24 @@ test("PR-10C base comparison accepts its dirty same-head candidate", () => {
   assert.deepEqual(
     verifyBaseCommitLineage(repositoryRoot, pr10cContractBase),
     [],
+  )
+})
+
+test("PR-11 base comparison accepts only its fixed dirty same-head candidate", () => {
+  assert.deepEqual(
+    verifyBaseCommitLineage(repositoryRoot, pr11ContractBase),
+    [],
+  )
+
+  const root = initializedGitRoot()
+  writeFixture(root, "seed.txt", "base\n")
+  git(root, ["add", "seed.txt"])
+  git(root, ["commit", "--quiet", "-m", "base"])
+  const unrelatedHead = git(root, ["rev-parse", "HEAD"])
+  writeFixture(root, "candidate-untracked.txt", "candidate\n")
+  assert.match(
+    verifyBaseCommitLineage(root, unrelatedHead, [pr11ContractBase]).join("\n"),
+    /proper ancestor outside the fixed precommit bases/,
   )
 })
 
@@ -2911,6 +2934,54 @@ test("Next middleware accepts self-contained non-response helpers", () => {
   assert.doesNotThrow(() => extractWebRoutes({ root, paths: [path] }))
 })
 
+test("Next middleware accepts only the reviewed content security policy wrapper", () => {
+  const root = temporaryRoot()
+  const path = "apps/web/src/middleware.ts"
+  const source = readFileSync(join(repositoryRoot, path), "utf8")
+  writeFixture(root, path, source)
+
+  assert.doesNotThrow(() => extractWebRoutes({ root, paths: [path] }))
+
+  writeFixture(
+    root,
+    path,
+    source.replace(
+      "const contentSecurityPolicy = createContentSecurityPolicy(request)",
+      "const responsePolicy = createContentSecurityPolicy(request)",
+    ),
+  )
+  assert.throws(
+    () => extractWebRoutes({ root, paths: [path] }),
+    /content security policy wrapper changed/,
+  )
+
+  writeFixture(
+    root,
+    path,
+    source.replace(
+      "contentSecurityPolicy.next()",
+      "contentSecurityPolicy.json()",
+    ),
+  )
+  assert.throws(
+    () => extractWebRoutes({ root, paths: [path] }),
+    /content security policy call changed|Unreviewed Next middleware return form/,
+  )
+
+  writeFixture(
+    root,
+    path,
+    source.replace(
+      "contentSecurityPolicy.next()",
+      "contentSecurityPolicy.next(request)",
+    ),
+  )
+  assert.throws(
+    () => extractWebRoutes({ root, paths: [path] }),
+    /content security policy call changed|Unreviewed Next middleware return form/,
+  )
+})
+
 test("sanitized Core commands reject environment files in any package", () => {
   const root = temporaryRoot()
   writeFixture(root, "packages/contracts/.env.local", "TOKEN=example\n")
@@ -3102,6 +3173,21 @@ test("successor-aware historical test repairs use only revision-fixed evidence",
     ]),
     pr10cContractBaseTree,
   )
+  assert.equal(
+    git(repositoryRoot, [
+      "rev-parse",
+      "--verify",
+      "--end-of-options",
+      `${pr10cSuccessorEvidenceCommit}^{tree}`,
+    ]),
+    pr10cSuccessorEvidenceTree,
+  )
+  assert.deepEqual(pr10cSuccessorHistoricalEvidenceBindings, [
+    {
+      path: "scripts/inference-core/pr02-boundaries.test.mjs",
+      evidenceCommit: pr10cSuccessorEvidenceCommit,
+    },
+  ])
 
   for (const {
     retainedRevision,
@@ -3172,9 +3258,49 @@ test("successor-aware historical test repairs use only revision-fixed evidence",
   )
 })
 
+test("PR-10C base evidence binds the repaired PR-02 test to reviewed successor bytes", () => {
+  const root = temporaryRoot()
+  execFileSync("git", ["clone", "--quiet", "--shared", repositoryRoot, root], {
+    stdio: "ignore",
+  })
+  git(root, ["checkout", "--quiet", pr11ContractBase])
+  const path = pr10cSuccessorHistoricalEvidenceBindings[0].path
+  const acceptedBytes = execFileSync(
+    "git",
+    [
+      "show",
+      "--no-ext-diff",
+      "--no-textconv",
+      "--end-of-options",
+      `${pr10cSuccessorEvidenceCommit}:${path}`,
+    ],
+    { cwd: root, encoding: null },
+  )
+  const baseBytes = execFileSync(
+    "git",
+    [
+      "show",
+      "--no-ext-diff",
+      "--no-textconv",
+      "--end-of-options",
+      `${pr10cContractBase}:${path}`,
+    ],
+    { cwd: root, encoding: null },
+  )
+  assert.equal(testSha256(acceptedBytes), testSha256(baseBytes))
+
+  writeFixture(root, path, "tampered live successor test\n")
+  assert.deepEqual(verifyPr10cBaseEvidence(root), [])
+  rmSync(join(root, path))
+  assert.match(
+    verifyPr10cBaseEvidence(root).join("\n"),
+    /PR-10C retained prior evidence is missing scripts\/inference-core\/pr02-boundaries\.test\.mjs/,
+  )
+})
+
 test("the live repository matches its current reviewed baselines", () => {
   const result = verifyRepository({
-    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr10cContractBase,
+    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr11ContractBase,
   })
   assert.deepEqual(result.errors, [])
   assert.equal(result.ok, true)
@@ -3458,7 +3584,7 @@ test("historical target verifiers defer only to reviewed successors", () => {
   }
 })
 
-test("reviewed PR-10C successors keep historical target delegates fail-closed", () => {
+test("reviewed PR-10C and PR-11 successors keep historical target delegates fail-closed", () => {
   const currentAllowlist = JSON.parse(
     readFileSync(
       join(
@@ -3471,7 +3597,8 @@ test("reviewed PR-10C successors keep historical target delegates fail-closed", 
   const currentRoutes = JSON.parse(
     readFileSync(join(repositoryRoot, routeBaselinePath), "utf8"),
   )
-  assert.equal(currentRoutes.reviewedRevisions?.at(-1)?.id, "PR-10C")
+  const activeRevision = currentRoutes.reviewedRevisions?.at(-1)?.id
+  assert.equal(["PR-10C", "PR-11"].includes(activeRevision), true)
 
   for (const verifyHistoricalTarget of [
     verifyPr09TargetState,
@@ -3491,7 +3618,9 @@ test("reviewed PR-10C successors keep historical target delegates fail-closed", 
         currentAllowlist,
         currentRoutes: tamperedRoutes,
       }).join("\n"),
-      /PR-10C (?:total route count|isolation route inventory) changed/,
+      activeRevision === "PR-11"
+        ? /PR-11 total route count changed/
+        : /PR-10C (?:total route count|isolation route inventory) changed/,
     )
   }
 })
@@ -3504,9 +3633,10 @@ test("unknown active reviewed revisions fail closed", () => {
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-09"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-10"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-10C"), [])
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-11"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId(undefined), [])
-  assert.deepEqual(verifyActiveReviewedRevisionId("PR-11"), [
-    "unsupported active reviewed revision PR-11",
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-12"), [
+    "unsupported active reviewed revision PR-12",
   ])
 })
 

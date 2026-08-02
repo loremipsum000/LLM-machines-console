@@ -9,15 +9,7 @@ import type {
   AdminTeamMemberDetail,
   AdminTeamOverviewResponse,
 } from "@llm-machines/contracts/inference-core"
-import {
-  ArrowLeft,
-  ExternalLink,
-  Mail,
-  Plus,
-  RotateCcw,
-  Shield,
-  Trash2,
-} from "lucide-react"
+import { ArrowLeft, Mail, Plus, RotateCcw, Shield, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useActionState } from "react"
 import type { ReactNode } from "react"
@@ -87,6 +79,7 @@ export function TeamV2Experience({
   view: TeamView
 }) {
   const canManageTeam = accessRole === "admin"
+  const visibleTeamAction = canManageTeam ? teamAction : undefined
   if (!canManageTeam && isTeamMutationView(view)) {
     return <TeamMutationAccessDenied />
   }
@@ -101,7 +94,7 @@ export function TeamV2Experience({
         detail={groupDetail ?? null}
         canManageTeam={canManageTeam}
         members={overview.members}
-        teamAction={teamAction}
+        teamAction={visibleTeamAction}
       />
     )
   }
@@ -119,7 +112,7 @@ export function TeamV2Experience({
       <ManageUsersView
         canManageTeam={canManageTeam}
         members={overview.members}
-        teamAction={teamAction}
+        teamAction={visibleTeamAction}
       />
     )
   }
@@ -129,7 +122,7 @@ export function TeamV2Experience({
       <MemberDetailView
         canManageTeam={canManageTeam}
         detail={detail ?? null}
-        teamAction={teamAction}
+        teamAction={visibleTeamAction}
       />
     )
   }
@@ -138,7 +131,7 @@ export function TeamV2Experience({
     <TeamOverviewView
       canManageTeam={canManageTeam}
       overview={overview}
-      teamAction={teamAction}
+      teamAction={visibleTeamAction}
     />
   )
 }
@@ -255,17 +248,9 @@ function TeamOverviewView({
           >
             Identity controls
           </h2>
-          {canManageTeam && overview.scim.keycloakHref ? (
-            <a
-              className="inline-flex h-5 w-fit items-center gap-1 text-sm font-medium text-[#b2b2b2] transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-              href={overview.scim.keycloakHref}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Advanced identity settings are managed in Keycloak
-              <ExternalLink aria-hidden className="size-3.5" />
-            </a>
-          ) : null}
+          <p className="text-sm leading-5 text-[#777]">
+            Direct Keycloak access is pending qualification.
+          </p>
         </section>
       </div>
     </div>
@@ -847,7 +832,7 @@ function MemberDetailView({
     )
   }
 
-  const { member, usage } = detail
+  const { member } = detail
 
   return (
     <div className="relative w-full lg:h-[1024px]">
@@ -887,19 +872,6 @@ function MemberDetailView({
         </div>
         <section className="rounded-lg border border-[#353535] bg-[#232323] p-5">
           <h2 className="text-2xl font-semibold leading-none text-white">
-            Usage summary
-          </h2>
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <Metric label="Prompts" value={usage.prompts.toLocaleString()} />
-            <Metric label="Tokens" value={usage.tokens.toLocaleString()} />
-            <Metric
-              label="Most used model"
-              value={usage.mostUsedModel ?? "No data"}
-            />
-          </div>
-        </section>
-        <section className="rounded-lg border border-[#353535] bg-[#232323] p-5">
-          <h2 className="text-2xl font-semibold leading-none text-white">
             Recent activity
           </h2>
           <ActivityTable rows={detail.activity} />
@@ -926,17 +898,6 @@ function MemberActions({
         Account actions
       </h2>
       <div className="mt-5 grid gap-3">
-        {member.keycloakHref ? (
-          <a
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#2e2e2e] px-4 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-            href={member.keycloakHref}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Open in Keycloak
-            <ExternalLink aria-hidden className="size-4" />
-          </a>
-        ) : null}
         <form action={sendAdminTeamInviteAction}>
           <input name="memberId" type="hidden" value={member.id} />
           <input name="returnTo" type="hidden" value={returnTo} />
@@ -1111,17 +1072,6 @@ function GroupActions({ group }: { group: AdminTeamGroup }) {
       <h2 className="text-xl font-semibold leading-none text-white">
         Group actions
       </h2>
-      {group.keycloakHref ? (
-        <a
-          className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#2e2e2e] px-4 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-          href={group.keycloakHref}
-          rel="noreferrer"
-          target="_blank"
-        >
-          Open in Keycloak
-          <ExternalLink aria-hidden className="size-4" />
-        </a>
-      ) : null}
       <form action={updateAdminTeamGroupAction} className="mt-5 grid gap-3">
         <input name="groupId" type="hidden" value={group.id} />
         <input name="returnTo" type="hidden" value={returnTo} />
@@ -1280,20 +1230,51 @@ function ServiceStatusBanner({
 }: {
   overview: AdminTeamOverviewResponse
 }) {
-  if (overview.serviceStatus === "ok") {
+  const message = serviceStatusMessage(overview.serviceStatus)
+  if (!message) {
     return null
   }
   return (
     <div className="rounded-lg border border-[#353535] bg-[#232323] p-3">
       <h3 className="text-base font-semibold leading-5 text-white">
-        Keycloak admin API not configured
+        {message.title}
       </h3>
-      <p className="mt-2 text-sm leading-5 text-[#b2b2b2]">
-        Team management uses Keycloak directly. Configure the service-account
-        environment variables before using member mutations.
-      </p>
+      <p className="mt-2 text-sm leading-5 text-[#b2b2b2]">{message.detail}</p>
     </div>
   )
+}
+
+function serviceStatusMessage(
+  status: AdminTeamOverviewResponse["serviceStatus"],
+): { detail: string; title: string } | null {
+  switch (status) {
+    case "ok":
+      return null
+    case "not_configured":
+      return {
+        detail:
+          "Configure the Keycloak service account before using Team identities or mutations.",
+        title: "Keycloak admin API not configured",
+      }
+    case "unauthorized":
+      return {
+        detail:
+          "Verify the Keycloak service-account credentials and realm-management permissions before retrying.",
+        title: "Keycloak admin API authorization failed",
+      }
+    case "unavailable":
+      return {
+        detail:
+          "Check Keycloak health and network reachability, then retry when the service is available.",
+        title: "Keycloak admin API unavailable",
+      }
+    case "invalid":
+      return {
+        detail:
+          "Check the configured realm, endpoint, and Keycloak admin API compatibility before retrying.",
+        title: "Keycloak admin API response invalid",
+      }
+  }
 }
 
 function TeamActionNotice({ action }: { action?: string }) {
@@ -1460,19 +1441,6 @@ function DetailItem({ label, value }: { label: string; value: string }) {
     <div>
       <dt className="text-[#8f8f8f]">{label}</dt>
       <dd className="mt-1 font-semibold text-white">{value}</dd>
-    </div>
-  )
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-[#353535] bg-[#181818] p-4">
-      <p className="text-xs font-semibold uppercase leading-none tracking-[0.08em] text-[#8f8f8f]">
-        {label}
-      </p>
-      <p className="mt-3 text-xl font-semibold leading-none text-white">
-        {value}
-      </p>
     </div>
   )
 }

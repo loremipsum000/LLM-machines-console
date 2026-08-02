@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 import * as inferenceCoreContracts from "./inference-core"
 import {
+  adminAlertEgressResponseSchema,
   adminAuditResponseSchema,
   adminAuditVerificationKeysResponseSchema,
-  adminAlertEgressResponseSchema,
   adminConnectedAppCreateRequestSchema,
   adminConnectedAppCredentialMetadataSchema,
   adminConnectedAppCredentialSchema,
@@ -19,9 +19,9 @@ import {
   adminSettingsResponseSchema,
   adminSettingsServiceIdSchema,
   adminTeamGroupDetailSchema,
+  adminTeamMemberDetailSchema,
   adminTeamMemberSchema,
   adminTeamOverviewResponseSchema,
-  adminTeamUsageSummarySchema,
   inferenceCoreExpertAuditCapabilitySchema,
   inferenceCoreSeveritySchema,
   inferenceCoreSourceStatusSchema,
@@ -73,9 +73,15 @@ describe("Inference Core contract boundary", () => {
   })
 
   it("accepts only retained Overview tiles", () => {
+    const hrefById = {
+      applications: "/applications",
+      hardware: "/hardware",
+      inference: "/inference",
+      system: "/activity",
+    } as const
     const tile = (id: "applications" | "inference" | "hardware" | "system") =>
       ({
-        href: `/${id}`,
+        href: hrefById[id],
         id,
         metrics: [
           {
@@ -95,6 +101,7 @@ describe("Inference Core contract boundary", () => {
     expect(
       adminOverviewResponseSchema.safeParse({
         activityEvents: [],
+        activitySourceStatus: "ok",
         generatedAt: timestamp,
         tiles: [
           tile("applications"),
@@ -108,6 +115,36 @@ describe("Inference Core contract boundary", () => {
       adminOverviewTileSchema.safeParse({
         ...tile("system"),
         id: "governance",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminOverviewTileSchema.safeParse({
+        ...tile("inference"),
+        href: "https://litellm.example.test",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminOverviewResponseSchema.safeParse({
+        activityEvents: [
+          {
+            action: "console.application.read",
+            actorId: "admin-1",
+            createdAt: timestamp,
+            href: "https://grafana.example.test/event-1",
+            id: "event-1",
+            severity: "info",
+            targetId: "app-1",
+            targetType: "application",
+          },
+        ],
+        activitySourceStatus: "ok",
+        generatedAt: timestamp,
+        tiles: [
+          tile("applications"),
+          tile("inference"),
+          tile("hardware"),
+          tile("system"),
+        ],
       }).success,
     ).toBe(false)
   })
@@ -170,14 +207,25 @@ describe("Inference Core contract boundary", () => {
     expect(
       adminTeamMemberSchema.safeParse({ ...member, role: "builder" }).success,
     ).toBe(false)
+    const memberDetail = {
+      activity: [
+        {
+          action: "keycloak.authentication.succeeded",
+          createdAt: timestamp,
+          id: "event-1",
+          targetId: "operator-1",
+          targetType: "keycloak_subject",
+        },
+      ],
+      member,
+    }
+    expect(adminTeamMemberDetailSchema.safeParse(memberDetail).success).toBe(
+      true,
+    )
     expect(
-      adminTeamUsageSummarySchema.safeParse({
-        mcpCalls: 2,
-        mostUsedModel: "local-model",
-        prompts: 12,
-        sourceStatus: "ok",
-        tokens: 200,
-        window: "7d",
+      adminTeamMemberDetailSchema.safeParse({
+        ...memberDetail,
+        usage: {},
       }).success,
     ).toBe(false)
     expect(
@@ -300,7 +348,6 @@ describe("Inference Core contract boundary", () => {
       },
       privacy: {
         dataResidencyStatement: "Workload content is not retained.",
-        privacyPolicyHref: "/privacy",
         telemetryDescription: "Telemetry is disabled.",
         telemetryEnabled: false,
         telemetryPayloadPreview: {
@@ -733,29 +780,92 @@ describe("Inference Core contract boundary", () => {
         summary: "All retained signals are available.",
       }).success,
     ).toBe(true)
+    const inferenceDashboard = {
+      aggregateUsageSourceStatus: "ok",
+      generatedAt: timestamp,
+      liteLlmUrl: null,
+      modelInventorySourceStatus: "ok",
+      modelUsage: [],
+      models: [
+        {
+          contextWindow: 32768,
+          id: "local-chat",
+          mode: "chat",
+          name: "local-chat",
+          outputCostPerMillionTokens: 0,
+          provider: "local",
+          sourceStatus: "ok",
+        },
+      ],
+      range: "30d",
+      sourceStatus: "ok",
+      summary: "One model is served.",
+      totals: { requests: 0, tokens: 0 },
+      usagePoints: [],
+      virtualKeys: [],
+      virtualKeysSourceStatus: "ok",
+    }
+    expect(
+      adminInferenceDashboardSchema.safeParse(inferenceDashboard).success,
+    ).toBe(true)
     expect(
       adminInferenceDashboardSchema.safeParse({
-        generatedAt: timestamp,
-        liteLlmUrl: "/litellm",
+        ...inferenceDashboard,
+        liteLlmUrl: "https://litellm.example.test",
+      }).success,
+    ).toBe(false)
+    expect(
+      inferenceCoreContracts.adminHardwareChartSchema.safeParse({
+        ...charts[0],
+        grafanaUrl: "https://grafana.example.test",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminInferenceDashboardSchema.safeParse({
+        ...inferenceDashboard,
         modelUpdate: null,
-        modelUsage: [],
-        models: [
+      }).success,
+    ).toBe(false)
+    expect(
+      adminInferenceDashboardSchema.safeParse({
+        ...inferenceDashboard,
+        aggregateUsageSourceStatus: "unavailable",
+        totals: null,
+      }).success,
+    ).toBe(true)
+    expect(
+      adminInferenceDashboardSchema.safeParse({
+        ...inferenceDashboard,
+        aggregateUsageSourceStatus: "unavailable",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminInferenceDashboardSchema.safeParse({
+        ...inferenceDashboard,
+        aggregateUsageSourceStatus: "unavailable",
+        modelUsage: [
           {
-            contextWindow: 32768,
-            id: "local-chat",
-            mode: "chat",
-            name: "local-chat",
-            outputCostPerMillionTokens: 0,
-            provider: "local",
-            sourceStatus: "ok",
+            lastUsedAt: null,
+            model: "historical-model",
+            requests: 1,
+            spendUsd: null,
+            tokens: 10,
           },
         ],
-        range: "30d",
-        sourceStatus: "ok",
-        summary: "One model is served.",
-        totals: { requests: 0, tokens: 0 },
-        usagePoints: [],
-        virtualKeys: [],
+        totals: null,
+      }).success,
+    ).toBe(false)
+    expect(
+      adminInferenceDashboardSchema.safeParse({
+        ...inferenceDashboard,
+        modelInventorySourceStatus: "unavailable",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminInferenceDashboardSchema.safeParse({
+        ...inferenceDashboard,
+        modelInventorySourceStatus: "unavailable",
+        models: [],
       }).success,
     ).toBe(true)
   })

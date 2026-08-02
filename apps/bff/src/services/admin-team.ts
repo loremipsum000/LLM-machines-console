@@ -150,7 +150,6 @@ export async function getAdminTeamMemberDetail(
   return {
     activity: recentActivityForMember(member),
     member,
-    usage: usageForMember(),
   }
 }
 
@@ -1711,21 +1710,10 @@ function recentActivityForMember(
     .map((event) => ({
       action: event.action,
       createdAt: event.createdAt,
-      href: "#audit-log-deferred",
       id: event.id,
       targetId: event.targetId,
       targetType: event.targetType,
     }))
-}
-
-function usageForMember(): AdminTeamMemberDetail["usage"] {
-  return {
-    mostUsedModel: null,
-    prompts: 0,
-    sourceStatus: "not_configured",
-    tokens: 0,
-    window: "30d",
-  }
 }
 
 let cachedAuditEvents: Awaited<ReturnType<typeof getRecentAuditEvents>> = []
