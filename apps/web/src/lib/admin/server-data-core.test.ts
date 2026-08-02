@@ -4,6 +4,7 @@ import {
   ConsoleBffAuthExpiredError,
   getAdminAudit,
   getAdminConnectedApps,
+  getAdminOverview,
 } from "./server-data-core"
 
 vi.mock("@/lib/auth/session", () => ({
@@ -70,6 +71,27 @@ describe("inference-core Admin data loader", () => {
 
     await expect(getAdminConnectedApps()).rejects.toBeInstanceOf(
       ConsoleBffAuthExpiredError,
+    )
+  })
+
+  it("loads the source-backed Overview without fixture fallback", async () => {
+    vi.stubEnv("CONSOLE_BFF_URL", "http://bff.test")
+    vi.stubEnv("CONSOLE_BFF_SERVICE_API_KEY", "service-key")
+    vi.mocked(getBffForwardedIdentity).mockResolvedValue({
+      accessToken: "keycloak-access-token",
+      email: "operator@example.test",
+      roles: ["operator"],
+      subject: "operator-1",
+    })
+    const payload = overviewFixture()
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }))
+
+    await expect(getAdminOverview()).resolves.toEqual(payload)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://bff.test/api/admin/overview",
+      expect.objectContaining({ cache: "no-store" }),
     )
   })
 
@@ -147,3 +169,48 @@ describe("inference-core Admin data loader", () => {
     )
   })
 })
+
+function overviewFixture() {
+  const generatedAt = "2026-08-01T08:01:00.000Z"
+  return {
+    activityEvents: [],
+    activitySourceStatus: "ok",
+    generatedAt,
+    tiles: [
+      overviewTile(
+        "applications",
+        "Applications",
+        "/applications",
+        generatedAt,
+      ),
+      overviewTile("inference", "Inference", "/inference", generatedAt),
+      overviewTile("hardware", "Hardware", "/hardware", generatedAt),
+      overviewTile("system", "System", "/activity", generatedAt),
+    ],
+  }
+}
+
+function overviewTile(
+  id: "applications" | "hardware" | "inference" | "system",
+  title: string,
+  href: string,
+  updatedAt: string,
+) {
+  return {
+    href,
+    id,
+    metrics: [
+      {
+        detail: "Authentic BFF source",
+        id: `${id}-status`,
+        label: "Status",
+        tone: "good" as const,
+        value: "Operational",
+      },
+    ],
+    sourceStatus: "ok" as const,
+    summary: `${title} source preview is available.`,
+    title,
+    updatedAt,
+  }
+}

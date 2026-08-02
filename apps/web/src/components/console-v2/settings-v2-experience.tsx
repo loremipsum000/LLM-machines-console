@@ -4,6 +4,7 @@ import {
   updateAdminSettingsOrganizationAction,
   updateAdminSettingsTelemetryAction,
 } from "@/lib/admin/actions-core"
+import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import { cn } from "@/lib/utils"
 import type {
   AdminSettingsLogoAsset,
@@ -13,7 +14,6 @@ import type {
 } from "@llm-machines/contracts/inference-core"
 import { ChevronDown } from "lucide-react"
 import Image from "next/image"
-import Link from "next/link"
 import { useRef, useState } from "react"
 import type { ChangeEvent, ReactNode } from "react"
 import { ConsoleActionToasts } from "./action-toasts"
@@ -27,6 +27,7 @@ const settingsDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   timeStyle: "short",
 })
 interface SettingsV2ExperienceProps {
+  accessRole: RetainedConsoleRole
   settings: AdminSettingsResponse
   settingsAction?: string
 }
@@ -41,9 +42,11 @@ interface LogoCandidate {
 }
 
 export function SettingsV2Experience({
+  accessRole,
   settings,
   settingsAction,
 }: SettingsV2ExperienceProps) {
+  const persistenceReady = settings.sourceStatus === "ok"
   return (
     <div className="w-full min-h-screen pb-16 pt-8 lg:pt-[73px]">
       <header>
@@ -57,29 +60,57 @@ export function SettingsV2Experience({
           Settings
         </h1>
         <p className="mt-3 max-w-[600px] text-sm leading-5 text-[#b2b2b2]">
-          Configure appliance identity, maintenance posture, and privacy
-          controls for the Console.
+          Review appliance identity, maintenance posture, and privacy controls
+          for the Console.
         </p>
+        {accessRole === "operator" ? (
+          <p className="mt-2 max-w-[600px] text-sm leading-5 text-[#8b8b8b]">
+            Operator access is read-only. An Administrator manages organization,
+            update, and telemetry settings.
+          </p>
+        ) : null}
       </header>
 
-      <SettingsActionNotice settingsAction={settingsAction} />
+      <SettingsActionNotice
+        settingsAction={persistenceReady ? settingsAction : undefined}
+      />
+
+      {!persistenceReady ? (
+        <output className="mt-6 max-w-[640px] rounded-lg border border-[#51431c] bg-[#2b2414] p-3 text-sm leading-5 text-[#ffdb8a]">
+          Settings storage is not configured. Identity and privacy values below
+          are defaults or read-only source previews; persistent changes are
+          disabled.
+        </output>
+      ) : null}
 
       <div className="mt-8 flex w-full flex-col gap-3 lg:w-[640px]">
-        <OrganizationSettingsPanel settings={settings} />
+        <OrganizationSettingsPanel
+          accessRole={accessRole}
+          persistenceReady={persistenceReady}
+          settings={settings}
+        />
         <SystemStatusPanel
           generatedAt={settings.generatedAt}
           services={settings.reachability}
         />
         <UpdatesLicensePanel settings={settings} />
-        <PrivacyPanel settings={settings} />
+        <PrivacyPanel
+          accessRole={accessRole}
+          persistenceReady={persistenceReady}
+          settings={settings}
+        />
       </div>
     </div>
   )
 }
 
 function OrganizationSettingsPanel({
+  accessRole,
+  persistenceReady,
   settings,
 }: {
+  accessRole: RetainedConsoleRole
+  persistenceReady: boolean
   settings: AdminSettingsResponse
 }) {
   const { organization } = settings
@@ -111,6 +142,7 @@ function OrganizationSettingsPanel({
     (!organizationUi.iconLogo ||
       (organizationUi.iconLogo.width !== null &&
         organizationUi.iconLogo.height !== null))
+  const canMutate = accessRole === "admin" && persistenceReady
 
   function resetOrganizationForm() {
     setOrganizationUi({
@@ -129,95 +161,120 @@ function OrganizationSettingsPanel({
       className="rounded-lg border border-[#353535] bg-[#232323] p-3"
     >
       <PanelHeading
-        description="Controls the customer-facing name and Console shell branding used by this appliance."
+        description={
+          canMutate
+            ? "Controls the customer-facing name and Console shell branding used by this appliance."
+            : "Read-only customer-facing name and Console shell branding used by this appliance."
+        }
         title="Organization"
       />
-      <form
-        action={updateAdminSettingsOrganizationAction}
-        className="mt-3 flex flex-col gap-3"
-      >
-        <input name="returnTo" type="hidden" value={returnTo} />
-
-        <SettingsTextField
-          label="Organization name"
-          maxLength={120}
-          name="organizationName"
-          onChange={(event) =>
-            setOrganizationUi((current) => ({
-              ...current,
-              organizationName: event.target.value,
-            }))
-          }
-          required
-          value={organizationUi.organizationName}
-        />
-
-        <SettingsSelect
-          label="Default language"
-          name="defaultLanguage"
-          onChange={(event) =>
-            setOrganizationUi((current) => ({
-              ...current,
-              defaultLanguage: event.target.value === "hr" ? "hr" : "en",
-            }))
-          }
-          value={organizationUi.defaultLanguage}
-        >
-          <option className="bg-[#232323]" value="en">
-            English
-          </option>
-          <option className="bg-[#232323]" value="hr">
-            Croatian
-          </option>
-        </SettingsSelect>
-
-        <LogoUploadField
-          asset={organization.fullLogo}
-          candidate={organizationUi.fullLogo}
-          clearChecked={organizationUi.clearFullLogo}
-          clearName="clearFullLogo"
-          label="Full logo"
-          name="fullLogo"
-          onCandidateChange={(fullLogo) =>
-            setOrganizationUi((current) => ({ ...current, fullLogo }))
-          }
-          onClearChange={(clearFullLogo) =>
-            setOrganizationUi((current) => ({ ...current, clearFullLogo }))
-          }
-        />
-        <LogoUploadField
-          asset={organization.iconLogo}
-          candidate={organizationUi.iconLogo}
-          clearChecked={organizationUi.clearIconLogo}
-          clearName="clearIconLogo"
-          label="Icon logo"
-          mustBeSquare
-          name="iconLogo"
-          onCandidateChange={(iconLogo) =>
-            setOrganizationUi((current) => ({ ...current, iconLogo }))
-          }
-          onClearChange={(clearIconLogo) =>
-            setOrganizationUi((current) => ({ ...current, clearIconLogo }))
-          }
-        />
-
-        <div className="flex items-center justify-end gap-2 pt-1">
-          <button
-            className={secondaryButtonClass}
-            onClick={resetOrganizationForm}
-            type="reset"
-          >
-            Reset changes
-          </button>
-          <button
-            className={cn(primaryButtonClass, !isDirty && "opacity-50")}
-            disabled={!isDirty || !isValid}
-            type="submit"
-          >
-            Save changes
-          </button>
+      {!canMutate ? (
+        <div className="mt-3 grid gap-2">
+          <ReadonlySettingRow
+            label="Organization name"
+            value={organization.organizationName}
+          />
+          <ReadonlySettingRow
+            label="Default language"
+            value={languageLabel(organization.defaultLanguage)}
+          />
+          <ReadonlySettingRow
+            label="Full logo"
+            value={organization.fullLogo?.fileName ?? "Not configured"}
+          />
+          <ReadonlySettingRow
+            label="Icon logo"
+            value={organization.iconLogo?.fileName ?? "Not configured"}
+          />
         </div>
-      </form>
+      ) : (
+        <form
+          action={updateAdminSettingsOrganizationAction}
+          className="mt-3 flex flex-col gap-3"
+        >
+          <input name="returnTo" type="hidden" value={returnTo} />
+
+          <SettingsTextField
+            label="Organization name"
+            maxLength={120}
+            name="organizationName"
+            onChange={(event) =>
+              setOrganizationUi((current) => ({
+                ...current,
+                organizationName: event.target.value,
+              }))
+            }
+            required
+            value={organizationUi.organizationName}
+          />
+
+          <SettingsSelect
+            label="Default language"
+            name="defaultLanguage"
+            onChange={(event) =>
+              setOrganizationUi((current) => ({
+                ...current,
+                defaultLanguage: event.target.value === "hr" ? "hr" : "en",
+              }))
+            }
+            value={organizationUi.defaultLanguage}
+          >
+            <option className="bg-[#232323]" value="en">
+              English
+            </option>
+            <option className="bg-[#232323]" value="hr">
+              Croatian
+            </option>
+          </SettingsSelect>
+
+          <LogoUploadField
+            asset={organization.fullLogo}
+            candidate={organizationUi.fullLogo}
+            clearChecked={organizationUi.clearFullLogo}
+            clearName="clearFullLogo"
+            label="Full logo"
+            name="fullLogo"
+            onCandidateChange={(fullLogo) =>
+              setOrganizationUi((current) => ({ ...current, fullLogo }))
+            }
+            onClearChange={(clearFullLogo) =>
+              setOrganizationUi((current) => ({ ...current, clearFullLogo }))
+            }
+          />
+          <LogoUploadField
+            asset={organization.iconLogo}
+            candidate={organizationUi.iconLogo}
+            clearChecked={organizationUi.clearIconLogo}
+            clearName="clearIconLogo"
+            label="Icon logo"
+            mustBeSquare
+            name="iconLogo"
+            onCandidateChange={(iconLogo) =>
+              setOrganizationUi((current) => ({ ...current, iconLogo }))
+            }
+            onClearChange={(clearIconLogo) =>
+              setOrganizationUi((current) => ({ ...current, clearIconLogo }))
+            }
+          />
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              className={secondaryButtonClass}
+              onClick={resetOrganizationForm}
+              type="reset"
+            >
+              Reset changes
+            </button>
+            <button
+              className={cn(primaryButtonClass, !isDirty && "opacity-50")}
+              disabled={!isDirty || !isValid}
+              type="submit"
+            >
+              Save changes
+            </button>
+          </div>
+        </form>
+      )}
     </section>
   )
 }
@@ -794,24 +851,24 @@ function UpdatesLicensePanel({
               Components: {settings.systemUpdate.affectedComponents.join(", ")}
             </p>
           ) : null}
-          <button
-            className={cn(primaryButtonClass, "mt-3 opacity-50")}
-            disabled={!settings.systemUpdate.updateActionEnabled}
-            type="button"
-          >
-            {settings.systemUpdate.updateActionEnabled
-              ? "System update"
-              : "System update unavailable"}
-          </button>
         </div>
       </div>
     </section>
   )
 }
 
-function PrivacyPanel({ settings }: { settings: AdminSettingsResponse }) {
+function PrivacyPanel({
+  accessRole,
+  persistenceReady,
+  settings,
+}: {
+  accessRole: RetainedConsoleRole
+  persistenceReady: boolean
+  settings: AdminSettingsResponse
+}) {
   const [enableDialogOpen, setEnableDialogOpen] = useState(false)
   const preview = settings.privacy.telemetryPayloadPreview
+  const canMutate = accessRole === "admin" && persistenceReady
 
   return (
     <section
@@ -868,33 +925,35 @@ function PrivacyPanel({ settings }: { settings: AdminSettingsResponse }) {
         <p className="text-sm leading-5 text-[#b2b2b2]">
           {settings.privacy.telemetryDescription}
         </p>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Link
-            className="text-sm font-medium leading-5 text-white underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-            href={settings.privacy.privacyPolicyHref}
-          >
-            Privacy policy
-          </Link>
-          {settings.privacy.telemetryEnabled ? (
-            <form action={updateAdminSettingsTelemetryAction}>
-              <input name="returnTo" type="hidden" value={returnTo} />
-              <button className={secondaryButtonClass} type="submit">
-                Disable telemetry
+        {canMutate ? (
+          <div className="flex justify-end">
+            {settings.privacy.telemetryEnabled ? (
+              <form action={updateAdminSettingsTelemetryAction}>
+                <input name="returnTo" type="hidden" value={returnTo} />
+                <button className={secondaryButtonClass} type="submit">
+                  Disable telemetry
+                </button>
+              </form>
+            ) : (
+              <button
+                className={primaryButtonClass}
+                onClick={() => setEnableDialogOpen(true)}
+                type="button"
+              >
+                Enable telemetry
               </button>
-            </form>
-          ) : (
-            <button
-              className={primaryButtonClass}
-              onClick={() => setEnableDialogOpen(true)}
-              type="button"
-            >
-              Enable telemetry
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs leading-5 text-[#8b8b8b]">
+            {accessRole === "operator"
+              ? "Telemetry changes require Administrator access."
+              : "Telemetry changes require configured Settings storage."}
+          </p>
+        )}
       </div>
 
-      {enableDialogOpen ? (
+      {canMutate && enableDialogOpen ? (
         <EnableTelemetryDialog onCancel={() => setEnableDialogOpen(false)} />
       ) : null}
     </section>
@@ -1155,6 +1214,10 @@ function PreviewTerm({
       <dd className="break-all text-[#b2b2b2]">{value ?? "Not configured"}</dd>
     </>
   )
+}
+
+function languageLabel(language: "en" | "hr"): string {
+  return language === "hr" ? "Croatian" : "English"
 }
 
 function ServiceStatus({ status }: { status: InferenceCoreSourceStatus }) {

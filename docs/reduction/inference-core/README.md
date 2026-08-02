@@ -498,3 +498,73 @@ drifted decision and atomically writes only `contract-revisions/PR-10C.json`,
 the forbidden allowlist, and the route baseline. Do not stage those generated
 destinations before generation, and do not run write mode from a partial
 candidate.
+
+PR-11 is the source-only retained Console information-architecture successor
+to accepted PR-10C integration commit
+`6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7`, tree
+`44d6fb34db5f3d35e8b2f9bd2259756aec63b8a8`. It preserves every prior
+revision and evidence fingerprint. The decision and validation registers are
+live indexes, so their original PR-08 bytes remain resolved from the accepted
+base through two explicit successor-historical bindings when PR-11 appends its
+updates. No prior revision document is rewritten.
+
+The Console navigation contains exactly these ordered logical surfaces:
+Overview, Applications, Inference, Hardware, Team, Activity & Audit, and
+Settings. `/` renders the source-backed Overview directly. Applications
+combines inference and Firecrawl controls while retaining distinct inference
+and Firecrawl credential namespaces and Firecrawl's default-off state.
+
+Grafana, LiteLLM, and Keycloak remain reduced previews. PR-11 removes native
+access affordances and does not embed live expert-service URLs in product
+navigation. PR-12 owns native no-bypass qualification. Portainer, Agentic,
+Chat, Knowledge, MCP, Builder, Hub, and their retired loaders, redirects,
+links, and bundle imports remain absent from the product surface.
+
+This native-access boundary is fail-closed. The exact production Console href
+manifest is reviewed, Overview tile and activity hrefs accept only internal
+paths, the BFF contract-parses the Overview response, and expert-service URL
+payload fields are null-only. Literal URLs, renamed href expressions, broad
+Overview href schemas, and non-null expert URL producers fail validation.
+
+PR-11 permits one environment-template transition: `.env.example` deletes the
+exact retired `INFERENCE_MODEL_UPDATE_*` block from the accepted base. It may
+not add a line, change a retained value, remove unrelated content, or admit any
+other environment path.
+
+Settings mutations require PostgreSQL outside explicit fixture mode. The
+settings write, idempotency receipt, and success audit commit in one database
+transaction through the shared audit writer. Missing persistence or receipt
+coordination returns unavailable and cannot emit a false success audit. Fresh
+databases seed a schema-valid telemetry preview, and production parsing remains
+strict with no fallback data.
+
+Production Web responses use a per-request script nonce. Middleware forwards
+the same nonce-bearing content security policy to Next.js and returns it on the
+response, while production `script-src` permits neither `unsafe-inline` nor
+`unsafe-eval`. The reviewed resolver transition changes only
+`apps/web/next.config.ts` from SHA-256
+`58f841f6ee4170e90c110e33727d85dabe6a2c096784b05940319d770a958f8b` to
+`79a28582d628e566baa4231d4a718173cf4e9dde14242bc40e214d502262dbb3`.
+
+PR-11 removes exactly one simulated route,
+`POST /api/admin/inference/model-updates/apply`, with no replacement or
+reclassification. The resulting inventory is 104 routes, including 92
+`current-console-seam` routes; all other classification counts and Fastify
+registrars remain unchanged. PR-11 does not change public inference,
+Firecrawl, isolation, authorization, retention, runtime, deployment,
+signing-key, or vendor-maintenance boundaries. The reviewed decision binds 2
+added and 27 changed source-closure paths, 11 added and 54 changed repository
+paths, no deleted path, and exact hashes for all 56 changed product-source and
+test files. The reproducible generator commands are:
+
+```text
+corepack pnpm contract:inference-core:pr11:policy
+corepack pnpm contract:inference-core:pr11:write
+```
+
+Policy mode derives the exact source and repository closure transition from
+the frozen candidate. Write mode rejects a pending or drifted decision and
+atomically writes only `contract-revisions/PR-11.json`, the forbidden
+allowlist, and the route baseline. The reviewed PR-11 output was generated only
+after the exact policy, source hashes, route reduction, and predecessor
+evidence passed.

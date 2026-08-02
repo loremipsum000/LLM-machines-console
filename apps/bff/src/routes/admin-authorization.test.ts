@@ -109,7 +109,6 @@ const expectedAdminRoutePolicies = {
   ),
   "GET /api/admin/hardware": capability("console.operational.view"),
   "GET /api/admin/inference": capability("console.operational.view"),
-  "POST /api/admin/inference/model-updates/apply": capability("updates.apply"),
 } as const
 
 describe("Admin route authorization contract", () => {

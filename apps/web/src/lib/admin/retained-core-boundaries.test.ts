@@ -94,15 +94,25 @@ describe("retained Web inference-core boundaries", () => {
     }
   })
 
-  it("uses only core action and contract imports in retained components", () => {
+  it("uses only core actions for retained components that mutate", () => {
     for (const path of [
       "../../components/console-v2/applications-v2-experience.tsx",
-      "../../components/console-v2/inference-v2-experience.tsx",
       "../../components/console-v2/settings-v2-experience.tsx",
       "../../components/console-v2/team-v2-experience.tsx",
     ]) {
       const componentSource = source(path)
       expect(componentSource, path).toContain("@/lib/admin/actions-core")
+      expect(componentSource, path).not.toContain('from "@/lib/admin/actions"')
+    }
+  })
+
+  it("keeps retained read-only components free of legacy actions", () => {
+    for (const path of [
+      "../../components/console-v2/inference-v2-experience.tsx",
+      "../../components/console-v2/overview-v2-experience.tsx",
+      "../../components/console-v2/hardware-v2-experience.tsx",
+    ]) {
+      const componentSource = source(path)
       expect(componentSource, path).not.toContain('from "@/lib/admin/actions"')
     }
   })

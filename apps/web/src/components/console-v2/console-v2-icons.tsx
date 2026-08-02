@@ -2,6 +2,33 @@ import type { SVGProps } from "react"
 
 type IconProps = SVGProps<SVGSVGElement>
 
+export function OverviewIcon(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="20"
+      viewBox="0 0 20 20"
+      width="20"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <path
+        d="M2.5 8.33L10 2.5L17.5 8.33"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.17 7.5V16.67H15.83V7.5M7.5 16.67V11.67H12.5V16.67"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export function ApplicationsIcon(props: IconProps) {
   return (
     <svg
@@ -105,6 +132,33 @@ export function InferenceIcon(props: IconProps) {
       />
       <path
         d="M11.67 3.33H8.33C7.87 3.33 7.5 3.71 7.5 4.17V16.67H12.5V4.17C12.5 3.71 12.13 3.33 11.67 3.33Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function ActivityIcon(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="20"
+      viewBox="0 0 20 20"
+      width="20"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <path
+        d="M5 2.5H15C15.92 2.5 16.67 3.25 16.67 4.17V15.83C16.67 16.75 15.92 17.5 15 17.5H5C4.08 17.5 3.33 16.75 3.33 15.83V4.17C3.33 3.25 4.08 2.5 5 2.5Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.67 6.25H13.33M6.67 10H13.33M6.67 13.75H10.83"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"

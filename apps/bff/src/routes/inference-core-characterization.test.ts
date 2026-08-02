@@ -348,10 +348,6 @@ function reviewedBffRoutes(): RuntimeRoute[] {
       method: "POST",
       url: "/api/admin/applications/connected-apps/:id/firecrawl/credentials/:credentialId/revoke",
     },
-    {
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    },
     { method: "POST", url: "/api/admin/isolation/activate" },
     { method: "POST", url: "/api/admin/isolation/deactivate" },
     {

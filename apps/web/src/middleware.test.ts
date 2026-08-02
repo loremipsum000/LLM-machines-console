@@ -44,7 +44,6 @@ describe("Console middleware", () => {
       "/applications/add",
       "/hardware",
       "/inference",
-      "/inference/model-update",
       "/settings",
       "/team",
       "/team/import/template",
@@ -77,6 +76,7 @@ describe("Console middleware", () => {
       "/tasks",
       "/profile",
       "/usage",
+      "/inference/model-update",
     ]) {
       const response = await runMiddleware(pathname)
       expect(response.headers.get("x-middleware-next"), pathname).toBe("1")
@@ -106,6 +106,25 @@ describe("Console middleware", () => {
       expect(response.headers.get("x-middleware-next"), role).toBe("1")
     }
     expect(authSpies.auth).toHaveBeenCalledTimes(2)
+  })
+
+  it("forwards a fresh script nonce and returns the same production CSP", async () => {
+    const first = await runMiddleware("/auth/signin")
+    const second = await runMiddleware("/auth/signin")
+    const firstCsp = first.headers.get("content-security-policy")
+    const secondCsp = second.headers.get("content-security-policy")
+    const scriptPolicy = firstCsp
+      ?.split(";")
+      .map((directive) => directive.trim())
+      .find((directive) => directive.startsWith("script-src "))
+
+    expect(scriptPolicy).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+'$/)
+    expect(scriptPolicy).not.toContain("'unsafe-inline'")
+    expect(scriptPolicy).not.toContain("'unsafe-eval'")
+    expect(
+      first.headers.get("x-middleware-request-content-security-policy"),
+    ).toBe(firstCsp)
+    expect(secondCsp).not.toBe(firstCsp)
   })
 
   it("redirects authenticated sessions that have only retired or unknown roles", async () => {

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "56daf682294991619943e7173bab2b5544db0c6970ca5736a2633a26815ae757",
+  "policyDigest": "515f94d04807ada0c0baa724029a80fca935d04268fa7b4bc9b4cd2ff7e0112d",
   "protectedFiles": [
     {
       "path": "apps/bff/tsconfig.json",
@@ -21,7 +21,7 @@
     },
     {
       "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
-      "sha256": "8785953dbd9567543036ef3b4a3cbda6bc1a703e012a1f4d9412499c520ac86c"
+      "sha256": "36617e5c6c7c781c7943b433a8df06ba5e9a6a301f81dc49637f083731f0ec09"
     },
     {
       "path": "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
@@ -37,15 +37,15 @@
     },
     {
       "path": "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
-      "sha256": "6bb487988cdda6cdf41a6b3b7e6d58df59beecc88a59c2a81c6fcedb15190657"
+      "sha256": "19d9291b7264d1fd96ecd1b783843d9669092b47120e626864abe45da0db329e"
     },
     {
       "path": "apps/web/src/middleware.test.ts",
-      "sha256": "635f7c7c3ec01318170ec785546b4e05db0cb7e0f63e452e327e84ede1c51867"
+      "sha256": "ffd0e7936e0d3cbd17349ae315e66b94af4336236b2f9c394239061ed9c52e6a"
     },
     {
       "path": "apps/web/src/middleware.ts",
-      "sha256": "c3ffb281c0dd538123fb476bc36c682c50693f9c06f637fc92627ec56fa9b0a9"
+      "sha256": "711de75880cdcdbd86ce05fa953c749e8f9e4f90c85cc48dad47e86dd226d586"
     },
     {
       "path": "docs/reduction/inference-core/pr-02-boundary-decisions.json",
@@ -92,8 +92,12 @@
       "sha256": "bad8597536719d1da9955e15efab384075028d0558517d5c03e884c9df26fca3"
     },
     {
+      "path": "docs/reduction/inference-core/pr-11-console-information-architecture-decisions.json",
+      "sha256": "1e81ec871c9a389182adc1786640f40a439f13c4f9ab8833050a1a8702f2facf"
+    },
+    {
       "path": "docs/reduction/inference-core/decision-register.md",
-      "sha256": "a1e131f84d1508aa8d513573ddfca4a47a6ad9a96d4c7effebb365572f1bc2dd"
+      "sha256": "5befe40e939f110b861173dbbb906a8563af06f1b2bdd03625966473668cb2e9"
     },
     {
       "path": "docs/reduction/inference-core/source-map.jsonl",
@@ -101,7 +105,7 @@
     },
     {
       "path": "docs/reduction/inference-core/validation-register.md",
-      "sha256": "cb3c4b970ffe1f99f60b2d3b8757f2c922c215e693dde506c6a9ea0ab2916811"
+      "sha256": "921421e1cfd46658e561e5bdb65db3008d016d7bbea19f260092f02d363ff684"
     },
     {
       "path": "packages/contracts/src/inference-core-authorization.test.ts",
@@ -113,7 +117,7 @@
     },
     {
       "path": "packages/contracts/src/inference-core.test.ts",
-      "sha256": "2ccc87f9894f962282780bcd44597681ca79056c31aeb2079702f3c2cc72abf0"
+      "sha256": "a1790a554261cce4829eea0fd5537845b3a677059d8066794016a9ba69c932a0"
     },
     {
       "path": "packages/contracts/tsconfig.build.json",
@@ -137,11 +141,11 @@
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",
-      "sha256": "b939fc2fe7a05e4d8d3f644d7d78835e7b5f9ac15ad63258904c9150bd20b444"
+      "sha256": "903cc7ffa5e50bcf7a5d47773a81370ff55853aa35ff3375a76ecb9e97223102"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
-      "sha256": "dc275ca07e06cbac15a53d63987145edb5e47b3acb76014967a185e0cd31aeb0"
+      "sha256": "06db7133627519fda42658a422d120b5ae2253c9314f14b9160b0e83d062b25d"
     },
     {
       "path": "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -222,6 +226,14 @@
     {
       "path": "scripts/inference-core/pr10c-contract-revision.mjs",
       "sha256": "4c8ce68a911d61362407ceffd8895065cf8f161b076e8fc0ed48b34d929785c4"
+    },
+    {
+      "path": "scripts/inference-core/pr11-boundaries.test.mjs",
+      "sha256": "4e5dd44be59b93e6bb7f769f75769c8fb2d71237dadca9c9b7eabddf3941e2ac"
+    },
+    {
+      "path": "scripts/inference-core/pr11-contract-revision.mjs",
+      "sha256": "0dbe82f97fc7b962370ad5af276198245085e7ebe8ed5f0bf9175cbce2606145"
     },
     {
       "path": "scripts/inference-core/retention-canary.mjs",

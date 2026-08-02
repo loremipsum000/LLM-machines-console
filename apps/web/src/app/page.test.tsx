@@ -7,7 +7,7 @@ import HardwarePage, { dynamic as hardwareDynamic } from "./hardware/page"
 import InferencePage, {
   dynamic as inferenceDynamic,
 } from "./inference/[[...section]]/page"
-import HomePage from "./page"
+import HomePage, { dynamic as homeDynamic } from "./page"
 import SettingsPage, { dynamic as settingsDynamic } from "./settings/page"
 import TeamPage, { dynamic as teamDynamic } from "./team/[[...section]]/page"
 
@@ -22,6 +22,7 @@ const routeMocks = vi.hoisted(() => ({
   renderApplicationsConsoleRoute: vi.fn(async () => null),
   renderHardwareConsoleRoute: vi.fn(async () => null),
   renderInferenceConsoleRoute: vi.fn(async () => null),
+  renderOverviewConsoleRoute: vi.fn(async () => null),
   renderSettingsConsoleRoute: vi.fn(async () => null),
   renderTeamConsoleRoute: vi.fn(async () => null),
 }))
@@ -37,20 +38,23 @@ describe("retained Console routes", () => {
     vi.clearAllMocks()
   })
 
-  it("redirects the root route to Applications", () => {
-    expect(() => HomePage()).toThrow("redirect:/applications")
-    expect(navigationMocks.redirect).toHaveBeenCalledWith("/applications")
+  it("renders Overview directly at the root route", async () => {
+    await HomePage()
+
+    expect(routeMocks.renderOverviewConsoleRoute).toHaveBeenCalledOnce()
+    expect(navigationMocks.redirect).not.toHaveBeenCalled()
   })
 
   it("keeps every retained page dynamic", () => {
     expect([
       applicationsDynamic,
       activityDynamic,
+      homeDynamic,
       hardwareDynamic,
       inferenceDynamic,
       settingsDynamic,
       teamDynamic,
-    ]).toEqual(Array(6).fill("force-dynamic"))
+    ]).toEqual(Array(7).fill("force-dynamic"))
   })
 
   it("routes Activity through the retained core owner", async () => {
@@ -91,12 +95,12 @@ describe("retained Console routes", () => {
     const searchParams = Promise.resolve({ range: "7d" })
 
     await InferencePage({
-      params: Promise.resolve({ section: ["model-update"] }),
+      params: Promise.resolve({}),
       searchParams,
     })
 
     expect(routeMocks.renderInferenceConsoleRoute).toHaveBeenCalledWith({
-      section: ["model-update"],
+      section: undefined,
       searchParams,
     })
   })

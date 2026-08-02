@@ -1,7 +1,7 @@
 "use client"
 
-import { cn } from "@/lib/utils"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
+import { cn } from "@/lib/utils"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -112,7 +112,7 @@ export function ConsoleV2Shell({
             </div>
 
             <nav
-              aria-label="Console v2 navigation"
+              aria-label="Console navigation"
               className="flex w-full flex-col gap-0.5"
             >
               {visibleSections.map((section, index) => (

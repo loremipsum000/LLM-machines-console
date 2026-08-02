@@ -75,17 +75,17 @@ describe("HardwareV2Experience alerts", () => {
     expect(within(alerts).queryByRole("link")).toBeNull()
   })
 
-  it("shows only BFF-provided Grafana and Alertmanager links", () => {
+  it("does not render native expert links before no-bypass qualification", () => {
     render(
       <HardwareV2Experience
         hardware={hardwareFixture({
           activeAlerts: [
             {
               alertName: "InferenceFailures",
-              alertmanagerUrl: "https://alerts.example.test/alerts/1",
+              alertmanagerUrl: null,
               description: null,
               device: null,
-              grafanaUrl: "https://grafana.example.test/alerting/1",
+              grafanaUrl: null,
               host: null,
               id: "alert-1",
               labels: {},
@@ -95,31 +95,24 @@ describe("HardwareV2Experience alerts", () => {
             },
           ],
           alertSourceStatus: "ok",
-          alertmanagerUrl: "https://alerts.example.test",
-          grafanaUrl: "https://grafana.example.test",
+          alertmanagerUrl: null,
+          grafanaUrl: null,
           sourceStatus: "degraded",
         })}
       />,
     )
 
     expect(
-      screen
-        .getByRole("link", { name: "Open in Grafana" })
-        .getAttribute("href"),
-    ).toBe("https://grafana.example.test/alerting/1")
+      screen.queryByRole("link", { name: /Grafana|Alertmanager/ }),
+    ).toBeNull()
     expect(
       screen
-        .getByRole("link", { name: "Open in Alertmanager" })
-        .getAttribute("href"),
-    ).toBe("https://alerts.example.test/alerts/1")
+        .getAllByRole("link")
+        .every((link) => link.getAttribute("href")?.startsWith("/hardware")),
+    ).toBe(true)
     expect(
-      screen.getByRole("link", { name: "Open Grafana" }).getAttribute("href"),
-    ).toBe("https://grafana.example.test")
-    expect(
-      screen
-        .getByRole("link", { name: "Open Alertmanager" })
-        .getAttribute("href"),
-    ).toBe("https://alerts.example.test")
+      screen.getByText("Direct Grafana access is pending qualification"),
+    ).toBeTruthy()
   })
 })
 

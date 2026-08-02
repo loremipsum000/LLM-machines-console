@@ -13,10 +13,8 @@ import {
   ConsoleV2Shell,
 } from "@/components/console-v2/console-v2-shell"
 import { HardwareV2Experience } from "@/components/console-v2/hardware-v2-experience"
-import {
-  InferenceV2Experience,
-  type InferenceV2View,
-} from "@/components/console-v2/inference-v2-experience"
+import { InferenceV2Experience } from "@/components/console-v2/inference-v2-experience"
+import { OverviewV2Experience } from "@/components/console-v2/overview-v2-experience"
 import { SettingsV2Experience } from "@/components/console-v2/settings-v2-experience"
 import {
   TeamV2Experience,
@@ -28,6 +26,7 @@ import {
   getAdminConnectedApps,
   getAdminHardware,
   getAdminInference,
+  getAdminOverview,
   getAdminSettings,
   getAdminTeamGroupDetail,
   getAdminTeamMemberDetail,
@@ -45,7 +44,6 @@ export interface ConsoleV2SearchParams {
   cursor?: string
   event?: string
   eventId?: string
-  inferenceAction?: string
   limit?: string
   outcome?: string
   q?: string
@@ -55,6 +53,13 @@ export interface ConsoleV2SearchParams {
   source?: string
   step?: string
   teamAction?: string
+}
+
+export async function renderOverviewConsoleRoute() {
+  return withConsoleAccess("overview", async () => {
+    const overview = await getAdminOverview()
+    return <OverviewV2Experience overview={overview} />
+  })
 }
 
 export async function renderActivityConsoleRoute(
@@ -111,7 +116,10 @@ export async function renderApplicationsConsoleRoute({
       return (
         <ApplicationsV2Experience
           accessRole={role}
-          appAction={resolvedSearchParams?.appAction}
+          appAction={applicationActionForRole(
+            role,
+            resolvedSearchParams?.appAction,
+          )}
           connectedApps={connectedApps.apps}
           view="overview"
         />
@@ -142,7 +150,10 @@ export async function renderApplicationsConsoleRoute({
     return (
       <ApplicationsV2Experience
         accessRole={role}
-        appAction={resolvedSearchParams?.appAction}
+        appAction={applicationActionForRole(
+          role,
+          resolvedSearchParams?.appAction,
+        )}
         connectedAppDetail={connectedAppDetail?.app ?? null}
         modelOptions={inference?.models ?? []}
         view="app-detail"
@@ -158,6 +169,9 @@ export async function renderInferenceConsoleRoute({
   section?: string[]
   searchParams?: Promise<ConsoleV2SearchParams>
 }) {
+  if (section?.[0]) {
+    notFound()
+  }
   return withConsoleAccess("inference", async (role) => {
     const resolvedSearchParams = searchParams ? await searchParams : undefined
     const inference = await getAdminInference({
@@ -169,8 +183,6 @@ export async function renderInferenceConsoleRoute({
         accessRole={role}
         basePath="/inference"
         dashboard={inference}
-        inferenceAction={resolvedSearchParams?.inferenceAction}
-        view={resolveInferenceView(section)}
       />
     )
   })
@@ -228,7 +240,9 @@ export async function renderTeamConsoleRoute({
         detail={memberDetail}
         groupDetail={groupDetail}
         overview={overview}
-        teamAction={resolvedSearchParams?.teamAction}
+        teamAction={
+          role === "admin" ? resolvedSearchParams?.teamAction : undefined
+        }
         view={teamView}
       />
     )
@@ -247,8 +261,11 @@ export async function renderSettingsConsoleRoute(
 
     return (
       <SettingsV2Experience
+        accessRole={role}
         settings={settings}
-        settingsAction={resolvedSearchParams?.settingsAction}
+        settingsAction={
+          role === "admin" ? resolvedSearchParams?.settingsAction : undefined
+        }
       />
     )
   })
@@ -284,6 +301,16 @@ async function withConsoleAccess(
       {content}
     </ConsoleV2Shell>
   )
+}
+
+function applicationActionForRole(
+  role: RetainedConsoleRole,
+  action: string | undefined,
+): string | undefined {
+  if (role === "admin" || action === "disabled" || action === "failed") {
+    return action
+  }
+  return undefined
 }
 
 function ConsoleAccessDeniedPanel() {
@@ -327,7 +354,7 @@ function ConsoleCapabilityDeniedPanel() {
 
 function getConsoleReauthUrl(activeSection: ConsoleV2SectionId): string {
   const url = new URLSearchParams({
-    redirectTo: `/${activeSection}`,
+    redirectTo: activeSection === "overview" ? "/" : `/${activeSection}`,
   })
   return `/auth/keycloak?${url.toString()}`
 }
@@ -357,16 +384,6 @@ function resolveApplicationsView(section?: string[]): ApplicationsView {
   }
   if (section[0] === "apps" && section[1]) {
     return "app-detail"
-  }
-  notFound()
-}
-
-function resolveInferenceView(section?: string[]): InferenceV2View {
-  if (!section?.[0]) {
-    return "overview"
-  }
-  if (section[0] === "update") {
-    return "model-update"
   }
   notFound()
 }

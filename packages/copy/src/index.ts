@@ -6,7 +6,7 @@ export const productCopy = {
   pages: {
     signIn: {
       description:
-        "Use your appliance identity to access applications, inference, hardware, team, and settings.",
+        "Use your appliance identity to access Overview, Applications, Inference, Hardware, Team, Activity & Audit, and Settings.",
       eyebrow: "Secure console access",
       footnote:
         "Console permissions are resolved from the appliance Keycloak realm after sign-in.",

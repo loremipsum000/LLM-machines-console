@@ -13,6 +13,10 @@ per-package JSON file and contract revision.
 | PR-06 | Unified Application control plane | `pr-06-application-decisions.json` | Accepted |
 | PR-07 | Inference data plane and customer-owned compute policy | `pr-07-data-plane-decisions.json` | Accepted |
 | PR-08 | Firecrawl search and static scrape source package | `pr-08-firecrawl-decisions.json` and `pr-08-firecrawl-source-manifest.json` | Accepted and bound by the PR-08 contract revision |
+| PR-09 | Activity, audit, and observability source package | `pr-09-activity-audit-observability-decisions.json` | Accepted and bound by the PR-09 contract revision |
+| PR-10 | Lifecycle snapshot and restore foundation | `pr-10-lifecycle-foundation-decisions.json` | Accepted and bound by the PR-10 contract revision |
+| PR-10C | Emergency isolation source package | `pr-10c-emergency-isolation-decisions.json` | Accepted and bound by the PR-10C contract revision |
+| PR-11 | Retained Console information architecture | `pr-11-console-information-architecture-decisions.json` | Accepted and bound by the PR-11 contract revision |
 
 ## PR-08 fixed decisions
 
@@ -53,3 +57,42 @@ per-package JSON file and contract revision.
   production paths remain forbidden. Runtime deployment, final images,
   signing, offline packet, SBOM, corresponding-source delivery, and runtime
   qualification remain PR-12 gates. No intermediate pull request is deployed.
+
+## PR-11 fixed decisions
+
+- The customer Console has exactly seven ordered logical surfaces: Overview,
+  Applications, Inference, Hardware, Team, Activity & Audit, and Settings.
+  `/` renders Overview directly and `/activity` remains the Activity & Audit
+  path.
+- Applications is one combined Console surface for inference and Firecrawl,
+  while inference and Firecrawl credentials remain separate namespaces.
+  Firecrawl remains installed and disabled by default.
+- Grafana, LiteLLM, and Keycloak appear only as reduced Console previews.
+  Native access affordances and live expert-service URLs remain disabled until
+  PR-12 proves the no-bypass boundary. An exact Console href manifest,
+  internal-only Overview href contracts, BFF response parsing, and null-only
+  expert URL payloads enforce the source boundary.
+- Portainer and Agentic are absent from product navigation. Chat, Knowledge,
+  MCP, Builder, Hub, and their retired loaders, redirects, links, and bundle
+  chunks remain absent.
+- PR-11 is source-only. It does not deploy runtime changes, activate native
+  expert sessions, modify signing keys, or change vendor maintenance access.
+- `.env.example` may only delete the exact retired
+  `INFERENCE_MODEL_UPDATE_*` block. Added lines, retained-value changes,
+  unrelated removals, and every other environment path remain forbidden.
+- Settings mutations require PostgreSQL outside explicit fixture mode. The
+  settings state, mutation receipt, and success audit share one transaction;
+  absent persistence or receipt coordination returns unavailable without a
+  success audit. Fresh databases seed a schema-valid telemetry preview, while
+  production parsing remains strict with no fallback data.
+- Production Web responses use a per-request script nonce. The request and
+  response carry the same content security policy, and production
+  `script-src` allows neither `unsafe-inline` nor `unsafe-eval`.
+- PR-11 removes exactly `POST /api/admin/inference/model-updates/apply`, the
+  simulated model-update mutation. It adds and reclassifies no route, leaving
+  104 total routes and 92 `current-console-seam` routes. Every other
+  classification count and the Fastify registrar inventory remain unchanged.
+- This register and the validation register are live indexes. Their original
+  PR-08 bytes remain bound through the reviewed PR-11 successor-historical
+  evidence mapping; earlier contract revisions and fingerprints are not
+  rewritten.

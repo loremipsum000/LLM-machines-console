@@ -57,6 +57,28 @@ describe("strict audit persistence boundary", () => {
     )
   })
 
+  it("persists through a supplied transaction executor", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    const values = vi.fn().mockResolvedValue(undefined)
+    const insert = vi.fn(() => ({ values }))
+    const transaction = { insert }
+
+    await expect(
+      emitAudit(baseEvent(), transaction as never),
+    ).resolves.toMatchObject({
+      action: "admin.audit.tested",
+      correlationId: "req-test",
+    })
+    expect(insert).toHaveBeenCalledOnce()
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "admin.audit.tested",
+        correlationId: "req-test",
+      }),
+    )
+    expect(getAuditEventsForTest()).toEqual([])
+  })
+
   it.each([
     "actorId",
     "sourceEventId",

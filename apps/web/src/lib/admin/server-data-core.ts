@@ -8,6 +8,7 @@ import {
   adminConnectedAppsResponseSchema,
   adminHardwareResponseSchema,
   adminInferenceDashboardSchema,
+  adminOverviewResponseSchema,
   adminSettingsResponseSchema,
   adminTeamGroupDetailSchema,
   adminTeamMemberDetailSchema,
@@ -89,6 +90,10 @@ export async function getAdminInference(
     `/api/admin/inference${queryString ? `?${queryString}` : ""}`,
     adminInferenceDashboardSchema,
   )
+}
+
+export async function getAdminOverview() {
+  return getAdminData("/api/admin/overview", adminOverviewResponseSchema)
 }
 
 export async function getAdminConnectedApps() {

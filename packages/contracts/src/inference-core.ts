@@ -65,7 +65,7 @@ export const adminOverviewTileSchema = z
     id: adminOverviewTileIdSchema,
     title: z.string().min(1),
     summary: z.string().min(1),
-    href: z.string().min(1),
+    href: z.enum(["/applications", "/inference", "/hardware", "/activity"]),
     sourceStatus: inferenceCoreSourceStatusSchema,
     metrics: z.array(adminOverviewMetricSchema).min(1),
     updatedAt: z.string().datetime(),
@@ -81,7 +81,7 @@ export const adminActivityEventSchema = z
     targetType: z.string().min(1),
     targetId: z.string().min(1),
     severity: inferenceCoreSeveritySchema,
-    href: z.string().min(1),
+    href: z.string().regex(/^\/activity\?eventId=[A-Za-z0-9_.!~*'()%\-]+$/),
     createdAt: z.string().datetime(),
   })
   .strict()
@@ -250,6 +250,7 @@ export type InferenceCoreExpertAuditCapability = z.infer<
 
 export const adminOverviewResponseSchema = z
   .object({
+    activitySourceStatus: inferenceCoreSourceStatusSchema,
     generatedAt: z.string().datetime(),
     tiles: z.array(adminOverviewTileSchema).length(4),
     activityEvents: z.array(adminActivityEventSchema),
@@ -283,7 +284,7 @@ export const adminTeamMemberSchema = z
     enabled: z.boolean(),
     groups: z.array(z.string().min(1)),
     id: z.string().min(1),
-    keycloakHref: z.string().min(1).nullable(),
+    keycloakHref: z.null(),
     lastActiveAt: z.string().datetime().nullable(),
     role: inferenceCoreHumanRoleSchema,
     status: adminTeamMemberStatusSchema,
@@ -292,22 +293,10 @@ export const adminTeamMemberSchema = z
   .strict()
 export type AdminTeamMember = z.infer<typeof adminTeamMemberSchema>
 
-export const adminTeamUsageSummarySchema = z
-  .object({
-    mostUsedModel: z.string().min(1).nullable(),
-    prompts: z.number().int().min(0),
-    sourceStatus: inferenceCoreSourceStatusSchema,
-    tokens: z.number().int().min(0),
-    window: z.string().min(1),
-  })
-  .strict()
-export type AdminTeamUsageSummary = z.infer<typeof adminTeamUsageSummarySchema>
-
 export const adminTeamActivityRowSchema = z
   .object({
     action: z.string().min(1),
     createdAt: z.string().datetime(),
-    href: z.string().min(1),
     id: z.string().min(1),
     targetId: z.string().min(1),
     targetType: z.string().min(1),
@@ -319,7 +308,6 @@ export const adminTeamMemberDetailSchema = z
   .object({
     activity: z.array(adminTeamActivityRowSchema),
     member: adminTeamMemberSchema,
-    usage: adminTeamUsageSummarySchema,
   })
   .strict()
 export type AdminTeamMemberDetail = z.infer<typeof adminTeamMemberDetailSchema>
@@ -327,7 +315,7 @@ export type AdminTeamMemberDetail = z.infer<typeof adminTeamMemberDetailSchema>
 export const adminTeamGroupSchema = z
   .object({
     id: z.string().min(1),
-    keycloakHref: z.string().min(1).nullable(),
+    keycloakHref: z.null(),
     memberCount: z.number().int().min(0),
     name: z.string().min(1),
     virtual: z.boolean(),
@@ -346,7 +334,7 @@ export type AdminTeamGroupDetail = z.infer<typeof adminTeamGroupDetailSchema>
 export const adminTeamScimStatusSchema = z
   .object({
     detail: z.string().min(1),
-    keycloakHref: z.string().min(1).nullable(),
+    keycloakHref: z.null(),
     lastSyncAt: z.string().datetime().nullable(),
     provider: z.string().min(1).nullable(),
     sourceStatus: inferenceCoreSourceStatusSchema,
@@ -735,7 +723,6 @@ export type AdminSettingsTelemetryPayloadPreview = z.infer<
 export const adminSettingsPrivacySchema = z
   .object({
     dataResidencyStatement: z.string().min(1),
-    privacyPolicyHref: z.string().min(1),
     telemetryDescription: z.string().min(1),
     telemetryEnabled: z.boolean(),
     telemetryPayloadPreview: adminSettingsTelemetryPayloadPreviewSchema,
@@ -1745,7 +1732,7 @@ export const adminHardwareChartSchema = z
     promql: z.string().min(1),
     sourceStatus: inferenceCoreSourceStatusSchema,
     emptyMessage: z.string().min(1),
-    grafanaUrl: z.string().min(1).nullable(),
+    grafanaUrl: z.null(),
     thresholds: z.array(adminHardwareThresholdSchema),
     series: z.array(adminHardwareSeriesSchema),
   })
@@ -1762,8 +1749,8 @@ export const adminHardwareAlertSchema = z
     summary: z.string().min(1),
     description: z.string().min(1).nullable(),
     startedAt: z.string().datetime().nullable(),
-    grafanaUrl: z.string().min(1).nullable(),
-    alertmanagerUrl: z.string().min(1).nullable(),
+    grafanaUrl: z.null(),
+    alertmanagerUrl: z.null(),
     labels: z.record(z.string(), z.string()),
   })
   .strict()
@@ -1779,8 +1766,8 @@ export const adminHardwareResponseSchema = z
     sourceStatus: inferenceCoreSourceStatusSchema,
     alertSourceStatus: inferenceCoreSourceStatusSchema,
     summary: z.string().min(1),
-    grafanaUrl: z.string().min(1).nullable(),
-    alertmanagerUrl: z.string().min(1).nullable(),
+    grafanaUrl: z.null(),
+    alertmanagerUrl: z.null(),
     charts: z.array(adminHardwareChartSchema).length(7),
     activeAlerts: z.array(adminHardwareAlertSchema),
   })
@@ -1866,68 +1853,84 @@ export type AdminInferenceVirtualKey = z.infer<
   typeof adminInferenceVirtualKeySchema
 >
 
-export const adminInferenceModelUpdateStatusSchema = z.enum([
-  "available",
-  "running",
-  "failed",
-  "blocked",
-])
-export type AdminInferenceModelUpdateStatus = z.infer<
-  typeof adminInferenceModelUpdateStatusSchema
->
-
-export const adminInferenceModelUpdateSchema = z
-  .object({
-    affectedModels: z.array(z.string().min(1)),
-    availableVersion: z.string().min(1),
-    currentVersion: z.string().min(1),
-    detail: z.string().min(1),
-    estimatedDowntime: z.string().min(1).nullable(),
-    releaseNotes: z.string().min(1).nullable(),
-    status: adminInferenceModelUpdateStatusSchema,
-    updateActionEnabled: z.boolean(),
-  })
-  .strict()
-export type AdminInferenceModelUpdate = z.infer<
-  typeof adminInferenceModelUpdateSchema
->
-
 export const adminInferenceDashboardSchema = z
   .object({
+    aggregateUsageSourceStatus: inferenceCoreSourceStatusSchema,
     generatedAt: z.string().datetime(),
-    liteLlmUrl: z.string().min(1).nullable(),
-    modelUpdate: adminInferenceModelUpdateSchema.nullable(),
+    liteLlmUrl: z.null(),
+    modelInventorySourceStatus: inferenceCoreSourceStatusSchema,
     modelUsage: z.array(adminInferenceModelUsageSchema),
     models: z.array(adminInferenceModelSchema),
     range: adminInferenceRangeSchema,
     sourceStatus: inferenceCoreSourceStatusSchema,
     summary: z.string().min(1),
-    totals: adminInferenceTotalsSchema,
+    totals: adminInferenceTotalsSchema.nullable(),
     usagePoints: z.array(adminInferenceUsagePointSchema),
     virtualKeys: z.array(adminInferenceVirtualKeySchema),
+    virtualKeysSourceStatus: inferenceCoreSourceStatusSchema,
   })
   .strict()
+  .superRefine((dashboard, context) => {
+    if (dashboard.aggregateUsageSourceStatus === "ok") {
+      if (dashboard.totals === null) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Aggregate usage totals are required when the aggregate usage source is available.",
+          path: ["totals"],
+        })
+      }
+    } else {
+      if (dashboard.totals !== null) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Aggregate usage totals must be unavailable when the aggregate usage source is not authoritative.",
+          path: ["totals"],
+        })
+      }
+      if (dashboard.modelUsage.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Model usage requires an authoritative aggregate usage source.",
+          path: ["modelUsage"],
+        })
+      }
+      if (dashboard.usagePoints.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Usage points require an authoritative aggregate usage source.",
+          path: ["usagePoints"],
+        })
+      }
+    }
+
+    if (
+      dashboard.modelInventorySourceStatus !== "ok" &&
+      dashboard.models.length > 0
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Served model inventory requires an authoritative model inventory source.",
+        path: ["models"],
+      })
+    }
+
+    if (
+      dashboard.virtualKeysSourceStatus !== "ok" &&
+      dashboard.virtualKeys.length > 0
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Virtual-key metadata requires an authoritative virtual-key source.",
+        path: ["virtualKeys"],
+      })
+    }
+  })
 export type AdminInferenceDashboard = z.infer<
   typeof adminInferenceDashboardSchema
->
-
-export const applyAdminInferenceModelUpdateRequestSchema = z
-  .object({
-    confirmation: z.literal("UPDATE MODEL"),
-  })
-  .strict()
-export type ApplyAdminInferenceModelUpdateRequest = z.infer<
-  typeof applyAdminInferenceModelUpdateRequestSchema
->
-
-export const adminInferenceModelUpdateActionResponseSchema = z
-  .object({
-    detail: z.string().min(1),
-    generatedAt: z.string().datetime(),
-    modelUpdate: adminInferenceModelUpdateSchema.nullable(),
-    status: z.enum(["started", "completed", "failed", "blocked"]),
-  })
-  .strict()
-export type AdminInferenceModelUpdateActionResponse = z.infer<
-  typeof adminInferenceModelUpdateActionResponseSchema
 >

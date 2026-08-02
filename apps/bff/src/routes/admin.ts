@@ -26,7 +26,6 @@ import {
   adminConnectedAppsResponseSchema,
   adminHardwareResponseSchema,
   adminInferenceDashboardSchema,
-  adminInferenceModelUpdateActionResponseSchema,
   adminOverviewResponseSchema,
   adminSettingsResponseSchema,
   adminTeamActionResponseSchema,
@@ -41,7 +40,6 @@ import {
   adminTeamMemberMutationResponseSchema,
   adminTeamOverviewResponseSchema,
   adminTeamScimStatusSchema,
-  applyAdminInferenceModelUpdateRequestSchema,
   createAdminTeamGroupRequestSchema,
   createAdminTeamMemberRequestSchema,
   deleteAdminTeamMemberRequestSchema,
@@ -102,10 +100,7 @@ import {
   updateAdminConnectedAppFirecrawlPolicy,
 } from "../services/admin-connected-apps-firecrawl"
 import { getAdminHardware } from "../services/admin-hardware"
-import {
-  applyAdminInferenceModelUpdate,
-  getAdminInference,
-} from "../services/admin-inference"
+import { getAdminInference } from "../services/admin-inference"
 import { getAdminOverview } from "../services/admin-overview"
 import {
   getAdminSettings,
@@ -635,9 +630,14 @@ export function registerAdminRoutes(
         reply,
         "POST /api/admin/settings/organization",
         body.data,
-        async (actor) =>
+        async (actor, identityContext) =>
           settingsMutationResponse(
-            await updateAdminSettingsOrganization(actor, body.data),
+            await updateAdminSettingsOrganization(
+              actor,
+              body.data,
+              request.id,
+              identityContext.commitWithReceipt,
+            ),
             "Organization settings rejected",
           ),
       )
@@ -663,9 +663,14 @@ export function registerAdminRoutes(
         reply,
         "POST /api/admin/settings/telemetry",
         body.data,
-        async (actor) =>
+        async (actor, identityContext) =>
           settingsMutationResponse(
-            await updateAdminSettingsTelemetry(actor, body.data),
+            await updateAdminSettingsTelemetry(
+              actor,
+              body.data,
+              request.id,
+              identityContext.commitWithReceipt,
+            ),
             "Telemetry settings rejected",
           ),
       )
@@ -1694,44 +1699,6 @@ export function registerAdminRoutes(
         ),
       ),
   )
-
-  server.post(
-    "/api/admin/inference/model-updates/apply",
-    withCapability("updates.apply"),
-    async (request, reply) => {
-      const body = applyAdminInferenceModelUpdateRequestSchema.safeParse(
-        request.body ?? {},
-      )
-      if (!body.success) {
-        return invalidRequest(
-          reply,
-          "Invalid model update request",
-          "Applying a model update requires exact UPDATE MODEL confirmation.",
-        )
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "POST /api/admin/inference/model-updates/apply",
-        body.data,
-        async (actor) => {
-          const payload = adminInferenceModelUpdateActionResponseSchema.parse(
-            await applyAdminInferenceModelUpdate(actor, body.data),
-          )
-          return {
-            payload,
-            receiptOutcome:
-              payload.status === "blocked"
-                ? "denied"
-                : payload.status === "failed"
-                  ? "failed"
-                  : "succeeded",
-            statusCode: 200,
-          }
-        },
-      )
-    },
-  )
 }
 
 function recoveryAuthentication(actor: Actor): {
@@ -2196,23 +2163,25 @@ function routeCredentialId(request: FastifyRequest): string | undefined {
 function settingsMutationResponse(
   result:
     | { settings: unknown; status: "ok" }
-    | { detail: string; status: "invalid" },
+    | { detail: string; status: "invalid" | "unavailable" },
   title: string,
 ): { statusCode: number; payload: unknown } {
-  return result.status === "ok"
-    ? {
-        statusCode: 200,
-        payload: adminSettingsResponseSchema.parse(result.settings),
-      }
-    : {
-        statusCode: 400,
-        payload: {
-          type: "about:blank",
-          title,
-          status: 400,
-          detail: result.detail,
-        },
-      }
+  if (result.status === "ok") {
+    return {
+      statusCode: 200,
+      payload: adminSettingsResponseSchema.parse(result.settings),
+    }
+  }
+  const statusCode = result.status === "unavailable" ? 503 : 400
+  return {
+    statusCode,
+    payload: {
+      type: "about:blank",
+      title,
+      status: statusCode,
+      detail: result.detail,
+    },
+  }
 }
 
 async function teamMemberAction(

@@ -35,6 +35,275 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
     ).resolves.toMatchObject({ liteLlmUrl: null })
   })
 
+  it("keeps aggregate totals without fabricating a dated usage point", async () => {
+    configureAdminLiteLlm()
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = new URL(input.toString())
+      if (url.pathname === "/user/daily/activity/aggregated") {
+        return Promise.resolve(
+          jsonResponse({
+            metadata: {
+              total_api_requests: 12,
+              total_tokens: 1_800,
+            },
+            results: [],
+          }),
+        )
+      }
+      return Promise.resolve(baseLiteLlmResponse(url.pathname))
+    })
+
+    const dashboard = await getAdminInference(actor)
+
+    expect(dashboard.aggregateUsageSourceStatus).toBe("ok")
+    expect(dashboard.totals).toEqual({ requests: 12, tokens: 1_800 })
+    expect(dashboard.usagePoints).toEqual([])
+  })
+
+  it("omits timestamp and breakdown rows that lack request or token metrics", async () => {
+    configureAdminLiteLlm()
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = new URL(input.toString())
+      if (url.pathname === "/user/daily/activity/aggregated") {
+        return Promise.resolve(
+          jsonResponse({
+            metadata: {
+              total_api_requests: 12,
+              total_tokens: 1_800,
+            },
+            results: [
+              {
+                breakdown: {
+                  model_groups: {
+                    "missing-both": { metrics: {} },
+                    "missing-requests": {
+                      metrics: { total_tokens: 600 },
+                    },
+                    "missing-tokens": {
+                      metrics: { api_requests: 4 },
+                    },
+                  },
+                },
+                date: "2026-05-30",
+                metrics: {},
+              },
+            ],
+          }),
+        )
+      }
+      return Promise.resolve(baseLiteLlmResponse(url.pathname))
+    })
+
+    const dashboard = await getAdminInference(actor)
+
+    expect(dashboard.aggregateUsageSourceStatus).toBe("ok")
+    expect(dashboard.totals).toEqual({ requests: 12, tokens: 1_800 })
+    expect(dashboard.usagePoints).toEqual([])
+    expect(dashboard.modelUsage).toEqual([])
+  })
+
+  it("preserves explicitly reported zero request and token metrics", async () => {
+    configureAdminLiteLlm()
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = new URL(input.toString())
+      if (url.pathname === "/user/daily/activity/aggregated") {
+        return Promise.resolve(
+          jsonResponse(
+            aggregateActivity({
+              model: "zero-usage-model",
+              requests: 0,
+              tokens: 0,
+            }),
+          ),
+        )
+      }
+      return Promise.resolve(baseLiteLlmResponse(url.pathname))
+    })
+
+    const dashboard = await getAdminInference(actor)
+
+    expect(dashboard.usagePoints).toEqual([
+      {
+        requests: 0,
+        timestamp: "2026-05-30T00:00:00.000Z",
+        tokens: 0,
+      },
+    ])
+    expect(dashboard.modelUsage).toEqual([
+      {
+        lastUsedAt: "2026-05-30T00:00:00.000Z",
+        model: "zero-usage-model",
+        requests: 0,
+        spendUsd: null,
+        tokens: 0,
+      },
+    ])
+  })
+
+  it("does not substitute page-one spend logs when aggregate usage is unavailable", async () => {
+    configureAdminLiteLlm()
+    let spendLogReads = 0
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = new URL(input.toString())
+      if (url.pathname === "/user/daily/activity/aggregated") {
+        return Promise.resolve(jsonResponse({ error: "unavailable" }, 503))
+      }
+      if (url.pathname === "/spend/logs/v2") {
+        spendLogReads += 1
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                model_group: "historical-only",
+                startTime: "2026-05-30T10:00:00.000Z",
+                total_tokens: 900,
+              },
+            ],
+          }),
+        )
+      }
+      if (url.pathname === "/model/info") {
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                model_info: { id: "served-model" },
+                model_name: "served-now",
+              },
+            ],
+          }),
+        )
+      }
+      return Promise.resolve(baseLiteLlmResponse(url.pathname))
+    })
+
+    const dashboard = await getAdminInference(actor)
+
+    expect(spendLogReads).toBe(0)
+    expect(dashboard).toMatchObject({
+      aggregateUsageSourceStatus: "unavailable",
+      modelInventorySourceStatus: "ok",
+      modelUsage: [],
+      sourceStatus: "degraded",
+      totals: null,
+      usagePoints: [],
+      virtualKeysSourceStatus: "ok",
+    })
+    expect(dashboard.models.map((model) => model.name)).toEqual(["served-now"])
+    expect(dashboard.summary).toContain(
+      "aggregate inference usage is unavailable",
+    )
+  })
+
+  it("does not infer current served models from aggregate usage history", async () => {
+    configureAdminLiteLlm()
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = new URL(input.toString())
+      if (url.pathname === "/user/daily/activity/aggregated") {
+        return Promise.resolve(
+          jsonResponse(
+            aggregateActivity({
+              model: "historical-model",
+              requests: 7,
+              tokens: 700,
+            }),
+          ),
+        )
+      }
+      if (url.pathname === "/model/info" || url.pathname === "/v1/model/info") {
+        return Promise.resolve(jsonResponse({ error: "unavailable" }, 503))
+      }
+      return Promise.resolve(baseLiteLlmResponse(url.pathname))
+    })
+
+    const dashboard = await getAdminInference(actor)
+
+    expect(dashboard.aggregateUsageSourceStatus).toBe("ok")
+    expect(dashboard.modelInventorySourceStatus).toBe("unavailable")
+    expect(dashboard.models).toEqual([])
+    expect(dashboard.modelUsage).toEqual([
+      expect.objectContaining({
+        model: "historical-model",
+        requests: 7,
+        tokens: 700,
+      }),
+    ])
+    expect(dashboard.totals).toEqual({ requests: 7, tokens: 700 })
+  })
+
+  it("uses spend logs only to enrich models backed by aggregate activity", async () => {
+    configureAdminLiteLlm()
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = new URL(input.toString())
+      if (url.pathname === "/user/daily/activity/aggregated") {
+        return Promise.resolve(
+          jsonResponse(
+            aggregateActivity({
+              model: "aggregate-model",
+              requests: 9,
+              tokens: 900,
+            }),
+          ),
+        )
+      }
+      if (url.pathname === "/spend/logs/v2") {
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                model_group: "aggregate-model",
+                spend: 0.25,
+                startTime: "2026-05-31T10:00:00.000Z",
+                total_tokens: 100,
+              },
+              {
+                model_group: "sample-only-model",
+                spend: 0.5,
+                startTime: "2026-05-31T11:00:00.000Z",
+                total_tokens: 500,
+              },
+            ],
+          }),
+        )
+      }
+      return Promise.resolve(baseLiteLlmResponse(url.pathname))
+    })
+
+    const dashboard = await getAdminInference(actor)
+
+    expect(dashboard.modelUsage).toEqual([
+      {
+        lastUsedAt: "2026-05-31T10:00:00.000Z",
+        model: "aggregate-model",
+        requests: 9,
+        spendUsd: 0.25,
+        tokens: 900,
+      },
+    ])
+    expect(dashboard.totals).toEqual({ requests: 9, tokens: 900 })
+  })
+
+  it("treats malformed aggregate totals and model inventory as unavailable, not empty", async () => {
+    configureAdminLiteLlm()
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = new URL(input.toString())
+      if (url.pathname === "/user/daily/activity/aggregated") {
+        return Promise.resolve(jsonResponse({ metadata: {}, results: [] }))
+      }
+      if (url.pathname === "/model/info" || url.pathname === "/v1/model/info") {
+        return Promise.resolve(jsonResponse({ data: [{ unexpected: "row" }] }))
+      }
+      return Promise.resolve(baseLiteLlmResponse(url.pathname))
+    })
+
+    const dashboard = await getAdminInference(actor)
+
+    expect(dashboard.aggregateUsageSourceStatus).toBe("unavailable")
+    expect(dashboard.modelInventorySourceStatus).toBe("unavailable")
+    expect(dashboard.totals).toBeNull()
+    expect(dashboard.models).toEqual([])
+  })
+
   it("projects opaque stable IDs, bounded labels, authoritative last use, and native states", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-05-30T12:00:00.000Z"))
@@ -91,6 +360,7 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
     const second = await getAdminInference(actor)
 
     expect(first.sourceStatus).toBe("ok")
+    expect(first.virtualKeysSourceStatus).toBe("ok")
     expect(first.virtualKeys).toHaveLength(3)
     expect(first.virtualKeys[0]).toMatchObject({
       alias: expect.stringMatching(/^Design station /),
@@ -145,6 +415,7 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
     const dashboard = await getAdminInference(actor)
 
     expect(dashboard.sourceStatus).toBe("degraded")
+    expect(dashboard.virtualKeysSourceStatus).toBe("unavailable")
     expect(dashboard.virtualKeys).toEqual([])
   })
 
@@ -173,6 +444,7 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
 
     expect(requestedKeyPages).toBe(5)
     expect(dashboard.sourceStatus).toBe("degraded")
+    expect(dashboard.virtualKeysSourceStatus).toBe("unavailable")
     expect(dashboard.virtualKeys).toEqual([])
   })
 
@@ -221,6 +493,7 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
     expect(timeoutSpy).toHaveBeenCalledWith(10_000)
     expect(keyRequestSignal?.aborted).toBe(true)
     expect(dashboard.sourceStatus).toBe("degraded")
+    expect(dashboard.virtualKeysSourceStatus).toBe("unavailable")
     expect(dashboard.virtualKeys).toEqual([])
   })
 
@@ -250,6 +523,7 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
     const dashboard = await getAdminInference(actor)
 
     expect(dashboard.sourceStatus).toBe("degraded")
+    expect(dashboard.virtualKeysSourceStatus).toBe("unavailable")
     expect(dashboard.virtualKeys).toEqual([])
   })
 
@@ -368,6 +642,7 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
     const dashboard = await getAdminInference(actor)
 
     expect(dashboard.sourceStatus).toBe("degraded")
+    expect(dashboard.virtualKeysSourceStatus).toBe("unavailable")
     expect(dashboard.virtualKeys).toEqual([])
   })
 })
@@ -379,7 +654,10 @@ function configureAdminLiteLlm(): void {
 
 function baseLiteLlmResponse(pathname: string): Response {
   if (pathname === "/user/daily/activity/aggregated") {
-    return jsonResponse({ metadata: {}, results: [] })
+    return jsonResponse({
+      metadata: { total_api_requests: 0, total_tokens: 0 },
+      results: [],
+    })
   }
   if (pathname === "/spend/logs/v2") {
     return jsonResponse({ data: [] })
@@ -387,7 +665,51 @@ function baseLiteLlmResponse(pathname: string): Response {
   if (pathname === "/model/info") {
     return jsonResponse({ data: [] })
   }
+  if (pathname === "/key/list") {
+    return jsonResponse({
+      current_page: 1,
+      keys: [],
+      total_count: 0,
+      total_pages: 0,
+    })
+  }
   return jsonResponse({ error: "unexpected" }, 500)
+}
+
+function aggregateActivity({
+  model,
+  requests,
+  tokens,
+}: {
+  model: string
+  requests: number
+  tokens: number
+}): Record<string, unknown> {
+  return {
+    metadata: {
+      total_api_requests: requests,
+      total_tokens: tokens,
+    },
+    results: [
+      {
+        breakdown: {
+          model_groups: {
+            [model]: {
+              metrics: {
+                api_requests: requests,
+                total_tokens: tokens,
+              },
+            },
+          },
+        },
+        date: "2026-05-30",
+        metrics: {
+          api_requests: requests,
+          total_tokens: tokens,
+        },
+      },
+    ],
+  }
 }
 
 function validVirtualKey(token: string): Record<string, unknown> {

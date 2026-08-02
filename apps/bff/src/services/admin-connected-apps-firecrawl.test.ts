@@ -599,6 +599,16 @@ describe("Firecrawl appliance readiness preflight", () => {
     })
   })
 
+  it("requires HTTPS for every non-loopback public Firecrawl URL", () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("FIRECRAWL_PUBLIC_BASE_URL", "http://bff.example.test")
+
+    expect(preflightAdminConnectedAppFirecrawlReadiness()).toEqual({
+      detail: "The Firecrawl public base URL is missing or invalid.",
+      status: "blocked",
+    })
+  })
+
   it("rejects IPv4-mapped IPv6 loopback in production", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("FIRECRAWL_PUBLIC_BASE_URL", "http://[::ffff:127.0.0.1]:4001")
