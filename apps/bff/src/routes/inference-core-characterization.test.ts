@@ -38,9 +38,20 @@ vi.mock("fastify", async (importOriginal) => {
           const handler = args[0]
           const handlerName =
             typeof handler === "function" ? handler.name : undefined
+          const handlerSource =
+            typeof handler === "function"
+              ? handler.toString().replaceAll(/\s/g, "")
+              : ""
           const reviewed =
             hook === "preHandler" ||
             (hook === "onClose" && handlerName === "closeInferenceCoreDb") ||
+            (hook === "onReady" &&
+              handlerSource.includes(
+                "awaitruntimeIsolation.service?.bootstrap()",
+              ) &&
+              handlerSource.includes(
+                'failureClass:"emergency_isolation_bootstrap_failed"',
+              )) ||
             (hook === "onRequest" &&
               handlerName === "logQueryFreeIncomingRequest") ||
             (hook === "onResponse" &&
@@ -93,6 +104,7 @@ describe("Inference Core route characterization", () => {
         { method: "addHook", subject: "onResponse" },
         { method: "addHook", subject: "onClose" },
         { method: "addHook", subject: "preHandler" },
+        { method: "addHook", subject: "onReady" },
         { method: "addHook", subject: "onSend" },
       ])
 
@@ -143,6 +155,7 @@ describe("Inference Core route characterization", () => {
         { method: "addHook", subject: "onResponse" },
         { method: "addHook", subject: "onClose" },
         { method: "addHook", subject: "preHandler" },
+        { method: "addHook", subject: "onReady" },
         { method: "addHook", subject: "onSend" },
       ])
     } finally {
@@ -249,6 +262,7 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     { method: "GET", url: "/api/admin/applications/connected-apps/:id" },
     { method: "GET", url: "/api/admin/hardware" },
     { method: "GET", url: "/api/admin/inference" },
+    { method: "GET", url: "/api/admin/isolation" },
     { method: "GET", url: "/api/app-gateway/v1/models" },
     { method: "GET", url: "/internal/observability/metrics" },
     { method: "POST", url: "/api/admin/observability/alert-egress" },
@@ -338,6 +352,8 @@ function reviewedBffRoutes(): RuntimeRoute[] {
       method: "POST",
       url: "/api/admin/inference/model-updates/apply",
     },
+    { method: "POST", url: "/api/admin/isolation/activate" },
+    { method: "POST", url: "/api/admin/isolation/deactivate" },
     {
       method: "POST",
       url: "/api/app-gateway/v1/chat/completions",

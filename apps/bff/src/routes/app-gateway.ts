@@ -20,7 +20,12 @@ import {
 } from "../services/admin-connected-apps"
 import { evaluateApplicationGatewayPolicy } from "../services/application-gateway-policy"
 import { emitAudit } from "../services/audit"
+import type {
+  IsolationTrafficFinalizationResult,
+  IsolationTrafficLease,
+} from "../services/isolation-traffic-gate"
 import {
+  LITELLM_STREAM_EVENT_MAX_BYTES,
   type LiteLlmTransportFailureReason,
   type OpenAIUsage,
   createLiteLlmChatTransport,
@@ -32,7 +37,32 @@ import {
   waitForWritableDrainOrAbort,
 } from "../services/litellm-chat-transport"
 
-export function registerAppGatewayRoutes(server: FastifyInstance): void {
+export type AppGatewayIsolationRoute = "chat_completions" | "models"
+
+export type AppGatewayIsolationLease = IsolationTrafficLease
+
+export interface AppGatewayIsolationTrafficGate {
+  admit(input: {
+    appId: string
+    correlationId: string
+    credentialRecordId: string
+    route: AppGatewayIsolationRoute
+    signal?: AbortSignal
+  }): Promise<
+    | { lease: AppGatewayIsolationLease; ok: true }
+    | { ok: false; reason?: string }
+  >
+}
+
+export interface AppGatewayRouteOptions {
+  isolationGate?: AppGatewayIsolationTrafficGate
+}
+
+export function registerAppGatewayRoutes(
+  server: FastifyInstance,
+  options: AppGatewayRouteOptions = {},
+): void {
+  const isolationGate = options.isolationGate ?? defaultIsolationTrafficGate
   server.get("/api/app-gateway/v1/models", async (request, reply) => {
     const startedAt = Date.now()
     reply.header("x-llm-machines-request-id", request.id)
@@ -59,6 +89,53 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
         policy.detail,
       )
     }
+    const callerAbort = bindAppGatewayCallerAbort(request, reply)
+    const isolation = await admitIsolationTraffic(isolationGate, auth.app, {
+      correlationId: request.id,
+      route: "models",
+      signal: callerAbort.signal,
+    })
+    if (!isolation.ok) {
+      const status = callerAbort.signal.aborted ? 499 : 503
+      await safelyAuditGatewayRequest(request, auth.app, {
+        inputTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        model: null,
+        outputTokens: 0,
+        route: "models",
+        status,
+        totalTokens: 0,
+      })
+      return status === 503 ? sendIsolationUnavailable(reply) : undefined
+    }
+    const responseLeaseBound = bindIsolationLeaseRelease(reply, isolation.lease)
+    if (!responseLeaseBound || callerAbort.signal.aborted) {
+      isolation.lease.release()
+      await safelyAuditGatewayRequest(request, auth.app, {
+        inputTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        model: null,
+        outputTokens: 0,
+        route: "models",
+        status: 499,
+        totalTokens: 0,
+      })
+      return undefined
+    }
+    if (isolation.lease.signal.aborted) {
+      const status = gatewayLeaseAbortStatus(isolation.lease.signal)
+      await safelyAuditGatewayRequest(request, auth.app, {
+        inputTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        model: null,
+        outputTokens: 0,
+        route: "models",
+        status,
+        totalTokens: 0,
+      })
+      return status === 503 ? sendIsolationUnavailable(reply) : undefined
+    }
+
     const rateLimit = await consumeConnectedAppGatewayRateLimit(auth.app)
     if (!rateLimit.ok) {
       await safelyAuditGatewayRequest(request, auth.app, {
@@ -116,7 +193,47 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
       )
     }
 
-    const models = await fetchLiteLlmModels(auth.app.allowedModels)
+    if (isolation.lease.signal.aborted) {
+      const status = gatewayLeaseAbortStatus(isolation.lease.signal)
+      await safelyAuditGatewayRequest(
+        request,
+        auth.app,
+        {
+          inputTokens: 0,
+          latencyMs: Date.now() - startedAt,
+          model: null,
+          outputTokens: 0,
+          route: "models",
+          status,
+          totalTokens: 0,
+        },
+        admission.context,
+      )
+      return status === 503 ? sendIsolationUnavailable(reply) : undefined
+    }
+
+    const models = await fetchLiteLlmModels(
+      auth.app.allowedModels,
+      isolation.lease.signal,
+    )
+    if (isolation.lease.signal.aborted) {
+      const status = gatewayLeaseAbortStatus(isolation.lease.signal)
+      await safelyAuditGatewayRequest(
+        request,
+        auth.app,
+        {
+          inputTokens: 0,
+          latencyMs: Date.now() - startedAt,
+          model: null,
+          outputTokens: 0,
+          route: "models",
+          status,
+          totalTokens: 0,
+        },
+        admission.context,
+      )
+      return status === 503 ? sendIsolationUnavailable(reply) : undefined
+    }
     if (!models.ok) {
       await safelyMarkGatewayDegraded(request, auth.app)
       await safelyAuditGatewayRequest(
@@ -141,7 +258,49 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
       )
     }
 
-    await safelyReconcileGatewayUsage(
+    if (isolation.lease.signal.aborted) {
+      const status = gatewayLeaseAbortStatus(isolation.lease.signal)
+      await safelyAuditGatewayRequest(
+        request,
+        auth.app,
+        {
+          inputTokens: 0,
+          latencyMs: Date.now() - startedAt,
+          model: null,
+          outputTokens: 0,
+          route: "models",
+          status,
+          totalTokens: 0,
+        },
+        admission.context,
+      )
+      return status === 503 ? sendIsolationUnavailable(reply) : undefined
+    }
+    const finalized = await finalizeIsolationTraffic(
+      isolation.lease,
+      async () => {
+        await safelyReconcileGatewayUsage(
+          request,
+          auth.app,
+          {
+            inputTokens: 0,
+            latencyMs: Date.now() - startedAt,
+            model: null,
+            outputTokens: 0,
+            route: "models",
+            status: 200,
+            totalTokens: 0,
+          },
+          admission.context,
+        )
+        await safelyRecordSuccessfulModelsRequest(request, auth.app)
+        return reply.send(models.body)
+      },
+    )
+    if (finalized.ok) {
+      return finalized.value
+    }
+    await safelyAuditGatewayRequest(
       request,
       auth.app,
       {
@@ -150,13 +309,12 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
         model: null,
         outputTokens: 0,
         route: "models",
-        status: 200,
+        status: 503,
         totalTokens: 0,
       },
       admission.context,
     )
-    await safelyRecordSuccessfulModelsRequest(request, auth.app)
-    return reply.send(models.body)
+    return sendIsolationUnavailable(reply)
   })
 
   server.post(
@@ -184,6 +342,55 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
           enabledPolicy.title,
           enabledPolicy.detail,
         )
+      }
+      const callerAbort = bindAppGatewayCallerAbort(request, reply)
+      const isolation = await admitIsolationTraffic(isolationGate, auth.app, {
+        correlationId: request.id,
+        route: "chat_completions",
+        signal: callerAbort.signal,
+      })
+      if (!isolation.ok) {
+        const status = callerAbort.signal.aborted ? 499 : 503
+        await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
+          latencyMs: 0,
+          model: null,
+          outputTokens: 0,
+          route: "chat_completions",
+          status,
+          totalTokens: 0,
+        })
+        return status === 503 ? sendIsolationUnavailable(reply) : undefined
+      }
+      const responseLeaseBound = bindIsolationLeaseRelease(
+        reply,
+        isolation.lease,
+      )
+      if (!responseLeaseBound || callerAbort.signal.aborted) {
+        isolation.lease.release()
+        await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
+          latencyMs: 0,
+          model: null,
+          outputTokens: 0,
+          route: "chat_completions",
+          status: 499,
+          totalTokens: 0,
+        })
+        return undefined
+      }
+      if (isolation.lease.signal.aborted) {
+        const status = gatewayLeaseAbortStatus(isolation.lease.signal)
+        await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
+          latencyMs: 0,
+          model: null,
+          outputTokens: 0,
+          route: "chat_completions",
+          status,
+          totalTokens: 0,
+        })
+        return status === 503 ? sendIsolationUnavailable(reply) : undefined
       }
 
       const rateLimit = await consumeConnectedAppGatewayRateLimit(auth.app)
@@ -284,12 +491,32 @@ export function registerAppGatewayRoutes(server: FastifyInstance): void {
         )
       }
 
+      if (isolation.lease.signal.aborted) {
+        const status = gatewayLeaseAbortStatus(isolation.lease.signal)
+        await safelyAuditGatewayRequest(
+          request,
+          auth.app,
+          {
+            inputTokens: 0,
+            latencyMs: 0,
+            model: request.body.model,
+            outputTokens: 0,
+            route: "chat_completions",
+            status,
+            totalTokens: 0,
+          },
+          admission.context,
+        )
+        return status === 503 ? sendIsolationUnavailable(reply) : undefined
+      }
+
       return proxyChatCompletions(
         request,
         reply,
         auth.app,
         request.body,
         admission.context,
+        isolation.lease,
       )
     },
   )
@@ -372,6 +599,7 @@ async function proxyChatCompletions(
   app: ConnectedAppRuntimeIdentity,
   body: ChatCompletionsBody,
   usageContext: ConnectedAppGatewayUsageContext,
+  isolationLease: AppGatewayIsolationLease,
 ): Promise<FastifyReply | undefined> {
   const transport = createLiteLlmChatTransport()
   if (!transport) {
@@ -392,7 +620,12 @@ async function proxyChatCompletions(
 
   const startedAt = Date.now()
   const controller = new AbortController()
-  const detachClientAbort = bindClientAbort(request, reply, controller)
+  const abortBoundary = bindGatewayAbort(
+    request,
+    reply,
+    isolationLease.signal,
+    controller,
+  )
 
   try {
     const transportResult = await transport.createChatCompletion(
@@ -400,8 +633,11 @@ async function proxyChatCompletions(
       controller.signal,
     )
     if (!transportResult.ok) {
-      const status = transportFailureStatus(transportResult.reason)
-      if (transportResult.reason !== "cancelled") {
+      const isolated = abortBoundary.reason() === "isolation"
+      const status = isolated
+        ? 503
+        : transportFailureStatus(transportResult.reason)
+      if (!isolated && transportResult.reason !== "cancelled") {
         await safelyMarkGatewayDegraded(request, app)
       }
       await safelyAuditGatewayRequest(
@@ -411,15 +647,18 @@ async function proxyChatCompletions(
         usageContext,
       )
       return canSendGatewayProblem(reply)
-        ? sendTransportFailureProblem(reply, transportResult.reason)
+        ? isolated
+          ? sendIsolationUnavailable(reply)
+          : sendTransportFailureProblem(reply, transportResult.reason)
         : undefined
     }
     const upstream = transportResult.response
     const transportSignal = transportResult.signal
 
     if (!upstream.ok || !upstream.body) {
-      const status = upstream.ok ? 502 : upstream.status
-      if (status === 404 || status >= 500) {
+      const isolated = abortBoundary.reason() === "isolation"
+      const status = isolated ? 503 : upstream.ok ? 502 : upstream.status
+      if (!isolated && (status === 404 || status >= 500)) {
         await safelyMarkGatewayDegraded(request, app)
       }
       await safelyAuditGatewayRequest(
@@ -429,22 +668,25 @@ async function proxyChatCompletions(
         usageContext,
       )
       return canSendGatewayProblem(reply)
-        ? sendGatewayProblem(
-            reply,
-            status,
-            "LiteLLM chat completion failed",
-            upstream.ok
-              ? "LiteLLM returned no completion body for the connected app request."
-              : `LiteLLM returned HTTP ${upstream.status} for the connected app request.`,
-          )
+        ? isolated
+          ? sendIsolationUnavailable(reply)
+          : sendGatewayProblem(
+              reply,
+              status,
+              "LiteLLM chat completion failed",
+              upstream.ok
+                ? "LiteLLM returned no completion body for the connected app request."
+                : `LiteLLM returned HTTP ${upstream.status} for the connected app request.`,
+            )
         : undefined
     }
 
     if (!isStreamingChatCompletionsRequest(body)) {
       const response = await readLiteLlmNonStreamingResponse(upstream)
       if (!response.ok) {
-        const status = transportFailureStatus(response.reason)
-        if (response.reason !== "cancelled") {
+        const isolated = abortBoundary.reason() === "isolation"
+        const status = isolated ? 503 : transportFailureStatus(response.reason)
+        if (!isolated && response.reason !== "cancelled") {
           await safelyMarkGatewayDegraded(request, app)
         }
         await safelyAuditGatewayRequest(
@@ -454,27 +696,70 @@ async function proxyChatCompletions(
           usageContext,
         )
         return canSendGatewayProblem(reply)
-          ? sendTransportFailureProblem(reply, response.reason)
+          ? isolated
+            ? sendIsolationUnavailable(reply)
+            : sendTransportFailureProblem(reply, response.reason)
           : undefined
       }
 
+      if (abortBoundary.reason() === "isolation") {
+        await safelyAuditGatewayRequest(
+          request,
+          app,
+          gatewayUsageInput(body.model, 503, Date.now() - startedAt),
+          usageContext,
+        )
+        return canSendGatewayProblem(reply)
+          ? sendIsolationUnavailable(reply)
+          : undefined
+      }
+
+      const finalized = await finalizeIsolationTraffic(
+        isolationLease,
+        async () => {
+          await safelyAuditGatewayRequest(
+            request,
+            app,
+            gatewayUsageInput(
+              body.model,
+              upstream.status,
+              Date.now() - startedAt,
+              response.usage,
+            ),
+            usageContext,
+          )
+          reply.code(upstream.status)
+          reply.header(
+            "Content-Type",
+            upstream.headers.get("content-type") ?? "application/json",
+          )
+          return reply.send(response.body)
+        },
+      )
+      if (finalized.ok) {
+        return finalized.value
+      }
       await safelyAuditGatewayRequest(
         request,
         app,
-        gatewayUsageInput(
-          body.model,
-          upstream.status,
-          Date.now() - startedAt,
-          response.usage,
-        ),
+        gatewayUsageInput(body.model, 503, Date.now() - startedAt),
         usageContext,
       )
-      reply.code(upstream.status)
-      reply.header(
-        "Content-Type",
-        upstream.headers.get("content-type") ?? "application/json",
+      return canSendGatewayProblem(reply)
+        ? sendIsolationUnavailable(reply)
+        : undefined
+    }
+
+    if (abortBoundary.reason() === "isolation") {
+      await safelyAuditGatewayRequest(
+        request,
+        app,
+        gatewayUsageInput(body.model, 503, Date.now() - startedAt),
+        usageContext,
       )
-      return reply.send(response.body)
+      return canSendGatewayProblem(reply)
+        ? sendIsolationUnavailable(reply)
+        : undefined
     }
 
     const streamed = await pipeOpenAIStream(
@@ -483,26 +768,69 @@ async function proxyChatCompletions(
       upstream,
       transportSignal,
     )
-    const status = streamed.failureReason
-      ? transportFailureStatus(streamed.failureReason)
-      : upstream.status
-    if (streamed.failureReason && streamed.failureReason !== "cancelled") {
-      await safelyMarkGatewayDegraded(request, app)
+    const terminalFrame = streamed.terminalFrame
+    if (streamed.failureReason || !terminalFrame) {
+      const isolated = abortBoundary.reason() === "isolation"
+      const failureReason = streamed.failureReason ?? "read_failed"
+      const status = isolated ? 503 : transportFailureStatus(failureReason)
+      if (!isolated && failureReason !== "cancelled") {
+        await safelyMarkGatewayDegraded(request, app)
+      }
+      await safelyAuditGatewayRequest(
+        request,
+        app,
+        gatewayUsageInput(
+          body.model,
+          status,
+          Date.now() - startedAt,
+          streamed.usage,
+        ),
+        usageContext,
+      )
+      closeHijackedStreamWithoutTerminal(reply)
+      return undefined
     }
-    await safelyAuditGatewayRequest(
-      request,
-      app,
-      gatewayUsageInput(
-        body.model,
-        status,
-        Date.now() - startedAt,
-        streamed.usage,
-      ),
-      usageContext,
+
+    const finalized = await finalizeIsolationTraffic(
+      isolationLease,
+      async () => {
+        await safelyAuditGatewayRequest(
+          request,
+          app,
+          gatewayUsageInput(
+            body.model,
+            upstream.status,
+            Date.now() - startedAt,
+            streamed.usage,
+          ),
+          usageContext,
+        )
+        await safelyWriteStreamingTerminalAndEnd(
+          reply,
+          terminalFrame,
+          transportSignal,
+        )
+      },
     )
+    if (!finalized.ok) {
+      const isolated = abortBoundary.reason() === "isolation"
+      const status = isolated ? 503 : 499
+      await safelyAuditGatewayRequest(
+        request,
+        app,
+        gatewayUsageInput(
+          body.model,
+          status,
+          Date.now() - startedAt,
+          streamed.usage,
+        ),
+        usageContext,
+      )
+      closeHijackedStreamWithoutTerminal(reply)
+    }
     return undefined
   } finally {
-    detachClientAbort()
+    abortBoundary.dispose()
   }
 }
 
@@ -617,6 +945,7 @@ async function pipeOpenAIStream(
   transportSignal: AbortSignal,
 ): Promise<{
   failureReason: LiteLlmTransportFailureReason | null
+  terminalFrame: Uint8Array | null
   usage: OpenAIUsage | null
 }> {
   reply.hijack()
@@ -631,68 +960,274 @@ async function pipeOpenAIStream(
 
   const reader = upstream.body?.getReader()
   if (!reader) {
-    reply.raw.end()
-    return { failureReason: "read_failed", usage: null }
+    return {
+      failureReason: "read_failed",
+      terminalFrame: null,
+      usage: null,
+    }
   }
 
   const parser = createOpenAIStreamingUsageParser()
+  const terminalHoldback = new OpenAiSseTerminalHoldback()
   let failureReason: LiteLlmTransportFailureReason | null = null
+  let terminalFrame: Uint8Array | null = null
   let usage: OpenAIUsage | null = null
   try {
     while (true) {
       const { done, value } = await reader.read()
+      if (transportSignal.aborted) {
+        throw transportSignal.reason
+      }
       if (done) {
         break
       }
       usage = parser.push(value) ?? usage
-      if (!reply.raw.write(value)) {
-        await waitForWritableDrainOrAbort(reply.raw, transportSignal)
+      for (const frame of terminalHoldback.push(value)) {
+        if (!reply.raw.write(frame)) {
+          await waitForWritableDrainOrAbort(reply.raw, transportSignal)
+        }
       }
     }
   } catch (error) {
     failureReason =
-      getLiteLlmTransportErrorReason(error) ??
-      (reply.raw.destroyed ? "cancelled" : "read_failed")
+      error instanceof StreamingTerminalFrameLimitError
+        ? "stream_event_too_large"
+        : error instanceof StreamingTerminalTrailingDataError
+          ? "read_failed"
+          : (getLiteLlmTransportErrorReason(error) ??
+            (reply.raw.destroyed ? "cancelled" : "read_failed"))
     await reader.cancel(error).catch(() => undefined)
   } finally {
     if (failureReason === null) {
       try {
         usage = parser.finish() ?? usage
+        terminalFrame = terminalHoldback.finish()
+        if (!terminalFrame) {
+          failureReason = "read_failed"
+        }
       } catch (error) {
         failureReason =
-          getLiteLlmTransportErrorReason(error) ?? "stream_event_too_large"
+          error instanceof StreamingTerminalFrameLimitError
+            ? "stream_event_too_large"
+            : (getLiteLlmTransportErrorReason(error) ??
+              "stream_event_too_large")
       }
+    }
+  }
+  return { failureReason, terminalFrame, usage }
+}
+
+class StreamingTerminalFrameLimitError extends Error {
+  constructor() {
+    super("Streaming terminal SSE frame exceeded its bounded holdback.")
+    this.name = "StreamingTerminalFrameLimitError"
+  }
+}
+
+class StreamingTerminalTrailingDataError extends Error {
+  constructor() {
+    super("Streaming SSE data followed the terminal event.")
+    this.name = "StreamingTerminalTrailingDataError"
+  }
+}
+
+class OpenAiSseTerminalHoldback {
+  private readonly current: number[] = []
+  private lineStart = 0
+  private terminal: number[] | null = null
+
+  push(chunk: Uint8Array): Uint8Array[] {
+    const forwarded: Uint8Array[] = []
+    for (let index = 0; index < chunk.byteLength; index += 1) {
+      const byte = chunk[index]
+      if (byte === undefined) {
+        continue
+      }
+      if (this.terminal) {
+        throw new StreamingTerminalTrailingDataError()
+      }
+
+      this.current.push(byte)
+      this.assertBounded(this.current.length)
+      if (byte !== 10) {
+        continue
+      }
+      let contentEnd = this.current.length - 1
+      if (contentEnd > this.lineStart && this.current[contentEnd - 1] === 13) {
+        contentEnd -= 1
+      }
+      const blankLine = contentEnd === this.lineStart
+      this.lineStart = this.current.length
+      if (!blankLine) {
+        continue
+      }
+
+      const frame = Uint8Array.from(this.current)
+      this.current.length = 0
+      this.lineStart = 0
+      if (isOpenAiDoneSseFrame(frame)) {
+        this.terminal = Array.from(frame)
+      } else {
+        forwarded.push(frame)
+      }
+    }
+    return forwarded
+  }
+
+  finish(): Uint8Array | null {
+    return this.terminal ? Uint8Array.from(this.terminal) : null
+  }
+
+  private assertBounded(length: number): void {
+    if (length > LITELLM_STREAM_EVENT_MAX_BYTES + 4) {
+      throw new StreamingTerminalFrameLimitError()
+    }
+  }
+}
+
+function isOpenAiDoneSseFrame(frame: Uint8Array): boolean {
+  const dataLines: string[] = []
+  for (const rawLine of new TextDecoder().decode(frame).split("\n")) {
+    const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine
+    if (!line.startsWith("data:")) {
+      continue
+    }
+    const data = line.slice("data:".length)
+    dataLines.push(data.startsWith(" ") ? data.slice(1) : data)
+  }
+  return dataLines.length > 0 && dataLines.join("\n") === "[DONE]"
+}
+
+async function safelyWriteStreamingTerminalAndEnd(
+  reply: FastifyReply,
+  terminalFrame: Uint8Array,
+  transportSignal: AbortSignal,
+): Promise<void> {
+  if (
+    transportSignal.aborted ||
+    reply.raw.destroyed ||
+    reply.raw.writableEnded
+  ) {
+    closeHijackedStreamWithoutTerminal(reply)
+    return
+  }
+  try {
+    if (!reply.raw.write(terminalFrame)) {
+      await waitForWritableDrainOrAbort(reply.raw, transportSignal)
     }
     if (!reply.raw.destroyed && !reply.raw.writableEnded) {
       reply.raw.end()
     }
+  } catch {
+    closeHijackedStreamWithoutTerminal(reply)
   }
-  return { failureReason, usage }
 }
 
-function bindClientAbort(
+function closeHijackedStreamWithoutTerminal(reply: FastifyReply): void {
+  if (!reply.raw.destroyed && !reply.raw.writableEnded) {
+    reply.raw.end()
+  }
+}
+
+interface GatewayAbortBoundary {
+  dispose(): void
+  reason(): "client" | "isolation" | null
+}
+
+interface AppGatewayCallerAbortBoundary {
+  signal: AbortSignal
+}
+
+class AppGatewayCallerAbortError extends Error {
+  constructor() {
+    super("Connected app request closed.")
+    this.name = "AppGatewayCallerAbortError"
+  }
+}
+
+function gatewayLeaseAbortStatus(signal: AbortSignal): 499 | 503 {
+  return signal.reason instanceof AppGatewayCallerAbortError ? 499 : 503
+}
+
+function bindAppGatewayCallerAbort(
   request: FastifyRequest,
   reply: FastifyReply,
-  controller: AbortController,
-): () => void {
+): AppGatewayCallerAbortBoundary {
+  const controller = new AbortController()
+  let disposed = false
+  const dispose = (): void => {
+    if (disposed) {
+      return
+    }
+    disposed = true
+    request.raw.off("aborted", abort)
+    reply.raw.off("close", onClose)
+    reply.raw.off("finish", dispose)
+  }
   const abort = (): void => {
     if (!controller.signal.aborted) {
-      controller.abort()
+      controller.abort(new AppGatewayCallerAbortError())
     }
   }
-  const onResponseClose = (): void => {
+  const onClose = (): void => {
     if (!reply.raw.writableEnded) {
       abort()
     }
+    dispose()
   }
   request.raw.once("aborted", abort)
-  reply.raw.once("close", onResponseClose)
-  if (request.raw.aborted) {
+  reply.raw.once("close", onClose)
+  reply.raw.once("finish", dispose)
+  if (request.raw.aborted || reply.raw.destroyed || reply.raw.writableEnded) {
     abort()
   }
-  return () => {
-    request.raw.off("aborted", abort)
-    reply.raw.off("close", onResponseClose)
+  return { signal: controller.signal }
+}
+
+function bindGatewayAbort(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  isolationSignal: AbortSignal,
+  controller: AbortController,
+): GatewayAbortBoundary {
+  let reason: "client" | "isolation" | null = null
+  const abort = (nextReason: "client" | "isolation"): void => {
+    if (!controller.signal.aborted) {
+      reason = nextReason
+      controller.abort(
+        nextReason === "isolation"
+          ? new Error("Application traffic isolation engaged.")
+          : undefined,
+      )
+    }
+  }
+  const onClientAbort = (): void => abort("client")
+  const onIsolationAbort = (): void =>
+    abort(
+      isolationSignal.reason instanceof AppGatewayCallerAbortError
+        ? "client"
+        : "isolation",
+    )
+  const onResponseClose = (): void => {
+    if (!reply.raw.writableEnded) {
+      onClientAbort()
+    }
+  }
+  request.raw.once("aborted", onClientAbort)
+  reply.raw.once("close", onResponseClose)
+  isolationSignal.addEventListener("abort", onIsolationAbort, { once: true })
+  if (request.raw.aborted) {
+    onClientAbort()
+  } else if (isolationSignal.aborted) {
+    onIsolationAbort()
+  }
+  return {
+    dispose() {
+      request.raw.off("aborted", onClientAbort)
+      reply.raw.off("close", onResponseClose)
+      isolationSignal.removeEventListener("abort", onIsolationAbort)
+    },
+    reason: () => reason,
   }
 }
 
@@ -760,6 +1295,80 @@ function sendTransportFailureProblem(
 
 function canSendGatewayProblem(reply: FastifyReply): boolean {
   return !reply.sent && !reply.raw.destroyed && !reply.raw.writableEnded
+}
+
+const defaultIsolationTrafficGate: AppGatewayIsolationTrafficGate = {
+  async admit() {
+    return { ok: false }
+  },
+}
+
+async function admitIsolationTraffic(
+  gate: AppGatewayIsolationTrafficGate,
+  app: ConnectedAppRuntimeIdentity,
+  input: {
+    correlationId: string
+    route: AppGatewayIsolationRoute
+    signal?: AbortSignal
+  },
+): Promise<Awaited<ReturnType<AppGatewayIsolationTrafficGate["admit"]>>> {
+  try {
+    return await gate.admit({
+      appId: app.appId,
+      correlationId: input.correlationId,
+      credentialRecordId: app.credentialRecordId,
+      route: input.route,
+      signal: input.signal,
+    })
+  } catch {
+    return { ok: false }
+  }
+}
+
+async function finalizeIsolationTraffic<T>(
+  lease: AppGatewayIsolationLease,
+  operation: () => Promise<T>,
+): Promise<IsolationTrafficFinalizationResult<T>> {
+  try {
+    return await lease.finalize(operation)
+  } catch {
+    return { ok: false }
+  }
+}
+
+function bindIsolationLeaseRelease(
+  reply: FastifyReply,
+  lease: AppGatewayIsolationLease,
+): boolean {
+  let released = false
+  const release = (): void => {
+    if (released) {
+      return
+    }
+    released = true
+    try {
+      lease.release()
+    } catch {
+      return
+    }
+  }
+  reply.raw.once("finish", release)
+  reply.raw.once("close", release)
+  if (reply.raw.destroyed || reply.raw.writableEnded) {
+    release()
+    return false
+  }
+  return true
+}
+
+function sendIsolationUnavailable(reply: FastifyReply): FastifyReply {
+  return sendGatewayProblem(
+    reply,
+    503,
+    "Application traffic unavailable",
+    "The appliance is not accepting Application traffic.",
+    "application_traffic_unavailable",
+  )
 }
 
 function sendAccountingUnavailable(reply: FastifyReply): FastifyReply {

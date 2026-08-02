@@ -197,8 +197,10 @@ export interface IdentityMutationExecutionRuntime {
 
 export interface IdentityMutationRouteContext {
   commitWithReceipt?<T>(input: {
+    outcome?: "denied" | "failed" | "succeeded"
     resourceId: string | null
     run(transaction: InferenceCoreTransaction | null): Promise<T>
+    statusCode?: number
   }): Promise<T>
   finalizeReceipt(input: { resourceId: string | null }): Promise<void>
   idempotencyLedgerId: string

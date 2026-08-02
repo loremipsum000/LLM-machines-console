@@ -92,6 +92,7 @@ export async function checkInferenceCoreDbReadiness(
             ('admin.emergency_recovery_factor'),
             ('admin.emergency_recovery_sessions'),
             ('admin.recovery_state'),
+            ('admin.emergency_isolation_state'),
             ('admin.lifecycle_operations'),
             ('admin.lifecycle_operation_events'),
             ('admin.lifecycle_snapshot_manifests'),

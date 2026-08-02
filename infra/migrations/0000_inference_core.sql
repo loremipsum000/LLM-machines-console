@@ -1456,6 +1456,149 @@ CREATE TABLE admin.recovery_state (
         'failed',
         'rotation_required'
       )
+  )
+);
+
+CREATE TABLE admin.emergency_isolation_state (
+  id text PRIMARY KEY,
+  status text NOT NULL DEFAULT 'inactive',
+  revision bigint NOT NULL DEFAULT 0,
+  transition_id uuid,
+  correlation_id text,
+  changed_by_subject_id text,
+  failure_code text,
+  activated_at timestamptz,
+  activated_by_subject_id text,
+  transition_started_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT emergency_isolation_state_id_check
+    CHECK (id = 'appliance'),
+  CONSTRAINT emergency_isolation_state_status_check
+    CHECK (
+      status IN (
+        'inactive',
+        'engaging',
+        'active',
+        'disengaging',
+        'recovery_required'
+      )
+    ),
+  CONSTRAINT emergency_isolation_state_revision_check
+    CHECK (revision BETWEEN 0 AND 9007199254740991),
+  CONSTRAINT emergency_isolation_state_correlation_check
+    CHECK (
+      correlation_id IS NULL
+      OR char_length(correlation_id) BETWEEN 1 AND 128
+    ),
+  CONSTRAINT emergency_isolation_state_subject_check
+    CHECK (
+      (
+        changed_by_subject_id IS NULL
+        OR char_length(changed_by_subject_id) BETWEEN 1 AND 255
+      )
+      AND
+      (
+        activated_by_subject_id IS NULL
+        OR char_length(activated_by_subject_id) BETWEEN 1 AND 255
+      )
+    ),
+  CONSTRAINT emergency_isolation_state_failure_check
+    CHECK (
+      failure_code IS NULL
+      OR failure_code IN (
+        'state_invalid',
+        'admission_fence_failed',
+        'inflight_abort_failed',
+        'enforcement_failed',
+        'verification_failed',
+        'restore_reassertion_failed',
+        'journal_failed'
+      )
+    ),
+  CONSTRAINT emergency_isolation_state_timestamps_check
+    CHECK (
+      (
+        transition_started_at IS NULL
+        OR updated_at >= transition_started_at
+      )
+      AND
+      (
+        activated_at IS NULL
+        OR updated_at >= activated_at
+      )
+    ),
+  CONSTRAINT emergency_isolation_state_metadata_check
+    CHECK (
+      (
+        revision = 0
+        AND status = 'inactive'
+        AND transition_id IS NULL
+        AND correlation_id IS NULL
+        AND changed_by_subject_id IS NULL
+        AND failure_code IS NULL
+        AND activated_at IS NULL
+        AND activated_by_subject_id IS NULL
+        AND transition_started_at IS NULL
+      )
+      OR
+      (
+        revision > 0
+        AND (
+          (
+            status = 'recovery_required'
+            AND failure_code IS NOT NULL
+          )
+          OR
+          (
+            status <> 'recovery_required'
+            AND failure_code IS NULL
+            AND changed_by_subject_id IS NOT NULL
+          )
+        )
+        AND (
+          (
+            status IN ('engaging', 'disengaging')
+            AND transition_id IS NOT NULL
+            AND correlation_id IS NOT NULL
+            AND transition_started_at IS NOT NULL
+          )
+          OR
+          (
+            status IN ('inactive', 'active', 'recovery_required')
+            AND transition_id IS NULL
+            AND correlation_id IS NULL
+            AND transition_started_at IS NULL
+          )
+        )
+        AND (
+          (
+            status IN ('inactive', 'engaging')
+            AND activated_at IS NULL
+            AND activated_by_subject_id IS NULL
+          )
+          OR
+          (
+            status IN ('active', 'disengaging')
+            AND activated_at IS NOT NULL
+            AND activated_by_subject_id IS NOT NULL
+          )
+          OR
+          (
+            status = 'recovery_required'
+            AND (
+              (
+                activated_at IS NULL
+                AND activated_by_subject_id IS NULL
+              )
+              OR
+              (
+                activated_at IS NOT NULL
+                AND activated_by_subject_id IS NOT NULL
+              )
+            )
+          )
+        )
+      )
     )
 );
 
@@ -1636,6 +1779,8 @@ CREATE TABLE admin.lifecycle_operation_events (
         'verify',
         'resume',
         'rollback',
+        'emergency_isolation_fence',
+        'emergency_isolation_reassertion',
         'emergency_session_fence',
         'emergency_session_reset',
         'credential_consistency',
@@ -1657,6 +1802,8 @@ CREATE TABLE admin.lifecycle_operation_events (
       (
         phase IN (
           'operation',
+          'emergency_isolation_fence',
+          'emergency_isolation_reassertion',
           'emergency_session_fence',
           'emergency_session_reset',
           'credential_consistency'
@@ -1706,6 +1853,27 @@ CREATE TABLE admin.lifecycle_operation_events (
       OR (
         phase = 'rollback'
         AND operation_state = 'rolling_back'
+      )
+      OR (
+        phase = 'emergency_isolation_fence'
+        AND operation_state IN (
+          'prepared',
+          'quiescing',
+          'resuming'
+        )
+      )
+      OR (
+        phase = 'emergency_isolation_reassertion'
+        AND operation_state IN (
+          'prepared',
+          'validating',
+          'quiescing',
+          'restoring',
+          'verifying',
+          'rolling_back',
+          'resuming',
+          'recovery_required'
+        )
       )
       OR (
         phase = 'emergency_session_fence'
@@ -1834,5 +2002,6 @@ INSERT INTO admin.license_state (id) VALUES ('singleton');
 INSERT INTO admin.update_state (id) VALUES ('singleton');
 INSERT INTO admin.backup_state (id) VALUES ('singleton');
 INSERT INTO admin.recovery_state (id) VALUES ('singleton');
+INSERT INTO admin.emergency_isolation_state (id) VALUES ('appliance');
 
 COMMIT;

@@ -63,6 +63,40 @@ describe("LiteLLM transport", () => {
     )
   })
 
+  it("aborts an in-flight model-list request when the caller signal closes", async () => {
+    stubLiteLlmConfig()
+    const controller = new AbortController()
+    let markStarted: (() => void) | undefined
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve
+    })
+    let upstreamSignal: AbortSignal | undefined
+    const fetchMock = vi.fn<typeof fetch>(
+      async (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          upstreamSignal = init?.signal as AbortSignal
+          markStarted?.()
+          upstreamSignal.addEventListener(
+            "abort",
+            () => reject(upstreamSignal?.reason),
+            { once: true },
+          )
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const result = fetchLiteLlmModels(["local-a"], controller.signal)
+    await started
+    controller.abort(new Error("isolation engaged"))
+
+    await expect(result).resolves.toMatchObject({
+      ok: false,
+      reason: "upstream_unavailable",
+      status: 503,
+    })
+    expect(upstreamSignal?.aborted).toBe(true)
+  })
+
   it("uses only the fixed chat POST and preserves OpenAI tool transport", async () => {
     stubLiteLlmConfig()
     const fetchMock = vi

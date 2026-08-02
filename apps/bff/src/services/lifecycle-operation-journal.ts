@@ -33,6 +33,8 @@ export const lifecycleOperationPhases = [
   "verify",
   "resume",
   "rollback",
+  "emergency_isolation_fence",
+  "emergency_isolation_reassertion",
   "emergency_session_fence",
   "emergency_session_reset",
   "credential_consistency",
@@ -105,6 +107,26 @@ export interface LifecycleOperationJournal {
   transition(input: TransitionLifecycleOperationInput): Promise<boolean>
 }
 
+export interface LifecycleRestoreOperationStatus {
+  kind: "restore"
+  operationId: string
+  state: LifecycleOperationState
+}
+
+export interface LifecycleUnfencedRestoreOperation
+  extends LifecycleRestoreOperationStatus {
+  state: "prepared" | "recovery_required"
+}
+
+export interface LifecycleRestoreIsolationRecoveryAuthority {
+  readRestoreOperation(
+    operationId: string,
+  ): Promise<LifecycleRestoreOperationStatus | null>
+  readUnfencedRestore(): Promise<LifecycleUnfencedRestoreOperation | null>
+  recordIsolationReconciled(operationId: string, at: Date): Promise<boolean>
+  terminalizeUnfencedRestore(operationId: string, at: Date): Promise<boolean>
+}
+
 const terminalStates = new Set<LifecycleOperationState>([
   "succeeded",
   "rolled_back",
@@ -135,6 +157,171 @@ export function createDrizzleLifecycleOperationJournal(
   database: InferenceCoreDatabase | null = getInferenceCoreDb(),
 ): LifecycleOperationJournal | null {
   return database ? new DrizzleLifecycleOperationJournal(database) : null
+}
+
+export function createDrizzleLifecycleRestoreIsolationRecoveryAuthority(
+  database: InferenceCoreDatabase | null = getInferenceCoreDb(),
+): LifecycleRestoreIsolationRecoveryAuthority | null {
+  return database
+    ? new DrizzleLifecycleRestoreIsolationRecoveryAuthority(database)
+    : null
+}
+
+class DrizzleLifecycleRestoreIsolationRecoveryAuthority
+  implements LifecycleRestoreIsolationRecoveryAuthority
+{
+  constructor(private readonly database: InferenceCoreDatabase) {}
+
+  async readRestoreOperation(
+    operationId: string,
+  ): Promise<LifecycleRestoreOperationStatus | null> {
+    assertRecoveryAuthorityOperationId(operationId)
+    const result = await this.database.execute(sql<RecoveryOperationRow>`
+      SELECT
+        operation.id AS operation_id,
+        operation.kind,
+        operation.state
+      FROM ${lifecycleOperations} AS operation
+      WHERE operation.id = ${operationId}
+      LIMIT 1
+    `)
+    const rows = recoveryResultRows(result)
+    if (rows.length === 0) {
+      return null
+    }
+    if (rows.length !== 1) {
+      throw new LifecycleRestoreIsolationRecoveryStorageError()
+    }
+    return asRestoreOperationStatus(parseRecoveryOperationRow(rows[0]))
+  }
+
+  async readUnfencedRestore(): Promise<LifecycleUnfencedRestoreOperation | null> {
+    const result = await this.database.execute(sql<RecoveryOperationRow>`
+      SELECT
+        operation.id AS operation_id,
+        operation.kind,
+        operation.state
+      FROM ${lifecycleOperations} AS operation
+      WHERE operation.kind = 'restore'
+        AND operation.state IN ('prepared', 'recovery_required')
+        AND NOT EXISTS (
+          SELECT 1
+          FROM ${lifecycleOperationEvents} AS isolation_event
+          WHERE isolation_event.operation_id = operation.id
+            AND isolation_event.outcome = 'succeeded'
+            AND isolation_event.phase IN (
+              'emergency_isolation_fence',
+              'emergency_isolation_reassertion'
+            )
+      )
+      ORDER BY operation.created_at ASC, operation.id ASC
+      LIMIT 2
+    `)
+    const rows = recoveryResultRows(result)
+    if (rows.length === 0) {
+      return null
+    }
+    if (rows.length !== 1) {
+      throw new LifecycleRestoreIsolationRecoveryStorageError()
+    }
+    const status = parseRecoveryOperationRow(rows[0])
+    if (status.kind !== "restore" || !isUnfencedRestoreState(status.state)) {
+      throw new LifecycleRestoreIsolationRecoveryStorageError()
+    }
+    return { ...status, kind: "restore", state: status.state }
+  }
+
+  async terminalizeUnfencedRestore(
+    operationId: string,
+    at: Date,
+  ): Promise<boolean> {
+    assertRecoveryAuthorityMutationInput(operationId, at)
+    return this.database.transaction(async (transaction) => {
+      const current = await lockedOperation(transaction, operationId)
+      const status = parseStoredRestoreOperationStatus(current)
+      if (!status || !isUnfencedRestoreState(status.state)) {
+        return false
+      }
+      const counts = await isolationSuccessCounts(transaction, operationId)
+      if (!counts || counts.fence !== 0 || counts.reassertion !== 0) {
+        return false
+      }
+      if (status.state === "recovery_required") {
+        return true
+      }
+      if (!current || at < current.updatedAt) {
+        return false
+      }
+
+      const updated = await transaction
+        .update(lifecycleOperations)
+        .set({
+          completedAt: at,
+          failureCode: "restore_failed",
+          state: "recovery_required",
+          updatedAt: at,
+        })
+        .where(
+          and(
+            eq(lifecycleOperations.id, operationId),
+            eq(lifecycleOperations.kind, "restore"),
+            eq(lifecycleOperations.state, "prepared"),
+          ),
+        )
+        .returning({ id: lifecycleOperations.id })
+      if (updated.length !== 1) {
+        return false
+      }
+      await transaction.insert(lifecycleOperationEvents).values({
+        component: null,
+        failureCode: "restore_failed",
+        occurredAt: at,
+        operationId,
+        operationState: "recovery_required",
+        outcome: "failed",
+        phase: "operation",
+        sequence: await nextEventSequence(transaction, operationId),
+      })
+      return true
+    })
+  }
+
+  async recordIsolationReconciled(
+    operationId: string,
+    at: Date,
+  ): Promise<boolean> {
+    assertRecoveryAuthorityMutationInput(operationId, at)
+    return this.database.transaction(async (transaction) => {
+      const current = await lockedOperation(transaction, operationId)
+      const status = parseStoredRestoreOperationStatus(current)
+      if (!current || !status || status.state !== "recovery_required") {
+        return false
+      }
+      const before = await isolationSuccessCounts(transaction, operationId)
+      if (!before || before.fence !== 0 || before.reassertion > 1) {
+        return false
+      }
+      if (before.reassertion === 1) {
+        return true
+      }
+      if (at < current.updatedAt) {
+        return false
+      }
+
+      await transaction.insert(lifecycleOperationEvents).values({
+        component: null,
+        failureCode: null,
+        occurredAt: at,
+        operationId,
+        operationState: "recovery_required",
+        outcome: "succeeded",
+        phase: "emergency_isolation_reassertion",
+        sequence: await nextEventSequence(transaction, operationId),
+      })
+      const after = await isolationSuccessCounts(transaction, operationId)
+      return after?.fence === 0 && after.reassertion === 1
+    })
+  }
 }
 
 class DrizzleLifecycleOperationJournal implements LifecycleOperationJournal {
@@ -339,6 +526,162 @@ type LifecycleTransaction = Parameters<
   Parameters<InferenceCoreDatabase["transaction"]>[0]
 >[0]
 
+interface RecoveryOperationRow {
+  kind: string
+  operation_id: string
+  state: string
+}
+
+interface ValidatedRecoveryOperationRow {
+  kind: LifecycleOperationKind
+  operationId: string
+  state: LifecycleOperationState
+}
+
+class LifecycleRestoreIsolationRecoveryStorageError extends Error {
+  constructor() {
+    super("Lifecycle restore isolation recovery storage returned invalid data.")
+    this.name = "LifecycleRestoreIsolationRecoveryStorageError"
+  }
+}
+
+function parseRecoveryOperationRow(
+  value: unknown,
+): ValidatedRecoveryOperationRow {
+  if (!value || typeof value !== "object") {
+    throw new LifecycleRestoreIsolationRecoveryStorageError()
+  }
+  const row = value as Partial<RecoveryOperationRow>
+  const kind = lifecycleOperationKindSchema.safeParse(row.kind)
+  const state = lifecycleOperationStateSchema.safeParse(row.state)
+  if (
+    typeof row.operation_id !== "string" ||
+    !uuid(row.operation_id) ||
+    !kind.success ||
+    !state.success
+  ) {
+    throw new LifecycleRestoreIsolationRecoveryStorageError()
+  }
+  return {
+    kind: kind.data,
+    operationId: row.operation_id,
+    state: state.data,
+  }
+}
+
+function asRestoreOperationStatus(
+  value: ValidatedRecoveryOperationRow,
+): LifecycleRestoreOperationStatus | null {
+  return value.kind === "restore"
+    ? {
+        kind: "restore",
+        operationId: value.operationId,
+        state: value.state,
+      }
+    : null
+}
+
+function parseStoredRestoreOperationStatus(
+  value: typeof lifecycleOperations.$inferSelect | null,
+): LifecycleRestoreOperationStatus | null {
+  return value
+    ? asRestoreOperationStatus(
+        parseRecoveryOperationRow({
+          kind: value.kind,
+          operation_id: value.id,
+          state: value.state,
+        }),
+      )
+    : null
+}
+
+function isUnfencedRestoreState(
+  state: LifecycleOperationState,
+): state is "prepared" | "recovery_required" {
+  return state === "prepared" || state === "recovery_required"
+}
+
+async function isolationSuccessCounts(
+  transaction: LifecycleTransaction,
+  operationId: string,
+): Promise<{ fence: number; reassertion: number } | null> {
+  const result = await transaction.execute(sql<{
+    fence_count: number | string
+    reassertion_count: number | string
+  }>`
+    SELECT
+      count(*) FILTER (
+        WHERE phase = 'emergency_isolation_fence'
+          AND outcome = 'succeeded'
+      )::integer AS fence_count,
+      count(*) FILTER (
+        WHERE phase = 'emergency_isolation_reassertion'
+          AND outcome = 'succeeded'
+      )::integer AS reassertion_count
+    FROM ${lifecycleOperationEvents}
+    WHERE operation_id = ${operationId}
+  `)
+  const rows = recoveryResultRows(result)
+  if (rows.length !== 1) {
+    throw new LifecycleRestoreIsolationRecoveryStorageError()
+  }
+  const row = rows[0]
+  if (!row || typeof row !== "object") {
+    throw new LifecycleRestoreIsolationRecoveryStorageError()
+  }
+  const candidate = row as {
+    fence_count?: unknown
+    reassertion_count?: unknown
+  }
+  const fence = recoveryCount(candidate.fence_count)
+  const reassertion = recoveryCount(candidate.reassertion_count)
+  if (fence === null || reassertion === null) {
+    throw new LifecycleRestoreIsolationRecoveryStorageError()
+  }
+  return { fence, reassertion }
+}
+
+function assertRecoveryAuthorityOperationId(operationId: string): void {
+  if (!uuid(operationId)) {
+    throw new Error("Invalid lifecycle restore isolation recovery input.")
+  }
+}
+
+function assertRecoveryAuthorityMutationInput(
+  operationId: string,
+  at: Date,
+): void {
+  if (!uuid(operationId) || !validDate(at)) {
+    throw new Error("Invalid lifecycle restore isolation recovery input.")
+  }
+}
+
+function recoveryResultRows(result: unknown): unknown[] {
+  if (Array.isArray(result)) {
+    return result
+  }
+  if (
+    result &&
+    typeof result === "object" &&
+    "rows" in result &&
+    Array.isArray(result.rows)
+  ) {
+    return result.rows
+  }
+  throw new LifecycleRestoreIsolationRecoveryStorageError()
+}
+
+function recoveryCount(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 ? value : null
+  }
+  if (typeof value !== "string" || !/^(?:0|[1-9][0-9]*)$/.test(value)) {
+    return null
+  }
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) ? parsed : null
+}
+
 async function lockedOperation(
   transaction: LifecycleTransaction,
   operationId: string,
@@ -509,6 +852,19 @@ function phaseStateAllowed(
       return state === "resuming"
     case "rollback":
       return state === "rolling_back"
+    case "emergency_isolation_fence":
+      return ["prepared", "quiescing", "resuming"].includes(state)
+    case "emergency_isolation_reassertion":
+      return [
+        "prepared",
+        "validating",
+        "quiescing",
+        "restoring",
+        "verifying",
+        "rolling_back",
+        "resuming",
+        "recovery_required",
+      ].includes(state)
     case "emergency_session_fence":
       return ["quiescing", "resuming", "rolling_back"].includes(state)
     case "emergency_session_reset":

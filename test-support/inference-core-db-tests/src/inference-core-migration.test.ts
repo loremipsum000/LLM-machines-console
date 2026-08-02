@@ -53,6 +53,7 @@ describe("Inference Core empty-install migration", () => {
         "admin.applications",
         "admin.backup_state",
         "admin.console_settings",
+        "admin.emergency_isolation_state",
         "admin.emergency_recovery_factor",
         "admin.emergency_recovery_sessions",
         "admin.idempotency_ledger",
@@ -324,6 +325,9 @@ describe("Inference Core empty-install migration", () => {
         SELECT 'console_settings', count(*)::int
           FROM admin.console_settings
         UNION ALL
+        SELECT 'emergency_isolation_state', count(*)::int
+          FROM admin.emergency_isolation_state
+        UNION ALL
         SELECT 'license_state', count(*)::int
           FROM admin.license_state
         UNION ALL
@@ -337,9 +341,22 @@ describe("Inference Core empty-install migration", () => {
       expect(singletonRows.rows).toEqual([
         { relation: "backup_state", row_count: 1 },
         { relation: "console_settings", row_count: 1 },
+        { relation: "emergency_isolation_state", row_count: 1 },
         { relation: "license_state", row_count: 1 },
         { relation: "recovery_state", row_count: 1 },
         { relation: "update_state", row_count: 1 },
+      ])
+
+      const isolationSeed = await database.query<{
+        id: string
+        revision: number
+        status: string
+      }>(`
+        SELECT id, status, revision
+        FROM admin.emergency_isolation_state
+      `)
+      expect(isolationSeed.rows).toEqual([
+        { id: "appliance", revision: 0, status: "inactive" },
       ])
 
       await database.exec(`

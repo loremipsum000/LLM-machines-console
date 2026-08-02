@@ -2,7 +2,6 @@ import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import {
-  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -34,6 +33,8 @@ import {
   pr10SourceEvidencePaths,
   pr10StandaloneDbTestBoundary,
   pr10TargetContract,
+  pr10cContractBase,
+  pr10cContractBaseTree,
   repositoryRoot,
   routeBaselinePath,
   verifyPr10BaseEvidence,
@@ -109,7 +110,7 @@ test("reviewed revision history recognizes only an exact PR-10 append", () => {
       ...pr10SourceEvidencePaths,
       ...pr10RevisionEvidencePaths,
     ]) {
-      copyCurrentPath(root, path)
+      copyAcceptedPr10Path(root, path)
     }
     const rootedDecisionPath = resolve(root, pr10DecisionPath)
     const rootedDecision = readJson(rootedDecisionPath)
@@ -211,27 +212,28 @@ test("PR-10 fixes a source-only lifecycle foundation decision", () => {
     decision.reviewedDispositions.deferredBindings.lifecycleRoutesRegistered,
     0,
   )
-  assert.deepEqual(verifyPr10DecisionDocument(decision), [])
-  if (decision.reviewStatus === "reviewed") {
-    assert.deepEqual(
-      verifyPr10DecisionDocument(decision, { requireReady: true }),
-      [],
-    )
-  } else {
-    assert.match(
-      verifyPr10DecisionDocument(decision, { requireReady: true }).join("\n"),
-      /operation policy is not reviewed/,
-    )
-  }
+  withAcceptedPr10Snapshot("decision", (root) => {
+    assert.deepEqual(verifyPr10DecisionDocument(decision, { root }), [])
+    if (decision.reviewStatus === "reviewed") {
+      assert.deepEqual(
+        verifyPr10DecisionDocument(decision, { requireReady: true, root }),
+        [],
+      )
+    } else {
+      assert.match(
+        verifyPr10DecisionDocument(decision, {
+          requireReady: true,
+          root,
+        }).join("\n"),
+        /operation policy is not reviewed/,
+      )
+    }
+  })
 })
 
 test("PR-10 decision source evidence is evaluated against the supplied root", () => {
-  const root = mkdtempSync(join(tmpdir(), "inference-core-pr10-decision-"))
-  try {
-    for (const path of pr10SourceEvidencePaths) {
-      copyCurrentPath(root, path)
-    }
-    const decision = readJson(resolve(repositoryRoot, pr10DecisionPath))
+  withAcceptedPr10Snapshot("decision-root", (root) => {
+    const decision = readJson(resolve(root, pr10DecisionPath))
     assert.deepEqual(verifyPr10DecisionDocument(decision, { root }), [])
 
     const changedPath = resolve(root, pr10SourceEvidencePaths[0])
@@ -240,9 +242,7 @@ test("PR-10 decision source evidence is evaluated against the supplied root", ()
       verifyPr10DecisionDocument(decision, { root }).join("\n"),
       /invalid PR-10 source evidence/,
     )
-  } finally {
-    rmSync(root, { force: true, recursive: true })
-  }
+  })
 })
 
 test("PR-10 operation policy is exact and cannot escape its package", () => {
@@ -352,7 +352,7 @@ test("PR-10 write path is fail-closed across interrupted multi-file replacement"
 test("PR-10 policy mode is no-write and fails closed on generated transaction state", () => {
   withBaseClone("generator-policy", (root) => {
     for (const path of pr10AllowedRepositoryPaths) {
-      copyCurrentPath(root, path)
+      copyAcceptedPr10Path(root, path)
     }
     const decisionPath = resolve(root, pr10DecisionPath)
     const decision = readJson(decisionPath)
@@ -462,14 +462,12 @@ test("PR-10 permits only the exact historical PR-06 expiry repair", () => {
 })
 
 test("PR-10 source has no runtime binding, route, or content persistence", () => {
-  const paths = repositoryPaths(repositoryRoot)
-  assert.deepEqual(verifyPr10SourceBoundary(repositoryRoot, paths), [])
+  withAcceptedPr10Snapshot("source", (root) => {
+    const paths = repositoryPaths(root)
+    assert.deepEqual(verifyPr10SourceBoundary(root, paths), [])
+  })
 
-  withBaseClone("persistence", (root) => {
-    for (const path of pr10LifecycleCodePaths) {
-      copyCurrentPath(root, path)
-    }
-    copyCurrentPath(root, pr10DecisionPath)
+  withAcceptedPr10Snapshot("persistence", (root) => {
     const clonePaths = repositoryPaths(root)
     assert.deepEqual(verifyPr10SourceBoundary(root, clonePaths), [])
 
@@ -632,21 +630,24 @@ test("PR-10 source has no runtime binding, route, or content persistence", () =>
 })
 
 test("the PR-09 baseline plus PR-10 source satisfies the PR-10 target", () => {
-  const currentAllowlist = readJson(
-    resolve(
-      repositoryRoot,
-      "docs/reduction/inference-core/forbidden-surface-allowlist.yaml",
-    ),
-  )
-  const currentRoutes = readJson(resolve(repositoryRoot, routeBaselinePath))
-  assert.deepEqual(
-    verifyPr10TargetState({
-      currentAllowlist,
-      currentRoutes,
-      paths: repositoryPaths(repositoryRoot),
-    }),
-    [],
-  )
+  withAcceptedPr10Snapshot("target", (root) => {
+    const currentAllowlist = readJson(
+      resolve(
+        root,
+        "docs/reduction/inference-core/forbidden-surface-allowlist.yaml",
+      ),
+    )
+    const currentRoutes = readJson(resolve(root, routeBaselinePath))
+    assert.deepEqual(
+      verifyPr10TargetState({
+        root,
+        currentAllowlist,
+        currentRoutes,
+        paths: repositoryPaths(root),
+      }),
+      [],
+    )
+  })
   assert.equal(pr10TargetContract.addedRoutes.length, 0)
   assert.equal(pr10TargetContract.configuredRuntimeAdapters, 0)
   assert.equal(pr10TargetContract.lifecycleRoutes, 0)
@@ -668,10 +669,49 @@ function withBaseClone(label, run) {
   }
 }
 
-function copyCurrentPath(root, path) {
+function withAcceptedPr10Snapshot(label, run) {
+  const root = mkdtempSync(
+    join(tmpdir(), `inference-core-pr10-accepted-${label}-`),
+  )
+  try {
+    execFileSync(
+      "git",
+      ["clone", "--quiet", "--shared", "--no-checkout", repositoryRoot, root],
+      { stdio: "ignore" },
+    )
+    gitAt(root, ["checkout", "--quiet", pr10cContractBase])
+    assert.equal(gitAt(root, ["rev-parse", "HEAD"]), pr10cContractBase)
+    assert.equal(
+      gitAt(root, ["rev-parse", `${pr10cContractBase}^{tree}`]),
+      pr10cContractBaseTree,
+    )
+    run(root)
+  } finally {
+    rmSync(root, { force: true, recursive: true })
+  }
+}
+
+function copyAcceptedPr10Path(root, path) {
   const destination = resolve(root, path)
   mkdirSync(dirname(destination), { recursive: true })
-  copyFileSync(resolve(repositoryRoot, path), destination)
+  writeFileSync(
+    destination,
+    execFileSync(
+      "git",
+      [
+        "show",
+        "--no-ext-diff",
+        "--no-textconv",
+        "--end-of-options",
+        `${pr10cContractBase}:${path}`,
+      ],
+      {
+        cwd: repositoryRoot,
+        encoding: null,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    ),
+  )
 }
 
 function readJson(path) {

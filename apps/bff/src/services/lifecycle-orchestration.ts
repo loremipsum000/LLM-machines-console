@@ -40,7 +40,28 @@ export interface LifecycleEmergencySessionActivationFence {
   closeWithZeroSessions(): Promise<void>
 }
 
+export interface LifecycleEmergencyIsolationRestoreFence {
+  /**
+   * Reasserts and reads back recovery_required after component restore. The
+   * fence remains held when this call fails.
+   */
+  reassertRecoveryRequired(): Promise<void>
+  /**
+   * Releases the process hold only after Console recovery readback, then
+   * compare-clears the operation marker. Durable isolation stays sealed.
+   */
+  closeAfterRecoveryRequired(): Promise<void>
+}
+
 export interface LifecycleRestoreSafety {
+  /**
+   * Seals T2 traffic and persists then reads back recovery_required through a
+   * non-restorable authority before active restore. Acquisition must fail
+   * closed and must not rely only on the database being restored.
+   */
+  openEmergencyIsolationRestoreFence(
+    context: LifecycleAdapterContext,
+  ): Promise<LifecycleEmergencyIsolationRestoreFence>
   /** Resolves with one held fence or rejects without acquiring a fence. */
   openEmergencySessionActivationFence(
     context: LifecycleAdapterContext,
@@ -124,6 +145,8 @@ interface RestoreSettlementInput {
   error: unknown
   fence: LifecycleEmergencySessionActivationFence | null
   fenceCloseUncertain: boolean
+  isolationFence: LifecycleEmergencyIsolationRestoreFence | null
+  isolationFenceAcquisitionAttempted: boolean
   operationId: string
   preparations: Map<LifecycleComponent, LifecyclePreparedRestore>
   quiesced: LifecycleComponentAdapter[]
@@ -306,6 +329,8 @@ export class LifecycleOrchestrator {
     const quiesced: LifecycleComponentAdapter[] = []
     const resumed: LifecycleComponentAdapter[] = []
     const applied: LifecycleComponentAdapter[] = []
+    let isolationFence: LifecycleEmergencyIsolationRestoreFence | null = null
+    let isolationFenceAcquisitionAttempted = false
     let fence: LifecycleEmergencySessionActivationFence | null = null
     let fenceCloseUncertain = false
 
@@ -327,6 +352,15 @@ export class LifecycleOrchestrator {
     }
 
     try {
+      isolationFenceAcquisitionAttempted = true
+      await this.openIsolationFenceImmediatelyAfterAdmission(
+        context,
+        state,
+        (openedFence) => {
+          isolationFence = openedFence
+        },
+      )
+
       await this.transition(operationId, state, "validating")
       state = "validating"
       for (const [index, adapter] of this.adapters.entries()) {
@@ -448,6 +482,16 @@ export class LifecycleOrchestrator {
         },
       )
 
+      const heldIsolationFence = requireIsolationRestoreFence(isolationFence)
+      await this.runPhase(
+        context,
+        state,
+        "emergency_isolation_reassertion",
+        undefined,
+        "restore_failed",
+        () => heldIsolationFence.reassertRecoveryRequired(),
+      )
+
       const discardedPreparations = await this.discardPreparations(
         context,
         state,
@@ -493,6 +537,19 @@ export class LifecycleOrchestrator {
       )
 
       await this.transition(operationId, state, "succeeded")
+      try {
+        await heldIsolationFence.closeAfterRecoveryRequired()
+        isolationFence = null
+      } catch {
+        // The succeeded lifecycle record is terminal, but durable
+        // recovery_required remains authoritative and the local hold stays held.
+        return failedRestore(
+          operationId,
+          snapshotId,
+          "recovery_required",
+          "restore_failed",
+        )
+      }
       return { operationId, snapshotId, status: "succeeded" }
     } catch (error) {
       return this.settleRestoreFailure({
@@ -502,6 +559,8 @@ export class LifecycleOrchestrator {
         error,
         fence,
         fenceCloseUncertain,
+        isolationFence,
+        isolationFenceAcquisitionAttempted,
         operationId,
         preparations,
         quiesced,
@@ -532,6 +591,67 @@ export class LifecycleOrchestrator {
       throw new Error("Invalid emergency-session activation fence.")
     }
     return fence
+  }
+
+  private async openIsolationRestoreFence(
+    context: LifecycleAdapterContext,
+  ): Promise<LifecycleEmergencyIsolationRestoreFence> {
+    const fence =
+      await this.restoreSafety.openEmergencyIsolationRestoreFence(context)
+    if (
+      !fence ||
+      typeof fence.reassertRecoveryRequired !== "function" ||
+      typeof fence.closeAfterRecoveryRequired !== "function"
+    ) {
+      throw new Error("Invalid emergency-isolation restore fence.")
+    }
+    return fence
+  }
+
+  private async openIsolationFenceImmediatelyAfterAdmission(
+    context: LifecycleAdapterContext,
+    state: LifecycleOperationState,
+    onOpened: (fence: LifecycleEmergencyIsolationRestoreFence) => void,
+  ): Promise<void> {
+    const opening = this.openIsolationRestoreFence(context).then(
+      (fence) => ({ fence, succeeded: true as const }),
+      () => ({ succeeded: false as const }),
+    )
+    let journalFailed = false
+    try {
+      await this.requirePhase({
+        at: this.now(),
+        operationId: context.operationId,
+        operationState: state,
+        outcome: "started",
+        phase: "emergency_isolation_fence",
+      })
+    } catch {
+      journalFailed = true
+    }
+
+    const result = await opening
+    if (result.succeeded) {
+      onOpened(result.fence)
+    }
+    try {
+      await this.requirePhase({
+        at: this.now(),
+        failureCode: result.succeeded ? undefined : "restore_failed",
+        operationId: context.operationId,
+        operationState: state,
+        outcome: result.succeeded ? "succeeded" : "failed",
+        phase: "emergency_isolation_fence",
+      })
+    } catch {
+      journalFailed = true
+    }
+    if (journalFailed) {
+      throw new LifecycleJournalFailure()
+    }
+    if (!result.succeeded) {
+      throw new LifecycleStepFailure("restore_failed")
+    }
   }
 
   private async transition(
@@ -857,6 +977,21 @@ export class LifecycleOrchestrator {
     )
   }
 
+  private async bestEffortReassertIsolation(
+    context: LifecycleAdapterContext,
+    state: LifecycleOperationState,
+    fence: LifecycleEmergencyIsolationRestoreFence,
+  ): Promise<CleanupResult> {
+    return this.bestEffortPhase(
+      context,
+      state,
+      "emergency_isolation_reassertion",
+      undefined,
+      "restore_failed",
+      () => fence.reassertRecoveryRequired(),
+    )
+  }
+
   private async bestEffortTransition(
     operationId: string,
     expectedState: LifecycleOperationState,
@@ -961,13 +1096,19 @@ export class LifecycleOrchestrator {
       return this.settleUnappliedRestoreFailure(input)
     }
     if (input.fenceCloseUncertain) {
+      const reassertionFailure = await this.appliedRestoreReassertionFailure(
+        input.context,
+        input.state,
+        input.isolationFence,
+      )
       return this.finishRestoreRecoveryRequired(
         input.operationId,
         input.snapshotId,
         input.state,
-        input.error instanceof LifecycleJournalFailure
-          ? "journal_failed"
-          : "restore_failed",
+        reassertionFailure ??
+          (input.error instanceof LifecycleJournalFailure
+            ? "journal_failed"
+            : "restore_failed"),
       )
     }
     return this.compensateAppliedRestore(input)
@@ -1100,22 +1241,33 @@ export class LifecycleOrchestrator {
       journalFailed ||= closed.journalFailed
     }
 
-    if (journalFailed || cleanupFailed) {
-      return this.finishRestoreRecoveryRequired(
-        input.operationId,
-        input.snapshotId,
+    let reassertionSucceeded = false
+    if (input.isolationFence) {
+      const reasserted = await this.bestEffortReassertIsolation(
+        input.context,
         state,
-        journalFailed ? "journal_failed" : "restore_failed",
+        input.isolationFence,
       )
+      reassertionSucceeded =
+        !reasserted.actionFailed && !reasserted.journalFailed
+      cleanupFailed ||= reasserted.actionFailed
+      journalFailed ||= reasserted.journalFailed
     }
-    if (
-      !(await this.bestEffortTransition(
-        input.operationId,
-        state,
-        "failed",
-        originalCode,
-      ))
-    ) {
+
+    const isolationFenceUnavailable =
+      input.isolationFenceAcquisitionAttempted && !input.isolationFence
+    const recoveryCode: LifecycleFailureCode = journalFailed
+      ? "journal_failed"
+      : cleanupFailed || isolationFenceUnavailable
+        ? "restore_failed"
+        : originalCode
+    const terminalPersisted = await this.bestEffortTransition(
+      input.operationId,
+      state,
+      "recovery_required",
+      recoveryCode,
+    )
+    if (!terminalPersisted) {
       return failedRestore(
         input.operationId,
         input.snapshotId,
@@ -1123,11 +1275,28 @@ export class LifecycleOrchestrator {
         "journal_failed",
       )
     }
+
+    const releaseIsSafe =
+      reassertionSucceeded && !journalFailed && !cleanupFailed
+    if (releaseIsSafe && input.isolationFence) {
+      try {
+        await input.isolationFence.closeAfterRecoveryRequired()
+      } catch {
+        // Durable recovery_required is terminal, but local hold release is
+        // uncertain. Keep the hold and report the fail-closed disposition.
+        return failedRestore(
+          input.operationId,
+          input.snapshotId,
+          "recovery_required",
+          "restore_failed",
+        )
+      }
+    }
     return failedRestore(
       input.operationId,
       input.snapshotId,
-      "failed",
-      originalCode,
+      "recovery_required",
+      recoveryCode,
     )
   }
 
@@ -1140,6 +1309,7 @@ export class LifecycleOrchestrator {
     let journalFailed = false
     let rollbackFailed = false
     let cleanupFailed = false
+    let recoveryCode: LifecycleFailureCode | null = null
 
     if (state !== "rolling_back") {
       const enteredRollback = await this.bestEffortTransition(
@@ -1165,28 +1335,70 @@ export class LifecycleOrchestrator {
             )
           }
         }
-        return this.finishRestoreRecoveryRequired(
-          input.operationId,
-          input.snapshotId,
-          state,
-          "journal_failed",
-        )
+        recoveryCode = "journal_failed"
+      } else {
+        state = "rolling_back"
       }
-      state = "rolling_back"
     }
 
-    if (!fence) {
-      const reopened = await this.bestEffortOpenFence(input.context, state)
-      fence = reopened.fence
-      if (reopened.actionFailed || !fence) {
-        return this.finishRestoreRecoveryRequired(
-          input.operationId,
-          input.snapshotId,
-          state,
-          "restore_failed",
-        )
+    if (!recoveryCode && !fence) {
+      if (state !== "rolling_back") {
+        recoveryCode = "journal_failed"
+      } else {
+        const reopened = await this.bestEffortOpenFence(input.context, state)
+        fence = reopened.fence
+        if (reopened.actionFailed || !fence) {
+          recoveryCode = "restore_failed"
+        } else {
+          const resetAfterReopen = await this.bestEffortPhase(
+            input.context,
+            state,
+            "emergency_session_reset",
+            undefined,
+            "rollback_failed",
+            () => this.restoreSafety.resetEmergencySessions(input.context),
+          )
+          if (
+            reopened.journalFailed ||
+            resetAfterReopen.actionFailed ||
+            resetAfterReopen.journalFailed
+          ) {
+            // The reopened fence stays held until explicit recovery clears the gap.
+            recoveryCode =
+              reopened.journalFailed || resetAfterReopen.journalFailed
+                ? "journal_failed"
+                : "rollback_failed"
+          }
+        }
       }
-      const resetAfterReopen = await this.bestEffortPhase(
+    }
+
+    if (!recoveryCode) {
+      const requiesced = await this.reQuiesceResumedComponents(
+        input.context,
+        input.resumed,
+        input.quiesced,
+      )
+      if (requiesced.actionFailed || requiesced.journalFailed) {
+        // A failed re-quiesce leaves component liveness uncertain. Keep every
+        // known quiescence and the activation fence in place for explicit
+        // recovery instead of attempting resume under rolling_back.
+        recoveryCode = requiesced.journalFailed
+          ? "journal_failed"
+          : "quiesce_failed"
+      }
+    }
+
+    if (!recoveryCode) {
+      const rolledBack = await this.rollbackComponents(
+        input.context,
+        input.applied,
+        input.preparations,
+      )
+      rollbackFailed ||= rolledBack.actionFailed
+      journalFailed ||= rolledBack.journalFailed
+
+      const reset = await this.bestEffortPhase(
         input.context,
         state,
         "emergency_session_reset",
@@ -1194,79 +1406,56 @@ export class LifecycleOrchestrator {
         "rollback_failed",
         () => this.restoreSafety.resetEmergencySessions(input.context),
       )
-      if (
-        reopened.journalFailed ||
-        resetAfterReopen.actionFailed ||
-        resetAfterReopen.journalFailed
-      ) {
-        // The reopened fence stays held until explicit recovery clears the gap.
-        return this.finishRestoreRecoveryRequired(
-          input.operationId,
-          input.snapshotId,
-          state,
-          reopened.journalFailed || resetAfterReopen.journalFailed
-            ? "journal_failed"
-            : "rollback_failed",
-        )
-      }
-    }
+      rollbackFailed ||= reset.actionFailed
+      journalFailed ||= reset.journalFailed
 
-    const requiesced = await this.reQuiesceResumedComponents(
-      input.context,
-      input.resumed,
-      input.quiesced,
-    )
-    if (requiesced.actionFailed || requiesced.journalFailed) {
-      // A failed re-quiesce leaves component liveness uncertain. Keep every
-      // known quiescence and the activation fence in place for explicit
-      // recovery instead of attempting resume under rolling_back.
-      return this.finishRestoreRecoveryRequired(
-        input.operationId,
-        input.snapshotId,
+      const discarded = await this.discardPreparations(
+        input.context,
         state,
-        requiesced.journalFailed ? "journal_failed" : "quiesce_failed",
+        input.preparations,
+        input.discarded,
       )
-    }
+      cleanupFailed ||= discarded.actionFailed
+      journalFailed ||= discarded.journalFailed
 
-    const rolledBack = await this.rollbackComponents(
-      input.context,
-      input.applied,
-      input.preparations,
-    )
-    rollbackFailed ||= rolledBack.actionFailed
-    journalFailed ||= rolledBack.journalFailed
-
-    const reset = await this.bestEffortPhase(
-      input.context,
-      state,
-      "emergency_session_reset",
-      undefined,
-      "rollback_failed",
-      () => this.restoreSafety.resetEmergencySessions(input.context),
-    )
-    rollbackFailed ||= reset.actionFailed
-    journalFailed ||= reset.journalFailed
-
-    const discarded = await this.discardPreparations(
-      input.context,
-      state,
-      input.preparations,
-      input.discarded,
-    )
-    cleanupFailed ||= discarded.actionFailed
-    journalFailed ||= discarded.journalFailed
-
-    if (journalFailed || rollbackFailed || cleanupFailed) {
-      const recoveryCode = journalFailed
+      recoveryCode = journalFailed
         ? "journal_failed"
         : rollbackFailed
           ? "rollback_failed"
-          : "restore_failed"
+          : cleanupFailed
+            ? "restore_failed"
+            : null
+    }
+
+    const reassertionFailure = await this.appliedRestoreReassertionFailure(
+      input.context,
+      state,
+      input.isolationFence,
+    )
+    recoveryCode = reassertionFailure ?? recoveryCode
+    if (recoveryCode) {
       return this.finishRestoreRecoveryRequired(
         input.operationId,
         input.snapshotId,
         state,
         recoveryCode,
+      )
+    }
+    const isolationFence = input.isolationFence
+    if (!isolationFence) {
+      return this.finishRestoreRecoveryRequired(
+        input.operationId,
+        input.snapshotId,
+        state,
+        "restore_failed",
+      )
+    }
+    if (!fence) {
+      return this.finishRestoreRecoveryRequired(
+        input.operationId,
+        input.snapshotId,
+        state,
+        "restore_failed",
       )
     }
 
@@ -1324,12 +1513,43 @@ export class LifecycleOrchestrator {
         "journal_failed",
       )
     }
+    try {
+      await isolationFence.closeAfterRecoveryRequired()
+    } catch {
+      // Durable recovery_required remains authoritative. A local hold release
+      // failure is reported as recovery-required and left held.
+      return failedRestore(
+        input.operationId,
+        input.snapshotId,
+        "recovery_required",
+        "restore_failed",
+      )
+    }
     return failedRestore(
       input.operationId,
       input.snapshotId,
       "rolled_back",
       originalCode,
     )
+  }
+
+  private async appliedRestoreReassertionFailure(
+    context: LifecycleAdapterContext,
+    state: LifecycleOperationState,
+    isolationFence: LifecycleEmergencyIsolationRestoreFence | null,
+  ): Promise<LifecycleFailureCode | null> {
+    if (!isolationFence) {
+      return "restore_failed"
+    }
+    const reasserted = await this.bestEffortReassertIsolation(
+      context,
+      state,
+      isolationFence,
+    )
+    if (reasserted.journalFailed) {
+      return "journal_failed"
+    }
+    return reasserted.actionFailed ? "restore_failed" : null
   }
 
   private async finishRestoreRecoveryRequired(
@@ -1381,6 +1601,15 @@ function failureCode(error: unknown): LifecycleFailureCode {
 function requireActivationFence(
   fence: LifecycleEmergencySessionActivationFence | null,
 ): LifecycleEmergencySessionActivationFence {
+  if (!fence) {
+    throw new LifecycleStepFailure("restore_failed")
+  }
+  return fence
+}
+
+function requireIsolationRestoreFence(
+  fence: LifecycleEmergencyIsolationRestoreFence | null,
+): LifecycleEmergencyIsolationRestoreFence {
   if (!fence) {
     throw new LifecycleStepFailure("restore_failed")
   }

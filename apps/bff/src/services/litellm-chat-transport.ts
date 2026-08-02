@@ -141,12 +141,13 @@ export function waitForWritableDrainOrAbort(
 
 export async function fetchLiteLlmModels(
   allowedModels: string[],
+  callerSignal?: AbortSignal,
 ): Promise<LiteLlmModelListResult> {
   const config = liteLlmConfig()
 
   if (config) {
     const boundary = createRequestBoundary(
-      undefined,
+      callerSignal,
       LITELLM_MODEL_LIST_DEADLINE_MS,
     )
     try {

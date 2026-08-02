@@ -1621,6 +1621,9 @@ async function lockRuntimeRows(
       ON application.id = access.app_id
     JOIN admin.application_firecrawl_credentials AS credential
       ON credential.app_id = access.app_id
+    JOIN admin.emergency_isolation_state AS isolation
+      ON isolation.id = 'appliance'
+      AND isolation.status = 'inactive'
     WHERE access.app_id = ${applicationId}
       AND application.status = 'enabled'
       AND access.status = 'enabled'
@@ -1633,7 +1636,7 @@ async function lockRuntimeRows(
           AND credential.overlap_expires_at > clock_timestamp()
         )
       )
-    FOR UPDATE OF access
+    FOR UPDATE OF access, isolation
   `)
   const current = resultRows(rows)[0] as
     | {

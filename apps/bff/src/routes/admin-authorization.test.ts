@@ -10,6 +10,9 @@ const expectedAdminRoutePolicies = {
   "POST /api/admin/recovery/sessions/:id/revoke": capability(
     "console.operational.view",
   ),
+  "GET /api/admin/isolation": capability("console.operational.view"),
+  "POST /api/admin/isolation/activate": adminOnly(),
+  "POST /api/admin/isolation/deactivate": adminOnly(),
   "GET /api/admin/audit": capability("console.operational.view"),
   "GET /api/admin/audit/export": capability("activity_audit.export"),
   "GET /api/admin/audit/export/verification-keys": capability(
@@ -136,6 +139,8 @@ describe("Admin route authorization contract", () => {
     expect(adminOnlyAdminRoutePolicyKeys).toEqual([
       "GET /api/admin/recovery/status",
       "POST /api/admin/recovery/factor/commission",
+      "POST /api/admin/isolation/activate",
+      "POST /api/admin/isolation/deactivate",
       "POST /api/admin/observability/alert-egress",
       "POST /api/admin/settings/organization",
       "POST /api/admin/settings/telemetry",

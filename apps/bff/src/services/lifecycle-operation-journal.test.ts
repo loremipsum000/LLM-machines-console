@@ -5,8 +5,10 @@ import {
   lifecycleOperationStates,
 } from "@llm-machines/contracts"
 import { describe, expect, it } from "vitest"
+import type { InferenceCoreDatabase } from "../db/inference-core-client"
 import {
   InMemoryLifecycleOperationJournal,
+  createDrizzleLifecycleRestoreIsolationRecoveryAuthority,
   lifecycleOperationPhases,
   lifecyclePhaseOutcomes,
 } from "./lifecycle-operation-journal"
@@ -29,12 +31,53 @@ describe("lifecycle operation journal", () => {
       "verify",
       "resume",
       "rollback",
+      "emergency_isolation_fence",
+      "emergency_isolation_reassertion",
       "emergency_session_fence",
       "emergency_session_reset",
       "credential_consistency",
       "discard_preparation",
     ])
     expect(lifecyclePhaseOutcomes).toEqual(["started", "succeeded", "failed"])
+  })
+
+  it("bounds restore-isolation recovery authority construction and inputs", async () => {
+    expect(
+      createDrizzleLifecycleRestoreIsolationRecoveryAuthority(null),
+    ).toBeNull()
+    const authority = createDrizzleLifecycleRestoreIsolationRecoveryAuthority(
+      {} as InferenceCoreDatabase,
+    )
+    if (!authority) {
+      throw new Error("Restore isolation recovery authority was not created.")
+    }
+
+    await expect(authority.readRestoreOperation("invalid")).rejects.toThrow(
+      "Invalid lifecycle restore isolation recovery input",
+    )
+    await expect(
+      authority.terminalizeUnfencedRestore(operationId, new Date(Number.NaN)),
+    ).rejects.toThrow("Invalid lifecycle restore isolation recovery input")
+    await expect(
+      authority.recordIsolationReconciled("invalid", at),
+    ).rejects.toThrow("Invalid lifecycle restore isolation recovery input")
+
+    const malformed = createDrizzleLifecycleRestoreIsolationRecoveryAuthority({
+      execute: async () => ({
+        rows: [
+          { kind: "restore", operation_id: operationId, state: "unknown" },
+        ],
+      }),
+    } as unknown as InferenceCoreDatabase)
+    if (!malformed) {
+      throw new Error("Malformed recovery authority fixture was not created.")
+    }
+    await expect(malformed.readRestoreOperation(operationId)).rejects.toThrow(
+      "Lifecycle restore isolation recovery storage returned invalid data",
+    )
+    await expect(malformed.readUnfencedRestore()).rejects.toThrow(
+      "Lifecycle restore isolation recovery storage returned invalid data",
+    )
   })
 
   it("records state transitions and component phases in order", async () => {
@@ -345,6 +388,17 @@ const phaseStates: Record<
   capture: ["capturing"],
   credential_consistency: ["verifying"],
   discard_preparation: ["validating", "verifying", "rolling_back"],
+  emergency_isolation_fence: ["prepared", "quiescing", "resuming"],
+  emergency_isolation_reassertion: [
+    "prepared",
+    "validating",
+    "quiescing",
+    "restoring",
+    "verifying",
+    "rolling_back",
+    "resuming",
+    "recovery_required",
+  ],
   emergency_session_fence: ["quiescing", "resuming", "rolling_back"],
   emergency_session_reset: [
     "quiescing",

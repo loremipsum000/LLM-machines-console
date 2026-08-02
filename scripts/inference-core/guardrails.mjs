@@ -63,6 +63,10 @@ export const pr10ContractRevisionPath =
   "docs/reduction/inference-core/contract-revisions/PR-10.json"
 export const pr10DecisionPath =
   "docs/reduction/inference-core/pr-10-lifecycle-foundation-decisions.json"
+export const pr10cContractRevisionPath =
+  "docs/reduction/inference-core/contract-revisions/PR-10C.json"
+export const pr10cDecisionPath =
+  "docs/reduction/inference-core/pr-10c-emergency-isolation-decisions.json"
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -84,6 +88,9 @@ export const pr09ContractBaseTree = "0b2e55ce2f4c9be726dde4443a9f0bee91556b69"
 export const pr10ContractBase = "e9f2516585dccec69317fd0426ac4fcf6fa0d9b1"
 export const pr10LaneAnchor = pr10ContractBase
 export const pr10ContractBaseTree = "e0046213fa9641f606a575c3dd85407806ba2874"
+export const pr10cContractBase = "f29ea2a0c69871973ea553d3edf83b783d6c9879"
+export const pr10cLaneAnchor = pr10cContractBase
+export const pr10cContractBaseTree = "991109ad85e0c454af62ed42c4a5a69068b301e0"
 export const pr08PrivateCheckpoint = {
   baseCommit: "eeab335ab3e46add36e4efcfb4dad2b3b47a8202",
   baseTree: "c38ca6e7ea85e454f7c191441ade7679b7ee4c41",
@@ -200,6 +207,10 @@ const pr09HistoricalTestEvidenceCommitByPath = new Map([
   [pr09SuccessorAwareHistoricalTestPaths[0], pr03ContractBase],
   [pr09SuccessorAwareHistoricalTestPaths[1], pr06ContractBase],
 ])
+const inheritedHistoricalTestEvidenceCommitByPath = new Map([
+  ...pr09HistoricalTestEvidenceCommitByPath,
+  ["scripts/inference-core/pr06-boundaries.test.mjs", pr07ContractBase],
+])
 export const pr09RevisionEvidencePaths = [
   pr09DecisionPath,
   ...pr09SuccessorAwareHistoricalTestPaths,
@@ -211,6 +222,44 @@ export const pr10RevisionEvidencePaths = [
   "scripts/inference-core/pr10-boundaries.test.mjs",
   "scripts/inference-core/pr10-contract-revision.mjs",
 ]
+export const pr10cRevisionEvidencePaths = [
+  pr10cDecisionPath,
+  "scripts/inference-core/pr10c-boundaries.test.mjs",
+  "scripts/inference-core/pr10c-contract-revision.mjs",
+]
+export const pr10cSuccessorAwareHistoricalTestBindings = [
+  {
+    retainedRevision: "PR-05",
+    path: "scripts/inference-core/pr05-boundaries.test.mjs",
+    evidenceCommit: pr06ContractBase,
+  },
+  {
+    retainedRevision: "PR-06",
+    path: "scripts/inference-core/pr06-boundaries.test.mjs",
+    evidenceCommit: pr07ContractBase,
+  },
+  {
+    retainedRevision: "PR-09",
+    path: "scripts/inference-core/pr05-boundaries.test.mjs",
+    evidenceCommit: pr10ContractBase,
+  },
+  {
+    retainedRevision: "PR-10",
+    path: "scripts/inference-core/pr10-boundaries.test.mjs",
+    evidenceCommit: pr10cContractBase,
+  },
+]
+export const pr10cSuccessorAwareHistoricalTestPaths = [
+  ...new Set(pr10cSuccessorAwareHistoricalTestBindings.map(({ path }) => path)),
+].sort()
+const pr10cHistoricalTestEvidenceCommitByRevisionAndPath = new Map(
+  pr10cSuccessorAwareHistoricalTestBindings.map(
+    ({ retainedRevision, path, evidenceCommit }) => [
+      `${retainedRevision}\0${path}`,
+      evidenceCommit,
+    ],
+  ),
+)
 const pr04ImmutablePriorEvidencePaths = [
   pr02ContractRevisionPath,
   ...pr02RevisionEvidencePaths,
@@ -250,6 +299,11 @@ const pr10ImmutablePriorEvidencePaths = [
   pr09ContractRevisionPath,
   ...pr09RevisionEvidencePaths,
 ]
+const pr10cImmutablePriorEvidencePaths = [
+  ...pr10ImmutablePriorEvidencePaths,
+  pr10ContractRevisionPath,
+  ...pr10RevisionEvidencePaths,
+]
 const generatedContractPaths = new Set([
   allowlistPath,
   routeBaselinePath,
@@ -262,6 +316,7 @@ const generatedContractPaths = new Set([
   pr08ContractRevisionPath,
   pr09ContractRevisionPath,
   pr10ContractRevisionPath,
+  pr10cContractRevisionPath,
 ])
 export const pr02OperationPolicy = {
   changedSourcePaths: [
@@ -431,6 +486,7 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/contract-revisions/PR-08.json",
   "docs/reduction/inference-core/contract-revisions/PR-09.json",
   "docs/reduction/inference-core/contract-revisions/PR-10.json",
+  "docs/reduction/inference-core/contract-revisions/PR-10C.json",
   "docs/reduction/inference-core/pr-02-boundary-decisions.json",
   "docs/reduction/inference-core/pr-03-removal-decisions.json",
   "docs/reduction/inference-core/pr-04-data-decisions.json",
@@ -441,6 +497,7 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
   "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
   "docs/reduction/inference-core/pr-10-lifecycle-foundation-decisions.json",
+  "docs/reduction/inference-core/pr-10c-emergency-isolation-decisions.json",
   "docs/reduction/inference-core/decision-register.md",
   "docs/reduction/inference-core/source-map.jsonl",
   "docs/reduction/inference-core/validation-register.md",
@@ -466,6 +523,8 @@ const guardrailExclusions = new Set([
   "scripts/inference-core/pr09-boundaries.test.mjs",
   "scripts/inference-core/pr10-contract-revision.mjs",
   "scripts/inference-core/pr10-boundaries.test.mjs",
+  "scripts/inference-core/pr10c-contract-revision.mjs",
+  "scripts/inference-core/pr10c-boundaries.test.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -493,6 +552,7 @@ const protectedGuardrailPaths = [
   "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
   "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
   "docs/reduction/inference-core/pr-10-lifecycle-foundation-decisions.json",
+  "docs/reduction/inference-core/pr-10c-emergency-isolation-decisions.json",
   "docs/reduction/inference-core/decision-register.md",
   "docs/reduction/inference-core/source-map.jsonl",
   "docs/reduction/inference-core/validation-register.md",
@@ -524,6 +584,8 @@ const protectedGuardrailPaths = [
   "scripts/inference-core/pr09-contract-revision.mjs",
   "scripts/inference-core/pr10-boundaries.test.mjs",
   "scripts/inference-core/pr10-contract-revision.mjs",
+  "scripts/inference-core/pr10c-boundaries.test.mjs",
+  "scripts/inference-core/pr10c-contract-revision.mjs",
   "scripts/inference-core/retention-canary.mjs",
   "scripts/inference-core/retention-canary.test.mjs",
   "scripts/inference-core/run-core-command.mjs",
@@ -1947,6 +2009,243 @@ export const pr10SourceEvidencePaths = [
   "packages/contracts/src/inference-core-lifecycle.ts",
 ]
 
+export const pr10cIsolationStates = [
+  "inactive",
+  "engaging",
+  "active",
+  "disengaging",
+  "recovery_required",
+]
+
+export const pr10cIsolationFailureCodes = [
+  "state_invalid",
+  "admission_fence_failed",
+  "inflight_abort_failed",
+  "enforcement_failed",
+  "verification_failed",
+  "restore_reassertion_failed",
+  "journal_failed",
+]
+
+export const pr10cAddedRouteContract = [
+  {
+    surface: "bff",
+    method: "GET",
+    path: "/api/admin/isolation",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/isolation/activate",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+  {
+    surface: "bff",
+    method: "POST",
+    path: "/api/admin/isolation/deactivate",
+    source: "apps/bff/src/routes/admin.ts",
+    classification: "current-console-seam",
+  },
+]
+
+export const pr10cRouteFingerprintTransitions = [
+  {
+    path: "apps/bff/src/index.ts",
+    symbol: "<file>",
+    beforeSha256:
+      "34861ad68b99b3ff2eb927daa76b8b9157a62e5841365e456c4335a168c34293",
+    afterSha256:
+      "32509b161073d225b6aef9e3993c778d997773073a14be5318b6d33e78ed093d",
+  },
+]
+
+export const pr10cMutationAdminOnlyRoutePolicyKeys = [
+  "POST /api/admin/isolation/activate",
+  "POST /api/admin/isolation/deactivate",
+]
+
+export const pr10cAdminOnlyRoutePolicyKeys = [
+  ...pr10cMutationAdminOnlyRoutePolicyKeys,
+  "GET /api/admin/recovery/status",
+  "POST /api/admin/observability/alert-egress",
+  "POST /api/admin/recovery/factor/commission",
+  "POST /api/admin/settings/organization",
+  "POST /api/admin/settings/telemetry",
+].sort()
+
+export const pr10cReviewedDispositions = {
+  historicalTestRepairs: {
+    paths: pr10cSuccessorAwareHistoricalTestPaths,
+    retainedRevisionBindings: pr10cSuccessorAwareHistoricalTestBindings,
+  },
+  isolationState: {
+    scope: "global-singleton",
+    states: pr10cIsolationStates,
+    effectiveTrafficStates: ["open", "sealed"],
+    failureCodes: pr10cIsolationFailureCodes,
+    nonInactiveStateFailsClosed: true,
+    optimisticRevisionRequired: true,
+    activationConfirmation: "ACTIVATE EMERGENCY ISOLATION",
+    deactivationConfirmation: "DEACTIVATE EMERGENCY ISOLATION",
+    stateAuditAndIdempotencyAtomicity: "single-postgresql-transaction",
+    rawErrorTextPersisted: false,
+  },
+  routeAuthorization: {
+    status: {
+      method: "GET",
+      path: "/api/admin/isolation",
+      capability: "console.operational.view",
+      allowedRoles: ["Admin", "Operator"],
+    },
+    mutations: [
+      {
+        method: "POST",
+        path: "/api/admin/isolation/activate",
+        standingRole: "Admin",
+        emergencyElevatedOperatorAllowed: false,
+      },
+      {
+        method: "POST",
+        path: "/api/admin/isolation/deactivate",
+        standingRole: "Admin",
+        emergencyElevatedOperatorAllowed: false,
+      },
+    ],
+    mutationReauthentication: {
+      maxAuthenticationAgeSeconds: 300,
+      acceptedMfaMethods: ["otp", "hwk", "webauthn", "webauthn-passwordless"],
+    },
+  },
+  trafficEnforcement: {
+    publicInferenceRoutesUnchanged: true,
+    publicFirecrawlRoutesUnchanged: true,
+    blocksNewInferenceAdmissions: true,
+    blocksNewFirecrawlAdmissions: true,
+    inProcessAbortSignalPropagation: true,
+    activationWaitsForInflightAbortAndZeroLocalLeases: true,
+    terminalFinalizationReservation: true,
+    successAccountingAndResponseShareFinalizationLane: true,
+    engagementWaitsForFinalizingResponseRelease: true,
+    isolationFirstSettlesFailureExactlyOnce: true,
+    deactivationCommitReservation: true,
+    admissionsCannotInvalidatePreparedDeactivation: true,
+    localOpenOccursOnlyAfterDurableInactiveCommit: true,
+    adminHealthAndMetricsRemainReachable: true,
+    bulkApplicationDisableUsed: false,
+    liveTopologyFirewallAndNoBypassQualificationOwner: "PR-12",
+    liveInflightDrainAndAbortQualificationOwner: "PR-12",
+  },
+  restoreSafety: {
+    restoreMayClearIsolation: false,
+    isolationFenceHeldAcrossRestoreAndCompensation: true,
+    fenceAcquisitionPersistsAndReadsBackRecoveryRequiredBeforeAnyActiveRestore: true,
+    nonRestorableAuthorityRequired: true,
+    unboundOrUnavailableAuthorityFailsClosed: true,
+    operationScopedMarkerCompareAndSet: true,
+    startupReconcilesMarkerBeforeInactiveCanOpen: true,
+    markerAcquisitionFailureAttemptsConsoleRecoveryBeforeReject: true,
+    mutationsBlockedUntilMarkerClearLinearization: true,
+    markerClearRequiresConsoleRecoveryReadback: true,
+    unfencedJournalAdmissionSealsUntilReconciled: true,
+    preparedUnfencedRestoreCasToRecoveryRequiredBeforeValidation: true,
+    survivingMarkerClearRequiresMatchingTerminalRestore: true,
+    unresolvedOrUnknownMarkerOwnerNeverClearedAtBootstrap: true,
+    lifecycleReconciliationLockedAndIdempotent: true,
+    postAdmissionOrdering: [
+      "journal.begin-created",
+      "durable-recovery-required-fence-acquired-and-read-back",
+      "prepareRestore-validation",
+      "quiesce",
+    ],
+    fenceOrderingExemption: "pre-admission-manifest-rejection-only",
+    durableIsolationReassertedBeforeAdmissionReopens: true,
+    reassertionFailureState: "recovery_required",
+    everyAdmittedRestoreEndsDurableRecoveryRequired: true,
+    recoveryRequiredReassertedAfterEveryAppliedOrPartialRestoreFailureBeforeReturnOrResume: true,
+  },
+  zeroContentRetention: {
+    workloadContentDays: 0,
+    requestOrResponseContentPersisted: false,
+    rawErrorTextPersisted: false,
+    runtimeQualificationOwner: "PR-12",
+  },
+  deferredWork: {
+    liveTopologyQualificationOwner: "PR-12",
+    firewallEnforcementQualificationOwner: "PR-12",
+    inflightDrainAndAbortQualificationOwner: "PR-12",
+    nonRestorableAuthorityBackendAndQualificationOwner: "PR-12",
+    productionDeploymentOwner: "PR-12",
+    vendorMaintenanceAccessOwner: "PR-10D",
+  },
+  scopeBoundaries: {
+    sourceOnly: true,
+    intermediateDeployment: false,
+    runtimeQualified: false,
+    isolationRoutes: 3,
+    productionFirewallBindings: 0,
+  },
+}
+
+export const pr10cGovernancePaths = [
+  pr10cDecisionPath,
+  "docs/reduction/inference-core/README.md",
+  "package.json",
+  ...pr10cSuccessorAwareHistoricalTestPaths,
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/guardrails.test.mjs",
+  "scripts/inference-core/pr10c-boundaries.test.mjs",
+  "scripts/inference-core/pr10c-contract-revision.mjs",
+].sort()
+
+export const pr10cRequiredFrozenRepositoryPaths = [...pr10cGovernancePaths]
+
+export const pr10cAllowedRepositoryPathPatterns = [
+  /^apps\/bff\/src\/auth\/authorization(?:-security|\.test)?\.ts$/,
+  /^apps\/bff\/src\/db\/inference-core-(?:client|schema)(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/index(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/routes\/(?:admin|app-gateway|firecrawl-gateway)(?:-[a-z0-9-]+)?(?:\.test)?\.ts$/,
+  /^apps\/bff\/src\/routes\/inference-core-characterization\.test\.ts$/,
+  /^apps\/bff\/src\/services\/(?:admin-connected-apps|admin-connected-apps-firecrawl|emergency-isolation|idempotency|identity-mutation-journal|isolation-traffic-gate|lifecycle-operation-journal|lifecycle-orchestration|litellm-chat-transport)(?:\.test)?\.ts$/,
+  /^docs\/reduction\/inference-core\/(?:README\.md|pr-10c-emergency-isolation-decisions\.json)$/,
+  /^infra\/migrations\/0000_inference_core\.sql$/,
+  /^package\.json$/,
+  /^packages\/contracts\/src\/(?:index|inference-core|inference-core-authorization|inference-core-isolation)(?:\.test)?\.ts$/,
+  /^scripts\/inference-core\/(?:pr05|pr06|pr10)-boundaries\.test\.mjs$/,
+  /^scripts\/inference-core\/(?:guardrails(?:\.test)?|pr10c-(?:boundaries\.test|contract-revision))\.mjs$/,
+  /^test-support\/inference-core-db-tests\/src\/(?:inference-core-migration|inference-core-retention|pr10-lifecycle-journal|pr10c-emergency-isolation)(?:\.test)?\.ts$/,
+]
+
+export const pr10cGeneratedDestinationPaths = [
+  allowlistPath,
+  routeBaselinePath,
+  pr10cContractRevisionPath,
+].sort()
+
+export const pr10cSourceEvidencePaths = [
+  "apps/bff/src/db/inference-core-client.ts",
+  "apps/bff/src/db/inference-core-schema.ts",
+  "apps/bff/src/index.ts",
+  "apps/bff/src/routes/admin.ts",
+  "apps/bff/src/routes/app-gateway.ts",
+  "apps/bff/src/routes/firecrawl-gateway.ts",
+  "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+  "apps/bff/src/services/admin-connected-apps.ts",
+  "apps/bff/src/services/emergency-isolation.ts",
+  "apps/bff/src/services/identity-mutation-journal.ts",
+  "apps/bff/src/services/isolation-traffic-gate.ts",
+  "apps/bff/src/services/lifecycle-operation-journal.ts",
+  "apps/bff/src/services/lifecycle-orchestration.ts",
+  "apps/bff/src/services/litellm-chat-transport.ts",
+  "infra/migrations/0000_inference_core.sql",
+  "packages/contracts/src/index.ts",
+  "packages/contracts/src/inference-core.ts",
+  "packages/contracts/src/inference-core-isolation.ts",
+  ...pr10cSuccessorAwareHistoricalTestPaths,
+]
+
 const pr10Pr09HistoricalNativeEvidencePaths = new Set([
   "apps/bff/src/db/inference-core-schema.ts",
   "infra/migrations/0000_inference_core.sql",
@@ -2727,6 +3026,34 @@ export const pr10TargetContract = {
   lifecycleRoutes: 0,
 }
 
+export const pr10cTargetContract = {
+  findingEntriesDueByPr10c: 0,
+  remainingFindingEntries: pr10TargetContract.remainingFindingEntries,
+  fs105BuilderHubTombstones: pr10TargetContract.fs105BuilderHubTombstones,
+  legacyRoutes: 0,
+  routes: pr10TargetContract.routes + pr10cAddedRouteContract.length,
+  routeClassifications: {
+    ...pr10TargetContract.routeClassifications,
+    "current-console-seam":
+      pr10TargetContract.routeClassifications["current-console-seam"] +
+      pr10cAddedRouteContract.length,
+  },
+  publicInferenceRoutes: pr10TargetContract.publicInferenceRoutes,
+  publicFirecrawlRoutes: pr10TargetContract.publicFirecrawlRoutes,
+  addedRoutes: pr10cAddedRouteContract,
+  adminOnlyRoutePolicyKeys: pr10cAdminOnlyRoutePolicyKeys,
+  fastifyRegistrars: pr10TargetContract.fastifyRegistrars,
+  routeFingerprintTransitions: pr10cRouteFingerprintTransitions,
+  webInferenceConsumers: 0,
+  escapeHatchPaths: [],
+  sourceOnly: true,
+  runtimeQualified: false,
+  isolationRoutes: 3,
+  productionFirewallBindings: 0,
+  liveQualificationOwner: "PR-12",
+  vendorMaintenanceAccessOwner: "PR-10D",
+}
+
 export const pr08QueryFreeLoggingFingerprints = [
   {
     symbol: "logQueryFreeIncomingRequest",
@@ -2798,6 +3125,8 @@ const reviewedFastifyRegistrarSpecs = [
   {
     exportName: "registerAppGatewayRoutes",
     importSource: "./routes/app-gateway",
+    optionsInitializer: "{}",
+    optionsParameterType: "AppGatewayRouteOptions",
     sourcePath: "apps/bff/src/routes/app-gateway.ts",
   },
   {
@@ -2817,7 +3146,8 @@ const reviewedFastifyRegistrarSpecs = [
   {
     exportName: "registerAdminRoutes",
     importSource: "./routes/admin",
-    optionsInitializer: "{emergencyRecoveryService:null}",
+    optionsInitializer:
+      "{emergencyIsolationService:null,emergencyRecoveryService:null,}",
     optionsParameterType: "AdminRouteOptions",
     sourcePath: "apps/bff/src/routes/admin.ts",
   },
@@ -4064,6 +4394,7 @@ export function verifyActiveReviewedRevisionId(revisionId) {
       "PR-08",
       "PR-09",
       "PR-10",
+      "PR-10C",
     ].includes(revisionId)
   ) {
     return []
@@ -4095,62 +4426,69 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(activeReviewedRevision === "PR-10"
-      ? verifyPr10TargetState({
+    ...(activeReviewedRevision === "PR-10C"
+      ? verifyPr10cTargetState({
           root,
           currentAllowlist: expectedAllowlist,
           currentRoutes: expectedRoutes,
           paths,
         })
-      : activeReviewedRevision === "PR-09"
-        ? verifyPr09TargetState({
+      : activeReviewedRevision === "PR-10"
+        ? verifyPr10TargetState({
             root,
             currentAllowlist: expectedAllowlist,
             currentRoutes: expectedRoutes,
             paths,
           })
-        : activeReviewedRevision === "PR-08"
-          ? verifyPr08TargetState({
+        : activeReviewedRevision === "PR-09"
+          ? verifyPr09TargetState({
               root,
               currentAllowlist: expectedAllowlist,
               currentRoutes: expectedRoutes,
               paths,
             })
-          : activeReviewedRevision === "PR-07"
-            ? verifyPr07TargetState({
+          : activeReviewedRevision === "PR-08"
+            ? verifyPr08TargetState({
                 root,
                 currentAllowlist: expectedAllowlist,
                 currentRoutes: expectedRoutes,
                 paths,
               })
-            : activeReviewedRevision === "PR-06"
-              ? verifyPr06TargetState({
+            : activeReviewedRevision === "PR-07"
+              ? verifyPr07TargetState({
                   root,
                   currentAllowlist: expectedAllowlist,
                   currentRoutes: expectedRoutes,
                   paths,
                 })
-              : activeReviewedRevision === "PR-05"
-                ? verifyPr05TargetState({
+              : activeReviewedRevision === "PR-06"
+                ? verifyPr06TargetState({
                     root,
                     currentAllowlist: expectedAllowlist,
                     currentRoutes: expectedRoutes,
                     paths,
                   })
-                : activeReviewedRevision === "PR-04"
-                  ? verifyPr04TargetState({
+                : activeReviewedRevision === "PR-05"
+                  ? verifyPr05TargetState({
                       root,
                       currentAllowlist: expectedAllowlist,
                       currentRoutes: expectedRoutes,
                       paths,
                     })
-                  : activeReviewedRevision === "PR-03"
-                    ? verifyPr03TargetState({
+                  : activeReviewedRevision === "PR-04"
+                    ? verifyPr04TargetState({
                         root,
                         currentAllowlist: expectedAllowlist,
                         currentRoutes: expectedRoutes,
+                        paths,
                       })
-                    : verifyActiveReviewedRevisionId(activeReviewedRevision)),
+                    : activeReviewedRevision === "PR-03"
+                      ? verifyPr03TargetState({
+                          root,
+                          currentAllowlist: expectedAllowlist,
+                          currentRoutes: expectedRoutes,
+                        })
+                      : verifyActiveReviewedRevisionId(activeReviewedRevision)),
   ]
 
   let baseStatus = "not-requested"
@@ -4196,6 +4534,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
             "PR-08",
             "PR-09",
             "PR-10",
+            "PR-10C",
           ]).has(reviewedRevision.id)
         ) {
           errors.push(
@@ -4272,6 +4611,10 @@ export function verifyReviewedContractRevision({
   const currentPr09Revision = currentRevisions.find(({ id }) => id === "PR-09")
   const basePr10Revision = baseRevisions.find(({ id }) => id === "PR-10")
   const currentPr10Revision = currentRevisions.find(({ id }) => id === "PR-10")
+  const basePr10cRevision = baseRevisions.find(({ id }) => id === "PR-10C")
+  const currentPr10cRevision = currentRevisions.find(
+    ({ id }) => id === "PR-10C",
+  )
   const errors = []
   if (
     (!currentPr02Revision || !basePr02Revision) &&
@@ -4327,7 +4670,30 @@ export function verifyReviewedContractRevision({
         ...verifyRetainedPr10RevisionEvidence(root, currentPr10Revision),
       )
     }
+    if (basePr10cRevision && currentPr10cRevision) {
+      errors.push(
+        ...verifyRetainedPr10cRevisionEvidence(root, currentPr10cRevision),
+      )
+    }
     return { present: false, id: null, errors: errors.sort() }
+  }
+
+  if (
+    isExactRevisionAppend(
+      baseRevisions,
+      currentRevisions,
+      "PR-10C",
+      pr10cContractRevisionPath,
+    )
+  ) {
+    return verifyIntroducedPr10cRevision({
+      root,
+      baseCommit,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+    })
   }
 
   if (
@@ -4924,6 +5290,199 @@ function verifyPr05LaneLineage(root) {
   } catch {
     return [`PR-05 lane anchor is not an ancestor ${pr05LaneAnchor}`]
   }
+}
+
+function verifyIntroducedPr10cRevision({
+  root,
+  baseCommit,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+}) {
+  const errors = []
+  if (baseCommit !== pr10cContractBase) {
+    errors.push(
+      `PR-10C contract revision base changed expected=${pr10cContractBase} actual=${baseCommit}`,
+    )
+  }
+  if (resolveTree(root, baseCommit) !== pr10cContractBaseTree) {
+    errors.push("PR-10C contract base tree changed")
+  }
+  errors.push(...verifyPr10cLaneLineage(root))
+  errors.push(...verifyPr10cBaseEvidence(root))
+  const baseRevisionHistory = baseRoutes.reviewedRevisions ?? []
+  const expectedPriorIds = [
+    "PR-02",
+    "PR-03",
+    "PR-04",
+    "PR-05",
+    "PR-06",
+    "PR-07",
+    "PR-08",
+    "PR-09",
+    "PR-10",
+  ]
+  if (
+    baseRevisionHistory.length !== expectedPriorIds.length ||
+    expectedPriorIds.some((id, index) => baseRevisionHistory[index]?.id !== id)
+  ) {
+    errors.push(
+      "PR-10C requires the exact retained PR-02 through PR-10 revision history",
+    )
+  } else {
+    errors.push(
+      ...verifyRetainedPr02RevisionEvidence(root, baseRevisionHistory[0]),
+      ...verifyRetainedPr03RevisionEvidence(root, baseRevisionHistory[1]),
+      ...verifyRetainedPr04RevisionEvidence(root, baseRevisionHistory[2]),
+      ...verifyRetainedPr05RevisionEvidence(root, baseRevisionHistory[3]),
+      ...verifyRetainedPr06RevisionEvidence(root, baseRevisionHistory[4]),
+      ...verifyRetainedPr07RevisionEvidence(root, baseRevisionHistory[5]),
+      ...verifyRetainedPr08RevisionEvidence(root, baseRevisionHistory[6]),
+      ...verifyRetainedPr09RevisionEvidence(root, baseRevisionHistory[7]),
+      ...verifyRetainedPr10RevisionEvidence(root, baseRevisionHistory[8]),
+    )
+  }
+  if (!isRegularFile(resolve(root, pr10cContractRevisionPath))) {
+    return {
+      present: true,
+      id: "PR-10C",
+      errors: [
+        ...errors,
+        `missing reviewed contract revision ${pr10cContractRevisionPath}`,
+      ].sort(),
+    }
+  }
+
+  const decision = readPr10cDecisionDocument(root)
+  errors.push(
+    ...verifyPr10cDecisionDocument(decision, { requireReady: true, root }),
+  )
+  const evidenceFiles = buildRevisionEvidenceFingerprints(
+    root,
+    pr10cRevisionEvidencePaths,
+    "PR-10C",
+  )
+  const expected = buildContractRevisionDocument({
+    revisionId: "PR-10C",
+    scope: "emergency-isolation-source-only",
+    baseCommit,
+    baseTree: resolveTree(root, baseCommit),
+    baseAllowlist,
+    currentAllowlist,
+    baseRoutes,
+    currentRoutes: {
+      ...currentRoutes,
+      reviewedRevisions: structuredClone(baseRoutes.reviewedRevisions ?? []),
+    },
+    evidenceFiles,
+  })
+  const actual = readJson(resolve(root, pr10cContractRevisionPath))
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    errors.push(
+      "PR-10C reviewed contract revision does not match exact changes",
+    )
+  }
+
+  const expectedRevisionHistory = [
+    ...(baseRoutes.reviewedRevisions ?? []),
+    {
+      id: "PR-10C",
+      path: pr10cContractRevisionPath,
+      sha256: sha256(readFileSync(resolve(root, pr10cContractRevisionPath))),
+    },
+  ]
+  if (
+    JSON.stringify(currentRoutes.reviewedRevisions ?? []) !==
+    JSON.stringify(expectedRevisionHistory)
+  ) {
+    errors.push("reviewed contract revision history changed")
+  }
+  errors.push(...verifyRequiredRoutes(currentRoutes))
+  errors.push(
+    ...verifyPr10cCandidateContract({
+      root,
+      baseAllowlist,
+      currentAllowlist,
+      baseRoutes,
+      currentRoutes,
+      operationPolicy: decision.operationPolicy,
+    }),
+  )
+
+  return { present: true, id: "PR-10C", errors: errors.sort() }
+}
+
+function verifyPr10cLaneLineage(root) {
+  const anchor = resolveCommit(root, pr10cLaneAnchor)
+  if (anchor !== pr10cLaneAnchor) {
+    return [`PR-10C lane anchor is unavailable ${pr10cLaneAnchor}`]
+  }
+  const head = currentHead(root)
+  if (head === pr10cLaneAnchor) {
+    return []
+  }
+  try {
+    execFileSync(
+      "git",
+      ["merge-base", "--is-ancestor", pr10cLaneAnchor, head],
+      {
+        cwd: root,
+        stdio: "ignore",
+      },
+    )
+    return []
+  } catch {
+    return [`PR-10C lane anchor is not an ancestor ${pr10cLaneAnchor}`]
+  }
+}
+
+function verifyReviewedPr10cSuccessorContext(root) {
+  const decisionPath = resolve(root, pr10cDecisionPath)
+  if (!isRegularFile(decisionPath)) {
+    return [`missing reviewed PR-10C successor decision ${pr10cDecisionPath}`]
+  }
+
+  let decision
+  try {
+    decision = readJson(decisionPath)
+  } catch {
+    return ["invalid PR-10C successor decision document"]
+  }
+
+  const errors = [
+    ...verifyPr10cDecisionDocument(decision, {
+      requireReady: true,
+      root,
+    }),
+    ...verifyPr10cLaneLineage(root),
+  ]
+  if (resolveCommit(root, pr10cContractBase) !== pr10cContractBase) {
+    errors.push(`PR-10C contract base is unavailable ${pr10cContractBase}`)
+  }
+  if (resolveTree(root, pr10cContractBase) !== pr10cContractBaseTree) {
+    errors.push("PR-10C contract base tree changed")
+  }
+  return [...new Set(errors)].sort()
+}
+
+function verifyReviewedPr10cSuccessorTarget({
+  root,
+  currentAllowlist,
+  currentRoutes,
+  paths,
+}) {
+  return [
+    ...new Set([
+      ...verifyReviewedPr10cSuccessorContext(root),
+      ...verifyPr10cTargetState({
+        root,
+        currentAllowlist,
+        currentRoutes,
+        paths,
+      }),
+    ]),
+  ].sort()
 }
 
 function verifyIntroducedPr10Revision({
@@ -5964,6 +6523,72 @@ function verifyRetainedPr10RevisionEvidence(root, revision) {
   return errors.sort()
 }
 
+function verifyRetainedPr10cRevisionEvidence(root, revision) {
+  const errors = []
+  if (
+    revision.id !== "PR-10C" ||
+    revision.path !== pr10cContractRevisionPath ||
+    !/^[0-9a-f]{64}$/.test(revision.sha256 ?? "")
+  ) {
+    return ["invalid retained PR-10C revision identity"]
+  }
+  const absolutePath = resolve(root, pr10cContractRevisionPath)
+  if (!isRegularFile(absolutePath)) {
+    return [`missing reviewed contract revision ${pr10cContractRevisionPath}`]
+  }
+  if (sha256(readFileSync(absolutePath)) !== revision.sha256) {
+    errors.push("retained PR-10C revision fingerprint changed")
+  }
+  const document = readJson(absolutePath)
+  if (
+    document.id !== "PR-10C" ||
+    document.scope !== "emergency-isolation-source-only" ||
+    document.baseCommit !== pr10cContractBase ||
+    document.baseTree !== pr10cContractBaseTree
+  ) {
+    errors.push("retained PR-10C revision base identity changed")
+  }
+  if (
+    JSON.stringify(document.evidenceFiles) !==
+    JSON.stringify(
+      buildRevisionEvidenceFingerprints(
+        root,
+        pr10cRevisionEvidencePaths,
+        "PR-10C",
+      ),
+    )
+  ) {
+    errors.push("retained PR-10C revision evidence changed")
+  }
+  errors.push(...verifyPr10cBaseEvidence(root))
+  return errors.sort()
+}
+
+export function verifyPr10cBaseEvidence(root = repositoryRoot) {
+  const errors = []
+  for (const path of pr10cImmutablePriorEvidencePaths) {
+    let expected
+    try {
+      expected = readRepositoryPathAtCommit(root, pr10cContractBase, path)
+    } catch {
+      errors.push(`PR-10C immutable base evidence is unavailable ${path}`)
+      continue
+    }
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      errors.push(`PR-10C retained prior evidence is missing ${path}`)
+      continue
+    }
+    if (pr10cSuccessorAwareHistoricalTestPaths.includes(path)) {
+      continue
+    }
+    if (!readFileSync(absolutePath).equals(expected)) {
+      errors.push(`PR-10C retained prior evidence changed ${path}`)
+    }
+  }
+  return errors.sort()
+}
+
 export function verifyPr10BaseEvidence(root = repositoryRoot) {
   const errors = []
   for (const path of pr10ImmutablePriorEvidencePaths) {
@@ -5993,7 +6618,10 @@ export function verifyPr10BaseEvidence(root = repositoryRoot) {
       errors.push(`PR-10 retained prior evidence is missing ${path}`)
       continue
     }
-    if (!readFileSync(absolutePath).equals(expected)) {
+    const retainedBytes = pr10cSuccessorAwareHistoricalTestPaths.includes(path)
+      ? readRepositoryPathAtCommit(root, pr10cContractBase, path)
+      : readFileSync(absolutePath)
+    if (!retainedBytes.equals(expected)) {
       errors.push(`PR-10 retained prior evidence changed ${path}`)
     }
   }
@@ -7941,6 +8569,338 @@ export function verifyPr09OperationBoundary(operationPolicy) {
   return [...new Set(errors)].sort()
 }
 
+export function readPr10cDecisionDocument(root = repositoryRoot) {
+  return readJson(resolve(root, pr10cDecisionPath))
+}
+
+export function buildPr10cSourceEvidence(root = repositoryRoot) {
+  return pr10cSourceEvidencePaths.map((path) => {
+    const absolutePath = resolve(root, path)
+    if (!isRegularFile(absolutePath)) {
+      throw new Error(`Missing PR-10C source evidence file ${path}`)
+    }
+    return { path, sha256: sha256(readFileSync(absolutePath)) }
+  })
+}
+
+export function verifyPr10cDecisionDocument(
+  decision,
+  { requireReady = false, root = repositoryRoot } = {},
+) {
+  const errors = []
+  const expectedKeys = [
+    "contractBaseCommit",
+    "contractBaseTree",
+    "laneAnchorCommit",
+    "operationPolicy",
+    "reviewStatus",
+    "reviewedDispositions",
+    "schemaVersion",
+    "scope",
+    "sourceEvidence",
+    "target",
+    "workPackage",
+  ]
+  if (
+    !decision ||
+    JSON.stringify(Object.keys(decision).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-10C" ||
+    decision.scope !== "emergency-isolation-source-only" ||
+    decision.contractBaseCommit !== pr10cContractBase ||
+    decision.contractBaseTree !== pr10cContractBaseTree ||
+    decision.laneAnchorCommit !== pr10cLaneAnchor
+  ) {
+    errors.push("invalid PR-10C decision identity")
+  }
+  if (
+    JSON.stringify(decision?.reviewedDispositions) !==
+    JSON.stringify(pr10cReviewedDispositions)
+  ) {
+    errors.push("invalid PR-10C reviewed dispositions")
+  }
+  if (
+    JSON.stringify(decision?.target) !== JSON.stringify(pr10cTargetContract)
+  ) {
+    errors.push("invalid PR-10C target")
+  }
+  if (
+    !["pending-final-staged-delta", "reviewed"].includes(decision?.reviewStatus)
+  ) {
+    errors.push("invalid PR-10C review status")
+  } else if (requireReady && decision.reviewStatus !== "reviewed") {
+    errors.push("PR-10C operation policy is not reviewed")
+  }
+
+  let expectedSourceEvidence = []
+  if (decision?.reviewStatus === "reviewed") {
+    try {
+      expectedSourceEvidence = buildPr10cSourceEvidence(root)
+    } catch (error) {
+      errors.push(String(error instanceof Error ? error.message : error))
+    }
+  }
+  if (
+    JSON.stringify(decision?.sourceEvidence) !==
+    JSON.stringify(expectedSourceEvidence)
+  ) {
+    errors.push("invalid PR-10C source evidence")
+  }
+
+  const dispositions = decision?.reviewedDispositions
+  if (
+    JSON.stringify(dispositions?.historicalTestRepairs) !==
+    JSON.stringify({
+      paths: pr10cSuccessorAwareHistoricalTestPaths,
+      retainedRevisionBindings: pr10cSuccessorAwareHistoricalTestBindings,
+    })
+  ) {
+    errors.push("PR-10C historical test repair boundary changed")
+  }
+  if (
+    dispositions?.isolationState?.scope !== "global-singleton" ||
+    JSON.stringify(dispositions?.isolationState?.states) !==
+      JSON.stringify(pr10cIsolationStates) ||
+    JSON.stringify(dispositions?.isolationState?.failureCodes) !==
+      JSON.stringify(pr10cIsolationFailureCodes) ||
+    dispositions?.isolationState?.nonInactiveStateFailsClosed !== true ||
+    dispositions?.isolationState?.optimisticRevisionRequired !== true ||
+    dispositions?.isolationState?.stateAuditAndIdempotencyAtomicity !==
+      "single-postgresql-transaction"
+  ) {
+    errors.push("PR-10C isolation state boundary changed")
+  }
+  if (
+    dispositions?.routeAuthorization?.status?.capability !==
+      "console.operational.view" ||
+    JSON.stringify(dispositions?.routeAuthorization?.status?.allowedRoles) !==
+      JSON.stringify(["Admin", "Operator"]) ||
+    dispositions?.routeAuthorization?.mutations?.length !== 2 ||
+    dispositions.routeAuthorization.mutations.some(
+      (mutation) =>
+        mutation.standingRole !== "Admin" ||
+        mutation.emergencyElevatedOperatorAllowed !== false,
+    ) ||
+    dispositions?.routeAuthorization?.mutationReauthentication
+      ?.maxAuthenticationAgeSeconds !== 300 ||
+    JSON.stringify(
+      dispositions?.routeAuthorization?.mutationReauthentication
+        ?.acceptedMfaMethods,
+    ) !== JSON.stringify(["otp", "hwk", "webauthn", "webauthn-passwordless"])
+  ) {
+    errors.push("PR-10C standing-Admin mutation boundary changed")
+  }
+  if (
+    dispositions?.trafficEnforcement?.publicInferenceRoutesUnchanged !== true ||
+    dispositions?.trafficEnforcement?.publicFirecrawlRoutesUnchanged !== true ||
+    dispositions?.trafficEnforcement?.blocksNewInferenceAdmissions !== true ||
+    dispositions?.trafficEnforcement?.blocksNewFirecrawlAdmissions !== true ||
+    dispositions?.trafficEnforcement
+      ?.activationWaitsForInflightAbortAndZeroLocalLeases !== true ||
+    dispositions?.trafficEnforcement?.terminalFinalizationReservation !==
+      true ||
+    dispositions?.trafficEnforcement
+      ?.successAccountingAndResponseShareFinalizationLane !== true ||
+    dispositions?.trafficEnforcement
+      ?.engagementWaitsForFinalizingResponseRelease !== true ||
+    dispositions?.trafficEnforcement
+      ?.isolationFirstSettlesFailureExactlyOnce !== true ||
+    dispositions?.trafficEnforcement?.deactivationCommitReservation !== true ||
+    dispositions?.trafficEnforcement
+      ?.admissionsCannotInvalidatePreparedDeactivation !== true ||
+    dispositions?.trafficEnforcement
+      ?.localOpenOccursOnlyAfterDurableInactiveCommit !== true ||
+    dispositions?.trafficEnforcement?.bulkApplicationDisableUsed !== false ||
+    dispositions?.trafficEnforcement
+      ?.liveTopologyFirewallAndNoBypassQualificationOwner !== "PR-12" ||
+    dispositions?.trafficEnforcement
+      ?.liveInflightDrainAndAbortQualificationOwner !== "PR-12"
+  ) {
+    errors.push("PR-10C traffic enforcement boundary changed")
+  }
+  if (
+    dispositions?.restoreSafety?.restoreMayClearIsolation !== false ||
+    dispositions?.restoreSafety
+      ?.isolationFenceHeldAcrossRestoreAndCompensation !== true ||
+    dispositions?.restoreSafety
+      ?.fenceAcquisitionPersistsAndReadsBackRecoveryRequiredBeforeAnyActiveRestore !==
+      true ||
+    dispositions?.restoreSafety?.nonRestorableAuthorityRequired !== true ||
+    dispositions?.restoreSafety?.unboundOrUnavailableAuthorityFailsClosed !==
+      true ||
+    dispositions?.restoreSafety?.operationScopedMarkerCompareAndSet !== true ||
+    dispositions?.restoreSafety
+      ?.startupReconcilesMarkerBeforeInactiveCanOpen !== true ||
+    dispositions?.restoreSafety
+      ?.markerAcquisitionFailureAttemptsConsoleRecoveryBeforeReject !== true ||
+    dispositions?.restoreSafety
+      ?.mutationsBlockedUntilMarkerClearLinearization !== true ||
+    dispositions?.restoreSafety?.markerClearRequiresConsoleRecoveryReadback !==
+      true ||
+    dispositions?.restoreSafety
+      ?.unfencedJournalAdmissionSealsUntilReconciled !== true ||
+    dispositions?.restoreSafety
+      ?.preparedUnfencedRestoreCasToRecoveryRequiredBeforeValidation !== true ||
+    dispositions?.restoreSafety
+      ?.survivingMarkerClearRequiresMatchingTerminalRestore !== true ||
+    dispositions?.restoreSafety
+      ?.unresolvedOrUnknownMarkerOwnerNeverClearedAtBootstrap !== true ||
+    dispositions?.restoreSafety?.lifecycleReconciliationLockedAndIdempotent !==
+      true ||
+    JSON.stringify(dispositions?.restoreSafety?.postAdmissionOrdering) !==
+      JSON.stringify([
+        "journal.begin-created",
+        "durable-recovery-required-fence-acquired-and-read-back",
+        "prepareRestore-validation",
+        "quiesce",
+      ]) ||
+    dispositions?.restoreSafety?.fenceOrderingExemption !==
+      "pre-admission-manifest-rejection-only" ||
+    dispositions?.restoreSafety
+      ?.durableIsolationReassertedBeforeAdmissionReopens !== true ||
+    dispositions?.restoreSafety?.reassertionFailureState !==
+      "recovery_required" ||
+    dispositions?.restoreSafety
+      ?.everyAdmittedRestoreEndsDurableRecoveryRequired !== true ||
+    dispositions?.restoreSafety
+      ?.recoveryRequiredReassertedAfterEveryAppliedOrPartialRestoreFailureBeforeReturnOrResume !==
+      true
+  ) {
+    errors.push("PR-10C restore safety boundary changed")
+  }
+  if (
+    dispositions?.deferredWork?.liveTopologyQualificationOwner !== "PR-12" ||
+    dispositions?.deferredWork?.firewallEnforcementQualificationOwner !==
+      "PR-12" ||
+    dispositions?.deferredWork?.inflightDrainAndAbortQualificationOwner !==
+      "PR-12" ||
+    dispositions?.deferredWork
+      ?.nonRestorableAuthorityBackendAndQualificationOwner !== "PR-12" ||
+    dispositions?.deferredWork?.productionDeploymentOwner !== "PR-12" ||
+    dispositions?.deferredWork?.vendorMaintenanceAccessOwner !== "PR-10D"
+  ) {
+    errors.push("PR-10C deferred ownership boundary changed")
+  }
+  if (
+    dispositions?.scopeBoundaries?.sourceOnly !== true ||
+    dispositions?.scopeBoundaries?.intermediateDeployment !== false ||
+    dispositions?.scopeBoundaries?.runtimeQualified !== false ||
+    dispositions?.scopeBoundaries?.isolationRoutes !== 3 ||
+    dispositions?.scopeBoundaries?.productionFirewallBindings !== 0
+  ) {
+    errors.push("PR-10C source-only scope boundary changed")
+  }
+  errors.push(
+    ...verifyPr10cOperationBoundary(decision?.operationPolicy ?? {}, {
+      requireComplete: requireReady,
+    }),
+  )
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr10cOperationBoundary(
+  operationPolicy,
+  { requireComplete = true } = {},
+) {
+  const sourceKeys = [
+    "addedSourcePaths",
+    "changedSourcePaths",
+    "deletedSourcePaths",
+  ]
+  const repositoryKeys = [
+    "addedRepositoryPaths",
+    "changedRepositoryPaths",
+    "deletedRepositoryPaths",
+  ]
+  const expectedKeys = [...sourceKeys, ...repositoryKeys].sort()
+  const errors = [
+    ...verifyExactPathPolicy(operationPolicy, sourceKeys, "PR-10C"),
+    ...verifyExactPathPolicy(operationPolicy, repositoryKeys, "PR-10C"),
+  ]
+  if (
+    JSON.stringify(Object.keys(operationPolicy).sort()) !==
+    JSON.stringify(expectedKeys)
+  ) {
+    errors.push("invalid PR-10C operation policy keys")
+  }
+  if (
+    (operationPolicy.deletedSourcePaths ?? []).length > 0 ||
+    (operationPolicy.deletedRepositoryPaths ?? []).length > 0
+  ) {
+    errors.push("PR-10C source-only package must not delete Product paths")
+  }
+
+  const repositoryPathByOperation = new Map()
+  const repositoryPaths = new Set()
+  for (const key of repositoryKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      repositoryPaths.add(path)
+      repositoryPathByOperation.set(path, key.replace("Repository", "Source"))
+      if (
+        !pr10cAllowedRepositoryPathPatterns.some((pattern) =>
+          pattern.test(path),
+        )
+      ) {
+        errors.push(
+          `PR-10C repository path is outside package boundary ${path}`,
+        )
+      }
+      if (
+        pr10cImmutablePriorEvidencePaths.includes(path) &&
+        !pr10cSuccessorAwareHistoricalTestPaths.includes(path)
+      ) {
+        errors.push(
+          `PR-10C immutable prior evidence appears in operation policy ${path}`,
+        )
+      }
+      if (
+        /(?:^|\/)(?:librechat|rag|corpora|knowledge|mcp|agentic)(?:\/|[-_.])/i.test(
+          path,
+        )
+      ) {
+        errors.push(
+          `PR-10C retired or deferred product path is forbidden ${path}`,
+        )
+      }
+      if (
+        /(?:^|\/)(?:\.env(?:\.|$)|[^/]+\.(?:key|pem|p12|pfx|jwk|jwks))$/i.test(
+          path,
+        )
+      ) {
+        errors.push(`PR-10C secret or key material path is forbidden ${path}`)
+      }
+    }
+  }
+  if (requireComplete) {
+    for (const requiredPath of pr10cRequiredFrozenRepositoryPaths) {
+      if (!repositoryPaths.has(requiredPath)) {
+        errors.push(`PR-10C frozen repository path is missing ${requiredPath}`)
+      }
+    }
+  }
+  for (const key of sourceKeys) {
+    for (const path of operationPolicy[key] ?? []) {
+      if (repositoryPathByOperation.get(path) !== key) {
+        errors.push(
+          `PR-10C source operation lacks matching repository operation ${key} ${path}`,
+        )
+      }
+    }
+  }
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr10cGeneratedDestinationBoundary(stagedPaths) {
+  const stagedPathSet = new Set(stagedPaths)
+  return pr10cGeneratedDestinationPaths
+    .filter((path) => stagedPathSet.has(path))
+    .map(
+      (path) =>
+        `PR-10C generated destination must not be staged before generation ${path}`,
+    )
+}
+
 export function readPr10DecisionDocument(root = repositoryRoot) {
   return readJson(resolve(root, pr10DecisionPath))
 }
@@ -8598,6 +9558,14 @@ export function verifyPr03TargetState({
   currentAllowlist,
   currentRoutes,
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-10C") {
+    return verifyReviewedPr10cSuccessorTarget({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths: listCandidatePaths(root),
+    })
+  }
   if (
     ["PR-04", "PR-05", "PR-06", "PR-07", "PR-08", "PR-09", "PR-10"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
@@ -8682,6 +9650,14 @@ export function verifyPr04TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-10C") {
+    return verifyReviewedPr10cSuccessorTarget({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths,
+    })
+  }
   if (
     ["PR-05", "PR-06", "PR-07", "PR-08", "PR-09", "PR-10"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
@@ -8907,6 +9883,14 @@ export function verifyPr05TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-10C") {
+    return verifyReviewedPr10cSuccessorTarget({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths,
+    })
+  }
   if (
     ["PR-06", "PR-07", "PR-08", "PR-09", "PR-10"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
@@ -9155,6 +10139,14 @@ export function verifyPr06TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-10C") {
+    return verifyReviewedPr10cSuccessorTarget({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths,
+    })
+  }
   if (
     ["PR-07", "PR-08", "PR-09", "PR-10"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
@@ -9387,6 +10379,14 @@ export function verifyPr07TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-10C") {
+    return verifyReviewedPr10cSuccessorTarget({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths,
+    })
+  }
   if (
     ["PR-08", "PR-09", "PR-10"].includes(
       currentRoutes.reviewedRevisions?.at(-1)?.id,
@@ -9731,6 +10731,14 @@ export function verifyPr08TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-10C") {
+    return verifyReviewedPr10cSuccessorTarget({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths,
+    })
+  }
   if (
     ["PR-09", "PR-10"].includes(currentRoutes.reviewedRevisions?.at(-1)?.id)
   ) {
@@ -9945,6 +10953,596 @@ export function verifyPr09FindingTransition(baseEntries, currentEntries) {
   return errors.sort()
 }
 
+export function verifyPr10cCandidateContract({
+  root = repositoryRoot,
+  baseAllowlist,
+  currentAllowlist,
+  baseRoutes,
+  currentRoutes,
+  operationPolicy,
+}) {
+  const errors = [
+    ...verifyPr10cRetainedRouteContract(baseRoutes, currentRoutes),
+    ...verifyPr10cOperationBoundary(operationPolicy ?? {}, {
+      requireComplete: true,
+    }),
+    ...verifyExactClosureChanges(
+      baseRoutes.sourceClosure ?? [],
+      currentRoutes.sourceClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedSourcePaths",
+        changedKey: "changedSourcePaths",
+        deletedKey: "deletedSourcePaths",
+        label: "source closure",
+      },
+      "PR-10C",
+    ),
+    ...verifyExactClosureChanges(
+      baseRoutes.repositoryClosure ?? [],
+      currentRoutes.repositoryClosure ?? [],
+      operationPolicy,
+      {
+        addedKey: "addedRepositoryPaths",
+        changedKey: "changedRepositoryPaths",
+        deletedKey: "deletedRepositoryPaths",
+        label: "repository closure",
+      },
+      "PR-10C",
+    ),
+    ...verifyPr10cTargetState({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths: (currentRoutes.repositoryClosure ?? []).map(({ path }) => path),
+    }),
+  ]
+  if (
+    JSON.stringify(baseAllowlist.entries ?? []) !==
+    JSON.stringify(currentAllowlist.entries ?? [])
+  ) {
+    errors.push("PR-10C forbidden finding inventory changed")
+  }
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr10cRetainedRouteContract(base, current) {
+  const errors = []
+  for (const key of [
+    "baseCommit",
+    "target",
+    "fastifyRegistrars",
+    "webInferenceConsumers",
+    "escapeHatches",
+  ]) {
+    if (JSON.stringify(current?.[key]) !== JSON.stringify(base?.[key])) {
+      errors.push(`PR-10C retained route boundary changed ${key}`)
+    }
+  }
+
+  const expectedFingerprints = structuredClone(base.fingerprints ?? [])
+  for (const transition of pr10cRouteFingerprintTransitions) {
+    const matches = expectedFingerprints.filter(
+      (fingerprint) =>
+        fingerprint.path === transition.path &&
+        fingerprint.symbol === transition.symbol,
+    )
+    if (matches.length !== 1 || matches[0].sha256 !== transition.beforeSha256) {
+      errors.push(
+        `PR-10C route fingerprint base changed ${transition.path}#${transition.symbol}`,
+      )
+      continue
+    }
+    matches[0].sha256 = transition.afterSha256
+  }
+  if (
+    JSON.stringify(current.fingerprints ?? []) !==
+    JSON.stringify(expectedFingerprints)
+  ) {
+    errors.push("PR-10C route fingerprint transition changed")
+  }
+
+  const remainingBaseRoutes = new Map()
+  for (const route of base.routes ?? []) {
+    const serialized = JSON.stringify(route)
+    remainingBaseRoutes.set(
+      serialized,
+      (remainingBaseRoutes.get(serialized) ?? 0) + 1,
+    )
+  }
+  const addedRoutes = []
+  for (const route of current.routes ?? []) {
+    const serialized = JSON.stringify(route)
+    const remaining = remainingBaseRoutes.get(serialized) ?? 0
+    if (remaining > 0) {
+      remainingBaseRoutes.set(serialized, remaining - 1)
+    } else {
+      addedRoutes.push(route)
+    }
+  }
+  if ([...remainingBaseRoutes.values()].some((count) => count !== 0)) {
+    errors.push("PR-10C retained route inventory changed")
+  }
+  addedRoutes.sort(compareRoutes)
+  const expectedAddedRoutes = structuredClone(pr10cAddedRouteContract).sort(
+    compareRoutes,
+  )
+  if (JSON.stringify(addedRoutes) !== JSON.stringify(expectedAddedRoutes)) {
+    errors.push("PR-10C added route inventory differs from reviewed target")
+  }
+  return errors.sort()
+}
+
+export function verifyPr10cTargetState({
+  root = repositoryRoot,
+  currentAllowlist,
+  currentRoutes,
+  paths = listCandidatePaths(root),
+}) {
+  const errors = []
+  const activeRevision = currentRoutes.reviewedRevisions?.at(-1)?.id
+  if (!["PR-10", "PR-10C"].includes(activeRevision)) {
+    errors.push(
+      `PR-10C target has invalid active predecessor ${String(activeRevision)}`,
+    )
+  }
+  if ((currentRoutes.routes ?? []).length !== pr10cTargetContract.routes) {
+    errors.push(
+      `PR-10C total route count changed expected=${pr10cTargetContract.routes} actual=${(currentRoutes.routes ?? []).length}`,
+    )
+  }
+  const classificationCounts = Object.fromEntries(
+    [...routeCountsByClassification(currentRoutes.routes ?? [])].sort(),
+  )
+  if (
+    JSON.stringify(classificationCounts) !==
+    JSON.stringify(pr10cTargetContract.routeClassifications)
+  ) {
+    errors.push("PR-10C route classification counts changed")
+  }
+  if (
+    JSON.stringify(currentRoutes.fastifyRegistrars ?? []) !==
+    JSON.stringify(pr10cTargetContract.fastifyRegistrars)
+  ) {
+    errors.push("PR-10C Fastify registrar target changed")
+  }
+  if ((currentRoutes.webInferenceConsumers ?? []).length !== 0) {
+    errors.push("PR-10C Web inference consumer count is not zero")
+  }
+  if ((currentRoutes.escapeHatches ?? []).length !== 0) {
+    errors.push("PR-10C mutable legacy escape hatch remains")
+  }
+  if (
+    JSON.stringify(currentRoutes.target) !== JSON.stringify(targetRouteContract)
+  ) {
+    errors.push("PR-10C route target contract changed")
+  }
+  for (const [actual, expected, label] of [
+    [
+      (currentRoutes.routes ?? []).filter(
+        (route) => route.classification === "required-now",
+      ),
+      pr10cTargetContract.publicInferenceRoutes,
+      "public inference",
+    ],
+    [
+      (currentRoutes.routes ?? []).filter(
+        (route) => route.classification === "public-t2",
+      ),
+      pr10cTargetContract.publicFirecrawlRoutes,
+      "public Firecrawl",
+    ],
+  ]) {
+    actual.sort(compareRoutes)
+    const sortedExpected = structuredClone(expected).sort(compareRoutes)
+    if (JSON.stringify(actual) !== JSON.stringify(sortedExpected)) {
+      errors.push(`PR-10C ${label} route inventory changed`)
+    }
+  }
+  const isolationRoutes = (currentRoutes.routes ?? [])
+    .filter((route) => route.path.startsWith("/api/admin/isolation"))
+    .sort(compareRoutes)
+  if (
+    JSON.stringify(isolationRoutes) !==
+    JSON.stringify(structuredClone(pr10cAddedRouteContract).sort(compareRoutes))
+  ) {
+    errors.push("PR-10C isolation route inventory changed")
+  }
+  const currentEntries = currentAllowlist.entries ?? []
+  if (
+    currentEntries.length !== 1 ||
+    currentEntries[0]?.ruleId !== "FS105_BUILDER_HUB" ||
+    currentEntries[0]?.path !== "apps/web/src/middleware.test.ts" ||
+    currentEntries[0]?.removeBy !== "PR-12"
+  ) {
+    errors.push("PR-10C remaining finding boundary changed")
+  }
+  for (const path of pr10cRequiredFrozenRepositoryPaths) {
+    if (!isRegularFile(resolve(root, path))) {
+      errors.push(`PR-10C frozen repository path is missing ${path}`)
+    }
+  }
+  errors.push(...verifyPr10cBaseEvidence(root))
+  errors.push(...verifyPr10cSourceBoundary(root, paths))
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr10cSourceBoundary(
+  root = repositoryRoot,
+  paths = listCandidatePaths(root),
+) {
+  const errors = []
+  const candidatePaths = new Set(paths)
+  const read = (path) => {
+    const absolutePath = resolve(root, path)
+    if (!candidatePaths.has(path) || !isRegularFile(absolutePath)) {
+      errors.push(`PR-10C source boundary path is missing ${path}`)
+      return ""
+    }
+    return readFileSync(absolutePath, "utf8")
+  }
+  const contractSource = read(
+    "packages/contracts/src/inference-core-isolation.ts",
+  )
+  for (const fingerprint of [
+    '"ACTIVATE EMERGENCY ISOLATION"',
+    '"DEACTIVATE EMERGENCY ISOLATION"',
+    "runtimeQualified: z.literal(false)",
+    ...pr10cIsolationFailureCodes.map((code) => `"${code}"`),
+  ]) {
+    if (!contractSource.includes(fingerprint)) {
+      errors.push(`PR-10C isolation contract is missing ${fingerprint}`)
+    }
+  }
+
+  const adminSource = read("apps/bff/src/routes/admin.ts")
+  for (const fingerprint of [
+    '"/api/admin/isolation"',
+    'withCapability("console.operational.view")',
+    'reviewedAdminOnly("POST /api/admin/isolation/activate")',
+    'reviewedAdminOnly("POST /api/admin/isolation/deactivate")',
+    "hasRecentKeycloakMfa",
+  ]) {
+    if (!adminSource.includes(fingerprint)) {
+      errors.push(`PR-10C Admin isolation route is missing ${fingerprint}`)
+    }
+  }
+  if (!/(?:300|5\s*\*\s*60)/.test(adminSource)) {
+    errors.push("PR-10C mutation authentication age boundary is missing")
+  }
+
+  const recoveryContractSource = read(
+    "packages/contracts/src/inference-core-recovery.ts",
+  )
+  for (const method of ["otp", "hwk", "webauthn", "webauthn-passwordless"]) {
+    if (!recoveryContractSource.includes(`"${method}"`)) {
+      errors.push(`PR-10C mutation MFA boundary is missing ${method}`)
+    }
+  }
+
+  const serviceSource = read("apps/bff/src/services/emergency-isolation.ts")
+  for (const fingerprint of [
+    "FOR UPDATE",
+    "recovery_required",
+    "expectedRevision",
+    "runtimeQualified: false",
+    'liveIdentity.role !== "admin"',
+    "recentAuthenticationWindowSeconds = 300",
+    "emergencyRecoveryApprovedMfaMethods",
+    "EmergencyIsolationNonRestorableAuthority",
+    "LifecycleRestoreIsolationRecoveryAuthority",
+    "clearRecoveryRequiredAndConfirm",
+    "durableAdmissionStatus",
+    "requireNoRestoreIsolationRecovery",
+    "reconcileSurvivingRecoveryMarker",
+    "reconcileUnfencedRestore",
+    "requireTerminalLifecycleRestore",
+    "verifyRecoveryAfterRestore",
+  ]) {
+    if (!serviceSource.includes(fingerprint)) {
+      errors.push(`PR-10C isolation service is missing ${fingerprint}`)
+    }
+  }
+  const deactivationStart = serviceSource.indexOf("  async deactivate(")
+  const deactivationEnd = serviceSource.indexOf(
+    "\n  async bootstrap(",
+    deactivationStart,
+  )
+  const deactivationSource =
+    deactivationStart >= 0 && deactivationEnd > deactivationStart
+      ? serviceSource.slice(deactivationStart, deactivationEnd)
+      : ""
+  const deactivationOrderingMarkers = [
+    "const prepared = await this.safePrepareDisengage(context)",
+    "const completed = await this.completeWithOptionalReceipt(",
+    "beforeCommit: () =>",
+    "this.safeEnterDeactivationCommit(",
+    'if (!completed || completed.state !== "inactive")',
+    "prepared.deactivationCommitReservation.commit()",
+  ]
+  const deactivationOrderingIndexes = deactivationOrderingMarkers.map(
+    (marker) => deactivationSource.indexOf(marker),
+  )
+  if (
+    deactivationOrderingIndexes.some((index) => index < 0) ||
+    deactivationOrderingIndexes.some(
+      (index, position) =>
+        position > 0 && index <= deactivationOrderingIndexes[position - 1],
+    ) ||
+    serviceSource.split("input.beforeCommit() !== true").length - 1 < 2
+  ) {
+    errors.push(
+      "PR-10C deactivation must reserve sealed traffic, enter committing inside durable terminalization, and open locally only after the inactive commit resolves",
+    )
+  }
+
+  const survivingMarkerStart = serviceSource.indexOf(
+    "  private async reconcileSurvivingRecoveryMarker(",
+  )
+  const survivingMarkerEnd = serviceSource.indexOf(
+    "\n  private async reconcileUnfencedRestore(",
+    survivingMarkerStart,
+  )
+  const survivingMarkerSource =
+    survivingMarkerStart >= 0 && survivingMarkerEnd > survivingMarkerStart
+      ? serviceSource.slice(survivingMarkerStart, survivingMarkerEnd)
+      : ""
+  const markerClearOrderingMarkers = [
+    "await this.readRestoreOperation(marker.operationId)",
+    "await this.readUnfencedRestore()",
+    "await this.requireRecoveryAfterRestore(marker.operationId)",
+    ".recordIsolationReconciled(marker.operationId, this.now())",
+    "await this.readUnfencedRestore()",
+    "await requireTerminalLifecycleRestore(",
+    "await safeClearRecoveryMarker(",
+  ]
+  const markerClearOrderingIndexes = []
+  let markerClearSearchFrom = 0
+  for (const marker of markerClearOrderingMarkers) {
+    const index = survivingMarkerSource.indexOf(marker, markerClearSearchFrom)
+    markerClearOrderingIndexes.push(index)
+    markerClearSearchFrom = index < 0 ? markerClearSearchFrom : index + 1
+  }
+  if (
+    markerClearOrderingIndexes.some((index) => index < 0) ||
+    markerClearOrderingIndexes.some(
+      (index, position) =>
+        position > 0 && index <= markerClearOrderingIndexes[position - 1],
+    )
+  ) {
+    errors.push(
+      "PR-10C surviving restore marker clear must follow matching reconciliation, Console recovery readback, no-unfenced proof, and terminal lifecycle revalidation",
+    )
+  }
+
+  const mutationJournalSource = read(
+    "apps/bff/src/services/identity-mutation-journal.ts",
+  )
+  for (const fingerprint of [
+    "commitWithReceipt?<T>",
+    'outcome?: "denied" | "failed" | "succeeded"',
+    "statusCode?: number",
+  ]) {
+    if (!mutationJournalSource.includes(fingerprint)) {
+      errors.push(`PR-10C atomic receipt seam is missing ${fingerprint}`)
+    }
+  }
+
+  const lifecycleSource = read(
+    "apps/bff/src/services/lifecycle-orchestration.ts",
+  )
+  for (const fingerprint of [
+    "emergency_isolation_fence",
+    "emergency_isolation_reassertion",
+    "recovery_required",
+  ]) {
+    if (!lifecycleSource.includes(fingerprint)) {
+      errors.push(`PR-10C restore isolation seam is missing ${fingerprint}`)
+    }
+  }
+
+  const lifecycleJournalSource = read(
+    "apps/bff/src/services/lifecycle-operation-journal.ts",
+  )
+  for (const fingerprint of [
+    "LifecycleRestoreIsolationRecoveryAuthority",
+    "readRestoreOperation",
+    "readUnfencedRestore",
+    "terminalizeUnfencedRestore",
+    "recordIsolationReconciled",
+    "operation.state IN ('prepared', 'recovery_required')",
+    "NOT EXISTS (",
+    "lockedOperation(transaction, operationId)",
+    'eq(lifecycleOperations.state, "prepared")',
+    "LIMIT 2",
+  ]) {
+    if (!lifecycleJournalSource.includes(fingerprint)) {
+      errors.push(
+        `PR-10C lifecycle restore recovery authority is missing ${fingerprint}`,
+      )
+    }
+  }
+  const restoreStart = lifecycleSource.indexOf("  async restore(")
+  const restoreEnd = lifecycleSource.indexOf(
+    "\n  private allocateIdentifiers",
+    restoreStart,
+  )
+  const restoreSource =
+    restoreStart >= 0 && restoreEnd > restoreStart
+      ? lifecycleSource.slice(restoreStart, restoreEnd)
+      : ""
+  const restoreOrderingMarkers = [
+    "if (!verifyLifecycleSnapshotManifestDigest(request.manifest))",
+    "admission = await this.journal.begin({",
+    'if (admission === "busy")',
+    "isolationFenceAcquisitionAttempted = true",
+    "await this.openIsolationFenceImmediatelyAfterAdmission(",
+    'this.transition(operationId, state, "validating")',
+    'throw new LifecycleStepFailure("manifest_invalid")',
+    "adapter.prepareRestore(capture, context)",
+    "adapter.quiesce(context)",
+  ]
+  const restoreOrderingIndexes = restoreOrderingMarkers.map((marker) =>
+    restoreSource.indexOf(marker),
+  )
+  const immediateFenceStart = lifecycleSource.indexOf(
+    "  private async openIsolationFenceImmediatelyAfterAdmission(",
+  )
+  const immediateFenceEnd = lifecycleSource.indexOf(
+    "\n  private async transition(",
+    immediateFenceStart,
+  )
+  const immediateFenceSource =
+    immediateFenceStart >= 0 && immediateFenceEnd > immediateFenceStart
+      ? lifecycleSource.slice(immediateFenceStart, immediateFenceEnd)
+      : ""
+  const immediateFenceMarkers = [
+    "const opening = this.openIsolationRestoreFence(context).then(",
+    'phase: "emergency_isolation_fence"',
+    "const result = await opening",
+    "onOpened(result.fence)",
+    "if (journalFailed)",
+    "if (!result.succeeded)",
+  ]
+  const immediateFenceIndexes = immediateFenceMarkers.map((marker) =>
+    immediateFenceSource.indexOf(marker),
+  )
+  if (
+    restoreOrderingIndexes.some((index) => index < 0) ||
+    restoreOrderingIndexes.some(
+      (index, position) =>
+        position > 0 && index <= restoreOrderingIndexes[position - 1],
+    ) ||
+    immediateFenceIndexes.some((index) => index < 0) ||
+    immediateFenceIndexes.some(
+      (index, position) =>
+        position > 0 && index <= immediateFenceIndexes[position - 1],
+    )
+  ) {
+    errors.push(
+      "PR-10C restore ordering must be journal.begin created -> durable recovery_required isolation fence -> prepareRestore validation -> quiesce, with only pre-admission manifest rejection exempt",
+    )
+  }
+
+  const trafficGateSource = read(
+    "apps/bff/src/services/isolation-traffic-gate.ts",
+  )
+  for (const fingerprint of [
+    "private seal()",
+    "private async drain()",
+    "this.active.size === 0",
+    "EmergencyIsolationAbortError",
+    '"chat_completions"',
+    '"firecrawl_scrape"',
+    '"firecrawl_search"',
+    '"models"',
+    "DeactivationCommitReservationState",
+    "enterCommittingDeactivationReservation",
+    "commitDeactivationCommitReservation",
+    'phase: "committing" | "reserved"',
+    "await reservation.resolved",
+    "active.finalizing = true",
+    "!active?.finalizing",
+    "!lease.finalizing",
+    "finalizing",
+  ]) {
+    if (!trafficGateSource.includes(fingerprint)) {
+      errors.push(`PR-10C traffic gate is missing ${fingerprint}`)
+    }
+  }
+
+  const schemaSource = read("apps/bff/src/db/inference-core-schema.ts")
+  const migrationSource = read("infra/migrations/0000_inference_core.sql")
+  if (!schemaSource.includes('"emergency_isolation_state"')) {
+    errors.push("PR-10C emergency isolation schema is missing")
+  }
+  if (
+    !/phase\} = 'emergency_isolation_reassertion'[\s\S]{0,500}'recovery_required'/.test(
+      schemaSource,
+    ) ||
+    !/phase = 'emergency_isolation_reassertion'[\s\S]{0,500}'recovery_required'/.test(
+      migrationSource,
+    )
+  ) {
+    errors.push(
+      "PR-10C lifecycle schema must admit successful isolation reassertion in recovery_required",
+    )
+  }
+  if (
+    !migrationSource.includes("CREATE TABLE admin.emergency_isolation_state") ||
+    !migrationSource.includes(
+      "INSERT INTO admin.emergency_isolation_state (id) VALUES ('appliance')",
+    )
+  ) {
+    errors.push("PR-10C emergency isolation singleton migration is missing")
+  }
+
+  const indexSource = read("apps/bff/src/index.ts")
+  for (const fingerprint of [
+    "EmergencyIsolationService",
+    "IsolationTrafficGate",
+    "emergencyIsolationService",
+    "isolationGate",
+    "durableAdmissionStatus",
+    "nonRestorableAuthority",
+    "createDrizzleLifecycleRestoreIsolationRecoveryAuthority",
+    "lifecycleRestoreIsolationRecoveryAuthority",
+  ]) {
+    if (!indexSource.includes(fingerprint)) {
+      errors.push(`PR-10C index composition is missing ${fingerprint}`)
+    }
+  }
+
+  for (const [path, fingerprints] of [
+    [
+      "apps/bff/src/routes/app-gateway.ts",
+      [
+        "isolationGate",
+        "AbortSignal",
+        "finalizeIsolationTraffic",
+        "bindIsolationLeaseRelease",
+        "OpenAiSseTerminalHoldback",
+        "isOpenAiDoneSseFrame",
+        "terminalFrame",
+        "safelyWriteStreamingTerminalAndEnd",
+        "closeHijackedStreamWithoutTerminal",
+        "bindAppGatewayCallerAbort",
+        "signal: callerAbort.signal",
+      ],
+    ],
+    [
+      "apps/bff/src/routes/firecrawl-gateway.ts",
+      [
+        "isolationGate",
+        "AbortSignal",
+        "finalizeFirecrawlIsolationTraffic",
+        "bindFirecrawlIsolationLeaseRelease",
+        "lease.finalize(operation)",
+        'reply.raw.once("finish", release)',
+        'reply.raw.once("close", release)',
+      ],
+    ],
+    [
+      "apps/bff/src/services/admin-connected-apps.ts",
+      ["emergency_isolation", "FOR UPDATE"],
+    ],
+    [
+      "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      ["emergency_isolation", "FOR UPDATE"],
+    ],
+  ]) {
+    const source = read(path)
+    for (const fingerprint of fingerprints) {
+      if (!source.includes(fingerprint)) {
+        errors.push(
+          `PR-10C admission boundary is missing ${path} ${fingerprint}`,
+        )
+      }
+    }
+  }
+  return [...new Set(errors)].sort()
+}
+
 export function verifyPr10CandidateContract({
   root = repositoryRoot,
   baseAllowlist,
@@ -10022,6 +11620,14 @@ export function verifyPr10TargetState({
   currentRoutes,
   paths = listCandidatePaths(root),
 }) {
+  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-10C") {
+    return verifyReviewedPr10cSuccessorTarget({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths,
+    })
+  }
   const errors = []
   const activeRevision = currentRoutes.reviewedRevisions?.at(-1)?.id
   if (!["PR-09", "PR-10"].includes(activeRevision)) {
@@ -11049,11 +12655,21 @@ export function verifyPr09TargetState({
   root = repositoryRoot,
   currentAllowlist,
   currentRoutes,
-  paths = listCandidatePaths(root),
+  paths,
 }) {
-  if (currentRoutes.reviewedRevisions?.at(-1)?.id === "PR-10") {
+  const activeRevision = currentRoutes.reviewedRevisions?.at(-1)?.id
+  if (activeRevision === "PR-10C") {
+    return verifyReviewedPr10cSuccessorTarget({
+      root,
+      currentAllowlist,
+      currentRoutes,
+      paths: paths ?? listCandidatePaths(root),
+    })
+  }
+  if (activeRevision === "PR-10") {
     return []
   }
+  paths ??= listCandidatePaths(root)
   const errors = []
   if (
     (currentRoutes.routes ?? []).some(
@@ -11608,16 +13224,38 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
 export function verifyReviewedPr09SourceFingerprints(root = repositoryRoot) {
   const errors = []
   const parsedFiles = new Map()
+  let historicalCommit = null
+  if (isRegularFile(resolve(root, pr10cDecisionPath))) {
+    const successorErrors = verifyReviewedPr10cSuccessorContext(root)
+    if (successorErrors.length > 0) {
+      return successorErrors.map(
+        (error) => `PR-09 successor-historical source is unavailable: ${error}`,
+      )
+    }
+    historicalCommit = pr10ContractBase
+  }
 
   for (const expected of reviewedPr09SourceFingerprints) {
     let sourceFile = parsedFiles.get(expected.path)
     if (!sourceFile) {
       const absolutePath = resolve(root, expected.path)
-      if (!isRegularFile(absolutePath)) {
+      if (!historicalCommit && !isRegularFile(absolutePath)) {
         errors.push(`PR-09 reviewed source is missing ${expected.path}`)
         continue
       }
-      const source = readFileSync(absolutePath, "utf8")
+      let source
+      try {
+        source = historicalCommit
+          ? readRepositoryPathAtCommit(
+              root,
+              historicalCommit,
+              expected.path,
+            ).toString("utf8")
+          : readFileSync(absolutePath, "utf8")
+      } catch {
+        errors.push(`PR-09 reviewed source is missing ${expected.path}`)
+        continue
+      }
       sourceFile = ts.createSourceFile(
         expected.path,
         source,
@@ -12046,6 +13684,7 @@ function buildReviewedRevisionFingerprints(root) {
     { id: "PR-08", path: pr08ContractRevisionPath },
     { id: "PR-09", path: pr09ContractRevisionPath },
     { id: "PR-10", path: pr10ContractRevisionPath },
+    { id: "PR-10C", path: pr10cContractRevisionPath },
   ]) {
     if (!isRegularFile(resolve(root, path))) {
       missingRevision ??= id
@@ -12065,16 +13704,32 @@ function buildReviewedRevisionFingerprints(root) {
   return revisions
 }
 
-function buildRevisionEvidenceFingerprints(
+export function buildRevisionEvidenceFingerprints(
   root,
   paths = pr02RevisionEvidencePaths,
   revisionId = "PR-02",
   { useHistoricalSuccessorTests = false } = {},
 ) {
   return paths.map((path) => {
-    const historicalCommit = useHistoricalSuccessorTests
-      ? pr09HistoricalTestEvidenceCommitByPath.get(path)
-      : undefined
+    const pr10cHistoricalCommit =
+      pr10cHistoricalTestEvidenceCommitByRevisionAndPath.get(
+        `${revisionId}\0${path}`,
+      )
+    let historicalCommit
+    if (
+      pr10cHistoricalCommit &&
+      isRegularFile(resolve(root, pr10cDecisionPath))
+    ) {
+      const successorErrors = verifyReviewedPr10cSuccessorContext(root)
+      if (successorErrors.length > 0) {
+        throw new Error(
+          `PR-10C successor-historical evidence is unavailable: ${successorErrors.join("; ")}`,
+        )
+      }
+      historicalCommit = pr10cHistoricalCommit
+    } else if (useHistoricalSuccessorTests) {
+      historicalCommit = pr09HistoricalTestEvidenceCommitByPath.get(path)
+    }
     if (historicalCommit) {
       return {
         path,
@@ -12092,7 +13747,7 @@ function buildRevisionEvidenceFingerprints(
 }
 
 function readRetainedEvidenceBytes(root, path, absolutePath) {
-  const historicalCommit = pr09HistoricalTestEvidenceCommitByPath.get(path)
+  const historicalCommit = inheritedHistoricalTestEvidenceCommitByPath.get(path)
   return historicalCommit
     ? readRepositoryPathAtCommit(root, historicalCommit, path)
     : readFileSync(absolutePath)
@@ -12181,7 +13836,7 @@ export function verifyCorePackageClosure(
       "node scripts/inference-core/run-core-command.mjs build",
     "check:inference-core":
       "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr10ContractBase}`,
+    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr10cContractBase}`,
     "contract:inference-core:pr07:policy":
       "node scripts/inference-core/pr07-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr07:write":
@@ -12194,12 +13849,16 @@ export function verifyCorePackageClosure(
       "node scripts/inference-core/pr10-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr10:write":
       "node scripts/inference-core/pr10-contract-revision.mjs --write",
+    "contract:inference-core:pr10c:policy":
+      "node scripts/inference-core/pr10c-contract-revision.mjs --print-operation-policy",
+    "contract:inference-core:pr10c:write":
+      "node scripts/inference-core/pr10c-contract-revision.mjs --write",
     "test:inference-core-authorization":
       "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match exec vitest run src/inference-core-authorization.test.ts",
     "test:inference-core-characterization":
       "corepack pnpm --filter @llm-machines/bff --fail-if-no-match exec vitest run src/routes/inference-core-characterization.test.ts",
     "test:inference-core-db":
-      pr04StandaloneDbTestBoundary.rootScripts["test:inference-core-db"],
+      "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test --minWorkers=1 --maxWorkers=4 --testTimeout=15000 --hookTimeout=15000",
     "test:inference-core-guardrails":
       "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs infra/observability/validate-profile.test.mjs",
     test: "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test",
@@ -13236,7 +14895,13 @@ function assertNoRouteMethodAliases(
           call: node,
           receiverNames,
           importedBindings,
-        })
+        }) &&
+        !isReviewedEmergencyIsolationOnReadyHook(
+          path,
+          sourceFile,
+          node,
+          receiverNames,
+        )
       ) {
         throw routeAnalysisError(
           path,
@@ -13441,6 +15106,9 @@ function isReviewedFastifyReceiverUse({
   receiverNames,
   importedBindings,
 }) {
+  if (isReviewedEmergencyIsolationBootstrapLogUse(path, sourceFile, node)) {
+    return true
+  }
   const parent = node.parent
   if (
     ts.isVariableDeclaration(parent) &&
@@ -13490,6 +15158,77 @@ function isReviewedFastifyReceiverUse({
     return true
   }
   return false
+}
+
+function isReviewedEmergencyIsolationBootstrapLogUse(path, sourceFile, node) {
+  if (path !== "apps/bff/src/index.ts") {
+    return false
+  }
+  const logMember = node.parent
+  const warnMember = logMember?.parent
+  const logCall = warnMember?.parent
+  if (
+    !logMember ||
+    !ts.isPropertyAccessExpression(logMember) ||
+    logMember.expression !== node ||
+    logMember.name.text !== "log" ||
+    !warnMember ||
+    !ts.isPropertyAccessExpression(warnMember) ||
+    warnMember.expression !== logMember ||
+    warnMember.name.text !== "warn" ||
+    !logCall ||
+    !ts.isCallExpression(logCall) ||
+    unwrapExpression(logCall.expression) !== warnMember ||
+    normalizedNodeText(logCall, sourceFile) !==
+      'server.log.warn({failureClass:"emergency_isolation_bootstrap_failed"},"Emergencyisolationremainssealed",)'
+  ) {
+    return false
+  }
+  let ancestor = logCall.parent
+  while (ancestor && !ts.isArrowFunction(ancestor)) {
+    ancestor = ancestor.parent
+  }
+  const hookCall = ancestor?.parent
+  return Boolean(
+    ancestor &&
+      hookCall &&
+      ts.isCallExpression(hookCall) &&
+      isReviewedEmergencyIsolationOnReadyHook(
+        path,
+        sourceFile,
+        hookCall,
+        new Set([node.text]),
+      ),
+  )
+}
+
+function isReviewedEmergencyIsolationOnReadyHook(
+  path,
+  sourceFile,
+  call,
+  receiverNames,
+) {
+  const member = staticMemberCall(unwrapExpression(call.expression))
+  const handler = unwrapExpression(call.arguments[1])
+  return Boolean(
+    path === "apps/bff/src/index.ts" &&
+      member?.name === "addHook" &&
+      isTrackedFastifyReceiver(member.receiver, receiverNames) &&
+      staticString(call.arguments[0]) === "onReady" &&
+      call.arguments.length === 2 &&
+      handler &&
+      ts.isArrowFunction(handler) &&
+      handler.parameters.length === 0 &&
+      handler.modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword,
+      ) &&
+      normalizedNodeText(handler, sourceFile).includes(
+        "awaitruntimeIsolation.service?.bootstrap()",
+      ) &&
+      normalizedNodeText(handler, sourceFile).includes(
+        'failureClass:"emergency_isolation_bootstrap_failed"',
+      ),
+  )
 }
 
 function isExpressionWrapper(node) {
@@ -13617,7 +15356,14 @@ function hasReviewedFastifyRegistrarArguments(
     return Boolean(
       call.arguments.length === 2 &&
         normalizedNodeText(call.arguments[1], sourceFile) ===
-          "{emergencyRecoveryService}",
+          "{emergencyIsolationService,emergencyRecoveryService,}",
+    )
+  }
+  if (spec.exportName === "registerAppGatewayRoutes") {
+    return Boolean(
+      call.arguments.length === 2 &&
+        normalizedNodeText(call.arguments[1], sourceFile) ===
+          "{isolationGate:isolationTrafficGate}",
     )
   }
   if (spec.exportName === "registerFirecrawlGatewayRoutes") {
@@ -13652,7 +15398,7 @@ function hasReviewedFirecrawlGatewayRegistrarArguments(call, sourceFile) {
   if (
     call.arguments.length !== 2 ||
     normalizedNodeText(call.arguments[1], sourceFile) !==
-      "testRuntime&&options.testFirecrawlGateway?{...firecrawlGateway,...options.testFirecrawlGateway}:firecrawlGateway"
+      "testRuntime&&options.testFirecrawlGateway?{...firecrawlGateway,...options.testFirecrawlGateway,isolationGate:isolationTrafficGate,}:{...firecrawlGateway,isolationGate:isolationTrafficGate}"
   ) {
     return false
   }
@@ -13939,7 +15685,7 @@ function assertReviewedShorthandRouteOptions(
       factory === "reviewedAdminOnly" &&
       options.arguments.length === 1 &&
       argument === `${method} ${routePath}` &&
-      pr09AdminOnlyRoutePolicyKeys.includes(argument)
+      pr10cAdminOnlyRoutePolicyKeys.includes(argument)
     ) {
       return
     }
@@ -14065,6 +15811,25 @@ function assertReviewedFastifyControlCall(path, sourceFile, call, method) {
     handler &&
     ts.isIdentifier(handler) &&
     handler.text === "applyFirecrawlNoStoreHeader"
+  ) {
+    return
+  }
+  if (
+    method === "addHook" &&
+    path === "apps/bff/src/index.ts" &&
+    hook === "onReady" &&
+    call.arguments.length === 2 &&
+    handler &&
+    ts.isArrowFunction(handler) &&
+    handler.modifiers?.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword,
+    ) &&
+    normalizedNodeText(handler, sourceFile).includes(
+      "awaitruntimeIsolation.service?.bootstrap()",
+    ) &&
+    normalizedNodeText(handler, sourceFile).includes(
+      'failureClass:"emergency_isolation_bootstrap_failed"',
+    )
   ) {
     return
   }
@@ -15512,6 +17277,27 @@ function routePolicyDigest(root = repositoryRoot) {
           sourceEvidence: buildPr10SourceEvidence(root),
           operationPolicy: readPr10DecisionDocument(root).operationPolicy,
         },
+        {
+          id: "PR-10C",
+          contractBase: pr10cContractBase,
+          contractBaseTree: pr10cContractBaseTree,
+          laneAnchor: pr10cLaneAnchor,
+          path: pr10cContractRevisionPath,
+          evidencePaths: pr10cRevisionEvidencePaths,
+          reviewedDispositions: pr10cReviewedDispositions,
+          target: pr10cTargetContract,
+          allowedRepositoryPathPatterns: pr10cAllowedRepositoryPathPatterns.map(
+            ({ source, flags }) => ({
+              source,
+              flags,
+            }),
+          ),
+          requiredFrozenRepositoryPaths: pr10cRequiredFrozenRepositoryPaths,
+          generatedDestinationPaths: pr10cGeneratedDestinationPaths,
+          sourceEvidencePaths: pr10cSourceEvidencePaths,
+          sourceEvidence: readPr10cDecisionDocument(root).sourceEvidence,
+          operationPolicy: readPr10cDecisionDocument(root).operationPolicy,
+        },
       ],
       implementation: [
         listCandidatePaths,
@@ -15538,6 +17324,8 @@ function routePolicyDigest(root = repositoryRoot) {
         isRouteHostType,
         assertNoRouteMethodAliases,
         isReviewedFastifyReceiverUse,
+        isReviewedEmergencyIsolationBootstrapLogUse,
+        isReviewedEmergencyIsolationOnReadyHook,
         isExpressionWrapper,
         containsKnownFastifyReceiver,
         isValueIdentifier,
@@ -15609,6 +17397,9 @@ function routePolicyDigest(root = repositoryRoot) {
         verifyIntroducedPr10Revision,
         verifyPr10LaneLineage,
         verifyPr10BaseEvidence,
+        verifyIntroducedPr10cRevision,
+        verifyPr10cLaneLineage,
+        verifyPr10cBaseEvidence,
         verifyRetainedPr02RevisionEvidence,
         verifyRetainedPr03RevisionEvidence,
         verifyRetainedPr04RevisionEvidence,
@@ -15618,6 +17409,7 @@ function routePolicyDigest(root = repositoryRoot) {
         verifyRetainedPr08RevisionEvidence,
         verifyRetainedPr09RevisionEvidence,
         verifyRetainedPr10RevisionEvidence,
+        verifyRetainedPr10cRevisionEvidence,
         verifyPr02OperationMatrix,
         verifyExactMultisetSubset,
         verifyPr02EscapeHatches,
@@ -15654,6 +17446,11 @@ function routePolicyDigest(root = repositoryRoot) {
         verifyPr10OperationBoundary,
         verifyPr10GeneratedDestinationBoundary,
         verifyPr10HistoricalFixtureRepair,
+        readPr10cDecisionDocument,
+        buildPr10cSourceEvidence,
+        verifyPr10cDecisionDocument,
+        verifyPr10cOperationBoundary,
+        verifyPr10cGeneratedDestinationBoundary,
         buildExactClosureOperationPolicy,
         buildClosurePathOperations,
         verifyPr03FindingTransition,
@@ -15695,6 +17492,10 @@ function routePolicyDigest(root = repositoryRoot) {
         verifyPr10RetainedRouteContract,
         verifyPr10TargetState,
         verifyPr10SourceBoundary,
+        verifyPr10cCandidateContract,
+        verifyPr10cRetainedRouteContract,
+        verifyPr10cTargetState,
+        verifyPr10cSourceBoundary,
         routeCountsByClassification,
         verifyReviewedWebAuthenticationEvidence,
         verifyReviewedPr04WebAuthenticationEvidence,
@@ -15828,6 +17629,7 @@ export function verifyBaseCommitLineage(
     pr08ContractBase,
     pr09ContractBase,
     pr10ContractBase,
+    pr10cContractBase,
   ],
 ) {
   const head = currentHead(root)

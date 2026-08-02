@@ -1874,6 +1874,127 @@ export const recoveryState = admin.table(
   ],
 )
 
+export const emergencyIsolationState = admin.table(
+  "emergency_isolation_state",
+  {
+    id: text("id").primaryKey(),
+    status: text("status").default("inactive").notNull(),
+    revision: bigint("revision", { mode: "number" }).default(0).notNull(),
+    transitionId: uuid("transition_id"),
+    correlationId: text("correlation_id"),
+    changedBySubjectId: text("changed_by_subject_id"),
+    failureCode: text("failure_code"),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+    activatedBySubjectId: text("activated_by_subject_id"),
+    transitionStartedAt: timestamp("transition_started_at", {
+      withTimezone: true,
+    }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check("emergency_isolation_state_id_check", sql`${table.id} = 'appliance'`),
+    check(
+      "emergency_isolation_state_status_check",
+      sql`${table.status} IN ('inactive', 'engaging', 'active', 'disengaging', 'recovery_required')`,
+    ),
+    check(
+      "emergency_isolation_state_revision_check",
+      sql`${table.revision} BETWEEN 0 AND 9007199254740991`,
+    ),
+    check(
+      "emergency_isolation_state_correlation_check",
+      sql`${table.correlationId} IS NULL OR char_length(${table.correlationId}) BETWEEN 1 AND 128`,
+    ),
+    check(
+      "emergency_isolation_state_subject_check",
+      sql`(
+        ${table.changedBySubjectId} IS NULL
+        OR char_length(${table.changedBySubjectId}) BETWEEN 1 AND 255
+      ) AND (
+        ${table.activatedBySubjectId} IS NULL
+        OR char_length(${table.activatedBySubjectId}) BETWEEN 1 AND 255
+      )`,
+    ),
+    check(
+      "emergency_isolation_state_failure_check",
+      sql`${table.failureCode} IS NULL OR ${table.failureCode} IN ('state_invalid', 'admission_fence_failed', 'inflight_abort_failed', 'enforcement_failed', 'verification_failed', 'restore_reassertion_failed', 'journal_failed')`,
+    ),
+    check(
+      "emergency_isolation_state_timestamps_check",
+      sql`(
+        ${table.transitionStartedAt} IS NULL
+        OR ${table.updatedAt} >= ${table.transitionStartedAt}
+      ) AND (
+        ${table.activatedAt} IS NULL
+        OR ${table.updatedAt} >= ${table.activatedAt}
+      )`,
+    ),
+    check(
+      "emergency_isolation_state_metadata_check",
+      sql`(
+        ${table.revision} = 0
+        AND ${table.status} = 'inactive'
+        AND ${table.transitionId} IS NULL
+        AND ${table.correlationId} IS NULL
+        AND ${table.changedBySubjectId} IS NULL
+        AND ${table.failureCode} IS NULL
+        AND ${table.activatedAt} IS NULL
+        AND ${table.activatedBySubjectId} IS NULL
+        AND ${table.transitionStartedAt} IS NULL
+      ) OR (
+        ${table.revision} > 0
+        AND (
+          (
+            ${table.status} = 'recovery_required'
+            AND ${table.failureCode} IS NOT NULL
+          ) OR (
+            ${table.status} <> 'recovery_required'
+            AND ${table.failureCode} IS NULL
+            AND ${table.changedBySubjectId} IS NOT NULL
+          )
+        )
+        AND (
+          (
+            ${table.status} IN ('engaging', 'disengaging')
+            AND ${table.transitionId} IS NOT NULL
+            AND ${table.correlationId} IS NOT NULL
+            AND ${table.transitionStartedAt} IS NOT NULL
+          ) OR (
+            ${table.status} IN ('inactive', 'active', 'recovery_required')
+            AND ${table.transitionId} IS NULL
+            AND ${table.correlationId} IS NULL
+            AND ${table.transitionStartedAt} IS NULL
+          )
+        )
+        AND (
+          (
+            ${table.status} IN ('inactive', 'engaging')
+            AND ${table.activatedAt} IS NULL
+            AND ${table.activatedBySubjectId} IS NULL
+          ) OR (
+            ${table.status} IN ('active', 'disengaging')
+            AND ${table.activatedAt} IS NOT NULL
+            AND ${table.activatedBySubjectId} IS NOT NULL
+          ) OR (
+            ${table.status} = 'recovery_required'
+            AND (
+              (
+                ${table.activatedAt} IS NULL
+                AND ${table.activatedBySubjectId} IS NULL
+              ) OR (
+                ${table.activatedAt} IS NOT NULL
+                AND ${table.activatedBySubjectId} IS NOT NULL
+              )
+            )
+          )
+        )
+      )`,
+    ),
+  ],
+)
+
 export const lifecycleOperations = admin.table(
   "lifecycle_operations",
   {
@@ -2080,6 +2201,8 @@ export const lifecycleOperationEvents = admin.table(
         'verify',
         'resume',
         'rollback',
+        'emergency_isolation_fence',
+        'emergency_isolation_reassertion',
         'emergency_session_fence',
         'emergency_session_reset',
         'credential_consistency',
@@ -2100,6 +2223,8 @@ export const lifecycleOperationEvents = admin.table(
       sql`(
         ${table.phase} IN (
           'operation',
+          'emergency_isolation_fence',
+          'emergency_isolation_reassertion',
           'emergency_session_fence',
           'emergency_session_reset',
           'credential_consistency'
@@ -2144,6 +2269,25 @@ export const lifecycleOperationEvents = admin.table(
       ) OR (
         ${table.phase} = 'rollback'
         AND ${table.operationState} = 'rolling_back'
+      ) OR (
+        ${table.phase} = 'emergency_isolation_fence'
+        AND ${table.operationState} IN (
+          'prepared',
+          'quiescing',
+          'resuming'
+        )
+      ) OR (
+        ${table.phase} = 'emergency_isolation_reassertion'
+        AND ${table.operationState} IN (
+          'prepared',
+          'validating',
+          'quiescing',
+          'restoring',
+          'verifying',
+          'rolling_back',
+          'resuming',
+          'recovery_required'
+        )
       ) OR (
         ${table.phase} = 'emergency_session_fence'
         AND ${table.operationState} IN (
