@@ -426,3 +426,75 @@ and source map bindings, no pilot ancestry, the exact route and registrar
 surface, the source-only package boundary, and the reviewed operation policy.
 It atomically writes only `contract-revisions/PR-08.json`, the forbidden
 allowlist, and the route baseline. Do not run it for a partial candidate.
+
+PR-10C is the source-only emergency-isolation successor to accepted PR-10
+commit `f29ea2a0c69871973ea553d3edf83b783d6c9879`, tree
+`991109ad85e0c454af62ed42c4a5a69068b301e0`. It preserves every PR-02 through
+PR-10 revision and evidence file byte-for-byte. The only added HTTP surface is
+exactly `GET /api/admin/isolation`, `POST /api/admin/isolation/activate`, and
+`POST /api/admin/isolation/deactivate`, all classified as current Console
+seams. Status uses `console.operational.view` for Admin and Operator. Both
+mutations require a standing Admin, reject an emergency-elevated Operator, and
+require Keycloak authentication no older than 300 seconds with at least one
+approved method present in `amr`: `otp`, `hwk`, `webauthn`, or
+`webauthn-passwordless`.
+
+The global singleton state fails closed whenever it is not inactive. State,
+audit, and idempotency finalization share one PostgreSQL transaction.
+Activation fences new inference and Firecrawl admissions, signals in-process
+work to abort, and reaches active only after local leases reach zero. Restore
+persists and reads back `recovery_required` immediately after `journal.begin`
+returns `created`, before any `prepareRestore` validation or quiesce. Only
+manifest rejection before journal admission is exempt. The restore then holds
+and reasserts the isolation fence. Every admitted restore ends durable
+`recovery_required`, unconditionally. After every applied or partial restore
+failure settlement, `recovery_required` is reasserted before any return or
+resume. The two existing inference routes and two existing Firecrawl routes do
+not change.
+
+Deactivation reserves a sealed, zero-lease generation while its durable
+transaction commits. Admissions during that reservation are denied without
+invalidating it. The local gate opens synchronously only after the transaction
+has durably committed `inactive`; a concurrent later activation waits for that
+commit boundary and then seals traffic again.
+
+Restore safety also requires an operation-scoped marker authority outside the
+Console restore set. A missing, malformed, unavailable, or unbound authority
+keeps admissions sealed and makes Admin status unavailable. The process hold
+is acquired synchronously, the marker is persisted and read back before the
+Console recovery row, and startup reconciles any retained marker before it can
+trust a restored inactive row. Activation and deactivation cannot cross the
+marker boundary. Close verifies current Console `recovery_required`, releases
+the process hold while the durable marker still blocks traffic, then uses an
+exact-operation compare-clear that confirms durable absence. PR-12 owns the
+concrete non-restorable backend and its live qualification.
+
+Startup also treats an admitted restore without a completed fence event as a
+durable recovery obligation. A prepared, unfenced restore is locked,
+revalidated, and compare-and-set to `recovery_required` before any validation
+or adapter write; reconciliation is recorded idempotently only after Console
+recovery is forced and read back. A surviving marker is cleared only for its
+matching terminal restore. Missing, unresolved, invalid, or unavailable
+lifecycle ownership retains the marker and keeps traffic sealed.
+
+PR-10C remains `runtimeQualified: false`. PR-12 owns live topology, firewall
+and no-bypass enforcement, live in-flight drain and abort qualification,
+deployment, and production qualification. PR-10D owns vendor maintenance
+access. No intermediate deployment or generated contract artifact is allowed.
+
+During implementation the decision remains `pending-final-staged-delta` with
+six empty operation arrays and no source hashes. After every product and
+governance path is final, stage the exact candidate, leave no untracked path,
+print the operation policy, copy its six arrays and current source hashes into
+the decision, review it, and only then run write mode:
+
+```text
+corepack pnpm contract:inference-core:pr10c:policy
+corepack pnpm contract:inference-core:pr10c:write
+```
+
+Policy mode derives the exact staged closure. Write mode rejects a pending or
+drifted decision and atomically writes only `contract-revisions/PR-10C.json`,
+the forbidden allowlist, and the route baseline. Do not stage those generated
+destinations before generation, and do not run write mode from a partial
+candidate.

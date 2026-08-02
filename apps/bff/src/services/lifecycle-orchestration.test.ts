@@ -136,6 +136,7 @@ describe("lifecycle orchestration", () => {
 
     expect(result.status).toBe("succeeded")
     expect(fixture.calls).toEqual([
+      "open_emergency_isolation_fence",
       ...components.map((component) => `prepare_restore:${component}`),
       ...components.map((component) => `quiesce:${component}`),
       "open_emergency_session_fence",
@@ -144,19 +145,64 @@ describe("lifecycle orchestration", () => {
       "reset_emergency_sessions",
       ...components.map((component) => `validate_restore:${component}`),
       "verify_credential_consistency",
+      "reassert_emergency_isolation",
       ...[...components]
         .reverse()
         .map((component) => `discard_restore_preparation:${component}`),
       ...[...components].reverse().map((component) => `resume:${component}`),
       "close_emergency_session_fence",
+      "close_emergency_isolation_fence",
     ])
+    expect(
+      fixture.calls.indexOf("open_emergency_isolation_fence"),
+    ).toBeLessThan(fixture.calls.indexOf("prepare_restore:console_database"))
+    expect(
+      fixture.calls.indexOf("open_emergency_isolation_fence"),
+    ).toBeLessThan(fixture.calls.indexOf("quiesce:console_database"))
     expect(fixture.journal.operations.get(restoreOperationId)?.state).toBe(
       "succeeded",
     )
   })
 
+  it("reports recovery-required when successful restore cannot release its isolation hold", async () => {
+    const journal = new InMemoryLifecycleOperationJournal()
+    let stateAtIsolationClose: string | null = null
+    const fixture = restoreFixture(
+      new Set(["close_emergency_isolation_fence"]),
+      journal,
+      () => {
+        stateAtIsolationClose =
+          journal.operations.get(restoreOperationId)?.state ?? null
+      },
+    )
+
+    const result = await fixture.orchestrator.restore({
+      ...request,
+      manifest: sourceManifest(),
+    })
+
+    expect(result).toMatchObject({
+      failureCode: "restore_failed",
+      status: "recovery_required",
+    })
+    expect(stateAtIsolationClose).toBe("succeeded")
+    expect(fixture.journal.operations.get(restoreOperationId)?.state).toBe(
+      "succeeded",
+    )
+    expect(fixture.calls.at(-1)).toBe("close_emergency_isolation_fence")
+  })
+
   it("rolls back every attempted active restore in reverse order", async () => {
-    const fixture = restoreFixture(new Set(["restore:litellm"]))
+    const journal = new InMemoryLifecycleOperationJournal()
+    let stateAtIsolationClose: string | null = null
+    const fixture = restoreFixture(
+      new Set(["restore:litellm"]),
+      journal,
+      () => {
+        stateAtIsolationClose =
+          journal.operations.get(restoreOperationId)?.state ?? null
+      },
+    )
 
     const result = await fixture.orchestrator.restore({
       ...request,
@@ -175,12 +221,21 @@ describe("lifecycle orchestration", () => {
       "rollback_restore:console_database",
     ])
     expect(
+      fixture.calls.lastIndexOf("reassert_emergency_isolation"),
+    ).toBeLessThan(
+      fixture.calls.findIndex((call) => call.startsWith("resume:")),
+    )
+    expect(
       fixture.calls.filter((call) => call === "reset_emergency_sessions"),
     ).toHaveLength(2)
+    expect(stateAtIsolationClose).toBe("rolled_back")
+    expect(fixture.calls.at(-1)).toBe("close_emergency_isolation_fence")
   })
 
-  it("discards earlier staged preparations in reverse when a later preparation fails", async () => {
-    const fixture = restoreFixture(new Set(["prepare_restore:litellm"]))
+  it("keeps durable recovery isolation authoritative when rollback hold release fails", async () => {
+    const fixture = restoreFixture(
+      new Set(["restore:litellm", "close_emergency_isolation_fence"]),
+    )
 
     const result = await fixture.orchestrator.restore({
       ...request,
@@ -189,15 +244,118 @@ describe("lifecycle orchestration", () => {
 
     expect(result).toMatchObject({
       failureCode: "restore_failed",
-      status: "failed",
+      status: "recovery_required",
+    })
+    expect(fixture.journal.operations.get(restoreOperationId)?.state).toBe(
+      "rolled_back",
+    )
+    expect(fixture.calls.at(-2)).toBe("close_emergency_session_fence")
+    expect(fixture.calls.at(-1)).toBe("close_emergency_isolation_fence")
+    expect(
+      fixture.calls.lastIndexOf("reassert_emergency_isolation"),
+    ).toBeLessThan(fixture.calls.lastIndexOf("close_emergency_isolation_fence"))
+  })
+
+  it("holds isolation when post-restore reassertion is uncertain", async () => {
+    const fixture = restoreFixture(new Set(["reassert_emergency_isolation"]))
+
+    const result = await fixture.orchestrator.restore({
+      ...request,
+      manifest: sourceManifest(),
+    })
+
+    expect(result).toMatchObject({
+      failureCode: "restore_failed",
+      status: "recovery_required",
+    })
+    expect(fixture.calls).toContain("reassert_emergency_isolation")
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
+  })
+
+  it("requires recovery when isolation-fence acquisition rejects without a handle", async () => {
+    const fixture = restoreFixture(new Set(["open_emergency_isolation_fence"]))
+
+    const result = await fixture.orchestrator.restore({
+      ...request,
+      manifest: sourceManifest(),
+    })
+
+    expect(result).toMatchObject({
+      failureCode: "restore_failed",
+      status: "recovery_required",
+    })
+    expect(fixture.journal.operations.get(restoreOperationId)?.state).toBe(
+      "recovery_required",
+    )
+    expect(fixture.calls.filter((call) => call.startsWith("restore:"))).toEqual(
+      [],
+    )
+    expect(
+      fixture.calls.filter((call) => call.startsWith("prepare_restore:")),
+    ).toEqual([])
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
+  })
+
+  it("retains the isolation hold when post-admission validation admission is uncertain", async () => {
+    const journal = new OneShotTransitionFailureJournal(
+      (input) => input.nextState === "validating",
+    )
+    const fixture = restoreFixture(new Set(), journal)
+
+    const result = await fixture.orchestrator.restore({
+      ...request,
+      manifest: sourceManifest(),
+    })
+
+    expect(result).toMatchObject({
+      failureCode: "journal_failed",
+      status: "recovery_required",
     })
     expect(fixture.calls).toEqual([
+      "open_emergency_isolation_fence",
+      "reassert_emergency_isolation",
+    ])
+    expect(fixture.journal.operations.get(restoreOperationId)?.state).toBe(
+      "recovery_required",
+    )
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
+  })
+
+  it("discards earlier staged preparations in reverse when a later preparation fails", async () => {
+    const journal = new InMemoryLifecycleOperationJournal()
+    let stateAtIsolationClose: string | null = null
+    const fixture = restoreFixture(
+      new Set(["prepare_restore:litellm"]),
+      journal,
+      () => {
+        stateAtIsolationClose =
+          journal.operations.get(restoreOperationId)?.state ?? null
+      },
+    )
+
+    const result = await fixture.orchestrator.restore({
+      ...request,
+      manifest: sourceManifest(),
+    })
+
+    expect(result).toMatchObject({
+      failureCode: "restore_failed",
+      status: "recovery_required",
+    })
+    expect(fixture.calls).toEqual([
+      "open_emergency_isolation_fence",
       "prepare_restore:console_database",
       "prepare_restore:keycloak",
       "prepare_restore:litellm",
       "discard_restore_preparation:keycloak",
       "discard_restore_preparation:console_database",
+      "reassert_emergency_isolation",
+      "close_emergency_isolation_fence",
     ])
+    expect(fixture.journal.operations.get(restoreOperationId)?.state).toBe(
+      "recovery_required",
+    )
+    expect(stateAtIsolationClose).toBe("recovery_required")
   })
 
   it("rolls back on credential inconsistency and leaves emergency sessions zero", async () => {
@@ -282,6 +440,15 @@ describe("lifecycle orchestration", () => {
     expect(
       fixture.calls.filter((call) => call === "close_emergency_session_fence"),
     ).toEqual([])
+    expect(
+      fixture.calls.filter((call) => call === "reassert_emergency_isolation"),
+    ).toHaveLength(1)
+    expect(
+      fixture.calls.lastIndexOf("reassert_emergency_isolation"),
+    ).toBeGreaterThan(
+      fixture.calls.lastIndexOf("rollback_restore:console_database"),
+    )
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
   })
 
   it("compensates an active restore when normal resume fails", async () => {
@@ -355,6 +522,13 @@ describe("lifecycle orchestration", () => {
     expect(
       fixture.calls.filter((call) => call === "close_emergency_session_fence"),
     ).toEqual([])
+    expect(
+      fixture.calls.filter((call) => call === "reassert_emergency_isolation"),
+    ).toHaveLength(2)
+    expect(
+      fixture.calls.lastIndexOf("reassert_emergency_isolation"),
+    ).toBeGreaterThan(fixture.calls.lastIndexOf("quiesce:keycloak"))
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
   })
 
   it("keeps quiescence and the activation fence when rollback admission fails", async () => {
@@ -378,6 +552,10 @@ describe("lifecycle orchestration", () => {
     expect(
       fixture.calls.filter((call) => call === "close_emergency_session_fence"),
     ).toEqual([])
+    expect(
+      fixture.calls.filter((call) => call === "reassert_emergency_isolation"),
+    ).toHaveLength(2)
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
   })
 
   it("reopens and clears the session gap when rollback admission fails after normal close", async () => {
@@ -399,13 +577,120 @@ describe("lifecycle orchestration", () => {
     expect(
       fixture.calls.filter((call) => call === "open_emergency_session_fence"),
     ).toHaveLength(2)
-    expect(fixture.calls.slice(-2)).toEqual([
+    expect(fixture.calls.slice(-3)).toEqual([
       "open_emergency_session_fence",
       "reset_emergency_sessions",
+      "reassert_emergency_isolation",
     ])
+    expect(
+      fixture.calls.filter((call) => call === "reassert_emergency_isolation"),
+    ).toHaveLength(2)
     expect(
       fixture.calls.filter((call) => call.startsWith("rollback_restore:")),
     ).toEqual([])
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
+  })
+
+  it("reasserts isolation when the compensation session fence cannot reopen", async () => {
+    const journal = new OneShotTransitionFailureJournal(
+      (input) => input.nextState === "succeeded",
+    )
+    const fixture = restoreFixture(
+      new Set(["open_emergency_session_fence#2"]),
+      journal,
+    )
+
+    const result = await fixture.orchestrator.restore({
+      ...request,
+      manifest: sourceManifest(),
+    })
+
+    expect(result).toMatchObject({
+      failureCode: "restore_failed",
+      status: "recovery_required",
+    })
+    expect(
+      fixture.calls.filter((call) => call === "open_emergency_session_fence"),
+    ).toHaveLength(2)
+    expect(
+      fixture.calls.filter((call) => call === "reassert_emergency_isolation"),
+    ).toHaveLength(2)
+    expect(fixture.calls.at(-1)).toBe("reassert_emergency_isolation")
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
+  })
+
+  it("reasserts isolation when the reopened session gap cannot be reset", async () => {
+    const journal = new OneShotTransitionFailureJournal(
+      (input) => input.nextState === "succeeded",
+    )
+    const fixture = restoreFixture(
+      new Set(["reset_emergency_sessions#3"]),
+      journal,
+    )
+
+    const result = await fixture.orchestrator.restore({
+      ...request,
+      manifest: sourceManifest(),
+    })
+
+    expect(result).toMatchObject({
+      failureCode: "rollback_failed",
+      status: "recovery_required",
+    })
+    expect(
+      fixture.calls.filter((call) => call === "reset_emergency_sessions"),
+    ).toHaveLength(3)
+    expect(
+      fixture.calls.filter((call) => call === "reassert_emergency_isolation"),
+    ).toHaveLength(2)
+    expect(fixture.calls.at(-1)).toBe("reassert_emergency_isolation")
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
+  })
+
+  it("reasserts isolation after restore-preparation discard failure", async () => {
+    const fixture = restoreFixture(
+      new Set(["restore:litellm", "discard_restore_preparation:grafana"]),
+    )
+
+    const result = await fixture.orchestrator.restore({
+      ...request,
+      manifest: sourceManifest(),
+    })
+
+    expect(result).toMatchObject({
+      failureCode: "restore_failed",
+      status: "recovery_required",
+    })
+    expect(fixture.calls).toContain("discard_restore_preparation:grafana")
+    expect(
+      fixture.calls.lastIndexOf("reassert_emergency_isolation"),
+    ).toBeGreaterThan(
+      fixture.calls.lastIndexOf("discard_restore_preparation:console_database"),
+    )
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
+  })
+
+  it("reasserts isolation when session-fence close remains uncertain", async () => {
+    const fixture = restoreFixture(new Set(["close_emergency_session_fence"]))
+
+    const result = await fixture.orchestrator.restore({
+      ...request,
+      manifest: sourceManifest(),
+    })
+
+    expect(result).toMatchObject({
+      failureCode: "restore_failed",
+      status: "recovery_required",
+    })
+    expect(
+      fixture.calls.filter((call) => call === "reassert_emergency_isolation"),
+    ).toHaveLength(2)
+    expect(
+      fixture.calls.lastIndexOf("reassert_emergency_isolation"),
+    ).toBeGreaterThan(
+      fixture.calls.lastIndexOf("close_emergency_session_fence"),
+    )
+    expect(fixture.calls).not.toContain("close_emergency_isolation_fence")
   })
 
   it("surfaces recovery-state persistence failure as journal_failed", async () => {
@@ -476,12 +761,13 @@ function snapshotFixture(
 function restoreFixture(
   failures = new Set<string>(),
   journal = new InMemoryLifecycleOperationJournal(),
+  onIsolationClose?: () => void,
 ) {
   const calls: string[] = []
   const orchestrator = new LifecycleOrchestrator(
     createLifecycleComponentAdapters(driverMap(calls, failures)),
     journal,
-    restoreSafety(calls, failures),
+    restoreSafety(calls, failures, onIsolationClose),
     fixedOptions([restoreOperationId]),
   )
   return { calls, journal, orchestrator }
@@ -533,11 +819,35 @@ function driver(
 function restoreSafety(
   calls: string[],
   failures: Set<string>,
+  onIsolationClose?: () => void,
 ): LifecycleRestoreSafety {
   return {
+    openEmergencyIsolationRestoreFence: async () => {
+      calls.push("open_emergency_isolation_fence")
+      if (failures.has("open_emergency_isolation_fence")) {
+        throw new Error("private-runtime-address")
+      }
+      return {
+        reassertRecoveryRequired: async () => {
+          calls.push("reassert_emergency_isolation")
+          if (
+            hasRecordedFailure(calls, failures, "reassert_emergency_isolation")
+          ) {
+            throw new Error("private-runtime-address")
+          }
+        },
+        closeAfterRecoveryRequired: async () => {
+          calls.push("close_emergency_isolation_fence")
+          onIsolationClose?.()
+          if (failures.has("close_emergency_isolation_fence")) {
+            throw new Error("private-runtime-address")
+          }
+        },
+      }
+    },
     openEmergencySessionActivationFence: async () => {
       calls.push("open_emergency_session_fence")
-      if (failures.has("open_emergency_session_fence")) {
+      if (hasRecordedFailure(calls, failures, "open_emergency_session_fence")) {
         throw new Error("private-runtime-address")
       }
       return {
@@ -551,7 +861,7 @@ function restoreSafety(
     },
     resetEmergencySessions: async (_context: LifecycleAdapterContext) => {
       calls.push("reset_emergency_sessions")
-      if (failures.has("reset_emergency_sessions")) {
+      if (hasRecordedFailure(calls, failures, "reset_emergency_sessions")) {
         throw new Error("private-runtime-address")
       }
     },
@@ -568,6 +878,15 @@ function restoreSafety(
         : "consistent"
     },
   }
+}
+
+function hasRecordedFailure(
+  calls: string[],
+  failures: Set<string>,
+  call: string,
+): boolean {
+  const occurrence = calls.filter((candidate) => candidate === call).length
+  return failures.has(call) || failures.has(`${call}#${occurrence}`)
 }
 
 class OneShotTransitionFailureJournal extends InMemoryLifecycleOperationJournal {

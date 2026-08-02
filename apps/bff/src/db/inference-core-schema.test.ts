@@ -19,6 +19,7 @@ import {
   auditSourceCursors,
   backupState,
   consoleSettings,
+  emergencyIsolationState,
   emergencyRecoveryFactor,
   emergencyRecoverySessions,
   humanIdentities,
@@ -437,6 +438,23 @@ const tableDefinitions = [
   },
   {
     schema: "admin",
+    table: emergencyIsolationState,
+    columns: [
+      "id",
+      "status",
+      "revision",
+      "transition_id",
+      "correlation_id",
+      "changed_by_subject_id",
+      "failure_code",
+      "activated_at",
+      "activated_by_subject_id",
+      "transition_started_at",
+      "updated_at",
+    ],
+  },
+  {
+    schema: "admin",
     table: lifecycleOperations,
     columns: [
       "id",
@@ -583,6 +601,7 @@ describe("inference-core persistence boundary", () => {
       "emergency_recovery_factor",
       "emergency_recovery_sessions",
       "recovery_state",
+      "emergency_isolation_state",
       "lifecycle_operations",
       "lifecycle_operation_events",
       "lifecycle_snapshot_manifests",
@@ -622,6 +641,7 @@ describe("inference-core persistence boundary", () => {
       "emergencyRecoveryFactor",
       "emergencyRecoverySessions",
       "recoveryState",
+      "emergencyIsolationState",
       "lifecycleOperations",
       "lifecycleOperationEvents",
       "lifecycleSnapshotManifests",
@@ -729,6 +749,9 @@ describe("inference-core persistence boundary", () => {
       "backup_state",
       "recovery_state",
     ])
+    expect(migration).toContain(
+      "INSERT INTO admin.emergency_isolation_state (id) VALUES ('appliance');",
+    )
   })
 
   it("enforces subject identity, restricted credentials, and metadata-only idempotency", () => {
@@ -783,7 +806,12 @@ describe("inference-core persistence boundary", () => {
     expect(
       migrationDefinition("admin", "lifecycle_snapshot_manifests"),
     ).toContain("operation_id uuid NOT NULL UNIQUE")
-    for (const phase of ["emergency_session_fence", "discard_preparation"]) {
+    for (const phase of [
+      "emergency_isolation_fence",
+      "emergency_isolation_reassertion",
+      "emergency_session_fence",
+      "discard_preparation",
+    ]) {
       expect(schemaSource).toContain(`'${phase}'`)
       expect(migration).toContain(`'${phase}'`)
     }

@@ -20,6 +20,7 @@ import {
   buildExactClosureOperationPolicy,
   buildForbiddenAllowlist,
   buildRepositoryClosureFromCommit,
+  buildRevisionEvidenceFingerprints,
   compareExactFindings,
   compareForbiddenBaselineMetadata,
   extractBffRoutes,
@@ -39,6 +40,10 @@ import {
   pr08ContractBase,
   pr09ContractBase,
   pr10ContractBase,
+  pr10cContractBase,
+  pr10cContractBaseTree,
+  pr10cDecisionPath,
+  pr10cSuccessorAwareHistoricalTestBindings,
   repositoryRoot,
   routeBaselinePath,
   scanForbiddenSurfaces,
@@ -60,6 +65,7 @@ import {
   verifyPr07TargetState,
   verifyPr08TargetState,
   verifyPr09TargetState,
+  verifyPr10TargetState,
   verifyProtectedGuardrailStability,
   verifyRepository,
   verifyRetentionCharacterization,
@@ -1190,6 +1196,13 @@ test("PR-10 base comparison accepts its dirty same-head candidate", () => {
   )
 })
 
+test("PR-10C base comparison accepts its dirty same-head candidate", () => {
+  assert.deepEqual(
+    verifyBaseCommitLineage(repositoryRoot, pr10cContractBase),
+    [],
+  )
+})
+
 test("PR-02 revision operation matrix rejects added runtime surfaces", () => {
   const scenarios = [
     {
@@ -2022,9 +2035,14 @@ test("route parsing distinguishes retained Application routes from legacy compat
     paths[1],
     [
       'import type { FastifyInstance } from "fastify"',
-      "export function registerAppGatewayRoutes(server: FastifyInstance) {",
+      "export interface AppGatewayRouteOptions { isolationGate?: unknown }",
+      "export function registerAppGatewayRoutes(",
+      "  server: FastifyInstance,",
+      "  options: AppGatewayRouteOptions = {},",
+      ") {",
       '  server.get("/api/app-gateway/v1/models", handler)',
       '  server.post("/api/app-gateway/v1/chat/completions", handler)',
+      "  void options",
       "}",
       "",
     ].join("\n"),
@@ -2447,8 +2465,9 @@ test("reviewed Fastify registrar wiring is exact and shrink-only", () => {
       'import { registerAdminRoutes } from "./routes/admin"',
       "export function buildServer(): FastifyInstance {",
       "  const server = Fastify({ bodyLimit: bffBodyLimitBytes(), logger: true })",
+      "  const emergencyIsolationService = null",
       "  const emergencyRecoveryService = null",
-      "  registerAdminRoutes(server, { emergencyRecoveryService })",
+      "  registerAdminRoutes(server, { emergencyIsolationService, emergencyRecoveryService, })",
       "  return server",
       "}",
       "",
@@ -2460,10 +2479,10 @@ test("reviewed Fastify registrar wiring is exact and shrink-only", () => {
     [
       'import type { FastifyInstance } from "fastify"',
       "declare function withCapability(capability: string): unknown",
-      "export interface AdminRouteOptions { emergencyRecoveryService: unknown }",
+      "export interface AdminRouteOptions { emergencyIsolationService: unknown; emergencyRecoveryService: unknown }",
       "export function registerAdminRoutes(",
       "  server: FastifyInstance,",
-      "  options: AdminRouteOptions = { emergencyRecoveryService: null },",
+      "  options: AdminRouteOptions = { emergencyIsolationService: null, emergencyRecoveryService: null, },",
       "): void {",
       '  server.get("/api/admin/overview", withCapability("console.operational.view"), async () => options.emergencyRecoveryService)',
       "}",
@@ -3051,9 +3070,111 @@ test("retention register rejects unreviewed top-level claims", () => {
   )
 })
 
+test("successor-aware historical test repairs use only revision-fixed evidence", () => {
+  assert.deepEqual(pr10cSuccessorAwareHistoricalTestBindings, [
+    {
+      retainedRevision: "PR-05",
+      path: "scripts/inference-core/pr05-boundaries.test.mjs",
+      evidenceCommit: pr06ContractBase,
+    },
+    {
+      retainedRevision: "PR-06",
+      path: "scripts/inference-core/pr06-boundaries.test.mjs",
+      evidenceCommit: pr07ContractBase,
+    },
+    {
+      retainedRevision: "PR-09",
+      path: "scripts/inference-core/pr05-boundaries.test.mjs",
+      evidenceCommit: pr10ContractBase,
+    },
+    {
+      retainedRevision: "PR-10",
+      path: "scripts/inference-core/pr10-boundaries.test.mjs",
+      evidenceCommit: pr10cContractBase,
+    },
+  ])
+  assert.equal(
+    git(repositoryRoot, [
+      "rev-parse",
+      "--verify",
+      "--end-of-options",
+      `${pr10cContractBase}^{tree}`,
+    ]),
+    pr10cContractBaseTree,
+  )
+
+  for (const {
+    retainedRevision,
+    path,
+    evidenceCommit,
+  } of pr10cSuccessorAwareHistoricalTestBindings) {
+    const acceptedBytes = execFileSync(
+      "git",
+      [
+        "show",
+        "--no-ext-diff",
+        "--no-textconv",
+        "--end-of-options",
+        `${evidenceCommit}:${path}`,
+      ],
+      { cwd: repositoryRoot, encoding: null },
+    )
+    assert.deepEqual(
+      buildRevisionEvidenceFingerprints(
+        repositoryRoot,
+        [path],
+        retainedRevision,
+      ),
+      [{ path, sha256: testSha256(acceptedBytes) }],
+    )
+    assert.notEqual(
+      testSha256(readFileSync(join(repositoryRoot, path))),
+      testSha256(acceptedBytes),
+      `${retainedRevision} must retain historical bytes rather than the repaired live test`,
+    )
+  }
+
+  const root = temporaryRoot()
+  const pr10Binding = pr10cSuccessorAwareHistoricalTestBindings.find(
+    ({ retainedRevision }) => retainedRevision === "PR-10",
+  )
+  assert.ok(pr10Binding)
+  writeFixture(
+    root,
+    pr10Binding.path,
+    readFileSync(join(repositoryRoot, pr10Binding.path)),
+  )
+  const liveEvidence = buildRevisionEvidenceFingerprints(
+    root,
+    [pr10Binding.path],
+    pr10Binding.retainedRevision,
+  )
+  assert.deepEqual(liveEvidence, [
+    {
+      path: pr10Binding.path,
+      sha256: testSha256(readFileSync(join(root, pr10Binding.path))),
+    },
+  ])
+
+  writeFixture(
+    root,
+    pr10cDecisionPath,
+    readFileSync(join(repositoryRoot, pr10cDecisionPath)),
+  )
+  assert.throws(
+    () =>
+      buildRevisionEvidenceFingerprints(
+        root,
+        [pr10Binding.path],
+        pr10Binding.retainedRevision,
+      ),
+    /PR-10C successor-historical evidence is unavailable/,
+  )
+})
+
 test("the live repository matches its current reviewed baselines", () => {
   const result = verifyRepository({
-    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr10ContractBase,
+    baseRef: process.env.INFERENCE_CORE_BASE_REF ?? pr10cContractBase,
   })
   assert.deepEqual(result.errors, [])
   assert.equal(result.ok, true)
@@ -3280,6 +3401,99 @@ test("historical target verifiers defer only to reviewed successors", () => {
   ]) {
     assert.deepEqual(verifyHistoricalTarget(pr10Successor), [])
   }
+
+  const pr10cSuccessor = structuredClone(currentRoutes)
+  pr10cSuccessor.reviewedRevisions = [{ id: "PR-10C" }]
+  for (const verifyHistoricalTarget of [
+    (routes) =>
+      verifyPr03TargetState({ currentAllowlist, currentRoutes: routes }),
+    (routes) =>
+      verifyPr04TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr05TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr06TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr07TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr08TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr09TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+    (routes) =>
+      verifyPr10TargetState({
+        currentAllowlist,
+        currentRoutes: routes,
+        paths: [],
+      }),
+  ]) {
+    assert.notDeepEqual(
+      verifyHistoricalTarget(pr10cSuccessor),
+      [],
+      "a bare PR-10C revision id must not waive target verification",
+    )
+  }
+})
+
+test("reviewed PR-10C successors keep historical target delegates fail-closed", () => {
+  const currentAllowlist = JSON.parse(
+    readFileSync(
+      join(
+        repositoryRoot,
+        "docs/reduction/inference-core/forbidden-surface-allowlist.yaml",
+      ),
+      "utf8",
+    ),
+  )
+  const currentRoutes = JSON.parse(
+    readFileSync(join(repositoryRoot, routeBaselinePath), "utf8"),
+  )
+  assert.equal(currentRoutes.reviewedRevisions?.at(-1)?.id, "PR-10C")
+
+  for (const verifyHistoricalTarget of [
+    verifyPr09TargetState,
+    verifyPr10TargetState,
+  ]) {
+    assert.deepEqual(
+      verifyHistoricalTarget({ currentAllowlist, currentRoutes }),
+      [],
+    )
+
+    const tamperedRoutes = structuredClone(currentRoutes)
+    tamperedRoutes.routes = tamperedRoutes.routes.filter(
+      (route) => !route.path.startsWith("/api/admin/isolation"),
+    )
+    assert.match(
+      verifyHistoricalTarget({
+        currentAllowlist,
+        currentRoutes: tamperedRoutes,
+      }).join("\n"),
+      /PR-10C (?:total route count|isolation route inventory) changed/,
+    )
+  }
 })
 
 test("unknown active reviewed revisions fail closed", () => {
@@ -3289,6 +3503,7 @@ test("unknown active reviewed revisions fail closed", () => {
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-08"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-09"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-10"), [])
+  assert.deepEqual(verifyActiveReviewedRevisionId("PR-10C"), [])
   assert.deepEqual(verifyActiveReviewedRevisionId(undefined), [])
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-11"), [
     "unsupported active reviewed revision PR-11",

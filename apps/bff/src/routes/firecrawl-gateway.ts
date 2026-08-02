@@ -15,6 +15,10 @@ import {
   normalizeFirecrawlEgressAllowedHosts,
   validateFirecrawlPublicUrl,
 } from "../services/firecrawl-url-safety"
+import type {
+  IsolationTrafficFinalizationResult,
+  IsolationTrafficLease,
+} from "../services/isolation-traffic-gate"
 
 export const FIRECRAWL_REQUEST_BODY_LIMIT_BYTES = 16 * 1024
 export const FIRECRAWL_SEARCH_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024
@@ -30,6 +34,21 @@ const COMPLETION_HOOK_DEADLINE_MS = 1_000
 const MAX_REDIRECTS = 20
 
 export type FirecrawlGatewayOperation = "scrape" | "search"
+
+export type FirecrawlIsolationLease = IsolationTrafficLease
+
+export interface FirecrawlIsolationTrafficGate {
+  admit(input: {
+    appId: string
+    correlationId: string
+    credentialRecordId: string
+    route: "firecrawl_scrape" | "firecrawl_search"
+    signal: AbortSignal
+  }): Promise<
+    | { lease: FirecrawlIsolationLease; ok: true }
+    | { ok: false; reason?: string }
+  >
+}
 
 export interface FirecrawlGatewayIdentity {
   applicationId: string
@@ -120,6 +139,7 @@ export interface FirecrawlGatewayDependencies {
   dnsLookup: FirecrawlDnsLookup
   egressAllowedHosts: Iterable<string> | null
   fetchImpl: typeof fetch
+  isolationGate: FirecrawlIsolationTrafficGate
   limits: Partial<FirecrawlGatewayLimits>
   metadata: FirecrawlGatewayMetadataRecorder
   now: () => number
@@ -135,6 +155,7 @@ interface RegisteredDependencies {
   connectionEvidence: FirecrawlConnectionEvidenceRecorder
   dnsLookup?: FirecrawlDnsLookup
   fetchImpl: typeof fetch
+  isolationGate: FirecrawlIsolationTrafficGate
   limits: FirecrawlGatewayLimits
   metadata: FirecrawlGatewayMetadataRecorder
   now: () => number
@@ -172,6 +193,7 @@ type UpstreamResult =
         | "cancelled"
         | "deadline_exceeded"
         | "invalid_response"
+        | "isolated"
         | "response_too_large"
         | "unavailable"
       responseBytes: number
@@ -179,7 +201,7 @@ type UpstreamResult =
     }
 
 class FirecrawlGatewayAbortError extends Error {
-  constructor(readonly reason: "cancelled" | "deadline_exceeded") {
+  constructor(readonly reason: "cancelled" | "deadline_exceeded" | "isolated") {
     super(reason)
     this.name = "FirecrawlGatewayAbortError"
   }
@@ -188,8 +210,9 @@ class FirecrawlGatewayAbortError extends Error {
 class FirecrawlResponseTooLargeError extends Error {}
 
 interface RequestBoundary {
+  bindIsolation(signal: AbortSignal): void
   dispose(): void
-  failureReason(): "cancelled" | "deadline_exceeded" | null
+  failureReason(): "cancelled" | "deadline_exceeded" | "isolated" | null
   signal: AbortSignal
 }
 
@@ -250,6 +273,7 @@ async function handleGatewayRequest(
   }
   let admitted: AdmittedContext | null = null
   let completed = false
+  let isolationLease: FirecrawlIsolationLease | null = null
 
   try {
     if (request.raw.url?.includes("?")) {
@@ -299,6 +323,39 @@ async function handleGatewayRequest(
         ? sendGatewayError(reply, 403, "Request denied.")
         : sendGatewayError(reply, 503, "Service unavailable.")
     }
+
+    const isolation = await withinBoundary(
+      admitFirecrawlIsolationTraffic(
+        dependencies.isolationGate,
+        identity,
+        correlationId,
+        operation,
+        boundary.signal,
+      ).then((result) => {
+        if (boundary.signal.aborted && result.ok) {
+          safelyReleaseIsolationLease(result.lease)
+        }
+        return result
+      }),
+      boundary,
+    )
+    if (!isolation.ok || isolation.lease.signal.aborted) {
+      if (isolation.ok) {
+        safelyReleaseIsolationLease(isolation.lease)
+      }
+      await recordNonAdmittedEvent(
+        context,
+        identity,
+        503,
+        "blocked",
+        0,
+        dependencies,
+      )
+      return sendGatewayError(reply, 503, "Service unavailable.")
+    }
+    isolationLease = isolation.lease
+    bindFirecrawlIsolationLeaseRelease(reply, isolationLease)
+    boundary.bindIsolation(isolationLease.signal)
 
     const parsedRequest =
       operation === "search"
@@ -539,26 +596,89 @@ async function handleGatewayRequest(
       )
     }
 
-    const successEvent = terminalEvent(admitted, dependencies, {
-      outcome: "succeeded",
-      responseBytes: upstream.responseBytes,
-      resultCount: shaped.resultCount,
-      status: 200,
-    })
-    completed = await completeAdmittedRequest(
-      admitted,
-      successEvent,
-      dependencies,
+    const preSettlementStatus = statusForBoundary(boundary, 0)
+    if (preSettlementStatus !== 0) {
+      completed = await completeAdmittedRequest(
+        admitted,
+        terminalEvent(admitted, dependencies, {
+          outcome: preSettlementStatus === 499 ? "cancelled" : "failed",
+          responseBytes: upstream.responseBytes,
+          status: preSettlementStatus,
+        }),
+        dependencies,
+      )
+      return sendGatewayError(
+        reply,
+        completed ? preSettlementStatus : 503,
+        preSettlementStatus === 504
+          ? "Request timed out."
+          : preSettlementStatus === 499
+            ? "Request cancelled."
+            : "Service unavailable.",
+      )
+    }
+
+    if (!isolationLease) {
+      completed = await completeAdmittedRequest(
+        admitted,
+        terminalEvent(admitted, dependencies, {
+          outcome: "failed",
+          responseBytes: upstream.responseBytes,
+          status: 503,
+        }),
+        dependencies,
+      )
+      return sendGatewayError(reply, 503, "Service unavailable.")
+    }
+    const terminalContext = admitted
+    const finalized = await finalizeFirecrawlIsolationTraffic(
+      isolationLease,
+      async () => {
+        const settled = await completeAdmittedRequest(
+          terminalContext,
+          terminalEvent(terminalContext, dependencies, {
+            outcome: "succeeded",
+            responseBytes: upstream.responseBytes,
+            resultCount: shaped.resultCount,
+            status: 200,
+          }),
+          dependencies,
+        )
+        return settled
+          ? {
+              ok: true as const,
+              response: reply
+                .code(200)
+                .type("application/json")
+                .send(shaped.body),
+            }
+          : { ok: false as const }
+      },
     )
-    return completed
-      ? reply.code(200).type("application/json").send(shaped.body)
-      : sendGatewayError(reply, 503, "Service unavailable.")
+    if (finalized.ok && finalized.value.ok) {
+      completed = true
+      return finalized.value.response
+    }
+    if (!terminalContext.settlementAttempted) {
+      completed = await completeAdmittedRequest(
+        terminalContext,
+        terminalEvent(terminalContext, dependencies, {
+          outcome: "failed",
+          responseBytes: upstream.responseBytes,
+          status: 503,
+        }),
+        dependencies,
+      )
+    }
+    return sendGatewayError(reply, 503, "Service unavailable.")
   } catch (error) {
     const status =
       error instanceof FirecrawlGatewayAbortError
         ? error.reason === "deadline_exceeded"
           ? 504
-          : 499
+          : error.reason === "isolated"
+            ? 503
+            : 499
         : statusForBoundary(boundary, 503)
     if (admitted && !admitted.settlementAttempted) {
       completed = await completeAdmittedRequest(
@@ -677,9 +797,11 @@ async function callFirecrawlUpstream(
       status:
         reason === "deadline_exceeded"
           ? 504
-          : reason === "cancelled"
-            ? 499
-            : 502,
+          : reason === "isolated"
+            ? 503
+            : reason === "cancelled"
+              ? 499
+              : 502,
     }
   }
 }
@@ -1005,9 +1127,12 @@ function createRequestBoundary(
   deadlineMs: number,
 ): RequestBoundary {
   const controller = new AbortController()
-  let reason: "cancelled" | "deadline_exceeded" | null = null
+  let reason: "cancelled" | "deadline_exceeded" | "isolated" | null = null
   let disposed = false
-  const abort = (nextReason: "cancelled" | "deadline_exceeded"): void => {
+  let isolationSignal: AbortSignal | null = null
+  const abort = (
+    nextReason: "cancelled" | "deadline_exceeded" | "isolated",
+  ): void => {
     if (reason !== null) {
       return
     }
@@ -1015,6 +1140,7 @@ function createRequestBoundary(
     controller.abort(new FirecrawlGatewayAbortError(nextReason))
   }
   const onDisconnect = (): void => abort("cancelled")
+  const onIsolation = (): void => abort("isolated")
   request.raw.once("aborted", onDisconnect)
   request.raw.socket.once("close", onDisconnect)
   reply.raw.once("close", onDisconnect)
@@ -1022,6 +1148,16 @@ function createRequestBoundary(
   deadline.unref()
 
   return {
+    bindIsolation(signal) {
+      if (isolationSignal) {
+        throw new Error("Firecrawl isolation signal is already bound.")
+      }
+      isolationSignal = signal
+      isolationSignal.addEventListener("abort", onIsolation, { once: true })
+      if (isolationSignal.aborted) {
+        onIsolation()
+      }
+    },
     dispose() {
       if (disposed) {
         return
@@ -1031,6 +1167,7 @@ function createRequestBoundary(
       request.raw.off("aborted", onDisconnect)
       request.raw.socket.off("close", onDisconnect)
       reply.raw.off("close", onDisconnect)
+      isolationSignal?.removeEventListener("abort", onIsolation)
     },
     failureReason: () => reason,
     signal: controller.signal,
@@ -1122,6 +1259,7 @@ function registeredDependencies(
       supplied.connectionEvidence ?? unavailableConnectionEvidence,
     dnsLookup: supplied.dnsLookup,
     fetchImpl: supplied.fetchImpl ?? globalThis.fetch,
+    isolationGate: supplied.isolationGate ?? unavailableIsolationTrafficGate,
     limits: {
       scrapeResponseBytes: boundedOverride(
         supplied.limits?.scrapeResponseBytes,
@@ -1213,9 +1351,11 @@ function statusForBoundary(
   const reason = boundary.failureReason()
   return reason === "deadline_exceeded"
     ? 504
-    : reason === "cancelled"
-      ? 499
-      : fallback
+    : reason === "isolated"
+      ? 503
+      : reason === "cancelled"
+        ? 499
+        : fallback
 }
 
 function validRetryAfter(value: number | undefined): value is number {
@@ -1226,6 +1366,64 @@ function validRetryAfter(value: number | undefined): value is number {
 
 function elapsed(startedAt: number, now: number): number {
   return Math.max(0, Math.min(Math.floor(now - startedAt), 86_400_000))
+}
+
+async function admitFirecrawlIsolationTraffic(
+  gate: FirecrawlIsolationTrafficGate,
+  identity: FirecrawlGatewayIdentity,
+  correlationId: string,
+  operation: FirecrawlGatewayOperation,
+  signal: AbortSignal,
+): Promise<Awaited<ReturnType<FirecrawlIsolationTrafficGate["admit"]>>> {
+  try {
+    return await gate.admit({
+      appId: identity.applicationId,
+      correlationId,
+      credentialRecordId: identity.credentialRecordId,
+      route: operation === "search" ? "firecrawl_search" : "firecrawl_scrape",
+      signal,
+    })
+  } catch {
+    return { ok: false }
+  }
+}
+
+function safelyReleaseIsolationLease(lease: FirecrawlIsolationLease): void {
+  try {
+    lease.release()
+  } catch {
+    return
+  }
+}
+
+function bindFirecrawlIsolationLeaseRelease(
+  reply: FastifyReply,
+  lease: FirecrawlIsolationLease,
+): void {
+  let released = false
+  const release = (): void => {
+    if (released) {
+      return
+    }
+    released = true
+    safelyReleaseIsolationLease(lease)
+  }
+  reply.raw.once("finish", release)
+  reply.raw.once("close", release)
+  if (reply.raw.destroyed) {
+    release()
+  }
+}
+
+async function finalizeFirecrawlIsolationTraffic<T>(
+  lease: FirecrawlIsolationLease,
+  operation: () => Promise<T>,
+): Promise<IsolationTrafficFinalizationResult<T>> {
+  try {
+    return await lease.finalize(operation)
+  } catch {
+    return { ok: false }
+  }
 }
 
 function boundedString(value: unknown, maxLength: number): string | null {
@@ -1271,6 +1469,12 @@ function firecrawlRouteErrorHandler(
 const unavailableBearerResolver: FirecrawlBearerResolver = {
   async resolve() {
     return { ok: false, reason: "unavailable" }
+  },
+}
+
+const unavailableIsolationTrafficGate: FirecrawlIsolationTrafficGate = {
+  async admit() {
+    return { ok: false }
   },
 }
 

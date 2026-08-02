@@ -1483,10 +1483,13 @@ async function lockConnectedAppGatewayPolicy(
   const lockedRows = await transaction.execute(sql<{ id: string }>`
     SELECT application.id
     FROM admin.applications AS application
+    JOIN admin.emergency_isolation_state AS isolation
+      ON isolation.id = 'appliance'
+      AND isolation.status = 'inactive'
     WHERE application.id = ${app.appId}
       AND application.auth_mode = ${app.authMethod}
       AND application.status = 'enabled'
-    FOR UPDATE OF application
+    FOR UPDATE OF application, isolation
   `)
   if (resultRows(lockedRows).length !== 1) {
     return null

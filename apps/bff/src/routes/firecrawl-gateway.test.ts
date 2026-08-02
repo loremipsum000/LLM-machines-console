@@ -1,6 +1,7 @@
 import Fastify from "fastify"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { FirecrawlDnsLookup } from "../services/firecrawl-url-safety"
+import { IsolationTrafficGate } from "../services/isolation-traffic-gate"
 import {
   type FirecrawlBearerResolver,
   type FirecrawlConnectionEvidenceRecorder,
@@ -12,6 +13,11 @@ import {
   type FirecrawlGatewaySettlement,
   registerFirecrawlGatewayRoutes,
 } from "./firecrawl-gateway"
+
+const firecrawlEngagementContext = {
+  correlationId: "firecrawl-finalization-race",
+  transitionId: "30000000-0000-4000-8000-000000000001",
+}
 
 describe("Firecrawl v2 gateway", () => {
   afterEach(() => {
@@ -287,6 +293,300 @@ describe("Firecrawl v2 gateway", () => {
       success: false,
     })
     expect(fetchImpl).not.toHaveBeenCalled()
+    await server.close()
+  })
+
+  it.each(["denied", "rejected"] as const)(
+    "fails closed when isolation admission is %s",
+    async (mode) => {
+      const fetchImpl = vi.fn<typeof fetch>()
+      const admit = vi.fn(async () => {
+        if (mode === "rejected") {
+          throw new Error("private isolation store failure")
+        }
+        return { ok: false as const }
+      })
+      const harness = createHarness({
+        fetchImpl,
+        isolationGate: { admit },
+      })
+      const server = Fastify({ logger: false })
+      registerFirecrawlGatewayRoutes(server, harness.dependencies)
+
+      const response = await server.inject({
+        headers: { authorization: "Bearer firecrawl-token" },
+        method: "POST",
+        payload: { query: "private isolation query" },
+        url: "/v2/search",
+      })
+
+      expect(response.statusCode).toBe(503)
+      expect(response.json()).toEqual({
+        error: "Service unavailable.",
+        success: false,
+      })
+      expect(response.body).not.toContain("private isolation")
+      expect(fetchImpl).not.toHaveBeenCalled()
+      expect(admit).toHaveBeenCalledWith({
+        appId: "app-1",
+        correlationId: expect.any(String),
+        credentialRecordId: "fck-1",
+        route: "firecrawl_search",
+        signal: expect.any(AbortSignal),
+      })
+      expect(harness.metadataEvents).toEqual([
+        expect.objectContaining({ outcome: "blocked", status: 503 }),
+      ])
+      await server.close()
+    },
+  )
+
+  it("aborts and settles an admitted Firecrawl request when isolation engages", async () => {
+    const controller = new AbortController()
+    const release = vi.fn(() => {
+      throw new Error("private isolation lease release failure")
+    })
+    let markStarted: (() => void) | undefined
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve
+    })
+    let upstreamSignal: AbortSignal | undefined
+    const fetchImpl = vi.fn<typeof fetch>(
+      async (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          upstreamSignal = init?.signal as AbortSignal
+          markStarted?.()
+          upstreamSignal.addEventListener(
+            "abort",
+            () => reject(upstreamSignal?.reason),
+            { once: true },
+          )
+        }),
+    )
+    const harness = createHarness({
+      fetchImpl,
+      isolationGate: {
+        async admit() {
+          return {
+            lease: {
+              async finalize(operation) {
+                return controller.signal.aborted
+                  ? { ok: false }
+                  : { ok: true, value: await operation() }
+              },
+              release,
+              signal: controller.signal,
+            },
+            ok: true,
+          }
+        },
+      },
+    })
+    const server = Fastify({ logger: false })
+    registerFirecrawlGatewayRoutes(server, harness.dependencies)
+
+    const responsePromise = server.inject({
+      headers: { authorization: "Bearer firecrawl-token" },
+      method: "POST",
+      payload: { query: "abort this private query" },
+      url: "/v2/search",
+    })
+    await started
+    controller.abort(new Error("isolation engaged"))
+    const response = await responsePromise
+
+    expect(response.statusCode).toBe(503)
+    expect(response.body).not.toContain("abort this private query")
+    expect(response.body).not.toContain(
+      "private isolation lease release failure",
+    )
+    expect(upstreamSignal?.aborted).toBe(true)
+    expect(harness.settlements).toEqual([
+      expect.objectContaining({ outcome: "failed", status: 503 }),
+    ])
+    expect(release).toHaveBeenCalledOnce()
+    await server.close()
+  })
+
+  it("settles Firecrawl as failed when isolation wins terminal finalization", async () => {
+    const finalize = vi.fn(async () => ({ ok: false as const }))
+    const release = vi.fn()
+    const harness = createHarness({
+      fetchImpl: vi.fn<typeof fetch>(async () =>
+        Response.json({
+          data: {
+            web: [
+              {
+                title: "private-isolation-winner-canary",
+                url: "https://example.com/private-isolation-winner-canary",
+              },
+            ],
+          },
+          success: true,
+        }),
+      ),
+      isolationGate: {
+        async admit() {
+          return {
+            lease: {
+              finalize,
+              release,
+              signal: new AbortController().signal,
+            },
+            ok: true,
+          }
+        },
+      },
+    })
+    const server = Fastify({ logger: false })
+    registerFirecrawlGatewayRoutes(server, harness.dependencies)
+
+    const response = await server.inject({
+      headers: { authorization: "Bearer firecrawl-token" },
+      method: "POST",
+      payload: { query: "private query" },
+      url: "/v2/search",
+    })
+
+    expect(response.statusCode).toBe(503)
+    expect(response.body).not.toContain("private-isolation-winner-canary")
+    expect(finalize).toHaveBeenCalledOnce()
+    expect(harness.settlements).toEqual([
+      expect.objectContaining({ outcome: "failed", status: 503 }),
+    ])
+    expect(release).toHaveBeenCalledOnce()
+    await server.close()
+  })
+
+  it("commits Firecrawl success before engagement when terminal finalization wins", async () => {
+    const isolationGate = await openFirecrawlIsolationGate()
+    let markSettlementStarted: (() => void) | undefined
+    const settlementStarted = new Promise<void>((resolve) => {
+      markSettlementStarted = resolve
+    })
+    let finishSettlement: (() => void) | undefined
+    const settlementBlocked = new Promise<void>((resolve) => {
+      finishSettlement = resolve
+    })
+    const terminalSettlements: FirecrawlGatewaySettlement[] = []
+    const settle = vi.fn(async (settlement: FirecrawlGatewaySettlement) => {
+      markSettlementStarted?.()
+      await settlementBlocked
+      terminalSettlements.push(settlement)
+    })
+    const harness = createHarness({
+      admission: {
+        async admit() {
+          return { admissionId: "lease-final-send", ok: true }
+        },
+        settle,
+      },
+      fetchImpl: vi.fn<typeof fetch>(async () =>
+        Response.json({
+          data: {
+            web: [
+              {
+                description: "private-final-send-canary",
+                title: "private-final-send-canary",
+                url: "https://example.com/private-final-send-canary",
+              },
+            ],
+          },
+          success: true,
+        }),
+      ),
+      isolationGate,
+    })
+    const server = Fastify({ logger: false })
+    registerFirecrawlGatewayRoutes(server, harness.dependencies)
+
+    const responsePromise = server.inject({
+      headers: { authorization: "Bearer firecrawl-token" },
+      method: "POST",
+      payload: { query: "private query" },
+      url: "/v2/search",
+    })
+    await settlementStarted
+    const engagement = isolationGate.engage(firecrawlEngagementContext)
+    finishSettlement?.()
+    const response = await responsePromise
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toContain("private-final-send-canary")
+    expect(settle).toHaveBeenCalledOnce()
+    expect(terminalSettlements).toEqual([
+      expect.objectContaining({ outcome: "succeeded", status: 200 }),
+    ])
+    await expect(engagement).resolves.toEqual({ status: "engaged" })
+    expect(isolationGate.stateForTest().activeLeases).toBe(0)
+    await server.close()
+  })
+
+  it("holds a finalized Firecrawl lease until a delayed response finishes", async () => {
+    const isolationGate = await openFirecrawlIsolationGate()
+    const harness = createHarness({
+      fetchImpl: vi.fn<typeof fetch>(async () =>
+        Response.json({
+          data: {
+            web: [
+              {
+                description: "private-delayed-finish-canary",
+                title: "private-delayed-finish-canary",
+                url: "https://example.com/private-delayed-finish-canary",
+              },
+            ],
+          },
+          success: true,
+        }),
+      ),
+      isolationGate,
+    })
+    let markResponsePending: (() => void) | undefined
+    const responsePending = new Promise<void>((resolve) => {
+      markResponsePending = resolve
+    })
+    let finishResponse: (() => void) | undefined
+    const responseBlocked = new Promise<void>((resolve) => {
+      finishResponse = resolve
+    })
+    const server = Fastify({ logger: false })
+    server.addHook("onSend", async (request, _reply, payload) => {
+      if (request.raw.url?.split("?", 1)[0] === "/v2/search") {
+        markResponsePending?.()
+        await responseBlocked
+      }
+      return payload
+    })
+    registerFirecrawlGatewayRoutes(server, harness.dependencies)
+
+    const responsePromise = server.inject({
+      headers: { authorization: "Bearer firecrawl-token" },
+      method: "POST",
+      payload: { query: "private query" },
+      url: "/v2/search",
+    })
+    await responsePending
+    await new Promise<void>((resolve) => setImmediate(resolve))
+
+    expect(isolationGate.stateForTest().activeLeases).toBe(1)
+    let engagementSettled = false
+    const engagement = isolationGate
+      .engage(firecrawlEngagementContext)
+      .then((result) => {
+        engagementSettled = true
+        return result
+      })
+    await Promise.resolve()
+
+    expect(engagementSettled).toBe(false)
+    expect(isolationGate.stateForTest().activeLeases).toBe(1)
+
+    finishResponse?.()
+    const response = await responsePromise
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toContain("private-delayed-finish-canary")
+    await expect(engagement).resolves.toEqual({ status: "engaged" })
+    expect(isolationGate.stateForTest().activeLeases).toBe(0)
     await server.close()
   })
 
@@ -887,6 +1187,20 @@ function createHarness(overrides: FirecrawlGatewayRouteOptions = {}) {
     fetchImpl: vi.fn<typeof fetch>(async () =>
       Response.json({ success: true, data: { web: [] } }),
     ),
+    isolationGate: {
+      async admit() {
+        return {
+          lease: {
+            async finalize(operation) {
+              return { ok: true, value: await operation() }
+            },
+            release() {},
+            signal: new AbortController().signal,
+          },
+          ok: true as const,
+        }
+      },
+    },
     limits: {},
     metadata,
     now: Date.now,
@@ -907,4 +1221,34 @@ function createHarness(overrides: FirecrawlGatewayRouteOptions = {}) {
         : resolve,
     settlements,
   }
+}
+
+async function openFirecrawlIsolationGate(): Promise<IsolationTrafficGate> {
+  const gate = new IsolationTrafficGate(
+    {
+      async read() {
+        return {
+          activatedAt: null,
+          activatedBySubjectId: null,
+          effectiveTrafficState: "open",
+          failureCode: null,
+          revision: 0,
+          runtimeQualified: false,
+          state: "inactive",
+          updatedAt: "2026-08-02T12:00:00.000Z",
+          updatedBySubjectId: null,
+        }
+      },
+    },
+    { drainTimeoutMs: 1_000 },
+  )
+  const prepared = await gate.prepareDisengage(firecrawlEngagementContext)
+  if (
+    prepared.status !== "prepared" ||
+    !prepared.deactivationCommitReservation.enterCommitting()
+  ) {
+    throw new Error("Expected an open isolation gate fixture.")
+  }
+  prepared.deactivationCommitReservation.commit()
+  return gate
 }

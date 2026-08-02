@@ -1,15 +1,23 @@
+import { request as httpRequest } from "node:http"
+import Fastify from "fastify"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
 import {
   type ChatCompletionsBody,
   normalizedChatCompletionsBodyUtf8Bytes,
 } from "../inference/chat-completions"
+import * as connectedAppService from "../services/admin-connected-apps"
 import { resetConnectedAppsForTest } from "../services/admin-connected-apps"
 import {
   getAuditEventsForTest,
   resetAuditEventsForTest,
 } from "../services/audit"
 import { resetIdempotencyForTest } from "../services/idempotency"
+import { IsolationTrafficGate } from "../services/isolation-traffic-gate"
+import {
+  type AppGatewayIsolationTrafficGate,
+  registerAppGatewayRoutes,
+} from "./app-gateway"
 
 const adminHeaders = {
   authorization: "Bearer test-service-key",
@@ -17,6 +25,10 @@ const adminHeaders = {
   "x-llm-machines-user-sub": "admin-1",
   "x-llm-machines-user-email": "admin@example.test",
   "x-llm-machines-user-roles": "admin",
+}
+const isolationEngagementContext = {
+  correlationId: "gateway-finalization-race",
+  transitionId: "20000000-0000-4000-8000-000000000001",
 }
 let createCounter = 0
 
@@ -29,6 +41,707 @@ describe("Connected app gateway routes", () => {
     resetAuditEventsForTest()
     resetIdempotencyForTest()
     await resetConnectedAppsForTest()
+  })
+
+  it.each(["denied", "rejected"] as const)(
+    "fails closed when isolation admission is %s",
+    async (mode) => {
+      configureGatewayEnvironment()
+      const fetchMock = vi.fn<typeof fetch>()
+      vi.stubGlobal("fetch", fetchMock)
+      const adminServer = buildServer()
+      const created = await createApp(adminServer, ["local-a"])
+      const token = bearerForCredential(created.credential)
+      const admit = vi.fn<AppGatewayIsolationTrafficGate["admit"]>(async () => {
+        if (mode === "rejected") {
+          throw new Error("private isolation store failure")
+        }
+        return { ok: false }
+      })
+      const gatewayServer = Fastify({ logger: false })
+      registerAppGatewayRoutes(gatewayServer, {
+        isolationGate: { admit },
+      })
+
+      const response = await gatewayServer.inject({
+        headers: { authorization: `Bearer ${token}` },
+        method: "POST",
+        payload: {
+          messages: [{ content: "private isolation prompt", role: "user" }],
+          model: "local-a",
+        },
+        url: "/api/app-gateway/v1/chat/completions",
+      })
+
+      expect(response.statusCode).toBe(503)
+      expect(response.json()).toMatchObject({
+        code: "application_traffic_unavailable",
+        request_id: expect.any(String),
+        status: 503,
+        title: "Application traffic unavailable",
+      })
+      expect(response.body).not.toContain("private isolation")
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(admit).toHaveBeenCalledWith({
+        appId: created.app.id,
+        correlationId: response.json().request_id,
+        credentialRecordId: created.credential.credentialId,
+        route: "chat_completions",
+        signal: expect.any(AbortSignal),
+      })
+      const auditText = JSON.stringify(getAuditEventsForTest())
+      expect(auditText).not.toContain("private isolation prompt")
+      expect(auditText).not.toContain("private isolation store failure")
+      await gatewayServer.close()
+      await adminServer.close()
+    },
+  )
+
+  it.each(["models", "chat_completions"] as const)(
+    "aborts an in-flight %s request when isolation engages",
+    async (route) => {
+      configureGatewayEnvironment()
+      const controller = new AbortController()
+      const release = vi.fn(() => {
+        throw new Error("private isolation lease release failure")
+      })
+      let markStarted: (() => void) | undefined
+      const started = new Promise<void>((resolve) => {
+        markStarted = resolve
+      })
+      let upstreamSignal: AbortSignal | undefined
+      const fetchMock = vi.fn<typeof fetch>(
+        async (_url, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            upstreamSignal = init?.signal as AbortSignal
+            markStarted?.()
+            upstreamSignal.addEventListener(
+              "abort",
+              () => reject(upstreamSignal?.reason),
+              { once: true },
+            )
+          }),
+      )
+      vi.stubGlobal("fetch", fetchMock)
+      const adminServer = buildServer()
+      const created = await createApp(adminServer, ["local-a"])
+      const token = bearerForCredential(created.credential)
+      const admit = vi.fn<AppGatewayIsolationTrafficGate["admit"]>(
+        async () => ({
+          lease: {
+            async finalize(operation) {
+              return controller.signal.aborted
+                ? { ok: false }
+                : { ok: true, value: await operation() }
+            },
+            release,
+            signal: controller.signal,
+          },
+          ok: true,
+        }),
+      )
+      const gatewayServer = Fastify({ logger: false })
+      registerAppGatewayRoutes(gatewayServer, {
+        isolationGate: { admit },
+      })
+
+      const responsePromise = gatewayServer.inject(
+        route === "models"
+          ? {
+              headers: { authorization: `Bearer ${token}` },
+              method: "GET",
+              url: "/api/app-gateway/v1/models",
+            }
+          : {
+              headers: { authorization: `Bearer ${token}` },
+              method: "POST",
+              payload: {
+                messages: [
+                  { content: "abort this private prompt", role: "user" },
+                ],
+                model: "local-a",
+              },
+              url: "/api/app-gateway/v1/chat/completions",
+            },
+      )
+      await started
+      controller.abort(new Error("isolation engaged"))
+      const response = await responsePromise
+
+      expect(response.statusCode).toBe(503)
+      expect(response.json()).toMatchObject({
+        code: "application_traffic_unavailable",
+        status: 503,
+      })
+      expect(response.body).not.toContain("abort this private prompt")
+      expect(upstreamSignal?.aborted).toBe(true)
+      expect(release).toHaveBeenCalledOnce()
+      expect(admit).toHaveBeenCalledWith(expect.objectContaining({ route }))
+      const auditText = JSON.stringify(getAuditEventsForTest())
+      expect(auditText).not.toContain("abort this private prompt")
+      expect(auditText).not.toContain("private isolation lease release failure")
+      await gatewayServer.close()
+      await adminServer.close()
+    },
+  )
+
+  it.each(["models", "chat_completions"] as const)(
+    "records a failed %s terminal outcome when isolation wins finalization",
+    async (route) => {
+      configureGatewayEnvironment()
+      const privateCanary = "private-isolation-winner-canary"
+      vi.stubGlobal(
+        "fetch",
+        vi.fn<typeof fetch>(async () =>
+          route === "models"
+            ? Response.json({
+                data: [
+                  {
+                    id: privateCanary,
+                    object: "model",
+                    owned_by: "llm-machines",
+                  },
+                ],
+                object: "list",
+              })
+            : Response.json({
+                choices: [
+                  {
+                    finish_reason: "stop",
+                    index: 0,
+                    message: { content: privateCanary, role: "assistant" },
+                  },
+                ],
+                object: "chat.completion",
+                usage: { total_tokens: 1 },
+              }),
+        ),
+      )
+      const adminServer = buildServer()
+      const created = await createApp(adminServer, [privateCanary])
+      const token = bearerForCredential(created.credential)
+      const finalize = vi.fn(async () => ({ ok: false as const }))
+      const release = vi.fn()
+      const gatewayServer = Fastify({ logger: false })
+      registerAppGatewayRoutes(gatewayServer, {
+        isolationGate: {
+          async admit() {
+            return {
+              lease: {
+                finalize,
+                release,
+                signal: new AbortController().signal,
+              },
+              ok: true,
+            }
+          },
+        },
+      })
+
+      const response = await gatewayServer.inject(
+        route === "models"
+          ? {
+              headers: { authorization: `Bearer ${token}` },
+              method: "GET",
+              url: "/api/app-gateway/v1/models",
+            }
+          : {
+              headers: { authorization: `Bearer ${token}` },
+              method: "POST",
+              payload: {
+                messages: [{ content: "private request", role: "user" }],
+                model: privateCanary,
+              },
+              url: "/api/app-gateway/v1/chat/completions",
+            },
+      )
+
+      expect(response.statusCode).toBe(503)
+      expect(response.body).not.toContain(privateCanary)
+      expect(finalize).toHaveBeenCalledOnce()
+      expect(release).toHaveBeenCalledOnce()
+      expect(
+        getAuditEventsForTest().filter(
+          (event) =>
+            event.action === `connected_app.gateway.${route}` &&
+            event.metadata.outcome === "failed",
+        ),
+      ).toHaveLength(1)
+      await gatewayServer.close()
+      await adminServer.close()
+    },
+  )
+
+  it("abandons delayed isolation admission when the client disconnects", async () => {
+    configureGatewayEnvironment()
+    let markAuthorityRead: (() => void) | undefined
+    const authorityRead = new Promise<void>((resolve) => {
+      markAuthorityRead = resolve
+    })
+    let releaseAuthority: (() => void) | undefined
+    const authorityBlocked = new Promise<void>((resolve) => {
+      releaseAuthority = resolve
+    })
+    const isolationGate = await openIsolationGate({
+      async read() {
+        markAuthorityRead?.()
+        await authorityBlocked
+        return openIsolationAuthorityStatus()
+      },
+    })
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal("fetch", fetchMock)
+    const recordUsage = vi.spyOn(
+      connectedAppService,
+      "recordConnectedAppGatewayUsage",
+    )
+    const adminServer = buildServer()
+    const created = await createApp(adminServer, ["local-a"])
+    const token = bearerForCredential(created.credential)
+    const gatewayServer = Fastify({ logger: false })
+    let admissionSignal: AbortSignal | undefined
+    registerAppGatewayRoutes(gatewayServer, {
+      isolationGate: {
+        async admit(input) {
+          admissionSignal = input.signal
+          return isolationGate.admit(input)
+        },
+      },
+    })
+    const address = await gatewayServer.listen({ host: "127.0.0.1", port: 0 })
+    const client = httpRequest(new URL("/api/app-gateway/v1/models", address), {
+      headers: { authorization: `Bearer ${token}` },
+      method: "GET",
+    })
+    client.on("error", () => undefined)
+    const clientClosed = new Promise<void>((resolve) => {
+      client.once("close", resolve)
+    })
+    client.end()
+
+    await authorityRead
+    client.destroy()
+    await clientClosed
+    await vi.waitFor(() => {
+      expect(admissionSignal?.aborted).toBe(true)
+    })
+
+    await vi.waitFor(() => {
+      expect(
+        getAuditEventsForTest().filter(
+          (event) =>
+            event.action === "connected_app.gateway.models" &&
+            event.metadata.outcome === "failed",
+        ),
+      ).toHaveLength(1)
+    })
+    expect(recordUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: created.app.id }),
+      expect.objectContaining({ route: "models", status: 499 }),
+    )
+    expect(
+      getAuditEventsForTest().filter(
+        (event) =>
+          event.action === "connected_app.gateway.models" &&
+          event.metadata.outcome === "succeeded",
+      ),
+    ).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(isolationGate.stateForTest().activeLeases).toBe(0)
+    releaseAuthority?.()
+    await gatewayServer.close()
+    await adminServer.close()
+  })
+
+  it("aborts models upstream and releases its lease when the client disconnects", async () => {
+    configureGatewayEnvironment()
+    const isolationGate = await openIsolationGate()
+    let markUpstreamStarted: (() => void) | undefined
+    const upstreamStarted = new Promise<void>((resolve) => {
+      markUpstreamStarted = resolve
+    })
+    let upstreamSignal: AbortSignal | undefined
+    const reconcileUsage = vi.spyOn(
+      connectedAppService,
+      "reconcileConnectedAppGatewayUsage",
+    )
+    const fetchMock = vi.fn<typeof fetch>(
+      async (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          upstreamSignal = init?.signal as AbortSignal
+          const rejectOnAbort = () => reject(upstreamSignal?.reason)
+          upstreamSignal.addEventListener("abort", rejectOnAbort, {
+            once: true,
+          })
+          markUpstreamStarted?.()
+          if (upstreamSignal.aborted) {
+            rejectOnAbort()
+          }
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const adminServer = buildServer()
+    const created = await createApp(adminServer, ["local-a"])
+    const token = bearerForCredential(created.credential)
+    const gatewayServer = Fastify({ logger: false })
+    registerAppGatewayRoutes(gatewayServer, { isolationGate })
+    const address = await gatewayServer.listen({ host: "127.0.0.1", port: 0 })
+    const client = httpRequest(new URL("/api/app-gateway/v1/models", address), {
+      headers: { authorization: `Bearer ${token}` },
+      method: "GET",
+    })
+    client.on("error", () => undefined)
+    const clientClosed = new Promise<void>((resolve) => {
+      client.once("close", resolve)
+    })
+    client.end()
+
+    await upstreamStarted
+    client.destroy()
+    await clientClosed
+
+    await vi.waitFor(() => {
+      expect(upstreamSignal?.aborted).toBe(true)
+      expect(isolationGate.stateForTest().activeLeases).toBe(0)
+      expect(
+        getAuditEventsForTest().filter(
+          (event) =>
+            event.action === "connected_app.gateway.models" &&
+            event.metadata.outcome === "failed",
+        ),
+      ).toHaveLength(1)
+    })
+    expect(reconcileUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: created.app.id }),
+      expect.objectContaining({ route: "models", status: 499 }),
+      expect.any(Object),
+    )
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(
+      getAuditEventsForTest().filter(
+        (event) =>
+          event.action === "connected_app.gateway.models" &&
+          event.metadata.outcome === "succeeded",
+      ),
+    ).toHaveLength(0)
+    await gatewayServer.close()
+    await adminServer.close()
+  })
+
+  it.each([
+    { accounting: "reconcile", route: "models" },
+    { accounting: "connection", route: "models" },
+    { accounting: "reconcile", route: "chat_completions" },
+  ] as const)(
+    "commits a buffered $route success before engagement when finalization wins during $accounting accounting",
+    async ({ accounting, route }) => {
+      configureGatewayEnvironment()
+      const isolationGate = await openIsolationGate()
+      let markAccountingStarted: (() => void) | undefined
+      const accountingStarted = new Promise<void>((resolve) => {
+        markAccountingStarted = resolve
+      })
+      let finishAccounting: (() => void) | undefined
+      const accountingBlocked = new Promise<void>((resolve) => {
+        finishAccounting = resolve
+      })
+      if (accounting === "reconcile") {
+        const reconcile = connectedAppService.reconcileConnectedAppGatewayUsage
+        vi.spyOn(
+          connectedAppService,
+          "reconcileConnectedAppGatewayUsage",
+        ).mockImplementation(async (...args) => {
+          markAccountingStarted?.()
+          await accountingBlocked
+          return reconcile(...args)
+        })
+      } else {
+        const recordConnection =
+          connectedAppService.recordConnectedAppModelsConnection
+        vi.spyOn(
+          connectedAppService,
+          "recordConnectedAppModelsConnection",
+        ).mockImplementation(async (...args) => {
+          markAccountingStarted?.()
+          await accountingBlocked
+          return recordConnection(...args)
+        })
+      }
+
+      const privateCanary = "private-final-send-canary"
+      const fetchMock = vi.fn<typeof fetch>(async () =>
+        route === "models"
+          ? Response.json({
+              data: [
+                {
+                  id: privateCanary,
+                  object: "model",
+                  owned_by: "llm-machines",
+                },
+              ],
+              object: "list",
+            })
+          : Response.json({
+              choices: [
+                {
+                  finish_reason: "stop",
+                  index: 0,
+                  message: { content: privateCanary, role: "assistant" },
+                },
+              ],
+              id: "chatcmpl-final-send-race",
+              object: "chat.completion",
+              usage: { total_tokens: 1 },
+            }),
+      )
+      vi.stubGlobal("fetch", fetchMock)
+      const adminServer = buildServer()
+      const created = await createApp(adminServer, [privateCanary])
+      const token = bearerForCredential(created.credential)
+      const gatewayServer = Fastify({ logger: false })
+      registerAppGatewayRoutes(gatewayServer, {
+        isolationGate,
+      })
+
+      const responsePromise = gatewayServer.inject(
+        route === "models"
+          ? {
+              headers: { authorization: `Bearer ${token}` },
+              method: "GET",
+              url: "/api/app-gateway/v1/models",
+            }
+          : {
+              headers: { authorization: `Bearer ${token}` },
+              method: "POST",
+              payload: {
+                messages: [{ content: "private request", role: "user" }],
+                model: privateCanary,
+              },
+              url: "/api/app-gateway/v1/chat/completions",
+            },
+      )
+      await accountingStarted
+      const engagement = isolationGate.engage(isolationEngagementContext)
+      finishAccounting?.()
+      const response = await responsePromise
+
+      expect(response.statusCode).toBe(200)
+      expect(response.body).toContain(privateCanary)
+      expect(fetchMock).toHaveBeenCalledOnce()
+      await expect(engagement).resolves.toEqual({ status: "engaged" })
+      expect(isolationGate.stateForTest().activeLeases).toBe(0)
+      expect(
+        getAuditEventsForTest().filter(
+          (event) =>
+            event.action === `connected_app.gateway.${route}` &&
+            event.metadata.outcome === "succeeded",
+        ),
+      ).toHaveLength(1)
+      await gatewayServer.close()
+      await adminServer.close()
+    },
+  )
+
+  it("holds the streaming terminal frame until success accounting wins finalization", async () => {
+    configureGatewayEnvironment()
+    const isolationGate = await openIsolationGate()
+    let markAccountingStarted: (() => void) | undefined
+    const accountingStarted = new Promise<void>((resolve) => {
+      markAccountingStarted = resolve
+    })
+    let finishAccounting: (() => void) | undefined
+    const accountingBlocked = new Promise<void>((resolve) => {
+      finishAccounting = resolve
+    })
+    const reconcile = connectedAppService.reconcileConnectedAppGatewayUsage
+    vi.spyOn(
+      connectedAppService,
+      "reconcileConnectedAppGatewayUsage",
+    ).mockImplementation(async (...args) => {
+      markAccountingStarted?.()
+      await accountingBlocked
+      return reconcile(...args)
+    })
+    const falseTerminalCanary = "json [DONE] is not an SSE terminal"
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        sseResponse([
+          `data: {"choices":[{"delta":{"content":"${falseTerminalCanary}"}}]}\r\n\r\n`,
+          'data: {"usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}}\r\n\r\ndata: [DO',
+          "NE]\r\n\r\n",
+        ]),
+      ),
+    )
+    const adminServer = buildServer()
+    const created = await createApp(adminServer, ["local-stream"])
+    const token = bearerForCredential(created.credential)
+    const gatewayServer = Fastify({ logger: false })
+    registerAppGatewayRoutes(gatewayServer, { isolationGate })
+
+    const responsePromise = gatewayServer.inject({
+      headers: { authorization: `Bearer ${token}` },
+      method: "POST",
+      payload: {
+        messages: [{ content: "private request", role: "user" }],
+        model: "local-stream",
+        stream: true,
+      },
+      url: "/api/app-gateway/v1/chat/completions",
+    })
+    await accountingStarted
+    let engagementSettled = false
+    const engagement = isolationGate
+      .engage(isolationEngagementContext)
+      .then((result) => {
+        engagementSettled = true
+        return result
+      })
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(engagementSettled).toBe(false)
+
+    finishAccounting?.()
+    const response = await responsePromise
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toContain(falseTerminalCanary)
+    expect(response.body).toContain("data: [DONE]\r\n\r\n")
+    await expect(engagement).resolves.toEqual({ status: "engaged" })
+    expect(isolationGate.stateForTest().activeLeases).toBe(0)
+    expect(
+      getAuditEventsForTest().filter(
+        (event) =>
+          event.action === "connected_app.gateway.chat_completions" &&
+          event.metadata.outcome === "succeeded",
+      ),
+    ).toHaveLength(1)
+    await gatewayServer.close()
+    await adminServer.close()
+  })
+
+  it.each([
+    {
+      chunks: ['data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'],
+      label: "EOF without DONE",
+      trailing: null,
+    },
+    {
+      chunks: [
+        'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n',
+        "data: [DONE]\n\n: forbidden-tail\n\n",
+      ],
+      label: "bytes after DONE",
+      trailing: "forbidden-tail",
+    },
+  ])("fails an incomplete stream with $label", async ({ chunks, trailing }) => {
+    configureGatewayEnvironment()
+    const isolationGate = await openIsolationGate()
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () => sseResponse(chunks)),
+    )
+    const adminServer = buildServer()
+    const created = await createApp(adminServer, ["local-stream"])
+    const token = bearerForCredential(created.credential)
+    const gatewayServer = Fastify({ logger: false })
+    registerAppGatewayRoutes(gatewayServer, { isolationGate })
+
+    const response = await gatewayServer.inject({
+      headers: { authorization: `Bearer ${token}` },
+      method: "POST",
+      payload: {
+        messages: [{ content: "private request", role: "user" }],
+        model: "local-stream",
+        stream: true,
+      },
+      url: "/api/app-gateway/v1/chat/completions",
+    })
+
+    expect(response.body).toContain("partial")
+    expect(response.body).not.toContain("data: [DONE]")
+    if (trailing) {
+      expect(response.body).not.toContain(trailing)
+    }
+    expect(
+      getAuditEventsForTest().filter(
+        (event) =>
+          event.action === "connected_app.gateway.chat_completions" &&
+          event.metadata.outcome === "failed",
+      ),
+    ).toHaveLength(1)
+    expect(isolationGate.stateForTest().activeLeases).toBe(0)
+    await gatewayServer.close()
+    await adminServer.close()
+  })
+
+  it("never exposes the streaming terminal frame when isolation wins first", async () => {
+    configureGatewayEnvironment()
+    const isolationGate = await openIsolationGate()
+    let markUpstreamStarted: (() => void) | undefined
+    const upstreamStarted = new Promise<void>((resolve) => {
+      markUpstreamStarted = resolve
+    })
+    let deliverTerminal: (() => void) | undefined
+    const terminalBlocked = new Promise<void>((resolve) => {
+      deliverTerminal = resolve
+    })
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () => {
+        const encoder = new TextEncoder()
+        return new Response(
+          new ReadableStream({
+            async start(controller) {
+              controller.enqueue(
+                encoder.encode(
+                  'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n',
+                ),
+              )
+              markUpstreamStarted?.()
+              await terminalBlocked
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"))
+              controller.close()
+            },
+          }),
+          {
+            headers: { "content-type": "text/event-stream" },
+            status: 200,
+          },
+        )
+      }),
+    )
+    const adminServer = buildServer()
+    const created = await createApp(adminServer, ["local-stream"])
+    const token = bearerForCredential(created.credential)
+    const gatewayServer = Fastify({ logger: false })
+    registerAppGatewayRoutes(gatewayServer, { isolationGate })
+    const responsePromise = gatewayServer.inject({
+      headers: { authorization: `Bearer ${token}` },
+      method: "POST",
+      payload: {
+        messages: [{ content: "private request", role: "user" }],
+        model: "local-stream",
+        stream: true,
+      },
+      url: "/api/app-gateway/v1/chat/completions",
+    })
+    await upstreamStarted
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const engagement = isolationGate.engage(isolationEngagementContext)
+    deliverTerminal?.()
+
+    const response = await responsePromise
+    expect(response.body).not.toContain("data: [DONE]")
+    await expect(engagement).resolves.toEqual({ status: "engaged" })
+    expect(
+      getAuditEventsForTest().filter(
+        (event) =>
+          event.action === "connected_app.gateway.chat_completions" &&
+          event.metadata.outcome === "failed",
+      ),
+    ).toHaveLength(1)
+    expect(isolationGate.stateForTest().activeLeases).toBe(0)
+    await gatewayServer.close()
+    await adminServer.close()
   })
 
   it("routes connected app model and chat calls through policy and records only the model-list connection", async () => {
@@ -1515,6 +2228,46 @@ async function createApp(
       credentialId: string
       keyPrefix: string | null
     }
+  }
+}
+
+function configureGatewayEnvironment(): void {
+  vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+  vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
+  vi.stubEnv("LITELLM_URL", "http://litellm.test")
+  vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
+}
+
+async function openIsolationGate(
+  authority: { read(): Promise<unknown> } = {
+    async read() {
+      return openIsolationAuthorityStatus()
+    },
+  },
+): Promise<IsolationTrafficGate> {
+  const gate = new IsolationTrafficGate(authority, { drainTimeoutMs: 1_000 })
+  const prepared = await gate.prepareDisengage(isolationEngagementContext)
+  if (
+    prepared.status !== "prepared" ||
+    !prepared.deactivationCommitReservation.enterCommitting()
+  ) {
+    throw new Error("Expected an open isolation gate fixture.")
+  }
+  prepared.deactivationCommitReservation.commit()
+  return gate
+}
+
+function openIsolationAuthorityStatus() {
+  return {
+    activatedAt: null,
+    activatedBySubjectId: null,
+    effectiveTrafficState: "open",
+    failureCode: null,
+    revision: 0,
+    runtimeQualified: false,
+    state: "inactive",
+    updatedAt: "2026-08-02T12:00:00.000Z",
+    updatedBySubjectId: null,
   }
 }
 

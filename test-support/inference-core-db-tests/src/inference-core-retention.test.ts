@@ -358,8 +358,8 @@ async function seedRetentionRows(client: PGlite): Promise<void> {
         'active',
         NULL,
         NULL,
-        TIMESTAMPTZ '2026-08-02T00:00:00Z',
-        TIMESTAMPTZ '2026-08-02T00:15:00Z',
+        clock_timestamp(),
+        clock_timestamp() + interval '15 minutes',
         NULL
       ),
       (

@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto"
 import {
+  type EmergencyIsolationActivationRequest,
+  type EmergencyIsolationDeactivationRequest,
   type EmergencyRecoveryActivationResult,
   type EmergencyRecoveryCommissionResult,
   type EmergencyRecoveryReasonCode,
@@ -43,7 +45,13 @@ import {
   createAdminTeamGroupRequestSchema,
   createAdminTeamMemberRequestSchema,
   deleteAdminTeamMemberRequestSchema,
+  emergencyIsolationActivationRequestSchema,
+  emergencyIsolationActivationResultSchema,
+  emergencyIsolationDeactivationRequestSchema,
+  emergencyIsolationDeactivationResultSchema,
+  emergencyIsolationStatusSchema,
   emergencyRecoveryActivationResultSchema,
+  emergencyRecoveryApprovedMfaMethods,
   emergencyRecoveryCommissionResultSchema,
   emergencyRecoveryReasonCodeSchema,
   emergencyRecoveryRevocationResultSchema,
@@ -127,7 +135,7 @@ import {
   sendAdminTeamPasswordReset,
   updateAdminTeamGroup,
 } from "../services/admin-team"
-import { InvalidAuditCursorError } from "../services/audit"
+import { InvalidAuditCursorError, emitAudit } from "../services/audit"
 import {
   AuditExportLimitError,
   AuditExportRangeError,
@@ -135,6 +143,15 @@ import {
   getAuditExportVerificationKeys,
 } from "../services/audit-export"
 import { AuditExportSigningUnavailableError } from "../services/audit-export-signing"
+import {
+  EmergencyIsolationAtomicCommitError,
+  EmergencyIsolationBusyError,
+  EmergencyIsolationConflictError,
+  EmergencyIsolationDeniedError,
+  EmergencyIsolationRecoveryRequiredError,
+  type EmergencyIsolationService,
+  EmergencyIsolationUnavailableError,
+} from "../services/emergency-isolation"
 import type { EmergencyRecoveryService } from "../services/emergency-recovery"
 import {
   IdempotencyCompletionError,
@@ -150,6 +167,8 @@ import {
 export const adminOnlyAdminRoutePolicyKeys = [
   "GET /api/admin/recovery/status",
   "POST /api/admin/recovery/factor/commission",
+  "POST /api/admin/isolation/activate",
+  "POST /api/admin/isolation/deactivate",
   "POST /api/admin/observability/alert-egress",
   "POST /api/admin/settings/organization",
   "POST /api/admin/settings/telemetry",
@@ -165,13 +184,22 @@ export type AdminEmergencyRecoveryService = Pick<
   "activate" | "commission" | "resolve" | "revoke" | "status"
 >
 
+export type AdminEmergencyIsolationService = Pick<
+  EmergencyIsolationService,
+  "activate" | "deactivate" | "status"
+>
+
 export interface AdminRouteOptions {
+  emergencyIsolationService?: AdminEmergencyIsolationService | null
   emergencyRecoveryService: AdminEmergencyRecoveryService | null
 }
 
 export function registerAdminRoutes(
   server: FastifyInstance,
-  options: AdminRouteOptions = { emergencyRecoveryService: null },
+  options: AdminRouteOptions = {
+    emergencyIsolationService: null,
+    emergencyRecoveryService: null,
+  },
 ): void {
   server.post(
     "/api/admin/recovery/factor/commission",
@@ -299,6 +327,93 @@ export function registerAdminRoutes(
         })
       }
       return recoveryUnavailable(reply)
+    },
+  )
+
+  server.get(
+    "/api/admin/isolation",
+    withCapability("console.operational.view"),
+    async (_request, reply) => {
+      const service = options.emergencyIsolationService
+      if (!service) {
+        return isolationUnavailable(reply)
+      }
+      try {
+        const result = emergencyIsolationStatusSchema.safeParse(
+          await service.status(),
+        )
+        return result.success
+          ? reply.send(result.data)
+          : isolationUnavailable(reply)
+      } catch {
+        return isolationUnavailable(reply)
+      }
+    },
+  )
+
+  server.post(
+    "/api/admin/isolation/activate",
+    reviewedAdminOnly("POST /api/admin/isolation/activate"),
+    async (request, reply) => {
+      const body = emergencyIsolationActivationRequestSchema.safeParse(
+        request.body ?? {},
+      )
+      if (!body.success) {
+        await auditIsolationRouteDenial(request, "activate")
+        return invalidRequest(
+          reply,
+          "Invalid Emergency Isolation activation request",
+          "Activation requires the exact confirmation and current isolation revision.",
+        )
+      }
+      return isolationMutation(
+        request,
+        reply,
+        options.emergencyIsolationService,
+        "POST /api/admin/isolation/activate",
+        body.data,
+        (service, actor, context) =>
+          service.activate(
+            actor,
+            request.id,
+            body.data,
+            context.commitWithReceipt,
+          ),
+        (value) => emergencyIsolationActivationResultSchema.safeParse(value),
+      )
+    },
+  )
+
+  server.post(
+    "/api/admin/isolation/deactivate",
+    reviewedAdminOnly("POST /api/admin/isolation/deactivate"),
+    async (request, reply) => {
+      const body = emergencyIsolationDeactivationRequestSchema.safeParse(
+        request.body ?? {},
+      )
+      if (!body.success) {
+        await auditIsolationRouteDenial(request, "deactivate")
+        return invalidRequest(
+          reply,
+          "Invalid Emergency Isolation deactivation request",
+          "Deactivation requires the exact confirmation and current isolation revision.",
+        )
+      }
+      return isolationMutation(
+        request,
+        reply,
+        options.emergencyIsolationService,
+        "POST /api/admin/isolation/deactivate",
+        body.data,
+        (service, actor, context) =>
+          service.deactivate(
+            actor,
+            request.id,
+            body.data,
+            context.commitWithReceipt,
+          ),
+        (value) => emergencyIsolationDeactivationResultSchema.safeParse(value),
+      )
     },
   )
 
@@ -1645,6 +1760,195 @@ function recoveryLiveIdentity(actor: Actor): {
   }
 }
 
+type IsolationMutationRequest =
+  | EmergencyIsolationActivationRequest
+  | EmergencyIsolationDeactivationRequest
+
+type IsolationMutationRoute =
+  | "POST /api/admin/isolation/activate"
+  | "POST /api/admin/isolation/deactivate"
+
+interface IsolationResultParse {
+  data?: unknown
+  success: boolean
+}
+
+async function isolationMutation(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  service: AdminEmergencyIsolationService | null | undefined,
+  route: IsolationMutationRoute,
+  body: IsolationMutationRequest,
+  run: (
+    service: AdminEmergencyIsolationService,
+    actor: Actor,
+    context: AdminTeamMutationContext,
+  ) => Promise<unknown>,
+  parseResult: (value: unknown) => IsolationResultParse,
+) {
+  const actor = requireActor(request)
+  if (!hasRecentKeycloakMfa(actor)) {
+    await auditIsolationRouteDenial(
+      request,
+      route === "POST /api/admin/isolation/activate"
+        ? "activate"
+        : "deactivate",
+    )
+    return reply.code(403).send({
+      type: "about:blank",
+      title: "Recent Keycloak MFA required",
+      status: 403,
+      detail:
+        "Emergency Isolation changes require Keycloak authentication no older than 300 seconds and an approved MFA method.",
+    })
+  }
+  if (!service) {
+    return isolationUnavailable(reply)
+  }
+
+  return withAdminIdempotentMutation(
+    request,
+    reply,
+    route,
+    body,
+    async (mutationActor, context) => {
+      try {
+        const parsed = parseResult(await run(service, mutationActor, context))
+        return parsed.success
+          ? {
+              idempotencyResourceId: "appliance",
+              payload: parsed.data,
+              statusCode: 200,
+            }
+          : isolationMutationUnavailableResult()
+      } catch (error) {
+        if (error instanceof EmergencyIsolationAtomicCommitError) {
+          throw error
+        }
+        return isolationMutationErrorResult(error)
+      }
+    },
+  )
+}
+
+function hasRecentKeycloakMfa(actor: Actor): boolean {
+  if (
+    actor.authMode !== "keycloak" ||
+    !Number.isInteger(actor.authTime) ||
+    (actor.authTime ?? -1) < 0
+  ) {
+    return false
+  }
+  const nowSeconds = Math.floor(Date.now() / 1000)
+  const authTime = actor.authTime ?? -1
+  if (authTime > nowSeconds || nowSeconds - authTime > 300) {
+    return false
+  }
+  const approvedMethods = new Set<string>(emergencyRecoveryApprovedMfaMethods)
+  return (actor.amr ?? []).some((method) => approvedMethods.has(method))
+}
+
+function isolationMutationErrorResult(error: unknown): {
+  payload: unknown
+  receiptOutcome: IdempotencyReceipt["outcome"]
+  statusCode: 403 | 409 | 503
+} {
+  if (error instanceof EmergencyIsolationDeniedError) {
+    return {
+      payload: {
+        type: "about:blank",
+        title: "Emergency Isolation mutation denied",
+        status: 403,
+        detail:
+          "Only a standing Admin with recent approved Keycloak MFA may change Emergency Isolation.",
+      },
+      receiptOutcome: "denied",
+      statusCode: 403,
+    }
+  }
+  if (error instanceof EmergencyIsolationConflictError) {
+    return {
+      payload: {
+        type: "about:blank",
+        title: "Emergency Isolation state changed",
+        status: 409,
+        detail:
+          "Refresh the isolation status and retry with its current revision.",
+      },
+      receiptOutcome: "failed",
+      statusCode: 409,
+    }
+  }
+  if (error instanceof EmergencyIsolationBusyError) {
+    return {
+      payload: {
+        type: "about:blank",
+        title: "Emergency Isolation transition in progress",
+        status: 409,
+        detail: "Wait for the current isolation transition before retrying.",
+      },
+      receiptOutcome: "failed",
+      statusCode: 409,
+    }
+  }
+  if (error instanceof EmergencyIsolationRecoveryRequiredError) {
+    return {
+      payload: {
+        type: "about:blank",
+        title: "Emergency Isolation recovery required",
+        status: 409,
+        detail:
+          "T2 traffic remains sealed until the isolation state is recovered.",
+      },
+      receiptOutcome: "failed",
+      statusCode: 409,
+    }
+  }
+  if (error instanceof EmergencyIsolationUnavailableError) {
+    return isolationMutationUnavailableResult()
+  }
+  return isolationMutationUnavailableResult()
+}
+
+async function auditIsolationRouteDenial(
+  request: FastifyRequest,
+  action: "activate" | "deactivate",
+): Promise<void> {
+  const actor = request.actor
+  if (!actor) {
+    return
+  }
+  try {
+    await emitAudit({
+      action: `admin.isolation.${action}.denied`,
+      correlationId: request.id,
+      keycloakSubjectId: actor.subject,
+      outcome: "denied",
+      sourceSystem: "console",
+    })
+  } catch {
+    // The route stays denied without exposing request content when audit is unavailable.
+  }
+}
+
+function isolationMutationUnavailableResult(): {
+  payload: unknown
+  receiptOutcome: "failed"
+  statusCode: 503
+} {
+  return {
+    payload: {
+      type: "about:blank",
+      title: "Emergency Isolation unavailable",
+      status: 503,
+      detail:
+        "Isolation state could not be verified. T2 traffic must remain sealed.",
+    },
+    receiptOutcome: "failed",
+    statusCode: 503,
+  }
+}
+
 function recoveryActivationBody(
   value: unknown,
 ): { factor: string; reasonCode: EmergencyRecoveryReasonCode } | null {
@@ -1762,6 +2066,11 @@ function recoveryUnavailable(reply: FastifyReply) {
     status: 503,
     detail: "Durable emergency recovery state is unavailable.",
   })
+}
+
+function isolationUnavailable(reply: FastifyReply) {
+  const result = isolationMutationUnavailableResult()
+  return reply.code(result.statusCode).send(result.payload)
 }
 
 function getAuditQuery(request: FastifyRequest): {
@@ -2171,17 +2480,22 @@ async function withAdminIdempotentMutation(
 
   let identityReceiptFinalized = false
   const identityContext: AdminTeamMutationContext = {
-    commitWithReceipt: async ({ resourceId, run }) => {
+    commitWithReceipt: async ({
+      outcome = "succeeded",
+      resourceId,
+      run,
+      statusCode = identityMutationSuccessStatusCode,
+    }) => {
       const db = getInferenceCoreDb()
       const commit = async (transaction: Parameters<typeof run>[0]) => {
         const value = await run(transaction)
         const completed = await completeIdempotency(
           {
-            outcome: "succeeded",
+            outcome,
             resourceId,
             storeKey: reservation.storeKey,
             requestHash,
-            statusCode: identityMutationSuccessStatusCode,
+            statusCode,
           },
           transaction,
         )
@@ -2287,6 +2601,18 @@ function adminMutationErrorResult(error: unknown): {
   payload: unknown
   statusCode: 404 | 409 | 503
 } | null {
+  if (error instanceof EmergencyIsolationAtomicCommitError) {
+    return {
+      payload: {
+        type: "about:blank",
+        title: "Emergency Isolation requires reconciliation",
+        status: 503,
+        detail:
+          "Isolation remains fail-closed because its terminal state and idempotency receipt did not commit atomically.",
+      },
+      statusCode: 503,
+    }
+  }
   if (error instanceof AdminAlertEgressConflictError) {
     return {
       payload: {

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
-  "policyDigest": "88f141e6d7fcd2fa2565ae663073dde3284235bd6bfffffa1972cb8427df3bd4",
+  "policyDigest": "eb0749cf7209009a7231459be6ed0db23a1969745a9a9a3625c350b8d696daa8",
   "target": {
     "requiredPublicInference": [
       {
@@ -106,6 +106,13 @@
       "surface": "bff",
       "method": "GET",
       "path": "/api/admin/inference",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/isolation",
       "source": "apps/bff/src/routes/admin.ts",
       "classification": "current-console-seam"
     },
@@ -302,6 +309,20 @@
       "surface": "bff",
       "method": "POST",
       "path": "/api/admin/inference/model-updates/apply",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/isolation/activate",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/isolation/deactivate",
       "source": "apps/bff/src/routes/admin.ts",
       "classification": "current-console-seam"
     },
@@ -843,15 +864,15 @@
     },
     {
       "path": "apps/bff/src/db/inference-core-client.ts",
-      "sha256": "5eaf0d9f429e48f37dfcde95ded2bd931568d50d59fb70d546bcff50a7a1d200"
+      "sha256": "1d216929dd2e5cff3a57d34d24eb4ac0a251426d7385b6af9feca7896c32431d"
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.ts",
-      "sha256": "44866d0c1ebaf40510e5e621bff8f0f42bd83637328e71afe4b8fe8b51d7eeb2"
+      "sha256": "9dcc8e50a1c4787b2777f0881ff32a91fa4f150acc15c075e333ffe1633a40a7"
     },
     {
       "path": "apps/bff/src/index.ts",
-      "sha256": "2dd253065b3e70f16db82c4c604399499ed439983b312fefd4ae6023c6e84a31"
+      "sha256": "c6bacb7e6e62f117185e60a568b7218630bdd32b07021fcca65437d6786059f5"
     },
     {
       "path": "apps/bff/src/inference/chat-completions.ts",
@@ -859,15 +880,15 @@
     },
     {
       "path": "apps/bff/src/routes/admin.ts",
-      "sha256": "a257c07409b920738d6c2bbb7455be36e635a54db78bfffe24706612a6e07dd3"
+      "sha256": "41d23b4c33d8fa093a926c870a3d0abbd2b69ba772323ffa62af32c5061ae644"
     },
     {
       "path": "apps/bff/src/routes/app-gateway.ts",
-      "sha256": "edad483babcf714dd1bb47e86027ffe0197536f62757c60e99a87aaee375c927"
+      "sha256": "1e4ade271c8e7218189a6c97a63342a9a60d3e556965ba8c3451e5616e891411"
     },
     {
       "path": "apps/bff/src/routes/firecrawl-gateway.ts",
-      "sha256": "9ada6b38305af2e8f97a6cd1c1137379e4eb73693d38f53c7d5da638cc639465"
+      "sha256": "b9b8dbb6ba9ed308b6676d68c3bc18e0379dce6a03ba2a6415a604275f371953"
     },
     {
       "path": "apps/bff/src/routes/observability-metrics.ts",
@@ -887,11 +908,11 @@
     },
     {
       "path": "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
-      "sha256": "44e97b884350846b23f74b96b96c79bc72597bf88f8bd207530c475602aeb05a"
+      "sha256": "5e0c6aa94dac03a549294765c648debc89492cd3b877daff54627b668721f634"
     },
     {
       "path": "apps/bff/src/services/admin-connected-apps.ts",
-      "sha256": "1eae5a81e264fa351b7dbf5714fbdbe6d213b9f9326e1418638da6c1229e7512"
+      "sha256": "0eea0bac71cece2e2bdefc0610e6ef36820b4217ea597c38bc8d34dac125926c"
     },
     {
       "path": "apps/bff/src/services/admin-hardware.ts",
@@ -962,6 +983,10 @@
       "sha256": "a4b06232244c09d0e6db38faab162cfc56d45e83466fbd6107a9233b4612aefc"
     },
     {
+      "path": "apps/bff/src/services/emergency-isolation.ts",
+      "sha256": "17593fc417d24243dd5c02406e8993c9267ac5f306e34d5ed457385d26155226"
+    },
+    {
       "path": "apps/bff/src/services/emergency-recovery.ts",
       "sha256": "f3cdede46367dc547c16c855f3f42d1a2a99dac6c8bc4e9604446f5d0dc966c2"
     },
@@ -983,7 +1008,7 @@
     },
     {
       "path": "apps/bff/src/services/identity-mutation-journal.ts",
-      "sha256": "973730970bc2e275ee329a589b9d2772518f3153f79e7500b5ed782831f2b9bb"
+      "sha256": "01142036ce2e09d1b857cadf3a0d4340651e6d1540db59502a2285d45ac37fcf"
     },
     {
       "path": "apps/bff/src/services/inference-core-keycloak-admin.ts",
@@ -994,16 +1019,20 @@
       "sha256": "c5a5658864b0bda1024cc34a60c02b08427e5f1e10cfdea23fd7e2c8572b767f"
     },
     {
+      "path": "apps/bff/src/services/isolation-traffic-gate.ts",
+      "sha256": "0db62ff716d74390173cb513254ac7f1e9c1659570da83fa3e20f2500de0f83f"
+    },
+    {
       "path": "apps/bff/src/services/lifecycle-component-adapters.ts",
       "sha256": "f0f570ae840557624a63387cedb8e60d65b21cdaad3cda1d5f065e19ee2f77af"
     },
     {
       "path": "apps/bff/src/services/lifecycle-operation-journal.ts",
-      "sha256": "72788d1949b34dc01e1a55c8acfeea5c6a01990a4b8f60b8176b94c1f90b0c31"
+      "sha256": "de4f5d38dfe75357561660b261fd5387f68116501fe2a565da5976e8db02c0b4"
     },
     {
       "path": "apps/bff/src/services/lifecycle-orchestration.ts",
-      "sha256": "a2babf2e9718ce395b9e52331776d67b7dc5ef14c06a1b99d6908162452c29c1"
+      "sha256": "725eaa0e6f0f771235b9450b756eb43cd650901e160ad71b9e57fdf713cd7fdd"
     },
     {
       "path": "apps/bff/src/services/lifecycle-snapshot-manifest.ts",
@@ -1011,7 +1040,7 @@
     },
     {
       "path": "apps/bff/src/services/litellm-chat-transport.ts",
-      "sha256": "0bf8daaa68094752d035deb808b0c59c9e4ae51fdfee5ce493a936e26e915564"
+      "sha256": "e021b6c833881ebec53341607085d97d89ae2c7a569133ef47f3fd1ef547aa14"
     },
     {
       "path": "apps/bff/src/services/users.ts",
@@ -1343,7 +1372,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "07d09d8085d44b8992985aa8a31143a39b4be13bebc7ffc3869bae775271cc40"
+      "sha256": "8198e9358a9bcb9f3e780ab67fa1dc6e8bae57a2b2e82e37c89c9e4682f5fa9b"
     },
     {
       "path": "packages/contracts/package.json",
@@ -1359,11 +1388,15 @@
     },
     {
       "path": "packages/contracts/src/index.ts",
-      "sha256": "1069988f96eb422133ec8e828ce63a8abc9500935a61310fce759cc10ae6590c"
+      "sha256": "8756001830e8067c18a431eb2a21cda30761d0ca452dd1586aa88e5e0106b29a"
     },
     {
       "path": "packages/contracts/src/inference-core-authorization.ts",
       "sha256": "0210fa56d27cbea5eac7dd7fcf77ea525bbbc8e7690f3d034139ebbf6f139214"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-isolation.ts",
+      "sha256": "760037bc3652c95482b1db533a83d83a595f647219e4cc01d35a8fa0e4c9e03b"
     },
     {
       "path": "packages/contracts/src/inference-core-lifecycle.ts",
@@ -1375,7 +1408,7 @@
     },
     {
       "path": "packages/contracts/src/inference-core.ts",
-      "sha256": "f2005f4326168e1cdb097fbd344c11a3add2503c892642ab9fdbff49c75505f7"
+      "sha256": "f57f50590cdd45eca045a6a26cb6fdb03033b69a99d16e207abf30c7070683dd"
     },
     {
       "path": "packages/contracts/tsconfig.build.json",
@@ -1518,22 +1551,22 @@
     {
       "path": "apps/bff/src/db/inference-core-client.test.ts",
       "mode": "100644",
-      "objectId": "96042422e791dbcb2ed736346928506894a0133c"
+      "objectId": "deaffd0142347584afd6b4d16337133bb77b20d0"
     },
     {
       "path": "apps/bff/src/db/inference-core-client.ts",
       "mode": "100644",
-      "objectId": "1a2f28292e58436b4e10a2fa449530c919f47f87"
+      "objectId": "4c29e3eeca3f2a04b0b7768ef86747aa204924be"
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.test.ts",
       "mode": "100644",
-      "objectId": "137011674a87e19599980d671ae3c3a06ddc45a1"
+      "objectId": "dd7a9559b881c6dadb3b1d03d6e6ef3155ce30c6"
     },
     {
       "path": "apps/bff/src/db/inference-core-schema.ts",
       "mode": "100644",
-      "objectId": "d6ce829bd39b559c1fdc087b9949deb39ee1bce7"
+      "objectId": "623496a7b382fccec1c1bc45d29b279e99b55eee"
     },
     {
       "path": "apps/bff/src/index-firecrawl-credential-isolation.test.ts",
@@ -1553,7 +1586,7 @@
     {
       "path": "apps/bff/src/index.ts",
       "mode": "100644",
-      "objectId": "dfe4a0b29b5756114d34e41ec10b11bb42b1c347"
+      "objectId": "5f9cbba77ef166982ffed3c2d0a12db49f431755"
     },
     {
       "path": "apps/bff/src/inference/chat-completions.test.ts",
@@ -1578,7 +1611,7 @@
     {
       "path": "apps/bff/src/routes/admin-authorization.test.ts",
       "mode": "100644",
-      "objectId": "9a972aafacb90e4d2a30bdffb66e8e62e0d94dd2"
+      "objectId": "c4c45eccc2920cdc1bf5fcf69e56b1b6016fa935"
     },
     {
       "path": "apps/bff/src/routes/admin-connected-apps-lifecycle.test.ts",
@@ -1606,6 +1639,11 @@
       "objectId": "df15888f623fd43841662bf96d018abe0b214c55"
     },
     {
+      "path": "apps/bff/src/routes/admin-isolation.test.ts",
+      "mode": "100644",
+      "objectId": "42c0adcc2b448ae97350e37f727cdc24282d6307"
+    },
+    {
       "path": "apps/bff/src/routes/admin-overview-health.test.ts",
       "mode": "100644",
       "objectId": "8d4b04d256066deb7203d93d1c6006e8c1ba9cbb"
@@ -1628,7 +1666,7 @@
     {
       "path": "apps/bff/src/routes/admin.ts",
       "mode": "100644",
-      "objectId": "abcde07e2bc0c25191834db1f1198d85ca8b1138"
+      "objectId": "c25ef26844cb7065e1bc47775510f2b3c31da78b"
     },
     {
       "path": "apps/bff/src/routes/app-gateway-accounting-errors.test.ts",
@@ -1648,27 +1686,27 @@
     {
       "path": "apps/bff/src/routes/app-gateway.test.ts",
       "mode": "100644",
-      "objectId": "4c55c90309c01e23933ce67da4f88d0662f7d7e0"
+      "objectId": "4c80079cc81731c47451f38dc9a33972b54d0c8a"
     },
     {
       "path": "apps/bff/src/routes/app-gateway.ts",
       "mode": "100644",
-      "objectId": "48465ebd4c51e54a27519096cab0292c688dfb0c"
+      "objectId": "8f9c5bcd442d63eef59b40dbb3228ea6ebfe05fb"
     },
     {
       "path": "apps/bff/src/routes/firecrawl-gateway.test.ts",
       "mode": "100644",
-      "objectId": "cbbde6bda8183a910338781b4cb7e27b53103827"
+      "objectId": "76c2c7c2b75e2efe2de4790ccb823faa88939252"
     },
     {
       "path": "apps/bff/src/routes/firecrawl-gateway.ts",
       "mode": "100644",
-      "objectId": "3dcf76a22b690fc15052624e2bd6aea801608ddb"
+      "objectId": "d0fb9557c0f75055fda5241adf6870c3c82bf97f"
     },
     {
       "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
       "mode": "100644",
-      "objectId": "49bb61287cb6ba9e7981e6471ae711892e7bfd65"
+      "objectId": "19eec901ace6cbc63a2cc73b8817d15e8349eb5f"
     },
     {
       "path": "apps/bff/src/routes/observability-metrics.test.ts",
@@ -1733,12 +1771,12 @@
     {
       "path": "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
       "mode": "100644",
-      "objectId": "ef1dd909f0de2ca7da5defb100629df736199518"
+      "objectId": "126e4cf3e5a4f9595df31bcd07e61c2ef958280d"
     },
     {
       "path": "apps/bff/src/services/admin-connected-apps.ts",
       "mode": "100644",
-      "objectId": "5cded78aeee0ff1a7214dcfca5c78e860f82b777"
+      "objectId": "5eb639d99b2c73f5758eee9d39633235fddeae13"
     },
     {
       "path": "apps/bff/src/services/admin-hardware.ts",
@@ -1881,6 +1919,16 @@
       "objectId": "dfbc075f114736b1b019ea14d66f874aa2b3591c"
     },
     {
+      "path": "apps/bff/src/services/emergency-isolation.test.ts",
+      "mode": "100644",
+      "objectId": "217135fa9b5260d64140d5d3a1722466965b1ab4"
+    },
+    {
+      "path": "apps/bff/src/services/emergency-isolation.ts",
+      "mode": "100644",
+      "objectId": "b20f707b0cfed13fc12340b40c73c8858d5ff724"
+    },
+    {
       "path": "apps/bff/src/services/emergency-recovery.test.ts",
       "mode": "100644",
       "objectId": "e44b5efa423b63da92c4d4049402e216e4bb1133"
@@ -1933,7 +1981,7 @@
     {
       "path": "apps/bff/src/services/identity-mutation-journal.ts",
       "mode": "100644",
-      "objectId": "3e612adbba823c9a482456deefad0988638df328"
+      "objectId": "4eed159397080873a770b0f3a0a12b30d5069f6d"
     },
     {
       "path": "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
@@ -1956,6 +2004,16 @@
       "objectId": "8ca84e957f368c55350a3661fc745eea3dddb9e7"
     },
     {
+      "path": "apps/bff/src/services/isolation-traffic-gate.test.ts",
+      "mode": "100644",
+      "objectId": "016868ed24606694e086b7deac809d4d65c4f6f4"
+    },
+    {
+      "path": "apps/bff/src/services/isolation-traffic-gate.ts",
+      "mode": "100644",
+      "objectId": "2e8e0957719267f148a3459bc5a0fa7bfbb460e1"
+    },
+    {
       "path": "apps/bff/src/services/lifecycle-component-adapters.test.ts",
       "mode": "100644",
       "objectId": "5d3e12864a38ced40d0f937bcba4fad9c93ba520"
@@ -1968,22 +2026,22 @@
     {
       "path": "apps/bff/src/services/lifecycle-operation-journal.test.ts",
       "mode": "100644",
-      "objectId": "afefb85a4dba69b10332c43083e9a7c19a4e28b8"
+      "objectId": "15a8722f6bba77146e7d94b897dc9bac73c6039b"
     },
     {
       "path": "apps/bff/src/services/lifecycle-operation-journal.ts",
       "mode": "100644",
-      "objectId": "b16aee684e9d05b6b85721c38ea382cc44667cd3"
+      "objectId": "78b9b084726f411169770dd41f548d5a1953590b"
     },
     {
       "path": "apps/bff/src/services/lifecycle-orchestration.test.ts",
       "mode": "100644",
-      "objectId": "ae5ff05cf6a4d840a31fded323123b6768d12e38"
+      "objectId": "de01cdc670574893e196bce54058589fbdef4a4c"
     },
     {
       "path": "apps/bff/src/services/lifecycle-orchestration.ts",
       "mode": "100644",
-      "objectId": "7b08e6dd175b64a40d14111758af0a83eb00741e"
+      "objectId": "fe3439d60a414536e3827d3e830cf0c72378b573"
     },
     {
       "path": "apps/bff/src/services/lifecycle-snapshot-manifest.test.ts",
@@ -1998,12 +2056,12 @@
     {
       "path": "apps/bff/src/services/litellm-chat-transport.test.ts",
       "mode": "100644",
-      "objectId": "999245ad915f0c04309bc49b4eccd8dc9b640556"
+      "objectId": "7a55b80db528de9ae57936bf8046711f0639a849"
     },
     {
       "path": "apps/bff/src/services/litellm-chat-transport.ts",
       "mode": "100644",
-      "objectId": "c8bfbf9ae56481ede7e72ca32b81cb1526f94293"
+      "objectId": "1802564fa7627f3ab4cd7b2cb960fc5dab6e6ac8"
     },
     {
       "path": "apps/bff/src/services/users.test.ts",
@@ -2581,9 +2639,14 @@
       "objectId": "5856886fb0f9ddfe016c1d2d04ed8ac946dc6c4b"
     },
     {
+      "path": "docs/reduction/inference-core/pr-10c-emergency-isolation-decisions.json",
+      "mode": "100644",
+      "objectId": "23e5b30822ce4b3cf9dbc2d5247644b60b694a0f"
+    },
+    {
       "path": "docs/reduction/inference-core/README.md",
       "mode": "100644",
-      "objectId": "a5582a99a713e8b357a4b7a2fe705994e5b2e86e"
+      "objectId": "3bb122fa40de1c7740a139fea0c8fcd0305e36c9"
     },
     {
       "path": "docs/reduction/inference-core/retention-characterization.json",
@@ -2673,7 +2736,7 @@
     {
       "path": "infra/migrations/0000_inference_core.sql",
       "mode": "100644",
-      "objectId": "28ce0f3f6189bb1b60326915fc199db38d9b9614"
+      "objectId": "bba00363fa5d51fd7b18f07dda8a4c6d84a38d20"
     },
     {
       "path": "infra/observability/alertmanager/alertmanager.yml",
@@ -2748,7 +2811,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "objectId": "16b3441279c10517b59e002798b75bb75749acbf"
+      "objectId": "2042ed4c89215992c473d8d6ec68b2dde01f2c0a"
     },
     {
       "path": "packages/contracts/package.json",
@@ -2768,7 +2831,7 @@
     {
       "path": "packages/contracts/src/index.ts",
       "mode": "100644",
-      "objectId": "821e11efb0dfd18b120a0d82d07d8292a69816ad"
+      "objectId": "5a65ff757f911394559a6362539a1884fa7c7822"
     },
     {
       "path": "packages/contracts/src/inference-core-authorization.test.ts",
@@ -2784,6 +2847,16 @@
       "path": "packages/contracts/src/inference-core-firecrawl.test.ts",
       "mode": "100644",
       "objectId": "6c45a3867e6c66fcb5524e2648f27fde6241e6a2"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-isolation.test.ts",
+      "mode": "100644",
+      "objectId": "c01ac4b64cc9739be95a9af1fec4a341e6cf2c62"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-isolation.ts",
+      "mode": "100644",
+      "objectId": "ada6808d061b8346fa48c2599194d89e85df7277"
     },
     {
       "path": "packages/contracts/src/inference-core-lifecycle.test.ts",
@@ -2813,7 +2886,7 @@
     {
       "path": "packages/contracts/src/inference-core.ts",
       "mode": "100644",
-      "objectId": "45bab9f3872907d23041ee15217347fa5fd9ddf7"
+      "objectId": "b59b763b01d305a93be72d35efbb2e116f074d94"
     },
     {
       "path": "packages/contracts/tsconfig.build.json",
@@ -2868,12 +2941,12 @@
     {
       "path": "scripts/inference-core/guardrails.mjs",
       "mode": "100644",
-      "objectId": "889a0860716e2d4825839e46841cb9fa694dfbca"
+      "objectId": "3641d2f2699d133441c2ea422f013971fba9d94f"
     },
     {
       "path": "scripts/inference-core/guardrails.test.mjs",
       "mode": "100644",
-      "objectId": "1f18cd5966ba6c275a48c37c516c218e0e9d0570"
+      "objectId": "4c1d570de66185775f94406930a0cd59a6211e81"
     },
     {
       "path": "scripts/inference-core/pr02-boundaries.test.mjs",
@@ -2908,7 +2981,7 @@
     {
       "path": "scripts/inference-core/pr05-boundaries.test.mjs",
       "mode": "100644",
-      "objectId": "9ce1b17e7d0dd7ad29e28c31ed9e079980ff4d08"
+      "objectId": "9b058042b4d116093c722a75c08266510c299711"
     },
     {
       "path": "scripts/inference-core/pr05-contract-revision.mjs",
@@ -2928,7 +3001,7 @@
     {
       "path": "scripts/inference-core/pr06-boundaries.test.mjs",
       "mode": "100644",
-      "objectId": "a8c3fff9b2bad0f1c66f372afdb799dc6c4954f9"
+      "objectId": "0b0dfe63dcbc02451dd1361c7d9b73af21d9cfd3"
     },
     {
       "path": "scripts/inference-core/pr06-contract-revision.mjs",
@@ -2968,12 +3041,22 @@
     {
       "path": "scripts/inference-core/pr10-boundaries.test.mjs",
       "mode": "100644",
-      "objectId": "65e74f0cbf38422846955d6b23c328ecf66a797c"
+      "objectId": "5407e2c529316ab0e262523270ae651837038a80"
     },
     {
       "path": "scripts/inference-core/pr10-contract-revision.mjs",
       "mode": "100644",
       "objectId": "f9ff4e9c1671d94b1ff64e4f475105aa0962de10"
+    },
+    {
+      "path": "scripts/inference-core/pr10c-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "70041fa8307afb256a8d6868df5d6d7ac33cde70"
+    },
+    {
+      "path": "scripts/inference-core/pr10c-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "75305b0133014170631fccb73aa53e1c1adddd49"
     },
     {
       "path": "scripts/inference-core/retention-canary.mjs",
@@ -3023,12 +3106,12 @@
     {
       "path": "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
       "mode": "100644",
-      "objectId": "21d7820e745df1332d196fe25236575df0e45138"
+      "objectId": "56ecfd7d2f540e91264c1b99b81aef106d4dd456"
     },
     {
       "path": "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
       "mode": "100644",
-      "objectId": "e65b5af2706a260a7e32bbd3817bb344dbbbd29c"
+      "objectId": "1b80ae6e1b9d0ce488de2035feb160b04764fee1"
     },
     {
       "path": "test-support/inference-core-db-tests/src/pr05-emergency-recovery.test.ts",
@@ -3073,7 +3156,12 @@
     {
       "path": "test-support/inference-core-db-tests/src/pr10-lifecycle-journal.test.ts",
       "mode": "100644",
-      "objectId": "033b00d4e77fcf2ad7ec24f6877daf4c69e72980"
+      "objectId": "70f33343ff6dc0829bc38cea20f47ed25518f034"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr10c-emergency-isolation.test.ts",
+      "mode": "100644",
+      "objectId": "28918739f977bc400146fc6d82fc656e529c9887"
     },
     {
       "path": "test-support/inference-core-db-tests/tsconfig.json",
@@ -3100,7 +3188,7 @@
     {
       "path": "apps/bff/src/index.ts",
       "symbol": "<file>",
-      "sha256": "34861ad68b99b3ff2eb927daa76b8b9157a62e5841365e456c4335a168c34293"
+      "sha256": "32509b161073d225b6aef9e3993c778d997773073a14be5318b6d33e78ed093d"
     },
     {
       "path": "apps/web/next.config.ts",
@@ -3159,6 +3247,11 @@
       "id": "PR-10",
       "path": "docs/reduction/inference-core/contract-revisions/PR-10.json",
       "sha256": "91948b3af170626b9d987a84848d31afb41462b6b747c7fdafa8b3cf7ad28a96"
+    },
+    {
+      "id": "PR-10C",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-10C.json",
+      "sha256": "eb27ac731b1bdb9d15fb762b44bfba93c1d566a0b9986365d0cdddef073de6b3"
     }
   ]
 }
