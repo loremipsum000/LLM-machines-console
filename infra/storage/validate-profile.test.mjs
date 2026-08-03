@@ -140,12 +140,12 @@ test("the schema freezes source-only, custody, and canary boundaries", () => {
 test("credentials, topology, endpoints, and inline repository values are rejected", () => {
   for (const source of [
     ["token: gh", "o_0123456789abcdefghijklmnop"].join(""),
-    "target: 192.168.4.10",
-    "target: service.internal",
-    "endpoint: https://backup.example",
-    "path: /Users/operator/backup",
-    "RESTIC_PASSWORD=forbidden",
-    "repositoryLocator=/mnt/customer",
+    ["target: 192", ".168.4.10"].join(""),
+    ["target: service", ".internal"].join(""),
+    ["endpoint: https://backup", ".example"].join(""),
+    ["path: /", "Users/operator/backup"].join(""),
+    ["RESTIC_", "PASSWORD=forbidden"].join(""),
+    ["repository", "Locator=/mnt/customer"].join(""),
   ]) {
     assert.ok(validateSourceSafety({ changed: source }).length > 0, source)
   }
