@@ -13,9 +13,6 @@ export const inferenceCoreCapabilitySchema = z.enum([
   "applications.reenable",
   "applications.credentials.test_rotate_revoke",
   "applications.disable",
-  "litellm.routes_keys.edit",
-  "grafana.dashboards_alerting.edit",
-  "grafana.view",
   "team.users_roles.manage",
   "team.local_password.manage",
   "team.identity.view",
@@ -40,9 +37,6 @@ export const inferenceCoreCapabilityMatrix = {
     operator: true,
   },
   "applications.disable": { admin: true, operator: true },
-  "litellm.routes_keys.edit": { admin: true, operator: false },
-  "grafana.dashboards_alerting.edit": { admin: true, operator: false },
-  "grafana.view": { admin: true, operator: true },
   "team.users_roles.manage": { admin: true, operator: false },
   "team.local_password.manage": { admin: true, operator: false },
   "team.identity.view": { admin: true, operator: true },
@@ -50,13 +44,6 @@ export const inferenceCoreCapabilityMatrix = {
   "activity_audit.export": { admin: true, operator: false },
   "isolation.activate": { admin: true, operator: false },
 } as const satisfies Record<InferenceCoreCapability, CapabilityDecision>
-
-export const inferenceCoreExpertAccessMatrix = {
-  litellm: { admin: "editor", operator: "none" },
-  grafana: { admin: "editor", operator: "viewer" },
-  keycloak: { admin: "scoped-admin", operator: "none" },
-  portainer: { admin: "none", operator: "none" },
-} as const
 
 export function roleHasInferenceCoreCapability(
   role: unknown,

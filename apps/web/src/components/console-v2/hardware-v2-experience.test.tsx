@@ -75,7 +75,7 @@ describe("HardwareV2Experience alerts", () => {
     expect(within(alerts).queryByRole("link")).toBeNull()
   })
 
-  it("does not render native expert links before no-bypass qualification", () => {
+  it("does not render unqualified native links", () => {
     render(
       <HardwareV2Experience
         hardware={hardwareFixture({
@@ -111,7 +111,7 @@ describe("HardwareV2Experience alerts", () => {
         .every((link) => link.getAttribute("href")?.startsWith("/hardware")),
     ).toBe(true)
     expect(
-      screen.getByText("Direct Grafana access is pending qualification"),
+      screen.getByText("Hardware metrics remain available in Console"),
     ).toBeTruthy()
   })
 })

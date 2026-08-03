@@ -1,33 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Actor } from "../auth/authorization"
 import { getAdminTeamOverview, resetAdminTeamStateForTest } from "./admin-team"
-import { expertCapabilities, expertSystemIds } from "./expert-capabilities"
 
-describe("expert capability boundary", () => {
+describe("private identity-service projection boundary", () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
     resetAdminTeamStateForTest()
   })
 
-  it("keeps native access disabled while ingress awaits runtime qualification", () => {
-    expect(Object.isFrozen(expertCapabilities)).toBe(true)
-    expect(Object.keys(expertCapabilities).sort()).toEqual(
-      [...expertSystemIds].sort(),
-    )
-    for (const capability of Object.values(expertCapabilities)) {
-      expect(Object.isFrozen(capability)).toBe(true)
-      expect(capability).toEqual({
-        auditIngestion: "implemented_pending_runtime_qualification",
-        consoleProjection: "read_only",
-        directAccess: "disabled",
-        mechanism: "product_owned_audited_ingress",
-        nativeMutation: "disabled",
-      })
-    }
-  })
-
-  it("keeps configured Keycloak and SCIM expert links out of the retained Team projection", async () => {
+  it("keeps configured Keycloak and SCIM native links out of Team", async () => {
     vi.stubEnv("KEYCLOAK_ADMIN_BASE_URL", "https://keycloak.example/keycloak")
     vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_ID", "console-human-admin")
     vi.stubEnv("KEYCLOAK_ADMIN_CLIENT_SECRET", "unit-test-credential")
@@ -41,18 +24,16 @@ describe("expert capability boundary", () => {
     expect(overview.members).toEqual([
       expect.objectContaining({
         id: "operator-1",
-        keycloakHref: null,
         role: "operator",
       }),
     ])
-    expect(overview.groups.every((group) => group.keycloakHref === null)).toBe(
-      true,
-    )
+    expect(overview.members[0]).not.toHaveProperty("keycloakHref")
+    expect(overview.groups[0]).not.toHaveProperty("keycloakHref")
     expect(overview.scim).toMatchObject({
-      keycloakHref: null,
       provider: "customer-directory",
       status: "configured",
     })
+    expect(overview.scim).not.toHaveProperty("keycloakHref")
   })
 })
 

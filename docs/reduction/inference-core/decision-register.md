@@ -17,6 +17,7 @@ per-package JSON file and contract revision.
 | PR-10 | Lifecycle snapshot and restore foundation | `pr-10-lifecycle-foundation-decisions.json` | Accepted and bound by the PR-10 contract revision |
 | PR-10C | Emergency isolation source package | `pr-10c-emergency-isolation-decisions.json` | Accepted and bound by the PR-10C contract revision |
 | PR-11 | Retained Console information architecture | `pr-11-console-information-architecture-decisions.json` | Accepted and bound by the PR-11 contract revision |
+| PR-11A R1-C0 | Product authority and governance correction | `pr-11a-identity-ingress-hardening-decisions.json` | Source candidate implemented; independent review and merge pending; unaccepted and not revision-bound |
 
 ## PR-08 fixed decisions
 

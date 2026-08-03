@@ -4,7 +4,10 @@ import { readFileSync } from "node:fs"
 import { dirname, extname, resolve } from "node:path"
 import { test } from "node:test"
 import ts from "typescript"
-import { repositoryRoot } from "./guardrails.mjs"
+import {
+  readPr09SourceBoundaryText,
+  repositoryRoot,
+} from "./guardrails.mjs"
 
 const retainedBffEntries = [
   "apps/bff/src/index.ts",
@@ -112,10 +115,10 @@ test("shared dependency and expert-system decisions are complete", () => {
 })
 
 test("native expert access remains fail-closed in the PR-09 successor seam", () => {
-  const source = readFileSync(
-    resolve(repositoryRoot, "apps/bff/src/services/expert-capabilities.ts"),
-    "utf8",
+  const source = readPr09SourceBoundaryText(
+    "apps/bff/src/services/expert-capabilities.ts",
   )
+  assert.notEqual(source, null)
   assert.doesNotMatch(source, /directAccess:\s*"enabled"/)
   assert.doesNotMatch(source, /nativeMutation:\s*"enabled"/)
   assert.match(

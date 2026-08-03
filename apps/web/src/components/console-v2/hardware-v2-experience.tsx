@@ -91,7 +91,7 @@ function HardwareToolbar({
         aria-disabled="true"
         className="rounded-md border border-[#353535] px-3 py-2 text-sm font-medium leading-[18px] text-[#777]"
       >
-        Direct Grafana access is pending qualification
+        Hardware metrics remain available in Console
       </span>
     </div>
   )

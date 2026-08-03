@@ -74,7 +74,6 @@ export const emergencyRecoveryGrantSchema = z
     activatedAt: z.string().datetime({ offset: true }),
     expiresAt: z.string().datetime({ offset: true }),
     keycloakSubjectId: z.string().min(1).max(255),
-    nativeExpertAccess: z.literal(false),
     reasonCode: emergencyRecoveryReasonCodeSchema,
     scope: z.literal("console_admin_capabilities"),
     sessionId: z.string().uuid(),

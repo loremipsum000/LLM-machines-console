@@ -30,7 +30,7 @@ describe("Admin Inference routes", () => {
     vi.useRealTimers()
   })
 
-  it("returns LiteLLM-backed data without exposing the disabled native expert link", async () => {
+  it("returns LiteLLM-backed data without exposing a native admin link", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_LITELLM_BASE_URL", "http://litellm.test")
     vi.stubEnv("ADMIN_LITELLM_API_KEY", "litellm-key")

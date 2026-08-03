@@ -24,7 +24,7 @@ describe("Admin hardware", () => {
     resetAuditEventsForTest()
   })
 
-  it("returns seven curated hardware charts while native expert links remain disabled", async () => {
+  it("returns seven curated hardware charts while native links remain disabled", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_PROMETHEUS_BASE_URL", "http://prometheus.test")
     vi.stubEnv("ADMIN_ALERTMANAGER_BASE_URL", "http://alertmanager.test")

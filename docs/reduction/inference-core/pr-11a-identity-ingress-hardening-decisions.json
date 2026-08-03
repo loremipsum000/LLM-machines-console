@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-11A-R1-C0",
+  "scope": "product-authority-and-governance-source-only",
+  "contractBaseCommit": "9d8f1a6144cb280104cdce0a21ab7dafa72087ec",
+  "contractBaseTree": "a7cb76ff95ec4ffc12cbd589b0514564602c35da",
+  "exactBranch": "codex/inference-core-pr-11a-r1-c0",
+  "reviewStatus": "source-candidate-awaiting-independent-review",
+  "accepted": false,
+  "revisionBound": false,
+  "bindingDecisions": {
+    "console": {
+      "primaryCustomerExperience": true,
+      "launchCriticalWithoutNativeExpertSurfaces": true,
+      "retainedSections": [
+        "overview",
+        "applications",
+        "inference",
+        "hardware",
+        "team",
+        "activity-audit",
+        "settings"
+      ]
+    },
+    "nativeExpertAccess": {
+      "launchTargets": [],
+      "litellm": "denied",
+      "keycloakAdmin": "denied",
+      "grafana": "deferred-unqualified"
+    },
+    "removedAuthority": {
+      "capabilities": [
+        "litellm.routes_keys.edit",
+        "grafana.dashboards_alerting.edit",
+        "grafana.view"
+      ],
+      "nativeTargetMatrix": true,
+      "keycloakNativeHrefFields": true,
+      "recoveryNativeAccessField": true,
+      "privateServiceCapabilityRegistry": true
+    },
+    "litellm": {
+      "networkPosture": "private",
+      "consoleProjection": [
+        "health",
+        "served-models",
+        "usage",
+        "route-summary",
+        "safe-credential-metadata"
+      ],
+      "consoleMutationAuthority": []
+    },
+    "keycloak": {
+      "networkPosture": "private",
+      "customerNativeAdminConsole": false,
+      "normalIdentityFlowsRetained": true,
+      "retainedConsoleMediatedActions": [
+        "user-lifecycle",
+        "role-assignment",
+        "password-actions"
+      ]
+    },
+    "packageSequence": {
+      "nextAfterReviewedMerge": "R1-S1",
+      "grafanaWorkAuthorized": false,
+      "laterPackagesBundled": false
+    }
+  },
+  "preBehaviorInventory": {
+    "admittedBehaviorSourcePaths": [
+      "apps/bff/src/auth/authorization.ts",
+      "apps/bff/src/commands/audit-ingestion.ts",
+      "apps/bff/src/services/admin-team.ts",
+      "apps/bff/src/services/audit-ingestion.ts",
+      "apps/bff/src/services/emergency-recovery.ts",
+      "apps/bff/src/services/expert-capabilities.ts",
+      "apps/bff/src/services/native-audit-source.ts",
+      "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+      "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "apps/web/src/components/console-v2/team-v2-experience.tsx",
+      "packages/contracts/src/inference-core-authorization.ts",
+      "packages/contracts/src/inference-core-recovery.ts",
+      "packages/contracts/src/inference-core.ts"
+    ],
+    "routesAdded": [],
+    "routesChanged": [],
+    "routesRemoved": [],
+    "runtimeBindings": [],
+    "realSecretBindings": [],
+    "productMainMutation": false
+  }
+}

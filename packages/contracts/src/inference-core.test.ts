@@ -22,7 +22,7 @@ import {
   adminTeamMemberDetailSchema,
   adminTeamMemberSchema,
   adminTeamOverviewResponseSchema,
-  inferenceCoreExpertAuditCapabilitySchema,
+  inferenceCoreNativeAuditCapabilitySchema,
   inferenceCoreSeveritySchema,
   inferenceCoreSourceStatusSchema,
   updateAdminAlertEgressRequestSchema,
@@ -37,7 +37,6 @@ const member = {
   enabled: true,
   groups: ["Operators"],
   id: "operator-1",
-  keycloakHref: null,
   lastActiveAt: timestamp,
   role: "operator",
   status: "active",
@@ -46,7 +45,6 @@ const member = {
 
 const group = {
   id: "operators",
-  keycloakHref: null,
   memberCount: 1,
   name: "Operators",
   virtual: false,
@@ -205,6 +203,10 @@ describe("Inference Core contract boundary", () => {
   it("limits Team to Admin and Operator without retired unlock or break-glass fields", () => {
     expect(adminTeamMemberSchema.safeParse(member).success).toBe(true)
     expect(
+      adminTeamMemberSchema.safeParse({ ...member, keycloakHref: null })
+        .success,
+    ).toBe(false)
+    expect(
       adminTeamMemberSchema.safeParse({ ...member, role: "builder" }).success,
     ).toBe(false)
     const memberDetail = {
@@ -236,6 +238,29 @@ describe("Inference Core contract boundary", () => {
       }).success,
     ).toBe(false)
     expect(
+      adminTeamGroupDetailSchema.safeParse({
+        group: { ...group, keycloakHref: null },
+        members: [member],
+      }).success,
+    ).toBe(false)
+    expect(
+      adminTeamOverviewResponseSchema.safeParse({
+        generatedAt: timestamp,
+        groups: [group],
+        members: [member],
+        scim: {
+          detail: "SCIM is not configured.",
+          keycloakHref: null,
+          lastSyncAt: null,
+          provider: null,
+          sourceStatus: "not_configured",
+          status: "not_configured",
+        },
+        serviceStatus: "ok",
+        sourceStatus: "ok",
+      }).success,
+    ).toBe(false)
+    expect(
       adminTeamOverviewResponseSchema.safeParse({
         breakGlass: {
           eligibleAdmins: [],
@@ -248,7 +273,6 @@ describe("Inference Core contract boundary", () => {
         members: [member],
         scim: {
           detail: "SCIM is not configured.",
-          keycloakHref: null,
           lastSyncAt: null,
           provider: null,
           sourceStatus: "not_configured",
@@ -870,12 +894,12 @@ describe("Inference Core contract boundary", () => {
     ).toBe(true)
   })
 
-  it("fails closed on unproven expert-system audit ingestion", () => {
+  it("fails closed on unproven private-service audit ingestion", () => {
     expect(
-      inferenceCoreExpertAuditCapabilitySchema.shape.source.options,
+      inferenceCoreNativeAuditCapabilitySchema.shape.source.options,
     ).toEqual(["litellm", "grafana", "keycloak", "alertmanager"])
     expect(
-      inferenceCoreExpertAuditCapabilitySchema.parse({
+      inferenceCoreNativeAuditCapabilitySchema.parse({
         detail: "Native LiteLLM audit ingestion is not proven.",
         ingestionEnabled: false,
         mechanism: null,
@@ -887,7 +911,7 @@ describe("Inference Core contract boundary", () => {
       nativeIngestionState: "unproven",
     })
     expect(
-      inferenceCoreExpertAuditCapabilitySchema.safeParse({
+      inferenceCoreNativeAuditCapabilitySchema.safeParse({
         detail: "Assumed ingestion",
         ingestionEnabled: true,
         mechanism: "polling",
@@ -899,7 +923,7 @@ describe("Inference Core contract boundary", () => {
 
   it("models the metadata-only paginated audit and signed-export verification contract", () => {
     expect(
-      inferenceCoreExpertAuditCapabilitySchema.parse({
+      inferenceCoreNativeAuditCapabilitySchema.parse({
         detail: "Ingress source exists but runtime no-bypass proof is pending.",
         ingestionEnabled: false,
         mechanism: "product_owned_audited_ingress",

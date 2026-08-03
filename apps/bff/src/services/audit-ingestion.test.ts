@@ -5,7 +5,7 @@ import {
   getAuditSourceHealth,
   validateNativeAuditSourceBatch,
 } from "./audit-ingestion"
-import type { NativeAuditEvent } from "./expert-capabilities"
+import type { NativeAuditEvent } from "./native-audit-source"
 
 const now = new Date("2026-08-01T12:00:00.000Z")
 
