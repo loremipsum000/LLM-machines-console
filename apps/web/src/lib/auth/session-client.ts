@@ -1,7 +1,7 @@
 import "server-only"
 
-import { normalizeConsoleReturnPath } from "./safe-return"
 import { consoleSessionResolveResponseSchema } from "@llm-machines/contracts/inference-core"
+import { normalizeConsoleReturnPath } from "./safe-return"
 
 export const CONSOLE_SESSION_COOKIE = "__Host-llm-machines-session"
 export const CONSOLE_SESSION_HEADER = "x-llm-machines-console-session"

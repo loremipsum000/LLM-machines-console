@@ -1,8 +1,8 @@
-import { getCurrentConsoleSession } from "@/lib/auth/session"
 import {
   consoleMfaElevationHref,
   hasFreshConsoleMfa,
 } from "@/lib/auth/mfa-elevation"
+import { getCurrentConsoleSession } from "@/lib/auth/session"
 import { expiredConsoleSessionRedirectResponse } from "@/lib/auth/session-client"
 import { getBffRequest } from "@/lib/bff/server-request"
 
