@@ -396,10 +396,7 @@ async function readMountedBearerToken(
 
   let file: Awaited<ReturnType<typeof open>> | null = null
   try {
-    file = await open(
-      configuredPath,
-      constants.O_RDONLY | constants.O_NOFOLLOW,
-    )
+    file = await open(configuredPath, constants.O_RDONLY | constants.O_NOFOLLOW)
     const metadata = await file.stat()
     if (
       !metadata.isFile() ||

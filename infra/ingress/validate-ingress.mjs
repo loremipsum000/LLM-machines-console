@@ -70,19 +70,18 @@ const expectedRouteIds = [
 ]
 const expectedCoreApiRoutes = [
   ["inference-models", "GET,HEAD", "/v1/models", "console-bff"],
-  [
-    "inference-chat-completions",
-    "POST",
-    "/v1/chat/completions",
-    "console-bff",
-  ],
+  ["inference-chat-completions", "POST", "/v1/chat/completions", "console-bff"],
   ["firecrawl-search", "POST", "/v2/search", "console-bff"],
   ["firecrawl-scrape", "POST", "/v2/scrape", "console-bff"],
 ]
 
 export function validateIngressSources(sources) {
   const errors = []
-  const policy = parseJson(sources["edge-policy.json"], "edge-policy.json", errors)
+  const policy = parseJson(
+    sources["edge-policy.json"],
+    "edge-policy.json",
+    errors,
+  )
   const noBypass = parseJson(
     sources["no-bypass-policy.json"],
     "no-bypass-policy.json",
@@ -101,7 +100,11 @@ export function validateIngressSources(sources) {
 
 function validatePolicy(policy, errors) {
   add(errors, policy.schemaVersion === 1, "edge policy schema version changed")
-  add(errors, policy.workPackage === "PR-11A-R1-E1", "edge policy package changed")
+  add(
+    errors,
+    policy.workPackage === "PR-11A-R1-E1",
+    "edge policy package changed",
+  )
   add(
     errors,
     policy.status === "source-only-not-runtime-qualified",
@@ -257,9 +260,10 @@ function validateNoBypass(policy, errors) {
   )
   add(
     errors,
-    sameJson(policy.customerNetwork?.deniedNativeTcpPorts, [
-      3000, 3002, 4000, 4001, 8080, 9090, 9093, 9443,
-    ]),
+    sameJson(
+      policy.customerNetwork?.deniedNativeTcpPorts,
+      [3000, 3002, 4000, 4001, 8080, 9090, 9093, 9443],
+    ),
     "native-port denial set changed",
   )
   add(
@@ -305,7 +309,8 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    listens.length === 3 && listens.every((value) => value.startsWith("443 ssl")),
+    listens.length === 3 &&
+      listens.every((value) => value.startsWith("443 ssl")),
     "Nginx customer listeners changed",
   )
   add(
@@ -338,7 +343,11 @@ function validateNginx(sources, errors) {
     "http://console_bff/v2/scrape",
     "http://keycloak_identity/realms/llm-machines/protocol/openid-connect/auth",
   ]) {
-    add(errors, nginx.includes(`proxy_pass ${fixedProxy};`), `missing ${fixedProxy}`)
+    add(
+      errors,
+      nginx.includes(`proxy_pass ${fixedProxy};`),
+      `missing ${fixedProxy}`,
+    )
   }
   for (const proxyPass of nginx.matchAll(/proxy_pass\s+([^;]+);/g)) {
     add(
@@ -428,7 +437,11 @@ function validateHeaders(sources, errors) {
     "X-LLM-Machines-Console-Session",
     "Upgrade",
   ]) {
-    add(errors, common.includes(`proxy_set_header ${name} `), `missing ${name} reset`)
+    add(
+      errors,
+      common.includes(`proxy_set_header ${name} `),
+      `missing ${name} reset`,
+    )
   }
   add(
     errors,
@@ -469,7 +482,10 @@ function validateCredentialSafety(sources, errors) {
     [/\bAKIA[0-9A-Z]{16}\b/, "AWS access key"],
     [/\bgh[pousr]_[A-Za-z0-9_]{20,}\b/, "GitHub credential"],
     [/\bgithub_pat_[A-Za-z0-9_]{20,}\b/, "GitHub credential"],
-    [/\b(?:password|secret|token)\s*[:=]\s*["'][^@\n"']{12,}["']/i, "inline credential"],
+    [
+      /\b(?:password|secret|token)\s*[:=]\s*["'][^@\n"']{12,}["']/i,
+      "inline credential",
+    ],
   ]) {
     add(errors, !pattern.test(combined), `ingress package contains ${label}`)
   }

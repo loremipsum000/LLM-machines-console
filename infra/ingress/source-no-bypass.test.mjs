@@ -47,7 +47,9 @@ test("only retained inference and Firecrawl routes reach the BFF", () => {
 })
 
 test("direct native ports and alternate authorities fail", () => {
-  for (const customerPort of [80, 3000, 3002, 4000, 4001, 8080, 9090, 9093, 9443]) {
+  for (const customerPort of [
+    80, 3000, 3002, 4000, 4001, 8080, 9090, 9093, 9443,
+  ]) {
     assert.equal(request({ customerPort }).allowed, false)
   }
   for (const overrides of [
@@ -138,12 +140,16 @@ test("Console pages support only read or exact Next-action mutation paths", () =
     )
     assert.equal(request({ method: "POST", rawTarget }).allowed, false)
   }
-  assert.equal(request({ method: "POST", rawTarget: "/activity" }).allowed, false)
+  assert.equal(
+    request({ method: "POST", rawTarget: "/activity" }).allowed,
+    false,
+  )
 })
 
 test("Console session and OIDC query shapes cannot select another route", () => {
   assert.equal(
-    request({ rawTarget: "/api/console/session/login?returnTo=%2Fteam" }).allowed,
+    request({ rawTarget: "/api/console/session/login?returnTo=%2Fteam" })
+      .allowed,
     true,
   )
   assert.equal(
@@ -160,7 +166,13 @@ test("Console session and OIDC query shapes cannot select another route", () => 
     "/api/console/session/logout?returnTo=/",
     "/api/internal/console-session/backchannel-logout?target=/admin",
   ]) {
-    assert.equal(request({ method: rawTarget.includes("models") ? "GET" : "POST", rawTarget }).allowed, false)
+    assert.equal(
+      request({
+        method: rawTarget.includes("models") ? "GET" : "POST",
+        rawTarget,
+      }).allowed,
+      false,
+    )
   }
 })
 
@@ -172,13 +184,22 @@ test("normal Keycloak identity flow is exact and separate", () => {
       ...overrides,
     })
   for (const [method, rawTarget] of [
-    ["GET", "/realms/llm-machines/protocol/openid-connect/auth?client_id=console-web&response_type=code"],
-    ["GET", "/realms/llm-machines/protocol/openid-connect/logout?client_id=console-web"],
+    [
+      "GET",
+      "/realms/llm-machines/protocol/openid-connect/auth?client_id=console-web&response_type=code",
+    ],
+    [
+      "GET",
+      "/realms/llm-machines/protocol/openid-connect/logout?client_id=console-web",
+    ],
     ["POST", "/realms/llm-machines/protocol/openid-connect/logout"],
     ["POST", "/realms/llm-machines/protocol/openid-connect/token"],
     ["POST", "/realms/llm-machines/protocol/openid-connect/revoke"],
     ["GET", "/realms/llm-machines/protocol/openid-connect/certs"],
-    ["POST", "/realms/llm-machines/login-actions/authenticate?session_code=opaque&execution=opaque"],
+    [
+      "POST",
+      "/realms/llm-machines/login-actions/authenticate?session_code=opaque&execution=opaque",
+    ],
     ["GET", "/resources/hash/login/theme.css"],
   ]) {
     const result = identityRequest({ method, rawTarget })
@@ -234,7 +255,10 @@ test("spoofed forwarding and identity headers are stripped", () => {
     rawTarget: "/v1/chat/completions",
   })
   assert.equal(result.allowed, true)
-  assert.equal(result.forwardedHeaders.authorization, "Bearer application-credential")
+  assert.equal(
+    result.forwardedHeaders.authorization,
+    "Bearer application-credential",
+  )
   for (const name of [
     "forwarded",
     "x-original-url",

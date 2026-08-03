@@ -398,8 +398,8 @@ function VirtualKeysSection({
           </span>
           <span className="mt-2 block text-sm leading-5 text-[#b2b2b2]">
             Safe, redacted LiteLLM credential metadata. Customer-facing
-            inference credentials are managed per Application in Console;
-            route and virtual-key mutations are not available in v1.
+            inference credentials are managed per Application in Console; route
+            and virtual-key mutations are not available in v1.
           </span>
         </span>
         <span className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-[#353535] px-3 text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#2e2e2e]">

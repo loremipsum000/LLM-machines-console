@@ -50,9 +50,8 @@ if (baseEvidenceErrors.length > 0) {
     `PR-09 retained prior evidence changed: ${baseEvidenceErrors.join("; ")}`,
   )
 }
-const sourceFingerprintErrors = verifyReviewedPr09SourceFingerprints(
-  repositoryRoot,
-)
+const sourceFingerprintErrors =
+  verifyReviewedPr09SourceFingerprints(repositoryRoot)
 if (sourceFingerprintErrors.length > 0) {
   throw new Error(
     `PR-09 reviewed source fingerprints changed: ${sourceFingerprintErrors.join("; ")}`,

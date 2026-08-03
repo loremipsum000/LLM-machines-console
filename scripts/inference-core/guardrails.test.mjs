@@ -2981,10 +2981,7 @@ test("Next middleware accepts only the reviewed content security policy wrapper"
   writeFixture(
     root,
     path,
-    source.replace(
-      "if (isExpiredSignInRequest(request)) {",
-      "if (false) {",
-    ),
+    source.replace("if (isExpiredSignInRequest(request)) {", "if (false) {"),
   )
   assert.throws(
     () => extractWebRoutes({ root, paths: [path] }),

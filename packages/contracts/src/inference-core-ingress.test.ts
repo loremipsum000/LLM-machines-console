@@ -34,9 +34,9 @@ describe("inference-core Product edge contract", () => {
       "portainer",
       "prometheus",
     ])
-    expect(
-      JSON.stringify(productEdgePublicRoutes),
-    ).not.toMatch(/grafana|keycloak-admin|litellm|portainer|prometheus/)
+    expect(JSON.stringify(productEdgePublicRoutes)).not.toMatch(
+      /grafana|keycloak-admin|litellm|portainer|prometheus/,
+    )
   })
 
   it("keeps the customer listener and runtime evidence boundary exact", () => {
