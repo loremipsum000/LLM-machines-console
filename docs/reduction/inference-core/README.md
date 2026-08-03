@@ -622,7 +622,10 @@ restic, create a pool, dataset, mount, repository, backup target, snapshot, or
 restore, bind a secret, or claim runtime evidence. A clean restore from the
 separate target remains a Q0 release gate. MinIO, SeaweedFS, generic S3, and
 unused object-store adapters remain absent. R1-D1 is unaccepted and does not
-generate `PR-11A.json`.
+generate `PR-11A.json`. Its source candidate passed local and clean detached
+fresh-clone full validation plus independent review at
+`46295906c3d733b0e56abe94d9732d8eb0549c29`, but remains unaccepted, not
+revision-bound, and not runtime-qualified pending R1-V1 and Q0.
 
 PR-11 permits one environment-template transition: `.env.example` deletes the
 exact retired `INFERENCE_MODEL_UPDATE_*` block from the accepted base. It may

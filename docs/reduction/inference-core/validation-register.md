@@ -17,7 +17,7 @@ artifacts.
 | PR-11A R1-S1 | Opaque Console session hardening | Full source and fresh-clone validation plus independent review passed at reviewed head `28655df1a919757329a1493bea5811f064d143d0`; merged through PR 14 at integration commit `39057332207cca6193495453b7336eda07608255`; aggregate R1-V1 and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
 | PR-11A R1-E1 | Mandatory core Product edge | Local and clean detached fresh-clone full source validation plus independent review passed at `c60280c11318aa21d230e7002cb7d703625a7168`; merged through PR 15 at integration commit `1743cb746f87c7497a34f4de7e3bfc0db3ff0be2`; aggregate R1-V1 and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
 | PR-11A R1-K1 | Signing custody and public trust | Local and clean detached fresh-clone full source validation plus independent review passed at `cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc`; merged through PR 16 at integration commit `ffc49eb6e97169ced202efbaa6363c85bfdd40dc`; aggregate R1-V1 and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
-| PR-11A R1-D1 | Storage, backup, retention, and recovery | Targeted source validation pending; full source, fresh-clone, independent review, aggregate R1-V1, and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
+| PR-11A R1-D1 | Storage, backup, retention, and recovery | Local and clean detached fresh-clone full source validation plus independent review passed at `46295906c3d733b0e56abe94d9732d8eb0549c29`; aggregate R1-V1 and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
 
 ## PR-08 required evidence
 
