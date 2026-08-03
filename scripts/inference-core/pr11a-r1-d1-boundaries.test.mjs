@@ -103,8 +103,8 @@ test("R1-D1 source inventory is exact and remains source-only", () => {
   assert.deepEqual(decision.sourcePathCounts, {
     added: 9,
     deleted: 0,
-    modified: 8,
-    total: 17,
+    modified: 9,
+    total: 18,
   })
   assert.equal(decision.forbiddenOutputs.realSecretBinding, true)
   assert.equal(decision.forbiddenOutputs.runtimeDeployment, true)

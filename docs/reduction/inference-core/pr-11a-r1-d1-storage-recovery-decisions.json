@@ -98,14 +98,15 @@
     "packages/contracts/src/inference-core-storage.ts",
     "packages/contracts/src/inference-core.ts",
     "scripts/inference-core/guardrails.mjs",
+    "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
     "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
     "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs"
   ],
   "sourcePathCounts": {
     "added": 9,
-    "modified": 8,
+    "modified": 9,
     "deleted": 0,
-    "total": 17
+    "total": 18
   },
   "sourceAcceptanceCriteria": [
     "the five required ZFS dataset roles and distinct mount boundaries are exact and local snapshots never count as backups",

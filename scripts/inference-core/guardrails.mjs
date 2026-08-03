@@ -205,6 +205,7 @@ export const pr11aR1D1SourceCandidatePaths = [
   "packages/contracts/src/inference-core-storage.ts",
   "packages/contracts/src/inference-core.ts",
   "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
   "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
   "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
 ].sort()
@@ -5912,8 +5913,8 @@ export function verifyPr11aR1D1SourcePackage({
       JSON.stringify(pr11aR1D1SourceCandidatePaths) ||
     decision.sourcePathCounts?.added !== 9 ||
     decision.sourcePathCounts?.deleted !== 0 ||
-    decision.sourcePathCounts?.modified !== 8 ||
-    decision.sourcePathCounts?.total !== 17
+    decision.sourcePathCounts?.modified !== 9 ||
+    decision.sourcePathCounts?.total !== 18
   ) {
     errors.push("invalid R1-D1 source package identity")
   }
