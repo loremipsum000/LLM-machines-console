@@ -1,51 +1,98 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { getBffForwardedIdentity, getCurrentConsoleRole } from "./session"
+import { getCurrentConsoleRole, getCurrentConsoleSession } from "./session"
 
-const authMock = vi.hoisted(() => vi.fn())
-
-vi.mock("@/lib/auth/auth", () => ({
-  auth: authMock,
+const mocks = vi.hoisted(() => ({
+  headers: vi.fn(),
+  opaqueConsoleSessionHandle: vi.fn(),
+  resolveConsoleSession: vi.fn(),
 }))
 
-describe("Console forwarded identity", () => {
+vi.mock("next/headers", () => ({ headers: mocks.headers }))
+vi.mock("./session-client", () => ({
+  opaqueConsoleSessionHandle: mocks.opaqueConsoleSessionHandle,
+  resolveConsoleSession: mocks.resolveConsoleSession,
+}))
+
+describe("current opaque Console session", () => {
   beforeEach(() => {
-    authMock.mockReset()
+    vi.clearAllMocks()
+    mocks.headers.mockResolvedValue(
+      new Headers({ cookie: "__Host-llm-machines-session=opaque" }),
+    )
+    mocks.opaqueConsoleSessionHandle.mockReturnValue("A".repeat(43))
   })
 
-  it("forwards only fresh retained authority", async () => {
-    authMock.mockResolvedValue({
-      accessToken: "fresh-access-token",
-      user: {
+  it("returns only the BFF-verified projection and opaque handle", async () => {
+    mocks.resolveConsoleSession.mockResolvedValue({
+      session: {
         email: "operator@example.test",
         groups: ["Operators"],
-        id: "operator-1",
-        roles: ["offline_access", "operator", "auditor"],
+        mfaVerifiedAt: null,
+        role: "operator",
+        subject: "operator-1",
       },
+      state: "active",
     })
 
-    await expect(getBffForwardedIdentity()).resolves.toEqual({
-      accessToken: "fresh-access-token",
-      email: "operator@example.test",
-      groups: ["Operators"],
-      roles: ["operator"],
-      subject: "operator-1",
+    await expect(getCurrentConsoleSession()).resolves.toEqual({
+      session: {
+        email: "operator@example.test",
+        groups: ["Operators"],
+        mfaVerifiedAt: null,
+        role: "operator",
+        subject: "operator-1",
+      },
+      sessionHandle: "A".repeat(43),
+      state: "active",
     })
-    await expect(getCurrentConsoleRole()).resolves.toBe("operator")
   })
 
-  it("does not forward identity without a fresh token or retained role", async () => {
-    for (const session of [
-      {
-        user: { id: "admin-1", roles: ["admin"] },
-      },
-      {
-        accessToken: "fresh-access-token",
-        user: { id: "unclassified-1", roles: ["auditor", "support"] },
-      },
-    ]) {
-      authMock.mockResolvedValue(session)
-      await expect(getBffForwardedIdentity()).resolves.toBeNull()
-      await expect(getCurrentConsoleRole()).resolves.toBeNull()
-    }
+  it("preserves terminal and retryable state without inventing authority", async () => {
+    mocks.resolveConsoleSession.mockResolvedValueOnce({
+      reason: "expired",
+      state: "terminal",
+    })
+    await expect(getCurrentConsoleSession()).resolves.toEqual({
+      reason: "expired",
+      state: "terminal",
+    })
+
+    mocks.resolveConsoleSession.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+    await expect(getCurrentConsoleSession()).resolves.toEqual({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+  })
+
+  it("does not contact the BFF when the opaque cookie is absent", async () => {
+    mocks.opaqueConsoleSessionHandle.mockReturnValue(null)
+
+    await expect(getCurrentConsoleSession()).resolves.toEqual({
+      reason: "absent",
+      state: "terminal",
+    })
+    expect(mocks.resolveConsoleSession).not.toHaveBeenCalled()
+  })
+
+  it("derives the compatibility role only from an active BFF projection", async () => {
+    mocks.resolveConsoleSession
+      .mockResolvedValueOnce({
+        session: {
+          groups: [],
+          mfaVerifiedAt: null,
+          role: "admin",
+          subject: "admin-1",
+        },
+        state: "active",
+      })
+      .mockResolvedValueOnce({ reason: "expired", state: "terminal" })
+
+    await expect(getCurrentConsoleRole()).resolves.toBe("admin")
+    await expect(getCurrentConsoleRole()).resolves.toBeNull()
   })
 })

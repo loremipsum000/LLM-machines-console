@@ -1,4 +1,4 @@
-import { getBffForwardedIdentity } from "@/lib/auth/session"
+import { getCurrentConsoleSession } from "@/lib/auth/session"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   ConsoleBffAuthExpiredError,
@@ -8,8 +8,22 @@ import {
 } from "./server-data-core"
 
 vi.mock("@/lib/auth/session", () => ({
-  getBffForwardedIdentity: vi.fn(),
+  getCurrentConsoleSession: vi.fn(),
 }))
+
+function activeConsoleSession(role: "admin" | "operator") {
+  return {
+    session: {
+      email: `${role}@example.test`,
+      groups: role === "admin" ? ["Administrators"] : ["Operators"],
+      mfaVerifiedAt: null,
+      role,
+      subject: `${role}-1`,
+    },
+    sessionHandle: "A".repeat(43),
+    state: "active",
+  } as const
+}
 
 describe("inference-core Admin data loader", () => {
   afterEach(() => {
@@ -20,12 +34,9 @@ describe("inference-core Admin data loader", () => {
   it("loads connected-app metadata without credential material", async () => {
     vi.stubEnv("CONSOLE_BFF_URL", "http://bff.test")
     vi.stubEnv("CONSOLE_BFF_SERVICE_API_KEY", "service-key")
-    vi.mocked(getBffForwardedIdentity).mockResolvedValue({
-      accessToken: "keycloak-access-token",
-      email: "operator@example.test",
-      roles: ["operator"],
-      subject: "operator-1",
-    })
+    vi.mocked(getCurrentConsoleSession).mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -46,10 +57,10 @@ describe("inference-core Admin data loader", () => {
       "http://bff.test/api/admin/applications/connected-apps",
       expect.objectContaining({
         cache: "no-store",
-        headers: expect.objectContaining({
+        headers: {
           Authorization: "Bearer service-key",
-          "x-llm-machines-user-sub": "operator-1",
-        }),
+          "x-llm-machines-console-session": "A".repeat(43),
+        },
       }),
     )
   })
@@ -57,12 +68,9 @@ describe("inference-core Admin data loader", () => {
   it("classifies a BFF 401 as expired Console authentication", async () => {
     vi.stubEnv("CONSOLE_BFF_URL", "http://bff.test")
     vi.stubEnv("CONSOLE_BFF_SERVICE_API_KEY", "service-key")
-    vi.mocked(getBffForwardedIdentity).mockResolvedValue({
-      accessToken: "stale-keycloak-access-token",
-      email: "operator@example.test",
-      roles: ["operator"],
-      subject: "operator-1",
-    })
+    vi.mocked(getCurrentConsoleSession).mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ title: "Unauthorized" }), {
         status: 401,
@@ -77,12 +85,9 @@ describe("inference-core Admin data loader", () => {
   it("loads the source-backed Overview without fixture fallback", async () => {
     vi.stubEnv("CONSOLE_BFF_URL", "http://bff.test")
     vi.stubEnv("CONSOLE_BFF_SERVICE_API_KEY", "service-key")
-    vi.mocked(getBffForwardedIdentity).mockResolvedValue({
-      accessToken: "keycloak-access-token",
-      email: "operator@example.test",
-      roles: ["operator"],
-      subject: "operator-1",
-    })
+    vi.mocked(getCurrentConsoleSession).mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     const payload = overviewFixture()
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
@@ -98,12 +103,9 @@ describe("inference-core Admin data loader", () => {
   it("forwards the bounded Activity filters and parses normalized audit metadata", async () => {
     vi.stubEnv("CONSOLE_BFF_URL", "http://bff.test")
     vi.stubEnv("CONSOLE_BFF_SERVICE_API_KEY", "service-key")
-    vi.mocked(getBffForwardedIdentity).mockResolvedValue({
-      accessToken: "keycloak-access-token",
-      email: "admin@example.test",
-      roles: ["admin"],
-      subject: "admin-1",
-    })
+    vi.mocked(getCurrentConsoleSession).mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const payload = {
       events: [
         {

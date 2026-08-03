@@ -1,23 +1,23 @@
-import { KeyRound, ShieldCheck } from "lucide-react"
-import { headers } from "next/headers"
-import { productCopy } from "@llm-machines/copy"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { normalizeConsoleReturnPath } from "@/lib/auth/safe-return"
+import { productCopy } from "@llm-machines/copy"
+import { KeyRound, ShieldCheck } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
 interface SignInPageProps {
   searchParams: Promise<{
-    callbackUrl?: string
+    returnTo?: string
+    session?: string
   }>
 }
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const copy = productCopy.pages.signIn
-  const { callbackUrl } = await searchParams
-  const redirectTo = await normalizeCallbackUrl(callbackUrl)
-  const keycloakStartUrl = `/auth/keycloak?${new URLSearchParams({
-    redirectTo,
+  const { returnTo, session } = await searchParams
+  const loginUrl = `/api/console/session/login?${new URLSearchParams({
+    returnTo: normalizeConsoleReturnPath(returnTo),
   })}`
 
   return (
@@ -38,12 +38,18 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
           <p className="mb-6 text-sm text-fg-muted">{copy.description}</p>
 
+          {session === "expired" ? (
+            <output className="mb-5 rounded-md border border-line-subtle bg-surface-0 px-4 py-3 text-sm text-fg-muted">
+              Your Console session expired. Sign in again to continue.
+            </output>
+          ) : null}
+
           <Button
             asChild
             className="h-12 w-full justify-between px-4 text-base"
             variant="secondary"
           >
-            <a href={keycloakStartUrl}>
+            <a href={loginUrl}>
               <span>{copy.keycloak}</span>
               <KeyRound aria-hidden className="size-5 text-accent" />
             </a>
@@ -54,66 +60,4 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       </Card>
     </main>
   )
-}
-
-async function normalizeCallbackUrl(
-  callbackUrl: string | undefined,
-): Promise<string> {
-  if (!callbackUrl || callbackUrl.startsWith("/")) {
-    return normalizeCallbackUrlWithHeaders(callbackUrl, new Headers())
-  }
-
-  const requestHeaders = await headers()
-  return normalizeCallbackUrlWithHeaders(callbackUrl, requestHeaders)
-}
-
-function normalizeCallbackUrlWithHeaders(
-  callbackUrl: string | undefined,
-  requestHeaders: Headers,
-): string {
-  if (!callbackUrl || !callbackUrl.startsWith("/")) {
-    if (!callbackUrl) {
-      return "/"
-    }
-
-    const currentOrigin = getRequestOrigin(requestHeaders)
-    if (!currentOrigin) {
-      return "/"
-    }
-
-    try {
-      const url = new URL(callbackUrl)
-      return url.origin === currentOrigin ? `${url.pathname}${url.search}` : "/"
-    } catch {
-      return "/"
-    }
-  }
-  if (callbackUrl.startsWith("//")) {
-    return "/"
-  }
-  return callbackUrl
-}
-
-function getRequestOrigin(requestHeaders: Headers): string | undefined {
-  const host = cleanHeaderValue(
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
-  )
-  if (!host) {
-    return undefined
-  }
-
-  const protocol =
-    cleanHeaderValue(requestHeaders.get("x-forwarded-proto"))?.replace(
-      /:$/,
-      "",
-    ) ?? "https"
-  return `${protocol}://${host}`
-}
-
-function cleanHeaderValue(value: string | null): string | undefined {
-  const trimmed = value?.trim()
-  if (!trimmed || trimmed.toLowerCase() === "null") {
-    return undefined
-  }
-  return trimmed
 }

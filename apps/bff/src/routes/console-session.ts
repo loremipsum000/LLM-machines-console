@@ -183,7 +183,7 @@ export function registerConsoleSessionRoutes(
       await options.service.logout(sessionHandle)
     }
     reply.header("set-cookie", clearConsoleCookie(CONSOLE_SESSION_COOKIE))
-    return reply.code(204).send()
+    return reply.redirect(`${consoleOrigin}/auth/signin`, 303)
   })
 
   server.post("/api/console/session/elevate", async (request, reply) => {

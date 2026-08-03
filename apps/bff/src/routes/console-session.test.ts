@@ -210,7 +210,10 @@ describe("Console session HTTP boundary", () => {
       method: "POST",
       url: "/api/console/session/logout",
     })
-    expect(accepted.statusCode).toBe(204)
+    expect(accepted.statusCode).toBe(303)
+    expect(accepted.headers.location).toBe(
+      "https://console.example.test/auth/signin",
+    )
     expect(serviceStub.logout).toHaveBeenCalledWith(sessionHandle)
     expect(accepted.headers["set-cookie"]).toContain("Max-Age=0")
   })

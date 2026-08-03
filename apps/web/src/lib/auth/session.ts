@@ -1,41 +1,43 @@
 import "server-only"
 
+import { headers } from "next/headers"
 import {
-  primaryRetainedConsoleRole,
-  retainedConsoleRoles,
-  type RetainedConsoleRole,
-} from "./role-claims"
+  type WebConsoleSessionResolution,
+  opaqueConsoleSessionHandle,
+  resolveConsoleSession,
+} from "./session-client"
+import type { RetainedConsoleRole } from "./role-claims"
 
-export interface BffForwardedIdentity {
-  accessToken: string
-  subject: string
-  email?: string
-  groups?: string[]
-  roles: RetainedConsoleRole[]
-}
+export type CurrentConsoleSessionResolution =
+  | Extract<WebConsoleSessionResolution, { state: "terminal" | "unavailable" }>
+  | {
+      session: Extract<
+        WebConsoleSessionResolution,
+        { state: "active" }
+      >["session"]
+      sessionHandle: string
+      state: "active"
+    }
 
-export async function getBffForwardedIdentity(): Promise<BffForwardedIdentity | null> {
-  const { auth } = await import("@/lib/auth/auth")
-  const session = await auth()
-  const roles = retainedConsoleRoles(session?.user.roles)
-  if (!session?.user.id || !session.accessToken || roles.length === 0) {
-    return null
+export async function getCurrentConsoleSession(): Promise<CurrentConsoleSessionResolution> {
+  const requestHeaders = await headers()
+  const cookieHeader = requestHeaders.get("cookie")
+  const sessionHandle = opaqueConsoleSessionHandle(cookieHeader)
+  if (!sessionHandle) {
+    return { reason: "absent", state: "terminal" }
   }
-
+  const resolution = await resolveConsoleSession(cookieHeader)
+  if (resolution.state !== "active") {
+    return resolution
+  }
   return {
-    subject: session.user.id,
-    email: session.user.email ?? undefined,
-    groups: session.user.groups,
-    roles,
-    accessToken: session.accessToken,
+    session: resolution.session,
+    sessionHandle,
+    state: "active",
   }
 }
 
 export async function getCurrentConsoleRole(): Promise<RetainedConsoleRole | null> {
-  const { auth } = await import("@/lib/auth/auth")
-  const session = await auth()
-  if (!session?.user.id || !session.accessToken) {
-    return null
-  }
-  return primaryRetainedConsoleRole(session.user.roles)
+  const resolution = await getCurrentConsoleSession()
+  return resolution.state === "active" ? resolution.session.role : null
 }
