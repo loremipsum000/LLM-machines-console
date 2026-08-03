@@ -571,6 +571,21 @@ test("console-web hardcodes the console-bff audience", () => {
     web.protocolMappers[0].config["included.client.audience"],
     "console-bff",
   )
+  assert.equal(web.pkceCodeChallengeMethod, "S256")
+  assert.equal(web.standardFlowEnabled, true)
+  assert.equal(web.implicitFlowEnabled, false)
+  assert.equal(web.directAccessGrantsEnabled, false)
+  assert.equal(web.serviceAccountsEnabled, false)
+  assert.deepEqual(web.runtimeBindings, {
+    validRedirectUris: [
+      "product-ingress-origin-plus-/api/console/session/callback",
+    ],
+    webOrigins: [],
+  })
+  assert.equal(
+    web.keycloakClientAttributes["backchannel.logout.session.required"],
+    "true",
+  )
 
   const seed = clone(artifacts.seed)
   seed.clients[0].protocolMappers[0].config["included.client.audience"] =

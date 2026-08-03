@@ -191,8 +191,29 @@
       "clientId": "console-web",
       "credentialIncluded": false,
       "defaultClientScopes": ["basic", "llm-machines-amr", "roles"],
+      "directAccessGrantsEnabled": false,
       "flows": ["authorization-code-pkce"],
+      "frontchannelLogoutEnabled": false,
+      "fullScopeAllowed": false,
+      "idTokenClaims": [
+        "aud",
+        "auth_time",
+        "exp",
+        "iat",
+        "iss",
+        "nonce",
+        "realm_access.roles",
+        "sid",
+        "sub"
+      ],
+      "implicitFlowEnabled": false,
+      "keycloakClientAttributes": {
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.url": "product-ingress-origin-plus-/api/internal/console-session/backchannel-logout",
+        "pkce.code.challenge.method": "S256"
+      },
       "optionalClientScopes": [],
+      "pkceCodeChallengeMethod": "S256",
       "protocol": "openid-connect",
       "protocolMappers": [
         {
@@ -210,6 +231,13 @@
           "protocolMapper": "oidc-audience-mapper"
         }
       ],
+      "runtimeBindings": {
+        "validRedirectUris": [
+          "product-ingress-origin-plus-/api/console/session/callback"
+        ],
+        "webOrigins": []
+      },
+      "standardFlowEnabled": true,
       "serviceAccountsEnabled": false
     },
     {

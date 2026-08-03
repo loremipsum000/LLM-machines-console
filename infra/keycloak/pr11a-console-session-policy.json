@@ -1,0 +1,95 @@
+{
+  "apiVersion": "inference-core.llm-machines/v1",
+  "kind": "LogicalKeycloakConsoleSessionPolicy",
+  "metadata": {
+    "changePackage": "R1-S1",
+    "containsCredentials": false,
+    "parentPackage": "PR-11A",
+    "runtimeQualification": "NOT_EVALUATED_RUNTIME",
+    "runtimeQualificationOwner": "Q0",
+    "sourceStatus": "SOURCE_ONLY"
+  },
+  "keycloakRuntime": {
+    "exactVersion": "26.7.0",
+    "q0Image": "quay.io/keycloak/keycloak:26.7.0"
+  },
+  "realm": {
+    "accessTokenSeconds": 300,
+    "name": "llm-machines",
+    "offlineBrowserTokens": false,
+    "refreshTokenMaxReuse": 0,
+    "revokeRefreshToken": true,
+    "ssoSessionIdleSeconds": 1800,
+    "ssoSessionMaxSeconds": 28800
+  },
+  "consoleClient": {
+    "authorizationCodeFlow": true,
+    "browserTokenEndpointAccess": false,
+    "clientAuthentication": "confidential-generated-outside-source",
+    "clientId": "console-web",
+    "directAccessGrants": false,
+    "implicitFlow": false,
+    "optionalClientScopes": [],
+    "pkceCodeChallengeMethod": "S256",
+    "runtimeBindings": {
+      "validRedirectUris": [
+        "product-ingress-origin-plus-/api/console/session/callback"
+      ],
+      "webOrigins": []
+    },
+    "serviceAccounts": false,
+    "backchannelLogout": {
+      "enabled": true,
+      "path": "/api/internal/console-session/backchannel-logout",
+      "runtimeOriginBinding": "product-ingress-origin",
+      "sessionRequired": true
+    }
+  },
+  "mfa": {
+    "acceptedAmrMethods": ["hwk", "otp", "webauthn", "webauthn-passwordless"],
+    "adminRequired": true,
+    "exactHighRiskActions": [
+      "activity_audit.export",
+      "applications.create_delete",
+      "applications.credentials.test_rotate_revoke",
+      "applications.policy.change",
+      "applications.reenable",
+      "firecrawl.enable_reenable",
+      "isolation.activate",
+      "team.local_password.manage",
+      "team.users_roles.manage",
+      "updates.apply"
+    ],
+    "freshAuthTimeRequired": true,
+    "freshnessSeconds": 300,
+    "highRiskElevationRequired": true,
+    "operatorSignInMfa": true
+  },
+  "sourceBoundary": {
+    "browserReceivesAccessToken": false,
+    "browserReceivesRefreshToken": false,
+    "credentialsInSource": false,
+    "liveKeycloakMutation": false,
+    "nativeCustomerKeycloakAdminConsole": false,
+    "sourceBehaviorRequired": [
+      "concurrent-refresh-serialization",
+      "expired-and-revoked-session-classification",
+      "identity-outage-without-logout-loop",
+      "multiple-browser-tabs",
+      "one-refresh-one-replay",
+      "return-path-normalization",
+      "token-and-cookie-non-retention"
+    ],
+    "q0Required": [
+      "backchannel-logout",
+      "clock-skew",
+      "expired-and-revoked-token-observation",
+      "keycloak-restart",
+      "keycloak-service-outage",
+      "live-client-policy",
+      "live-offline-token-rejection",
+      "live-refresh-reuse-detection",
+      "mfa-enforcement"
+    ]
+  }
+}
