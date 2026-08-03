@@ -167,6 +167,10 @@ export const pr11aR1C0ContractBaseTree =
 export const pr11aR1S1IntegrationBase =
   "0f29c7939fa885c11c191e8b672f09e16635ddcb"
 export const pr11aR1S1SourceBase = "aa831424949fb49095de48714b508ada0b57f589"
+export const pr11aR1S1Pr09NativeIdentifierSuccessorEvidence = {
+  path: "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
+  sha256: "34f5d2a631bf0ad19b81e781e10d3738f4702ceed50a5a56cb2d164f6a804fc1",
+}
 export const pr10cSuccessorEvidenceCommit =
   "9c5dedc2242b7a6b061a043334b1f06fa621c939"
 export const pr10cSuccessorEvidenceTree = pr11ContractBaseTree
@@ -15749,12 +15753,24 @@ export function verifyReviewedPr09NativeIdentifierEvidence(
       const pr11HistoricalCommit = hasPr11Successor
         ? pr11Pr09HistoricalNativeEvidenceCommitByPath.get(expected.path)
         : null
-      evidenceBytes = pr11HistoricalCommit
-        ? readRepositoryPathAtCommit(root, pr11HistoricalCommit, expected.path)
-        : isRegularFile(resolve(root, pr10DecisionPath)) &&
-            pr10Pr09HistoricalNativeEvidencePaths.has(expected.path)
-          ? readRepositoryPathAtCommit(root, pr10ContractBase, expected.path)
-          : readFileSync(absolutePath)
+      const liveEvidenceBytes = readFileSync(absolutePath)
+      const isExactR1S1Successor =
+        hasPr11aR1S1SourceMarker(root) &&
+        expected.path === pr11aR1S1Pr09NativeIdentifierSuccessorEvidence.path &&
+        sha256(liveEvidenceBytes) ===
+          pr11aR1S1Pr09NativeIdentifierSuccessorEvidence.sha256
+      evidenceBytes = isExactR1S1Successor
+        ? readRepositoryPathAtCommit(root, pr11aR1S1SourceBase, expected.path)
+        : pr11HistoricalCommit
+          ? readRepositoryPathAtCommit(
+              root,
+              pr11HistoricalCommit,
+              expected.path,
+            )
+          : isRegularFile(resolve(root, pr10DecisionPath)) &&
+              pr10Pr09HistoricalNativeEvidencePaths.has(expected.path)
+            ? readRepositoryPathAtCommit(root, pr10ContractBase, expected.path)
+            : liveEvidenceBytes
     } catch {
       errors.push(
         `PR-09 successor-historical evidence is unavailable ${expected.path}`,
