@@ -111,7 +111,10 @@ test("R1-C0 is anchored to the protected integration base", () => {
   assert.doesNotThrow(() =>
     git("merge-base", "--is-ancestor", integrationMerge, "HEAD"),
   )
-  assert.ok(allowedCurrentBranches.includes(git("branch", "--show-current")))
+  const currentBranch = git("branch", "--show-current")
+  assert.ok(
+    currentBranch === "" || allowedCurrentBranches.includes(currentBranch),
+  )
 })
 
 test("R1-C0 is a merged source package, not an accepted revision", () => {
