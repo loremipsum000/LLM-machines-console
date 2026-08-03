@@ -599,6 +599,31 @@ invalid audit signing material remains an export-only `503`; inference, audit
 ingestion, and audit view continue. R1-K1 remains unaccepted and does not
 generate `PR-11A.json`.
 
+PR-11A R1-D1 is admitted as the separate source-only storage, backup,
+retention, and recovery package. ZFS-backed appliance storage remains a
+Product requirement with distinct `product_state`, `databases`, `models`,
+`logs`, and `staging` datasets. Local snapshots never count as backups.
+Encrypted, versioned restic backups use a separate customer-owned mounted
+filesystem, a daily default, 30-day retention, and root-only mounted files for
+the repository locator and password. Neither value may be inline or carried
+through environment variables.
+
+The restic input is an explicit allowlist of Product configuration, identity
+mappings, credential verifier state and safe metadata, retained service
+configuration exports, audit records, and entitlement and update state.
+Models remain excluded pending a separate model-recovery decision. Logs,
+staging, caches, temporary and crash artifacts, one-time plaintext
+credentials, every private signing key, and the audit recovery envelope are
+also excluded. Deterministic zero-content canaries cover the input manifest,
+cache, temporary, staging, backup-log, and restored-tree boundaries.
+
+R1-D1 defines and validates source contracts only. It does not invoke ZFS or
+restic, create a pool, dataset, mount, repository, backup target, snapshot, or
+restore, bind a secret, or claim runtime evidence. A clean restore from the
+separate target remains a Q0 release gate. MinIO, SeaweedFS, generic S3, and
+unused object-store adapters remain absent. R1-D1 is unaccepted and does not
+generate `PR-11A.json`.
+
 PR-11 permits one environment-template transition: `.env.example` deletes the
 exact retired `INFERENCE_MODEL_UPDATE_*` block from the accepted base. It may
 not add a line, change a retained value, remove unrelated content, or admit any

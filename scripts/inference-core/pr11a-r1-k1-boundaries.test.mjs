@@ -125,7 +125,7 @@ test("R1-K1 source inventory is exact and remains source-only", () => {
   assert.equal(decision.forbiddenOutputs.vendorPrivateSigningMaterial, true)
 })
 
-test("current registers report reviewed but unaccepted R1-K1", () => {
+test("current registers report merged but unaccepted R1-K1", () => {
   const decisionRegister = readFileSync(
     resolve(
       repositoryRoot,
@@ -142,10 +142,10 @@ test("current registers report reviewed but unaccepted R1-K1", () => {
   )
   assert.match(
     decisionRegister,
-    /R1-K1[^\n]+independently reviewed source candidate[^\n]+cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
+    /R1-K1[^\n]+independently reviewed source package[^\n]+PR 16[^\n]+ffc49eb6e97169ced202efbaa6363c85bfdd40dc[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
   )
   assert.match(
     validationRegister,
-    /R1-K1[^\n]+fresh-clone full source validation[^\n]+independent review passed[^\n]+cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc[^\n]+R1-V1[^\n]+Q0[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
+    /R1-K1[^\n]+fresh-clone full source validation[^\n]+independent review passed[^\n]+cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc[^\n]+PR 16[^\n]+ffc49eb6e97169ced202efbaa6363c85bfdd40dc[^\n]+R1-V1[^\n]+Q0[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
   )
 })
