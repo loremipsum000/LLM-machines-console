@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-11A-R1-E1",
+  "scope": "mandatory-core-product-edge-source-only",
+  "integrationBaseCommit": "39057332207cca6193495453b7336eda07608255",
+  "integrationBaseTree": "4deb5b337120202b52173b05910f1cbf028b50c3",
+  "exactBranch": "codex/inference-core-pr-11a-r1-e1",
+  "reviewStatus": "governance-checkpoint-source-incomplete",
+  "accepted": false,
+  "revisionBound": false,
+  "runtimeQualified": false,
+  "bindingDecisions": {
+    "edge": {
+      "implementation": "nginx-source-reference",
+      "customerFacingTcpPorts": [443],
+      "publicHostIds": ["console", "identity"],
+      "rejectingDefaultTlsServer": true,
+      "hostHeaderMustEqualSni": true
+    },
+    "retainedPublicSurfaces": {
+      "console": "primary-customer-control-surface",
+      "identity": "normal-keycloak-oidc-only",
+      "inference": ["GET /v1/models", "POST /v1/chat/completions"],
+      "firecrawl": ["POST /v2/search", "POST /v2/scrape"]
+    },
+    "fixedInternalUpstreams": [
+      "console-web:3000",
+      "console-bff:4001",
+      "keycloak:8080"
+    ],
+    "nativeAdministration": {
+      "grafana": "absent-unqualified",
+      "keycloakAdmin": "denied",
+      "litellm": "denied",
+      "prometheus": "denied",
+      "alertmanager": "denied",
+      "firecrawlNative": "denied"
+    },
+    "headerBoundary": {
+      "clientHeaders": "drop-all-then-explicit-per-surface",
+      "forwardedHeaders": "edge-derived-only",
+      "consoleSessionForwardedToNativeServices": false,
+      "customerCredentialForwardedToNativeServices": false,
+      "websocketUpgradeAllowed": false
+    },
+    "contentBoundary": {
+      "requestBuffering": false,
+      "responseBuffering": false,
+      "proxyCache": false,
+      "workloadContentLogging": false,
+      "requestTargetLogging": false,
+      "queryLogging": false
+    },
+    "proofBoundary": {
+      "sourcePolicy": "required-in-r1-e1",
+      "directNetworkNoBypass": "not-evaluated-runtime-until-q0",
+      "liveTlsDnsFirewall": "not-evaluated-runtime-until-q0"
+    }
+  },
+  "governanceCheckpointPaths": [
+    "docs/reduction/inference-core/README.md",
+    "docs/reduction/inference-core/decision-register.md",
+    "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json",
+    "docs/reduction/inference-core/validation-register.md",
+    "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs"
+  ],
+  "explicitlyDisabledAfterPackage": [
+    "runtime-edge-activation",
+    "native-grafana-access",
+    "native-keycloak-admin-access",
+    "native-litellm-access",
+    "R1-K1-signing-custody",
+    "R1-D1-storage-recovery",
+    "R1-V1-aggregate-acceptance",
+    "PR-12-release-packaging"
+  ],
+  "forbiddenOutputs": {
+    "aggregatePr11aContractRevision": true,
+    "liveInfrastructureMutation": true,
+    "nativeExpertActivation": true,
+    "productMainMutationBeforeProtectedMerge": true,
+    "realSecretBinding": true,
+    "runtimeDeployment": true
+  }
+}

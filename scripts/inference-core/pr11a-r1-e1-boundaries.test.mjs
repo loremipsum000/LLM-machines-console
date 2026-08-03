@@ -1,0 +1,120 @@
+import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
+import { existsSync, readFileSync } from "node:fs"
+import { dirname, resolve } from "node:path"
+import { test } from "node:test"
+import { fileURLToPath } from "node:url"
+
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
+const integrationBase = "39057332207cca6193495453b7336eda07608255"
+const integrationBaseTree = "4deb5b337120202b52173b05910f1cbf028b50c3"
+const decisionPath =
+  "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json"
+
+function git(...args) {
+  return execFileSync("git", args, {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+  }).trim()
+}
+
+function readJson(path) {
+  return JSON.parse(readFileSync(resolve(repositoryRoot, path), "utf8"))
+}
+
+function changedPaths(from) {
+  const output = git(
+    "diff",
+    "--name-only",
+    "--no-ext-diff",
+    "--no-renames",
+    from,
+    "--",
+  )
+  return output ? output.split("\n").sort() : []
+}
+
+test("R1-E1 starts from the protected R1-S1 integration merge", () => {
+  assert.equal(git("rev-parse", `${integrationBase}^{tree}`), integrationBaseTree)
+  assert.doesNotThrow(() =>
+    git("merge-base", "--is-ancestor", integrationBase, "HEAD"),
+  )
+})
+
+test("R1-E1 governance checkpoint is source-incomplete and unaccepted", () => {
+  const decision = readJson(decisionPath)
+  assert.equal(decision.schemaVersion, 1)
+  assert.equal(decision.workPackage, "PR-11A-R1-E1")
+  assert.equal(decision.scope, "mandatory-core-product-edge-source-only")
+  assert.equal(decision.integrationBaseCommit, integrationBase)
+  assert.equal(decision.integrationBaseTree, integrationBaseTree)
+  assert.equal(decision.reviewStatus, "governance-checkpoint-source-incomplete")
+  assert.equal(decision.accepted, false)
+  assert.equal(decision.revisionBound, false)
+  assert.equal(decision.runtimeQualified, false)
+  assert.equal(
+    existsSync(
+      resolve(
+        repositoryRoot,
+        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+      ),
+    ),
+    false,
+  )
+})
+
+test("R1-E1 governance checkpoint changes only its exact evidence paths", () => {
+  const decision = readJson(decisionPath)
+  assert.deepEqual(
+    changedPaths(integrationBase),
+    [...decision.governanceCheckpointPaths].sort(),
+  )
+})
+
+test("R1-E1 binds only core edge surfaces and keeps native systems absent", () => {
+  const decision = readJson(decisionPath)
+  assert.deepEqual(decision.bindingDecisions.edge.publicHostIds, [
+    "console",
+    "identity",
+  ])
+  assert.deepEqual(decision.bindingDecisions.fixedInternalUpstreams, [
+    "console-web:3000",
+    "console-bff:4001",
+    "keycloak:8080",
+  ])
+  assert.deepEqual(decision.bindingDecisions.nativeAdministration, {
+    alertmanager: "denied",
+    firecrawlNative: "denied",
+    grafana: "absent-unqualified",
+    keycloakAdmin: "denied",
+    litellm: "denied",
+    prometheus: "denied",
+  })
+})
+
+test("current registers report R1-S1 merged and R1-E1 incomplete", () => {
+  const decisionRegister = readFileSync(
+    resolve(repositoryRoot, "docs/reduction/inference-core/decision-register.md"),
+    "utf8",
+  )
+  const validationRegister = readFileSync(
+    resolve(repositoryRoot, "docs/reduction/inference-core/validation-register.md"),
+    "utf8",
+  )
+  assert.match(
+    decisionRegister,
+    /R1-S1[^\n]+independently reviewed[^\n]+PR 14[^\n]+unaccepted[^\n]+not revision-bound/i,
+  )
+  assert.match(
+    validationRegister,
+    /R1-S1[^\n]+fresh-clone[^\n]+independent review[^\n]+PR 14[^\n]+unaccepted[^\n]+not revision-bound/i,
+  )
+  assert.match(
+    decisionRegister,
+    /R1-E1[^\n]+governance checkpoint only[^\n]+source is incomplete[^\n]+unaccepted[^\n]+not revision-bound/i,
+  )
+  assert.match(
+    validationRegister,
+    /R1-E1[^\n]+governance checkpoint only[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
+  )
+})
