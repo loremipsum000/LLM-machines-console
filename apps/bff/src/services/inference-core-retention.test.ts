@@ -54,4 +54,19 @@ describe("Inference Core Firecrawl retention boundary", () => {
     expect(source).toContain("365 * 24 * 60 * 60 * 1000")
     expect(source).not.toContain("DELETE FROM common.audit_source_cursors")
   })
+
+  it("prunes expired Console session authority under the global retention lock", () => {
+    for (const [relation, expiry] of [
+      ["common.console_login_transactions", "expires_at"],
+      ["common.console_sessions", "idle_expires_at"],
+      ["common.console_logout_token_replays", "retain_until"],
+    ] as const) {
+      expect(source).toContain(`DELETE FROM ${relation}`)
+      expect(source).toContain(`${expiry} <= \${transientCutoff}::timestamptz`)
+    }
+    expect(source.indexOf("const acquired = await")).toBeLessThan(
+      source.indexOf("DELETE FROM common.console_login_transactions"),
+    )
+    expect(source).not.toMatch(/expert_ingress|litellm.*session/i)
+  })
 })

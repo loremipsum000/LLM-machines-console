@@ -8,6 +8,9 @@ export type InferenceCoreRetentionResult =
   | {
       abandonedRequestsSettled: number
       auditEventsDeleted: number
+      consoleLoginTransactionsDeleted: number
+      consoleLogoutTokenReplaysDeleted: number
+      consoleSessionsDeleted: number
       idempotencyRowsDeleted: number
       rateLimitWindowsDeleted: number
       requestLedgerRowsDeleted: number
@@ -26,6 +29,7 @@ export async function runInferenceCoreRetention(
   const now = options.now ?? new Date()
   const usageCutoff = utcUsageCutoff(now)
   const auditCutoff = auditRetentionCutoff(now)
+  const transientCutoff = now.toISOString()
   return database.transaction(async (transaction) => {
     const execute: RetentionExecute = async (statement) =>
       transaction.execute(statement)
@@ -313,6 +317,22 @@ export async function runInferenceCoreRetention(
         WHERE bucket_date < ${usageCutoff}::date
         RETURNING 1
       ),
+      deleted_console_login_transactions AS (
+        DELETE FROM common.console_login_transactions
+        WHERE expires_at <= ${transientCutoff}::timestamptz
+        RETURNING 1
+      ),
+      deleted_console_sessions AS (
+        DELETE FROM common.console_sessions
+        WHERE idle_expires_at <= ${transientCutoff}::timestamptz
+           OR absolute_expires_at <= ${transientCutoff}::timestamptz
+        RETURNING 1
+      ),
+      deleted_console_logout_token_replays AS (
+        DELETE FROM common.console_logout_token_replays
+        WHERE retain_until <= ${transientCutoff}::timestamptz
+        RETURNING 1
+      ),
       deleted_audit_events AS (
         DELETE FROM common.audit_events
         WHERE occurred_at < ${auditCutoff}::timestamptz
@@ -332,6 +352,12 @@ export async function runInferenceCoreRetention(
           AS idempotency_rows_deleted,
         (SELECT count(*)::integer FROM deleted_audit_events)
           AS audit_events_deleted,
+        (SELECT count(*)::integer FROM deleted_console_login_transactions)
+          AS console_login_transactions_deleted,
+        (SELECT count(*)::integer FROM deleted_console_sessions)
+          AS console_sessions_deleted,
+        (SELECT count(*)::integer FROM deleted_console_logout_token_replays)
+          AS console_logout_token_replays_deleted,
         (
           (SELECT count(*)::integer FROM deleted_request_ledger_rows)
           +
@@ -351,6 +377,9 @@ export async function runInferenceCoreRetention(
     const row = resultRows(result)[0] as
       | {
           audit_events_deleted?: unknown
+          console_login_transactions_deleted?: unknown
+          console_logout_token_replays_deleted?: unknown
+          console_sessions_deleted?: unknown
           idempotency_rows_deleted?: unknown
           rate_limit_windows_deleted?: unknown
           request_ledger_rows_deleted?: unknown
@@ -363,6 +392,13 @@ export async function runInferenceCoreRetention(
     return {
       abandonedRequestsSettled,
       auditEventsDeleted: countValue(row.audit_events_deleted),
+      consoleLoginTransactionsDeleted: countValue(
+        row.console_login_transactions_deleted,
+      ),
+      consoleLogoutTokenReplaysDeleted: countValue(
+        row.console_logout_token_replays_deleted,
+      ),
+      consoleSessionsDeleted: countValue(row.console_sessions_deleted),
       idempotencyRowsDeleted: countValue(row.idempotency_rows_deleted),
       rateLimitWindowsDeleted: countValue(row.rate_limit_windows_deleted),
       requestLedgerRowsDeleted: countValue(row.request_ledger_rows_deleted),

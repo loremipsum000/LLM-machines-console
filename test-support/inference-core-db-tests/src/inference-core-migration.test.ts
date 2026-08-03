@@ -68,6 +68,9 @@ describe("Inference Core empty-install migration", () => {
         "admin.update_state",
         "common.audit_events",
         "common.audit_source_cursors",
+        "common.console_login_transactions",
+        "common.console_logout_token_replays",
+        "common.console_sessions",
         "common.human_identities",
         "common.human_identity_roles",
       ])
@@ -122,6 +125,39 @@ describe("Inference Core empty-install migration", () => {
         "source_system",
         "updated_at",
       ])
+
+      expect(
+        await tableColumns(database, "common", "console_login_transactions"),
+      ).toEqual([
+        "created_at",
+        "encrypted_payload",
+        "encryption_kid",
+        "expires_at",
+        "handle_digest",
+        "state_digest",
+        "subject_digest",
+      ])
+      expect(
+        await tableColumns(database, "common", "console_sessions"),
+      ).toEqual([
+        "absolute_expires_at",
+        "access_expires_at",
+        "created_at",
+        "encrypted_payload",
+        "encryption_kid",
+        "handle_digest",
+        "idle_expires_at",
+        "keycloak_session_digest",
+        "last_seen_at",
+        "refresh_blocked_until",
+        "refresh_failure_reason",
+        "refresh_generation",
+        "subject_digest",
+        "updated_at",
+      ])
+      expect(
+        await tableColumns(database, "common", "console_logout_token_replays"),
+      ).toEqual(["consumed_at", "jti_digest", "retain_until"])
 
       expect(await tableColumns(database, "admin", "applications")).toEqual([
         "auth_mode",
@@ -600,7 +636,7 @@ describe("Inference Core empty-install migration", () => {
         ),
       ).resolves.toBe(true)
 
-      await client.exec("DROP TABLE admin.lifecycle_snapshot_components")
+      await client.exec("DROP TABLE common.console_sessions")
       await expect(
         checkInferenceCoreDbReadiness(
           database as unknown as NonNullable<
