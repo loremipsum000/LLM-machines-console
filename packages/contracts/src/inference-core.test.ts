@@ -22,7 +22,7 @@ import {
   adminTeamMemberDetailSchema,
   adminTeamMemberSchema,
   adminTeamOverviewResponseSchema,
-  inferenceCoreExpertAuditCapabilitySchema,
+  inferenceCoreNativeAuditCapabilitySchema,
   inferenceCoreSeveritySchema,
   inferenceCoreSourceStatusSchema,
   updateAdminAlertEgressRequestSchema,
@@ -870,12 +870,12 @@ describe("Inference Core contract boundary", () => {
     ).toBe(true)
   })
 
-  it("fails closed on unproven expert-system audit ingestion", () => {
+  it("fails closed on unproven private-service audit ingestion", () => {
     expect(
-      inferenceCoreExpertAuditCapabilitySchema.shape.source.options,
+      inferenceCoreNativeAuditCapabilitySchema.shape.source.options,
     ).toEqual(["litellm", "grafana", "keycloak", "alertmanager"])
     expect(
-      inferenceCoreExpertAuditCapabilitySchema.parse({
+      inferenceCoreNativeAuditCapabilitySchema.parse({
         detail: "Native LiteLLM audit ingestion is not proven.",
         ingestionEnabled: false,
         mechanism: null,
@@ -887,7 +887,7 @@ describe("Inference Core contract boundary", () => {
       nativeIngestionState: "unproven",
     })
     expect(
-      inferenceCoreExpertAuditCapabilitySchema.safeParse({
+      inferenceCoreNativeAuditCapabilitySchema.safeParse({
         detail: "Assumed ingestion",
         ingestionEnabled: true,
         mechanism: "polling",
@@ -899,7 +899,7 @@ describe("Inference Core contract boundary", () => {
 
   it("models the metadata-only paginated audit and signed-export verification contract", () => {
     expect(
-      inferenceCoreExpertAuditCapabilitySchema.parse({
+      inferenceCoreNativeAuditCapabilitySchema.parse({
         detail: "Ingress source exists but runtime no-bypass proof is pending.",
         ingestionEnabled: false,
         mechanism: "product_owned_audited_ingress",

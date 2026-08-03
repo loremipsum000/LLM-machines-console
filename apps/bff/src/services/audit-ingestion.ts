@@ -10,7 +10,7 @@ import {
   nativeAuditSourceSystems,
   parseAuditEventInput,
 } from "./audit"
-import type { NativeAuditEvent, NativeAuditSource } from "./expert-capabilities"
+import type { NativeAuditEvent, NativeAuditSource } from "./native-audit-source"
 
 const MAX_EVENTS_PER_SOURCE_RUN = 1_000
 

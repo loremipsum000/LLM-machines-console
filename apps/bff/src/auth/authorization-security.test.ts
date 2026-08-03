@@ -282,31 +282,21 @@ describe("authorization security hardening", () => {
     await server.close()
   })
 
-  it("does not grant a recovered Operator native expert mutation access", async () => {
+  it("does not register retired native expert mutation surfaces", async () => {
     useHeaderOnlyServiceAuth()
-    const server = authorizationServer({
-      resolveCurrentIdentity: async (actor) => ({
-        enabled: true,
-        role: "operator",
-        subject: actor.subject,
-      }),
-      resolveRecoverySession: async () => activeRecovery(),
-    })
+    const server = authorizationServer()
 
     for (const url of [
       "/api/admin/litellm-native",
       "/api/admin/grafana-native",
     ]) {
       const response = await server.inject({
-        headers: {
-          ...assertedAdminHeaders,
-          "x-llm-machines-recovery-session-id": recoverySessionId,
-        },
+        headers: assertedAdminHeaders,
         method: "GET",
         url,
       })
 
-      expect(response.statusCode, url).toBe(403)
+      expect(response.statusCode, url).toBe(404)
     }
     await server.close()
   })
@@ -440,7 +430,6 @@ describe("authorization security hardening", () => {
       role: "operator",
       subject: "asserted-admin",
     })
-    expect(response.json()).not.toHaveProperty("nativeExpertAccess")
     expect(resolveRecoverySession).toHaveBeenCalledWith(
       recoverySessionId,
       "asserted-admin",
@@ -655,16 +644,6 @@ function authorizationServer(options: Partial<AuthorizationOptions> = {}) {
     withAdminOnly(),
     async (request) => request.actor,
   )
-  server.get(
-    "/api/admin/litellm-native",
-    withCapability("litellm.routes_keys.edit"),
-    async (request) => request.actor,
-  )
-  server.get(
-    "/api/admin/grafana-native",
-    withCapability("grafana.dashboards_alerting.edit"),
-    async (request) => request.actor,
-  )
   server.get("/api/admin/unclassified", async () => ({ ok: true }))
   return server
 }
@@ -677,7 +656,6 @@ function activeRecovery(keycloakSubjectId = "asserted-admin") {
       activatedAt: "2026-07-31T12:00:00.000Z",
       expiresAt: "2026-07-31T12:15:00.000Z",
       keycloakSubjectId,
-      nativeExpertAccess: false as const,
       reasonCode: "admin_lockout" as const,
       scope: "console_admin_capabilities" as const,
       sessionId: recoverySessionId,

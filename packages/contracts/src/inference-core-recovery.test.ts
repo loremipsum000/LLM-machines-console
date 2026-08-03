@@ -76,7 +76,6 @@ describe("Inference Core emergency recovery contracts", () => {
       activatedAt: "2026-07-31T12:00:00.000Z",
       expiresAt: "2026-07-31T12:15:00.000Z",
       keycloakSubjectId: "operator-1",
-      nativeExpertAccess: false,
       reasonCode: "admin_role_repair",
       scope: "console_admin_capabilities",
       sessionId: "01234567-89ab-4def-8123-456789abcdef",
@@ -84,7 +83,7 @@ describe("Inference Core emergency recovery contracts", () => {
 
     expect(grant).not.toHaveProperty("role")
     expect(grant).not.toHaveProperty("keycloakRole")
-    expect(grant.nativeExpertAccess).toBe(false)
+    expect(grant.scope).toBe("console_admin_capabilities")
   })
 
   it("bounds activation throttling without accepting recovery material", () => {

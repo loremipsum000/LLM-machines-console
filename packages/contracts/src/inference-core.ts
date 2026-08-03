@@ -216,36 +216,36 @@ export type AdminAuditVerificationKeysResponse = z.infer<
   typeof adminAuditVerificationKeysResponseSchema
 >
 
-export const inferenceCoreExpertAuditSourceSchema = z.enum([
+export const inferenceCoreNativeAuditSourceSchema = z.enum([
   "litellm",
   "grafana",
   "keycloak",
   "alertmanager",
 ])
-export type InferenceCoreExpertAuditSource = z.infer<
-  typeof inferenceCoreExpertAuditSourceSchema
+export type InferenceCoreNativeAuditSource = z.infer<
+  typeof inferenceCoreNativeAuditSourceSchema
 >
 
-export const inferenceCoreExpertAuditIngestionStateSchema = z.enum([
+export const inferenceCoreNativeAuditIngestionStateSchema = z.enum([
   "disabled",
   "unproven",
   "implemented_pending_runtime_qualification",
 ])
-export type InferenceCoreExpertAuditIngestionState = z.infer<
-  typeof inferenceCoreExpertAuditIngestionStateSchema
+export type InferenceCoreNativeAuditIngestionState = z.infer<
+  typeof inferenceCoreNativeAuditIngestionStateSchema
 >
 
-export const inferenceCoreExpertAuditCapabilitySchema = z
+export const inferenceCoreNativeAuditCapabilitySchema = z
   .object({
-    source: inferenceCoreExpertAuditSourceSchema,
-    nativeIngestionState: inferenceCoreExpertAuditIngestionStateSchema,
+    source: inferenceCoreNativeAuditSourceSchema,
+    nativeIngestionState: inferenceCoreNativeAuditIngestionStateSchema,
     ingestionEnabled: z.literal(false),
     mechanism: z.enum(["product_owned_audited_ingress"]).nullable(),
     detail: z.string().min(1),
   })
   .strict()
-export type InferenceCoreExpertAuditCapability = z.infer<
-  typeof inferenceCoreExpertAuditCapabilitySchema
+export type InferenceCoreNativeAuditCapability = z.infer<
+  typeof inferenceCoreNativeAuditCapabilitySchema
 >
 
 export const adminOverviewResponseSchema = z

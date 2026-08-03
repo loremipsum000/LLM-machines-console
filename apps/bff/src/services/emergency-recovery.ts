@@ -925,7 +925,6 @@ function toGrant(
     activatedAt: session.activatedAt.toISOString(),
     expiresAt: session.expiresAt.toISOString(),
     keycloakSubjectId: session.keycloakSubjectId,
-    nativeExpertAccess: false,
     reasonCode,
     scope: "console_admin_capabilities",
     sessionId: session.id,

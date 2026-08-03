@@ -240,7 +240,6 @@ describe("Admin Emergency Isolation routes", () => {
         activatedAt: timestamp,
         expiresAt: "2026-08-02T12:15:00.000Z",
         keycloakSubjectId: "operator-isolation",
-        nativeExpertAccess: false as const,
         reasonCode: "admin_lockout" as const,
         scope: "console_admin_capabilities" as const,
         sessionId: recoverySessionId,

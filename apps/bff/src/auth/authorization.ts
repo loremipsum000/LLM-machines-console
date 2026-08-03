@@ -95,11 +95,6 @@ type AuthResult =
   | { ok: true; actor: Actor }
   | { ok: false; reason: AuthFailureReason }
 
-const nativeExpertMutationCapabilities = new Set<InferenceCoreCapability>([
-  "grafana.dashboards_alerting.edit",
-  "litellm.routes_keys.edit",
-])
-
 export function registerAuthorization(
   server: FastifyInstance,
   options: AuthorizationOptions,
@@ -260,8 +255,7 @@ async function resolvePolicyActor(
   if (
     resolution.status !== "active" ||
     resolution.grant.keycloakSubjectId !== actor.subject ||
-    resolution.grant.scope !== "console_admin_capabilities" ||
-    resolution.grant.nativeExpertAccess !== false
+    resolution.grant.scope !== "console_admin_capabilities"
   ) {
     await auditDenial(request, actor.subject)
     forbidden(reply, "The emergency recovery session is not active.")
@@ -278,10 +272,7 @@ function actorSatisfiesPolicy(
   const policyRole = actor.effectiveRole ?? actor.role
   return policy.kind === "admin-only"
     ? actor.role === "admin"
-    : !(
-        actor.effectiveRole &&
-        nativeExpertMutationCapabilities.has(policy.capability)
-      ) && roleHasInferenceCoreCapability(policyRole, policy.capability)
+    : roleHasInferenceCoreCapability(policyRole, policy.capability)
 }
 
 function policyDenialDetail(policy: HumanRouteAuthorizationPolicy): string {

@@ -131,7 +131,6 @@ describe("emergency recovery", () => {
         activatedAt: "2026-07-31T12:00:00.000Z",
         expiresAt: "2026-07-31T12:15:00.000Z",
         keycloakSubjectId: operatorSubject,
-        nativeExpertAccess: false,
         reasonCode: "admin_lockout",
         scope: "console_admin_capabilities",
         sessionId: fixedSessionId,
@@ -173,7 +172,6 @@ describe("emergency recovery", () => {
     expect(status).toMatchObject({
       activeGrant: {
         keycloakSubjectId: operatorSubject,
-        nativeExpertAccess: false,
         sessionId: fixedSessionId,
       },
       factor: {

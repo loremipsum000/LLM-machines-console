@@ -8,7 +8,7 @@ import {
   type AuditIngestionRunResult,
   runAuditIngestion,
 } from "../services/audit-ingestion"
-import type { NativeAuditSource } from "../services/expert-capabilities"
+import type { NativeAuditSource } from "../services/native-audit-source"
 
 const DATABASE_URL_REQUIRED =
   "DATABASE_URL is required for the audit ingestion command."

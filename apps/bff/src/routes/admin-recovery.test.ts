@@ -311,7 +311,6 @@ function activeGrant() {
     activatedAt: "2026-07-31T12:00:00.000Z",
     expiresAt: "2026-07-31T12:15:00.000Z",
     keycloakSubjectId: "operator-1",
-    nativeExpertAccess: false as const,
     reasonCode: "admin_role_repair" as const,
     scope: "console_admin_capabilities" as const,
     sessionId: recoverySessionId,
