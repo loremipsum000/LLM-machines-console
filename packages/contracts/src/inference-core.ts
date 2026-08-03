@@ -6,6 +6,7 @@ export * from "./inference-core-ingress.js"
 export * from "./inference-core-isolation.js"
 export * from "./inference-core-recovery.js"
 export * from "./inference-core-session.js"
+export * from "./inference-core-signing.js"
 
 export const healthResponseSchema = z
   .object({

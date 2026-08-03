@@ -77,6 +77,8 @@ export const pr11aR1S1DecisionPath =
   "docs/reduction/inference-core/pr-11a-r1-s1-console-session-decisions.json"
 export const pr11aR1E1DecisionPath =
   "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json"
+export const pr11aR1K1DecisionPath =
+  "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json"
 export const pr11aR1C0GovernanceCheckpointPaths = [
   "docs/reduction/inference-core/README.md",
   "docs/reduction/inference-core/decision-register.md",
@@ -164,6 +166,27 @@ export const pr11aR1E1SourceCandidatePaths = [
   "scripts/inference-core/pr11a-r1-s1-boundaries.test.mjs",
   "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
 ]
+export const pr11aR1K1SourceCandidatePaths = [
+  ".env.example",
+  "apps/bff/src/routes/admin-audit-export.test.ts",
+  "apps/bff/src/services/audit-export-signing.test.ts",
+  "apps/bff/src/services/audit-export-signing.ts",
+  "apps/bff/src/services/audit-export.test.ts",
+  "apps/bff/src/services/signing-trust.test.ts",
+  "apps/bff/src/services/signing-trust.ts",
+  "docs/reduction/inference-core/README.md",
+  "docs/reduction/inference-core/decision-register.md",
+  pr11aR1K1DecisionPath,
+  "docs/reduction/inference-core/validation-register.md",
+  "packages/contracts/src/index.ts",
+  "packages/contracts/src/inference-core-signing.test.ts",
+  "packages/contracts/src/inference-core-signing.ts",
+  "packages/contracts/src/inference-core.ts",
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+  "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+  "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
+].sort()
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -201,6 +224,11 @@ export const pr11aR1E1IntegrationBase =
   "39057332207cca6193495453b7336eda07608255"
 export const pr11aR1E1IntegrationBaseTree =
   "4deb5b337120202b52173b05910f1cbf028b50c3"
+export const pr11aR1E1SourceHead = "c60280c11318aa21d230e7002cb7d703625a7168"
+export const pr11aR1K1IntegrationBase =
+  "1743cb746f87c7497a34f4de7e3bfc0db3ff0be2"
+export const pr11aR1K1IntegrationBaseTree =
+  "d1e5402ffd12a0b9c9dee15faa78893edfd89223"
 export const pr11aR1S1Pr09NativeIdentifierSuccessorEvidence = {
   path: "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
   sha256: "34f5d2a631bf0ad19b81e781e10d3738f4702ceed50a5a56cb2d164f6a804fc1",
@@ -5023,6 +5051,17 @@ function hasPr11aR1E1SourceMarker(root) {
   )
 }
 
+function hasPr11aR1K1SourceMarker(root) {
+  return (
+    hasPr11aR1E1SourceMarker(root) &&
+    isRegularFile(resolve(root, pr11aR1K1DecisionPath)) &&
+    isRegularFile(
+      resolve(root, "packages/contracts/src/inference-core-signing.ts"),
+    ) &&
+    isRegularFile(resolve(root, "apps/bff/src/services/signing-trust.ts"))
+  )
+}
+
 const pr11aR1C0HistoricalPr09SourcePaths = new Set([
   "apps/bff/src/services/expert-capabilities.ts",
 ])
@@ -5033,8 +5072,22 @@ const pr11aR1S1HistoricalPriorEvidencePaths = new Set([
   "scripts/inference-core/pr05-boundaries.test.mjs",
   "scripts/inference-core/pr10c-boundaries.test.mjs",
 ])
+const pr11aR1K1HistoricalPriorEvidencePaths = new Set([
+  ".env.example",
+  "apps/bff/src/services/audit-export-signing.ts",
+])
 
 export function readPr09SourceBoundaryText(path, root = repositoryRoot) {
+  if (
+    hasPr11aR1K1SourceMarker(root) &&
+    pr11aR1K1HistoricalPriorEvidencePaths.has(path)
+  ) {
+    return readRepositoryPathAtCommit(
+      root,
+      pr11aR1K1IntegrationBase,
+      path,
+    ).toString("utf8")
+  }
   if (
     [
       "source-candidate-awaiting-independent-review",
@@ -5069,7 +5122,8 @@ function readPr11aR1S1HistoricalPriorEvidence(root, path) {
     : null
 }
 
-function listSourcePackageChanges(root, baseCommit) {
+function listSourcePackageChanges(root, baseCommit, targetRef = null) {
+  const comparison = targetRef ? [baseCommit, targetRef] : [baseCommit]
   const output = execFileSync(
     "git",
     [
@@ -5078,7 +5132,7 @@ function listSourcePackageChanges(root, baseCommit) {
       "--no-ext-diff",
       "--no-renames",
       "--end-of-options",
-      baseCommit,
+      ...comparison,
       "--",
     ],
     { cwd: root, encoding: "utf8" },
@@ -5487,7 +5541,11 @@ export function verifyPr11aR1E1SourcePackage({
     .sort((left, right) =>
       left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
     )
-  const changes = listSourcePackageChanges(root, pr11aR1E1IntegrationBase)
+  const changes = listSourcePackageChanges(
+    root,
+    pr11aR1E1IntegrationBase,
+    pr11aR1E1SourceHead,
+  )
   if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
     errors.push("R1-E1 source package path set changed")
   }
@@ -5541,6 +5599,181 @@ export function verifyPr11aR1E1SourcePackage({
     )
   ) {
     errors.push("R1-E1 must not generate the aggregate PR-11A revision")
+  }
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr11aR1K1SourcePackage({
+  root,
+  expectedAllowlist,
+  actualAllowlist,
+  expectedRoutes,
+  actualRoutes,
+}) {
+  const errors = verifyPr11aR1E1SourcePackage({
+    root,
+    expectedAllowlist,
+    actualAllowlist,
+    expectedRoutes,
+    actualRoutes,
+  })
+  const addedPaths = new Set([
+    "apps/bff/src/services/signing-trust.test.ts",
+    "apps/bff/src/services/signing-trust.ts",
+    pr11aR1K1DecisionPath,
+    "packages/contracts/src/inference-core-signing.test.ts",
+    "packages/contracts/src/inference-core-signing.ts",
+    "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
+  ])
+  const expectedChanges = pr11aR1K1SourceCandidatePaths
+    .map((path) => ({ path, status: addedPaths.has(path) ? "A" : "M" }))
+    .sort((left, right) =>
+      left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+    )
+  const changes = listSourcePackageChanges(root, pr11aR1K1IntegrationBase)
+  if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
+    errors.push("R1-K1 source package path set changed")
+  }
+
+  let decision
+  try {
+    decision = readJson(resolve(root, pr11aR1K1DecisionPath))
+  } catch {
+    errors.push("invalid R1-K1 source decision document")
+  }
+  if (
+    !decision ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-11A-R1-K1" ||
+    decision.scope !== "signing-custody-and-public-trust-source-only" ||
+    decision.integrationBaseCommit !== pr11aR1K1IntegrationBase ||
+    decision.integrationBaseTree !== pr11aR1K1IntegrationBaseTree ||
+    decision.exactBranch !== "codex/inference-core-pr-11a-r1-k1" ||
+    ![
+      "source-candidate-awaiting-independent-review",
+      "source-candidate-independently-reviewed",
+    ].includes(decision.reviewStatus) ||
+    decision.accepted !== false ||
+    decision.revisionBound !== false ||
+    decision.runtimeQualified !== false ||
+    JSON.stringify(decision.sourcePathInventory) !==
+      JSON.stringify(pr11aR1K1SourceCandidatePaths) ||
+    decision.sourcePathCounts?.added !== 6 ||
+    decision.sourcePathCounts?.deleted !== 0 ||
+    decision.sourcePathCounts?.modified !== 13 ||
+    decision.sourcePathCounts?.total !== 19
+  ) {
+    errors.push("invalid R1-K1 source package identity")
+  }
+  if (
+    decision?.sourceHeadCommit !== null &&
+    decision?.sourceHeadCommit !== undefined &&
+    (!/^[0-9a-f]{40}$/.test(decision.sourceHeadCommit) ||
+      resolveCommit(root, decision.sourceHeadCommit) !==
+        decision.sourceHeadCommit ||
+      !/^[0-9a-f]{40}$/.test(decision.sourceHeadTree) ||
+      resolveTree(root, decision.sourceHeadCommit) !== decision.sourceHeadTree)
+  ) {
+    errors.push("invalid R1-K1 reviewed source commit")
+  }
+
+  const environment = readFileSync(resolve(root, ".env.example"), "utf8")
+  const signingContract = readFileSync(
+    resolve(root, "packages/contracts/src/inference-core-signing.ts"),
+    "utf8",
+  )
+  const signingSource = readFileSync(
+    resolve(root, "apps/bff/src/services/audit-export-signing.ts"),
+    "utf8",
+  )
+  const trustSource = readFileSync(
+    resolve(root, "apps/bff/src/services/signing-trust.ts"),
+    "utf8",
+  )
+  for (const fingerprint of [
+    "AUDIT_EXPORT_SIGNING_ACTIVE_KID=",
+    "AUDIT_EXPORT_SIGNING_APPLIANCE_ID=",
+    "AUDIT_EXPORT_SIGNING_PRIVATE_KEY_FILE=/run/secrets/llmm_audit_export_ed25519",
+    "AUDIT_EXPORT_SIGNING_TRUST_BUNDLE_FILE=/run/llm-machines/signing-trust.json",
+  ]) {
+    if (!environment.includes(fingerprint)) {
+      errors.push(`R1-K1 environment contract is missing ${fingerprint}`)
+    }
+  }
+  if (
+    environment.includes("AUDIT_EXPORT_SIGNING_PUBLIC_JWKS_FILE") ||
+    /VENDOR_[A-Z0-9_]*(?:PRIVATE|SECRET|SIGNING_KEY)=/.test(environment)
+  ) {
+    errors.push("R1-K1 environment contract exposes retired or vendor custody")
+  }
+  for (const [label, source, fingerprints] of [
+    [
+      "signing contract",
+      signingContract,
+      [
+        '"vendor-release-root"',
+        '"release-artifact"',
+        '"update-bundle"',
+        '"offline-entitlement"',
+        '"audit-export"',
+        'z.literal("Ed25519")',
+        "algorithm: inferenceCoreSigningAlgorithmSchema",
+        "privateMaterialPresence",
+        'storage: z.literal("offline-hardware-backed")',
+        'privateKeyProvisioning: z.literal("root-only-mounted-secret")',
+        'tpmSealing: z.literal("required-when-available")',
+      ],
+    ],
+    [
+      "audit signer",
+      signingSource,
+      [
+        "constants.O_RDONLY | constants.O_NOFOLLOW",
+        "metadata.uid !== requiredOwnerUid",
+        "(metadata.mode & 0o077) !== 0",
+        "privateKeyBytes.fill(0)",
+        'purpose: "audit-export"',
+      ],
+    ],
+    [
+      "trust loader",
+      trustSource,
+      [
+        "constants.O_RDONLY | constants.O_NOFOLLOW",
+        "metadata.uid !== requiredOwnerUid",
+        "(metadata.mode & 0o022) !== 0",
+        'algorithm: "Ed25519"',
+        'purpose: "audit-export"',
+      ],
+    ],
+  ]) {
+    for (const fingerprint of fingerprints) {
+      if (!source.includes(fingerprint)) {
+        errors.push(`R1-K1 ${label} is missing ${fingerprint}`)
+      }
+    }
+  }
+  const packageText = pr11aR1K1SourceCandidatePaths
+    .filter((path) => isRegularFile(resolve(root, path)))
+    .map((path) => readFileSync(resolve(root, path), "utf8"))
+    .join("\n")
+  if (
+    /-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(packageText) ||
+    /process\.env\.VENDOR_[A-Z0-9_]*(?:PRIVATE|SECRET|SIGNING_KEY)/.test(
+      packageText,
+    )
+  ) {
+    errors.push("R1-K1 package contains forbidden private signing material")
+  }
+  if (
+    isRegularFile(
+      resolve(
+        root,
+        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+      ),
+    )
+  ) {
+    errors.push("R1-K1 must not generate the aggregate PR-11A revision")
   }
   return [...new Set(errors)].sort()
 }
@@ -5607,8 +5840,12 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   })
   const activeReviewedRevision = expectedRoutes.reviewedRevisions?.at(-1)?.id
   const pr11aR1C0ReviewStatus = readPr11aR1C0ReviewStatus(root)
+  const pr11aR1K1SourcePackage =
+    activeReviewedRevision === "PR-11" && hasPr11aR1K1SourceMarker(root)
   const pr11aR1E1SourcePackage =
-    activeReviewedRevision === "PR-11" && hasPr11aR1E1SourceMarker(root)
+    !pr11aR1K1SourcePackage &&
+    activeReviewedRevision === "PR-11" &&
+    hasPr11aR1E1SourceMarker(root)
   const pr11aR1S1SourcePackage =
     !pr11aR1E1SourcePackage &&
     activeReviewedRevision === "PR-11" &&
@@ -5619,49 +5856,58 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     !pr11aR1S1SourcePackage && pr11aR1C0ReviewStatus !== null
 
   const errors = [
-    ...(pr11aR1E1SourcePackage
-      ? verifyPr11aR1E1SourcePackage({
+    ...(pr11aR1K1SourcePackage
+      ? verifyPr11aR1K1SourcePackage({
           root,
           expectedAllowlist,
           actualAllowlist,
           expectedRoutes,
           actualRoutes,
         })
-      : pr11aR1S1SourcePackage
-      ? verifyPr11aR1S1SourcePackage({
-          root,
-          expectedAllowlist,
-          actualAllowlist,
-          expectedRoutes,
-          actualRoutes,
-        })
-      : pr11aR1C0SourcePackage
-        ? verifyPr11aR1C0SourcePackage({
+      : pr11aR1E1SourcePackage
+        ? verifyPr11aR1E1SourcePackage({
             root,
-            reviewStatus: pr11aR1C0ReviewStatus,
             expectedAllowlist,
             actualAllowlist,
             expectedRoutes,
             actualRoutes,
           })
-        : [
-            ...compareForbiddenBaselineMetadata(
+        : pr11aR1S1SourcePackage
+          ? verifyPr11aR1S1SourcePackage({
+              root,
               expectedAllowlist,
               actualAllowlist,
-            ),
-            ...compareExactFindings(
-              expectedAllowlist.entries,
-              actualAllowlist.entries,
-            ),
-            ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
-          ]),
+              expectedRoutes,
+              actualRoutes,
+            })
+          : pr11aR1C0SourcePackage
+            ? verifyPr11aR1C0SourcePackage({
+                root,
+                reviewStatus: pr11aR1C0ReviewStatus,
+                expectedAllowlist,
+                actualAllowlist,
+                expectedRoutes,
+                actualRoutes,
+              })
+            : [
+                ...compareForbiddenBaselineMetadata(
+                  expectedAllowlist,
+                  actualAllowlist,
+                ),
+                ...compareExactFindings(
+                  expectedAllowlist.entries,
+                  actualAllowlist.entries,
+                ),
+                ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
+              ]),
     ...verifyRouteBaselineMetadata(expectedRoutes),
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
     ...(pr11aR1C0SourcePackage ||
     pr11aR1S1SourcePackage ||
-    pr11aR1E1SourcePackage
+    pr11aR1E1SourcePackage ||
+    pr11aR1K1SourcePackage
       ? []
       : activeReviewedRevision === "PR-11"
         ? verifyPr11TargetState({
@@ -5741,6 +5987,27 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   if (baseRef?.startsWith("-")) {
     baseStatus = "unavailable"
     errors.push(`base ref is unavailable ${baseRef}`)
+  } else if (pr11aR1K1SourcePackage) {
+    baseStatus = "checked"
+    if (
+      resolveCommit(root, pr11aR1K1IntegrationBase) !==
+        pr11aR1K1IntegrationBase ||
+      resolveTree(root, pr11aR1K1IntegrationBase) !==
+        pr11aR1K1IntegrationBaseTree
+    ) {
+      errors.push("R1-K1 protected integration base identity changed")
+    }
+    try {
+      execFileSync(
+        "git",
+        ["merge-base", "--is-ancestor", pr11aR1K1IntegrationBase, "HEAD"],
+        { cwd: root, stdio: "ignore" },
+      )
+    } catch {
+      errors.push(
+        "R1-K1 no longer descends from the protected integration base",
+      )
+    }
   } else if (pr11aR1E1SourcePackage) {
     baseStatus = "checked"
     if (
@@ -5876,11 +6143,15 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       0,
     ),
     findingPathCount: expectedAllowlist.entries.length,
-    routeCount: (pr11aR1S1SourcePackage || pr11aR1E1SourcePackage
+    routeCount: (pr11aR1S1SourcePackage ||
+    pr11aR1E1SourcePackage ||
+    pr11aR1K1SourcePackage
       ? actualRoutes
       : expectedRoutes
     ).routes.length,
-    legacyRouteCount: (pr11aR1S1SourcePackage || pr11aR1E1SourcePackage
+    legacyRouteCount: (pr11aR1S1SourcePackage ||
+    pr11aR1E1SourcePackage ||
+    pr11aR1K1SourcePackage
       ? actualRoutes
       : expectedRoutes
     ).routes.filter((route) => route.classification === "legacy-retired")
@@ -11057,7 +11328,18 @@ export function verifyPr11EnvExampleWorktree(root = repositoryRoot) {
   } catch {
     return ["PR-11 base .env.example is unavailable"]
   }
-  const currentSource = readFileSync(absolutePath, "utf8")
+  let currentSource = readFileSync(absolutePath, "utf8")
+  if (hasPr11aR1K1SourceMarker(root)) {
+    try {
+      currentSource = readRepositoryPathAtCommit(
+        root,
+        pr11aR1K1IntegrationBase,
+        path,
+      ).toString("utf8")
+    } catch {
+      return ["PR-11 R1-K1 predecessor .env.example is unavailable"]
+    }
+  }
   const historicalErrors = verifyPr11EnvExampleTransition(
     baseSource,
     currentSource,

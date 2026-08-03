@@ -69,6 +69,7 @@ describe("bounded audit export", () => {
     })
     const keys = generateKeyPairSync("ed25519")
     const publicJwk = keys.publicKey.export({ format: "jwk" })
+    const applianceId = "01234567-89ab-4def-8123-456789abcdef"
 
     const result = await createSignedAuditExport(
       actor,
@@ -81,7 +82,10 @@ describe("bounded audit export", () => {
       {
         material: {
           activeKid: "audit-test",
+          applianceId,
+          issuerId: `urn:llm-machines:customer-appliance:${applianceId}`,
           privateKey: keys.privateKey,
+          purpose: "audit-export",
           verificationKeys: {
             activeKid: "audit-test",
             keys: [
