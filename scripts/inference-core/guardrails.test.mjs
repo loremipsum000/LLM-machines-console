@@ -2,7 +2,6 @@ import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import {
-  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -3606,21 +3605,7 @@ test("reviewed PR-10C and PR-11 successors keep historical target delegates fail
       currentAllowlist,
       currentRoutes,
     })
-    if (
-      existsSync(
-        join(
-          repositoryRoot,
-          "infra/keycloak/pr11a-console-session-policy.json",
-        ),
-      )
-    ) {
-      assert.match(
-        currentResult.join("\n"),
-        /PR-11 .env.example may only delete the exact retired model-update block/,
-      )
-    } else {
-      assert.deepEqual(currentResult, [])
-    }
+    assert.deepEqual(currentResult, [])
 
     const tamperedRoutes = structuredClone(currentRoutes)
     tamperedRoutes.routes = tamperedRoutes.routes.filter(

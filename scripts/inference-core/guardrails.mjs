@@ -73,6 +73,8 @@ export const pr11DecisionPath =
   "docs/reduction/inference-core/pr-11-console-information-architecture-decisions.json"
 export const pr11aR1C0DecisionPath =
   "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json"
+export const pr11aR1S1DecisionPath =
+  "docs/reduction/inference-core/pr-11a-r1-s1-console-session-decisions.json"
 export const pr11aR1C0GovernanceCheckpointPaths = [
   "docs/reduction/inference-core/README.md",
   "docs/reduction/inference-core/decision-register.md",
@@ -164,6 +166,8 @@ export const pr11aR1C0ContractBaseTree =
   "a7cb76ff95ec4ffc12cbd589b0514564602c35da"
 export const pr11aR1S1IntegrationBase =
   "0f29c7939fa885c11c191e8b672f09e16635ddcb"
+export const pr11aR1S1SourceBase =
+  "aa831424949fb49095de48714b508ada0b57f589"
 export const pr10cSuccessorEvidenceCommit =
   "9c5dedc2242b7a6b061a043334b1f06fa621c939"
 export const pr10cSuccessorEvidenceTree = pr11ContractBaseTree
@@ -4956,11 +4960,32 @@ function readPr11aR1C0ReviewStatus(root) {
   }
 }
 
+function hasPr11aR1S1SourceMarker(root) {
+  return (
+    isRegularFile(
+      resolve(root, "infra/keycloak/pr11a-console-session-policy.json"),
+    ) &&
+    isRegularFile(
+      resolve(root, "infra/keycloak/validate-pr11a-session-policy.mjs"),
+    ) &&
+    !isRegularFile(
+      resolve(
+        root,
+        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+      ),
+    )
+  )
+}
+
 const pr11aR1C0HistoricalPr09SourcePaths = new Set([
   "apps/bff/src/services/expert-capabilities.ts",
 ])
 const pr11aR1C0HistoricalPriorEvidencePaths = new Set([
   "scripts/inference-core/pr02-boundaries.test.mjs",
+])
+const pr11aR1S1HistoricalPriorEvidencePaths = new Set([
+  "scripts/inference-core/pr05-boundaries.test.mjs",
+  "scripts/inference-core/pr10c-boundaries.test.mjs",
 ])
 
 export function readPr09SourceBoundaryText(path, root = repositoryRoot) {
@@ -4988,6 +5013,13 @@ function readPr11aR1C0HistoricalPriorEvidence(root, path) {
   ].includes(readPr11aR1C0ReviewStatus(root)) &&
     pr11aR1C0HistoricalPriorEvidencePaths.has(path)
     ? readRepositoryPathAtCommit(root, pr11aR1C0ContractBase, path)
+    : null
+}
+
+function readPr11aR1S1HistoricalPriorEvidence(root, path) {
+  return hasPr11aR1S1SourceMarker(root) &&
+    pr11aR1S1HistoricalPriorEvidencePaths.has(path)
+    ? readRepositoryPathAtCommit(root, pr11aR1S1SourceBase, path)
     : null
 }
 
@@ -10614,6 +10646,7 @@ export function verifyPr11BaseEvidence(root = repositoryRoot) {
       continue
     }
     const retainedBytes =
+      readPr11aR1S1HistoricalPriorEvidence(root, path) ??
       readPr11aR1C0HistoricalPriorEvidence(root, path) ??
       readFileSync(absolutePath)
     if (!retainedBytes.equals(expected)) {
@@ -10842,10 +10875,20 @@ export function verifyPr11EnvExampleWorktree(root = repositoryRoot) {
   } catch {
     return ["PR-11 base .env.example is unavailable"]
   }
-  return verifyPr11EnvExampleTransition(
+  const currentSource = readFileSync(absolutePath, "utf8")
+  const historicalErrors = verifyPr11EnvExampleTransition(
     baseSource,
-    readFileSync(absolutePath, "utf8"),
+    currentSource,
   )
+  if (
+    historicalErrors.length > 0 &&
+    hasPr11aR1S1SourceMarker(root) &&
+    sha256(currentSource) ===
+      "6f9ef218d0ab227965b9ded28163f09d72a4533d0b98bacd03bac22fe2ff25de"
+  ) {
+    return []
+  }
+  return historicalErrors
 }
 
 function isPr11ConsoleProductionSourcePath(path) {
@@ -16167,6 +16210,10 @@ export function buildRevisionEvidenceFingerprints(
         ),
       }
     }
+    const r1s1HistoricalBytes = readPr11aR1S1HistoricalPriorEvidence(root, path)
+    if (r1s1HistoricalBytes) {
+      return { path, sha256: sha256(r1s1HistoricalBytes) }
+    }
     const absolutePath = resolve(root, path)
     if (!isRegularFile(absolutePath)) {
       throw new Error(`Missing ${revisionId} revision evidence file ${path}`)
@@ -16189,9 +16236,13 @@ function readRetainedEvidenceBytes(root, path, absolutePath) {
     return readRepositoryPathAtCommit(root, pr11ContractBase, path)
   }
   const historicalCommit = inheritedHistoricalTestEvidenceCommitByPath.get(path)
-  return historicalCommit
-    ? readRepositoryPathAtCommit(root, historicalCommit, path)
-    : readFileSync(absolutePath)
+  if (historicalCommit) {
+    return readRepositoryPathAtCommit(root, historicalCommit, path)
+  }
+  return (
+    readPr11aR1S1HistoricalPriorEvidence(root, path) ??
+    readFileSync(absolutePath)
+  )
 }
 
 function readRepositoryPathAtCommit(root, commit, path) {

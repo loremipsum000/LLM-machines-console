@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -287,6 +288,9 @@ test("PR-10C retains every accepted route and appends only its three routes", ()
 
 test("PR-10C source exposes only the reviewed route and registrar surface", () => {
   const paths = repositoryPaths(repositoryRoot)
+  const r1s1Source = existsSync(
+    resolve(repositoryRoot, "infra/keycloak/pr11a-console-session-policy.json"),
+  )
   const isolationRoutes = extractBffRoutes({
     root: repositoryRoot,
     paths,
@@ -294,7 +298,17 @@ test("PR-10C source exposes only the reviewed route and registrar surface", () =
   assert.deepEqual(isolationRoutes, pr10cAddedRouteContract)
   assert.deepEqual(
     extractFastifyRegistrarManifest({ root: repositoryRoot, paths }),
-    pr10cTargetContract.fastifyRegistrars,
+    r1s1Source
+      ? [
+          ...pr10cTargetContract.fastifyRegistrars.slice(0, 3),
+          {
+            exportName: "registerConsoleSessionRoutes",
+            importSource: "./routes/console-session",
+            sourcePath: "apps/bff/src/routes/console-session.ts",
+          },
+          ...pr10cTargetContract.fastifyRegistrars.slice(3),
+        ]
+      : pr10cTargetContract.fastifyRegistrars,
   )
   assert.deepEqual(verifyPr10cSourceBoundary(repositoryRoot, paths), [])
 })
