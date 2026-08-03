@@ -68,8 +68,21 @@ const connectedApp: AdminConnectedApp = {
   },
 }
 
+function activeConsoleSession(role: "admin" | "operator") {
+  return {
+    session: {
+      groups: role === "admin" ? ["Administrators"] : ["Operators"],
+      mfaVerifiedAt: new Date().toISOString(),
+      role,
+      subject: `${role}-1`,
+    },
+    sessionHandle: "A".repeat(43),
+    state: "active",
+  } as const
+}
+
 const mocks = vi.hoisted(() => ({
-  auth: vi.fn(),
+  getCurrentConsoleSession: vi.fn(),
   getBffRequest: vi.fn(),
   redirect: vi.fn((href: string) => {
     throw new Error(`redirect:${href}`)
@@ -85,8 +98,8 @@ vi.mock("next/navigation", () => ({
   redirect: mocks.redirect,
 }))
 
-vi.mock("@/lib/auth/auth", () => ({
-  auth: mocks.auth,
+vi.mock("@/lib/auth/session", () => ({
+  getCurrentConsoleSession: mocks.getCurrentConsoleSession,
 }))
 
 vi.mock("@/lib/bff/server-request", () => ({
@@ -95,20 +108,45 @@ vi.mock("@/lib/bff/server-request", () => ({
 
 describe("inference-core Admin actions", () => {
   beforeEach(() => {
-    mocks.auth.mockResolvedValue({
-      user: {
-        email: "operator@example.test",
-        groups: ["Operators"],
-        id: "operator-1",
-        roles: ["operator"],
-      },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     mocks.getBffRequest.mockResolvedValue({
       baseUrl: "http://bff.test",
       headers: new Headers({ authorization: "Bearer operator" }),
     })
     mocks.redirect.mockClear()
     mocks.revalidatePath.mockClear()
+  })
+
+  it("routes stale high-risk actions through the exact MFA elevation surface", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue({
+      ...activeConsoleSession("operator"),
+      session: {
+        ...activeConsoleSession("operator").session,
+        mfaVerifiedAt: "2000-01-01T00:00:00.000Z",
+      },
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/elevate?action=applications.credentials.test_rotate_revoke&returnTo=%2Fapplications",
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   afterEach(() => {
@@ -161,9 +199,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("lets an Admin enable Firecrawl with explicit consent and optional protections", async () => {
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const fetchSpy = vi.fn(async () =>
       Promise.resolve(
         new Response(
@@ -380,9 +418,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("submits Firecrawl policy limits only from an Admin surface", async () => {
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const fetchSpy = vi.fn(async () =>
       Promise.resolve(
         new Response(
@@ -476,9 +514,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("submits stable aliases and null disabled limits in an Admin policy update", async () => {
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const fetchSpy = vi.fn(async () =>
       Promise.resolve(
         new Response(JSON.stringify(connectedApp), {
@@ -515,9 +553,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("submits enabled service protections and the non-blocking token threshold", async () => {
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const fetchSpy = vi.fn(async () =>
       Promise.resolve(
         new Response(JSON.stringify(connectedApp), {
@@ -562,9 +600,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("rejects a context byte maximum outside JavaScript's safe integer range", async () => {
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const fetchSpy = vi.fn()
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const formData = new FormData()
@@ -593,9 +631,9 @@ describe("inference-core Admin actions", () => {
     )
     expect(fetchSpy).not.toHaveBeenCalled()
 
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     fetchSpy.mockResolvedValue(
       new Response(
         JSON.stringify({

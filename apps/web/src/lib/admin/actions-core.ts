@@ -2,7 +2,11 @@
 
 import { Buffer } from "node:buffer"
 import { createHash, randomUUID } from "node:crypto"
-import { auth } from "@/lib/auth/auth"
+import { getCurrentConsoleSession } from "@/lib/auth/session"
+import {
+  consoleMfaElevationHref,
+  hasFreshConsoleMfa,
+} from "@/lib/auth/mfa-elevation"
 import { getBffRequest } from "@/lib/bff/server-request"
 import {
   type AdminConnectedApp,
@@ -34,6 +38,7 @@ import {
   adminTeamCsvImportPreviewResponseSchema,
   adminTeamGroupMutationResponseSchema,
   adminTeamMemberMutationResponseSchema,
+  consoleHighRiskActionSchema,
   createAdminTeamGroupRequestSchema,
   createAdminTeamMemberRequestSchema,
   deleteAdminTeamMemberRequestSchema,
@@ -1157,16 +1162,53 @@ async function requireAdmin() {
 }
 
 async function requireCapability(capability: InferenceCoreCapability) {
-  const session = await auth()
-  const roles = session?.user.roles ?? []
+  const resolution = await getCurrentConsoleSession()
+  if (resolution.state === "unavailable") {
+    throw new Error("Console session is temporarily unavailable.")
+  }
   if (
-    !roles.some((role) =>
-      roleHasInferenceCoreCapability(parseHumanRoleOrNull(role), capability),
-    )
+    resolution.state !== "active" ||
+    !roleHasInferenceCoreCapability(resolution.session.role, capability)
   ) {
     throw new Error("Authorized Console session required.")
   }
-  return session
+  const highRiskAction = consoleHighRiskActionSchema.safeParse(capability)
+  if (
+    highRiskAction.success &&
+    !hasFreshConsoleMfa(resolution.session.mfaVerifiedAt)
+  ) {
+    redirectTo(
+      consoleMfaElevationHref(
+        highRiskAction.data,
+        consoleElevationReturnPath(capability),
+      ),
+    )
+  }
+  return resolution.session
+}
+
+function consoleElevationReturnPath(
+  capability: InferenceCoreCapability,
+): string {
+  if (
+    capability.startsWith("applications.") ||
+    capability.startsWith("firecrawl.")
+  ) {
+    return "/applications"
+  }
+  if (capability.startsWith("team.")) {
+    return "/team"
+  }
+  if (capability.startsWith("activity_audit.")) {
+    return "/activity"
+  }
+  if (
+    capability.startsWith("updates.") ||
+    capability.startsWith("isolation.")
+  ) {
+    return "/settings"
+  }
+  return "/"
 }
 
 function redirectTo(href: string): never {
@@ -1464,10 +1506,6 @@ function parseHumanRole(value: string): InferenceCoreHumanRole {
     return value
   }
   throw new Error("role must be operator or admin.")
-}
-
-function parseHumanRoleOrNull(value: string): InferenceCoreHumanRole | null {
-  return value === "admin" || value === "operator" ? value : null
 }
 
 async function settingsLogoAssetFromForm(

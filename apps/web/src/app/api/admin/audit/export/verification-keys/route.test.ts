@@ -1,9 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { GET } from "./route"
 
+function activeConsoleSession(role: "admin" | "operator") {
+  return {
+    session: {
+      groups: [],
+      mfaVerifiedAt: null,
+      role,
+      subject: `${role}-1`,
+    },
+    sessionHandle: "A".repeat(43),
+    state: "active",
+  } as const
+}
+
 const mocks = vi.hoisted(() => ({
   getBffRequest: vi.fn(),
-  getCurrentConsoleRole: vi.fn(),
+  getCurrentConsoleSession: vi.fn(),
 }))
 
 vi.mock("@/lib/bff/server-request", () => ({
@@ -11,18 +24,20 @@ vi.mock("@/lib/bff/server-request", () => ({
 }))
 
 vi.mock("@/lib/auth/session", () => ({
-  getCurrentConsoleRole: mocks.getCurrentConsoleRole,
+  getCurrentConsoleSession: mocks.getCurrentConsoleSession,
 }))
 
 describe("audit export verification-key proxy", () => {
   afterEach(() => {
     vi.restoreAllMocks()
     mocks.getBffRequest.mockReset()
-    mocks.getCurrentConsoleRole.mockReset()
+    mocks.getCurrentConsoleSession.mockReset()
   })
 
   it("rejects Operator verification-key access before contacting the BFF", async () => {
-    mocks.getCurrentConsoleRole.mockResolvedValue("operator")
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     const fetchSpy = vi.spyOn(globalThis, "fetch")
 
     const response = await GET()
@@ -32,7 +47,9 @@ describe("audit export verification-key proxy", () => {
   })
 
   it("downloads only the BFF-provided public verification keys", async () => {
-    mocks.getCurrentConsoleRole.mockResolvedValue("admin")
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     mocks.getBffRequest.mockResolvedValue({
       baseUrl: "http://bff.test",
       headers: { Authorization: "Bearer service-key" },

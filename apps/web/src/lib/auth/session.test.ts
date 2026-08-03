@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { getCurrentConsoleRole, getCurrentConsoleSession } from "./session"
+import { getCurrentConsoleSession } from "./session"
 
 const mocks = vi.hoisted(() => ({
   headers: vi.fn(),
@@ -77,22 +77,5 @@ describe("current opaque Console session", () => {
       state: "terminal",
     })
     expect(mocks.resolveConsoleSession).not.toHaveBeenCalled()
-  })
-
-  it("derives the compatibility role only from an active BFF projection", async () => {
-    mocks.resolveConsoleSession
-      .mockResolvedValueOnce({
-        session: {
-          groups: [],
-          mfaVerifiedAt: null,
-          role: "admin",
-          subject: "admin-1",
-        },
-        state: "active",
-      })
-      .mockResolvedValueOnce({ reason: "expired", state: "terminal" })
-
-    await expect(getCurrentConsoleRole()).resolves.toBe("admin")
-    await expect(getCurrentConsoleRole()).resolves.toBeNull()
   })
 })

@@ -34,7 +34,7 @@ import {
   isConsoleBffAuthExpiredError,
 } from "@/lib/admin/server-data-core"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
-import { getCurrentConsoleRole } from "@/lib/auth/session"
+import { getCurrentConsoleSession } from "@/lib/auth/session"
 import { notFound, redirect } from "next/navigation"
 import type { ReactNode } from "react"
 
@@ -275,17 +275,22 @@ async function withConsoleAccess(
   activeSection: ConsoleV2SectionId,
   render: (role: RetainedConsoleRole) => Promise<ReactNode>,
 ) {
-  const role = await getCurrentConsoleRole()
-  if (!role) {
-    redirect(getConsoleReauthUrl(activeSection))
+  const session = await getCurrentConsoleSession()
+  const returnTo = consoleSectionReturnPath(activeSection)
+  if (session.state === "unavailable") {
+    redirect(getConsoleUnavailableUrl(returnTo))
   }
+  if (session.state !== "active") {
+    redirect(getConsoleExpiredSignInUrl(returnTo))
+  }
+  const role = session.session.role
 
   let content: ReactNode
   try {
     content = await render(role)
   } catch (error) {
     if (isConsoleBffAuthExpiredError(error)) {
-      redirect(getConsoleReauthUrl(activeSection))
+      redirect(getConsoleExpiredSignInUrl(returnTo))
     }
     if (isConsoleAccessDeniedError(error)) {
       content = <ConsoleAccessDeniedPanel />
@@ -352,11 +357,18 @@ function ConsoleCapabilityDeniedPanel() {
   )
 }
 
-function getConsoleReauthUrl(activeSection: ConsoleV2SectionId): string {
-  const url = new URLSearchParams({
-    redirectTo: activeSection === "overview" ? "/" : `/${activeSection}`,
-  })
-  return `/auth/keycloak?${url.toString()}`
+function consoleSectionReturnPath(activeSection: ConsoleV2SectionId): string {
+  return activeSection === "overview" ? "/" : `/${activeSection}`
+}
+
+function getConsoleExpiredSignInUrl(returnTo: string): string {
+  const query = new URLSearchParams({ session: "expired", returnTo })
+  return `/auth/signin?${query.toString()}`
+}
+
+function getConsoleUnavailableUrl(returnTo: string): string {
+  const query = new URLSearchParams({ returnTo })
+  return `/auth/unavailable?${query.toString()}`
 }
 
 function isConsoleAccessDeniedError(error: unknown): boolean {

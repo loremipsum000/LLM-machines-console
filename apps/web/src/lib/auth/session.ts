@@ -6,7 +6,6 @@ import {
   opaqueConsoleSessionHandle,
   resolveConsoleSession,
 } from "./session-client"
-import type { RetainedConsoleRole } from "./role-claims"
 
 export type CurrentConsoleSessionResolution =
   | Extract<WebConsoleSessionResolution, { state: "terminal" | "unavailable" }>
@@ -35,9 +34,4 @@ export async function getCurrentConsoleSession(): Promise<CurrentConsoleSessionR
     sessionHandle,
     state: "active",
   }
-}
-
-export async function getCurrentConsoleRole(): Promise<RetainedConsoleRole | null> {
-  const resolution = await getCurrentConsoleSession()
-  return resolution.state === "active" ? resolution.session.role : null
 }
