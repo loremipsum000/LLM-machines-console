@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
@@ -15,12 +15,55 @@ const validationRegisterPath =
 const contractBaseCommit = "9d8f1a6144cb280104cdce0a21ab7dafa72087ec"
 const contractBaseTree = "a7cb76ff95ec4ffc12cbd589b0514564602c35da"
 const exactBranch = "codex/inference-core-pr-11a-r1-c0"
-const governanceCheckpointPaths = [
+const admittedBehaviorSourcePaths = [
+  "apps/bff/src/auth/authorization.ts",
+  "apps/bff/src/commands/audit-ingestion.ts",
+  "apps/bff/src/services/admin-team.ts",
+  "apps/bff/src/services/audit-ingestion.ts",
+  "apps/bff/src/services/emergency-recovery.ts",
+  "apps/bff/src/services/expert-capabilities.ts",
+  "apps/bff/src/services/native-audit-source.ts",
+  "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+  "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+  "apps/web/src/components/console-v2/team-v2-experience.tsx",
+  "packages/contracts/src/inference-core-authorization.ts",
+  "packages/contracts/src/inference-core-recovery.ts",
+  "packages/contracts/src/inference-core.ts",
+]
+const sourceCandidatePaths = [
+  "apps/bff/src/auth/authorization-security.test.ts",
+  "apps/bff/src/auth/authorization.ts",
+  "apps/bff/src/commands/audit-ingestion.ts",
+  "apps/bff/src/routes/admin-hardware.test.ts",
+  "apps/bff/src/routes/admin-inference.test.ts",
+  "apps/bff/src/routes/admin-isolation.test.ts",
+  "apps/bff/src/routes/admin-recovery.test.ts",
+  "apps/bff/src/services/admin-team.ts",
+  "apps/bff/src/services/audit-ingestion.test.ts",
+  "apps/bff/src/services/audit-ingestion.ts",
+  "apps/bff/src/services/emergency-recovery.test.ts",
+  "apps/bff/src/services/emergency-recovery.ts",
+  "apps/bff/src/services/expert-capabilities.test.ts",
+  "apps/bff/src/services/expert-capabilities.ts",
+  "apps/bff/src/services/native-audit-source.test.ts",
+  "apps/bff/src/services/native-audit-source.ts",
+  "apps/web/src/components/console-v2/hardware-v2-experience.test.tsx",
+  "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+  "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+  "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+  "apps/web/src/components/console-v2/team-v2-experience.tsx",
   "docs/reduction/inference-core/README.md",
   decisionPath,
   decisionRegisterPath,
   validationRegisterPath,
+  "packages/contracts/src/inference-core-authorization.test.ts",
+  "packages/contracts/src/inference-core-authorization.ts",
+  "packages/contracts/src/inference-core-recovery.test.ts",
+  "packages/contracts/src/inference-core-recovery.ts",
+  "packages/contracts/src/inference-core.test.ts",
+  "packages/contracts/src/inference-core.ts",
   "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/pr02-boundaries.test.mjs",
   "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
 ].sort()
 
@@ -47,7 +90,7 @@ function changedPathsFromBase() {
   return output === "" ? [] : output.split("\n").sort()
 }
 
-test("R1-C0 governance is anchored to the protected integration base", () => {
+test("R1-C0 is anchored to the protected integration base", () => {
   assert.equal(
     git("rev-parse", `${contractBaseCommit}^{tree}`),
     contractBaseTree,
@@ -58,7 +101,7 @@ test("R1-C0 governance is anchored to the protected integration base", () => {
   assert.equal(git("branch", "--show-current"), exactBranch)
 })
 
-test("R1-C0 governance is explicitly proposed and unaccepted", () => {
+test("R1-C0 is a source candidate, not an accepted revision", () => {
   const decision = readDecision()
   assert.equal(decision.schemaVersion, 1)
   assert.equal(decision.workPackage, "PR-11A-R1-C0")
@@ -66,7 +109,10 @@ test("R1-C0 governance is explicitly proposed and unaccepted", () => {
   assert.equal(decision.contractBaseCommit, contractBaseCommit)
   assert.equal(decision.contractBaseTree, contractBaseTree)
   assert.equal(decision.exactBranch, exactBranch)
-  assert.equal(decision.reviewStatus, "proposed-governance-first")
+  assert.equal(
+    decision.reviewStatus,
+    "source-candidate-awaiting-independent-review",
+  )
   assert.equal(decision.accepted, false)
   assert.equal(decision.revisionBound, false)
 })
@@ -85,9 +131,42 @@ test("R1-C0 binds the Console-first private-service boundary", () => {
   assert.equal(decisions.litellm.networkPosture, "private")
   assert.equal(decisions.keycloak.customerNativeAdminConsole, false)
   assert.equal(decisions.keycloak.normalIdentityFlowsRetained, true)
+  assert.equal(decisions.removedAuthority.nativeTargetMatrix, true)
+  assert.equal(decisions.removedAuthority.keycloakNativeHrefFields, true)
+  assert.equal(decisions.removedAuthority.recoveryNativeAccessField, true)
   assert.equal(decisions.packageSequence.nextAfterReviewedMerge, "R1-S1")
   assert.equal(decisions.packageSequence.grafanaWorkAuthorized, false)
   assert.equal(decisions.packageSequence.laterPackagesBundled, false)
+})
+
+test("R1-C0 production source contains no retired native authority", () => {
+  const forbidden = [
+    "litellm.routes_keys.edit",
+    "grafana.dashboards_alerting.edit",
+    "grafana.view",
+    "inferenceCoreExpertAccessMatrix",
+    "expertCapabilities",
+    "nativeExpertAccess",
+    "keycloakHref",
+    "Direct LiteLLM access",
+    "Direct Keycloak access",
+    "Direct Grafana access",
+    "managed in LiteLLM",
+  ]
+  for (const relativePath of admittedBehaviorSourcePaths) {
+    const absolutePath = resolve(repositoryRoot, relativePath)
+    if (!existsSync(absolutePath)) {
+      continue
+    }
+    const source = readFileSync(absolutePath, "utf8")
+    for (const retiredValue of forbidden) {
+      assert.equal(
+        source.includes(retiredValue),
+        false,
+        `${relativePath} retains ${retiredValue}`,
+      )
+    }
+  }
 })
 
 test("R1-C0 registers do not claim acceptance or revision binding", () => {
@@ -101,20 +180,20 @@ test("R1-C0 registers do not claim acceptance or revision binding", () => {
   )
   assert.match(
     decisionRegister,
-    /PR-11A R1-C0[^\n]+Proposed governance checkpoint only; unaccepted and not revision-bound/,
+    /PR-11A R1-C0[^\n]+Source candidate implemented; independent review and merge pending; unaccepted and not revision-bound/,
   )
   assert.match(
     validationRegister,
-    /PR-11A R1-C0[^\n]+Not accepted; governance checkpoint only/,
+    /PR-11A R1-C0[^\n]+Source validation passed; independent review and merge pending; unaccepted and not revision-bound/,
   )
   assert.doesNotMatch(decisionRegister, /PR-11A R1-C0[^\n]+Accepted/)
   assert.doesNotMatch(validationRegister, /PR-11A R1-C0[^\n]+Passed/)
 })
 
-test("R1-C0 governance checkpoint contains no behavior change", () => {
+test("R1-C0 source inventory is exact and changes no route or runtime", () => {
   const decision = readDecision()
   assert.deepEqual(decision.preBehaviorInventory, {
-    admittedBehaviorSourcePaths: [],
+    admittedBehaviorSourcePaths,
     routesAdded: [],
     routesChanged: [],
     routesRemoved: [],
@@ -122,7 +201,7 @@ test("R1-C0 governance checkpoint contains no behavior change", () => {
     realSecretBindings: [],
     productMainMutation: false,
   })
-  assert.deepEqual(changedPathsFromBase(), governanceCheckpointPaths)
+  assert.deepEqual(changedPathsFromBase(), sourceCandidatePaths)
   assert.equal(
     git(
       "ls-tree",

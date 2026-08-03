@@ -81,6 +81,57 @@ export const pr11aR1C0GovernanceCheckpointPaths = [
   "scripts/inference-core/guardrails.mjs",
   "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
 ]
+export const pr11aR1C0AdmittedBehaviorSourcePaths = [
+  "apps/bff/src/auth/authorization.ts",
+  "apps/bff/src/commands/audit-ingestion.ts",
+  "apps/bff/src/services/admin-team.ts",
+  "apps/bff/src/services/audit-ingestion.ts",
+  "apps/bff/src/services/emergency-recovery.ts",
+  "apps/bff/src/services/expert-capabilities.ts",
+  "apps/bff/src/services/native-audit-source.ts",
+  "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+  "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+  "apps/web/src/components/console-v2/team-v2-experience.tsx",
+  "packages/contracts/src/inference-core-authorization.ts",
+  "packages/contracts/src/inference-core-recovery.ts",
+  "packages/contracts/src/inference-core.ts",
+]
+export const pr11aR1C0SourceCandidatePaths = [
+  "apps/bff/src/auth/authorization-security.test.ts",
+  "apps/bff/src/auth/authorization.ts",
+  "apps/bff/src/commands/audit-ingestion.ts",
+  "apps/bff/src/routes/admin-hardware.test.ts",
+  "apps/bff/src/routes/admin-inference.test.ts",
+  "apps/bff/src/routes/admin-isolation.test.ts",
+  "apps/bff/src/routes/admin-recovery.test.ts",
+  "apps/bff/src/services/admin-team.ts",
+  "apps/bff/src/services/audit-ingestion.test.ts",
+  "apps/bff/src/services/audit-ingestion.ts",
+  "apps/bff/src/services/emergency-recovery.test.ts",
+  "apps/bff/src/services/emergency-recovery.ts",
+  "apps/bff/src/services/expert-capabilities.test.ts",
+  "apps/bff/src/services/expert-capabilities.ts",
+  "apps/bff/src/services/native-audit-source.test.ts",
+  "apps/bff/src/services/native-audit-source.ts",
+  "apps/web/src/components/console-v2/hardware-v2-experience.test.tsx",
+  "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+  "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+  "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+  "apps/web/src/components/console-v2/team-v2-experience.tsx",
+  "docs/reduction/inference-core/README.md",
+  "docs/reduction/inference-core/decision-register.md",
+  pr11aR1C0DecisionPath,
+  "docs/reduction/inference-core/validation-register.md",
+  "packages/contracts/src/inference-core-authorization.test.ts",
+  "packages/contracts/src/inference-core-authorization.ts",
+  "packages/contracts/src/inference-core-recovery.test.ts",
+  "packages/contracts/src/inference-core-recovery.ts",
+  "packages/contracts/src/inference-core.test.ts",
+  "packages/contracts/src/inference-core.ts",
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/pr02-boundaries.test.mjs",
+  "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+]
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -4863,19 +4914,57 @@ export function compareExactRouteBaseline(expected, actual) {
     : ["route baseline changed"]
 }
 
-function isPr11aR1C0GovernanceCheckpoint(root) {
+function readPr11aR1C0ReviewStatus(root) {
   const path = resolve(root, pr11aR1C0DecisionPath)
   if (!isRegularFile(path)) {
-    return false
+    return null
   }
   try {
-    return readJson(path).reviewStatus === "proposed-governance-first"
+    const status = readJson(path).reviewStatus
+    return [
+      "proposed-governance-first",
+      "source-candidate-awaiting-independent-review",
+    ].includes(status)
+      ? status
+      : null
   } catch {
-    return false
+    return null
   }
 }
 
-function listPr11aR1C0GovernanceChanges(root) {
+const pr11aR1C0HistoricalPr09SourcePaths = new Set([
+  "apps/bff/src/services/expert-capabilities.ts",
+])
+const pr11aR1C0HistoricalPriorEvidencePaths = new Set([
+  "scripts/inference-core/pr02-boundaries.test.mjs",
+])
+
+export function readPr09SourceBoundaryText(
+  path,
+  root = repositoryRoot,
+) {
+  if (
+    readPr11aR1C0ReviewStatus(root) ===
+      "source-candidate-awaiting-independent-review" &&
+    pr11aR1C0HistoricalPr09SourcePaths.has(path)
+  ) {
+    return readRepositoryPathAtCommit(root, pr11aR1C0ContractBase, path).toString(
+      "utf8",
+    )
+  }
+  const absolutePath = resolve(root, path)
+  return isRegularFile(absolutePath) ? readFileSync(absolutePath, "utf8") : null
+}
+
+function readPr11aR1C0HistoricalPriorEvidence(root, path) {
+  return readPr11aR1C0ReviewStatus(root) ===
+    "source-candidate-awaiting-independent-review" &&
+    pr11aR1C0HistoricalPriorEvidencePaths.has(path)
+    ? readRepositoryPathAtCommit(root, pr11aR1C0ContractBase, path)
+    : null
+}
+
+function listPr11aR1C0SourcePackageChanges(root) {
   const output = execFileSync(
     "git",
     [
@@ -4908,9 +4997,13 @@ function listPr11aR1C0GovernanceChanges(root) {
         )
 }
 
-function comparePr11aR1C0CheckpointRepositoryClosure(expected, actual) {
+function comparePr11aR1C0RepositoryClosure(
+  expected,
+  actual,
+  allowedPaths,
+) {
   const errors = []
-  const allowed = new Set(pr11aR1C0GovernanceCheckpointPaths)
+  const allowed = new Set(allowedPaths)
   const expectedByPath = new Map(expected.map((entry) => [entry.path, entry]))
   const actualByPath = new Map(actual.map((entry) => [entry.path, entry]))
   const allPaths = [
@@ -4921,21 +5014,21 @@ function comparePr11aR1C0CheckpointRepositoryClosure(expected, actual) {
     const before = expectedByPath.get(path)
     const after = actualByPath.get(path)
     if (allowed.has(path)) {
-      if (!after || before?.objectId === after.objectId) {
-        errors.push(`PR-11A R1-C0 governance closure did not change ${path}`)
+      if (JSON.stringify(before) === JSON.stringify(after)) {
+        errors.push(`PR-11A R1-C0 source closure did not change ${path}`)
       }
       continue
     }
     if (JSON.stringify(before) !== JSON.stringify(after)) {
-      errors.push(`PR-11A R1-C0 governance closure escaped ${path}`)
+      errors.push(`PR-11A R1-C0 source closure escaped ${path}`)
     }
   }
   return errors
 }
 
-function comparePr11aR1C0CheckpointProtectedFiles(expected, actual) {
+function comparePr11aR1C0ProtectedFiles(expected, actual, allowedPaths) {
   const errors = []
-  const allowed = new Set(pr11aR1C0GovernanceCheckpointPaths)
+  const allowed = new Set(allowedPaths)
   const expectedByPath = new Map(expected.map((entry) => [entry.path, entry]))
   const actualByPath = new Map(actual.map((entry) => [entry.path, entry]))
   const allPaths = [
@@ -4946,69 +5039,111 @@ function comparePr11aR1C0CheckpointProtectedFiles(expected, actual) {
     const before = expectedByPath.get(path)
     const after = actualByPath.get(path)
     if (allowed.has(path)) {
-      if (!before || !after || before.sha256 === after.sha256) {
+      if (JSON.stringify(before) === JSON.stringify(after)) {
         errors.push(
-          `PR-11A R1-C0 governance protected fingerprint did not change ${path}`,
+          `PR-11A R1-C0 protected fingerprint did not change ${path}`,
         )
       }
       continue
     }
     if (JSON.stringify(before) !== JSON.stringify(after)) {
-      errors.push(`PR-11A R1-C0 governance protected file escaped ${path}`)
+      errors.push(`PR-11A R1-C0 protected file escaped ${path}`)
     }
   }
   return errors
 }
 
-export function verifyPr11aR1C0GovernanceCheckpoint({
+export function verifyPr11aR1C0SourcePackage({
   root,
+  reviewStatus,
   expectedAllowlist,
   actualAllowlist,
   expectedRoutes,
   actualRoutes,
 }) {
   const errors = []
-  const changes = listPr11aR1C0GovernanceChanges(root)
-  const addedPaths = new Set([
-    pr11aR1C0DecisionPath,
-    "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
-  ])
-  const expectedChanges = pr11aR1C0GovernanceCheckpointPaths.map((path) => ({
+  const governanceCheckpoint = reviewStatus === "proposed-governance-first"
+  const allowedPaths = governanceCheckpoint
+    ? pr11aR1C0GovernanceCheckpointPaths
+    : pr11aR1C0SourceCandidatePaths
+  const changes = listPr11aR1C0SourcePackageChanges(root)
+  const addedPaths = new Set(
+    governanceCheckpoint
+      ? [
+          pr11aR1C0DecisionPath,
+          "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+        ]
+      : [
+          pr11aR1C0DecisionPath,
+          "apps/bff/src/services/native-audit-source.test.ts",
+          "apps/bff/src/services/native-audit-source.ts",
+          "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+        ],
+  )
+  const deletedPaths = new Set(
+    governanceCheckpoint
+      ? []
+      : [
+          "apps/bff/src/services/expert-capabilities.test.ts",
+          "apps/bff/src/services/expert-capabilities.ts",
+        ],
+  )
+  const expectedChanges = allowedPaths.map((path) => ({
     path,
-    status: addedPaths.has(path) ? "A" : "M",
+    status: addedPaths.has(path) ? "A" : deletedPaths.has(path) ? "D" : "M",
   })).sort((left, right) =>
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   )
   if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
-    errors.push("PR-11A R1-C0 governance checkpoint path set changed")
+    errors.push("PR-11A R1-C0 source package path set changed")
   }
 
   let decision
   try {
     decision = readJson(resolve(root, pr11aR1C0DecisionPath))
   } catch {
-    errors.push("invalid PR-11A R1-C0 governance decision document")
+    errors.push("invalid PR-11A R1-C0 source decision document")
+  }
+  const expectedInventory = {
+    admittedBehaviorSourcePaths: governanceCheckpoint
+      ? []
+      : pr11aR1C0AdmittedBehaviorSourcePaths,
+    routesAdded: [],
+    routesChanged: [],
+    routesRemoved: [],
+    runtimeBindings: [],
+    realSecretBindings: [],
+    productMainMutation: false,
   }
   if (
     !decision ||
     decision.contractBaseCommit !== pr11aR1C0ContractBase ||
     decision.contractBaseTree !== pr11aR1C0ContractBaseTree ||
     decision.exactBranch !== "codex/inference-core-pr-11a-r1-c0" ||
-    decision.reviewStatus !== "proposed-governance-first" ||
+    decision.reviewStatus !== reviewStatus ||
     decision.accepted !== false ||
     decision.revisionBound !== false ||
     JSON.stringify(decision.preBehaviorInventory) !==
+      JSON.stringify(expectedInventory)
+  ) {
+    errors.push("invalid PR-11A R1-C0 source package identity")
+  }
+  if (
+    !governanceCheckpoint &&
+    JSON.stringify(decision?.bindingDecisions?.removedAuthority) !==
       JSON.stringify({
-        admittedBehaviorSourcePaths: [],
-        routesAdded: [],
-        routesChanged: [],
-        routesRemoved: [],
-        runtimeBindings: [],
-        realSecretBindings: [],
-        productMainMutation: false,
+        capabilities: [
+          "litellm.routes_keys.edit",
+          "grafana.dashboards_alerting.edit",
+          "grafana.view",
+        ],
+        nativeTargetMatrix: true,
+        keycloakNativeHrefFields: true,
+        recoveryNativeAccessField: true,
+        privateServiceCapabilityRegistry: true,
       })
   ) {
-    errors.push("invalid PR-11A R1-C0 governance checkpoint identity")
+    errors.push("invalid PR-11A R1-C0 removed-authority decision")
   }
 
   if (
@@ -5017,32 +5152,51 @@ export function verifyPr11aR1C0GovernanceCheckpoint({
     JSON.stringify(actualAllowlist.entries) !==
       JSON.stringify(expectedAllowlist.entries)
   ) {
-    errors.push("PR-11A R1-C0 governance forbidden-surface state changed")
+    errors.push("PR-11A R1-C0 forbidden-surface state changed")
   }
   errors.push(
-    ...comparePr11aR1C0CheckpointProtectedFiles(
+    ...comparePr11aR1C0ProtectedFiles(
       expectedAllowlist.protectedFiles,
       actualAllowlist.protectedFiles,
+      allowedPaths,
     ),
   )
 
   for (const key of Object.keys(expectedRoutes).sort()) {
-    if (["policyDigest", "repositoryClosure"].includes(key)) {
+    if (
+      [
+        "fingerprints",
+        "policyDigest",
+        "repositoryClosure",
+        "sourceClosure",
+      ].includes(key)
+    ) {
       continue
     }
     if (
       JSON.stringify(expectedRoutes[key]) !== JSON.stringify(actualRoutes[key])
     ) {
-      errors.push(`PR-11A R1-C0 governance route state changed ${key}`)
+      errors.push(`PR-11A R1-C0 route state changed ${key}`)
     }
   }
   if (!/^[0-9a-f]{64}$/.test(actualRoutes.policyDigest)) {
-    errors.push("PR-11A R1-C0 governance route policy digest is invalid")
+    errors.push("PR-11A R1-C0 route policy digest is invalid")
   }
   errors.push(
-    ...comparePr11aR1C0CheckpointRepositoryClosure(
+    ...comparePr11aR1C0RepositoryClosure(
+      expectedRoutes.fingerprints,
+      actualRoutes.fingerprints,
+      allowedPaths,
+    ),
+    ...comparePr11aR1C0RepositoryClosure(
+      expectedRoutes.sourceClosure,
+      actualRoutes.sourceClosure,
+      allowedPaths,
+    ),
+    ...comparePr11aR1C0RepositoryClosure(
       expectedRoutes.repositoryClosure,
       actualRoutes.repositoryClosure,
+      allowedPaths,
     ),
   )
   return [...new Set(errors)].sort()
@@ -5132,13 +5286,14 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     baseCommit: expectedRoutes.baseCommit,
   })
   const activeReviewedRevision = expectedRoutes.reviewedRevisions?.at(-1)?.id
-  const pr11aR1C0GovernanceCheckpoint =
-    isPr11aR1C0GovernanceCheckpoint(root)
+  const pr11aR1C0ReviewStatus = readPr11aR1C0ReviewStatus(root)
+  const pr11aR1C0SourcePackage = pr11aR1C0ReviewStatus !== null
 
   const errors = [
-    ...(pr11aR1C0GovernanceCheckpoint
-      ? verifyPr11aR1C0GovernanceCheckpoint({
+    ...(pr11aR1C0SourcePackage
+      ? verifyPr11aR1C0SourcePackage({
           root,
+          reviewStatus: pr11aR1C0ReviewStatus,
           expectedAllowlist,
           actualAllowlist,
           expectedRoutes,
@@ -5159,7 +5314,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(pr11aR1C0GovernanceCheckpoint
+    ...(pr11aR1C0SourcePackage
       ? []
       : activeReviewedRevision === "PR-11"
       ? verifyPr11TargetState({
@@ -5239,7 +5394,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   if (baseRef?.startsWith("-")) {
     baseStatus = "unavailable"
     errors.push(`base ref is unavailable ${baseRef}`)
-  } else if (pr11aR1C0GovernanceCheckpoint) {
+  } else if (pr11aR1C0SourcePackage) {
     const checkpointBaseCommit = resolveCommit(root, pr11aR1C0ContractBase)
     baseStatus = "checked"
     if (
@@ -7659,11 +7814,13 @@ export function verifyPr10BaseEvidence(root = repositoryRoot) {
       errors.push(`PR-10 retained prior evidence is missing ${path}`)
       continue
     }
-    const retainedBytes = pr11SuccessorHistoricalEvidencePaths.includes(path)
-      ? readRetainedEvidenceBytes(root, path, absolutePath)
-      : pr10cSuccessorAwareHistoricalTestPaths.includes(path)
-        ? readRepositoryPathAtCommit(root, pr10cContractBase, path)
-        : readFileSync(absolutePath)
+    const retainedBytes =
+      readPr11aR1C0HistoricalPriorEvidence(root, path) ??
+      (pr11SuccessorHistoricalEvidencePaths.includes(path)
+        ? readRetainedEvidenceBytes(root, path, absolutePath)
+        : pr10cSuccessorAwareHistoricalTestPaths.includes(path)
+          ? readRepositoryPathAtCommit(root, pr10cContractBase, path)
+          : readFileSync(absolutePath))
     if (!retainedBytes.equals(expected)) {
       errors.push(`PR-10 retained prior evidence changed ${path}`)
     }
@@ -9982,12 +10139,20 @@ export function readPr11DecisionDocument(root = repositoryRoot) {
 }
 
 export function buildPr11SourceEvidence(root = repositoryRoot) {
+  const sourceEvidenceCommit =
+    readPr11aR1C0ReviewStatus(root) ===
+    "source-candidate-awaiting-independent-review"
+      ? pr11aR1C0ContractBase
+      : null
   return pr11SourceEvidencePaths.map((path) => {
     const absolutePath = resolve(root, path)
-    if (!isRegularFile(absolutePath)) {
+    if (!sourceEvidenceCommit && !isRegularFile(absolutePath)) {
       throw new Error(`Missing PR-11 source evidence file ${path}`)
     }
-    return { path, sha256: sha256(readFileSync(absolutePath)) }
+    const bytes = sourceEvidenceCommit
+      ? readRepositoryPathAtCommit(root, sourceEvidenceCommit, path)
+      : readFileSync(absolutePath)
+    return { path, sha256: sha256(bytes) }
   })
 }
 
@@ -10267,7 +10432,10 @@ export function verifyPr11BaseEvidence(root = repositoryRoot) {
     if (pr11SuccessorHistoricalEvidencePaths.includes(path)) {
       continue
     }
-    if (!readFileSync(absolutePath).equals(expected)) {
+    const retainedBytes =
+      readPr11aR1C0HistoricalPriorEvidence(root, path) ??
+      readFileSync(absolutePath)
+    if (!retainedBytes.equals(expected)) {
       errors.push(`PR-11 retained prior evidence changed ${path}`)
     }
   }
@@ -14780,12 +14948,12 @@ export function verifyPr09TargetState({
 export function verifyPr09SourceBoundary(root = repositoryRoot) {
   const errors = []
   const read = (path) => {
-    const absolutePath = resolve(root, path)
-    if (!isRegularFile(absolutePath)) {
+    const source = readPr09SourceBoundaryText(path, root)
+    if (source === null) {
       errors.push(`PR-09 source boundary path is missing ${path}`)
       return ""
     }
-    return readFileSync(absolutePath, "utf8")
+    return source
   }
   const section = (source, start, end, label) => {
     const startIndex = source.indexOf(start)
