@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { resolveLiveHumanAuthority } from "../services/inference-core-keycloak-admin"
 import {
+  createRuntimeAuthorizationOptions,
   createTestFixtureAuthorizationOptions,
   resolveRuntimeLiveHumanAuthority,
 } from "./runtime-live-authority"
@@ -78,5 +79,16 @@ describe("runtime live human authority", () => {
     expect(() => createTestFixtureAuthorizationOptions(null)).toThrow(
       "Test fixture authority is available only in tests.",
     )
+  })
+
+  it("binds runtime authorization to the durable Console session authority", async () => {
+    const resolution = { reason: "revoked", state: "terminal" as const }
+    const resolve = vi.fn(async () => resolution)
+    const options = createRuntimeAuthorizationOptions(null, { resolve })
+
+    await expect(
+      options.resolveConsoleSession?.("a".repeat(43), {} as never),
+    ).resolves.toEqual(resolution)
+    expect(resolve).toHaveBeenCalledWith("a".repeat(43))
   })
 })

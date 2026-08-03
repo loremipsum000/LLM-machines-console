@@ -2,6 +2,8 @@ import {
   type EmergencyRecoveryResolution,
   type InferenceCoreCapability,
   type InferenceCoreHumanRole,
+  consoleHighRiskActions,
+  emergencyRecoveryApprovedMfaMethods,
   emergencyRecoveryResolutionSchema,
   inferenceCoreHumanRoleSchema,
   roleHasInferenceCoreCapability,
@@ -13,6 +15,8 @@ import type {
   preHandlerHookHandler,
 } from "fastify"
 import { emitAudit } from "../services/audit"
+import type { ConsoleSessionResolution } from "../services/console-session-service"
+import { validOpaqueConsoleHandle } from "./console-session-cookie"
 import { verifyKeycloakJwt } from "./keycloak-jwt"
 
 export {
@@ -21,7 +25,7 @@ export {
 } from "./keycloak-jwt"
 export type { VerifiedKeycloakJwt } from "./keycloak-jwt"
 
-export type AuthMode = "keycloak" | "service-forwarded"
+export type AuthMode = "console-session" | "keycloak" | "service-forwarded"
 
 export interface Actor {
   subject: string
@@ -33,6 +37,7 @@ export interface Actor {
   authTime?: number
   acr?: string
   amr?: string[]
+  mfaVerifiedAt?: Date | null
 }
 
 export type HumanRouteAuthorizationPolicy =
@@ -56,9 +61,15 @@ export type EmergencyRecoverySessionResolver = (
   request: FastifyRequest,
 ) => Promise<EmergencyRecoveryResolution>
 
+export type ConsoleSessionResolver = (
+  sessionHandle: string,
+  request: FastifyRequest,
+) => Promise<ConsoleSessionResolution>
+
 export interface AuthorizationOptions {
   resolveCurrentIdentity: LiveHumanAuthorityResolver
   resolveRecoverySession: EmergencyRecoverySessionResolver
+  resolveConsoleSession?: ConsoleSessionResolver
 }
 
 declare module "fastify" {
@@ -75,25 +86,36 @@ interface AuthConfig {
   keycloakIssuerUrl?: string
   keycloakAudience?: string
   allowHeaderOnlyServiceAuth: boolean
-  requireForwardedKeycloakToken: boolean
   serviceApiKey?: string
-  serviceKeyAccessTokenHeader: string
-  serviceKeyUserHeader: string
-  serviceKeyEmailHeader: string
-  serviceKeyRolesHeader: string
-  serviceKeyGroupsHeader: string
 }
 
 type AuthFailureReason =
   | "missing_token"
   | "invalid_token"
-  | "invalid_forwarded_token"
-  | "invalid_forwarded_identity"
-  | "unresolved_placeholder"
+  | "invalid_console_session"
+  | "legacy_forwarding_rejected"
+  | "terminal_console_session"
+  | "identity_restart"
+  | "identity_timeout"
+  | "identity_unavailable"
+  | "storage_unavailable"
 
 type AuthResult =
   | { ok: true; actor: Actor }
-  | { ok: false; reason: AuthFailureReason }
+  | { ok: false; reason: AuthFailureReason; status: 401 | 503 }
+
+const consoleSessionHeader = "x-llm-machines-console-session"
+const legacyForwardingHeaders = [
+  "x-llm-machines-keycloak-token",
+  "x-llm-machines-user-sub",
+  "x-llm-machines-user-email",
+  "x-llm-machines-user-roles",
+  "x-llm-machines-user-groups",
+] as const
+const highRiskCapabilities = new Set<string>(consoleHighRiskActions)
+const approvedMfaMethods = new Set<string>(emergencyRecoveryApprovedMfaMethods)
+const mfaFreshnessMs = 5 * 60 * 1000
+const mfaFutureClockSkewMs = 60 * 1000
 
 export function registerAuthorization(
   server: FastifyInstance,
@@ -125,18 +147,36 @@ function authorizationHook(
       return
     }
 
-    const authResult = await authenticateRequest(request)
+    const authResult = await authenticateRequest(
+      request,
+      options.resolveConsoleSession,
+    )
     if (!authResult.ok) {
       await auditDenial(request)
-      const detail =
-        authResult.reason === "unresolved_placeholder"
-          ? "Authentication headers contain unresolved placeholders."
-          : "A valid Keycloak bearer token or trusted service identity is required."
+      if (authResult.status === 503) {
+        return reply.code(503).send({
+          type: "about:blank",
+          title:
+            authResult.reason === "storage_unavailable"
+              ? "Console session unavailable"
+              : "Identity service unavailable",
+          status: 503,
+          detail:
+            authResult.reason === "storage_unavailable"
+              ? "Console session storage could not be reached. Retry the request."
+              : "The identity service could not validate the Console session. Retry the request.",
+          code: authResult.reason,
+        })
+      }
       return reply.code(401).send({
         type: "about:blank",
         title: "Unauthenticated",
         status: 401,
-        detail,
+        detail:
+          authResult.reason === "terminal_console_session"
+            ? "The Console session is invalid, expired, or revoked."
+            : "A valid Keycloak bearer token or opaque Console session is required.",
+        code: authResult.reason,
       })
     }
 
@@ -172,6 +212,19 @@ function authorizationHook(
     if (!actorSatisfiesPolicy(policyActor, policy)) {
       await auditDenial(request, liveActor.subject)
       return forbidden(reply, policyDenialDetail(policy))
+    }
+
+    if (policy.kind === "capability" && requiresFreshMfa(policyActor, policy)) {
+      await auditDenial(request, liveActor.subject)
+      return reply.code(403).send({
+        type: "about:blank",
+        title: "MFA elevation required",
+        status: 403,
+        detail:
+          "Fresh multi-factor authentication is required for this action.",
+        code: "mfa_elevation_required",
+        action: policy.capability,
+      })
     }
 
     request.actor = policyActor
@@ -275,6 +328,28 @@ function actorSatisfiesPolicy(
     : roleHasInferenceCoreCapability(policyRole, policy.capability)
 }
 
+function requiresFreshMfa(
+  actor: Actor,
+  policy: HumanRouteAuthorizationPolicy,
+): boolean {
+  if (
+    actor.authMode === "service-forwarded" ||
+    policy.kind !== "capability" ||
+    !highRiskCapabilities.has(policy.capability)
+  ) {
+    return false
+  }
+  const verifiedAt = actor.mfaVerifiedAt?.getTime()
+  if (verifiedAt === undefined || !Number.isFinite(verifiedAt)) {
+    return true
+  }
+  const currentTime = Date.now()
+  return (
+    verifiedAt < currentTime - mfaFreshnessMs ||
+    verifiedAt > currentTime + mfaFutureClockSkewMs
+  )
+}
+
 function policyDenialDetail(policy: HumanRouteAuthorizationPolicy): string {
   return policy.kind === "admin-only"
     ? "Route requires Admin access."
@@ -324,59 +399,82 @@ function forbidden(reply: FastifyReply, detail: string) {
 
 async function authenticateRequest(
   request: FastifyRequest,
+  resolveConsoleSession: ConsoleSessionResolver | undefined,
 ): Promise<AuthResult> {
   const authorization = request.headers.authorization
   const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]
   if (!token) {
-    return { ok: false, reason: "missing_token" }
+    return { ok: false, reason: "missing_token", status: 401 }
   }
 
   const config = getAuthConfig()
   if (config.serviceApiKey && token === config.serviceApiKey) {
-    const forwardedToken = getHeaderValue(
-      request,
-      config.serviceKeyAccessTokenHeader,
-    )
-    if (forwardedToken) {
-      if (containsUnresolvedPlaceholder(forwardedToken)) {
-        return { ok: false, reason: "unresolved_placeholder" }
+    if (
+      !config.allowHeaderOnlyServiceAuth &&
+      hasLegacyForwardingHeader(request)
+    ) {
+      return {
+        ok: false,
+        reason: "legacy_forwarding_rejected",
+        status: 401,
       }
-      if (!hasVerifiableKeycloakConfig(config)) {
-        return { ok: false, reason: "invalid_forwarded_token" }
-      }
-      const actor = await actorFromKeycloakJwt(
-        forwardedToken.replace(/^Bearer\s+/i, ""),
-        config,
-      )
-      if (actor) {
-        return { ok: true, actor }
-      }
-      return { ok: false, reason: "invalid_forwarded_token" }
     }
 
-    if (config.requireForwardedKeycloakToken) {
-      return { ok: false, reason: "invalid_forwarded_token" }
+    const sessionHandle = singleHeaderValue(request, consoleSessionHeader)
+    if (sessionHandle !== undefined) {
+      if (!validOpaqueConsoleHandle(sessionHandle) || !resolveConsoleSession) {
+        return { ok: false, reason: "invalid_console_session", status: 401 }
+      }
+      let resolution: ConsoleSessionResolution
+      try {
+        resolution = await resolveConsoleSession(sessionHandle, request)
+      } catch {
+        return { ok: false, reason: "storage_unavailable", status: 503 }
+      }
+      if (resolution.state === "unavailable") {
+        return {
+          ok: false,
+          reason: unavailableSessionReason(resolution.reason),
+          status: 503,
+        }
+      }
+      if (resolution.state === "terminal") {
+        return {
+          ok: false,
+          reason: "terminal_console_session",
+          status: 401,
+        }
+      }
+      return {
+        ok: true,
+        actor: {
+          authMode: "console-session",
+          email: resolution.session.email,
+          groups: resolution.session.groups,
+          mfaVerifiedAt: resolution.session.mfaVerifiedAt,
+          role: resolution.session.role,
+          subject: resolution.session.subject,
+        },
+      }
     }
+
     if (!config.allowHeaderOnlyServiceAuth) {
-      return { ok: false, reason: "invalid_forwarded_identity" }
+      return { ok: false, reason: "invalid_console_session", status: 401 }
     }
-
-    const actor = actorFromForwardedHeaders(
-      request,
-      config,
-      "service-forwarded",
-    )
+    const actor = actorFromForwardedHeaders(request)
     return actor
       ? { ok: true, actor }
-      : { ok: false, reason: "invalid_forwarded_identity" }
+      : { ok: false, reason: "invalid_console_session", status: 401 }
   }
 
   if (!hasVerifiableKeycloakConfig(config)) {
-    return { ok: false, reason: "invalid_token" }
+    return { ok: false, reason: "invalid_token", status: 401 }
   }
 
   const actor = await actorFromKeycloakJwt(token, config)
-  return actor ? { ok: true, actor } : { ok: false, reason: "invalid_token" }
+  return actor
+    ? { ok: true, actor }
+    : { ok: false, reason: "invalid_token", status: 401 }
 }
 
 function getAuthConfig(): AuthConfig {
@@ -385,32 +483,8 @@ function getAuthConfig(): AuthConfig {
     allowHeaderOnlyServiceAuth: testRuntime,
     keycloakIssuerUrl: trimTrailingSlash(process.env.KEYCLOAK_ISSUER_URL),
     keycloakAudience: process.env.KEYCLOAK_AUDIENCE,
-    requireForwardedKeycloakToken:
-      !testRuntime || envFlag("BFF_REQUIRE_FORWARDED_KEYCLOAK_TOKEN", false),
     serviceApiKey: process.env.BFF_SERVICE_API_KEY,
-    serviceKeyAccessTokenHeader:
-      process.env.BFF_FORWARDED_ACCESS_TOKEN_HEADER ??
-      "x-llm-machines-keycloak-token",
-    serviceKeyUserHeader:
-      process.env.BFF_FORWARDED_USER_HEADER ?? "x-llm-machines-user-sub",
-    serviceKeyEmailHeader:
-      process.env.BFF_FORWARDED_EMAIL_HEADER ?? "x-llm-machines-user-email",
-    serviceKeyRolesHeader:
-      process.env.BFF_FORWARDED_ROLES_HEADER ?? "x-llm-machines-user-roles",
-    serviceKeyGroupsHeader:
-      process.env.BFF_FORWARDED_GROUPS_HEADER ?? "x-llm-machines-user-groups",
   }
-}
-
-function envFlag(name: string, fallback: boolean): boolean {
-  const value = process.env[name]?.trim().toLowerCase()
-  if (value === "true" || value === "1" || value === "yes") {
-    return true
-  }
-  if (value === "false" || value === "0" || value === "no") {
-    return false
-  }
-  return fallback
 }
 
 function hasVerifiableKeycloakConfig(config: AuthConfig): boolean {
@@ -420,18 +494,14 @@ function hasVerifiableKeycloakConfig(config: AuthConfig): boolean {
   )
 }
 
-function actorFromForwardedHeaders(
-  request: FastifyRequest,
-  config: AuthConfig,
-  authMode: AuthMode,
-): Actor | null {
-  const subject = getHeaderValue(request, config.serviceKeyUserHeader)
+function actorFromForwardedHeaders(request: FastifyRequest): Actor | null {
+  const subject = getHeaderValue(request, "x-llm-machines-user-sub")
   if (!subject) {
     return null
   }
 
   const roles = parseRoleHeader(
-    getHeaderValue(request, config.serviceKeyRolesHeader),
+    getHeaderValue(request, "x-llm-machines-user-roles"),
   )
   const role = humanRoleFromRoles(roles)
   if (!role) {
@@ -440,17 +510,13 @@ function actorFromForwardedHeaders(
 
   return {
     subject,
-    email: getHeaderValue(request, config.serviceKeyEmailHeader),
+    email: getHeaderValue(request, "x-llm-machines-user-email"),
     role,
     groups: parseGroupHeader(
-      getHeaderValue(request, config.serviceKeyGroupsHeader),
+      getHeaderValue(request, "x-llm-machines-user-groups"),
     ),
-    authMode,
+    authMode: "service-forwarded",
   }
-}
-
-function containsUnresolvedPlaceholder(value: string): boolean {
-  return /\{\{[^}]+\}\}|\$\{[^}]+\}/.test(value)
 }
 
 async function actorFromKeycloakJwt(
@@ -466,6 +532,7 @@ async function actorFromKeycloakJwt(
   if (!role) {
     return null
   }
+  const mfaVerifiedAt = verifiedMfaTime(payload.authTime, payload.amr)
 
   return {
     subject: payload.subject,
@@ -476,7 +543,23 @@ async function actorFromKeycloakJwt(
     authTime: payload.authTime,
     acr: payload.acr,
     amr: payload.amr,
+    mfaVerifiedAt,
   }
+}
+
+function verifiedMfaTime(
+  authTime: number | undefined,
+  methods: string[] | undefined,
+): Date | null {
+  if (
+    authTime === undefined ||
+    !Number.isSafeInteger(authTime) ||
+    !methods?.some((method) => approvedMfaMethods.has(method.toLowerCase()))
+  ) {
+    return null
+  }
+  const verifiedAt = new Date(authTime * 1000)
+  return Number.isNaN(verifiedAt.getTime()) ? null : verifiedAt
 }
 
 function humanRoleFromRoles(roles: string[]): InferenceCoreHumanRole | null {
@@ -530,6 +613,29 @@ function getHeaderValue(
 ): string | undefined {
   const value = request.headers[headerName.toLowerCase()]
   return typeof value === "string" ? value : value?.[0]
+}
+
+function singleHeaderValue(
+  request: FastifyRequest,
+  headerName: string,
+): string | undefined {
+  const value = request.headers[headerName]
+  return typeof value === "string" ? value : undefined
+}
+
+function hasLegacyForwardingHeader(request: FastifyRequest): boolean {
+  return legacyForwardingHeaders.some(
+    (header) => request.headers[header] !== undefined,
+  )
+}
+
+function unavailableSessionReason(reason: string): AuthFailureReason {
+  return reason === "identity_restart" ||
+    reason === "identity_timeout" ||
+    reason === "identity_unavailable" ||
+    reason === "storage_unavailable"
+    ? reason
+    : "storage_unavailable"
 }
 
 function trimTrailingSlash(value?: string): string | undefined {

@@ -41,7 +41,8 @@ describe("authorization security hardening", () => {
     expect(response.statusCode).toBe(401)
     expect(response.json()).toMatchObject({
       detail:
-        "A valid Keycloak bearer token or trusted service identity is required.",
+        "A valid Keycloak bearer token or opaque Console session is required.",
+      code: "legacy_forwarding_rejected",
     })
     await server.close()
   })
@@ -175,11 +176,8 @@ describe("authorization security hardening", () => {
     await server.close()
   })
 
-  it("rejects unresolved forwarded-token placeholders instead of falling back", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("BFF_ALLOW_HEADER_ONLY_SERVICE_AUTH", "false")
-    vi.stubEnv("BFF_REQUIRE_FORWARDED_KEYCLOAK_TOKEN", "true")
-    vi.stubEnv("KEYCLOAK_ISSUER_URL", "https://keycloak.example.test/realm")
+  it("rejects legacy forwarded identity headers in production", async () => {
+    useProductionServiceAuth()
     const server = authorizationServer()
 
     const response = await server.inject({
@@ -193,40 +191,115 @@ describe("authorization security hardening", () => {
 
     expect(response.statusCode).toBe(401)
     expect(response.json()).toMatchObject({
-      detail: "Authentication headers contain unresolved placeholders.",
+      code: "legacy_forwarding_rejected",
     })
     await server.close()
   })
 
-  it("uses the verified forwarded token instead of forged identity headers", async () => {
-    const issuer = "https://keycloak.example.test/realms/llm-machines"
-    const { token, jwk } = signedKeycloakJwt({
-      email: "operator@example.test",
-      groups: ["/Everyone", "/Operators"],
-      issuer,
-      roles: ["operator"],
-      subject: "keycloak-operator",
-    })
-    stubJwks(issuer, [jwk])
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("BFF_ALLOW_HEADER_ONLY_SERVICE_AUTH", "false")
-    vi.stubEnv("BFF_REQUIRE_FORWARDED_KEYCLOAK_TOKEN", "true")
-    vi.stubEnv("KEYCLOAK_ISSUER_URL", issuer)
-    const server = authorizationServer()
+  it("requires the exact opaque Console session for production service requests", async () => {
+    useProductionServiceAuth()
+    const sessionHandle = "a".repeat(43)
+    const resolveConsoleSession = vi.fn(async () =>
+      activeConsoleSession(new Date()),
+    )
+    const server = authorizationServer({ resolveConsoleSession })
 
     const response = await server.inject({
       headers: {
-        ...assertedAdminHeaders,
-        "x-llm-machines-keycloak-token": token,
+        authorization: "Bearer test-service-key",
+        "x-llm-machines-console-session": sessionHandle,
       },
       method: "GET",
-      url: "/api/admin/admin-only",
+      url: "/api/admin/read",
     })
 
-    expect(response.statusCode).toBe(403)
+    expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
-      detail: "Route requires Admin access.",
+      authMode: "console-session",
+      role: "admin",
+      subject: "console-admin",
     })
+    expect(response.json()).not.toHaveProperty("accessToken")
+    expect(resolveConsoleSession).toHaveBeenCalledWith(
+      sessionHandle,
+      expect.anything(),
+    )
+    await server.close()
+  })
+
+  it("maps terminal Console sessions to 401 and authority outages to 503", async () => {
+    useProductionServiceAuth()
+    const cases = [
+      {
+        expectedCode: "terminal_console_session",
+        expectedStatus: 401,
+        resolution: { reason: "revoked", state: "terminal" as const },
+      },
+      {
+        expectedCode: "identity_timeout",
+        expectedStatus: 503,
+        resolution: {
+          reason: "identity_timeout",
+          retryable: true as const,
+          state: "unavailable" as const,
+        },
+      },
+      {
+        expectedCode: "storage_unavailable",
+        expectedStatus: 503,
+        resolution: {
+          reason: "storage_unavailable",
+          retryable: true as const,
+          state: "unavailable" as const,
+        },
+      },
+    ]
+
+    for (const testCase of cases) {
+      const server = authorizationServer({
+        resolveConsoleSession: async () => testCase.resolution,
+      })
+      const response = await server.inject({
+        headers: {
+          authorization: "Bearer test-service-key",
+          "x-llm-machines-console-session": "a".repeat(43),
+        },
+        method: "GET",
+        url: "/api/admin/read",
+      })
+      expect(response.statusCode).toBe(testCase.expectedStatus)
+      expect(response.json()).toMatchObject({ code: testCase.expectedCode })
+      await server.close()
+    }
+  })
+
+  it("requires fresh trusted MFA for high-risk Console capabilities", async () => {
+    useProductionServiceAuth()
+    const resolveConsoleSession = vi
+      .fn()
+      .mockResolvedValueOnce(
+        activeConsoleSession(new Date(Date.now() - 5 * 60 * 1000 - 1)),
+      )
+      .mockResolvedValueOnce(activeConsoleSession(new Date()))
+    const server = authorizationServer({ resolveConsoleSession })
+    const request = {
+      headers: {
+        authorization: "Bearer test-service-key",
+        "x-llm-machines-console-session": "a".repeat(43),
+      },
+      method: "GET" as const,
+      url: "/api/admin/credentials",
+    }
+
+    const stale = await server.inject(request)
+    const fresh = await server.inject(request)
+
+    expect(stale.statusCode).toBe(403)
+    expect(stale.json()).toMatchObject({
+      action: "applications.credentials.test_rotate_revoke",
+      code: "mfa_elevation_required",
+    })
+    expect(fresh.statusCode).toBe(200)
     await server.close()
   })
 
@@ -668,6 +741,27 @@ function useHeaderOnlyServiceAuth(): void {
   vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
   vi.stubEnv("BFF_ALLOW_HEADER_ONLY_SERVICE_AUTH", "true")
   vi.stubEnv("BFF_REQUIRE_FORWARDED_KEYCLOAK_TOKEN", "false")
+}
+
+function useProductionServiceAuth(): void {
+  vi.stubEnv("NODE_ENV", "production")
+  vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+}
+
+function activeConsoleSession(mfaVerifiedAt: Date) {
+  return {
+    refreshCount: 0 as const,
+    session: {
+      accessToken: "must-not-cross-the-authorization-boundary",
+      accessTokenExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      email: "admin@example.test",
+      groups: ["Admins"],
+      mfaVerifiedAt,
+      role: "admin" as const,
+      subject: "console-admin",
+    },
+    state: "active" as const,
+  }
 }
 
 function stubJwks(issuer: string, keys: Record<string, unknown>[]) {

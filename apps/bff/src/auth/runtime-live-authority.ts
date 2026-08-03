@@ -1,4 +1,5 @@
 import type { EmergencyRecoveryResolution } from "@llm-machines/contracts/inference-core"
+import type { ConsoleSessionService } from "../services/console-session-service"
 import type { EmergencyRecoveryService } from "../services/emergency-recovery"
 import { resolveLiveHumanAuthority } from "../services/inference-core-keycloak-admin"
 import type {
@@ -9,6 +10,7 @@ import type {
 } from "./authorization"
 
 type RecoveryAuthority = Pick<EmergencyRecoveryService, "resolve">
+type ConsoleSessionAuthority = Pick<ConsoleSessionService, "resolve">
 
 export const resolveRuntimeLiveHumanAuthority: LiveHumanAuthorityResolver =
   async (actor) => {
@@ -26,15 +28,19 @@ export const resolveRuntimeLiveHumanAuthority: LiveHumanAuthorityResolver =
 
 export function createRuntimeAuthorizationOptions(
   recoveryAuthority: RecoveryAuthority | null,
+  consoleSessionAuthority: ConsoleSessionAuthority,
 ): AuthorizationOptions {
   return {
     resolveCurrentIdentity: resolveRuntimeLiveHumanAuthority,
     resolveRecoverySession: recoveryResolver(recoveryAuthority, "unavailable"),
+    resolveConsoleSession: (sessionHandle) =>
+      consoleSessionAuthority.resolve(sessionHandle),
   }
 }
 
 export function createTestFixtureAuthorizationOptions(
   recoveryAuthority: RecoveryAuthority | null,
+  consoleSessionAuthority?: ConsoleSessionAuthority,
 ): AuthorizationOptions {
   if (process.env.NODE_ENV !== "test") {
     throw new Error("Test fixture authority is available only in tests.")
@@ -46,6 +52,12 @@ export function createTestFixtureAuthorizationOptions(
       subject: actor.subject,
     }),
     resolveRecoverySession: recoveryResolver(recoveryAuthority, "inactive"),
+    ...(consoleSessionAuthority
+      ? {
+          resolveConsoleSession: (sessionHandle: string) =>
+            consoleSessionAuthority.resolve(sessionHandle),
+        }
+      : {}),
   }
 }
 
