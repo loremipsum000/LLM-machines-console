@@ -19,7 +19,7 @@ per-package JSON file and contract revision.
 | PR-11 | Retained Console information architecture | `pr-11-console-information-architecture-decisions.json` | Accepted and bound by the PR-11 contract revision |
 | PR-11A R1-C0 | Product authority and governance correction | `pr-11a-identity-ingress-hardening-decisions.json` | Merged through PR 13 at integration commit `0f29c7939fa885c11c191e8b672f09e16635ddcb`; PR-11A remains incomplete, unaccepted, and not revision-bound |
 | PR-11A R1-S1 | Opaque Console session hardening | `pr-11a-r1-s1-console-session-decisions.json` | Independently reviewed source package merged through PR 14 at integration commit `39057332207cca6193495453b7336eda07608255`; PR-11A remains incomplete, unaccepted, and not revision-bound |
-| PR-11A R1-E1 | Mandatory core Product edge | `pr-11a-r1-e1-product-edge-decisions.json` | Source candidate awaiting independent review; unaccepted, not revision-bound, and not runtime-qualified |
+| PR-11A R1-E1 | Mandatory core Product edge | `pr-11a-r1-e1-product-edge-decisions.json` | Independently reviewed source candidate at `c60280c11318aa21d230e7002cb7d703625a7168`; unaccepted, not revision-bound, and not runtime-qualified |
 
 ## PR-08 fixed decisions
 

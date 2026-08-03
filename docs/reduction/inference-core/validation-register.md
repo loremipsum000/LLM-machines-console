@@ -15,7 +15,7 @@ artifacts.
 | PR-11 | Retained Console information architecture | Passed on the reviewed PR-11 source candidate; deployment and runtime qualification remain PR-12 |
 | PR-11A R1-C0 | Product authority and governance correction | Source validation passed and merged through PR 13; aggregate R1-V1 review remains pending; PR-11A is unaccepted and not revision-bound |
 | PR-11A R1-S1 | Opaque Console session hardening | Full source and fresh-clone validation plus independent review passed at reviewed head `28655df1a919757329a1493bea5811f064d143d0`; merged through PR 14 at integration commit `39057332207cca6193495453b7336eda07608255`; aggregate R1-V1 and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
-| PR-11A R1-E1 | Mandatory core Product edge | Local full source validation passed; independent review, fresh-clone validation, aggregate R1-V1, and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
+| PR-11A R1-E1 | Mandatory core Product edge | Local and clean detached fresh-clone full source validation plus independent review passed at `c60280c11318aa21d230e7002cb7d703625a7168`; aggregate R1-V1 and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
 
 ## PR-08 required evidence
 

@@ -5506,7 +5506,10 @@ export function verifyPr11aR1E1SourcePackage({
     decision.integrationBaseCommit !== pr11aR1E1IntegrationBase ||
     decision.integrationBaseTree !== pr11aR1E1IntegrationBaseTree ||
     decision.exactBranch !== "codex/inference-core-pr-11a-r1-e1" ||
-    decision.reviewStatus !== "source-candidate-awaiting-independent-review" ||
+    ![
+      "source-candidate-awaiting-independent-review",
+      "source-candidate-independently-reviewed",
+    ].includes(decision.reviewStatus) ||
     decision.accepted !== false ||
     decision.revisionBound !== false ||
     decision.runtimeQualified !== false ||
@@ -5523,7 +5526,9 @@ export function verifyPr11aR1E1SourcePackage({
     decision?.sourceHeadCommit !== undefined &&
     (!/^[0-9a-f]{40}$/.test(decision.sourceHeadCommit) ||
       resolveCommit(root, decision.sourceHeadCommit) !==
-        decision.sourceHeadCommit)
+        decision.sourceHeadCommit ||
+      !/^[0-9a-f]{40}$/.test(decision.sourceHeadTree) ||
+      resolveTree(root, decision.sourceHeadCommit) !== decision.sourceHeadTree)
   ) {
     errors.push("invalid R1-E1 reviewed source commit")
   }

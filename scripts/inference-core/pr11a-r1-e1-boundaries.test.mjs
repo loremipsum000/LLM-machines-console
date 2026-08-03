@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url"
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const integrationBase = "39057332207cca6193495453b7336eda07608255"
 const integrationBaseTree = "4deb5b337120202b52173b05910f1cbf028b50c3"
+const sourceHead = "c60280c11318aa21d230e7002cb7d703625a7168"
+const sourceHeadTree = "898d5ef6605dc9e14ff401208f09acabc062fe1b"
 const decisionPath =
   "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json"
 
@@ -39,6 +41,10 @@ test("R1-E1 starts from the protected R1-S1 integration merge", () => {
   assert.doesNotThrow(() =>
     git("merge-base", "--is-ancestor", integrationBase, "HEAD"),
   )
+  assert.equal(git("rev-parse", `${sourceHead}^{tree}`), sourceHeadTree)
+  assert.doesNotThrow(() =>
+    git("merge-base", "--is-ancestor", sourceHead, "HEAD"),
+  )
 })
 
 test("R1-E1 remains an unaccepted source-only candidate", () => {
@@ -50,9 +56,22 @@ test("R1-E1 remains an unaccepted source-only candidate", () => {
   assert.equal(decision.integrationBaseTree, integrationBaseTree)
   assert.equal(
     decision.reviewStatus,
-    "source-candidate-awaiting-independent-review",
+    "source-candidate-independently-reviewed",
   )
-  assert.equal(decision.localValidation, "passed-local-full-source-gates")
+  assert.equal(
+    decision.localValidation,
+    "passed-local-and-fresh-clone-full-source-gates",
+  )
+  assert.equal(decision.sourceHeadCommit, sourceHead)
+  assert.equal(decision.sourceHeadTree, sourceHeadTree)
+  assert.deepEqual(decision.independentReview, {
+    cleanup: "verified",
+    freshClone: "passed-clean-detached-checkout",
+    result: "passed-no-findings",
+    reviewedCommit: sourceHead,
+    reviewedTree: sourceHeadTree,
+    runtimeActivated: false,
+  })
   assert.equal(decision.accepted, false)
   assert.equal(decision.revisionBound, false)
   assert.equal(decision.runtimeQualified, false)
@@ -122,10 +141,10 @@ test("current registers report R1-S1 merged and R1-E1 unaccepted", () => {
   )
   assert.match(
     decisionRegister,
-    /R1-E1[^\n]+source candidate[^\n]+awaiting independent review[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
+    /R1-E1[^\n]+independently reviewed source candidate[^\n]+c60280c11318aa21d230e7002cb7d703625a7168[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
   )
   assert.match(
     validationRegister,
-    /R1-E1[^\n]+local full source validation passed[^\n]+independent review[^\n]+fresh-clone validation[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
+    /R1-E1[^\n]+fresh-clone full source validation[^\n]+independent review passed[^\n]+c60280c11318aa21d230e7002cb7d703625a7168[^\n]+R1-V1[^\n]+Q0[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
   )
 })
