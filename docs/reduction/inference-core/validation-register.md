@@ -16,7 +16,7 @@ artifacts.
 | PR-11A R1-C0 | Product authority and governance correction | Source validation passed and merged through PR 13; aggregate R1-V1 review remains pending; PR-11A is unaccepted and not revision-bound |
 | PR-11A R1-S1 | Opaque Console session hardening | Full source and fresh-clone validation plus independent review passed at reviewed head `28655df1a919757329a1493bea5811f064d143d0`; merged through PR 14 at integration commit `39057332207cca6193495453b7336eda07608255`; aggregate R1-V1 and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
 | PR-11A R1-E1 | Mandatory core Product edge | Local and clean detached fresh-clone full source validation plus independent review passed at `c60280c11318aa21d230e7002cb7d703625a7168`; merged through PR 15 at integration commit `1743cb746f87c7497a34f4de7e3bfc0db3ff0be2`; aggregate R1-V1 and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
-| PR-11A R1-K1 | Signing custody and public trust | Branch admitted at the exact R1-E1 integration tip; source, full validation, fresh-clone proof, and independent review remain pending; PR-11A is unaccepted and not revision-bound |
+| PR-11A R1-K1 | Signing custody and public trust | Local and clean detached fresh-clone full source validation plus independent review passed at `cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc`; aggregate R1-V1 and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
 
 ## PR-08 required evidence
 
