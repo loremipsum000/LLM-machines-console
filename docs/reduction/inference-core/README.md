@@ -581,6 +581,24 @@ Q0 qualifies the packaged appliance. R1-E1 does not activate the edge, expose
 Grafana, change live infrastructure, bind a credential, generate
 `PR-11A.json`, or begin R1-K1, R1-D1, R1-V1, or PR-12.
 
+PR-11A R1-K1 is admitted as the separate signing-custody and public-trust
+source package. It preserves the offline hardware-backed vendor release root,
+separate release-artifact, update-bundle, and offline-entitlement purposes,
+and the customer-owned per-appliance Ed25519 audit-export purpose. Vendor
+private signing material is forbidden on the appliance, in Git, in CI
+environment variables, and in cloud signing dependencies. The vendor
+algorithm, hardware device, custodians, issuer and `kid` namespaces, and real
+validity and revocation distribution remain PR-12 and Q0 inputs.
+
+The audit-export private key remains a root-only mounted secret, encrypted at
+rest and TPM-sealed where available, with a customer-held recovery envelope.
+R1-K1 may add strict public trust parsing, purpose and lifecycle verification,
+and synthetic tests, but it may not create or bind real keys, mounts, TPM
+state, recovery material, deployment, or runtime configuration. Missing or
+invalid audit signing material remains an export-only `503`; inference, audit
+ingestion, and audit view continue. R1-K1 remains unaccepted and does not
+generate `PR-11A.json`.
+
 PR-11 permits one environment-template transition: `.env.example` deletes the
 exact retired `INFERENCE_MODEL_UPDATE_*` block from the accepted base. It may
 not add a line, change a retained value, remove unrelated content, or admit any
