@@ -71,6 +71,16 @@ export const pr11ContractRevisionPath =
   "docs/reduction/inference-core/contract-revisions/PR-11.json"
 export const pr11DecisionPath =
   "docs/reduction/inference-core/pr-11-console-information-architecture-decisions.json"
+export const pr11aR1C0DecisionPath =
+  "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json"
+export const pr11aR1C0GovernanceCheckpointPaths = [
+  "docs/reduction/inference-core/README.md",
+  "docs/reduction/inference-core/decision-register.md",
+  pr11aR1C0DecisionPath,
+  "docs/reduction/inference-core/validation-register.md",
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+]
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -98,6 +108,10 @@ export const pr10cContractBaseTree = "991109ad85e0c454af62ed42c4a5a69068b301e0"
 export const pr11ContractBase = "6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7"
 export const pr11LaneAnchor = pr11ContractBase
 export const pr11ContractBaseTree = "44d6fb34db5f3d35e8b2f9bd2259756aec63b8a8"
+export const pr11aR1C0ContractBase =
+  "9d8f1a6144cb280104cdce0a21ab7dafa72087ec"
+export const pr11aR1C0ContractBaseTree =
+  "a7cb76ff95ec4ffc12cbd589b0514564602c35da"
 export const pr10cSuccessorEvidenceCommit =
   "9c5dedc2242b7a6b061a043334b1f06fa621c939"
 export const pr10cSuccessorEvidenceTree = pr11ContractBaseTree
@@ -4849,6 +4863,191 @@ export function compareExactRouteBaseline(expected, actual) {
     : ["route baseline changed"]
 }
 
+function isPr11aR1C0GovernanceCheckpoint(root) {
+  const path = resolve(root, pr11aR1C0DecisionPath)
+  if (!isRegularFile(path)) {
+    return false
+  }
+  try {
+    return readJson(path).reviewStatus === "proposed-governance-first"
+  } catch {
+    return false
+  }
+}
+
+function listPr11aR1C0GovernanceChanges(root) {
+  const output = execFileSync(
+    "git",
+    [
+      "diff",
+      "--name-status",
+      "--no-ext-diff",
+      "--no-renames",
+      "--end-of-options",
+      pr11aR1C0ContractBase,
+      "--",
+    ],
+    { cwd: root, encoding: "utf8" },
+  ).trim()
+  return output === ""
+    ? []
+    : output
+        .split("\n")
+        .map((line) => {
+          const separator = line.indexOf("\t")
+          if (separator < 1) {
+            return { path: "", status: "INVALID" }
+          }
+          return {
+            path: line.slice(separator + 1),
+            status: line.slice(0, separator),
+          }
+        })
+        .sort((left, right) =>
+          left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+        )
+}
+
+function comparePr11aR1C0CheckpointRepositoryClosure(expected, actual) {
+  const errors = []
+  const allowed = new Set(pr11aR1C0GovernanceCheckpointPaths)
+  const expectedByPath = new Map(expected.map((entry) => [entry.path, entry]))
+  const actualByPath = new Map(actual.map((entry) => [entry.path, entry]))
+  const allPaths = [
+    ...new Set([...expectedByPath.keys(), ...actualByPath.keys()]),
+  ]
+
+  for (const path of allPaths.sort()) {
+    const before = expectedByPath.get(path)
+    const after = actualByPath.get(path)
+    if (allowed.has(path)) {
+      if (!after || before?.objectId === after.objectId) {
+        errors.push(`PR-11A R1-C0 governance closure did not change ${path}`)
+      }
+      continue
+    }
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      errors.push(`PR-11A R1-C0 governance closure escaped ${path}`)
+    }
+  }
+  return errors
+}
+
+function comparePr11aR1C0CheckpointProtectedFiles(expected, actual) {
+  const errors = []
+  const allowed = new Set(pr11aR1C0GovernanceCheckpointPaths)
+  const expectedByPath = new Map(expected.map((entry) => [entry.path, entry]))
+  const actualByPath = new Map(actual.map((entry) => [entry.path, entry]))
+  const allPaths = [
+    ...new Set([...expectedByPath.keys(), ...actualByPath.keys()]),
+  ]
+
+  for (const path of allPaths.sort()) {
+    const before = expectedByPath.get(path)
+    const after = actualByPath.get(path)
+    if (allowed.has(path)) {
+      if (!before || !after || before.sha256 === after.sha256) {
+        errors.push(
+          `PR-11A R1-C0 governance protected fingerprint did not change ${path}`,
+        )
+      }
+      continue
+    }
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      errors.push(`PR-11A R1-C0 governance protected file escaped ${path}`)
+    }
+  }
+  return errors
+}
+
+export function verifyPr11aR1C0GovernanceCheckpoint({
+  root,
+  expectedAllowlist,
+  actualAllowlist,
+  expectedRoutes,
+  actualRoutes,
+}) {
+  const errors = []
+  const changes = listPr11aR1C0GovernanceChanges(root)
+  const addedPaths = new Set([
+    pr11aR1C0DecisionPath,
+    "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+  ])
+  const expectedChanges = pr11aR1C0GovernanceCheckpointPaths.map((path) => ({
+    path,
+    status: addedPaths.has(path) ? "A" : "M",
+  })).sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  )
+  if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
+    errors.push("PR-11A R1-C0 governance checkpoint path set changed")
+  }
+
+  let decision
+  try {
+    decision = readJson(resolve(root, pr11aR1C0DecisionPath))
+  } catch {
+    errors.push("invalid PR-11A R1-C0 governance decision document")
+  }
+  if (
+    !decision ||
+    decision.contractBaseCommit !== pr11aR1C0ContractBase ||
+    decision.contractBaseTree !== pr11aR1C0ContractBaseTree ||
+    decision.exactBranch !== "codex/inference-core-pr-11a-r1-c0" ||
+    decision.reviewStatus !== "proposed-governance-first" ||
+    decision.accepted !== false ||
+    decision.revisionBound !== false ||
+    JSON.stringify(decision.preBehaviorInventory) !==
+      JSON.stringify({
+        admittedBehaviorSourcePaths: [],
+        routesAdded: [],
+        routesChanged: [],
+        routesRemoved: [],
+        runtimeBindings: [],
+        realSecretBindings: [],
+        productMainMutation: false,
+      })
+  ) {
+    errors.push("invalid PR-11A R1-C0 governance checkpoint identity")
+  }
+
+  if (
+    actualAllowlist.schemaVersion !== expectedAllowlist.schemaVersion ||
+    actualAllowlist.baseCommit !== expectedAllowlist.baseCommit ||
+    JSON.stringify(actualAllowlist.entries) !==
+      JSON.stringify(expectedAllowlist.entries)
+  ) {
+    errors.push("PR-11A R1-C0 governance forbidden-surface state changed")
+  }
+  errors.push(
+    ...comparePr11aR1C0CheckpointProtectedFiles(
+      expectedAllowlist.protectedFiles,
+      actualAllowlist.protectedFiles,
+    ),
+  )
+
+  for (const key of Object.keys(expectedRoutes).sort()) {
+    if (["policyDigest", "repositoryClosure"].includes(key)) {
+      continue
+    }
+    if (
+      JSON.stringify(expectedRoutes[key]) !== JSON.stringify(actualRoutes[key])
+    ) {
+      errors.push(`PR-11A R1-C0 governance route state changed ${key}`)
+    }
+  }
+  if (!/^[0-9a-f]{64}$/.test(actualRoutes.policyDigest)) {
+    errors.push("PR-11A R1-C0 governance route policy digest is invalid")
+  }
+  errors.push(
+    ...comparePr11aR1C0CheckpointRepositoryClosure(
+      expectedRoutes.repositoryClosure,
+      actualRoutes.repositoryClosure,
+    ),
+  )
+  return [...new Set(errors)].sort()
+}
+
 export function verifyShrinkOnly(baseEntries, currentEntries) {
   const errors = []
   const baseByKey = new Map(
@@ -4933,16 +5132,36 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     baseCommit: expectedRoutes.baseCommit,
   })
   const activeReviewedRevision = expectedRoutes.reviewedRevisions?.at(-1)?.id
+  const pr11aR1C0GovernanceCheckpoint =
+    isPr11aR1C0GovernanceCheckpoint(root)
 
   const errors = [
-    ...compareForbiddenBaselineMetadata(expectedAllowlist, actualAllowlist),
-    ...compareExactFindings(expectedAllowlist.entries, actualAllowlist.entries),
-    ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
+    ...(pr11aR1C0GovernanceCheckpoint
+      ? verifyPr11aR1C0GovernanceCheckpoint({
+          root,
+          expectedAllowlist,
+          actualAllowlist,
+          expectedRoutes,
+          actualRoutes,
+        })
+      : [
+          ...compareForbiddenBaselineMetadata(
+            expectedAllowlist,
+            actualAllowlist,
+          ),
+          ...compareExactFindings(
+            expectedAllowlist.entries,
+            actualAllowlist.entries,
+          ),
+          ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
+        ]),
     ...verifyRouteBaselineMetadata(expectedRoutes),
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(activeReviewedRevision === "PR-11"
+    ...(pr11aR1C0GovernanceCheckpoint
+      ? []
+      : activeReviewedRevision === "PR-11"
       ? verifyPr11TargetState({
           root,
           currentAllowlist: expectedAllowlist,
@@ -5017,7 +5236,19 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   ]
 
   let baseStatus = "not-requested"
-  if (baseRef) {
+  if (baseRef?.startsWith("-")) {
+    baseStatus = "unavailable"
+    errors.push(`base ref is unavailable ${baseRef}`)
+  } else if (pr11aR1C0GovernanceCheckpoint) {
+    const checkpointBaseCommit = resolveCommit(root, pr11aR1C0ContractBase)
+    baseStatus = "checked"
+    if (
+      checkpointBaseCommit !== pr11aR1C0ContractBase ||
+      resolveTree(root, checkpointBaseCommit) !== pr11aR1C0ContractBaseTree
+    ) {
+      errors.push("PR-11A R1-C0 governance base identity changed")
+    }
+  } else if (baseRef) {
     const baseCommit = resolveCommit(root, baseRef)
     const baseAllowlist = baseCommit
       ? readJsonFromCommit(root, baseCommit, allowlistPath)

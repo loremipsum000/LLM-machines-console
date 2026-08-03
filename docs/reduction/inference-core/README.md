@@ -526,6 +526,19 @@ paths, the BFF contract-parses the Overview response, and expert-service URL
 payload fields are null-only. Literal URLs, renamed href expressions, broad
 Overview href schemas, and non-null expert URL producers fail validation.
 
+PR-11A R1-C0 corrects the Product authority model before any session, edge,
+signing, storage, or optional Grafana package begins. LiteLLM remains private
+and Console projects only health, served models, usage, route summary, and safe
+credential metadata. Console has no LiteLLM route or virtual-key mutation
+authority. Keycloak remains the private identity provider; approved basic
+identity actions continue through Console, while customer roles receive no
+native Keycloak Admin Console. Grafana remains absent and unqualified.
+
+The R1-C0 decision and validation register entries are deliberately marked
+unaccepted and not revision-bound. The package does not generate a final
+PR-11A contract revision, claim completion, deploy, bind runtime configuration,
+or admit any later R1 package.
+
 PR-11 permits one environment-template transition: `.env.example` deletes the
 exact retired `INFERENCE_MODEL_UPDATE_*` block from the accepted base. It may
 not add a line, change a retained value, remove unrelated content, or admit any
