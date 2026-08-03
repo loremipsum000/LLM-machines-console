@@ -151,6 +151,65 @@ describe("inference-core Admin actions", () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  it("hands a terminal capability check to the expired-session login flow", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue({
+      reason: "revoked",
+      state: "terminal",
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/signin?session=expired&returnTo=%2Fapplications",
+    )
+    expect(mocks.redirect).toHaveBeenCalledTimes(1)
+    expect(mocks.getBffRequest).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("routes an unavailable capability check to recovery without logout", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/unavailable?returnTo=%2Fapplications",
+    )
+    expect(mocks.redirect).toHaveBeenCalledTimes(1)
+    expect(mocks.getBffRequest).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
   it("hands a late terminal mutation session to the expired-session login flow", async () => {
     mocks.getBffRequest.mockResolvedValue({
       reason: "expired",
@@ -418,6 +477,7 @@ describe("inference-core Admin actions", () => {
         formData,
       ),
     ).rejects.toThrow("Authorized Console session required.")
+    expect(mocks.redirect).not.toHaveBeenCalled()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 

@@ -1184,13 +1184,14 @@ async function requireAdmin() {
 
 async function requireCapability(capability: InferenceCoreCapability) {
   const resolution = await getCurrentConsoleSession()
-  if (resolution.state === "unavailable") {
-    throw new Error("Console session is temporarily unavailable.")
+  const returnTo = consoleElevationReturnPath(capability)
+  if (resolution.state === "terminal") {
+    redirectTo(consoleExpiredSessionHref(returnTo))
   }
-  if (
-    resolution.state !== "active" ||
-    !roleHasInferenceCoreCapability(resolution.session.role, capability)
-  ) {
+  if (resolution.state === "unavailable") {
+    redirectTo(consoleUnavailableSessionHref(returnTo))
+  }
+  if (!roleHasInferenceCoreCapability(resolution.session.role, capability)) {
     throw new Error("Authorized Console session required.")
   }
   const highRiskAction = consoleHighRiskActionSchema.safeParse(capability)
@@ -1198,12 +1199,7 @@ async function requireCapability(capability: InferenceCoreCapability) {
     highRiskAction.success &&
     !hasFreshConsoleMfa(resolution.session.mfaVerifiedAt)
   ) {
-    redirectTo(
-      consoleMfaElevationHref(
-        highRiskAction.data,
-        consoleElevationReturnPath(capability),
-      ),
-    )
+    redirectTo(consoleMfaElevationHref(highRiskAction.data, returnTo))
   }
   return resolution.session
 }
@@ -1478,11 +1474,22 @@ function rethrowTerminalConsoleSession(error: unknown): void {
   if (!(error instanceof ConsoleSessionTerminalMutationError)) {
     return
   }
+  redirectTo(consoleExpiredSessionHref(error.returnTo))
+}
+
+function consoleExpiredSessionHref(returnTo: string): string {
   const query = new URLSearchParams({
     session: "expired",
-    returnTo: normalizeConsoleReturnPath(error.returnTo),
+    returnTo: normalizeConsoleReturnPath(returnTo),
   })
-  redirectTo(`/auth/signin?${query.toString()}`)
+  return `/auth/signin?${query.toString()}`
+}
+
+function consoleUnavailableSessionHref(returnTo: string): string {
+  const query = new URLSearchParams({
+    returnTo: normalizeConsoleReturnPath(returnTo),
+  })
+  return `/auth/unavailable?${query.toString()}`
 }
 
 function consoleMutationReturnPath(path: string): string {

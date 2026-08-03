@@ -212,6 +212,18 @@ test("R1-S1 mutation actions cannot swallow terminal Console sessions", () => {
     source,
     /function adminMutationErrorDetail\([^)]*\)[^{]*\{\s+rethrowTerminalConsoleSession\(error\)/,
   )
+  assert.match(
+    source,
+    /if \(resolution\.state === "terminal"\) \{\s+redirectTo\(consoleExpiredSessionHref\(returnTo\)\)/,
+  )
+  assert.match(
+    source,
+    /if \(resolution\.state === "unavailable"\) \{\s+redirectTo\(consoleUnavailableSessionHref\(returnTo\)\)/,
+  )
+  assert.match(
+    source,
+    /if \(!roleHasInferenceCoreCapability\(resolution\.session\.role, capability\)\) \{\s+throw new Error\("Authorized Console session required\."\)/,
+  )
   assert.doesNotMatch(
     source,
     /catch \{\s+redirectTo\(withActionStatus\(fallback, "(?:settingsAction|teamAction|appAction)", "(?:failed|firecrawlFailed)"\)\)/,
