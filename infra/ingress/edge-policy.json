@@ -123,7 +123,10 @@
       "surface": "identity",
       "hostId": "console",
       "methods": ["POST"],
-      "path": { "kind": "exact", "value": "/api/internal/console-session/backchannel-logout" },
+      "path": {
+        "kind": "exact",
+        "value": "/api/internal/console-session/backchannel-logout"
+      },
       "queryPolicy": "forbid",
       "headerProfile": "identity-backchannel",
       "upstreamId": "console-bff",
@@ -145,7 +148,10 @@
       "surface": "console",
       "hostId": "console",
       "methods": ["GET", "HEAD"],
-      "path": { "kind": "exact", "value": "/api/admin/audit/export/verification-keys" },
+      "path": {
+        "kind": "exact",
+        "value": "/api/admin/audit/export/verification-keys"
+      },
       "queryPolicy": "forbid",
       "headerProfile": "console-browser",
       "upstreamId": "console-web",
@@ -167,7 +173,10 @@
       "surface": "console",
       "hostId": "console",
       "methods": ["GET", "HEAD"],
-      "path": { "kind": "regex", "value": "^/(?:activity|hardware|inference|applications|team)$" },
+      "path": {
+        "kind": "regex",
+        "value": "^/(?:activity|hardware|inference|applications|team)$"
+      },
       "queryPolicy": "console-navigation",
       "headerProfile": "console-browser",
       "upstreamId": "console-web",
@@ -178,7 +187,10 @@
       "surface": "console",
       "hostId": "console",
       "methods": ["GET", "HEAD", "POST"],
-      "path": { "kind": "regex", "value": "^/(?:applications/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$" },
+      "path": {
+        "kind": "regex",
+        "value": "^/(?:applications/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$"
+      },
       "queryPolicy": "console-navigation",
       "headerProfile": "console-browser",
       "upstreamId": "console-web",
@@ -200,7 +212,10 @@
       "surface": "console",
       "hostId": "console",
       "methods": ["GET", "HEAD"],
-      "path": { "kind": "regex", "value": "^/auth/(?:signin|elevate|unavailable)$" },
+      "path": {
+        "kind": "regex",
+        "value": "^/auth/(?:signin|elevate|unavailable)$"
+      },
       "queryPolicy": "console-navigation",
       "headerProfile": "console-browser",
       "upstreamId": "console-web",
@@ -222,7 +237,10 @@
       "surface": "console",
       "hostId": "console",
       "methods": ["GET", "HEAD"],
-      "path": { "kind": "regex", "value": "^/(?:console-v2/|fonts/|apple-touch-icon\\.png$|favicon(?:-16x16|-32x32|-48x48)?\\.png$|favicon\\.ico$|icon\\.svg$)" },
+      "path": {
+        "kind": "regex",
+        "value": "^/(?:console-v2/|fonts/|apple-touch-icon\\.png$|favicon(?:-16x16|-32x32|-48x48)?\\.png$|favicon\\.ico$|icon\\.svg$)"
+      },
       "queryPolicy": "forbid",
       "headerProfile": "console-browser",
       "upstreamId": "console-web",
@@ -233,7 +251,10 @@
       "surface": "identity",
       "hostId": "identity",
       "methods": ["GET", "HEAD"],
-      "path": { "kind": "exact", "value": "/realms/llm-machines/protocol/openid-connect/auth" },
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/auth"
+      },
       "queryPolicy": "oidc-browser",
       "headerProfile": "identity-browser",
       "upstreamId": "keycloak-identity",
@@ -244,7 +265,10 @@
       "surface": "identity",
       "hostId": "identity",
       "methods": ["GET", "HEAD", "POST"],
-      "path": { "kind": "exact", "value": "/realms/llm-machines/protocol/openid-connect/logout" },
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/logout"
+      },
       "queryPolicy": "oidc-browser",
       "headerProfile": "identity-browser",
       "upstreamId": "keycloak-identity",
@@ -255,7 +279,10 @@
       "surface": "identity",
       "hostId": "identity",
       "methods": ["POST"],
-      "path": { "kind": "exact", "value": "/realms/llm-machines/protocol/openid-connect/token" },
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/token"
+      },
       "queryPolicy": "forbid",
       "headerProfile": "identity-server-form",
       "upstreamId": "keycloak-identity",
@@ -266,7 +293,10 @@
       "surface": "identity",
       "hostId": "identity",
       "methods": ["POST"],
-      "path": { "kind": "exact", "value": "/realms/llm-machines/protocol/openid-connect/revoke" },
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/revoke"
+      },
       "queryPolicy": "forbid",
       "headerProfile": "identity-server-form",
       "upstreamId": "keycloak-identity",
@@ -277,7 +307,10 @@
       "surface": "identity",
       "hostId": "identity",
       "methods": ["GET", "HEAD"],
-      "path": { "kind": "exact", "value": "/realms/llm-machines/protocol/openid-connect/certs" },
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/certs"
+      },
       "queryPolicy": "forbid",
       "headerProfile": "identity-server-jwks",
       "upstreamId": "keycloak-identity",
@@ -288,7 +321,10 @@
       "surface": "identity",
       "hostId": "identity",
       "methods": ["GET", "HEAD", "POST"],
-      "path": { "kind": "prefix", "value": "/realms/llm-machines/login-actions/" },
+      "path": {
+        "kind": "prefix",
+        "value": "/realms/llm-machines/login-actions/"
+      },
       "queryPolicy": "oidc-browser",
       "headerProfile": "identity-browser",
       "upstreamId": "keycloak-identity",
@@ -309,14 +345,47 @@
   "headerPolicy": {
     "requestHeaderForwarding": "drop-all-then-explicit",
     "allowlists": {
-      "customer-api": ["Accept", "Authorization", "Content-Length", "Content-Type"],
-      "console-browser": ["Accept", "Accept-Language", "Content-Length", "Content-Type", "Cookie", "Origin", "Next-Action", "Next-Router-Prefetch", "Next-Router-State-Tree", "Next-Url", "Purpose", "RSC", "X-Nextjs-Data"],
-      "identity-browser": ["Accept", "Accept-Language", "Content-Length", "Content-Type", "Cookie", "Origin"],
+      "customer-api": [
+        "Accept",
+        "Authorization",
+        "Content-Length",
+        "Content-Type"
+      ],
+      "console-browser": [
+        "Accept",
+        "Accept-Language",
+        "Content-Length",
+        "Content-Type",
+        "Cookie",
+        "Origin",
+        "Next-Action",
+        "Next-Router-Prefetch",
+        "Next-Router-State-Tree",
+        "Next-Url",
+        "Purpose",
+        "RSC",
+        "X-Nextjs-Data"
+      ],
+      "identity-browser": [
+        "Accept",
+        "Accept-Language",
+        "Content-Length",
+        "Content-Type",
+        "Cookie",
+        "Origin"
+      ],
       "identity-server-form": ["Accept", "Content-Length", "Content-Type"],
       "identity-server-jwks": ["Accept"],
       "identity-backchannel": ["Accept", "Content-Length", "Content-Type"]
     },
-    "edgeGenerated": ["Host", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Forwarded-Port", "X-Request-ID"],
+    "edgeGenerated": [
+      "Host",
+      "X-Forwarded-For",
+      "X-Forwarded-Host",
+      "X-Forwarded-Proto",
+      "X-Forwarded-Port",
+      "X-Request-ID"
+    ],
     "browserBearerForwarding": false,
     "consoleSessionForwardedToIdentity": false,
     "clientForwardedOrIdentityHeadersTrusted": false,
@@ -335,9 +404,29 @@
     "requestOrResponseBodiesLogged": false,
     "requestTargetOrQueryLogged": false,
     "arbitraryHeadersLogged": false,
-    "metadataOnlyLogFields": ["timestamp", "request_id", "surface", "status", "upstream_status", "upstream_connect_seconds", "upstream_header_seconds", "upstream_response_seconds", "request_bytes", "response_bytes", "duration_seconds"]
+    "metadataOnlyLogFields": [
+      "timestamp",
+      "request_id",
+      "surface",
+      "status",
+      "upstream_status",
+      "upstream_connect_seconds",
+      "upstream_header_seconds",
+      "upstream_response_seconds",
+      "request_bytes",
+      "response_bytes",
+      "duration_seconds"
+    ]
   },
-  "privateNativeSystems": ["alertmanager", "firecrawl-native", "grafana", "keycloak-admin", "litellm", "portainer", "prometheus"],
+  "privateNativeSystems": [
+    "alertmanager",
+    "firecrawl-native",
+    "grafana",
+    "keycloak-admin",
+    "litellm",
+    "portainer",
+    "prometheus"
+  ],
   "runtimeQualification": {
     "directNetworkNoBypass": "NOT_EVALUATED_RUNTIME",
     "dnsAndCertificateBinding": "NOT_EVALUATED_RUNTIME",

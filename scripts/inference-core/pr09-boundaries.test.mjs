@@ -11,11 +11,11 @@ import {
   pr09ContractRevisionPath,
   pr09DecisionPath,
   pr09LaneAnchor,
+  pr09RequiredFrozenRepositoryPaths,
   pr09ReviewedDispositions,
   pr09RevisionEvidencePaths,
-  pr09RequiredFrozenRepositoryPaths,
-  pr09SuccessorAwareHistoricalTestPaths,
   pr09StandaloneDbTestBoundary,
+  pr09SuccessorAwareHistoricalTestPaths,
   pr09TargetContract,
   repositoryRoot,
   reviewedPr09NativeIdentifierEvidence,
@@ -118,10 +118,7 @@ test("PR-09 fixes the source-only governance decisions", () => {
     decision.resolverFingerprints,
     reviewedPr09ResolverFingerprints,
   )
-  assert.deepEqual(
-    decision.sourceFingerprints,
-    reviewedPr09SourceFingerprints,
-  )
+  assert.deepEqual(decision.sourceFingerprints, reviewedPr09SourceFingerprints)
   assert.deepEqual(
     decision.nativeIdentifierEvidence,
     reviewedPr09NativeIdentifierEvidence,
@@ -223,7 +220,9 @@ test("PR-09 operation policy is exact, source-only, and complete", () => {
   assert.deepEqual(decision.operationPolicy.deletedRepositoryPaths, [])
 
   const withSecret = structuredClone(decision.operationPolicy)
-  withSecret.addedRepositoryPaths.push("infra/observability/signing-private.pem")
+  withSecret.addedRepositoryPaths.push(
+    "infra/observability/signing-private.pem",
+  )
   assert.match(
     verifyPr09OperationBoundary(withSecret).join("\n"),
     /secret or key material path is forbidden|outside package boundary/,

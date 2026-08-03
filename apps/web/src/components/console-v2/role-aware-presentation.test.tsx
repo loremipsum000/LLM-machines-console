@@ -112,9 +112,7 @@ describe("role-aware Console presentation", () => {
     expect(screen.queryByText("Prompts")).toBeNull()
     expect(screen.getAllByText("7D total")).toHaveLength(2)
     expect(screen.queryByText(/average/i)).toBeNull()
-    expect(
-      screen.getByText(/managed per Application in Console/),
-    ).toBeTruthy()
+    expect(screen.getByText(/managed per Application in Console/)).toBeTruthy()
     expect(screen.queryByRole("link", { name: /Open LiteLLM/ })).toBeNull()
     expect(screen.queryByText(/model update/i)).toBeNull()
 
@@ -125,9 +123,7 @@ describe("role-aware Console presentation", () => {
       />,
     )
     expect(screen.queryByRole("link", { name: /Open LiteLLM/ })).toBeNull()
-    expect(
-      screen.getByText("LiteLLM remains private"),
-    ).toBeTruthy()
+    expect(screen.getByText("LiteLLM remains private")).toBeTruthy()
     expect(screen.queryByText(/managed in LiteLLM/)).toBeNull()
     expect(screen.getByText(/mutations are not available in v1/)).toBeTruthy()
   })
@@ -155,9 +151,7 @@ describe("role-aware Console presentation", () => {
     expect(
       screen.getByText("Model inventory is unavailable from LiteLLM."),
     ).toBeTruthy()
-    fireEvent.click(
-      screen.getByRole("button", { name: /Credential metadata/ }),
-    )
+    fireEvent.click(screen.getByRole("button", { name: /Credential metadata/ }))
     expect(
       screen.getByText("Credential metadata is unavailable from LiteLLM."),
     ).toBeTruthy()
@@ -234,9 +228,7 @@ describe("role-aware Console presentation", () => {
       />,
     )
     expect(screen.queryByRole("link", { name: /Open in Keycloak/ })).toBeNull()
-    expect(
-      screen.getByText(/Keycloak remains private/),
-    ).toBeTruthy()
+    expect(screen.getByText(/Keycloak remains private/)).toBeTruthy()
   })
 
   it.each([

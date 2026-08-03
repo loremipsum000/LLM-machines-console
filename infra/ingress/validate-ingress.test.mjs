@@ -46,7 +46,10 @@ test("native administration hosts and upstreams are rejected", () => {
     "\nupstream grafana { server grafana:3000; }\n",
   ]) {
     const result = validateIngressSources(
-      changed("product-edge.nginx.conf.template", (source) => source + mutation),
+      changed(
+        "product-edge.nginx.conf.template",
+        (source) => source + mutation,
+      ),
     )
     assert.ok(result.some((error) => /upstream|hostname|listener/i.test(error)))
   }
@@ -94,7 +97,11 @@ test("Host SNI and raw-path controls cannot be removed", () => {
 
 test("buffering caching and content-bearing logs fail", () => {
   for (const [name, before, after] of [
-    ["proxy-common.inc", "proxy_request_buffering off;", "proxy_request_buffering on;"],
+    [
+      "proxy-common.inc",
+      "proxy_request_buffering off;",
+      "proxy_request_buffering on;",
+    ],
     ["proxy-common.inc", "proxy_buffering off;", "proxy_buffering on;"],
     ["proxy-common.inc", "proxy_cache off;", "proxy_cache product_cache;"],
     [
@@ -106,15 +113,18 @@ test("buffering caching and content-bearing logs fail", () => {
     const result = validateIngressSources(
       changed(name, (source) => source.replace(before, after)),
     )
-    assert.ok(result.some((error) => /content|proxy|log|buffer|cache/i.test(error)))
+    assert.ok(
+      result.some((error) => /content|proxy|log|buffer|cache/i.test(error)),
+    )
   }
 })
 
 test("retained cookies and redirects cannot be suppressed", () => {
   for (const header of ["Set-Cookie", "Location"]) {
     const result = validateIngressSources(
-      changed("proxy-common.inc", (source) =>
-        `${source}\nproxy_hide_header ${header};\n`,
+      changed(
+        "proxy-common.inc",
+        (source) => `${source}\nproxy_hide_header ${header};\n`,
       ),
     )
     assert.ok(result.some((error) => /cookie|redirect/i.test(error)))
@@ -130,7 +140,9 @@ test("Console cookies, bearer tokens, and WebSockets stay separated", () => {
       ),
     ),
   )
-  assert.ok(identityCookie.some((error) => /Console session cookies/i.test(error)))
+  assert.ok(
+    identityCookie.some((error) => /Console session cookies/i.test(error)),
+  )
   const browserBearer = validateIngressSources(
     changed("request-headers-identity-browser.inc", (source) =>
       source.replace(
@@ -171,7 +183,10 @@ test("policy cannot add a route or claim runtime proof", () => {
 
 test("credential-like material fails without exposing a value", () => {
   const result = validateIngressSources(
-    changed("README.md", (source) => `${source}\nsecret = "not-a-real-secret-value"\n`),
+    changed(
+      "README.md",
+      (source) => `${source}\nsecret = "not-a-real-secret-value"\n`,
+    ),
   )
   assert.ok(result.some((error) => /credential/i.test(error)))
 })

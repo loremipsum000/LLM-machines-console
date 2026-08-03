@@ -249,8 +249,8 @@ function TeamOverviewView({
             Identity controls
           </h2>
           <p className="text-sm leading-5 text-[#777]">
-            Keycloak remains private. Manage approved users, roles, and
-            password actions here in Console.
+            Keycloak remains private. Manage approved users, roles, and password
+            actions here in Console.
           </p>
         </section>
       </div>

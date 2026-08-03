@@ -6,8 +6,9 @@ describe("Settings logo validation", () => {
     expect(
       validateSettingsLogoAsset(pngLogo("logo.png", 320, 120), "full"),
     ).toMatchObject({ valid: true })
-    expect(validateSettingsLogoAsset(jpegLogo("logo.jpg", 320, 120), "full"))
-      .toMatchObject({ valid: true })
+    expect(
+      validateSettingsLogoAsset(jpegLogo("logo.jpg", 320, 120), "full"),
+    ).toMatchObject({ valid: true })
   })
 
   it("rejects unsupported or mismatched logo assets", () => {
@@ -64,16 +65,10 @@ describe("Settings logo validation", () => {
 
   it("requires the icon logo to be square", () => {
     expect(
-      validateSettingsLogoAsset(
-        pngLogo("icon.png", 120, 120),
-        "icon",
-      ),
+      validateSettingsLogoAsset(pngLogo("icon.png", 120, 120), "icon"),
     ).toMatchObject({ valid: true })
     expect(
-      validateSettingsLogoAsset(
-        pngLogo("wide-icon.png", 200, 100),
-        "icon",
-      ),
+      validateSettingsLogoAsset(pngLogo("wide-icon.png", 200, 100), "icon"),
     ).toMatchObject({ valid: false })
   })
 
@@ -106,11 +101,7 @@ describe("Settings logo validation", () => {
   })
 })
 
-function pngLogo(
-  fileName: string,
-  width = 320,
-  height = 120,
-) {
+function pngLogo(fileName: string, width = 320, height = 120) {
   const bytes = minimalPng(width, height)
   return {
     checksum: `sha256:${fileName}`,
@@ -160,18 +151,28 @@ function minimalPng(width: number, height: number): Buffer {
 
 function minimalJpeg(width: number, height: number): Buffer {
   return Buffer.from([
-    0xff, 0xd8,
-    0xff, 0xc0,
-    0x00, 0x11,
+    0xff,
+    0xd8,
+    0xff,
+    0xc0,
+    0x00,
+    0x11,
     0x08,
     (height >> 8) & 0xff,
     height & 0xff,
     (width >> 8) & 0xff,
     width & 0xff,
     0x03,
-    0x01, 0x11, 0x00,
-    0x02, 0x11, 0x00,
-    0x03, 0x11, 0x00,
-    0xff, 0xd9,
+    0x01,
+    0x11,
+    0x00,
+    0x02,
+    0x11,
+    0x00,
+    0x03,
+    0x11,
+    0x00,
+    0xff,
+    0xd9,
   ])
 }

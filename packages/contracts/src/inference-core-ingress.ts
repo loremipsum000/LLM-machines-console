@@ -29,9 +29,7 @@ export const productEdgePathMatchSchema = z
     value: z.string().min(1).max(512),
   })
   .strict()
-export type ProductEdgePathMatch = z.infer<
-  typeof productEdgePathMatchSchema
->
+export type ProductEdgePathMatch = z.infer<typeof productEdgePathMatchSchema>
 
 export const productEdgeRouteSchema = z
   .object({
@@ -43,11 +41,7 @@ export const productEdgeRouteSchema = z
       .min(1)
       .refine((methods) => new Set(methods).size === methods.length),
     path: productEdgePathMatchSchema,
-    queryPolicy: z.enum([
-      "forbid",
-      "console-navigation",
-      "oidc-browser",
-    ]),
+    queryPolicy: z.enum(["forbid", "console-navigation", "oidc-browser"]),
     surface: productEdgeSurfaceSchema,
     upstreamId: z.enum(["console-web", "console-bff", "keycloak-identity"]),
     upstreamPath: z.string().min(1).max(512),

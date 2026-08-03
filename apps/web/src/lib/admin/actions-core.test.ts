@@ -202,9 +202,7 @@ describe("inference-core Admin actions", () => {
         },
         formData,
       ),
-    ).rejects.toThrow(
-      "redirect:/auth/unavailable?returnTo=%2Fapplications",
-    )
+    ).rejects.toThrow("redirect:/auth/unavailable?returnTo=%2Fapplications")
     expect(mocks.redirect).toHaveBeenCalledTimes(1)
     expect(mocks.getBffRequest).not.toHaveBeenCalled()
     expect(fetchSpy).not.toHaveBeenCalled()
@@ -345,9 +343,7 @@ describe("inference-core Admin actions", () => {
         },
         formData,
       ),
-    ).rejects.toThrow(
-      "redirect:/auth/signin?session=expired&returnTo=%2Fteam",
-    )
+    ).rejects.toThrow("redirect:/auth/signin?session=expired&returnTo=%2Fteam")
     expect(mocks.redirect).toHaveBeenCalledTimes(1)
     expect(fetchSpy).not.toHaveBeenCalled()
   })

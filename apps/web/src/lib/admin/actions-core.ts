@@ -2,12 +2,12 @@
 
 import { Buffer } from "node:buffer"
 import { createHash, randomUUID } from "node:crypto"
-import { getCurrentConsoleSession } from "@/lib/auth/session"
 import {
   consoleMfaElevationHref,
   hasFreshConsoleMfa,
 } from "@/lib/auth/mfa-elevation"
 import { normalizeConsoleReturnPath } from "@/lib/auth/safe-return"
+import { getCurrentConsoleSession } from "@/lib/auth/session"
 import { getBffRequest } from "@/lib/bff/server-request"
 import {
   type AdminConnectedApp,

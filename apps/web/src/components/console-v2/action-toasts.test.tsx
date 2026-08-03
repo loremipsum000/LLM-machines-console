@@ -73,9 +73,7 @@ describe("ConsoleActionToasts", () => {
     )
 
     await waitFor(() => {
-      expect(window.location.search).toBe(
-        "?view=overview&q=status",
-      )
+      expect(window.location.search).toBe("?view=overview&q=status")
     })
   })
 })

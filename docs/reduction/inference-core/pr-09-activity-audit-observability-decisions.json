@@ -40,15 +40,8 @@
       },
       "nativeCursor": {
         "format": "v1-canonical-utc-watermark-uuidv5-tie-breaker",
-        "storage": [
-          "cursor_version",
-          "cursor_watermark",
-          "cursor_tie_breaker"
-        ],
-        "order": [
-          "watermark_asc",
-          "tie_breaker_asc"
-        ],
+        "storage": ["cursor_version", "cursor_watermark", "cursor_tie_breaker"],
+        "order": ["watermark_asc", "tie_breaker_asc"],
         "monotonic": true,
         "establishedCursorMayClear": false,
         "concurrency": "row-lock-compare-and-set",
@@ -57,21 +50,12 @@
       },
       "activityAndExportPageCursor": {
         "encoding": "base64url-json",
-        "fields": [
-          "id",
-          "occurredAt"
-        ],
+        "fields": ["id", "occurredAt"],
         "pagination": "deterministic-live-keyset",
         "crossPageSnapshot": false
       },
-      "timelineOrder": [
-        "occurred_at_desc",
-        "id_desc"
-      ],
-      "exportOrder": [
-        "occurred_at_asc",
-        "id_asc"
-      ],
+      "timelineOrder": ["occurred_at_desc", "id_desc"],
+      "exportOrder": ["occurred_at_asc", "id_asc"],
       "maxNativeEventsPerRun": 1000,
       "nativeIdentifiers": {
         "correlationId": "required-canonical-uuid",
@@ -189,10 +173,7 @@
         "persistence": false,
         "export": false,
         "mode": "derived-read-only",
-        "fields": [
-          "targetType",
-          "targetId"
-        ],
+        "fields": ["targetType", "targetId"],
         "derivedOnlyFrom": [
           "keycloakSubjectId",
           "applicationId",
@@ -215,24 +196,14 @@
         "pageContent"
       ],
       "authorization": {
-        "admin": [
-          "view",
-          "filter",
-          "signed-export"
-        ],
-        "operator": [
-          "view",
-          "filter"
-        ],
+        "admin": ["view", "filter", "signed-export"],
+        "operator": ["view", "filter"],
         "operatorExport": false
       },
       "retentionDays": 365
     },
     "auditExport": {
-      "formats": [
-        "json",
-        "csv"
-      ],
+      "formats": ["json", "csv"],
       "envelope": "compact-jws",
       "algorithm": "Ed25519",
       "deterministicPayloadBytes": true,
@@ -247,19 +218,10 @@
       "privateKeyInGit": false,
       "privateKeyInEnvironment": false,
       "missingOrInvalidMaterial": "signed-export-surface-only-http-503",
-      "unaffectedSurfaces": [
-        "inference",
-        "audit-ingestion",
-        "audit-view"
-      ]
+      "unaffectedSurfaces": ["inference", "audit-ingestion", "audit-view"]
     },
     "expertAccess": {
-      "systems": [
-        "keycloak",
-        "litellm",
-        "grafana",
-        "alertmanager"
-      ],
+      "systems": ["keycloak", "litellm", "grafana", "alertmanager"],
       "auditIngestion": "implemented_pending_runtime_qualification",
       "mechanism": "product_owned_audited_ingress",
       "consoleProjection": "read_only",
@@ -324,18 +286,11 @@
     },
     "alertEgress": {
       "pr09Scope": "redacted-transport-intent-and-warning-acknowledgement-only",
-      "transports": [
-        "disabled",
-        "smtp",
-        "webhook"
-      ],
+      "transports": ["disabled", "smtp", "webhook"],
       "warningVersion": "alert-egress-v1",
       "mutationAuthority": "admin-only-no-breakglass-operator",
       "operatorRead": true,
-      "deliveryStates": [
-        "disabled",
-        "prepared_pending_runtime_qualification"
-      ],
+      "deliveryStates": ["disabled", "prepared_pending_runtime_qualification"],
       "persistedDestination": false,
       "persistedEmailOrUrl": false,
       "persistedSecret": false,

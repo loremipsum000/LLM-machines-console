@@ -76,7 +76,9 @@ describe("upsertActorUser", () => {
       role: "operator",
     }
 
-    await expect(upsertActorUser(currentOperator)).resolves.toBe(currentOperator)
+    await expect(upsertActorUser(currentOperator)).resolves.toBe(
+      currentOperator,
+    )
     expect(db.deleteWhere).toHaveBeenCalledOnce()
     expect(db.roleValues).toHaveBeenCalledWith([
       {

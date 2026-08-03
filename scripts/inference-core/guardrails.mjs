@@ -81,6 +81,8 @@ export const pr11aR1K1DecisionPath =
   "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json"
 export const pr11aR1D1DecisionPath =
   "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json"
+export const pr11aR1H1DecisionPath =
+  "docs/reduction/inference-core/pr-11a-r1-h1-hygiene-decisions.json"
 export const pr11aR1C0GovernanceCheckpointPaths = [
   "docs/reduction/inference-core/README.md",
   "docs/reduction/inference-core/decision-register.md",
@@ -209,6 +211,53 @@ export const pr11aR1D1SourceCandidatePaths = [
   "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
   "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
 ].sort()
+export const pr11aR1H1HygienePaths = [
+  "apps/bff/src/services/admin-prometheus.ts",
+  "apps/bff/src/services/admin-settings-validation.test.ts",
+  "apps/bff/src/services/admin-settings-validation.ts",
+  "apps/bff/src/services/users.test.ts",
+  "apps/web/src/app/api/admin/audit/export/route.ts",
+  "apps/web/src/app/layout.tsx",
+  "apps/web/src/components/console-v2/action-toasts.test.tsx",
+  "apps/web/src/components/console-v2/action-toasts.tsx",
+  "apps/web/src/components/console-v2/hardware-chart-primitives.tsx",
+  "apps/web/src/components/console-v2/inference-chart-primitives.tsx",
+  "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+  "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+  "apps/web/src/components/console-v2/team-v2-experience.tsx",
+  "apps/web/src/components/ui/button.tsx",
+  "apps/web/src/components/ui/card.tsx",
+  "apps/web/src/lib/admin/actions-core.test.ts",
+  "apps/web/src/lib/admin/actions-core.ts",
+  "apps/web/src/lib/auth/session-client.ts",
+  "apps/web/src/lib/utils.ts",
+  "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
+  "infra/ingress/edge-policy.json",
+  "infra/ingress/source-no-bypass.mjs",
+  "infra/ingress/source-no-bypass.test.mjs",
+  "infra/ingress/validate-ingress.mjs",
+  "infra/ingress/validate-ingress.test.mjs",
+  "packages/contracts/src/inference-core-authorization.test.ts",
+  "packages/contracts/src/inference-core-ingress.test.ts",
+  "packages/contracts/src/inference-core-ingress.ts",
+  "scripts/inference-core/guardrails.test.mjs",
+  "scripts/inference-core/pr02-boundaries.test.mjs",
+  "scripts/inference-core/pr09-boundaries.test.mjs",
+  "scripts/inference-core/pr09-contract-revision.mjs",
+].sort()
+export const pr11aR1H1GovernancePaths = [
+  "docs/reduction/inference-core/decision-register.md",
+  pr11aR1H1DecisionPath,
+  "docs/reduction/inference-core/validation-register.md",
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/guardrails.test.mjs",
+  "scripts/inference-core/pr11a-r1-h1-boundaries.test.mjs",
+].sort()
+export const pr11aR1H1SourceCandidatePaths = [
+  ...new Set([...pr11aR1H1HygienePaths, ...pr11aR1H1GovernancePaths]),
+].sort()
+export const pr11aR1H1DecisionSha256 =
+  "66c820f737be03af68d66e87b8daad802d33b125e7f7a3ba0f571865df660c98"
 export const pr11aR1D1ReviewedNegativeFindings = [
   {
     ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
@@ -267,6 +316,10 @@ export const pr11aR1D1IntegrationBase =
   "ffc49eb6e97169ced202efbaa6363c85bfdd40dc"
 export const pr11aR1D1IntegrationBaseTree =
   "e1a2c49683f215ca03561e90d0fd73b2c54da17f"
+export const pr11aR1H1IntegrationBase =
+  "949d1f2fd05a8329e7676ad2423bf55d0eab29ba"
+export const pr11aR1H1IntegrationBaseTree =
+  "93390c0fd7bd31263b437da69888e27c30ca8ab0"
 export const pr11aR1S1Pr09NativeIdentifierSuccessorEvidence = {
   path: "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
   sha256: "34f5d2a631bf0ad19b81e781e10d3738f4702ceed50a5a56cb2d164f6a804fc1",
@@ -5112,6 +5165,22 @@ function hasPr11aR1D1SourceMarker(root) {
   )
 }
 
+function hasPr11aR1H1SourceMarker(root) {
+  return (
+    hasPr11aR1D1SourceMarker(root) &&
+    isRegularFile(resolve(root, pr11aR1H1DecisionPath)) &&
+    isRegularFile(
+      resolve(root, "scripts/inference-core/pr11a-r1-h1-boundaries.test.mjs"),
+    ) &&
+    !isRegularFile(
+      resolve(
+        root,
+        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+      ),
+    )
+  )
+}
+
 const pr11aR1C0HistoricalPr09SourcePaths = new Set([
   "apps/bff/src/services/expert-capabilities.ts",
 ])
@@ -5121,6 +5190,11 @@ const pr11aR1C0HistoricalPriorEvidencePaths = new Set([
 const pr11aR1S1HistoricalPriorEvidencePaths = new Set([
   "scripts/inference-core/pr05-boundaries.test.mjs",
   "scripts/inference-core/pr10c-boundaries.test.mjs",
+])
+const pr11aR1H1HistoricalPriorEvidencePaths = new Set([
+  pr09DecisionPath,
+  "scripts/inference-core/pr09-boundaries.test.mjs",
+  "scripts/inference-core/pr09-contract-revision.mjs",
 ])
 const pr11aR1K1HistoricalPriorEvidencePaths = new Set([
   ".env.example",
@@ -5170,6 +5244,36 @@ function readPr11aR1S1HistoricalPriorEvidence(root, path) {
     pr11aR1S1HistoricalPriorEvidencePaths.has(path)
     ? readRepositoryPathAtCommit(root, pr11aR1S1SourceBase, path)
     : null
+}
+
+function readPr11aR1H1HistoricalPriorEvidence(root, path) {
+  if (
+    !hasPr11aR1H1SourceMarker(root) ||
+    !pr11aR1H1HistoricalPriorEvidencePaths.has(path)
+  ) {
+    return null
+  }
+  try {
+    const decisionPath = resolve(root, pr11aR1H1DecisionPath)
+    const decision = readJson(decisionPath)
+    const sourceBytes = readFileSync(resolve(root, path))
+    const baseBytes = readRepositoryPathAtCommit(
+      root,
+      pr11aR1H1IntegrationBase,
+      path,
+    )
+    if (
+      verifyPr11aR1H1Decision(decision).length > 0 ||
+      sha256(readFileSync(decisionPath)) !== pr11aR1H1DecisionSha256 ||
+      sha256(sourceBytes) !== decision.sourceFingerprints?.[path] ||
+      sha256(baseBytes) !== decision.baseFingerprints?.[path]
+    ) {
+      return null
+    }
+    return baseBytes
+  } catch {
+    return null
+  }
 }
 
 function listSourcePackageChanges(root, baseCommit, targetRef = null) {
@@ -5839,6 +5943,7 @@ export function verifyPr11aR1D1SourcePackage({
   actualAllowlist,
   expectedRoutes,
   actualRoutes,
+  targetRef = null,
 }) {
   const actualReviewedNegativeFindings = actualAllowlist.entries.filter(
     ({ path, ruleId }) =>
@@ -5883,7 +5988,11 @@ export function verifyPr11aR1D1SourcePackage({
     .sort((left, right) =>
       left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
     )
-  const changes = listSourcePackageChanges(root, pr11aR1D1IntegrationBase)
+  const changes = listSourcePackageChanges(
+    root,
+    pr11aR1D1IntegrationBase,
+    targetRef,
+  )
   if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
     errors.push("R1-D1 source package path set changed")
   }
@@ -6018,6 +6127,244 @@ export function verifyPr11aR1D1SourcePackage({
   return [...new Set(errors)].sort()
 }
 
+export function verifyPr11aR1H1Decision(decision) {
+  const errors = []
+  const expectedKeys = [
+    "accepted",
+    "baseFingerprints",
+    "behaviorBoundary",
+    "biome",
+    "exactBranch",
+    "governancePathInventory",
+    "historicalJsonEvidence",
+    "hygienePathInventory",
+    "integrationBaseCommit",
+    "integrationBaseTree",
+    "reviewStatus",
+    "revisionBound",
+    "runtimeQualified",
+    "schemaVersion",
+    "scope",
+    "sourceFingerprints",
+    "sourceHeadCommit",
+    "sourceHeadTree",
+    "sourcePathCounts",
+    "sourcePathInventory",
+    "validation",
+    "workPackage",
+  ]
+  if (
+    !decision ||
+    JSON.stringify(Object.keys(decision).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-11A-R1-H1" ||
+    decision.scope !== "biome-hygiene-successor-source-only" ||
+    decision.integrationBaseCommit !== pr11aR1H1IntegrationBase ||
+    decision.integrationBaseTree !== pr11aR1H1IntegrationBaseTree ||
+    decision.exactBranch !== "codex/inference-core-pr-11a-r1-h1" ||
+    decision.reviewStatus !== "source-candidate-independently-reviewed" ||
+    decision.accepted !== false ||
+    decision.revisionBound !== false ||
+    decision.runtimeQualified !== false ||
+    decision.sourceHeadCommit !== "49ad418408aab32f30e7f6008aa71ad66ba5e708" ||
+    decision.sourceHeadTree !== "eb9b31503d575e6587f4cf7957b74f9c001cd632" ||
+    JSON.stringify(decision.hygienePathInventory) !==
+      JSON.stringify(pr11aR1H1HygienePaths) ||
+    JSON.stringify(decision.governancePathInventory) !==
+      JSON.stringify(pr11aR1H1GovernancePaths) ||
+    JSON.stringify(decision.sourcePathInventory) !==
+      JSON.stringify(pr11aR1H1SourceCandidatePaths) ||
+    decision.sourcePathCounts?.added !== 2 ||
+    decision.sourcePathCounts?.deleted !== 0 ||
+    decision.sourcePathCounts?.modified !== 35 ||
+    decision.sourcePathCounts?.total !== 37
+  ) {
+    errors.push("invalid R1-H1 source package identity")
+  }
+  const fingerprintKeys = pr11aR1H1HygienePaths
+  for (const [label, fingerprints] of [
+    ["base", decision?.baseFingerprints],
+    ["source", decision?.sourceFingerprints],
+  ]) {
+    if (
+      !fingerprints ||
+      JSON.stringify(Object.keys(fingerprints).sort()) !==
+        JSON.stringify(fingerprintKeys) ||
+      Object.values(fingerprints).some(
+        (fingerprint) => !/^[0-9a-f]{64}$/.test(fingerprint),
+      )
+    ) {
+      errors.push(`invalid R1-H1 ${label} fingerprint inventory`)
+    }
+  }
+  if (
+    JSON.stringify(decision?.historicalJsonEvidence) !==
+    JSON.stringify({
+      path: pr09DecisionPath,
+      baseRawSha256:
+        "b60cbfaf47ebccfcc94d54c903ac5f2a4d07a2ef5c8cb0c54701317291361727",
+      sourceRawSha256:
+        "fce567b81172e28cf4d0f943ceb03c7bcc7c7fab5f1fe45c9175450cfae025c0",
+      canonicalSha256:
+        "e1f811876a864783b0f13f53d92896cf336575bba6b24a4000ef69715c7c85ee",
+    })
+  ) {
+    errors.push("invalid R1-H1 historical JSON evidence")
+  }
+  if (
+    JSON.stringify(decision?.biome) !==
+    JSON.stringify({
+      version: "1.9.4",
+      command: "corepack pnpm exec biome check .",
+      safeFixOnly: true,
+      baselineErrors: 34,
+      finalErrors: 0,
+    })
+  ) {
+    errors.push("invalid R1-H1 Biome boundary")
+  }
+  if (
+    JSON.stringify(decision?.behaviorBoundary) !==
+    JSON.stringify({
+      productBehaviorChanged: false,
+      routesChanged: false,
+      forbiddenFindingsChanged: false,
+      runtimeActivated: false,
+      pr11aRevisionGenerated: false,
+    })
+  ) {
+    errors.push("invalid R1-H1 behavior boundary")
+  }
+  if (
+    JSON.stringify(decision?.validation) !==
+    JSON.stringify({
+      sourceOnly: true,
+      fullDetachedGateRequired: true,
+      independentReviewRequired: true,
+      fullDetachedGate: "PASS_AT_REVIEWED_SOURCE_HEAD",
+      independentReview: "PASS_AT_REVIEWED_SOURCE_HEAD",
+      q0RuntimeQualification: "NOT_STARTED",
+    })
+  ) {
+    errors.push("invalid R1-H1 validation boundary")
+  }
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr11aR1H1SourcePackage({
+  root,
+  expectedAllowlist,
+  actualAllowlist,
+  expectedRoutes,
+  actualRoutes,
+}) {
+  const errors = verifyPr11aR1D1SourcePackage({
+    root,
+    expectedAllowlist,
+    actualAllowlist,
+    expectedRoutes,
+    actualRoutes,
+    targetRef: pr11aR1H1IntegrationBase,
+  })
+  const addedPaths = new Set([
+    pr11aR1H1DecisionPath,
+    "scripts/inference-core/pr11a-r1-h1-boundaries.test.mjs",
+  ])
+  const expectedChanges = pr11aR1H1SourceCandidatePaths.map((path) => ({
+    path,
+    status: addedPaths.has(path) ? "A" : "M",
+  }))
+  const changes = listSourcePackageChanges(root, pr11aR1H1IntegrationBase)
+  if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
+    errors.push("R1-H1 source package path set changed")
+  }
+
+  let decision
+  const decisionPath = resolve(root, pr11aR1H1DecisionPath)
+  try {
+    decision = readJson(decisionPath)
+  } catch {
+    errors.push("invalid R1-H1 source decision document")
+  }
+  errors.push(...verifyPr11aR1H1Decision(decision))
+  if (
+    isRegularFile(decisionPath) &&
+    sha256(readFileSync(decisionPath)) !== pr11aR1H1DecisionSha256
+  ) {
+    errors.push("R1-H1 source decision fingerprint changed")
+  }
+
+  const baseFingerprints = Object.fromEntries(
+    pr11aR1H1HygienePaths.map((path) => [
+      path,
+      sha256(readRepositoryPathAtCommit(root, pr11aR1H1IntegrationBase, path)),
+    ]),
+  )
+  const sourceFingerprints = Object.fromEntries(
+    pr11aR1H1HygienePaths.map((path) => [
+      path,
+      sha256(readFileSync(resolve(root, path))),
+    ]),
+  )
+  if (
+    JSON.stringify(decision?.baseFingerprints) !==
+    JSON.stringify(baseFingerprints)
+  ) {
+    errors.push("R1-H1 base fingerprints changed")
+  }
+  if (
+    JSON.stringify(decision?.sourceFingerprints) !==
+    JSON.stringify(sourceFingerprints)
+  ) {
+    errors.push("R1-H1 source fingerprints changed")
+  }
+
+  const baseHistoricalDecision = JSON.parse(
+    readRepositoryPathAtCommit(
+      root,
+      pr11aR1H1IntegrationBase,
+      pr09DecisionPath,
+    ).toString("utf8"),
+  )
+  const sourceHistoricalDecision = readJson(resolve(root, pr09DecisionPath))
+  if (
+    JSON.stringify(baseHistoricalDecision) !==
+    JSON.stringify(sourceHistoricalDecision)
+  ) {
+    errors.push("R1-H1 historical PR-09 JSON semantics changed")
+  }
+  const decisionRegister = readFileSync(
+    resolve(root, "docs/reduction/inference-core/decision-register.md"),
+    "utf8",
+  )
+  const validationRegister = readFileSync(
+    resolve(root, "docs/reduction/inference-core/validation-register.md"),
+    "utf8",
+  )
+  if (
+    !decisionRegister.includes("| PR-11A R1-H1 |") ||
+    !decisionRegister.includes("Independently reviewed source candidate") ||
+    !decisionRegister.includes("PR-11A remains unaccepted") ||
+    !validationRegister.includes("| PR-11A R1-H1 |") ||
+    !validationRegister.includes("independent review") ||
+    !validationRegister.includes("PR-11A is unaccepted")
+  ) {
+    errors.push("R1-H1 registers overstate or omit package status")
+  }
+  if (
+    isRegularFile(
+      resolve(
+        root,
+        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+      ),
+    )
+  ) {
+    errors.push("R1-H1 must not generate the aggregate PR-11A revision")
+  }
+  return [...new Set(errors)].sort()
+}
+
 export function verifyReviewedFindingReduction(baseEntries, currentEntries) {
   const errors = []
   const baseByKey = new Map(
@@ -6080,8 +6427,12 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   })
   const activeReviewedRevision = expectedRoutes.reviewedRevisions?.at(-1)?.id
   const pr11aR1C0ReviewStatus = readPr11aR1C0ReviewStatus(root)
+  const pr11aR1H1SourcePackage =
+    activeReviewedRevision === "PR-11" && hasPr11aR1H1SourceMarker(root)
   const pr11aR1D1SourcePackage =
-    activeReviewedRevision === "PR-11" && hasPr11aR1D1SourceMarker(root)
+    !pr11aR1H1SourcePackage &&
+    activeReviewedRevision === "PR-11" &&
+    hasPr11aR1D1SourceMarker(root)
   const pr11aR1K1SourcePackage =
     !pr11aR1D1SourcePackage &&
     activeReviewedRevision === "PR-11" &&
@@ -6100,63 +6451,72 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     !pr11aR1S1SourcePackage && pr11aR1C0ReviewStatus !== null
 
   const errors = [
-    ...(pr11aR1D1SourcePackage
-      ? verifyPr11aR1D1SourcePackage({
+    ...(pr11aR1H1SourcePackage
+      ? verifyPr11aR1H1SourcePackage({
           root,
           expectedAllowlist,
           actualAllowlist,
           expectedRoutes,
           actualRoutes,
         })
-      : pr11aR1K1SourcePackage
-        ? verifyPr11aR1K1SourcePackage({
+      : pr11aR1D1SourcePackage
+        ? verifyPr11aR1D1SourcePackage({
             root,
             expectedAllowlist,
             actualAllowlist,
             expectedRoutes,
             actualRoutes,
           })
-        : pr11aR1E1SourcePackage
-          ? verifyPr11aR1E1SourcePackage({
+        : pr11aR1K1SourcePackage
+          ? verifyPr11aR1K1SourcePackage({
               root,
               expectedAllowlist,
               actualAllowlist,
               expectedRoutes,
               actualRoutes,
             })
-          : pr11aR1S1SourcePackage
-            ? verifyPr11aR1S1SourcePackage({
+          : pr11aR1E1SourcePackage
+            ? verifyPr11aR1E1SourcePackage({
                 root,
                 expectedAllowlist,
                 actualAllowlist,
                 expectedRoutes,
                 actualRoutes,
               })
-            : pr11aR1C0SourcePackage
-              ? verifyPr11aR1C0SourcePackage({
+            : pr11aR1S1SourcePackage
+              ? verifyPr11aR1S1SourcePackage({
                   root,
-                  reviewStatus: pr11aR1C0ReviewStatus,
                   expectedAllowlist,
                   actualAllowlist,
                   expectedRoutes,
                   actualRoutes,
                 })
-              : [
-                  ...compareForbiddenBaselineMetadata(
+              : pr11aR1C0SourcePackage
+                ? verifyPr11aR1C0SourcePackage({
+                    root,
+                    reviewStatus: pr11aR1C0ReviewStatus,
                     expectedAllowlist,
                     actualAllowlist,
-                  ),
-                  ...compareExactFindings(
-                    expectedAllowlist.entries,
-                    actualAllowlist.entries,
-                  ),
-                  ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
-                ]),
+                    expectedRoutes,
+                    actualRoutes,
+                  })
+                : [
+                    ...compareForbiddenBaselineMetadata(
+                      expectedAllowlist,
+                      actualAllowlist,
+                    ),
+                    ...compareExactFindings(
+                      expectedAllowlist.entries,
+                      actualAllowlist.entries,
+                    ),
+                    ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
+                  ]),
     ...verifyRouteBaselineMetadata(expectedRoutes),
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(pr11aR1C0SourcePackage ||
+    ...(pr11aR1H1SourcePackage ||
+    pr11aR1C0SourcePackage ||
     pr11aR1S1SourcePackage ||
     pr11aR1E1SourcePackage ||
     pr11aR1K1SourcePackage ||
@@ -8712,9 +9072,11 @@ export function verifyPr10cBaseEvidence(root = repositoryRoot) {
     try {
       const successorHistoricalCommit =
         pr10cSuccessorHistoricalEvidenceCommitByPath.get(path)
-      retainedBytes = successorHistoricalCommit
-        ? readRepositoryPathAtCommit(root, successorHistoricalCommit, path)
-        : readRetainedEvidenceBytes(root, path, absolutePath)
+      retainedBytes =
+        readPr11aR1H1HistoricalPriorEvidence(root, path) ??
+        (successorHistoricalCommit
+          ? readRepositoryPathAtCommit(root, successorHistoricalCommit, path)
+          : readRetainedEvidenceBytes(root, path, absolutePath))
     } catch {
       errors.push(`PR-10C retained prior evidence is unavailable ${path}`)
       continue
@@ -8756,6 +9118,7 @@ export function verifyPr10BaseEvidence(root = repositoryRoot) {
       continue
     }
     const retainedBytes =
+      readPr11aR1H1HistoricalPriorEvidence(root, path) ??
       readPr11aR1C0HistoricalPriorEvidence(root, path) ??
       (pr11SuccessorHistoricalEvidencePaths.includes(path)
         ? readRetainedEvidenceBytes(root, path, absolutePath)
@@ -11375,6 +11738,7 @@ export function verifyPr11BaseEvidence(root = repositoryRoot) {
       continue
     }
     const retainedBytes =
+      readPr11aR1H1HistoricalPriorEvidence(root, path) ??
       readPr11aR1S1HistoricalPriorEvidence(root, path) ??
       readPr11aR1C0HistoricalPriorEvidence(root, path) ??
       readFileSync(absolutePath)

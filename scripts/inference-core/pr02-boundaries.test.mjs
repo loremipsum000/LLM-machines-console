@@ -4,10 +4,7 @@ import { readFileSync } from "node:fs"
 import { dirname, extname, resolve } from "node:path"
 import { test } from "node:test"
 import ts from "typescript"
-import {
-  readPr09SourceBoundaryText,
-  repositoryRoot,
-} from "./guardrails.mjs"
+import { readPr09SourceBoundaryText, repositoryRoot } from "./guardrails.mjs"
 
 const retainedBffEntries = [
   "apps/bff/src/index.ts",

@@ -67,9 +67,9 @@ describe("Inference Core authorization target", () => {
       "grafana.dashboards_alerting.edit",
       "grafana.view",
     ]) {
-      expect(
-        roleHasInferenceCoreCapability("admin", retiredCapability),
-      ).toBe(false)
+      expect(roleHasInferenceCoreCapability("admin", retiredCapability)).toBe(
+        false,
+      )
     }
   })
 })

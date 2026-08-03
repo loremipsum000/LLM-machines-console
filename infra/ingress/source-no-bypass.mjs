@@ -19,10 +19,7 @@ const consoleReadOnlyPages = new Set([
   "/inference",
   "/team",
 ])
-const consoleActionPages = new Set([
-  "/applications/apps/new",
-  "/settings",
-])
+const consoleActionPages = new Set(["/applications/apps/new", "/settings"])
 const querylessPaths = new Set([
   "/v1/models",
   "/v1/chat/completions",
@@ -60,11 +57,7 @@ const headerProfiles = Object.freeze({
     "content-length",
     "content-type",
   ]),
-  "identity-backchannel": new Set([
-    "accept",
-    "content-length",
-    "content-type",
-  ]),
+  "identity-backchannel": new Set(["accept", "content-length", "content-type"]),
   "identity-browser": new Set([
     "accept",
     "accept-language",
@@ -73,11 +66,7 @@ const headerProfiles = Object.freeze({
     "cookie",
     "origin",
   ]),
-  "identity-server-form": new Set([
-    "accept",
-    "content-length",
-    "content-type",
-  ]),
+  "identity-server-form": new Set(["accept", "content-length", "content-type"]),
   "identity-server-jwks": new Set(["accept"]),
 })
 
@@ -105,7 +94,12 @@ export function evaluateSourceBoundary(input) {
   if (host !== input.sni) {
     return denied("host-sni-mismatch")
   }
-  const hostId = host === hosts.console ? "console" : host === hosts.identity ? "identity" : null
+  const hostId =
+    host === hosts.console
+      ? "console"
+      : host === hosts.identity
+        ? "identity"
+        : null
   if (!hostId) {
     return denied("unknown-host")
   }
@@ -151,22 +145,36 @@ export function evaluateSourceBoundary(input) {
 
 function consoleRoute(method, path, headers) {
   if (path === "/v1/models" && ["GET", "HEAD"].includes(method)) {
-    return route("inference", "customer-api", "console-bff", "/api/app-gateway/v1/models")
+    return route(
+      "inference",
+      "customer-api",
+      "console-bff",
+      "/api/app-gateway/v1/models",
+    )
   }
   if (path === "/v1/chat/completions" && method === "POST") {
-    return route("inference", "customer-api", "console-bff", "/api/app-gateway/v1/chat/completions")
+    return route(
+      "inference",
+      "customer-api",
+      "console-bff",
+      "/api/app-gateway/v1/chat/completions",
+    )
   }
   if (["/v2/search", "/v2/scrape"].includes(path) && method === "POST") {
     return route("firecrawl", "customer-api", "console-bff", path)
   }
   if (
-    ["/api/console/session/login", "/api/console/session/callback"].includes(path) &&
+    ["/api/console/session/login", "/api/console/session/callback"].includes(
+      path,
+    ) &&
     ["GET", "HEAD"].includes(method)
   ) {
     return route("console", "console-browser", "console-bff", path)
   }
   if (
-    ["/api/console/session/logout", "/api/console/session/elevate"].includes(path) &&
+    ["/api/console/session/logout", "/api/console/session/elevate"].includes(
+      path,
+    ) &&
     method === "POST"
   ) {
     return route("console", "console-browser", "console-bff", path)
@@ -204,7 +212,10 @@ function consoleRoute(method, path, headers) {
       teamActionPattern.test(path)) &&
     ["GET", "HEAD", "POST"].includes(method)
   ) {
-    if (method === "POST" && !singleHeader(inputHeader(headers, "next-action"))) {
+    if (
+      method === "POST" &&
+      !singleHeader(inputHeader(headers, "next-action"))
+    ) {
       return null
     }
     return route("console", "console-browser", "console-web", "preserve")
@@ -244,10 +255,20 @@ function identityRoute(method, path) {
     path.startsWith("/realms/llm-machines/login-actions/") &&
     ["GET", "HEAD", "POST"].includes(method)
   ) {
-    return route("identity", "identity-browser", "keycloak-identity", "preserve")
+    return route(
+      "identity",
+      "identity-browser",
+      "keycloak-identity",
+      "preserve",
+    )
   }
   if (path.startsWith("/resources/") && ["GET", "HEAD"].includes(method)) {
-    return route("identity", "identity-browser", "keycloak-identity", "preserve")
+    return route(
+      "identity",
+      "identity-browser",
+      "keycloak-identity",
+      "preserve",
+    )
   }
   return null
 }
@@ -351,9 +372,9 @@ function validDnsHost(value) {
     value === value.toLowerCase() &&
     !value.includes(":") &&
     !/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value) &&
-    value.split(".").every((label) =>
-      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label),
-    )
+    value
+      .split(".")
+      .every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
   )
 }
 

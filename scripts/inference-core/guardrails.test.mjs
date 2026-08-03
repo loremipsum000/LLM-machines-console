@@ -48,6 +48,8 @@ import {
   pr10cSuccessorEvidenceTree,
   pr10cSuccessorHistoricalEvidenceBindings,
   pr11ContractBase,
+  pr11aR1H1DecisionPath,
+  pr11aR1H1HygienePaths,
   repositoryRoot,
   routeBaselinePath,
   scanForbiddenSurfaces,
@@ -71,6 +73,7 @@ import {
   verifyPr09TargetState,
   verifyPr10TargetState,
   verifyPr10cBaseEvidence,
+  verifyPr11aR1H1Decision,
   verifyProtectedGuardrailStability,
   verifyRepository,
   verifyRetentionCharacterization,
@@ -2981,10 +2984,7 @@ test("Next middleware accepts only the reviewed content security policy wrapper"
   writeFixture(
     root,
     path,
-    source.replace(
-      "if (isExpiredSignInRequest(request)) {",
-      "if (false) {",
-    ),
+    source.replace("if (isExpiredSignInRequest(request)) {", "if (false) {"),
   )
   assert.throws(
     () => extractWebRoutes({ root, paths: [path] }),
@@ -3662,6 +3662,41 @@ test("unknown active reviewed revisions fail closed", () => {
   assert.deepEqual(verifyActiveReviewedRevisionId("PR-12"), [
     "unsupported active reviewed revision PR-12",
   ])
+})
+
+test("R1-H1 governance rejects acceptance, scope, runtime, and fingerprint drift", () => {
+  const decision = JSON.parse(
+    readFileSync(join(repositoryRoot, pr11aR1H1DecisionPath), "utf8"),
+  )
+  assert.deepEqual(verifyPr11aR1H1Decision(decision), [])
+
+  const accepted = structuredClone(decision)
+  accepted.accepted = true
+  assert.match(
+    verifyPr11aR1H1Decision(accepted).join("\n"),
+    /invalid R1-H1 source package identity/,
+  )
+
+  const expandedScope = structuredClone(decision)
+  expandedScope.sourcePathInventory.push("apps/web/src/unauthorized.ts")
+  assert.match(
+    verifyPr11aR1H1Decision(expandedScope).join("\n"),
+    /invalid R1-H1 source package identity/,
+  )
+
+  const runtimeActivated = structuredClone(decision)
+  runtimeActivated.behaviorBoundary.runtimeActivated = true
+  assert.match(
+    verifyPr11aR1H1Decision(runtimeActivated).join("\n"),
+    /invalid R1-H1 behavior boundary/,
+  )
+
+  const invalidFingerprint = structuredClone(decision)
+  invalidFingerprint.sourceFingerprints[pr11aR1H1HygienePaths[0]] = "invalid"
+  assert.match(
+    verifyPr11aR1H1Decision(invalidFingerprint).join("\n"),
+    /invalid R1-H1 source fingerprint inventory/,
+  )
 })
 
 test("the production closure contains every package and container entrypoint", () => {
