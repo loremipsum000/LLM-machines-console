@@ -106,7 +106,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     ? null
     : createConsoleSessionRuntimeFromEnv({
         database: getInferenceCoreDb(),
-        logger: server.log,
       })
   const consoleSessionRouteOptions = testRuntime
     ? options.testConsoleSessionRouteOptions

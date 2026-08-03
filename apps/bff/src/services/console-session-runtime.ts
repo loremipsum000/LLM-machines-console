@@ -3,7 +3,10 @@ import { createConsoleTokenValidator } from "../auth/console-session-token-valid
 import type { InferenceCoreDatabase } from "../db/inference-core-client"
 import type { ConsoleSessionRouteOptions } from "../routes/console-session"
 import { createConsoleOidcClient } from "./console-session-oidc"
-import { ConsoleSessionService } from "./console-session-service"
+import {
+  ConsoleSessionService,
+  type RefreshFailureTelemetry,
+} from "./console-session-service"
 import { DrizzleConsoleSessionRepository } from "./console-session-store-drizzle"
 
 export interface ConsoleSessionRuntimeConfig {
@@ -26,10 +29,6 @@ export interface ConsoleSessionRuntime {
   close(): void
   routeOptions: ConsoleSessionRouteOptions
   service: ConsoleSessionService
-}
-
-interface ConsoleSessionMetadataLogger {
-  warn(bindings: Record<string, unknown>, message: string): void
 }
 
 export function readConsoleSessionRuntimeConfig(
@@ -67,7 +66,7 @@ export function readConsoleSessionRuntimeConfig(
 export function createConsoleSessionRuntimeFromEnv(input: {
   database: InferenceCoreDatabase | null
   environment?: NodeJS.ProcessEnv
-  logger: ConsoleSessionMetadataLogger
+  telemetry?: RefreshFailureTelemetry
 }): ConsoleSessionRuntime {
   if (!input.database) {
     throw new Error("PostgreSQL is required for durable Console sessions.")
@@ -95,18 +94,7 @@ export function createConsoleSessionRuntimeFromEnv(input: {
       cipher,
       oidc,
       validator,
-      {
-        record(event) {
-          input.logger.warn(
-            {
-              event: event.event,
-              reason: event.reason,
-              sessionReference: event.sessionReference,
-            },
-            "Console session refresh failed",
-          )
-        },
-      },
+      input.telemetry ?? stderrRefreshFailureTelemetry,
       { clientId: config.clientId, issuer: config.issuer },
     )
     return {
@@ -124,6 +112,20 @@ export function createConsoleSessionRuntimeFromEnv(input: {
     cipher.destroy()
     throw error
   }
+}
+
+const stderrRefreshFailureTelemetry: RefreshFailureTelemetry = {
+  record(event) {
+    process.stderr.write(
+      `${JSON.stringify({
+        event: event.event,
+        level: "warn",
+        message: "Console session refresh failed",
+        reason: event.reason,
+        sessionReference: event.sessionReference,
+      })}\n`,
+    )
+  },
 }
 
 function required(environment: NodeJS.ProcessEnv, name: string): string {
