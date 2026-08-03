@@ -1,6 +1,6 @@
+import { productCopy } from "@llm-machines/copy"
 import type { Metadata } from "next"
 import type { ReactNode } from "react"
-import { productCopy } from "@llm-machines/copy"
 import { urbanist } from "./fonts"
 import "./globals.css"
 

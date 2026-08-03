@@ -1,10 +1,10 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import type {
   AdminHardwareChart,
   AdminHardwareUnit,
 } from "@llm-machines/contracts/inference-core"
+import dynamic from "next/dynamic"
 
 const chartColors = [
   "#009fff",
