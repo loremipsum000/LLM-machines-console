@@ -137,7 +137,10 @@ import {
   createSignedAuditExport,
   getAuditExportVerificationKeys,
 } from "../services/audit-export"
-import { AuditExportSigningUnavailableError } from "../services/audit-export-signing"
+import {
+  type AuditExportSigningMaterial,
+  AuditExportSigningUnavailableError,
+} from "../services/audit-export-signing"
 import {
   EmergencyIsolationAtomicCommitError,
   EmergencyIsolationBusyError,
@@ -185,6 +188,7 @@ export type AdminEmergencyIsolationService = Pick<
 >
 
 export interface AdminRouteOptions {
+  auditExportSigningMaterial?: AuditExportSigningMaterial
   emergencyIsolationService?: AdminEmergencyIsolationService | null
   emergencyRecoveryService: AdminEmergencyRecoveryService | null
 }
@@ -445,7 +449,10 @@ export function registerAdminRoutes(
     async (_request, reply) => {
       try {
         const keys = adminAuditVerificationKeysResponseSchema.parse(
-          await getAuditExportVerificationKeys(requireActor(_request)),
+          await getAuditExportVerificationKeys(
+            requireActor(_request),
+            options.auditExportSigningMaterial,
+          ),
         )
         return reply.type("application/jwk-set+json").send(keys)
       } catch (error) {
@@ -498,7 +505,10 @@ export function registerAdminRoutes(
             limit: exportWindow.limit,
             to: exportWindow.to,
           },
-          { now: requestStartedAt },
+          {
+            material: options.auditExportSigningMaterial,
+            now: requestStartedAt,
+          },
         )
         const response = reply
           .type("application/jose")

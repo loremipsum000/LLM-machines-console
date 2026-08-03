@@ -6,25 +6,33 @@ import {
 } from "node:crypto"
 import { constants } from "node:fs"
 import { open } from "node:fs/promises"
+import type { AdminAuditVerificationKeysResponse } from "@llm-machines/contracts/inference-core"
 import {
-  type AdminAuditVerificationKeysResponse,
-  adminAuditVerificationJwkSchema,
-  adminAuditVerificationKeysResponseSchema,
-} from "@llm-machines/contracts/inference-core"
+  loadSigningTrustBundle,
+  resolveAuditSigningTrust,
+} from "./signing-trust"
 
 const MAX_PRIVATE_KEY_BYTES = 16 * 1024
-const MAX_PUBLIC_JWKS_BYTES = 256 * 1024
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 export interface AuditExportSigningMaterial {
   activeKid: string
+  applianceId: string
+  issuerId: string
   privateKey: KeyObject
+  purpose: "audit-export"
   verificationKeys: AdminAuditVerificationKeysResponse
 }
 
 export interface AuditExportSigningConfig {
   activeKid?: string
+  applianceId?: string
+  now?: Date
   privateKeyFile?: string
-  publicJwksFile?: string
+  privateKeyOwnerUid?: number
+  signingTrustFile?: string
+  signingTrustOwnerUid?: number
 }
 
 export interface AuditExportProtectedAuthority {
@@ -57,23 +65,33 @@ export async function loadAuditExportSigningMaterial(
 ): Promise<AuditExportSigningMaterial> {
   const activeKid =
     config.activeKid ?? process.env.AUDIT_EXPORT_SIGNING_ACTIVE_KID
+  const applianceId =
+    config.applianceId ?? process.env.AUDIT_EXPORT_SIGNING_APPLIANCE_ID
   const privateKeyFile =
     config.privateKeyFile ?? process.env.AUDIT_EXPORT_SIGNING_PRIVATE_KEY_FILE
-  const publicJwksFile =
-    config.publicJwksFile ?? process.env.AUDIT_EXPORT_SIGNING_PUBLIC_JWKS_FILE
+  const signingTrustFile =
+    config.signingTrustFile ??
+    process.env.AUDIT_EXPORT_SIGNING_TRUST_BUNDLE_FILE
+  const now = config.now ?? new Date()
   if (
     !safeKid(activeKid) ||
+    !safeApplianceId(applianceId) ||
     !absolutePath(privateKeyFile) ||
-    !absolutePath(publicJwksFile)
+    !absolutePath(signingTrustFile) ||
+    !Number.isFinite(now.getTime())
   ) {
     throw new AuditExportSigningUnavailableError()
   }
 
   try {
-    const [privateKeyBytes, publicJwksBytes] = await Promise.all([
-      readMountedFile(privateKeyFile, MAX_PRIVATE_KEY_BYTES, true),
-      readMountedFile(publicJwksFile, MAX_PUBLIC_JWKS_BYTES, false),
-    ])
+    const signingTrust = await loadSigningTrustBundle({
+      file: signingTrustFile,
+      requiredOwnerUid: config.signingTrustOwnerUid,
+    })
+    const privateKeyBytes = await readMountedPrivateKey(
+      privateKeyFile,
+      config.privateKeyOwnerUid ?? 0,
+    )
     let privateKey: KeyObject
     try {
       privateKey = createPrivateKey(privateKeyBytes)
@@ -83,18 +101,20 @@ export async function loadAuditExportSigningMaterial(
     if (privateKey.asymmetricKeyType !== "ed25519") {
       throw new Error("Signing key is not Ed25519.")
     }
-    let verificationKeys: AdminAuditVerificationKeysResponse
-    try {
-      verificationKeys = parseVerificationKeys(publicJwksBytes, activeKid)
-    } finally {
-      publicJwksBytes.fill(0)
-    }
-    assertActivePublicKeyMatchesPrivateKey(
-      privateKey,
-      verificationKeys,
+    const trust = resolveAuditSigningTrust(signingTrust, {
       activeKid,
-    )
-    return { activeKid, privateKey, verificationKeys }
+      applianceId,
+      at: now,
+    })
+    assertPublicKeyMatchesPrivateKey(privateKey, trust.key.publicKey.x)
+    return {
+      activeKid,
+      applianceId,
+      issuerId: trust.issuerId,
+      privateKey,
+      purpose: "audit-export",
+      verificationKeys: trust.verificationKeys,
+    }
   } catch (error) {
     if (error instanceof AuditExportSigningUnavailableError) {
       throw error
@@ -109,12 +129,18 @@ export function signAuditExport(
   material: AuditExportSigningMaterial,
   authority: AuditExportProtectedAuthority,
 ): string {
+  assertSigningMaterial(material)
   const protectedHeader = Buffer.from(
     JSON.stringify({
       alg: "EdDSA",
       cty: contentType,
       kid: material.activeKid,
       llmAudit: authority,
+      llmSigning: {
+        issuer: material.issuerId,
+        purpose: material.purpose,
+        schemaVersion: 1,
+      },
       typ: "LLM-MACHINES-AUDIT-EXPORT-V1",
     }),
     "utf8",
@@ -130,69 +156,63 @@ export function signAuditExport(
   return `${protectedHeader}.${encodedPayload}.${signature}`
 }
 
-function parseVerificationKeys(
-  bytes: Buffer,
-  activeKid: string,
-): AdminAuditVerificationKeysResponse {
-  const parsed = JSON.parse(bytes.toString("utf8")) as unknown
-  if (!isPlainRecord(parsed) || Reflect.ownKeys(parsed).length !== 1) {
-    throw new Error("JWKS must contain only keys.")
-  }
-  const keysValue = parsed.keys
-  if (!Array.isArray(keysValue)) {
-    throw new Error("JWKS keys are required.")
-  }
-  const keys = keysValue.map((key) =>
-    adminAuditVerificationJwkSchema.parse(key),
-  )
-  const kids = keys.map((key) => key.kid)
-  if (new Set(kids).size !== kids.length || !kids.includes(activeKid)) {
-    throw new Error("JWKS key IDs are invalid.")
-  }
-  keys.sort((left, right) => left.kid.localeCompare(right.kid))
-  return adminAuditVerificationKeysResponseSchema.parse({
-    activeKid,
-    keys,
-  })
-}
-
-function assertActivePublicKeyMatchesPrivateKey(
+function assertPublicKeyMatchesPrivateKey(
   privateKey: KeyObject,
-  verificationKeys: AdminAuditVerificationKeysResponse,
-  activeKid: string,
+  expectedPublicKey: string,
 ): void {
-  const active = verificationKeys.keys.find((key) => key.kid === activeKid)
   const derived = createPublicKey(privateKey).export({ format: "jwk" })
   if (
-    !active ||
     derived.kty !== "OKP" ||
     derived.crv !== "Ed25519" ||
-    derived.x !== active.x
+    derived.x !== expectedPublicKey
   ) {
-    throw new Error("Active JWKS key does not match the signing key.")
+    throw new Error("Trusted public key does not match the signing key.")
   }
 }
 
-async function readMountedFile(
+function assertSigningMaterial(material: AuditExportSigningMaterial): void {
+  const active = material.verificationKeys.keys.find(
+    (key) => key.kid === material.activeKid,
+  )
+  if (
+    material.purpose !== "audit-export" ||
+    !safeKid(material.activeKid) ||
+    !safeApplianceId(material.applianceId) ||
+    material.issuerId !==
+      `urn:llm-machines:customer-appliance:${material.applianceId}` ||
+    material.privateKey.asymmetricKeyType !== "ed25519" ||
+    !active
+  ) {
+    throw new AuditExportSigningUnavailableError()
+  }
+  try {
+    assertPublicKeyMatchesPrivateKey(material.privateKey, active.x)
+  } catch {
+    throw new AuditExportSigningUnavailableError()
+  }
+}
+
+async function readMountedPrivateKey(
   path: string,
-  maximumBytes: number,
-  privateFile: boolean,
+  requiredOwnerUid: number,
 ): Promise<Buffer> {
+  if (!Number.isSafeInteger(requiredOwnerUid) || requiredOwnerUid < 0) {
+    throw new Error("Mounted signing file has unsafe owner policy.")
+  }
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
   try {
     const metadata = await handle.stat()
     if (
       !metadata.isFile() ||
+      metadata.uid !== requiredOwnerUid ||
       metadata.size < 1 ||
-      metadata.size > maximumBytes ||
-      (privateFile
-        ? (metadata.mode & 0o077) !== 0
-        : (metadata.mode & 0o022) !== 0)
+      metadata.size > MAX_PRIVATE_KEY_BYTES ||
+      (metadata.mode & 0o077) !== 0
     ) {
       throw new Error("Mounted signing file has unsafe metadata.")
     }
     const bytes = await handle.readFile()
-    if (bytes.length < 1 || bytes.length > maximumBytes) {
+    if (bytes.length < 1 || bytes.length > MAX_PRIVATE_KEY_BYTES) {
       bytes.fill(0)
       throw new Error("Mounted signing file has unsafe size.")
     }
@@ -211,10 +231,10 @@ function safeKid(value: string | undefined): value is string {
   )
 }
 
-function absolutePath(value: string | undefined): value is string {
-  return typeof value === "string" && value.startsWith("/") && value.length > 1
+function safeApplianceId(value: string | undefined): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value)
 }
 
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value)
+function absolutePath(value: string | undefined): value is string {
+  return typeof value === "string" && value.startsWith("/") && value.length > 1
 }

@@ -1,7 +1,4 @@
 import { generateKeyPairSync } from "node:crypto"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
 import {
@@ -9,28 +6,19 @@ import {
   getAuditEventsForTest,
   resetAuditEventsForTest,
 } from "../services/audit"
+import type { AuditExportSigningMaterial } from "../services/audit-export-signing"
 
 const adminHeaders = identityHeaders("admin", "admin-export-route")
 const operatorHeaders = identityHeaders("operator", "operator-export-route")
-const temporaryDirectories: string[] = []
-
 describe("Admin signed audit export routes", () => {
-  afterEach(async () => {
+  afterEach(() => {
     vi.unstubAllEnvs()
     resetAuditEventsForTest()
-    await Promise.all(
-      temporaryDirectories
-        .splice(0)
-        .map((path) => rm(path, { force: true, recursive: true })),
-    )
   })
 
   it("allows Admin export and public-key download with signed paging authority", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    const signing = await signingFixture()
-    vi.stubEnv("AUDIT_EXPORT_SIGNING_ACTIVE_KID", signing.kid)
-    vi.stubEnv("AUDIT_EXPORT_SIGNING_PRIVATE_KEY_FILE", signing.privateKeyFile)
-    vi.stubEnv("AUDIT_EXPORT_SIGNING_PUBLIC_JWKS_FILE", signing.publicJwksFile)
+    const signing = signingFixture()
     await emitAudit({
       action: "admin.audit.tested",
       correlationId: "route-export-event",
@@ -39,7 +27,9 @@ describe("Admin signed audit export routes", () => {
     })
     const to = new Date()
     const from = new Date(to.getTime() - 24 * 60 * 60 * 1_000)
-    const server = buildServer()
+    const server = buildServer({
+      testAuditExportSigningMaterial: signing.material,
+    })
 
     const response = await server.inject({
       method: "GET",
@@ -66,6 +56,11 @@ describe("Admin signed audit export routes", () => {
         order: "occurred_at_asc,id_asc",
         range: { from: from.toISOString(), to: to.toISOString() },
         rowCount: 1,
+      },
+      llmSigning: {
+        issuer: signing.material.issuerId,
+        purpose: "audit-export",
+        schemaVersion: 1,
       },
       typ: "LLM-MACHINES-AUDIT-EXPORT-V1",
     })
@@ -115,35 +110,37 @@ describe("Admin signed audit export routes", () => {
   })
 })
 
-async function signingFixture() {
-  const directory = await mkdtemp(join(tmpdir(), "audit-route-signing-"))
-  temporaryDirectories.push(directory)
+function signingFixture(): {
+  kid: string
+  material: AuditExportSigningMaterial
+} {
   const keys = generateKeyPairSync("ed25519")
   const kid = "audit-route-test"
-  const privateKeyFile = join(directory, "private.pem")
-  const publicJwksFile = join(directory, "public.jwks.json")
   const publicJwk = keys.publicKey.export({ format: "jwk" })
-  await writeFile(
-    privateKeyFile,
-    keys.privateKey.export({ format: "pem", type: "pkcs8" }),
-    { mode: 0o600 },
-  )
-  await writeFile(
-    publicJwksFile,
-    JSON.stringify({
-      keys: [
-        {
-          alg: "EdDSA",
-          crv: "Ed25519",
-          kid,
-          kty: "OKP",
-          use: "sig",
-          x: publicJwk.x,
-        },
-      ],
-    }),
-  )
-  return { kid, privateKeyFile, publicJwksFile }
+  const applianceId = "01234567-89ab-4def-8123-456789abcdef"
+  return {
+    kid,
+    material: {
+      activeKid: kid,
+      applianceId,
+      issuerId: `urn:llm-machines:customer-appliance:${applianceId}`,
+      privateKey: keys.privateKey,
+      purpose: "audit-export",
+      verificationKeys: {
+        activeKid: kid,
+        keys: [
+          {
+            alg: "EdDSA",
+            crv: "Ed25519",
+            kid,
+            kty: "OKP",
+            use: "sig",
+            x: publicJwk.x ?? "",
+          },
+        ],
+      },
+    },
+  }
 }
 
 function identityHeaders(role: "admin" | "operator", subject: string) {

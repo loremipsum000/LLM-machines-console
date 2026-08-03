@@ -118,9 +118,11 @@ export async function createSignedAuditExport(
 
 export async function getAuditExportVerificationKeys(
   actor: Actor,
+  material?: AuditExportSigningMaterial,
 ): Promise<AdminAuditVerificationKeysResponse> {
   try {
-    const keys = (await loadAuditExportSigningMaterial()).verificationKeys
+    const keys = (material ?? (await loadAuditExportSigningMaterial()))
+      .verificationKeys
     await emitAudit({
       action: "admin.audit.verification_keys.read",
       keycloakSubjectId: actor.subject,

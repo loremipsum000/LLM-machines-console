@@ -49,6 +49,7 @@ import {
   registerObservabilityMetricsRoutes,
 } from "./routes/observability-metrics"
 import { assertProductionConnectedAppRevealEndpoints } from "./services/admin-connected-apps"
+import type { AuditExportSigningMaterial } from "./services/audit-export-signing"
 import {
   type ConsoleSessionRuntime,
   createConsoleSessionRuntimeFromEnv,
@@ -72,6 +73,7 @@ type SharedIsolationTrafficGate = AppGatewayIsolationTrafficGate &
   FirecrawlIsolationTrafficGate
 
 export interface BuildServerOptions {
+  testAuditExportSigningMaterial?: AuditExportSigningMaterial
   testAuthorization?: AuthorizationOptions
   testConsoleSessionRouteOptions?: ConsoleSessionRouteOptions
   testEmergencyIsolationService?: AdminEmergencyIsolationService | null
@@ -198,6 +200,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     observabilityMetricsRouteOptionsFromRuntime(),
   )
   registerAdminRoutes(server, {
+    auditExportSigningMaterial: testRuntime
+      ? options.testAuditExportSigningMaterial
+      : undefined,
     emergencyIsolationService,
     emergencyRecoveryService,
   })
