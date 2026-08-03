@@ -105,7 +105,7 @@ test("deterministic canaries reject workload content on every reviewed surface",
 
 test("canary evidence cannot omit or invent a surface", () => {
   const missing = emptyCanaryEvidence()
-  delete missing.cache
+  Reflect.deleteProperty(missing, "cache")
   assert.match(
     validateZeroContentCanaryEvidence(missing).join("\n"),
     /exactly the reviewed surfaces/,
