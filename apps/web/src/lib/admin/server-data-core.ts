@@ -33,10 +33,23 @@ export class ConsoleBffAuthExpiredError extends Error {
   }
 }
 
+export class ConsoleBffUnavailableError extends Error {
+  constructor(path: string) {
+    super(`Console BFF is not available for ${path}.`)
+    this.name = "ConsoleBffUnavailableError"
+  }
+}
+
 export function isConsoleBffAuthExpiredError(
   error: unknown,
 ): error is ConsoleBffAuthExpiredError {
   return error instanceof ConsoleBffAuthExpiredError
+}
+
+export function isConsoleBffUnavailableError(
+  error: unknown,
+): error is ConsoleBffUnavailableError {
+  return error instanceof ConsoleBffUnavailableError
 }
 
 export async function getAdminHardware(
@@ -139,10 +152,11 @@ async function getAdminData<T>(
   schema: { parse: (value: unknown) => T },
 ) {
   const bffRequest = await getBffRequest()
-  if (!bffRequest) {
-    throw new Error(
-      `Console BFF is not available for ${path}; fixture mode is disabled.`,
-    )
+  if (bffRequest.state === "terminal") {
+    throw new ConsoleBffAuthExpiredError(path)
+  }
+  if (bffRequest.state === "unavailable") {
+    throw new ConsoleBffUnavailableError(path)
   }
 
   try {
@@ -154,6 +168,9 @@ async function getAdminData<T>(
     if (!response.ok) {
       if (response.status === 401) {
         throw new ConsoleBffAuthExpiredError(path)
+      }
+      if (response.status === 503) {
+        throw new ConsoleBffUnavailableError(path)
       }
       throw new Error(
         `Console BFF returned HTTP ${response.status} for ${path}.`,
@@ -174,10 +191,11 @@ async function getNullableAdminData<T>(
   schema: { parse: (value: unknown) => T },
 ) {
   const bffRequest = await getBffRequest()
-  if (!bffRequest) {
-    throw new Error(
-      `Console BFF is not available for ${path}; fixture mode is disabled.`,
-    )
+  if (bffRequest.state === "terminal") {
+    throw new ConsoleBffAuthExpiredError(path)
+  }
+  if (bffRequest.state === "unavailable") {
+    throw new ConsoleBffUnavailableError(path)
   }
 
   try {
@@ -188,6 +206,9 @@ async function getNullableAdminData<T>(
 
     if (response.status === 401) {
       throw new ConsoleBffAuthExpiredError(path)
+    }
+    if (response.status === 503) {
+      throw new ConsoleBffUnavailableError(path)
     }
     if (response.status === 403 || response.status === 404) {
       return null

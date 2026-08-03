@@ -1,22 +1,37 @@
 import "server-only"
 
-import { getCurrentConsoleSession } from "@/lib/auth/session"
+import {
+  type CurrentConsoleSessionResolution,
+  getCurrentConsoleSession,
+} from "@/lib/auth/session"
 import { CONSOLE_SESSION_HEADER } from "@/lib/auth/session-client"
 
-export async function getBffRequest(): Promise<{
-  baseUrl: string
-  headers: HeadersInit
-} | null> {
+export type BffRequestResolution =
+  | Extract<
+      CurrentConsoleSessionResolution,
+      { state: "terminal" | "unavailable" }
+    >
+  | {
+      baseUrl: string
+      headers: HeadersInit
+      state: "active"
+    }
+
+export async function getBffRequest(): Promise<BffRequestResolution> {
+  const session = await getCurrentConsoleSession()
+  if (session.state !== "active") {
+    return session
+  }
+
   const baseUrl = cleanValue(process.env.CONSOLE_BFF_URL)?.replace(/\/+$/, "")
   const serviceKey = cleanValue(process.env.CONSOLE_BFF_SERVICE_API_KEY)
 
   if (!baseUrl || !serviceKey) {
-    return null
-  }
-
-  const session = await getCurrentConsoleSession()
-  if (session.state !== "active") {
-    return null
+    return {
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    }
   }
 
   return {
@@ -25,6 +40,7 @@ export async function getBffRequest(): Promise<{
       Authorization: `Bearer ${serviceKey}`,
       [CONSOLE_SESSION_HEADER]: session.sessionHandle,
     },
+    state: "active",
   }
 }
 

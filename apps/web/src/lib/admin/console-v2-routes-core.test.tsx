@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
   getAdminInference: vi.fn(),
   getAdminSettings: vi.fn(),
   getCurrentConsoleSession: vi.fn(),
+  isConsoleBffAuthExpiredError: vi.fn((_error: unknown) => false),
+  isConsoleBffUnavailableError: vi.fn((_error: unknown) => false),
   notFound: vi.fn(() => {
     throw new Error("not-found")
   }),
@@ -53,7 +55,8 @@ vi.mock("@/lib/admin/server-data-core", () => ({
   getAdminTeamGroupDetail: vi.fn(),
   getAdminTeamMemberDetail: vi.fn(),
   getAdminTeamOverview: vi.fn(),
-  isConsoleBffAuthExpiredError: vi.fn(() => false),
+  isConsoleBffAuthExpiredError: mocks.isConsoleBffAuthExpiredError,
+  isConsoleBffUnavailableError: mocks.isConsoleBffUnavailableError,
 }))
 
 vi.mock("@/components/console-v2/activity-v2-experience", () => ({
@@ -183,6 +186,44 @@ describe("Overview Console route", () => {
       "/auth/unavailable?returnTo=%2F",
     )
     expect(mocks.getAdminOverview).not.toHaveBeenCalled()
+  })
+
+  it("redirects a later terminal BFF transition once to expired sign-in", async () => {
+    const terminalError = new Error("terminal session transition")
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
+    mocks.getAdminOverview.mockRejectedValue(terminalError)
+    mocks.isConsoleBffAuthExpiredError.mockImplementation(
+      (error) => error === terminalError,
+    )
+
+    await expect(renderOverviewConsoleRoute()).rejects.toThrow(
+      "redirect:/auth/signin?session=expired&returnTo=%2F",
+    )
+    expect(mocks.redirect).toHaveBeenCalledOnce()
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/auth/signin?session=expired&returnTo=%2F",
+    )
+  })
+
+  it("routes a later retryable BFF transition without logging out", async () => {
+    const unavailableError = new Error("retryable session transition")
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
+    mocks.getAdminOverview.mockRejectedValue(unavailableError)
+    mocks.isConsoleBffUnavailableError.mockImplementation(
+      (error) => error === unavailableError,
+    )
+
+    await expect(renderOverviewConsoleRoute()).rejects.toThrow(
+      "redirect:/auth/unavailable?returnTo=%2F",
+    )
+    expect(mocks.redirect).toHaveBeenCalledOnce()
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/auth/unavailable?returnTo=%2F",
+    )
   })
 })
 

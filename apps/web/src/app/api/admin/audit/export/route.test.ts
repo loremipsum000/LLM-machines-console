@@ -71,6 +71,53 @@ describe("Admin audit export proxy", () => {
     expect(mocks.getBffRequest).not.toHaveBeenCalled()
   })
 
+  it("clears and redirects when the session becomes terminal before the BFF request", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
+    mocks.getBffRequest.mockResolvedValue({
+      reason: "expired",
+      state: "terminal",
+    })
+    const request = new Request(
+      "https://console.example.test/api/admin/audit/export?format=json&from=2026-07-01T08%3A00&to=2026-08-01T08%3A00",
+    )
+
+    const response = await GET(request)
+    const setCookie = response.headers.get("set-cookie") ?? ""
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get("location")).toBe(
+      "https://console.example.test/auth/signin?session=expired&returnTo=%2Fapi%2Fadmin%2Faudit%2Fexport%3Fformat%3Djson%26from%3D2026-07-01T08%253A00%26to%3D2026-08-01T08%253A00",
+    )
+    expect(setCookie).toContain("__Host-llm-machines-session=")
+    expect(setCookie).toContain("Max-Age=0")
+    expect(setCookie).not.toContain("Domain=")
+  })
+
+  it("preserves local custody when the later session check is unavailable", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
+    mocks.getBffRequest.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+    const request = new Request(
+      "https://console.example.test/api/admin/audit/export?format=json&from=2026-07-01T08%3A00&to=2026-08-01T08%3A00",
+    )
+
+    const response = await GET(request)
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get("set-cookie")).toBeNull()
+    expect(response.headers.get("location")).toBeNull()
+    expect(await response.json()).toMatchObject({
+      title: "Identity service temporarily unavailable",
+    })
+  })
+
   it("requires fresh MFA before exporting and preserves the exact safe request", async () => {
     mocks.getCurrentConsoleSession.mockResolvedValue({
       ...activeConsoleSession("admin"),
@@ -131,6 +178,7 @@ describe("Admin audit export proxy", () => {
     mocks.getBffRequest.mockResolvedValue({
       baseUrl: "http://bff.test",
       headers: { Authorization: "Bearer service-key" },
+      state: "active",
     })
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response("signed-compact-jws", {
@@ -170,5 +218,30 @@ describe("Admin audit export proxy", () => {
         headers: { Authorization: "Bearer service-key" },
       }),
     )
+  })
+
+  it("clears and redirects on a downstream BFF 401", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
+    mocks.getBffRequest.mockResolvedValue({
+      baseUrl: "http://bff.test",
+      headers: { Authorization: "Bearer service-key" },
+      state: "active",
+    })
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({ title: "Authentication required" }, { status: 401 }),
+    )
+    const request = new Request(
+      "https://console.example.test/api/admin/audit/export?format=json&from=2026-07-01T08%3A00&to=2026-08-01T08%3A00",
+    )
+
+    const response = await GET(request)
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get("location")).toContain(
+      "/auth/signin?session=expired&returnTo=",
+    )
+    expect(response.headers.get("set-cookie")).toContain("Max-Age=0")
   })
 })

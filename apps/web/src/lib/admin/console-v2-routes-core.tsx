@@ -32,6 +32,7 @@ import {
   getAdminTeamMemberDetail,
   getAdminTeamOverview,
   isConsoleBffAuthExpiredError,
+  isConsoleBffUnavailableError,
 } from "@/lib/admin/server-data-core"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import { getCurrentConsoleSession } from "@/lib/auth/session"
@@ -291,6 +292,9 @@ async function withConsoleAccess(
   } catch (error) {
     if (isConsoleBffAuthExpiredError(error)) {
       redirect(getConsoleExpiredSignInUrl(returnTo))
+    }
+    if (isConsoleBffUnavailableError(error)) {
+      redirect(getConsoleUnavailableUrl(returnTo))
     }
     if (isConsoleAccessDeniedError(error)) {
       content = <ConsoleAccessDeniedPanel />

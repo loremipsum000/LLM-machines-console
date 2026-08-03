@@ -2,6 +2,7 @@ import { getCurrentConsoleSession } from "@/lib/auth/session"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   ConsoleBffAuthExpiredError,
+  ConsoleBffUnavailableError,
   getAdminAudit,
   getAdminConnectedApps,
   getAdminOverview,
@@ -79,6 +80,54 @@ describe("inference-core Admin data loader", () => {
 
     await expect(getAdminConnectedApps()).rejects.toBeInstanceOf(
       ConsoleBffAuthExpiredError,
+    )
+  })
+
+  it("preserves a terminal session transition before the later BFF request", async () => {
+    vi.stubEnv("CONSOLE_BFF_URL", "http://bff.test")
+    vi.stubEnv("CONSOLE_BFF_SERVICE_API_KEY", "service-key")
+    vi.mocked(getCurrentConsoleSession).mockResolvedValue({
+      reason: "expired",
+      state: "terminal",
+    })
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+
+    await expect(getAdminOverview()).rejects.toBeInstanceOf(
+      ConsoleBffAuthExpiredError,
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("preserves a retryable outage before the later BFF request", async () => {
+    vi.stubEnv("CONSOLE_BFF_URL", "http://bff.test")
+    vi.stubEnv("CONSOLE_BFF_SERVICE_API_KEY", "service-key")
+    vi.mocked(getCurrentConsoleSession).mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+
+    await expect(getAdminOverview()).rejects.toBeInstanceOf(
+      ConsoleBffUnavailableError,
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("classifies a later BFF 503 as retryable unavailability", async () => {
+    vi.stubEnv("CONSOLE_BFF_URL", "http://bff.test")
+    vi.stubEnv("CONSOLE_BFF_SERVICE_API_KEY", "service-key")
+    vi.mocked(getCurrentConsoleSession).mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ title: "Unavailable" }), {
+        status: 503,
+      }),
+    )
+
+    await expect(getAdminOverview()).rejects.toBeInstanceOf(
+      ConsoleBffUnavailableError,
     )
   })
 

@@ -148,6 +148,58 @@ describe("Console middleware", () => {
     expect(setCookie).not.toContain("Domain=")
   })
 
+  it("clears a later terminal transition on the one-time sign-in landing", async () => {
+    mocks.resolveConsoleSession.mockResolvedValue({
+      reason: "revoked",
+      state: "terminal",
+    })
+
+    const response = await runMiddleware(
+      "/auth/signin?session=expired&returnTo=%2Fapplications",
+      true,
+    )
+    const setCookie = response.headers.get("set-cookie") ?? ""
+
+    expect(response.headers.get("x-middleware-next")).toBe("1")
+    expect(response.headers.get("location")).toBeNull()
+    expect(mocks.resolveConsoleSession).toHaveBeenCalledOnce()
+    expect(setCookie).toContain("__Host-llm-machines-session=")
+    expect(setCookie).toContain("Max-Age=0")
+    expect(setCookie).not.toContain("Domain=")
+  })
+
+  it("does not let an expired query clear a still-active session", async () => {
+    const response = await runMiddleware(
+      "/auth/signin?session=expired&returnTo=%2Fapplications",
+      true,
+    )
+
+    expect(response.headers.get("x-middleware-next")).toBe("1")
+    expect(response.headers.get("set-cookie")).toBeNull()
+    expect(response.headers.get("location")).toBeNull()
+    expect(mocks.resolveConsoleSession).toHaveBeenCalledOnce()
+  })
+
+  it("preserves the cookie when the one-time sign-in check is unavailable", async () => {
+    mocks.resolveConsoleSession.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+
+    const response = await runMiddleware(
+      "/auth/signin?session=expired&returnTo=%2Fsettings%3Ftab%3Dupdates",
+      true,
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "https://console.example.test/auth/unavailable?returnTo=%2Fsettings%3Ftab%3Dupdates",
+    )
+    expect(response.headers.get("set-cookie")).toBeNull()
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull()
+  })
+
   it("clears an expired audit-download session and preserves one safe return path", async () => {
     mocks.resolveConsoleSession.mockResolvedValue({
       reason: "expired",

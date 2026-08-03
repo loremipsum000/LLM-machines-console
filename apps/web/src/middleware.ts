@@ -24,6 +24,29 @@ const PROTECTED_AUDIT_DOWNLOAD_PATHS = new Set([
 
 export default async function middleware(request: NextRequest) {
   const contentSecurityPolicy = createContentSecurityPolicy(request)
+  if (isExpiredSignInRequest(request)) {
+    const cookieHeader = request.headers.get("cookie")
+    if (!hasConsoleSessionCookie(cookieHeader)) {
+      return contentSecurityPolicy.next()
+    }
+    const resolution = await resolveConsoleSession(cookieHeader)
+    if (resolution.state === "unavailable") {
+      const returnTo = normalizeConsoleReturnPath(
+        request.nextUrl.searchParams.get("returnTo"),
+      )
+      const response = contentSecurityPolicy.redirect(
+        getUnavailableUrl(request.nextUrl, returnTo),
+      )
+      response.headers.set("Cache-Control", "no-store, max-age=0")
+      return response
+    }
+    const response = contentSecurityPolicy.next()
+    if (resolution.state === "terminal") {
+      clearSessionCookie(response)
+      response.headers.set("Cache-Control", "no-store, max-age=0")
+    }
+    return response
+  }
   if (
     request.nextUrl.pathname.startsWith("/auth/") ||
     isConsoleSessionEndpoint(request.nextUrl.pathname) ||
@@ -73,6 +96,13 @@ export default async function middleware(request: NextRequest) {
   return response
 }
 
+function isExpiredSignInRequest(request: NextRequest): boolean {
+  return (
+    request.nextUrl.pathname === "/auth/signin" &&
+    request.nextUrl.searchParams.get("session") === "expired"
+  )
+}
+
 function createContentSecurityPolicy(request: NextRequest): {
   next(): NextResponse
   redirect(url: URL): NextResponse
@@ -87,7 +117,6 @@ function createContentSecurityPolicy(request: NextRequest): {
     response.headers.set("Content-Security-Policy", value)
     return response
   }
-
   return {
     next: () =>
       setResponseHeader(

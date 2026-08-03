@@ -3,6 +3,7 @@ import {
   consoleMfaElevationHref,
   hasFreshConsoleMfa,
 } from "@/lib/auth/mfa-elevation"
+import { expiredConsoleSessionRedirectResponse } from "@/lib/auth/session-client"
 import { getBffRequest } from "@/lib/bff/server-request"
 
 export const dynamic = "force-dynamic"
@@ -58,8 +59,11 @@ export async function GET(request: Request) {
   }
 
   const bffRequest = await getBffRequest()
-  if (!bffRequest) {
-    return problemResponse(503, "Console BFF is not configured")
+  if (bffRequest.state === "terminal") {
+    return expiredConsoleSessionRedirectResponse(request.url)
+  }
+  if (bffRequest.state === "unavailable") {
+    return problemResponse(503, "Identity service temporarily unavailable")
   }
 
   const params = new URLSearchParams({ format, from, to })
@@ -77,6 +81,14 @@ export async function GET(request: Request) {
       headers: bffRequest.headers,
     },
   )
+  if (response.status === 401) {
+    await response.body?.cancel().catch(() => undefined)
+    return expiredConsoleSessionRedirectResponse(request.url)
+  }
+  if (response.status === 503) {
+    await response.body?.cancel().catch(() => undefined)
+    return problemResponse(503, "Identity service temporarily unavailable")
+  }
   const headers = new Headers({
     "Cache-Control": "no-store",
     "Content-Type":

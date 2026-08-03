@@ -114,6 +114,7 @@ describe("inference-core Admin actions", () => {
     mocks.getBffRequest.mockResolvedValue({
       baseUrl: "http://bff.test",
       headers: new Headers({ authorization: "Bearer operator" }),
+      state: "active",
     })
     mocks.redirect.mockClear()
     mocks.revalidatePath.mockClear()

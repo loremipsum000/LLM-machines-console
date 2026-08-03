@@ -1368,8 +1368,14 @@ async function adminMutation(
   method: "DELETE" | "PATCH" | "POST",
 ): Promise<unknown> {
   const bffRequest = await getBffRequest()
-  if (!bffRequest) {
-    throw new Error("Admin BFF is not configured.")
+  if (bffRequest.state === "terminal") {
+    throw new AdminMutationError("Console session expired.", 401)
+  }
+  if (bffRequest.state === "unavailable") {
+    throw new AdminMutationError(
+      "Console session is temporarily unavailable.",
+      503,
+    )
   }
 
   const headers = new Headers(bffRequest.headers)

@@ -1,5 +1,6 @@
 import "server-only"
 
+import { normalizeConsoleReturnPath } from "./safe-return"
 import { consoleSessionResolveResponseSchema } from "@llm-machines/contracts/inference-core"
 
 export const CONSOLE_SESSION_COOKIE = "__Host-llm-machines-session"
@@ -94,6 +95,25 @@ export function opaqueConsoleSessionHandle(
     handle = value
   }
   return handle
+}
+
+export function expiredConsoleSessionRedirectResponse(
+  requestUrl: string | URL,
+): Response {
+  const url = new URL(requestUrl)
+  const returnTo = normalizeConsoleReturnPath(`${url.pathname}${url.search}`)
+  const signInUrl = new URL("/auth/signin", url.origin)
+  signInUrl.searchParams.set("session", "expired")
+  signInUrl.searchParams.set("returnTo", returnTo)
+
+  return new Response(null, {
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+      Location: signInUrl.toString(),
+      "Set-Cookie": `${CONSOLE_SESSION_COOKIE}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Secure; HttpOnly; SameSite=Lax`,
+    },
+    status: 303,
+  })
 }
 
 async function boundedJson(response: Response): Promise<unknown> {
