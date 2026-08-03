@@ -20,6 +20,7 @@ const integrationMerge = "0f29c7939fa885c11c191e8b672f09e16635ddcb"
 const allowedCurrentBranches = [
   exactBranch,
   "codex/inference-core-pr-11a-r1-s1",
+  "codex/inference-core-pr-11a-r1-e1",
 ]
 const admittedBehaviorSourcePaths = [
   "apps/bff/src/auth/authorization.ts",

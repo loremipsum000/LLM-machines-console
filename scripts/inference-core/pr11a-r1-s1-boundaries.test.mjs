@@ -245,7 +245,7 @@ test("R1-S1 registers cannot overstate acceptance or qualification", () => {
   )
   assert.match(
     decisionRegister,
-    /PR-11A R1-S1[^\n]+source candidate[^\n]+awaiting independent review[^\n]+unaccepted[^\n]+not revision-bound/i,
+    /PR-11A R1-S1[^\n]+independently reviewed[^\n]+PR 14[^\n]+unaccepted[^\n]+not revision-bound/i,
   )
   assert.match(
     validationRegister,

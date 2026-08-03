@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-11A-R1-E1",
+  "status": "source-policy-only",
+  "customerNetwork": {
+    "allowedTcpPorts": [443],
+    "deniedNativeTcpPorts": [3000, 3002, 4000, 4001, 8080, 9090, 9093, 9443],
+    "nativeServiceNetworks": "private-not-customer-routable"
+  },
+  "negativeCases": [
+    {
+      "id": "direct-native-ports",
+      "sourceControl": "only the Product edge declares customer TCP 443",
+      "q0Probe": "probe every discovered native listener from every customer role network",
+      "expected": "connection-fails",
+      "runtimeState": "NOT_EVALUATED_RUNTIME"
+    },
+    {
+      "id": "alternate-hostnames",
+      "sourceControl": "rejecting default TLS server plus exact raw Host and SNI equality",
+      "q0Probe": "missing duplicate malformed alternate IP-literal port-suffixed and SNI-mismatched authorities",
+      "expected": "request-fails-before-upstream",
+      "runtimeState": "NOT_EVALUATED_RUNTIME"
+    },
+    {
+      "id": "native-paths",
+      "sourceControl": "exact public route policy with a rejecting fallback",
+      "q0Probe": "native LiteLLM Keycloak Admin Grafana Prometheus Alertmanager Portainer and Firecrawl paths through each public host",
+      "expected": "request-fails-before-upstream",
+      "runtimeState": "NOT_EVALUATED_RUNTIME"
+    },
+    {
+      "id": "forwarded-header-spoofing",
+      "sourceControl": "drop all request headers and rebuild one per-surface allowlist plus edge-derived forwarding metadata",
+      "q0Probe": "spoof forwarding rewrite identity method-override and Product-private headers on every public route",
+      "expected": "cannot-change-target-role-origin-scheme-or-actor",
+      "runtimeState": "NOT_EVALUATED_RUNTIME"
+    },
+    {
+      "id": "path-traversal",
+      "sourceControl": "reject unsafe raw path encodings separators controls absolute-form requests repeated separators semicolons and dot segments before routing",
+      "q0Probe": "raw encoded double-encoded malformed and parser-differential path cases",
+      "expected": "request-fails-before-upstream",
+      "runtimeState": "NOT_EVALUATED_RUNTIME"
+    },
+    {
+      "id": "direct-network-access",
+      "sourceControl": "native services are omitted from customer listener policy and require private Product networks",
+      "q0Probe": "customer VLAN VPN and support-role routes to every native address service DNS bridge NAT IPv4 and IPv6 path",
+      "expected": "connection-fails",
+      "runtimeState": "NOT_EVALUATED_RUNTIME"
+    }
+  ]
+}

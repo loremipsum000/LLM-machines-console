@@ -41,14 +41,18 @@ test("R1-E1 starts from the protected R1-S1 integration merge", () => {
   )
 })
 
-test("R1-E1 governance checkpoint is source-incomplete and unaccepted", () => {
+test("R1-E1 remains an unaccepted source-only candidate", () => {
   const decision = readJson(decisionPath)
   assert.equal(decision.schemaVersion, 1)
   assert.equal(decision.workPackage, "PR-11A-R1-E1")
   assert.equal(decision.scope, "mandatory-core-product-edge-source-only")
   assert.equal(decision.integrationBaseCommit, integrationBase)
   assert.equal(decision.integrationBaseTree, integrationBaseTree)
-  assert.equal(decision.reviewStatus, "governance-checkpoint-source-incomplete")
+  assert.equal(
+    decision.reviewStatus,
+    "source-candidate-awaiting-independent-review",
+  )
+  assert.equal(decision.localValidation, "passed-local-full-source-gates")
   assert.equal(decision.accepted, false)
   assert.equal(decision.revisionBound, false)
   assert.equal(decision.runtimeQualified, false)
@@ -63,12 +67,19 @@ test("R1-E1 governance checkpoint is source-incomplete and unaccepted", () => {
   )
 })
 
-test("R1-E1 governance checkpoint changes only its exact evidence paths", () => {
+test("R1-E1 source inventory is exact", () => {
   const decision = readJson(decisionPath)
   assert.deepEqual(
     changedPaths(integrationBase),
-    [...decision.governanceCheckpointPaths].sort(),
+    [...decision.sourcePathInventory].sort(),
   )
+  assert.equal(decision.sourcePathInventory.length, 26)
+  assert.deepEqual(decision.sourcePathCounts, {
+    added: 17,
+    deleted: 0,
+    modified: 9,
+    total: 26,
+  })
 })
 
 test("R1-E1 binds only core edge surfaces and keeps native systems absent", () => {
@@ -92,7 +103,7 @@ test("R1-E1 binds only core edge surfaces and keeps native systems absent", () =
   })
 })
 
-test("current registers report R1-S1 merged and R1-E1 incomplete", () => {
+test("current registers report R1-S1 merged and R1-E1 unaccepted", () => {
   const decisionRegister = readFileSync(
     resolve(repositoryRoot, "docs/reduction/inference-core/decision-register.md"),
     "utf8",
@@ -111,10 +122,10 @@ test("current registers report R1-S1 merged and R1-E1 incomplete", () => {
   )
   assert.match(
     decisionRegister,
-    /R1-E1[^\n]+governance checkpoint only[^\n]+source is incomplete[^\n]+unaccepted[^\n]+not revision-bound/i,
+    /R1-E1[^\n]+source candidate[^\n]+awaiting independent review[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
   )
   assert.match(
     validationRegister,
-    /R1-E1[^\n]+governance checkpoint only[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
+    /R1-E1[^\n]+local full source validation passed[^\n]+independent review[^\n]+fresh-clone validation[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
   )
 })
