@@ -1,0 +1,142 @@
+{
+  "apiVersion": "inference-core.llm-machines/v1",
+  "kind": "SourceOnlyStorageAndBackupContract",
+  "metadata": {
+    "changePackage": "PR-11A-R1-D1",
+    "containsCredentials": false,
+    "runtimeQualificationStatus": "NOT_EVALUATED_RUNTIME",
+    "sourceOnly": true
+  },
+  "localStorage": {
+    "backend": "zfs",
+    "productRequirement": "required",
+    "datasets": [
+      {
+        "name": "product_state",
+        "dataset": "llm-machines/product_state",
+        "mountpoint": "/srv/llm-machines/product_state",
+        "purpose": "product-safe-state",
+        "backupDisposition": "allowlisted-subset",
+        "workloadContentAllowed": false
+      },
+      {
+        "name": "databases",
+        "dataset": "llm-machines/databases",
+        "mountpoint": "/srv/llm-machines/databases",
+        "purpose": "product-databases-without-workload-content",
+        "backupDisposition": "allowlisted-subset",
+        "workloadContentAllowed": false
+      },
+      {
+        "name": "models",
+        "dataset": "llm-machines/models",
+        "mountpoint": "/srv/llm-machines/models",
+        "purpose": "model-artifacts",
+        "backupDisposition": "exclude-pending-model-recovery-decision",
+        "workloadContentAllowed": false
+      },
+      {
+        "name": "logs",
+        "dataset": "llm-machines/logs",
+        "mountpoint": "/srv/llm-machines/logs",
+        "purpose": "operational-metadata-only",
+        "backupDisposition": "exclude",
+        "workloadContentAllowed": false
+      },
+      {
+        "name": "staging",
+        "dataset": "llm-machines/staging",
+        "mountpoint": "/srv/llm-machines/staging",
+        "purpose": "ephemeral-release-material-only",
+        "backupDisposition": "exclude",
+        "workloadContentAllowed": false
+      }
+    ],
+    "localSnapshots": {
+      "allowed": true,
+      "countsAsBackup": false
+    }
+  },
+  "backup": {
+    "engine": "restic",
+    "repository": {
+      "targetKind": "separate-customer-owned-mounted-filesystem",
+      "encryptedAtRest": true,
+      "encryptionMode": "restic-repository-encryption",
+      "versioning": "restic-snapshots",
+      "locatorProvisioning": "root-only-mounted-file",
+      "passwordProvisioning": "root-only-mounted-file",
+      "inlineValuesAllowed": false,
+      "environmentVariablesAllowed": false,
+      "credentialValuesIncluded": false
+    },
+    "retention": {
+      "cadence": "daily",
+      "retentionDays": 30,
+      "policyState": "accepted-default"
+    },
+    "includedDatasets": ["product_state", "databases"],
+    "excludedDatasets": ["models", "logs", "staging"],
+    "inputAllowlist": [
+      "product-configuration",
+      "identity-mappings",
+      "credential-verifier-state-and-safe-metadata",
+      "keycloak-configuration-export",
+      "litellm-configuration-export",
+      "grafana-configuration-export",
+      "audit-records",
+      "entitlement-state",
+      "update-state"
+    ],
+    "inputExclusions": [
+      "models-pending-model-recovery-decision",
+      "logs",
+      "staging",
+      "caches",
+      "temporary-files",
+      "crash-artifacts",
+      "one-time-plaintext-credentials",
+      "all-private-signing-keys",
+      "audit-recovery-envelope"
+    ],
+    "localSnapshotsCountAsBackup": false,
+    "cleanRestoreQualification": {
+      "required": true,
+      "releaseGate": true,
+      "restoreTarget": "clean-appliance-environment",
+      "evidence": "metadata-only"
+    }
+  },
+  "recovery": {
+    "recoveryMaterialCustody": "customer-held",
+    "restoreEvidence": "metadata-only",
+    "workloadContentInEvidence": false
+  },
+  "zeroContentRetention": {
+    "activeStorage": "forbidden",
+    "logs": "forbidden",
+    "metrics": "forbidden",
+    "caches": "forbidden",
+    "backups": "forbidden",
+    "canarySurfaces": [
+      "restic-input-manifest",
+      "cache",
+      "temporary-files",
+      "staging",
+      "backup-logs",
+      "restored-tree"
+    ]
+  },
+  "objectStore": {
+    "genericS3ServiceInBom": false,
+    "minioInBom": false,
+    "seaweedFsInBom": false,
+    "unusedAdapterAllowed": false,
+    "currentRetainedCallers": [],
+    "futureCompatibility": {
+      "interface": "s3-compatible",
+      "activationGate": "proven-retained-component-caller",
+      "seaweedFsDisposition": "first-benchmark-candidate-after-gate"
+    }
+  }
+}

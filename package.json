@@ -9,8 +9,8 @@
   "scripts": {
     "build": "corepack pnpm -r build",
     "build:inference-core": "node scripts/inference-core/run-core-command.mjs build",
-    "check:inference-core": "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base": "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node scripts/inference-core/guardrails.mjs --base-ref 6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7",
+    "check:inference-core": "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node infra/storage/validate-profile.mjs && node scripts/inference-core/guardrails.mjs",
+    "check:inference-core:base": "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node infra/storage/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref 6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7",
     "contract:inference-core:pr07:policy": "node scripts/inference-core/pr07-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr07:write": "node scripts/inference-core/pr07-contract-revision.mjs --write",
     "contract:inference-core:pr09:policy": "node scripts/inference-core/pr09-contract-revision.mjs --print-operation-policy",
@@ -29,7 +29,7 @@
     "test:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test --minWorkers=1 --maxWorkers=4 --testTimeout=15000 --hookTimeout=15000",
     "test:inference-core-authorization": "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match exec vitest run src/inference-core-authorization.test.ts",
     "test:inference-core-characterization": "corepack pnpm --filter @llm-machines/bff --fail-if-no-match exec vitest run src/routes/inference-core-characterization.test.ts",
-    "test:inference-core-guardrails": "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs infra/observability/validate-profile.test.mjs infra/ingress/validate-ingress.test.mjs infra/ingress/source-no-bypass.test.mjs",
+    "test:inference-core-guardrails": "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs infra/observability/validate-profile.test.mjs infra/ingress/validate-ingress.test.mjs infra/ingress/source-no-bypass.test.mjs infra/storage/validate-profile.test.mjs",
     "typecheck": "corepack pnpm -r build && corepack pnpm -r typecheck && corepack pnpm run typecheck:inference-core-db",
     "typecheck:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests typecheck",
     "typecheck:inference-core": "node scripts/inference-core/run-core-command.mjs typecheck"

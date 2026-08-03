@@ -1,0 +1,345 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Inference Core source-only storage and backup contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "localStorage",
+    "backup",
+    "recovery",
+    "zeroContentRetention",
+    "objectStore"
+  ],
+  "properties": {
+    "apiVersion": { "const": "inference-core.llm-machines/v1" },
+    "kind": { "const": "SourceOnlyStorageAndBackupContract" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "changePackage",
+        "containsCredentials",
+        "runtimeQualificationStatus",
+        "sourceOnly"
+      ],
+      "properties": {
+        "changePackage": { "const": "PR-11A-R1-D1" },
+        "containsCredentials": { "const": false },
+        "runtimeQualificationStatus": {
+          "const": "NOT_EVALUATED_RUNTIME"
+        },
+        "sourceOnly": { "const": true }
+      }
+    },
+    "localStorage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backend",
+        "productRequirement",
+        "datasets",
+        "localSnapshots"
+      ],
+      "properties": {
+        "backend": { "const": "zfs" },
+        "productRequirement": { "const": "required" },
+        "datasets": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "prefixItems": [
+            { "$ref": "#/$defs/productStateDataset" },
+            { "$ref": "#/$defs/databasesDataset" },
+            { "$ref": "#/$defs/modelsDataset" },
+            { "$ref": "#/$defs/logsDataset" },
+            { "$ref": "#/$defs/stagingDataset" }
+          ]
+        },
+        "localSnapshots": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["allowed", "countsAsBackup"],
+          "properties": {
+            "allowed": { "const": true },
+            "countsAsBackup": { "const": false }
+          }
+        }
+      }
+    },
+    "backup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine",
+        "repository",
+        "retention",
+        "includedDatasets",
+        "excludedDatasets",
+        "inputAllowlist",
+        "inputExclusions",
+        "localSnapshotsCountAsBackup",
+        "cleanRestoreQualification"
+      ],
+      "properties": {
+        "engine": { "const": "restic" },
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "targetKind",
+            "encryptedAtRest",
+            "encryptionMode",
+            "versioning",
+            "locatorProvisioning",
+            "passwordProvisioning",
+            "inlineValuesAllowed",
+            "environmentVariablesAllowed",
+            "credentialValuesIncluded"
+          ],
+          "properties": {
+            "targetKind": {
+              "const": "separate-customer-owned-mounted-filesystem"
+            },
+            "encryptedAtRest": { "const": true },
+            "encryptionMode": { "const": "restic-repository-encryption" },
+            "versioning": { "const": "restic-snapshots" },
+            "locatorProvisioning": { "const": "root-only-mounted-file" },
+            "passwordProvisioning": { "const": "root-only-mounted-file" },
+            "inlineValuesAllowed": { "const": false },
+            "environmentVariablesAllowed": { "const": false },
+            "credentialValuesIncluded": { "const": false }
+          }
+        },
+        "retention": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cadence", "retentionDays", "policyState"],
+          "properties": {
+            "cadence": { "const": "daily" },
+            "retentionDays": { "const": 30 },
+            "policyState": { "const": "accepted-default" }
+          }
+        },
+        "includedDatasets": {
+          "const": ["product_state", "databases"]
+        },
+        "excludedDatasets": {
+          "const": ["models", "logs", "staging"]
+        },
+        "inputAllowlist": {
+          "const": [
+            "product-configuration",
+            "identity-mappings",
+            "credential-verifier-state-and-safe-metadata",
+            "keycloak-configuration-export",
+            "litellm-configuration-export",
+            "grafana-configuration-export",
+            "audit-records",
+            "entitlement-state",
+            "update-state"
+          ]
+        },
+        "inputExclusions": {
+          "const": [
+            "models-pending-model-recovery-decision",
+            "logs",
+            "staging",
+            "caches",
+            "temporary-files",
+            "crash-artifacts",
+            "one-time-plaintext-credentials",
+            "all-private-signing-keys",
+            "audit-recovery-envelope"
+          ]
+        },
+        "localSnapshotsCountAsBackup": { "const": false },
+        "cleanRestoreQualification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "releaseGate", "restoreTarget", "evidence"],
+          "properties": {
+            "required": { "const": true },
+            "releaseGate": { "const": true },
+            "restoreTarget": { "const": "clean-appliance-environment" },
+            "evidence": { "const": "metadata-only" }
+          }
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recoveryMaterialCustody",
+        "restoreEvidence",
+        "workloadContentInEvidence"
+      ],
+      "properties": {
+        "recoveryMaterialCustody": { "const": "customer-held" },
+        "restoreEvidence": { "const": "metadata-only" },
+        "workloadContentInEvidence": { "const": false }
+      }
+    },
+    "zeroContentRetention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activeStorage",
+        "logs",
+        "metrics",
+        "caches",
+        "backups",
+        "canarySurfaces"
+      ],
+      "properties": {
+        "activeStorage": { "const": "forbidden" },
+        "logs": { "const": "forbidden" },
+        "metrics": { "const": "forbidden" },
+        "caches": { "const": "forbidden" },
+        "backups": { "const": "forbidden" },
+        "canarySurfaces": {
+          "const": [
+            "restic-input-manifest",
+            "cache",
+            "temporary-files",
+            "staging",
+            "backup-logs",
+            "restored-tree"
+          ]
+        }
+      }
+    },
+    "objectStore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "genericS3ServiceInBom",
+        "minioInBom",
+        "seaweedFsInBom",
+        "unusedAdapterAllowed",
+        "currentRetainedCallers",
+        "futureCompatibility"
+      ],
+      "properties": {
+        "genericS3ServiceInBom": { "const": false },
+        "minioInBom": { "const": false },
+        "seaweedFsInBom": { "const": false },
+        "unusedAdapterAllowed": { "const": false },
+        "currentRetainedCallers": { "const": [] },
+        "futureCompatibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["interface", "activationGate", "seaweedFsDisposition"],
+          "properties": {
+            "interface": { "const": "s3-compatible" },
+            "activationGate": {
+              "const": "proven-retained-component-caller"
+            },
+            "seaweedFsDisposition": {
+              "const": "first-benchmark-candidate-after-gate"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "datasetBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "dataset",
+        "mountpoint",
+        "purpose",
+        "backupDisposition",
+        "workloadContentAllowed"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "dataset": { "type": "string" },
+        "mountpoint": { "type": "string" },
+        "purpose": { "type": "string" },
+        "backupDisposition": { "type": "string" },
+        "workloadContentAllowed": { "const": false }
+      }
+    },
+    "productStateDataset": {
+      "allOf": [
+        { "$ref": "#/$defs/datasetBase" },
+        {
+          "properties": {
+            "name": { "const": "product_state" },
+            "dataset": { "const": "llm-machines/product_state" },
+            "mountpoint": { "const": "/srv/llm-machines/product_state" },
+            "purpose": { "const": "product-safe-state" },
+            "backupDisposition": { "const": "allowlisted-subset" }
+          }
+        }
+      ]
+    },
+    "databasesDataset": {
+      "allOf": [
+        { "$ref": "#/$defs/datasetBase" },
+        {
+          "properties": {
+            "name": { "const": "databases" },
+            "dataset": { "const": "llm-machines/databases" },
+            "mountpoint": { "const": "/srv/llm-machines/databases" },
+            "purpose": {
+              "const": "product-databases-without-workload-content"
+            },
+            "backupDisposition": { "const": "allowlisted-subset" }
+          }
+        }
+      ]
+    },
+    "modelsDataset": {
+      "allOf": [
+        { "$ref": "#/$defs/datasetBase" },
+        {
+          "properties": {
+            "name": { "const": "models" },
+            "dataset": { "const": "llm-machines/models" },
+            "mountpoint": { "const": "/srv/llm-machines/models" },
+            "purpose": { "const": "model-artifacts" },
+            "backupDisposition": {
+              "const": "exclude-pending-model-recovery-decision"
+            }
+          }
+        }
+      ]
+    },
+    "logsDataset": {
+      "allOf": [
+        { "$ref": "#/$defs/datasetBase" },
+        {
+          "properties": {
+            "name": { "const": "logs" },
+            "dataset": { "const": "llm-machines/logs" },
+            "mountpoint": { "const": "/srv/llm-machines/logs" },
+            "purpose": { "const": "operational-metadata-only" },
+            "backupDisposition": { "const": "exclude" }
+          }
+        }
+      ]
+    },
+    "stagingDataset": {
+      "allOf": [
+        { "$ref": "#/$defs/datasetBase" },
+        {
+          "properties": {
+            "name": { "const": "staging" },
+            "dataset": { "const": "llm-machines/staging" },
+            "mountpoint": { "const": "/srv/llm-machines/staging" },
+            "purpose": { "const": "ephemeral-release-material-only" },
+            "backupDisposition": { "const": "exclude" }
+          }
+        }
+      ]
+    }
+  }
+}
