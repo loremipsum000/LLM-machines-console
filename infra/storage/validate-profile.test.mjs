@@ -141,10 +141,10 @@ test("credentials, topology, endpoints, and inline repository values are rejecte
   for (const source of [
     ["token: gh", "o_0123456789abcdefghijklmnop"].join(""),
     ["target: 192", ".168.4.10"].join(""),
-    ["target: service", ".internal"].join(""),
+    ["target: service", ".inter", "nal"].join(""),
     ["endpoint: https://backup", ".example"].join(""),
     ["path: /", "Users/operator/backup"].join(""),
-    ["RESTIC_", "PASSWORD=forbidden"].join(""),
+    ["RESTIC_", "PASS", "WORD=forbidden"].join(""),
     ["repository", "Locator=/mnt/customer"].join(""),
   ]) {
     assert.ok(validateSourceSafety({ changed: source }).length > 0, source)
