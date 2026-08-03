@@ -75,6 +75,8 @@ export const pr11aR1C0DecisionPath =
   "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json"
 export const pr11aR1S1DecisionPath =
   "docs/reduction/inference-core/pr-11a-r1-s1-console-session-decisions.json"
+export const pr11aR1E1DecisionPath =
+  "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json"
 export const pr11aR1C0GovernanceCheckpointPaths = [
   "docs/reduction/inference-core/README.md",
   "docs/reduction/inference-core/decision-register.md",
@@ -134,6 +136,34 @@ export const pr11aR1C0SourceCandidatePaths = [
   "scripts/inference-core/pr02-boundaries.test.mjs",
   "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
 ]
+export const pr11aR1E1SourceCandidatePaths = [
+  "docs/reduction/inference-core/README.md",
+  "docs/reduction/inference-core/decision-register.md",
+  pr11aR1E1DecisionPath,
+  "docs/reduction/inference-core/validation-register.md",
+  "infra/ingress/README.md",
+  "infra/ingress/edge-policy.json",
+  "infra/ingress/no-bypass-policy.json",
+  "infra/ingress/product-edge.nginx.conf.template",
+  "infra/ingress/proxy-common.inc",
+  "infra/ingress/request-headers-console-browser.inc",
+  "infra/ingress/request-headers-customer-api.inc",
+  "infra/ingress/request-headers-identity-browser.inc",
+  "infra/ingress/request-safety.inc",
+  "infra/ingress/source-no-bypass.mjs",
+  "infra/ingress/source-no-bypass.test.mjs",
+  "infra/ingress/validate-ingress.mjs",
+  "infra/ingress/validate-ingress.test.mjs",
+  "package.json",
+  "packages/contracts/src/index.ts",
+  "packages/contracts/src/inference-core-ingress.test.ts",
+  "packages/contracts/src/inference-core-ingress.ts",
+  "packages/contracts/src/inference-core.ts",
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+  "scripts/inference-core/pr11a-r1-s1-boundaries.test.mjs",
+  "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+]
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -167,6 +197,10 @@ export const pr11aR1C0ContractBaseTree =
 export const pr11aR1S1IntegrationBase =
   "0f29c7939fa885c11c191e8b672f09e16635ddcb"
 export const pr11aR1S1SourceBase = "aa831424949fb49095de48714b508ada0b57f589"
+export const pr11aR1E1IntegrationBase =
+  "39057332207cca6193495453b7336eda07608255"
+export const pr11aR1E1IntegrationBaseTree =
+  "4deb5b337120202b52173b05910f1cbf028b50c3"
 export const pr11aR1S1Pr09NativeIdentifierSuccessorEvidence = {
   path: "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
   sha256: "34f5d2a631bf0ad19b81e781e10d3738f4702ceed50a5a56cb2d164f6a804fc1",
@@ -4980,6 +5014,15 @@ function hasPr11aR1S1SourceMarker(root) {
   )
 }
 
+function hasPr11aR1E1SourceMarker(root) {
+  return (
+    hasPr11aR1S1SourceMarker(root) &&
+    isRegularFile(resolve(root, pr11aR1E1DecisionPath)) &&
+    isRegularFile(resolve(root, "infra/ingress/edge-policy.json")) &&
+    isRegularFile(resolve(root, "infra/ingress/validate-ingress.mjs"))
+  )
+}
+
 const pr11aR1C0HistoricalPr09SourcePaths = new Set([
   "apps/bff/src/services/expert-capabilities.ts",
 ])
@@ -5026,7 +5069,7 @@ function readPr11aR1S1HistoricalPriorEvidence(root, path) {
     : null
 }
 
-function listPr11aR1C0SourcePackageChanges(root) {
+function listSourcePackageChanges(root, baseCommit) {
   const output = execFileSync(
     "git",
     [
@@ -5035,7 +5078,7 @@ function listPr11aR1C0SourcePackageChanges(root) {
       "--no-ext-diff",
       "--no-renames",
       "--end-of-options",
-      pr11aR1C0ContractBase,
+      baseCommit,
       "--",
     ],
     { cwd: root, encoding: "utf8" },
@@ -5057,6 +5100,10 @@ function listPr11aR1C0SourcePackageChanges(root) {
         .sort((left, right) =>
           left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
         )
+}
+
+function listPr11aR1C0SourcePackageChanges(root) {
+  return listSourcePackageChanges(root, pr11aR1C0ContractBase)
 }
 
 function comparePr11aR1C0RepositoryClosure(expected, actual, allowedPaths) {
@@ -5402,6 +5449,102 @@ export function verifyPr11aR1S1SourcePackage({
   return errors.sort()
 }
 
+export function verifyPr11aR1E1SourcePackage({
+  root,
+  expectedAllowlist,
+  actualAllowlist,
+  expectedRoutes,
+  actualRoutes,
+}) {
+  const errors = verifyPr11aR1S1SourcePackage({
+    root,
+    expectedAllowlist,
+    actualAllowlist,
+    expectedRoutes,
+    actualRoutes,
+  })
+  const addedPaths = new Set([
+    pr11aR1E1DecisionPath,
+    "infra/ingress/README.md",
+    "infra/ingress/edge-policy.json",
+    "infra/ingress/no-bypass-policy.json",
+    "infra/ingress/product-edge.nginx.conf.template",
+    "infra/ingress/proxy-common.inc",
+    "infra/ingress/request-headers-console-browser.inc",
+    "infra/ingress/request-headers-customer-api.inc",
+    "infra/ingress/request-headers-identity-browser.inc",
+    "infra/ingress/request-safety.inc",
+    "infra/ingress/source-no-bypass.mjs",
+    "infra/ingress/source-no-bypass.test.mjs",
+    "infra/ingress/validate-ingress.mjs",
+    "infra/ingress/validate-ingress.test.mjs",
+    "packages/contracts/src/inference-core-ingress.test.ts",
+    "packages/contracts/src/inference-core-ingress.ts",
+    "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+  ])
+  const expectedChanges = pr11aR1E1SourceCandidatePaths
+    .map((path) => ({ path, status: addedPaths.has(path) ? "A" : "M" }))
+    .sort((left, right) =>
+      left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+    )
+  const changes = listSourcePackageChanges(root, pr11aR1E1IntegrationBase)
+  if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
+    errors.push("R1-E1 source package path set changed")
+  }
+
+  let decision
+  try {
+    decision = readJson(resolve(root, pr11aR1E1DecisionPath))
+  } catch {
+    errors.push("invalid R1-E1 source decision document")
+  }
+  if (
+    !decision ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-11A-R1-E1" ||
+    decision.scope !== "mandatory-core-product-edge-source-only" ||
+    decision.integrationBaseCommit !== pr11aR1E1IntegrationBase ||
+    decision.integrationBaseTree !== pr11aR1E1IntegrationBaseTree ||
+    decision.exactBranch !== "codex/inference-core-pr-11a-r1-e1" ||
+    ![
+      "source-candidate-awaiting-independent-review",
+      "source-candidate-independently-reviewed",
+    ].includes(decision.reviewStatus) ||
+    decision.accepted !== false ||
+    decision.revisionBound !== false ||
+    decision.runtimeQualified !== false ||
+    JSON.stringify(decision.sourcePathInventory) !==
+      JSON.stringify(pr11aR1E1SourceCandidatePaths) ||
+    decision.sourcePathCounts?.added !== 17 ||
+    decision.sourcePathCounts?.deleted !== 0 ||
+    decision.sourcePathCounts?.modified !== 9 ||
+    decision.sourcePathCounts?.total !== 26
+  ) {
+    errors.push("invalid R1-E1 source package identity")
+  }
+  if (
+    decision?.sourceHeadCommit !== undefined &&
+    (!/^[0-9a-f]{40}$/.test(decision.sourceHeadCommit) ||
+      resolveCommit(root, decision.sourceHeadCommit) !==
+        decision.sourceHeadCommit ||
+      !/^[0-9a-f]{40}$/.test(decision.sourceHeadTree) ||
+      resolveTree(root, decision.sourceHeadCommit) !== decision.sourceHeadTree)
+  ) {
+    errors.push("invalid R1-E1 reviewed source commit")
+  }
+  if (
+    isRegularFile(
+      resolve(
+        root,
+        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+      ),
+    )
+  ) {
+    errors.push("R1-E1 must not generate the aggregate PR-11A revision")
+  }
+  return [...new Set(errors)].sort()
+}
+
 export function verifyReviewedFindingReduction(baseEntries, currentEntries) {
   const errors = []
   const baseByKey = new Map(
@@ -5464,7 +5607,10 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   })
   const activeReviewedRevision = expectedRoutes.reviewedRevisions?.at(-1)?.id
   const pr11aR1C0ReviewStatus = readPr11aR1C0ReviewStatus(root)
+  const pr11aR1E1SourcePackage =
+    activeReviewedRevision === "PR-11" && hasPr11aR1E1SourceMarker(root)
   const pr11aR1S1SourcePackage =
+    !pr11aR1E1SourcePackage &&
     activeReviewedRevision === "PR-11" &&
     isRegularFile(
       resolve(root, "infra/keycloak/pr11a-console-session-policy.json"),
@@ -5473,7 +5619,15 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     !pr11aR1S1SourcePackage && pr11aR1C0ReviewStatus !== null
 
   const errors = [
-    ...(pr11aR1S1SourcePackage
+    ...(pr11aR1E1SourcePackage
+      ? verifyPr11aR1E1SourcePackage({
+          root,
+          expectedAllowlist,
+          actualAllowlist,
+          expectedRoutes,
+          actualRoutes,
+        })
+      : pr11aR1S1SourcePackage
       ? verifyPr11aR1S1SourcePackage({
           root,
           expectedAllowlist,
@@ -5505,7 +5659,9 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(pr11aR1C0SourcePackage || pr11aR1S1SourcePackage
+    ...(pr11aR1C0SourcePackage ||
+    pr11aR1S1SourcePackage ||
+    pr11aR1E1SourcePackage
       ? []
       : activeReviewedRevision === "PR-11"
         ? verifyPr11TargetState({
@@ -5585,6 +5741,27 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   if (baseRef?.startsWith("-")) {
     baseStatus = "unavailable"
     errors.push(`base ref is unavailable ${baseRef}`)
+  } else if (pr11aR1E1SourcePackage) {
+    baseStatus = "checked"
+    if (
+      resolveCommit(root, pr11aR1E1IntegrationBase) !==
+        pr11aR1E1IntegrationBase ||
+      resolveTree(root, pr11aR1E1IntegrationBase) !==
+        pr11aR1E1IntegrationBaseTree
+    ) {
+      errors.push("R1-E1 protected integration base identity changed")
+    }
+    try {
+      execFileSync(
+        "git",
+        ["merge-base", "--is-ancestor", pr11aR1E1IntegrationBase, "HEAD"],
+        { cwd: root, stdio: "ignore" },
+      )
+    } catch {
+      errors.push(
+        "R1-E1 no longer descends from the protected integration base",
+      )
+    }
   } else if (pr11aR1S1SourcePackage) {
     baseStatus = "checked"
     if (
@@ -5699,9 +5876,11 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       0,
     ),
     findingPathCount: expectedAllowlist.entries.length,
-    routeCount: (pr11aR1S1SourcePackage ? actualRoutes : expectedRoutes).routes
-      .length,
-    legacyRouteCount: (pr11aR1S1SourcePackage
+    routeCount: (pr11aR1S1SourcePackage || pr11aR1E1SourcePackage
+      ? actualRoutes
+      : expectedRoutes
+    ).routes.length,
+    legacyRouteCount: (pr11aR1S1SourcePackage || pr11aR1E1SourcePackage
       ? actualRoutes
       : expectedRoutes
     ).routes.filter((route) => route.classification === "legacy-retired")
@@ -16342,8 +16521,8 @@ export function verifyCorePackageClosure(
     "build:inference-core":
       "node scripts/inference-core/run-core-command.mjs build",
     "check:inference-core":
-      "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr11ContractBase}`,
+      "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node scripts/inference-core/guardrails.mjs",
+    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr11ContractBase}`,
     "contract:inference-core:pr07:policy":
       "node scripts/inference-core/pr07-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr07:write":
@@ -16371,7 +16550,7 @@ export function verifyCorePackageClosure(
     "test:inference-core-db":
       "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test --minWorkers=1 --maxWorkers=4 --testTimeout=15000 --hookTimeout=15000",
     "test:inference-core-guardrails":
-      "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs infra/observability/validate-profile.test.mjs",
+      "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs infra/observability/validate-profile.test.mjs infra/ingress/validate-ingress.test.mjs infra/ingress/source-no-bypass.test.mjs",
     test: "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test",
     typecheck:
       "corepack pnpm -r build && corepack pnpm -r typecheck && corepack pnpm run typecheck:inference-core-db",

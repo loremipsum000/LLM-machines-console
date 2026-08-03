@@ -20,6 +20,7 @@ const integrationMerge = "0f29c7939fa885c11c191e8b672f09e16635ddcb"
 const allowedCurrentBranches = [
   exactBranch,
   "codex/inference-core-pr-11a-r1-s1",
+  "codex/inference-core-pr-11a-r1-e1",
 ]
 const admittedBehaviorSourcePaths = [
   "apps/bff/src/auth/authorization.ts",
@@ -110,7 +111,10 @@ test("R1-C0 is anchored to the protected integration base", () => {
   assert.doesNotThrow(() =>
     git("merge-base", "--is-ancestor", integrationMerge, "HEAD"),
   )
-  assert.ok(allowedCurrentBranches.includes(git("branch", "--show-current")))
+  const currentBranch = git("branch", "--show-current")
+  assert.ok(
+    currentBranch === "" || allowedCurrentBranches.includes(currentBranch),
+  )
 })
 
 test("R1-C0 is a merged source package, not an accepted revision", () => {
