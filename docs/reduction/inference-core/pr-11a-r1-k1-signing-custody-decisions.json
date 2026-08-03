@@ -7,8 +7,8 @@
   "sourceHeadCommit": null,
   "sourceHeadTree": null,
   "exactBranch": "codex/inference-core-pr-11a-r1-k1",
-  "reviewStatus": "admitted-source-incomplete",
-  "localValidation": "not-run",
+  "reviewStatus": "source-candidate-awaiting-independent-review",
+  "localValidation": "targeted-source-tests-passed",
   "accepted": false,
   "revisionBound": false,
   "runtimeQualified": false,
@@ -68,12 +68,32 @@
     "docs/reduction/inference-core/validation-register.md",
     "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs"
   ],
-  "sourcePathInventory": [],
+  "sourcePathInventory": [
+    ".env.example",
+    "apps/bff/src/routes/admin-audit-export.test.ts",
+    "apps/bff/src/services/audit-export-signing.test.ts",
+    "apps/bff/src/services/audit-export-signing.ts",
+    "apps/bff/src/services/audit-export.test.ts",
+    "apps/bff/src/services/signing-trust.test.ts",
+    "apps/bff/src/services/signing-trust.ts",
+    "docs/reduction/inference-core/README.md",
+    "docs/reduction/inference-core/decision-register.md",
+    "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json",
+    "docs/reduction/inference-core/validation-register.md",
+    "packages/contracts/src/index.ts",
+    "packages/contracts/src/inference-core-signing.test.ts",
+    "packages/contracts/src/inference-core-signing.ts",
+    "packages/contracts/src/inference-core.ts",
+    "scripts/inference-core/guardrails.mjs",
+    "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+    "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+    "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs"
+  ],
   "sourcePathCounts": {
-    "added": 0,
-    "modified": 0,
+    "added": 6,
+    "modified": 13,
     "deleted": 0,
-    "total": 0
+    "total": 19
   },
   "sourceAcceptanceCriteria": [
     "vendor release-root, release-artifact, update-bundle, offline-entitlement, and audit-export purposes cannot share key IDs or public key material",

@@ -22,6 +22,18 @@ function readDecision() {
   return JSON.parse(readFileSync(resolve(repositoryRoot, decisionPath), "utf8"))
 }
 
+function changedPaths() {
+  const output = git(
+    "diff",
+    "--name-only",
+    "--no-ext-diff",
+    "--no-renames",
+    integrationBase,
+    "--",
+  )
+  return output ? output.split("\n").sort() : []
+}
+
 test("R1-K1 is admitted from the protected R1-E1 integration merge", () => {
   assert.equal(git("rev-parse", `${integrationBase}^{tree}`), integrationBaseTree)
   assert.doesNotThrow(() =>
@@ -77,4 +89,18 @@ test("R1-K1 binds custody without selecting the vendor algorithm early", () => {
     "root-only-mounted-secret",
   )
   assert.equal(decisions.auditExportCustody.recoveryEnvelope, "customer-held")
+})
+
+test("R1-K1 source inventory is exact and remains source-only", () => {
+  const decision = readDecision()
+  assert.deepEqual(changedPaths(), [...decision.sourcePathInventory].sort())
+  assert.deepEqual(decision.sourcePathCounts, {
+    added: 6,
+    deleted: 0,
+    modified: 13,
+    total: 19,
+  })
+  assert.equal(decision.forbiddenOutputs.realSecretBinding, true)
+  assert.equal(decision.forbiddenOutputs.runtimeDeployment, true)
+  assert.equal(decision.forbiddenOutputs.vendorPrivateSigningMaterial, true)
 })

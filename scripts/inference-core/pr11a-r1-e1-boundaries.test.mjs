@@ -24,13 +24,13 @@ function readJson(path) {
   return JSON.parse(readFileSync(resolve(repositoryRoot, path), "utf8"))
 }
 
-function changedPaths(from) {
+function changedPaths(from, to) {
   const output = git(
     "diff",
     "--name-only",
     "--no-ext-diff",
     "--no-renames",
-    from,
+    `${from}..${to}`,
     "--",
   )
   return output ? output.split("\n").sort() : []
@@ -89,7 +89,7 @@ test("R1-E1 remains an unaccepted source-only candidate", () => {
 test("R1-E1 source inventory is exact", () => {
   const decision = readJson(decisionPath)
   assert.deepEqual(
-    changedPaths(integrationBase),
+    changedPaths(integrationBase, sourceHead),
     [...decision.sourcePathInventory].sort(),
   )
   assert.equal(decision.sourcePathInventory.length, 26)
@@ -141,10 +141,10 @@ test("current registers report R1-S1 merged and R1-E1 unaccepted", () => {
   )
   assert.match(
     decisionRegister,
-    /R1-E1[^\n]+independently reviewed source candidate[^\n]+c60280c11318aa21d230e7002cb7d703625a7168[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
+    /R1-E1[^\n]+independently reviewed source package[^\n]+PR 15[^\n]+1743cb746f87c7497a34f4de7e3bfc0db3ff0be2[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
   )
   assert.match(
     validationRegister,
-    /R1-E1[^\n]+fresh-clone full source validation[^\n]+independent review passed[^\n]+c60280c11318aa21d230e7002cb7d703625a7168[^\n]+R1-V1[^\n]+Q0[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
+    /R1-E1[^\n]+fresh-clone full source validation[^\n]+independent review passed[^\n]+c60280c11318aa21d230e7002cb7d703625a7168[^\n]+PR 15[^\n]+1743cb746f87c7497a34f4de7e3bfc0db3ff0be2[^\n]+R1-V1[^\n]+Q0[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
   )
 })

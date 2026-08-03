@@ -8,10 +8,29 @@ import {
 } from "../services/audit"
 import type { AuditExportSigningMaterial } from "../services/audit-export-signing"
 
+const auditSigning = vi.hoisted(() => ({
+  material: null as AuditExportSigningMaterial | null,
+}))
+
+vi.mock("../services/audit-export-signing", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../services/audit-export-signing")>()
+  return {
+    ...actual,
+    loadAuditExportSigningMaterial: vi.fn(async () => {
+      if (!auditSigning.material) {
+        throw new actual.AuditExportSigningUnavailableError()
+      }
+      return auditSigning.material
+    }),
+  }
+})
+
 const adminHeaders = identityHeaders("admin", "admin-export-route")
 const operatorHeaders = identityHeaders("operator", "operator-export-route")
 describe("Admin signed audit export routes", () => {
   afterEach(() => {
+    auditSigning.material = null
     vi.unstubAllEnvs()
     resetAuditEventsForTest()
   })
@@ -19,6 +38,7 @@ describe("Admin signed audit export routes", () => {
   it("allows Admin export and public-key download with signed paging authority", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     const signing = signingFixture()
+    auditSigning.material = signing.material
     await emitAudit({
       action: "admin.audit.tested",
       correlationId: "route-export-event",
@@ -27,9 +47,7 @@ describe("Admin signed audit export routes", () => {
     })
     const to = new Date()
     const from = new Date(to.getTime() - 24 * 60 * 60 * 1_000)
-    const server = buildServer({
-      testAuditExportSigningMaterial: signing.material,
-    })
+    const server = buildServer()
 
     const response = await server.inject({
       method: "GET",
