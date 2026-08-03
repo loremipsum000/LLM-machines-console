@@ -13,7 +13,7 @@ artifacts.
 | PR-10 | Lifecycle snapshot and restore foundation | Passed on the reviewed PR-10 candidate; configured adapters and runtime qualification remain PR-12 |
 | PR-10C | Emergency isolation | Passed on the reviewed PR-10C source candidate; live topology and runtime qualification remain PR-12 |
 | PR-11 | Retained Console information architecture | Passed on the reviewed PR-11 source candidate; deployment and runtime qualification remain PR-12 |
-| PR-11A R1-C0 | Product authority and governance correction | Source validation passed; independent review and merge pending; unaccepted and not revision-bound |
+| PR-11A R1-C0 | Product authority and governance correction | Source validation passed and merged through PR 13; aggregate R1-V1 review remains pending; PR-11A is unaccepted and not revision-bound |
 
 ## PR-08 required evidence
 

@@ -5,7 +5,7 @@
   "contractBaseCommit": "9d8f1a6144cb280104cdce0a21ab7dafa72087ec",
   "contractBaseTree": "a7cb76ff95ec4ffc12cbd589b0514564602c35da",
   "exactBranch": "codex/inference-core-pr-11a-r1-c0",
-  "reviewStatus": "source-candidate-awaiting-independent-review",
+  "reviewStatus": "r1-c0-merged-source-package",
   "accepted": false,
   "revisionBound": false,
   "bindingDecisions": {

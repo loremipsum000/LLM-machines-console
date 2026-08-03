@@ -15,6 +15,12 @@ const validationRegisterPath =
 const contractBaseCommit = "9d8f1a6144cb280104cdce0a21ab7dafa72087ec"
 const contractBaseTree = "a7cb76ff95ec4ffc12cbd589b0514564602c35da"
 const exactBranch = "codex/inference-core-pr-11a-r1-c0"
+const mergedSourceHead = "6b773e334b5ffa18495ab5c3c9e72f559343fb3e"
+const integrationMerge = "0f29c7939fa885c11c191e8b672f09e16635ddcb"
+const allowedCurrentBranches = [
+  exactBranch,
+  "codex/inference-core-pr-11a-r1-s1",
+]
 const admittedBehaviorSourcePaths = [
   "apps/bff/src/auth/authorization.ts",
   "apps/bff/src/commands/audit-ingestion.ts",
@@ -84,7 +90,7 @@ function changedPathsFromBase() {
     "--name-only",
     "--no-ext-diff",
     "--no-renames",
-    contractBaseCommit,
+    `${contractBaseCommit}..${mergedSourceHead}`,
     "--",
   )
   return output === "" ? [] : output.split("\n").sort()
@@ -95,13 +101,19 @@ test("R1-C0 is anchored to the protected integration base", () => {
     git("rev-parse", `${contractBaseCommit}^{tree}`),
     contractBaseTree,
   )
-  assert.doesNotThrow(() =>
-    git("merge-base", "--is-ancestor", contractBaseCommit, "HEAD"),
+  assert.equal(git("rev-parse", `${integrationMerge}^1`), contractBaseCommit)
+  assert.equal(git("rev-parse", `${integrationMerge}^2`), mergedSourceHead)
+  assert.equal(
+    git("rev-parse", `${integrationMerge}^{tree}`),
+    git("rev-parse", `${mergedSourceHead}^{tree}`),
   )
-  assert.equal(git("branch", "--show-current"), exactBranch)
+  assert.doesNotThrow(() =>
+    git("merge-base", "--is-ancestor", integrationMerge, "HEAD"),
+  )
+  assert.ok(allowedCurrentBranches.includes(git("branch", "--show-current")))
 })
 
-test("R1-C0 is a source candidate, not an accepted revision", () => {
+test("R1-C0 is a merged source package, not an accepted revision", () => {
   const decision = readDecision()
   assert.equal(decision.schemaVersion, 1)
   assert.equal(decision.workPackage, "PR-11A-R1-C0")
@@ -111,7 +123,7 @@ test("R1-C0 is a source candidate, not an accepted revision", () => {
   assert.equal(decision.exactBranch, exactBranch)
   assert.equal(
     decision.reviewStatus,
-    "source-candidate-awaiting-independent-review",
+    "r1-c0-merged-source-package",
   )
   assert.equal(decision.accepted, false)
   assert.equal(decision.revisionBound, false)
@@ -180,11 +192,11 @@ test("R1-C0 registers do not claim acceptance or revision binding", () => {
   )
   assert.match(
     decisionRegister,
-    /PR-11A R1-C0[^\n]+Source candidate implemented; independent review and merge pending; unaccepted and not revision-bound/,
+    /PR-11A R1-C0[^\n]+Merged through PR 13 at integration commit `0f29c7939fa885c11c191e8b672f09e16635ddcb`; PR-11A remains incomplete, unaccepted, and not revision-bound/,
   )
   assert.match(
     validationRegister,
-    /PR-11A R1-C0[^\n]+Source validation passed; independent review and merge pending; unaccepted and not revision-bound/,
+    /PR-11A R1-C0[^\n]+Source validation passed and merged through PR 13; aggregate R1-V1 review remains pending; PR-11A is unaccepted and not revision-bound/,
   )
   assert.doesNotMatch(decisionRegister, /PR-11A R1-C0[^\n]+Accepted/)
   assert.doesNotMatch(validationRegister, /PR-11A R1-C0[^\n]+Passed/)

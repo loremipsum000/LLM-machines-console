@@ -4924,6 +4924,7 @@ function readPr11aR1C0ReviewStatus(root) {
     return [
       "proposed-governance-first",
       "source-candidate-awaiting-independent-review",
+      "r1-c0-merged-source-package",
     ].includes(status)
       ? status
       : null
@@ -4944,8 +4945,10 @@ export function readPr09SourceBoundaryText(
   root = repositoryRoot,
 ) {
   if (
-    readPr11aR1C0ReviewStatus(root) ===
-      "source-candidate-awaiting-independent-review" &&
+    [
+      "source-candidate-awaiting-independent-review",
+      "r1-c0-merged-source-package",
+    ].includes(readPr11aR1C0ReviewStatus(root)) &&
     pr11aR1C0HistoricalPr09SourcePaths.has(path)
   ) {
     return readRepositoryPathAtCommit(root, pr11aR1C0ContractBase, path).toString(
@@ -4957,8 +4960,10 @@ export function readPr09SourceBoundaryText(
 }
 
 function readPr11aR1C0HistoricalPriorEvidence(root, path) {
-  return readPr11aR1C0ReviewStatus(root) ===
-    "source-candidate-awaiting-independent-review" &&
+  return [
+    "source-candidate-awaiting-independent-review",
+    "r1-c0-merged-source-package",
+  ].includes(readPr11aR1C0ReviewStatus(root)) &&
     pr11aR1C0HistoricalPriorEvidencePaths.has(path)
     ? readRepositoryPathAtCommit(root, pr11aR1C0ContractBase, path)
     : null
@@ -10139,11 +10144,12 @@ export function readPr11DecisionDocument(root = repositoryRoot) {
 }
 
 export function buildPr11SourceEvidence(root = repositoryRoot) {
-  const sourceEvidenceCommit =
-    readPr11aR1C0ReviewStatus(root) ===
-    "source-candidate-awaiting-independent-review"
-      ? pr11aR1C0ContractBase
-      : null
+  const sourceEvidenceCommit = [
+    "source-candidate-awaiting-independent-review",
+    "r1-c0-merged-source-package",
+  ].includes(readPr11aR1C0ReviewStatus(root))
+    ? pr11aR1C0ContractBase
+    : null
   return pr11SourceEvidencePaths.map((path) => {
     const absolutePath = resolve(root, path)
     if (!sourceEvidenceCommit && !isRegularFile(absolutePath)) {
