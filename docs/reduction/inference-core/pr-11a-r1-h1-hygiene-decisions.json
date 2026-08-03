@@ -5,11 +5,12 @@
   "integrationBaseCommit": "949d1f2fd05a8329e7676ad2423bf55d0eab29ba",
   "integrationBaseTree": "93390c0fd7bd31263b437da69888e27c30ca8ab0",
   "exactBranch": "codex/inference-core-pr-11a-r1-h1",
-  "reviewStatus": "source-candidate-awaiting-independent-review",
+  "reviewStatus": "source-candidate-independently-reviewed",
   "accepted": false,
   "revisionBound": false,
   "runtimeQualified": false,
-  "sourceHeadCommit": null,
+  "sourceHeadCommit": "49ad418408aab32f30e7f6008aa71ad66ba5e708",
+  "sourceHeadTree": "eb9b31503d575e6587f4cf7957b74f9c001cd632",
   "sourcePathCounts": {
     "added": 2,
     "deleted": 0,
@@ -189,6 +190,8 @@
     "sourceOnly": true,
     "fullDetachedGateRequired": true,
     "independentReviewRequired": true,
+    "fullDetachedGate": "PASS_AT_REVIEWED_SOURCE_HEAD",
+    "independentReview": "PASS_AT_REVIEWED_SOURCE_HEAD",
     "q0RuntimeQualification": "NOT_STARTED"
   }
 }

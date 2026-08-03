@@ -257,7 +257,7 @@ export const pr11aR1H1SourceCandidatePaths = [
   ...new Set([...pr11aR1H1HygienePaths, ...pr11aR1H1GovernancePaths]),
 ].sort()
 export const pr11aR1H1DecisionSha256 =
-  "b9db6f68b6e1a4f2ecab489fb9963234c41fba5fa85a01d4d54ec1f69ac52b48"
+  "66c820f737be03af68d66e87b8daad802d33b125e7f7a3ba0f571865df660c98"
 export const pr11aR1D1ReviewedNegativeFindings = [
   {
     ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
@@ -6147,6 +6147,7 @@ export function verifyPr11aR1H1Decision(decision) {
     "scope",
     "sourceFingerprints",
     "sourceHeadCommit",
+    "sourceHeadTree",
     "sourcePathCounts",
     "sourcePathInventory",
     "validation",
@@ -6162,11 +6163,12 @@ export function verifyPr11aR1H1Decision(decision) {
     decision.integrationBaseCommit !== pr11aR1H1IntegrationBase ||
     decision.integrationBaseTree !== pr11aR1H1IntegrationBaseTree ||
     decision.exactBranch !== "codex/inference-core-pr-11a-r1-h1" ||
-    decision.reviewStatus !== "source-candidate-awaiting-independent-review" ||
+    decision.reviewStatus !== "source-candidate-independently-reviewed" ||
     decision.accepted !== false ||
     decision.revisionBound !== false ||
     decision.runtimeQualified !== false ||
-    decision.sourceHeadCommit !== null ||
+    decision.sourceHeadCommit !== "49ad418408aab32f30e7f6008aa71ad66ba5e708" ||
+    decision.sourceHeadTree !== "eb9b31503d575e6587f4cf7957b74f9c001cd632" ||
     JSON.stringify(decision.hygienePathInventory) !==
       JSON.stringify(pr11aR1H1HygienePaths) ||
     JSON.stringify(decision.governancePathInventory) !==
@@ -6240,6 +6242,8 @@ export function verifyPr11aR1H1Decision(decision) {
       sourceOnly: true,
       fullDetachedGateRequired: true,
       independentReviewRequired: true,
+      fullDetachedGate: "PASS_AT_REVIEWED_SOURCE_HEAD",
+      independentReview: "PASS_AT_REVIEWED_SOURCE_HEAD",
       q0RuntimeQualification: "NOT_STARTED",
     })
   ) {
@@ -6340,8 +6344,10 @@ export function verifyPr11aR1H1SourcePackage({
   )
   if (
     !decisionRegister.includes("| PR-11A R1-H1 |") ||
+    !decisionRegister.includes("Independently reviewed source candidate") ||
     !decisionRegister.includes("PR-11A remains unaccepted") ||
     !validationRegister.includes("| PR-11A R1-H1 |") ||
+    !validationRegister.includes("independent review") ||
     !validationRegister.includes("PR-11A is unaccepted")
   ) {
     errors.push("R1-H1 registers overstate or omit package status")

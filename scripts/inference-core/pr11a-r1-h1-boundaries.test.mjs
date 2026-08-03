@@ -93,6 +93,14 @@ test("R1-H1 is an exact unaccepted source-only successor", () => {
   assert.equal(decision.revisionBound, false)
   assert.equal(decision.runtimeQualified, false)
   assert.equal(
+    decision.sourceHeadCommit,
+    "49ad418408aab32f30e7f6008aa71ad66ba5e708",
+  )
+  assert.equal(
+    decision.sourceHeadTree,
+    "eb9b31503d575e6587f4cf7957b74f9c001cd632",
+  )
+  assert.equal(
     existsSync(
       resolve(
         repositoryRoot,
@@ -248,9 +256,18 @@ test("R1-H1 decision tampering fails closed", () => {
     verifyPr11aR1H1Decision(fingerprint).join("\n"),
     /invalid R1-H1 source fingerprint inventory/,
   )
+
+  const unreviewed = structuredClone(readDecision())
+  unreviewed.reviewStatus = "source-candidate-awaiting-independent-review"
+  unreviewed.sourceHeadCommit = null
+  unreviewed.sourceHeadTree = null
+  assert.match(
+    verifyPr11aR1H1Decision(unreviewed).join("\n"),
+    /invalid R1-H1 source package identity/,
+  )
 })
 
-test("R1-H1 registers remain explicit about the pending gates", () => {
+test("R1-H1 registers remain explicit about reviewed but unaccepted status", () => {
   const decisionRegister = readFileSync(
     resolve(
       repositoryRoot,
@@ -267,10 +284,10 @@ test("R1-H1 registers remain explicit about the pending gates", () => {
   )
   assert.match(
     decisionRegister,
-    /R1-H1[^\n]+awaiting full detached validation and independent review[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
+    /R1-H1[^\n]+independently reviewed source candidate[^\n]+full detached source validation passed[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
   )
   assert.match(
     validationRegister,
-    /R1-H1[^\n]+full detached validation and independent review remain pending[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
+    /R1-H1[^\n]+clean detached full source validation plus independent review[^\n]+49ad418408aab32f30e7f6008aa71ad66ba5e708[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
   )
 })
