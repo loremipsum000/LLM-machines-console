@@ -282,7 +282,7 @@ describe("authorization security hardening", () => {
     await server.close()
   })
 
-  it("does not register retired native expert mutation surfaces", async () => {
+  it("does not register retired private-service mutation surfaces", async () => {
     useHeaderOnlyServiceAuth()
     const server = authorizationServer()
 

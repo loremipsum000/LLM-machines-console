@@ -86,8 +86,8 @@ function InferenceHeader() {
             Inference
           </h1>
           <p className="mt-3 max-w-[560px] text-sm leading-5 text-[#b2b2b2]">
-            Console preview of inference usage, model inventory, and redacted
-            LiteLLM virtual-key metadata.
+            Read-only Console projection of LiteLLM health, usage, served
+            models, route summary, and safe credential metadata.
           </p>
         </div>
       </div>
@@ -129,7 +129,7 @@ function InferenceToolbar({
         aria-disabled="true"
         className="rounded-md border border-[#353535] px-3 py-2 text-sm font-medium leading-[18px] text-[#777]"
       >
-        Direct LiteLLM access is pending qualification
+        LiteLLM remains private
       </span>
     </div>
   )
@@ -312,7 +312,8 @@ function AvailableModelsSection({
         Available models
       </h2>
       <p className="mt-2 text-sm leading-5 text-[#b2b2b2]">
-        Concise model inventory from LiteLLM. Advanced routing stays in LiteLLM.
+        Concise model inventory from LiteLLM. Route changes are not a v1
+        customer capability.
       </p>
       <div className="mt-4 w-full overflow-hidden rounded-lg border border-[#242424] bg-[#181818]">
         {sourceStatus === "ok" && sortedModels.length > 0 ? (
@@ -384,7 +385,7 @@ function VirtualKeysSection({
   const [open, setOpen] = useState(false)
 
   return (
-    <section aria-label="Virtual keys">
+    <section aria-label="Credential metadata">
       <button
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
@@ -393,11 +394,12 @@ function VirtualKeysSection({
       >
         <span>
           <span className="block text-base font-semibold leading-[19px] text-white">
-            Virtual keys
+            Credential metadata
           </span>
           <span className="mt-2 block text-sm leading-5 text-[#b2b2b2]">
-            Redacted LiteLLM-native metadata. These keys remain separate from
-            Console Application credentials and are managed in LiteLLM.
+            Safe, redacted LiteLLM credential metadata. Customer-facing
+            inference credentials are managed per Application in Console;
+            route and virtual-key mutations are not available in v1.
           </span>
         </span>
         <span className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-[#353535] px-3 text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#2e2e2e]">
@@ -468,9 +470,9 @@ function VirtualKeysSection({
             <EmptyPanel
               message={sourceEmptyMessage(
                 sourceStatus,
-                "Virtual-key metadata is unavailable from LiteLLM.",
-                "LiteLLM virtual-key metadata is not configured.",
-                "No LiteLLM virtual keys are configured.",
+                "Credential metadata is unavailable from LiteLLM.",
+                "LiteLLM credential metadata is not configured.",
+                "No safe LiteLLM credential metadata is available.",
               )}
             />
           )}

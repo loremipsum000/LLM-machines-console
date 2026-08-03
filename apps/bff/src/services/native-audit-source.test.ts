@@ -24,18 +24,16 @@ describe("private identity-service projection boundary", () => {
     expect(overview.members).toEqual([
       expect.objectContaining({
         id: "operator-1",
-        keycloakHref: null,
         role: "operator",
       }),
     ])
-    expect(overview.groups.every((group) => group.keycloakHref === null)).toBe(
-      true,
-    )
+    expect(overview.members[0]).not.toHaveProperty("keycloakHref")
+    expect(overview.groups[0]).not.toHaveProperty("keycloakHref")
     expect(overview.scim).toMatchObject({
-      keycloakHref: null,
       provider: "customer-directory",
       status: "configured",
     })
+    expect(overview.scim).not.toHaveProperty("keycloakHref")
   })
 })
 

@@ -284,7 +284,6 @@ export const adminTeamMemberSchema = z
     enabled: z.boolean(),
     groups: z.array(z.string().min(1)),
     id: z.string().min(1),
-    keycloakHref: z.null(),
     lastActiveAt: z.string().datetime().nullable(),
     role: inferenceCoreHumanRoleSchema,
     status: adminTeamMemberStatusSchema,
@@ -315,7 +314,6 @@ export type AdminTeamMemberDetail = z.infer<typeof adminTeamMemberDetailSchema>
 export const adminTeamGroupSchema = z
   .object({
     id: z.string().min(1),
-    keycloakHref: z.null(),
     memberCount: z.number().int().min(0),
     name: z.string().min(1),
     virtual: z.boolean(),
@@ -334,7 +332,6 @@ export type AdminTeamGroupDetail = z.infer<typeof adminTeamGroupDetailSchema>
 export const adminTeamScimStatusSchema = z
   .object({
     detail: z.string().min(1),
-    keycloakHref: z.null(),
     lastSyncAt: z.string().datetime().nullable(),
     provider: z.string().min(1).nullable(),
     sourceStatus: inferenceCoreSourceStatusSchema,

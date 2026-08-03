@@ -249,7 +249,8 @@ function TeamOverviewView({
             Identity controls
           </h2>
           <p className="text-sm leading-5 text-[#777]">
-            Direct Keycloak access is pending qualification.
+            Keycloak remains private. Manage approved users, roles, and
+            password actions here in Console.
           </p>
         </section>
       </div>

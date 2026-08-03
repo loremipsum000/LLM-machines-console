@@ -113,7 +113,7 @@ describe("role-aware Console presentation", () => {
     expect(screen.getAllByText("7D total")).toHaveLength(2)
     expect(screen.queryByText(/average/i)).toBeNull()
     expect(
-      screen.getByText(/separate from Console Application credentials/),
+      screen.getByText(/managed per Application in Console/),
     ).toBeTruthy()
     expect(screen.queryByRole("link", { name: /Open LiteLLM/ })).toBeNull()
     expect(screen.queryByText(/model update/i)).toBeNull()
@@ -126,8 +126,10 @@ describe("role-aware Console presentation", () => {
     )
     expect(screen.queryByRole("link", { name: /Open LiteLLM/ })).toBeNull()
     expect(
-      screen.getByText("Direct LiteLLM access is pending qualification"),
+      screen.getByText("LiteLLM remains private"),
     ).toBeTruthy()
+    expect(screen.queryByText(/managed in LiteLLM/)).toBeNull()
+    expect(screen.getByText(/mutations are not available in v1/)).toBeTruthy()
   })
 
   it("distinguishes unavailable inference sources from authentic empty results", () => {
@@ -153,9 +155,11 @@ describe("role-aware Console presentation", () => {
     expect(
       screen.getByText("Model inventory is unavailable from LiteLLM."),
     ).toBeTruthy()
-    fireEvent.click(screen.getByRole("button", { name: /Virtual keys/ }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /Credential metadata/ }),
+    )
     expect(
-      screen.getByText("Virtual-key metadata is unavailable from LiteLLM."),
+      screen.getByText("Credential metadata is unavailable from LiteLLM."),
     ).toBeTruthy()
 
     rerender(
@@ -172,7 +176,7 @@ describe("role-aware Console presentation", () => {
       screen.getByText("No models are currently served by LiteLLM."),
     ).toBeTruthy()
     expect(
-      screen.getByText("No LiteLLM virtual keys are configured."),
+      screen.getByText("No safe LiteLLM credential metadata is available."),
     ).toBeTruthy()
   })
 
@@ -231,7 +235,7 @@ describe("role-aware Console presentation", () => {
     )
     expect(screen.queryByRole("link", { name: /Open in Keycloak/ })).toBeNull()
     expect(
-      screen.getByText("Direct Keycloak access is pending qualification."),
+      screen.getByText(/Keycloak remains private/),
     ).toBeTruthy()
   })
 
@@ -474,7 +478,6 @@ const teamMember: AdminTeamMember = {
   enabled: true,
   groups: ["Operations"],
   id: "operator-1",
-  keycloakHref: null,
   lastActiveAt: null,
   role: "operator",
   status: "active",
@@ -486,7 +489,6 @@ const teamOverview: AdminTeamOverviewResponse = {
   groups: [
     {
       id: "operations",
-      keycloakHref: null,
       memberCount: 1,
       name: "Operations",
       virtual: false,
@@ -495,7 +497,6 @@ const teamOverview: AdminTeamOverviewResponse = {
   members: [teamMember],
   scim: {
     detail: "Keycloak identity is available.",
-    keycloakHref: null,
     lastSyncAt: null,
     provider: "Keycloak",
     sourceStatus: "ok",

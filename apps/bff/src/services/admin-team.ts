@@ -1134,7 +1134,6 @@ async function groupById(
   const members = await service.client.getGroupMembers(group.id).catch(() => [])
   return {
     id: group.id,
-    keycloakHref: null,
     memberCount: members.length,
     name: group.name,
     virtual: false,
@@ -1191,7 +1190,6 @@ function teamGroupFromKeycloak(
 ): AdminTeamGroup {
   return {
     id: group.id,
-    keycloakHref: null,
     memberCount,
     name: group.name,
     virtual: false,
@@ -1228,7 +1226,6 @@ async function memberFromKeycloak(
     enabled: user.enabled,
     groups: groups.map((group) => group.name),
     id: user.id,
-    keycloakHref: null,
     lastActiveAt: lastActiveAtFor(user),
     role: classification.role,
     status: user.enabled ? "active" : "disabled",
@@ -1667,8 +1664,7 @@ function scimStatus(): AdminTeamOverviewResponse["scim"] {
   if (provider) {
     return {
       detail:
-        "SCIM status is read-only in Console. Manage provisioning details in Keycloak.",
-      keycloakHref: null,
+        "SCIM status is read-only in Console. Provisioning configuration remains private to the appliance identity service.",
       lastSyncAt: validIsoDate(optionalEnv("TEAM_SCIM_LAST_SYNC_AT")),
       provider,
       sourceStatus: "ok",
@@ -1677,9 +1673,7 @@ function scimStatus(): AdminTeamOverviewResponse["scim"] {
   }
 
   return {
-    detail:
-      "SCIM synchronization is configured directly in Keycloak when available.",
-    keycloakHref: null,
+    detail: "SCIM synchronization is not configured for this appliance.",
     lastSyncAt: null,
     provider: null,
     sourceStatus: "not_configured",
@@ -1690,7 +1684,6 @@ function scimStatus(): AdminTeamOverviewResponse["scim"] {
 function everyoneGroup(memberCount: number): AdminTeamGroup {
   return {
     id: "everyone",
-    keycloakHref: null,
     memberCount,
     name: "Everyone",
     virtual: true,
@@ -1741,7 +1734,6 @@ function lastActiveAtFor(user: KeycloakAdminUser): string | null {
             enabled: user.enabled,
             groups: [],
             id: user.id,
-            keycloakHref: null,
             lastActiveAt: null,
             role: "operator",
             status: user.enabled ? "active" : "disabled",
