@@ -186,6 +186,42 @@ test("R1-S1 removes browser tokens and retired native authority", () => {
   }
 })
 
+test("R1-S1 mutation actions cannot swallow terminal Console sessions", () => {
+  const source = readFileSync(
+    resolve(repositoryRoot, "apps/web/src/lib/admin/actions-core.ts"),
+    "utf8",
+  )
+  const terminalRethrows = source.match(
+    /rethrowTerminalConsoleSession\(error\)/g,
+  )
+
+  assert.equal(terminalRethrows?.length, 21)
+  assert.match(
+    source,
+    /if \(bffRequest\.state === "terminal"\) \{\s+throw new ConsoleSessionTerminalMutationError/,
+  )
+  assert.match(
+    source,
+    /if \(bffRequest\.state === "unavailable"\) \{\s+throw new AdminMutationError\(\s+"Console session is temporarily unavailable\.",\s+503/,
+  )
+  assert.match(
+    source,
+    /if \(response\.status === 401\) \{\s+await response\.body\?\.cancel\(\)\.catch\(\(\) => undefined\)\s+throw new ConsoleSessionTerminalMutationError/,
+  )
+  assert.match(
+    source,
+    /function adminMutationErrorDetail\([^)]*\)[^{]*\{\s+rethrowTerminalConsoleSession\(error\)/,
+  )
+  assert.doesNotMatch(
+    source,
+    /catch \{\s+redirectTo\(withActionStatus\(fallback, "(?:settingsAction|teamAction|appAction)", "(?:failed|firecrawlFailed)"\)\)/,
+  )
+  assert.doesNotMatch(
+    source,
+    /catch \{\s+return emptyCsvImportState\("CSV import preview failed\."\)/,
+  )
+})
+
 test("R1-S1 registers cannot overstate acceptance or qualification", () => {
   const decisionRegister = readFileSync(
     resolve(repositoryRoot, decisionRegisterPath),

@@ -7,6 +7,7 @@ import {
   consoleMfaElevationHref,
   hasFreshConsoleMfa,
 } from "@/lib/auth/mfa-elevation"
+import { normalizeConsoleReturnPath } from "@/lib/auth/safe-return"
 import { getBffRequest } from "@/lib/bff/server-request"
 import {
   type AdminConnectedApp,
@@ -74,7 +75,8 @@ export async function updateAdminSettingsOrganizationAction(
       iconLogo,
       organizationName,
     })
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "settingsAction", "failed"))
   }
 
@@ -94,7 +96,8 @@ export async function updateAdminSettingsTelemetryAction(
       confirmation: optionalFormValue(formData, "confirmation") ?? undefined,
       enabled,
     })
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "settingsAction", "failed"))
   }
 
@@ -206,7 +209,8 @@ export async function sendAdminTeamInviteAction(
       `/api/admin/team/members/${encodeURIComponent(memberId)}/invite`,
       undefined,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "teamAction", "failed"))
   }
 
@@ -228,7 +232,8 @@ export async function sendAdminTeamPasswordResetAction(
       )}/reset-password-email`,
       undefined,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "teamAction", "failed"))
   }
 
@@ -258,7 +263,8 @@ export async function generateAdminTeamPasswordAction(
       memberId: result.member.id,
       status: "generated",
     }
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     return {
       error: "Password could not be generated.",
       generatedPassword: null,
@@ -280,7 +286,8 @@ export async function disableAdminTeamMemberAction(
       `/api/admin/team/members/${encodeURIComponent(memberId)}/disable`,
       undefined,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "teamAction", "failed"))
   }
 
@@ -300,7 +307,8 @@ export async function reactivateAdminTeamMemberAction(
       `/api/admin/team/members/${encodeURIComponent(memberId)}/reactivate`,
       undefined,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "teamAction", "failed"))
   }
 
@@ -326,7 +334,8 @@ export async function deleteAdminTeamMemberAction(
       `/api/admin/team/members/${encodeURIComponent(memberId)}/delete`,
       request,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "teamAction", "failed"))
   }
 
@@ -361,7 +370,8 @@ export async function createAdminTeamGroupAction(
     groupId = result.group.id
     revalidatePath("/team")
     revalidatePath("/team/groups")
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "teamAction", "failed"))
   }
   redirectTo(
@@ -388,7 +398,8 @@ export async function updateAdminTeamGroupAction(
       `/api/admin/team/groups/${encodeURIComponent(groupId)}/update`,
       request,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "teamAction", "failed"))
   }
 
@@ -416,7 +427,8 @@ export async function deleteAdminTeamGroupAction(
       `/api/admin/team/groups/${encodeURIComponent(groupId)}/delete`,
       undefined,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "teamAction", "failed"))
   }
 
@@ -448,7 +460,8 @@ export async function bulkAssignAdminTeamGroupMembersAction(
       )}/members/bulk-assign`,
       request.data,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "teamAction", "failed"))
   }
 
@@ -472,7 +485,8 @@ export async function removeAdminTeamGroupMemberAction(
       )}/members/${encodeURIComponent(memberId)}/remove`,
       undefined,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "teamAction", "failed"))
   }
 
@@ -503,7 +517,8 @@ export async function previewAdminTeamCsvImportAction(
       preview,
       status: preview.valid ? "previewed" : "invalid",
     }
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     return emptyCsvImportState("CSV import preview failed.")
   }
 }
@@ -530,7 +545,8 @@ export async function commitAdminTeamCsvImportAction(
       preview: commit,
       status: "committed",
     }
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     return {
       commit: null,
       csv,
@@ -1008,7 +1024,8 @@ export async function updateAdminConnectedAppFirecrawlPolicyAction(
       )}/firecrawl`,
       parsed.data,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "appAction", "firecrawlFailed"))
   }
 
@@ -1065,7 +1082,8 @@ export async function updateAdminConnectedAppPolicyAction(
       `/api/admin/applications/connected-apps/${encodeURIComponent(appId)}`,
       parsed.data,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "appAction", "failed"))
   }
 
@@ -1087,7 +1105,8 @@ export async function disableAdminConnectedAppAction(
         appId,
       )}/disable`,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "appAction", "failed"))
   }
 
@@ -1109,7 +1128,8 @@ export async function enableAdminConnectedAppAction(
         appId,
       )}/enable`,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(withActionStatus(fallback, "appAction", "failed"))
   }
 
@@ -1142,7 +1162,8 @@ export async function softDeleteAdminConnectedAppAction(
       `/api/admin/applications/connected-apps/${encodeURIComponent(appId)}`,
       parsed.data,
     )
-  } catch {
+  } catch (error) {
+    rethrowTerminalConsoleSession(error)
     redirectTo(
       withActionStatus(
         connectedAppReturnHref(formData, appId),
@@ -1369,7 +1390,9 @@ async function adminMutation(
 ): Promise<unknown> {
   const bffRequest = await getBffRequest()
   if (bffRequest.state === "terminal") {
-    throw new AdminMutationError("Console session expired.", 401)
+    throw new ConsoleSessionTerminalMutationError(
+      consoleMutationReturnPath(path),
+    )
   }
   if (bffRequest.state === "unavailable") {
     throw new AdminMutationError(
@@ -1390,6 +1413,12 @@ async function adminMutation(
     headers,
     method,
   })
+  if (response.status === 401) {
+    await response.body?.cancel().catch(() => undefined)
+    throw new ConsoleSessionTerminalMutationError(
+      consoleMutationReturnPath(path),
+    )
+  }
   if (!response.ok) {
     const detail = await adminProblemDetail(response)
     throw new AdminMutationError(
@@ -1413,6 +1442,13 @@ class AdminMutationError extends Error {
   }
 }
 
+class ConsoleSessionTerminalMutationError extends AdminMutationError {
+  constructor(readonly returnTo: string) {
+    super("Console session expired.", 401)
+    this.name = "ConsoleSessionTerminalMutationError"
+  }
+}
+
 async function adminProblemDetail(response: Response): Promise<string | null> {
   try {
     const payload = await response.clone().json()
@@ -1431,10 +1467,35 @@ async function adminProblemDetail(response: Response): Promise<string | null> {
 }
 
 function adminMutationErrorDetail(error: unknown, fallback: string): string {
+  rethrowTerminalConsoleSession(error)
   if (error instanceof AdminMutationError && error.detail) {
     return error.detail
   }
   return fallback
+}
+
+function rethrowTerminalConsoleSession(error: unknown): void {
+  if (!(error instanceof ConsoleSessionTerminalMutationError)) {
+    return
+  }
+  const query = new URLSearchParams({
+    session: "expired",
+    returnTo: normalizeConsoleReturnPath(error.returnTo),
+  })
+  redirectTo(`/auth/signin?${query.toString()}`)
+}
+
+function consoleMutationReturnPath(path: string): string {
+  if (path.startsWith("/api/admin/applications/")) {
+    return "/applications"
+  }
+  if (path.startsWith("/api/admin/team/")) {
+    return "/team"
+  }
+  if (path.startsWith("/api/admin/settings/")) {
+    return "/settings"
+  }
+  return "/"
 }
 
 function requiredFormValue(formData: FormData, name: string): string {

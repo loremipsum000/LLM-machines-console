@@ -9,6 +9,7 @@ import {
   createAdminConnectedAppAction,
   disableAdminConnectedAppFirecrawlAction,
   enableAdminConnectedAppFirecrawlAction,
+  generateAdminTeamPasswordAction,
   revokeAdminConnectedAppCredentialAction,
   revokeAdminConnectedAppFirecrawlCredentialAction,
   rotateAdminConnectedAppFirecrawlCredentialAction,
@@ -147,6 +148,148 @@ describe("inference-core Admin actions", () => {
     ).rejects.toThrow(
       "redirect:/auth/elevate?action=applications.credentials.test_rotate_revoke&returnTo=%2Fapplications",
     )
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("hands a late terminal mutation session to the expired-session login flow", async () => {
+    mocks.getBffRequest.mockResolvedValue({
+      reason: "expired",
+      state: "terminal",
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/signin?session=expired&returnTo=%2Fapplications",
+    )
+    expect(mocks.redirect).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("keeps a late identity outage recoverable without logging out", async () => {
+    mocks.getBffRequest.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).resolves.toMatchObject({
+      error: "Connection evidence could not be refreshed.",
+      status: "failed",
+    })
+    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("treats a downstream 401 as terminal instead of freezing form state", async () => {
+    const fetchSpy = vi.fn(async () => new Response(null, { status: 401 }))
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/signin?session=expired&returnTo=%2Fapplications",
+    )
+    expect(mocks.redirect).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps a downstream 503 recoverable without redirecting", async () => {
+    const fetchSpy = vi.fn(async () =>
+      Response.json(
+        { detail: "Identity service temporarily unavailable." },
+        { status: 503 },
+      ),
+    )
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).resolves.toMatchObject({
+      error: "Identity service temporarily unavailable.",
+      status: "failed",
+    })
+    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not swallow a terminal session in fixed-message Team actions", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
+    mocks.getBffRequest.mockResolvedValue({
+      reason: "revoked",
+      state: "terminal",
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("memberId", "member-1")
+
+    await expect(
+      generateAdminTeamPasswordAction(
+        {
+          error: null,
+          generatedPassword: null,
+          memberId: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/signin?session=expired&returnTo=%2Fteam",
+    )
+    expect(mocks.redirect).toHaveBeenCalledTimes(1)
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
