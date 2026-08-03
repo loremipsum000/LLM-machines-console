@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-11A-R1-D1",
+  "scope": "storage-backup-retention-and-recovery-source-only",
+  "integrationBaseCommit": "ffc49eb6e97169ced202efbaa6363c85bfdd40dc",
+  "integrationBaseTree": "e1a2c49683f215ca03561e90d0fd73b2c54da17f",
+  "sourceHeadCommit": "46295906c3d733b0e56abe94d9732d8eb0549c29",
+  "sourceHeadTree": "dbbf55c1ed957aa905356b2faf11467c02781fb4",
+  "exactBranch": "codex/inference-core-pr-11a-r1-d1",
+  "reviewStatus": "source-candidate-independently-reviewed",
+  "localValidation": "passed-local-and-fresh-clone-full-source-gates",
+  "independentReview": {
+    "reviewedCommit": "46295906c3d733b0e56abe94d9732d8eb0549c29",
+    "reviewedTree": "dbbf55c1ed957aa905356b2faf11467c02781fb4",
+    "result": "passed-no-findings",
+    "freshClone": "passed-clean-detached-checkout",
+    "cleanup": "verified",
+    "runtimeActivated": false
+  },
+  "accepted": false,
+  "revisionBound": false,
+  "runtimeQualified": false,
+  "bindingDecisions": {
+    "localStorage": {
+      "backend": "zfs",
+      "productRequirement": "required",
+      "separateDatasetRoles": [
+        "product_state",
+        "databases",
+        "models",
+        "logs",
+        "staging"
+      ],
+      "localSnapshotsCountAsBackups": false
+    },
+    "backup": {
+      "engine": "restic",
+      "target": "separate-customer-owned-mounted-filesystem",
+      "encrypted": true,
+      "versioned": true,
+      "defaultCadence": "daily",
+      "retentionDays": 30,
+      "repositoryLocatorProvisioning": "root-only-mounted-file",
+      "repositoryPasswordProvisioning": "root-only-mounted-file",
+      "inlineOrEnvironmentSecretsAllowed": false,
+      "cleanRestoreRequired": true
+    },
+    "backupAllowlist": [
+      "product-configuration",
+      "identity-mappings",
+      "credential-verifier-state-and-safe-metadata",
+      "keycloak-configuration-export",
+      "litellm-configuration-export",
+      "grafana-configuration-export",
+      "audit-records",
+      "entitlement-state",
+      "update-state"
+    ],
+    "backupExclusions": [
+      "models-pending-model-recovery-decision",
+      "logs",
+      "staging",
+      "caches",
+      "temporary-files",
+      "crash-artifacts",
+      "one-time-plaintext-credentials",
+      "all-private-signing-keys",
+      "audit-recovery-envelope"
+    ],
+    "zeroContentCanarySurfaces": [
+      "restic-input-manifest",
+      "cache",
+      "temporary-files",
+      "staging",
+      "backup-logs",
+      "restored-tree"
+    ],
+    "objectStorage": {
+      "genericS3ServiceInBom": false,
+      "minioInBom": false,
+      "seaweedFsInBom": false,
+      "unusedAdapterAllowed": false,
+      "futureCallerInterface": "s3-compatible-after-proven-need"
+    }
+  },
+  "governanceCheckpointPaths": [
+    "docs/reduction/inference-core/README.md",
+    "docs/reduction/inference-core/decision-register.md",
+    "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json",
+    "docs/reduction/inference-core/validation-register.md",
+    "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs"
+  ],
+  "sourcePathInventory": [
+    "docs/reduction/inference-core/README.md",
+    "docs/reduction/inference-core/decision-register.md",
+    "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json",
+    "docs/reduction/inference-core/validation-register.md",
+    "infra/storage/README.md",
+    "infra/storage/profile.json",
+    "infra/storage/profile.schema.json",
+    "infra/storage/validate-profile.mjs",
+    "infra/storage/validate-profile.test.mjs",
+    "package.json",
+    "packages/contracts/src/index.ts",
+    "packages/contracts/src/inference-core-storage.test.ts",
+    "packages/contracts/src/inference-core-storage.ts",
+    "packages/contracts/src/inference-core.ts",
+    "scripts/inference-core/guardrails.mjs",
+    "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+    "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
+    "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs"
+  ],
+  "sourcePathCounts": {
+    "added": 9,
+    "modified": 9,
+    "deleted": 0,
+    "total": 18
+  },
+  "sourceAcceptanceCriteria": [
+    "the five required ZFS dataset roles and distinct mount boundaries are exact and local snapshots never count as backups",
+    "restic is the only v1 backup engine and uses a separate customer-owned mounted target with encrypted versioned snapshots, daily cadence, and 30-day retention",
+    "repository locator and password are accepted only through root-only mounted files and never as inline values or environment-variable secrets",
+    "backup inputs are an explicit safe-state allowlist and models, transient data, plaintext credentials, private signing keys, and recovery envelopes remain excluded",
+    "deterministic canaries prove workload content cannot enter the restic manifest, transient surfaces, backup logs, or restored tree",
+    "a clean restore remains a Q0 release gate and no runtime storage, backup, object store, real target, secret, or aggregate PR-11A revision is created"
+  ],
+  "explicitlyDisabledAfterPackage": [
+    "live-zfs-provisioning",
+    "live-restic-repository",
+    "live-backup-target",
+    "live-backup-or-restore",
+    "real-repository-locator-or-password",
+    "model-backup",
+    "object-store-service-or-adapter",
+    "R1-V1-aggregate-acceptance",
+    "optional-R1-G1-grafana",
+    "PR-12-release-packaging"
+  ],
+  "forbiddenOutputs": {
+    "aggregatePr11aContractRevision": true,
+    "liveInfrastructureMutation": true,
+    "productMainMutationBeforeProtectedMerge": true,
+    "realSecretBinding": true,
+    "runtimeDeployment": true,
+    "storageOrBackupCommandExecution": true
+  }
+}

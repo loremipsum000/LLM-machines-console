@@ -6,12 +6,12 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
-const integrationBase = "1743cb746f87c7497a34f4de7e3bfc0db3ff0be2"
-const integrationBaseTree = "d1e5402ffd12a0b9c9dee15faa78893edfd89223"
-const sourceHead = "cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc"
-const sourceHeadTree = "59dd7047e45059cc79e587d93fc4f9df969b06dc"
+const integrationBase = "ffc49eb6e97169ced202efbaa6363c85bfdd40dc"
+const integrationBaseTree = "e1a2c49683f215ca03561e90d0fd73b2c54da17f"
+const sourceHead = "46295906c3d733b0e56abe94d9732d8eb0549c29"
+const sourceHeadTree = "dbbf55c1ed957aa905356b2faf11467c02781fb4"
 const decisionPath =
-  "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json"
+  "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json"
 
 function git(...args) {
   return execFileSync("git", args, {
@@ -36,7 +36,7 @@ function changedPaths(from, to) {
   return output ? output.split("\n").sort() : []
 }
 
-test("R1-K1 is admitted from the protected R1-E1 integration merge", () => {
+test("R1-D1 is admitted from the protected R1-K1 integration merge", () => {
   assert.equal(
     git("rev-parse", `${integrationBase}^{tree}`),
     integrationBaseTree,
@@ -50,14 +50,17 @@ test("R1-K1 is admitted from the protected R1-E1 integration merge", () => {
   )
 })
 
-test("R1-K1 starts source-incomplete and cannot overstate acceptance", () => {
+test("R1-D1 starts source-incomplete and cannot overstate acceptance", () => {
   const decision = readDecision()
   assert.equal(decision.schemaVersion, 1)
-  assert.equal(decision.workPackage, "PR-11A-R1-K1")
-  assert.equal(decision.scope, "signing-custody-and-public-trust-source-only")
+  assert.equal(decision.workPackage, "PR-11A-R1-D1")
+  assert.equal(
+    decision.scope,
+    "storage-backup-retention-and-recovery-source-only",
+  )
   assert.equal(decision.integrationBaseCommit, integrationBase)
   assert.equal(decision.integrationBaseTree, integrationBaseTree)
-  assert.equal(decision.exactBranch, "codex/inference-core-pr-11a-r1-k1")
+  assert.equal(decision.exactBranch, "codex/inference-core-pr-11a-r1-d1")
   assert.equal(decision.reviewStatus, "source-candidate-independently-reviewed")
   assert.equal(
     decision.localValidation,
@@ -87,45 +90,42 @@ test("R1-K1 starts source-incomplete and cannot overstate acceptance", () => {
   )
 })
 
-test("R1-K1 binds custody without selecting the vendor algorithm early", () => {
+test("R1-D1 binds the approved storage and backup boundary", () => {
   const decisions = readDecision().bindingDecisions
-  assert.equal(
-    decisions.vendorCustody.algorithmSelection,
-    "deferred-to-pr12-and-q0",
-  )
-  assert.equal(decisions.vendorCustody.privateMaterialOnAppliance, false)
-  assert.equal(decisions.vendorCustody.privateMaterialInGit, false)
-  assert.equal(
-    decisions.vendorCustody.privateMaterialInCiEnvironmentVariables,
-    false,
-  )
-  assert.equal(decisions.vendorCustody.cloudSigningDependency, false)
-  assert.equal(decisions.auditExportCustody.algorithm, "Ed25519")
-  assert.equal(
-    decisions.auditExportCustody.privateKeyProvisioning,
-    "root-only-mounted-secret",
-  )
-  assert.equal(decisions.auditExportCustody.recoveryEnvelope, "customer-held")
+  assert.equal(decisions.localStorage.backend, "zfs")
+  assert.deepEqual(decisions.localStorage.separateDatasetRoles, [
+    "product_state",
+    "databases",
+    "models",
+    "logs",
+    "staging",
+  ])
+  assert.equal(decisions.localStorage.localSnapshotsCountAsBackups, false)
+  assert.equal(decisions.backup.engine, "restic")
+  assert.equal(decisions.backup.retentionDays, 30)
+  assert.equal(decisions.backup.inlineOrEnvironmentSecretsAllowed, false)
+  assert.equal(decisions.objectStorage.genericS3ServiceInBom, false)
+  assert.equal(decisions.objectStorage.unusedAdapterAllowed, false)
 })
 
-test("R1-K1 source inventory is exact and remains source-only", () => {
+test("R1-D1 source inventory is exact and remains source-only", () => {
   const decision = readDecision()
   assert.deepEqual(
     changedPaths(integrationBase, sourceHead),
     [...decision.sourcePathInventory].sort(),
   )
   assert.deepEqual(decision.sourcePathCounts, {
-    added: 6,
+    added: 9,
     deleted: 0,
-    modified: 13,
-    total: 19,
+    modified: 9,
+    total: 18,
   })
   assert.equal(decision.forbiddenOutputs.realSecretBinding, true)
   assert.equal(decision.forbiddenOutputs.runtimeDeployment, true)
-  assert.equal(decision.forbiddenOutputs.vendorPrivateSigningMaterial, true)
+  assert.equal(decision.forbiddenOutputs.storageOrBackupCommandExecution, true)
 })
 
-test("current registers report merged but unaccepted R1-K1", () => {
+test("current registers report merged R1-K1 and unaccepted R1-D1", () => {
   const decisionRegister = readFileSync(
     resolve(
       repositoryRoot,
@@ -142,10 +142,14 @@ test("current registers report merged but unaccepted R1-K1", () => {
   )
   assert.match(
     decisionRegister,
-    /R1-K1[^\n]+independently reviewed source package[^\n]+PR 16[^\n]+ffc49eb6e97169ced202efbaa6363c85bfdd40dc[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
+    /R1-K1[^\n]+PR 16[^\n]+ffc49eb6e97169ced202efbaa6363c85bfdd40dc[^\n]+unaccepted[^\n]+not revision-bound/i,
+  )
+  assert.match(
+    decisionRegister,
+    /R1-D1[^\n]+independently reviewed source candidate[^\n]+46295906c3d733b0e56abe94d9732d8eb0549c29[^\n]+unaccepted[^\n]+not revision-bound[^\n]+not runtime-qualified/i,
   )
   assert.match(
     validationRegister,
-    /R1-K1[^\n]+fresh-clone full source validation[^\n]+independent review passed[^\n]+cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc[^\n]+PR 16[^\n]+ffc49eb6e97169ced202efbaa6363c85bfdd40dc[^\n]+R1-V1[^\n]+Q0[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
+    /R1-D1[^\n]+fresh-clone full source validation[^\n]+independent review passed[^\n]+46295906c3d733b0e56abe94d9732d8eb0549c29[^\n]+R1-V1[^\n]+Q0[^\n]+pending[^\n]+unaccepted[^\n]+not revision-bound/i,
   )
 })

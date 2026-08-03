@@ -79,6 +79,8 @@ export const pr11aR1E1DecisionPath =
   "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json"
 export const pr11aR1K1DecisionPath =
   "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json"
+export const pr11aR1D1DecisionPath =
+  "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json"
 export const pr11aR1C0GovernanceCheckpointPaths = [
   "docs/reduction/inference-core/README.md",
   "docs/reduction/inference-core/decision-register.md",
@@ -187,6 +189,37 @@ export const pr11aR1K1SourceCandidatePaths = [
   "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
   "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
 ].sort()
+export const pr11aR1D1SourceCandidatePaths = [
+  "docs/reduction/inference-core/README.md",
+  "docs/reduction/inference-core/decision-register.md",
+  pr11aR1D1DecisionPath,
+  "docs/reduction/inference-core/validation-register.md",
+  "infra/storage/README.md",
+  "infra/storage/profile.json",
+  "infra/storage/profile.schema.json",
+  "infra/storage/validate-profile.mjs",
+  "infra/storage/validate-profile.test.mjs",
+  "package.json",
+  "packages/contracts/src/index.ts",
+  "packages/contracts/src/inference-core-storage.test.ts",
+  "packages/contracts/src/inference-core-storage.ts",
+  "packages/contracts/src/inference-core.ts",
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+  "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
+  "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
+].sort()
+export const pr11aR1D1ReviewedNegativeFindings = [
+  {
+    ruleId: "FS107_RETIRED_DATA_DEPENDENCY",
+    path: "infra/storage/README.md",
+    count: 1,
+    fingerprints: {
+      e33c1b5482aab59fd8b594c8f0bd28a315a411c9da6effe11aa63f28853d2755: 1,
+    },
+    removeBy: "PR-04",
+  },
+]
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -229,6 +262,11 @@ export const pr11aR1K1IntegrationBase =
   "1743cb746f87c7497a34f4de7e3bfc0db3ff0be2"
 export const pr11aR1K1IntegrationBaseTree =
   "d1e5402ffd12a0b9c9dee15faa78893edfd89223"
+export const pr11aR1K1SourceHead = "cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc"
+export const pr11aR1D1IntegrationBase =
+  "ffc49eb6e97169ced202efbaa6363c85bfdd40dc"
+export const pr11aR1D1IntegrationBaseTree =
+  "e1a2c49683f215ca03561e90d0fd73b2c54da17f"
 export const pr11aR1S1Pr09NativeIdentifierSuccessorEvidence = {
   path: "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
   sha256: "34f5d2a631bf0ad19b81e781e10d3738f4702ceed50a5a56cb2d164f6a804fc1",
@@ -5062,6 +5100,18 @@ function hasPr11aR1K1SourceMarker(root) {
   )
 }
 
+function hasPr11aR1D1SourceMarker(root) {
+  return (
+    hasPr11aR1K1SourceMarker(root) &&
+    isRegularFile(resolve(root, pr11aR1D1DecisionPath)) &&
+    isRegularFile(resolve(root, "infra/storage/profile.json")) &&
+    isRegularFile(resolve(root, "infra/storage/validate-profile.mjs")) &&
+    isRegularFile(
+      resolve(root, "packages/contracts/src/inference-core-storage.ts"),
+    )
+  )
+}
+
 const pr11aR1C0HistoricalPr09SourcePaths = new Set([
   "apps/bff/src/services/expert-capabilities.ts",
 ])
@@ -5609,6 +5659,7 @@ export function verifyPr11aR1K1SourcePackage({
   actualAllowlist,
   expectedRoutes,
   actualRoutes,
+  targetRef = null,
 }) {
   const errors = verifyPr11aR1E1SourcePackage({
     root,
@@ -5630,7 +5681,11 @@ export function verifyPr11aR1K1SourcePackage({
     .sort((left, right) =>
       left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
     )
-  const changes = listSourcePackageChanges(root, pr11aR1K1IntegrationBase)
+  const changes = listSourcePackageChanges(
+    root,
+    pr11aR1K1IntegrationBase,
+    targetRef,
+  )
   if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
     errors.push("R1-K1 source package path set changed")
   }
@@ -5778,6 +5833,191 @@ export function verifyPr11aR1K1SourcePackage({
   return [...new Set(errors)].sort()
 }
 
+export function verifyPr11aR1D1SourcePackage({
+  root,
+  expectedAllowlist,
+  actualAllowlist,
+  expectedRoutes,
+  actualRoutes,
+}) {
+  const actualReviewedNegativeFindings = actualAllowlist.entries.filter(
+    ({ path, ruleId }) =>
+      path === "infra/storage/README.md" &&
+      ruleId === "FS107_RETIRED_DATA_DEPENDENCY",
+  )
+  const predecessorActualAllowlist = {
+    ...actualAllowlist,
+    entries: actualAllowlist.entries.filter(
+      ({ path, ruleId }) =>
+        path !== "infra/storage/README.md" ||
+        ruleId !== "FS107_RETIRED_DATA_DEPENDENCY",
+    ),
+  }
+  const errors = verifyPr11aR1K1SourcePackage({
+    root,
+    expectedAllowlist,
+    actualAllowlist: predecessorActualAllowlist,
+    expectedRoutes,
+    actualRoutes,
+    targetRef: pr11aR1K1SourceHead,
+  })
+  if (
+    JSON.stringify(actualReviewedNegativeFindings) !==
+    JSON.stringify(pr11aR1D1ReviewedNegativeFindings)
+  ) {
+    errors.push("R1-D1 reviewed negative object-store finding changed")
+  }
+  const addedPaths = new Set([
+    pr11aR1D1DecisionPath,
+    "infra/storage/README.md",
+    "infra/storage/profile.json",
+    "infra/storage/profile.schema.json",
+    "infra/storage/validate-profile.mjs",
+    "infra/storage/validate-profile.test.mjs",
+    "packages/contracts/src/inference-core-storage.test.ts",
+    "packages/contracts/src/inference-core-storage.ts",
+    "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
+  ])
+  const expectedChanges = pr11aR1D1SourceCandidatePaths
+    .map((path) => ({ path, status: addedPaths.has(path) ? "A" : "M" }))
+    .sort((left, right) =>
+      left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+    )
+  const changes = listSourcePackageChanges(root, pr11aR1D1IntegrationBase)
+  if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
+    errors.push("R1-D1 source package path set changed")
+  }
+
+  let decision
+  try {
+    decision = readJson(resolve(root, pr11aR1D1DecisionPath))
+  } catch {
+    errors.push("invalid R1-D1 source decision document")
+  }
+  if (
+    !decision ||
+    decision.schemaVersion !== 1 ||
+    decision.workPackage !== "PR-11A-R1-D1" ||
+    decision.scope !== "storage-backup-retention-and-recovery-source-only" ||
+    decision.integrationBaseCommit !== pr11aR1D1IntegrationBase ||
+    decision.integrationBaseTree !== pr11aR1D1IntegrationBaseTree ||
+    decision.exactBranch !== "codex/inference-core-pr-11a-r1-d1" ||
+    ![
+      "source-candidate-awaiting-independent-review",
+      "source-candidate-independently-reviewed",
+    ].includes(decision.reviewStatus) ||
+    decision.accepted !== false ||
+    decision.revisionBound !== false ||
+    decision.runtimeQualified !== false ||
+    JSON.stringify(decision.sourcePathInventory) !==
+      JSON.stringify(pr11aR1D1SourceCandidatePaths) ||
+    decision.sourcePathCounts?.added !== 9 ||
+    decision.sourcePathCounts?.deleted !== 0 ||
+    decision.sourcePathCounts?.modified !== 9 ||
+    decision.sourcePathCounts?.total !== 18
+  ) {
+    errors.push("invalid R1-D1 source package identity")
+  }
+  if (
+    decision?.sourceHeadCommit !== null &&
+    decision?.sourceHeadCommit !== undefined &&
+    (!/^[0-9a-f]{40}$/.test(decision.sourceHeadCommit) ||
+      resolveCommit(root, decision.sourceHeadCommit) !==
+        decision.sourceHeadCommit ||
+      !/^[0-9a-f]{40}$/.test(decision.sourceHeadTree) ||
+      resolveTree(root, decision.sourceHeadCommit) !== decision.sourceHeadTree)
+  ) {
+    errors.push("invalid R1-D1 reviewed source commit")
+  }
+
+  const profile = readFileSync(
+    resolve(root, "infra/storage/profile.json"),
+    "utf8",
+  )
+  const validator = readFileSync(
+    resolve(root, "infra/storage/validate-profile.mjs"),
+    "utf8",
+  )
+  const storageContract = readFileSync(
+    resolve(root, "packages/contracts/src/inference-core-storage.ts"),
+    "utf8",
+  )
+  for (const fingerprint of [
+    '"backend": "zfs"',
+    '"engine": "restic"',
+    '"targetKind": "separate-customer-owned-mounted-filesystem"',
+    '"locatorProvisioning": "root-only-mounted-file"',
+    '"passwordProvisioning": "root-only-mounted-file"',
+    '"environmentVariablesAllowed": false',
+    '"retentionDays": 30',
+    '"localSnapshotsCountAsBackup": false',
+    '"restoreTarget": "clean-appliance-environment"',
+    '"unusedAdapterAllowed": false',
+  ]) {
+    if (!profile.includes(fingerprint)) {
+      errors.push(`R1-D1 storage profile is missing ${fingerprint}`)
+    }
+  }
+  for (const fingerprint of [
+    "expectedBackupAllowlist",
+    "expectedBackupExclusions",
+    "zeroContentCanaryMarkers",
+    "validateZeroContentCanaryEvidence",
+    "validateSourceSafety",
+  ]) {
+    if (!validator.includes(fingerprint)) {
+      errors.push(`R1-D1 storage validator is missing ${fingerprint}`)
+    }
+  }
+  for (const fingerprint of [
+    "inferenceCoreBackupAllowlist",
+    "inferenceCoreBackupExclusions",
+    "inferenceCoreZeroContentCanarySurfaces",
+    "inferenceCoreStorageSourceContractSchema",
+    'z.literal("NOT_EVALUATED_RUNTIME")',
+  ]) {
+    if (!storageContract.includes(fingerprint)) {
+      errors.push(`R1-D1 storage contract is missing ${fingerprint}`)
+    }
+  }
+  if (
+    /node:child_process|\b(?:execFile|execFileSync|spawn|spawnSync)\s*\(/.test(
+      validator,
+    ) ||
+    /\b(?:writeFile|writeFileSync|mkdir|mkdirSync|chmod|chmodSync|mount)\s*\(/.test(
+      validator,
+    )
+  ) {
+    errors.push("R1-D1 source validator can mutate storage or execute commands")
+  }
+  const forbiddenRuntimeValuePattern =
+    /\b(?:RESTIC_REPOSITORY|RESTIC_PASSWORD|repositoryLocator|repositoryPassword)\b/
+  if (forbiddenRuntimeValuePattern.test(profile)) {
+    errors.push(
+      "R1-D1 profile contains inline or environment repository values",
+    )
+  }
+  const objectStorePaths = listCandidatePaths(root).filter((path) =>
+    /(?:^|\/)(?:minio|seaweedfs?|object-store-adapter)(?:\/|$)/i.test(path),
+  )
+  if (objectStorePaths.length > 0) {
+    errors.push(
+      `R1-D1 repository contains forbidden object-store paths ${objectStorePaths.join(",")}`,
+    )
+  }
+  if (
+    isRegularFile(
+      resolve(
+        root,
+        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+      ),
+    )
+  ) {
+    errors.push("R1-D1 must not generate the aggregate PR-11A revision")
+  }
+  return [...new Set(errors)].sort()
+}
+
 export function verifyReviewedFindingReduction(baseEntries, currentEntries) {
   const errors = []
   const baseByKey = new Map(
@@ -5840,8 +6080,12 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   })
   const activeReviewedRevision = expectedRoutes.reviewedRevisions?.at(-1)?.id
   const pr11aR1C0ReviewStatus = readPr11aR1C0ReviewStatus(root)
+  const pr11aR1D1SourcePackage =
+    activeReviewedRevision === "PR-11" && hasPr11aR1D1SourceMarker(root)
   const pr11aR1K1SourcePackage =
-    activeReviewedRevision === "PR-11" && hasPr11aR1K1SourceMarker(root)
+    !pr11aR1D1SourcePackage &&
+    activeReviewedRevision === "PR-11" &&
+    hasPr11aR1K1SourceMarker(root)
   const pr11aR1E1SourcePackage =
     !pr11aR1K1SourcePackage &&
     activeReviewedRevision === "PR-11" &&
@@ -5856,50 +6100,58 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     !pr11aR1S1SourcePackage && pr11aR1C0ReviewStatus !== null
 
   const errors = [
-    ...(pr11aR1K1SourcePackage
-      ? verifyPr11aR1K1SourcePackage({
+    ...(pr11aR1D1SourcePackage
+      ? verifyPr11aR1D1SourcePackage({
           root,
           expectedAllowlist,
           actualAllowlist,
           expectedRoutes,
           actualRoutes,
         })
-      : pr11aR1E1SourcePackage
-        ? verifyPr11aR1E1SourcePackage({
+      : pr11aR1K1SourcePackage
+        ? verifyPr11aR1K1SourcePackage({
             root,
             expectedAllowlist,
             actualAllowlist,
             expectedRoutes,
             actualRoutes,
           })
-        : pr11aR1S1SourcePackage
-          ? verifyPr11aR1S1SourcePackage({
+        : pr11aR1E1SourcePackage
+          ? verifyPr11aR1E1SourcePackage({
               root,
               expectedAllowlist,
               actualAllowlist,
               expectedRoutes,
               actualRoutes,
             })
-          : pr11aR1C0SourcePackage
-            ? verifyPr11aR1C0SourcePackage({
+          : pr11aR1S1SourcePackage
+            ? verifyPr11aR1S1SourcePackage({
                 root,
-                reviewStatus: pr11aR1C0ReviewStatus,
                 expectedAllowlist,
                 actualAllowlist,
                 expectedRoutes,
                 actualRoutes,
               })
-            : [
-                ...compareForbiddenBaselineMetadata(
+            : pr11aR1C0SourcePackage
+              ? verifyPr11aR1C0SourcePackage({
+                  root,
+                  reviewStatus: pr11aR1C0ReviewStatus,
                   expectedAllowlist,
                   actualAllowlist,
-                ),
-                ...compareExactFindings(
-                  expectedAllowlist.entries,
-                  actualAllowlist.entries,
-                ),
-                ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
-              ]),
+                  expectedRoutes,
+                  actualRoutes,
+                })
+              : [
+                  ...compareForbiddenBaselineMetadata(
+                    expectedAllowlist,
+                    actualAllowlist,
+                  ),
+                  ...compareExactFindings(
+                    expectedAllowlist.entries,
+                    actualAllowlist.entries,
+                  ),
+                  ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
+                ]),
     ...verifyRouteBaselineMetadata(expectedRoutes),
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
@@ -5907,7 +6159,8 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...(pr11aR1C0SourcePackage ||
     pr11aR1S1SourcePackage ||
     pr11aR1E1SourcePackage ||
-    pr11aR1K1SourcePackage
+    pr11aR1K1SourcePackage ||
+    pr11aR1D1SourcePackage
       ? []
       : activeReviewedRevision === "PR-11"
         ? verifyPr11TargetState({
@@ -5987,6 +6240,27 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   if (baseRef?.startsWith("-")) {
     baseStatus = "unavailable"
     errors.push(`base ref is unavailable ${baseRef}`)
+  } else if (pr11aR1D1SourcePackage) {
+    baseStatus = "checked"
+    if (
+      resolveCommit(root, pr11aR1D1IntegrationBase) !==
+        pr11aR1D1IntegrationBase ||
+      resolveTree(root, pr11aR1D1IntegrationBase) !==
+        pr11aR1D1IntegrationBaseTree
+    ) {
+      errors.push("R1-D1 protected integration base identity changed")
+    }
+    try {
+      execFileSync(
+        "git",
+        ["merge-base", "--is-ancestor", pr11aR1D1IntegrationBase, "HEAD"],
+        { cwd: root, stdio: "ignore" },
+      )
+    } catch {
+      errors.push(
+        "R1-D1 no longer descends from the protected integration base",
+      )
+    }
   } else if (pr11aR1K1SourcePackage) {
     baseStatus = "checked"
     if (
@@ -6145,13 +6419,15 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     findingPathCount: expectedAllowlist.entries.length,
     routeCount: (pr11aR1S1SourcePackage ||
     pr11aR1E1SourcePackage ||
-    pr11aR1K1SourcePackage
+    pr11aR1K1SourcePackage ||
+    pr11aR1D1SourcePackage
       ? actualRoutes
       : expectedRoutes
     ).routes.length,
     legacyRouteCount: (pr11aR1S1SourcePackage ||
     pr11aR1E1SourcePackage ||
-    pr11aR1K1SourcePackage
+    pr11aR1K1SourcePackage ||
+    pr11aR1D1SourcePackage
       ? actualRoutes
       : expectedRoutes
     ).routes.filter((route) => route.classification === "legacy-retired")
@@ -16803,8 +17079,8 @@ export function verifyCorePackageClosure(
     "build:inference-core":
       "node scripts/inference-core/run-core-command.mjs build",
     "check:inference-core":
-      "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node scripts/inference-core/guardrails.mjs",
-    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr11ContractBase}`,
+      "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node infra/storage/validate-profile.mjs && node scripts/inference-core/guardrails.mjs",
+    "check:inference-core:base": `node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node infra/storage/validate-profile.mjs && node scripts/inference-core/guardrails.mjs --base-ref ${pr11ContractBase}`,
     "contract:inference-core:pr07:policy":
       "node scripts/inference-core/pr07-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr07:write":
@@ -16832,7 +17108,7 @@ export function verifyCorePackageClosure(
     "test:inference-core-db":
       "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test --minWorkers=1 --maxWorkers=4 --testTimeout=15000 --hookTimeout=15000",
     "test:inference-core-guardrails":
-      "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs infra/observability/validate-profile.test.mjs infra/ingress/validate-ingress.test.mjs infra/ingress/source-no-bypass.test.mjs",
+      "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs infra/observability/validate-profile.test.mjs infra/ingress/validate-ingress.test.mjs infra/ingress/source-no-bypass.test.mjs infra/storage/validate-profile.test.mjs",
     test: "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test",
     typecheck:
       "corepack pnpm -r build && corepack pnpm -r typecheck && corepack pnpm run typecheck:inference-core-db",
