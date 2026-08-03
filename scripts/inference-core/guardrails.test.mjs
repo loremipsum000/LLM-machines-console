@@ -2977,6 +2977,32 @@ test("Next middleware accepts only the reviewed content security policy wrapper"
     () => extractWebRoutes({ root, paths: [path] }),
     /content security policy call changed|Unreviewed Next middleware return form|rewrite registration is not allowed/,
   )
+
+  writeFixture(
+    root,
+    path,
+    source.replace(
+      "if (isExpiredSignInRequest(request)) {",
+      "if (false) {",
+    ),
+  )
+  assert.throws(
+    () => extractWebRoutes({ root, paths: [path] }),
+    /rewrite registration is not allowed/,
+  )
+
+  writeFixture(
+    root,
+    path,
+    source.replace(
+      "if (!hasConsoleSessionCookie(cookieHeader)) {",
+      "if (false) {",
+    ),
+  )
+  assert.throws(
+    () => extractWebRoutes({ root, paths: [path] }),
+    /rewrite registration is not allowed/,
+  )
 })
 
 test("sanitized Core commands reject environment files in any package", () => {

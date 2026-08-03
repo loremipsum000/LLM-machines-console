@@ -19459,9 +19459,9 @@ function isReviewedConsoleSessionMiddlewareSource(source) {
       /const contentSecurityPolicy = createContentSecurityPolicy\(request\)/.test(
         source,
       ) &&
-      (source.match(/\bcontentSecurityPolicy\.next\(\)/g) ?? []).length === 2 &&
+      (source.match(/\bcontentSecurityPolicy\.next\(\)/g) ?? []).length === 4 &&
       (source.match(/\bcontentSecurityPolicy\.redirect\(/g) ?? []).length ===
-        2 &&
+        3 &&
       /export default async function middleware\(request: NextRequest\)/.test(
         source,
       ) &&
@@ -19469,6 +19469,13 @@ function isReviewedConsoleSessionMiddlewareSource(source) {
       /resolution\.state === "active"/.test(source) &&
       /setSlidingSessionCookie\(response, sessionHandle\)/.test(source) &&
       /getSignInRedirectUrl\(request\.nextUrl, returnTo, true\)/.test(source) &&
+      /if\s*\(isExpiredSignInRequest\(request\)\)/.test(source) &&
+      /request\.nextUrl\.pathname === ["']\/auth\/signin["']/.test(source) &&
+      /request\.nextUrl\.searchParams\.get\(["']session["']\) ===\s*["']expired["']/.test(
+        source,
+      ) &&
+      /if\s*\(!hasConsoleSessionCookie\(cookieHeader\)\)/.test(source) &&
+      /if\s*\(resolution\.state === ["']terminal["']\)/.test(source) &&
       /clearSessionCookie\(response\)/.test(source) &&
       /httpOnly:\s*true/.test(source) &&
       /sameSite:\s*"lax"/.test(source) &&
