@@ -35,7 +35,10 @@ function changedPaths() {
 }
 
 test("R1-K1 is admitted from the protected R1-E1 integration merge", () => {
-  assert.equal(git("rev-parse", `${integrationBase}^{tree}`), integrationBaseTree)
+  assert.equal(
+    git("rev-parse", `${integrationBase}^{tree}`),
+    integrationBaseTree,
+  )
   assert.doesNotThrow(() =>
     git("merge-base", "--is-ancestor", integrationBase, "HEAD"),
   )

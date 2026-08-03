@@ -37,7 +37,10 @@ function changedPaths(from, to) {
 }
 
 test("R1-E1 starts from the protected R1-S1 integration merge", () => {
-  assert.equal(git("rev-parse", `${integrationBase}^{tree}`), integrationBaseTree)
+  assert.equal(
+    git("rev-parse", `${integrationBase}^{tree}`),
+    integrationBaseTree,
+  )
   assert.doesNotThrow(() =>
     git("merge-base", "--is-ancestor", integrationBase, "HEAD"),
   )
@@ -54,10 +57,7 @@ test("R1-E1 remains an unaccepted source-only candidate", () => {
   assert.equal(decision.scope, "mandatory-core-product-edge-source-only")
   assert.equal(decision.integrationBaseCommit, integrationBase)
   assert.equal(decision.integrationBaseTree, integrationBaseTree)
-  assert.equal(
-    decision.reviewStatus,
-    "source-candidate-independently-reviewed",
-  )
+  assert.equal(decision.reviewStatus, "source-candidate-independently-reviewed")
   assert.equal(
     decision.localValidation,
     "passed-local-and-fresh-clone-full-source-gates",
@@ -124,11 +124,17 @@ test("R1-E1 binds only core edge surfaces and keeps native systems absent", () =
 
 test("current registers report R1-S1 merged and R1-E1 unaccepted", () => {
   const decisionRegister = readFileSync(
-    resolve(repositoryRoot, "docs/reduction/inference-core/decision-register.md"),
+    resolve(
+      repositoryRoot,
+      "docs/reduction/inference-core/decision-register.md",
+    ),
     "utf8",
   )
   const validationRegister = readFileSync(
-    resolve(repositoryRoot, "docs/reduction/inference-core/validation-register.md"),
+    resolve(
+      repositoryRoot,
+      "docs/reduction/inference-core/validation-register.md",
+    ),
     "utf8",
   )
   assert.match(

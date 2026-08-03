@@ -224,8 +224,7 @@ export const pr11aR1E1IntegrationBase =
   "39057332207cca6193495453b7336eda07608255"
 export const pr11aR1E1IntegrationBaseTree =
   "4deb5b337120202b52173b05910f1cbf028b50c3"
-export const pr11aR1E1SourceHead =
-  "c60280c11318aa21d230e7002cb7d703625a7168"
+export const pr11aR1E1SourceHead = "c60280c11318aa21d230e7002cb7d703625a7168"
 export const pr11aR1K1IntegrationBase =
   "1743cb746f87c7497a34f4de7e3bfc0db3ff0be2"
 export const pr11aR1K1IntegrationBaseTree =
@@ -5704,8 +5703,8 @@ export function verifyPr11aR1K1SourcePackage({
         '"offline-entitlement"',
         '"audit-export"',
         'z.literal("Ed25519")',
-        'algorithm: inferenceCoreSigningAlgorithmSchema',
-        'privateMaterialPresence',
+        "algorithm: inferenceCoreSigningAlgorithmSchema",
+        "privateMaterialPresence",
         'storage: z.literal("offline-hardware-backed")',
         'privateKeyProvisioning: z.literal("root-only-mounted-secret")',
         'tpmSealing: z.literal("required-when-available")',
@@ -5852,41 +5851,41 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
           actualRoutes,
         })
       : pr11aR1E1SourcePackage
-      ? verifyPr11aR1E1SourcePackage({
-          root,
-          expectedAllowlist,
-          actualAllowlist,
-          expectedRoutes,
-          actualRoutes,
-        })
-      : pr11aR1S1SourcePackage
-      ? verifyPr11aR1S1SourcePackage({
-          root,
-          expectedAllowlist,
-          actualAllowlist,
-          expectedRoutes,
-          actualRoutes,
-        })
-      : pr11aR1C0SourcePackage
-        ? verifyPr11aR1C0SourcePackage({
+        ? verifyPr11aR1E1SourcePackage({
             root,
-            reviewStatus: pr11aR1C0ReviewStatus,
             expectedAllowlist,
             actualAllowlist,
             expectedRoutes,
             actualRoutes,
           })
-        : [
-            ...compareForbiddenBaselineMetadata(
+        : pr11aR1S1SourcePackage
+          ? verifyPr11aR1S1SourcePackage({
+              root,
               expectedAllowlist,
               actualAllowlist,
-            ),
-            ...compareExactFindings(
-              expectedAllowlist.entries,
-              actualAllowlist.entries,
-            ),
-            ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
-          ]),
+              expectedRoutes,
+              actualRoutes,
+            })
+          : pr11aR1C0SourcePackage
+            ? verifyPr11aR1C0SourcePackage({
+                root,
+                reviewStatus: pr11aR1C0ReviewStatus,
+                expectedAllowlist,
+                actualAllowlist,
+                expectedRoutes,
+                actualRoutes,
+              })
+            : [
+                ...compareForbiddenBaselineMetadata(
+                  expectedAllowlist,
+                  actualAllowlist,
+                ),
+                ...compareExactFindings(
+                  expectedAllowlist.entries,
+                  actualAllowlist.entries,
+                ),
+                ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
+              ]),
     ...verifyRouteBaselineMetadata(expectedRoutes),
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),

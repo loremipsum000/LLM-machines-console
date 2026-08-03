@@ -126,10 +126,7 @@ test("R1-C0 is a merged source package, not an accepted revision", () => {
   assert.equal(decision.contractBaseCommit, contractBaseCommit)
   assert.equal(decision.contractBaseTree, contractBaseTree)
   assert.equal(decision.exactBranch, exactBranch)
-  assert.equal(
-    decision.reviewStatus,
-    "r1-c0-merged-source-package",
-  )
+  assert.equal(decision.reviewStatus, "r1-c0-merged-source-package")
   assert.equal(decision.accepted, false)
   assert.equal(decision.revisionBound, false)
 })
@@ -137,7 +134,10 @@ test("R1-C0 is a merged source package, not an accepted revision", () => {
 test("R1-C0 binds the Console-first private-service boundary", () => {
   const decisions = readDecision().bindingDecisions
   assert.equal(decisions.console.primaryCustomerExperience, true)
-  assert.equal(decisions.console.launchCriticalWithoutNativeExpertSurfaces, true)
+  assert.equal(
+    decisions.console.launchCriticalWithoutNativeExpertSurfaces,
+    true,
+  )
   assert.deepEqual(decisions.nativeExpertAccess, {
     launchTargets: [],
     litellm: "denied",
