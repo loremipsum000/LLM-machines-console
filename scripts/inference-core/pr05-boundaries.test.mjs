@@ -272,8 +272,8 @@ test("PR-05 runtime authorization registration is fail-closed", () => {
     )
 
     const productionFixture = source.replace(
-      ": createRuntimeAuthorizationOptions(emergencyRecoveryService)",
-      ": createTestFixtureAuthorizationOptions(emergencyRecoveryService)",
+      ": createRuntimeAuthorizationOptions(",
+      ": createTestFixtureAuthorizationOptions(",
     )
     assert.notEqual(productionFixture, source)
     writeFileSync(absolutePath, productionFixture)

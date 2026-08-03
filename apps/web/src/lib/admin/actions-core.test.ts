@@ -9,6 +9,7 @@ import {
   createAdminConnectedAppAction,
   disableAdminConnectedAppFirecrawlAction,
   enableAdminConnectedAppFirecrawlAction,
+  generateAdminTeamPasswordAction,
   revokeAdminConnectedAppCredentialAction,
   revokeAdminConnectedAppFirecrawlCredentialAction,
   rotateAdminConnectedAppFirecrawlCredentialAction,
@@ -68,8 +69,21 @@ const connectedApp: AdminConnectedApp = {
   },
 }
 
+function activeConsoleSession(role: "admin" | "operator") {
+  return {
+    session: {
+      groups: role === "admin" ? ["Administrators"] : ["Operators"],
+      mfaVerifiedAt: new Date().toISOString(),
+      role,
+      subject: `${role}-1`,
+    },
+    sessionHandle: "A".repeat(43),
+    state: "active",
+  } as const
+}
+
 const mocks = vi.hoisted(() => ({
-  auth: vi.fn(),
+  getCurrentConsoleSession: vi.fn(),
   getBffRequest: vi.fn(),
   redirect: vi.fn((href: string) => {
     throw new Error(`redirect:${href}`)
@@ -85,8 +99,8 @@ vi.mock("next/navigation", () => ({
   redirect: mocks.redirect,
 }))
 
-vi.mock("@/lib/auth/auth", () => ({
-  auth: mocks.auth,
+vi.mock("@/lib/auth/session", () => ({
+  getCurrentConsoleSession: mocks.getCurrentConsoleSession,
 }))
 
 vi.mock("@/lib/bff/server-request", () => ({
@@ -95,20 +109,247 @@ vi.mock("@/lib/bff/server-request", () => ({
 
 describe("inference-core Admin actions", () => {
   beforeEach(() => {
-    mocks.auth.mockResolvedValue({
-      user: {
-        email: "operator@example.test",
-        groups: ["Operators"],
-        id: "operator-1",
-        roles: ["operator"],
-      },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     mocks.getBffRequest.mockResolvedValue({
       baseUrl: "http://bff.test",
       headers: new Headers({ authorization: "Bearer operator" }),
+      state: "active",
     })
     mocks.redirect.mockClear()
     mocks.revalidatePath.mockClear()
+  })
+
+  it("routes stale high-risk actions through the exact MFA elevation surface", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue({
+      ...activeConsoleSession("operator"),
+      session: {
+        ...activeConsoleSession("operator").session,
+        mfaVerifiedAt: "2000-01-01T00:00:00.000Z",
+      },
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/elevate?action=applications.credentials.test_rotate_revoke&returnTo=%2Fapplications",
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("hands a terminal capability check to the expired-session login flow", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue({
+      reason: "revoked",
+      state: "terminal",
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/signin?session=expired&returnTo=%2Fapplications",
+    )
+    expect(mocks.redirect).toHaveBeenCalledTimes(1)
+    expect(mocks.getBffRequest).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("routes an unavailable capability check to recovery without logout", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/unavailable?returnTo=%2Fapplications",
+    )
+    expect(mocks.redirect).toHaveBeenCalledTimes(1)
+    expect(mocks.getBffRequest).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("hands a late terminal mutation session to the expired-session login flow", async () => {
+    mocks.getBffRequest.mockResolvedValue({
+      reason: "expired",
+      state: "terminal",
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/signin?session=expired&returnTo=%2Fapplications",
+    )
+    expect(mocks.redirect).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("keeps a late identity outage recoverable without logging out", async () => {
+    mocks.getBffRequest.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).resolves.toMatchObject({
+      error: "Connection evidence could not be refreshed.",
+      status: "failed",
+    })
+    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("treats a downstream 401 as terminal instead of freezing form state", async () => {
+    const fetchSpy = vi.fn(async () => new Response(null, { status: 401 }))
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/signin?session=expired&returnTo=%2Fapplications",
+    )
+    expect(mocks.redirect).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps a downstream 503 recoverable without redirecting", async () => {
+    const fetchSpy = vi.fn(async () =>
+      Response.json(
+        { detail: "Identity service temporarily unavailable." },
+        { status: 503 },
+      ),
+    )
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("appId", connectedApp.id)
+
+    await expect(
+      checkAdminConnectedAppConnectionAction(
+        {
+          app: null,
+          detail: null,
+          error: null,
+          observedAt: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).resolves.toMatchObject({
+      error: "Identity service temporarily unavailable.",
+      status: "failed",
+    })
+    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not swallow a terminal session in fixed-message Team actions", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
+    mocks.getBffRequest.mockResolvedValue({
+      reason: "revoked",
+      state: "terminal",
+    })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("memberId", "member-1")
+
+    await expect(
+      generateAdminTeamPasswordAction(
+        {
+          error: null,
+          generatedPassword: null,
+          memberId: null,
+          status: "idle",
+        },
+        formData,
+      ),
+    ).rejects.toThrow(
+      "redirect:/auth/signin?session=expired&returnTo=%2Fteam",
+    )
+    expect(mocks.redirect).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   afterEach(() => {
@@ -161,9 +402,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("lets an Admin enable Firecrawl with explicit consent and optional protections", async () => {
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const fetchSpy = vi.fn(async () =>
       Promise.resolve(
         new Response(
@@ -236,6 +477,7 @@ describe("inference-core Admin actions", () => {
         formData,
       ),
     ).rejects.toThrow("Authorized Console session required.")
+    expect(mocks.redirect).not.toHaveBeenCalled()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
@@ -380,9 +622,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("submits Firecrawl policy limits only from an Admin surface", async () => {
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const fetchSpy = vi.fn(async () =>
       Promise.resolve(
         new Response(
@@ -476,9 +718,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("submits stable aliases and null disabled limits in an Admin policy update", async () => {
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const fetchSpy = vi.fn(async () =>
       Promise.resolve(
         new Response(JSON.stringify(connectedApp), {
@@ -515,9 +757,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("submits enabled service protections and the non-blocking token threshold", async () => {
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const fetchSpy = vi.fn(async () =>
       Promise.resolve(
         new Response(JSON.stringify(connectedApp), {
@@ -562,9 +804,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("rejects a context byte maximum outside JavaScript's safe integer range", async () => {
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     const fetchSpy = vi.fn()
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const formData = new FormData()
@@ -593,9 +835,9 @@ describe("inference-core Admin actions", () => {
     )
     expect(fetchSpy).not.toHaveBeenCalled()
 
-    mocks.auth.mockResolvedValue({
-      user: { id: "admin-1", roles: ["admin"] },
-    })
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     fetchSpy.mockResolvedValue(
       new Response(
         JSON.stringify({

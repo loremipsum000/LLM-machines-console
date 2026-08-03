@@ -251,6 +251,175 @@ CREATE TABLE common.audit_source_cursors (
 CREATE INDEX audit_source_cursors_health_idx
   ON common.audit_source_cursors (last_success_at, last_attempt_at);
 
+CREATE TABLE common.console_login_transactions (
+  handle_digest text PRIMARY KEY,
+  state_digest text NOT NULL UNIQUE,
+  subject_digest text,
+  encrypted_payload jsonb NOT NULL,
+  encryption_kid text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL,
+  CONSTRAINT console_login_transactions_handle_digest_check
+    CHECK (handle_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT console_login_transactions_state_digest_check
+    CHECK (state_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT console_login_transactions_subject_digest_check
+    CHECK (
+      subject_digest IS NULL
+      OR subject_digest ~ '^[0-9a-f]{64}$'
+    ),
+  CONSTRAINT console_login_transactions_encryption_kid_check
+    CHECK (encryption_kid ~ '^[A-Za-z0-9._-]{1,64}$'),
+  CONSTRAINT console_login_transactions_encrypted_payload_check
+    CHECK (
+      jsonb_typeof(encrypted_payload) = 'object'
+      AND encrypted_payload ?& ARRAY[
+        'version',
+        'kid',
+        'iv',
+        'tag',
+        'ciphertext'
+      ]
+      AND (
+        encrypted_payload
+          - 'version'
+          - 'kid'
+          - 'iv'
+          - 'tag'
+          - 'ciphertext'
+      ) = '{}'::jsonb
+      AND encrypted_payload -> 'version' = '1'::jsonb
+      AND jsonb_typeof(encrypted_payload -> 'kid') = 'string'
+      AND jsonb_typeof(encrypted_payload -> 'iv') = 'string'
+      AND jsonb_typeof(encrypted_payload -> 'tag') = 'string'
+      AND jsonb_typeof(encrypted_payload -> 'ciphertext') = 'string'
+      AND encrypted_payload ->> 'kid' = encryption_kid
+      AND encrypted_payload ->> 'iv' ~ '^[A-Za-z0-9_-]{16}$'
+      AND encrypted_payload ->> 'tag' ~ '^[A-Za-z0-9_-]{22}$'
+      AND encrypted_payload ->> 'ciphertext' ~ '^[A-Za-z0-9_-]+$'
+      AND octet_length(encrypted_payload::text) BETWEEN 80 AND 131072
+    ),
+  CONSTRAINT console_login_transactions_lifetime_check
+    CHECK (expires_at = created_at + interval '2 minutes')
+);
+
+CREATE INDEX console_login_transactions_expiry_idx
+  ON common.console_login_transactions (expires_at);
+
+CREATE TABLE common.console_sessions (
+  handle_digest text PRIMARY KEY,
+  subject_digest text NOT NULL,
+  keycloak_session_digest text,
+  encrypted_payload jsonb NOT NULL,
+  encryption_kid text NOT NULL,
+  refresh_generation bigint NOT NULL DEFAULT 0,
+  refresh_blocked_until timestamptz,
+  refresh_failure_reason text,
+  access_expires_at timestamptz NOT NULL,
+  idle_expires_at timestamptz NOT NULL,
+  absolute_expires_at timestamptz NOT NULL,
+  last_seen_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL,
+  CONSTRAINT console_sessions_handle_digest_check
+    CHECK (handle_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT console_sessions_subject_digest_check
+    CHECK (subject_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT console_sessions_keycloak_session_digest_check
+    CHECK (
+      keycloak_session_digest IS NULL
+      OR keycloak_session_digest ~ '^[0-9a-f]{64}$'
+    ),
+  CONSTRAINT console_sessions_encryption_kid_check
+    CHECK (encryption_kid ~ '^[A-Za-z0-9._-]{1,64}$'),
+  CONSTRAINT console_sessions_encrypted_payload_check
+    CHECK (
+      jsonb_typeof(encrypted_payload) = 'object'
+      AND encrypted_payload ?& ARRAY[
+        'version',
+        'kid',
+        'iv',
+        'tag',
+        'ciphertext'
+      ]
+      AND (
+        encrypted_payload
+          - 'version'
+          - 'kid'
+          - 'iv'
+          - 'tag'
+          - 'ciphertext'
+      ) = '{}'::jsonb
+      AND encrypted_payload -> 'version' = '1'::jsonb
+      AND jsonb_typeof(encrypted_payload -> 'kid') = 'string'
+      AND jsonb_typeof(encrypted_payload -> 'iv') = 'string'
+      AND jsonb_typeof(encrypted_payload -> 'tag') = 'string'
+      AND jsonb_typeof(encrypted_payload -> 'ciphertext') = 'string'
+      AND encrypted_payload ->> 'kid' = encryption_kid
+      AND encrypted_payload ->> 'iv' ~ '^[A-Za-z0-9_-]{16}$'
+      AND encrypted_payload ->> 'tag' ~ '^[A-Za-z0-9_-]{22}$'
+      AND encrypted_payload ->> 'ciphertext' ~ '^[A-Za-z0-9_-]+$'
+      AND octet_length(encrypted_payload::text) BETWEEN 80 AND 131072
+    ),
+  CONSTRAINT console_sessions_refresh_generation_check
+    CHECK (refresh_generation BETWEEN 0 AND 9007199254740991),
+  CONSTRAINT console_sessions_refresh_block_check
+    CHECK (
+      (refresh_blocked_until IS NULL AND refresh_failure_reason IS NULL)
+      OR (
+        refresh_blocked_until IS NOT NULL
+        AND refresh_failure_reason IN (
+          'identity_restart',
+          'identity_timeout',
+          'identity_unavailable'
+        )
+      )
+    ),
+  CONSTRAINT console_sessions_lifetime_check
+    CHECK (
+      absolute_expires_at = created_at + interval '8 hours'
+      AND created_at <= last_seen_at
+      AND last_seen_at <= updated_at
+      AND updated_at < absolute_expires_at
+      AND idle_expires_at = LEAST(
+        last_seen_at + interval '30 minutes',
+        absolute_expires_at
+      )
+      AND access_expires_at >= updated_at - interval '1 minute'
+      AND access_expires_at <= updated_at + interval '6 minutes'
+    )
+);
+
+CREATE INDEX console_sessions_idle_expiry_idx
+  ON common.console_sessions (idle_expires_at);
+CREATE INDEX console_sessions_subject_digest_idx
+  ON common.console_sessions (subject_digest);
+CREATE INDEX console_sessions_keycloak_session_digest_idx
+  ON common.console_sessions (keycloak_session_digest)
+  WHERE keycloak_session_digest IS NOT NULL;
+CREATE INDEX console_sessions_encryption_kid_idx
+  ON common.console_sessions (encryption_kid);
+
+CREATE TABLE common.console_logout_token_replays (
+  jti_digest text PRIMARY KEY,
+  consumed_at timestamptz NOT NULL,
+  retain_until timestamptz NOT NULL,
+  CONSTRAINT console_logout_token_replays_jti_digest_check
+    CHECK (jti_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT console_logout_token_replays_lifetime_check
+    CHECK (
+      retain_until > consumed_at
+      AND retain_until <= consumed_at + interval '7 minutes'
+    )
+);
+
+CREATE INDEX console_logout_token_replays_retention_idx
+  ON common.console_logout_token_replays (retain_until);
+
+REVOKE ALL ON common.console_login_transactions FROM PUBLIC;
+REVOKE ALL ON common.console_sessions FROM PUBLIC;
+REVOKE ALL ON common.console_logout_token_replays FROM PUBLIC;
+
 CREATE TABLE admin.applications (
   id text PRIMARY KEY,
   name text NOT NULL,

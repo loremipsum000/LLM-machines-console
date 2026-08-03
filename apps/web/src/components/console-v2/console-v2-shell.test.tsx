@@ -166,6 +166,13 @@ describe("ConsoleV2Shell", () => {
       ).toBe(href)
     }
     expect(screen.getByText("Administrator")).toBeTruthy()
+    const signOutForm = screen
+      .getByRole("button", { name: "Sign out" })
+      .closest("form")
+    expect(signOutForm?.getAttribute("action")).toBe(
+      "/api/console/session/logout",
+    )
+    expect(signOutForm?.getAttribute("method")).toBe("post")
   })
 
   it("gives Operator the same retained navigation and shortcut indexes", () => {

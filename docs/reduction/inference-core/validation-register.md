@@ -13,7 +13,8 @@ artifacts.
 | PR-10 | Lifecycle snapshot and restore foundation | Passed on the reviewed PR-10 candidate; configured adapters and runtime qualification remain PR-12 |
 | PR-10C | Emergency isolation | Passed on the reviewed PR-10C source candidate; live topology and runtime qualification remain PR-12 |
 | PR-11 | Retained Console information architecture | Passed on the reviewed PR-11 source candidate; deployment and runtime qualification remain PR-12 |
-| PR-11A R1-C0 | Product authority and governance correction | Source validation passed; independent review and merge pending; unaccepted and not revision-bound |
+| PR-11A R1-C0 | Product authority and governance correction | Source validation passed and merged through PR 13; aggregate R1-V1 review remains pending; PR-11A is unaccepted and not revision-bound |
+| PR-11A R1-S1 | Opaque Console session hardening | Local full-source validation passed at source head `ab0c5e08b8502829b757a498a161aa0c7afc76c6`; independent review, aggregate R1-V1, and Q0 runtime qualification remain pending; PR-11A is unaccepted and not revision-bound |
 
 ## PR-08 required evidence
 

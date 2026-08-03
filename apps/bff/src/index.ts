@@ -24,6 +24,7 @@ import {
 import {
   checkInferenceCoreDbReadiness,
   closeInferenceCoreDb,
+  getInferenceCoreDb,
 } from "./db/inference-core-client"
 import {
   type AdminEmergencyIsolationService,
@@ -35,6 +36,10 @@ import {
   registerAppGatewayRoutes,
 } from "./routes/app-gateway"
 import {
+  type ConsoleSessionRouteOptions,
+  registerConsoleSessionRoutes,
+} from "./routes/console-session"
+import {
   type FirecrawlGatewayRouteOptions,
   type FirecrawlIsolationTrafficGate,
   registerFirecrawlGatewayRoutes,
@@ -44,6 +49,10 @@ import {
   registerObservabilityMetricsRoutes,
 } from "./routes/observability-metrics"
 import { assertProductionConnectedAppRevealEndpoints } from "./services/admin-connected-apps"
+import {
+  type ConsoleSessionRuntime,
+  createConsoleSessionRuntimeFromEnv,
+} from "./services/console-session-runtime"
 import {
   type EmergencyIsolationService,
   InMemoryEmergencyIsolationNonRestorableAuthority,
@@ -64,6 +73,7 @@ type SharedIsolationTrafficGate = AppGatewayIsolationTrafficGate &
 
 export interface BuildServerOptions {
   testAuthorization?: AuthorizationOptions
+  testConsoleSessionRouteOptions?: ConsoleSessionRouteOptions
   testEmergencyIsolationService?: AdminEmergencyIsolationService | null
   testEmergencyRecoveryService?: AdminEmergencyRecoveryService | null
   testFirecrawlGateway?: FirecrawlGatewayRouteOptions
@@ -92,7 +102,18 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   })
   server.addHook("onRequest", logQueryFreeIncomingRequest)
   server.addHook("onResponse", logQueryFreeCompletedRequest)
-  server.addHook("onClose", closeInferenceCoreDb)
+  const consoleSessionRuntime: ConsoleSessionRuntime | null = testRuntime
+    ? null
+    : createConsoleSessionRuntimeFromEnv({
+        database: getInferenceCoreDb(),
+      })
+  const consoleSessionRouteOptions = testRuntime
+    ? options.testConsoleSessionRouteOptions
+    : consoleSessionRuntime?.routeOptions
+  server.addHook("onClose", async () => {
+    consoleSessionRuntime?.close()
+    await closeInferenceCoreDb()
+  })
 
   const emergencyRecoveryService =
     testRuntime && options.testEmergencyRecoveryService !== undefined
@@ -111,10 +132,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       : runtimeIsolation.gate
   const authorizationOptions = testRuntime
     ? (options.testAuthorization ??
-      createTestFixtureAuthorizationOptions(emergencyRecoveryService))
-    : createRuntimeAuthorizationOptions(emergencyRecoveryService)
+      createTestFixtureAuthorizationOptions(
+        emergencyRecoveryService,
+        consoleSessionRouteOptions?.service,
+      ))
+    : createRuntimeAuthorizationOptions(
+        emergencyRecoveryService,
+        requiredConsoleSessionRuntime(consoleSessionRuntime).service,
+      )
 
   registerAuthorization(server, authorizationOptions)
+  if (consoleSessionRouteOptions) {
+    registerConsoleSessionRoutes(server, consoleSessionRouteOptions)
+  }
   if (
     runtimeIsolation.service &&
     emergencyIsolationService === runtimeIsolation.service
@@ -173,6 +203,15 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   })
 
   return server
+}
+
+function requiredConsoleSessionRuntime(
+  runtime: ConsoleSessionRuntime | null,
+): ConsoleSessionRuntime {
+  if (!runtime) {
+    throw new Error("Durable Console session runtime is unavailable.")
+  }
+  return runtime
 }
 
 function createRuntimeIsolation(useFixtureStore: boolean): {

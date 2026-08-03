@@ -54,6 +54,9 @@ describe("Inference Core PostgreSQL client bounds", () => {
     expect(source).toContain("admin.application_request_ledger")
     expect(source).toContain("('common.audit_source_cursors')")
     for (const relation of [
+      "common.console_login_transactions",
+      "common.console_sessions",
+      "common.console_logout_token_replays",
       "admin.application_firecrawl_access",
       "admin.application_firecrawl_credentials",
       "admin.application_firecrawl_rate_limit_windows",

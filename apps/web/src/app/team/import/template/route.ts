@@ -1,11 +1,18 @@
+import { expiredConsoleSessionRedirectResponse } from "@/lib/auth/session-client"
 import { getBffRequest } from "@/lib/bff/server-request"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+export async function GET(request: Request) {
   const bffRequest = await getBffRequest()
-  if (!bffRequest) {
-    return new Response("Console BFF is not configured.", { status: 503 })
+  if (bffRequest.state === "terminal") {
+    return expiredConsoleSessionRedirectResponse(request.url)
+  }
+  if (bffRequest.state === "unavailable") {
+    return new Response("Console session is temporarily unavailable.", {
+      headers: { "Cache-Control": "no-store" },
+      status: 503,
+    })
   }
 
   const response = await fetch(
@@ -15,6 +22,18 @@ export async function GET() {
       headers: bffRequest.headers,
     },
   )
+
+  if (response.status === 401) {
+    await response.body?.cancel().catch(() => undefined)
+    return expiredConsoleSessionRedirectResponse(request.url)
+  }
+  if (response.status === 503) {
+    await response.body?.cancel().catch(() => undefined)
+    return new Response("Console session is temporarily unavailable.", {
+      headers: { "Cache-Control": "no-store" },
+      status: 503,
+    })
+  }
 
   return new Response(response.body, {
     headers: {

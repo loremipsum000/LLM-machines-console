@@ -4,6 +4,7 @@ import { inferenceCoreHumanRoleSchema } from "./inference-core-authorization.js"
 export * from "./inference-core-authorization.js"
 export * from "./inference-core-isolation.js"
 export * from "./inference-core-recovery.js"
+export * from "./inference-core-session.js"
 
 export const healthResponseSchema = z
   .object({

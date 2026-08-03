@@ -305,6 +305,204 @@ export const auditSourceCursors = common.table(
   ],
 )
 
+export const consoleLoginTransactions = common.table(
+  "console_login_transactions",
+  {
+    handleDigest: text("handle_digest").primaryKey(),
+    stateDigest: text("state_digest").notNull().unique(),
+    subjectDigest: text("subject_digest"),
+    encryptedPayload: jsonb("encrypted_payload").notNull(),
+    encryptionKid: text("encryption_kid").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    check(
+      "console_login_transactions_handle_digest_check",
+      sql`${table.handleDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "console_login_transactions_state_digest_check",
+      sql`${table.stateDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "console_login_transactions_subject_digest_check",
+      sql`${table.subjectDigest} IS NULL OR ${table.subjectDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "console_login_transactions_encryption_kid_check",
+      sql`${table.encryptionKid} ~ '^[A-Za-z0-9._-]{1,64}$'`,
+    ),
+    check(
+      "console_login_transactions_encrypted_payload_check",
+      sql`jsonb_typeof(${table.encryptedPayload}) = 'object'
+        AND ${table.encryptedPayload} ?& ARRAY[
+          'version',
+          'kid',
+          'iv',
+          'tag',
+          'ciphertext'
+        ]
+        AND (
+          ${table.encryptedPayload}
+            - 'version'
+            - 'kid'
+            - 'iv'
+            - 'tag'
+            - 'ciphertext'
+        ) = '{}'::jsonb
+        AND ${table.encryptedPayload} -> 'version' = '1'::jsonb
+        AND jsonb_typeof(${table.encryptedPayload} -> 'kid') = 'string'
+        AND jsonb_typeof(${table.encryptedPayload} -> 'iv') = 'string'
+        AND jsonb_typeof(${table.encryptedPayload} -> 'tag') = 'string'
+        AND jsonb_typeof(${table.encryptedPayload} -> 'ciphertext') = 'string'
+        AND ${table.encryptedPayload} ->> 'kid' = ${table.encryptionKid}
+        AND ${table.encryptedPayload} ->> 'iv' ~ '^[A-Za-z0-9_-]{16}$'
+        AND ${table.encryptedPayload} ->> 'tag' ~ '^[A-Za-z0-9_-]{22}$'
+        AND ${table.encryptedPayload} ->> 'ciphertext' ~ '^[A-Za-z0-9_-]+$'
+        AND octet_length(${table.encryptedPayload}::text) BETWEEN 80 AND 131072`,
+    ),
+    check(
+      "console_login_transactions_lifetime_check",
+      sql`${table.expiresAt} = ${table.createdAt} + interval '2 minutes'`,
+    ),
+    index("console_login_transactions_expiry_idx").on(table.expiresAt),
+  ],
+)
+
+export const consoleSessions = common.table(
+  "console_sessions",
+  {
+    handleDigest: text("handle_digest").primaryKey(),
+    subjectDigest: text("subject_digest").notNull(),
+    keycloakSessionDigest: text("keycloak_session_digest"),
+    encryptedPayload: jsonb("encrypted_payload").notNull(),
+    encryptionKid: text("encryption_kid").notNull(),
+    refreshGeneration: bigint("refresh_generation", { mode: "number" })
+      .default(0)
+      .notNull(),
+    refreshBlockedUntil: timestamp("refresh_blocked_until", {
+      withTimezone: true,
+    }),
+    refreshFailureReason: text("refresh_failure_reason"),
+    accessExpiresAt: timestamp("access_expires_at", {
+      withTimezone: true,
+    }).notNull(),
+    idleExpiresAt: timestamp("idle_expires_at", {
+      withTimezone: true,
+    }).notNull(),
+    absoluteExpiresAt: timestamp("absolute_expires_at", {
+      withTimezone: true,
+    }).notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    check(
+      "console_sessions_handle_digest_check",
+      sql`${table.handleDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "console_sessions_subject_digest_check",
+      sql`${table.subjectDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "console_sessions_keycloak_session_digest_check",
+      sql`${table.keycloakSessionDigest} IS NULL OR ${table.keycloakSessionDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "console_sessions_encryption_kid_check",
+      sql`${table.encryptionKid} ~ '^[A-Za-z0-9._-]{1,64}$'`,
+    ),
+    check(
+      "console_sessions_encrypted_payload_check",
+      sql`jsonb_typeof(${table.encryptedPayload}) = 'object'
+        AND ${table.encryptedPayload} ?& ARRAY[
+          'version',
+          'kid',
+          'iv',
+          'tag',
+          'ciphertext'
+        ]
+        AND (
+          ${table.encryptedPayload}
+            - 'version'
+            - 'kid'
+            - 'iv'
+            - 'tag'
+            - 'ciphertext'
+        ) = '{}'::jsonb
+        AND ${table.encryptedPayload} -> 'version' = '1'::jsonb
+        AND jsonb_typeof(${table.encryptedPayload} -> 'kid') = 'string'
+        AND jsonb_typeof(${table.encryptedPayload} -> 'iv') = 'string'
+        AND jsonb_typeof(${table.encryptedPayload} -> 'tag') = 'string'
+        AND jsonb_typeof(${table.encryptedPayload} -> 'ciphertext') = 'string'
+        AND ${table.encryptedPayload} ->> 'kid' = ${table.encryptionKid}
+        AND ${table.encryptedPayload} ->> 'iv' ~ '^[A-Za-z0-9_-]{16}$'
+        AND ${table.encryptedPayload} ->> 'tag' ~ '^[A-Za-z0-9_-]{22}$'
+        AND ${table.encryptedPayload} ->> 'ciphertext' ~ '^[A-Za-z0-9_-]+$'
+        AND octet_length(${table.encryptedPayload}::text) BETWEEN 80 AND 131072`,
+    ),
+    check(
+      "console_sessions_refresh_generation_check",
+      sql`${table.refreshGeneration} BETWEEN 0 AND 9007199254740991`,
+    ),
+    check(
+      "console_sessions_refresh_block_check",
+      sql`(${table.refreshBlockedUntil} IS NULL AND ${table.refreshFailureReason} IS NULL)
+        OR (
+          ${table.refreshBlockedUntil} IS NOT NULL
+          AND ${table.refreshFailureReason} IN (
+            'identity_restart',
+            'identity_timeout',
+            'identity_unavailable'
+          )
+        )`,
+    ),
+    check(
+      "console_sessions_lifetime_check",
+      sql`${table.absoluteExpiresAt} = ${table.createdAt} + interval '8 hours'
+        AND ${table.createdAt} <= ${table.lastSeenAt}
+        AND ${table.lastSeenAt} <= ${table.updatedAt}
+        AND ${table.updatedAt} < ${table.absoluteExpiresAt}
+        AND ${table.idleExpiresAt} = LEAST(
+          ${table.lastSeenAt} + interval '30 minutes',
+          ${table.absoluteExpiresAt}
+        )
+        AND ${table.accessExpiresAt} >= ${table.updatedAt} - interval '1 minute'
+        AND ${table.accessExpiresAt} <= ${table.updatedAt} + interval '6 minutes'`,
+    ),
+    index("console_sessions_idle_expiry_idx").on(table.idleExpiresAt),
+    index("console_sessions_subject_digest_idx").on(table.subjectDigest),
+    index("console_sessions_keycloak_session_digest_idx")
+      .on(table.keycloakSessionDigest)
+      .where(sql`${table.keycloakSessionDigest} IS NOT NULL`),
+    index("console_sessions_encryption_kid_idx").on(table.encryptionKid),
+  ],
+)
+
+export const consoleLogoutTokenReplays = common.table(
+  "console_logout_token_replays",
+  {
+    jtiDigest: text("jti_digest").primaryKey(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }).notNull(),
+    retainUntil: timestamp("retain_until", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    check(
+      "console_logout_token_replays_jti_digest_check",
+      sql`${table.jtiDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "console_logout_token_replays_lifetime_check",
+      sql`${table.retainUntil} > ${table.consumedAt}
+        AND ${table.retainUntil} <= ${table.consumedAt} + interval '7 minutes'`,
+    ),
+    index("console_logout_token_replays_retention_idx").on(table.retainUntil),
+  ],
+)
+
 export const applications = admin.table(
   "applications",
   {

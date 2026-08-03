@@ -130,16 +130,26 @@ export function ConsoleV2Shell({
             </nav>
           </div>
 
-          <div
-            className="rounded-lg border border-[#454345] bg-[#242324] px-3 py-2"
-            data-console-role={accessRole}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#8f8f8f]">
-              Current access
-            </p>
-            <p className="mt-1 text-sm font-medium text-white">
-              {accessRole === "admin" ? "Administrator" : "Operator"}
-            </p>
+          <div className="grid gap-2">
+            <div
+              className="rounded-lg border border-[#454345] bg-[#242324] px-3 py-2"
+              data-console-role={accessRole}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#8f8f8f]">
+                Current access
+              </p>
+              <p className="mt-1 text-sm font-medium text-white">
+                {accessRole === "admin" ? "Administrator" : "Operator"}
+              </p>
+            </div>
+            <form action="/api/console/session/logout" method="post">
+              <button
+                className="flex h-8 w-full items-center rounded px-3 text-sm font-medium text-[#bdbdbd] transition-colors hover:bg-[#3d3b3d] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+                type="submit"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
         </aside>
 

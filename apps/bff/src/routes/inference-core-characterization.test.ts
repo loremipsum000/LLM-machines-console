@@ -6,6 +6,37 @@ type RuntimeControl = { method: string; subject: string }
 
 const runtimeRoutes = vi.hoisted(() => [] as RuntimeRoute[])
 const runtimeControls = vi.hoisted(() => [] as RuntimeControl[])
+const consoleSessionFixture = vi.hoisted(() => {
+  const service = {
+    backchannelLogout: async () => 0,
+    beginElevation: async () => ({ reason: "invalid", state: "terminal" }),
+    beginLogin: async () => ({
+      authorizationUrl: "https://identity.example.test/authorize",
+      loginHandle: "L".repeat(43),
+    }),
+    completeLogin: async () => ({ reason: "invalid", state: "terminal" }),
+    logout: async () => undefined,
+    resolve: async () => ({ reason: "absent", state: "terminal" }),
+  }
+  return {
+    routeOptions: {
+      backchannelVerifier: { verify: async () => null },
+      consoleOrigin: "https://console.example.test",
+      identityIssuer: "https://identity.example.test/realms/llm-machines",
+      internalServiceCredential: "source-characterization-service",
+      service,
+    },
+    service,
+  }
+})
+
+vi.mock("../services/console-session-runtime", () => ({
+  createConsoleSessionRuntimeFromEnv: () => ({
+    close: () => undefined,
+    routeOptions: consoleSessionFixture.routeOptions,
+    service: consoleSessionFixture.service,
+  }),
+}))
 
 vi.mock("fastify", async (importOriginal) => {
   const actual = await importOriginal<typeof import("fastify")>()
@@ -44,7 +75,9 @@ vi.mock("fastify", async (importOriginal) => {
               : ""
           const reviewed =
             hook === "preHandler" ||
-            (hook === "onClose" && handlerName === "closeInferenceCoreDb") ||
+            (hook === "onClose" &&
+              handlerSource.includes("consoleSessionRuntime?.close()") &&
+              handlerSource.includes("closeInferenceCoreDb")) ||
             (hook === "onReady" &&
               handlerSource.includes(
                 "awaitruntimeIsolation.service?.bootstrap()",
@@ -235,7 +268,9 @@ async function createServer() {
   runtimeRoutes.length = 0
   runtimeControls.length = 0
   const { buildServer } = await import("../index")
-  return buildServer()
+  return buildServer({
+    testConsoleSessionRouteOptions: consoleSessionFixture.routeOptions as never,
+  })
 }
 
 function reviewedBffRoutes(): RuntimeRoute[] {
@@ -243,6 +278,9 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     { method: "GET", url: "/livez" },
     { method: "GET", url: "/healthz" },
     { method: "GET", url: "/readyz" },
+    { method: "GET", url: "/api/console/session/callback" },
+    { method: "GET", url: "/api/console/session/login" },
+    { method: "GET", url: "/api/internal/console-session/resolve" },
     { method: "GET", url: "/api/admin/audit" },
     { method: "GET", url: "/api/admin/audit/export" },
     {
@@ -282,6 +320,12 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     { method: "POST", url: "/api/admin/team/groups" },
     { method: "POST", url: "/api/admin/team/groups/:id/update" },
     { method: "POST", url: "/api/admin/team/groups/:id/delete" },
+    { method: "POST", url: "/api/console/session/elevate" },
+    { method: "POST", url: "/api/console/session/logout" },
+    {
+      method: "POST",
+      url: "/api/internal/console-session/backchannel-logout",
+    },
     {
       method: "POST",
       url: "/api/admin/team/groups/:id/members/bulk-assign",

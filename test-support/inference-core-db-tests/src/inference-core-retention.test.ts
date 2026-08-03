@@ -38,6 +38,9 @@ describe("Inference Core one-shot retention", () => {
       ).resolves.toEqual({
         abandonedRequestsSettled: 2,
         auditEventsDeleted: 1,
+        consoleLoginTransactionsDeleted: 1,
+        consoleLogoutTokenReplaysDeleted: 1,
+        consoleSessionsDeleted: 1,
         idempotencyRowsDeleted: 1,
         rateLimitWindowsDeleted: 1,
         requestLedgerRowsDeleted: 2,
@@ -53,6 +56,9 @@ describe("Inference Core one-shot retention", () => {
       ).resolves.toEqual({
         abandonedRequestsSettled: 0,
         auditEventsDeleted: 0,
+        consoleLoginTransactionsDeleted: 0,
+        consoleLogoutTokenReplaysDeleted: 0,
+        consoleSessionsDeleted: 0,
         idempotencyRowsDeleted: 0,
         rateLimitWindowsDeleted: 0,
         requestLedgerRowsDeleted: 0,
@@ -190,6 +196,90 @@ async function seedRetentionRows(client: PGlite): Promise<void> {
   await client.exec(`
     INSERT INTO common.human_identities (subject_id)
     VALUES ('retention-test-actor');
+
+    INSERT INTO common.console_login_transactions (
+      handle_digest,
+      state_digest,
+      encrypted_payload,
+      encryption_kid,
+      expires_at,
+      created_at
+    )
+    VALUES
+      (
+        repeat('1', 64),
+        repeat('2', 64),
+        '{"version":1,"kid":"session-v1","iv":"AAAAAAAAAAAAAAAA","tag":"BBBBBBBBBBBBBBBBBBBBBB","ciphertext":"CCCCCCCCCCCCCCCCCCCC"}'::jsonb,
+        'session-v1',
+        TIMESTAMPTZ '2026-07-30T00:02:00Z',
+        TIMESTAMPTZ '2026-07-30T00:00:00Z'
+      ),
+      (
+        repeat('3', 64),
+        repeat('4', 64),
+        '{"version":1,"kid":"session-v1","iv":"AAAAAAAAAAAAAAAA","tag":"BBBBBBBBBBBBBBBBBBBBBB","ciphertext":"CCCCCCCCCCCCCCCCCCCC"}'::jsonb,
+        'session-v1',
+        TIMESTAMPTZ '2026-07-31T00:31:00Z',
+        TIMESTAMPTZ '2026-07-31T00:29:00Z'
+      );
+
+    INSERT INTO common.console_sessions (
+      handle_digest,
+      subject_digest,
+      encrypted_payload,
+      encryption_kid,
+      refresh_generation,
+      access_expires_at,
+      idle_expires_at,
+      absolute_expires_at,
+      last_seen_at,
+      created_at,
+      updated_at
+    )
+    VALUES
+      (
+        repeat('5', 64),
+        repeat('6', 64),
+        '{"version":1,"kid":"session-v1","iv":"AAAAAAAAAAAAAAAA","tag":"BBBBBBBBBBBBBBBBBBBBBB","ciphertext":"CCCCCCCCCCCCCCCCCCCC"}'::jsonb,
+        'session-v1',
+        0,
+        TIMESTAMPTZ '2026-07-30T00:05:00Z',
+        TIMESTAMPTZ '2026-07-30T00:30:00Z',
+        TIMESTAMPTZ '2026-07-30T08:00:00Z',
+        TIMESTAMPTZ '2026-07-30T00:00:00Z',
+        TIMESTAMPTZ '2026-07-30T00:00:00Z',
+        TIMESTAMPTZ '2026-07-30T00:00:00Z'
+      ),
+      (
+        repeat('7', 64),
+        repeat('8', 64),
+        '{"version":1,"kid":"session-v1","iv":"AAAAAAAAAAAAAAAA","tag":"BBBBBBBBBBBBBBBBBBBBBB","ciphertext":"CCCCCCCCCCCCCCCCCCCC"}'::jsonb,
+        'session-v1',
+        0,
+        TIMESTAMPTZ '2026-07-31T00:20:00Z',
+        TIMESTAMPTZ '2026-07-31T00:45:00Z',
+        TIMESTAMPTZ '2026-07-31T08:00:00Z',
+        TIMESTAMPTZ '2026-07-31T00:15:00Z',
+        TIMESTAMPTZ '2026-07-31T00:00:00Z',
+        TIMESTAMPTZ '2026-07-31T00:15:00Z'
+      );
+
+    INSERT INTO common.console_logout_token_replays (
+      jti_digest,
+      consumed_at,
+      retain_until
+    )
+    VALUES
+      (
+        repeat('9', 64),
+        TIMESTAMPTZ '2026-07-31T00:20:00Z',
+        TIMESTAMPTZ '2026-07-31T00:25:00Z'
+      ),
+      (
+        repeat('a', 64),
+        TIMESTAMPTZ '2026-07-31T00:29:00Z',
+        TIMESTAMPTZ '2026-07-31T00:31:00Z'
+      );
 
     INSERT INTO common.audit_events (
       id,

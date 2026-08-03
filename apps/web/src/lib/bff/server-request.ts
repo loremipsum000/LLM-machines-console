@@ -1,47 +1,52 @@
 import "server-only"
 
-import { getBffForwardedIdentity } from "@/lib/auth/session"
+import {
+  type CurrentConsoleSessionResolution,
+  getCurrentConsoleSession,
+} from "@/lib/auth/session"
+import { CONSOLE_SESSION_HEADER } from "@/lib/auth/session-client"
 
-export async function getBffRequest(): Promise<{
-  baseUrl: string
-  headers: HeadersInit
-} | null> {
-  const baseUrl = process.env.CONSOLE_BFF_URL?.replace(/\/+$/, "")
-  const serviceKey = process.env.CONSOLE_BFF_SERVICE_API_KEY
+export type BffRequestResolution =
+  | Extract<
+      CurrentConsoleSessionResolution,
+      { state: "terminal" | "unavailable" }
+    >
+  | {
+      baseUrl: string
+      headers: HeadersInit
+      state: "active"
+    }
 
-  if (!baseUrl || !serviceKey) {
-    return null
+export async function getBffRequest(): Promise<BffRequestResolution> {
+  const session = await getCurrentConsoleSession()
+  if (session.state !== "active") {
+    return session
   }
 
-  const identity = await getBffForwardedIdentity()
-  if (!identity) {
-    return null
+  const baseUrl = cleanValue(process.env.CONSOLE_BFF_URL)?.replace(/\/+$/, "")
+  const serviceKey = cleanValue(process.env.CONSOLE_BFF_SERVICE_API_KEY)
+
+  if (!baseUrl || !serviceKey) {
+    return {
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    }
   }
 
   return {
     baseUrl,
-    headers: buildForwardedHeaders(serviceKey, identity),
+    headers: {
+      Authorization: `Bearer ${serviceKey}`,
+      [CONSOLE_SESSION_HEADER]: session.sessionHandle,
+    },
+    state: "active",
   }
 }
 
-function buildForwardedHeaders(
-  serviceKey: string,
-  identity: Awaited<ReturnType<typeof getBffForwardedIdentity>>,
-): HeadersInit {
-  if (!identity) {
-    return {}
-  }
-
-  return {
-    Authorization: `Bearer ${serviceKey}`,
-    ...(identity.accessToken
-      ? { "x-llm-machines-keycloak-token": identity.accessToken }
-      : {}),
-    "x-llm-machines-user-sub": identity.subject,
-    ...(identity.email ? { "x-llm-machines-user-email": identity.email } : {}),
-    ...(identity.groups?.length
-      ? { "x-llm-machines-user-groups": identity.groups.join(",") }
-      : {}),
-    "x-llm-machines-user-roles": identity.roles.join(","),
-  }
+function cleanValue(value: string | undefined): string | undefined {
+  const cleaned = value?.trim()
+  return cleaned && !["null", "undefined"].includes(cleaned.toLowerCase())
+    ? cleaned
+    : undefined
 }

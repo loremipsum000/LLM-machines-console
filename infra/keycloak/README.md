@@ -20,6 +20,37 @@ Groups `manage-membership-of-members` scope supplies the group-side bridge for
 the Users `manage-group-membership` scope. No custom Keycloak provider plugin
 is required or permitted by this seed.
 
+## R1-S1 Console session boundary
+
+The FGAP seed keeps Keycloak `26.6.0` as its minimum compatible release. The
+Console session package is narrower and pins Q0 qualification and product
+packaging to exactly Keycloak `26.7.0`, represented by
+`quay.io/keycloak/keycloak:26.7.0`. Q0 may qualify that selected design but may
+not substitute another version or create a missing authentication design.
+
+`pr11a-console-session-policy.json` is the source-only R1-S1 contract. The
+`console-web` client is confidential, uses Authorization Code with PKCE S256,
+and has one runtime-bound callback at `/api/console/session/callback`. Direct
+grants, implicit flow, service accounts, browser token-endpoint CORS, offline
+tokens, and wildcard callbacks are disabled. The browser receives only the
+Product-owned opaque Console cookie. The BFF stores encrypted refresh-token
+state and receives backchannel logout at
+`/api/internal/console-session/backchannel-logout` through Product ingress.
+
+The current realm seed preserves its existing stronger sign-in rule by
+requiring MFA for both Admin and Operator. R1-S1 additionally requires a fresh
+five-minute MFA event for the exact high-risk actions in the policy. The list
+contains no LiteLLM, Keycloak Admin Console, Grafana, generic expert-access, or
+vendor-maintenance authority. There is no native customer Keycloak Admin
+Console in v1, and this source package performs no live Keycloak mutation.
+
+Validate the source contract without contacting a runtime:
+
+```text
+node infra/keycloak/validate-pr11a-session-policy.mjs
+node --test infra/keycloak/validate-pr11a-session-policy.test.mjs
+```
+
 ## Grafana OIDC boundary
 
 The human realm contains one credential-free logical client named `grafana`.

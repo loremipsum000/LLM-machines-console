@@ -1,4 +1,9 @@
-import { getCurrentConsoleRole } from "@/lib/auth/session"
+import { getCurrentConsoleSession } from "@/lib/auth/session"
+import {
+  consoleMfaElevationHref,
+  hasFreshConsoleMfa,
+} from "@/lib/auth/mfa-elevation"
+import { expiredConsoleSessionRedirectResponse } from "@/lib/auth/session-client"
 import { getBffRequest } from "@/lib/bff/server-request"
 
 export const dynamic = "force-dynamic"
@@ -15,15 +20,34 @@ const exportFilterNames = [
 ] as const
 
 export async function GET(request: Request) {
-  const role = await getCurrentConsoleRole()
-  if (!role) {
+  const session = await getCurrentConsoleSession()
+  if (session.state === "unavailable") {
+    return problemResponse(503, "Identity service temporarily unavailable")
+  }
+  if (session.state !== "active") {
     return problemResponse(401, "Authentication required")
   }
-  if (role !== "admin") {
+  if (session.session.role !== "admin") {
     return problemResponse(403, "Admin access required")
   }
 
   const requestUrl = new URL(request.url)
+  if (!hasFreshConsoleMfa(session.session.mfaVerifiedAt)) {
+    const elevationUrl = new URL(
+      consoleMfaElevationHref(
+        "activity_audit.export",
+        `${requestUrl.pathname}${requestUrl.search}`,
+      ),
+      requestUrl.origin,
+    )
+    return new Response(null, {
+      headers: {
+        "Cache-Control": "no-store",
+        Location: elevationUrl.toString(),
+      },
+      status: 303,
+    })
+  }
   const format = requestUrl.searchParams.get("format")
   if (format !== "json" && format !== "csv") {
     return problemResponse(400, "Invalid audit export format")
@@ -35,8 +59,11 @@ export async function GET(request: Request) {
   }
 
   const bffRequest = await getBffRequest()
-  if (!bffRequest) {
-    return problemResponse(503, "Console BFF is not configured")
+  if (bffRequest.state === "terminal") {
+    return expiredConsoleSessionRedirectResponse(request.url)
+  }
+  if (bffRequest.state === "unavailable") {
+    return problemResponse(503, "Identity service temporarily unavailable")
   }
 
   const params = new URLSearchParams({ format, from, to })
@@ -54,6 +81,14 @@ export async function GET(request: Request) {
       headers: bffRequest.headers,
     },
   )
+  if (response.status === 401) {
+    await response.body?.cancel().catch(() => undefined)
+    return expiredConsoleSessionRedirectResponse(request.url)
+  }
+  if (response.status === 503) {
+    await response.body?.cancel().catch(() => undefined)
+    return problemResponse(503, "Identity service temporarily unavailable")
+  }
   const headers = new Headers({
     "Cache-Control": "no-store",
     "Content-Type":

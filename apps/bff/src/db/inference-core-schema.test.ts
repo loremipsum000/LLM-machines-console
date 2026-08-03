@@ -18,6 +18,9 @@ import {
   auditEvents,
   auditSourceCursors,
   backupState,
+  consoleLoginTransactions,
+  consoleLogoutTokenReplays,
+  consoleSessions,
   consoleSettings,
   emergencyIsolationState,
   emergencyRecoveryFactor,
@@ -79,6 +82,44 @@ const tableDefinitions = [
       "last_error_code",
       "updated_at",
     ],
+  },
+  {
+    schema: "common",
+    table: consoleLoginTransactions,
+    columns: [
+      "handle_digest",
+      "state_digest",
+      "subject_digest",
+      "encrypted_payload",
+      "encryption_kid",
+      "expires_at",
+      "created_at",
+    ],
+  },
+  {
+    schema: "common",
+    table: consoleSessions,
+    columns: [
+      "handle_digest",
+      "subject_digest",
+      "keycloak_session_digest",
+      "encrypted_payload",
+      "encryption_kid",
+      "refresh_generation",
+      "refresh_blocked_until",
+      "refresh_failure_reason",
+      "access_expires_at",
+      "idle_expires_at",
+      "absolute_expires_at",
+      "last_seen_at",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    schema: "common",
+    table: consoleLogoutTokenReplays,
+    columns: ["jti_digest", "consumed_at", "retain_until"],
   },
   {
     schema: "admin",
@@ -518,6 +559,12 @@ const expectedIndexes = [
   "audit_events_correlation_id_idx",
   "audit_events_application_occurred_idx",
   "audit_source_cursors_health_idx",
+  "console_login_transactions_expiry_idx",
+  "console_sessions_idle_expiry_idx",
+  "console_sessions_subject_digest_idx",
+  "console_sessions_keycloak_session_digest_idx",
+  "console_sessions_encryption_kid_idx",
+  "console_logout_token_replays_retention_idx",
   "applications_id_auth_mode_idx",
   "applications_status_updated_idx",
   "application_credentials_id_app_idx",
@@ -579,6 +626,9 @@ describe("inference-core persistence boundary", () => {
       "human_identity_roles",
       "audit_events",
       "audit_source_cursors",
+      "console_login_transactions",
+      "console_sessions",
+      "console_logout_token_replays",
       "applications",
       "application_credentials",
       "application_firecrawl_access",
@@ -619,6 +669,9 @@ describe("inference-core persistence boundary", () => {
       "humanIdentityRoles",
       "auditEvents",
       "auditSourceCursors",
+      "consoleLoginTransactions",
+      "consoleSessions",
+      "consoleLogoutTokenReplays",
       "applications",
       "applicationCredentials",
       "applicationFirecrawlAccess",
@@ -830,6 +883,30 @@ describe("inference-core persistence boundary", () => {
     expect(persistenceSource).not.toMatch(
       /\b(?:builder|hub|knowledge|knowledge_archive|mcp|vector|pgvector|agentic|owner_group|environments|environment|usage_summary|request_body|response_body)\b/i,
     )
+  })
+
+  it("keeps Console session persistence digest-only, encrypted, active-only, and private", () => {
+    const sessionPersistence = migration.slice(
+      migration.indexOf("CREATE TABLE common.console_login_transactions"),
+      migration.indexOf("CREATE TABLE admin.applications"),
+    )
+    expect(sessionPersistence).toContain("encrypted_payload jsonb NOT NULL")
+    expect(sessionPersistence).toContain(
+      "encrypted_payload ->> 'kid' = encryption_kid",
+    )
+    expect(sessionPersistence).not.toMatch(
+      /\b(?:email|groups|keycloak_session_id|refresh_token|return_path|raw_handle|session_cookie)\b/i,
+    )
+    expect(sessionPersistence).not.toMatch(
+      /expert_ingress|litellm|keycloak_admin/i,
+    )
+    for (const table of [
+      "console_login_transactions",
+      "console_sessions",
+      "console_logout_token_replays",
+    ]) {
+      expect(migration).toContain(`REVOKE ALL ON common.${table} FROM PUBLIC;`)
+    }
   })
 })
 

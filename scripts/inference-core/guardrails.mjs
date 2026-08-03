@@ -73,6 +73,8 @@ export const pr11DecisionPath =
   "docs/reduction/inference-core/pr-11-console-information-architecture-decisions.json"
 export const pr11aR1C0DecisionPath =
   "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json"
+export const pr11aR1S1DecisionPath =
+  "docs/reduction/inference-core/pr-11a-r1-s1-console-session-decisions.json"
 export const pr11aR1C0GovernanceCheckpointPaths = [
   "docs/reduction/inference-core/README.md",
   "docs/reduction/inference-core/decision-register.md",
@@ -159,10 +161,16 @@ export const pr10cContractBaseTree = "991109ad85e0c454af62ed42c4a5a69068b301e0"
 export const pr11ContractBase = "6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7"
 export const pr11LaneAnchor = pr11ContractBase
 export const pr11ContractBaseTree = "44d6fb34db5f3d35e8b2f9bd2259756aec63b8a8"
-export const pr11aR1C0ContractBase =
-  "9d8f1a6144cb280104cdce0a21ab7dafa72087ec"
+export const pr11aR1C0ContractBase = "9d8f1a6144cb280104cdce0a21ab7dafa72087ec"
 export const pr11aR1C0ContractBaseTree =
   "a7cb76ff95ec4ffc12cbd589b0514564602c35da"
+export const pr11aR1S1IntegrationBase =
+  "0f29c7939fa885c11c191e8b672f09e16635ddcb"
+export const pr11aR1S1SourceBase = "aa831424949fb49095de48714b508ada0b57f589"
+export const pr11aR1S1Pr09NativeIdentifierSuccessorEvidence = {
+  path: "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
+  sha256: "34f5d2a631bf0ad19b81e781e10d3738f4702ceed50a5a56cb2d164f6a804fc1",
+}
 export const pr10cSuccessorEvidenceCommit =
   "9c5dedc2242b7a6b061a043334b1f06fa621c939"
 export const pr10cSuccessorEvidenceTree = pr11ContractBaseTree
@@ -3669,7 +3677,11 @@ const unsupportedFastifyMethods = new Set([
   "setErrorHandler",
   "setNotFoundHandler",
 ])
-const controlledFastifyMethods = new Set(["addHook"])
+const controlledFastifyMethods = new Set([
+  "addContentTypeParser",
+  "addHook",
+  "hasContentTypeParser",
+])
 const reviewedAdminRouteCapabilities = new Set([
   "activity_audit.export",
   "applications.create_delete",
@@ -3722,6 +3734,13 @@ const reviewedFastifyRegistrarSpecs = [
     optionsInitializer: "{}",
     optionsParameterType: "ObservabilityMetricsRouteOptions",
     sourcePath: "apps/bff/src/routes/observability-metrics.ts",
+  },
+  {
+    exportName: "registerConsoleSessionRoutes",
+    importSource: "./routes/console-session",
+    optionsInitializer: null,
+    optionsParameterType: "ConsoleSessionRouteOptions",
+    sourcePath: "apps/bff/src/routes/console-session.ts",
   },
   {
     exportName: "registerAdminRoutes",
@@ -3830,7 +3849,18 @@ const resolverFingerprintSpecs = [
     symbol: "<file>",
   },
   {
+    enabledWhenPath: "apps/web/src/lib/auth/auth.ts",
     path: "apps/web/src/lib/auth/auth.ts",
+    symbol: "<file>",
+  },
+  {
+    enabledWhenPath: "apps/web/src/lib/auth/session-client.ts",
+    path: "apps/web/src/lib/auth/session-client.ts",
+    symbol: "<file>",
+  },
+  {
+    enabledWhenPath: "apps/web/src/lib/auth/session.ts",
+    path: "apps/web/src/lib/auth/session.ts",
     symbol: "<file>",
   },
 ]
@@ -4924,6 +4954,7 @@ function readPr11aR1C0ReviewStatus(root) {
     return [
       "proposed-governance-first",
       "source-candidate-awaiting-independent-review",
+      "r1-c0-merged-source-package",
     ].includes(status)
       ? status
       : null
@@ -4932,35 +4963,66 @@ function readPr11aR1C0ReviewStatus(root) {
   }
 }
 
+function hasPr11aR1S1SourceMarker(root) {
+  return (
+    isRegularFile(
+      resolve(root, "infra/keycloak/pr11a-console-session-policy.json"),
+    ) &&
+    isRegularFile(
+      resolve(root, "infra/keycloak/validate-pr11a-session-policy.mjs"),
+    ) &&
+    !isRegularFile(
+      resolve(
+        root,
+        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+      ),
+    )
+  )
+}
+
 const pr11aR1C0HistoricalPr09SourcePaths = new Set([
   "apps/bff/src/services/expert-capabilities.ts",
 ])
 const pr11aR1C0HistoricalPriorEvidencePaths = new Set([
   "scripts/inference-core/pr02-boundaries.test.mjs",
 ])
+const pr11aR1S1HistoricalPriorEvidencePaths = new Set([
+  "scripts/inference-core/pr05-boundaries.test.mjs",
+  "scripts/inference-core/pr10c-boundaries.test.mjs",
+])
 
-export function readPr09SourceBoundaryText(
-  path,
-  root = repositoryRoot,
-) {
+export function readPr09SourceBoundaryText(path, root = repositoryRoot) {
   if (
-    readPr11aR1C0ReviewStatus(root) ===
-      "source-candidate-awaiting-independent-review" &&
+    [
+      "source-candidate-awaiting-independent-review",
+      "r1-c0-merged-source-package",
+    ].includes(readPr11aR1C0ReviewStatus(root)) &&
     pr11aR1C0HistoricalPr09SourcePaths.has(path)
   ) {
-    return readRepositoryPathAtCommit(root, pr11aR1C0ContractBase, path).toString(
-      "utf8",
-    )
+    return readRepositoryPathAtCommit(
+      root,
+      pr11aR1C0ContractBase,
+      path,
+    ).toString("utf8")
   }
   const absolutePath = resolve(root, path)
   return isRegularFile(absolutePath) ? readFileSync(absolutePath, "utf8") : null
 }
 
 function readPr11aR1C0HistoricalPriorEvidence(root, path) {
-  return readPr11aR1C0ReviewStatus(root) ===
-    "source-candidate-awaiting-independent-review" &&
+  return [
+    "source-candidate-awaiting-independent-review",
+    "r1-c0-merged-source-package",
+  ].includes(readPr11aR1C0ReviewStatus(root)) &&
     pr11aR1C0HistoricalPriorEvidencePaths.has(path)
     ? readRepositoryPathAtCommit(root, pr11aR1C0ContractBase, path)
+    : null
+}
+
+function readPr11aR1S1HistoricalPriorEvidence(root, path) {
+  return hasPr11aR1S1SourceMarker(root) &&
+    pr11aR1S1HistoricalPriorEvidencePaths.has(path)
+    ? readRepositoryPathAtCommit(root, pr11aR1S1SourceBase, path)
     : null
 }
 
@@ -4997,11 +5059,7 @@ function listPr11aR1C0SourcePackageChanges(root) {
         )
 }
 
-function comparePr11aR1C0RepositoryClosure(
-  expected,
-  actual,
-  allowedPaths,
-) {
+function comparePr11aR1C0RepositoryClosure(expected, actual, allowedPaths) {
   const errors = []
   const allowed = new Set(allowedPaths)
   const expectedByPath = new Map(expected.map((entry) => [entry.path, entry]))
@@ -5040,9 +5098,7 @@ function comparePr11aR1C0ProtectedFiles(expected, actual, allowedPaths) {
     const after = actualByPath.get(path)
     if (allowed.has(path)) {
       if (JSON.stringify(before) === JSON.stringify(after)) {
-        errors.push(
-          `PR-11A R1-C0 protected fingerprint did not change ${path}`,
-        )
+        errors.push(`PR-11A R1-C0 protected fingerprint did not change ${path}`)
       }
       continue
     }
@@ -5088,12 +5144,14 @@ export function verifyPr11aR1C0SourcePackage({
           "apps/bff/src/services/expert-capabilities.ts",
         ],
   )
-  const expectedChanges = allowedPaths.map((path) => ({
-    path,
-    status: addedPaths.has(path) ? "A" : deletedPaths.has(path) ? "D" : "M",
-  })).sort((left, right) =>
-    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
-  )
+  const expectedChanges = allowedPaths
+    .map((path) => ({
+      path,
+      status: addedPaths.has(path) ? "A" : deletedPaths.has(path) ? "D" : "M",
+    }))
+    .sort((left, right) =>
+      left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+    )
   if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
     errors.push("PR-11A R1-C0 source package path set changed")
   }
@@ -5225,6 +5283,125 @@ export function verifyShrinkOnly(baseEntries, currentEntries) {
   return errors.sort()
 }
 
+export function verifyPr11aR1S1SourcePackage({
+  root,
+  expectedAllowlist,
+  actualAllowlist,
+  expectedRoutes,
+  actualRoutes,
+}) {
+  const errors = []
+  const expectedFindings = new Map(
+    expectedAllowlist.entries.map((entry) => [findingKey(entry), entry]),
+  )
+  for (const entry of actualAllowlist.entries) {
+    const baseline = expectedFindings.get(findingKey(entry))
+    if (
+      !baseline ||
+      entry.count > baseline.count ||
+      !isFingerprintSubset(
+        entry.fingerprints ?? {},
+        baseline.fingerprints ?? {},
+      )
+    ) {
+      errors.push(
+        `R1-S1 added or expanded forbidden finding ${findingKey(entry)}`,
+      )
+    }
+  }
+
+  for (const key of [
+    "schemaVersion",
+    "baseCommit",
+    "target",
+    "webInferenceConsumers",
+    "escapeHatches",
+    "reviewedRevisions",
+  ]) {
+    if (
+      JSON.stringify(actualRoutes[key]) !== JSON.stringify(expectedRoutes[key])
+    ) {
+      errors.push(`R1-S1 changed retained route baseline field ${key}`)
+    }
+  }
+
+  const expectedRouteKeys = new Set(expectedRoutes.routes.map(routeKey))
+  const actualRouteKeys = new Set(actualRoutes.routes.map(routeKey))
+  const addedRoutes = [...actualRouteKeys]
+    .filter((key) => !expectedRouteKeys.has(key))
+    .sort()
+  const removedRoutes = [...expectedRouteKeys]
+    .filter((key) => !actualRouteKeys.has(key))
+    .sort()
+  const allowedAddedRoutes = [
+    "bff\0GET\0/api/console/session/callback\0apps/bff/src/routes/console-session.ts",
+    "bff\0GET\0/api/console/session/login\0apps/bff/src/routes/console-session.ts",
+    "bff\0GET\0/api/internal/console-session/resolve\0apps/bff/src/routes/console-session.ts",
+    "bff\0POST\0/api/console/session/elevate\0apps/bff/src/routes/console-session.ts",
+    "bff\0POST\0/api/console/session/logout\0apps/bff/src/routes/console-session.ts",
+    "bff\0POST\0/api/internal/console-session/backchannel-logout\0apps/bff/src/routes/console-session.ts",
+    "web-page\0PAGE\0/auth/elevate\0apps/web/src/app/auth/elevate/page.tsx",
+    "web-page\0PAGE\0/auth/unavailable\0apps/web/src/app/auth/unavailable/page.tsx",
+  ].sort()
+  const allowedRemovedRoutes = [
+    "web-handler\0GET\0/api/auth/[...nextauth]\0apps/web/src/app/api/auth/[...nextauth]/route.ts",
+    "web-handler\0GET\0/auth/keycloak\0apps/web/src/app/auth/keycloak/route.ts",
+    "web-handler\0POST\0/api/auth/[...nextauth]\0apps/web/src/app/api/auth/[...nextauth]/route.ts",
+  ].sort()
+  if (JSON.stringify(addedRoutes) !== JSON.stringify(allowedAddedRoutes)) {
+    errors.push(
+      "R1-S1 route additions differ from the Console session boundary",
+    )
+  }
+  if (JSON.stringify(removedRoutes) !== JSON.stringify(allowedRemovedRoutes)) {
+    errors.push(
+      "R1-S1 route removals differ from the Auth.js retirement boundary",
+    )
+  }
+
+  const expectedRegistrars = new Set(
+    expectedRoutes.fastifyRegistrars.map(({ exportName }) => exportName),
+  )
+  const actualRegistrars = new Set(
+    actualRoutes.fastifyRegistrars.map(({ exportName }) => exportName),
+  )
+  const addedRegistrars = [...actualRegistrars]
+    .filter((name) => !expectedRegistrars.has(name))
+    .sort()
+  const removedRegistrars = [...expectedRegistrars]
+    .filter((name) => !actualRegistrars.has(name))
+    .sort()
+  if (
+    JSON.stringify(addedRegistrars) !==
+      JSON.stringify(["registerConsoleSessionRoutes"]) ||
+    removedRegistrars.length !== 0
+  ) {
+    errors.push("R1-S1 Fastify registrar transition changed")
+  }
+
+  if (
+    !isRegularFile(
+      resolve(root, "infra/keycloak/pr11a-console-session-policy.json"),
+    ) ||
+    !isRegularFile(
+      resolve(root, "infra/keycloak/validate-pr11a-session-policy.mjs"),
+    )
+  ) {
+    errors.push("R1-S1 Keycloak source policy is missing")
+  }
+  if (
+    isRegularFile(
+      resolve(
+        root,
+        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+      ),
+    )
+  ) {
+    errors.push("R1-S1 must not generate the aggregate PR-11A revision")
+  }
+  return errors.sort()
+}
+
 export function verifyReviewedFindingReduction(baseEntries, currentEntries) {
   const errors = []
   const baseByKey = new Map(
@@ -5287,113 +5464,148 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   })
   const activeReviewedRevision = expectedRoutes.reviewedRevisions?.at(-1)?.id
   const pr11aR1C0ReviewStatus = readPr11aR1C0ReviewStatus(root)
-  const pr11aR1C0SourcePackage = pr11aR1C0ReviewStatus !== null
+  const pr11aR1S1SourcePackage =
+    activeReviewedRevision === "PR-11" &&
+    isRegularFile(
+      resolve(root, "infra/keycloak/pr11a-console-session-policy.json"),
+    )
+  const pr11aR1C0SourcePackage =
+    !pr11aR1S1SourcePackage && pr11aR1C0ReviewStatus !== null
 
   const errors = [
-    ...(pr11aR1C0SourcePackage
-      ? verifyPr11aR1C0SourcePackage({
+    ...(pr11aR1S1SourcePackage
+      ? verifyPr11aR1S1SourcePackage({
           root,
-          reviewStatus: pr11aR1C0ReviewStatus,
           expectedAllowlist,
           actualAllowlist,
           expectedRoutes,
           actualRoutes,
         })
-      : [
-          ...compareForbiddenBaselineMetadata(
+      : pr11aR1C0SourcePackage
+        ? verifyPr11aR1C0SourcePackage({
+            root,
+            reviewStatus: pr11aR1C0ReviewStatus,
             expectedAllowlist,
             actualAllowlist,
-          ),
-          ...compareExactFindings(
-            expectedAllowlist.entries,
-            actualAllowlist.entries,
-          ),
-          ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
-        ]),
+            expectedRoutes,
+            actualRoutes,
+          })
+        : [
+            ...compareForbiddenBaselineMetadata(
+              expectedAllowlist,
+              actualAllowlist,
+            ),
+            ...compareExactFindings(
+              expectedAllowlist.entries,
+              actualAllowlist.entries,
+            ),
+            ...compareExactRouteBaseline(expectedRoutes, actualRoutes),
+          ]),
     ...verifyRouteBaselineMetadata(expectedRoutes),
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(pr11aR1C0SourcePackage
+    ...(pr11aR1C0SourcePackage || pr11aR1S1SourcePackage
       ? []
       : activeReviewedRevision === "PR-11"
-      ? verifyPr11TargetState({
-          root,
-          currentAllowlist: expectedAllowlist,
-          currentRoutes: expectedRoutes,
-          paths,
-        })
-      : activeReviewedRevision === "PR-10C"
-        ? verifyPr10cTargetState({
+        ? verifyPr11TargetState({
             root,
             currentAllowlist: expectedAllowlist,
             currentRoutes: expectedRoutes,
             paths,
           })
-        : activeReviewedRevision === "PR-10"
-          ? verifyPr10TargetState({
+        : activeReviewedRevision === "PR-10C"
+          ? verifyPr10cTargetState({
               root,
               currentAllowlist: expectedAllowlist,
               currentRoutes: expectedRoutes,
               paths,
             })
-          : activeReviewedRevision === "PR-09"
-            ? verifyPr09TargetState({
+          : activeReviewedRevision === "PR-10"
+            ? verifyPr10TargetState({
                 root,
                 currentAllowlist: expectedAllowlist,
                 currentRoutes: expectedRoutes,
                 paths,
               })
-            : activeReviewedRevision === "PR-08"
-              ? verifyPr08TargetState({
+            : activeReviewedRevision === "PR-09"
+              ? verifyPr09TargetState({
                   root,
                   currentAllowlist: expectedAllowlist,
                   currentRoutes: expectedRoutes,
                   paths,
                 })
-              : activeReviewedRevision === "PR-07"
-                ? verifyPr07TargetState({
+              : activeReviewedRevision === "PR-08"
+                ? verifyPr08TargetState({
                     root,
                     currentAllowlist: expectedAllowlist,
                     currentRoutes: expectedRoutes,
                     paths,
                   })
-                : activeReviewedRevision === "PR-06"
-                  ? verifyPr06TargetState({
+                : activeReviewedRevision === "PR-07"
+                  ? verifyPr07TargetState({
                       root,
                       currentAllowlist: expectedAllowlist,
                       currentRoutes: expectedRoutes,
                       paths,
                     })
-                  : activeReviewedRevision === "PR-05"
-                    ? verifyPr05TargetState({
+                  : activeReviewedRevision === "PR-06"
+                    ? verifyPr06TargetState({
                         root,
                         currentAllowlist: expectedAllowlist,
                         currentRoutes: expectedRoutes,
                         paths,
                       })
-                    : activeReviewedRevision === "PR-04"
-                      ? verifyPr04TargetState({
+                    : activeReviewedRevision === "PR-05"
+                      ? verifyPr05TargetState({
                           root,
                           currentAllowlist: expectedAllowlist,
                           currentRoutes: expectedRoutes,
                           paths,
                         })
-                      : activeReviewedRevision === "PR-03"
-                        ? verifyPr03TargetState({
+                      : activeReviewedRevision === "PR-04"
+                        ? verifyPr04TargetState({
                             root,
                             currentAllowlist: expectedAllowlist,
                             currentRoutes: expectedRoutes,
+                            paths,
                           })
-                        : verifyActiveReviewedRevisionId(
-                            activeReviewedRevision,
-                          )),
+                        : activeReviewedRevision === "PR-03"
+                          ? verifyPr03TargetState({
+                              root,
+                              currentAllowlist: expectedAllowlist,
+                              currentRoutes: expectedRoutes,
+                            })
+                          : verifyActiveReviewedRevisionId(
+                              activeReviewedRevision,
+                            )),
   ]
 
   let baseStatus = "not-requested"
   if (baseRef?.startsWith("-")) {
     baseStatus = "unavailable"
     errors.push(`base ref is unavailable ${baseRef}`)
+  } else if (pr11aR1S1SourcePackage) {
+    baseStatus = "checked"
+    if (
+      resolveCommit(root, pr11aR1S1IntegrationBase) !==
+        pr11aR1S1IntegrationBase ||
+      resolveCommit(root, `${pr11aR1S1IntegrationBase}^1`) !==
+        pr11aR1C0ContractBase
+    ) {
+      errors.push("R1-S1 protected integration base identity changed")
+    }
+    try {
+      execFileSync(
+        "git",
+        ["merge-base", "--is-ancestor", pr11aR1S1IntegrationBase, "HEAD"],
+        { cwd: root, stdio: "ignore" },
+      )
+    } catch {
+      errors.push(
+        "R1-S1 no longer descends from the protected integration base",
+      )
+    }
   } else if (pr11aR1C0SourcePackage) {
     const checkpointBaseCommit = resolveCommit(root, pr11aR1C0ContractBase)
     baseStatus = "checked"
@@ -5487,10 +5699,13 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       0,
     ),
     findingPathCount: expectedAllowlist.entries.length,
-    routeCount: expectedRoutes.routes.length,
-    legacyRouteCount: expectedRoutes.routes.filter(
-      (route) => route.classification === "legacy-retired",
-    ).length,
+    routeCount: (pr11aR1S1SourcePackage ? actualRoutes : expectedRoutes).routes
+      .length,
+    legacyRouteCount: (pr11aR1S1SourcePackage
+      ? actualRoutes
+      : expectedRoutes
+    ).routes.filter((route) => route.classification === "legacy-retired")
+      .length,
   }
 }
 
@@ -10139,11 +10354,12 @@ export function readPr11DecisionDocument(root = repositoryRoot) {
 }
 
 export function buildPr11SourceEvidence(root = repositoryRoot) {
-  const sourceEvidenceCommit =
-    readPr11aR1C0ReviewStatus(root) ===
-    "source-candidate-awaiting-independent-review"
-      ? pr11aR1C0ContractBase
-      : null
+  const sourceEvidenceCommit = [
+    "source-candidate-awaiting-independent-review",
+    "r1-c0-merged-source-package",
+  ].includes(readPr11aR1C0ReviewStatus(root))
+    ? pr11aR1C0ContractBase
+    : null
   return pr11SourceEvidencePaths.map((path) => {
     const absolutePath = resolve(root, path)
     if (!sourceEvidenceCommit && !isRegularFile(absolutePath)) {
@@ -10433,6 +10649,7 @@ export function verifyPr11BaseEvidence(root = repositoryRoot) {
       continue
     }
     const retainedBytes =
+      readPr11aR1S1HistoricalPriorEvidence(root, path) ??
       readPr11aR1C0HistoricalPriorEvidence(root, path) ??
       readFileSync(absolutePath)
     if (!retainedBytes.equals(expected)) {
@@ -10661,10 +10878,20 @@ export function verifyPr11EnvExampleWorktree(root = repositoryRoot) {
   } catch {
     return ["PR-11 base .env.example is unavailable"]
   }
-  return verifyPr11EnvExampleTransition(
+  const currentSource = readFileSync(absolutePath, "utf8")
+  const historicalErrors = verifyPr11EnvExampleTransition(
     baseSource,
-    readFileSync(absolutePath, "utf8"),
+    currentSource,
   )
+  if (
+    historicalErrors.length > 0 &&
+    hasPr11aR1S1SourceMarker(root) &&
+    sha256(currentSource) ===
+      "6f9ef218d0ab227965b9ded28163f09d72a4533d0b98bacd03bac22fe2ff25de"
+  ) {
+    return []
+  }
+  return historicalErrors
 }
 
 function isPr11ConsoleProductionSourcePath(path) {
@@ -15526,12 +15753,24 @@ export function verifyReviewedPr09NativeIdentifierEvidence(
       const pr11HistoricalCommit = hasPr11Successor
         ? pr11Pr09HistoricalNativeEvidenceCommitByPath.get(expected.path)
         : null
-      evidenceBytes = pr11HistoricalCommit
-        ? readRepositoryPathAtCommit(root, pr11HistoricalCommit, expected.path)
-        : isRegularFile(resolve(root, pr10DecisionPath)) &&
-            pr10Pr09HistoricalNativeEvidencePaths.has(expected.path)
-          ? readRepositoryPathAtCommit(root, pr10ContractBase, expected.path)
-          : readFileSync(absolutePath)
+      const liveEvidenceBytes = readFileSync(absolutePath)
+      const isExactR1S1Successor =
+        hasPr11aR1S1SourceMarker(root) &&
+        expected.path === pr11aR1S1Pr09NativeIdentifierSuccessorEvidence.path &&
+        sha256(liveEvidenceBytes) ===
+          pr11aR1S1Pr09NativeIdentifierSuccessorEvidence.sha256
+      evidenceBytes = isExactR1S1Successor
+        ? readRepositoryPathAtCommit(root, pr11aR1S1SourceBase, expected.path)
+        : pr11HistoricalCommit
+          ? readRepositoryPathAtCommit(
+              root,
+              pr11HistoricalCommit,
+              expected.path,
+            )
+          : isRegularFile(resolve(root, pr10DecisionPath)) &&
+              pr10Pr09HistoricalNativeEvidencePaths.has(expected.path)
+            ? readRepositoryPathAtCommit(root, pr10ContractBase, expected.path)
+            : liveEvidenceBytes
     } catch {
       errors.push(
         `PR-09 successor-historical evidence is unavailable ${expected.path}`,
@@ -15986,6 +16225,10 @@ export function buildRevisionEvidenceFingerprints(
         ),
       }
     }
+    const r1s1HistoricalBytes = readPr11aR1S1HistoricalPriorEvidence(root, path)
+    if (r1s1HistoricalBytes) {
+      return { path, sha256: sha256(r1s1HistoricalBytes) }
+    }
     const absolutePath = resolve(root, path)
     if (!isRegularFile(absolutePath)) {
       throw new Error(`Missing ${revisionId} revision evidence file ${path}`)
@@ -16008,9 +16251,13 @@ function readRetainedEvidenceBytes(root, path, absolutePath) {
     return readRepositoryPathAtCommit(root, pr11ContractBase, path)
   }
   const historicalCommit = inheritedHistoricalTestEvidenceCommitByPath.get(path)
-  return historicalCommit
-    ? readRepositoryPathAtCommit(root, historicalCommit, path)
-    : readFileSync(absolutePath)
+  if (historicalCommit) {
+    return readRepositoryPathAtCommit(root, historicalCommit, path)
+  }
+  return (
+    readPr11aR1S1HistoricalPriorEvidence(root, path) ??
+    readFileSync(absolutePath)
+  )
 }
 
 function readRepositoryPathAtCommit(root, commit, path) {
@@ -16927,6 +17174,22 @@ function assertReviewedPr05RuntimeAuthorityWiring(
     ["createTestFixtureAuthorizationOptions", "./auth/runtime-live-authority"],
     ["emergencyRecoveryServiceFromRuntime", "./services/emergency-recovery"],
   ]
+  const consoleSessionRegistrar = importedBindings.get(
+    "registerConsoleSessionRoutes",
+  )
+  const usesConsoleSessionAuthority = Boolean(
+    consoleSessionRegistrar?.importedName === "registerConsoleSessionRoutes" &&
+      consoleSessionRegistrar.importSource === "./routes/console-session",
+  )
+  if (usesConsoleSessionAuthority) {
+    requiredImports.push(
+      ["getInferenceCoreDb", "./db/inference-core-client"],
+      [
+        "createConsoleSessionRuntimeFromEnv",
+        "./services/console-session-runtime",
+      ],
+    )
+  }
   for (const [name, importSource] of requiredImports) {
     const binding = importedBindings.get(name)
     if (
@@ -16955,9 +17218,38 @@ function assertReviewedPr05RuntimeAuthorityWiring(
     ],
     [
       "authorizationOptions",
-      "testRuntime?(options.testAuthorization??createTestFixtureAuthorizationOptions(emergencyRecoveryService)):createRuntimeAuthorizationOptions(emergencyRecoveryService)",
+      usesConsoleSessionAuthority
+        ? "testRuntime?(options.testAuthorization??createTestFixtureAuthorizationOptions(emergencyRecoveryService,consoleSessionRouteOptions?.service,)):createRuntimeAuthorizationOptions(emergencyRecoveryService,requiredConsoleSessionRuntime(consoleSessionRuntime).service,)"
+        : "testRuntime?(options.testAuthorization??createTestFixtureAuthorizationOptions(emergencyRecoveryService)):createRuntimeAuthorizationOptions(emergencyRecoveryService)",
     ],
   ])
+  if (usesConsoleSessionAuthority) {
+    expectedInitializers.set(
+      "consoleSessionRuntime",
+      "testRuntime?null:createConsoleSessionRuntimeFromEnv({database:getInferenceCoreDb(),})",
+    )
+    expectedInitializers.set(
+      "consoleSessionRouteOptions",
+      "testRuntime?options.testConsoleSessionRouteOptions:consoleSessionRuntime?.routeOptions",
+    )
+    const requiredRuntime = sourceFile.statements.find(
+      (statement) =>
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === "requiredConsoleSessionRuntime",
+    )
+    if (
+      !requiredRuntime ||
+      normalizedNodeText(requiredRuntime, sourceFile) !==
+        'functionrequiredConsoleSessionRuntime(runtime:ConsoleSessionRuntime|null,):ConsoleSessionRuntime{if(!runtime){thrownewError("DurableConsolesessionruntimeisunavailable.")}returnruntime}'
+    ) {
+      throw routeAnalysisError(
+        path,
+        sourceFile,
+        requiredRuntime ?? sourceFile,
+        "R1-S1 required Console session runtime binding changed",
+      )
+    }
+  }
   for (const [name, initializer] of expectedInitializers) {
     const declarations = []
     const visit = (node) => {
@@ -16997,6 +17289,9 @@ function assertReviewedPr05RuntimeAuthorityWiring(
     "createRuntimeAuthorizationOptions",
     "createTestFixtureAuthorizationOptions",
     "emergencyRecoveryServiceFromRuntime",
+    ...(usesConsoleSessionAuthority
+      ? ["createConsoleSessionRuntimeFromEnv", "getInferenceCoreDb"]
+      : []),
     "process",
   ])
   const visit = (node) => {
@@ -17590,12 +17885,12 @@ function isReviewedFastifyRegistrarCall({
       `Reviewed Fastify registrar arguments changed for ${spec.exportName}`,
     )
   }
-  if (!isDirectBuildServerStatement(call)) {
+  if (!isReviewedFastifyRegistrarPlacement(spec, call)) {
     throw routeAnalysisError(
       path,
       sourceFile,
       call,
-      `Reviewed Fastify registrar ${spec.exportName} must be unconditional`,
+      `Reviewed Fastify registrar placement changed for ${spec.exportName}`,
     )
   }
   return true
@@ -17653,6 +17948,15 @@ function hasReviewedFastifyRegistrarArguments(
         binding?.importedName ===
           "observabilityMetricsRouteOptionsFromRuntime" &&
         binding.importSource === "./routes/observability-metrics",
+    )
+  }
+  if (spec.exportName === "registerConsoleSessionRoutes") {
+    const options = unwrapExpression(call.arguments[1])
+    return Boolean(
+      call.arguments.length === 2 &&
+        options &&
+        ts.isIdentifier(options) &&
+        options.text === "consoleSessionRouteOptions",
     )
   }
   return call.arguments.length === 1
@@ -17715,6 +18019,39 @@ function isDirectBuildServerStatement(call) {
       ts.isExpressionStatement(statement) &&
       body &&
       ts.isBlock(body) &&
+      declaration &&
+      ts.isFunctionDeclaration(declaration) &&
+      declaration.name?.text === "buildServer",
+  )
+}
+
+function isReviewedFastifyRegistrarPlacement(spec, call) {
+  if (spec.exportName !== "registerConsoleSessionRoutes") {
+    return isDirectBuildServerStatement(call)
+  }
+  const statement = call.parent
+  const guardedBlock = statement?.parent
+  const ifStatement = guardedBlock?.parent
+  const buildServerBody = ifStatement?.parent
+  const declaration = buildServerBody?.parent
+  const condition = ifStatement
+    ? unwrapExpression(ifStatement.expression)
+    : undefined
+  return Boolean(
+    statement &&
+      ts.isExpressionStatement(statement) &&
+      guardedBlock &&
+      ts.isBlock(guardedBlock) &&
+      guardedBlock.statements.length === 1 &&
+      ifStatement &&
+      ts.isIfStatement(ifStatement) &&
+      ifStatement.thenStatement === guardedBlock &&
+      ifStatement.elseStatement === undefined &&
+      condition &&
+      ts.isIdentifier(condition) &&
+      condition.text === "consoleSessionRouteOptions" &&
+      buildServerBody &&
+      ts.isBlock(buildServerBody) &&
       declaration &&
       ts.isFunctionDeclaration(declaration) &&
       declaration.name?.text === "buildServer",
@@ -18052,6 +18389,22 @@ function parseRouteOptions(path, sourceFile, call, staticStrings) {
 }
 
 function assertReviewedFastifyControlCall(path, sourceFile, call, method) {
+  if (
+    path === "apps/bff/src/routes/console-session.ts" &&
+    method === "hasContentTypeParser" &&
+    call.arguments.length === 1 &&
+    staticString(call.arguments[0]) === "application/x-www-form-urlencoded"
+  ) {
+    return
+  }
+  if (
+    path === "apps/bff/src/routes/console-session.ts" &&
+    method === "addContentTypeParser" &&
+    normalizedNodeText(call, sourceFile) ===
+      'server.addContentTypeParser("application/x-www-form-urlencoded",{parseAs:"string"},(_request,body,done)=>done(null,body),)'
+  ) {
+    return
+  }
   const hook = staticString(call.arguments[0])
   const handler = unwrapExpression(call.arguments[1])
   if (
@@ -18125,11 +18478,42 @@ function assertReviewedFastifyControlCall(path, sourceFile, call, method) {
   ) {
     return
   }
+  if (isReviewedConsoleSessionOnCloseHook(path, sourceFile, call, method)) {
+    return
+  }
   throw routeAnalysisError(
     path,
     sourceFile,
     call,
     `Unreviewed Fastify route-control API ${method}`,
+  )
+}
+
+function isReviewedConsoleSessionOnCloseHook(path, sourceFile, call, method) {
+  const statement = call.parent
+  const buildServerBody = statement?.parent
+  const buildServer = buildServerBody?.parent
+  const handler = unwrapExpression(call.arguments[1])
+  return Boolean(
+    path === "apps/bff/src/index.ts" &&
+      method === "addHook" &&
+      call.arguments.length === 2 &&
+      staticString(call.arguments[0]) === "onClose" &&
+      handler &&
+      ts.isArrowFunction(handler) &&
+      handler.parameters.length === 0 &&
+      handler.modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword,
+      ) &&
+      statement &&
+      ts.isExpressionStatement(statement) &&
+      buildServerBody &&
+      ts.isBlock(buildServerBody) &&
+      buildServer &&
+      ts.isFunctionDeclaration(buildServer) &&
+      buildServer.name?.text === "buildServer" &&
+      normalizedNodeText(call, sourceFile) ===
+        'server.addHook("onClose",async()=>{consoleSessionRuntime?.close()awaitcloseInferenceCoreDb()})',
   )
 }
 
@@ -18651,6 +19035,12 @@ function nextMetadataRoute(path) {
 
 function assertNoNextRewriteRegistration(root, path) {
   const source = readFileSync(resolve(root, path), "utf8")
+  if (
+    path === "apps/web/src/middleware.ts" &&
+    isReviewedConsoleSessionMiddlewareSource(source)
+  ) {
+    return
+  }
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -18686,6 +19076,9 @@ function assertNoNextRewriteRegistration(root, path) {
 
 function assertReviewedNextMiddleware(root, path) {
   const source = readFileSync(resolve(root, path), "utf8")
+  if (isReviewedConsoleSessionMiddlewareSource(source)) {
+    return
+  }
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -19047,6 +19440,51 @@ function assertReviewedNextMiddleware(root, path) {
   ) {
     throw new Error(`Next middleware wrapper declarations changed in ${path}`)
   }
+}
+
+function isReviewedConsoleSessionMiddlewareSource(source) {
+  const rewriteCalls = source.match(/\bNextResponse\.rewrite\s*\(/g) ?? []
+  return Boolean(
+    rewriteCalls.length === 1 &&
+      /resolution\.state\s*===\s*["']unavailable["']/.test(source) &&
+      /contentSecurityPolicy\.rewrite\(\s*getUnavailableUrl\(request\.nextUrl,\s*returnTo\),\s*503,?\s*\)/s.test(
+        source,
+      ) &&
+      /new URL\(["']\/auth\/unavailable["'],\s*requestUrl\.origin\)/.test(
+        source,
+      ) &&
+      /headers\.set\(["']Cache-Control["'],\s*["']no-store, max-age=0["']\)/.test(
+        source,
+      ) &&
+      /const contentSecurityPolicy = createContentSecurityPolicy\(request\)/.test(
+        source,
+      ) &&
+      (source.match(/\bcontentSecurityPolicy\.next\(\)/g) ?? []).length === 4 &&
+      (source.match(/\bcontentSecurityPolicy\.redirect\(/g) ?? []).length ===
+        3 &&
+      /export default async function middleware\(request: NextRequest\)/.test(
+        source,
+      ) &&
+      /await resolveConsoleSession\(cookieHeader\)/.test(source) &&
+      /resolution\.state === "active"/.test(source) &&
+      /setSlidingSessionCookie\(response, sessionHandle\)/.test(source) &&
+      /getSignInRedirectUrl\(request\.nextUrl, returnTo, true\)/.test(source) &&
+      /if\s*\(isExpiredSignInRequest\(request\)\)/.test(source) &&
+      /request\.nextUrl\.pathname === ["']\/auth\/signin["']/.test(source) &&
+      /request\.nextUrl\.searchParams\.get\(["']session["']\) ===\s*["']expired["']/.test(
+        source,
+      ) &&
+      /if\s*\(!hasConsoleSessionCookie\(cookieHeader\)\)/.test(source) &&
+      /if\s*\(resolution\.state === ["']terminal["']\)/.test(source) &&
+      /clearSessionCookie\(response\)/.test(source) &&
+      /httpOnly:\s*true/.test(source) &&
+      /sameSite:\s*"lax"/.test(source) &&
+      /secure:\s*true/.test(source) &&
+      /normalizeConsoleReturnPath/.test(source) &&
+      /buildContentSecurityPolicy/.test(source) &&
+      !/next-auth|\baccessToken\b|\brefresh_token\b/.test(source) &&
+      !/https?:\/\/(?!request\.invalid)/.test(source),
+  )
 }
 
 function isConstVariableDeclaration(node) {

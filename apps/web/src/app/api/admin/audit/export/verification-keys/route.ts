@@ -1,20 +1,27 @@
-import { getCurrentConsoleRole } from "@/lib/auth/session"
+import { getCurrentConsoleSession } from "@/lib/auth/session"
+import { expiredConsoleSessionRedirectResponse } from "@/lib/auth/session-client"
 import { getBffRequest } from "@/lib/bff/server-request"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
-  const role = await getCurrentConsoleRole()
-  if (!role) {
+export async function GET(request: Request) {
+  const session = await getCurrentConsoleSession()
+  if (session.state === "unavailable") {
+    return problemResponse(503, "Identity service temporarily unavailable")
+  }
+  if (session.state !== "active") {
     return problemResponse(401, "Authentication required")
   }
-  if (role !== "admin") {
+  if (session.session.role !== "admin") {
     return problemResponse(403, "Admin access required")
   }
 
   const bffRequest = await getBffRequest()
-  if (!bffRequest) {
-    return problemResponse(503, "Console BFF is not configured")
+  if (bffRequest.state === "terminal") {
+    return expiredConsoleSessionRedirectResponse(request.url)
+  }
+  if (bffRequest.state === "unavailable") {
+    return problemResponse(503, "Identity service temporarily unavailable")
   }
 
   const response = await fetch(
@@ -24,6 +31,14 @@ export async function GET() {
       headers: bffRequest.headers,
     },
   )
+  if (response.status === 401) {
+    await response.body?.cancel().catch(() => undefined)
+    return expiredConsoleSessionRedirectResponse(request.url)
+  }
+  if (response.status === 503) {
+    await response.body?.cancel().catch(() => undefined)
+    return problemResponse(503, "Identity service temporarily unavailable")
+  }
   const headers = new Headers({
     "Cache-Control": "no-store",
     "Content-Type":

@@ -7,11 +7,26 @@ import {
   renderSettingsConsoleRoute,
 } from "./console-v2-routes-core"
 
+function activeConsoleSession(role: "admin" | "operator") {
+  return {
+    session: {
+      groups: [],
+      mfaVerifiedAt: null,
+      role,
+      subject: `${role}-1`,
+    },
+    sessionHandle: "A".repeat(43),
+    state: "active",
+  } as const
+}
+
 const mocks = vi.hoisted(() => ({
   getAdminOverview: vi.fn(),
   getAdminInference: vi.fn(),
   getAdminSettings: vi.fn(),
-  getCurrentConsoleRole: vi.fn(),
+  getCurrentConsoleSession: vi.fn(),
+  isConsoleBffAuthExpiredError: vi.fn((_error: unknown) => false),
+  isConsoleBffUnavailableError: vi.fn((_error: unknown) => false),
   notFound: vi.fn(() => {
     throw new Error("not-found")
   }),
@@ -26,7 +41,7 @@ vi.mock("next/navigation", () => ({
 }))
 
 vi.mock("@/lib/auth/session", () => ({
-  getCurrentConsoleRole: mocks.getCurrentConsoleRole,
+  getCurrentConsoleSession: mocks.getCurrentConsoleSession,
 }))
 
 vi.mock("@/lib/admin/server-data-core", () => ({
@@ -40,7 +55,8 @@ vi.mock("@/lib/admin/server-data-core", () => ({
   getAdminTeamGroupDetail: vi.fn(),
   getAdminTeamMemberDetail: vi.fn(),
   getAdminTeamOverview: vi.fn(),
-  isConsoleBffAuthExpiredError: vi.fn(() => false),
+  isConsoleBffAuthExpiredError: mocks.isConsoleBffAuthExpiredError,
+  isConsoleBffUnavailableError: mocks.isConsoleBffUnavailableError,
 }))
 
 vi.mock("@/components/console-v2/activity-v2-experience", () => ({
@@ -117,7 +133,9 @@ afterEach(() => {
 
 describe("Overview Console route", () => {
   it("renders the source-backed Overview inside the retained shell", async () => {
-    mocks.getCurrentConsoleRole.mockResolvedValue("operator")
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     mocks.getAdminOverview.mockResolvedValue({
       activityEvents: [],
       activitySourceStatus: "ok",
@@ -140,31 +158,95 @@ describe("Overview Console route", () => {
   })
 
   it("uses the root route as the Overview reauthentication target", async () => {
-    mocks.getCurrentConsoleRole.mockResolvedValue(null)
+    mocks.getCurrentConsoleSession.mockResolvedValue({
+      reason: "expired",
+      state: "terminal",
+    })
 
     await expect(renderOverviewConsoleRoute()).rejects.toThrow(
-      "redirect:/auth/keycloak?redirectTo=%2F",
+      "redirect:/auth/signin?session=expired&returnTo=%2F",
     )
-    expect(mocks.redirect).toHaveBeenCalledWith("/auth/keycloak?redirectTo=%2F")
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/auth/signin?session=expired&returnTo=%2F",
+    )
     expect(mocks.getAdminOverview).not.toHaveBeenCalled()
+  })
+
+  it("routes a retryable identity outage to the controlled unavailable page", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+
+    await expect(renderOverviewConsoleRoute()).rejects.toThrow(
+      "redirect:/auth/unavailable?returnTo=%2F",
+    )
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/auth/unavailable?returnTo=%2F",
+    )
+    expect(mocks.getAdminOverview).not.toHaveBeenCalled()
+  })
+
+  it("redirects a later terminal BFF transition once to expired sign-in", async () => {
+    const terminalError = new Error("terminal session transition")
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
+    mocks.getAdminOverview.mockRejectedValue(terminalError)
+    mocks.isConsoleBffAuthExpiredError.mockImplementation(
+      (error) => error === terminalError,
+    )
+
+    await expect(renderOverviewConsoleRoute()).rejects.toThrow(
+      "redirect:/auth/signin?session=expired&returnTo=%2F",
+    )
+    expect(mocks.redirect).toHaveBeenCalledOnce()
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/auth/signin?session=expired&returnTo=%2F",
+    )
+  })
+
+  it("routes a later retryable BFF transition without logging out", async () => {
+    const unavailableError = new Error("retryable session transition")
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
+    mocks.getAdminOverview.mockRejectedValue(unavailableError)
+    mocks.isConsoleBffUnavailableError.mockImplementation(
+      (error) => error === unavailableError,
+    )
+
+    await expect(renderOverviewConsoleRoute()).rejects.toThrow(
+      "redirect:/auth/unavailable?returnTo=%2F",
+    )
+    expect(mocks.redirect).toHaveBeenCalledOnce()
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/auth/unavailable?returnTo=%2F",
+    )
   })
 })
 
 describe("retained route boundaries", () => {
   it("rejects the retired nested Inference update route", async () => {
-    mocks.getCurrentConsoleRole.mockResolvedValue(null)
+    mocks.getCurrentConsoleSession.mockResolvedValue({
+      reason: "absent",
+      state: "terminal",
+    })
 
     await expect(
       renderInferenceConsoleRoute({ section: ["model-update"] }),
     ).rejects.toThrow("not-found")
     expect(mocks.notFound).toHaveBeenCalledOnce()
-    expect(mocks.getCurrentConsoleRole).not.toHaveBeenCalled()
+    expect(mocks.getCurrentConsoleSession).not.toHaveBeenCalled()
     expect(mocks.redirect).not.toHaveBeenCalled()
     expect(mocks.getAdminInference).not.toHaveBeenCalled()
   })
 
   it("passes Operator authority into the read-only Settings surface", async () => {
-    mocks.getCurrentConsoleRole.mockResolvedValue("operator")
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     mocks.getAdminSettings.mockResolvedValue({ generatedAt: "test" })
 
     render(
@@ -179,7 +261,9 @@ describe("retained route boundaries", () => {
   })
 
   it("keeps the Admin post-redirect Settings notice", async () => {
-    mocks.getCurrentConsoleRole.mockResolvedValue("admin")
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
     mocks.getAdminSettings.mockResolvedValue({ generatedAt: "test" })
 
     render(

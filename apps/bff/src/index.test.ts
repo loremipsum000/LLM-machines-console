@@ -1,6 +1,8 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { checkInferenceCoreDbReadiness } from "./db/inference-core-client"
 import { buildServer } from "./index"
+import { createConsoleSessionRuntimeFromEnv } from "./services/console-session-runtime"
+import type { ConsoleSessionService } from "./services/console-session-service"
 
 vi.mock("./db/inference-core-client", async (importOriginal) => {
   const actual =
@@ -11,9 +13,20 @@ vi.mock("./db/inference-core-client", async (importOriginal) => {
   }
 })
 
+vi.mock("./services/console-session-runtime", () => ({
+  createConsoleSessionRuntimeFromEnv: vi.fn(),
+}))
+
 describe("Console BFF persistence preflight", () => {
+  beforeEach(() => {
+    vi.mocked(createConsoleSessionRuntimeFromEnv).mockReturnValue(
+      fakeConsoleSessionRuntime(),
+    )
+  })
+
   afterEach(() => {
     vi.mocked(checkInferenceCoreDbReadiness).mockReset()
+    vi.mocked(createConsoleSessionRuntimeFromEnv).mockReset()
     vi.unstubAllEnvs()
   })
 
@@ -194,6 +207,29 @@ describe("Console BFF persistence preflight", () => {
     expect(injectedRecoveryStatus).not.toHaveBeenCalled()
     await server.close()
   })
+
+  it("registers durable Console sessions without enabling expert ingress", async () => {
+    configureProductionRuntime()
+    const runtime = fakeConsoleSessionRuntime()
+    vi.mocked(createConsoleSessionRuntimeFromEnv).mockReturnValue(runtime)
+
+    const server = buildServer()
+
+    expect(
+      server.hasRoute({
+        method: "GET",
+        url: "/api/console/session/login",
+      }),
+    ).toBe(true)
+    expect(
+      server.hasRoute({
+        method: "POST",
+        url: "/api/expert-ingress/session/exchange",
+      }),
+    ).toBe(false)
+    await server.close()
+    expect(runtime.close).toHaveBeenCalledOnce()
+  })
 })
 
 function configureProductionRuntime(): void {
@@ -201,4 +237,24 @@ function configureProductionRuntime(): void {
   vi.stubEnv("DATABASE_URL", "postgres://fixture.invalid/console")
   vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://console.example.test")
   vi.stubEnv("PUBLIC_BFF_BASE_URL", "")
+}
+
+function fakeConsoleSessionRuntime() {
+  const service = {
+    resolve: vi.fn(async () => ({
+      reason: "absent",
+      state: "terminal" as const,
+    })),
+  } as unknown as ConsoleSessionService
+  return {
+    close: vi.fn(),
+    routeOptions: {
+      backchannelVerifier: { verify: vi.fn(async () => null) },
+      consoleOrigin: "https://console.example.test",
+      identityIssuer: "https://identity.example.test/realms/appliance",
+      internalServiceCredential: "internal-service-credential",
+      service,
+    },
+    service,
+  }
 }
