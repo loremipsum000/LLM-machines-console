@@ -5072,8 +5072,22 @@ const pr11aR1S1HistoricalPriorEvidencePaths = new Set([
   "scripts/inference-core/pr05-boundaries.test.mjs",
   "scripts/inference-core/pr10c-boundaries.test.mjs",
 ])
+const pr11aR1K1HistoricalPriorEvidencePaths = new Set([
+  ".env.example",
+  "apps/bff/src/services/audit-export-signing.ts",
+])
 
 export function readPr09SourceBoundaryText(path, root = repositoryRoot) {
+  if (
+    hasPr11aR1K1SourceMarker(root) &&
+    pr11aR1K1HistoricalPriorEvidencePaths.has(path)
+  ) {
+    return readRepositoryPathAtCommit(
+      root,
+      pr11aR1K1IntegrationBase,
+      path,
+    ).toString("utf8")
+  }
   if (
     [
       "source-candidate-awaiting-independent-review",
@@ -11314,7 +11328,18 @@ export function verifyPr11EnvExampleWorktree(root = repositoryRoot) {
   } catch {
     return ["PR-11 base .env.example is unavailable"]
   }
-  const currentSource = readFileSync(absolutePath, "utf8")
+  let currentSource = readFileSync(absolutePath, "utf8")
+  if (hasPr11aR1K1SourceMarker(root)) {
+    try {
+      currentSource = readRepositoryPathAtCommit(
+        root,
+        pr11aR1K1IntegrationBase,
+        path,
+      ).toString("utf8")
+    } catch {
+      return ["PR-11 R1-K1 predecessor .env.example is unavailable"]
+    }
+  }
   const historicalErrors = verifyPr11EnvExampleTransition(
     baseSource,
     currentSource,
