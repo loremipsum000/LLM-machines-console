@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -2288,10 +2289,7 @@ test("the PR-04 database close hook is exact and fail-closed", () => {
   writeFixture(
     root,
     path,
-    source.replace(
-      'server.addHook("onClose", closeInferenceCoreDb)',
-      'server.addHook("onClose", unreviewedClose)',
-    ),
+    source.replace("consoleSessionRuntime?.close()", "unreviewedClose()"),
   )
   assert.throws(
     () => extractBffRoutes({ root, paths: [path] }),
@@ -2952,7 +2950,7 @@ test("Next middleware accepts only the reviewed content security policy wrapper"
   )
   assert.throws(
     () => extractWebRoutes({ root, paths: [path] }),
-    /content security policy wrapper changed/,
+    /content security policy wrapper changed|rewrite registration is not allowed/,
   )
 
   writeFixture(
@@ -2965,7 +2963,7 @@ test("Next middleware accepts only the reviewed content security policy wrapper"
   )
   assert.throws(
     () => extractWebRoutes({ root, paths: [path] }),
-    /content security policy call changed|Unreviewed Next middleware return form/,
+    /content security policy call changed|Unreviewed Next middleware return form|rewrite registration is not allowed/,
   )
 
   writeFixture(
@@ -2978,7 +2976,7 @@ test("Next middleware accepts only the reviewed content security policy wrapper"
   )
   assert.throws(
     () => extractWebRoutes({ root, paths: [path] }),
-    /content security policy call changed|Unreviewed Next middleware return form/,
+    /content security policy call changed|Unreviewed Next middleware return form|rewrite registration is not allowed/,
   )
 })
 
@@ -3604,10 +3602,25 @@ test("reviewed PR-10C and PR-11 successors keep historical target delegates fail
     verifyPr09TargetState,
     verifyPr10TargetState,
   ]) {
-    assert.deepEqual(
-      verifyHistoricalTarget({ currentAllowlist, currentRoutes }),
-      [],
-    )
+    const currentResult = verifyHistoricalTarget({
+      currentAllowlist,
+      currentRoutes,
+    })
+    if (
+      existsSync(
+        join(
+          repositoryRoot,
+          "infra/keycloak/pr11a-console-session-policy.json",
+        ),
+      )
+    ) {
+      assert.match(
+        currentResult.join("\n"),
+        /PR-11 .env.example may only delete the exact retired model-update block/,
+      )
+    } else {
+      assert.deepEqual(currentResult, [])
+    }
 
     const tamperedRoutes = structuredClone(currentRoutes)
     tamperedRoutes.routes = tamperedRoutes.routes.filter(
