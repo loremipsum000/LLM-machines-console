@@ -218,6 +218,26 @@ describe("Console session HTTP boundary", () => {
     expect(accepted.headers["set-cookie"]).toContain("Max-Age=0")
   })
 
+  it("clears local custody when server-side logout is unavailable", async () => {
+    serviceStub.logout.mockRejectedValueOnce(new Error("identity unavailable"))
+    const server = buildServer(serviceStub as unknown as ConsoleSessionService)
+
+    const response = await server.inject({
+      headers: {
+        cookie: `__Host-llm-machines-session=${sessionHandle}`,
+        origin: "https://console.example.test",
+      },
+      method: "POST",
+      url: "/api/console/session/logout",
+    })
+
+    expect(response.statusCode).toBe(303)
+    expect(response.headers.location).toBe(
+      "https://console.example.test/auth/signin",
+    )
+    expect(response.headers["set-cookie"]).toContain("Max-Age=0")
+  })
+
   it("verifies back-channel logout tokens before consuming replay state", async () => {
     const verify = vi.fn(async () => ({
       expiresAt: new Date("2026-08-02T10:01:00.000Z"),

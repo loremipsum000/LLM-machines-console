@@ -179,10 +179,14 @@ export function registerConsoleSessionRoutes(
       request.headers.cookie,
       CONSOLE_SESSION_COOKIE,
     )
-    if (sessionHandle) {
-      await options.service.logout(sessionHandle)
-    }
     reply.header("set-cookie", clearConsoleCookie(CONSOLE_SESSION_COOKIE))
+    if (sessionHandle) {
+      try {
+        await options.service.logout(sessionHandle)
+      } catch {
+        // Local browser custody ends even when remote revocation is unavailable.
+      }
+    }
     return reply.redirect(`${consoleOrigin}/auth/signin`, 303)
   })
 
