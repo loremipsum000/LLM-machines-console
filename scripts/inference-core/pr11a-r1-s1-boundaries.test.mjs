@@ -22,8 +22,8 @@ const acceptedRouteBaselinePath =
 const integrationBase = "0f29c7939fa885c11c191e8b672f09e16635ddcb"
 const sourceBase = "aa831424949fb49095de48714b508ada0b57f589"
 const sourceBaseTree = "3c17e44c23fd15b1d84722529b4f96693ec0cd93"
-const sourceHead = "ab0c5e08b8502829b757a498a161aa0c7afc76c6"
-const sourceHeadTree = "112c4dc22ba4357237119d53e86d9c21c3dfb194"
+const sourceHead = "102989e25f94dc68f8ec4d2aa2e583669aac604c"
+const sourceHeadTree = "0c139e4075dd96350ab851e99dbd0314330a61f6"
 
 function git(...args) {
   return execFileSync("git", args, {
@@ -101,12 +101,12 @@ test("R1-S1 source inventory is exact", () => {
     changedPaths(sourceBase, sourceHead),
     decision.sourcePathInventory,
   )
-  assert.equal(decision.sourcePathInventory.length, 92)
+  assert.equal(decision.sourcePathInventory.length, 100)
   assert.deepEqual(decision.sourcePathCounts, {
-    added: 34,
+    added: 37,
     deleted: 9,
-    modified: 49,
-    total: 92,
+    modified: 54,
+    total: 100,
   })
 })
 
