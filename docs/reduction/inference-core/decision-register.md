@@ -18,6 +18,7 @@ per-package JSON file and contract revision.
 | PR-10C | Emergency isolation source package | `pr-10c-emergency-isolation-decisions.json` | Accepted and bound by the PR-10C contract revision |
 | PR-11 | Retained Console information architecture | `pr-11-console-information-architecture-decisions.json` | Accepted and bound by the PR-11 contract revision |
 | PR-11A R1-C0 | Product authority and governance correction | `pr-11a-identity-ingress-hardening-decisions.json` | Merged through PR 13 at integration commit `0f29c7939fa885c11c191e8b672f09e16635ddcb`; PR-11A remains incomplete, unaccepted, and not revision-bound |
+| PR-11A R1-S1 | Opaque Console session hardening | `pr-11a-r1-s1-console-session-decisions.json` | Source candidate awaiting independent review; PR-11A remains incomplete, unaccepted, and not revision-bound |
 
 ## PR-08 fixed decisions
 
