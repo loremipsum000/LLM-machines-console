@@ -19,7 +19,7 @@ import {
 import type {
   NativeAuditEvent,
   NativeAuditSource,
-} from "../../../apps/bff/src/services/expert-capabilities"
+} from "../../../apps/bff/src/services/native-audit-source"
 
 const migration = readFileSync(
   fileURLToPath(

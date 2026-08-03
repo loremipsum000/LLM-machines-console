@@ -166,8 +166,7 @@ export const pr11aR1C0ContractBaseTree =
   "a7cb76ff95ec4ffc12cbd589b0514564602c35da"
 export const pr11aR1S1IntegrationBase =
   "0f29c7939fa885c11c191e8b672f09e16635ddcb"
-export const pr11aR1S1SourceBase =
-  "aa831424949fb49095de48714b508ada0b57f589"
+export const pr11aR1S1SourceBase = "aa831424949fb49095de48714b508ada0b57f589"
 export const pr10cSuccessorEvidenceCommit =
   "9c5dedc2242b7a6b061a043334b1f06fa621c939"
 export const pr10cSuccessorEvidenceTree = pr11ContractBaseTree
