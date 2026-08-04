@@ -37,8 +37,8 @@ test("PR-12 release evidence package remains source-only and fail-closed", () =>
     critical: 0,
     high: 0,
   })
-  assert.deepEqual(evidencePolicy.provenance.approvedBuilderIds, [
-    "https://llm-machines.invalid/builders/offline-release/v1",
+  assert.deepEqual(evidencePolicy.provenance.approvedBuildActorIds, [
+    "https://llm-machines.invalid/build-actors/offline-release/v1",
   ])
   assert.ok(plan.requiredEvidence.includes("image-vulnerability-evidence"))
   assert.ok(plan.requiredEvidence.includes("license-reviews"))

@@ -46,7 +46,8 @@ Only public trust material may enter the package.
 
 `release-evidence-policy.json` fixes the semantic evidence gate. Every retained
 image requires a CycloneDX component inventory and dependency graph with tool
-metadata, exact SLSA build inputs and approved builder identity, a digest-bound
+metadata, exact SLSA build inputs and approved build-actor identity, a
+digest-bound
 Trivy report with a database no older than 72 hours, reviewed zero-critical and
 zero-high disposition or a bounded unexpired exception, and a reviewed license
 text plus notice bound to the exact component and source revision.
@@ -55,8 +56,8 @@ text plus notice bound to the exact component and source revision.
 actual per-image CycloneDX, SLSA provenance, vulnerability report and
 disposition, license text, notice, license review, and corresponding-source
 inputs into deterministic release evidence. It rejects inputs whose hashes,
-identities, recipes, builder, timestamps, scan policy, or review bindings differ
-from the Core lock and evidence policy. The checked-in
+identities, recipes, build actor, timestamps, scan policy, or review bindings
+differ from the Core lock and evidence policy. The checked-in
 `license-disposition.json` is a source policy, not a substitute for the license
 texts, notices, reviews, and corresponding source delivered with a release.
 

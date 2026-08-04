@@ -19,8 +19,8 @@ export const expectedReleaseEvidencePolicy = {
   },
   provenance: {
     predicateType: "https://slsa.dev/provenance/v1",
-    approvedBuilderIds: [
-      "https://llm-machines.invalid/builders/offline-release/v1",
+    approvedBuildActorIds: [
+      "https://llm-machines.invalid/build-actors/offline-release/v1",
     ],
     buildTypes: {
       "third-party-mirror":

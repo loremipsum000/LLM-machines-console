@@ -153,7 +153,7 @@ function fixture() {
         },
         runDetails: {
           [slsaActorKey]: {
-            id: "https://llm-machines.invalid/builders/offline-release/v1",
+            id: "https://llm-machines.invalid/build-actors/offline-release/v1",
           },
           metadata: {
             invocationId: `fixture-${component.id}`,
@@ -389,11 +389,11 @@ test("incomplete SLSA provenance fails", () => {
   )
 })
 
-test("provenance binds the approved builder, source, recipe, and ordered timestamps", () => {
+test("provenance binds the approved build actor, source, recipe, and ordered timestamps", () => {
   for (const mutate of [
     (provenance) => {
       provenance.predicate.runDetails[slsaActorKey].id =
-        "https://unapproved.invalid/builder"
+        "https://unapproved.invalid/build-actor"
     },
     (provenance) => {
       provenance.predicate.buildDefinition.externalParameters.sourceRevision =

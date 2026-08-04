@@ -220,7 +220,7 @@ function validateProvenance(document, image, component, root, policy) {
     canonicalJson(buildDefinition?.internalParameters) !== "{}" ||
     canonicalJson(buildDefinition?.resolvedDependencies) !==
       canonicalJson(expectedResolvedDependencies(component, image, root)) ||
-    !policy.provenance.approvedBuilderIds.includes(buildService?.id) ||
+    !policy.provenance.approvedBuildActorIds.includes(buildService?.id) ||
     typeof runDetails?.metadata?.invocationId !== "string" ||
     runDetails.metadata.invocationId.length === 0 ||
     !Number.isInteger(startedOn) ||
