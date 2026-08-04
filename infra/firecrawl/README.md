@@ -60,23 +60,21 @@ Network attachment is part of the security boundary. Only the four services in
 This source profile is intentionally not runtime-qualified. Release admission
 stops until all of the following are evidenced:
 
-- The pinned Firecrawl v2.11.0 source boots and serves synchronous search and
-  scrape without the omitted queue and database services. The preserved source
-  checkpoint still patches `NuQJob` and scrape-worker paths and does not prove a
-  queue-free startup, so failure must lead to a reviewed minimal-source change,
-  not silent dependency growth.
+- The reviewed Firecrawl v2.11.0 source patches build and the reduced entrypoint
+  boots and serves synchronous search and scrape without the omitted queue and
+  database services. A build or startup failure must lead to a Firecrawl-owned
+  successor, not silent dependency growth.
 - Tests prove the BFF exposes only search and scrape, enforces the dedicated
   application credential, and performs no transparent hosted-service fallback.
 - The system allowlist controller passes public-address and DNS-rebinding tests,
   including configured-set/rendered-file parity, atomic reload, redirects, and
   mixed public/private DNS answers.
 - Retention canaries prove that request bodies and scraped content do not enter
-  files, volumes, logs, caches, traces, metrics, or queues. The preserved
-  v2.11.0 controllers still call `logRequest` and `logSearch` and construct
-  logger and span fields containing query, URL, or request data. Docker logging
-  suppression is not evidence that those application sinks are inert; the
-  reduced-source change must remove them or prove that they cannot persist or
-  export content.
+  files, volumes, logs, caches, traces, metrics, or queues. The reviewed patch
+  forces self-hosted zero-data-retention, removes search-query logger metadata
+  and the controller-level scrape URL span attribute, and the reduced entrypoint
+  does not initialize a telemetry exporter. Source inspection is not runtime
+  evidence, so Q0 must still prove every active sink remains content-free.
 - Resource, concurrency, timeout, cancellation, failure, and disable/re-enable
   tests pass on the supported appliance floor. The candidate defaults are only
   starting values; release tests must qualify an admin-tunable range that can
@@ -88,6 +86,27 @@ stops until all of the following are evidenced:
 `validate-profile.mjs` is a source-policy check. It does not close any runtime
 or release-admission gate.
 
+## Release source package
+
+`release/source-package.json` binds the exact upstream sources, ordered reduced
+patches, byte locks, build inputs, licenses, and required release outputs. It is
+credential-free and remains runtime-unqualified. It deliberately excludes all
+historical queue and persistence patches.
+
+The corresponding-source assembler performs no network access. Supply the four
+archives under the exact filenames declared in the manifest, then run:
+
+```sh
+node infra/firecrawl/release/assemble-source-packet.mjs \
+  --source-dir /controlled/source-inputs \
+  --output-dir /controlled/firecrawl-corresponding-source
+```
+
+The output contains the original archives, the fully patched Firecrawl source,
+the ordered patches, build locks, Product profile, notices, and sorted SHA-256
+inventory. Image build, scanning, provenance, signing, and runtime qualification
+remain separate release gates.
+
 ## Static validation
 
 Run the validator directly with Node:
@@ -95,6 +114,8 @@ Run the validator directly with Node:
 ```sh
 node infra/firecrawl/validate-profile.mjs
 node --test infra/firecrawl/validate-profile.test.mjs
+node infra/firecrawl/release/validate-source-package.mjs
+node --test infra/firecrawl/release/validate-source-package.test.mjs
 ```
 
 To review a generated runtime allowlist, pass `--allowlist PATH --require-hosts`.

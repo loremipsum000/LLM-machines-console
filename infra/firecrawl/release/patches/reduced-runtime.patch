@@ -1,0 +1,205 @@
+diff --git a/apps/api/Dockerfile b/apps/api/Dockerfile
+index 1280628..62834c8 100644
+--- a/apps/api/Dockerfile
++++ b/apps/api/Dockerfile
+@@ -108,4 +108,4 @@ COPY --from=go-build /app/sharedLibs/go-html-to-md/libhtml-to-markdown.so ./shar
+
+ USER 65532:65532
+
+-CMD ["/usr/bin/node", "dist/src/harness.js", "--start-docker"]
++CMD ["/usr/bin/node", "dist/src/llm-machines-server.js"]
+diff --git a/apps/api/src/controllers/v2/scrape.ts b/apps/api/src/controllers/v2/scrape.ts
+index d779a90..26dfba3 100644
+--- a/apps/api/src/controllers/v2/scrape.ts
++++ b/apps/api/src/controllers/v2/scrape.ts
+@@ -32,6 +32,7 @@ import {
+ } from "../../lib/keyless";
+ import { projectScrapeCredits } from "../../lib/keyless-credit-projection";
+ import { applyAgentAuthDiscoveryHeader } from "../../lib/agent-auth-discovery";
++import { isSelfHosted } from "../../lib/deployment";
+
+ const AGENT_INTEROP_CONCURRENCY_BOOST = 3;
+
+@@ -53,7 +54,6 @@ export async function scrapeController(
+       // Set initial span attributes
+       setSpanAttributes(span, {
+         "scrape.job_id": jobId,
+-        "scrape.url": req.body.url,
+         "scrape.team_id": req.auth.team_id,
+         "scrape.api_key_id": req.acuc?.api_key_id,
+         "scrape.middleware_time_ms": controllerStartTime - middlewareStartTime,
+@@ -92,6 +92,7 @@ export async function scrapeController(
+       }
+
+       const zeroDataRetention =
++        isSelfHosted() ||
+         getScrapeZDR(req.acuc?.flags) === "forced" ||
+         (req.body.zeroDataRetention ?? false) ||
+         (req.body.lockdown ?? false);
+diff --git a/apps/api/src/controllers/v2/search.ts b/apps/api/src/controllers/v2/search.ts
+index 05331a2..d052547 100644
+--- a/apps/api/src/controllers/v2/search.ts
++++ b/apps/api/src/controllers/v2/search.ts
+@@ -28,6 +28,7 @@ import type { BillingMetadata } from "../../services/billing/types";
+ import { getSearchForcedKind, getSearchZDR } from "../../lib/zdr-helpers";
+ import { projectSearchTotalCredits } from "../../lib/keyless-credit-projection";
+ import { applyAgentAuthDiscoveryHeader } from "../../lib/agent-auth-discovery";
++import { isSelfHosted } from "../../lib/deployment";
+
+ export async function searchController(
+   req: RequestWithAuth<{}, SearchResponse, SearchRequest>,
+@@ -45,7 +46,7 @@ export async function searchController(
+     teamId: req.auth.team_id,
+     module: "api/v2",
+     method: "searchController",
+-    zeroDataRetention: teamForcedKind !== null,
++    zeroDataRetention: isSelfHosted() || teamForcedKind !== null,
+     teamForcedKind,
+   });
+
+@@ -54,7 +55,7 @@ export async function searchController(
+     config.SEARCH_PREVIEW_TOKEN !== undefined &&
+     config.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+
+-  let zeroDataRetention = teamForcedKind !== null;
++  let zeroDataRetention = isSelfHosted() || teamForcedKind !== null;
+   let reservedKeylessCredits = 0;
+   let reconciledKeylessCredits = false;
+
+@@ -83,12 +84,6 @@ export async function searchController(
+       ? { endpoint: "agent" as const, jobId }
+       : { endpoint: "search" as const, jobId };
+
+-    logger = logger.child({
+-      version: "v2",
+-      query: req.body.query,
+-      origin: req.body.origin,
+-    });
+-
+     // Inject the team-forced enterprise mode so downstream billing,
+     // upstream routing, and ZDR cleanup all see it.
+     if (teamForcedKind) {
+@@ -101,12 +96,18 @@ export async function searchController(
+     const isZDR = req.body.enterprise?.includes("zdr");
+     const isAnon = req.body.enterprise?.includes("anon");
+     const isZDROrAnon = isZDR || isAnon;
+-    zeroDataRetention = isZDROrAnon ?? false;
++    zeroDataRetention = isSelfHosted() || (isZDROrAnon ?? false);
+     logger = logger.child({ zeroDataRetention });
+     applyZdrScope(zeroDataRetention);
+
++    logger = logger.child({
++      version: "v2",
++      origin: req.body.origin,
++      ...(zeroDataRetention ? {} : { query: req.body.query }),
++    });
++
+     // Verify the team has searchZDR enabled before allowing enterprise ZDR/anon
+-    if (isZDROrAnon && !teamForcedKind) {
++    if (isZDROrAnon && !teamForcedKind && !isSelfHosted()) {
+       if (searchZDRMode !== "allowed") {
+         return res.status(403).json({
+           success: false,
+diff --git a/apps/api/src/llm-machines-server.ts b/apps/api/src/llm-machines-server.ts
+new file mode 100644
+index 0000000..6365d37
+--- /dev/null
++++ b/apps/api/src/llm-machines-server.ts
+@@ -0,0 +1,97 @@
++import "dotenv/config";
++
++import bodyParser from "body-parser";
++import express, { NextFunction, Request, Response } from "express";
++import { register } from "prom-client";
++import responseTime from "response-time";
++
++import { scrapeController } from "./controllers/v2/scrape";
++import { searchController } from "./controllers/v2/search";
++import type { ErrorResponse } from "./controllers/v2/types";
++import { config } from "./config";
++import { logger } from "./lib/logger";
++import {
++  authMiddleware,
++  blocklistMiddleware,
++  countryCheck,
++  requestTimingMiddleware,
++  wrap,
++} from "./routes/shared";
++import { RateLimiterMode } from "./types";
++
++const app = express();
++
++app.disable("x-powered-by");
++app.use(bodyParser.json({ limit: "1mb" }));
++app.use(responseTime());
++
++app.get("/v0/health/liveness", (_request, response) => {
++  response.status(200).json({ status: "ok" });
++});
++
++app.get("/v0/health/readiness", (_request, response) => {
++  response.status(200).json({ status: "ok" });
++});
++
++app.get("/metrics", async (_request, response, next) => {
++  try {
++    response.type(register.contentType).send(await register.metrics());
++  } catch (error) {
++    next(error);
++  }
++});
++
++app.use("/v2", requestTimingMiddleware("v2"));
++
++app.post(
++  "/v2/search",
++  authMiddleware(RateLimiterMode.Search, { allowKeyless: true }),
++  countryCheck,
++  blocklistMiddleware,
++  wrap(searchController),
++);
++
++app.post(
++  "/v2/scrape",
++  authMiddleware(RateLimiterMode.Scrape, { allowKeyless: true }),
++  countryCheck,
++  blocklistMiddleware,
++  wrap(scrapeController),
++);
++
++app.use((_request, response) => {
++  response.status(404).json({ success: false, error: "Not found" });
++});
++
++app.use(
++  (
++    error: unknown,
++    _request: Request,
++    response: Response<ErrorResponse>,
++    _next: NextFunction,
++  ) => {
++    logger.error("Firecrawl request failed", {
++      error: error instanceof Error ? error.name : "UnknownError",
++    });
++    response.status(500).json({
++      success: false,
++      code: "UNKNOWN_ERROR",
++      error: "Request failed",
++    });
++  },
++);
++
++const server = app.listen(Number(config.PORT), config.HOST, () => {
++  logger.info("Reduced Firecrawl API ready", {
++    host: config.HOST,
++    port: config.PORT,
++    routes: ["POST /v2/search", "POST /v2/scrape"],
++  });
++});
++
++function shutdown() {
++  server.close(() => process.exit(0));
++}
++
++process.on("SIGINT", shutdown);
++process.on("SIGTERM", shutdown);

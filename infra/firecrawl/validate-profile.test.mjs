@@ -86,6 +86,16 @@ test("queue and database services are rejected", () => {
   assert.ok(errors.some((error) => error.includes("forbidden service present")))
 })
 
+test("the broad upstream harness is rejected", () => {
+  const changed = compose.replace(
+    '["node", "dist/src/llm-machines-server.js"]',
+    '["node", "dist/src/harness.js", "--start-docker"]',
+  )
+  const errors = validateCompose(changed)
+  assert.ok(errors.some((error) => error.includes("reduced entrypoint")))
+  assert.ok(errors.some((error) => error.includes("broad upstream harness")))
+})
+
 test("proxy cannot allow clients without an exact hostname", () => {
   const changed = squid.replace(
     "http_access allow firecrawl_clients allowed_destinations",
@@ -136,12 +146,12 @@ test("search cannot add a shared cache", () => {
 
 test("source provenance cannot claim release admission", () => {
   const changed = sourceLock.replace(
-    '"source-candidate-not-release-admitted"',
+    '"source-ready-not-release-admitted"',
     '"release-admitted"',
   )
   assert.ok(
     validateSourceLock(changed).some((error) =>
-      error.includes("unexpected candidate status"),
+      error.includes("unexpected source readiness status"),
     ),
   )
 })
