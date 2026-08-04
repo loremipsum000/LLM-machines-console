@@ -705,3 +705,25 @@ atomically writes only `contract-revisions/PR-11.json`, the forbidden
 allowlist, and the route baseline. The reviewed PR-11 output was generated only
 after the exact policy, source hashes, route reduction, and predecessor
 evidence passed.
+
+## PR-12 source closure
+
+PR-12 freezes deterministic release-packaging source at protected integration
+commit `80ecb127ecda73f3711903957e7e883aa19bad63`, tree
+`1c5134fbe75a49148a8db2dcb7872448368f326e`. The aggregate evidence records the
+exact PR 22 through PR 32 package chain, package and merge trees, changed paths,
+selected source fingerprints, SGLang 0.5.13 contract, Core image inventory,
+Firecrawl reproducibility packet, supply-chain evidence, clean seeds, public
+verification, clean-room installer, and prepare-only rollback tooling.
+
+Reviewed aggregate candidate `d156216054e15e7f970ad909743aa1712f8347c9`,
+tree `1c2d55575bfc1a40586ffecc6cc63147f2e3773d`, passed local and clean detached
+source validation plus independent review. PR 33 admitted it at protected
+integration commit `5d199ee3a4fe1585a984711180605b570652ee83` with the
+identical tree and no candidate-to-merge difference.
+
+This is source closure only. Accepted remains false, runtimeQualified remains
+false, contract activation remains inactive, and D2A-RC and Q0 remain
+NOT_STARTED. Grafana customer access remains deferred from v1. No deployment,
+runtime activation, real secret binding, private signing material, hardware
+qualification, or Product main transition is part of PR-12 source closure.
