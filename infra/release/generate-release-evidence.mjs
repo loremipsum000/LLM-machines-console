@@ -38,6 +38,14 @@ function readJson(path, field) {
   }
 }
 
+function readCanonicalJson(path, field) {
+  const document = readJson(path, field)
+  if (readFileSync(path, "utf8") !== `${canonicalJson(document)}\n`) {
+    fail(`${field} must use canonical JSON encoding`)
+  }
+  return document
+}
+
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`
   if (value && typeof value === "object") {
@@ -979,8 +987,11 @@ export function generateReleaseEvidence(
         `${image.id} vulnerability-disposition digest differs from the Core lock`,
       )
     }
-    const sbom = readJson(sbomPath, `${image.id} SBOM`)
-    const statement = readJson(provenancePath, `${image.id} provenance`)
+    const sbom = readCanonicalJson(sbomPath, `${image.id} SBOM`)
+    const statement = readCanonicalJson(
+      provenancePath,
+      `${image.id} provenance`,
+    )
     validateSbom(sbom, image, evidencePolicy)
     validateProvenance(
       statement,
@@ -994,7 +1005,7 @@ export function generateReleaseEvidence(
     if (licenseText.trim().length < 10)
       fail(`${image.id} license text is empty`)
     if (noticeText.trim().length < 10) fail(`${image.id} notice is empty`)
-    const licenseReview = readJson(
+    const licenseReview = readCanonicalJson(
       licenseReviewPath,
       `${image.id} license review`,
     )
@@ -1005,11 +1016,11 @@ export function generateReleaseEvidence(
       image.noticeSha256,
       evidencePolicy,
     )
-    const vulnerabilityReport = readJson(
+    const vulnerabilityReport = readCanonicalJson(
       vulnerabilityReportPath,
       `${image.id} vulnerability report`,
     )
-    const vulnerabilityDisposition = readJson(
+    const vulnerabilityDisposition = readCanonicalJson(
       vulnerabilityDispositionPath,
       `${image.id} vulnerability disposition`,
     )

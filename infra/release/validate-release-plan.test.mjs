@@ -13,7 +13,10 @@ import {
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
-import { generateReleaseEvidence } from "./generate-release-evidence.mjs"
+import {
+  canonicalJson as canonicalEvidence,
+  generateReleaseEvidence,
+} from "./generate-release-evidence.mjs"
 import {
   canonicalJson,
   generateReleaseManifest,
@@ -117,6 +120,10 @@ function writeArtifact(rootDirectory, relativePath, contents) {
 
 function sha256Bytes(value) {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`
+}
+
+function canonicalEvidenceJson(value) {
+  return `${canonicalEvidence(value)}\n`
 }
 
 function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
@@ -267,7 +274,7 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
       scannedAt: isoBefore(7_200_000),
       findings: [],
     }
-    const reportBytes = `${canonicalJson(report)}\n`
+    const reportBytes = canonicalEvidenceJson(report)
     const disposition = {
       schema: "llm-machines.vulnerability-disposition.v1",
       status: "REVIEWED",
@@ -302,10 +309,10 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
       reviewedAt: isoBefore(1_800_000),
       reviewer: { type: "release-compliance", id: "fixture-reviewer" },
     }
-    const sbomBytes = `${canonicalJson(sbom)}\n`
-    const provenanceBytes = `${canonicalJson(provenance)}\n`
-    const dispositionBytes = `${canonicalJson(disposition)}\n`
-    const reviewBytes = `${canonicalJson(review)}\n`
+    const sbomBytes = canonicalEvidenceJson(sbom)
+    const provenanceBytes = canonicalEvidenceJson(provenance)
+    const dispositionBytes = canonicalEvidenceJson(disposition)
+    const reviewBytes = canonicalEvidenceJson(review)
     writeArtifact(evidenceRoot, `sbom/${image.id}.cdx.json`, sbomBytes)
     writeArtifact(
       evidenceRoot,
