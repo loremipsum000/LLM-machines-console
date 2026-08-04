@@ -4,7 +4,10 @@ import { relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { sha256File } from "./deterministic-archive.mjs"
 import { canonicalJson } from "./generate-release-manifest.mjs"
-import { validateReleaseEvidenceIndex } from "./validate-release-evidence-index.mjs"
+import {
+  minimumExceptionExpiryFromBundle,
+  validateReleaseEvidenceIndex,
+} from "./validate-release-evidence-index.mjs"
 
 const issuer = "urn:llm-machines:vendor"
 const sha256Pattern = /^sha256:[a-f0-9]{64}$/
@@ -405,6 +408,7 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
   const evidence = new Set()
   let coreLock
   let evidenceIndex
+  let vulnerabilityEvidence
   let corePackage
   let publicTrust
   let previousPath = null
@@ -481,6 +485,9 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
     if (artifact.evidenceId === "release-evidence-index") {
       evidenceIndex = artifact
     }
+    if (artifact.evidenceId === "image-vulnerability-evidence") {
+      vulnerabilityEvidence = artifact
+    }
     if (artifact.evidenceId === "public-release-trust") publicTrust = artifact
     if (artifact.id === "core-package") corePackage = artifact
   }
@@ -530,14 +537,23 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
   if (!evidenceIndex) {
     fail("signed manifest does not contain its semantic evidence index")
   }
+  if (!vulnerabilityEvidence) {
+    fail("signed manifest does not contain vulnerability evidence")
+  }
   const evidenceIndexValue = JSON.parse(
     readFileSync(resolve(artifactRoot, evidenceIndex.path), "utf8"),
+  )
+  const vulnerabilityEvidenceValue = JSON.parse(
+    readFileSync(resolve(artifactRoot, vulnerabilityEvidence.path), "utf8"),
   )
   validateReleaseEvidenceIndex(evidenceIndexValue, {
     coreLock: coreLockValue,
     coreLockPath: resolve(artifactRoot, coreLock.path),
     evidenceArtifacts: manifest.artifacts,
     release: manifest.release,
+    minimumExceptionExpiry: minimumExceptionExpiryFromBundle(
+      vulnerabilityEvidenceValue,
+    ),
     signatureTimestamp,
   })
   if (!publicTrust || publicTrust.classification !== "public-trust") {

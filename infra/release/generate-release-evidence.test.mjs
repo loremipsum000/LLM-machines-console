@@ -362,6 +362,12 @@ test("CycloneDX inventory, dependency, tool, and locked digest evidence is manda
       sbom.components[0].purl = null
     },
     (sbom) => {
+      sbom.components[0]["bom-ref"] = ""
+    },
+    (sbom) => {
+      sbom.components[0].purl = "pkg:"
+    },
+    (sbom) => {
       sbom.components[0].hashes = []
     },
     (sbom) => {
@@ -472,6 +478,9 @@ test("vulnerability evidence covers every image and enforces freshness and thres
         approvedAt: "2026-08-01T00:00:00.000Z",
         expiresAt: "2026-08-04T00:00:03.000Z",
       })
+    },
+    (_report, disposition) => {
+      disposition.reviewedAt = "2026-08-04T00:00:05.000Z"
     },
   ]) {
     const value = fixture()

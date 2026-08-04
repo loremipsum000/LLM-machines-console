@@ -139,6 +139,7 @@ export function validateReleaseEvidenceIndex(
     coreLockPath,
     evidenceArtifacts,
     release,
+    minimumExceptionExpiry,
     signatureTimestamp = null,
   },
   { root = repositoryRoot } = {},
@@ -232,6 +233,11 @@ export function validateReleaseEvidenceIndex(
   if (canonicalJson(index.artifacts) !== canonicalJson(expectedArtifacts)) {
     fail("release evidence index does not bind exact generated evidence")
   }
+  if (index.minimumExceptionExpiry !== minimumExceptionExpiry) {
+    fail(
+      "release evidence index exception expiry differs from packaged evidence",
+    )
+  }
   if (index.minimumExceptionExpiry !== null) {
     const expiry = Date.parse(index.minimumExceptionExpiry)
     const signatureTime =
@@ -244,6 +250,33 @@ export function validateReleaseEvidenceIndex(
       fail("vulnerability exception expired before evidence admission")
     }
   }
+}
+
+export function minimumExceptionExpiryFromBundle(bundle) {
+  if (
+    bundle?.schema !== "llm-machines.image-vulnerability-evidence.v1" ||
+    !Array.isArray(bundle?.images)
+  ) {
+    fail("image vulnerability bundle cannot derive exception expiry")
+  }
+  const expiries = []
+  for (const image of bundle.images) {
+    if (!Array.isArray(image?.disposition?.exceptions)) {
+      fail("image vulnerability disposition cannot derive exception expiry")
+    }
+    for (const exception of image.disposition.exceptions) {
+      if (
+        typeof exception?.expiresAt !== "string" ||
+        !Number.isInteger(Date.parse(exception.expiresAt))
+      ) {
+        fail("vulnerability exception expiry is invalid")
+      }
+      expiries.push(exception.expiresAt)
+    }
+  }
+  return expiries.length === 0
+    ? null
+    : expiries.sort((left, right) => Date.parse(left) - Date.parse(right))[0]
 }
 
 export { canonicalJson }

@@ -15,6 +15,7 @@ import {
 } from "./validate-image-lock.mjs"
 import {
   buildReleaseEvidenceIndex,
+  minimumExceptionExpiryFromBundle,
   semanticEvidence,
   validateReleaseEvidenceIndex,
 } from "./validate-release-evidence-index.mjs"
@@ -142,6 +143,7 @@ function validateSbom(document, image, policy) {
     component?.name !== image.id ||
     component?.version !== image.version ||
     typeof component?.["bom-ref"] !== "string" ||
+    component["bom-ref"].length === 0 ||
     !component?.hashes?.some(
       ({ alg, content }) =>
         alg === "SHA-256" &&
@@ -165,6 +167,7 @@ function validateSbom(document, image, policy) {
     !Array.isArray(components) ||
     components.length < policy.sbom.minimumInventoryComponents ||
     componentRefs.some((reference) => typeof reference !== "string") ||
+    componentRefs.some((reference) => reference.length === 0) ||
     new Set(componentRefs).size !== componentRefs.length ||
     components.some(
       (entry) =>
@@ -176,7 +179,9 @@ function validateSbom(document, image, policy) {
         typeof entry?.version !== "string" ||
         entry.version.length === 0 ||
         typeof entry?.purl !== "string" ||
-        !entry.purl.startsWith("pkg:") ||
+        !/^pkg:[a-z][a-z0-9.+-]*\/[^/@?#\s]+(?:\/[^/@?#\s]+)*@[^/?#\s]+(?:\?[^#\s]+)?(?:#[^\s]+)?$/i.test(
+          entry.purl,
+        ) ||
         !Array.isArray(entry?.hashes) ||
         !entry.hashes.some(
           ({ alg, content }) =>
@@ -479,6 +484,7 @@ function validateVulnerabilityEvidence(
       Number.isInteger(approvedAt) &&
       Number.isInteger(expiresAt) &&
       approvedAt <= reviewedAt &&
+      approvedAt <= evaluatedAt &&
       expiresAt > reviewedAt &&
       expiresAt > evaluatedAt &&
       expiresAt - approvedAt <= maximumExceptionMs
@@ -507,6 +513,7 @@ function validateVulnerabilityEvidence(
     canonicalJson(disposition.counts) !== canonicalJson(expectedCounts) ||
     !Number.isInteger(reviewedAt) ||
     reviewedAt < scannedAt ||
+    reviewedAt > evaluatedAt ||
     new Set(exceptionIds).size !== exceptions.length ||
     !exceptionsValid ||
     blockingFindings.length > 0 ||
@@ -859,6 +866,8 @@ export function validatePackagedReleaseEvidence(
       coreLockPath,
       evidenceArtifacts,
       release,
+      minimumExceptionExpiry:
+        minimumExceptionExpiryFromBundle(vulnerabilityBundle),
       signatureTimestamp,
     },
     { root },

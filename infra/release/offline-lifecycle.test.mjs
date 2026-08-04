@@ -235,7 +235,15 @@ function bundleFixture(version = "1.0.0", label = version) {
           ? firecrawlSource
           : evidenceId === "grafana-corresponding-source"
             ? grafanaSource
-            : canonicalJson({ evidenceId, label })
+            : evidenceId === "image-vulnerability-evidence"
+              ? canonicalJson({
+                  schema: "llm-machines.image-vulnerability-evidence.v1",
+                  images: coreLockValue.images.map(({ id }) => ({
+                    id,
+                    disposition: { exceptions: [] },
+                  })),
+                })
+              : canonicalJson({ evidenceId, label })
     write(join(artifactRoot, path), contents)
     artifacts.push({
       id: `evidence-${evidenceId}`,
@@ -432,6 +440,47 @@ test("public verification rejects tampering, omitted evidence, and untracked art
     /missing required evidence/,
   )
   rmSync(omitted.directory, { recursive: true, force: true })
+})
+
+test("public verification derives exception expiry from the signed vulnerability bundle", () => {
+  const fixture = bundleFixture("1.0.4", "exception-expiry")
+  const manifest = JSON.parse(readFileSync(fixture.bundle.manifestPath, "utf8"))
+  const vulnerabilityArtifact = manifest.artifacts.find(
+    ({ evidenceId }) => evidenceId === "image-vulnerability-evidence",
+  )
+  const vulnerabilityPath = join(
+    fixture.bundle.artifactRoot,
+    vulnerabilityArtifact.path,
+  )
+  const vulnerability = JSON.parse(readFileSync(vulnerabilityPath, "utf8"))
+  vulnerability.images[0].disposition.exceptions.push({
+    expiresAt: "2026-08-05T00:00:00.000Z",
+  })
+  writeFileSync(vulnerabilityPath, canonicalJson(vulnerability))
+  vulnerabilityArtifact.size = readFileSync(vulnerabilityPath).length
+  vulnerabilityArtifact.sha256 = sha256File(vulnerabilityPath)
+
+  const indexArtifact = manifest.artifacts.find(
+    ({ evidenceId }) => evidenceId === "release-evidence-index",
+  )
+  const indexPath = join(fixture.bundle.artifactRoot, indexArtifact.path)
+  const index = JSON.parse(readFileSync(indexPath, "utf8"))
+  index.artifacts.find(
+    ({ evidenceId }) => evidenceId === "image-vulnerability-evidence",
+  ).sha256 = vulnerabilityArtifact.sha256
+  assert.equal(index.minimumExceptionExpiry, null)
+  writeFileSync(indexPath, canonicalJson(index))
+  indexArtifact.size = readFileSync(indexPath).length
+  indexArtifact.sha256 = sha256File(indexPath)
+  manifest.artifacts.sort((left, right) =>
+    Buffer.from(left.path).compare(Buffer.from(right.path)),
+  )
+  resignManifest(fixture, manifest)
+  assert.throws(
+    () => verifyReleaseBundle(fixture.bundle),
+    /exception expiry differs from packaged evidence/,
+  )
+  rmSync(fixture.directory, { recursive: true, force: true })
 })
 
 test("public verification rejects wrong purpose, revoked keys, and invalid signatures", () => {
