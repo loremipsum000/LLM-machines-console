@@ -24,6 +24,7 @@ const allowedCurrentBranches = [
   "codex/inference-core-pr-11a-r1-k1",
   "codex/inference-core-pr-11a-r1-d1",
   "codex/inference-core-pr-11a-r1-v1-successor",
+  "codex/inference-core-pr-11a-source-closure",
 ]
 const admittedBehaviorSourcePaths = [
   "apps/bff/src/auth/authorization.ts",

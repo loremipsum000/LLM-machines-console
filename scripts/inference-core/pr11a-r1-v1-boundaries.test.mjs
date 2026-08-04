@@ -17,7 +17,10 @@ import {
   pr11aR1V1Input,
   pr11aR1V1InputTree,
   pr11aR1V1PackageMerges,
+  pr11aR1V1ProtectedAdmission,
+  pr11aR1V1SourceClosurePath,
   pr11aR1V1SourcePaths,
+  pr11aR1V1ValidatedCandidate,
   verifyPr11aAggregateEvidenceDocument,
   verifyPr11aR1V1ContractRevisionDocument,
 } from "./guardrails.mjs"
@@ -89,6 +92,7 @@ test("R1-V1 successor changes only the exact aggregate closure paths", () => {
     "--name-only",
     "--no-renames",
     pr11aR1V1Input,
+    pr11aR1V1ValidatedCandidate,
     "--",
   )
   assert.deepEqual(output ? output.split("\n") : [], pr11aR1V1SourcePaths)
@@ -181,20 +185,41 @@ test("aggregate and contract revision are deterministic unaccepted artifacts", (
   const aggregateContent = readFileSync(
     resolve(repositoryRoot, pr11aAggregateEvidencePath),
   )
-  assert.deepEqual(
-    verifyPr11aAggregateEvidenceDocument(aggregate, {
-      root: repositoryRoot,
-      operationPolicy: state.operationPolicy,
-    }),
-    [],
-  )
-  assert.deepEqual(
-    verifyPr11aR1V1ContractRevisionDocument(
-      readJson(pr11aContractRevisionPath),
-      { root: repositoryRoot, aggregateContent },
-    ),
-    [],
-  )
+  if (existsSync(resolve(repositoryRoot, pr11aR1V1SourceClosurePath))) {
+    assert.equal(
+      sha256(aggregateContent),
+      sha256(
+        gitBytes(
+          "show",
+          `${pr11aR1V1ProtectedAdmission}:${pr11aAggregateEvidencePath}`,
+        ),
+      ),
+    )
+    assert.equal(
+      sha256(readFileSync(resolve(repositoryRoot, pr11aContractRevisionPath))),
+      sha256(
+        gitBytes(
+          "show",
+          `${pr11aR1V1ProtectedAdmission}:${pr11aContractRevisionPath}`,
+        ),
+      ),
+    )
+  } else {
+    assert.deepEqual(
+      verifyPr11aAggregateEvidenceDocument(aggregate, {
+        root: repositoryRoot,
+        operationPolicy: state.operationPolicy,
+      }),
+      [],
+    )
+    assert.deepEqual(
+      verifyPr11aR1V1ContractRevisionDocument(
+        readJson(pr11aContractRevisionPath),
+        { root: repositoryRoot, aggregateContent },
+      ),
+      [],
+    )
+  }
   assert.deepEqual(aggregate.status, {
     accepted: false,
     revisionBound: false,

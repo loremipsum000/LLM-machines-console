@@ -266,6 +266,18 @@ export const pr11aR1V1GeneratedPaths = [
   pr11aAggregateEvidencePath,
   pr11aContractRevisionPath,
 ].sort()
+export const pr11aR1V1SourceClosurePath =
+  "docs/reduction/inference-core/pr-11a-r1-v1-source-closure.json"
+export const pr11aR1V1SourceClosurePaths = [
+  "docs/reduction/inference-core/README.md",
+  "docs/reduction/inference-core/decision-register.md",
+  pr11aR1V1SourceClosurePath,
+  "docs/reduction/inference-core/validation-register.md",
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+  "scripts/inference-core/pr11a-r1-v1-boundaries.test.mjs",
+  "scripts/inference-core/pr11a-r1-v1-source-closure.test.mjs",
+].sort()
 export const pr11aR1V1SourcePaths = [
   "docs/reduction/inference-core/README.md",
   pr11aContractRevisionPath,
@@ -349,6 +361,14 @@ export const pr11aContractBase = "9d8f1a6144cb280104cdce0a21ab7dafa72087ec"
 export const pr11aContractBaseTree = "a7cb76ff95ec4ffc12cbd589b0514564602c35da"
 export const pr11aR1V1Input = "0e794ccd6e0f2593f2e6ab34b8fc1d521835b6fd"
 export const pr11aR1V1InputTree = "0c94b6164a81dd4da9884afa7ff2b37bd1c03079"
+export const pr11aR1V1ValidatedCandidate =
+  "fb5ac5be13012a3de5e2da733bdc83c7d82efed3"
+export const pr11aR1V1ValidatedCandidateTree =
+  "acc4f5540ebc863bd53e76aae8af3bcdd40136bb"
+export const pr11aR1V1ProtectedAdmission =
+  "837c3c3e139fd6b82db650d20a4f0fcf902e2fda"
+export const pr11aR1V1ProtectedAdmissionTree =
+  "acc4f5540ebc863bd53e76aae8af3bcdd40136bb"
 export const pr11aR1V1HistoricalRemoteRef =
   "cc08cf8e9afce12def143f2f395d30bfbe04f515"
 export const pr11aR1V1HistoricalLocalHead =
@@ -5304,6 +5324,19 @@ function hasPr11aR1V1SourceMarker(root) {
   )
 }
 
+function hasPr11aR1V1SourceClosureMarker(root) {
+  return (
+    hasPr11aR1V1SourceMarker(root) &&
+    isRegularFile(resolve(root, pr11aR1V1SourceClosurePath)) &&
+    isRegularFile(
+      resolve(
+        root,
+        "scripts/inference-core/pr11a-r1-v1-source-closure.test.mjs",
+      ),
+    )
+  )
+}
+
 function hasPr11aR1E1SourceMarker(root) {
   return (
     hasPr11aR1S1SourceMarker(root) &&
@@ -5784,6 +5817,259 @@ export function verifyPr11aR1V1ContractRevisionDocument(
   return JSON.stringify(document) === JSON.stringify(expected)
     ? []
     : ["PR-11A contract revision differs from the exact aggregate candidate"]
+}
+
+export function buildPr11aR1V1SourceClosureDocument({
+  root = repositoryRoot,
+} = {}) {
+  return {
+    schemaVersion: 1,
+    id: "PR-11A",
+    workPackage: "PR-11A-R1-V1-SOURCE-CLOSURE",
+    sourceClosureStatus: "SOURCE_CLOSED",
+    sourceClosureScope: "validated-source-only",
+    accepted: false,
+    revisionBound: true,
+    revisionBoundTo: {
+      integrationCommit: pr11aR1V1ProtectedAdmission,
+      integrationTree: pr11aR1V1ProtectedAdmissionTree,
+      contractRevisionPath: pr11aContractRevisionPath,
+      contractRevisionSha256: sha256(
+        readFileSync(resolve(root, pr11aContractRevisionPath)),
+      ),
+    },
+    validatedCandidate: {
+      commit: pr11aR1V1ValidatedCandidate,
+      tree: pr11aR1V1ValidatedCandidateTree,
+      independentReview: "PASS",
+    },
+    protectedAdmission: {
+      pullRequest: 20,
+      baseRef: "codex/inference-core-stack-reduction",
+      commit: pr11aR1V1ProtectedAdmission,
+      tree: pr11aR1V1ProtectedAdmissionTree,
+      firstParent: pr11aR1V1Input,
+      secondParent: pr11aR1V1ValidatedCandidate,
+      candidateTreeIdentical: true,
+      candidateDiff: "empty",
+    },
+    evidence: {
+      aggregatePath: pr11aAggregateEvidencePath,
+      aggregateSha256: sha256(
+        readFileSync(resolve(root, pr11aAggregateEvidencePath)),
+      ),
+      activeReviewedRevision: "PR-11",
+    },
+    status: {
+      runtimeQualified: false,
+      contractActivation: "INACTIVE",
+      q0: "NOT_STARTED",
+      grafanaQualification: "NOT_STARTED",
+      pr12: "NOT_STARTED",
+      deployment: "INACTIVE",
+      productMain: "UNCHANGED",
+    },
+    interpretation: {
+      sourceClosure:
+        "The reviewed PR-11A source candidate is present on protected integration with an identical tree.",
+      accepted:
+        "False means this record does not assert product acceptance or runtime qualification.",
+      revisionBound:
+        "True binds the inactive PR-11A source revision to the protected integration commit without activating it.",
+    },
+  }
+}
+
+export function verifyPr11aR1V1SourceClosureDocument(
+  document,
+  { root = repositoryRoot } = {},
+) {
+  const errors = []
+  const expected = buildPr11aR1V1SourceClosureDocument({ root })
+  if (JSON.stringify(document) !== JSON.stringify(expected)) {
+    errors.push("PR-11A source-closure record differs from exact admission")
+  }
+  if (
+    resolveCommit(root, pr11aR1V1ProtectedAdmission) !==
+      pr11aR1V1ProtectedAdmission ||
+    resolveTree(root, pr11aR1V1ProtectedAdmission) !==
+      pr11aR1V1ProtectedAdmissionTree ||
+    resolveCommit(root, `${pr11aR1V1ProtectedAdmission}^1`) !==
+      pr11aR1V1Input ||
+    resolveCommit(root, `${pr11aR1V1ProtectedAdmission}^2`) !==
+      pr11aR1V1ValidatedCandidate ||
+    resolveTree(root, pr11aR1V1ValidatedCandidate) !==
+      pr11aR1V1ValidatedCandidateTree
+  ) {
+    errors.push("PR-11A protected admission identity changed")
+  }
+  try {
+    execFileSync(
+      "git",
+      [
+        "diff",
+        "--quiet",
+        pr11aR1V1ValidatedCandidate,
+        pr11aR1V1ProtectedAdmission,
+      ],
+      { cwd: root, stdio: "ignore" },
+    )
+  } catch {
+    errors.push("PR-11A protected admission tree differs from the candidate")
+  }
+  for (const path of [pr11aContractRevisionPath, pr11aAggregateEvidencePath]) {
+    if (
+      sha256(readFileSync(resolve(root, path))) !==
+      sha256(
+        readRepositoryPathAtCommit(root, pr11aR1V1ProtectedAdmission, path),
+      )
+    ) {
+      errors.push(`PR-11A admitted evidence changed ${path}`)
+    }
+  }
+  return [...new Set(errors)].sort()
+}
+
+export function verifyPr11aR1V1SourceClosurePackage({
+  root,
+  expectedAllowlist,
+  actualAllowlist,
+  expectedRoutes,
+  actualRoutes,
+}) {
+  const errors = []
+  const changes = listSourcePackageChanges(root, pr11aR1V1ProtectedAdmission)
+  const expectedChanges = pr11aR1V1SourceClosurePaths.map((path) => ({
+    path,
+    status:
+      path === pr11aR1V1SourceClosurePath ||
+      path === "scripts/inference-core/pr11a-r1-v1-source-closure.test.mjs"
+        ? "A"
+        : "M",
+  }))
+  if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
+    errors.push("PR-11A source-closure package path set changed")
+  }
+  const admittedAllowlist = readJsonFromCommit(
+    root,
+    pr11aR1V1ProtectedAdmission,
+    allowlistPath,
+  )
+  const admittedRoutes = readJsonFromCommit(
+    root,
+    pr11aR1V1ProtectedAdmission,
+    routeBaselinePath,
+  )
+  if (
+    JSON.stringify(expectedAllowlist) !== JSON.stringify(admittedAllowlist) ||
+    JSON.stringify(expectedRoutes) !== JSON.stringify(admittedRoutes)
+  ) {
+    errors.push("PR-11A source closure changed an active source baseline")
+  }
+  const expectedIntegratedFindings = [
+    ...expectedAllowlist.entries,
+    ...pr11aR1D1ReviewedNegativeFindings,
+  ].sort(compareFindingKeys)
+  const actualIntegratedFindings = [...actualAllowlist.entries].sort(
+    compareFindingKeys,
+  )
+  const classifications = Object.fromEntries(
+    [
+      ...new Set(
+        actualRoutes.routes.map(({ classification }) => classification),
+      ),
+    ]
+      .sort()
+      .map((classification) => [
+        classification,
+        actualRoutes.routes.filter(
+          (route) => route.classification === classification,
+        ).length,
+      ]),
+  )
+  if (
+    JSON.stringify(actualIntegratedFindings) !==
+      JSON.stringify(expectedIntegratedFindings) ||
+    JSON.stringify(classifications) !==
+      JSON.stringify({
+        "current-console-seam": 92,
+        "legacy-retired": 8,
+        "operational-auth": 1,
+        "private-operational": 4,
+        "public-t2": 2,
+        "required-now": 2,
+      }) ||
+    actualRoutes.routes.length !== 109 ||
+    actualRoutes.fastifyRegistrars.length !== 6 ||
+    actualRoutes.webInferenceConsumers.length !== 0 ||
+    actualRoutes.escapeHatches.length !== 0
+  ) {
+    errors.push("PR-11A source closure changed the admitted Product shape")
+  }
+  let closure
+  try {
+    closure = readJson(resolve(root, pr11aR1V1SourceClosurePath))
+  } catch {
+    errors.push("invalid PR-11A source-closure record")
+  }
+  if (closure) {
+    errors.push(
+      ...verifyPr11aR1V1SourceClosureDocument(closure, {
+        root,
+      }),
+    )
+  }
+  if (
+    closure?.sourceClosureStatus !== "SOURCE_CLOSED" ||
+    closure?.accepted !== false ||
+    closure?.revisionBound !== true ||
+    closure?.status?.runtimeQualified !== false ||
+    closure?.status?.contractActivation !== "INACTIVE" ||
+    closure?.status?.q0 !== "NOT_STARTED" ||
+    closure?.status?.grafanaQualification !== "NOT_STARTED" ||
+    closure?.status?.pr12 !== "NOT_STARTED" ||
+    closure?.status?.deployment !== "INACTIVE" ||
+    closure?.status?.productMain !== "UNCHANGED"
+  ) {
+    errors.push("PR-11A source-closure status boundary changed")
+  }
+  const aggregate = readJson(resolve(root, pr11aAggregateEvidencePath))
+  if (
+    aggregate?.status?.accepted !== false ||
+    aggregate?.status?.revisionBound !== false ||
+    aggregate?.status?.runtimeQualified !== false ||
+    aggregate?.productBoundary?.expertIngressActivated !== false ||
+    aggregate?.productBoundary?.q0Started !== false ||
+    aggregate?.productBoundary?.pr12Started !== false
+  ) {
+    errors.push("PR-11A admitted candidate evidence was overstated")
+  }
+  for (const [name, path] of [
+    ["README", "docs/reduction/inference-core/README.md"],
+    ["decision register", "docs/reduction/inference-core/decision-register.md"],
+    [
+      "validation register",
+      "docs/reduction/inference-core/validation-register.md",
+    ],
+  ]) {
+    const content = readFileSync(resolve(root, path), "utf8").replace(
+      /\s+/g,
+      " ",
+    )
+    for (const required of [
+      "source-closed",
+      "accepted remains false",
+      "runtimeQualified remains false",
+      "contract activation remains inactive",
+      "Q0 remains NOT_STARTED",
+    ]) {
+      if (!content.includes(required)) {
+        errors.push(`PR-11A source-closure status missing in ${name}`)
+        break
+      }
+    }
+  }
+  return [...new Set(errors)].sort()
 }
 
 export function verifyPr11aR1V1SourcePackage({
@@ -7048,8 +7334,12 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   })
   const activeReviewedRevision = expectedRoutes.reviewedRevisions?.at(-1)?.id
   const pr11aR1C0ReviewStatus = readPr11aR1C0ReviewStatus(root)
+  const pr11aR1V1SourceClosurePackage =
+    activeReviewedRevision === "PR-11" && hasPr11aR1V1SourceClosureMarker(root)
   const pr11aR1V1SourcePackage =
-    activeReviewedRevision === "PR-11" && hasPr11aR1V1SourceMarker(root)
+    !pr11aR1V1SourceClosurePackage &&
+    activeReviewedRevision === "PR-11" &&
+    hasPr11aR1V1SourceMarker(root)
   const pr11aR1H1SourcePackage =
     !pr11aR1V1SourcePackage &&
     activeReviewedRevision === "PR-11" &&
@@ -7076,82 +7366,91 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     !pr11aR1S1SourcePackage && pr11aR1C0ReviewStatus !== null
 
   const errors = [
-    ...(pr11aR1V1SourcePackage
-      ? verifyPr11aR1V1SourcePackage({
+    ...(pr11aR1V1SourceClosurePackage
+      ? verifyPr11aR1V1SourceClosurePackage({
           root,
           expectedAllowlist,
           actualAllowlist,
           expectedRoutes,
           actualRoutes,
         })
-      : pr11aR1H1SourcePackage
-        ? verifyPr11aR1H1SourcePackage({
+      : pr11aR1V1SourcePackage
+        ? verifyPr11aR1V1SourcePackage({
             root,
             expectedAllowlist,
             actualAllowlist,
             expectedRoutes,
             actualRoutes,
           })
-        : pr11aR1D1SourcePackage
-          ? verifyPr11aR1D1SourcePackage({
+        : pr11aR1H1SourcePackage
+          ? verifyPr11aR1H1SourcePackage({
               root,
               expectedAllowlist,
               actualAllowlist,
               expectedRoutes,
               actualRoutes,
             })
-          : pr11aR1K1SourcePackage
-            ? verifyPr11aR1K1SourcePackage({
+          : pr11aR1D1SourcePackage
+            ? verifyPr11aR1D1SourcePackage({
                 root,
                 expectedAllowlist,
                 actualAllowlist,
                 expectedRoutes,
                 actualRoutes,
               })
-            : pr11aR1E1SourcePackage
-              ? verifyPr11aR1E1SourcePackage({
+            : pr11aR1K1SourcePackage
+              ? verifyPr11aR1K1SourcePackage({
                   root,
                   expectedAllowlist,
                   actualAllowlist,
                   expectedRoutes,
                   actualRoutes,
                 })
-              : pr11aR1S1SourcePackage
-                ? verifyPr11aR1S1SourcePackage({
+              : pr11aR1E1SourcePackage
+                ? verifyPr11aR1E1SourcePackage({
                     root,
                     expectedAllowlist,
                     actualAllowlist,
                     expectedRoutes,
                     actualRoutes,
                   })
-                : pr11aR1C0SourcePackage
-                  ? verifyPr11aR1C0SourcePackage({
+                : pr11aR1S1SourcePackage
+                  ? verifyPr11aR1S1SourcePackage({
                       root,
-                      reviewStatus: pr11aR1C0ReviewStatus,
                       expectedAllowlist,
                       actualAllowlist,
                       expectedRoutes,
                       actualRoutes,
                     })
-                  : [
-                      ...compareForbiddenBaselineMetadata(
+                  : pr11aR1C0SourcePackage
+                    ? verifyPr11aR1C0SourcePackage({
+                        root,
+                        reviewStatus: pr11aR1C0ReviewStatus,
                         expectedAllowlist,
                         actualAllowlist,
-                      ),
-                      ...compareExactFindings(
-                        expectedAllowlist.entries,
-                        actualAllowlist.entries,
-                      ),
-                      ...compareExactRouteBaseline(
                         expectedRoutes,
                         actualRoutes,
-                      ),
-                    ]),
+                      })
+                    : [
+                        ...compareForbiddenBaselineMetadata(
+                          expectedAllowlist,
+                          actualAllowlist,
+                        ),
+                        ...compareExactFindings(
+                          expectedAllowlist.entries,
+                          actualAllowlist.entries,
+                        ),
+                        ...compareExactRouteBaseline(
+                          expectedRoutes,
+                          actualRoutes,
+                        ),
+                      ]),
     ...verifyRouteBaselineMetadata(expectedRoutes),
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
     ...verifyRetentionCharacterization(root),
-    ...(pr11aR1V1SourcePackage ||
+    ...(pr11aR1V1SourceClosurePackage ||
+    pr11aR1V1SourcePackage ||
     pr11aR1H1SourcePackage ||
     pr11aR1C0SourcePackage ||
     pr11aR1S1SourcePackage ||
@@ -7237,6 +7536,27 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
   if (baseRef?.startsWith("-")) {
     baseStatus = "unavailable"
     errors.push(`base ref is unavailable ${baseRef}`)
+  } else if (pr11aR1V1SourceClosurePackage) {
+    baseStatus = "checked"
+    if (
+      resolveCommit(root, pr11aR1V1ProtectedAdmission) !==
+        pr11aR1V1ProtectedAdmission ||
+      resolveTree(root, pr11aR1V1ProtectedAdmission) !==
+        pr11aR1V1ProtectedAdmissionTree
+    ) {
+      errors.push("PR-11A protected admission identity changed")
+    }
+    try {
+      execFileSync(
+        "git",
+        ["merge-base", "--is-ancestor", pr11aR1V1ProtectedAdmission, "HEAD"],
+        { cwd: root, stdio: "ignore" },
+      )
+    } catch {
+      errors.push(
+        "PR-11A source closure no longer descends from protected admission",
+      )
+    }
   } else if (pr11aR1V1SourcePackage) {
     baseStatus = "checked"
     if (
@@ -7433,7 +7753,8 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       0,
     ),
     findingPathCount: expectedAllowlist.entries.length,
-    routeCount: (pr11aR1V1SourcePackage ||
+    routeCount: (pr11aR1V1SourceClosurePackage ||
+    pr11aR1V1SourcePackage ||
     pr11aR1S1SourcePackage ||
     pr11aR1E1SourcePackage ||
     pr11aR1K1SourcePackage ||
@@ -7441,7 +7762,8 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
       ? actualRoutes
       : expectedRoutes
     ).routes.length,
-    legacyRouteCount: (pr11aR1V1SourcePackage ||
+    legacyRouteCount: (pr11aR1V1SourceClosurePackage ||
+    pr11aR1V1SourcePackage ||
     pr11aR1S1SourcePackage ||
     pr11aR1E1SourcePackage ||
     pr11aR1K1SourcePackage ||
