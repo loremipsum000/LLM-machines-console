@@ -210,6 +210,22 @@ test("Product-built images must bind the exact release source commit", () => {
   }
 })
 
+test("a missing release object returns diagnostics instead of throwing", () => {
+  const inventory = readCoreImageInventory()
+  const malformed = syntheticCoreLock()
+  malformed.release = undefined
+
+  assert.doesNotThrow(() => validateCoreImageLock(malformed, inventory))
+  const errors = validateCoreImageLock(malformed, inventory)
+  assert.ok(errors.includes("Core image lock source commit is invalid"))
+  assert.ok(
+    errors.includes("image console-web must bind the release source commit"),
+  )
+  assert.ok(
+    errors.includes("image console-bff must bind the release source commit"),
+  )
+})
+
 test("source pins and Core baseline drift fail closed", () => {
   const inventory = readCoreImageInventory()
   const mutations = [
