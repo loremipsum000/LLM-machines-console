@@ -368,6 +368,12 @@ test("CycloneDX inventory, dependency, tool, and locked digest evidence is manda
       sbom.components[0].purl = "pkg:"
     },
     (sbom) => {
+      sbom.components[0].purl = "pkg:generic/name@1?foo"
+    },
+    (sbom) => {
+      sbom.components[0].purl = "pkg:a-/name@1"
+    },
+    (sbom) => {
       sbom.components[0].hashes = []
     },
     (sbom) => {

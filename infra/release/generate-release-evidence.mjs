@@ -9,6 +9,7 @@ import {
 } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { PackageURL } from "packageurl-js"
 import {
   readCoreImageInventory,
   validateCoreImageLock,
@@ -56,6 +57,22 @@ function canonicalJson(value) {
       .join(",")}}`
   }
   return JSON.stringify(value)
+}
+
+function isCanonicalReleasePackageUrl(value) {
+  if (typeof value !== "string") {
+    return false
+  }
+
+  try {
+    const packageUrl = PackageURL.fromString(value)
+    return (
+      packageUrl.toString() === value &&
+      /^[a-z](?:[a-z0-9.+-]*[a-z0-9])?$/.test(packageUrl.type)
+    )
+  } catch {
+    return false
+  }
 }
 
 function sha256Bytes(value) {
@@ -178,10 +195,7 @@ function validateSbom(document, image, policy) {
         entry.name.length === 0 ||
         typeof entry?.version !== "string" ||
         entry.version.length === 0 ||
-        typeof entry?.purl !== "string" ||
-        !/^pkg:[a-z][a-z0-9.+-]*\/[^/@?#\s]+(?:\/[^/@?#\s]+)*@[^/?#\s]+(?:\?[^#\s]+)?(?:#[^\s]+)?$/i.test(
-          entry.purl,
-        ) ||
+        !isCanonicalReleasePackageUrl(entry?.purl) ||
         !Array.isArray(entry?.hashes) ||
         !entry.hashes.some(
           ({ alg, content }) =>
