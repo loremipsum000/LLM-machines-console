@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "PR-12",
+  "workPackage": "PR-12-SOURCE-CLOSURE",
+  "sourceClosureStatus": "SOURCE_CLOSED",
+  "sourceClosureScope": "deterministic-release-packaging-source-only",
+  "accepted": false,
+  "releaseSourceBound": true,
+  "releaseSource": {
+    "commit": "80ecb127ecda73f3711903957e7e883aa19bad63",
+    "tree": "1c5134fbe75a49148a8db2dcb7872448368f326e"
+  },
+  "validatedAggregateCandidate": {
+    "commit": "d156216054e15e7f970ad909743aa1712f8347c9",
+    "tree": "1c2d55575bfc1a40586ffecc6cc63147f2e3773d",
+    "independentReview": "PASS"
+  },
+  "protectedAdmission": {
+    "pullRequest": 33,
+    "baseRef": "codex/inference-core-stack-reduction",
+    "commit": "5d199ee3a4fe1585a984711180605b570652ee83",
+    "tree": "1c2d55575bfc1a40586ffecc6cc63147f2e3773d",
+    "firstParent": "80ecb127ecda73f3711903957e7e883aa19bad63",
+    "secondParent": "d156216054e15e7f970ad909743aa1712f8347c9",
+    "candidateTreeIdentical": true,
+    "candidateDiff": "empty"
+  },
+  "evidence": {
+    "aggregatePath": "docs/reduction/inference-core/pr-12-aggregate-evidence.json",
+    "aggregateSha256": "8b83176ebb167e2651cc58d76cbebf91990d11dc88dd17204a6023de4b196c14"
+  },
+  "status": {
+    "runtimeQualified": false,
+    "contractActivation": "INACTIVE",
+    "d2aRc": "NOT_STARTED",
+    "q0": "NOT_STARTED",
+    "grafanaCustomerAccess": "DEFERRED_V1",
+    "deployment": "INACTIVE",
+    "productMain": "UNCHANGED"
+  },
+  "interpretation": {
+    "sourceClosure": "The reviewed deterministic-packaging source is frozen and its aggregate evidence is present on protected integration with an identical tree.",
+    "accepted": "False means this record does not assert product acceptance, runtime qualification, release admission, or deployment readiness.",
+    "releaseSourceBound": "D2A-RC may construct artifacts only from the exact release source commit and tree after separate authorization.",
+    "runtimeBoundary": "Q0 must qualify an exact built Core release and one exact production-class inference delivery profile before activation."
+  }
+}
