@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://llm-machines.invalid/schemas/release-public-trust.v1.json",
+  "title": "LLM Machines public release verification trust",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "generatedAt", "issuer", "root", "keys", "dualTrust"],
+  "properties": {
+    "schema": { "const": "llm-machines.release-public-trust.v1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "issuer": { "const": "urn:llm-machines:vendor" },
+    "root": { "$ref": "#/$defs/root" },
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/scopedKey" }
+    },
+    "dualTrust": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/dualTrust" }
+    }
+  },
+  "$defs": {
+    "kid": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "publicKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "value"],
+      "properties": {
+        "format": { "const": "spki-der-base64url" },
+        "value": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43,4096}$" }
+      }
+    },
+    "root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kid",
+        "purpose",
+        "algorithm",
+        "publicKey",
+        "notBefore",
+        "notAfter",
+        "state",
+        "revokedAt",
+        "revocationReason"
+      ],
+      "properties": {
+        "kid": { "$ref": "#/$defs/kid" },
+        "purpose": { "const": "vendor-release-root" },
+        "algorithm": { "const": "Ed25519" },
+        "publicKey": { "$ref": "#/$defs/publicKey" },
+        "notBefore": { "type": "string", "format": "date-time" },
+        "notAfter": { "type": "string", "format": "date-time" },
+        "state": { "enum": ["active", "revoked"] },
+        "revokedAt": { "type": ["string", "null"], "format": "date-time" },
+        "revocationReason": { "type": ["string", "null"] }
+      }
+    },
+    "scopedKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kid",
+        "purpose",
+        "algorithm",
+        "issuer",
+        "publicKey",
+        "notBefore",
+        "notAfter",
+        "state",
+        "revokedAt",
+        "revocationReason",
+        "signedByKid",
+        "certificationSignature"
+      ],
+      "properties": {
+        "kid": { "$ref": "#/$defs/kid" },
+        "purpose": { "const": "release-artifact" },
+        "algorithm": { "const": "Ed25519" },
+        "issuer": { "const": "urn:llm-machines:vendor" },
+        "publicKey": { "$ref": "#/$defs/publicKey" },
+        "notBefore": { "type": "string", "format": "date-time" },
+        "notAfter": { "type": "string", "format": "date-time" },
+        "state": { "enum": ["active", "retiring", "revoked"] },
+        "revokedAt": { "type": ["string", "null"], "format": "date-time" },
+        "revocationReason": { "type": ["string", "null"] },
+        "signedByKid": { "$ref": "#/$defs/kid" },
+        "certificationSignature": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$"
+        }
+      }
+    },
+    "dualTrust": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["predecessorKid", "successorKid", "startsAt", "endsAt"],
+      "properties": {
+        "predecessorKid": { "$ref": "#/$defs/kid" },
+        "successorKid": { "$ref": "#/$defs/kid" },
+        "startsAt": { "type": "string", "format": "date-time" },
+        "endsAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}
