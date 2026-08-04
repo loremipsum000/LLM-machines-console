@@ -1,0 +1,489 @@
+{
+  "schemaVersion": 1,
+  "id": "PR-12",
+  "workPackage": "PR-12-AGGREGATE-SOURCE-EVIDENCE",
+  "scope": "deterministic-release-packaging-source-only",
+  "initialInput": {
+    "commit": "cd7f53c17ce87fd3dc6d8c49e7dcbc146b26d156",
+    "tree": "9b91daf7b154a33b2fab71a0fb8656eaa4f9335b"
+  },
+  "releaseSource": {
+    "commit": "80ecb127ecda73f3711903957e7e883aa19bad63",
+    "tree": "1c5134fbe75a49148a8db2dcb7872448368f326e",
+    "interpretation": "Exact protected integration input for D2A-RC artifact construction after aggregate source admission"
+  },
+  "status": {
+    "sourcePackaging": "IMPLEMENTATION_PACKAGES_MERGED",
+    "aggregateAdmission": "PENDING",
+    "accepted": false,
+    "runtimeQualified": false,
+    "contractActivation": "INACTIVE",
+    "d2aRc": "NOT_STARTED",
+    "q0": "NOT_STARTED",
+    "deployment": "INACTIVE",
+    "productMain": "UNCHANGED"
+  },
+  "productBoundary": {
+    "coreProfile": {
+      "id": "core-v1-linux-amd64",
+      "vcpus": 8,
+      "memoryGiB": 32,
+      "localDiskGiB": 100,
+      "backupRepository": "separate-customer-owned-target",
+      "bulkModelWeights": "excluded"
+    },
+    "inference": {
+      "engine": "sglang",
+      "version": "0.5.13",
+      "vllm": "excluded-v1",
+      "hardwareProfile": "per-delivery-runtime-qualification-required",
+      "intelArcB50": "internal-characterization-only"
+    },
+    "firecrawl": {
+      "installation": "installed-default-off",
+      "network": "private-product-edge-only",
+      "credential": "separate-per-application",
+      "routes": ["POST /v2/search", "POST /v2/scrape"],
+      "retention": "zero-workload-content",
+      "runtimeQualification": "NOT_STARTED"
+    },
+    "nativeSurfaces": {
+      "grafanaCustomerAccess": "DEFERRED_V1",
+      "litellm": "PRIVATE_CONSOLE_READ_ONLY_PROJECTION_ONLY",
+      "keycloakAdmin": "ABSENT_V1"
+    }
+  },
+  "sourceEvidence": {
+    "releasePlan": {
+      "path": "infra/release/release-plan.json",
+      "sha256": "49e5bd948b9417dc6dbb026676be8aaf3c3b61575006fb5c30d4b17fc07135e8"
+    },
+    "coreImageInventory": {
+      "path": "infra/release/core-image-inventory.json",
+      "sha256": "cadb28113378a733752b99b603d53ef63bd5dd9d18a12f52c0a4d347186a97dc"
+    },
+    "sglangEngineContract": {
+      "path": "infra/inference/sglang-engine-contract.json",
+      "sha256": "86565b24b3b24b26d23973462c6a241c31d48e5c6621370f820bcc556cb173b0"
+    },
+    "firecrawlReproducibility": {
+      "path": "infra/firecrawl/release/reproducibility-evidence.json",
+      "sha256": "2ca07f752d00b33f296859731a2941d86684548126b8537827116adf48a3f9bf"
+    },
+    "licenseDisposition": {
+      "path": "infra/release/license-disposition.json",
+      "sha256": "9816849683205e993656ed066a99c853542544fe5fa7e574de82f13ed517c9f8"
+    }
+  },
+  "packages": [
+    {
+      "id": "PR-12-G0",
+      "title": "Guardrail bridge",
+      "pullRequest": 22,
+      "firstParent": "cd7f53c17ce87fd3dc6d8c49e7dcbc146b26d156",
+      "packageHead": "b53c6744eefeb05fbf4b92dd89b5492b72de94de",
+      "packageHeadTree": "d4f2ebb1e668d4e9397fbab51475f1423eb9b3f6",
+      "mergeCommit": "50d255ae7f519358c4172742676124b0efbe8ce0",
+      "mergeTree": "d4f2ebb1e668d4e9397fbab51475f1423eb9b3f6",
+      "changedPaths": [
+        "M scripts/inference-core/guardrails.mjs",
+        "M scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+        "M scripts/inference-core/pr11a-r1-v1-source-closure.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "scripts/inference-core/guardrails.mjs",
+          "sha256": "0b5f298967d96e2787e523b57d30a9b4995bd0b8d8059a4407f2e4f948f4974a"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-v1-source-closure.test.mjs",
+          "sha256": "a455934f056618c1d5697e17522f15271c9913641cae209d43a0673267eb266a"
+        }
+      ]
+    },
+    {
+      "id": "PR-12-S1",
+      "title": "SGLang engine and delivery-profile contract",
+      "pullRequest": 23,
+      "firstParent": "50d255ae7f519358c4172742676124b0efbe8ce0",
+      "packageHead": "37c564a7a5f3fff580ead80e067d04e46d7d7add",
+      "packageHeadTree": "71c7b7a4025690f7f8ff95ea5f90a589e1bcc7a7",
+      "mergeCommit": "033b8d8989ce04ff854e9b9b03c97360d49b94fa",
+      "mergeTree": "71c7b7a4025690f7f8ff95ea5f90a589e1bcc7a7",
+      "changedPaths": [
+        "A infra/inference/README.md",
+        "A infra/inference/core-interface-contract.json",
+        "A infra/inference/delivery-profile.schema.json",
+        "A infra/inference/fixtures/synthetic-multi-node.json",
+        "A infra/inference/fixtures/synthetic-single-node.json",
+        "A infra/inference/render-profile.mjs",
+        "A infra/inference/sglang-engine-contract.json",
+        "A infra/inference/validate-profile.mjs",
+        "A infra/inference/validate-profile.test.mjs",
+        "A scripts/inference-core/pr12-sglang-contract.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "infra/inference/sglang-engine-contract.json",
+          "sha256": "86565b24b3b24b26d23973462c6a241c31d48e5c6621370f820bcc556cb173b0"
+        },
+        {
+          "path": "infra/inference/delivery-profile.schema.json",
+          "sha256": "c2811b467f0ec6ccff2a7d74998ff1206036901fbf58ad8c2182eb70afe87b97"
+        },
+        {
+          "path": "scripts/inference-core/pr12-sglang-contract.test.mjs",
+          "sha256": "7b679ab597234aaa2a973a3c2800a977856e9c44ec1e40e23e7cbc04ad0887c4"
+        }
+      ]
+    },
+    {
+      "id": "PR-12-I1",
+      "title": "Immutable Core and inference lock formats",
+      "pullRequest": 24,
+      "firstParent": "033b8d8989ce04ff854e9b9b03c97360d49b94fa",
+      "packageHead": "4310d19cbf3c7f7134b67e418b696e6a4574d144",
+      "packageHeadTree": "96e4ba12ffb6809f3a86c31a10e035d0cc3fce9d",
+      "mergeCommit": "b0d050e41540427224db5021e36d61cd7b059d6b",
+      "mergeTree": "96e4ba12ffb6809f3a86c31a10e035d0cc3fce9d",
+      "changedPaths": [
+        "M apps/bff/Dockerfile",
+        "M apps/web/Dockerfile",
+        "M infra/keycloak/README.md",
+        "M infra/keycloak/pr11a-console-session-policy.json",
+        "M infra/keycloak/validate-pr11a-session-policy.mjs",
+        "A infra/release/README.md",
+        "A infra/release/core-image-inventory.json",
+        "A infra/release/core-image-lock.schema.json",
+        "A infra/release/inference-artifact-lock.schema.json",
+        "A infra/release/validate-image-lock.mjs",
+        "A infra/release/validate-image-lock.test.mjs",
+        "A scripts/inference-core/pr12-image-lock.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "infra/release/core-image-inventory.json",
+          "sha256": "311e125a52a3e7726e7910239d7f92f4cb15380d0034d8d18551b58dd28e9ca7"
+        },
+        {
+          "path": "infra/release/core-image-lock.schema.json",
+          "sha256": "5893f694dcdc247c757df5fa8386f331f38343ad485dc16f872ac976469c75bd"
+        },
+        {
+          "path": "infra/release/inference-artifact-lock.schema.json",
+          "sha256": "1d79f918be027111ec1574c5ff1d5d716994a03609ed8d4d5eef715d3c944b0f"
+        },
+        {
+          "path": "scripts/inference-core/pr12-image-lock.test.mjs",
+          "sha256": "a9c213704d795bffd1bd688b737b37fd20d4b12d45b3cafb1a5da515b646d0dc"
+        }
+      ]
+    },
+    {
+      "id": "PR-12-F1",
+      "title": "Reduced Firecrawl release package",
+      "pullRequest": 25,
+      "firstParent": "b0d050e41540427224db5021e36d61cd7b059d6b",
+      "packageHead": "0f562dbfee9df66dba4113d50017ee6739cb0087",
+      "packageHeadTree": "ac04278b35a092606d7260413e452b542fc1e79c",
+      "mergeCommit": "94fe6718e6f94e7645f719270dca0e4df6fb8d09",
+      "mergeTree": "ac04278b35a092606d7260413e452b542fc1e79c",
+      "changedPaths": [
+        "A .gitattributes",
+        "M infra/firecrawl/README.md",
+        "M infra/firecrawl/THIRD_PARTY_NOTICES.md",
+        "M infra/firecrawl/compose.yaml",
+        "M infra/firecrawl/provenance/source-lock.json",
+        "A infra/firecrawl/release/assemble-source-packet.mjs",
+        "A infra/firecrawl/release/locks/Cargo.lock",
+        "A infra/firecrawl/release/locks/api-wolfi.sha256",
+        "A infra/firecrawl/release/locks/playwright-wolfi.sha256",
+        "A infra/firecrawl/release/patches/build-hardening.patch",
+        "A infra/firecrawl/release/patches/reduced-runtime.patch",
+        "A infra/firecrawl/release/source-package.json",
+        "A infra/firecrawl/release/validate-source-package.mjs",
+        "A infra/firecrawl/release/validate-source-package.test.mjs",
+        "M infra/firecrawl/validate-profile.mjs",
+        "M infra/firecrawl/validate-profile.test.mjs",
+        "M infra/release/core-image-inventory.json",
+        "M infra/release/validate-image-lock.mjs",
+        "M scripts/inference-core/guardrails.mjs",
+        "A scripts/inference-core/pr12-firecrawl-release.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "infra/firecrawl/release/source-package.json",
+          "sha256": "e138d93148895d7af889f1e7052ae3608004f51bb3ddc7f64c2e47cc22dd044f"
+        },
+        {
+          "path": "infra/firecrawl/provenance/source-lock.json",
+          "sha256": "f77def7c4a70872a14862f5d020902e72d1ec28a907732cc0c44fc14655a76e9"
+        },
+        {
+          "path": "scripts/inference-core/pr12-firecrawl-release.test.mjs",
+          "sha256": "4fe276b992cc1201128b5b18a56963b2236e218a43e059220835d43b7701463c"
+        }
+      ]
+    },
+    {
+      "id": "PR-12-M1",
+      "title": "Deterministic release-manifest contract",
+      "pullRequest": 26,
+      "firstParent": "94fe6718e6f94e7645f719270dca0e4df6fb8d09",
+      "packageHead": "558a8d030f1e489ba1986c1323c1b16ea1e17e54",
+      "packageHeadTree": "58672ffa15c21ca87598a3e000edc351ef3e6243",
+      "mergeCommit": "8bd0e5a30ce050d7bb683213cf015ee31d526496",
+      "mergeTree": "58672ffa15c21ca87598a3e000edc351ef3e6243",
+      "changedPaths": [
+        "M infra/release/README.md",
+        "A infra/release/generate-release-manifest.mjs",
+        "A infra/release/release-manifest.schema.json",
+        "A infra/release/release-plan.json",
+        "A infra/release/validate-release-plan.mjs",
+        "A infra/release/validate-release-plan.test.mjs",
+        "A scripts/inference-core/pr12-release-manifest.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "infra/release/release-plan.json",
+          "sha256": "7a7bc09f45fe887f6548149a8c1e300de1a2975e158d19a332b5c9e088916d4a"
+        },
+        {
+          "path": "infra/release/release-manifest.schema.json",
+          "sha256": "29da51e81208a446aa4e498ac6381ce7928598b3eb248c2df2492421fe9151fe"
+        },
+        {
+          "path": "infra/release/generate-release-manifest.mjs",
+          "sha256": "d171f80d7eabdef030c89fc1bf475f620c7b25a40aaab5c7de67d75d3a41b820"
+        },
+        {
+          "path": "scripts/inference-core/pr12-release-manifest.test.mjs",
+          "sha256": "3d7a39c08be428548978fdba58358191f070964c6541672a671a9fe9aaf7cf1c"
+        }
+      ]
+    },
+    {
+      "id": "PR-12-I2",
+      "title": "Core lock source binding successor",
+      "pullRequest": 27,
+      "firstParent": "8bd0e5a30ce050d7bb683213cf015ee31d526496",
+      "packageHead": "55a95db75e6295fb74f530970c102bc3b5740854",
+      "packageHeadTree": "157975df52384e1c968ca567f7141c96c472bf72",
+      "mergeCommit": "fc30669031115306f05ff3501e855e0e09bc24a8",
+      "mergeTree": "157975df52384e1c968ca567f7141c96c472bf72",
+      "changedPaths": [
+        "M infra/release/validate-image-lock.mjs",
+        "M infra/release/validate-image-lock.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "infra/release/validate-image-lock.mjs",
+          "sha256": "52e8679292241401ddaa885d6dcb9a759ab6d38567a11ebb18f723b4ed3da3d4"
+        },
+        {
+          "path": "infra/release/validate-image-lock.test.mjs",
+          "sha256": "4b5aaae4155f4792f9ca69a5258d440457db566f13f30630708e2a3d2f99795f"
+        }
+      ]
+    },
+    {
+      "id": "PR-12-I3",
+      "title": "Inference profile and artifact binding successor",
+      "pullRequest": 28,
+      "firstParent": "fc30669031115306f05ff3501e855e0e09bc24a8",
+      "packageHead": "4aef8496d79f15aa32bf3825980d5eca152a5027",
+      "packageHeadTree": "cf199f077a1895000f0311479f65c9abdb5f6863",
+      "mergeCommit": "a9f0d9c350172bd1d4bf3c49723ad66c745825ad",
+      "mergeTree": "cf199f077a1895000f0311479f65c9abdb5f6863",
+      "changedPaths": [
+        "M infra/release/inference-artifact-lock.schema.json",
+        "M infra/release/validate-image-lock.mjs",
+        "M infra/release/validate-image-lock.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "infra/release/inference-artifact-lock.schema.json",
+          "sha256": "0b5578c9a33397e1d2eff87f0525feb3ce93e140f47c3d743bb5060a41871a9f"
+        },
+        {
+          "path": "infra/release/validate-image-lock.mjs",
+          "sha256": "1029148322c3a8fb8098ce9eeadd272e7d915791ab3fe2ccb01cb3fb664a280b"
+        },
+        {
+          "path": "infra/release/validate-image-lock.test.mjs",
+          "sha256": "75b45073644dce56ad795df908157fd5cf569e88bdec4979b97a881a05a7dd18"
+        }
+      ]
+    },
+    {
+      "id": "PR-12-M2",
+      "title": "Release artifact integrity successor",
+      "pullRequest": 29,
+      "firstParent": "a9f0d9c350172bd1d4bf3c49723ad66c745825ad",
+      "packageHead": "47fae3c9ae01fb0dbe9ce013ba33049667eca91c",
+      "packageHeadTree": "174159589425ff1b2c4cbe2f8f8d60ddf6d4c129",
+      "mergeCommit": "99025d5521cc90aaf3e16cb0ff985987b2d77cc8",
+      "mergeTree": "174159589425ff1b2c4cbe2f8f8d60ddf6d4c129",
+      "changedPaths": [
+        "M infra/release/README.md",
+        "M infra/release/generate-release-manifest.mjs",
+        "M infra/release/release-manifest.schema.json",
+        "M infra/release/validate-release-plan.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "infra/release/generate-release-manifest.mjs",
+          "sha256": "ba92a655408a1c7ef7a562f276cad8d5b198a65d0f70d459de67365e1b02ca60"
+        },
+        {
+          "path": "infra/release/release-manifest.schema.json",
+          "sha256": "69da7cd8bbc130dcff7e49854564357ffba983af4a34ac3515b3df9091e00898"
+        },
+        {
+          "path": "infra/release/validate-release-plan.test.mjs",
+          "sha256": "3c969d00153e6dbc6aba4f43a3fea8be2e90a341bbe326f846c2c97da34ed363"
+        }
+      ]
+    },
+    {
+      "id": "PR-12-F2",
+      "title": "Firecrawl reproducibility successor",
+      "pullRequest": 30,
+      "firstParent": "99025d5521cc90aaf3e16cb0ff985987b2d77cc8",
+      "packageHead": "867ebc2b8b0c085bc85843e967bdd7e4d4714517",
+      "packageHeadTree": "e53ebf79b6d810b2150f90d515745e0f5e479864",
+      "mergeCommit": "b7c4e69a2ebcd8f7319e2eead205be4c10e69b0c",
+      "mergeTree": "e53ebf79b6d810b2150f90d515745e0f5e479864",
+      "changedPaths": [
+        "A infra/firecrawl/release/reproducibility-evidence.json",
+        "M infra/firecrawl/release/source-package.json",
+        "M infra/firecrawl/release/validate-source-package.mjs",
+        "M infra/firecrawl/release/validate-source-package.test.mjs",
+        "A infra/firecrawl/release/verify-source-packet-reproducibility.mjs",
+        "M scripts/inference-core/pr12-firecrawl-release.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "infra/firecrawl/release/reproducibility-evidence.json",
+          "sha256": "2ca07f752d00b33f296859731a2941d86684548126b8537827116adf48a3f9bf"
+        },
+        {
+          "path": "infra/firecrawl/release/source-package.json",
+          "sha256": "9417d447ed2636554a1532f5712bf922314a0d92649e72f4490a46d55b66c198"
+        },
+        {
+          "path": "infra/firecrawl/release/verify-source-packet-reproducibility.mjs",
+          "sha256": "369caaf20f888c3fb9555d289b7efabfe1c726b5a079ed84a185c15137a7f3f6"
+        },
+        {
+          "path": "scripts/inference-core/pr12-firecrawl-release.test.mjs",
+          "sha256": "0669ff6ea89483e60420fb762baa897a605a1f6a74f6fcd0d0c13f32de445c37"
+        }
+      ]
+    },
+    {
+      "id": "PR-12-E1",
+      "title": "Supply-chain evidence and clean seeds",
+      "pullRequest": 31,
+      "firstParent": "b7c4e69a2ebcd8f7319e2eead205be4c10e69b0c",
+      "packageHead": "534af67afff4f14f624cb365ae21796b0af78de6",
+      "packageHeadTree": "220b316a37bd63a543250a6dc07e65a8c7cfdc4a",
+      "mergeCommit": "0da9c9f06381f2300c9d32a47a07ade5d8698fc3",
+      "mergeTree": "220b316a37bd63a543250a6dc07e65a8c7cfdc4a",
+      "changedPaths": [
+        "M infra/release/README.md",
+        "A infra/release/generate-clean-seeds.mjs",
+        "A infra/release/generate-clean-seeds.test.mjs",
+        "A infra/release/generate-release-evidence.mjs",
+        "A infra/release/generate-release-evidence.test.mjs",
+        "A infra/release/license-disposition.json",
+        "M infra/release/release-plan.json",
+        "M infra/release/validate-release-plan.mjs",
+        "M infra/release/validate-release-plan.test.mjs",
+        "A scripts/inference-core/pr12-release-evidence.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "infra/release/generate-release-evidence.mjs",
+          "sha256": "42138beff74422452f082a26832490379ae5eca8267819236b2e5cf2561270e3"
+        },
+        {
+          "path": "infra/release/generate-clean-seeds.mjs",
+          "sha256": "e822324589750f5186519aa3c0eb1f9c419fa8f3d729fedb54c33003c12d7230"
+        },
+        {
+          "path": "infra/release/license-disposition.json",
+          "sha256": "9816849683205e993656ed066a99c853542544fe5fa7e574de82f13ed517c9f8"
+        },
+        {
+          "path": "scripts/inference-core/pr12-release-evidence.test.mjs",
+          "sha256": "a8841dd971657f528219d66fc136355316cbf2802fb4437c37b43072424a3c43"
+        }
+      ]
+    },
+    {
+      "id": "PR-12-L1",
+      "title": "Deterministic offline lifecycle",
+      "pullRequest": 32,
+      "firstParent": "0da9c9f06381f2300c9d32a47a07ade5d8698fc3",
+      "packageHead": "867771bcf586c0a98c3c77fd9fc5c23317420740",
+      "packageHeadTree": "1c5134fbe75a49148a8db2dcb7872448368f326e",
+      "mergeCommit": "80ecb127ecda73f3711903957e7e883aa19bad63",
+      "mergeTree": "1c5134fbe75a49148a8db2dcb7872448368f326e",
+      "changedPaths": [
+        "M infra/release/README.md",
+        "A infra/release/assemble-core-package.mjs",
+        "A infra/release/clean-room-install.mjs",
+        "A infra/release/deterministic-archive.mjs",
+        "A infra/release/generate-rollback-descriptor.mjs",
+        "A infra/release/offline-lifecycle.test.mjs",
+        "M infra/release/release-plan.json",
+        "A infra/release/release-public-trust.schema.json",
+        "A infra/release/release-signature.schema.json",
+        "M infra/release/validate-release-plan.mjs",
+        "A infra/release/verify-release-bundle.mjs",
+        "A scripts/inference-core/pr12-offline-lifecycle.test.mjs"
+      ],
+      "evidence": [
+        {
+          "path": "infra/release/assemble-core-package.mjs",
+          "sha256": "4a181f1d1d158a1aaee48857c2367a0277142c14d0f46d9816626ccf0f6d10bc"
+        },
+        {
+          "path": "infra/release/verify-release-bundle.mjs",
+          "sha256": "dd672d6bf232ca0a7c83ed7d5947dabb4d68fef7d4c2c66f21f5136637dee4d1"
+        },
+        {
+          "path": "infra/release/clean-room-install.mjs",
+          "sha256": "d9d8d80745e940bcef4122d072c3515c2838975c260e1943b99fd9b176057662"
+        },
+        {
+          "path": "infra/release/generate-rollback-descriptor.mjs",
+          "sha256": "e811d10fc097e4e9864ec7d443c925a99a28d03a74b2f7beb1bd82d0c5344973"
+        },
+        {
+          "path": "scripts/inference-core/pr12-offline-lifecycle.test.mjs",
+          "sha256": "df08e0bbe1762d962fd2e82995a33fae89512da79b7958cd8e2e792a6ca4552c"
+        }
+      ]
+    }
+  ],
+  "validationContract": {
+    "required": [
+      "frozen dependency installation",
+      "repository-wide Biome",
+      "full Product tests",
+      "full typecheck",
+      "production build",
+      "all PR-12 package suites",
+      "git diff check",
+      "git fsck",
+      "secret credential internal-IP internal-hostname mutable-image and unsafe-CI scans",
+      "clean detached-clone repeat",
+      "independent read-only review"
+    ],
+    "runtimeEvidenceAccepted": false,
+    "q0EvidenceAccepted": false,
+    "failureBehavior": "fail-closed-owning-successor-package"
+  }
+}
