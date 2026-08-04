@@ -55,7 +55,12 @@
         "sourceRevision",
         "license",
         "sbomSha256",
-        "provenanceSha256"
+        "provenanceSha256",
+        "vulnerabilityReportSha256",
+        "vulnerabilityDispositionSha256",
+        "licenseTextSha256",
+        "noticeSha256",
+        "licenseReviewSha256"
       ],
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
@@ -72,6 +77,11 @@
         "license": { "type": "string", "minLength": 1 },
         "sbomSha256": { "$ref": "#/$defs/sha256" },
         "provenanceSha256": { "$ref": "#/$defs/sha256" },
+        "vulnerabilityReportSha256": { "$ref": "#/$defs/sha256" },
+        "vulnerabilityDispositionSha256": { "$ref": "#/$defs/sha256" },
+        "licenseTextSha256": { "$ref": "#/$defs/sha256" },
+        "noticeSha256": { "$ref": "#/$defs/sha256" },
+        "licenseReviewSha256": { "$ref": "#/$defs/sha256" },
         "correspondingSourceSha256": { "$ref": "#/$defs/sha256" }
       }
     }

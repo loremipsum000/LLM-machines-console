@@ -4,6 +4,54 @@ import { fileURLToPath } from "node:url"
 
 const directory = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(directory, "../..")
+export const expectedReleaseEvidencePolicy = {
+  schema: "llm-machines.release-evidence-policy.v1",
+  status: "SOURCE_POLICY",
+  containsCredentials: false,
+  runtimeQualified: false,
+  sbom: {
+    format: "CycloneDX",
+    specVersion: "1.6",
+    componentType: "container",
+    minimumInventoryComponents: 1,
+    approvedToolNames: ["syft"],
+    toolMetadataRequired: true,
+    dependencyGraphRequired: true,
+  },
+  provenance: {
+    predicateType: "https://slsa.dev/provenance/v1",
+    approvedBuildActorIds: [
+      "https://llm-machines.invalid/build-actors/offline-release/v1",
+    ],
+    buildTypes: {
+      "third-party-mirror":
+        "https://llm-machines.invalid/build-types/oci-mirror/v1",
+      "product-build-output":
+        "https://llm-machines.invalid/build-types/product-container/v1",
+      "firecrawl-build-output":
+        "https://llm-machines.invalid/build-types/firecrawl-reduced-container/v1",
+    },
+    orderedTimestampsRequired: true,
+    resolvedSourceAndRecipeRequired: true,
+  },
+  vulnerability: {
+    reportSchema: "llm-machines.vulnerability-report.v1",
+    dispositionSchema: "llm-machines.vulnerability-disposition.v1",
+    scanner: "trivy",
+    maximumDatabaseAgeHours: 72,
+    maximumEvidenceAgeHours: 24,
+    severityThresholds: { critical: 0, high: 0 },
+    maximumExceptionAgeDays: 30,
+    allCoreImagesRequired: true,
+  },
+  license: {
+    reviewSchema: "llm-machines.license-review.v1",
+    reviewStatus: "REVIEWED",
+    licenseTextRequired: true,
+    noticeRequired: true,
+    exactComponentAndSourceRevisionRequired: true,
+  },
+}
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"))
@@ -54,6 +102,14 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
     errors.push("release evidence formats differ from the PR-12 contract")
   }
   if (
+    plan?.evidencePolicy !== "infra/release/release-evidence-policy.json" ||
+    JSON.stringify(
+      readJson(resolve(root, "infra/release/release-evidence-policy.json")),
+    ) !== JSON.stringify(expectedReleaseEvidencePolicy)
+  ) {
+    errors.push("release evidence policy differs from the reviewed contract")
+  }
+  if (
     plan?.archive?.format !== "tar" ||
     plan?.archive?.compression !== "zstd" ||
     plan?.archive?.zstdVersion !== "1.5.7" ||
@@ -78,18 +134,19 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
   ) {
     errors.push("release signing custody differs from the approved boundary")
   }
-  const requiredEvidence = new Set(plan?.requiredEvidence ?? [])
-  for (const evidence of [
+  const expectedRequiredEvidence = [
     "core-image-lock",
+    "release-evidence-index",
     "product-bom",
     "image-sboms",
     "image-provenance",
     "third-party-notices",
     "license-texts",
     "license-disposition",
+    "license-reviews",
     "firecrawl-corresponding-source",
     "grafana-corresponding-source",
-    "firecrawl-vulnerability-disposition",
+    "image-vulnerability-evidence",
     "clean-database-seed",
     "clean-keycloak-seed",
     "installer",
@@ -98,10 +155,17 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
     "secret-scan",
     "forbidden-surface-scan",
     "reproducibility-comparison",
-  ]) {
-    if (!requiredEvidence.has(evidence)) {
+  ]
+  const requiredEvidence = new Set(plan?.requiredEvidence ?? [])
+  for (const evidence of expectedRequiredEvidence) {
+    if (!requiredEvidence.has(evidence))
       errors.push(`release plan omits required evidence: ${evidence}`)
-    }
+  }
+  if (
+    JSON.stringify(plan?.requiredEvidence) !==
+    JSON.stringify(expectedRequiredEvidence)
+  ) {
+    errors.push("release plan evidence set or order differs")
   }
   if (
     JSON.stringify(plan?.qualification) !==
@@ -122,6 +186,7 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
     plan?.core?.imageLockSchema,
     plan?.inference?.profileSchema,
     plan?.inference?.artifactLockSchema,
+    plan?.evidencePolicy,
     "infra/release/release-manifest.schema.json",
   ]) {
     try {

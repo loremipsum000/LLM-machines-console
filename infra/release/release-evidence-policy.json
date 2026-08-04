@@ -1,0 +1,48 @@
+{
+  "schema": "llm-machines.release-evidence-policy.v1",
+  "status": "SOURCE_POLICY",
+  "containsCredentials": false,
+  "runtimeQualified": false,
+  "sbom": {
+    "format": "CycloneDX",
+    "specVersion": "1.6",
+    "componentType": "container",
+    "minimumInventoryComponents": 1,
+    "approvedToolNames": ["syft"],
+    "toolMetadataRequired": true,
+    "dependencyGraphRequired": true
+  },
+  "provenance": {
+    "predicateType": "https://slsa.dev/provenance/v1",
+    "approvedBuildActorIds": [
+      "https://llm-machines.invalid/build-actors/offline-release/v1"
+    ],
+    "buildTypes": {
+      "third-party-mirror": "https://llm-machines.invalid/build-types/oci-mirror/v1",
+      "product-build-output": "https://llm-machines.invalid/build-types/product-container/v1",
+      "firecrawl-build-output": "https://llm-machines.invalid/build-types/firecrawl-reduced-container/v1"
+    },
+    "orderedTimestampsRequired": true,
+    "resolvedSourceAndRecipeRequired": true
+  },
+  "vulnerability": {
+    "reportSchema": "llm-machines.vulnerability-report.v1",
+    "dispositionSchema": "llm-machines.vulnerability-disposition.v1",
+    "scanner": "trivy",
+    "maximumDatabaseAgeHours": 72,
+    "maximumEvidenceAgeHours": 24,
+    "severityThresholds": {
+      "critical": 0,
+      "high": 0
+    },
+    "maximumExceptionAgeDays": 30,
+    "allCoreImagesRequired": true
+  },
+  "license": {
+    "reviewSchema": "llm-machines.license-review.v1",
+    "reviewStatus": "REVIEWED",
+    "licenseTextRequired": true,
+    "noticeRequired": true,
+    "exactComponentAndSourceRevisionRequired": true
+  }
+}

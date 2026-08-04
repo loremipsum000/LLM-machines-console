@@ -14,9 +14,10 @@ verify them, and bind them in a `LOCKED` artifact that conforms to
 
 The Core lock is invalid if a retained component is absent, a tag is mutable,
 a platform is missing, a mirrored third-party digest differs from its approved
-source digest, or SBOM, provenance, license, and required corresponding-source
-evidence are missing. The private registry authority is supplied during release
-assembly and is never a credential.
+source digest, or SBOM, provenance, vulnerability, license, notice, license
+review, and required corresponding-source evidence are missing. The private
+registry authority is supplied during release assembly and is never a
+credential.
 
 `inference-artifact-lock.schema.json` is a separate delivery artifact. It binds
 one delivery profile to SGLang `0.5.13`, one exact engine image, one exact model
@@ -43,12 +44,22 @@ v1 in an in-toto statement is the provenance format. Release signatures use a
 scoped vendor `release-artifact` Ed25519 key during a separate offline ceremony.
 Only public trust material may enter the package.
 
+`release-evidence-policy.json` fixes the semantic evidence gate. Every retained
+image requires a CycloneDX component inventory and dependency graph with tool
+metadata, exact SLSA build inputs and approved build-actor identity, a
+digest-bound
+Trivy report with a database no older than 72 hours, reviewed zero-critical and
+zero-high disposition or a bounded unexpired exception, and a reviewed license
+text plus notice bound to the exact component and source revision.
+
 `generate-release-evidence.mjs` converts one validated Core image lock and the
-actual per-image CycloneDX, SLSA provenance, license text, Firecrawl source,
-and vulnerability-review inputs into deterministic release evidence. It
-rejects inputs whose hashes or identities differ from the Core lock. The
-checked-in `license-disposition.json` is a source policy, not a substitute for
-the license texts and corresponding source delivered with a release.
+actual per-image CycloneDX, SLSA provenance, vulnerability report and
+disposition, license text, notice, license review, and corresponding-source
+inputs into deterministic release evidence. It rejects inputs whose hashes,
+identities, recipes, build actor, timestamps, scan policy, or review bindings
+differ from the Core lock and evidence policy. The checked-in
+`license-disposition.json` is a source policy, not a substitute for the license
+texts, notices, reviews, and corresponding source delivered with a release.
 
 `generate-clean-seeds.mjs` packages the PostgreSQL schema plus its six exact
 empty-appliance lifecycle rows and

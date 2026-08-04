@@ -15,12 +15,33 @@ test("PR-12 release evidence package remains source-only and fail-closed", () =>
       "utf8",
     ),
   )
+  const evidencePolicy = JSON.parse(
+    readFileSync(
+      resolve(root, "infra/release/release-evidence-policy.json"),
+      "utf8",
+    ),
+  )
   assert.equal(plan.qualification.q0, "NOT_STARTED")
   assert.equal(plan.qualification.contractActivation, "INACTIVE")
   assert.equal(plan.qualification.grafanaCustomerAccess, "DEFERRED_V1")
   assert.equal(plan.qualification.nativeLiteLlmAccess, "ABSENT")
   assert.equal(plan.qualification.nativeKeycloakAdminAccess, "ABSENT")
   assert.equal(policy.containsCredentials, false)
+  assert.equal(
+    plan.evidencePolicy,
+    "infra/release/release-evidence-policy.json",
+  )
+  assert.equal(evidencePolicy.runtimeQualified, false)
+  assert.equal(evidencePolicy.vulnerability.allCoreImagesRequired, true)
+  assert.deepEqual(evidencePolicy.vulnerability.severityThresholds, {
+    critical: 0,
+    high: 0,
+  })
+  assert.deepEqual(evidencePolicy.provenance.approvedBuildActorIds, [
+    "https://llm-machines.invalid/build-actors/offline-release/v1",
+  ])
+  assert.ok(plan.requiredEvidence.includes("image-vulnerability-evidence"))
+  assert.ok(plan.requiredEvidence.includes("license-reviews"))
   for (const path of [
     "infra/release/generate-release-evidence.mjs",
     "infra/release/generate-clean-seeds.mjs",
