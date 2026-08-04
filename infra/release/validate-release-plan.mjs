@@ -56,6 +56,9 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
   if (
     plan?.archive?.format !== "tar" ||
     plan?.archive?.compression !== "zstd" ||
+    plan?.archive?.zstdVersion !== "1.5.7" ||
+    JSON.stringify(plan?.archive?.zstdArguments) !==
+      JSON.stringify(["-19", "--threads=1", "--no-progress", "--no-check"]) ||
     plan?.archive?.mtimeSource !== "SOURCE_DATE_EPOCH" ||
     plan?.archive?.allowSymlinks !== false ||
     plan?.archive?.allowDeviceFiles !== false ||

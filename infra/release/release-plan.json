@@ -39,6 +39,8 @@
   "archive": {
     "format": "tar",
     "compression": "zstd",
+    "zstdVersion": "1.5.7",
+    "zstdArguments": ["-19", "--threads=1", "--no-progress", "--no-check"],
     "pathOrder": "bytewise-ascending",
     "uid": 0,
     "gid": 0,
