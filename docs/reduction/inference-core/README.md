@@ -720,7 +720,20 @@ Reviewed aggregate candidate `d156216054e15e7f970ad909743aa1712f8347c9`,
 tree `1c2d55575bfc1a40586ffecc6cc63147f2e3773d`, passed local and clean detached
 source validation plus independent review. PR 33 admitted it at protected
 integration commit `5d199ee3a4fe1585a984711180605b570652ee83` with the
-identical tree and no candidate-to-merge difference.
+identical tree and no candidate-to-merge difference. PR 34 then admitted the
+separate governance-only source-closeout candidate at protected integration
+commit `6f7f92a2cd3f8406f73b622155dc3ad25fa8cd9e`, tree
+`ba732496afc48015e0875d7cd9bf2098b710de50`.
+
+The D2A readiness preflight found two source-closure gaps after that record.
+PR 35 made every release implementation suite mandatory in the normal Product
+test gate. PR 36 strengthened release admission to verify semantic CycloneDX,
+SLSA provenance, vulnerability, license, and corresponding-source evidence.
+The original record remains immutable evidence, but
+`pr-12-source-closure-amendment-1.json` supersedes its D2A release-source input
+with protected integration commit
+`5d0ecf7d8a4935ebd70d6d861f919cdd551554b3`, tree
+`2f2191d3326bd8777fef1cc21f41ea3fe4e335aa`.
 
 This is source closure only. Accepted remains false, runtimeQualified remains
 false, contract activation remains inactive, and D2A-RC and Q0 remain

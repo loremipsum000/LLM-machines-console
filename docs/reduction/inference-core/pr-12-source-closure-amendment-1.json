@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "id": "PR-12-SOURCE-CLOSURE-AMENDMENT-1",
+  "workPackage": "PR-12-D2A-PREFLIGHT-SUCCESSORS",
+  "sourceClosureStatus": "SOURCE_CLOSED",
+  "amendmentStatus": "SOURCE_CLOSURE_AMENDED",
+  "sourceClosureScope": "deterministic-release-packaging-source-only",
+  "accepted": false,
+  "releaseSourceBound": true,
+  "predecessor": {
+    "path": "docs/reduction/inference-core/pr-12-source-closure.json",
+    "sha256": "a2b4b511592ea53a316c059d9c2a5e0f3e5a2df0050f682e4ed5a8ca53c87809",
+    "releaseSource": {
+      "commit": "80ecb127ecda73f3711903957e7e883aa19bad63",
+      "tree": "1c5134fbe75a49148a8db2dcb7872448368f326e"
+    },
+    "sourceCloseoutAdmission": {
+      "pullRequest": 34,
+      "candidateCommit": "6a96379bc25cb7c3038c41f6132ae468452fd066",
+      "commit": "6f7f92a2cd3f8406f73b622155dc3ad25fa8cd9e",
+      "tree": "ba732496afc48015e0875d7cd9bf2098b710de50",
+      "firstParent": "5d199ee3a4fe1585a984711180605b570652ee83",
+      "secondParent": "6a96379bc25cb7c3038c41f6132ae468452fd066",
+      "candidateTreeIdentical": true
+    },
+    "disposition": "PRESERVED_HISTORICAL_SOURCE_CLOSURE"
+  },
+  "reason": {
+    "releaseTestGate": "The complete release implementation suites were not mandatory in the repository-wide Product test command.",
+    "releaseEvidence": "The admitted release validators checked structural shape without fully binding semantic SBOM, provenance, vulnerability, license, and corresponding-source evidence.",
+    "effect": "The predecessor remains immutable evidence but is superseded as the permitted D2A-RC release-source input."
+  },
+  "releaseSource": {
+    "commit": "5d0ecf7d8a4935ebd70d6d861f919cdd551554b3",
+    "tree": "2f2191d3326bd8777fef1cc21f41ea3fe4e335aa"
+  },
+  "successors": [
+    {
+      "id": "PR-12-RELEASE-TEST-GATE-SUCCESSOR",
+      "pullRequest": 35,
+      "base": {
+        "commit": "6f7f92a2cd3f8406f73b622155dc3ad25fa8cd9e",
+        "tree": "ba732496afc48015e0875d7cd9bf2098b710de50"
+      },
+      "candidate": {
+        "commit": "0d8fdf3cee3c624bca95bcfe720cbe2cb26dd02b",
+        "tree": "0256035220b5cbcc2b9a9028b6bdb0fd4b62aead",
+        "independentReview": "PASS"
+      },
+      "protectedAdmission": {
+        "commit": "bc6390f83b45f0b3183b6726f4cff95c2dd85d4b",
+        "tree": "0256035220b5cbcc2b9a9028b6bdb0fd4b62aead",
+        "firstParent": "6f7f92a2cd3f8406f73b622155dc3ad25fa8cd9e",
+        "secondParent": "0d8fdf3cee3c624bca95bcfe720cbe2cb26dd02b",
+        "candidateTreeIdentical": true
+      },
+      "productBehaviorChanged": false,
+      "runtimeQualified": false
+    },
+    {
+      "id": "PR-12-RELEASE-EVIDENCE-HARDENING-SUCCESSOR",
+      "pullRequest": 36,
+      "base": {
+        "commit": "bc6390f83b45f0b3183b6726f4cff95c2dd85d4b",
+        "tree": "0256035220b5cbcc2b9a9028b6bdb0fd4b62aead"
+      },
+      "candidate": {
+        "commit": "3bb5fb99e07ca612ff43d14a85e74d3c4fdf9640",
+        "tree": "2f2191d3326bd8777fef1cc21f41ea3fe4e335aa",
+        "independentReview": "PASS"
+      },
+      "protectedAdmission": {
+        "commit": "5d0ecf7d8a4935ebd70d6d861f919cdd551554b3",
+        "tree": "2f2191d3326bd8777fef1cc21f41ea3fe4e335aa",
+        "firstParent": "bc6390f83b45f0b3183b6726f4cff95c2dd85d4b",
+        "secondParent": "3bb5fb99e07ca612ff43d14a85e74d3c4fdf9640",
+        "candidateTreeIdentical": true
+      },
+      "productBehaviorChanged": false,
+      "runtimeQualified": false
+    }
+  ],
+  "evidenceBindings": [
+    {
+      "path": "package.json",
+      "sha256": "2166f076bc257118887631948c7c0f7025d36533947b764c18de95be9773deb5"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "7ad9e7a7a7515efbf6b719770746d97a763917c14dd6797f2e291b80f60a7e78"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-12-release-test-gate-binding.json",
+      "sha256": "19ec2337edefea06b1c76b444e89f6d62e1a62963a3a865c4644dba9feb0626e"
+    },
+    {
+      "path": "infra/release/release-evidence-policy.json",
+      "sha256": "61e93f27bcaa1ba62a88d6ffed8741b1ff1df5f3a54e5e62389e8e5dc9d39d12"
+    },
+    {
+      "path": "infra/release/release-plan.json",
+      "sha256": "6214615875fac9cc5f0a81214d7c6ff56c9d98116f8b9d1171a7fbe71aea9ceb"
+    },
+    {
+      "path": "infra/release/core-image-lock.schema.json",
+      "sha256": "99bd9e5f966b62328a4f78ae7530302f97076c368d13a73fef9cfe33a105452d"
+    },
+    {
+      "path": "infra/release/generate-release-evidence.mjs",
+      "sha256": "27e58ba97e714768c72d638c923c60eaa59229db035d44e7b46a92c3145452d8"
+    },
+    {
+      "path": "infra/release/validate-release-evidence-index.mjs",
+      "sha256": "d1ba5dccfbbcfb64b1aa746696f3df0a27de106d537111cee3f6e318355d43dd"
+    },
+    {
+      "path": "infra/release/generate-release-manifest.mjs",
+      "sha256": "7264ffdc27c3267877c40dfd8f26bd4aa3879c69bca59fe24c4ede6bbf014c45"
+    },
+    {
+      "path": "infra/release/verify-release-bundle.mjs",
+      "sha256": "d35269a7324e0bfb6563a2caadda79d5542327ddcee1a40d1dd2f035adffe5c8"
+    }
+  ],
+  "status": {
+    "runtimeQualified": false,
+    "contractActivation": "INACTIVE",
+    "d2aRc": "NOT_STARTED",
+    "q0": "NOT_STARTED",
+    "grafanaCustomerAccess": "DEFERRED_V1",
+    "deployment": "INACTIVE",
+    "productMain": "UNCHANGED"
+  },
+  "interpretation": {
+    "sourceClosure": "The complete release suites are mandatory and the strengthened semantic evidence validators are present at the exact protected release source.",
+    "accepted": "False means this amendment does not assert product acceptance, release admission, runtime qualification, or deployment readiness.",
+    "releaseSourceBound": "D2A-RC may construct artifacts only from the amended release source commit and tree after separate authorization.",
+    "runtimeBoundary": "Q0 remains a separate runtime qualification of an exact built Core release and one exact production-class inference delivery profile."
+  }
+}
