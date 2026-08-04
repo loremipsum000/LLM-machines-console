@@ -46,6 +46,7 @@
       "additionalProperties": false,
       "required": [
         "releasePlanSha256",
+        "releaseEvidencePolicySha256",
         "coreImageInventorySha256",
         "coreImageLockSha256",
         "deliveryProfileSchemaSha256",
@@ -54,6 +55,7 @@
       ],
       "properties": {
         "releasePlanSha256": { "$ref": "#/$defs/sha256" },
+        "releaseEvidencePolicySha256": { "$ref": "#/$defs/sha256" },
         "coreImageInventorySha256": { "$ref": "#/$defs/sha256" },
         "coreImageLockSha256": { "$ref": "#/$defs/sha256" },
         "deliveryProfileSchemaSha256": { "$ref": "#/$defs/sha256" },

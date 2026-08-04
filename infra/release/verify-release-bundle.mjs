@@ -361,6 +361,7 @@ function validateManifest(manifest, artifactRoot) {
     manifest.contracts,
     [
       "releasePlanSha256",
+      "releaseEvidencePolicySha256",
       "coreImageInventorySha256",
       "coreImageLockSha256",
       "deliveryProfileSchemaSha256",

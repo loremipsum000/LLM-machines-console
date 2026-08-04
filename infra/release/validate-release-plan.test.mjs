@@ -220,6 +220,10 @@ test("manifest derives actual files and checked-out Git identity deterministical
   const manifest = JSON.parse(first)
   assert.equal(manifest.release.sourceCommit, git("rev-parse", "HEAD^{commit}"))
   assert.equal(manifest.release.sourceTree, git("rev-parse", "HEAD^{tree}"))
+  assert.match(
+    manifest.contracts.releaseEvidencePolicySha256,
+    /^sha256:[a-f0-9]{64}$/,
+  )
   assert.equal(manifest.artifacts.length, plan.requiredEvidence.length + 1)
   assert.deepEqual(
     new Set(

@@ -207,6 +207,7 @@ function bundleFixture(version = "1.0.0", label = version) {
     },
     contracts: {
       releasePlanSha256: digest("1"),
+      releaseEvidencePolicySha256: digest("6"),
       coreImageInventorySha256: digest("2"),
       coreImageLockSha256: coreLock.sha256,
       deliveryProfileSchemaSha256: digest("3"),

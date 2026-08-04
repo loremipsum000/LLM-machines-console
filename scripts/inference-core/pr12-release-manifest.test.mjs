@@ -9,6 +9,7 @@ test("PR-12 release manifest package remains source-only", () => {
   assert.deepEqual(verifyCheckedInReleasePlan(), [])
   const source = [
     "infra/release/release-plan.json",
+    "infra/release/release-evidence-policy.json",
     "infra/release/release-manifest.schema.json",
     "infra/release/generate-release-manifest.mjs",
   ]

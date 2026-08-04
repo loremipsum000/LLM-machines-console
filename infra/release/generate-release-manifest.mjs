@@ -340,6 +340,9 @@ export function generateReleaseManifest(
 
   const contracts = {
     releasePlanSha256: sha256File(planPath),
+    releaseEvidencePolicySha256: sha256File(
+      resolve(root, "infra/release/release-evidence-policy.json"),
+    ),
     coreImageInventorySha256: sha256File(
       resolve(root, "infra/release/core-image-inventory.json"),
     ),
