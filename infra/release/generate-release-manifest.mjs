@@ -1,14 +1,34 @@
+import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { readFileSync, writeFileSync } from "node:fs"
-import { dirname, resolve } from "node:path"
+import {
+  lstatSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs"
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+  readCoreImageInventory,
+  validateCoreImageLock,
+} from "./validate-image-lock.mjs"
 
 const directory = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(directory, "../..")
 const sha1Pattern = /^[a-f0-9]{40}$/
-const sha256Pattern = /^sha256:[a-f0-9]{64}$/
 const versionPattern = /^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/
 const safePathPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/
+const mutablePathPattern = /(?:^|[._/-])latest(?:$|[._/-])/i
+const classifications = new Set([
+  "core",
+  "evidence",
+  "license",
+  "source",
+  "installer",
+  "rollback",
+  "public-trust",
+])
 
 function sha256File(path) {
   return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`
@@ -18,27 +38,149 @@ function fail(message) {
   throw new Error(message)
 }
 
-function assertDigest(value, field) {
-  if (!sha256Pattern.test(value ?? "")) {
-    fail(`${field} must be an exact SHA-256 digest`)
+function exactKeys(value, expected, field) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    fail(`${field} must be an object`)
+  }
+  const actual = Object.keys(value).sort()
+  const wanted = [...expected].sort()
+  if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
+    fail(`${field} keys must be exactly ${wanted.join(", ")}`)
   }
 }
 
-export function generateReleaseManifest(input, root = repositoryRoot) {
-  if (!versionPattern.test(input?.release?.version ?? "")) {
-    fail("release.version must be a semantic release version")
-  }
-  if (!sha1Pattern.test(input?.release?.sourceCommit ?? "")) {
-    fail("release.sourceCommit must be a full Git object ID")
-  }
-  if (!sha1Pattern.test(input?.release?.sourceTree ?? "")) {
-    fail("release.sourceTree must be a full Git tree ID")
-  }
+function validateSafePath(path, field = "artifact") {
+  const segments = (path ?? "").split("/")
   if (
-    !Number.isInteger(input?.release?.sourceDateEpoch) ||
-    input.release.sourceDateEpoch < 1
+    !safePathPattern.test(path ?? "") ||
+    path.startsWith("/") ||
+    path.endsWith("/") ||
+    segments.some(
+      (segment) => segment === "" || segment === "." || segment === "..",
+    )
   ) {
-    fail("release.sourceDateEpoch must be a positive integer")
+    fail(`unsafe ${field} path: ${path ?? "missing"}`)
+  }
+  if (mutablePathPattern.test(path)) {
+    fail(`mutable ${field} path: ${path}`)
+  }
+}
+
+function toPortablePath(path) {
+  return path.split(sep).join("/")
+}
+
+function listArtifactFiles(root, current = root) {
+  const files = []
+  for (const entry of readdirSync(current, { withFileTypes: true })) {
+    const absolute = resolve(current, entry.name)
+    const relativePath = toPortablePath(relative(root, absolute))
+    if (entry.isSymbolicLink()) {
+      fail(`unsafe symbolic-link artifact: ${relativePath}`)
+    }
+    if (entry.isDirectory()) {
+      files.push(...listArtifactFiles(root, absolute))
+    } else if (entry.isFile()) {
+      const metadata = lstatSync(absolute)
+      if (metadata.nlink !== 1) {
+        fail(`unsafe hard-linked artifact: ${relativePath}`)
+      }
+      files.push(relativePath)
+    } else {
+      fail(`unsafe non-regular artifact: ${relativePath}`)
+    }
+  }
+  return files.sort((left, right) =>
+    Buffer.from(left).compare(Buffer.from(right)),
+  )
+}
+
+function readGitIdentity(root) {
+  const git = (...arguments_) =>
+    execFileSync("git", ["-C", root, ...arguments_], {
+      encoding: "utf8",
+    }).trim()
+  if (git("status", "--porcelain=v1", "--untracked-files=all") !== "") {
+    fail("checked-out release input must be a clean Git worktree")
+  }
+  return {
+    sourceCommit: git("rev-parse", "HEAD^{commit}"),
+    sourceTree: git("rev-parse", "HEAD^{tree}"),
+    sourceDateEpoch: Number.parseInt(
+      git("show", "-s", "--format=%ct", "HEAD"),
+      10,
+    ),
+  }
+}
+
+function readJson(path, field) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"))
+  } catch {
+    fail(`${field} is not valid JSON`)
+  }
+}
+
+function validateCoreLockStructure(lock) {
+  exactKeys(
+    lock,
+    [
+      "schema",
+      "status",
+      "release",
+      "inventorySha256",
+      "platform",
+      "privateRegistry",
+      "images",
+    ],
+    "Core image lock",
+  )
+  exactKeys(
+    lock.release,
+    ["version", "sourceCommit", "sourceTree"],
+    "Core image lock release",
+  )
+  if (!Array.isArray(lock.images))
+    fail("Core image lock images must be an array")
+  for (const image of lock.images) {
+    const keys = [
+      "id",
+      "repository",
+      "version",
+      "indexDigest",
+      "platform",
+      "platformDigest",
+      "sourceRevision",
+      "license",
+      "sbomSha256",
+      "provenanceSha256",
+    ]
+    if (image?.correspondingSourceSha256 !== undefined) {
+      keys.push("correspondingSourceSha256")
+    }
+    exactKeys(image, keys, `Core image lock entry ${image?.id ?? "missing"}`)
+  }
+}
+
+export function generateReleaseManifest(
+  input,
+  { root = repositoryRoot, artifactRoot } = {},
+) {
+  exactKeys(input, ["release", "artifacts"], "manifest input")
+  exactKeys(
+    input.release,
+    [
+      "version",
+      "artifactName",
+      "sourceCommit",
+      "sourceTree",
+      "sourceDateEpoch",
+    ],
+    "manifest release input",
+  )
+  if (!artifactRoot) fail("artifactRoot is required")
+  if (!versionPattern.test(input.release.version ?? "")) {
+    fail("release.version must be a semantic release version")
   }
   const version = input.release.version
   const expectedName = `llm-machines-core-${version}-linux-amd64.tar.zst`
@@ -46,71 +188,157 @@ export function generateReleaseManifest(input, root = repositoryRoot) {
     fail("release.artifactName does not match the deterministic naming rule")
   }
 
-  const artifacts = Array.isArray(input?.artifacts) ? input.artifacts : []
-  if (artifacts.length === 0) {
-    fail("at least one release artifact is required")
+  const gitIdentity = readGitIdentity(root)
+  if (
+    !sha1Pattern.test(input.release.sourceCommit ?? "") ||
+    input.release.sourceCommit !== gitIdentity.sourceCommit
+  ) {
+    fail("release.sourceCommit does not match the checked-out release input")
   }
-  const sorted = [...artifacts].sort((left, right) =>
-    Buffer.from(left.path ?? "").compare(Buffer.from(right.path ?? "")),
-  )
+  if (
+    !sha1Pattern.test(input.release.sourceTree ?? "") ||
+    input.release.sourceTree !== gitIdentity.sourceTree
+  ) {
+    fail("release.sourceTree does not match the checked-out release input")
+  }
+  if (
+    !Number.isInteger(input.release.sourceDateEpoch) ||
+    input.release.sourceDateEpoch !== gitIdentity.sourceDateEpoch
+  ) {
+    fail("release.sourceDateEpoch does not match the checked-out release input")
+  }
+
+  const planPath = resolve(root, "infra/release/release-plan.json")
+  const plan = readJson(planPath, "release plan")
+  const requiredEvidence = Array.isArray(plan?.requiredEvidence)
+    ? plan.requiredEvidence
+    : fail("release plan requiredEvidence is invalid")
+  if (new Set(requiredEvidence).size !== requiredEvidence.length) {
+    fail("release plan contains duplicate evidence identifiers")
+  }
+
+  const declarations = Array.isArray(input.artifacts) ? input.artifacts : []
+  if (declarations.length === 0)
+    fail("at least one release artifact is required")
   const paths = new Set()
-  const normalizedArtifacts = []
-  for (const artifact of sorted) {
-    const pathSegments = (artifact?.path ?? "").split("/")
+  const ids = new Set()
+  const evidenceIds = new Set()
+  for (const declaration of declarations) {
+    exactKeys(
+      declaration,
+      ["id", "evidenceId", "path", "mediaType", "classification"],
+      "artifact declaration",
+    )
+    validateSafePath(declaration.path)
+    if (!/^[a-z0-9][a-z0-9-]{2,63}$/.test(declaration.id ?? "")) {
+      fail(`artifact ID is invalid: ${declaration.id ?? "missing"}`)
+    }
+    if (ids.has(declaration.id))
+      fail(`duplicate artifact ID: ${declaration.id}`)
+    if (paths.has(declaration.path))
+      fail(`duplicate artifact path: ${declaration.path}`)
+    ids.add(declaration.id)
+    paths.add(declaration.path)
+    if (declaration.evidenceId !== null) {
+      if (!requiredEvidence.includes(declaration.evidenceId)) {
+        fail(`extra evidence declaration: ${declaration.evidenceId}`)
+      }
+      if (evidenceIds.has(declaration.evidenceId)) {
+        fail(`duplicate evidence declaration: ${declaration.evidenceId}`)
+      }
+      evidenceIds.add(declaration.evidenceId)
+    }
     if (
-      !safePathPattern.test(artifact?.path ?? "") ||
-      artifact.path.startsWith("/") ||
-      artifact.path.endsWith("/") ||
-      pathSegments.some(
-        (segment) => segment === "" || segment === "." || segment === "..",
-      )
+      typeof declaration.mediaType !== "string" ||
+      declaration.mediaType.length < 3
     ) {
-      fail(`unsafe artifact path: ${artifact?.path ?? "missing"}`)
+      fail(`artifact media type is invalid: ${declaration.path}`)
     }
-    if (paths.has(artifact.path)) {
-      fail(`duplicate artifact path: ${artifact.path}`)
+    if (!classifications.has(declaration.classification)) {
+      fail(`artifact classification is invalid: ${declaration.path}`)
     }
-    paths.add(artifact.path)
-    if (!Number.isInteger(artifact.size) || artifact.size < 0) {
-      fail(`artifact size is invalid: ${artifact.path}`)
+  }
+  for (const evidenceId of requiredEvidence) {
+    if (!evidenceIds.has(evidenceId)) {
+      fail(`missing required evidence declaration: ${evidenceId}`)
     }
-    assertDigest(artifact.sha256, `artifact ${artifact.path}`)
-    if (
-      typeof artifact.mediaType !== "string" ||
-      artifact.mediaType.length < 3
-    ) {
-      fail(`artifact media type is invalid: ${artifact.path}`)
+  }
+  const corePackage = declarations.find(({ id }) => id === "core-package")
+  if (
+    corePackage?.evidenceId !== null ||
+    corePackage?.classification !== "core" ||
+    corePackage?.path !== `core/${expectedName}`
+  ) {
+    fail("the deterministic Core package artifact is missing or invalid")
+  }
+  if (
+    declarations.filter(({ evidenceId }) => evidenceId === null).length !== 1
+  ) {
+    fail("only the deterministic Core package may omit an evidence identifier")
+  }
+
+  const artifactDirectory = resolve(artifactRoot)
+  const actualFiles = listArtifactFiles(artifactDirectory)
+  const declaredFiles = [...paths].sort((left, right) =>
+    Buffer.from(left).compare(Buffer.from(right)),
+  )
+  for (const path of actualFiles) {
+    if (!paths.has(path)) fail(`untracked artifact file: ${path}`)
+  }
+  for (const path of declaredFiles) {
+    if (!actualFiles.includes(path)) fail(`missing artifact file: ${path}`)
+  }
+
+  const sorted = [...declarations].sort((left, right) =>
+    Buffer.from(left.path).compare(Buffer.from(right.path)),
+  )
+  const normalizedArtifacts = sorted.map((declaration) => {
+    const absolute = resolve(artifactDirectory, declaration.path)
+    const metadata = statSync(absolute)
+    return {
+      id: declaration.id,
+      evidenceId: declaration.evidenceId,
+      path: declaration.path,
+      size: metadata.size,
+      sha256: sha256File(absolute),
+      mediaType: declaration.mediaType,
+      classification: declaration.classification,
     }
-    if (
-      ![
-        "core",
-        "evidence",
-        "license",
-        "source",
-        "installer",
-        "rollback",
-        "public-trust",
-      ].includes(artifact.classification)
-    ) {
-      fail(`artifact classification is invalid: ${artifact.path}`)
-    }
-    normalizedArtifacts.push({
-      path: artifact.path,
-      size: artifact.size,
-      sha256: artifact.sha256,
-      mediaType: artifact.mediaType,
-      classification: artifact.classification,
-    })
+  })
+
+  const coreLockDeclaration = declarations.find(
+    ({ evidenceId }) => evidenceId === "core-image-lock",
+  )
+  const coreLockPath = resolve(artifactDirectory, coreLockDeclaration.path)
+  const coreLock = readJson(coreLockPath, "Core image lock")
+  validateCoreLockStructure(coreLock)
+  let coreLockErrors
+  try {
+    coreLockErrors = validateCoreImageLock(
+      coreLock,
+      readCoreImageInventory(root),
+      root,
+    )
+  } catch {
+    fail("Core image lock is malformed")
+  }
+  if (coreLockErrors.length > 0) {
+    fail(`Core image lock is invalid: ${coreLockErrors.join("; ")}`)
+  }
+  if (
+    coreLock.release.sourceCommit !== gitIdentity.sourceCommit ||
+    coreLock.release.sourceTree !== gitIdentity.sourceTree ||
+    coreLock.release.version !== version
+  ) {
+    fail("Core image lock does not bind the checked-out release input")
   }
 
   const contracts = {
-    releasePlanSha256: sha256File(
-      resolve(root, "infra/release/release-plan.json"),
-    ),
+    releasePlanSha256: sha256File(planPath),
     coreImageInventorySha256: sha256File(
       resolve(root, "infra/release/core-image-inventory.json"),
     ),
-    coreImageLockSha256: input?.contracts?.coreImageLockSha256,
+    coreImageLockSha256: sha256File(coreLockPath),
     deliveryProfileSchemaSha256: sha256File(
       resolve(root, "infra/inference/delivery-profile.schema.json"),
     ),
@@ -121,9 +349,6 @@ export function generateReleaseManifest(input, root = repositoryRoot) {
       resolve(root, "infra/firecrawl/release/source-package.json"),
     ),
   }
-  for (const [field, value] of Object.entries(contracts)) {
-    assertDigest(value, `contracts.${field}`)
-  }
 
   return {
     schema: "llm-machines.release-manifest.v1",
@@ -131,9 +356,9 @@ export function generateReleaseManifest(input, root = repositoryRoot) {
     release: {
       version,
       artifactName: expectedName,
-      sourceCommit: input.release.sourceCommit,
-      sourceTree: input.release.sourceTree,
-      sourceDateEpoch: input.release.sourceDateEpoch,
+      sourceCommit: gitIdentity.sourceCommit,
+      sourceTree: gitIdentity.sourceTree,
+      sourceDateEpoch: gitIdentity.sourceDateEpoch,
       platform: "linux/amd64",
     },
     contracts,
@@ -156,12 +381,17 @@ function parseArguments(argv) {
     const flag = argv[index]
     const value = argv[index + 1]
     if (!flag?.startsWith("--") || value === undefined) {
-      fail("expected --input PATH --output PATH")
+      fail("expected --input PATH --artifact-root PATH --output PATH")
     }
     values.set(flag, value)
   }
-  if (values.size !== 2 || !values.has("--input") || !values.has("--output")) {
-    fail("expected --input PATH --output PATH")
+  if (
+    values.size !== 3 ||
+    !values.has("--input") ||
+    !values.has("--artifact-root") ||
+    !values.has("--output")
+  ) {
+    fail("expected --input PATH --artifact-root PATH --output PATH")
   }
   return values
 }
@@ -171,12 +401,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const input = JSON.parse(
     readFileSync(resolve(argumentsByName.get("--input")), "utf8"),
   )
-  const manifest = generateReleaseManifest(input)
-  writeFileSync(
-    resolve(argumentsByName.get("--output")),
-    canonicalJson(manifest),
-    {
-      flag: "wx",
-    },
-  )
+  const artifactRoot = resolve(argumentsByName.get("--artifact-root"))
+  const outputPath = resolve(argumentsByName.get("--output"))
+  const outputRelative = relative(artifactRoot, outputPath)
+  if (
+    outputRelative === "" ||
+    (!outputRelative.startsWith(`..${sep}`) &&
+      outputRelative !== ".." &&
+      !isAbsolute(outputRelative))
+  ) {
+    fail("manifest output must remain outside the artifact root")
+  }
+  const manifest = generateReleaseManifest(input, { artifactRoot })
+  writeFileSync(outputPath, canonicalJson(manifest), { flag: "wx" })
 }
