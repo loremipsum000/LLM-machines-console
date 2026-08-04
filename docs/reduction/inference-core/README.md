@@ -627,6 +627,33 @@ fresh-clone full validation plus independent review at
 `46295906c3d733b0e56abe94d9732d8eb0549c29`, but remains unaccepted, not
 revision-bound, and not runtime-qualified pending R1-V1 and Q0.
 
+The fresh R1-V1 successor closes aggregate source evidence from exact protected
+integration input `0e794ccd6e0f2593f2e6ab34b8fc1d521835b6fd`, tree
+`0c94b6164a81dd4da9884afa7ff2b37bd1c03079`. It binds the exact PR 13 through
+PR 19 merge identities for R1-C0, R1-S1, R1-E1, R1-K1, R1-D1, the D1 hygiene
+successor, and R1-H1. The blocked attempt rooted at
+`cc08cf8e9afce12def143f2f395d30bfbe04f515` remains read-only historical
+evidence and is not the successor base.
+
+This successor adds only aggregate governance, deterministic evidence, and the
+unaccepted `PR-11A.json` candidate. It leaves the active route baseline at
+PR-11 and changes no Product behavior or runtime surface. LiteLLM remains
+private with its approved Console read-only projection, and Keycloak remains a
+private identity provider with basic identity mutations through Console only.
+Grafana is optional and inactive, with no customer grant, hostname, route,
+link, or qualification. The Console remains fully useful without it.
+
+The immutable R1-S1 record names its pre-review source head while PR 14 merged
+the governance-bound reviewed successor. The immutable R1-D1 record names the
+reviewed source head while a governance-only package head preceded PR 17 and a
+separate D1 hygiene successor preceded R1-H1. The aggregate evidence binds all
+of those identities without rewriting either historical record.
+
+R1-V1 successor validation is pending on the initial source candidate. PR-11A
+remains unaccepted and not revision-bound. Q0 remains unstarted. PR-12 remains
+unstarted. No remote ref, runtime, deployment, Grafana qualification, or
+Product main transition is authorized by this source artifact.
+
 PR-11 permits one environment-template transition: `.env.example` deletes the
 exact retired `INFERENCE_MODEL_UPDATE_*` block from the accepted base. It may
 not add a line, change a retained value, remove unrelated content, or admit any

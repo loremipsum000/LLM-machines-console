@@ -23,6 +23,7 @@ const allowedCurrentBranches = [
   "codex/inference-core-pr-11a-r1-e1",
   "codex/inference-core-pr-11a-r1-k1",
   "codex/inference-core-pr-11a-r1-d1",
+  "codex/inference-core-pr-11a-r1-v1-successor",
 ]
 const admittedBehaviorSourcePaths = [
   "apps/bff/src/auth/authorization.ts",
@@ -224,7 +225,7 @@ test("R1-C0 source inventory is exact and changes no route or runtime", () => {
     git(
       "ls-tree",
       "--name-only",
-      "HEAD",
+      integrationMerge,
       "--",
       "docs/reduction/inference-core/contract-revisions/PR-11A.json",
     ),

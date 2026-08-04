@@ -21,6 +21,8 @@
     "contract:inference-core:pr10c:write": "node scripts/inference-core/pr10c-contract-revision.mjs --write",
     "contract:inference-core:pr11:policy": "node scripts/inference-core/pr11-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr11:write": "node scripts/inference-core/pr11-contract-revision.mjs --write",
+    "contract:inference-core:pr11a:policy": "node scripts/inference-core/pr11a-r1-v1-contract-revision.mjs --print-operation-policy",
+    "contract:inference-core:pr11a:write": "node scripts/inference-core/pr11a-r1-v1-contract-revision.mjs --write",
     "dev": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && corepack pnpm --filter @llm-machines/web dev",
     "format": "biome format --write . && corepack pnpm -r format",
     "lint": "biome lint . && corepack pnpm -r lint",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
@@ -80,13 +80,14 @@ test("R1-D1 starts source-incomplete and cannot overstate acceptance", () => {
   assert.equal(decision.revisionBound, false)
   assert.equal(decision.runtimeQualified, false)
   assert.equal(
-    existsSync(
-      resolve(
-        repositoryRoot,
-        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
-      ),
+    git(
+      "ls-tree",
+      "--name-only",
+      sourceHead,
+      "--",
+      "docs/reduction/inference-core/contract-revisions/PR-11A.json",
     ),
-    false,
+    "",
   )
 })
 
