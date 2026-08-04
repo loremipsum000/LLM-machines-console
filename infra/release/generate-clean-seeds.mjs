@@ -99,13 +99,120 @@ function loadKeycloakArtifactsFromRoot(root) {
   }
 }
 
+function stripSqlComments(source) {
+  let output = ""
+  let index = 0
+  let state = "normal"
+  let blockDepth = 0
+  let dollarDelimiter = ""
+  while (index < source.length) {
+    const character = source[index]
+    const next = source[index + 1]
+    if (state === "line-comment") {
+      if (character === "\n") {
+        output += character
+        state = "normal"
+      } else {
+        output += " "
+      }
+      index += 1
+      continue
+    }
+    if (state === "block-comment") {
+      if (character === "/" && next === "*") {
+        output += "  "
+        blockDepth += 1
+        index += 2
+      } else if (character === "*" && next === "/") {
+        output += "  "
+        blockDepth -= 1
+        index += 2
+        if (blockDepth === 0) state = "normal"
+      } else {
+        output += character === "\n" ? "\n" : " "
+        index += 1
+      }
+      continue
+    }
+    if (state === "single-quote") {
+      output += character
+      if (character === "'" && next === "'") {
+        output += next
+        index += 2
+      } else {
+        index += 1
+        if (character === "'") state = "normal"
+      }
+      continue
+    }
+    if (state === "double-quote") {
+      output += character
+      if (character === '"' && next === '"') {
+        output += next
+        index += 2
+      } else {
+        index += 1
+        if (character === '"') state = "normal"
+      }
+      continue
+    }
+    if (state === "dollar-quote") {
+      if (source.startsWith(dollarDelimiter, index)) {
+        output += dollarDelimiter
+        index += dollarDelimiter.length
+        state = "normal"
+      } else {
+        output += character
+        index += 1
+      }
+      continue
+    }
+    if (character === "-" && next === "-") {
+      output += "  "
+      state = "line-comment"
+      index += 2
+    } else if (character === "/" && next === "*") {
+      output += "  "
+      state = "block-comment"
+      blockDepth = 1
+      index += 2
+    } else if (character === "'") {
+      output += character
+      state = "single-quote"
+      index += 1
+    } else if (character === '"') {
+      output += character
+      state = "double-quote"
+      index += 1
+    } else if (character === "$") {
+      const delimiter = source.slice(index).match(/^\$[A-Za-z_0-9]*\$/)?.[0]
+      if (delimiter) {
+        output += delimiter
+        dollarDelimiter = delimiter
+        state = "dollar-quote"
+        index += delimiter.length
+      } else {
+        output += character
+        index += 1
+      }
+    } else {
+      output += character
+      index += 1
+    }
+  }
+  if (state === "block-comment")
+    fail("database seed contains an unterminated comment")
+  return output
+}
+
 export function validateCleanDatabaseMigration(migration) {
-  const statements = migration.match(/\bINSERT\s+INTO\b[\s\S]*?;/gi) ?? []
+  const reviewedSql = stripSqlComments(migration)
+  const statements = reviewedSql.match(/\bINSERT\s+INTO\b[\s\S]*?;/gi) ?? []
   const normalize = (statement) =>
     statement.trim().replaceAll(/\s+/g, " ").toLowerCase()
   const normalizedAllowed = [...allowedInitialStateRows].map(normalize).sort()
   const normalizedActual = statements.map(normalize).sort()
-  const remainder = migration.replaceAll(/\bINSERT\s+INTO\b[\s\S]*?;/gi, "")
+  const remainder = reviewedSql.replaceAll(/\bINSERT\s+INTO\b[\s\S]*?;/gi, "")
   const remainingStatements = remainder
     .split(";")
     .map((statement) => statement.trim().replaceAll(/\s+/g, " "))
@@ -127,9 +234,9 @@ export function validateCleanDatabaseMigration(migration) {
     fail("database seed contains an unapproved persisted row")
   }
   if (
-    !/\bCREATE\s+TABLE\b/i.test(migration) ||
-    !/\bCREATE\s+SCHEMA\s+common\b/i.test(migration) ||
-    !/\bCREATE\s+SCHEMA\s+admin\b/i.test(migration)
+    !/\bCREATE\s+TABLE\b/i.test(reviewedSql) ||
+    !/\bCREATE\s+SCHEMA\s+common\b/i.test(reviewedSql) ||
+    !/\bCREATE\s+SCHEMA\s+admin\b/i.test(reviewedSql)
   ) {
     fail("database seed does not contain the expected clean schema")
   }

@@ -82,6 +82,10 @@ test("unapproved data-writing SQL fails regardless of case or layout", () => {
     "\ncall mutate_customer_state();\n",
     "\nwith changed as (select 1) update admin.console_settings set organization_name = 'x';\n",
     "\ncreate table admin.customer_copy as select * from admin.console_settings;\n",
+    "\n-- reviewed default\nUPDATE admin.console_settings SET organization_name = 'x';\n",
+    "\n/* reviewed default */ DELETE FROM admin.console_settings WHERE id = 'singleton';\n",
+    "\n/* outer /* nested */ review */ TRUNCATE admin.console_settings;\n",
+    "\n/* unterminated comment UPDATE admin.console_settings SET organization_name = 'x';\n",
   ]) {
     assert.throws(
       () => validateCleanDatabaseMigration(`${migration}${addition}`),
