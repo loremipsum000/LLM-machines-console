@@ -740,25 +740,45 @@ export function validatePackagedReleaseEvidence(
     const licenseText = licenseTexts.get(image.id)
     const notice = notices.get(image.id)
     const licenseReview = licenseReviews.get(image.id).review
-    if (
-      sha256Bytes(`${canonicalJson(sbom)}\n`) !== image.sbomSha256 ||
-      sha256Bytes(`${canonicalJson(statement)}\n`) !== image.provenanceSha256 ||
-      sha256Bytes(`${canonicalJson(vulnerability.report)}\n`) !==
-        image.vulnerabilityReportSha256 ||
-      sha256Bytes(`${canonicalJson(vulnerability.disposition)}\n`) !==
-        image.vulnerabilityDispositionSha256 ||
-      licenseText.license !== image.license ||
-      licenseText.sha256 !== image.licenseTextSha256 ||
-      sha256Bytes(licenseText.text) !== image.licenseTextSha256 ||
-      notice.license !== image.license ||
-      notice.repository !== image.repository ||
-      notice.sourceRevision !== image.sourceRevision ||
-      notice.sha256 !== image.noticeSha256 ||
-      sha256Bytes(notice.text) !== image.noticeSha256 ||
-      sha256Bytes(`${canonicalJson(licenseReview)}\n`) !==
-        image.licenseReviewSha256
-    ) {
-      fail(`${image.id} packaged evidence digest or identity is invalid`)
+    const invalidBindings = [
+      ["SBOM", sha256Bytes(`${canonicalJson(sbom)}\n`) !== image.sbomSha256],
+      [
+        "provenance",
+        sha256Bytes(`${canonicalJson(statement)}\n`) !== image.provenanceSha256,
+      ],
+      [
+        "vulnerability report",
+        sha256Bytes(`${canonicalJson(vulnerability.report)}\n`) !==
+          image.vulnerabilityReportSha256,
+      ],
+      [
+        "vulnerability disposition",
+        sha256Bytes(`${canonicalJson(vulnerability.disposition)}\n`) !==
+          image.vulnerabilityDispositionSha256,
+      ],
+      ["license identity", licenseText.license !== image.license],
+      ["license digest", licenseText.sha256 !== image.licenseTextSha256],
+      [
+        "license text",
+        sha256Bytes(licenseText.text) !== image.licenseTextSha256,
+      ],
+      ["notice license", notice.license !== image.license],
+      ["notice repository", notice.repository !== image.repository],
+      ["notice source", notice.sourceRevision !== image.sourceRevision],
+      ["notice digest", notice.sha256 !== image.noticeSha256],
+      ["notice text", sha256Bytes(notice.text) !== image.noticeSha256],
+      [
+        "license review",
+        sha256Bytes(`${canonicalJson(licenseReview)}\n`) !==
+          image.licenseReviewSha256,
+      ],
+    ]
+      .filter(([, invalid]) => invalid)
+      .map(([field]) => field)
+    if (invalidBindings.length > 0) {
+      fail(
+        `${image.id} packaged evidence is invalid: ${invalidBindings.join(", ")}`,
+      )
     }
     validateSbom(sbom, image, evidencePolicy)
     validateProvenance(
