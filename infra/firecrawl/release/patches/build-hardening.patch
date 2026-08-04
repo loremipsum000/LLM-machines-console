@@ -1,0 +1,650 @@
+diff --git a/apps/api/Dockerfile b/apps/api/Dockerfile
+index 061b1c3..1280628 100644
+--- a/apps/api/Dockerfile
++++ b/apps/api/Dockerfile
+@@ -1,5 +1,9 @@
+-# syntax=docker/dockerfile:1
+-FROM node:22-slim AS base
++# syntax=docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
++ARG NODE22_BUILD_IMAGE
++ARG GOLANG125_BASE_IMAGE
++ARG WOLFI_RUNTIME_IMAGE
++
++FROM ${NODE22_BUILD_IMAGE} AS base
+
+ ENV PNPM_HOME="/pnpm"
+ ENV PATH="$PNPM_HOME:$PATH"
+@@ -8,7 +12,7 @@ ENV CI=true
+ RUN corepack enable
+
+ # Build Go shared library
+-FROM golang:1.24 AS go-build
++FROM ${GOLANG125_BASE_IMAGE} AS go-build
+ WORKDIR /app
+ COPY sharedLibs/go-html-to-md ./sharedLibs/go-html-to-md
+
+@@ -17,16 +21,12 @@ RUN cd sharedLibs/go-html-to-md && \
+     go build -o libhtml-to-markdown.so -buildmode=c-shared html-to-markdown.go
+
+ FROM base AS build
++ARG FDB_CLIENT_DEB_SHA256
++ARG RUSTUP_INIT_SHA256
++ARG RUSTUP_INIT_URL
++ARG RUST_TOOLCHAIN
+ WORKDIR /app
+
+-# Install system dependencies
+-RUN apt-get update && apt-get install -y \
+-    curl \
+-    build-essential \
+-    pkg-config \
+-    python3 \
+-    && rm -rf /var/lib/apt/lists/*
+-
+ # FoundationDB client library (libfdb_c + headers), needed by the
+ # `foundationdb` npm package at install time on arches without prebuilds
+ ARG FDB_VERSION=7.3.63
+@@ -34,6 +34,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
+     case "$ARCH" in arm64) FDB_ARCH=aarch64 ;; *) FDB_ARCH=$ARCH ;; esac && \
+     curl -fsSL -o /tmp/fdb-clients.deb \
+       "https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_${FDB_ARCH}.deb" && \
++    echo "${FDB_CLIENT_DEB_SHA256}  /tmp/fdb-clients.deb" | sha256sum -c - && \
+     dpkg -i /tmp/fdb-clients.deb && rm /tmp/fdb-clients.deb
+
+ # Install Rust
+@@ -41,7 +42,10 @@ ENV RUSTUP_HOME=/usr/local/rustup \
+     CARGO_HOME=/usr/local/cargo \
+     PATH=/usr/local/cargo/bin:$PATH
+
+-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path \
++RUN curl --proto '=https' --tlsv1.2 -fsS -o /tmp/rustup-init "${RUSTUP_INIT_URL}" \
++    && echo "${RUSTUP_INIT_SHA256}  /tmp/rustup-init" | sha256sum -c - \
++    && chmod 0555 /tmp/rustup-init && /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain "${RUST_TOOLCHAIN}" \
++    && rm /tmp/rustup-init \
+     && chmod -R a+w $RUSTUP_HOME $CARGO_HOME
+
+ # Copy source files
+@@ -55,32 +59,45 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+     pnpm install --frozen-lockfile
+
+ # Build the application
++RUN pnpm exec vitest run \
++    src/main/runWebScraper.test.ts \
++    src/scraper/scrapeURL/engines/playwright/index.test.ts \
++    src/search/v2/index.test.ts \
++    src/search/v2/searxng.test.ts \
++    src/services/worker/team-semaphore.test.ts
+ RUN pnpm run build
+
+ # Remove dev dependencies
+ RUN pnpm prune --prod --ignore-scripts
+
+-# Runtime stage
+-FROM base AS runtime
++# Fetch byte-locked Wolfi runtime packages.
++FROM ${NODE22_BUILD_IMAGE} AS wolfi-api-packages
++WORKDIR /wolfi-apks
+
+-# Install runtime dependencies
+-RUN apt-get update && apt-get install -y \
+-    git \
+-    procps \
+-    curl \
+-    && rm -rf /var/lib/apt/lists/*
++COPY package-locks/api-wolfi.sha256 packages.sha256
++RUN set -eux; \
++    while read -r _package_sha package_file; do \
++      curl --fail --location --silent --show-error \
++        --proto '=https' --tlsv1.2 \
++        --output "${package_file}" \
++        "https://apk.cgr.dev/chainguard/x86_64/${package_file}"; \
++    done < packages.sha256; \
++    sha256sum -c packages.sha256
+
+-# FoundationDB client library (libfdb_c + fdbcli)
+-ARG FDB_VERSION=7.3.63
+-RUN ARCH=$(dpkg --print-architecture) && \
+-    case "$ARCH" in arm64) FDB_ARCH=aarch64 ;; *) FDB_ARCH=$ARCH ;; esac && \
+-    curl -fsSL -o /tmp/fdb-clients.deb \
+-      "https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_${FDB_ARCH}.deb" && \
+-    dpkg -i /tmp/fdb-clients.deb && rm /tmp/fdb-clients.deb
++# Runtime stage
++FROM ${WOLFI_RUNTIME_IMAGE} AS runtime
++
++COPY --from=wolfi-api-packages /wolfi-apks/*.apk /wolfi-apks/
++RUN apk add --repositories-file /dev/null --no-network --allow-untrusted /wolfi-apks/*.apk \
++    && rm -rf /wolfi-apks
+
+ EXPOSE 8080
+ WORKDIR /app
+
++COPY --from=build /usr/bin/fdbcli /usr/bin/fdbcli
++COPY --from=build /usr/lib/libfdb_c.so /usr/lib/libfdb_c.so
++COPY --from=build /usr/lib/libfdb_c_shim.so /usr/lib/libfdb_c_shim.so
++
+ # Copy built application
+ COPY --from=build /app/node_modules ./node_modules
+ COPY --from=build /app/dist ./dist
+@@ -89,4 +106,6 @@ COPY --from=build /app/native ./native
+ # Copy Go shared library
+ COPY --from=go-build /app/sharedLibs/go-html-to-md/libhtml-to-markdown.so ./sharedLibs/go-html-to-md/
+
+-CMD ["node", "dist/src/harness.js", "--start-docker"]
++USER 65532:65532
++
++CMD ["/usr/bin/node", "dist/src/harness.js", "--start-docker"]
+diff --git a/apps/api/package.json b/apps/api/package.json
+index 14546d7..dedcd35 100644
+--- a/apps/api/package.json
++++ b/apps/api/package.json
+@@ -128,7 +128,7 @@
+     "langsmith": "^0.6.0",
+     "lodash": "^4.18.0",
+     "marked": "^14.1.2",
+-    "multer": "^2.1.1",
++    "multer": "2.2.0",
+     "ollama-ai-provider-v2": "^3.6.0",
+     "parse-diff": "^0.11.1",
+     "pdf-parse": "^1.1.1",
+@@ -142,12 +142,12 @@
+     "response-time": "^2.3.4",
+     "robots-parser": "^3.0.1",
+     "stripe": "^16.1.0",
+-    "systeminformation": "^5.31.6",
++    "systeminformation": "5.33.1",
+     "tldts": "^6.1.75",
+     "tough-cookie": "^4.1.4",
+     "turndown": "^7.1.3",
+     "typescript": "^5.9.2",
+-    "undici": "7.24.1",
++    "undici": "7.29.0",
+     "uuid": "^13.0.1",
+     "winston": "^3.14.2",
+     "ws": "^8.21.0",
+@@ -188,22 +188,22 @@
+       "ajv": "^8.18.0",
+       "fast-xml-builder": ">=1.1.6 <2.0.0",
+       "fast-xml-parser": "^5.7.0",
+-      "fast-uri": ">=3.1.2 <4.0.0",
++      "fast-uri": ">=3.1.4 <4.0.0",
+       "glob@>=10.2.0 <10.5.0": ">=10.5.0",
+-      "js-yaml@<3.14.2": "4.2.0",
+-      "js-yaml@>=4.0.0 <4.2.0": "4.2.0",
++      "js-yaml@<3.14.2": "4.3.0",
++      "js-yaml@>=4.0.0 <4.3.0": "4.3.0",
+       "qs@<6.15.2": ">=6.15.2 <7.0.0",
+       "minimatch@<10.2.3": ">=10.2.3",
+       "bn.js@<5.2.3": ">=5.2.3",
+       "@tootallnate/once@<3.0.1": ">=3.0.1",
+       "yauzl": "^3.2.1",
+-      "undici": "7.24.1",
++      "undici": "7.29.0",
+       "picomatch@<4.0.4": ">=4.0.4",
+       "yaml@<2.8.3": ">=2.8.3",
+       "smol-toml@<1.6.1": ">=1.6.1",
+       "handlebars": ">=4.7.9",
+       "path-to-regexp@~0.1.12": "0.1.13",
+-      "brace-expansion": ">=5.0.6",
++      "brace-expansion": ">=5.0.8",
+       "ws@>=7.0.0 <7.5.11": "7.5.11",
+       "ws@>=8.0.0 <8.21.0": "8.21.0",
+       "form-data@>=2.0.0 <2.5.6": "2.5.6",
+diff --git a/apps/api/pnpm-lock.yaml b/apps/api/pnpm-lock.yaml
+index 305f341..94753ab 100644
+--- a/apps/api/pnpm-lock.yaml
++++ b/apps/api/pnpm-lock.yaml
+@@ -11,22 +11,22 @@ overrides:
+   ajv: ^8.18.0
+   fast-xml-builder: '>=1.1.6 <2.0.0'
+   fast-xml-parser: ^5.7.0
+-  fast-uri: '>=3.1.2 <4.0.0'
++  fast-uri: '>=3.1.4 <4.0.0'
+   glob@>=10.2.0 <10.5.0: '>=10.5.0'
+-  js-yaml@<3.14.2: 4.2.0
+-  js-yaml@>=4.0.0 <4.2.0: 4.2.0
++  js-yaml@<3.14.2: 4.3.0
++  js-yaml@>=4.0.0 <4.3.0: 4.3.0
+   qs@<6.15.2: '>=6.15.2 <7.0.0'
+   minimatch@<10.2.3: '>=10.2.3'
+   bn.js@<5.2.3: '>=5.2.3'
+   '@tootallnate/once@<3.0.1': '>=3.0.1'
+   yauzl: ^3.2.1
+-  undici: 7.24.1
++  undici: 7.29.0
+   picomatch@<4.0.4: '>=4.0.4'
+   yaml@<2.8.3: '>=2.8.3'
+   smol-toml@<1.6.1: '>=1.6.1'
+   handlebars: '>=4.7.9'
+   path-to-regexp@~0.1.12: 0.1.13
+-  brace-expansion: '>=5.0.6'
++  brace-expansion: '>=5.0.8'
+   ws@>=7.0.0 <7.5.11: 7.5.11
+   ws@>=8.0.0 <8.21.0: 8.21.0
+   form-data@>=2.0.0 <2.5.6: 2.5.6
+@@ -186,7 +186,7 @@ importers:
+         version: 1.2.0
+       http-cookie-agent:
+         specifier: ^7.0.1
+-        version: 7.0.1(tough-cookie@4.1.4)(undici@7.24.1)
++        version: 7.0.1(tough-cookie@4.1.4)(undici@7.29.0)
+       ioredis:
+         specifier: ^5.6.1
+         version: 5.6.1
+@@ -215,8 +215,8 @@ importers:
+         specifier: ^14.1.2
+         version: 14.1.2
+       multer:
+-        specifier: ^2.1.1
+-        version: 2.1.1
++        specifier: 2.2.0
++        version: 2.2.0
+       ollama-ai-provider-v2:
+         specifier: ^3.6.0
+         version: 3.6.0(ai@6.0.86(zod@4.1.12))(zod@4.1.12)
+@@ -257,8 +257,8 @@ importers:
+         specifier: ^16.1.0
+         version: 16.1.0
+       systeminformation:
+-        specifier: ^5.31.6
+-        version: 5.31.6
++        specifier: 5.33.1
++        version: 5.33.1
+       tldts:
+         specifier: ^6.1.75
+         version: 6.1.75
+@@ -272,8 +272,8 @@ importers:
+         specifier: ^5.9.2
+         version: 5.9.2
+       undici:
+-        specifier: 7.24.1
+-        version: 7.24.1
++        specifier: 7.29.0
++        version: 7.29.0
+       uuid:
+         specifier: ^13.0.1
+         version: 13.0.2
+@@ -550,6 +550,7 @@ packages:
+
+   '@clickhouse/client-common@1.18.2':
+     resolution: {integrity: sha512-J0SG6q9V31ydxonglpj9xhNRsUxCsF71iEZ784yldqMYwsHixj/9xHFDgBDX3DuMiDx/kPDfXnf+pimp08wIBA==}
++    deprecated: 'Deprecated: import from @clickhouse/client or @clickhouse/client-web instead.'
+
+   '@clickhouse/client@1.18.2':
+     resolution: {integrity: sha512-fuquQswRSHWM6D079ZeuGqkMOsqtcUPL06UdTnowmoeeYjVrqisfVmvnw8pc3OeKS4kVb91oygb/MfLDiMs0TQ==}
+@@ -2695,9 +2696,9 @@ packages:
+   borsh@0.7.0:
+     resolution: {integrity: sha512-CLCsZGIBCFnPtkNnieW/a8wmreDmfUtjU2m9yHrzPXIlNbqVs0AQrSatSG6vdNYUqdc83tkQi2eHfF98ubzQLA==}
+
+-  brace-expansion@5.0.6:
+-    resolution: {integrity: sha512-kLpxurY4Z4r9sgMsyG0Z9uzsBlgiU/EFKhj/h91/8yHu0edo7XuixOIH3VcJ8kkxs6/jPzoI6U9Vj3WqbMQ94g==}
+-    engines: {node: 18 || 20 || >=22}
++  brace-expansion@5.0.8:
++    resolution: {integrity: sha512-JZyDyq3D4AUifKTPOB7DELf6XsB3WdPuNxCtob1vFXPsSXhdAiHBWJ/tJ8HAc9aH84BK+5JFZLNkJKx3G9kzQg==}
++    engines: {node: 20 || >=22}
+
+   braces@3.0.3:
+     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
+@@ -3302,8 +3303,8 @@ packages:
+   fast-stable-stringify@1.0.0:
+     resolution: {integrity: sha512-wpYMUmFu5f00Sm0cj2pfivpmawLZ0NKdviQ4w9zJeR8JVtOpOxHmLaJuj0vxvGqMJQWyP/COUkF75/57OKyRag==}
+
+-  fast-uri@3.1.2:
+-    resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
++  fast-uri@3.1.4:
++    resolution: {integrity: sha512-8JnbkQ4juDyvYs4mgFGQqg4yCYtFDtUtmp2QIQq11ZZe5CFQ5wcqm1rqDgAh/QdMySuBnPzMUiJUNZG5N/AiQw==}
+
+   fast-xml-builder@1.2.0:
+     resolution: {integrity: sha512-00aAWieqff+ZJhsXA4g1g7M8k+7AYoMUUHF+/zFb5U6Uv/P0Vl4QZo84/IcufzYalLuEj9928bXN9PbbFzMF0Q==}
+@@ -3552,7 +3553,7 @@ packages:
+     engines: {node: '>=20.0.0'}
+     peerDependencies:
+       tough-cookie: ^4.0.0 || ^5.0.0
+-      undici: 7.24.1
++      undici: 7.29.0
+     peerDependenciesMeta:
+       undici:
+         optional: true
+@@ -3718,8 +3719,8 @@ packages:
+   js-tokens@4.0.0:
+     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
+
+-  js-yaml@4.2.0:
+-    resolution: {integrity: sha512-ePWsvanv0DWuDRsW8dnt+R4jQ31SCRCQ7hhNcPXZPsoBZiemuZNYGf7adZdqX2D86j6rvKp3RpCxVTSb8WQlOw==}
++  js-yaml@4.3.0:
++    resolution: {integrity: sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q==}
+     hasBin: true
+
+   jsbn@1.1.0:
+@@ -4041,8 +4042,8 @@ packages:
+   msgpackr@1.11.2:
+     resolution: {integrity: sha512-F9UngXRlPyWCDEASDpTf6c9uNhGPTqnTeLVt7bN+bU1eajoR/8V9ys2BRaV5C/e5ihE6sJ9uPIKaYt6bFuO32g==}
+
+-  multer@2.1.1:
+-    resolution: {integrity: sha512-mo+QTzKlx8R7E5ylSXxWzGoXoZbOsRMpyitcht8By2KHvMbf3tjwosZ/Mu/XYU6UuJ3VZnODIrak5ZrPiPyB6A==}
++  multer@2.2.0:
++    resolution: {integrity: sha512-6rdyFg2kLrMh9Jee7/BMPuV9lEAd7lLW2YUpF9/YxR7njyoUwwQ0ZPh3TaIY50Sw6vlyD2HW3wGOkTS4P79xrQ==}
+     engines: {node: '>= 10.16.0'}
+
+   mute-stream@2.0.0:
+@@ -4734,9 +4735,9 @@ packages:
+   symbol-tree@3.2.4:
+     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
+
+-  systeminformation@5.31.6:
+-    resolution: {integrity: sha512-Uv2b2uGGM6ns+26czgW2cYRabYdnswM0ddSOOlryHOaelzsmDSet1iM/NT7VOYxW8x/BW+HkY+b1Ve2pLTSGSA==}
+-    engines: {node: '>=8.0.0'}
++  systeminformation@5.33.1:
++    resolution: {integrity: sha512-DEN6ICHk3Tk0Uf/hrAHh7xlt7iL5CJFBtPZinA0H62DrGG/KPKqq/Nzj6lCXPS4Ay/sf/14zNnk9LpqKzBIc+w==}
++    engines: {node: '>=10.0.0'}
+     os: [darwin, linux, win32, freebsd, openbsd, netbsd, sunos, android]
+     hasBin: true
+
+@@ -4881,8 +4882,8 @@ packages:
+   undici-types@7.16.0:
+     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
+
+-  undici@7.24.1:
+-    resolution: {integrity: sha512-5xoBibbmnjlcR3jdqtY2Lnx7WbrD/tHlT01TmvqZUFVc9Q1w4+j5hbnapTqbcXITMH1ovjq/W7BkqBilHiVAaA==}
++  undici@7.29.0:
++    resolution: {integrity: sha512-IDxfleLmmbSskfWSUATiN1nfn2rDuvnMOqb5CWR92iIfojA0Ud+ulOAAEQ57LPr9rWmsreUyf5lwyao+7GNNVw==}
+     engines: {node: '>=20.18.1'}
+
+   universal-user-agent@7.0.3:
+@@ -5286,7 +5287,7 @@ snapshots:
+   '@apidevtools/json-schema-ref-parser@15.1.2(@types/json-schema@7.0.15)':
+     dependencies:
+       '@types/json-schema': 7.0.15
+-      js-yaml: 4.2.0
++      js-yaml: 4.3.0
+
+   '@apm-js-collab/code-transformer@0.8.2': {}
+
+@@ -5703,7 +5704,7 @@ snapshots:
+       debug: 4.4.3
+       emnapi: 1.7.1
+       es-toolkit: 1.39.10
+-      js-yaml: 4.2.0
++      js-yaml: 4.3.0
+       semver: 7.7.3
+       typanion: 3.14.0
+     optionalDependencies:
+@@ -7393,7 +7394,7 @@ snapshots:
+   ajv@8.18.0:
+     dependencies:
+       fast-deep-equal: 3.1.3
+-      fast-uri: 3.1.2
++      fast-uri: 3.1.4
+       json-schema-traverse: 1.0.0
+       require-from-string: 2.0.2
+
+@@ -7527,7 +7528,7 @@ snapshots:
+       bs58: 4.0.1
+       text-encoding-utf-8: 1.0.2
+
+-  brace-expansion@5.0.6:
++  brace-expansion@5.0.8:
+     dependencies:
+       balanced-match: 4.0.3
+
+@@ -8049,7 +8050,7 @@ snapshots:
+
+   fast-stable-stringify@1.0.0: {}
+
+-  fast-uri@3.1.2: {}
++  fast-uri@3.1.4: {}
+
+   fast-xml-builder@1.2.0:
+     dependencies:
+@@ -8355,12 +8356,12 @@ snapshots:
+       domutils: 3.1.0
+       entities: 4.5.0
+
+-  http-cookie-agent@7.0.1(tough-cookie@4.1.4)(undici@7.24.1):
++  http-cookie-agent@7.0.1(tough-cookie@4.1.4)(undici@7.29.0):
+     dependencies:
+       agent-base: 7.1.3
+       tough-cookie: 4.1.4
+     optionalDependencies:
+-      undici: 7.24.1
++      undici: 7.29.0
+
+   http-errors@2.0.0:
+     dependencies:
+@@ -8539,7 +8540,7 @@ snapshots:
+
+   js-tokens@4.0.0: {}
+
+-  js-yaml@4.2.0:
++  js-yaml@4.3.0:
+     dependencies:
+       argparse: 2.0.1
+
+@@ -8562,7 +8563,7 @@ snapshots:
+       saxes: 6.0.0
+       symbol-tree: 3.2.4
+       tough-cookie: 6.0.1
+-      undici: 7.24.1
++      undici: 7.29.0
+       w3c-xmlserializer: 5.0.0
+       webidl-conversions: 8.0.1
+       whatwg-mimetype: 5.0.0
+@@ -8603,7 +8604,7 @@ snapshots:
+       fast-glob: 3.3.3
+       formatly: 0.3.0
+       jiti: 2.6.1
+-      js-yaml: 4.2.0
++      js-yaml: 4.3.0
+       minimist: 1.2.8
+       oxc-resolver: 11.13.2
+       picocolors: 1.1.1
+@@ -8812,7 +8813,7 @@ snapshots:
+
+   minimatch@10.2.4:
+     dependencies:
+-      brace-expansion: 5.0.6
++      brace-expansion: 5.0.8
+
+   minimist@1.2.8: {}
+
+@@ -8840,7 +8841,7 @@ snapshots:
+     optionalDependencies:
+       msgpackr-extract: 3.0.3
+
+-  multer@2.1.1:
++  multer@2.2.0:
+     dependencies:
+       append-field: 1.0.0
+       busboy: 1.6.0
+@@ -9567,7 +9568,7 @@ snapshots:
+
+   symbol-tree@3.2.4: {}
+
+-  systeminformation@5.31.6: {}
++  systeminformation@5.33.1: {}
+
+   tdigest@0.1.2:
+     dependencies:
+@@ -9690,7 +9691,7 @@ snapshots:
+
+   undici-types@7.16.0: {}
+
+-  undici@7.24.1: {}
++  undici@7.29.0: {}
+
+   universal-user-agent@7.0.3: {}
+
+diff --git a/apps/api/sharedLibs/go-html-to-md/go.mod b/apps/api/sharedLibs/go-html-to-md/go.mod
+index 75a8d64..6f1cfa6 100644
+--- a/apps/api/sharedLibs/go-html-to-md/go.mod
++++ b/apps/api/sharedLibs/go-html-to-md/go.mod
+@@ -1,8 +1,6 @@
+ module html-to-markdown.go
+
+-go 1.23.0
+-
+-toolchain go1.24.0
++go 1.25.0
+
+ require github.com/firecrawl/html-to-markdown v0.0.0-20260312013131-1af9901a5d61
+
+@@ -10,7 +8,7 @@ require (
+ 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
+ 	github.com/andybalholm/cascadia v1.3.3 // indirect
+ 	github.com/kr/pretty v0.3.0 // indirect
+-	golang.org/x/net v0.41.0 // indirect
++	golang.org/x/net v0.56.0 // indirect
+ 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
+ 	gopkg.in/yaml.v2 v2.4.0 // indirect
+ )
+diff --git a/apps/api/sharedLibs/go-html-to-md/go.sum b/apps/api/sharedLibs/go-html-to-md/go.sum
+index 26a4b4c..f515760 100644
+--- a/apps/api/sharedLibs/go-html-to-md/go.sum
++++ b/apps/api/sharedLibs/go-html-to-md/go.sum
+@@ -45,8 +45,8 @@ golang.org/x/net v0.15.0/go.mod h1:idbUs1IY1+zTqbi8yxTbhexhEEk5ur9LInksu6HrEpk=
+ golang.org/x/net v0.21.0/go.mod h1:bIjVDfnllIU7BJ2DNgfnXvpSvtn8VRwhlsaeUTyUS44=
+ golang.org/x/net v0.25.0/go.mod h1:JkAGAh7GEvH74S6FOH42FLoXpXbE/aqXSrIQjXgsiwM=
+ golang.org/x/net v0.33.0/go.mod h1:HXLR5J+9DxmrqMwG9qjGCxZ+zKXxBru04zlTvWlWuN4=
+-golang.org/x/net v0.41.0 h1:vBTly1HeNPEn3wtREYfy4GZ/NECgw2Cnl+nK6Nz3uvw=
+-golang.org/x/net v0.41.0/go.mod h1:B/K4NNqkfmg07DQYrbwvSluqCJOOXwUjeb/5lOisjbA=
++golang.org/x/net v0.56.0 h1:Rw8j/hFzGvJUZwNBXnAtf5sVDVt+65SK2C7IxCxZt5o=
++golang.org/x/net v0.56.0/go.mod h1:D3Ku6r+V6JROoZK144D2XfMHFcMq/0zSfLelVTCFKec=
+ golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+ golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+ golang.org/x/sync v0.1.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+diff --git a/apps/playwright-service-ts/Dockerfile b/apps/playwright-service-ts/Dockerfile
+index 47217e2..be9b9fc 100644
+--- a/apps/playwright-service-ts/Dockerfile
++++ b/apps/playwright-service-ts/Dockerfile
+@@ -1,21 +1,57 @@
+-FROM node:18-slim
++ARG NODE22_BASE_IMAGE
++ARG PLAYWRIGHT_BROWSER_SOURCE_IMAGE
++ARG WOLFI_RUNTIME_IMAGE
++
++FROM ${NODE22_BASE_IMAGE} AS build
+
+ WORKDIR /usr/src/app
+-COPY package*.json ./
+-RUN npm install
++
++ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
++
++COPY package.json pnpm-lock.yaml ./
++RUN corepack enable \
++    && corepack prepare pnpm@10.34.5 --activate \
++    && pnpm install --frozen-lockfile
+
+ COPY . .
+
+-ENV PLAYWRIGHT_BROWSERS_PATH=/usr/local/share/playwright
++RUN pnpm run build \
++    && pnpm prune --prod --ignore-scripts
++
++FROM ${PLAYWRIGHT_BROWSER_SOURCE_IMAGE} AS browser
++
++# Fetch byte-locked Wolfi runtime packages.
++FROM browser AS wolfi-playwright-packages
++WORKDIR /wolfi-apks
++
++COPY package-locks/playwright-wolfi.sha256 packages.sha256
++RUN set -eux; \
++    while read -r _package_sha package_file; do \
++      curl --fail --location --silent --show-error \
++        --proto '=https' --tlsv1.2 \
++        --output "${package_file}" \
++        "https://apk.cgr.dev/chainguard/x86_64/${package_file}"; \
++    done < packages.sha256; \
++    sha256sum -c packages.sha256
++
++FROM ${WOLFI_RUNTIME_IMAGE} AS runtime
++
++COPY --from=wolfi-playwright-packages /wolfi-apks/*.apk /wolfi-apks/
++RUN apk add --repositories-file /dev/null --no-network --allow-untrusted /wolfi-apks/*.apk \
++    && rm -rf /wolfi-apks
++
++WORKDIR /usr/src/app
+
+-# Install Playwright dependencies
+-RUN npx playwright install chromium --with-deps
++ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
++    HOME=/home/nonroot \
++    PORT=3000
+
+-RUN npm run build
++COPY --from=build --chown=65532:65532 /usr/src/app/node_modules ./node_modules
++COPY --from=build --chown=65532:65532 /usr/src/app/dist ./dist
++COPY --from=browser /ms-playwright/chromium_headless_shell-1234 /ms-playwright/chromium_headless_shell-1234
+
+-ARG PORT
+-ENV PORT=${PORT}
++USER 65532:65532
+
+-EXPOSE ${PORT}
++EXPOSE 3000
+
+-CMD [ "npm", "start" ]
++CMD ["/usr/bin/node", "dist/api.js"]
+diff --git a/apps/playwright-service-ts/package.json b/apps/playwright-service-ts/package.json
+index 1a7e5f8..f6be8e4 100644
+--- a/apps/playwright-service-ts/package.json
++++ b/apps/playwright-service-ts/package.json
+@@ -15,7 +15,7 @@
+     "dotenv": "^16.4.5",
+     "express": "^5.2.1",
+     "ipaddr.js": "^2.3.0",
+-    "playwright": "^1.58.1",
++    "playwright": "1.62.0",
+     "user-agents": "^1.1.669"
+   },
+   "devDependencies": {
+diff --git a/apps/playwright-service-ts/pnpm-lock.yaml b/apps/playwright-service-ts/pnpm-lock.yaml
+index 72adf30..93b8c54 100644
+--- a/apps/playwright-service-ts/pnpm-lock.yaml
++++ b/apps/playwright-service-ts/pnpm-lock.yaml
+@@ -23,8 +23,8 @@ importers:
+         specifier: ^2.3.0
+         version: 2.3.0
+       playwright:
+-        specifier: ^1.58.1
+-        version: 1.58.1
++        specifier: 1.62.0
++        version: 1.62.0
+       user-agents:
+         specifier: ^1.1.669
+         version: 1.1.669
+@@ -449,14 +449,14 @@ packages:
+   path-to-regexp@8.4.0:
+     resolution: {integrity: sha512-PuseHIvAnz3bjrM2rGJtSgo1zjgxapTLZ7x2pjhzWwlp4SJQgK3f3iZIQwkpEnBaKz6seKBADpM4B4ySkuYypg==}
+
+-  playwright-core@1.58.1:
+-    resolution: {integrity: sha512-bcWzOaTxcW+VOOGBCQgnaKToLJ65d6AqfLVKEWvexyS3AS6rbXl+xdpYRMGSRBClPvyj44njOWoxjNdL/H9UNg==}
+-    engines: {node: '>=18'}
++  playwright-core@1.62.0:
++    resolution: {integrity: sha512-nsNRyq0r2zsG8AcRHWknc9QRA5XCueC7gWMrs+Gx2tlZn9hcl8zudfh00lhJPY1DE7NmZ6bDsT9g2yey8mXljA==}
++    engines: {node: '>=20'}
+     hasBin: true
+
+-  playwright@1.58.1:
+-    resolution: {integrity: sha512-+2uTZHxSCcxjvGc5C891LrS1/NlxglGxzrC4seZiVjcYVQfUa87wBL6rTDqzGjuoWNjnBzRqKmF6zRYGMvQUaQ==}
+-    engines: {node: '>=18'}
++  playwright@1.62.0:
++    resolution: {integrity: sha512-Z14dG305dgaLu6foB1TXQagFiW8JfSUIUaUuPaKQ6NtBPKF1P/qXcqfh6c6K/icPqdy37JmjbiBXf6JNg6Sylw==}
++    engines: {node: '>=20'}
+     hasBin: true
+
+   proxy-addr@2.0.7:
+@@ -920,11 +920,11 @@ snapshots:
+
+   path-to-regexp@8.4.0: {}
+
+-  playwright-core@1.58.1: {}
++  playwright-core@1.62.0: {}
+
+-  playwright@1.58.1:
++  playwright@1.62.0:
+     dependencies:
+-      playwright-core: 1.58.1
++      playwright-core: 1.62.0
+     optionalDependencies:
+       fsevents: 2.3.2
+

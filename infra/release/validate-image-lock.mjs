@@ -161,6 +161,12 @@ export function validateCoreImageInventory(inventory, root = repositoryRoot) {
       ) {
         errors.push(`${field} must bind the reviewed Firecrawl source lock`)
       }
+      if (
+        component.sourcePackage !==
+        "infra/firecrawl/release/source-package.json"
+      ) {
+        errors.push(`${field} must bind the Firecrawl release source package`)
+      }
     } else {
       errors.push(`${field} has an unsupported image kind`)
     }

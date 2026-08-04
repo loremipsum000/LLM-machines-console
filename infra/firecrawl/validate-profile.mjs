@@ -324,6 +324,18 @@ export function validateCompose(source) {
     }
   }
 
+  const apiBlock = services.get("firecrawl-api") ?? ""
+  if (
+    !/^ {4}command: \["node", "dist\/src\/llm-machines-server\.js"\]$/m.test(
+      apiBlock,
+    )
+  ) {
+    fail(errors, "firecrawl-api must launch the reviewed reduced entrypoint")
+  }
+  if (/harness\.js|--start-docker/.test(source)) {
+    fail(errors, "compose must not launch the broad upstream harness")
+  }
+
   return errors
 }
 
@@ -408,18 +420,25 @@ export function validateSourceLock(source) {
   }
 
   const exact = [
-    [lock.schema, "llm-machines.firecrawl-source-lock.v1", "schema"],
-    [lock.status, "source-candidate-not-release-admitted", "candidate status"],
+    [lock.schema, "llm-machines.firecrawl-source-lock.v2", "schema"],
     [
-      lock.checkpoint?.commit,
+      lock.status,
+      "source-ready-not-release-admitted",
+      "source readiness status",
+    ],
+    [lock.sourceOnly, true, "source-only boundary"],
+    [lock.runtimeQualified, false, "runtime qualification"],
+    [
+      lock.historicalCharacterization?.commit,
       "ff74f3c94c563627929af31c46d48dda8e7d6192",
-      "checkpoint commit",
+      "historical characterization commit",
     ],
     [
-      lock.checkpoint?.tree,
+      lock.historicalCharacterization?.tree,
       "8a978eb0f6d0ef04a896ec29f138a84a7cf14d79",
-      "checkpoint tree",
+      "historical characterization tree",
     ],
+    [lock.historicalCharacterization?.admitted, false, "historical admission"],
     [lock.upstream?.tag, "v2.11.0", "upstream tag"],
     [
       lock.upstream?.commit,
@@ -438,34 +457,34 @@ export function validateSourceLock(source) {
       "license digest",
     ],
     [
-      lock.historicalPatchEvidence?.admittedToThisProfile,
-      false,
-      "historical patch admission",
+      lock.releaseSource?.manifest,
+      "infra/firecrawl/release/source-package.json",
+      "release source manifest",
     ],
     [
-      lock.historicalPatchEvidence?.sha256?.runtimePolicy,
-      "eb110989c841107d1c55ba50ef4ae3e3710bb27b27fde3dc8881f34b7e3dabdd",
-      "historical runtime patch digest",
+      lock.releaseSource?.validator,
+      "infra/firecrawl/release/validate-source-package.mjs",
+      "release source validator",
     ],
     [
-      lock.historicalPatchEvidence?.sha256?.digestBuildInputs,
-      "70e4fa4f5448cfa76011e84089ba63c02a0fe04f4060533b30a6afeb13f14ab8",
-      "historical build-input patch digest",
-    ],
-    [
-      lock.historicalPatchEvidence?.sha256?.securityHardening,
-      "079b5ab71d0f3a7a7d7afca0a2deb3008f7c7e77baf00ac597a40a804a603fac",
-      "historical hardening patch digest",
-    ],
-    [
-      lock.historicalPatchEvidence?.sha256?.cargoLock,
-      "dd723e1829fb911aa8c3ccc4e1d06690ffd91a5fbc8d67cfa3b0a63e377ab2ef",
-      "historical Cargo lock digest",
+      lock.releaseSource?.assembler,
+      "infra/firecrawl/release/assemble-source-packet.mjs",
+      "release source assembler",
     ],
     [lock.releaseAdmissionOwner, "PR-12", "release admission owner"],
   ]
   for (const [actual, expected, label] of exact) {
     if (actual !== expected) fail(errors, `source lock has unexpected ${label}`)
+  }
+
+  if (
+    JSON.stringify(lock.releaseSource?.orderedPatches) !==
+    JSON.stringify([
+      "infra/firecrawl/release/patches/build-hardening.patch",
+      "infra/firecrawl/release/patches/reduced-runtime.patch",
+    ])
+  ) {
+    fail(errors, "source lock has unexpected reviewed patch order")
   }
 
   const omitted = new Set(lock.reducedRuntime?.omitted ?? [])

@@ -32,7 +32,7 @@ services:
       firecrawl-egress:
         condition: service_healthy
     user: "65532:65532"
-    command: ["node", "dist/src/harness.js", "--start-docker"]
+    command: ["node", "dist/src/llm-machines-server.js"]
     environment:
       HOST: 0.0.0.0
       PORT: "3002"
