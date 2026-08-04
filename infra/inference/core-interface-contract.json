@@ -1,0 +1,61 @@
+{
+  "apiVersion": "inference-core.llm-machines/v1",
+  "kind": "CoreInferenceInterfaceContract",
+  "coreAppliance": {
+    "baseline": {
+      "vcpu": 8,
+      "memoryMiB": 32768,
+      "localDiskGiB": 100
+    },
+    "hosts": [
+      "console-web",
+      "console-bff",
+      "product-edge",
+      "keycloak",
+      "litellm-private",
+      "product-postgresql",
+      "prometheus",
+      "alertmanager",
+      "grafana-private",
+      "exporters",
+      "lifecycle",
+      "firecrawl-default-off"
+    ],
+    "localDiskExclusions": [
+      "customer-backup-repository",
+      "bulk-model-weights",
+      "inference-accelerator-storage"
+    ],
+    "backupTarget": "separate-customer-owned-restic-target"
+  },
+  "publicApi": [
+    {
+      "method": "GET",
+      "path": "/api/app-gateway/v1/models"
+    },
+    {
+      "method": "POST",
+      "path": "/api/app-gateway/v1/chat/completions"
+    }
+  ],
+  "applicationCredentials": [
+    "per-application-static-inference-key",
+    "per-application-oauth-client-credentials",
+    "separate-per-application-firecrawl-key"
+  ],
+  "auditLinkage": [
+    "keycloak-subject-id",
+    "application-id",
+    "credential-record-id"
+  ],
+  "consoleSections": [
+    "overview",
+    "applications",
+    "inference",
+    "hardware",
+    "team",
+    "activity-audit",
+    "settings"
+  ],
+  "profileInvariant": true
+}
