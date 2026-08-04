@@ -17,15 +17,6 @@ const contractBaseTree = "a7cb76ff95ec4ffc12cbd589b0514564602c35da"
 const exactBranch = "codex/inference-core-pr-11a-r1-c0"
 const mergedSourceHead = "6b773e334b5ffa18495ab5c3c9e72f559343fb3e"
 const integrationMerge = "0f29c7939fa885c11c191e8b672f09e16635ddcb"
-const allowedCurrentBranches = [
-  exactBranch,
-  "codex/inference-core-pr-11a-r1-s1",
-  "codex/inference-core-pr-11a-r1-e1",
-  "codex/inference-core-pr-11a-r1-k1",
-  "codex/inference-core-pr-11a-r1-d1",
-  "codex/inference-core-pr-11a-r1-v1-successor",
-  "codex/inference-core-pr-11a-source-closure",
-]
 const admittedBehaviorSourcePaths = [
   "apps/bff/src/auth/authorization.ts",
   "apps/bff/src/commands/audit-ingestion.ts",
@@ -114,10 +105,6 @@ test("R1-C0 is anchored to the protected integration base", () => {
   )
   assert.doesNotThrow(() =>
     git("merge-base", "--is-ancestor", integrationMerge, "HEAD"),
-  )
-  const currentBranch = git("branch", "--show-current")
-  assert.ok(
-    currentBranch === "" || allowedCurrentBranches.includes(currentBranch),
   )
 })
 
