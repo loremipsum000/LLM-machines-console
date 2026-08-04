@@ -64,7 +64,7 @@ test("clean seed output is create-only", () => {
   assert.throws(() => generateCleanSeedEvidence(output, { root }), /EEXIST/)
 })
 
-test("lowercase, multiline, or unterminated unapproved inserts fail", () => {
+test("unapproved data-writing SQL fails regardless of case or layout", () => {
   const migration = readFileSync(
     resolve(root, "infra/migrations/0000_inference_core.sql"),
     "utf8",
@@ -73,6 +73,15 @@ test("lowercase, multiline, or unterminated unapproved inserts fail", () => {
     "\ninsert into admin.console_settings (id) values ('other');\n",
     "\nInSeRt\nInTo admin.console_settings (id) VALUES ('other');\n",
     "\ninsert into admin.console_settings (id) values ('other')\n",
+    "\nupdate admin.console_settings set organization_name = 'customer-data';\n",
+    "\nDeLeTe\nFrOm admin.console_settings where id = 'singleton';\n",
+    "\nmerge into admin.console_settings using fixture on true when matched then delete;\n",
+    "\ntruncate table admin.console_settings;\n",
+    "\nselect * into admin.customer_copy from admin.console_settings;\n",
+    "\ndo $$ begin raise notice 'fixture'; end $$;\n",
+    "\ncall mutate_customer_state();\n",
+    "\nwith changed as (select 1) update admin.console_settings set organization_name = 'x';\n",
+    "\ncreate table admin.customer_copy as select * from admin.console_settings;\n",
   ]) {
     assert.throws(
       () => validateCleanDatabaseMigration(`${migration}${addition}`),

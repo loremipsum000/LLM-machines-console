@@ -106,10 +106,23 @@ export function validateCleanDatabaseMigration(migration) {
   const normalizedAllowed = [...allowedInitialStateRows].map(normalize).sort()
   const normalizedActual = statements.map(normalize).sort()
   const remainder = migration.replaceAll(/\bINSERT\s+INTO\b[\s\S]*?;/gi, "")
+  const remainingStatements = remainder
+    .split(";")
+    .map((statement) => statement.trim().replaceAll(/\s+/g, " "))
+    .filter(Boolean)
+  const writesData = (statement) =>
+    /^(?:update\b|delete\s+from\b|merge\s+into\b|truncate\b|copy\b|do\b|call\b)/i.test(
+      statement,
+    ) ||
+    /^select\b[\s\S]*\binto\b/i.test(statement) ||
+    /^with\b[\s\S]*\b(?:insert\s+into|update|delete\s+from|merge\s+into)\b/i.test(
+      statement,
+    ) ||
+    /^create\s+(?:temporary\s+)?table\b[\s\S]*\bas\s+select\b/i.test(statement)
   if (
     JSON.stringify(normalizedActual) !== JSON.stringify(normalizedAllowed) ||
     /\bINSERT\s+INTO\b/i.test(remainder) ||
-    /\bCOPY\s+[^\s]+\s+FROM\b/i.test(migration)
+    remainingStatements.some(writesData)
   ) {
     fail("database seed contains an unapproved persisted row")
   }

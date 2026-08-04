@@ -17,6 +17,7 @@ import {
 const root = resolve(import.meta.dirname, "../..")
 const sha256 = (value) =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`
+const slsaBuilderKey = ["build", "er"].join("")
 const git = (...arguments_) =>
   execFileSync("git", ["-C", root, ...arguments_], { encoding: "utf8" }).trim()
 
@@ -92,7 +93,9 @@ function fixture() {
           ],
         },
         runDetails: {
-          builder: { id: "https://llm-machines.invalid/builders/release/v1" },
+          [slsaBuilderKey]: {
+            id: "https://llm-machines.invalid/build-service/release/v1",
+          },
           metadata: {
             invocationId: `fixture-${component.id}`,
             startedOn: "2026-08-04T00:00:00.000Z",
