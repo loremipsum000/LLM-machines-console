@@ -649,10 +649,14 @@ reviewed source head while a governance-only package head preceded PR 17 and a
 separate D1 hygiene successor preceded R1-H1. The aggregate evidence binds all
 of those identities without rewriting either historical record.
 
-R1-V1 successor validation is pending on the initial source candidate. PR-11A
-remains unaccepted and not revision-bound. Q0 remains unstarted. PR-12 remains
-unstarted. No remote ref, runtime, deployment, Grafana qualification, or
-Product main transition is authorized by this source artifact.
+R1-V1 successor local integrated and clean detached fresh-clone source gates
+passed at `da0ace0497321646713d1adf3f952565d6fb3708`, tree
+`1246613089b4898b7e18479dba628f75f3a01a07`. The final governance-only
+candidate still requires independent read-only review and explicit approval
+before protected admission. PR-11A remains unaccepted, not revision-bound, and
+not runtime-qualified. Q0 remains unstarted. PR-12 remains unstarted. No remote
+ref, runtime, deployment, Grafana qualification, or Product main transition is
+authorized by this source artifact.
 
 PR-11 permits one environment-template transition: `.env.example` deletes the
 exact retired `INFERENCE_MODEL_UPDATE_*` block from the accepted base. It may

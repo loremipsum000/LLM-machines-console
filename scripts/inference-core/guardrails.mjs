@@ -462,16 +462,19 @@ export const pr11aRevisionEvidencePaths = [
   "scripts/inference-core/pr11a-r1-v1-boundaries.test.mjs",
   "scripts/inference-core/pr11a-r1-v1-contract-revision.mjs",
 ]
-export const pr11aR1V1EvaluatedSourceCommit = null
-export const pr11aR1V1EvaluatedSourceTree = null
+export const pr11aR1V1EvaluatedSourceCommit =
+  "da0ace0497321646713d1adf3f952565d6fb3708"
+export const pr11aR1V1EvaluatedSourceTree =
+  "1246613089b4898b7e18479dba628f75f3a01a07"
 export const pr11aR1V1Validation = {
-  localIntegratedGate: "pending",
-  cleanDetachedFreshCloneGate: "pending",
-  independentReview: "pending",
-  cleanup: "not-started",
+  localIntegratedGate: "pass-at-evaluated-source",
+  cleanDetachedFreshCloneGate: "pass-at-evaluated-source",
+  independentReview: "pending-final-candidate-review",
+  cleanup: "pass-temporary-clone-removed",
   behavioralDefectFound: false,
   behaviorRepairInsideV1: false,
-  recommendation: "hold-before-protected-admission",
+  recommendation:
+    "source-gates-passed-awaiting-final-independent-review-and-protected-admission",
 }
 export const pr11aR1S1Pr09NativeIdentifierSuccessorEvidence = {
   path: "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",

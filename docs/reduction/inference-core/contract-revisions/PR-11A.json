@@ -98,7 +98,7 @@
         "after": [
           {
             "path": "docs/reduction/inference-core/decision-register.md",
-            "sha256": "f2bf4ab153e2eb474af892821ce4fe50fddeb68d8bbb33500e5fb23dc1e2c4ac"
+            "sha256": "926b96defc88cbbfe1e12e9df9149d731e9c762749eb9111bf3d82d2e88d0112"
           }
         ]
       },
@@ -128,7 +128,7 @@
         "after": [
           {
             "path": "docs/reduction/inference-core/validation-register.md",
-            "sha256": "9129d560a4dacbdbc19791a2ba47fc2a555670c6e3abf3baff6115b7022cef35"
+            "sha256": "89b65cf76e9dfd608f4fd353136ffefd333c4c14982c6fd98ebc4681b5936c38"
           }
         ]
       },
@@ -188,7 +188,7 @@
         "after": [
           {
             "path": "scripts/inference-core/guardrails.mjs",
-            "sha256": "f8383580a7db611742317b30021802514dd9f1781dd9762caedc25956e1c92ae"
+            "sha256": "85c78b6386d1aede70f55f9a17f019a733912268d1bf4b040db02b10d854d711"
           }
         ]
       },
@@ -3011,7 +3011,7 @@
           {
             "path": "docs/reduction/inference-core/README.md",
             "mode": "100644",
-            "objectId": "1258e7f10ecb8e86566e8c29e63dc8d829b0b4d0"
+            "objectId": "1407751c36b265a4aefd0bbf8656d01d1845eb3b"
           }
         ]
       },
@@ -3028,7 +3028,7 @@
           {
             "path": "docs/reduction/inference-core/decision-register.md",
             "mode": "100644",
-            "objectId": "c34e72aa51a45406140e855fdb3ec3b3de5a4981"
+            "objectId": "4ef213e30b111412f0f84e59670e5b8e90fbef4e"
           }
         ]
       },
@@ -3128,7 +3128,7 @@
           {
             "path": "docs/reduction/inference-core/validation-register.md",
             "mode": "100644",
-            "objectId": "ea6200dc63050fc323af12cd6912ebf4e9cc20c1"
+            "objectId": "ac91eeaf42e1565ac3586a03bb4686cdd83bab83"
           }
         ]
       },
@@ -3668,7 +3668,7 @@
           {
             "path": "scripts/inference-core/guardrails.mjs",
             "mode": "100644",
-            "objectId": "028fcecf03c4ddd0d2dd738c711c4706b3325845"
+            "objectId": "11c4237a9b0d63c83b4bcb79bd2562c69066ff83"
           }
         ]
       },
@@ -3953,15 +3953,15 @@
   "evidenceFiles": [
     {
       "path": "docs/reduction/inference-core/pr-11a-r1-v1-aggregate-evidence.json",
-      "sha256": "c79a5cc2f8e67f31d6db5f77eb6b5085a33b77f14ea7cc6b4cf7c07a63d6268e"
+      "sha256": "5db38fac92fa051fba57123cfdaf9979ca3725357436ad2c5264f0fcbfa3843b"
     },
     {
       "path": "docs/reduction/inference-core/README.md",
-      "sha256": "ddc76711f2b2ec3ed4815e3d10b34636207d10dbe676a9291540bd0bad091780"
+      "sha256": "3e8e6aaafe0e78326e11aade75be08d42a70998eebe969e9f62aa8814e432425"
     },
     {
       "path": "docs/reduction/inference-core/decision-register.md",
-      "sha256": "f2bf4ab153e2eb474af892821ce4fe50fddeb68d8bbb33500e5fb23dc1e2c4ac"
+      "sha256": "926b96defc88cbbfe1e12e9df9149d731e9c762749eb9111bf3d82d2e88d0112"
     },
     {
       "path": "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json",
@@ -3989,7 +3989,7 @@
     },
     {
       "path": "docs/reduction/inference-core/validation-register.md",
-      "sha256": "9129d560a4dacbdbc19791a2ba47fc2a555670c6e3abf3baff6115b7022cef35"
+      "sha256": "89b65cf76e9dfd608f4fd353136ffefd333c4c14982c6fd98ebc4681b5936c38"
     },
     {
       "path": "scripts/inference-core/pr11a-r1-v1-boundaries.test.mjs",

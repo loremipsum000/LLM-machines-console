@@ -2007,15 +2007,15 @@
     "sourceFingerprints": [
       {
         "path": "docs/reduction/inference-core/README.md",
-        "sha256": "ddc76711f2b2ec3ed4815e3d10b34636207d10dbe676a9291540bd0bad091780"
+        "sha256": "3e8e6aaafe0e78326e11aade75be08d42a70998eebe969e9f62aa8814e432425"
       },
       {
         "path": "docs/reduction/inference-core/decision-register.md",
-        "sha256": "f2bf4ab153e2eb474af892821ce4fe50fddeb68d8bbb33500e5fb23dc1e2c4ac"
+        "sha256": "926b96defc88cbbfe1e12e9df9149d731e9c762749eb9111bf3d82d2e88d0112"
       },
       {
         "path": "docs/reduction/inference-core/validation-register.md",
-        "sha256": "9129d560a4dacbdbc19791a2ba47fc2a555670c6e3abf3baff6115b7022cef35"
+        "sha256": "89b65cf76e9dfd608f4fd353136ffefd333c4c14982c6fd98ebc4681b5936c38"
       },
       {
         "path": "package.json",
@@ -2023,7 +2023,7 @@
       },
       {
         "path": "scripts/inference-core/guardrails.mjs",
-        "sha256": "f8383580a7db611742317b30021802514dd9f1781dd9762caedc25956e1c92ae"
+        "sha256": "85c78b6386d1aede70f55f9a17f019a733912268d1bf4b040db02b10d854d711"
       },
       {
         "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
@@ -2123,15 +2123,15 @@
     }
   ],
   "validation": {
-    "evaluatedSourceCommit": null,
-    "evaluatedSourceTree": null,
-    "localIntegratedGate": "pending",
-    "cleanDetachedFreshCloneGate": "pending",
-    "independentReview": "pending",
-    "cleanup": "not-started",
+    "evaluatedSourceCommit": "da0ace0497321646713d1adf3f952565d6fb3708",
+    "evaluatedSourceTree": "1246613089b4898b7e18479dba628f75f3a01a07",
+    "localIntegratedGate": "pass-at-evaluated-source",
+    "cleanDetachedFreshCloneGate": "pass-at-evaluated-source",
+    "independentReview": "pending-final-candidate-review",
+    "cleanup": "pass-temporary-clone-removed",
     "behavioralDefectFound": false,
     "behaviorRepairInsideV1": false,
-    "recommendation": "hold-before-protected-admission",
+    "recommendation": "source-gates-passed-awaiting-final-independent-review-and-protected-admission",
     "commands": [
       "corepack pnpm install --frozen-lockfile",
       "corepack pnpm exec biome check .",
