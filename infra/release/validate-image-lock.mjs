@@ -2,6 +2,11 @@ import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+  canonicalJson,
+  sha256 as profileSha256,
+  validateDeliveryProfile,
+} from "../inference/validate-profile.mjs"
 
 const directory = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(directory, "../..")
@@ -58,6 +63,26 @@ function validateReadableVersion(errors, value, field) {
   }
 }
 
+function validateExactObjectKeys(errors, value, expected, field) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    errors.push(`${field} must be an object`)
+    return
+  }
+  const actual = Object.keys(value).sort()
+  const wanted = [...expected].sort()
+  if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
+    errors.push(`${field} keys must be exactly ${wanted.join(", ")}`)
+  }
+}
+
+function appendValidation(errors, field, validate) {
+  try {
+    errors.push(...validate().map((error) => `${field}: ${error}`))
+  } catch {
+    errors.push(`${field} is malformed`)
+  }
+}
+
 export function readCoreImageInventory(root = repositoryRoot) {
   return readJson(resolve(root, "infra/release/core-image-inventory.json"))
 }
@@ -66,6 +91,10 @@ export function coreInventorySha256(root = repositoryRoot) {
   return sha256(
     readFileSync(resolve(root, "infra/release/core-image-inventory.json")),
   )
+}
+
+export function canonicalDocumentSha256(value) {
+  return profileSha256(canonicalJson(value))
 }
 
 export function validateCoreImageInventory(inventory, root = repositoryRoot) {
@@ -295,8 +324,90 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
   return errors
 }
 
-export function validateInferenceArtifactLock(lock) {
+export function validateInferenceArtifactLock(lock, documents = {}) {
   const errors = []
+  const root = documents?.root ?? repositoryRoot
+  const profile = documents?.profile
+  const rollbackProfile = documents?.rollbackProfile
+  const coreLock = documents?.coreLock
+  const inventory = documents?.inventory ?? readCoreImageInventory(root)
+  const coreContract = readJson(
+    resolve(root, "infra/inference/core-interface-contract.json"),
+  )
+
+  validateExactObjectKeys(
+    errors,
+    lock,
+    [
+      "schema",
+      "status",
+      "profile",
+      "compatibleCoreRelease",
+      "engine",
+      "model",
+      "rollback",
+    ],
+    "Inference artifact lock",
+  )
+  validateExactObjectKeys(
+    errors,
+    lock?.profile,
+    ["id", "revision", "contentSha256"],
+    "Inference artifact lock profile",
+  )
+  validateExactObjectKeys(
+    errors,
+    lock?.compatibleCoreRelease,
+    ["version", "coreImageLockSha256"],
+    "Inference artifact lock Core release",
+  )
+  validateExactObjectKeys(
+    errors,
+    lock?.engine,
+    [
+      "name",
+      "version",
+      "sourceCommit",
+      "repository",
+      "imageDigest",
+      "platform",
+      "platformDigest",
+      "sbomSha256",
+      "provenanceSha256",
+    ],
+    "Inference artifact lock engine",
+  )
+  validateExactObjectKeys(
+    errors,
+    lock?.engine?.platform,
+    ["os", "architecture", "acceleratorBackend"],
+    "Inference artifact lock engine platform",
+  )
+  validateExactObjectKeys(
+    errors,
+    lock?.model,
+    [
+      "source",
+      "revision",
+      "artifactManifestSha256",
+      "weightsSha256",
+      "license",
+    ],
+    "Inference artifact lock model",
+  )
+  validateExactObjectKeys(
+    errors,
+    lock?.rollback,
+    [
+      "profileId",
+      "profileRevision",
+      "profileContentSha256",
+      "engineImageDigest",
+      "modelWeightsSha256",
+    ],
+    "Inference artifact lock rollback",
+  )
+
   if (lock?.schema !== "llm-machines.inference-artifact-lock.v1") {
     errors.push("Inference artifact lock schema is not v1")
   }
@@ -320,7 +431,7 @@ export function validateInferenceArtifactLock(lock) {
     ["engine provenance", lock?.engine?.provenanceSha256],
     ["model manifest", lock?.model?.artifactManifestSha256],
     ["model weights", lock?.model?.weightsSha256],
-    ["rollback lock", lock?.rollback?.artifactLockSha256],
+    ["rollback profile", lock?.rollback?.profileContentSha256],
     ["rollback engine", lock?.rollback?.engineImageDigest],
     ["rollback model", lock?.rollback?.modelWeightsSha256],
   ]) {
@@ -334,6 +445,164 @@ export function validateInferenceArtifactLock(lock) {
     sourceRegistryPattern.test(lock.engine.repository)
   ) {
     errors.push("Inference engine must resolve from an approved private mirror")
+  }
+
+  if (!profile) {
+    errors.push("Inference artifact lock requires the actual delivery profile")
+  } else {
+    appendValidation(errors, "Delivery profile", () =>
+      validateDeliveryProfile(profile, coreContract),
+    )
+    if (lock?.profile?.id !== profile?.metadata?.profileId) {
+      errors.push("Inference artifact lock profile ID differs")
+    }
+    if (
+      !Number.isInteger(lock?.profile?.revision) ||
+      lock.profile.revision !== profile?.metadata?.revision
+    ) {
+      errors.push("Inference artifact lock profile revision differs")
+    }
+    if (lock?.profile?.contentSha256 !== canonicalDocumentSha256(profile)) {
+      errors.push("Inference artifact lock profile content hash differs")
+    }
+
+    const expectedPlatform = {
+      os: profile?.engine?.image?.platform?.os,
+      architecture: profile?.engine?.image?.platform?.architecture,
+      acceleratorBackend: profile?.accelerator?.backend,
+    }
+    for (const [field, actual, expected] of [
+      ["version", lock?.engine?.version, profile?.engine?.contractVersion],
+      [
+        "source commit",
+        lock?.engine?.sourceCommit,
+        profile?.engine?.sourceCommit,
+      ],
+      [
+        "repository",
+        lock?.engine?.repository,
+        profile?.engine?.image?.privateRegistryMirror,
+      ],
+      [
+        "image digest",
+        lock?.engine?.imageDigest,
+        profile?.engine?.image?.digest,
+      ],
+      [
+        "platform digest",
+        lock?.engine?.platformDigest,
+        profile?.engine?.image?.digest,
+      ],
+      ["SBOM", lock?.engine?.sbomSha256, profile?.engine?.image?.sbomDigest],
+      [
+        "provenance",
+        lock?.engine?.provenanceSha256,
+        profile?.engine?.image?.provenanceDigest,
+      ],
+      ["model source", lock?.model?.source, profile?.model?.source],
+      ["model revision", lock?.model?.revision, profile?.model?.revision],
+      [
+        "model manifest",
+        lock?.model?.artifactManifestSha256,
+        profile?.model?.manifestDigest,
+      ],
+      [
+        "model weights",
+        lock?.model?.weightsSha256,
+        profile?.model?.artifactDigest,
+      ],
+      ["model license", lock?.model?.license, profile?.model?.licenseSpdx],
+    ]) {
+      if (actual !== expected) {
+        errors.push(`Inference artifact lock ${field} differs from profile`)
+      }
+    }
+    if (
+      canonicalJson(lock?.engine?.platform) !== canonicalJson(expectedPlatform)
+    ) {
+      errors.push("Inference artifact lock platform differs from profile")
+    }
+  }
+
+  appendValidation(errors, "Compatible Core lock", () =>
+    validateCoreImageLock(coreLock, inventory, root),
+  )
+  if (lock?.compatibleCoreRelease?.version !== coreLock?.release?.version) {
+    errors.push("Inference artifact lock Core release version differs")
+  }
+  if (
+    coreLock &&
+    lock?.compatibleCoreRelease?.coreImageLockSha256 !==
+      canonicalDocumentSha256(coreLock)
+  ) {
+    errors.push("Inference artifact lock Core image-lock hash differs")
+  }
+
+  if (!rollbackProfile) {
+    errors.push("Inference artifact lock requires the actual rollback profile")
+  } else {
+    appendValidation(errors, "Rollback profile", () =>
+      validateDeliveryProfile(rollbackProfile, coreContract),
+    )
+    if (
+      profile?.metadata?.profileId === rollbackProfile?.metadata?.profileId &&
+      profile?.metadata?.revision === rollbackProfile?.metadata?.revision
+    ) {
+      errors.push("Inference artifact lock cannot select itself for rollback")
+    }
+    for (const [field, actual, expected] of [
+      [
+        "profile ID",
+        lock?.rollback?.profileId,
+        rollbackProfile?.metadata?.profileId,
+      ],
+      [
+        "profile revision",
+        lock?.rollback?.profileRevision,
+        rollbackProfile?.metadata?.revision,
+      ],
+      [
+        "profile content hash",
+        lock?.rollback?.profileContentSha256,
+        canonicalDocumentSha256(rollbackProfile),
+      ],
+      [
+        "engine image",
+        lock?.rollback?.engineImageDigest,
+        rollbackProfile?.engine?.image?.digest,
+      ],
+      [
+        "model weights",
+        lock?.rollback?.modelWeightsSha256,
+        rollbackProfile?.model?.artifactDigest,
+      ],
+      [
+        "selected profile rollback ID",
+        profile?.rollback?.profileId,
+        rollbackProfile?.metadata?.profileId,
+      ],
+      [
+        "selected profile rollback revision",
+        profile?.rollback?.revision,
+        rollbackProfile?.metadata?.revision,
+      ],
+      [
+        "selected profile rollback engine",
+        profile?.rollback?.engineImageDigest,
+        rollbackProfile?.engine?.image?.digest,
+      ],
+      [
+        "selected profile rollback model",
+        profile?.rollback?.modelArtifactDigest,
+        rollbackProfile?.model?.artifactDigest,
+      ],
+    ]) {
+      if (actual !== expected) {
+        errors.push(
+          `Inference artifact lock ${field} differs from rollback profile`,
+        )
+      }
+    }
   }
   return errors
 }
