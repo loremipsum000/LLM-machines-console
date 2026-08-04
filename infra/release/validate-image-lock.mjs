@@ -271,7 +271,7 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
         errors.push(`${field} platform digest differs from the approved source`)
       }
     } else if (expected.sourceRevision === "release-source-commit") {
-      if (!sha1Pattern.test(image.sourceRevision ?? "")) {
+      if (image.sourceRevision !== lock.release.sourceCommit) {
         errors.push(`${field} must bind the release source commit`)
       }
     } else if (expected.sourceRevision === "release-source-lock") {
