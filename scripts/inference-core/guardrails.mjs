@@ -12641,7 +12641,7 @@ export function verifyPr11EnvExampleWorktree(root = repositoryRoot) {
   )
   if (
     historicalErrors.length > 0 &&
-    hasPr11aR1S1SourceMarker(root) &&
+    (hasPr11aR1S1SourceMarker(root) || hasPr11aR1V1SourceMarker(root)) &&
     sha256(currentSource) ===
       "6f9ef218d0ab227965b9ded28163f09d72a4533d0b98bacd03bac22fe2ff25de"
   ) {

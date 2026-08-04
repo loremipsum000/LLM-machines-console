@@ -188,7 +188,7 @@
         "after": [
           {
             "path": "scripts/inference-core/guardrails.mjs",
-            "sha256": "5f8be6d71c18e937d267fce262267953f52cc28f18828b50f5951864654791bb"
+            "sha256": "fd979f6bed5fc704d2b5ffabeaeb65261f1b3a110303071ea2026b9dfc6035a4"
           }
         ]
       },
@@ -285,7 +285,7 @@
     ],
     "routePolicy": {
       "before": "7c85415c2632985465739e55b9868300842dc89ceff230ff4bb71e90d82a9b27",
-      "after": "5bedee2b1bc765a9d494705991c7cc132ae7c7eca77d3366c5e7cb4eb2c8eddf"
+      "after": "d74d76292a4950c5c4bd11d441138b55eb156d6b1c92673a06dc2024df86a692"
     },
     "routes": [
       {
@@ -3668,7 +3668,7 @@
           {
             "path": "scripts/inference-core/guardrails.mjs",
             "mode": "100644",
-            "objectId": "7e0c59a19d465207ebe80113f206a2231a49ef65"
+            "objectId": "a3f488e8109da16cf9009ec1ebca7f522e059764"
           }
         ]
       },
@@ -3953,7 +3953,7 @@
   "evidenceFiles": [
     {
       "path": "docs/reduction/inference-core/pr-11a-r1-v1-aggregate-evidence.json",
-      "sha256": "8bd799444966d248c192f2fed64590e445e52125cf4a75977a2f9f6f6b781eff"
+      "sha256": "3490e2721da917db2281a9bc1ed57ca3dc4b591101eecd3ca10bf728aa7b2faa"
     },
     {
       "path": "docs/reduction/inference-core/README.md",
