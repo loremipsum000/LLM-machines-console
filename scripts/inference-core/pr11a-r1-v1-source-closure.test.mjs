@@ -7,13 +7,16 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import {
   buildPr11aR1V1SourceClosureDocument,
+  listPr11aR1V1SourceClosureChanges,
   pr11aAggregateEvidencePath,
   pr11aContractRevisionPath,
   pr11aR1V1Input,
   pr11aR1V1ProtectedAdmission,
   pr11aR1V1ProtectedAdmissionTree,
+  pr11aR1V1SourceClosureCommit,
   pr11aR1V1SourceClosurePath,
   pr11aR1V1SourceClosurePaths,
+  pr11aR1V1SourceClosureTree,
   pr11aR1V1ValidatedCandidate,
   pr11aR1V1ValidatedCandidateTree,
   verifyPr11aR1V1SourceClosureDocument,
@@ -111,13 +114,21 @@ test("PR-11A source closure remains distinct from acceptance and activation", ()
 })
 
 test("PR-11A source closure changes governance paths only", () => {
-  const changedPaths = git(
-    "diff",
-    "--name-only",
-    "--no-renames",
+  assert.equal(
+    git("rev-parse", pr11aR1V1SourceClosureCommit),
+    pr11aR1V1SourceClosureCommit,
+  )
+  assert.equal(
+    git("rev-parse", `${pr11aR1V1SourceClosureCommit}^{tree}`),
+    pr11aR1V1SourceClosureTree,
+  )
+  assert.equal(
+    git("rev-parse", `${pr11aR1V1SourceClosureCommit}^`),
     pr11aR1V1ProtectedAdmission,
-    "--",
-  ).split("\n")
+  )
+  const changedPaths = listPr11aR1V1SourceClosureChanges(repositoryRoot).map(
+    ({ path }) => path,
+  )
   assert.deepEqual(changedPaths, pr11aR1V1SourceClosurePaths)
   assert.equal(
     changedPaths.some((path) =>

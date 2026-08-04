@@ -369,6 +369,10 @@ export const pr11aR1V1ProtectedAdmission =
   "837c3c3e139fd6b82db650d20a4f0fcf902e2fda"
 export const pr11aR1V1ProtectedAdmissionTree =
   "acc4f5540ebc863bd53e76aae8af3bcdd40136bb"
+export const pr11aR1V1SourceClosureCommit =
+  "1238f3171196317675037cd5e859a72d02fb84e1"
+export const pr11aR1V1SourceClosureTree =
+  "9b91daf7b154a33b2fab71a0fb8656eaa4f9335b"
 export const pr11aR1V1HistoricalRemoteRef =
   "cc08cf8e9afce12def143f2f395d30bfbe04f515"
 export const pr11aR1V1HistoricalLocalHead =
@@ -5938,7 +5942,7 @@ export function verifyPr11aR1V1SourceClosurePackage({
   actualRoutes,
 }) {
   const errors = []
-  const changes = listSourcePackageChanges(root, pr11aR1V1ProtectedAdmission)
+  const changes = listPr11aR1V1SourceClosureChanges(root)
   const expectedChanges = pr11aR1V1SourceClosurePaths.map((path) => ({
     path,
     status:
@@ -5949,6 +5953,16 @@ export function verifyPr11aR1V1SourceClosurePackage({
   }))
   if (JSON.stringify(changes) !== JSON.stringify(expectedChanges)) {
     errors.push("PR-11A source-closure package path set changed")
+  }
+  if (
+    resolveCommit(root, pr11aR1V1SourceClosureCommit) !==
+      pr11aR1V1SourceClosureCommit ||
+    resolveTree(root, pr11aR1V1SourceClosureCommit) !==
+      pr11aR1V1SourceClosureTree ||
+    resolveCommit(root, `${pr11aR1V1SourceClosureCommit}^`) !==
+      pr11aR1V1ProtectedAdmission
+  ) {
+    errors.push("PR-11A source-closure commit identity changed")
   }
   const admittedAllowlist = readJsonFromCommit(
     root,
@@ -6070,6 +6084,14 @@ export function verifyPr11aR1V1SourceClosurePackage({
     }
   }
   return [...new Set(errors)].sort()
+}
+
+export function listPr11aR1V1SourceClosureChanges(root = repositoryRoot) {
+  return listSourcePackageChanges(
+    root,
+    pr11aR1V1ProtectedAdmission,
+    pr11aR1V1SourceClosureCommit,
+  )
 }
 
 export function verifyPr11aR1V1SourcePackage({
