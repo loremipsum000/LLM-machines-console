@@ -22,7 +22,7 @@
       "required": ["id", "revision", "contentSha256"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "revision": { "type": "string", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 1 },
         "contentSha256": { "$ref": "#/$defs/sha256" }
       }
     },
@@ -87,14 +87,14 @@
       "required": [
         "profileId",
         "profileRevision",
-        "artifactLockSha256",
+        "profileContentSha256",
         "engineImageDigest",
         "modelWeightsSha256"
       ],
       "properties": {
         "profileId": { "type": "string", "minLength": 1 },
-        "profileRevision": { "type": "string", "minLength": 1 },
-        "artifactLockSha256": { "$ref": "#/$defs/sha256" },
+        "profileRevision": { "type": "integer", "minimum": 1 },
+        "profileContentSha256": { "$ref": "#/$defs/sha256" },
         "engineImageDigest": { "$ref": "#/$defs/sha256" },
         "modelWeightsSha256": { "$ref": "#/$defs/sha256" }
       }

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { test } from "node:test"
 import {
+  canonicalDocumentSha256,
   coreInventorySha256,
   readCoreImageInventory,
   requiredCoreImageIds,
@@ -65,54 +66,86 @@ function syntheticCoreLock() {
   }
 }
 
-function syntheticInferenceLock() {
+function syntheticProfileDocuments() {
+  const profile = JSON.parse(
+    readFileSync(
+      resolve(root, "infra/inference/fixtures/synthetic-single-node.json"),
+      "utf8",
+    ),
+  )
+  const rollbackProfile = clone(profile)
+  rollbackProfile.metadata.profileId = "synthetic-rollback-profile"
+  rollbackProfile.metadata.revision = 1
+  rollbackProfile.engine.image.digest = digest("d")
+  rollbackProfile.model.artifactDigest = digest("e")
+  rollbackProfile.rollback = {
+    profileId: rollbackProfile.metadata.profileId,
+    revision: rollbackProfile.metadata.revision,
+    engineImageDigest: rollbackProfile.engine.image.digest,
+    modelArtifactDigest: rollbackProfile.model.artifactDigest,
+  }
+  profile.rollback = {
+    profileId: rollbackProfile.metadata.profileId,
+    revision: rollbackProfile.metadata.revision,
+    engineImageDigest: rollbackProfile.engine.image.digest,
+    modelArtifactDigest: rollbackProfile.model.artifactDigest,
+  }
+  return { profile, rollbackProfile, coreLock: syntheticCoreLock() }
+}
+
+function syntheticInferenceLock(documents) {
+  const { profile, rollbackProfile, coreLock } = documents
   return {
     schema: "llm-machines.inference-artifact-lock.v1",
     status: "LOCKED",
     profile: {
-      id: "synthetic-profile",
-      revision: "r1",
-      contentSha256: digest("1"),
+      id: profile.metadata.profileId,
+      revision: profile.metadata.revision,
+      contentSha256: canonicalDocumentSha256(profile),
     },
     compatibleCoreRelease: {
-      version: "1.0.0-test",
-      coreImageLockSha256: digest("2"),
+      version: coreLock.release.version,
+      coreImageLockSha256: canonicalDocumentSha256(coreLock),
     },
     engine: {
       name: "sglang",
       version: "0.5.13",
       sourceCommit: "28b095c01005d4a3a2a5b637b7d028b07fba31b2",
-      repository: "registry.release.invalid/inference/sglang",
-      imageDigest: digest("3"),
+      repository: profile.engine.image.privateRegistryMirror,
+      imageDigest: profile.engine.image.digest,
       platform: "linux/amd64-cuda",
-      platformDigest: digest("4"),
-      sbomSha256: digest("5"),
-      provenanceSha256: digest("6"),
+      platformDigest: profile.engine.image.digest,
+      sbomSha256: profile.engine.image.sbomDigest,
+      provenanceSha256: profile.engine.image.provenanceDigest,
     },
     model: {
-      source: "synthetic/model",
-      revision: "synthetic-revision",
-      artifactManifestSha256: digest("7"),
-      weightsSha256: digest("8"),
-      license: "synthetic-only",
+      source: profile.model.source,
+      revision: profile.model.revision,
+      artifactManifestSha256: profile.model.manifestDigest,
+      weightsSha256: profile.model.artifactDigest,
+      license: profile.model.licenseSpdx,
     },
     rollback: {
-      profileId: "synthetic-profile",
-      profileRevision: "r0",
-      artifactLockSha256: digest("9"),
-      engineImageDigest: digest("d"),
-      modelWeightsSha256: digest("e"),
+      profileId: rollbackProfile.metadata.profileId,
+      profileRevision: rollbackProfile.metadata.revision,
+      profileContentSha256: canonicalDocumentSha256(rollbackProfile),
+      engineImageDigest: rollbackProfile.engine.image.digest,
+      modelWeightsSha256: rollbackProfile.model.artifactDigest,
     },
   }
 }
 
 test("checked-in Core inventory and immutable lock schemas pass", () => {
+  const documents = syntheticProfileDocuments()
   assert.deepEqual(verifyCheckedInReleaseIdentityPolicy(), [])
   assert.deepEqual(
     validateCoreImageLock(syntheticCoreLock(), readCoreImageInventory()),
     [],
   )
-  assert.deepEqual(validateInferenceArtifactLock(syntheticInferenceLock()), [])
+  assert.deepEqual(
+    validateInferenceArtifactLock(syntheticInferenceLock(documents), documents),
+    [],
+  )
   for (const schema of [
     "core-image-lock.schema.json",
     "inference-artifact-lock.schema.json",
@@ -264,12 +297,81 @@ test("inference lock requires exact SGLang, model, Core, and rollback identities
       lock.compatibleCoreRelease.coreImageLockSha256 = undefined
     },
     (lock) => {
-      lock.rollback.artifactLockSha256 = undefined
+      lock.rollback.profileContentSha256 = undefined
     },
   ]
   for (const mutate of mutations) {
-    const lock = syntheticInferenceLock()
+    const documents = syntheticProfileDocuments()
+    const lock = syntheticInferenceLock(documents)
     mutate(lock)
-    assert.notDeepEqual(validateInferenceArtifactLock(lock), [])
+    assert.notDeepEqual(validateInferenceArtifactLock(lock, documents), [])
   }
+})
+
+test("inference lock revisions are integers bound to the actual profile documents", () => {
+  const schema = JSON.parse(
+    readFileSync(
+      resolve(import.meta.dirname, "inference-artifact-lock.schema.json"),
+      "utf8",
+    ),
+  )
+  assert.deepEqual(schema.properties.profile.properties.revision, {
+    minimum: 1,
+    type: "integer",
+  })
+  assert.deepEqual(schema.properties.rollback.properties.profileRevision, {
+    minimum: 1,
+    type: "integer",
+  })
+  assert.ok(
+    schema.properties.rollback.required.includes("profileContentSha256"),
+  )
+  assert.equal(
+    schema.properties.rollback.properties.artifactLockSha256,
+    undefined,
+  )
+
+  const documents = syntheticProfileDocuments()
+  const stringRevision = syntheticInferenceLock(documents)
+  stringRevision.profile.revision = "1"
+  stringRevision.rollback.profileRevision = "1"
+  assert.match(
+    validateInferenceArtifactLock(stringRevision, documents).join("\n"),
+    /profile revision differs/,
+  )
+
+  const changedProfile = clone(documents.profile)
+  changedProfile.limits.configuredContextTokens += 1024
+  assert.match(
+    validateInferenceArtifactLock(syntheticInferenceLock(documents), {
+      ...documents,
+      profile: changedProfile,
+    }).join("\n"),
+    /profile content hash differs/,
+  )
+})
+
+test("inference lock validates the actual Core and rollback documents", () => {
+  const documents = syntheticProfileDocuments()
+  const lock = syntheticInferenceLock(documents)
+  const changedCore = clone(documents.coreLock)
+  changedCore.release.version = "different"
+  assert.match(
+    validateInferenceArtifactLock(lock, {
+      ...documents,
+      coreLock: changedCore,
+    }).join("\n"),
+    /Core release version differs|Core image-lock hash differs/,
+  )
+
+  const changedRollback = clone(documents.rollbackProfile)
+  changedRollback.model.artifactDigest = digest("f")
+  changedRollback.rollback.modelArtifactDigest = digest("f")
+  assert.match(
+    validateInferenceArtifactLock(lock, {
+      ...documents,
+      rollbackProfile: changedRollback,
+    }).join("\n"),
+    /differs from rollback profile/,
+  )
 })
