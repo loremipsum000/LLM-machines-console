@@ -93,6 +93,7 @@ function classificationFor(evidenceId) {
   if (evidenceId === "rollback") return "rollback"
   if (evidenceId === "public-release-trust") return "public-trust"
   if (evidenceId === "firecrawl-corresponding-source") return "source"
+  if (evidenceId === "grafana-corresponding-source") return "source"
   if (evidenceId.includes("license") || evidenceId === "third-party-notices") {
     return "license"
   }

@@ -85,6 +85,7 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
     "license-texts",
     "license-disposition",
     "firecrawl-corresponding-source",
+    "grafana-corresponding-source",
     "firecrawl-vulnerability-disposition",
     "clean-database-seed",
     "clean-keycloak-seed",

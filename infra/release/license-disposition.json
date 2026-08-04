@@ -1,0 +1,62 @@
+{
+  "schema": "llm-machines.license-disposition.v1",
+  "status": "SOURCE_POLICY",
+  "containsCredentials": false,
+  "licenses": [
+    {
+      "id": "AGPL-3.0-only",
+      "redistribution": "permitted-with-corresponding-source",
+      "sourceRequired": true
+    },
+    {
+      "id": "AGPL-3.0-or-later",
+      "redistribution": "permitted-with-corresponding-source",
+      "sourceRequired": true
+    },
+    {
+      "id": "Apache-2.0",
+      "redistribution": "permitted-with-license-and-notices",
+      "sourceRequired": false
+    },
+    {
+      "id": "BSD-2-Clause",
+      "redistribution": "permitted-with-license-and-notices",
+      "sourceRequired": false
+    },
+    {
+      "id": "GPL-2.0-or-later",
+      "redistribution": "permitted-with-corresponding-source",
+      "sourceRequired": true
+    },
+    {
+      "id": "MIT",
+      "redistribution": "permitted-with-license-and-notices",
+      "sourceRequired": false
+    },
+    {
+      "id": "PostgreSQL",
+      "redistribution": "permitted-with-license-and-notices",
+      "sourceRequired": false
+    },
+    {
+      "id": "Proprietary",
+      "redistribution": "product-license-only",
+      "sourceRequired": false
+    }
+  ],
+  "sourcePackets": [
+    {
+      "id": "firecrawl-corresponding-source",
+      "components": [
+        "firecrawl-api",
+        "firecrawl-browser",
+        "firecrawl-egress",
+        "firecrawl-search"
+      ]
+    },
+    {
+      "id": "grafana-corresponding-source",
+      "components": ["grafana-private"]
+    }
+  ]
+}
