@@ -79,7 +79,7 @@ function fixture() {
           components: [
             {
               type: "application",
-              name: "fixture-sbom-tool",
+              name: "syft",
               version: "1.0.0",
             },
           ],
@@ -106,6 +106,8 @@ function fixture() {
           "bom-ref": packageReference,
           name: `${component.id}-package-inventory`,
           version: "1.0.0",
+          purl: `pkg:generic/${component.id}-package-inventory@1.0.0`,
+          hashes: [{ alg: "SHA-256", content: "9".repeat(64) }],
         },
       ],
       dependencies: [
@@ -203,6 +205,7 @@ function fixture() {
       database: vulnerabilityReport.database,
       policy: {
         maximumDatabaseAgeHours: 72,
+        maximumEvidenceAgeHours: 24,
         severityThresholds: { critical: 0, high: 0 },
         maximumExceptionAgeDays: 30,
       },
@@ -281,6 +284,7 @@ function fixture() {
     evidenceRoot,
     vulnerabilityRoot,
     outputRoot,
+    evidenceEvaluatedAt: "2026-08-04T00:00:04.000Z",
   }
 }
 
@@ -290,7 +294,7 @@ test("release evidence is deterministic and covers every locked image", () => {
   const firstResult = generateReleaseEvidence(first, { root })
   const secondResult = generateReleaseEvidence(second, { root })
   assert.deepEqual(firstResult, secondResult)
-  assert.equal(firstResult.outputs.length, 10)
+  assert.equal(firstResult.outputs.length, 11)
   for (const path of firstResult.outputs) {
     assert.deepEqual(
       readFileSync(join(first.outputRoot, path)),
@@ -350,6 +354,18 @@ test("CycloneDX inventory, dependency, tool, and locked digest evidence is manda
     },
     (sbom) => {
       sbom.metadata.tools.components = []
+    },
+    (sbom) => {
+      sbom.metadata.tools.components[0].name = "unapproved-tool"
+    },
+    (sbom) => {
+      sbom.components[0].purl = null
+    },
+    (sbom) => {
+      sbom.components[0].hashes = []
+    },
+    (sbom) => {
+      sbom.dependencies[1].dependsOn = ["package:missing"]
     },
     (sbom) => {
       sbom.metadata.component.hashes[0].content = "f".repeat(64)
@@ -454,7 +470,7 @@ test("vulnerability evidence covers every image and enforces freshness and thres
         reason: "Temporary reviewed fixture exception.",
         approvedBy: "fixture-reviewer",
         approvedAt: "2026-08-01T00:00:00.000Z",
-        expiresAt: "2026-08-03T00:00:00.000Z",
+        expiresAt: "2026-08-04T00:00:03.000Z",
       })
     },
   ]) {

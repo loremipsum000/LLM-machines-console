@@ -14,6 +14,7 @@ export const expectedReleaseEvidencePolicy = {
     specVersion: "1.6",
     componentType: "container",
     minimumInventoryComponents: 1,
+    approvedToolNames: ["syft"],
     toolMetadataRequired: true,
     dependencyGraphRequired: true,
   },
@@ -38,6 +39,7 @@ export const expectedReleaseEvidencePolicy = {
     dispositionSchema: "llm-machines.vulnerability-disposition.v1",
     scanner: "trivy",
     maximumDatabaseAgeHours: 72,
+    maximumEvidenceAgeHours: 24,
     severityThresholds: { critical: 0, high: 0 },
     maximumExceptionAgeDays: 30,
     allCoreImagesRequired: true,
@@ -134,6 +136,7 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
   }
   const expectedRequiredEvidence = [
     "core-image-lock",
+    "release-evidence-index",
     "product-bom",
     "image-sboms",
     "image-provenance",

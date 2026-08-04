@@ -24,6 +24,7 @@
         "sourceCommit",
         "sourceTree",
         "sourceDateEpoch",
+        "evidenceEvaluatedAt",
         "platform"
       ],
       "properties": {
@@ -38,6 +39,7 @@
         "sourceCommit": { "$ref": "#/$defs/sha1" },
         "sourceTree": { "$ref": "#/$defs/sha1" },
         "sourceDateEpoch": { "type": "integer", "minimum": 1 },
+        "evidenceEvaluatedAt": { "type": "string", "format": "date-time" },
         "platform": { "const": "linux/amd64" }
       }
     },

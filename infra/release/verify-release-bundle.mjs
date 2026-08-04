@@ -4,6 +4,7 @@ import { relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { sha256File } from "./deterministic-archive.mjs"
 import { canonicalJson } from "./generate-release-manifest.mjs"
+import { validateReleaseEvidenceIndex } from "./validate-release-evidence-index.mjs"
 
 const issuer = "urn:llm-machines:vendor"
 const sha256Pattern = /^sha256:[a-f0-9]{64}$/
@@ -330,7 +331,7 @@ function validateTrust(trust, signedAt, kid, trustedRootSha256) {
   return selected
 }
 
-function validateManifest(manifest, artifactRoot) {
+function validateManifest(manifest, artifactRoot, signatureTimestamp) {
   exactKeys(
     manifest,
     ["schema", "status", "release", "contracts", "artifacts", "qualification"],
@@ -353,6 +354,7 @@ function validateManifest(manifest, artifactRoot) {
       "sourceCommit",
       "sourceTree",
       "sourceDateEpoch",
+      "evidenceEvaluatedAt",
       "platform",
     ],
     "release identity",
@@ -385,6 +387,9 @@ function validateManifest(manifest, artifactRoot) {
     !/^[a-f0-9]{40}$/.test(manifest.release.sourceTree ?? "") ||
     !Number.isInteger(manifest.release.sourceDateEpoch) ||
     manifest.release.sourceDateEpoch < 1 ||
+    !Number.isInteger(Date.parse(manifest.release.evidenceEvaluatedAt)) ||
+    Date.parse(manifest.release.evidenceEvaluatedAt) <
+      manifest.release.sourceDateEpoch * 1000 ||
     manifest.release.platform !== "linux/amd64" ||
     Object.values(manifest.contracts).some(
       (digest) => !sha256Pattern.test(digest ?? ""),
@@ -399,6 +404,7 @@ function validateManifest(manifest, artifactRoot) {
   const ids = new Set()
   const evidence = new Set()
   let coreLock
+  let evidenceIndex
   let corePackage
   let publicTrust
   let previousPath = null
@@ -472,6 +478,9 @@ function validateManifest(manifest, artifactRoot) {
       fail(`artifact content differs from manifest: ${artifact.path}`)
     }
     if (artifact.evidenceId === "core-image-lock") coreLock = artifact
+    if (artifact.evidenceId === "release-evidence-index") {
+      evidenceIndex = artifact
+    }
     if (artifact.evidenceId === "public-release-trust") publicTrust = artifact
     if (artifact.id === "core-package") corePackage = artifact
   }
@@ -518,6 +527,19 @@ function validateManifest(manifest, artifactRoot) {
   ) {
     fail("actual Core image lock differs from the signed release identity")
   }
+  if (!evidenceIndex) {
+    fail("signed manifest does not contain its semantic evidence index")
+  }
+  const evidenceIndexValue = JSON.parse(
+    readFileSync(resolve(artifactRoot, evidenceIndex.path), "utf8"),
+  )
+  validateReleaseEvidenceIndex(evidenceIndexValue, {
+    coreLock: coreLockValue,
+    coreLockPath: resolve(artifactRoot, coreLock.path),
+    evidenceArtifacts: manifest.artifacts,
+    release: manifest.release,
+    signatureTimestamp,
+  })
   if (!publicTrust || publicTrust.classification !== "public-trust") {
     fail("signed manifest does not contain its public release trust")
   }
@@ -591,6 +613,7 @@ export function verifyReleaseBundle({
   const validated = validateManifest(
     manifestRecord.value,
     resolve(artifactRoot),
+    signature.signedAt,
   )
   if (sha256File(resolve(trustPath)) !== validated.publicTrust.sha256) {
     fail("used public release trust does not match the signed trust artifact")

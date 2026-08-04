@@ -9,6 +9,7 @@ import {
 } from "node:fs"
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { validatePackagedReleaseEvidence } from "./generate-release-evidence.mjs"
 import {
   readCoreImageInventory,
   validateCoreImageLock,
@@ -180,6 +181,7 @@ export function generateReleaseManifest(
       "sourceCommit",
       "sourceTree",
       "sourceDateEpoch",
+      "evidenceEvaluatedAt",
     ],
     "manifest release input",
   )
@@ -211,6 +213,13 @@ export function generateReleaseManifest(
     input.release.sourceDateEpoch !== gitIdentity.sourceDateEpoch
   ) {
     fail("release.sourceDateEpoch does not match the checked-out release input")
+  }
+  if (
+    !Number.isInteger(Date.parse(input.release.evidenceEvaluatedAt)) ||
+    Date.parse(input.release.evidenceEvaluatedAt) <
+      gitIdentity.sourceDateEpoch * 1000
+  ) {
+    fail("release.evidenceEvaluatedAt is invalid or predates the source input")
   }
 
   const planPath = resolve(root, "infra/release/release-plan.json")
@@ -337,6 +346,21 @@ export function generateReleaseManifest(
   ) {
     fail("Core image lock does not bind the checked-out release input")
   }
+  validatePackagedReleaseEvidence(
+    {
+      coreLockPath,
+      artifactRoot: artifactDirectory,
+      evidenceArtifacts: normalizedArtifacts,
+      release: {
+        version,
+        sourceCommit: gitIdentity.sourceCommit,
+        sourceTree: gitIdentity.sourceTree,
+        sourceDateEpoch: gitIdentity.sourceDateEpoch,
+        evidenceEvaluatedAt: input.release.evidenceEvaluatedAt,
+      },
+    },
+    { root },
+  )
 
   const contracts = {
     releasePlanSha256: sha256File(planPath),
@@ -367,6 +391,7 @@ export function generateReleaseManifest(
       sourceCommit: gitIdentity.sourceCommit,
       sourceTree: gitIdentity.sourceTree,
       sourceDateEpoch: gitIdentity.sourceDateEpoch,
+      evidenceEvaluatedAt: input.release.evidenceEvaluatedAt,
       platform: "linux/amd64",
     },
     contracts,

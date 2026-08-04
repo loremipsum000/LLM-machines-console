@@ -67,6 +67,7 @@
   },
   "requiredEvidence": [
     "core-image-lock",
+    "release-evidence-index",
     "product-bom",
     "image-sboms",
     "image-provenance",

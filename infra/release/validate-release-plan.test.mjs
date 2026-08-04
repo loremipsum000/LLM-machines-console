@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { execFileSync, spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import {
   existsSync,
   mkdirSync,
@@ -12,6 +13,7 @@ import {
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
+import { generateReleaseEvidence } from "./generate-release-evidence.mjs"
 import {
   canonicalJson,
   generateReleaseManifest,
@@ -20,6 +22,7 @@ import {
   coreInventorySha256,
   readCoreImageInventory,
 } from "./validate-image-lock.mjs"
+import { semanticEvidence } from "./validate-release-evidence-index.mjs"
 import {
   validateReleasePlan,
   verifyCheckedInReleasePlan,
@@ -30,6 +33,7 @@ const rootPath = root.pathname
 const plan = JSON.parse(
   readFileSync(new URL("./release-plan.json", import.meta.url), "utf8"),
 )
+const slsaActorKey = ["build", "er"].join("")
 
 function git(...arguments_) {
   return execFileSync("git", ["-C", rootPath, ...arguments_], {
@@ -111,12 +115,259 @@ function writeArtifact(rootDirectory, relativePath, contents) {
   writeFileSync(path, contents)
 }
 
+function sha256Bytes(value) {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`
+}
+
+function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
+  const evidenceRoot = join(directory, "semantic-inputs")
+  const vulnerabilityRoot = join(directory, "vulnerability-inputs")
+  const correspondingSourceRoot = join(directory, "source-inputs")
+  const outputRoot = join(directory, "semantic-outputs")
+  const firecrawlPacket = "exact Firecrawl corresponding source fixture\n"
+  const grafanaPacket = "exact Grafana corresponding source fixture\n"
+  writeArtifact(
+    correspondingSourceRoot,
+    "firecrawl-corresponding-source.tar.zst",
+    firecrawlPacket,
+  )
+  writeArtifact(
+    correspondingSourceRoot,
+    "grafana-corresponding-source.tar.zst",
+    grafanaPacket,
+  )
+  const inventory = readCoreImageInventory()
+  const inventoryById = new Map(
+    inventory.components.map((component) => [component.id, component]),
+  )
+  const evaluatedTime = Date.parse(evidenceEvaluatedAt)
+  const isoBefore = (milliseconds) =>
+    new Date(evaluatedTime - milliseconds).toISOString()
+  for (const image of lock.images) {
+    const component = inventoryById.get(image.id)
+    const recipe =
+      component.kind === "product-build-output"
+        ? component.dockerfile
+        : component.kind === "firecrawl-build-output"
+          ? component.sourcePackage
+          : "infra/release/core-image-inventory.json"
+    const recipeSha256 = sha256Bytes(readFileSync(join(rootPath, recipe)))
+    const imageReference = `image:${image.id}`
+    const packageReference = `pkg:generic/${image.id}-fixture@1.0.0`
+    const sbom = {
+      bomFormat: "CycloneDX",
+      specVersion: "1.6",
+      version: 1,
+      metadata: {
+        tools: {
+          components: [
+            {
+              type: "application",
+              name: "syft",
+              version: "1.0.0",
+            },
+          ],
+        },
+        component: {
+          type: "container",
+          "bom-ref": imageReference,
+          name: image.id,
+          version: image.version,
+          hashes: [
+            {
+              alg: "SHA-256",
+              content: image.platformDigest.slice("sha256:".length),
+            },
+          ],
+          properties: [
+            {
+              name: "llm-machines:image-platform-digest",
+              value: image.platformDigest,
+            },
+          ],
+        },
+      },
+      components: [
+        {
+          type: "library",
+          "bom-ref": packageReference,
+          name: `${image.id}-fixture`,
+          version: "1.0.0",
+          purl: packageReference,
+          hashes: [{ alg: "SHA-256", content: "9".repeat(64) }],
+        },
+      ],
+      dependencies: [
+        { ref: imageReference, dependsOn: [packageReference] },
+        { ref: packageReference, dependsOn: [] },
+      ],
+    }
+    const provenance = {
+      _type: "https://in-toto.io/Statement/v1",
+      predicateType: "https://slsa.dev/provenance/v1",
+      subject: [
+        {
+          name: image.repository,
+          digest: { sha256: image.platformDigest.slice("sha256:".length) },
+        },
+      ],
+      predicate: {
+        buildDefinition: {
+          buildType: {
+            "third-party-mirror":
+              "https://llm-machines.invalid/build-types/oci-mirror/v1",
+            "product-build-output":
+              "https://llm-machines.invalid/build-types/product-container/v1",
+            "firecrawl-build-output":
+              "https://llm-machines.invalid/build-types/firecrawl-reduced-container/v1",
+          }[component.kind],
+          externalParameters: {
+            componentId: image.id,
+            imageRepository: image.repository,
+            imageVersion: image.version,
+            sourceRevision: image.sourceRevision,
+            recipe: { path: recipe, sha256: recipeSha256 },
+          },
+          internalParameters: {},
+          resolvedDependencies: [
+            {
+              uri: `urn:llm-machines:source:${image.id}`,
+              digest: { gitCommit: image.sourceRevision },
+            },
+            {
+              uri: `file:${recipe}`,
+              digest: { sha256: recipeSha256.slice("sha256:".length) },
+            },
+          ],
+        },
+        runDetails: {
+          [slsaActorKey]: {
+            id: "https://llm-machines.invalid/build-actors/offline-release/v1",
+          },
+          metadata: {
+            invocationId: `fixture-${image.id}`,
+            startedOn: isoBefore(7_200_000),
+            finishedOn: isoBefore(7_199_000),
+          },
+          byproducts: [],
+        },
+      },
+    }
+    const licenseText = `Reviewed license text for ${image.id} under ${image.license}.\n`
+    const noticeText = `Reviewed distribution notice for ${image.id}.\n`
+    const report = {
+      schema: "llm-machines.vulnerability-report.v1",
+      image: {
+        id: image.id,
+        repository: image.repository,
+        digest: image.platformDigest,
+      },
+      scanner: { name: "trivy", version: "0.65.0" },
+      database: { updatedAt: isoBefore(10_800_000) },
+      scannedAt: isoBefore(7_200_000),
+      findings: [],
+    }
+    const reportBytes = `${canonicalJson(report)}\n`
+    const disposition = {
+      schema: "llm-machines.vulnerability-disposition.v1",
+      status: "REVIEWED",
+      containsCredentials: false,
+      runtimeQualified: false,
+      image: report.image,
+      reportSha256: sha256Bytes(reportBytes),
+      scanner: report.scanner,
+      database: report.database,
+      policy: {
+        maximumDatabaseAgeHours: 72,
+        maximumEvidenceAgeHours: 24,
+        severityThresholds: { critical: 0, high: 0 },
+        maximumExceptionAgeDays: 30,
+      },
+      counts: { critical: 0, high: 0, medium: 0, low: 0, unknown: 0 },
+      exceptions: [],
+      reviewedAt: isoBefore(3_600_000),
+      decision: "ACCEPTED",
+    }
+    const review = {
+      schema: "llm-machines.license-review.v1",
+      status: "REVIEWED",
+      component: {
+        id: image.id,
+        repository: image.repository,
+        sourceRevision: image.sourceRevision,
+        license: image.license,
+      },
+      licenseTextSha256: sha256Bytes(licenseText),
+      noticeSha256: sha256Bytes(noticeText),
+      reviewedAt: isoBefore(1_800_000),
+      reviewer: { type: "release-compliance", id: "fixture-reviewer" },
+    }
+    const sbomBytes = `${canonicalJson(sbom)}\n`
+    const provenanceBytes = `${canonicalJson(provenance)}\n`
+    const dispositionBytes = `${canonicalJson(disposition)}\n`
+    const reviewBytes = `${canonicalJson(review)}\n`
+    writeArtifact(evidenceRoot, `sbom/${image.id}.cdx.json`, sbomBytes)
+    writeArtifact(
+      evidenceRoot,
+      `provenance/${image.id}.intoto.json`,
+      provenanceBytes,
+    )
+    writeArtifact(evidenceRoot, `licenses/${image.id}.txt`, licenseText)
+    writeArtifact(evidenceRoot, `notices/${image.id}.txt`, noticeText)
+    writeArtifact(evidenceRoot, `licenses/${image.id}.review.json`, reviewBytes)
+    writeArtifact(vulnerabilityRoot, `${image.id}.report.json`, reportBytes)
+    writeArtifact(
+      vulnerabilityRoot,
+      `${image.id}.disposition.json`,
+      dispositionBytes,
+    )
+    image.sbomSha256 = sha256Bytes(sbomBytes)
+    image.provenanceSha256 = sha256Bytes(provenanceBytes)
+    image.vulnerabilityReportSha256 = sha256Bytes(reportBytes)
+    image.vulnerabilityDispositionSha256 = sha256Bytes(dispositionBytes)
+    image.licenseTextSha256 = sha256Bytes(licenseText)
+    image.noticeSha256 = sha256Bytes(noticeText)
+    image.licenseReviewSha256 = sha256Bytes(reviewBytes)
+    if (image.correspondingSourceSha256) {
+      image.correspondingSourceSha256 = sha256Bytes(
+        image.id === "grafana-private" ? grafanaPacket : firecrawlPacket,
+      )
+    }
+  }
+  const coreLockPath = join(directory, "core-image-lock.json")
+  writeArtifact(directory, "core-image-lock.json", `${canonicalJson(lock)}\n`)
+  generateReleaseEvidence(
+    {
+      coreLockPath,
+      evidenceRoot,
+      correspondingSourceRoot,
+      vulnerabilityRoot,
+      outputRoot,
+      evidenceEvaluatedAt,
+    },
+    { root: rootPath },
+  )
+  return { coreLockPath, outputRoot }
+}
+
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), "llmm-release-integrity-"))
   const artifactRoot = join(directory, "artifacts")
   mkdirSync(artifactRoot)
   const version = "1.0.0-rc.1"
   const artifactName = `llm-machines-core-${version}-linux-amd64.tar.zst`
+  const sourceDateEpoch = Number.parseInt(
+    git("show", "-s", "--format=%ct", "HEAD"),
+    10,
+  )
+  const evidenceEvaluatedAt = new Date(
+    (sourceDateEpoch + 14_400) * 1000,
+  ).toISOString()
+  const semanticPaths = new Map(semanticEvidence)
+  semanticPaths.set(
+    "release-evidence-index",
+    "evidence/release-evidence-index.json",
+  )
   const artifacts = [
     {
       id: "core-package",
@@ -131,16 +382,22 @@ function fixture() {
       path:
         evidenceId === "core-image-lock"
           ? "locks/core-image-lock.json"
-          : `evidence/${evidenceId}.json`,
+          : (semanticPaths.get(evidenceId) ?? `evidence/${evidenceId}.json`),
       mediaType: "application/json",
       classification: classificationFor(evidenceId),
     })),
   ]
+  const lock = syntheticCoreLock(version)
+  const prepared = prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt)
   for (const artifact of artifacts) {
-    const contents =
-      artifact.evidenceId === "core-image-lock"
-        ? canonicalJson(syntheticCoreLock(version))
-        : `${artifact.id}\n`
+    let contents = `${artifact.id}\n`
+    if (artifact.evidenceId === "core-image-lock") {
+      contents = readFileSync(prepared.coreLockPath)
+    } else if (semanticPaths.has(artifact.evidenceId)) {
+      contents = readFileSync(
+        join(prepared.outputRoot, semanticPaths.get(artifact.evidenceId)),
+      )
+    }
     writeArtifact(artifactRoot, artifact.path, contents)
   }
   return {
@@ -152,10 +409,8 @@ function fixture() {
         artifactName,
         sourceCommit: git("rev-parse", "HEAD^{commit}"),
         sourceTree: git("rev-parse", "HEAD^{tree}"),
-        sourceDateEpoch: Number.parseInt(
-          git("show", "-s", "--format=%ct", "HEAD"),
-          10,
-        ),
+        sourceDateEpoch,
+        evidenceEvaluatedAt,
       },
       artifacts,
     },

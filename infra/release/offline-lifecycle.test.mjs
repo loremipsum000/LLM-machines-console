@@ -18,6 +18,14 @@ import {
   generateRollbackDescriptor,
   verifyRollbackDescriptor,
 } from "./generate-rollback-descriptor.mjs"
+import {
+  coreInventorySha256,
+  readCoreImageInventory,
+} from "./validate-image-lock.mjs"
+import {
+  buildReleaseEvidenceIndex,
+  semanticEvidence,
+} from "./validate-release-evidence-index.mjs"
 import { verifyReleaseBundle } from "./verify-release-bundle.mjs"
 
 const plan = JSON.parse(
@@ -25,6 +33,7 @@ const plan = JSON.parse(
 )
 const issuer = "urn:llm-machines:vendor"
 const signedAt = "2026-08-04T12:00:00.000Z"
+const evidenceEvaluatedAt = "2026-08-04T11:00:00.000Z"
 
 function digest(character) {
   return `sha256:${character.repeat(64)}`
@@ -117,6 +126,57 @@ function classification(evidenceId) {
   return "evidence"
 }
 
+function syntheticCoreLock(version, sourceCommit, sourceTree, sourceDigests) {
+  const inventory = readCoreImageInventory()
+  return {
+    schema: "llm-machines.core-image-lock.v1",
+    status: "LOCKED",
+    release: { version, sourceCommit, sourceTree },
+    inventorySha256: coreInventorySha256(),
+    platform: "linux/amd64",
+    privateRegistry: "registry.release.invalid",
+    images: inventory.components.map((component, index) => ({
+      id: component.id,
+      repository: `registry.release.invalid/${component.mirrorRepository}`,
+      version:
+        component.kind === "third-party-mirror"
+          ? component.version
+          : `${version}-build.${index + 1}`,
+      indexDigest:
+        component.kind === "third-party-mirror"
+          ? component.indexDigest
+          : digest(((index + 1) % 16).toString(16)),
+      platform: "linux/amd64",
+      platformDigest:
+        component.kind === "third-party-mirror"
+          ? component.platformDigest
+          : digest(((index + 2) % 16).toString(16)),
+      sourceRevision:
+        component.sourceRevision === "release-source-commit"
+          ? sourceCommit
+          : component.sourceRevision === "release-source-lock"
+            ? "firecrawl-source-lock-v2.11.0"
+            : component.sourceRevision,
+      license: component.license,
+      sbomSha256: digest("a"),
+      provenanceSha256: digest("b"),
+      vulnerabilityReportSha256: digest("d"),
+      vulnerabilityDispositionSha256: digest("e"),
+      licenseTextSha256: digest("f"),
+      noticeSha256: digest("7"),
+      licenseReviewSha256: digest("8"),
+      ...(/(?:AGPL|GPL)/.test(component.license)
+        ? {
+            correspondingSourceSha256:
+              component.id === "grafana-private"
+                ? sourceDigests.grafana
+                : sourceDigests.firecrawl,
+          }
+        : {}),
+    })),
+  }
+}
+
 function bundleFixture(version = "1.0.0", label = version) {
   const directory = mkdtempSync(join(tmpdir(), "llmm-offline-lifecycle-"))
   const artifactRoot = join(directory, "artifacts")
@@ -141,6 +201,17 @@ function bundleFixture(version = "1.0.0", label = version) {
     .toString(16)
     .padStart(40, "0")
     .slice(-40)
+  const firecrawlSource = "exact Firecrawl corresponding source fixture\n"
+  const grafanaSource = "exact Grafana corresponding source fixture\n"
+  const coreLockValue = syntheticCoreLock(version, sourceCommit, sourceTree, {
+    firecrawl: `sha256:${createHash("sha256").update(firecrawlSource).digest("hex")}`,
+    grafana: `sha256:${createHash("sha256").update(grafanaSource).digest("hex")}`,
+  })
+  const semanticPaths = new Map(semanticEvidence)
+  semanticPaths.set(
+    "release-evidence-index",
+    "evidence/release-evidence-index.json",
+  )
   const artifacts = [
     {
       id: "core-package",
@@ -156,15 +227,15 @@ function bundleFixture(version = "1.0.0", label = version) {
     const path =
       evidenceId === "core-image-lock"
         ? "locks/core-image-lock.json"
-        : `evidence/${evidenceId}.json`
+        : (semanticPaths.get(evidenceId) ?? `evidence/${evidenceId}.json`)
     const contents =
       evidenceId === "core-image-lock"
-        ? canonicalJson({
-            schema: "llm-machines.core-image-lock.v1",
-            status: "LOCKED",
-            release: { version, sourceCommit, sourceTree },
-          })
-        : canonicalJson({ evidenceId, label })
+        ? canonicalJson(coreLockValue)
+        : evidenceId === "firecrawl-corresponding-source"
+          ? firecrawlSource
+          : evidenceId === "grafana-corresponding-source"
+            ? grafanaSource
+            : canonicalJson({ evidenceId, label })
     write(join(artifactRoot, path), contents)
     artifacts.push({
       id: `evidence-${evidenceId}`,
@@ -181,6 +252,25 @@ function bundleFixture(version = "1.0.0", label = version) {
   )
   const coreLock = artifacts.find(
     ({ evidenceId }) => evidenceId === "core-image-lock",
+  )
+  const evidenceIndexArtifact = artifacts.find(
+    ({ evidenceId }) => evidenceId === "release-evidence-index",
+  )
+  const evidenceIndexValue = buildReleaseEvidenceIndex({
+    coreLock: coreLockValue,
+    coreLockPath: join(artifactRoot, coreLock.path),
+    evidenceEvaluatedAt,
+    evidenceArtifacts: artifacts,
+    minimumExceptionExpiry: null,
+  })
+  const evidenceIndexContents = canonicalJson(evidenceIndexValue)
+  writeFileSync(
+    join(artifactRoot, evidenceIndexArtifact.path),
+    evidenceIndexContents,
+  )
+  evidenceIndexArtifact.size = Buffer.byteLength(evidenceIndexContents)
+  evidenceIndexArtifact.sha256 = sha256File(
+    join(artifactRoot, evidenceIndexArtifact.path),
   )
   const trust = trustFixture()
   const publicTrustPath = join(
@@ -203,6 +293,7 @@ function bundleFixture(version = "1.0.0", label = version) {
       sourceCommit,
       sourceTree,
       sourceDateEpoch: 1_722_772_800,
+      evidenceEvaluatedAt,
       platform: "linux/amd64",
     },
     contracts: {

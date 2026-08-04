@@ -13,6 +13,11 @@ import {
   readCoreImageInventory,
   validateCoreImageLock,
 } from "./validate-image-lock.mjs"
+import {
+  buildReleaseEvidenceIndex,
+  semanticEvidence,
+  validateReleaseEvidenceIndex,
+} from "./validate-release-evidence-index.mjs"
 import { expectedReleaseEvidencePolicy } from "./validate-release-plan.mjs"
 
 const directory = dirname(fileURLToPath(import.meta.url))
@@ -114,6 +119,10 @@ function validateSbom(document, image, policy) {
   const componentRefs = Array.isArray(components)
     ? components.map((entry) => entry?.["bom-ref"])
     : []
+  const dependencyRefs = Array.isArray(dependencies)
+    ? dependencies.map((entry) => entry?.ref)
+    : []
+  const allRefs = new Set([component?.["bom-ref"], ...componentRefs])
   const rootDependency = Array.isArray(dependencies)
     ? dependencies.find(({ ref }) => ref === component?.["bom-ref"])
     : undefined
@@ -137,10 +146,13 @@ function validateSbom(document, image, policy) {
     tools.length === 0 ||
     tools.some(
       (tool) =>
+        tool?.type !== "application" ||
         typeof tool?.name !== "string" ||
-        tool.name.length === 0 ||
+        !policy.sbom.approvedToolNames.includes(tool.name) ||
         typeof tool?.version !== "string" ||
-        tool.version.length === 0,
+        !/^[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:[-+][0-9A-Za-z.-]+)?$/.test(
+          tool.version,
+        ),
     ) ||
     !Array.isArray(components) ||
     components.length < policy.sbom.minimumInventoryComponents ||
@@ -148,12 +160,34 @@ function validateSbom(document, image, policy) {
     new Set(componentRefs).size !== componentRefs.length ||
     components.some(
       (entry) =>
+        !["application", "framework", "library", "operating-system"].includes(
+          entry?.type,
+        ) ||
         typeof entry?.name !== "string" ||
         entry.name.length === 0 ||
         typeof entry?.version !== "string" ||
-        entry.version.length === 0,
+        entry.version.length === 0 ||
+        typeof entry?.purl !== "string" ||
+        !entry.purl.startsWith("pkg:") ||
+        !Array.isArray(entry?.hashes) ||
+        !entry.hashes.some(
+          ({ alg, content }) =>
+            alg === "SHA-256" && /^[a-f0-9]{64}$/.test(content ?? ""),
+        ),
     ) ||
     !Array.isArray(dependencies) ||
+    dependencyRefs.some((reference) => typeof reference !== "string") ||
+    new Set(dependencyRefs).size !== dependencyRefs.length ||
+    dependencyRefs.length !== allRefs.size ||
+    dependencyRefs.some((reference) => !allRefs.has(reference)) ||
+    [...allRefs].some((reference) => !dependencyRefs.includes(reference)) ||
+    dependencies.some(
+      ({ ref, dependsOn }) =>
+        !Array.isArray(dependsOn) ||
+        new Set(dependsOn).size !== dependsOn.length ||
+        dependsOn.includes(ref) ||
+        dependsOn.some((reference) => !allRefs.has(reference)),
+    ) ||
     !rootDependency ||
     JSON.stringify([...rootDependency.dependsOn].sort()) !==
       JSON.stringify([...componentRefs].sort()) ||
@@ -304,6 +338,7 @@ function validateVulnerabilityEvidence(
   reportSha256,
   image,
   policy,
+  evidenceEvaluatedAt,
 ) {
   requireExactKeys(
     report,
@@ -340,6 +375,7 @@ function validateVulnerabilityEvidence(
       disposition.policy,
       [
         "maximumDatabaseAgeHours",
+        "maximumEvidenceAgeHours",
         "severityThresholds",
         "maximumExceptionAgeDays",
       ],
@@ -378,6 +414,7 @@ function validateVulnerabilityEvidence(
   const scannedAt = Date.parse(report?.scannedAt)
   const databaseUpdatedAt = Date.parse(report?.database?.updatedAt)
   const reviewedAt = Date.parse(disposition?.reviewedAt)
+  const evaluatedAt = Date.parse(evidenceEvaluatedAt)
   const maximumAgeMs =
     policy.vulnerability.maximumDatabaseAgeHours * 60 * 60 * 1000
   if (
@@ -390,8 +427,12 @@ function validateVulnerabilityEvidence(
     ) ||
     !Number.isInteger(scannedAt) ||
     !Number.isInteger(databaseUpdatedAt) ||
+    !Number.isInteger(evaluatedAt) ||
     databaseUpdatedAt > scannedAt ||
-    scannedAt - databaseUpdatedAt > maximumAgeMs ||
+    scannedAt > evaluatedAt ||
+    evaluatedAt - databaseUpdatedAt > maximumAgeMs ||
+    evaluatedAt - scannedAt >
+      policy.vulnerability.maximumEvidenceAgeHours * 60 * 60 * 1000 ||
     !Array.isArray(report.findings) ||
     new Set(report.findings.map(({ id }) => id)).size !==
       report.findings.length ||
@@ -431,6 +472,7 @@ function validateVulnerabilityEvidence(
       Number.isInteger(expiresAt) &&
       approvedAt <= reviewedAt &&
       expiresAt > reviewedAt &&
+      expiresAt > evaluatedAt &&
       expiresAt - approvedAt <= maximumExceptionMs
     )
   })
@@ -450,6 +492,7 @@ function validateVulnerabilityEvidence(
     canonicalJson(disposition.policy) !==
       canonicalJson({
         maximumDatabaseAgeHours: policy.vulnerability.maximumDatabaseAgeHours,
+        maximumEvidenceAgeHours: policy.vulnerability.maximumEvidenceAgeHours,
         severityThresholds: policy.vulnerability.severityThresholds,
         maximumExceptionAgeDays: policy.vulnerability.maximumExceptionAgeDays,
       }) ||
@@ -516,6 +559,283 @@ function validateLicenseReview(
   }
 }
 
+function buildProductBom(coreLock) {
+  return {
+    bomFormat: "CycloneDX",
+    specVersion: "1.6",
+    version: 1,
+    metadata: {
+      tools: {
+        components: [
+          {
+            type: "application",
+            name: "llm-machines-release-evidence",
+            version: "1",
+          },
+        ],
+      },
+      component: {
+        type: "application",
+        "bom-ref": "llm-machines-core",
+        name: "llm-machines-core",
+        version: coreLock.release.version,
+        properties: [
+          {
+            name: "llm-machines:source-commit",
+            value: coreLock.release.sourceCommit,
+          },
+          {
+            name: "llm-machines:source-tree",
+            value: coreLock.release.sourceTree,
+          },
+          { name: "llm-machines:runtime-qualified", value: "false" },
+        ],
+      },
+    },
+    components: coreLock.images.map((image) => ({
+      type: "container",
+      "bom-ref": `image:${image.id}`,
+      name: image.id,
+      version: image.version,
+      hashes: [{ alg: "SHA-256", content: image.platformDigest.slice(7) }],
+      licenses: [{ license: { id: image.license } }],
+    })),
+    dependencies: [
+      {
+        ref: "llm-machines-core",
+        dependsOn: coreLock.images.map(({ id }) => `image:${id}`),
+      },
+      ...coreLock.images.map(({ id }) => ({
+        ref: `image:${id}`,
+        dependsOn: [],
+      })),
+    ],
+  }
+}
+
+function exactIdMap(entries, expectedIds, field) {
+  if (!Array.isArray(entries) || entries.length !== expectedIds.length) {
+    fail(`${field} does not cover every locked image`)
+  }
+  const map = new Map()
+  for (const entry of entries) {
+    if (typeof entry?.id !== "string" || map.has(entry.id)) {
+      fail(`${field} has an invalid or duplicate image ID`)
+    }
+    map.set(entry.id, entry)
+  }
+  if (expectedIds.some((id) => !map.has(id))) {
+    fail(`${field} does not cover every locked image`)
+  }
+  return map
+}
+
+export function validatePackagedReleaseEvidence(
+  {
+    coreLockPath,
+    artifactRoot,
+    evidenceArtifacts,
+    release,
+    signatureTimestamp = null,
+  },
+  { root = repositoryRoot } = {},
+) {
+  requireRegularFile(coreLockPath, "Core image lock")
+  const inventory = readCoreImageInventory(root)
+  const evidencePolicy = readEvidencePolicy(root)
+  const coreLock = readJson(coreLockPath, "Core image lock")
+  const lockErrors = validateCoreImageLock(coreLock, inventory, root)
+  if (lockErrors.length > 0) {
+    fail(`Core image lock is invalid: ${lockErrors.join("; ")}`)
+  }
+  const evaluatedAt = release?.evidenceEvaluatedAt
+  if (
+    coreLock.release.version !== release?.version ||
+    coreLock.release.sourceCommit !== release?.sourceCommit ||
+    coreLock.release.sourceTree !== release?.sourceTree ||
+    !Number.isInteger(Date.parse(evaluatedAt))
+  ) {
+    fail("packaged evidence does not bind the release identity")
+  }
+  const readBundle = (relativePath, field) => {
+    const path = resolve(artifactRoot, relativePath)
+    requireRegularFile(path, field)
+    return readJson(path, field)
+  }
+  const expectedIds = coreLock.images.map(({ id }) => id).sort()
+  const sbomBundle = readBundle(
+    "evidence/image-sboms.json",
+    "image SBOM bundle",
+  )
+  const provenanceBundle = readBundle(
+    "evidence/image-provenance.json",
+    "image provenance bundle",
+  )
+  const vulnerabilityBundle = readBundle(
+    "security/image-vulnerability-evidence.json",
+    "image vulnerability bundle",
+  )
+  const licenseTextBundle = readBundle(
+    "licenses/license-texts.json",
+    "license text bundle",
+  )
+  const noticeBundle = readBundle(
+    "licenses/third-party-notices.json",
+    "third-party notice bundle",
+  )
+  const licenseReviewBundle = readBundle(
+    "licenses/license-reviews.json",
+    "license review bundle",
+  )
+  const bundleSchemas = [
+    [sbomBundle, "llm-machines.image-sbom-bundle.v1", "images"],
+    [provenanceBundle, "llm-machines.image-provenance-bundle.v1", "images"],
+    [
+      vulnerabilityBundle,
+      "llm-machines.image-vulnerability-evidence.v1",
+      "images",
+    ],
+    [licenseTextBundle, "llm-machines.license-text-bundle.v1", "components"],
+    [noticeBundle, "llm-machines.third-party-notices.v1", "components"],
+    [licenseReviewBundle, "llm-machines.license-review-bundle.v1", "images"],
+  ]
+  for (const [bundle, schema, arrayField] of bundleSchemas) {
+    if (bundle?.schema !== schema || !Array.isArray(bundle?.[arrayField])) {
+      fail(`packaged evidence bundle is invalid: ${schema}`)
+    }
+  }
+  const sboms = exactIdMap(sbomBundle.images, expectedIds, "image SBOM bundle")
+  const provenance = exactIdMap(
+    provenanceBundle.images,
+    expectedIds,
+    "image provenance bundle",
+  )
+  const vulnerabilities = exactIdMap(
+    vulnerabilityBundle.images,
+    expectedIds,
+    "image vulnerability bundle",
+  )
+  const licenseTexts = exactIdMap(
+    licenseTextBundle.components,
+    expectedIds,
+    "license text bundle",
+  )
+  const notices = exactIdMap(
+    noticeBundle.components,
+    expectedIds,
+    "third-party notice bundle",
+  )
+  const licenseReviews = exactIdMap(
+    licenseReviewBundle.images,
+    expectedIds,
+    "license review bundle",
+  )
+  const inventoryById = new Map(
+    inventory.components.map((component) => [component.id, component]),
+  )
+  for (const image of coreLock.images) {
+    const sbom = sboms.get(image.id).document
+    const statement = provenance.get(image.id).statement
+    const vulnerability = vulnerabilities.get(image.id)
+    const licenseText = licenseTexts.get(image.id)
+    const notice = notices.get(image.id)
+    const licenseReview = licenseReviews.get(image.id).review
+    if (
+      sha256Bytes(`${canonicalJson(sbom)}\n`) !== image.sbomSha256 ||
+      sha256Bytes(`${canonicalJson(statement)}\n`) !== image.provenanceSha256 ||
+      sha256Bytes(`${canonicalJson(vulnerability.report)}\n`) !==
+        image.vulnerabilityReportSha256 ||
+      sha256Bytes(`${canonicalJson(vulnerability.disposition)}\n`) !==
+        image.vulnerabilityDispositionSha256 ||
+      licenseText.license !== image.license ||
+      licenseText.sha256 !== image.licenseTextSha256 ||
+      sha256Bytes(licenseText.text) !== image.licenseTextSha256 ||
+      notice.license !== image.license ||
+      notice.repository !== image.repository ||
+      notice.sourceRevision !== image.sourceRevision ||
+      notice.sha256 !== image.noticeSha256 ||
+      sha256Bytes(notice.text) !== image.noticeSha256 ||
+      sha256Bytes(`${canonicalJson(licenseReview)}\n`) !==
+        image.licenseReviewSha256
+    ) {
+      fail(`${image.id} packaged evidence digest or identity is invalid`)
+    }
+    validateSbom(sbom, image, evidencePolicy)
+    validateProvenance(
+      statement,
+      image,
+      inventoryById.get(image.id),
+      root,
+      evidencePolicy,
+    )
+    validateVulnerabilityEvidence(
+      vulnerability.report,
+      vulnerability.disposition,
+      image.vulnerabilityReportSha256,
+      image,
+      evidencePolicy,
+      evaluatedAt,
+    )
+    validateLicenseReview(
+      licenseReview,
+      image,
+      image.licenseTextSha256,
+      image.noticeSha256,
+      evidencePolicy,
+    )
+  }
+  const productBom = readBundle("bom/product-bom.cdx.json", "Product BOM")
+  if (canonicalJson(productBom) !== canonicalJson(buildProductBom(coreLock))) {
+    fail("Product BOM does not bind the exact Core image inventory")
+  }
+  const { policy } = readLicensePolicy(root, inventory)
+  const licenseDisposition = readBundle(
+    "licenses/license-disposition.json",
+    "license disposition bundle",
+  )
+  const expectedDisposition = {
+    ...policy,
+    status: "RELEASE_DISPOSITION",
+    components: coreLock.images.map(({ id, license }) => ({ id, license })),
+  }
+  if (
+    canonicalJson(licenseDisposition) !== canonicalJson(expectedDisposition)
+  ) {
+    fail("license disposition does not bind the exact Core inventory")
+  }
+  for (const packet of policy.sourcePackets) {
+    const packetPath = resolve(artifactRoot, `source/${packet.id}.tar.zst`)
+    requireRegularFile(packetPath, `${packet.id} packet`)
+    const digest = sha256File(packetPath)
+    for (const componentId of packet.components) {
+      if (
+        coreLock.images.find(({ id }) => id === componentId)
+          ?.correspondingSourceSha256 !== digest
+      ) {
+        fail(`${packet.id} packet differs from ${componentId} lock`)
+      }
+    }
+  }
+  const evidenceIndexPath = resolve(
+    artifactRoot,
+    "evidence/release-evidence-index.json",
+  )
+  requireRegularFile(evidenceIndexPath, "release evidence index")
+  const evidenceIndex = readJson(evidenceIndexPath, "release evidence index")
+  validateReleaseEvidenceIndex(
+    evidenceIndex,
+    {
+      coreLock,
+      coreLockPath,
+      evidenceArtifacts,
+      release,
+      signatureTimestamp,
+    },
+    { root },
+  )
+  return { coreLock, evidenceIndex }
+}
+
 export function generateReleaseEvidence(
   {
     coreLockPath,
@@ -523,6 +843,7 @@ export function generateReleaseEvidence(
     correspondingSourceRoot,
     vulnerabilityRoot,
     outputRoot,
+    evidenceEvaluatedAt,
   },
   { root = repositoryRoot } = {},
 ) {
@@ -532,11 +853,15 @@ export function generateReleaseEvidence(
     correspondingSourceRoot,
     vulnerabilityRoot,
     outputRoot,
+    evidenceEvaluatedAt,
   })) {
     if (typeof path !== "string" || path.length === 0)
       fail(`${field} is required`)
   }
   requireRegularFile(coreLockPath, "Core image lock")
+  if (!Number.isInteger(Date.parse(evidenceEvaluatedAt))) {
+    fail("evidenceEvaluatedAt must be an ISO-8601 timestamp")
+  }
 
   const inventory = readCoreImageInventory(root)
   const evidencePolicy = readEvidencePolicy(root)
@@ -565,6 +890,7 @@ export function generateReleaseEvidence(
   const licenseTexts = []
   const notices = []
   const licenseReviews = []
+  const exceptionExpiries = []
   const inventoryById = new Map(
     inventory.components.map((component) => [component.id, component]),
   )
@@ -673,6 +999,10 @@ export function generateReleaseEvidence(
       image.vulnerabilityReportSha256,
       image,
       evidencePolicy,
+      evidenceEvaluatedAt,
+    )
+    exceptionExpiries.push(
+      ...vulnerabilityDisposition.exceptions.map(({ expiresAt }) => expiresAt),
     )
     const licensePolicy = licenses.get(image.license)
     if (
@@ -704,57 +1034,7 @@ export function generateReleaseEvidence(
       disposition: vulnerabilityDisposition,
     })
   }
-  const bom = {
-    bomFormat: "CycloneDX",
-    specVersion: "1.6",
-    version: 1,
-    metadata: {
-      tools: {
-        components: [
-          {
-            type: "application",
-            name: "llm-machines-release-evidence",
-            version: "1",
-          },
-        ],
-      },
-      component: {
-        type: "application",
-        "bom-ref": "llm-machines-core",
-        name: "llm-machines-core",
-        version: coreLock.release.version,
-        properties: [
-          {
-            name: "llm-machines:source-commit",
-            value: coreLock.release.sourceCommit,
-          },
-          {
-            name: "llm-machines:source-tree",
-            value: coreLock.release.sourceTree,
-          },
-          { name: "llm-machines:runtime-qualified", value: "false" },
-        ],
-      },
-    },
-    components: coreLock.images.map((image) => ({
-      type: "container",
-      "bom-ref": `image:${image.id}`,
-      name: image.id,
-      version: image.version,
-      hashes: [{ alg: "SHA-256", content: image.platformDigest.slice(7) }],
-      licenses: [{ license: { id: image.license } }],
-    })),
-    dependencies: [
-      {
-        ref: "llm-machines-core",
-        dependsOn: coreLock.images.map(({ id }) => `image:${id}`),
-      },
-      ...coreLock.images.map(({ id }) => ({
-        ref: `image:${id}`,
-        dependsOn: [],
-      })),
-    ],
-  }
+  const bom = buildProductBom(coreLock)
 
   const outputs = {
     "bom/product-bom.cdx.json": bom,
@@ -798,10 +1078,36 @@ export function generateReleaseEvidence(
     mkdirSync(dirname(sourceOutput), { recursive: true })
     copyFileSync(packet.path, sourceOutput, constants.COPYFILE_EXCL)
   }
+  const evidenceArtifacts = semanticEvidence.map(([evidenceId, path]) => ({
+    evidenceId,
+    path,
+    sha256: sha256File(resolve(outputRoot, path)),
+  }))
+  const releaseEvidenceIndex = buildReleaseEvidenceIndex(
+    {
+      coreLock,
+      coreLockPath,
+      evidenceEvaluatedAt,
+      evidenceArtifacts,
+      minimumExceptionExpiry:
+        exceptionExpiries.length === 0
+          ? null
+          : [...exceptionExpiries].sort(
+              (left, right) => Date.parse(left) - Date.parse(right),
+            )[0],
+    },
+    { root },
+  )
+  const indexPath = resolve(outputRoot, "evidence/release-evidence-index.json")
+  mkdirSync(dirname(indexPath), { recursive: true })
+  writeFileSync(indexPath, `${canonicalJson(releaseEvidenceIndex)}\n`, {
+    flag: "wx",
+  })
   return {
     outputs: [
       ...Object.keys(outputs),
       ...sourcePackets.map(({ id }) => `source/${id}.tar.zst`),
+      "evidence/release-evidence-index.json",
     ].sort(),
     sourcePackets: sourcePackets.map(({ id, digest, components }) => ({
       id,

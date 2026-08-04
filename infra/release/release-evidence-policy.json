@@ -8,6 +8,7 @@
     "specVersion": "1.6",
     "componentType": "container",
     "minimumInventoryComponents": 1,
+    "approvedToolNames": ["syft"],
     "toolMetadataRequired": true,
     "dependencyGraphRequired": true
   },
@@ -29,6 +30,7 @@
     "dispositionSchema": "llm-machines.vulnerability-disposition.v1",
     "scanner": "trivy",
     "maximumDatabaseAgeHours": 72,
+    "maximumEvidenceAgeHours": 24,
     "severityThresholds": {
       "critical": 0,
       "high": 0
