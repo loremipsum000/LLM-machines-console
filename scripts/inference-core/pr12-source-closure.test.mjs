@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url"
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const closurePath = "docs/reduction/inference-core/pr-12-source-closure.json"
+const closeoutIntroduction = "2877925939d7a32fe07f8b2061a083ffa527407d"
+const closeoutIntroductionTree = "8a3e71a0e399caf2b71911e165f84f41af97cc37"
 
 function git(...args) {
   return execFileSync("git", args, {
@@ -100,26 +102,38 @@ test("current registers report source closure without runtime acceptance", () =>
   }
 })
 
-test("PR-12 closeout changes governance paths only", () => {
+test("PR-12 closeout introduction is an exact governance-only transition", () => {
   const closure = readJson(closurePath)
-  const allowed = new Set([
-    "docs/reduction/inference-core/README.md",
-    "docs/reduction/inference-core/decision-register.md",
-    "docs/reduction/inference-core/pr-12-source-closure.json",
-    "docs/reduction/inference-core/validation-register.md",
-    "scripts/inference-core/pr12-source-closure.test.mjs",
-  ])
-  const paths = git(
-    "diff",
-    "--name-only",
+  assert.equal(
+    git("rev-parse", `${closeoutIntroduction}^`),
     closure.protectedAdmission.commit,
-    "HEAD",
+  )
+  assert.equal(
+    git("rev-parse", `${closeoutIntroduction}^{tree}`),
+    closeoutIntroductionTree,
+  )
+  const expected = [
+    "M docs/reduction/inference-core/README.md",
+    "M docs/reduction/inference-core/decision-register.md",
+    "A docs/reduction/inference-core/pr-12-source-closure.json",
+    "M docs/reduction/inference-core/validation-register.md",
+    "A scripts/inference-core/pr12-source-closure.test.mjs",
+  ]
+  const changedPaths = git(
+    "diff",
+    "--name-status",
+    "--no-renames",
+    closure.protectedAdmission.commit,
+    closeoutIntroduction,
   )
     .split("\n")
     .filter(Boolean)
-  for (const path of paths) assert.equal(allowed.has(path), true)
+    .map((line) => line.replace("\t", " "))
+  assert.deepEqual(changedPaths, expected)
   assert.equal(
-    paths.some((path) => /^(?:apps|packages|infra|\.github)\//.test(path)),
+    changedPaths.some((entry) =>
+      /^(?:[A-Z] )?(?:apps|packages|infra|\.github)\//.test(entry),
+    ),
     false,
   )
 })
