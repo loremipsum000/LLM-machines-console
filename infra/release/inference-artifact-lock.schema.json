@@ -57,7 +57,16 @@
         },
         "repository": { "type": "string", "minLength": 3 },
         "imageDigest": { "$ref": "#/$defs/sha256" },
-        "platform": { "type": "string", "minLength": 3 },
+        "platform": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["os", "architecture", "acceleratorBackend"],
+          "properties": {
+            "os": { "const": "linux" },
+            "architecture": { "enum": ["amd64", "arm64"] },
+            "acceleratorBackend": { "enum": ["cuda", "rocm", "xpu", "cpu"] }
+          }
+        },
         "platformDigest": { "$ref": "#/$defs/sha256" },
         "sbomSha256": { "$ref": "#/$defs/sha256" },
         "provenanceSha256": { "$ref": "#/$defs/sha256" }

@@ -113,7 +113,11 @@ function syntheticInferenceLock(documents) {
       sourceCommit: "28b095c01005d4a3a2a5b637b7d028b07fba31b2",
       repository: profile.engine.image.privateRegistryMirror,
       imageDigest: profile.engine.image.digest,
-      platform: "linux/amd64-cuda",
+      platform: {
+        os: profile.engine.image.platform.os,
+        architecture: profile.engine.image.platform.architecture,
+        acceleratorBackend: profile.accelerator.backend,
+      },
       platformDigest: profile.engine.image.digest,
       sbomSha256: profile.engine.image.sbomDigest,
       provenanceSha256: profile.engine.image.provenanceDigest,
@@ -373,5 +377,63 @@ test("inference lock validates the actual Core and rollback documents", () => {
       rollbackProfile: changedRollback,
     }).join("\n"),
     /differs from rollback profile/,
+  )
+})
+
+test("inference lock rejects malformed documents without throwing", () => {
+  const documents = syntheticProfileDocuments()
+  const lock = syntheticInferenceLock(documents)
+  const malformedProfile = clone(documents.profile)
+  malformedProfile.accelerator = null
+
+  assert.doesNotThrow(() =>
+    validateInferenceArtifactLock(lock, {
+      ...documents,
+      profile: malformedProfile,
+      inventory: {},
+    }),
+  )
+  assert.match(
+    validateInferenceArtifactLock(lock, {
+      ...documents,
+      profile: malformedProfile,
+      inventory: {},
+    }).join("\n"),
+    /Delivery profile is malformed|Compatible Core lock is malformed/,
+  )
+  assert.doesNotThrow(() => validateInferenceArtifactLock(null))
+})
+
+test("inference lock rejects fields outside the exact schema", () => {
+  const documents = syntheticProfileDocuments()
+  const topLevel = syntheticInferenceLock(documents)
+  topLevel.unreviewed = true
+  assert.match(
+    validateInferenceArtifactLock(topLevel, documents).join("\n"),
+    /Inference artifact lock keys must be exactly/,
+  )
+
+  const nested = syntheticInferenceLock(documents)
+  nested.engine.unreviewed = true
+  assert.match(
+    validateInferenceArtifactLock(nested, documents).join("\n"),
+    /Inference artifact lock engine keys must be exactly/,
+  )
+})
+
+test("inference lock rejects the current revision as its own rollback", () => {
+  const documents = syntheticProfileDocuments()
+  documents.rollbackProfile = clone(documents.profile)
+  documents.profile.rollback = {
+    profileId: documents.profile.metadata.profileId,
+    revision: documents.profile.metadata.revision,
+    engineImageDigest: documents.profile.engine.image.digest,
+    modelArtifactDigest: documents.profile.model.artifactDigest,
+  }
+  const lock = syntheticInferenceLock(documents)
+
+  assert.match(
+    validateInferenceArtifactLock(lock, documents).join("\n"),
+    /cannot select itself for rollback/,
   )
 })
