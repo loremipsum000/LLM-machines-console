@@ -50,7 +50,8 @@ rejects inputs whose hashes or identities differ from the Core lock. The
 checked-in `license-disposition.json` is a source policy, not a substitute for
 the license texts and corresponding source delivered with a release.
 
-`generate-clean-seeds.mjs` packages the schema-only PostgreSQL migration and
+`generate-clean-seeds.mjs` packages the PostgreSQL schema plus its six exact
+empty-appliance lifecycle rows and
 the two validated, credential-free Keycloak logical realms and commissioning
 plans. It never generates one-time values. Those remain a witnessed
 commissioning action outside Git and outside PR-12 source packaging.

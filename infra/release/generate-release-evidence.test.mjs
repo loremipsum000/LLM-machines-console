@@ -29,8 +29,17 @@ function fixture() {
   const directory = mkdtempSync(join(tmpdir(), "llmm-release-evidence-"))
   const evidenceRoot = join(directory, "inputs")
   const outputRoot = join(directory, "outputs")
-  const sourcePacket = join(directory, "firecrawl-source.tar.zst")
-  write(sourcePacket, "exact firecrawl corresponding source\n")
+  const correspondingSourceRoot = join(directory, "corresponding-source")
+  const firecrawlSourcePacket = join(
+    correspondingSourceRoot,
+    "firecrawl-corresponding-source.tar.zst",
+  )
+  const grafanaSourcePacket = join(
+    correspondingSourceRoot,
+    "grafana-corresponding-source.tar.zst",
+  )
+  write(firecrawlSourcePacket, "exact firecrawl corresponding source\n")
+  write(grafanaSourcePacket, "exact grafana corresponding source\n")
   const inventory = readCoreImageInventory(root)
   const sourceCommit = git("rev-parse", "HEAD^{commit}")
   const sourceTree = git("rev-parse", "HEAD^{tree}")
@@ -70,7 +79,28 @@ function fixture() {
           digest: { sha256: platformDigest.slice(7) },
         },
       ],
-      predicate: {},
+      predicate: {
+        buildDefinition: {
+          buildType: "https://llm-machines.invalid/builds/container/v1",
+          externalParameters: { component: component.id },
+          internalParameters: {},
+          resolvedDependencies: [
+            {
+              uri: `git+https://source.invalid/${component.id}`,
+              digest: { gitCommit: component.sourceRevision },
+            },
+          ],
+        },
+        runDetails: {
+          builder: { id: "https://llm-machines.invalid/builders/release/v1" },
+          metadata: {
+            invocationId: `fixture-${component.id}`,
+            startedOn: "2026-08-04T00:00:00.000Z",
+            finishedOn: "2026-08-04T00:00:01.000Z",
+          },
+          byproducts: [],
+        },
+      },
     }
     const sbomBytes = `${canonicalJson(sbom)}\n`
     const provenanceBytes = `${canonicalJson(provenance)}\n`
@@ -103,7 +133,15 @@ function fixture() {
       sbomSha256: sha256(sbomBytes),
       provenanceSha256: sha256(provenanceBytes),
       ...(/(?:AGPL|GPL)/.test(component.license)
-        ? { correspondingSourceSha256: sha256(readFileSync(sourcePacket)) }
+        ? {
+            correspondingSourceSha256: sha256(
+              readFileSync(
+                component.id === "grafana-private"
+                  ? grafanaSourcePacket
+                  : firecrawlSourcePacket,
+              ),
+            ),
+          }
         : {}),
     }
   })
@@ -140,9 +178,9 @@ function fixture() {
   )
   return {
     coreLockPath,
+    correspondingSourceRoot,
     directory,
     evidenceRoot,
-    firecrawlSourcePacketPath: sourcePacket,
     firecrawlVulnerabilityPath: vulnerabilityPath,
     outputRoot,
   }
@@ -154,7 +192,7 @@ test("release evidence is deterministic and covers every locked image", () => {
   const firstResult = generateReleaseEvidence(first, { root })
   const secondResult = generateReleaseEvidence(second, { root })
   assert.deepEqual(firstResult, secondResult)
-  assert.equal(firstResult.outputs.length, 8)
+  assert.equal(firstResult.outputs.length, 9)
   for (const path of firstResult.outputs) {
     assert.deepEqual(
       readFileSync(join(first.outputRoot, path)),
@@ -195,10 +233,33 @@ test("mismatched SBOM, vulnerability result, or corresponding source fails", () 
   )
 
   const sourceFixture = fixture()
-  write(sourceFixture.firecrawlSourcePacketPath, "different source packet\n")
+  write(
+    join(
+      sourceFixture.correspondingSourceRoot,
+      "grafana-corresponding-source.tar.zst",
+    ),
+    "different source packet\n",
+  )
   assert.throws(
     () => generateReleaseEvidence(sourceFixture, { root }),
-    /source packet differs/,
+    /grafana-corresponding-source packet differs/,
+  )
+})
+
+test("incomplete SLSA provenance fails", () => {
+  const value = fixture()
+  const path = join(value.evidenceRoot, "provenance/product-edge.intoto.json")
+  const provenance = JSON.parse(readFileSync(path, "utf8"))
+  provenance.predicate = {}
+  write(path, `${canonicalJson(provenance)}\n`)
+  const lock = JSON.parse(readFileSync(value.coreLockPath, "utf8"))
+  lock.images.find(({ id }) => id === "product-edge").provenanceSha256 = sha256(
+    readFileSync(path),
+  )
+  write(value.coreLockPath, `${canonicalJson(lock)}\n`)
+  assert.throws(
+    () => generateReleaseEvidence(value, { root }),
+    /provenance for product-edge does not bind/,
   )
 })
 

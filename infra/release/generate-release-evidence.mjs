@@ -95,6 +95,8 @@ function validateSbom(document, image) {
 
 function validateProvenance(document, image) {
   const digest = image.platformDigest.slice("sha256:".length)
+  const buildDefinition = document?.predicate?.buildDefinition
+  const runDetails = document?.predicate?.runDetails
   if (
     document?._type !== "https://in-toto.io/Statement/v1" ||
     document?.predicateType !== "https://slsa.dev/provenance/v1" ||
@@ -102,7 +104,23 @@ function validateProvenance(document, image) {
     !document.subject.some(
       ({ name, digest: subjectDigest }) =>
         name === image.repository && subjectDigest?.sha256 === digest,
-    )
+    ) ||
+    typeof buildDefinition?.buildType !== "string" ||
+    !buildDefinition.buildType.startsWith("https://") ||
+    !buildDefinition.externalParameters ||
+    typeof buildDefinition.externalParameters !== "object" ||
+    Array.isArray(buildDefinition.externalParameters) ||
+    !buildDefinition.internalParameters ||
+    typeof buildDefinition.internalParameters !== "object" ||
+    Array.isArray(buildDefinition.internalParameters) ||
+    !Array.isArray(buildDefinition.resolvedDependencies) ||
+    buildDefinition.resolvedDependencies.length === 0 ||
+    typeof runDetails?.builder?.id !== "string" ||
+    !runDetails.builder.id.startsWith("https://") ||
+    typeof runDetails?.metadata?.invocationId !== "string" ||
+    !Number.isInteger(Date.parse(runDetails?.metadata?.startedOn)) ||
+    !Number.isInteger(Date.parse(runDetails?.metadata?.finishedOn)) ||
+    !Array.isArray(runDetails?.byproducts)
   ) {
     fail(`provenance for ${image.id} does not bind the locked image`)
   }
@@ -115,14 +133,15 @@ function readLicensePolicy(root, inventory) {
   )
   requireExactKeys(
     policy,
-    ["schema", "status", "containsCredentials", "licenses"],
+    ["schema", "status", "containsCredentials", "licenses", "sourcePackets"],
     "license disposition",
   )
   if (
     policy.schema !== "llm-machines.license-disposition.v1" ||
     policy.status !== "SOURCE_POLICY" ||
     policy.containsCredentials !== false ||
-    !Array.isArray(policy.licenses)
+    !Array.isArray(policy.licenses) ||
+    !Array.isArray(policy.sourcePackets)
   ) {
     fail("license disposition policy is invalid")
   }
@@ -142,6 +161,33 @@ function readLicensePolicy(root, inventory) {
     [...expected].some((license) => !licenses.has(license))
   ) {
     fail("license disposition does not cover the exact Core inventory")
+  }
+  const copyleftIds = new Set(
+    inventory.components
+      .filter(({ license }) => /(?:AGPL|GPL)/.test(license))
+      .map(({ id }) => id),
+  )
+  const packetComponents = []
+  const packetIds = new Set()
+  for (const packet of policy.sourcePackets) {
+    requireExactKeys(packet, ["id", "components"], "source packet policy")
+    if (
+      !/^[a-z0-9][a-z0-9-]+$/.test(packet.id ?? "") ||
+      packetIds.has(packet.id) ||
+      !Array.isArray(packet.components) ||
+      packet.components.length === 0
+    ) {
+      fail("source packet policy is invalid or duplicated")
+    }
+    packetIds.add(packet.id)
+    packetComponents.push(...packet.components)
+  }
+  if (
+    packetComponents.length !== copyleftIds.size ||
+    new Set(packetComponents).size !== packetComponents.length ||
+    packetComponents.some((id) => !copyleftIds.has(id))
+  ) {
+    fail("source packets do not cover the exact copyleft Core inventory")
   }
   return { policy, licenses }
 }
@@ -197,7 +243,7 @@ export function generateReleaseEvidence(
   {
     coreLockPath,
     evidenceRoot,
-    firecrawlSourcePacketPath,
+    correspondingSourceRoot,
     firecrawlVulnerabilityPath,
     outputRoot,
   },
@@ -206,7 +252,7 @@ export function generateReleaseEvidence(
   for (const [field, path] of Object.entries({
     coreLockPath,
     evidenceRoot,
-    firecrawlSourcePacketPath,
+    correspondingSourceRoot,
     firecrawlVulnerabilityPath,
     outputRoot,
   })) {
@@ -214,7 +260,6 @@ export function generateReleaseEvidence(
       fail(`${field} is required`)
   }
   requireRegularFile(coreLockPath, "Core image lock")
-  requireRegularFile(firecrawlSourcePacketPath, "Firecrawl source packet")
   requireRegularFile(
     firecrawlVulnerabilityPath,
     "Firecrawl vulnerability disposition",
@@ -226,13 +271,18 @@ export function generateReleaseEvidence(
   if (lockErrors.length > 0)
     fail(`Core image lock is invalid: ${lockErrors.join("; ")}`)
   const { policy, licenses } = readLicensePolicy(root, inventory)
-  const sourceDigest = sha256File(firecrawlSourcePacketPath)
-  for (const image of coreLock.images.filter(({ id }) =>
-    firecrawlIds.has(id),
-  )) {
-    if (image.correspondingSourceSha256 !== sourceDigest) {
-      fail(`Firecrawl source packet differs from ${image.id} lock`)
+  const sourcePackets = []
+  for (const packet of policy.sourcePackets) {
+    const path = resolve(correspondingSourceRoot, `${packet.id}.tar.zst`)
+    requireRegularFile(path, `${packet.id} packet`)
+    const digest = sha256File(path)
+    for (const componentId of packet.components) {
+      const image = coreLock.images.find(({ id }) => id === componentId)
+      if (image?.correspondingSourceSha256 !== digest) {
+        fail(`${packet.id} packet differs from ${componentId} lock`)
+      }
     }
+    sourcePackets.push({ ...packet, path, digest })
   }
 
   const sboms = []
@@ -354,18 +404,21 @@ export function generateReleaseEvidence(
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, `${canonicalJson(value)}\n`, { flag: "wx" })
   }
-  const sourceOutput = resolve(
-    outputRoot,
-    "source/firecrawl-corresponding-source.tar.zst",
-  )
-  mkdirSync(dirname(sourceOutput), { recursive: true })
-  copyFileSync(firecrawlSourcePacketPath, sourceOutput, constants.COPYFILE_EXCL)
+  for (const packet of sourcePackets) {
+    const sourceOutput = resolve(outputRoot, `source/${packet.id}.tar.zst`)
+    mkdirSync(dirname(sourceOutput), { recursive: true })
+    copyFileSync(packet.path, sourceOutput, constants.COPYFILE_EXCL)
+  }
   return {
     outputs: [
       ...Object.keys(outputs),
-      "source/firecrawl-corresponding-source.tar.zst",
+      ...sourcePackets.map(({ id }) => `source/${id}.tar.zst`),
     ].sort(),
-    sourceDigest,
+    sourcePackets: sourcePackets.map(({ id, digest, components }) => ({
+      id,
+      digest,
+      components,
+    })),
   }
 }
 

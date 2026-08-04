@@ -4,7 +4,6 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import {
-  loadKeycloakArtifacts,
   validateApplicationCommissioningPlan,
   validateApplicationKeycloakSeed,
   validateCommissioningPlan,
@@ -14,7 +13,6 @@ import {
 
 const directory = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = resolve(directory, "../..")
-const insertPattern = /^INSERT INTO [^;]+;$/gm
 const allowedInitialStateRows = [
   "INSERT INTO admin.backup_state (id) VALUES ('singleton');",
   "INSERT INTO admin.console_settings (id) VALUES ('singleton');",
@@ -66,6 +64,65 @@ function writeExclusiveJson(path, value) {
   writeFileSync(path, `${canonicalJson(value)}\n`, { flag: "wx" })
 }
 
+function readJson(path, field) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"))
+  } catch {
+    fail(`${field} is not valid JSON`)
+  }
+}
+
+function loadKeycloakArtifactsFromRoot(root) {
+  return {
+    seed: readJson(
+      resolve(root, "infra/keycloak/inference-core-realm-seed.json"),
+      "human Keycloak realm seed",
+    ),
+    commissioning: readJson(
+      resolve(root, "infra/keycloak/inference-core-commissioning.json"),
+      "human Keycloak commissioning plan",
+    ),
+    applicationSeed: readJson(
+      resolve(
+        root,
+        "infra/keycloak/inference-core-application-realm-seed.json",
+      ),
+      "application Keycloak realm seed",
+    ),
+    applicationCommissioning: readJson(
+      resolve(
+        root,
+        "infra/keycloak/inference-core-application-realm-commissioning.json",
+      ),
+      "application Keycloak commissioning plan",
+    ),
+  }
+}
+
+export function validateCleanDatabaseMigration(migration) {
+  const statements = migration.match(/\bINSERT\s+INTO\b[\s\S]*?;/gi) ?? []
+  const normalize = (statement) =>
+    statement.trim().replaceAll(/\s+/g, " ").toLowerCase()
+  const normalizedAllowed = [...allowedInitialStateRows].map(normalize).sort()
+  const normalizedActual = statements.map(normalize).sort()
+  const remainder = migration.replaceAll(/\bINSERT\s+INTO\b[\s\S]*?;/gi, "")
+  if (
+    JSON.stringify(normalizedActual) !== JSON.stringify(normalizedAllowed) ||
+    /\bINSERT\s+INTO\b/i.test(remainder) ||
+    /\bCOPY\s+[^\s]+\s+FROM\b/i.test(migration)
+  ) {
+    fail("database seed contains an unapproved persisted row")
+  }
+  if (
+    !/\bCREATE\s+TABLE\b/i.test(migration) ||
+    !/\bCREATE\s+SCHEMA\s+common\b/i.test(migration) ||
+    !/\bCREATE\s+SCHEMA\s+admin\b/i.test(migration)
+  ) {
+    fail("database seed does not contain the expected clean schema")
+  }
+  return statements
+}
+
 export function generateCleanSeedEvidence(
   outputRoot,
   { root = repositoryRoot } = {},
@@ -79,23 +136,9 @@ export function generateCleanSeedEvidence(
     "infra/migrations/0000_inference_core.sql",
   )
   const migration = readFileSync(migrationPath, "utf8")
-  const initialStateRows = migration.match(insertPattern)?.sort() ?? []
-  if (
-    JSON.stringify(initialStateRows) !==
-      JSON.stringify([...allowedInitialStateRows].sort()) ||
-    /\bCOPY\s+[^\s]+\s+FROM\b/i.test(migration)
-  ) {
-    fail("database seed contains an unapproved persisted row")
-  }
-  if (
-    !migration.includes("CREATE TABLE") ||
-    !migration.includes("CREATE SCHEMA common") ||
-    !migration.includes("CREATE SCHEMA admin")
-  ) {
-    fail("database seed does not contain the expected clean schema")
-  }
+  const initialStateRows = validateCleanDatabaseMigration(migration)
 
-  const artifacts = loadKeycloakArtifacts()
+  const artifacts = loadKeycloakArtifactsFromRoot(root)
   const validationErrors = [
     ...validateKeycloakSeed(artifacts.seed),
     ...validateCommissioningPlan(artifacts.commissioning),
