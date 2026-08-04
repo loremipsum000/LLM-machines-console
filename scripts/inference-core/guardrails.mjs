@@ -5371,7 +5371,7 @@ const pr11aR1K1HistoricalPriorEvidencePaths = new Set([
 
 export function readPr09SourceBoundaryText(path, root = repositoryRoot) {
   if (
-    hasPr11aR1K1SourceMarker(root) &&
+    (hasPr11aR1K1SourceMarker(root) || hasPr11aR1V1SourceMarker(root)) &&
     pr11aR1K1HistoricalPriorEvidencePaths.has(path)
   ) {
     return readRepositoryPathAtCommit(

@@ -2023,7 +2023,7 @@
       },
       {
         "path": "scripts/inference-core/guardrails.mjs",
-        "sha256": "fd979f6bed5fc704d2b5ffabeaeb65261f1b3a110303071ea2026b9dfc6035a4"
+        "sha256": "f8383580a7db611742317b30021802514dd9f1781dd9762caedc25956e1c92ae"
       },
       {
         "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
