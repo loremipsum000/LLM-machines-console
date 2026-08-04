@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://llm-machines.invalid/schemas/inference-artifact-lock.v1.json",
+  "title": "LLM Machines immutable inference delivery-profile artifact lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "profile",
+    "compatibleCoreRelease",
+    "engine",
+    "model",
+    "rollback"
+  ],
+  "properties": {
+    "schema": { "const": "llm-machines.inference-artifact-lock.v1" },
+    "status": { "const": "LOCKED" },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "contentSha256"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "revision": { "type": "string", "minLength": 1 },
+        "contentSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "compatibleCoreRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "coreImageLockSha256"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "coreImageLockSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "sourceCommit",
+        "repository",
+        "imageDigest",
+        "platform",
+        "platformDigest",
+        "sbomSha256",
+        "provenanceSha256"
+      ],
+      "properties": {
+        "name": { "const": "sglang" },
+        "version": { "const": "0.5.13" },
+        "sourceCommit": {
+          "const": "28b095c01005d4a3a2a5b637b7d028b07fba31b2"
+        },
+        "repository": { "type": "string", "minLength": 3 },
+        "imageDigest": { "$ref": "#/$defs/sha256" },
+        "platform": { "type": "string", "minLength": 3 },
+        "platformDigest": { "$ref": "#/$defs/sha256" },
+        "sbomSha256": { "$ref": "#/$defs/sha256" },
+        "provenanceSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "revision",
+        "artifactManifestSha256",
+        "weightsSha256",
+        "license"
+      ],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "revision": { "type": "string", "minLength": 1 },
+        "artifactManifestSha256": { "$ref": "#/$defs/sha256" },
+        "weightsSha256": { "$ref": "#/$defs/sha256" },
+        "license": { "type": "string", "minLength": 1 }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "profileRevision",
+        "artifactLockSha256",
+        "engineImageDigest",
+        "modelWeightsSha256"
+      ],
+      "properties": {
+        "profileId": { "type": "string", "minLength": 1 },
+        "profileRevision": { "type": "string", "minLength": 1 },
+        "artifactLockSha256": { "$ref": "#/$defs/sha256" },
+        "engineImageDigest": { "$ref": "#/$defs/sha256" },
+        "modelWeightsSha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}

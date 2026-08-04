@@ -1,0 +1,216 @@
+{
+  "schema": "llm-machines.core-image-inventory.v1",
+  "status": "SOURCE_INVENTORY",
+  "containsCredentials": false,
+  "runtimeQualified": false,
+  "coreBaseline": {
+    "vcpus": 8,
+    "memoryGiB": 32,
+    "localDiskGiB": 100,
+    "platform": "linux/amd64",
+    "backupRepository": "separate-customer-owned-target",
+    "bulkModelWeights": "excluded"
+  },
+  "releasePolicy": {
+    "finalLockSchema": "infra/release/core-image-lock.schema.json",
+    "privateMirrorBinding": "release-assembly-input",
+    "tagOnlyReferencesAllowed": false,
+    "latestAllowed": false,
+    "allRequiredComponentsMustBeLocked": true,
+    "sourceRegistries": ["docker.io", "ghcr.io", "quay.io"],
+    "finalImageRegistry": "customer-private-registry",
+    "finalDigestSource": "verified-oci-artifact",
+    "productOutputDigestSource": "deterministic-release-build",
+    "firecrawlOutputDigestSource": "reviewed-reduced-source-build"
+  },
+  "buildInputs": [
+    {
+      "id": "node-runtime-base",
+      "repository": "docker.io/library/node",
+      "version": "22.23.2-bookworm-slim",
+      "indexDigest": "sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:0f65470961851f2354dc8e560853e2f428ea928436135fc7e35780ab100c7e00",
+      "sourceRevision": "bc0a422bce0f729dd85790639d9f1918143f1235",
+      "license": "MIT"
+    }
+  ],
+  "components": [
+    {
+      "id": "product-edge",
+      "kind": "third-party-mirror",
+      "required": true,
+      "customerExposure": "product-edge-only",
+      "repository": "docker.io/library/nginx",
+      "version": "1.29.1-alpine",
+      "indexDigest": "sha256:42a516af16b852e33b7682d5ef8acbd5d13fe08fecadc7ed98605ba5e3b26ab8",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:60e48a050b6408d0c5dd59b98b6e36bf0937a0bbe99304e3e9c0e63b7563443a",
+      "sourceRevision": "5a4ad48c733b365d69a4d1c9946a9d8480469c7f",
+      "license": "BSD-2-Clause",
+      "mirrorRepository": "core/product-edge"
+    },
+    {
+      "id": "console-web",
+      "kind": "product-build-output",
+      "required": true,
+      "customerExposure": "product-edge-only",
+      "dockerfile": "apps/web/Dockerfile",
+      "version": "release-version",
+      "sourceRevision": "release-source-commit",
+      "license": "Proprietary",
+      "mirrorRepository": "core/console-web"
+    },
+    {
+      "id": "console-bff",
+      "kind": "product-build-output",
+      "required": true,
+      "customerExposure": "product-edge-only",
+      "dockerfile": "apps/bff/Dockerfile",
+      "version": "release-version",
+      "sourceRevision": "release-source-commit",
+      "license": "Proprietary",
+      "mirrorRepository": "core/console-bff"
+    },
+    {
+      "id": "keycloak",
+      "kind": "third-party-mirror",
+      "required": true,
+      "customerExposure": "identity-routes-only",
+      "repository": "quay.io/keycloak/keycloak",
+      "version": "26.7.0",
+      "indexDigest": "sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:26939e1318d6f008fc2ee6e10cec1cf8f1ba8a21846c1bc81b91ed0506bc2a7a",
+      "sourceRevision": "6c73e3027811d9c7b22683edd825e839272e9547",
+      "license": "Apache-2.0",
+      "mirrorRepository": "core/keycloak"
+    },
+    {
+      "id": "litellm",
+      "kind": "third-party-mirror",
+      "required": true,
+      "customerExposure": "private-console-projection-only",
+      "repository": "ghcr.io/berriai/litellm",
+      "version": "v1.85.0",
+      "indexDigest": "sha256:2e8517e2bed423c50ab7e40fb1ac0a9cbe62a764e9d65161d871fb6a9bf75a2d",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:2016cc74d44f6821752c5c846cf79929cf4d3eef92d86e10b8ec8297d0350e10",
+      "sourceRevision": "e58a561caa21169fb02174148444c08509ce7028",
+      "license": "MIT",
+      "mirrorRepository": "core/litellm"
+    },
+    {
+      "id": "product-postgresql",
+      "kind": "third-party-mirror",
+      "required": true,
+      "customerExposure": "private",
+      "repository": "docker.io/library/postgres",
+      "version": "17.6-bookworm",
+      "indexDigest": "sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:45cd22f8d32e189d245403954882f88e7a8714301fda80dab6da90f1265b25a3",
+      "sourceRevision": "5ec89312491bdaa2c42377a65ec0af2ecb774480",
+      "license": "PostgreSQL",
+      "mirrorRepository": "core/postgresql"
+    },
+    {
+      "id": "prometheus",
+      "kind": "third-party-mirror",
+      "required": true,
+      "customerExposure": "private-console-projection-only",
+      "repository": "docker.io/prom/prometheus",
+      "version": "v3.6.0",
+      "indexDigest": "sha256:76947e7ef22f8a698fc638f706685909be425dbe09bd7a2cd7aca849f79b5f64",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:d9a702d3f7f398540e7190c4d80dbb8a0dc95c1e481e8ebd8a08e5bcf83cf735",
+      "sourceRevision": "cf099bec7c66148f38c62eb2ad99c51cd2a26ade",
+      "license": "Apache-2.0",
+      "mirrorRepository": "core/prometheus"
+    },
+    {
+      "id": "alertmanager",
+      "kind": "third-party-mirror",
+      "required": true,
+      "customerExposure": "private-console-projection-only",
+      "repository": "docker.io/prom/alertmanager",
+      "version": "v0.29.0",
+      "indexDigest": "sha256:88743b63b3e09ea6e31e140ced5bf45f4a8e82c617c2a963f78841f4995ad1d7",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:86ed3780fa25d23de5110c97a63a3061e7841cef87bf5183568bc97437764af2",
+      "sourceRevision": "3cc60673d4b00c7f5a95a38f7434f587c6858993",
+      "license": "Apache-2.0",
+      "mirrorRepository": "core/alertmanager"
+    },
+    {
+      "id": "grafana-private",
+      "kind": "third-party-mirror",
+      "required": true,
+      "customerExposure": "private-no-customer-route",
+      "repository": "docker.io/grafana/grafana",
+      "version": "13.1.0",
+      "indexDigest": "sha256:121a7a9ece6dc10b969f1f96eed64b4f07dfac0d0b8abc070f7cb83bbde86f63",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:6ea068891652aa6a65ca9065c26b89de939653803c836426970305c11fd00534",
+      "sourceRevision": "689ac6f496188d86cd2337b4bafb6ddc89781e28",
+      "license": "AGPL-3.0-only",
+      "mirrorRepository": "core/grafana"
+    },
+    {
+      "id": "firecrawl-api",
+      "kind": "firecrawl-build-output",
+      "required": true,
+      "customerExposure": "product-edge-governed-search-scrape-only",
+      "sourceLock": "infra/firecrawl/provenance/source-lock.json",
+      "version": "v2.11.0-reduced",
+      "sourceRevision": "ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+      "license": "AGPL-3.0-only",
+      "mirrorRepository": "core/firecrawl-api"
+    },
+    {
+      "id": "firecrawl-browser",
+      "kind": "firecrawl-build-output",
+      "required": true,
+      "customerExposure": "private",
+      "sourceLock": "infra/firecrawl/provenance/source-lock.json",
+      "version": "v2.11.0-reduced",
+      "sourceRevision": "ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+      "license": "AGPL-3.0-only",
+      "mirrorRepository": "core/firecrawl-browser"
+    },
+    {
+      "id": "firecrawl-search",
+      "kind": "firecrawl-build-output",
+      "required": true,
+      "customerExposure": "private",
+      "sourceLock": "infra/firecrawl/provenance/source-lock.json",
+      "version": "release-source-lock",
+      "sourceRevision": "release-source-lock",
+      "license": "AGPL-3.0-or-later",
+      "mirrorRepository": "core/firecrawl-search"
+    },
+    {
+      "id": "firecrawl-egress",
+      "kind": "firecrawl-build-output",
+      "required": true,
+      "customerExposure": "private-egress-policy-only",
+      "sourceLock": "infra/firecrawl/provenance/source-lock.json",
+      "version": "release-source-lock",
+      "sourceRevision": "release-source-lock",
+      "license": "GPL-2.0-or-later",
+      "mirrorRepository": "core/firecrawl-egress"
+    }
+  ],
+  "nonImageLifecycleComponents": [
+    "database-seed",
+    "keycloak-seed",
+    "retention-command",
+    "backup-and-restore",
+    "update-and-rollback"
+  ],
+  "excluded": [
+    "native-litellm-ui",
+    "native-keycloak-admin-ui",
+    "customer-grafana-ingress"
+  ]
+}
