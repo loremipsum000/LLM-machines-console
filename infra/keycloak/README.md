@@ -25,7 +25,8 @@ is required or permitted by this seed.
 The FGAP seed keeps Keycloak `26.6.0` as its minimum compatible release. The
 Console session package is narrower and pins Q0 qualification and product
 packaging to exactly Keycloak `26.7.0`, represented by
-`quay.io/keycloak/keycloak:26.7.0`. Q0 may qualify that selected design but may
+`quay.io/keycloak/keycloak:26.7.0@sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13`.
+Q0 may qualify that selected design but may
 not substitute another version or create a missing authentication design.
 
 `pr11a-console-session-policy.json` is the source-only R1-S1 contract. The
