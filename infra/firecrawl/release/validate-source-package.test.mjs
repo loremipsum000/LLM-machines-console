@@ -1,5 +1,7 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import path from "node:path"
 import test from "node:test"
 
@@ -8,6 +10,7 @@ import {
   validateSourcePackage,
   verifyCheckedInSourcePackage,
 } from "./validate-source-package.mjs"
+import { validateReproducibilityEvidence } from "./verify-source-packet-reproducibility.mjs"
 
 const releaseRoot = import.meta.dirname
 
@@ -61,4 +64,81 @@ test("the source assembler requires explicit input and output directories", () =
   )
   assert.equal(result.status, 1)
   assert.match(result.stderr, /--source-dir DIR --output-dir DIR/)
+})
+
+test("checked-in two-run reproducibility evidence is exact and unqualified", () => {
+  const evidence = JSON.parse(
+    readFileSync(
+      path.join(releaseRoot, "reproducibility-evidence.json"),
+      "utf8",
+    ),
+  )
+  assert.deepEqual(validateReproducibilityEvidence(evidence), [])
+
+  const tampered = clone(evidence)
+  tampered.packetSha256 = "0".repeat(64)
+  tampered.productBoundary.defaultEnabled = true
+  assert.notDeepEqual(validateReproducibilityEvidence(tampered), [])
+})
+
+test("the reproducibility verifier requires explicit input and output", () => {
+  const result = spawnSync(
+    process.execPath,
+    [path.join(releaseRoot, "verify-source-packet-reproducibility.mjs")],
+    { encoding: "utf8" },
+  )
+  assert.equal(result.status, 1)
+  assert.match(result.stderr, /--source-dir DIR --output PATH/)
+})
+
+test("the reproducibility verifier rejects archive-input drift", () => {
+  const sourceDir = mkdtempSync(
+    path.join(tmpdir(), "llmm-firecrawl-input-test-"),
+  )
+  const output = path.join(
+    tmpdir(),
+    `llmm-firecrawl-evidence-${process.pid}.json`,
+  )
+  try {
+    writeFileSync(path.join(sourceDir, "unexpected.tar.gz"), "not an archive")
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(releaseRoot, "verify-source-packet-reproducibility.mjs"),
+        "--source-dir",
+        sourceDir,
+        "--output",
+        output,
+      ],
+      { encoding: "utf8" },
+    )
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /exactly the locked upstream archives/)
+  } finally {
+    rmSync(sourceDir, { recursive: true, force: true })
+    rmSync(output, { force: true })
+  }
+})
+
+test("the reproducibility verifier keeps evidence outside archive inputs", () => {
+  const sourceDir = mkdtempSync(
+    path.join(tmpdir(), "llmm-firecrawl-input-test-"),
+  )
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(releaseRoot, "verify-source-packet-reproducibility.mjs"),
+        "--source-dir",
+        sourceDir,
+        "--output",
+        path.join(sourceDir, "evidence.json"),
+      ],
+      { encoding: "utf8" },
+    )
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /outside the archive source directory/)
+  } finally {
+    rmSync(sourceDir, { recursive: true, force: true })
+  }
 })
