@@ -27,3 +27,27 @@ lock.
 
 These files are source and packaging contracts only. They do not build, mirror,
 sign, deploy, activate, or runtime-qualify an image.
+
+## Deterministic release manifest
+
+`release-plan.json` fixes the source-only PR-12 packaging envelope. The Core
+package is one deterministic `linux/amd64` appliance artifact for the 8 vCPU,
+32 GiB RAM, and 100 GiB local-disk baseline. Inference remains a separately
+signed delivery-profile revision and is never selected by the Core build.
+
+The final release manifest conforms to `release-manifest.schema.json`. Its
+artifact inventory is path-sorted, content-addressed, free of timestamps other
+than the caller-supplied `SOURCE_DATE_EPOCH`, and explicitly remains
+`PACKAGED_UNQUALIFIED`. CycloneDX 1.6 JSON is the SBOM format. SLSA provenance
+v1 in an in-toto statement is the provenance format. Release signatures use a
+scoped vendor `release-artifact` Ed25519 key during a separate offline ceremony.
+Only public trust material may enter the package.
+
+`generate-release-manifest.mjs` consumes a credential-free JSON input and
+writes canonical JSON. It performs no build, registry, signing, network, or
+runtime action. Run the source-policy checks with:
+
+```sh
+node infra/release/validate-release-plan.mjs
+node --test infra/release/validate-release-plan.test.mjs
+```
