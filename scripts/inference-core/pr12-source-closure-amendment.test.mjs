@@ -53,6 +53,19 @@ test("PR-12 amendment preserves the predecessor and binds the exact release sour
       .digest("hex"),
     amendment.predecessor.sha256,
   )
+  const closeout = amendment.predecessor.sourceCloseoutAdmission
+  assert.equal(git("rev-parse", `${closeout.commit}^1`), closeout.firstParent)
+  assert.equal(git("rev-parse", `${closeout.commit}^2`), closeout.secondParent)
+  assert.equal(git("rev-parse", `${closeout.commit}^{tree}`), closeout.tree)
+  assert.equal(
+    git("rev-parse", `${closeout.candidateCommit}^{tree}`),
+    closeout.tree,
+  )
+  assert.equal(closeout.secondParent, closeout.candidateCommit)
+  assert.equal(
+    git("diff", "--name-only", closeout.candidateCommit, closeout.commit),
+    "",
+  )
 })
 
 test("both D2A preflight successors have exact protected topology and trees", () => {

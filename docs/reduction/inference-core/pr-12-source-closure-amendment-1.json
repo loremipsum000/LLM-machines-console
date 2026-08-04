@@ -14,6 +14,15 @@
       "commit": "80ecb127ecda73f3711903957e7e883aa19bad63",
       "tree": "1c5134fbe75a49148a8db2dcb7872448368f326e"
     },
+    "sourceCloseoutAdmission": {
+      "pullRequest": 34,
+      "candidateCommit": "6a96379bc25cb7c3038c41f6132ae468452fd066",
+      "commit": "6f7f92a2cd3f8406f73b622155dc3ad25fa8cd9e",
+      "tree": "ba732496afc48015e0875d7cd9bf2098b710de50",
+      "firstParent": "5d199ee3a4fe1585a984711180605b570652ee83",
+      "secondParent": "6a96379bc25cb7c3038c41f6132ae468452fd066",
+      "candidateTreeIdentical": true
+    },
     "disposition": "PRESERVED_HISTORICAL_SOURCE_CLOSURE"
   },
   "reason": {
