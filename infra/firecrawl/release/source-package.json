@@ -188,6 +188,7 @@
     "SLSA provenance for every built or mirrored image",
     "vulnerability disposition bound to every image digest",
     "recipient-accessible corresponding-source packet",
+    "two-run corresponding-source reproducibility evidence",
     "public signature verification material"
   ]
 }

@@ -7,6 +7,7 @@ import {
   readSourcePackage,
   verifyCheckedInSourcePackage,
 } from "../../infra/firecrawl/release/validate-source-package.mjs"
+import { validateReproducibilityEvidence } from "../../infra/firecrawl/release/verify-source-packet-reproducibility.mjs"
 import { buildForbiddenAllowlist } from "./guardrails.mjs"
 
 const root = path.resolve(import.meta.dirname, "../..")
@@ -21,6 +22,13 @@ test("PR-12 Firecrawl release package stays source-only and reduced", () => {
   ])
   assert.equal(manifest.productBoundary.defaultEnabled, false)
   assert.equal(manifest.productBoundary.nativeUi, false)
+  const evidence = JSON.parse(
+    readFileSync(
+      path.join(root, "infra/firecrawl/release/reproducibility-evidence.json"),
+      "utf8",
+    ),
+  )
+  assert.deepEqual(validateReproducibilityEvidence(evidence), [])
 })
 
 test("the Product profile launches only the reduced Firecrawl entrypoint", () => {
@@ -46,6 +54,8 @@ test("corresponding-source artifacts do not redefine the Product surface", () =>
     "infra/firecrawl/release/patches/build-hardening.patch",
     "infra/firecrawl/release/patches/reduced-runtime.patch",
     "infra/firecrawl/release/source-package.json",
+    "infra/firecrawl/release/reproducibility-evidence.json",
+    "infra/firecrawl/release/verify-source-packet-reproducibility.mjs",
     "scripts/inference-core/pr12-firecrawl-release.test.mjs",
   ]
   const result = buildForbiddenAllowlist({

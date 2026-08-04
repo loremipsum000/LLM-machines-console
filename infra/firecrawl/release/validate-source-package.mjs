@@ -233,6 +233,14 @@ export function validateSourcePackage(manifest, root = repositoryRoot) {
     }
   }
 
+  if (
+    !manifest?.requiredReleaseOutputs?.includes(
+      "two-run corresponding-source reproducibility evidence",
+    )
+  ) {
+    errors.push("Firecrawl release outputs omit reproducibility evidence")
+  }
+
   const serialized = JSON.stringify(manifest)
   if (forbiddenIdentity.test(serialized)) {
     errors.push(
