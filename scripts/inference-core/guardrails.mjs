@@ -18,6 +18,25 @@ import {
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = resolve(scriptDirectory, "../..")
+export const pr12ReleaseTestGateBindingPath =
+  "docs/reduction/inference-core/pr-12-release-test-gate-binding.json"
+
+const pr12ReleaseTestCommand =
+  "node --test infra/inference/*.test.mjs infra/release/*.test.mjs infra/firecrawl/release/*.test.mjs infra/keycloak/*.test.mjs scripts/inference-core/pr12-*.test.mjs"
+const pr12FullProductTestCommand =
+  "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm run test:release && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test"
+const pr12RequiredReleaseTestSuites = [
+  "infra/inference/*.test.mjs",
+  "infra/release/*.test.mjs",
+  "infra/firecrawl/release/*.test.mjs",
+  "infra/keycloak/*.test.mjs",
+  "scripts/inference-core/pr12-*.test.mjs",
+]
+const pr12ReleaseGateProtectedPaths = [
+  "package.json",
+  "scripts/inference-core/guardrails.mjs",
+  "scripts/inference-core/pr12-release-gate.test.mjs",
+]
 
 export const allowlistPath =
   "docs/reduction/inference-core/forbidden-surface-allowlist.yaml"
@@ -7477,6 +7496,7 @@ export function verifyRepository({ root = repositoryRoot, baseRef } = {}) {
     ...verifyRouteBaselineMetadata(expectedRoutes),
     ...verifyRequiredRoutes(actualRoutes),
     ...verifyCorePackageClosure(root, paths),
+    ...verifyPr12ReleaseTestGateBinding(root),
     ...verifyRetentionCharacterization(root),
     ...(pr11aR1V1SourceClosurePackage ||
     pr11aR1V1SourcePackage ||
@@ -18486,7 +18506,8 @@ export function verifyCorePackageClosure(
       "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test --minWorkers=1 --maxWorkers=4 --testTimeout=15000 --hookTimeout=15000",
     "test:inference-core-guardrails":
       "node --test scripts/inference-core/*.test.mjs infra/firecrawl/validate-profile.test.mjs infra/observability/validate-profile.test.mjs infra/ingress/validate-ingress.test.mjs infra/ingress/source-no-bypass.test.mjs infra/storage/validate-profile.test.mjs",
-    test: "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test",
+    "test:release": pr12ReleaseTestCommand,
+    test: pr12FullProductTestCommand,
     typecheck:
       "corepack pnpm -r build && corepack pnpm -r typecheck && corepack pnpm run typecheck:inference-core-db",
     "typecheck:inference-core-db":
@@ -21971,6 +21992,81 @@ function verifyRequiredRoutes(baseline) {
     }
   }
   return errors
+}
+
+export function verifyPr12ReleaseTestGateBinding(root, providedBinding) {
+  const errors = []
+  let binding = providedBinding
+  if (binding === undefined) {
+    try {
+      binding = readJson(resolve(root, pr12ReleaseTestGateBindingPath))
+    } catch {
+      return ["invalid PR-12 release-test gate binding"]
+    }
+  }
+  const expectedKeys = [
+    "accepted",
+    "base",
+    "commands",
+    "d2aRc",
+    "id",
+    "protectedFiles",
+    "runtimeQualified",
+    "schemaVersion",
+    "status",
+    "suites",
+  ]
+  if (
+    !binding ||
+    JSON.stringify(Object.keys(binding).sort()) !==
+      JSON.stringify(expectedKeys) ||
+    binding.schemaVersion !== 1 ||
+    binding.id !== "PR-12-RELEASE-TEST-GATE-SUCCESSOR" ||
+    binding.status !== "SOURCE_SUCCESSOR_CANDIDATE" ||
+    binding.accepted !== false ||
+    binding.runtimeQualified !== false ||
+    binding.d2aRc !== "NOT_STARTED"
+  ) {
+    errors.push("invalid PR-12 release-test gate identity")
+  }
+  if (
+    binding?.base?.commit !== "6f7f92a2cd3f8406f73b622155dc3ad25fa8cd9e" ||
+    binding?.base?.tree !== "ba732496afc48015e0875d7cd9bf2098b710de50"
+  ) {
+    errors.push("invalid PR-12 release-test gate base")
+  }
+  if (
+    binding?.commands?.release !== pr12ReleaseTestCommand ||
+    binding?.commands?.product !== pr12FullProductTestCommand
+  ) {
+    errors.push("invalid PR-12 release-test gate command binding")
+  }
+  if (
+    JSON.stringify(binding?.suites) !==
+    JSON.stringify(pr12RequiredReleaseTestSuites)
+  ) {
+    errors.push("invalid PR-12 release-test suite binding")
+  }
+  const protectedFiles = binding?.protectedFiles
+  if (
+    !Array.isArray(protectedFiles) ||
+    JSON.stringify(protectedFiles.map(({ path }) => path)) !==
+      JSON.stringify(pr12ReleaseGateProtectedPaths)
+  ) {
+    errors.push("invalid PR-12 release-test protected-file binding")
+  } else {
+    for (const { path, sha256: expectedSha256 } of protectedFiles) {
+      const absolutePath = resolve(root, path)
+      if (
+        !isRegularFile(absolutePath) ||
+        !/^[a-f0-9]{64}$/.test(expectedSha256) ||
+        sha256(readFileSync(absolutePath)) !== expectedSha256
+      ) {
+        errors.push(`PR-12 release-test protected file changed ${path}`)
+      }
+    }
+  }
+  return [...new Set(errors)].sort()
 }
 
 export function verifyPolicyStability(base, current, subject) {
