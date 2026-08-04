@@ -1,0 +1,92 @@
+{
+  "schema": "llm-machines.release-plan.v1",
+  "status": "SOURCE_PLAN",
+  "containsCredentials": false,
+  "runtimeQualified": false,
+  "core": {
+    "profile": "core-v1-linux-amd64",
+    "platform": "linux/amd64",
+    "vcpus": 8,
+    "memoryGiB": 32,
+    "localDiskGiB": 100,
+    "backupRepository": "separate-customer-owned-target",
+    "bulkModelWeights": "excluded",
+    "imageInventory": "infra/release/core-image-inventory.json",
+    "imageLockSchema": "infra/release/core-image-lock.schema.json"
+  },
+  "inference": {
+    "bundledWithCore": false,
+    "engine": "sglang",
+    "engineVersion": "0.5.13",
+    "profileSchema": "infra/inference/delivery-profile.schema.json",
+    "artifactLockSchema": "infra/release/inference-artifact-lock.schema.json",
+    "exactProfileRequiredForActivation": true,
+    "hardwareAcceptanceOwnedByQ0AndDelivery": true
+  },
+  "evidenceFormats": {
+    "sbom": {
+      "format": "CycloneDX",
+      "specVersion": "1.6",
+      "mediaType": "application/vnd.cyclonedx+json"
+    },
+    "provenance": {
+      "format": "in-toto-statement",
+      "predicateType": "https://slsa.dev/provenance/v1",
+      "mediaType": "application/vnd.in-toto+json"
+    },
+    "digests": ["sha256"]
+  },
+  "archive": {
+    "format": "tar",
+    "compression": "zstd",
+    "pathOrder": "bytewise-ascending",
+    "uid": 0,
+    "gid": 0,
+    "uname": "root",
+    "gname": "root",
+    "fileMode": "0644",
+    "directoryMode": "0755",
+    "mtimeSource": "SOURCE_DATE_EPOCH",
+    "allowSymlinks": false,
+    "allowDeviceFiles": false,
+    "allowHardlinks": false,
+    "allowExtendedAttributes": false
+  },
+  "signing": {
+    "purpose": "release-artifact",
+    "algorithm": "Ed25519",
+    "custody": "offline-hardware-backed",
+    "privateMaterialInPackage": false,
+    "privateMaterialInGit": false,
+    "privateMaterialInCiEnvironment": false,
+    "publicVerificationMaterialRequired": true,
+    "ceremony": "external-offline"
+  },
+  "requiredEvidence": [
+    "core-image-lock",
+    "product-bom",
+    "image-sboms",
+    "image-provenance",
+    "third-party-notices",
+    "license-texts",
+    "license-disposition",
+    "firecrawl-corresponding-source",
+    "firecrawl-vulnerability-disposition",
+    "clean-database-seed",
+    "clean-keycloak-seed",
+    "installer",
+    "rollback",
+    "public-release-trust",
+    "secret-scan",
+    "forbidden-surface-scan",
+    "reproducibility-comparison"
+  ],
+  "qualification": {
+    "manifestStatus": "PACKAGED_UNQUALIFIED",
+    "q0": "NOT_STARTED",
+    "contractActivation": "INACTIVE",
+    "grafanaCustomerAccess": "DEFERRED_V1",
+    "nativeLiteLlmAccess": "ABSENT",
+    "nativeKeycloakAdminAccess": "ABSENT"
+  }
+}
