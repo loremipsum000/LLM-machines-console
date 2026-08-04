@@ -59,6 +59,11 @@ function syntheticCoreLock() {
       license: component.license,
       sbomSha256: digest("a"),
       provenanceSha256: digest("b"),
+      vulnerabilityReportSha256: digest("d"),
+      vulnerabilityDispositionSha256: digest("e"),
+      licenseTextSha256: digest("f"),
+      noticeSha256: digest("7"),
+      licenseReviewSha256: digest("8"),
       ...(/(?:AGPL|GPL)/.test(component.license)
         ? { correspondingSourceSha256: digest("c") }
         : {}),
@@ -214,6 +219,24 @@ test("tag-only, latest, missing platform, and digest disagreement fail", () => {
     const lock = syntheticCoreLock()
     mutate(lock)
     assert.notDeepEqual(validateCoreImageLock(lock, inventory), [])
+  }
+})
+
+test("every Core image requires digest-bound security and license evidence", () => {
+  const inventory = readCoreImageInventory()
+  for (const field of [
+    "vulnerabilityReportSha256",
+    "vulnerabilityDispositionSha256",
+    "licenseTextSha256",
+    "noticeSha256",
+    "licenseReviewSha256",
+  ]) {
+    const lock = syntheticCoreLock()
+    delete lock.images[0][field]
+    assert.match(
+      validateCoreImageLock(lock, inventory).join("\n"),
+      new RegExp(`${field} must be an exact sha256 digest`),
+    )
   }
 })
 

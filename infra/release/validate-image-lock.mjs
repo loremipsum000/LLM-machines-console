@@ -280,6 +280,27 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
     validateDigest(errors, image.platformDigest, `${field} platformDigest`)
     validateDigest(errors, image.sbomSha256, `${field} sbomSha256`)
     validateDigest(errors, image.provenanceSha256, `${field} provenanceSha256`)
+    validateDigest(
+      errors,
+      image.vulnerabilityReportSha256,
+      `${field} vulnerabilityReportSha256`,
+    )
+    validateDigest(
+      errors,
+      image.vulnerabilityDispositionSha256,
+      `${field} vulnerabilityDispositionSha256`,
+    )
+    validateDigest(
+      errors,
+      image.licenseTextSha256,
+      `${field} licenseTextSha256`,
+    )
+    validateDigest(errors, image.noticeSha256, `${field} noticeSha256`)
+    validateDigest(
+      errors,
+      image.licenseReviewSha256,
+      `${field} licenseReviewSha256`,
+    )
     if (image.platform !== "linux/amd64") {
       errors.push(`${field} must bind linux/amd64`)
     }

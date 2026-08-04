@@ -13,17 +13,13 @@ import {
   readCoreImageInventory,
   validateCoreImageLock,
 } from "./validate-image-lock.mjs"
+import { expectedReleaseEvidencePolicy } from "./validate-release-plan.mjs"
 
 const directory = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = resolve(directory, "../..")
 const sha256Pattern = /^sha256:[a-f0-9]{64}$/
 const slsaActorKey = ["build", "er"].join("")
-const firecrawlIds = new Set([
-  "firecrawl-api",
-  "firecrawl-browser",
-  "firecrawl-egress",
-  "firecrawl-search",
-])
+const severityOrder = ["critical", "high", "medium", "low", "unknown"]
 
 function fail(message) {
   throw new Error(message)
@@ -79,52 +75,160 @@ function requireExactKeys(value, keys, field) {
   }
 }
 
-function validateSbom(document, image) {
+function readEvidencePolicy(root) {
+  const policy = readJson(
+    resolve(root, "infra/release/release-evidence-policy.json"),
+    "release evidence policy",
+  )
+  requireExactKeys(
+    policy,
+    [
+      "schema",
+      "status",
+      "containsCredentials",
+      "runtimeQualified",
+      "sbom",
+      "provenance",
+      "vulnerability",
+      "license",
+    ],
+    "release evidence policy",
+  )
   if (
-    document?.bomFormat !== "CycloneDX" ||
-    document?.specVersion !== "1.6" ||
-    document?.version !== 1 ||
-    document?.metadata?.component?.name !== image.id ||
-    document?.metadata?.component?.version !== image.version ||
-    document?.metadata?.component?.properties?.find(
-      ({ name }) => name === "llm-machines:image-platform-digest",
-    )?.value !== image.platformDigest
+    policy.schema !== "llm-machines.release-evidence-policy.v1" ||
+    policy.status !== "SOURCE_POLICY" ||
+    policy.containsCredentials !== false ||
+    policy.runtimeQualified !== false ||
+    canonicalJson(policy) !== canonicalJson(expectedReleaseEvidencePolicy)
   ) {
-    fail(`SBOM for ${image.id} does not bind the locked image`)
+    fail("release evidence policy is invalid")
+  }
+  return policy
+}
+
+function validateSbom(document, image, policy) {
+  const component = document?.metadata?.component
+  const tools = document?.metadata?.tools?.components
+  const components = document?.components
+  const dependencies = document?.dependencies
+  const componentRefs = Array.isArray(components)
+    ? components.map((entry) => entry?.["bom-ref"])
+    : []
+  const rootDependency = Array.isArray(dependencies)
+    ? dependencies.find(({ ref }) => ref === component?.["bom-ref"])
+    : undefined
+  if (
+    document?.bomFormat !== policy.sbom.format ||
+    document?.specVersion !== policy.sbom.specVersion ||
+    document?.version !== 1 ||
+    component?.type !== policy.sbom.componentType ||
+    component?.name !== image.id ||
+    component?.version !== image.version ||
+    typeof component?.["bom-ref"] !== "string" ||
+    !component?.hashes?.some(
+      ({ alg, content }) =>
+        alg === "SHA-256" &&
+        content === image.platformDigest.slice("sha256:".length),
+    ) ||
+    component?.properties?.find(
+      ({ name }) => name === "llm-machines:image-platform-digest",
+    )?.value !== image.platformDigest ||
+    !Array.isArray(tools) ||
+    tools.length === 0 ||
+    tools.some(
+      (tool) =>
+        typeof tool?.name !== "string" ||
+        tool.name.length === 0 ||
+        typeof tool?.version !== "string" ||
+        tool.version.length === 0,
+    ) ||
+    !Array.isArray(components) ||
+    components.length < policy.sbom.minimumInventoryComponents ||
+    componentRefs.some((reference) => typeof reference !== "string") ||
+    new Set(componentRefs).size !== componentRefs.length ||
+    components.some(
+      (entry) =>
+        typeof entry?.name !== "string" ||
+        entry.name.length === 0 ||
+        typeof entry?.version !== "string" ||
+        entry.version.length === 0,
+    ) ||
+    !Array.isArray(dependencies) ||
+    !rootDependency ||
+    JSON.stringify([...rootDependency.dependsOn].sort()) !==
+      JSON.stringify([...componentRefs].sort()) ||
+    componentRefs.some(
+      (reference) => !dependencies.some(({ ref }) => ref === reference),
+    )
+  ) {
+    fail(`SBOM for ${image.id} does not bind complete locked-image evidence`)
   }
 }
 
-function validateProvenance(document, image) {
+function recipePath(component) {
+  if (component.kind === "product-build-output") return component.dockerfile
+  if (component.kind === "firecrawl-build-output")
+    return component.sourcePackage
+  return "infra/release/core-image-inventory.json"
+}
+
+function expectedResolvedDependencies(component, image, root) {
+  const recipe = recipePath(component)
+  return [
+    {
+      uri: `urn:llm-machines:source:${image.id}`,
+      digest: { gitCommit: image.sourceRevision },
+    },
+    {
+      uri: `file:${recipe}`,
+      digest: {
+        sha256: sha256File(resolve(root, recipe)).slice("sha256:".length),
+      },
+    },
+  ]
+}
+
+function validateProvenance(document, image, component, root, policy) {
   const digest = image.platformDigest.slice("sha256:".length)
   const buildDefinition = document?.predicate?.buildDefinition
   const runDetails = document?.predicate?.runDetails
   const buildService = runDetails?.[slsaActorKey]
+  const recipe = recipePath(component)
+  const expectedExternalParameters = {
+    componentId: image.id,
+    imageRepository: image.repository,
+    imageVersion: image.version,
+    sourceRevision: image.sourceRevision,
+    recipe: {
+      path: recipe,
+      sha256: sha256File(resolve(root, recipe)),
+    },
+  }
+  const startedOn = Date.parse(runDetails?.metadata?.startedOn)
+  const finishedOn = Date.parse(runDetails?.metadata?.finishedOn)
   if (
     document?._type !== "https://in-toto.io/Statement/v1" ||
-    document?.predicateType !== "https://slsa.dev/provenance/v1" ||
+    document?.predicateType !== policy.provenance.predicateType ||
     !Array.isArray(document?.subject) ||
-    !document.subject.some(
-      ({ name, digest: subjectDigest }) =>
-        name === image.repository && subjectDigest?.sha256 === digest,
-    ) ||
-    typeof buildDefinition?.buildType !== "string" ||
-    !buildDefinition.buildType.startsWith("https://") ||
-    !buildDefinition.externalParameters ||
-    typeof buildDefinition.externalParameters !== "object" ||
-    Array.isArray(buildDefinition.externalParameters) ||
-    !buildDefinition.internalParameters ||
-    typeof buildDefinition.internalParameters !== "object" ||
-    Array.isArray(buildDefinition.internalParameters) ||
-    !Array.isArray(buildDefinition.resolvedDependencies) ||
-    buildDefinition.resolvedDependencies.length === 0 ||
-    typeof buildService?.id !== "string" ||
-    !buildService.id.startsWith("https://") ||
+    document.subject.length !== 1 ||
+    document.subject[0]?.name !== image.repository ||
+    document.subject[0]?.digest?.sha256 !== digest ||
+    buildDefinition?.buildType !==
+      policy.provenance.buildTypes[component.kind] ||
+    canonicalJson(buildDefinition?.externalParameters) !==
+      canonicalJson(expectedExternalParameters) ||
+    canonicalJson(buildDefinition?.internalParameters) !== "{}" ||
+    canonicalJson(buildDefinition?.resolvedDependencies) !==
+      canonicalJson(expectedResolvedDependencies(component, image, root)) ||
+    !policy.provenance.approvedBuilderIds.includes(buildService?.id) ||
     typeof runDetails?.metadata?.invocationId !== "string" ||
-    !Number.isInteger(Date.parse(runDetails?.metadata?.startedOn)) ||
-    !Number.isInteger(Date.parse(runDetails?.metadata?.finishedOn)) ||
+    runDetails.metadata.invocationId.length === 0 ||
+    !Number.isInteger(startedOn) ||
+    !Number.isInteger(finishedOn) ||
+    startedOn > finishedOn ||
     !Array.isArray(runDetails?.byproducts)
   ) {
-    fail(`provenance for ${image.id} does not bind the locked image`)
+    fail(`provenance for ${image.id} does not bind exact build evidence`)
   }
 }
 
@@ -194,50 +298,221 @@ function readLicensePolicy(root, inventory) {
   return { policy, licenses }
 }
 
-function validateVulnerabilityDisposition(document, images) {
+function validateVulnerabilityEvidence(
+  report,
+  disposition,
+  reportSha256,
+  image,
+  policy,
+) {
   requireExactKeys(
-    document,
+    report,
+    ["schema", "image", "scanner", "database", "scannedAt", "findings"],
+    `${image.id} vulnerability report`,
+  )
+  requireExactKeys(
+    disposition,
     [
       "schema",
       "status",
       "containsCredentials",
       "runtimeQualified",
+      "image",
+      "reportSha256",
       "scanner",
-      "databaseUpdatedAt",
-      "blockingFindings",
-      "images",
+      "database",
+      "policy",
+      "counts",
+      "exceptions",
+      "reviewedAt",
+      "decision",
     ],
-    "Firecrawl vulnerability disposition",
+    `${image.id} vulnerability disposition`,
   )
-  if (
-    document.schema !== "llm-machines.firecrawl-vulnerability-disposition.v1" ||
-    document.status !== "REVIEWED" ||
-    document.containsCredentials !== false ||
-    document.runtimeQualified !== false ||
-    typeof document.scanner !== "string" ||
-    !Number.isInteger(Date.parse(document.databaseUpdatedAt)) ||
-    !Array.isArray(document.blockingFindings) ||
-    document.blockingFindings.length !== 0 ||
-    !Array.isArray(document.images)
-  ) {
-    fail("Firecrawl vulnerability disposition is not release-admissible")
+  for (const [value, keys, field] of [
+    [report.image, ["id", "repository", "digest"], "report image"],
+    [report.scanner, ["name", "version"], "report scanner"],
+    [report.database, ["updatedAt"], "report database"],
+    [disposition.image, ["id", "repository", "digest"], "disposition image"],
+    [disposition.scanner, ["name", "version"], "disposition scanner"],
+    [disposition.database, ["updatedAt"], "disposition database"],
+    [
+      disposition.policy,
+      [
+        "maximumDatabaseAgeHours",
+        "severityThresholds",
+        "maximumExceptionAgeDays",
+      ],
+      "disposition policy",
+    ],
+    [
+      disposition.policy?.severityThresholds,
+      ["critical", "high"],
+      "disposition thresholds",
+    ],
+    [disposition.counts, severityOrder, "disposition counts"],
+  ]) {
+    requireExactKeys(value, keys, `${image.id} ${field}`)
   }
-  const expected = images
-    .filter(({ id }) => firecrawlIds.has(id))
-    .sort((left, right) => left.id.localeCompare(right.id))
-  const actual = [...document.images].sort((left, right) =>
-    left.id.localeCompare(right.id),
-  )
+  for (const finding of Array.isArray(report.findings) ? report.findings : []) {
+    requireExactKeys(
+      finding,
+      ["id", "severity", "package", "installedVersion"],
+      `${image.id} vulnerability finding`,
+    )
+  }
+  for (const exception of Array.isArray(disposition.exceptions)
+    ? disposition.exceptions
+    : []) {
+    requireExactKeys(
+      exception,
+      ["findingId", "reason", "approvedBy", "approvedAt", "expiresAt"],
+      `${image.id} vulnerability exception`,
+    )
+  }
+  const expectedImage = {
+    id: image.id,
+    repository: image.repository,
+    digest: image.platformDigest,
+  }
+  const scannedAt = Date.parse(report?.scannedAt)
+  const databaseUpdatedAt = Date.parse(report?.database?.updatedAt)
+  const reviewedAt = Date.parse(disposition?.reviewedAt)
+  const maximumAgeMs =
+    policy.vulnerability.maximumDatabaseAgeHours * 60 * 60 * 1000
   if (
-    actual.length !== expected.length ||
-    actual.some(
-      (entry, index) =>
-        entry.id !== expected[index].id ||
-        entry.imageDigest !== expected[index].platformDigest ||
-        entry.decision !== "ACCEPTED",
+    report.schema !== policy.vulnerability.reportSchema ||
+    canonicalJson(report.image) !== canonicalJson(expectedImage) ||
+    report.scanner?.name !== policy.vulnerability.scanner ||
+    typeof report.scanner?.version !== "string" ||
+    !/^[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:[-+][0-9A-Za-z.-]+)?$/.test(
+      report.scanner.version,
+    ) ||
+    !Number.isInteger(scannedAt) ||
+    !Number.isInteger(databaseUpdatedAt) ||
+    databaseUpdatedAt > scannedAt ||
+    scannedAt - databaseUpdatedAt > maximumAgeMs ||
+    !Array.isArray(report.findings) ||
+    new Set(report.findings.map(({ id }) => id)).size !==
+      report.findings.length ||
+    report.findings.some(
+      (finding) =>
+        typeof finding?.id !== "string" ||
+        !severityOrder.includes(finding?.severity) ||
+        typeof finding?.package !== "string" ||
+        typeof finding?.installedVersion !== "string",
     )
   ) {
-    fail("Firecrawl vulnerability disposition differs from the Core lock")
+    fail(`${image.id} vulnerability report is not admissible`)
+  }
+  const expectedCounts = Object.fromEntries(
+    severityOrder.map((severity) => [
+      severity,
+      report.findings.filter((finding) => finding.severity === severity).length,
+    ]),
+  )
+  const exceptions = Array.isArray(disposition?.exceptions)
+    ? disposition.exceptions
+    : []
+  const exceptionIds = new Set(exceptions.map(({ findingId }) => findingId))
+  const maximumExceptionMs =
+    policy.vulnerability.maximumExceptionAgeDays * 24 * 60 * 60 * 1000
+  const exceptionsValid = exceptions.every((exception) => {
+    const approvedAt = Date.parse(exception?.approvedAt)
+    const expiresAt = Date.parse(exception?.expiresAt)
+    return (
+      typeof exception?.findingId === "string" &&
+      report.findings.some(({ id }) => id === exception.findingId) &&
+      typeof exception?.reason === "string" &&
+      exception.reason.length >= 10 &&
+      typeof exception?.approvedBy === "string" &&
+      exception.approvedBy.length > 0 &&
+      Number.isInteger(approvedAt) &&
+      Number.isInteger(expiresAt) &&
+      approvedAt <= reviewedAt &&
+      expiresAt > reviewedAt &&
+      expiresAt - approvedAt <= maximumExceptionMs
+    )
+  })
+  const blockingFindings = report.findings.filter(
+    ({ id, severity }) =>
+      (severity === "critical" || severity === "high") && !exceptionIds.has(id),
+  )
+  if (
+    disposition.schema !== policy.vulnerability.dispositionSchema ||
+    disposition.status !== "REVIEWED" ||
+    disposition.containsCredentials !== false ||
+    disposition.runtimeQualified !== false ||
+    canonicalJson(disposition.image) !== canonicalJson(expectedImage) ||
+    disposition.reportSha256 !== reportSha256 ||
+    canonicalJson(disposition.scanner) !== canonicalJson(report.scanner) ||
+    canonicalJson(disposition.database) !== canonicalJson(report.database) ||
+    canonicalJson(disposition.policy) !==
+      canonicalJson({
+        maximumDatabaseAgeHours: policy.vulnerability.maximumDatabaseAgeHours,
+        severityThresholds: policy.vulnerability.severityThresholds,
+        maximumExceptionAgeDays: policy.vulnerability.maximumExceptionAgeDays,
+      }) ||
+    canonicalJson(disposition.counts) !== canonicalJson(expectedCounts) ||
+    !Number.isInteger(reviewedAt) ||
+    reviewedAt < scannedAt ||
+    new Set(exceptionIds).size !== exceptions.length ||
+    !exceptionsValid ||
+    blockingFindings.length > 0 ||
+    disposition.decision !== "ACCEPTED"
+  ) {
+    fail(`${image.id} vulnerability disposition is not release-admissible`)
+  }
+}
+
+function validateLicenseReview(
+  review,
+  image,
+  licenseTextSha256,
+  noticeSha256,
+  policy,
+) {
+  requireExactKeys(
+    review,
+    [
+      "schema",
+      "status",
+      "component",
+      "licenseTextSha256",
+      "noticeSha256",
+      "reviewedAt",
+      "reviewer",
+    ],
+    `${image.id} license review`,
+  )
+  requireExactKeys(
+    review.component,
+    ["id", "repository", "sourceRevision", "license"],
+    `${image.id} license review component`,
+  )
+  requireExactKeys(
+    review.reviewer,
+    ["type", "id"],
+    `${image.id} license reviewer`,
+  )
+  const expectedComponent = {
+    id: image.id,
+    repository: image.repository,
+    sourceRevision: image.sourceRevision,
+    license: image.license,
+  }
+  if (
+    review.schema !== policy.license.reviewSchema ||
+    review.status !== policy.license.reviewStatus ||
+    canonicalJson(review.component) !== canonicalJson(expectedComponent) ||
+    review.licenseTextSha256 !== licenseTextSha256 ||
+    review.noticeSha256 !== noticeSha256 ||
+    !Number.isInteger(Date.parse(review.reviewedAt)) ||
+    review.reviewer?.type !== "release-compliance" ||
+    typeof review.reviewer?.id !== "string" ||
+    review.reviewer.id.length === 0
+  ) {
+    fail(`${image.id} license review does not bind exact component evidence`)
   }
 }
 
@@ -246,7 +521,7 @@ export function generateReleaseEvidence(
     coreLockPath,
     evidenceRoot,
     correspondingSourceRoot,
-    firecrawlVulnerabilityPath,
+    vulnerabilityRoot,
     outputRoot,
   },
   { root = repositoryRoot } = {},
@@ -255,19 +530,16 @@ export function generateReleaseEvidence(
     coreLockPath,
     evidenceRoot,
     correspondingSourceRoot,
-    firecrawlVulnerabilityPath,
+    vulnerabilityRoot,
     outputRoot,
   })) {
     if (typeof path !== "string" || path.length === 0)
       fail(`${field} is required`)
   }
   requireRegularFile(coreLockPath, "Core image lock")
-  requireRegularFile(
-    firecrawlVulnerabilityPath,
-    "Firecrawl vulnerability disposition",
-  )
 
   const inventory = readCoreImageInventory(root)
+  const evidencePolicy = readEvidencePolicy(root)
   const coreLock = readJson(coreLockPath, "Core image lock")
   const lockErrors = validateCoreImageLock(coreLock, inventory, root)
   if (lockErrors.length > 0)
@@ -289,8 +561,13 @@ export function generateReleaseEvidence(
 
   const sboms = []
   const provenance = []
+  const vulnerabilityEvidence = []
   const licenseTexts = []
   const notices = []
+  const licenseReviews = []
+  const inventoryById = new Map(
+    inventory.components.map((component) => [component.id, component]),
+  )
   for (const image of [...coreLock.images].sort((a, b) =>
     a.id.localeCompare(b.id),
   )) {
@@ -301,22 +578,102 @@ export function generateReleaseEvidence(
       `${image.id}.intoto.json`,
     )
     const licensePath = resolve(evidenceRoot, "licenses", `${image.id}.txt`)
+    const noticePath = resolve(evidenceRoot, "notices", `${image.id}.txt`)
+    const licenseReviewPath = resolve(
+      evidenceRoot,
+      "licenses",
+      `${image.id}.review.json`,
+    )
+    const vulnerabilityReportPath = resolve(
+      vulnerabilityRoot,
+      `${image.id}.report.json`,
+    )
+    const vulnerabilityDispositionPath = resolve(
+      vulnerabilityRoot,
+      `${image.id}.disposition.json`,
+    )
     requireRegularFile(sbomPath, `${image.id} SBOM`)
     requireRegularFile(provenancePath, `${image.id} provenance`)
     requireRegularFile(licensePath, `${image.id} license text`)
+    requireRegularFile(noticePath, `${image.id} notice`)
+    requireRegularFile(licenseReviewPath, `${image.id} license review`)
+    requireRegularFile(
+      vulnerabilityReportPath,
+      `${image.id} vulnerability report`,
+    )
+    requireRegularFile(
+      vulnerabilityDispositionPath,
+      `${image.id} vulnerability disposition`,
+    )
     if (sha256File(sbomPath) !== image.sbomSha256) {
       fail(`${image.id} SBOM digest differs from the Core lock`)
     }
     if (sha256File(provenancePath) !== image.provenanceSha256) {
       fail(`${image.id} provenance digest differs from the Core lock`)
     }
+    if (sha256File(licensePath) !== image.licenseTextSha256) {
+      fail(`${image.id} license-text digest differs from the Core lock`)
+    }
+    if (sha256File(noticePath) !== image.noticeSha256) {
+      fail(`${image.id} notice digest differs from the Core lock`)
+    }
+    if (sha256File(licenseReviewPath) !== image.licenseReviewSha256) {
+      fail(`${image.id} license-review digest differs from the Core lock`)
+    }
+    if (
+      sha256File(vulnerabilityReportPath) !== image.vulnerabilityReportSha256
+    ) {
+      fail(`${image.id} vulnerability-report digest differs from the Core lock`)
+    }
+    if (
+      sha256File(vulnerabilityDispositionPath) !==
+      image.vulnerabilityDispositionSha256
+    ) {
+      fail(
+        `${image.id} vulnerability-disposition digest differs from the Core lock`,
+      )
+    }
     const sbom = readJson(sbomPath, `${image.id} SBOM`)
     const statement = readJson(provenancePath, `${image.id} provenance`)
-    validateSbom(sbom, image)
-    validateProvenance(statement, image)
+    validateSbom(sbom, image, evidencePolicy)
+    validateProvenance(
+      statement,
+      image,
+      inventoryById.get(image.id),
+      root,
+      evidencePolicy,
+    )
     const licenseText = readFileSync(licensePath, "utf8")
+    const noticeText = readFileSync(noticePath, "utf8")
     if (licenseText.trim().length < 10)
       fail(`${image.id} license text is empty`)
+    if (noticeText.trim().length < 10) fail(`${image.id} notice is empty`)
+    const licenseReview = readJson(
+      licenseReviewPath,
+      `${image.id} license review`,
+    )
+    validateLicenseReview(
+      licenseReview,
+      image,
+      image.licenseTextSha256,
+      image.noticeSha256,
+      evidencePolicy,
+    )
+    const vulnerabilityReport = readJson(
+      vulnerabilityReportPath,
+      `${image.id} vulnerability report`,
+    )
+    const vulnerabilityDisposition = readJson(
+      vulnerabilityDispositionPath,
+      `${image.id} vulnerability disposition`,
+    )
+    validateVulnerabilityEvidence(
+      vulnerabilityReport,
+      vulnerabilityDisposition,
+      image.vulnerabilityReportSha256,
+      image,
+      evidencePolicy,
+    )
     const licensePolicy = licenses.get(image.license)
     if (
       licensePolicy.sourceRequired !==
@@ -337,21 +694,33 @@ export function generateReleaseEvidence(
       license: image.license,
       repository: image.repository,
       sourceRevision: image.sourceRevision,
+      sha256: image.noticeSha256,
+      text: noticeText,
+    })
+    licenseReviews.push({ id: image.id, review: licenseReview })
+    vulnerabilityEvidence.push({
+      id: image.id,
+      report: vulnerabilityReport,
+      disposition: vulnerabilityDisposition,
     })
   }
-
-  const vulnerability = readJson(
-    firecrawlVulnerabilityPath,
-    "Firecrawl vulnerability disposition",
-  )
-  validateVulnerabilityDisposition(vulnerability, coreLock.images)
   const bom = {
     bomFormat: "CycloneDX",
     specVersion: "1.6",
     version: 1,
     metadata: {
+      tools: {
+        components: [
+          {
+            type: "application",
+            name: "llm-machines-release-evidence",
+            version: "1",
+          },
+        ],
+      },
       component: {
         type: "application",
+        "bom-ref": "llm-machines-core",
         name: "llm-machines-core",
         version: coreLock.release.version,
         properties: [
@@ -369,11 +738,22 @@ export function generateReleaseEvidence(
     },
     components: coreLock.images.map((image) => ({
       type: "container",
+      "bom-ref": `image:${image.id}`,
       name: image.id,
       version: image.version,
       hashes: [{ alg: "SHA-256", content: image.platformDigest.slice(7) }],
       licenses: [{ license: { id: image.license } }],
     })),
+    dependencies: [
+      {
+        ref: "llm-machines-core",
+        dependsOn: coreLock.images.map(({ id }) => `image:${id}`),
+      },
+      ...coreLock.images.map(({ id }) => ({
+        ref: `image:${id}`,
+        dependsOn: [],
+      })),
+    ],
   }
 
   const outputs = {
@@ -399,7 +779,14 @@ export function generateReleaseEvidence(
       status: "RELEASE_DISPOSITION",
       components: notices.map(({ id, license }) => ({ id, license })),
     },
-    "security/firecrawl-vulnerability-disposition.json": vulnerability,
+    "licenses/license-reviews.json": {
+      schema: "llm-machines.license-review-bundle.v1",
+      images: licenseReviews,
+    },
+    "security/image-vulnerability-evidence.json": {
+      schema: "llm-machines.image-vulnerability-evidence.v1",
+      images: vulnerabilityEvidence,
+    },
   }
   for (const [relativePath, value] of Object.entries(outputs)) {
     const path = resolve(outputRoot, relativePath)

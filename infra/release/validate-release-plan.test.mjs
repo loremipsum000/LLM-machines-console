@@ -80,6 +80,11 @@ function syntheticCoreLock(version) {
         license: component.license,
         sbomSha256: digest("a"),
         provenanceSha256: digest("b"),
+        vulnerabilityReportSha256: digest("d"),
+        vulnerabilityDispositionSha256: digest("e"),
+        licenseTextSha256: digest("f"),
+        noticeSha256: digest("7"),
+        licenseReviewSha256: digest("8"),
         ...(/(?:AGPL|GPL)/.test(component.license)
           ? { correspondingSourceSha256: digest("c") }
           : {}),
@@ -183,6 +188,24 @@ test("qualification and signing cannot be overstated", () => {
   assert.match(errors, /source-only/)
   assert.match(errors, /signing custody/)
   assert.match(errors, /overstates qualification/)
+})
+
+test("release evidence policy and required evidence cannot drift", () => {
+  const changedPolicy = structuredClone(plan)
+  changedPolicy.evidencePolicy = "infra/release/unreviewed-policy.json"
+  assert.match(
+    validateReleasePlan(changedPolicy).join("\n"),
+    /release evidence policy differs/,
+  )
+
+  const duplicateEvidence = structuredClone(plan)
+  duplicateEvidence.requiredEvidence.push(
+    duplicateEvidence.requiredEvidence.at(-1),
+  )
+  assert.match(
+    validateReleasePlan(duplicateEvidence).join("\n"),
+    /evidence set or order differs/,
+  )
 })
 
 test("manifest derives actual files and checked-out Git identity deterministically", () => {

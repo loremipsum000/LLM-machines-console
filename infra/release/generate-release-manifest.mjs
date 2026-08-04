@@ -154,6 +154,11 @@ function validateCoreLockStructure(lock) {
       "license",
       "sbomSha256",
       "provenanceSha256",
+      "vulnerabilityReportSha256",
+      "vulnerabilityDispositionSha256",
+      "licenseTextSha256",
+      "noticeSha256",
+      "licenseReviewSha256",
     ]
     if (image?.correspondingSourceSha256 !== undefined) {
       keys.push("correspondingSourceSha256")

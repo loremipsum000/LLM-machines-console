@@ -36,6 +36,7 @@
     },
     "digests": ["sha256"]
   },
+  "evidencePolicy": "infra/release/release-evidence-policy.json",
   "archive": {
     "format": "tar",
     "compression": "zstd",
@@ -72,9 +73,10 @@
     "third-party-notices",
     "license-texts",
     "license-disposition",
+    "license-reviews",
     "firecrawl-corresponding-source",
     "grafana-corresponding-source",
-    "firecrawl-vulnerability-disposition",
+    "image-vulnerability-evidence",
     "clean-database-seed",
     "clean-keycloak-seed",
     "installer",
