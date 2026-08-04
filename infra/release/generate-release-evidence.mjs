@@ -824,7 +824,9 @@ export function validatePackagedReleaseEvidence(
   const expectedDisposition = {
     ...policy,
     status: "RELEASE_DISPOSITION",
-    components: coreLock.images.map(({ id, license }) => ({ id, license })),
+    components: [...coreLock.images]
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map(({ id, license }) => ({ id, license })),
   }
   if (
     canonicalJson(licenseDisposition) !== canonicalJson(expectedDisposition)
