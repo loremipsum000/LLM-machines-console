@@ -650,13 +650,18 @@ separate D1 hygiene successor preceded R1-H1. The aggregate evidence binds all
 of those identities without rewriting either historical record.
 
 R1-V1 successor local integrated and clean detached fresh-clone source gates
-passed at `da0ace0497321646713d1adf3f952565d6fb3708`, tree
-`1246613089b4898b7e18479dba628f75f3a01a07`. The final governance-only
-candidate still requires independent read-only review and explicit approval
-before protected admission. PR-11A remains unaccepted, not revision-bound, and
-not runtime-qualified. Q0 remains unstarted. PR-12 remains unstarted. No remote
-ref, runtime, deployment, Grafana qualification, or Product main transition is
-authorized by this source artifact.
+passed, followed by independent read-only review of exact candidate
+`fb5ac5be13012a3de5e2da733bdc83c7d82efed3`, tree
+`acc4f5540ebc863bd53e76aae8af3bcdd40136bb`. PR 20 admitted that candidate at
+protected integration commit `837c3c3e139fd6b82db650d20a4f0fcf902e2fda`
+with the identical tree and an empty candidate-to-merge diff. The separate
+`pr-11a-r1-v1-source-closure.json` record therefore marks PR-11A source-closed
+and revision-bound to that integration commit. Product and runtime acceptance
+is not asserted: accepted remains false, runtimeQualified
+remains false, contract activation remains inactive, and Q0 remains
+NOT_STARTED. Grafana qualification and PR-12 remain NOT_STARTED. No runtime,
+deployment, Product main transition, or later package is authorized by source
+closure.
 
 PR-11 permits one environment-template transition: `.env.example` deletes the
 exact retired `INFERENCE_MODEL_UPDATE_*` block from the accepted base. It may
