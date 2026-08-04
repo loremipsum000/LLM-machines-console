@@ -142,7 +142,7 @@ function scopedCertificationPayload(key) {
   return Buffer.from(canonicalJson(payload))
 }
 
-function validateTrust(trust, signedAt, kid) {
+function validateTrust(trust, signedAt, kid, trustedRootSha256) {
   exactKeys(
     trust,
     ["schema", "generatedAt", "issuer", "root", "keys", "dualTrust"],
@@ -193,6 +193,15 @@ function validateTrust(trust, signedAt, kid) {
   }
   const rootKey = publicKey(trust.root.publicKey, "root.publicKey")
   const rootPublicKey = trust.root.publicKey.value
+  const actualRootSha256 = `sha256:${createHash("sha256")
+    .update(decodeBase64Url(rootPublicKey, "root.publicKey.value"))
+    .digest("hex")}`
+  if (
+    !sha256Pattern.test(trustedRootSha256 ?? "") ||
+    actualRootSha256 !== trustedRootSha256
+  ) {
+    fail("release root does not match the independently trusted fingerprint")
+  }
   if (!Array.isArray(trust.keys) || trust.keys.length === 0) {
     fail("public release trust requires scoped keys")
   }
@@ -390,6 +399,7 @@ function validateManifest(manifest, artifactRoot) {
   const evidence = new Set()
   let coreLock
   let corePackage
+  let publicTrust
   let previousPath = null
   for (const artifact of manifest.artifacts) {
     exactKeys(
@@ -461,6 +471,7 @@ function validateManifest(manifest, artifactRoot) {
       fail(`artifact content differs from manifest: ${artifact.path}`)
     }
     if (artifact.evidenceId === "core-image-lock") coreLock = artifact
+    if (artifact.evidenceId === "public-release-trust") publicTrust = artifact
     if (artifact.id === "core-package") corePackage = artifact
   }
   for (const evidenceId of requiredEvidence) {
@@ -506,7 +517,10 @@ function validateManifest(manifest, artifactRoot) {
   ) {
     fail("actual Core image lock differs from the signed release identity")
   }
-  return { corePackage }
+  if (!publicTrust || publicTrust.classification !== "public-trust") {
+    fail("signed manifest does not contain its public release trust")
+  }
+  return { corePackage, publicTrust }
 }
 
 export function verifyReleaseBundle({
@@ -514,6 +528,7 @@ export function verifyReleaseBundle({
   signaturePath,
   trustPath,
   artifactRoot,
+  trustedRootSha256,
 }) {
   const manifestRecord = parseCanonicalJson(
     resolve(manifestPath),
@@ -555,7 +570,7 @@ export function verifyReleaseBundle({
     fail("release signature envelope is invalid")
   }
   const signedAt = parseTimestamp(signature.signedAt, "signature.signedAt")
-  const key = validateTrust(trust, signedAt, signature.kid)
+  const key = validateTrust(trust, signedAt, signature.kid, trustedRootSha256)
   const manifestSha256 = `sha256:${createHash("sha256")
     .update(manifestRecord.bytes)
     .digest("hex")}`
@@ -576,6 +591,9 @@ export function verifyReleaseBundle({
     manifestRecord.value,
     resolve(artifactRoot),
   )
+  if (sha256File(resolve(trustPath)) !== validated.publicTrust.sha256) {
+    fail("used public release trust does not match the signed trust artifact")
+  }
   return {
     status: "VERIFIED_PACKAGED_UNQUALIFIED",
     manifest: manifestRecord.value,
@@ -588,14 +606,15 @@ export function verifyReleaseBundle({
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const arguments_ = process.argv.slice(2)
   if (
-    arguments_.length !== 8 ||
+    arguments_.length !== 10 ||
     arguments_[0] !== "--manifest" ||
     arguments_[2] !== "--signature" ||
     arguments_[4] !== "--trust" ||
-    arguments_[6] !== "--artifact-root"
+    arguments_[6] !== "--artifact-root" ||
+    arguments_[8] !== "--trusted-root-sha256"
   ) {
     fail(
-      "expected --manifest PATH --signature PATH --trust PATH --artifact-root PATH",
+      "expected --manifest PATH --signature PATH --trust PATH --artifact-root PATH --trusted-root-sha256 SHA256",
     )
   }
   const result = verifyReleaseBundle({
@@ -603,6 +622,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     signaturePath: arguments_[3],
     trustPath: arguments_[5],
     artifactRoot: arguments_[7],
+    trustedRootSha256: arguments_[9],
   })
   process.stdout.write(
     `${JSON.stringify(

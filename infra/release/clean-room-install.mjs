@@ -95,15 +95,16 @@ export function installCleanRoom({ targetRoot, ...bundle }) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const arguments_ = process.argv.slice(2)
   if (
-    arguments_.length !== 10 ||
+    arguments_.length !== 12 ||
     arguments_[0] !== "--manifest" ||
     arguments_[2] !== "--signature" ||
     arguments_[4] !== "--trust" ||
     arguments_[6] !== "--artifact-root" ||
-    arguments_[8] !== "--target-root"
+    arguments_[8] !== "--trusted-root-sha256" ||
+    arguments_[10] !== "--target-root"
   ) {
     fail(
-      "expected --manifest PATH --signature PATH --trust PATH --artifact-root PATH --target-root PATH",
+      "expected --manifest PATH --signature PATH --trust PATH --artifact-root PATH --trusted-root-sha256 SHA256 --target-root PATH",
     )
   }
   const result = installCleanRoom({
@@ -111,7 +112,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     signaturePath: arguments_[3],
     trustPath: arguments_[5],
     artifactRoot: arguments_[7],
-    targetRoot: arguments_[9],
+    trustedRootSha256: arguments_[9],
+    targetRoot: arguments_[11],
   })
   process.stdout.write(canonicalJson(result))
 }

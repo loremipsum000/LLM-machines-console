@@ -1,7 +1,6 @@
-import { lstatSync, readFileSync, writeFileSync } from "node:fs"
+import { readFileSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { sha256File } from "./deterministic-archive.mjs"
 import { canonicalJson } from "./generate-release-manifest.mjs"
 import { verifyReleaseBundle } from "./verify-release-bundle.mjs"
 
@@ -21,32 +20,20 @@ function releaseIdentity(release, manifestSha256, corePackage) {
   }
 }
 
-export function generateRollbackDescriptor({
-  currentRelease,
-  currentCorePackagePath,
-  previousBundle,
-}) {
+export function generateRollbackDescriptor({ currentBundle, previousBundle }) {
+  const current = verifyReleaseBundle(currentBundle)
   const previous = verifyReleaseBundle(previousBundle)
-  if (
-    !currentRelease ||
-    typeof currentRelease.version !== "string" ||
-    !/^[a-f0-9]{40}$/.test(currentRelease.sourceCommit ?? "") ||
-    !/^[a-f0-9]{40}$/.test(currentRelease.sourceTree ?? "")
-  ) {
-    fail("current release identity is invalid")
-  }
-  if (currentRelease.version === previous.manifest.release.version) {
+  if (current.manifest.release.version === previous.manifest.release.version) {
     fail("rollback target must use a different release version")
-  }
-  const currentCorePackage = {
-    path: `core/${currentRelease.artifactName}`,
-    size: lstatSync(currentCorePackagePath).size,
-    sha256: sha256File(currentCorePackagePath),
   }
   return {
     schema: "llm-machines.rollback-descriptor.v1",
     status: "PACKAGED_UNQUALIFIED",
-    current: releaseIdentity(currentRelease, null, currentCorePackage),
+    current: releaseIdentity(
+      current.manifest.release,
+      current.manifestSha256,
+      current.corePackage,
+    ),
     target: releaseIdentity(
       previous.manifest.release,
       previous.manifestSha256,
@@ -76,21 +63,18 @@ export function verifyRollbackDescriptor(
   ) {
     fail("rollback descriptor overstates qualification or action")
   }
-  const matches = (record, verified, allowNullManifest) =>
+  const matches = (record, verified) =>
     record?.version === verified.manifest.release.version &&
     record?.sourceCommit === verified.manifest.release.sourceCommit &&
     record?.sourceTree === verified.manifest.release.sourceTree &&
-    (allowNullManifest
-      ? record?.manifestSha256 === null ||
-        record?.manifestSha256 === verified.manifestSha256
-      : record?.manifestSha256 === verified.manifestSha256) &&
+    record?.manifestSha256 === verified.manifestSha256 &&
     record?.corePackagePath === verified.corePackage.path &&
     record?.corePackageSize === verified.corePackage.size &&
     record?.corePackageSha256 === verified.corePackage.sha256
-  if (!matches(descriptor.current, currentVerified, true)) {
+  if (!matches(descriptor.current, currentVerified)) {
     fail("rollback descriptor current release binding is invalid")
   }
-  if (!matches(descriptor.target, previousVerified, false)) {
+  if (!matches(descriptor.target, previousVerified)) {
     fail("rollback descriptor target release binding is invalid")
   }
   if (descriptor.current.version === descriptor.target.version) {

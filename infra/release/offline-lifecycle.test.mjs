@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { generateKeyPairSync, sign } from "node:crypto"
+import { createHash, generateKeyPairSync, sign } from "node:crypto"
 import {
   mkdirSync,
   mkdtempSync,
@@ -92,6 +92,9 @@ function trustFixture() {
   return {
     privateKey: scoped.privateKey,
     rootPrivateKey: root.privateKey,
+    rootSha256: `sha256:${createHash("sha256")
+      .update(root.publicKey.export({ format: "der", type: "spki" }))
+      .digest("hex")}`,
     trust: {
       schema: "llm-machines.release-public-trust.v1",
       generatedAt: "2026-08-01T00:00:00.000Z",
@@ -179,6 +182,18 @@ function bundleFixture(version = "1.0.0", label = version) {
   const coreLock = artifacts.find(
     ({ evidenceId }) => evidenceId === "core-image-lock",
   )
+  const trust = trustFixture()
+  const publicTrustPath = join(
+    artifactRoot,
+    "evidence/public-release-trust.json",
+  )
+  const publicTrustContents = canonicalJson(trust.trust)
+  writeFileSync(publicTrustPath, publicTrustContents)
+  const publicTrustArtifact = artifacts.find(
+    ({ evidenceId }) => evidenceId === "public-release-trust",
+  )
+  publicTrustArtifact.size = Buffer.byteLength(publicTrustContents)
+  publicTrustArtifact.sha256 = sha256File(publicTrustPath)
   const manifest = {
     schema: "llm-machines.release-manifest.v1",
     status: "PACKAGED_UNQUALIFIED",
@@ -207,11 +222,9 @@ function bundleFixture(version = "1.0.0", label = version) {
   }
   const manifestPath = join(directory, "release-manifest.json")
   const signaturePath = join(directory, "release-signature.json")
-  const trustPath = join(directory, "release-public-trust.json")
-  const trust = trustFixture()
+  const trustPath = publicTrustPath
   const manifestBytes = Buffer.from(canonicalJson(manifest))
   writeFileSync(manifestPath, manifestBytes)
-  writeFileSync(trustPath, canonicalJson(trust.trust))
   writeFileSync(
     signaturePath,
     canonicalJson({
@@ -230,7 +243,13 @@ function bundleFixture(version = "1.0.0", label = version) {
   )
   return {
     assembled,
-    bundle: { manifestPath, signaturePath, trustPath, artifactRoot },
+    bundle: {
+      manifestPath,
+      signaturePath,
+      trustPath,
+      artifactRoot,
+      trustedRootSha256: trust.rootSha256,
+    },
     corePath,
     directory,
     manifest,
@@ -358,14 +377,12 @@ test("rollback metadata binds two verified releases and never activates either",
   const previous = bundleFixture("1.9.0", "previous")
   const current = bundleFixture("2.0.0", "current")
   const descriptor = generateRollbackDescriptor({
-    currentRelease: current.manifest.release,
-    currentCorePackagePath: current.corePath,
+    currentBundle: current.bundle,
     previousBundle: previous.bundle,
   })
   assert.equal(descriptor.action, "PREPARE_ONLY")
-  assert.equal(descriptor.current.manifestSha256, null)
+  assert.match(descriptor.current.manifestSha256, /^sha256:[a-f0-9]{64}$/)
   const currentVerified = verifyReleaseBundle(current.bundle)
-  descriptor.current.manifestSha256 = currentVerified.manifestSha256
   assert.equal(
     verifyRollbackDescriptor(
       descriptor,
@@ -387,6 +404,36 @@ test("rollback metadata binds two verified releases and never activates either",
   )
   rmSync(previous.directory, { recursive: true, force: true })
   rmSync(current.directory, { recursive: true, force: true })
+})
+
+test("verification rejects trust substitution and a trust document outside the manifest", () => {
+  const trusted = bundleFixture("4.0.0", "trusted")
+  const attacker = bundleFixture("4.0.1", "attacker")
+  assert.throws(
+    () =>
+      verifyReleaseBundle({
+        ...attacker.bundle,
+        trustedRootSha256: trusted.bundle.trustedRootSha256,
+      }),
+    /independently trusted fingerprint/,
+  )
+
+  const alternateTrustPath = join(trusted.directory, "alternate-trust.json")
+  const alternateTrust = JSON.parse(
+    readFileSync(trusted.bundle.trustPath, "utf8"),
+  )
+  alternateTrust.generatedAt = "2026-07-31T00:00:00.000Z"
+  writeFileSync(alternateTrustPath, canonicalJson(alternateTrust))
+  assert.throws(
+    () =>
+      verifyReleaseBundle({
+        ...trusted.bundle,
+        trustPath: alternateTrustPath,
+      }),
+    /does not match the signed trust artifact/,
+  )
+  rmSync(trusted.directory, { recursive: true, force: true })
+  rmSync(attacker.directory, { recursive: true, force: true })
 })
 
 test("Core assembly rejects private-key-like payloads and existing outputs", () => {
