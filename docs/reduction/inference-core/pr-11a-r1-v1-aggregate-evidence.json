@@ -999,6 +999,7 @@
       "mergeCommit": "949d1f2fd05a8329e7676ad2423bf55d0eab29ba",
       "mergeTree": "93390c0fd7bd31263b437da69888e27c30ca8ab0",
       "evidencePaths": [
+        "docs/reduction/inference-core/validation-register.md",
         "infra/storage/validate-profile.test.mjs"
       ],
       "packageHeadTree": "93390c0fd7bd31263b437da69888e27c30ca8ab0",
@@ -1016,6 +1017,10 @@
         }
       ],
       "evidence": [
+        {
+          "path": "docs/reduction/inference-core/validation-register.md",
+          "sha256": "eeffaad0dc45ede1a612d2bffd4bacf741564c1ad2c416fd4ae33f9cf81d0de5"
+        },
         {
           "path": "infra/storage/validate-profile.test.mjs",
           "sha256": "a6118fb80292c5734b4a12a98ab90e332dee07e5343f5cc92264a1f09bb6d520"
@@ -2018,7 +2023,7 @@
       },
       {
         "path": "scripts/inference-core/guardrails.mjs",
-        "sha256": "d9b0cbf72f76cf10ed25d9432357d0874ee92967a52ae981b3638df56ccb695b"
+        "sha256": "5f8be6d71c18e937d267fce262267953f52cc28f18828b50f5951864654791bb"
       },
       {
         "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",

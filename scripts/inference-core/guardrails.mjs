@@ -429,7 +429,10 @@ export const pr11aR1V1PackageMerges = [
     reviewedSource: "7241678fffb1d63f5f9e3a565d587a03e8dd1a5b",
     mergeCommit: pr11aR1H1IntegrationBase,
     mergeTree: pr11aR1H1IntegrationBaseTree,
-    evidencePaths: ["infra/storage/validate-profile.test.mjs"],
+    evidencePaths: [
+      "docs/reduction/inference-core/validation-register.md",
+      "infra/storage/validate-profile.test.mjs",
+    ],
   },
   {
     id: "R1-H1",

@@ -188,7 +188,7 @@
         "after": [
           {
             "path": "scripts/inference-core/guardrails.mjs",
-            "sha256": "d9b0cbf72f76cf10ed25d9432357d0874ee92967a52ae981b3638df56ccb695b"
+            "sha256": "5f8be6d71c18e937d267fce262267953f52cc28f18828b50f5951864654791bb"
           }
         ]
       },
@@ -3668,7 +3668,7 @@
           {
             "path": "scripts/inference-core/guardrails.mjs",
             "mode": "100644",
-            "objectId": "1b9a6320cee3697b28f5039d758f05ac75a6de0a"
+            "objectId": "7e0c59a19d465207ebe80113f206a2231a49ef65"
           }
         ]
       },
@@ -3953,7 +3953,7 @@
   "evidenceFiles": [
     {
       "path": "docs/reduction/inference-core/pr-11a-r1-v1-aggregate-evidence.json",
-      "sha256": "283dd3c350cdc1ae8ff2bf42b5849516611972abe10dda990160765cea5cef41"
+      "sha256": "8bd799444966d248c192f2fed64590e445e52125cf4a75977a2f9f6f6b781eff"
     },
     {
       "path": "docs/reduction/inference-core/README.md",
