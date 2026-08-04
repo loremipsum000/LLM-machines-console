@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { execFileSync, spawnSync } from "node:child_process"
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -365,6 +366,36 @@ test("manifest validates the actual Core image lock", () => {
   )
 })
 
+test("manifest rejects extra fields anywhere in the actual Core image lock", () => {
+  for (const mutate of [
+    (lock) => {
+      lock.unreviewed = "secret-bearing"
+    },
+    (lock) => {
+      lock.release.unreviewed = "secret-bearing"
+    },
+    (lock) => {
+      lock.images[0].unreviewed = "secret-bearing"
+    },
+  ]) {
+    const value = fixture()
+    const declaration = value.input.artifacts.find(
+      ({ evidenceId }) => evidenceId === "core-image-lock",
+    )
+    const path = join(value.artifactRoot, declaration.path)
+    const lock = JSON.parse(readFileSync(path, "utf8"))
+    mutate(lock)
+    writeFileSync(path, canonicalJson(lock))
+    assert.throws(
+      () =>
+        generateReleaseManifest(value.input, {
+          artifactRoot: value.artifactRoot,
+        }),
+      /Core image lock.*keys must be exactly/,
+    )
+  }
+})
+
 test("CLI refuses to overwrite an existing manifest", () => {
   const value = fixture()
   const inputPath = join(value.directory, "input.json")
@@ -386,4 +417,27 @@ test("CLI refuses to overwrite an existing manifest", () => {
   )
   assert.notEqual(result.status, 0)
   assert.equal(readFileSync(outputPath, "utf8"), "occupied\n")
+})
+
+test("CLI refuses to write the manifest inside the artifact root", () => {
+  const value = fixture()
+  const inputPath = join(value.directory, "input.json")
+  const outputPath = join(value.artifactRoot, "manifest.json")
+  writeFileSync(inputPath, canonicalJson(value.input))
+  const result = spawnSync(
+    process.execPath,
+    [
+      new URL("./generate-release-manifest.mjs", import.meta.url).pathname,
+      "--input",
+      inputPath,
+      "--artifact-root",
+      value.artifactRoot,
+      "--output",
+      outputPath,
+    ],
+    { cwd: rootPath, encoding: "utf8" },
+  )
+  assert.notEqual(result.status, 0)
+  assert.equal(existsSync(outputPath), false)
+  assert.match(result.stderr, /outside the artifact root/)
 })

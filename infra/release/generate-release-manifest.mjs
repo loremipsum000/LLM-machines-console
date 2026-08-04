@@ -7,7 +7,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs"
-import { dirname, relative, resolve, sep } from "node:path"
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import {
   readCoreImageInventory,
@@ -118,6 +118,47 @@ function readJson(path, field) {
     return JSON.parse(readFileSync(path, "utf8"))
   } catch {
     fail(`${field} is not valid JSON`)
+  }
+}
+
+function validateCoreLockStructure(lock) {
+  exactKeys(
+    lock,
+    [
+      "schema",
+      "status",
+      "release",
+      "inventorySha256",
+      "platform",
+      "privateRegistry",
+      "images",
+    ],
+    "Core image lock",
+  )
+  exactKeys(
+    lock.release,
+    ["version", "sourceCommit", "sourceTree"],
+    "Core image lock release",
+  )
+  if (!Array.isArray(lock.images))
+    fail("Core image lock images must be an array")
+  for (const image of lock.images) {
+    const keys = [
+      "id",
+      "repository",
+      "version",
+      "indexDigest",
+      "platform",
+      "platformDigest",
+      "sourceRevision",
+      "license",
+      "sbomSha256",
+      "provenanceSha256",
+    ]
+    if (image?.correspondingSourceSha256 !== undefined) {
+      keys.push("correspondingSourceSha256")
+    }
+    exactKeys(image, keys, `Core image lock entry ${image?.id ?? "missing"}`)
   }
 }
 
@@ -270,6 +311,7 @@ export function generateReleaseManifest(
   )
   const coreLockPath = resolve(artifactDirectory, coreLockDeclaration.path)
   const coreLock = readJson(coreLockPath, "Core image lock")
+  validateCoreLockStructure(coreLock)
   let coreLockErrors
   try {
     coreLockErrors = validateCoreImageLock(
@@ -359,12 +401,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const input = JSON.parse(
     readFileSync(resolve(argumentsByName.get("--input")), "utf8"),
   )
-  const manifest = generateReleaseManifest(input, {
-    artifactRoot: resolve(argumentsByName.get("--artifact-root")),
-  })
-  writeFileSync(
-    resolve(argumentsByName.get("--output")),
-    canonicalJson(manifest),
-    { flag: "wx" },
-  )
+  const artifactRoot = resolve(argumentsByName.get("--artifact-root"))
+  const outputPath = resolve(argumentsByName.get("--output"))
+  const outputRelative = relative(artifactRoot, outputPath)
+  if (
+    outputRelative === "" ||
+    (!outputRelative.startsWith(`..${sep}`) &&
+      outputRelative !== ".." &&
+      !isAbsolute(outputRelative))
+  ) {
+    fail("manifest output must remain outside the artifact root")
+  }
+  const manifest = generateReleaseManifest(input, { artifactRoot })
+  writeFileSync(outputPath, canonicalJson(manifest), { flag: "wx" })
 }
