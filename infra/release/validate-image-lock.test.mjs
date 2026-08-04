@@ -21,12 +21,13 @@ function clone(value) {
 
 function syntheticCoreLock() {
   const inventory = readCoreImageInventory()
+  const sourceCommit = "1".repeat(40)
   return {
     schema: "llm-machines.core-image-lock.v1",
     status: "LOCKED",
     release: {
       version: "1.0.0-test",
-      sourceCommit: "1".repeat(40),
+      sourceCommit,
       sourceTree: "2".repeat(40),
     },
     inventorySha256: coreInventorySha256(),
@@ -50,7 +51,7 @@ function syntheticCoreLock() {
           : digest(((index + 2) % 10).toString()),
       sourceRevision:
         component.sourceRevision === "release-source-commit"
-          ? "3".repeat(40)
+          ? sourceCommit
           : component.sourceRevision === "release-source-lock"
             ? "source-lock-revision"
             : component.sourceRevision,
@@ -192,6 +193,37 @@ test("unapproved registries and omitted retained components fail", () => {
   const missing = syntheticCoreLock()
   missing.images.pop()
   assert.notDeepEqual(validateCoreImageLock(missing, inventory), [])
+})
+
+test("Product-built images must bind the exact release source commit", () => {
+  const inventory = readCoreImageInventory()
+  for (const productImageId of ["console-web", "console-bff"]) {
+    const mismatched = syntheticCoreLock()
+    const productImage = mismatched.images.find(
+      ({ id }) => id === productImageId,
+    )
+    productImage.sourceRevision = "3".repeat(40)
+
+    assert.deepEqual(validateCoreImageLock(mismatched, inventory), [
+      `image ${productImageId} must bind the release source commit`,
+    ])
+  }
+})
+
+test("a missing release object returns diagnostics instead of throwing", () => {
+  const inventory = readCoreImageInventory()
+  const malformed = syntheticCoreLock()
+  malformed.release = undefined
+
+  assert.doesNotThrow(() => validateCoreImageLock(malformed, inventory))
+  const errors = validateCoreImageLock(malformed, inventory)
+  assert.ok(errors.includes("Core image lock source commit is invalid"))
+  assert.ok(
+    errors.includes("image console-web must bind the release source commit"),
+  )
+  assert.ok(
+    errors.includes("image console-bff must bind the release source commit"),
+  )
 })
 
 test("source pins and Core baseline drift fail closed", () => {
