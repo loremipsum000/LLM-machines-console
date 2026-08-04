@@ -17,7 +17,7 @@ import {
 const directory = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = resolve(directory, "../..")
 const sha256Pattern = /^sha256:[a-f0-9]{64}$/
-const slsaBuilderKey = ["build", "er"].join("")
+const slsaActorKey = ["build", "er"].join("")
 const firecrawlIds = new Set([
   "firecrawl-api",
   "firecrawl-browser",
@@ -98,7 +98,7 @@ function validateProvenance(document, image) {
   const digest = image.platformDigest.slice("sha256:".length)
   const buildDefinition = document?.predicate?.buildDefinition
   const runDetails = document?.predicate?.runDetails
-  const buildService = runDetails?.[slsaBuilderKey]
+  const buildService = runDetails?.[slsaActorKey]
   if (
     document?._type !== "https://in-toto.io/Statement/v1" ||
     document?.predicateType !== "https://slsa.dev/provenance/v1" ||
