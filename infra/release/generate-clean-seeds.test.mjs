@@ -85,13 +85,19 @@ test("unapproved data-writing SQL fails regardless of case or layout", () => {
     "\n-- reviewed default\nUPDATE admin.console_settings SET organization_name = 'x';\n",
     "\n/* reviewed default */ DELETE FROM admin.console_settings WHERE id = 'singleton';\n",
     "\n/* outer /* nested */ review */ TRUNCATE admin.console_settings;\n",
-    "\n/* unterminated comment UPDATE admin.console_settings SET organization_name = 'x';\n",
   ]) {
     assert.throws(
       () => validateCleanDatabaseMigration(`${migration}${addition}`),
       /unapproved persisted row/,
     )
   }
+  assert.throws(
+    () =>
+      validateCleanDatabaseMigration(
+        `${migration}\n/* unterminated comment UPDATE admin.console_settings SET organization_name = 'x';\n`,
+      ),
+    /unterminated comment/,
+  )
 })
 
 test("Keycloak artifacts are loaded from the claimed source root", () => {
