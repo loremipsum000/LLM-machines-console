@@ -8,6 +8,7 @@ import {
   readFileSync,
   readdirSync,
   readlinkSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs"
@@ -356,7 +357,15 @@ function parseArguments(argv) {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+function isMainModule() {
+  return (
+    Boolean(process.argv[1]) &&
+    realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+  )
+}
+
+if (isMainModule()) {
   try {
     const arguments_ = parseArguments(process.argv.slice(2))
     if (existsSync(arguments_.output)) fail("evidence output already exists")
