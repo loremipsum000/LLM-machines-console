@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { after, test } from "node:test"
@@ -42,12 +42,14 @@ function readDecision() {
 }
 
 function candidatePaths() {
+  const decision = readDecision()
   const output = git(
     "diff",
     "--name-only",
     "--no-ext-diff",
     "--no-renames",
     pr11aR1H1IntegrationBase,
+    decision.sourceHeadCommit,
     "--",
   )
   return output ? output.split("\n").sort() : []
@@ -69,6 +71,25 @@ function detachedBaseRoot() {
     cwd: root,
     stdio: "ignore",
   })
+  return root
+}
+
+function detachedSourceRoot() {
+  const root = mkdtempSync(join(tmpdir(), "llmm-r1-h1-source-"))
+  temporaryRoots.push(root)
+  execFileSync(
+    "git",
+    ["clone", "--quiet", "--shared", "--no-checkout", repositoryRoot, root],
+    { stdio: "ignore" },
+  )
+  execFileSync(
+    "git",
+    ["checkout", "--quiet", readDecision().sourceHeadCommit],
+    {
+      cwd: root,
+      stdio: "ignore",
+    },
+  )
   return root
 }
 
@@ -101,13 +122,14 @@ test("R1-H1 is an exact unaccepted source-only successor", () => {
     "eb9b31503d575e6587f4cf7957b74f9c001cd632",
   )
   assert.equal(
-    existsSync(
-      resolve(
-        repositoryRoot,
-        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
-      ),
+    git(
+      "ls-tree",
+      "--name-only",
+      decision.sourceHeadCommit,
+      "--",
+      "docs/reduction/inference-core/contract-revisions/PR-11A.json",
     ),
-    false,
+    "",
   )
 })
 
@@ -122,7 +144,11 @@ test("R1-H1 binds every base and formatted source fingerprint", () => {
     assert.equal(decision.baseFingerprints[path], sha256(baseSource))
     assert.equal(
       decision.sourceFingerprints[path],
-      sha256(readFileSync(resolve(repositoryRoot, path))),
+      sha256(
+        execFileSync("git", ["show", `${decision.sourceHeadCommit}:${path}`], {
+          cwd: repositoryRoot,
+        }),
+      ),
     )
   }
 })
@@ -137,21 +163,25 @@ test("R1-H1 preserves the parsed historical PR-09 decision", () => {
     }),
   )
   const current = JSON.parse(
-    readFileSync(resolve(repositoryRoot, path), "utf8"),
+    execFileSync("git", ["show", `${decision.sourceHeadCommit}:${path}`], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+    }),
   )
   assert.deepEqual(current, base)
 })
 
 test("R1-H1 preserves forbidden findings and route behavior from its exact base", () => {
   const baseRoot = detachedBaseRoot()
+  const sourceRoot = detachedSourceRoot()
   const decision = readDecision()
   const baseForbidden = buildForbiddenAllowlist({
     root: baseRoot,
     paths: listCandidatePaths(baseRoot),
   })
   const sourceForbidden = buildForbiddenAllowlist({
-    root: repositoryRoot,
-    paths: listCandidatePaths(repositoryRoot),
+    root: sourceRoot,
+    paths: listCandidatePaths(sourceRoot),
   })
   assert.deepEqual(sourceForbidden.entries, baseForbidden.entries)
 
@@ -160,8 +190,8 @@ test("R1-H1 preserves forbidden findings and route behavior from its exact base"
     paths: listCandidatePaths(baseRoot),
   })
   const sourceRoutes = buildRouteBaseline({
-    root: repositoryRoot,
-    paths: listCandidatePaths(repositoryRoot),
+    root: sourceRoot,
+    paths: listCandidatePaths(sourceRoot),
   })
   for (const key of [
     "target",

@@ -85,13 +85,14 @@ test("R1-S1 remains an unaccepted source-only candidate", () => {
   assert.equal(decision.revisionBound, false)
   assert.equal(decision.runtimeQualified, false)
   assert.equal(
-    existsSync(
-      resolve(
-        repositoryRoot,
-        "docs/reduction/inference-core/contract-revisions/PR-11A.json",
-      ),
+    git(
+      "ls-tree",
+      "--name-only",
+      sourceHead,
+      "--",
+      "docs/reduction/inference-core/contract-revisions/PR-11A.json",
     ),
-    false,
+    "",
   )
 })
 
