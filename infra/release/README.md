@@ -43,6 +43,18 @@ v1 in an in-toto statement is the provenance format. Release signatures use a
 scoped vendor `release-artifact` Ed25519 key during a separate offline ceremony.
 Only public trust material may enter the package.
 
+`generate-release-evidence.mjs` converts one validated Core image lock and the
+actual per-image CycloneDX, SLSA provenance, license text, Firecrawl source,
+and vulnerability-review inputs into deterministic release evidence. It
+rejects inputs whose hashes or identities differ from the Core lock. The
+checked-in `license-disposition.json` is a source policy, not a substitute for
+the license texts and corresponding source delivered with a release.
+
+`generate-clean-seeds.mjs` packages the schema-only PostgreSQL migration and
+the two validated, credential-free Keycloak logical realms and commissioning
+plans. It never generates one-time values. Those remain a witnessed
+commissioning action outside Git and outside PR-12 source packaging.
+
 `generate-release-manifest.mjs` consumes a credential-free declaration and an
 artifact directory, then derives every size and SHA-256 from the actual files.
 It rejects missing, undeclared, duplicate, mutable, symbolic-link, hard-link,
