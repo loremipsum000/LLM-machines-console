@@ -36,16 +36,19 @@ package is one deterministic `linux/amd64` appliance artifact for the 8 vCPU,
 signed delivery-profile revision and is never selected by the Core build.
 
 The final release manifest conforms to `release-manifest.schema.json`. Its
-artifact inventory is path-sorted, content-addressed, free of timestamps other
-than the caller-supplied `SOURCE_DATE_EPOCH`, and explicitly remains
+artifact inventory is path-sorted, content-addressed from regular files, bound
+to the checked-out Git commit, tree, and commit epoch, and explicitly remains
 `PACKAGED_UNQUALIFIED`. CycloneDX 1.6 JSON is the SBOM format. SLSA provenance
 v1 in an in-toto statement is the provenance format. Release signatures use a
 scoped vendor `release-artifact` Ed25519 key during a separate offline ceremony.
 Only public trust material may enter the package.
 
-`generate-release-manifest.mjs` consumes a credential-free JSON input and
-writes canonical JSON. It performs no build, registry, signing, network, or
-runtime action. Run the source-policy checks with:
+`generate-release-manifest.mjs` consumes a credential-free declaration and an
+artifact directory, then derives every size and SHA-256 from the actual files.
+It rejects missing, undeclared, duplicate, mutable, symbolic-link, hard-link,
+or unsafe artifacts; requires every evidence ID in `release-plan.json`; and
+validates the actual Core image lock. It performs no build, registry, signing,
+network, or runtime action. Run the source-policy checks with:
 
 ```sh
 node infra/release/validate-release-plan.mjs
