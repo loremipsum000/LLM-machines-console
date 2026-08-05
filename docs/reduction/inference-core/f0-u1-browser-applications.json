@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "F0-U1",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "6810a6077d5af1f3e99253924e36a4458729bc1d",
+  "command": "corepack pnpm run test:pre-genesis:browser-applications",
+  "prerequisites": [
+    "corepack pnpm install --frozen-lockfile",
+    "installed Chrome or Chromium, or PLAYWRIGHT_CHROME_EXECUTABLE",
+    "OpenSSL available for a disposable local certificate authority"
+  ],
+  "evidenceClass": "LOCAL_BROWSER_APPLICATION_FLOW_ONLY",
+  "services": [
+    "actual Console Web",
+    "actual Console BFF session, Application administration, and inference gateway routes",
+    "in-memory Console session and Application repositories",
+    "deterministic Keycloak-compatible OIDC fixture",
+    "loopback-only HTTPS four-authority router",
+    "deterministic private inference double"
+  ],
+  "proved": [
+    "Admin creates an Application through the actual Console UI",
+    "the inference credential is revealed once with the API authority",
+    "a standard OpenAI-compatible client authenticates through the API authority",
+    "model discovery and non-streaming Chat Completions update passive connection, request, token, and last-use evidence",
+    "Firecrawl is disabled for the new Application by default",
+    "Firecrawl enablement requires the exact outbound-web disclaimer acknowledgement",
+    "Firecrawl receives a separate one-time credential and Firecrawl authority",
+    "temporary-state cleanup without retained credential material"
+  ],
+  "productCorrections": [
+    "the MFA elevation page uses same-origin referrer policy so its native POST carries the exact Console Origin",
+    "Console CSP permits form redirects only to one validated deployment-supplied Identity origin and otherwise fails closed"
+  ],
+  "preservedBoundaries": [
+    "Console never probes inference or Firecrawl with an Application credential",
+    "Firecrawl upstream execution remains F0-W1 evidence",
+    "LiteLLM and Keycloak native administration remain private",
+    "Grafana remains absent",
+    "Hermes Desktop remains an optional third-party manual smoke only"
+  ],
+  "notEvidenceFor": [
+    "PostgreSQL Application or Console-session persistence",
+    "Keycloak 26.7.0 runtime qualification",
+    "real LiteLLM, Firecrawl, or SGLang runtime behavior",
+    "Product Nginx, appliance TLS, or runtime no-bypass",
+    "release packaging, Q0, or production inference capacity"
+  ],
+  "deferred": [
+    "preserving create-form input across a required MFA elevation",
+    "browser credential rotation, revocation, and Application isolation",
+    "real Firecrawl process integration",
+    "observability and lifecycle browser proof",
+    "PostgreSQL restart persistence",
+    "real SGLang smoke and production qualification"
+  ],
+  "forbiddenOutcomes": [
+    "real credential use",
+    "live infrastructure access",
+    "runtime qualification claim",
+    "Product main merge",
+    "Gitea Genesis"
+  ]
+}

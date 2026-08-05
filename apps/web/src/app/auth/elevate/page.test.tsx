@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import ElevationPage from "./page"
+import ElevationPage, { metadata } from "./page"
 
 const mocks = vi.hoisted(() => ({
   notFound: vi.fn(() => {
@@ -16,6 +16,10 @@ afterEach(() => {
 })
 
 describe("Console high-risk elevation page", () => {
+  it("allows the native same-origin POST to carry the exact Console Origin", () => {
+    expect(metadata).toEqual({ referrer: "same-origin" })
+  })
+
   it("requires a deliberate POST with a bound action and path-only return", async () => {
     render(
       await ElevationPage({

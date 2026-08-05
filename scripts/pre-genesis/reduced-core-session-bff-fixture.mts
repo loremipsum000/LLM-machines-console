@@ -99,6 +99,15 @@ const service = new ConsoleSessionService(
   { clientId, issuer },
   now,
 )
+const rawBeginElevation = service.beginElevation.bind(service)
+service.beginElevation = async (input) => {
+  process.stderr.write(`${JSON.stringify({ event: "elevation_begin" })}\n`)
+  const result = await rawBeginElevation(input)
+  process.stderr.write(
+    `${JSON.stringify({ event: "elevation_result", state: result.state })}\n`,
+  )
+  return result
+}
 const server = buildServer({
   testConsoleSessionRouteOptions: {
     backchannelVerifier: validator,
