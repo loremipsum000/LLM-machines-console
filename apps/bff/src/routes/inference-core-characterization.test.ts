@@ -177,6 +177,12 @@ describe("Inference Core route characterization", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("DATABASE_URL", "postgresql://unused.invalid/characterization")
     vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://api.example.test")
+    vi.stubEnv("PRODUCT_API_HOST", "api.example.test")
+    vi.stubEnv("PRODUCT_IDENTITY_HOST", "identity.example.test")
+    vi.stubEnv(
+      "KEYCLOAK_APPLICATION_ISSUER_URL",
+      "https://identity.example.test/realms/llm-machines-applications",
+    )
     let server: Awaited<ReturnType<typeof createServer>> | undefined
     try {
       vi.resetModules()
