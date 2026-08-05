@@ -23,11 +23,11 @@
   "protectedFiles": [
     {
       "path": "package.json",
-      "sha256": "2166f076bc257118887631948c7c0f7025d36533947b764c18de95be9773deb5"
+      "sha256": "7f41594aed3904740dc90426003fb28b6bfc9d74fd1360f083968f9358e0adfd"
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",
-      "sha256": "8d6c454b3dce59155127090848431c4d785601d9a08cd3dc181797f7761f707e"
+      "sha256": "cd83f15ff08b623079bb16b870d21ef9d0be51c033c6a4fe65d4f1d6afb5db16"
     },
     {
       "path": "scripts/inference-core/pr12-release-gate.test.mjs",

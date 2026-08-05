@@ -60,6 +60,16 @@ unsupported-route denial, Application isolation, last-use metadata, rotation,
 revocation, zero-retention request flags, and cleanup. The local Firecrawl and
 DNS doubles do not contact the web and are not runtime qualification evidence.
 
+Run `corepack pnpm run test:pre-genesis:browser` for the bounded F0-S1 browser
+session and role flow. It uses actual Console Web and BFF code, real Chrome or
+Chromium, generated throwaway credentials, a generated local CA, and a
+deterministic Keycloak-compatible OIDC fixture. The proof covers login,
+same-origin return handling, expiry, revocation, retryable identity outage,
+serialized refresh across browser tabs, logout, retained navigation, and the
+Admin/Operator boundary. Reserved `*.llmm.test` fixture authorities are mapped
+only to loopback. This is not evidence for real Keycloak, PostgreSQL session
+persistence, appliance TLS, Product Nginx, release packaging, or Q0.
+
 ## Security
 
 Internal deployment topology, operational runbooks, environment credentials,

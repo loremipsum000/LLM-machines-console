@@ -80,10 +80,13 @@ export default async function middleware(request: NextRequest) {
     return response
   }
   if (resolution.state === "unavailable") {
-    const response = contentSecurityPolicy.rewrite(
-      getUnavailableUrl(request.nextUrl, returnTo),
-      503,
+    const response = PROTECTED_AUDIT_DOWNLOAD_PATHS.has(
+      request.nextUrl.pathname,
     )
+      ? contentSecurityPolicy.unavailable()
+      : contentSecurityPolicy.redirect(
+          getUnavailableUrl(request.nextUrl, returnTo),
+        )
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   }
@@ -106,7 +109,7 @@ function isExpiredSignInRequest(request: NextRequest): boolean {
 function createContentSecurityPolicy(request: NextRequest): {
   next(): NextResponse
   redirect(url: URL): NextResponse
-  rewrite(url: URL, status: number): NextResponse
+  unavailable(): NextResponse
 } {
   const nonce = btoa(crypto.randomUUID())
   const value = buildContentSecurityPolicy(nonce)
@@ -125,8 +128,13 @@ function createContentSecurityPolicy(request: NextRequest): {
         }),
       ),
     redirect: (url) => setResponseHeader(NextResponse.redirect(url)),
-    rewrite: (url, status) =>
-      setResponseHeader(NextResponse.rewrite(url, { status })),
+    unavailable: () =>
+      setResponseHeader(
+        new NextResponse(null, {
+          status: 503,
+          statusText: "Identity service temporarily unavailable",
+        }),
+      ),
   }
 }
 

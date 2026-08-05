@@ -21214,6 +21214,14 @@ function assertReviewedNextMiddleware(root, path) {
   if (isReviewedConsoleSessionMiddlewareSource(source)) {
     return
   }
+  if (
+    source.includes("@/lib/auth/session-client") &&
+    source.includes("createContentSecurityPolicy")
+  ) {
+    throw new Error(
+      `Next middleware content security policy wrapper changed; content security policy call changed; rewrite registration is not allowed in ${path}`,
+    )
+  }
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -21579,12 +21587,28 @@ function assertReviewedNextMiddleware(root, path) {
 
 function isReviewedConsoleSessionMiddlewareSource(source) {
   const rewriteCalls = source.match(/\bNextResponse\.rewrite\s*\(/g) ?? []
-  return Boolean(
+  const legacyUnavailableRecovery = Boolean(
     rewriteCalls.length === 1 &&
-      /resolution\.state\s*===\s*["']unavailable["']/.test(source) &&
       /contentSecurityPolicy\.rewrite\(\s*getUnavailableUrl\(request\.nextUrl,\s*returnTo\),\s*503,?\s*\)/s.test(
         source,
       ) &&
+      (source.match(/\bcontentSecurityPolicy\.redirect\(/g) ?? []).length === 3,
+  )
+  const reviewedUnavailableRecovery = Boolean(
+    rewriteCalls.length === 0 &&
+      /PROTECTED_AUDIT_DOWNLOAD_PATHS\.has\(\s*request\.nextUrl\.pathname,?\s*\)\s*\?\s*contentSecurityPolicy\.unavailable\(\)\s*:\s*contentSecurityPolicy\.redirect\(\s*getUnavailableUrl\(request\.nextUrl,\s*returnTo\),?\s*\)/s.test(
+        source,
+      ) &&
+      /unavailable:\s*\(\)\s*=>\s*setResponseHeader\(\s*new NextResponse\(null,\s*\{\s*status:\s*503,/s.test(
+        source,
+      ) &&
+      (source.match(/\bcontentSecurityPolicy\.unavailable\(\)/g) ?? [])
+        .length === 1 &&
+      (source.match(/\bcontentSecurityPolicy\.redirect\(/g) ?? []).length === 4,
+  )
+  return Boolean(
+    (legacyUnavailableRecovery || reviewedUnavailableRecovery) &&
+      /resolution\.state\s*===\s*["']unavailable["']/.test(source) &&
       /new URL\(["']\/auth\/unavailable["'],\s*requestUrl\.origin\)/.test(
         source,
       ) &&
@@ -21595,8 +21619,6 @@ function isReviewedConsoleSessionMiddlewareSource(source) {
         source,
       ) &&
       (source.match(/\bcontentSecurityPolicy\.next\(\)/g) ?? []).length === 4 &&
-      (source.match(/\bcontentSecurityPolicy\.redirect\(/g) ?? []).length ===
-        3 &&
       /export default async function middleware\(request: NextRequest\)/.test(
         source,
       ) &&
