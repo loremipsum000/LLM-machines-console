@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { type ChildProcessByStdio, spawn } from "node:child_process"
-import { access, readFile } from "node:fs/promises"
+import { access, readFile, readdir } from "node:fs/promises"
 import { connect } from "node:net"
 import { join, resolve } from "node:path"
 import type { Readable } from "node:stream"
@@ -45,12 +45,23 @@ describe("F0-B1 disposable reduced-Core development lane", () => {
     const runtime = JSON.parse(
       await readFile(join(summary.stateRoot, "runtime.json"), "utf8"),
     )
+    const credentials = JSON.parse(
+      await readFile(
+        join(summary.stateRoot, "throwaway-credentials.json"),
+        "utf8",
+      ),
+    )
     const stalledClient = await openIncompleteRequest(summary.services.console)
+    const stalledInference = await openIncompleteInferenceRequest(
+      runtime.ports.inferencePort,
+      credentials.liteLlmApiKey,
+    )
 
     child.kill("SIGTERM")
     const result = await running.completed
     expect(result.code, result.stderr).toBe(0)
     await stalledClient.closed
+    await stalledInference.closed
     await expect(access(summary.stateRoot)).rejects.toMatchObject({
       code: "ENOENT",
     })
@@ -63,6 +74,21 @@ describe("F0-B1 disposable reduced-Core development lane", () => {
       }),
     ).rejects.toThrow()
   }, 60_000)
+
+  test("rejects an ambient temporary directory inside the source worktree", async () => {
+    const before = await readdir(repositoryRoot)
+    const result = await runCheck({
+      TEMP: repositoryRoot,
+      TMP: repositoryRoot,
+      TMPDIR: repositoryRoot,
+    })
+
+    expect(result.code).not.toBe(0)
+    expect(result.stderr).toContain(
+      "temporary directory must be outside the source worktree",
+    )
+    expect(await readdir(repositoryRoot)).toEqual(before)
+  })
 })
 
 function openIncompleteRequest(
@@ -83,14 +109,42 @@ function openIncompleteRequest(
   })
 }
 
-function runCheck(): Promise<ProcessResult> {
+function openIncompleteInferenceRequest(
+  port: number,
+  apiKey: string,
+): Promise<{ closed: Promise<void> }> {
+  return new Promise((resolveOpen, rejectOpen) => {
+    const socket = connect(port, "127.0.0.1")
+    socket.once("error", rejectOpen)
+    socket.once("connect", () => {
+      socket.write(
+        [
+          "POST /v1/chat/completions HTTP/1.1",
+          "Host: 127.0.0.1",
+          `Authorization: Bearer ${apiKey}`,
+          "Content-Type: application/json",
+          "Content-Length: 100",
+          "",
+          '{"model":"fixture-model",',
+        ].join("\r\n"),
+      )
+      resolveOpen({
+        closed: new Promise((resolveClosed) =>
+          socket.once("close", resolveClosed),
+        ),
+      })
+    })
+  })
+}
+
+function runCheck(environment: NodeJS.ProcessEnv = {}): Promise<ProcessResult> {
   return collectProcess(
     spawn(
       process.execPath,
       ["scripts/pre-genesis/reduced-core-dev.mjs", "--check"],
       {
         cwd: repositoryRoot,
-        env: poisonedParentEnvironment(),
+        env: poisonedParentEnvironment(environment),
         stdio: ["ignore", "pipe", "pipe"],
       },
     ),
@@ -189,13 +243,16 @@ function collectProcess(
   })
 }
 
-function poisonedParentEnvironment(): NodeJS.ProcessEnv {
+function poisonedParentEnvironment(
+  overrides: NodeJS.ProcessEnv = {},
+): NodeJS.ProcessEnv {
   return {
     ...process.env,
     ADMIN_LITELLM_API_KEY: "parent-value-must-not-cross",
     DATABASE_URL: "parent-database-must-not-cross",
     KEYCLOAK_ADMIN_CLIENT_SECRET: "parent-value-must-not-cross",
     NODE_ENV: "production",
+    ...overrides,
   }
 }
 

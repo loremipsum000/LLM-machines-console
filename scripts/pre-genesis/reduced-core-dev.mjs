@@ -8,13 +8,14 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rm,
   symlink,
   writeFile,
 } from "node:fs/promises"
 import { createServer, request as httpRequest } from "node:http"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
@@ -77,7 +78,7 @@ if (!runtime) {
 async function startReducedCoreDevelopmentRuntime() {
   await assertDevelopmentDependenciesReady()
   ensureStartupActive()
-  const stateRoot = await mkdtemp(join(tmpdir(), "llmm-reduced-core-dev-"))
+  const stateRoot = await createTemporaryStateRoot()
   const children = []
   const servers = []
   const close = createRuntimeCleanup({ children, servers, stateRoot })
@@ -215,66 +216,79 @@ async function startReducedCoreDevelopmentRuntime() {
 }
 
 function createInferenceDouble(apiKey) {
-  return createServer(async (request, response) => {
-    if (request.headers.authorization !== `Bearer ${apiKey}`) {
-      sendJson(response, 401, { error: { message: "Unauthorized" } })
-      return
-    }
-    if (request.method === "GET" && request.url === "/v1/models") {
-      sendJson(response, 200, {
-        data: [{ id: "fixture-model", object: "model" }],
-        object: "list",
-      })
-      return
-    }
-    if (request.method !== "POST" || request.url !== "/v1/chat/completions") {
-      sendJson(response, 404, { error: { message: "Unsupported route" } })
-      return
-    }
-    const body = await readJsonBody(request)
-    if (!body || body.model !== "fixture-model") {
-      sendJson(response, 400, { error: { message: "Invalid fixture request" } })
-      return
-    }
-    if (body.stream === true) {
-      response.writeHead(200, {
-        "cache-control": "no-store",
-        "content-type": "text/event-stream",
-      })
-      response.write(
-        `data: ${JSON.stringify({
-          choices: [{ delta: { content: "fixture-response" }, index: 0 }],
-          id: "chatcmpl-fixture",
-          model: "fixture-model",
-          object: "chat.completion.chunk",
-        })}\n\n`,
-      )
-      response.write(
-        `data: ${JSON.stringify({
-          choices: [],
-          id: "chatcmpl-fixture",
-          model: "fixture-model",
-          object: "chat.completion.chunk",
-          usage: { completion_tokens: 2, prompt_tokens: 3, total_tokens: 5 },
-        })}\n\n`,
-      )
-      response.end("data: [DONE]\n\n")
-      return
-    }
-    sendJson(response, 200, {
-      choices: [
-        {
-          finish_reason: "stop",
-          index: 0,
-          message: { content: "fixture-response", role: "assistant" },
-        },
-      ],
-      created: 0,
-      id: "chatcmpl-fixture",
-      model: "fixture-model",
-      object: "chat.completion",
-      usage: { completion_tokens: 2, prompt_tokens: 3, total_tokens: 5 },
+  return createServer((request, response) => {
+    void handleInferenceDoubleRequest(apiKey, request, response).catch(() => {
+      if (response.destroyed) {
+        return
+      }
+      if (response.headersSent) {
+        response.destroy()
+      } else {
+        sendJson(response, 400, { error: { message: "Invalid request body" } })
+      }
     })
+  })
+}
+
+async function handleInferenceDoubleRequest(apiKey, request, response) {
+  if (request.headers.authorization !== `Bearer ${apiKey}`) {
+    sendJson(response, 401, { error: { message: "Unauthorized" } })
+    return
+  }
+  if (request.method === "GET" && request.url === "/v1/models") {
+    sendJson(response, 200, {
+      data: [{ id: "fixture-model", object: "model" }],
+      object: "list",
+    })
+    return
+  }
+  if (request.method !== "POST" || request.url !== "/v1/chat/completions") {
+    sendJson(response, 404, { error: { message: "Unsupported route" } })
+    return
+  }
+  const body = await readJsonBody(request)
+  if (!body || body.model !== "fixture-model") {
+    sendJson(response, 400, { error: { message: "Invalid fixture request" } })
+    return
+  }
+  if (body.stream === true) {
+    response.writeHead(200, {
+      "cache-control": "no-store",
+      "content-type": "text/event-stream",
+    })
+    response.write(
+      `data: ${JSON.stringify({
+        choices: [{ delta: { content: "fixture-response" }, index: 0 }],
+        id: "chatcmpl-fixture",
+        model: "fixture-model",
+        object: "chat.completion.chunk",
+      })}\n\n`,
+    )
+    response.write(
+      `data: ${JSON.stringify({
+        choices: [],
+        id: "chatcmpl-fixture",
+        model: "fixture-model",
+        object: "chat.completion.chunk",
+        usage: { completion_tokens: 2, prompt_tokens: 3, total_tokens: 5 },
+      })}\n\n`,
+    )
+    response.end("data: [DONE]\n\n")
+    return
+  }
+  sendJson(response, 200, {
+    choices: [
+      {
+        finish_reason: "stop",
+        index: 0,
+        message: { content: "fixture-response", role: "assistant" },
+      },
+    ],
+    created: 0,
+    id: "chatcmpl-fixture",
+    model: "fixture-model",
+    object: "chat.completion",
+    usage: { completion_tokens: 2, prompt_tokens: 3, total_tokens: 5 },
   })
 }
 
@@ -422,6 +436,8 @@ async function verifyRuntime(runtime) {
 }
 
 function startChild(name, command, environment, stateRoot, cwd) {
+  const errors = []
+  const rememberError = (error) => errors.push(error)
   const stdout = createWriteStream(join(stateRoot, `${name}.stdout.log`), {
     flags: "a",
     mode: 0o600,
@@ -436,9 +452,12 @@ function startChild(name, command, environment, stateRoot, cwd) {
     env: isolatedChildEnvironment(stateRoot, environment),
     stdio: ["ignore", "pipe", "pipe"],
   })
+  stdout.on("error", rememberError)
+  stderr.on("error", rememberError)
+  child.on("error", rememberError)
   child.stdout.pipe(stdout)
   child.stderr.pipe(stderr)
-  return { child, name, stderr, stdout }
+  return { child, errors, name, stderr, stdout }
 }
 
 async function stopChild(record) {
@@ -455,7 +474,9 @@ async function stopChild(record) {
         }
       }
     }
-    await waitForChildExit(record.child, 1_000)
+    if (!(await waitForChildExit(record.child, 1_000))) {
+      throw new Error(`${record.name} child exit was not observed.`)
+    }
   } catch (error) {
     errors.push(error)
   }
@@ -464,6 +485,7 @@ async function stopChild(record) {
     endWritable(record.stderr),
   ])
   errors.push(
+    ...record.errors,
     ...streamResults
       .filter((result) => result.status === "rejected")
       .map((result) => result.reason),
@@ -473,10 +495,35 @@ async function stopChild(record) {
   }
 }
 
-function endWritable(stream) {
+function endWritable(stream, timeoutMs = 5_000) {
+  if (stream.closed) {
+    return Promise.resolve()
+  }
   return new Promise((resolveEnd, rejectEnd) => {
-    stream.once("error", rejectEnd)
-    stream.end(resolveEnd)
+    let settled = false
+    const finish = (error) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      clearTimeout(timeout)
+      stream.off("close", onClose)
+      stream.off("error", onError)
+      if (error) {
+        rejectEnd(error)
+      } else {
+        resolveEnd()
+      }
+    }
+    const onClose = () => finish()
+    const onError = (error) => finish(error)
+    const timeout = setTimeout(() => {
+      stream.destroy()
+      finish(new Error("Timed out closing a local development log."))
+    }, timeoutMs)
+    stream.once("close", onClose)
+    stream.once("error", onError)
+    stream.end()
   })
 }
 
@@ -614,6 +661,29 @@ async function assertDevelopmentDependenciesReady() {
   }
 }
 
+async function createTemporaryStateRoot() {
+  const [repositoryRealRoot, temporaryRealRoot] = await Promise.all([
+    realpath(repositoryRoot),
+    realpath(tmpdir()),
+  ])
+  if (pathIsInside(repositoryRealRoot, temporaryRealRoot)) {
+    throw new Error(
+      "The operating-system temporary directory must be outside the source worktree.",
+    )
+  }
+  return mkdtemp(join(temporaryRealRoot, "llmm-reduced-core-dev-"))
+}
+
+function pathIsInside(parent, candidate) {
+  const pathFromParent = relative(parent, candidate)
+  return (
+    pathFromParent === "" ||
+    (!isAbsolute(pathFromParent) &&
+      pathFromParent !== ".." &&
+      !pathFromParent.startsWith(`..${sep}`))
+  )
+}
+
 async function prepareTemporaryWebProject(stateRoot) {
   const sourceRoot = resolve(repositoryRoot, "apps/web")
   const webRoot = join(stateRoot, "web")
@@ -691,11 +761,13 @@ async function waitForProcessGroupExit(pid, timeoutMs) {
 
 function waitForChildExit(child, timeoutMs) {
   if (child.exitCode !== null || child.signalCode !== null) {
-    return Promise.resolve()
+    return Promise.resolve(true)
   }
   return Promise.race([
-    new Promise((resolveExit) => child.once("exit", resolveExit)),
-    new Promise((resolveTimeout) => setTimeout(resolveTimeout, timeoutMs)),
+    new Promise((resolveExit) => child.once("exit", () => resolveExit(true))),
+    new Promise((resolveTimeout) =>
+      setTimeout(() => resolveTimeout(false), timeoutMs),
+    ),
   ])
 }
 
