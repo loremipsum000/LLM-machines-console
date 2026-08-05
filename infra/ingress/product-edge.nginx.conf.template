@@ -63,60 +63,6 @@ http {
     if ($ssl_server_name = "") { return 421; }
     if ($http_host != $ssl_server_name) { return 421; }
 
-    location = /v1/models {
-      set $llmm_surface inference;
-      limit_except GET { deny all; }
-      if ($args != "") { return 400; }
-      proxy_pass_request_body off;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_set_header Content-Length "";
-      proxy_set_header Content-Type "";
-      proxy_read_timeout 10s;
-      proxy_send_timeout 10s;
-      proxy_pass http://console_bff/api/app-gateway/v1/models;
-    }
-
-    location = /v1/chat/completions {
-      set $llmm_surface inference;
-      limit_except POST { deny all; }
-      if ($args != "") { return 400; }
-      client_max_body_size 72m;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_read_timeout 310s;
-      proxy_send_timeout 310s;
-      proxy_pass http://console_bff/api/app-gateway/v1/chat/completions;
-    }
-
-    location = /v2/search {
-      set $llmm_surface firecrawl;
-      limit_except POST { deny all; }
-      if ($args != "") { return 400; }
-      client_max_body_size 16k;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_read_timeout 35s;
-      proxy_send_timeout 35s;
-      proxy_pass http://console_bff/v2/search;
-    }
-
-    location = /v2/scrape {
-      set $llmm_surface firecrawl;
-      limit_except POST { deny all; }
-      if ($args != "") { return 400; }
-      client_max_body_size 16k;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_read_timeout 55s;
-      proxy_send_timeout 55s;
-      proxy_pass http://console_bff/v2/scrape;
-    }
-
     location = /api/console/session/login {
       set $llmm_surface console;
       limit_except GET { deny all; }
@@ -319,6 +265,96 @@ http {
 
   server {
     listen 443 ssl;
+    server_name @@PRODUCT_API_HOST@@;
+    ssl_certificate /run/secrets/llmm_edge_tls_certificate;
+    ssl_certificate_key /run/secrets/llmm_edge_tls_private_key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    set $llmm_public_host @@PRODUCT_API_HOST@@;
+    set $llmm_surface rejected;
+    include /etc/nginx/llm-machines/request-safety.inc;
+
+    if ($ssl_server_name = "") { return 421; }
+    if ($http_host != $ssl_server_name) { return 421; }
+
+    location = /v1/models {
+      set $llmm_surface inference;
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_read_timeout 10s;
+      proxy_send_timeout 10s;
+      proxy_pass http://console_bff/api/app-gateway/v1/models;
+    }
+
+    location = /v1/chat/completions {
+      set $llmm_surface inference;
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 72m;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_read_timeout 310s;
+      proxy_send_timeout 310s;
+      proxy_pass http://console_bff/api/app-gateway/v1/chat/completions;
+    }
+
+    location / {
+      return 404;
+    }
+  }
+
+  server {
+    listen 443 ssl;
+    server_name @@PRODUCT_FIRECRAWL_HOST@@;
+    ssl_certificate /run/secrets/llmm_edge_tls_certificate;
+    ssl_certificate_key /run/secrets/llmm_edge_tls_private_key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    set $llmm_public_host @@PRODUCT_FIRECRAWL_HOST@@;
+    set $llmm_surface rejected;
+    include /etc/nginx/llm-machines/request-safety.inc;
+
+    if ($ssl_server_name = "") { return 421; }
+    if ($http_host != $ssl_server_name) { return 421; }
+
+    location = /v2/search {
+      set $llmm_surface firecrawl;
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 16k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_read_timeout 35s;
+      proxy_send_timeout 35s;
+      proxy_pass http://console_bff/v2/search;
+    }
+
+    location = /v2/scrape {
+      set $llmm_surface firecrawl;
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 16k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_read_timeout 55s;
+      proxy_send_timeout 55s;
+      proxy_pass http://console_bff/v2/scrape;
+    }
+
+    location / {
+      return 404;
+    }
+  }
+
+  server {
+    listen 443 ssl;
     server_name @@PRODUCT_IDENTITY_HOST@@;
     ssl_certificate /run/secrets/llmm_edge_tls_certificate;
     ssl_certificate_key /run/secrets/llmm_edge_tls_private_key;
@@ -396,6 +432,36 @@ http {
       proxy_set_header Cookie "";
       proxy_set_header Origin "";
       proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/certs;
+    }
+
+    location = /realms/llm-machines-applications/protocol/openid-connect/token {
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Accept "application/json";
+      proxy_set_header Content-Length $content_length;
+      proxy_set_header Content-Type "application/x-www-form-urlencoded";
+      proxy_set_header Authorization "";
+      proxy_set_header Cookie "";
+      proxy_set_header Origin "";
+      proxy_pass http://keycloak_identity/realms/llm-machines-applications/protocol/openid-connect/token;
+    }
+
+    location = /realms/llm-machines-applications/protocol/openid-connect/certs {
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Accept "application/json";
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_set_header Authorization "";
+      proxy_set_header Cookie "";
+      proxy_set_header Origin "";
+      proxy_pass http://keycloak_identity/realms/llm-machines-applications/protocol/openid-connect/certs;
     }
 
     location ^~ /realms/llm-machines/login-actions/ {

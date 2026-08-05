@@ -31,7 +31,9 @@ const expectedPrivateSystems = [
   "keycloak-admin",
   "litellm",
   "portainer",
+  "postgresql",
   "prometheus",
+  "sglang",
 ]
 const expectedNegativeCases = [
   "direct-native-ports",
@@ -65,14 +67,22 @@ const expectedRouteIds = [
   "identity-token",
   "identity-revocation",
   "identity-jwks",
+  "identity-application-token",
+  "identity-application-jwks",
   "identity-login-actions",
   "identity-resources",
 ]
 const expectedCoreApiRoutes = [
-  ["inference-models", "GET,HEAD", "/v1/models", "console-bff"],
-  ["inference-chat-completions", "POST", "/v1/chat/completions", "console-bff"],
-  ["firecrawl-search", "POST", "/v2/search", "console-bff"],
-  ["firecrawl-scrape", "POST", "/v2/scrape", "console-bff"],
+  ["inference-models", "api", "GET,HEAD", "/v1/models", "console-bff"],
+  [
+    "inference-chat-completions",
+    "api",
+    "POST",
+    "/v1/chat/completions",
+    "console-bff",
+  ],
+  ["firecrawl-search", "firecrawl", "POST", "/v2/search", "console-bff"],
+  ["firecrawl-scrape", "firecrawl", "POST", "/v2/scrape", "console-bff"],
 ]
 
 export function validateIngressSources(sources) {
@@ -118,7 +128,9 @@ function validatePolicy(policy, errors) {
   add(
     errors,
     sameJson(policy.edge?.hostTemplates, {
+      api: "@@PRODUCT_API_HOST@@",
       console: "@@PRODUCT_CONSOLE_HOST@@",
+      firecrawl: "@@PRODUCT_FIRECRAWL_HOST@@",
       identity: "@@PRODUCT_IDENTITY_HOST@@",
     }),
     "public host templates changed",
@@ -158,6 +170,7 @@ function validatePolicy(policy, errors) {
     ?.filter((route) => ["inference", "firecrawl"].includes(route.surface))
     .map((route) => [
       route.id,
+      route.hostId,
       route.methods.join(","),
       route.path.value,
       route.upstreamId,
@@ -170,7 +183,7 @@ function validatePolicy(policy, errors) {
   for (const route of policy.routes ?? []) {
     add(
       errors,
-      ["console", "identity"].includes(route.hostId),
+      ["api", "console", "firecrawl", "identity"].includes(route.hostId),
       `route ${route.id} uses an unknown public host`,
     )
     add(
@@ -262,9 +275,15 @@ function validateNoBypass(policy, errors) {
     errors,
     sameJson(
       policy.customerNetwork?.deniedNativeTcpPorts,
-      [3000, 3002, 4000, 4001, 8080, 9090, 9093, 9443],
+      [3000, 3002, 3128, 4000, 4001, 5432, 8080, 9090, 9093, 9443],
     ),
     "native-port denial set changed",
+  )
+  add(
+    errors,
+    policy.customerNetwork?.deniedInferenceProfileTcpPorts ===
+      "every-instantiated-private-listener",
+    "inference-profile listener denial changed",
   )
   add(
     errors,
@@ -309,7 +328,7 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    listens.length === 3 &&
+    listens.length === 5 &&
       listens.every((value) => value.startsWith("443 ssl")),
     "Nginx customer listeners changed",
   )
@@ -321,19 +340,72 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    count(nginx, "server_name @@PRODUCT_CONSOLE_HOST@@;") === 1 &&
+    count(nginx, "server_name @@PRODUCT_API_HOST@@;") === 1 &&
+      count(nginx, "server_name @@PRODUCT_CONSOLE_HOST@@;") === 1 &&
+      count(nginx, "server_name @@PRODUCT_FIRECRAWL_HOST@@;") === 1 &&
       count(nginx, "server_name @@PRODUCT_IDENTITY_HOST@@;") === 1,
     "public Nginx hosts changed",
   )
+  const consoleServer = hostServerSection(
+    nginx,
+    "@@PRODUCT_CONSOLE_HOST@@",
+    "@@PRODUCT_API_HOST@@",
+  )
+  const apiServer = hostServerSection(
+    nginx,
+    "@@PRODUCT_API_HOST@@",
+    "@@PRODUCT_FIRECRAWL_HOST@@",
+  )
+  const firecrawlServer = hostServerSection(
+    nginx,
+    "@@PRODUCT_FIRECRAWL_HOST@@",
+    "@@PRODUCT_IDENTITY_HOST@@",
+  )
+  const identityServer = hostServerSection(nginx, "@@PRODUCT_IDENTITY_HOST@@")
   add(
     errors,
-    count(nginx, 'if ($ssl_server_name = "") { return 421; }') === 2 &&
-      count(nginx, "if ($http_host != $ssl_server_name) { return 421; }") === 2,
+    !/location = \/v[12]\//.test(consoleServer),
+    "Console host contains a customer API route",
+  )
+  add(
+    errors,
+    apiServer.includes("location = /v1/models") &&
+      apiServer.includes("location = /v1/chat/completions") &&
+      !apiServer.includes("location = /v2/") &&
+      !apiServer.includes("/realms/"),
+    "API host route boundary changed",
+  )
+  add(
+    errors,
+    firecrawlServer.includes("location = /v2/search") &&
+      firecrawlServer.includes("location = /v2/scrape") &&
+      !firecrawlServer.includes("location = /v1/") &&
+      !firecrawlServer.includes("/realms/"),
+    "Firecrawl host route boundary changed",
+  )
+  add(
+    errors,
+    identityServer.includes(
+      "location = /realms/llm-machines/protocol/openid-connect/auth",
+    ) &&
+      identityServer.includes(
+        "location = /realms/llm-machines-applications/protocol/openid-connect/token",
+      ) &&
+      identityServer.includes(
+        "location = /realms/llm-machines-applications/protocol/openid-connect/certs",
+      ) &&
+      !/location = \/v[12]\//.test(identityServer),
+    "identity host route boundary changed",
+  )
+  add(
+    errors,
+    count(nginx, 'if ($ssl_server_name = "") { return 421; }') === 4 &&
+      count(nginx, "if ($http_host != $ssl_server_name) { return 421; }") === 4,
     "Host and SNI equality checks changed",
   )
   add(
     errors,
-    count(nginx, "include /etc/nginx/llm-machines/request-safety.inc;") === 2,
+    count(nginx, "include /etc/nginx/llm-machines/request-safety.inc;") === 4,
     "raw-path safety is not applied to every public host",
   )
   for (const fixedProxy of [
@@ -342,6 +414,8 @@ function validateNginx(sources, errors) {
     "http://console_bff/v2/search",
     "http://console_bff/v2/scrape",
     "http://keycloak_identity/realms/llm-machines/protocol/openid-connect/auth",
+    "http://keycloak_identity/realms/llm-machines-applications/protocol/openid-connect/token",
+    "http://keycloak_identity/realms/llm-machines-applications/protocol/openid-connect/certs",
   ]) {
     add(
       errors,
@@ -542,6 +616,17 @@ function sameJson(left, right) {
 
 function count(source, value) {
   return source.split(value).length - 1
+}
+
+function hostServerSection(source, host, nextHost) {
+  const start = source.indexOf(`server_name ${host};`)
+  if (start < 0) {
+    return ""
+  }
+  const end = nextHost
+    ? source.indexOf(`server_name ${nextHost};`, start + host.length)
+    : source.length
+  return source.slice(start, end < 0 ? source.length : end)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

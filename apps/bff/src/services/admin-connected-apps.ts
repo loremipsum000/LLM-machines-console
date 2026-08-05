@@ -3360,9 +3360,7 @@ function normalizedConnectedAppCredentialRevealEndpoints(
     true,
     isProductionRuntime(),
   )
-  const openAiBaseUrl = normalizeConnectedAppEndpointUrl(
-    `${bffBaseUrl}/api/app-gateway/v1`,
-  )
+  const openAiBaseUrl = normalizeConnectedAppEndpointUrl(`${bffBaseUrl}/v1`)
   if (
     supplied &&
     normalizeConnectedAppEndpointUrl(supplied.openAiBaseUrl) !== openAiBaseUrl
@@ -3397,6 +3395,7 @@ function normalizeConnectedAppEndpointUrl(
   const endpoint = new URL(candidate)
   if (
     (endpoint.protocol !== "http:" && endpoint.protocol !== "https:") ||
+    (rejectLoopback && endpoint.protocol !== "https:") ||
     endpoint.username !== "" ||
     endpoint.password !== "" ||
     !endpoint.hostname ||
@@ -3456,11 +3455,19 @@ function connectedAppOAuthTokenUrl(): string {
   ) {
     return fixtureTokenUrl()
   }
-  const result = keycloakApplicationAdminConfigFromEnv(process.env)
-  if (result.status !== "ok") {
+  const configuredIssuer = process.env.KEYCLOAK_APPLICATION_ISSUER_URL?.trim()
+  if (!configuredIssuer) {
     throw new Error("Application OAuth identity configuration is unavailable.")
   }
-  return `${result.config.baseUrl}/realms/${encodeURIComponent(result.config.realm)}/protocol/openid-connect/token`
+  const issuer = normalizeConnectedAppEndpointUrl(
+    configuredIssuer,
+    true,
+    isProductionRuntime(),
+  )
+  if (!issuer.endsWith("/realms/llm-machines-applications")) {
+    throw new Error("Application OAuth identity configuration is unavailable.")
+  }
+  return `${issuer}/protocol/openid-connect/token`
 }
 
 function fixtureTokenUrl(): string {

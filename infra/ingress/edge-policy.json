@@ -6,7 +6,9 @@
     "implementation": "nginx-reference-template",
     "customerFacingTcpPorts": [443],
     "hostTemplates": {
+      "api": "@@PRODUCT_API_HOST@@",
       "console": "@@PRODUCT_CONSOLE_HOST@@",
+      "firecrawl": "@@PRODUCT_FIRECRAWL_HOST@@",
       "identity": "@@PRODUCT_IDENTITY_HOST@@"
     },
     "clientSniMustEqualSelectedHost": true,
@@ -33,7 +35,7 @@
     {
       "id": "inference-models",
       "surface": "inference",
-      "hostId": "console",
+      "hostId": "api",
       "methods": ["GET", "HEAD"],
       "path": { "kind": "exact", "value": "/v1/models" },
       "queryPolicy": "forbid",
@@ -44,7 +46,7 @@
     {
       "id": "inference-chat-completions",
       "surface": "inference",
-      "hostId": "console",
+      "hostId": "api",
       "methods": ["POST"],
       "path": { "kind": "exact", "value": "/v1/chat/completions" },
       "queryPolicy": "forbid",
@@ -55,7 +57,7 @@
     {
       "id": "firecrawl-search",
       "surface": "firecrawl",
-      "hostId": "console",
+      "hostId": "firecrawl",
       "methods": ["POST"],
       "path": { "kind": "exact", "value": "/v2/search" },
       "queryPolicy": "forbid",
@@ -66,7 +68,7 @@
     {
       "id": "firecrawl-scrape",
       "surface": "firecrawl",
-      "hostId": "console",
+      "hostId": "firecrawl",
       "methods": ["POST"],
       "path": { "kind": "exact", "value": "/v2/scrape" },
       "queryPolicy": "forbid",
@@ -317,6 +319,34 @@
       "upstreamPath": "/realms/llm-machines/protocol/openid-connect/certs"
     },
     {
+      "id": "identity-application-token",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["POST"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines-applications/protocol/openid-connect/token"
+      },
+      "queryPolicy": "forbid",
+      "headerProfile": "identity-server-form",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines-applications/protocol/openid-connect/token"
+    },
+    {
+      "id": "identity-application-jwks",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["GET", "HEAD"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines-applications/protocol/openid-connect/certs"
+      },
+      "queryPolicy": "forbid",
+      "headerProfile": "identity-server-jwks",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines-applications/protocol/openid-connect/certs"
+    },
+    {
       "id": "identity-login-actions",
       "surface": "identity",
       "hostId": "identity",
@@ -425,7 +455,9 @@
     "keycloak-admin",
     "litellm",
     "portainer",
-    "prometheus"
+    "postgresql",
+    "prometheus",
+    "sglang"
   ],
   "runtimeQualification": {
     "directNetworkNoBypass": "NOT_EVALUATED_RUNTIME",

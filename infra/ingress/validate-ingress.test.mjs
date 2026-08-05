@@ -181,6 +181,38 @@ test("policy cannot add a route or claim runtime proof", () => {
   assert.ok(result.some((error) => /runtime/i.test(error)))
 })
 
+test("public routes cannot drift across the four authorities", () => {
+  const policy = JSON.parse(sources["edge-policy.json"])
+  policy.routes.find((route) => route.id === "inference-models").hostId =
+    "console"
+  let result = validateIngressSources({
+    ...sources,
+    "edge-policy.json": JSON.stringify(policy),
+  })
+  assert.ok(result.some((error) => /inference|Firecrawl/i.test(error)))
+
+  const hosts = JSON.parse(sources["edge-policy.json"])
+  hosts.edge.hostTemplates.firecrawl = undefined
+  result = validateIngressSources({
+    ...sources,
+    "edge-policy.json": JSON.stringify(hosts),
+  })
+  assert.ok(result.some((error) => /public host/i.test(error)))
+})
+
+test("native listener inventory cannot omit Core or delivery-profile ports", () => {
+  const policy = JSON.parse(sources["no-bypass-policy.json"])
+  policy.customerNetwork.deniedNativeTcpPorts =
+    policy.customerNetwork.deniedNativeTcpPorts.filter((port) => port !== 5432)
+  policy.customerNetwork.deniedInferenceProfileTcpPorts = undefined
+  const result = validateIngressSources({
+    ...sources,
+    "no-bypass-policy.json": JSON.stringify(policy),
+  })
+  assert.ok(result.some((error) => /native-port/i.test(error)))
+  assert.ok(result.some((error) => /inference-profile/i.test(error)))
+})
+
 test("credential-like material fails without exposing a value", () => {
   const result = validateIngressSources(
     changed(

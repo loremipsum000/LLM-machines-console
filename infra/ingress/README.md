@@ -4,19 +4,19 @@ R1-E1 defines the mandatory source-only Product edge for the reduced
 inference appliance. It is not a deployment manifest and does not qualify a
 running listener.
 
-The edge has exactly two public host identities on TCP 443:
+The edge has exactly four public host identities on TCP 443:
 
-- the Console host for the primary customer UI, Console session endpoints,
-  `GET /v1/models`, `POST /v1/chat/completions`, `POST /v2/search`, and
-  `POST /v2/scrape`;
+- the Console host for the primary customer UI and Console session endpoints;
+- the API host for `GET /v1/models` and `POST /v1/chat/completions`;
+- the Firecrawl host for governed `POST /v2/search` and `POST /v2/scrape`;
 - the identity host for the minimum normal Keycloak OIDC browser and BFF
-  dependencies.
+  dependencies, plus the Application realm token and JWKS endpoints.
 
 Only fixed `console-web`, `console-bff`, and Keycloak identity upstreams occur
 in the template. LiteLLM is reached only behind the BFF. Grafana, Keycloak
-Admin, Prometheus, Alertmanager, Portainer, and native Firecrawl have no host,
-route, redirect, or direct upstream in R1-E1. Optional Grafana work is a later
-package and cannot weaken this core edge.
+Admin, Prometheus, Alertmanager, Portainer, PostgreSQL, SGLang, and native
+Firecrawl have no host, route, redirect, or direct upstream in R1-E1. Optional
+Grafana work is a later package and cannot weaken this core edge.
 
 `product-edge.nginx.conf.template` is rendered by deterministic release
 packaging later. The hostname placeholders are configuration, and the TLS

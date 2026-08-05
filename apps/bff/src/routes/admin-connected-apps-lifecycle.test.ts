@@ -171,7 +171,7 @@ describe("Application admin lifecycle routes", () => {
       ),
     ).toHaveLength(0)
 
-    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://console.example.test/")
+    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://api.example.test/")
     const failedReplay = await createApplication(
       server,
       "invalid-static-create",
@@ -184,8 +184,8 @@ describe("Application admin lifecycle routes", () => {
     expect(retried.response.statusCode).toBe(201)
     expect(retried.body.status).toBe("created")
     expect(retried.body.credential).toMatchObject({
-      bffBaseUrl: "https://console.example.test",
-      openAiBaseUrl: "https://console.example.test/api/app-gateway/v1",
+      bffBaseUrl: "https://api.example.test",
+      openAiBaseUrl: "https://api.example.test/v1",
     })
     await server.close()
   })
@@ -220,7 +220,7 @@ describe("Application admin lifecycle routes", () => {
       vi.stubEnv(
         variable,
         variable === "CONNECTED_APPS_BFF_BASE_URL"
-          ? "https://console.example.test"
+          ? "https://api.example.test"
           : "https://keycloak.example.test/realms/apps/protocol/openid-connect/token",
       )
       const failedReplay = await createApplication(
@@ -272,7 +272,7 @@ describe("Application admin lifecycle routes", () => {
       ),
     ).toHaveLength(0)
 
-    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://console.example.test")
+    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://api.example.test")
     const failedReplay = await rotateApplication(
       server,
       id,
@@ -324,7 +324,7 @@ describe("Application admin lifecycle routes", () => {
       vi.stubEnv(
         variable,
         variable === "CONNECTED_APPS_BFF_BASE_URL"
-          ? "https://console.example.test"
+          ? "https://api.example.test"
           : "https://keycloak.example.test/realms/apps/protocol/openid-connect/token",
       )
       const failedReplay = await rotateApplication(server, id, idempotencyKey)
