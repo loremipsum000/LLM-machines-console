@@ -19,19 +19,22 @@ clean-root publication is a source checkpoint, not a production release.
 
 ## Disposable reduced-Core development lane
 
-Run `node scripts/pre-genesis/reduced-core-dev.mjs` to start Console Web, the
-BFF, a strict
-four-authority local router, and an OpenAI-compatible deterministic inference
-double. The command creates throwaway credentials and state under the operating
-system temporary directory, prints no credential values, and removes only that
-created directory when stopped with Ctrl-C.
+After `corepack pnpm install --frozen-lockfile` and `corepack pnpm build`, run
+`node scripts/pre-genesis/reduced-core-dev.mjs` to start Console Web, the BFF, a
+strict four-authority local router, and an OpenAI-compatible deterministic
+inference double. The runtime command creates throwaway credentials, logs, and
+the Next development output under one operating-system temporary directory. It
+prints no credential values and removes only that created directory when
+stopped with Ctrl-C.
 
 The four local HTTP authorities are printed at startup. This lane supports
 control-plane and Application-flow development on arm64. It is not evidence for
 Product Nginx or TLS, Keycloak login, exact Core images, SGLang, persistence,
 runtime no-bypass, or production capacity. The Identity authority deliberately
 returns a controlled unavailable response until a separate browser and session
-functional package supplies a qualified identity fixture.
+functional package supplies a qualified identity fixture. Application
+credential, gateway-accounting, rotation, revocation, and isolation proof is
+owned by F0-L1, not this bootstrap check.
 
 Run `node scripts/pre-genesis/reduced-core-dev.mjs --check` for a bounded
 startup and cleanup check.

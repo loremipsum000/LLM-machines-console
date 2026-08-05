@@ -1,7 +1,17 @@
 import { spawn } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { createWriteStream } from "node:fs"
-import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises"
+import {
+  access,
+  chmod,
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises"
 import { createServer, request as httpRequest } from "node:http"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -9,10 +19,34 @@ import { fileURLToPath } from "node:url"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const checkMode = process.argv.includes("--check")
+let shutdownRequested = false
+let resolveShutdown
+const shutdownSignal = new Promise((resolveSignal) => {
+  resolveShutdown = resolveSignal
+})
 
-const runtime = await startReducedCoreDevelopmentRuntime()
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.once(signal, () => {
+    shutdownRequested = true
+    resolveShutdown(signal)
+  })
+}
 
-if (checkMode) {
+let runtime
+try {
+  runtime = await startReducedCoreDevelopmentRuntime()
+} catch (error) {
+  if (!(error instanceof ShutdownRequestedError)) {
+    throw error
+  }
+}
+
+if (!runtime) {
+  process.exitCode = 130
+} else if (shutdownRequested) {
+  await runtime.close()
+  process.exitCode = 130
+} else if (checkMode) {
   try {
     await verifyRuntime(runtime)
   } finally {
@@ -31,59 +65,50 @@ if (checkMode) {
 } else {
   process.stdout.write(`${JSON.stringify(runtime.publicSummary, null, 2)}\n`)
   process.stdout.write("Press Ctrl-C to stop and remove temporary state.\n")
-  await holdUntilSignal(runtime)
+  if (!shutdownRequested) {
+    await shutdownSignal
+  }
+  await runtime.close()
 }
 
 async function startReducedCoreDevelopmentRuntime() {
+  await assertDevelopmentDependenciesReady()
+  ensureStartupActive()
   const stateRoot = await mkdtemp(join(tmpdir(), "llmm-reduced-core-dev-"))
-  await chmod(stateRoot, 0o700)
-  const credentials = {
-    bffServiceApiKey: randomBytes(32).toString("base64url"),
-    liteLlmApiKey: randomBytes(32).toString("base64url"),
-  }
-  await writeFile(
-    join(stateRoot, "throwaway-credentials.json"),
-    `${JSON.stringify(credentials)}\n`,
-    { mode: 0o600 },
-  )
-
-  const ports = await reservePorts(4)
-  const [bffPort, webPort, edgePort, inferencePort] = ports
   const children = []
   const servers = []
+  const close = createRuntimeCleanup({ children, servers, stateRoot })
 
   try {
-    await runCommand(["corepack", "pnpm", "install", "--frozen-lockfile"])
-    const inference = createInferenceDouble(credentials.liteLlmApiKey)
-    await listen(inference, inferencePort)
-    servers.push(inference)
+    await chmod(stateRoot, 0o700)
+    const credentials = {
+      bffServiceApiKey: randomBytes(32).toString("base64url"),
+      liteLlmApiKey: randomBytes(32).toString("base64url"),
+    }
+    await writeFile(
+      join(stateRoot, "throwaway-credentials.json"),
+      `${JSON.stringify(credentials)}\n`,
+      { mode: 0o600 },
+    )
+    ensureStartupActive()
 
-    await runCommand([
-      "corepack",
-      "pnpm",
-      "--filter",
-      "@llm-machines/contracts",
-      "build",
-    ])
-    await runCommand([
-      "corepack",
-      "pnpm",
-      "--filter",
-      "@llm-machines/copy",
-      "build",
-    ])
+    const ports = await reservePorts(4)
+    const [bffPort, webPort, edgePort, inferencePort] = ports
+    const webRoot = await prepareTemporaryWebProject(stateRoot)
+    ensureStartupActive()
+
+    const inference = createInferenceDouble(credentials.liteLlmApiKey)
+    servers.push(inference)
+    await listen(inference, inferencePort)
+    ensureStartupActive()
 
     children.push(
       startChild(
         "bff",
         [
-          "corepack",
-          "pnpm",
-          "--filter",
-          "@llm-machines/bff",
-          "exec",
-          "tsx",
-          "src/index.ts",
+          process.execPath,
+          resolve(repositoryRoot, "apps/bff/node_modules/tsx/dist/cli.mjs"),
+          resolve(repositoryRoot, "apps/bff/src/index.ts"),
         ],
         {
           BFF_FIXTURE_MODE: "true",
@@ -102,18 +127,15 @@ async function startReducedCoreDevelopmentRuntime() {
           PUBLIC_BFF_BASE_URL: `http://api.localhost:${edgePort}`,
         },
         stateRoot,
+        repositoryRoot,
       ),
     )
     children.push(
       startChild(
         "web",
         [
-          "corepack",
-          "pnpm",
-          "--filter",
-          "@llm-machines/web",
-          "exec",
-          "next",
+          process.execPath,
+          resolve(repositoryRoot, "apps/web/node_modules/next/dist/bin/next"),
           "dev",
           "--hostname",
           "127.0.0.1",
@@ -124,17 +146,22 @@ async function startReducedCoreDevelopmentRuntime() {
           CONSOLE_BFF_SERVICE_API_KEY: credentials.bffServiceApiKey,
           CONSOLE_BFF_URL: `http://127.0.0.1:${bffPort}`,
           NEXT_TELEMETRY_DISABLED: "1",
+          NODE_ENV: "development",
         },
         stateRoot,
+        webRoot,
       ),
     )
 
     await waitForHttp(`http://127.0.0.1:${bffPort}/livez`)
+    ensureStartupActive()
     await waitForHttp(`http://127.0.0.1:${webPort}/auth/signin`)
+    ensureStartupActive()
 
     const edge = createDevelopmentEdge({ bffPort, webPort })
-    await listen(edge, edgePort)
     servers.push(edge)
+    await listen(edge, edgePort)
+    ensureStartupActive()
 
     const services = {
       api: `http://api.localhost:${edgePort}`,
@@ -160,17 +187,16 @@ async function startReducedCoreDevelopmentRuntime() {
         "x-llm-machines-user-sub": "local-admin",
       },
       bffOrigin: `http://127.0.0.1:${bffPort}`,
-      async close() {
-        await Promise.allSettled(servers.map(closeServer))
-        await Promise.allSettled(children.map(stopChild))
-        await rm(stateRoot, { force: true, recursive: true })
-      },
+      close,
+      inferenceApiKey: credentials.liteLlmApiKey,
+      inferenceOrigin: `http://127.0.0.1:${inferencePort}`,
       publicSummary: {
         evidenceClass: "LOCAL_DETERMINISTIC_CONTROL_PLANE_ONLY",
         limitations: [
           "HTTP authority router is not Product Nginx or TLS evidence.",
           "Identity is intentionally unavailable; Keycloak login is not qualified.",
           "Inference is deterministic and is not SGLang or capacity evidence.",
+          "Application credentials, gateway accounting, and isolation remain F0-L1 work.",
           "Application metadata is in-memory; created temporary files are removed on shutdown.",
         ],
         services,
@@ -178,9 +204,7 @@ async function startReducedCoreDevelopmentRuntime() {
       },
     }
   } catch (error) {
-    await Promise.allSettled(servers.map(closeServer))
-    await Promise.allSettled(children.map(stopChild))
-    await rm(stateRoot, { force: true, recursive: true })
+    await close()
     throw error
   }
 }
@@ -358,18 +382,37 @@ async function verifyRuntime(runtime) {
   if (unknownResponse.status !== 404) {
     throw new Error("Local authority router exposed an unsupported API route.")
   }
-}
-
-async function holdUntilSignal(runtime) {
-  await new Promise((resolveSignal) => {
-    const stop = () => resolveSignal()
-    process.once("SIGINT", stop)
-    process.once("SIGTERM", stop)
+  const modelsResponse = await fetch(`${runtime.inferenceOrigin}/v1/models`, {
+    headers: { authorization: `Bearer ${runtime.inferenceApiKey}` },
   })
-  await runtime.close()
+  if (!modelsResponse.ok) {
+    throw new Error("Inference-double model listing failed.")
+  }
+  const completionResponse = await fetch(
+    `${runtime.inferenceOrigin}/v1/chat/completions`,
+    {
+      body: JSON.stringify({
+        messages: [{ content: "fixture", role: "user" }],
+        model: "fixture-model",
+      }),
+      headers: {
+        authorization: `Bearer ${runtime.inferenceApiKey}`,
+        "content-type": "application/json",
+      },
+      method: "POST",
+    },
+  )
+  const completion = await completionResponse.json()
+  if (
+    !completionResponse.ok ||
+    completion.choices?.[0]?.message?.content !== "fixture-response" ||
+    completion.usage?.total_tokens !== 5
+  ) {
+    throw new Error("Inference-double Chat Completions check failed.")
+  }
 }
 
-function startChild(name, command, environment, stateRoot) {
+function startChild(name, command, environment, stateRoot, cwd) {
   const stdout = createWriteStream(join(stateRoot, `${name}.stdout.log`), {
     flags: "a",
     mode: 0o600,
@@ -379,8 +422,9 @@ function startChild(name, command, environment, stateRoot) {
     mode: 0o600,
   })
   const child = spawn(command[0], command.slice(1), {
-    cwd: repositoryRoot,
-    env: { ...process.env, ...environment },
+    cwd,
+    detached: true,
+    env: isolatedChildEnvironment(stateRoot, environment),
     stdio: ["ignore", "pipe", "pipe"],
   })
   child.stdout.pipe(stdout)
@@ -390,35 +434,15 @@ function startChild(name, command, environment, stateRoot) {
 
 async function stopChild(record) {
   if (record.child.exitCode === null && record.child.signalCode === null) {
-    record.child.kill("SIGTERM")
-    await Promise.race([
-      new Promise((resolveExit) => record.child.once("exit", resolveExit)),
-      new Promise((resolveTimeout) => setTimeout(resolveTimeout, 5_000)),
-    ])
+    killProcessGroup(record.child.pid, "SIGTERM")
+    await waitForChildExit(record.child, 5_000)
     if (record.child.exitCode === null && record.child.signalCode === null) {
-      record.child.kill("SIGKILL")
+      killProcessGroup(record.child.pid, "SIGKILL")
+      await waitForChildExit(record.child, 5_000)
     }
   }
   record.stdout.end()
   record.stderr.end()
-}
-
-async function runCommand(command) {
-  await new Promise((resolveCommand, rejectCommand) => {
-    const child = spawn(command[0], command.slice(1), {
-      cwd: repositoryRoot,
-      env: process.env,
-      stdio: "ignore",
-    })
-    child.once("error", rejectCommand)
-    child.once("exit", (code) => {
-      if (code === 0) {
-        resolveCommand()
-      } else {
-        rejectCommand(new Error(`${command.join(" ")} exited with ${code}.`))
-      }
-    })
-  })
 }
 
 async function reservePorts(count) {
@@ -444,6 +468,7 @@ async function reservePorts(count) {
 async function waitForHttp(url) {
   const deadline = Date.now() + 30_000
   while (Date.now() < deadline) {
+    ensureStartupActive()
     try {
       const response = await fetch(url, { redirect: "manual" })
       if (response.status < 500) {
@@ -465,8 +490,112 @@ function listen(server, port) {
 }
 
 function closeServer(server) {
+  if (!server.listening) {
+    return Promise.resolve()
+  }
   return new Promise((resolveClose) => server.close(() => resolveClose()))
 }
+
+function isolatedChildEnvironment(stateRoot, overrides) {
+  return {
+    HOME: stateRoot,
+    LANG: "C",
+    LC_ALL: "C",
+    TMPDIR: stateRoot,
+    ...overrides,
+  }
+}
+
+function createRuntimeCleanup({ children, servers, stateRoot }) {
+  let closePromise
+  return () => {
+    closePromise ??= (async () => {
+      await Promise.allSettled(servers.map(closeServer))
+      await Promise.allSettled(children.map(stopChild))
+      await rm(stateRoot, { force: true, recursive: true })
+    })()
+    return closePromise
+  }
+}
+
+async function assertDevelopmentDependenciesReady() {
+  const required = [
+    "apps/bff/node_modules/tsx/dist/cli.mjs",
+    "apps/web/node_modules/next/dist/bin/next",
+    "packages/contracts/dist/inference-core.js",
+    "packages/copy/dist/index.js",
+  ]
+  try {
+    await Promise.all(
+      required.map((path) => access(resolve(repositoryRoot, path))),
+    )
+  } catch {
+    throw new Error(
+      "Development dependencies are not ready. Run the documented frozen install and build prerequisites first.",
+    )
+  }
+}
+
+async function prepareTemporaryWebProject(stateRoot) {
+  const sourceRoot = resolve(repositoryRoot, "apps/web")
+  const webRoot = join(stateRoot, "web")
+  await mkdir(webRoot, { mode: 0o700 })
+  const tsconfig = JSON.parse(
+    await readFile(resolve(sourceRoot, "tsconfig.json"), "utf8"),
+  )
+  tsconfig.extends = resolve(repositoryRoot, "tsconfig.base.json")
+  await writeFile(
+    join(webRoot, "tsconfig.json"),
+    `${JSON.stringify(tsconfig, null, 2)}\n`,
+    { mode: 0o600 },
+  )
+  await copyFile(
+    resolve(sourceRoot, "next-env.d.ts"),
+    join(webRoot, "next-env.d.ts"),
+  )
+  for (const path of [
+    "next.config.ts",
+    "node_modules",
+    "package.json",
+    "postcss.config.mjs",
+    "public",
+    "src",
+  ]) {
+    await symlink(resolve(sourceRoot, path), join(webRoot, path))
+  }
+  return webRoot
+}
+
+function ensureStartupActive() {
+  if (shutdownRequested) {
+    throw new ShutdownRequestedError()
+  }
+}
+
+function killProcessGroup(pid, signal) {
+  if (!pid) {
+    return
+  }
+  try {
+    process.kill(-pid, signal)
+  } catch (error) {
+    if (error?.code !== "ESRCH") {
+      throw error
+    }
+  }
+}
+
+function waitForChildExit(child, timeoutMs) {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return Promise.resolve()
+  }
+  return Promise.race([
+    new Promise((resolveExit) => child.once("exit", resolveExit)),
+    new Promise((resolveTimeout) => setTimeout(resolveTimeout, timeoutMs)),
+  ])
+}
+
+class ShutdownRequestedError extends Error {}
 
 async function readJsonBody(request) {
   const chunks = []

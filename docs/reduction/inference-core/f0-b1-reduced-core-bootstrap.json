@@ -5,6 +5,10 @@
   "accepted": false,
   "runtimeQualified": false,
   "command": "node scripts/pre-genesis/reduced-core-dev.mjs",
+  "prerequisites": [
+    "corepack pnpm install --frozen-lockfile",
+    "corepack pnpm build"
+  ],
   "evidenceClass": "LOCAL_DETERMINISTIC_CONTROL_PLANE_ONLY",
   "services": [
     "console-web",
@@ -19,6 +23,12 @@
     "credentialsPrinted": false,
     "cleanup": "signals-stop-children-close-listeners-and-remove-created-directory"
   },
+  "environmentIsolation": {
+    "parentEnvironmentForwarded": false,
+    "childEnvironment": "explicit-generated-values-only",
+    "processCleanup": "dedicated-process-groups-term-then-kill",
+    "workspaceRuntimeOutput": false
+  },
   "publicAuthoritySimulation": [
     "console.localhost",
     "api.localhost",
@@ -30,6 +40,7 @@
     "Keycloak-login-or-session-runtime",
     "exact-Core-images",
     "SGLang-runtime-or-capacity",
+    "Application-credential-and-gateway-flow-F0-L1",
     "runtime-no-bypass",
     "persistence-restart-or-recovery"
   ],
