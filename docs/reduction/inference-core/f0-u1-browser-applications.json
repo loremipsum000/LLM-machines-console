@@ -39,7 +39,7 @@
     "Firecrawl upstream execution remains F0-W1 evidence",
     "LiteLLM and Keycloak native administration remain private",
     "Grafana remains absent",
-    "Hermes Desktop remains an optional third-party manual smoke only"
+    "third-party desktop clients remain outside the Product boundary"
   ],
   "notEvidenceFor": [
     "PostgreSQL Application or Console-session persistence",
