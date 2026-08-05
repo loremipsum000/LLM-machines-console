@@ -304,6 +304,34 @@ test("Application client Basic auth is isolated to its exact token route", () =>
       /Authorization forwarding|Basic authentication/i.test(error),
     ),
   )
+
+  const clientSecretPostFallback = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        '      if ($llmm_application_client_authorization = "") { return 401; }\n',
+        "",
+      ),
+    ),
+  )
+  assert.ok(
+    clientSecretPostFallback.some((error) =>
+      /Basic authentication/i.test(error),
+    ),
+  )
+})
+
+test("only the exact Keycloak logout confirmation route is retained", () => {
+  const removed = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        "location = /realms/llm-machines/protocol/openid-connect/logout/logout-confirm {",
+        "location = /realms/llm-machines/protocol/openid-connect/logout/confirm {",
+      ),
+    ),
+  )
+  assert.ok(
+    removed.some((error) => /location inventory|fingerprint/i.test(error)),
+  )
 })
 
 test("native listener inventory cannot omit Core or delivery-profile ports", () => {

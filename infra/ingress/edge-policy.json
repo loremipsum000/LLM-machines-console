@@ -277,6 +277,20 @@
       "upstreamPath": "/realms/llm-machines/protocol/openid-connect/logout"
     },
     {
+      "id": "identity-logout-confirm",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["GET", "HEAD", "POST"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/logout/logout-confirm"
+      },
+      "queryPolicy": "oidc-browser",
+      "headerProfile": "identity-browser",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines/protocol/openid-connect/logout/logout-confirm"
+    },
+    {
       "id": "identity-token",
       "surface": "identity",
       "hostId": "identity",
@@ -424,6 +438,7 @@
     ],
     "browserBearerForwarding": false,
     "applicationTokenClientSecretBasicForwarding": true,
+    "applicationTokenClientSecretPostAllowed": false,
     "consoleSessionForwardedToIdentity": false,
     "clientForwardedOrIdentityHeadersTrusted": false,
     "websocketUpgradeForwarded": false

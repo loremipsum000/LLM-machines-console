@@ -3468,10 +3468,29 @@ function connectedAppOAuthTokenUrl(): string {
     true,
     isProductionRuntime(),
   )
-  if (new URL(issuer).pathname !== "/realms/llm-machines-applications") {
+  const issuerUrl = new URL(issuer)
+  const identityHost = process.env.PRODUCT_IDENTITY_HOST?.trim()
+  if (
+    issuerUrl.pathname !== "/realms/llm-machines-applications" ||
+    !identityHost ||
+    !isPublicIdentityHostname(identityHost) ||
+    issuerUrl.hostname !== identityHost
+  ) {
     throw new Error("Application OAuth identity configuration is unavailable.")
   }
   return `${issuer}/protocol/openid-connect/token`
+}
+
+function isPublicIdentityHostname(value: string): boolean {
+  return (
+    value.length <= 253 &&
+    value === value.toLowerCase() &&
+    !value.includes(":") &&
+    !/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value) &&
+    value
+      .split(".")
+      .every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
+  )
 }
 
 function fixtureTokenUrl(): string {

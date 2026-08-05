@@ -65,6 +65,7 @@ const expectedRouteIds = [
   "console-product-assets",
   "identity-authorization",
   "identity-logout",
+  "identity-logout-confirm",
   "identity-token",
   "identity-revocation",
   "identity-jwks",
@@ -112,6 +113,7 @@ const expectedNginxLocations = {
   identity: [
     "= /realms/llm-machines/protocol/openid-connect/auth",
     "= /realms/llm-machines/protocol/openid-connect/logout",
+    "= /realms/llm-machines/protocol/openid-connect/logout/logout-confirm",
     "= /realms/llm-machines/protocol/openid-connect/token",
     "= /realms/llm-machines/protocol/openid-connect/revoke",
     "= /realms/llm-machines/protocol/openid-connect/certs",
@@ -126,7 +128,7 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "2082645823ec8392d274ea14835afba9f928364091f6e3be44aa2a943837fdcc",
+    "abe30826ca01fc94ca8fb39b74beac5460351a5b51f748f5e6f49267eed506a6",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -295,7 +297,8 @@ function validatePolicy(policy, errors) {
   }
   add(
     errors,
-    policy.headerPolicy?.applicationTokenClientSecretBasicForwarding === true,
+    policy.headerPolicy?.applicationTokenClientSecretBasicForwarding === true &&
+      policy.headerPolicy?.applicationTokenClientSecretPostAllowed === false,
     "Application token Basic authentication forwarding changed",
   )
   add(
@@ -509,6 +512,12 @@ function validateNginx(sources, errors) {
         "= /realms/llm-machines-applications/protocol/openid-connect/token",
       ).includes(
         "proxy_set_header Authorization $llmm_application_client_authorization;",
+      ) &&
+      exactLocationSection(
+        identityServer,
+        "= /realms/llm-machines-applications/protocol/openid-connect/token",
+      ).includes(
+        'if ($llmm_application_client_authorization = "") { return 401; }',
       ),
     "Application token Basic authentication forwarding changed",
   )

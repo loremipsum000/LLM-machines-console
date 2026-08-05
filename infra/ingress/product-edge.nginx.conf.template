@@ -394,6 +394,15 @@ http {
       proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/logout;
     }
 
+    location = /realms/llm-machines/protocol/openid-connect/logout/logout-confirm {
+      limit_except GET HEAD POST { deny all; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/logout/logout-confirm;
+    }
+
     location = /realms/llm-machines/protocol/openid-connect/token {
       limit_except POST { deny all; }
       if ($args != "") { return 400; }
@@ -442,6 +451,7 @@ http {
     location = /realms/llm-machines-applications/protocol/openid-connect/token {
       limit_except POST { deny all; }
       if ($args != "") { return 400; }
+      if ($llmm_application_client_authorization = "") { return 401; }
       client_max_body_size 24k;
       include /etc/nginx/llm-machines/proxy-common.inc;
       proxy_set_header Host $llmm_public_host;

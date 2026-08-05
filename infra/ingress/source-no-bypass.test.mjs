@@ -244,10 +244,13 @@ test("normal Keycloak identity flow is exact and separate", () => {
       "/realms/llm-machines/protocol/openid-connect/logout?client_id=console-web",
     ],
     ["POST", "/realms/llm-machines/protocol/openid-connect/logout"],
+    [
+      "POST",
+      "/realms/llm-machines/protocol/openid-connect/logout/logout-confirm?session_code=opaque&client_id=console-web&tab_id=opaque",
+    ],
     ["POST", "/realms/llm-machines/protocol/openid-connect/token"],
     ["POST", "/realms/llm-machines/protocol/openid-connect/revoke"],
     ["GET", "/realms/llm-machines/protocol/openid-connect/certs"],
-    ["POST", "/realms/llm-machines-applications/protocol/openid-connect/token"],
     ["GET", "/realms/llm-machines-applications/protocol/openid-connect/certs"],
     [
       "POST",
@@ -304,8 +307,24 @@ test("normal Keycloak identity flow is exact and separate", () => {
       rawTarget:
         "/realms/llm-machines-applications/protocol/openid-connect/token",
     })
-    assert.equal(result.allowed, true)
-    assert.equal(result.forwardedHeaders.authorization, undefined)
+    assert.equal(result.allowed, false)
+  }
+
+  assert.equal(
+    identityRequest({
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      method: "POST",
+      rawTarget:
+        "/realms/llm-machines-applications/protocol/openid-connect/token",
+    }).allowed,
+    false,
+  )
+
+  for (const rawTarget of [
+    "/realms/llm-machines/protocol/openid-connect/logout/confirm",
+    "/realms/llm-machines/protocol/openid-connect/logout/logout-confirm/extra",
+  ]) {
+    assert.equal(identityRequest({ rawTarget }).allowed, false, rawTarget)
   }
 
   const humanToken = identityRequest({

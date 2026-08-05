@@ -156,7 +156,7 @@ function routeForHost(hostId, method, path, headers) {
   if (hostId === "firecrawl") {
     return firecrawlRoute(method, path)
   }
-  return hostId === "identity" ? identityRoute(method, path) : null
+  return hostId === "identity" ? identityRoute(method, path, headers) : null
 }
 
 function apiRoute(method, path) {
@@ -247,7 +247,7 @@ function consoleRoute(method, path, headers) {
   return null
 }
 
-function identityRoute(method, path) {
+function identityRoute(method, path, headers) {
   if (
     path === "/realms/llm-machines/protocol/openid-connect/auth" &&
     ["GET", "HEAD"].includes(method)
@@ -255,7 +255,10 @@ function identityRoute(method, path) {
     return route("identity", "identity-browser", "keycloak-identity", path)
   }
   if (
-    path === "/realms/llm-machines/protocol/openid-connect/logout" &&
+    [
+      "/realms/llm-machines/protocol/openid-connect/logout",
+      "/realms/llm-machines/protocol/openid-connect/logout/logout-confirm",
+    ].includes(path) &&
     ["GET", "HEAD", "POST"].includes(method)
   ) {
     return route("identity", "identity-browser", "keycloak-identity", path)
@@ -278,7 +281,8 @@ function identityRoute(method, path) {
   if (
     path ===
       "/realms/llm-machines-applications/protocol/openid-connect/token" &&
-    method === "POST"
+    method === "POST" &&
+    validApplicationClientAuthorization(headers)
   ) {
     return route(
       "identity",
@@ -314,6 +318,14 @@ function identityRoute(method, path) {
     )
   }
   return null
+}
+
+function validApplicationClientAuthorization(headers) {
+  const authorization = inputHeader(headers, "authorization")
+  return (
+    singleHeader(authorization) &&
+    /^Basic +[A-Za-z0-9+/]+={0,2}$/i.test(authorization)
+  )
 }
 
 function safeRequestTarget(rawTarget) {

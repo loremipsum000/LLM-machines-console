@@ -132,6 +132,27 @@ describe("Console BFF persistence preflight", () => {
     )
   })
 
+  it("rejects an Application issuer outside the Product identity authority", () => {
+    configureProductionRuntime()
+    vi.stubEnv("KEYCLOAK_ADMIN_BASE_URL", "http://keycloak:8080")
+    vi.stubEnv("KEYCLOAK_ADMIN_REALM", "llm-machines")
+    vi.stubEnv("KEYCLOAK_APPLICATION_ADMIN_REALM", "llm-machines-applications")
+    vi.stubEnv(
+      "KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID",
+      "console-application-admin",
+    )
+    vi.stubEnv("KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET", "secret")
+    vi.stubEnv("KEYCLOAK_AUDIENCE", "console-bff")
+    vi.stubEnv(
+      "KEYCLOAK_APPLICATION_ISSUER_URL",
+      "https://other-identity.example.test/realms/llm-machines-applications",
+    )
+
+    expect(() => buildServer()).toThrow(
+      "Connected app OAuth reveal endpoint configuration is invalid.",
+    )
+  })
+
   it.each(["master", "llm-machines", "customer-applications"])(
     "rejects cross-wired Application realm %s during production startup",
     (realm) => {
@@ -260,6 +281,7 @@ function configureProductionRuntime(): void {
   vi.stubEnv("DATABASE_URL", "postgres://fixture.invalid/console")
   vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://api.example.test")
   vi.stubEnv("PUBLIC_BFF_BASE_URL", "")
+  vi.stubEnv("PRODUCT_IDENTITY_HOST", "identity.example.test")
 }
 
 function fakeConsoleSessionRuntime() {

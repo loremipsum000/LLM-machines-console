@@ -41,6 +41,8 @@
     "credentialReveal": {
       "apiBase": "origin-only-no-path-or-nondefault-production-port",
       "applicationTokenClientAuthentication": "client-secret-basic-on-exact-application-realm-token-route-only",
+      "applicationIssuerOrigin": "exact-product-identity-host",
+      "clientSecretPostAllowed": false,
       "browserBearerForwarding": false
     },
     "edgeValidation": {

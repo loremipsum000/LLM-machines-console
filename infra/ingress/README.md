@@ -35,11 +35,15 @@ The checked-in validators prove only deterministic source properties:
   query logging, or workload-content logging;
 - no native administration route or listener declaration.
 
-The Application-realm token route alone accepts a syntactically valid HTTP
-Basic client authorization value. Human-realm token routes and browser identity
-routes continue to strip Authorization. Every Nginx location on every public
-authority is exact-allowlisted, so an additional location fails source
-validation even when it points to an otherwise retained upstream.
+The Application-realm token route alone requires a syntactically valid HTTP
+Basic client authorization value and rejects form-only client authentication.
+Human-realm token routes and browser identity routes continue to strip
+Authorization. The normal Keycloak logout route and its exact
+`logout/logout-confirm` child retain cookies, redirects, query parameters, and
+form submission while every other logout child remains denied. Every Nginx
+location on every public authority is exact-allowlisted, so an additional
+location fails source validation even when it points to an otherwise retained
+upstream.
 
 The Console session and Keycloak identity flows keep their own cookies,
 redirects, CSRF and Origin checks. The edge does not suppress `Set-Cookie` or
