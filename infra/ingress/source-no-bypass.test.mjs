@@ -298,6 +298,15 @@ test("normal Keycloak identity flow is exact and separate", () => {
     assert.equal(result.allowed, true)
     assert.equal(result.forwardedHeaders.authorization, authorization)
   }
+  const keycloakValidatedEnvelope = identityRequest({
+    headers: {
+      authorization: `Basic ${Buffer.from(`llmm-app-${"z".repeat(36)}:secret`).toString("base64")}`,
+    },
+    method: "POST",
+    rawTarget:
+      "/realms/llm-machines-applications/protocol/openid-connect/token",
+  })
+  assert.equal(keycloakValidatedEnvelope.allowed, true)
   for (const authorization of [
     "Bearer application-token",
     "Basic a",
@@ -306,6 +315,7 @@ test("normal Keycloak identity flow is exact and separate", () => {
     "Basic OnNlY3JldA==",
     "Basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOg==",
     "Basic b3RoZXItY2xpZW50OnNlY3JldA==",
+    "Basic bGxTbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
     "Basic\tYXBwOnNlY3JldA==",
     [
       "Basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",

@@ -281,20 +281,29 @@ test("reviewed public route implementations cannot change in place", () => {
 })
 
 test("Application client Basic auth is isolated to its exact token route", () => {
-  const mapPattern = /"~\*([^"\n]+)" \$http_authorization;/.exec(
+  const mapPattern = /"~([^"\n]+)" \$http_authorization;/.exec(
     sources["product-edge.nginx.conf.template"],
   )?.[1]
   assert.ok(mapPattern)
-  const clientAuthorization = new RegExp(mapPattern, "i")
+  const clientAuthorization = new RegExp(mapPattern)
   const clientId = "llmm-app-11111111-1111-4111-8111-111111111111"
-  for (const secret of ["s", "ss", "sss", "secret", "s".repeat(64)]) {
-    assert.equal(
-      clientAuthorization.test(
-        `Basic ${Buffer.from(`${clientId}:${secret}`).toString("base64")}`,
-      ),
-      true,
-    )
+  for (const scheme of ["Basic", "basic", "bAsIc"]) {
+    for (const secret of ["s", "ss", "sss", "secret", "s".repeat(64)]) {
+      assert.equal(
+        clientAuthorization.test(
+          `${scheme} ${Buffer.from(`${clientId}:${secret}`).toString("base64")}`,
+        ),
+        true,
+      )
+    }
   }
+  assert.equal(
+    clientAuthorization.test(
+      `Basic ${Buffer.from(`llmm-app-${"z".repeat(36)}:secret`).toString("base64")}`,
+    ),
+    true,
+    "Keycloak, not the edge envelope, validates the exact client ID",
+  )
   for (const authorization of [
     "Basic a",
     "Basic abcde",
@@ -302,6 +311,7 @@ test("Application client Basic auth is isolated to its exact token route", () =>
     `Basic ${Buffer.from(`${clientId}:`).toString("base64")}`,
     `Basic ${Buffer.from("other-client:secret").toString("base64")}`,
     `Basic ${Buffer.from(`${clientId}x:secret`).toString("base64")}`,
+    `Basic ${Buffer.from(`${clientId}:secret`).toString("base64").replace("bGxt", "bGxT")}`,
   ]) {
     assert.equal(clientAuthorization.test(authorization), false, authorization)
   }
@@ -309,7 +319,7 @@ test("Application client Basic auth is isolated to its exact token route", () =>
   const removedMap = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>
       source.replace(
-        '"~*^Basic[ ]+bGxtbS1hcHAt[A-Za-z0-9+/]{48}(?:O[g-v][AEIMQUYcgkosw048]=|O[g-v][A-Za-z0-9+/]{2}(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/][AQgw]==|[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=)?)$" $http_authorization;',
+        '"~^[Bb][Aa][Ss][Ii][Cc][ ]+bGxtbS1hcHAt[A-Za-z0-9+/]{48}(?:O[g-v][AEIMQUYcgkosw048]=|O[g-v][A-Za-z0-9+/]{2}(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/][AQgw]==|[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=)?)$" $http_authorization;',
         '"~^Bearer .+$" $http_authorization;',
       ),
     ),

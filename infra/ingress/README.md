@@ -35,10 +35,11 @@ The checked-in validators prove only deterministic source properties:
   query logging, or workload-content logging;
 - no native administration route or listener declaration.
 
-The Application-realm token route alone requires a canonical HTTP Basic value
-whose encoded boundary proves the fixed Product Application client namespace,
-the expected client identifier length, a colon separator, and a nonempty
-secret. Keycloak remains the credential authority. Form-only client
+The Application-realm token route alone requires a canonical HTTP Basic envelope
+with the case-sensitive encoded `llmm-app-` namespace and expected identifier
+length, followed by a colon separator and nonempty secret. This is an edge
+routing filter, not credential authentication: Keycloak remains solely
+responsible for validating the exact client ID and secret. Form-only client
 authentication is rejected.
 Human-realm token routes and browser identity routes continue to strip
 Authorization. The normal Keycloak logout route and its exact

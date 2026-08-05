@@ -322,27 +322,10 @@ function identityRoute(method, path, headers) {
 
 function validApplicationClientAuthorization(headers) {
   const authorization = inputHeader(headers, "authorization")
-  if (!singleHeader(authorization)) return false
-  const payload = /^Basic +(.+)$/i.exec(authorization)?.[1]
-  if (
-    !payload ||
-    payload.length % 4 !== 0 ||
-    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
-      payload,
-    )
-  ) {
-    return false
-  }
-  const decoded = Buffer.from(payload, "base64")
-  const credentials = decoded.toString("utf8")
-  const separator = credentials.indexOf(":")
   return (
-    decoded.toString("base64") === payload &&
-    Buffer.from(credentials, "utf8").equals(decoded) &&
-    separator > 0 &&
-    separator < credentials.length - 1 &&
-    /^llmm-app-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
-      credentials.slice(0, separator),
+    singleHeader(authorization) &&
+    /^[Bb][Aa][Ss][Ii][Cc] +bGxtbS1hcHAt[A-Za-z0-9+/]{48}(?:O[g-v][AEIMQUYcgkosw048]=|O[g-v][A-Za-z0-9+/]{2}(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/][AQgw]==|[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=)?)$/.test(
+      authorization,
     )
   )
 }
