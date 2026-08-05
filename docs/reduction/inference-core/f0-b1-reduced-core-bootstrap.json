@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "F0-B1",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "command": "corepack pnpm dev:reduced-core",
+  "evidenceClass": "LOCAL_DETERMINISTIC_CONTROL_PLANE_ONLY",
+  "services": [
+    "console-web",
+    "console-bff",
+    "local-authority-router-double",
+    "openai-compatible-inference-double"
+  ],
+  "temporaryCustody": {
+    "location": "operating-system-temporary-directory",
+    "directoryMode": "0700",
+    "credentialFileMode": "0600",
+    "credentialsPrinted": false,
+    "cleanup": "signals-stop-children-close-listeners-and-remove-created-directory"
+  },
+  "publicAuthoritySimulation": [
+    "console.localhost",
+    "api.localhost",
+    "identity.localhost",
+    "firecrawl.localhost"
+  ],
+  "notEvidenceFor": [
+    "Product-Nginx-or-TLS",
+    "Keycloak-login-or-session-runtime",
+    "exact-Core-images",
+    "SGLang-runtime-or-capacity",
+    "runtime-no-bypass",
+    "persistence-restart-or-recovery"
+  ],
+  "forbiddenOutcomes": [
+    "production-fixture-enable",
+    "real-credential-use",
+    "live-infrastructure-access",
+    "runtime-qualification-claim",
+    "Product-main-merge",
+    "Gitea-Genesis"
+  ]
+}
