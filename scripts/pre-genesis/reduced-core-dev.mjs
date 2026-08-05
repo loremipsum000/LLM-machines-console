@@ -20,6 +20,11 @@ import { fileURLToPath } from "node:url"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const checkMode = process.argv.includes("--check")
+const verticalSliceMode = process.argv.includes("--vertical-slice")
+
+if (checkMode && verticalSliceMode) {
+  throw new Error("Choose either --check or --vertical-slice, not both.")
+}
 
 class ShutdownRequestedError extends Error {}
 
@@ -61,6 +66,27 @@ if (!runtime) {
       architecture: process.arch,
       credentialMaterialPrinted: false,
       evidenceClass: "LOCAL_DETERMINISTIC_CONTROL_PLANE_ONLY",
+      services: runtime.publicSummary.services,
+      status: "passed",
+      temporaryStateRemoved: true,
+    })}\n`,
+  )
+} else if (verticalSliceMode) {
+  let result
+  try {
+    result = await Promise.race([
+      verifyApplicationInferenceVerticalSlice(runtime),
+      runtime.failureSignal,
+    ])
+  } finally {
+    await runtime.close()
+  }
+  process.stdout.write(
+    `${JSON.stringify({
+      architecture: process.arch,
+      credentialMaterialPrinted: false,
+      evidenceClass: "LOCAL_DETERMINISTIC_APPLICATION_FLOW_ONLY",
+      flow: result,
       services: runtime.publicSummary.services,
       status: "passed",
       temporaryStateRemoved: true,
@@ -209,7 +235,7 @@ async function startReducedCoreDevelopmentRuntime() {
           "HTTP authority router is not Product Nginx or TLS evidence.",
           "Identity is intentionally unavailable; Keycloak login is not qualified.",
           "Inference is deterministic and is not SGLang or capacity evidence.",
-          "Application credentials, gateway accounting, and isolation remain F0-L1 work.",
+          "Run --vertical-slice for the deterministic F0-L1 Application credential and gateway flow.",
           "Application metadata is in-memory; created temporary files are removed on shutdown.",
         ],
         services,
@@ -244,7 +270,13 @@ async function handleInferenceDoubleRequest(apiKey, request, response) {
   }
   if (request.method === "GET" && request.url === "/v1/models") {
     sendJson(response, 200, {
-      data: [{ id: "fixture-model", object: "model" }],
+      data: [
+        {
+          id: "fixture-model",
+          object: "model",
+          owned_by: "llm-machines",
+        },
+      ],
       object: "list",
     })
     return
@@ -439,6 +471,362 @@ async function verifyRuntime(runtime) {
     completion.usage?.total_tokens !== 5
   ) {
     throw new Error("Inference-double Chat Completions check failed.")
+  }
+}
+
+async function verifyApplicationInferenceVerticalSlice(runtime) {
+  const primary = await createFixtureApplication(runtime, {
+    allowedModels: ["fixture-model"],
+    idempotencyKey: "f0-l1-create-primary",
+    name: "F0-L1 primary client",
+  })
+  const isolated = await createFixtureApplication(runtime, {
+    allowedModels: ["isolated-fixture-model"],
+    idempotencyKey: "f0-l1-create-isolated",
+    name: "F0-L1 isolated client",
+  })
+
+  const primaryKey = requiredApiKey(primary)
+  const isolatedKey = requiredApiKey(isolated)
+  if (primaryKey === isolatedKey) {
+    throw new Error("F0-L1 issued the same credential to two Applications.")
+  }
+  const nonStreaming = await openAiChatCompletion(
+    runtime.publicSummary.services.api,
+    primaryKey,
+    false,
+  )
+  if (
+    nonStreaming.status !== 200 ||
+    nonStreaming.body.choices?.[0]?.message?.content !== "fixture-response" ||
+    nonStreaming.body.usage?.total_tokens !== 5
+  ) {
+    throw new Error("F0-L1 non-streaming Chat Completions failed.")
+  }
+
+  const streaming = await openAiChatCompletion(
+    runtime.publicSummary.services.api,
+    primaryKey,
+    true,
+  )
+  if (
+    streaming.status !== 200 ||
+    streaming.content !== "fixture-response" ||
+    streaming.totalTokens !== 5 ||
+    !streaming.done
+  ) {
+    throw new Error("F0-L1 streaming Chat Completions failed.")
+  }
+
+  const initialDetail = await applicationDetail(runtime, primary.app.id)
+  assertUsage(initialDetail, { requests7d: 2, tokens7d: 10 })
+  const initialMetadata = initialDetail.app.credentials.find(
+    (credential) => credential.id === primary.credential.credentialId,
+  )
+  if (!initialDetail.app.usage.lastUsedAt || !initialMetadata?.lastUsedAt) {
+    throw new Error("F0-L1 did not record initial Application last use.")
+  }
+
+  const models = await openAiModels(
+    runtime.publicSummary.services.api,
+    primaryKey,
+  )
+  if (
+    models.status !== 200 ||
+    models.body.data?.length !== 1 ||
+    models.body.data[0]?.id !== "fixture-model"
+  ) {
+    throw new Error("F0-L1 OpenAI-compatible model discovery failed.")
+  }
+
+  const connectionTest = await adminJson(runtime, {
+    idempotencyKey: "f0-l1-test-primary",
+    method: "POST",
+    path: `/api/admin/applications/connected-apps/${primary.app.id}/test`,
+  })
+  if (
+    connectionTest.status !== 200 ||
+    connectionTest.body.status !== "passed"
+  ) {
+    throw new Error("F0-L1 Application connection evidence did not pass.")
+  }
+
+  const rotated = await adminJson(runtime, {
+    idempotencyKey: "f0-l1-rotate-primary",
+    method: "POST",
+    path: `/api/admin/applications/connected-apps/${primary.app.id}/rotate-credentials`,
+  })
+  if (rotated.status !== 200 || rotated.body.status !== "rotated") {
+    throw new Error("F0-L1 Application credential rotation failed.")
+  }
+  const rotatedKey = requiredApiKey(rotated.body)
+  const retiringMetadata = rotated.body.app.credentials.find(
+    (credential) => credential.id === primary.credential.credentialId,
+  )
+  if (
+    retiringMetadata?.status !== "retiring" ||
+    !retiringMetadata.overlapExpiresAt
+  ) {
+    throw new Error("F0-L1 rotation did not create a bounded overlap.")
+  }
+
+  await requireSuccessfulCompletion(
+    runtime.publicSummary.services.api,
+    rotatedKey,
+    "rotated credential",
+  )
+  const rotatedDetail = await applicationDetail(runtime, primary.app.id)
+  assertUsage(rotatedDetail, { requests7d: 4, tokens7d: 15 })
+  const activeMetadata = rotatedDetail.app.credentials.find(
+    (credential) => credential.id === rotated.body.credential.credentialId,
+  )
+  if (!activeMetadata?.lastUsedAt || activeMetadata.status !== "active") {
+    throw new Error("F0-L1 did not bind last use to the rotated credential.")
+  }
+
+  const crossApplicationRevoke = await adminJson(runtime, {
+    idempotencyKey: "f0-l1-cross-app-revoke",
+    method: "POST",
+    path: `/api/admin/applications/connected-apps/${isolated.app.id}/credentials/${rotated.body.credential.credentialId}/revoke`,
+  })
+  if (crossApplicationRevoke.status !== 404) {
+    throw new Error("F0-L1 accepted a cross-Application credential mutation.")
+  }
+
+  const isolatedAttempt = await openAiChatCompletion(
+    runtime.publicSummary.services.api,
+    isolatedKey,
+    false,
+  )
+  if (isolatedAttempt.status !== 403) {
+    throw new Error("F0-L1 did not enforce the isolated Application policy.")
+  }
+  const isolatedDetail = await applicationDetail(runtime, isolated.app.id)
+  const primaryAfterIsolation = await applicationDetail(runtime, primary.app.id)
+  assertUsage(isolatedDetail, { requests7d: 1, tokens7d: 0 })
+  assertUsage(primaryAfterIsolation, { requests7d: 4, tokens7d: 15 })
+  if (
+    isolatedDetail.app.usage.failures7d !== 1 ||
+    !isolatedDetail.app.usage.lastUsedAt ||
+    primaryAfterIsolation.app.usage.failures7d !== 0
+  ) {
+    throw new Error("F0-L1 did not isolate Application usage attribution.")
+  }
+
+  await revokeFixtureCredential(
+    runtime,
+    primary.app.id,
+    primary.credential.credentialId,
+    "f0-l1-revoke-retiring",
+  )
+  await requireCredentialDenied(
+    runtime.publicSummary.services.api,
+    primaryKey,
+    "revoked retiring credential",
+  )
+  await requireSuccessfulCompletion(
+    runtime.publicSummary.services.api,
+    rotatedKey,
+    "remaining active credential",
+  )
+
+  await revokeFixtureCredential(
+    runtime,
+    primary.app.id,
+    rotated.body.credential.credentialId,
+    "f0-l1-revoke-active",
+  )
+  await requireCredentialDenied(
+    runtime.publicSummary.services.api,
+    rotatedKey,
+    "revoked active credential",
+  )
+
+  const finalDetail = await applicationDetail(runtime, primary.app.id)
+  assertUsage(finalDetail, { requests7d: 5, tokens7d: 20 })
+  if (
+    finalDetail.app.status !== "disabled" ||
+    !finalDetail.app.credentials.every(
+      (credential) => credential.status === "revoked",
+    )
+  ) {
+    throw new Error("F0-L1 did not disable the credential-less Application.")
+  }
+
+  return {
+    accounting: {
+      lastUseRecorded: true,
+      requests7d: finalDetail.app.usage.requests7d,
+      tokens7d: finalDetail.app.usage.tokens7d,
+    },
+    applicationCreation: "passed",
+    connectionTest: "passed",
+    inferenceClient: "OPENAI_COMPATIBLE_HTTP",
+    isolation: {
+      accountingAttributedToCredentialApplication: true,
+      crossApplicationCredentialMutationDenied: true,
+      crossApplicationModelUseDenied: true,
+    },
+    nonStreamingChatCompletions: "passed",
+    revocation: {
+      activeCredentialDenied: true,
+      retiringCredentialDenied: true,
+    },
+    rotation: {
+      boundedOverlapRecorded: true,
+      rotatedCredentialAccepted: true,
+    },
+    separateApplicationCredentials: true,
+    streamingChatCompletions: "passed",
+  }
+}
+
+async function createFixtureApplication(
+  runtime,
+  { allowedModels, idempotencyKey, name },
+) {
+  const result = await adminJson(runtime, {
+    body: {
+      allowedModels,
+      description: "Disposable F0-L1 Application-flow fixture.",
+      name,
+    },
+    idempotencyKey,
+    method: "POST",
+    path: "/api/admin/applications/connected-apps",
+  })
+  if (
+    result.status !== 201 ||
+    result.body.status !== "created" ||
+    !result.body.app?.id ||
+    !result.body.credential?.credentialId
+  ) {
+    throw new Error("F0-L1 Application creation failed.")
+  }
+  requiredApiKey(result.body)
+  return result.body
+}
+
+async function revokeFixtureCredential(
+  runtime,
+  applicationId,
+  credentialId,
+  idempotencyKey,
+) {
+  const result = await adminJson(runtime, {
+    idempotencyKey,
+    method: "POST",
+    path: `/api/admin/applications/connected-apps/${applicationId}/credentials/${credentialId}/revoke`,
+  })
+  if (
+    result.status !== 200 ||
+    result.body.id !== applicationId ||
+    !Array.isArray(result.body.credentials)
+  ) {
+    throw new Error("F0-L1 Application credential revocation failed.")
+  }
+}
+
+async function applicationDetail(runtime, applicationId) {
+  const result = await adminJson(runtime, {
+    method: "GET",
+    path: `/api/admin/applications/connected-apps/${applicationId}`,
+  })
+  if (result.status !== 200 || !result.body.app) {
+    throw new Error("F0-L1 Application detail read failed.")
+  }
+  return result.body
+}
+
+async function adminJson(runtime, { body, idempotencyKey, method, path }) {
+  const response = await boundedFetch(`${runtime.bffOrigin}${path}`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      ...runtime.adminHeaders,
+      ...(body === undefined ? {} : { "content-type": "application/json" }),
+      ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
+    },
+    method,
+  })
+  return { body: await response.json(), status: response.status }
+}
+
+async function openAiChatCompletion(apiOrigin, apiKey, stream) {
+  const response = await boundedFetch(`${apiOrigin}/v1/chat/completions`, {
+    body: JSON.stringify({
+      messages: [{ content: "disposable fixture input", role: "user" }],
+      model: "fixture-model",
+      stream,
+    }),
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    method: "POST",
+  })
+  if (!stream || response.status !== 200) {
+    return { body: await response.json(), status: response.status }
+  }
+  const text = await response.text()
+  let content = ""
+  let done = false
+  let totalTokens = null
+  for (const line of text.split("\n")) {
+    if (!line.startsWith("data: ")) {
+      continue
+    }
+    const data = line.slice("data: ".length)
+    if (data === "[DONE]") {
+      done = true
+      continue
+    }
+    const event = JSON.parse(data)
+    content += event.choices?.[0]?.delta?.content ?? ""
+    if (Number.isSafeInteger(event.usage?.total_tokens)) {
+      totalTokens = event.usage.total_tokens
+    }
+  }
+  return { content, done, status: response.status, totalTokens }
+}
+
+async function openAiModels(apiOrigin, apiKey) {
+  const response = await boundedFetch(`${apiOrigin}/v1/models`, {
+    headers: { authorization: `Bearer ${apiKey}` },
+  })
+  return { body: await response.json(), status: response.status }
+}
+
+async function requireSuccessfulCompletion(apiOrigin, apiKey, label) {
+  const result = await openAiChatCompletion(apiOrigin, apiKey, false)
+  if (
+    result.status !== 200 ||
+    result.body.choices?.[0]?.message?.content !== "fixture-response"
+  ) {
+    throw new Error(`F0-L1 ${label} was not accepted.`)
+  }
+}
+
+async function requireCredentialDenied(apiOrigin, apiKey, label) {
+  const result = await openAiChatCompletion(apiOrigin, apiKey, false)
+  if (result.status !== 401) {
+    throw new Error(`F0-L1 ${label} was not denied.`)
+  }
+}
+
+function requiredApiKey(result) {
+  const apiKey = result.credential?.apiKey
+  if (typeof apiKey !== "string" || !apiKey.startsWith("llmm_t4_")) {
+    throw new Error("F0-L1 did not receive a one-time static credential.")
+  }
+  return apiKey
+}
+
+function assertUsage(detail, expected) {
+  if (
+    detail.app.usage?.requests7d !== expected.requests7d ||
+    detail.app.usage?.tokens7d !== expected.tokens7d
+  ) {
+    throw new Error("F0-L1 Application usage accounting did not reconcile.")
   }
 }
 
