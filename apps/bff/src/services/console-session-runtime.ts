@@ -36,6 +36,9 @@ export function readConsoleSessionRuntimeConfig(
 ): ConsoleSessionRuntimeConfig {
   const consoleHost = publicProductHost(environment, "PRODUCT_CONSOLE_HOST")
   const identityHost = publicProductHost(environment, "PRODUCT_IDENTITY_HOST")
+  if (environment.NODE_ENV === "production") {
+    assertDistinctProductAuthorities(environment, consoleHost, identityHost)
+  }
   const consoleOrigin = secureOrigin(
     "CONSOLE_ORIGIN",
     required(environment, "CONSOLE_ORIGIN"),
@@ -149,7 +152,11 @@ function optional(
 
 function publicProductHost(
   environment: NodeJS.ProcessEnv,
-  name: "PRODUCT_CONSOLE_HOST" | "PRODUCT_IDENTITY_HOST",
+  name:
+    | "PRODUCT_API_HOST"
+    | "PRODUCT_CONSOLE_HOST"
+    | "PRODUCT_FIRECRAWL_HOST"
+    | "PRODUCT_IDENTITY_HOST",
 ): string {
   const value = required(environment, name)
   if (
@@ -174,6 +181,22 @@ function assertProductAuthority(
   const url = new URL(value)
   if (url.hostname !== expectedHost || url.port !== "") {
     throw new Error(`${name} must use its declared Product authority.`)
+  }
+}
+
+function assertDistinctProductAuthorities(
+  environment: NodeJS.ProcessEnv,
+  consoleHost: string,
+  identityHost: string,
+): void {
+  const authorities = [
+    consoleHost,
+    publicProductHost(environment, "PRODUCT_API_HOST"),
+    identityHost,
+    publicProductHost(environment, "PRODUCT_FIRECRAWL_HOST"),
+  ]
+  if (new Set(authorities).size !== authorities.length) {
+    throw new Error("Product public authorities must use four distinct hosts.")
   }
 }
 
