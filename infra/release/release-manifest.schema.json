@@ -51,6 +51,7 @@
         "releaseEvidencePolicySha256",
         "coreImageInventorySha256",
         "coreImageLockSha256",
+        "deploymentPlacementSchemaSha256",
         "deliveryProfileSchemaSha256",
         "inferenceArtifactLockSchemaSha256",
         "firecrawlSourcePackageSha256"
@@ -60,6 +61,7 @@
         "releaseEvidencePolicySha256": { "$ref": "#/$defs/sha256" },
         "coreImageInventorySha256": { "$ref": "#/$defs/sha256" },
         "coreImageLockSha256": { "$ref": "#/$defs/sha256" },
+        "deploymentPlacementSchemaSha256": { "$ref": "#/$defs/sha256" },
         "deliveryProfileSchemaSha256": { "$ref": "#/$defs/sha256" },
         "inferenceArtifactLockSchemaSha256": { "$ref": "#/$defs/sha256" },
         "firecrawlSourcePackageSha256": { "$ref": "#/$defs/sha256" }

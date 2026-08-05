@@ -80,6 +80,8 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
       bulkModelWeights: "excluded",
       imageInventory: "infra/release/core-image-inventory.json",
       imageLockSchema: "infra/release/core-image-lock.schema.json",
+      deploymentPlacementSchema:
+        "infra/release/deployment-placement.schema.json",
     })
   ) {
     errors.push("release plan changed the fixed Core boundary")
@@ -184,6 +186,7 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
   for (const path of [
     plan?.core?.imageInventory,
     plan?.core?.imageLockSchema,
+    plan?.core?.deploymentPlacementSchema,
     plan?.inference?.profileSchema,
     plan?.inference?.artifactLockSchema,
     plan?.evidencePolicy,

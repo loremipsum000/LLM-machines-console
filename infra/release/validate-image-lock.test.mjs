@@ -33,14 +33,15 @@ function syntheticCoreLock() {
     },
     inventorySha256: coreInventorySha256(),
     platform: "linux/amd64",
-    privateRegistry: "registry.release.invalid",
     images: inventory.components.map((component, index) => ({
       id: component.id,
-      repository: `registry.release.invalid/${component.mirrorRepository}`,
+      mirrorRepository: component.mirrorRepository,
       version:
         component.kind === "third-party-mirror"
           ? component.version
           : `1.0.0-build.${index + 1}`,
+      ociArchivePath: `images/${component.id}.oci.tar.zst`,
+      ociArchiveSha256: digest("9"),
       indexDigest:
         component.kind === "third-party-mirror"
           ? component.indexDigest
@@ -209,6 +210,12 @@ test("tag-only, latest, missing platform, and digest disagreement fail", () => {
       lock.images[0].version = "latest"
     },
     (lock) => {
+      lock.images[0].ociArchivePath = "images/wrong.oci.tar.zst"
+    },
+    (lock) => {
+      lock.images[0].ociArchiveSha256 = undefined
+    },
+    (lock) => {
       lock.images[0].platform = undefined
     },
     (lock) => {
@@ -240,15 +247,14 @@ test("every Core image requires digest-bound security and license evidence", () 
   }
 })
 
-test("unapproved registries and omitted retained components fail", () => {
+test("registry authorities and omitted retained components fail the universal lock", () => {
   const inventory = readCoreImageInventory()
-  const publicLock = syntheticCoreLock()
-  publicLock.privateRegistry = "docker.io"
-  publicLock.images = publicLock.images.map((image) => ({
-    ...image,
-    repository: `docker.io/${image.repository.split("/").slice(1).join("/")}`,
-  }))
-  assert.notDeepEqual(validateCoreImageLock(publicLock, inventory), [])
+  const authorityBound = syntheticCoreLock()
+  authorityBound.images[0].mirrorRepository = "docker.io/core/product-edge"
+  assert.match(
+    validateCoreImageLock(authorityBound, inventory).join("\n"),
+    /registry-neutral mirror path/,
+  )
 
   const missing = syntheticCoreLock()
   missing.images.pop()

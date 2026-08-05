@@ -13,12 +13,13 @@
   },
   "releasePolicy": {
     "finalLockSchema": "infra/release/core-image-lock.schema.json",
-    "privateMirrorBinding": "release-assembly-input",
+    "deploymentPlacementSchema": "infra/release/deployment-placement.schema.json",
+    "mirrorRepositoryBinding": "registry-neutral-release-lock",
     "tagOnlyReferencesAllowed": false,
     "latestAllowed": false,
     "allRequiredComponentsMustBeLocked": true,
     "sourceRegistries": ["docker.io", "ghcr.io", "quay.io"],
-    "finalImageRegistry": "customer-private-registry",
+    "registryAuthoritySource": "customer-commissioning-input",
     "finalDigestSource": "verified-oci-artifact",
     "productOutputDigestSource": "deterministic-release-build",
     "firecrawlOutputDigestSource": "reviewed-reduced-source-build"

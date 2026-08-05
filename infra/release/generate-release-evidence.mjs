@@ -257,7 +257,7 @@ function validateProvenance(document, image, component, root, policy) {
   const recipe = recipePath(component)
   const expectedExternalParameters = {
     componentId: image.id,
-    imageRepository: image.repository,
+    mirrorRepository: image.mirrorRepository,
     imageVersion: image.version,
     sourceRevision: image.sourceRevision,
     recipe: {
@@ -272,7 +272,7 @@ function validateProvenance(document, image, component, root, policy) {
     document?.predicateType !== policy.provenance.predicateType ||
     !Array.isArray(document?.subject) ||
     document.subject.length !== 1 ||
-    document.subject[0]?.name !== image.repository ||
+    document.subject[0]?.name !== image.mirrorRepository ||
     document.subject[0]?.digest?.sha256 !== digest ||
     buildDefinition?.buildType !==
       policy.provenance.buildTypes[component.kind] ||
@@ -392,10 +392,14 @@ function validateVulnerabilityEvidence(
     `${image.id} vulnerability disposition`,
   )
   for (const [value, keys, field] of [
-    [report.image, ["id", "repository", "digest"], "report image"],
+    [report.image, ["id", "mirrorRepository", "digest"], "report image"],
     [report.scanner, ["name", "version"], "report scanner"],
     [report.database, ["updatedAt"], "report database"],
-    [disposition.image, ["id", "repository", "digest"], "disposition image"],
+    [
+      disposition.image,
+      ["id", "mirrorRepository", "digest"],
+      "disposition image",
+    ],
     [disposition.scanner, ["name", "version"], "disposition scanner"],
     [disposition.database, ["updatedAt"], "disposition database"],
     [
@@ -435,7 +439,7 @@ function validateVulnerabilityEvidence(
   }
   const expectedImage = {
     id: image.id,
-    repository: image.repository,
+    mirrorRepository: image.mirrorRepository,
     digest: image.platformDigest,
   }
   const scannedAt = Date.parse(report?.scannedAt)
@@ -559,7 +563,7 @@ function validateLicenseReview(
   )
   requireExactKeys(
     review.component,
-    ["id", "repository", "sourceRevision", "license"],
+    ["id", "mirrorRepository", "sourceRevision", "license"],
     `${image.id} license review component`,
   )
   requireExactKeys(
@@ -569,7 +573,7 @@ function validateLicenseReview(
   )
   const expectedComponent = {
     id: image.id,
-    repository: image.repository,
+    mirrorRepository: image.mirrorRepository,
     sourceRevision: image.sourceRevision,
     license: image.license,
   }
@@ -628,6 +632,28 @@ function buildProductBom(coreLock) {
       version: image.version,
       hashes: [{ alg: "SHA-256", content: image.platformDigest.slice(7) }],
       licenses: [{ license: { id: image.license } }],
+      properties: [
+        {
+          name: "llm-machines:mirror-repository",
+          value: image.mirrorRepository,
+        },
+        {
+          name: "llm-machines:oci-archive-path",
+          value: image.ociArchivePath,
+        },
+        {
+          name: "llm-machines:oci-archive-sha256",
+          value: image.ociArchiveSha256,
+        },
+        {
+          name: "llm-machines:oci-index-digest",
+          value: image.indexDigest,
+        },
+        {
+          name: "llm-machines:platform-manifest-digest",
+          value: image.platformDigest,
+        },
+      ],
     })),
     dependencies: [
       {
@@ -792,7 +818,10 @@ export function validatePackagedReleaseEvidence(
         sha256Bytes(licenseText.text) !== image.licenseTextSha256,
       ],
       ["notice license", notice.license !== image.license],
-      ["notice repository", notice.repository !== image.repository],
+      [
+        "notice mirror repository",
+        notice.mirrorRepository !== image.mirrorRepository,
+      ],
       ["notice source", notice.sourceRevision !== image.sourceRevision],
       ["notice digest", notice.sha256 !== image.noticeSha256],
       ["notice text", sha256Bytes(notice.text) !== image.noticeSha256],
@@ -1078,7 +1107,7 @@ export function generateReleaseEvidence(
     notices.push({
       id: image.id,
       license: image.license,
-      repository: image.repository,
+      mirrorRepository: image.mirrorRepository,
       sourceRevision: image.sourceRevision,
       sha256: image.noticeSha256,
       text: noticeText,

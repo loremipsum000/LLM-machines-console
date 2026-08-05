@@ -369,6 +369,7 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
       "releaseEvidencePolicySha256",
       "coreImageInventorySha256",
       "coreImageLockSha256",
+      "deploymentPlacementSchemaSha256",
       "deliveryProfileSchemaSha256",
       "inferenceArtifactLockSchemaSha256",
       "firecrawlSourcePackageSha256",

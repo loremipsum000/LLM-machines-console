@@ -125,15 +125,7 @@ function readJson(path, field) {
 function validateCoreLockStructure(lock) {
   exactKeys(
     lock,
-    [
-      "schema",
-      "status",
-      "release",
-      "inventorySha256",
-      "platform",
-      "privateRegistry",
-      "images",
-    ],
+    ["schema", "status", "release", "inventorySha256", "platform", "images"],
     "Core image lock",
   )
   exactKeys(
@@ -146,8 +138,10 @@ function validateCoreLockStructure(lock) {
   for (const image of lock.images) {
     const keys = [
       "id",
-      "repository",
+      "mirrorRepository",
       "version",
+      "ociArchivePath",
+      "ociArchiveSha256",
       "indexDigest",
       "platform",
       "platformDigest",
@@ -371,6 +365,9 @@ export function generateReleaseManifest(
       resolve(root, "infra/release/core-image-inventory.json"),
     ),
     coreImageLockSha256: sha256File(coreLockPath),
+    deploymentPlacementSchemaSha256: sha256File(
+      resolve(root, "infra/release/deployment-placement.schema.json"),
+    ),
     deliveryProfileSchemaSha256: sha256File(
       resolve(root, "infra/inference/delivery-profile.schema.json"),
     ),

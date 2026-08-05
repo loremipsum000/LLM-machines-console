@@ -6,7 +6,8 @@ inference delivery profile.
 `core-image-inventory.json` is the authoritative source inventory. It fixes the
 retained image-bearing Core components, the `linux/amd64` VM103 planning
 baseline, exact third-party source image identities, licenses, and the required
-private mirror destinations. Product Web and BFF images and the four reduced
+registry-neutral mirror repository paths. Product Web and BFF images and the
+four reduced
 Firecrawl images are deterministic release-build outputs. Their digests cannot
 be guessed or copied from a historical lab. Release assembly must build them,
 verify them, and bind them in a `LOCKED` artifact that conforms to
@@ -15,9 +16,21 @@ verify them, and bind them in a `LOCKED` artifact that conforms to
 The Core lock is invalid if a retained component is absent, a tag is mutable,
 a platform is missing, a mirrored third-party digest differs from its approved
 source digest, or SBOM, provenance, vulnerability, license, notice, license
-review, and required corresponding-source evidence are missing. The private
-registry authority is supplied during release assembly and is never a
-credential.
+review, and required corresponding-source evidence are missing. Each entry also
+binds the exact OCI archive path and archive, OCI index, and `linux/amd64`
+platform-manifest digests. The universal signed lock contains no registry
+authority.
+
+`deployment-placement.schema.json` and
+`validate-deployment-placement.mjs` define the separate commissioning-only
+placement record. A customer-supplied registry authority must be present in the
+commissioning allowlist, must not be a public registry, and combines only with
+the signed mirror repository paths and digests. The credential-free record
+binds the exact release-manifest and Core-lock hashes, verifies the imported OCI
+archive plus mirrored index and platform manifests, and records the effective
+digest-only references in commissioning and metadata-only audit evidence.
+Registry credentials are neither accepted nor stored. Customer registry
+authorities remain outside Product source and the universal release artifact.
 
 `inference-artifact-lock.schema.json` is a separate delivery artifact. It binds
 one delivery profile to SGLang `0.5.13`, one exact engine image, one exact model
@@ -76,7 +89,10 @@ network, or runtime action. Run the source-policy checks with:
 
 `assemble-core-package.mjs` creates the normalized USTAR plus zstd Core package
 from the five exact payload roots: configuration, images, lifecycle tooling,
-clean seeds, and public verification material. `verify-release-bundle.mjs`
+clean seeds, and public verification material. Assembly requires the Core lock,
+rejects extra or missing OCI archives, and derives each archive digest from the
+actual payload and verifies it against the lock before packaging.
+`verify-release-bundle.mjs`
 verifies the canonical manifest, its offline Ed25519 signature, the
 root-certified scoped release key, every artifact, and the actual Core lock.
 It requires an independently provisioned SHA-256 fingerprint for the offline
@@ -98,6 +114,7 @@ bounded predecessor dual-trust window fail closed in the public verifier.
 
 ```sh
 node infra/release/validate-release-plan.mjs
+node infra/release/validate-deployment-placement.mjs --placement <commissioning-placement.json> --core-lock <core-image-lock.json> --release-manifest-sha256 <sha256:...> --approved-registry <customer-registry-authority>
 node --test infra/release/validate-release-plan.test.mjs
 node --test infra/release/offline-lifecycle.test.mjs
 ```

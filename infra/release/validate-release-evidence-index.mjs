@@ -62,8 +62,11 @@ function exactKeys(value, keys, field) {
 function imageEvidenceProjection(image) {
   return {
     id: image.id,
-    repository: image.repository,
+    mirrorRepository: image.mirrorRepository,
+    ociArchivePath: image.ociArchivePath,
+    ociArchiveSha256: image.ociArchiveSha256,
     sourceRevision: image.sourceRevision,
+    indexDigest: image.indexDigest,
     platformDigest: image.platformDigest,
     sbomSha256: image.sbomSha256,
     provenanceSha256: image.provenanceSha256,

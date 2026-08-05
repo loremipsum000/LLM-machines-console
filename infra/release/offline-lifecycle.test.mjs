@@ -52,7 +52,16 @@ function payload(root, label) {
     "seeds",
     "verification",
   ]) {
-    write(join(root, directory, `${directory}.txt`), `${label}-${directory}\n`)
+    if (directory === "images") {
+      for (const { id } of readCoreImageInventory().components) {
+        write(join(root, directory, `${id}.oci.tar.zst`), `${label}-${id}\n`)
+      }
+    } else {
+      write(
+        join(root, directory, `${directory}.txt`),
+        `${label}-${directory}\n`,
+      )
+    }
   }
 }
 
@@ -126,7 +135,13 @@ function classification(evidenceId) {
   return "evidence"
 }
 
-function syntheticCoreLock(version, sourceCommit, sourceTree, sourceDigests) {
+function syntheticCoreLock(
+  version,
+  sourceCommit,
+  sourceTree,
+  sourceDigests,
+  payloadRoot,
+) {
   const inventory = readCoreImageInventory()
   return {
     schema: "llm-machines.core-image-lock.v1",
@@ -134,14 +149,17 @@ function syntheticCoreLock(version, sourceCommit, sourceTree, sourceDigests) {
     release: { version, sourceCommit, sourceTree },
     inventorySha256: coreInventorySha256(),
     platform: "linux/amd64",
-    privateRegistry: "registry.release.invalid",
     images: inventory.components.map((component, index) => ({
       id: component.id,
-      repository: `registry.release.invalid/${component.mirrorRepository}`,
+      mirrorRepository: component.mirrorRepository,
       version:
         component.kind === "third-party-mirror"
           ? component.version
           : `${version}-build.${index + 1}`,
+      ociArchivePath: `images/${component.id}.oci.tar.zst`,
+      ociArchiveSha256: sha256File(
+        join(payloadRoot, "images", `${component.id}.oci.tar.zst`),
+      ),
       indexDigest:
         component.kind === "third-party-mirror"
           ? component.indexDigest
@@ -186,11 +204,6 @@ function bundleFixture(version = "1.0.0", label = version) {
   mkdirSync(artifactRoot, { recursive: true })
   mkdirSync(payloadRoot)
   payload(payloadRoot, label)
-  const assembled = assembleCorePackage({
-    inputRoot: payloadRoot,
-    outputPath: corePath,
-    sourceDateEpoch: 1_722_772_800,
-  })
   const sourceCommit = label
     .charCodeAt(0)
     .toString(16)
@@ -203,9 +216,21 @@ function bundleFixture(version = "1.0.0", label = version) {
     .slice(-40)
   const firecrawlSource = "exact Firecrawl corresponding source fixture\n"
   const grafanaSource = "exact Grafana corresponding source fixture\n"
-  const coreLockValue = syntheticCoreLock(version, sourceCommit, sourceTree, {
-    firecrawl: `sha256:${createHash("sha256").update(firecrawlSource).digest("hex")}`,
-    grafana: `sha256:${createHash("sha256").update(grafanaSource).digest("hex")}`,
+  const coreLockValue = syntheticCoreLock(
+    version,
+    sourceCommit,
+    sourceTree,
+    {
+      firecrawl: `sha256:${createHash("sha256").update(firecrawlSource).digest("hex")}`,
+      grafana: `sha256:${createHash("sha256").update(grafanaSource).digest("hex")}`,
+    },
+    payloadRoot,
+  )
+  const assembled = assembleCorePackage({
+    inputRoot: payloadRoot,
+    outputPath: corePath,
+    sourceDateEpoch: 1_722_772_800,
+    coreLock: coreLockValue,
   })
   const semanticPaths = new Map(semanticEvidence)
   semanticPaths.set(
@@ -309,6 +334,7 @@ function bundleFixture(version = "1.0.0", label = version) {
       releaseEvidencePolicySha256: digest("6"),
       coreImageInventorySha256: digest("2"),
       coreImageLockSha256: coreLock.sha256,
+      deploymentPlacementSchemaSha256: digest("9"),
       deliveryProfileSchemaSha256: digest("3"),
       inferenceArtifactLockSchemaSha256: digest("4"),
       firecrawlSourcePackageSha256: digest("5"),
@@ -351,6 +377,7 @@ function bundleFixture(version = "1.0.0", label = version) {
       trustedRootSha256: trust.rootSha256,
     },
     corePath,
+    coreLockValue,
     directory,
     manifest,
     rootSigningPrivateKey: trust.rootPrivateKey,
@@ -380,9 +407,42 @@ test("Core package assembly is reproducible and normalized", () => {
     inputRoot: join(fixture.directory, "payload"),
     outputPath: secondPath,
     sourceDateEpoch: 1_722_772_800,
+    coreLock: fixture.coreLockValue,
   })
   assert.equal(second.sha256, fixture.assembled.sha256)
   assert.deepEqual(second.paths, fixture.assembled.paths)
+  rmSync(fixture.directory, { recursive: true, force: true })
+})
+
+test("Core package assembly rejects OCI archive omission and digest drift", () => {
+  const fixture = bundleFixture("1.0.1", "archive-binding")
+  const archivePath = join(
+    fixture.directory,
+    "payload",
+    fixture.coreLockValue.images[0].ociArchivePath,
+  )
+  writeFileSync(archivePath, "changed OCI archive bytes\n")
+  assert.throws(
+    () =>
+      assembleCorePackage({
+        inputRoot: join(fixture.directory, "payload"),
+        outputPath: join(fixture.directory, "changed.tar.zst"),
+        sourceDateEpoch: 1_722_772_800,
+        coreLock: fixture.coreLockValue,
+      }),
+    /OCI archive digest differs/,
+  )
+  rmSync(archivePath)
+  assert.throws(
+    () =>
+      assembleCorePackage({
+        inputRoot: join(fixture.directory, "payload"),
+        outputPath: join(fixture.directory, "missing.tar.zst"),
+        sourceDateEpoch: 1_722_772_800,
+        coreLock: fixture.coreLockValue,
+      }),
+    /exact locked OCI archive set/,
+  )
   rmSync(fixture.directory, { recursive: true, force: true })
 })
 
@@ -589,6 +649,7 @@ test("Core assembly rejects private-key-like payloads and existing outputs", () 
         inputRoot: secondPayload,
         outputPath: join(fixture.directory, "guard.tar.zst"),
         sourceDateEpoch: 1_722_772_800,
+        coreLock: fixture.coreLockValue,
       }),
     /private-key-like/,
   )
@@ -598,6 +659,7 @@ test("Core assembly rejects private-key-like payloads and existing outputs", () 
         inputRoot: join(fixture.directory, "payload"),
         outputPath: fixture.corePath,
         sourceDateEpoch: 1_722_772_800,
+        coreLock: fixture.coreLockValue,
       }),
     /already exists/,
   )
