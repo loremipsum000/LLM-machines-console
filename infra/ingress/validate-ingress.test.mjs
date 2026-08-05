@@ -284,7 +284,7 @@ test("Application client Basic auth is isolated to its exact token route", () =>
   const removedMap = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>
       source.replace(
-        '"~*^Basic[ ]+[A-Za-z0-9+/]+={0,2}$" $http_authorization;',
+        '"~*^Basic[ ]+(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" $http_authorization;',
         '"~^Bearer .+$" $http_authorization;',
       ),
     ),
@@ -315,6 +315,20 @@ test("Application client Basic auth is isolated to its exact token route", () =>
   )
   assert.ok(
     clientSecretPostFallback.some((error) =>
+      /Basic authentication/i.test(error),
+    ),
+  )
+
+  const removedDecodedValidation = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        "      auth_request /_llmm_validate_application_client_authorization;\n",
+        "",
+      ),
+    ),
+  )
+  assert.ok(
+    removedDecodedValidation.some((error) =>
       /Basic authentication/i.test(error),
     ),
   )

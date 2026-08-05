@@ -302,6 +302,10 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     { method: "GET", url: "/api/admin/inference" },
     { method: "GET", url: "/api/admin/isolation" },
     { method: "GET", url: "/api/app-gateway/v1/models" },
+    {
+      method: "GET",
+      url: "/internal/ingress/application-client-authorization",
+    },
     { method: "GET", url: "/internal/observability/metrics" },
     { method: "POST", url: "/api/admin/observability/alert-egress" },
     { method: "POST", url: "/api/admin/settings/organization" },

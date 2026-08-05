@@ -272,7 +272,10 @@ test("normal Keycloak identity flow is exact and separate", () => {
   )
 
   const applicationToken = identityRequest({
-    headers: { authorization: "Basic YXBwOnNlY3JldA==" },
+    headers: {
+      authorization:
+        "Basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
+    },
     method: "POST",
     rawTarget:
       "/realms/llm-machines-applications/protocol/openid-connect/token",
@@ -280,11 +283,11 @@ test("normal Keycloak identity flow is exact and separate", () => {
   assert.equal(applicationToken.allowed, true)
   assert.equal(
     applicationToken.forwardedHeaders.authorization,
-    "Basic YXBwOnNlY3JldA==",
+    "Basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
   )
   for (const authorization of [
-    "basic YXBwOnNlY3JldA==",
-    "bAsIc   YXBwOnNlY3JldA==",
+    "basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
+    "bAsIc   bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
   ]) {
     const result = identityRequest({
       headers: { authorization },
@@ -297,9 +300,17 @@ test("normal Keycloak identity flow is exact and separate", () => {
   }
   for (const authorization of [
     "Bearer application-token",
+    "Basic a",
+    "Basic abcde",
     "Basic invalid*base64",
+    "Basic OnNlY3JldA==",
+    "Basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOg==",
+    "Basic b3RoZXItY2xpZW50OnNlY3JldA==",
     "Basic\tYXBwOnNlY3JldA==",
-    ["Basic YXBwOnNlY3JldA==", "Basic b3RoZXI6c2VjcmV0"],
+    [
+      "Basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
+      "Basic b3RoZXI6c2VjcmV0",
+    ],
   ]) {
     const result = identityRequest({
       headers: { authorization },

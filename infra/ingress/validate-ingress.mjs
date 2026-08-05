@@ -111,6 +111,7 @@ const expectedNginxLocations = {
   ],
   firecrawl: ["= /v2/search", "= /v2/scrape", "/"],
   identity: [
+    "= /_llmm_validate_application_client_authorization",
     "= /realms/llm-machines/protocol/openid-connect/auth",
     "= /realms/llm-machines/protocol/openid-connect/logout",
     "= /realms/llm-machines/protocol/openid-connect/logout/logout-confirm",
@@ -128,7 +129,7 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "abe30826ca01fc94ca8fb39b74beac5460351a5b51f748f5e6f49267eed506a6",
+    "613e0a9120c7c59ac92a76fab121675fd394925895e474de97c885be9f4dba39",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -501,12 +502,22 @@ function validateNginx(sources, errors) {
   add(
     errors,
     nginx.includes(
-      '"~*^Basic[ ]+[A-Za-z0-9+/]+={0,2}$" $http_authorization;',
+      '"~*^Basic[ ]+(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" $http_authorization;',
     ) &&
       count(
         nginx,
         "proxy_set_header Authorization $llmm_application_client_authorization;",
       ) === 1 &&
+      exactLocationSection(
+        identityServer,
+        "= /_llmm_validate_application_client_authorization",
+      ).includes("internal;") &&
+      exactLocationSection(
+        identityServer,
+        "= /_llmm_validate_application_client_authorization",
+      ).includes(
+        "proxy_set_header X-LLMM-Application-Authorization $llmm_application_client_authorization;",
+      ) &&
       exactLocationSection(
         identityServer,
         "= /realms/llm-machines-applications/protocol/openid-connect/token",
@@ -518,6 +529,12 @@ function validateNginx(sources, errors) {
         "= /realms/llm-machines-applications/protocol/openid-connect/token",
       ).includes(
         'if ($llmm_application_client_authorization = "") { return 401; }',
+      ) &&
+      exactLocationSection(
+        identityServer,
+        "= /realms/llm-machines-applications/protocol/openid-connect/token",
+      ).includes(
+        "auth_request /_llmm_validate_application_client_authorization;",
       ),
     "Application token Basic authentication forwarding changed",
   )
@@ -579,9 +596,15 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    !/auth_request\s|proxy_set_header\s+Upgrade\s+\$|proxy_set_header\s+Connection\s+\$http_connection/i.test(
-      nginx,
-    ),
+    sameJson(
+      [...nginx.matchAll(/\bauth_request\s+([^;]+);/g)].map(
+        (match) => match[1],
+      ),
+      ["/_llmm_validate_application_client_authorization"],
+    ) &&
+      !/proxy_set_header\s+Upgrade\s+\$|proxy_set_header\s+Connection\s+\$http_connection/i.test(
+        nginx,
+      ),
     "native impersonation or WebSocket forwarding added",
   )
   add(

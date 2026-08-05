@@ -88,7 +88,8 @@ function normalizeApplicationIssuerUrl(
 
   const authority = candidate.slice(candidate.indexOf("://") + 3).split("/")[0]
   if (
-    (url.protocol !== "http:" && url.protocol !== "https:") ||
+    url.protocol !== "https:" ||
+    url.port !== "" ||
     url.hostname !== identityHost ||
     url.username !== "" ||
     url.password !== "" ||

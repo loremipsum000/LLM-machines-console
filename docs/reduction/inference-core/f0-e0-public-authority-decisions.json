@@ -40,8 +40,8 @@
     ],
     "credentialReveal": {
       "apiBase": "origin-only-no-path-or-nondefault-production-port",
-      "applicationTokenClientAuthentication": "client-secret-basic-on-exact-application-realm-token-route-only",
-      "applicationIssuerOrigin": "exact-product-identity-host",
+      "applicationTokenClientAuthentication": "decoded-client-secret-basic-with-product-client-namespace-on-exact-application-realm-token-route-only",
+      "applicationIssuerOrigin": "https-default-port-exact-product-identity-host",
       "clientSecretPostAllowed": false,
       "browserBearerForwarding": false
     },

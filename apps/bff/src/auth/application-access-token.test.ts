@@ -227,6 +227,8 @@ describe("Application access-token verification", () => {
     `${APPLICATION_ISSUER}-extra`,
     `${APPLICATION_ISSUER}?realm=other`,
     `${APPLICATION_ISSUER}#fragment`,
+    "http://keycloak.example.test/realms/llm-machines-applications",
+    "https://keycloak.example.test:8443/realms/llm-machines-applications",
     "https://user:password@keycloak.example.test/realms/llm-machines-applications",
     "ftp://keycloak.example.test/realms/llm-machines-applications",
   ])(
