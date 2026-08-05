@@ -8,6 +8,17 @@ function fail(message) {
   throw new Error(message)
 }
 
+function exactKeys(value, expected, field) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    fail(`${field} must be an object`)
+  }
+  const actual = Object.keys(value).sort()
+  const wanted = [...expected].sort()
+  if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
+    fail(`${field} keys must be exactly ${wanted.join(", ")}`)
+  }
+}
+
 function releaseIdentity(release, manifestSha256, corePackage) {
   return {
     version: release.version,
@@ -46,6 +57,74 @@ export function generateRollbackDescriptor({ currentBundle, previousBundle }) {
       contractActivation: "INACTIVE",
     },
   }
+}
+
+export function generateInitialInstallDescriptor() {
+  return {
+    schema: "llm-machines.initial-install-descriptor.v1",
+    status: "PACKAGED_UNQUALIFIED",
+    mode: "INITIAL_INSTALL_NO_PREDECESSOR",
+    predecessor: null,
+    action: "NO_RELEASE_ROLLBACK",
+    runtimeQualified: false,
+    contractActivation: "INACTIVE",
+    q0: "NOT_STARTED",
+    recoveryRequirement: "Q0_PREINSTALL_BACKUP_AND_CLEAN_RESTORE",
+  }
+}
+
+export function verifyInitialInstallDescriptor(descriptor, installationState) {
+  exactKeys(
+    descriptor,
+    [
+      "schema",
+      "status",
+      "mode",
+      "predecessor",
+      "action",
+      "runtimeQualified",
+      "contractActivation",
+      "q0",
+      "recoveryRequirement",
+    ],
+    "initial-install descriptor",
+  )
+  exactKeys(
+    installationState,
+    [
+      "schema",
+      "status",
+      "containsCredentials",
+      "priorProductReleaseExists",
+      "evidenceId",
+    ],
+    "Product installation-state evidence",
+  )
+  if (
+    descriptor.schema !== "llm-machines.initial-install-descriptor.v1" ||
+    descriptor.status !== "PACKAGED_UNQUALIFIED" ||
+    descriptor.mode !== "INITIAL_INSTALL_NO_PREDECESSOR" ||
+    descriptor.predecessor !== null ||
+    descriptor.action !== "NO_RELEASE_ROLLBACK" ||
+    descriptor.runtimeQualified !== false ||
+    descriptor.contractActivation !== "INACTIVE" ||
+    descriptor.q0 !== "NOT_STARTED" ||
+    descriptor.recoveryRequirement !== "Q0_PREINSTALL_BACKUP_AND_CLEAN_RESTORE"
+  ) {
+    fail("initial-install descriptor overstates rollback or qualification")
+  }
+  if (
+    installationState.schema !== "llm-machines.product-installation-state.v1" ||
+    installationState.status !== "COMMISSIONING_VERIFIED" ||
+    installationState.containsCredentials !== false ||
+    installationState.priorProductReleaseExists !== false ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(
+      installationState.evidenceId ?? "",
+    )
+  ) {
+    fail("initial-install mode requires verified empty Product state")
+  }
+  return true
 }
 
 export function verifyRollbackDescriptor(
@@ -93,7 +172,23 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     fail("expected --input PATH --output PATH")
   }
   const input = JSON.parse(readFileSync(resolve(arguments_[1]), "utf8"))
-  const descriptor = generateRollbackDescriptor(input)
+  let descriptor
+  if (input.mode === "INITIAL_INSTALL_NO_PREDECESSOR") {
+    exactKeys(input, ["mode"], "initial-install input")
+    descriptor = generateInitialInstallDescriptor()
+  } else if (input.mode === "SIGNED_PREDECESSOR") {
+    exactKeys(
+      input,
+      ["mode", "currentBundle", "previousBundle"],
+      "rollback input",
+    )
+    descriptor = generateRollbackDescriptor({
+      currentBundle: input.currentBundle,
+      previousBundle: input.previousBundle,
+    })
+  } else {
+    fail("input mode must select initial install or a signed predecessor")
+  }
   writeFileSync(resolve(arguments_[3]), canonicalJson(descriptor), {
     flag: "wx",
   })

@@ -20,7 +20,9 @@ import {
 } from "./deterministic-archive.mjs"
 import { canonicalJson } from "./generate-release-manifest.mjs"
 import {
+  generateInitialInstallDescriptor,
   generateRollbackDescriptor,
+  verifyInitialInstallDescriptor,
   verifyRollbackDescriptor,
 } from "./generate-rollback-descriptor.mjs"
 import { createDeploymentPlacement } from "./validate-deployment-placement.mjs"
@@ -775,6 +777,74 @@ test("rollback metadata binds two verified releases and never activates either",
   )
   rmSync(previous.directory, { recursive: true, force: true })
   rmSync(current.directory, { recursive: true, force: true })
+})
+
+test("first release explicitly has no predecessor and cannot claim rollback", () => {
+  const descriptor = generateInitialInstallDescriptor()
+  assert.equal(descriptor.mode, "INITIAL_INSTALL_NO_PREDECESSOR")
+  assert.equal(descriptor.action, "NO_RELEASE_ROLLBACK")
+  assert.equal(descriptor.predecessor, null)
+  assert.equal(descriptor.runtimeQualified, false)
+  assert.equal(descriptor.contractActivation, "INACTIVE")
+  assert.equal(
+    descriptor.recoveryRequirement,
+    "Q0_PREINSTALL_BACKUP_AND_CLEAN_RESTORE",
+  )
+  const installationState = {
+    schema: "llm-machines.product-installation-state.v1",
+    status: "COMMISSIONING_VERIFIED",
+    containsCredentials: false,
+    priorProductReleaseExists: false,
+    evidenceId: "commissioning.product-state.empty.0001",
+  }
+  assert.equal(
+    verifyInitialInstallDescriptor(descriptor, installationState),
+    true,
+  )
+  for (const mutate of [
+    (value) => {
+      value.action = "PREPARE_ONLY"
+    },
+    (value) => {
+      value.runtimeQualified = true
+    },
+    (value) => {
+      value.contractActivation = "ACTIVE"
+    },
+    (value) => {
+      value.predecessor = { version: "fabricated" }
+    },
+  ]) {
+    const changed = structuredClone(descriptor)
+    mutate(changed)
+    assert.throws(() =>
+      verifyInitialInstallDescriptor(changed, installationState),
+    )
+  }
+  const existingRelease = {
+    ...installationState,
+    priorProductReleaseExists: true,
+  }
+  assert.throws(
+    () => verifyInitialInstallDescriptor(descriptor, existingRelease),
+    /requires verified empty Product state/,
+  )
+  assert.doesNotThrow(() =>
+    JSON.parse(
+      readFileSync(
+        new URL("./initial-install-descriptor.schema.json", import.meta.url),
+        "utf8",
+      ),
+    ),
+  )
+  assert.doesNotThrow(() =>
+    JSON.parse(
+      readFileSync(
+        new URL("./product-installation-state.schema.json", import.meta.url),
+        "utf8",
+      ),
+    ),
+  )
 })
 
 test("verification rejects trust substitution and a trust document outside the manifest", () => {
