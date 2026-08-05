@@ -945,6 +945,25 @@ async function verifyApplicationFirecrawlVerticalSlice(runtime) {
     401,
     "inference credential before enablement",
   )
+  await requireFirecrawlEnableDenied(
+    runtime,
+    primary.app.id,
+    {},
+    "missing disclaimer acceptance",
+  )
+  await requireFirecrawlEnableDenied(
+    runtime,
+    primary.app.id,
+    { disclaimerAccepted: false },
+    "false disclaimer acceptance",
+  )
+  const stillDefaultOff = await applicationDetail(runtime, primary.app.id)
+  if (
+    stillDefaultOff.app.firecrawl.status !== "disabled" ||
+    stillDefaultOff.app.firecrawl.credentials.length !== 0
+  ) {
+    throw new Error("F0-W1 invalid disclaimer input changed Firecrawl state.")
+  }
 
   const primaryEnabled = await enableFixtureFirecrawl(
     runtime,
@@ -1062,6 +1081,22 @@ async function verifyApplicationFirecrawlVerticalSlice(runtime) {
     throw new Error("F0-W1 Firecrawl credential rotation failed.")
   }
   const rotatedFirecrawlKey = requiredFirecrawlApiKey(rotated.body)
+  const retiringMetadata = rotated.body.app.firecrawl.credentials.find(
+    (credential) => credential.id === primaryEnabled.credential.credentialId,
+  )
+  if (
+    retiringMetadata?.status !== "retiring" ||
+    !retiringMetadata.overlapExpiresAt ||
+    !retiringMetadata.rotatedAt ||
+    Date.parse(retiringMetadata.overlapExpiresAt) -
+      Date.parse(retiringMetadata.rotatedAt) !==
+      86_400_000
+  ) {
+    throw new Error("F0-W1 rotation did not create a bounded overlap.")
+  }
+  await runtime.fixtureClock.set(
+    Date.parse(retiringMetadata.overlapExpiresAt) - 1,
+  )
   await requireFirecrawlAccepted(
     runtime,
     primaryFirecrawlKey,
@@ -1071,6 +1106,20 @@ async function verifyApplicationFirecrawlVerticalSlice(runtime) {
     runtime,
     rotatedFirecrawlKey,
     "rotated credential",
+  )
+  await runtime.fixtureClock.set(Date.parse(retiringMetadata.overlapExpiresAt))
+  await requireFirecrawlDenied(
+    runtime,
+    primaryFirecrawlKey,
+    "/v2/search",
+    { limit: 1, query: "expired retiring query" },
+    401,
+    "expired retiring credential",
+  )
+  await requireFirecrawlAccepted(
+    runtime,
+    rotatedFirecrawlKey,
+    "active credential after overlap expiry",
   )
 
   await revokeFixtureFirecrawlCredential(
@@ -1169,6 +1218,23 @@ async function enableFixtureFirecrawl(runtime, applicationId, idempotencyKey) {
   }
   requiredFirecrawlApiKey(result.body)
   return result.body
+}
+
+async function requireFirecrawlEnableDenied(
+  runtime,
+  applicationId,
+  body,
+  label,
+) {
+  const result = await adminJson(runtime, {
+    body,
+    idempotencyKey: `f0-w1-enable-denied-${label.replaceAll(" ", "-")}`,
+    method: "POST",
+    path: `/api/admin/applications/connected-apps/${applicationId}/firecrawl/enable`,
+  })
+  if (result.status !== 400) {
+    throw new Error(`F0-W1 ${label} returned ${result.status}, expected 400.`)
+  }
 }
 
 async function revokeFixtureFirecrawlCredential(
