@@ -119,11 +119,14 @@ export function validateRegistryAuthority(
 
 function placementContext({
   releaseBundle,
+  rollbackTargetBundle,
   importRoot,
   registryExportRoot,
   validationRoot,
 }) {
-  const verified = verifyReleaseBundle(releaseBundle)
+  const verified = verifyReleaseBundle(releaseBundle, {
+    ...(rollbackTargetBundle ? { rollbackTargetBundle } : {}),
+  })
   const lockArtifact = verified.manifest.artifacts.find(
     ({ evidenceId }) => evidenceId === "core-image-lock",
   )
@@ -327,6 +330,7 @@ function validatePlacementDocument(
 
 export function createDeploymentPlacement({
   releaseBundle,
+  rollbackTargetBundle,
   importRoot,
   registryExportRoot,
   validationRoot,
@@ -337,6 +341,7 @@ export function createDeploymentPlacement({
 }) {
   const context = placementContext({
     releaseBundle,
+    rollbackTargetBundle,
     importRoot,
     registryExportRoot,
     validationRoot,
@@ -402,6 +407,8 @@ function run() {
       trust: { type: "string" },
       "artifact-root": { type: "string" },
       "trusted-root-sha256": { type: "string" },
+      "rollback-target-input": { type: "string" },
+      "validation-root": { type: "string" },
       "import-root": { type: "string" },
       "registry-export-root": { type: "string" },
       "registry-authority": { type: "string" },
@@ -430,6 +437,9 @@ function run() {
   }
   if (existsSync(values.output))
     fail("deployment placement output already exists")
+  const rollbackTargetBundle = values["rollback-target-input"]
+    ? JSON.parse(readFileSync(resolve(values["rollback-target-input"]), "utf8"))
+    : undefined
   const placement = createDeploymentPlacement({
     releaseBundle: {
       manifestPath: values.manifest,
@@ -438,6 +448,8 @@ function run() {
       artifactRoot: values["artifact-root"],
       trustedRootSha256: values["trusted-root-sha256"],
     },
+    ...(rollbackTargetBundle ? { rollbackTargetBundle } : {}),
+    validationRoot: values["validation-root"],
     importRoot: values["import-root"],
     registryExportRoot: values["registry-export-root"],
     registryAuthority: values["registry-authority"],

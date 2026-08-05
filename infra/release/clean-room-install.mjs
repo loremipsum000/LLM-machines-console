@@ -3,6 +3,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   renameSync,
   rmSync,
   writeFileSync,
@@ -22,12 +23,18 @@ function fail(message) {
   throw new Error(message)
 }
 
-export function installCleanRoom({ targetRoot, ...bundle }) {
+export function installCleanRoom({
+  targetRoot,
+  rollbackTargetBundle,
+  ...bundle
+}) {
   const target = resolve(targetRoot)
   if (existsSync(target)) fail("clean-room target must not already exist")
   const parent = dirname(target)
   mkdirSync(parent, { recursive: true })
-  const verified = verifyReleaseBundle(bundle)
+  const verified = verifyReleaseBundle(bundle, {
+    ...(rollbackTargetBundle ? { rollbackTargetBundle } : {}),
+  })
   const corePackagePath = resolve(
     bundle.artifactRoot,
     verified.corePackage.path,
@@ -94,19 +101,24 @@ export function installCleanRoom({ targetRoot, ...bundle }) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const arguments_ = process.argv.slice(2)
+  const hasRollbackTarget = arguments_.length === 14
   if (
-    arguments_.length !== 12 ||
+    (arguments_.length !== 12 && !hasRollbackTarget) ||
     arguments_[0] !== "--manifest" ||
     arguments_[2] !== "--signature" ||
     arguments_[4] !== "--trust" ||
     arguments_[6] !== "--artifact-root" ||
     arguments_[8] !== "--trusted-root-sha256" ||
-    arguments_[10] !== "--target-root"
+    arguments_[10] !== "--target-root" ||
+    (hasRollbackTarget && arguments_[12] !== "--rollback-target-input")
   ) {
     fail(
-      "expected --manifest PATH --signature PATH --trust PATH --artifact-root PATH --trusted-root-sha256 SHA256 --target-root PATH",
+      "expected --manifest PATH --signature PATH --trust PATH --artifact-root PATH --trusted-root-sha256 SHA256 --target-root PATH [--rollback-target-input PATH]",
     )
   }
+  const rollbackTargetBundle = hasRollbackTarget
+    ? JSON.parse(readFileSync(resolve(arguments_[13]), "utf8"))
+    : undefined
   const result = installCleanRoom({
     manifestPath: arguments_[1],
     signaturePath: arguments_[3],
@@ -114,6 +126,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     artifactRoot: arguments_[7],
     trustedRootSha256: arguments_[9],
     targetRoot: arguments_[11],
+    ...(rollbackTargetBundle ? { rollbackTargetBundle } : {}),
   })
   process.stdout.write(canonicalJson(result))
 }

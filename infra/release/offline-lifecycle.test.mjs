@@ -886,6 +886,154 @@ test("rollback metadata binds two verified releases and never activates either",
     JSON.parse(verifiedCli.stdout).rollbackTargetManifestSha256,
     descriptor.target.manifestSha256,
   )
+  const missingTargetInstallRoot = join(
+    current.directory,
+    "later-install-missing-target",
+  )
+  assert.throws(
+    () =>
+      installCleanRoom({
+        ...current.bundle,
+        targetRoot: missingTargetInstallRoot,
+      }),
+    /requires its exact target bundle/,
+  )
+  assert.throws(
+    () =>
+      installCleanRoom({
+        ...current.bundle,
+        rollbackTargetBundle: unrelated.bundle,
+        targetRoot: join(current.directory, "later-install-mismatch"),
+      }),
+    /target release binding/,
+  )
+  const registryExportRoot = join(current.directory, "later-registry-export")
+  cpSync(
+    join(current.payloadRoot, "images"),
+    join(registryExportRoot, "images"),
+    { recursive: true },
+  )
+  const authority = "registry.customer.example:5443"
+  const placementInput = {
+    releaseBundle: current.bundle,
+    importRoot: current.payloadRoot,
+    registryExportRoot,
+    validationRoot: current.validationRoot,
+    registryAuthority: authority,
+    approvedRegistryAuthorities: [authority],
+    commissioningEvidenceId: "commissioning.image-placement.later.0001",
+    auditEvidenceId: "audit.image-placement.later.0001",
+  }
+  assert.throws(
+    () => createDeploymentPlacement(placementInput),
+    /requires its exact target bundle/,
+  )
+  assert.throws(
+    () =>
+      createDeploymentPlacement({
+        ...placementInput,
+        rollbackTargetBundle: unrelated.bundle,
+      }),
+    /target release binding/,
+  )
+  const restoredSignature = readFileSync(previous.bundle.signaturePath)
+  const downstreamUnsigned = JSON.parse(restoredSignature.toString("utf8"))
+  downstreamUnsigned.status = "UNSIGNED"
+  writeFileSync(
+    previous.bundle.signaturePath,
+    canonicalJson(downstreamUnsigned),
+  )
+  assert.throws(
+    () =>
+      installCleanRoom({
+        ...current.bundle,
+        rollbackTargetBundle: previous.bundle,
+        targetRoot: join(current.directory, "later-install-unsigned"),
+      }),
+    /release signature envelope is invalid/,
+  )
+  assert.throws(
+    () =>
+      createDeploymentPlacement({
+        ...placementInput,
+        rollbackTargetBundle: previous.bundle,
+      }),
+    /release signature envelope is invalid/,
+  )
+  writeFileSync(previous.bundle.signaturePath, restoredSignature)
+  const laterInstallRoot = join(current.directory, "later-install")
+  const laterInstallation = installCleanRoom({
+    ...current.bundle,
+    rollbackTargetBundle: previous.bundle,
+    targetRoot: laterInstallRoot,
+  })
+  assert.equal(laterInstallation.status, "INSTALLED_UNQUALIFIED")
+  const laterPlacement = createDeploymentPlacement({
+    ...placementInput,
+    rollbackTargetBundle: previous.bundle,
+  })
+  assert.equal(laterPlacement.runtimeQualified, false)
+  const installerCli = spawnSync(
+    process.execPath,
+    [
+      fileURLToPath(new URL("./clean-room-install.mjs", import.meta.url)),
+      "--manifest",
+      current.bundle.manifestPath,
+      "--signature",
+      current.bundle.signaturePath,
+      "--trust",
+      current.bundle.trustPath,
+      "--artifact-root",
+      current.bundle.artifactRoot,
+      "--trusted-root-sha256",
+      current.bundle.trustedRootSha256,
+      "--target-root",
+      join(current.directory, "later-install-cli"),
+      "--rollback-target-input",
+      targetInputPath,
+    ],
+    { encoding: "utf8" },
+  )
+  assert.equal(installerCli.status, 0, installerCli.stderr)
+  const placementCliOutput = join(current.directory, "later-placement-cli.json")
+  const placementCli = spawnSync(
+    process.execPath,
+    [
+      fileURLToPath(
+        new URL("./validate-deployment-placement.mjs", import.meta.url),
+      ),
+      "--manifest",
+      current.bundle.manifestPath,
+      "--signature",
+      current.bundle.signaturePath,
+      "--trust",
+      current.bundle.trustPath,
+      "--artifact-root",
+      current.bundle.artifactRoot,
+      "--trusted-root-sha256",
+      current.bundle.trustedRootSha256,
+      "--rollback-target-input",
+      targetInputPath,
+      "--validation-root",
+      current.validationRoot,
+      "--import-root",
+      current.payloadRoot,
+      "--registry-export-root",
+      registryExportRoot,
+      "--registry-authority",
+      authority,
+      "--approved-registry",
+      authority,
+      "--commissioning-evidence-id",
+      "commissioning.image-placement.later.cli.0001",
+      "--audit-evidence-id",
+      "audit.image-placement.later.cli.0001",
+      "--output",
+      placementCliOutput,
+    ],
+    { encoding: "utf8" },
+  )
+  assert.equal(placementCli.status, 0, placementCli.stderr)
   assert.equal(
     verifyRollbackDescriptor(
       descriptor,
