@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 1,
+  "id": "PR-12-SOURCE-CLOSURE-AMENDMENT-2",
+  "workPackage": "PR-12-D2A-CONSTRUCTION-BLOCKER-SUCCESSORS",
+  "sourceClosureStatus": "SOURCE_CLOSED",
+  "amendmentStatus": "SOURCE_CLOSURE_AMENDED",
+  "sourceClosureScope": "deterministic-release-packaging-source-only",
+  "accepted": false,
+  "releaseSourceBound": true,
+  "predecessor": {
+    "path": "docs/reduction/inference-core/pr-12-source-closure-amendment-1.json",
+    "sha256": "ac86ca43134a19517419acb7597e1a0c417c7493a04b6f8c962da757e91d9aab",
+    "releaseSource": {
+      "commit": "5d0ecf7d8a4935ebd70d6d861f919cdd551554b3",
+      "tree": "2f2191d3326bd8777fef1cc21f41ea3fe4e335aa"
+    },
+    "disposition": "PRESERVED_HISTORICAL_SOURCE_CLOSURE_AMENDMENT"
+  },
+  "reason": {
+    "registryNeutrality": "The universal signed Core lock embedded a concrete private-registry authority instead of registry-neutral mirror repository paths.",
+    "rollbackSemantics": "The first release lacked an explicit no-predecessor descriptor, while later rollback verification and release consumers did not yet require one exact independently verified predecessor.",
+    "effect": "Amendment 1 remains immutable evidence but is superseded as the permitted D2A-RC release-source input. The two successors change release packaging contracts only and do not change Product behavior."
+  },
+  "releaseSource": {
+    "commit": "4b2fc6a3278dfad2857b5caed4fb0d6cbdafee8f",
+    "tree": "1f9eea21ccf21d9b6fbc118f37a0d9fcb5c80d36"
+  },
+  "successors": [
+    {
+      "id": "PR-12-REGISTRY-NEUTRAL-CORE-LOCK-SUCCESSOR",
+      "pullRequest": 38,
+      "base": {
+        "commit": "5466da0a66ea6507d30625763dd23ad5bb91f2ba",
+        "tree": "e1db2852ab6475257eb21c0d7b3a5c1424caad4f"
+      },
+      "candidate": {
+        "commit": "85392bb79a37fd474da42def0bfbdd77d46ecaaf",
+        "tree": "403be5c5efe24fa942687fcf16670c3af5fe9514",
+        "independentReview": "PASS"
+      },
+      "protectedAdmission": {
+        "commit": "cd2060833e3c3b157c4a67515df64f0977b852ba",
+        "tree": "403be5c5efe24fa942687fcf16670c3af5fe9514",
+        "firstParent": "5466da0a66ea6507d30625763dd23ad5bb91f2ba",
+        "secondParent": "85392bb79a37fd474da42def0bfbdd77d46ecaaf",
+        "candidateTreeIdentical": true
+      },
+      "productBehaviorChanged": false,
+      "runtimeQualified": false
+    },
+    {
+      "id": "PR-12-FIRST-RELEASE-ROLLBACK-SEMANTICS-SUCCESSOR",
+      "pullRequest": 39,
+      "base": {
+        "commit": "cd2060833e3c3b157c4a67515df64f0977b852ba",
+        "tree": "403be5c5efe24fa942687fcf16670c3af5fe9514"
+      },
+      "reviewBlockedCandidates": [
+        {
+          "commit": "78340e2ef0ae91f60ef6642e2666227c3384b0dd",
+          "tree": "b192e96318abad7828b4ac92e27601f4c82e5bcb",
+          "disposition": "PRESERVED_REVIEW_BLOCKED_EVIDENCE"
+        },
+        {
+          "commit": "a68dd6a78be5f6e1c8156b650e7d114fdc08917f",
+          "tree": "a76d38296f40800b5734c578b0dc7969d1ecb67b",
+          "disposition": "PRESERVED_REVIEW_BLOCKED_EVIDENCE"
+        },
+        {
+          "commit": "08103edd3b9fbb8b2a52e11a55a9bebdbd594b4b",
+          "tree": "59b3ca9dd6a17a1712b6d00adb62256d6ac73436",
+          "disposition": "PRESERVED_REVIEW_BLOCKED_EVIDENCE"
+        }
+      ],
+      "candidate": {
+        "commit": "58c4d27ac3ae9ddf96ff6cb1de8f341b40241202",
+        "tree": "1f9eea21ccf21d9b6fbc118f37a0d9fcb5c80d36",
+        "independentReview": "PASS"
+      },
+      "protectedAdmission": {
+        "commit": "4b2fc6a3278dfad2857b5caed4fb0d6cbdafee8f",
+        "tree": "1f9eea21ccf21d9b6fbc118f37a0d9fcb5c80d36",
+        "firstParent": "cd2060833e3c3b157c4a67515df64f0977b852ba",
+        "secondParent": "58c4d27ac3ae9ddf96ff6cb1de8f341b40241202",
+        "candidateTreeIdentical": true
+      },
+      "productBehaviorChanged": false,
+      "runtimeQualified": false
+    }
+  ],
+  "evidenceBindings": [
+    {
+      "path": "infra/release/README.md",
+      "sha256": "9f99437c20d9dab77138743b68aaa6faf4cd7bab997088513be9a65daead313a"
+    },
+    {
+      "path": "infra/release/assemble-core-package.mjs",
+      "sha256": "9bfdd1be9ce4161bd6589fb8b8f1adb9d5b13ac654fc048238488c970c5098fd"
+    },
+    {
+      "path": "infra/release/clean-room-install.mjs",
+      "sha256": "e593ff38434f30b0994fcdce06ce89a6e41fc34a7ef8c5aaaf58f1f8fb4403a5"
+    },
+    {
+      "path": "infra/release/core-image-inventory.json",
+      "sha256": "82ebe2e3d380c5a2a026543e356073d15f11422b2ef5cfeb009db42976387089"
+    },
+    {
+      "path": "infra/release/core-image-lock.schema.json",
+      "sha256": "f5582177e06572ca004d5f7b3f3e94564b3220ad3945ada81342f44c74a3ef5f"
+    },
+    {
+      "path": "infra/release/deployment-placement.schema.json",
+      "sha256": "d6acb2273f2618d268b62b3d2456b787a5fe5c07e67548a4364de02e50021911"
+    },
+    {
+      "path": "infra/release/deterministic-archive.mjs",
+      "sha256": "5962152189cd10b68d394ef76987941d3ef0275d19b3241553267f9b91238cf0"
+    },
+    {
+      "path": "infra/release/generate-release-evidence.mjs",
+      "sha256": "b77a0d968a1390a39e0dfcc0c74e3ef6c009b3c58512075091554df21510185c"
+    },
+    {
+      "path": "infra/release/generate-release-evidence.test.mjs",
+      "sha256": "0f9297e27a3a8e6a9998dcc673b151d0d2749c6157ffc54aefd9931319b7623b"
+    },
+    {
+      "path": "infra/release/generate-release-manifest.mjs",
+      "sha256": "60a6a00089f5570137bf73231315bbf9bd15dbe0474ad3b33878fc2f19cde26f"
+    },
+    {
+      "path": "infra/release/generate-rollback-descriptor.mjs",
+      "sha256": "78ae9402ee21e493b59119a130e23cfb65a7e2e0deeb9a43c9829a0f273d2351"
+    },
+    {
+      "path": "infra/release/initial-install-descriptor.schema.json",
+      "sha256": "71c921c49a201ab9583ddb618054fcb4b74aecba8ff98044e47f7e03e2e9550e"
+    },
+    {
+      "path": "infra/release/inspect-oci-archive.mjs",
+      "sha256": "d716898c0a2781c7eafacd7dcba84545c6a9f5e6602afcb63168a4cf2abfc1d7"
+    },
+    {
+      "path": "infra/release/offline-lifecycle.test.mjs",
+      "sha256": "bff18afc27f358fbfea4867d193918f5457ec8e16eac7990bf2ba3234e0a92b6"
+    },
+    {
+      "path": "infra/release/product-installation-state.schema.json",
+      "sha256": "c00479aa7131cdcc252472d13afef7463921063db24e27c3e6a1e0cbd6f73dbe"
+    },
+    {
+      "path": "infra/release/release-manifest.schema.json",
+      "sha256": "f7b25c56ca3f390d937928bf74a5050ae6f8505f4666ea246ec6715840f7bb16"
+    },
+    {
+      "path": "infra/release/release-plan.json",
+      "sha256": "9d8cf1f0d44c8a434061ff718611b4f85197e89b49c0b6d0f7cc4259ca47c75f"
+    },
+    {
+      "path": "infra/release/rollback-descriptor.schema.json",
+      "sha256": "4ef6514116506952caac99ef95435e5c5db8ece245fc36866145972f47244ad7"
+    },
+    {
+      "path": "infra/release/validate-deployment-placement.mjs",
+      "sha256": "e838c543925cab1e670074c5e6617256af35dbb6915bb884419ccc69d18b1253"
+    },
+    {
+      "path": "infra/release/validate-deployment-placement.test.mjs",
+      "sha256": "b70a4436469fedbc7796df45bd2366b489f7a72439725614e665125c937e4904"
+    },
+    {
+      "path": "infra/release/validate-image-lock.mjs",
+      "sha256": "8af328764b74318e7c4f9d92c8a5cf257715573c3fa711842bc9992aa465a82e"
+    },
+    {
+      "path": "infra/release/validate-image-lock.test.mjs",
+      "sha256": "b194ab77ff69f2d19a704d10ec8b30247c2d9606c7d958cc63833500cecebb9e"
+    },
+    {
+      "path": "infra/release/validate-release-evidence-index.mjs",
+      "sha256": "ee420cad963f687a6fab7cb1113a7487eb9d0adcefedb8eb2291a8fce3027e42"
+    },
+    {
+      "path": "infra/release/validate-release-plan.mjs",
+      "sha256": "ccf48e8eb7898a2911027d994e92788e75e43683d0228b76f24fe2fd949d62e1"
+    },
+    {
+      "path": "infra/release/validate-release-plan.test.mjs",
+      "sha256": "d7bafdd48b17bc3ce6d3db7c9f37c21e420803be87b654b0877bd313ad7a64dd"
+    },
+    {
+      "path": "infra/release/validate-rollback-descriptor.mjs",
+      "sha256": "dc648bc7a0d417cba06fc44741a9483490f74c4dbfeb4e8f6c4092c3f0d01fc1"
+    },
+    {
+      "path": "infra/release/verify-release-bundle.mjs",
+      "sha256": "b4b8e24c2db01946efcb27b8661bc5acdcf8836eff0c0f9056351a5526fd00d8"
+    },
+    {
+      "path": "scripts/inference-core/pr12-offline-lifecycle.test.mjs",
+      "sha256": "73ba4e66707cd9f296dc4c4b90ad4e50139b7b00be87caeb7fcb55681905146f"
+    }
+  ],
+  "firstInstallCommissioningObservation": {
+    "phase": "Q0",
+    "status": "NOT_STARTED",
+    "requiredProof": [
+      "TRUSTED_OBSERVER",
+      "APPLIANCE_BINDING",
+      "SEPARATE_CUSTOMER_BACKUP_TARGET",
+      "CLEAN_RESTORE"
+    ],
+    "authority": "UNDECIDED_Q0_TRUST_INPUT",
+    "custody": "UNDECIDED_Q0_TRUST_INPUT",
+    "interpretation": "PR-12 defines no signing or custody authority for this observation. Q0 must establish and verify both."
+  },
+  "status": {
+    "runtimeQualified": false,
+    "contractActivation": "INACTIVE",
+    "d2aRc": "NOT_STARTED",
+    "q0": "NOT_STARTED",
+    "grafanaCustomerAccess": "DEFERRED_V1",
+    "deployment": "INACTIVE",
+    "productMain": "UNCHANGED"
+  },
+  "interpretation": {
+    "sourceClosure": "The registry-neutral Core lock, credential-free deployment placement, first-release no-predecessor descriptor, and strict later-release rollback proof are present at the exact protected release source.",
+    "accepted": "False means this amendment does not assert product acceptance, release admission, runtime qualification, contract activation, or deployment readiness.",
+    "releaseSourceBound": "D2A-RC may construct unsigned artifacts only from the amended release source commit and tree after this governance amendment is protected and merged.",
+    "runtimeBoundary": "Q0 remains a separate runtime qualification of the exact candidate, including the first-install commissioning trust input and one exact production-class inference delivery profile."
+  }
+}
