@@ -1,5 +1,5 @@
 import { type ChildProcessByStdio, spawn } from "node:child_process"
-import { access, mkdtemp, readdir, rm } from "node:fs/promises"
+import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import type { Readable } from "node:stream"
@@ -83,13 +83,15 @@ describe("F0-L1 disposable Application-to-inference lane", () => {
     )
     const completed = collectProcess(child, 45_000)
     try {
-      const stateRoot = await waitForStateRoot(temporaryParent)
+      const { processGroupIds, stateRoot } =
+        await waitForRuntime(temporaryParent)
       child.kill("SIGTERM")
       const result = await completed
 
       expect(result.code, result.stderr).toBe(130)
       expect(result.stdout).toBe("")
       await expect(access(stateRoot)).rejects.toMatchObject({ code: "ENOENT" })
+      await expectProcessGroupsStopped(processGroupIds)
     } finally {
       if (child.exitCode === null && child.signalCode === null) {
         child.kill("SIGTERM")
@@ -100,7 +102,10 @@ describe("F0-L1 disposable Application-to-inference lane", () => {
   }, 60_000)
 })
 
-async function waitForStateRoot(temporaryParent: string): Promise<string> {
+async function waitForRuntime(temporaryParent: string): Promise<{
+  processGroupIds: number[]
+  stateRoot: string
+}> {
   const deadline = Date.now() + 30_000
   while (Date.now() < deadline) {
     const entries = await readdir(temporaryParent, { withFileTypes: true })
@@ -109,11 +114,63 @@ async function waitForStateRoot(temporaryParent: string): Promise<string> {
         entry.isDirectory() && entry.name.startsWith("llmm-reduced-core-dev-"),
     )
     if (stateRoot) {
-      return join(temporaryParent, stateRoot.name)
+      const stateRootPath = join(temporaryParent, stateRoot.name)
+      try {
+        const runtime = JSON.parse(
+          await readFile(join(stateRootPath, "runtime.json"), "utf8"),
+        )
+        if (
+          Array.isArray(runtime.processGroupIds) &&
+          runtime.processGroupIds.length > 0 &&
+          runtime.processGroupIds.every(
+            (processGroupId: unknown) =>
+              Number.isSafeInteger(processGroupId) &&
+              Number(processGroupId) > 0,
+          )
+        ) {
+          return {
+            processGroupIds: runtime.processGroupIds,
+            stateRoot: stateRootPath,
+          }
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error
+        }
+      }
     }
     await new Promise((resolveWait) => setTimeout(resolveWait, 50))
   }
-  throw new Error("F0-L1 did not create its disposable state root.")
+  throw new Error("F0-L1 did not start its disposable child process groups.")
+}
+
+async function expectProcessGroupsStopped(
+  processGroupIds: number[],
+): Promise<void> {
+  const deadline = Date.now() + 10_000
+  while (Date.now() < deadline) {
+    if (
+      processGroupIds.every(
+        (processGroupId) => !processGroupExists(processGroupId),
+      )
+    ) {
+      return
+    }
+    await new Promise((resolveWait) => setTimeout(resolveWait, 50))
+  }
+  throw new Error("F0-L1 left a disposable child process group running.")
+}
+
+function processGroupExists(processGroupId: number): boolean {
+  try {
+    process.kill(-processGroupId, 0)
+    return true
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ESRCH") {
+      return false
+    }
+    throw error
+  }
 }
 
 function collectProcess(

@@ -633,6 +633,9 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     throw new Error("F0-L1 rotation did not create a bounded overlap.")
   }
 
+  await runtime.fixtureClock.set(
+    Date.parse(retiringMetadata.overlapExpiresAt) - 1,
+  )
   await requireSuccessfulCompletion(
     runtime.publicSummary.services.api,
     primaryKey,
@@ -651,9 +654,7 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
   if (!activeMetadata?.lastUsedAt || activeMetadata.status !== "active") {
     throw new Error("F0-L1 did not bind last use to the rotated credential.")
   }
-  await runtime.fixtureClock.set(
-    Date.parse(retiringMetadata.overlapExpiresAt) + 1,
-  )
+  await runtime.fixtureClock.set(Date.parse(retiringMetadata.overlapExpiresAt))
   await requireCredentialDenied(
     runtime.publicSummary.services.api,
     primaryKey,
@@ -839,10 +840,36 @@ async function adminJson(
     method,
   })
   const responseBody = await response.json()
-  if (!credentialReveal) {
-    runtime.nonRevealBodies.push(responseBody)
-  }
+  runtime.nonRevealBodies.push(
+    credentialReveal
+      ? responseWithoutExpectedCredentialReveal(responseBody)
+      : responseBody,
+  )
   return { body: responseBody, status: response.status }
+}
+
+function responseWithoutExpectedCredentialReveal(responseBody) {
+  const reviewedBody = structuredClone(responseBody)
+  if (
+    typeof reviewedBody !== "object" ||
+    reviewedBody === null ||
+    typeof reviewedBody.credential !== "object" ||
+    reviewedBody.credential === null ||
+    typeof reviewedBody.credential.apiKey !== "string" ||
+    typeof reviewedBody.credential.exampleCurl !== "string"
+  ) {
+    throw new Error("F0-L1 expected the static credential reveal fields.")
+  }
+  const revealedApiKey = reviewedBody.credential.apiKey
+  const curlParts = reviewedBody.credential.exampleCurl.split(revealedApiKey)
+  if (curlParts.length !== 2) {
+    throw new Error("F0-L1 expected one credential occurrence in exampleCurl.")
+  }
+  reviewedBody.credential.apiKey = "[expected-one-time-credential-reveal]"
+  reviewedBody.credential.exampleCurl = curlParts.join(
+    "[expected-one-time-credential-reveal]",
+  )
+  return reviewedBody
 }
 
 async function openAiChatCompletion(
@@ -958,25 +985,38 @@ async function assertVerticalSliceLeavesNoSensitiveOutput(
   applicationKeys,
 ) {
   const forbiddenValues = [
-    ...runtime.sensitiveRuntimeValues,
-    ...applicationKeys,
-    "parent-database-must-not-cross",
-    "parent-value-must-not-cross",
-    "disposable fixture input",
-    "fixture-response",
+    ...runtime.sensitiveRuntimeValues.map((value, index) => ({
+      label: `service-credential-${index}`,
+      value,
+    })),
+    ...applicationKeys.map((value, index) => ({
+      label: `application-credential-${index}`,
+      value,
+    })),
+    {
+      label: "parent-database-sentinel",
+      value: "parent-database-must-not-cross",
+    },
+    { label: "parent-secret-sentinel", value: "parent-value-must-not-cross" },
+    { label: "request-content", value: "disposable fixture input" },
+    { label: "response-content", value: "fixture-response" },
   ]
   const reviewedOutputs = [
-    ...runtime.nonRevealBodies.map((body) => JSON.stringify(body)),
+    ...runtime.nonRevealBodies.map((body, index) => ({
+      label: `response-${index}`,
+      value: JSON.stringify(body),
+    })),
     ...(await Promise.all(
-      runtime.logPaths.map((path) => readFile(path, "utf8")),
+      runtime.logPaths.map(async (path, index) => ({
+        label: `runtime-log-${index}`,
+        value: await readFile(path, "utf8"),
+      })),
     )),
   ]
   for (const output of reviewedOutputs) {
-    for (const value of forbiddenValues) {
-      if (output.includes(value)) {
-        throw new Error(
-          "F0-L1 found credential or workload content in a non-reveal response or runtime log.",
-        )
+    for (const forbidden of forbiddenValues) {
+      if (output.value.includes(forbidden.value)) {
+        throw new Error(`F0-L1 found ${forbidden.label} in ${output.label}.`)
       }
     }
   }
