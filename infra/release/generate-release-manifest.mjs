@@ -14,6 +14,7 @@ import {
   readCoreImageInventory,
   validateCoreImageLock,
 } from "./validate-image-lock.mjs"
+import { validatePackagedRollbackDescriptor } from "./validate-rollback-descriptor.mjs"
 
 const directory = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(directory, "../..")
@@ -120,6 +121,14 @@ function readJson(path, field) {
   } catch {
     fail(`${field} is not valid JSON`)
   }
+}
+
+function readCanonicalJson(path, field) {
+  const value = readJson(path, field)
+  if (readFileSync(path, "utf8") !== canonicalJson(value)) {
+    fail(`${field} is not canonical JSON`)
+  }
+  return value
 }
 
 function validateCoreLockStructure(lock) {
@@ -358,6 +367,31 @@ export function generateReleaseManifest(
     { root },
   )
 
+  const rollbackDeclaration = declarations.find(
+    ({ evidenceId }) => evidenceId === "rollback",
+  )
+  if (
+    rollbackDeclaration?.classification !== "rollback" ||
+    rollbackDeclaration?.mediaType !== "application/json"
+  ) {
+    fail("rollback evidence declaration is missing or invalid")
+  }
+  const rollbackDescriptor = readCanonicalJson(
+    resolve(artifactDirectory, rollbackDeclaration.path),
+    "rollback descriptor",
+  )
+  const normalizedCorePackage = normalizedArtifacts.find(
+    ({ id }) => id === "core-package",
+  )
+  validatePackagedRollbackDescriptor(rollbackDescriptor, {
+    release: {
+      version,
+      sourceCommit: gitIdentity.sourceCommit,
+      sourceTree: gitIdentity.sourceTree,
+    },
+    corePackage: normalizedCorePackage,
+  })
+
   const contracts = {
     releasePlanSha256: sha256File(planPath),
     releaseEvidencePolicySha256: sha256File(
@@ -378,6 +412,15 @@ export function generateReleaseManifest(
     ),
     firecrawlSourcePackageSha256: sha256File(
       resolve(root, "infra/firecrawl/release/source-package.json"),
+    ),
+    initialInstallDescriptorSchemaSha256: sha256File(
+      resolve(root, "infra/release/initial-install-descriptor.schema.json"),
+    ),
+    productInstallationStateSchemaSha256: sha256File(
+      resolve(root, "infra/release/product-installation-state.schema.json"),
+    ),
+    rollbackDescriptorSchemaSha256: sha256File(
+      resolve(root, "infra/release/rollback-descriptor.schema.json"),
     ),
   }
 

@@ -18,6 +18,9 @@ test("PR-12 offline lifecycle remains source-only and unqualified", () => {
   assert.equal(plan.qualification.nativeKeycloakAdminAccess, "ABSENT")
   assert.match(installer, /INSTALLED_UNQUALIFIED/)
   assert.match(rollback, /PREPARE_ONLY/)
+  assert.match(rollback, /INITIAL_INSTALL_NO_PREDECESSOR/)
+  assert.match(rollback, /NO_RELEASE_ROLLBACK/)
+  assert.match(rollback, /Q0_PREINSTALL_BACKUP_AND_CLEAN_RESTORE/)
   assert.match(verifier, /VERIFIED_PACKAGED_UNQUALIFIED/)
   assert.doesNotMatch(
     `${installer}\n${rollback}\n${verifier}`,

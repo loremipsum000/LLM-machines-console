@@ -8,6 +8,10 @@ import {
   minimumExceptionExpiryFromBundle,
   validateReleaseEvidenceIndex,
 } from "./validate-release-evidence-index.mjs"
+import {
+  validatePackagedRollbackDescriptor,
+  verifyRollbackDescriptor,
+} from "./validate-rollback-descriptor.mjs"
 
 const issuer = "urn:llm-machines:vendor"
 const sha256Pattern = /^sha256:[a-f0-9]{64}$/
@@ -373,6 +377,9 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
       "deliveryProfileSchemaSha256",
       "inferenceArtifactLockSchemaSha256",
       "firecrawlSourcePackageSha256",
+      "initialInstallDescriptorSchemaSha256",
+      "productInstallationStateSchemaSha256",
+      "rollbackDescriptorSchemaSha256",
     ],
     "release contracts",
   )
@@ -412,6 +419,7 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
   let vulnerabilityEvidence
   let corePackage
   let publicTrust
+  let rollback
   let previousPath = null
   for (const artifact of manifest.artifacts) {
     exactKeys(
@@ -490,6 +498,7 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
       vulnerabilityEvidence = artifact
     }
     if (artifact.evidenceId === "public-release-trust") publicTrust = artifact
+    if (artifact.evidenceId === "rollback") rollback = artifact
     if (artifact.id === "core-package") corePackage = artifact
   }
   for (const evidenceId of requiredEvidence) {
@@ -541,6 +550,13 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
   if (!vulnerabilityEvidence) {
     fail("signed manifest does not contain vulnerability evidence")
   }
+  if (
+    !rollback ||
+    rollback.classification !== "rollback" ||
+    rollback.mediaType !== "application/json"
+  ) {
+    fail("signed manifest does not contain rollback evidence")
+  }
   const evidenceIndexValue = JSON.parse(
     readFileSync(resolve(artifactRoot, evidenceIndex.path), "utf8"),
   )
@@ -557,19 +573,44 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
     ),
     signatureTimestamp,
   })
+  const rollbackValue = parseCanonicalJson(
+    resolve(artifactRoot, rollback.path),
+    "rollback descriptor",
+  ).value
+  const rollbackMode = validatePackagedRollbackDescriptor(rollbackValue, {
+    release: manifest.release,
+    corePackage,
+  })
   if (!publicTrust || publicTrust.classification !== "public-trust") {
     fail("signed manifest does not contain its public release trust")
   }
-  return { corePackage, publicTrust }
+  return {
+    corePackage,
+    publicTrust,
+    rollbackDescriptor: rollbackValue,
+    rollbackMode,
+  }
 }
 
-export function verifyReleaseBundle({
-  manifestPath,
-  signaturePath,
-  trustPath,
-  artifactRoot,
-  trustedRootSha256,
-}) {
+function verifyBundleIntegrity(bundle) {
+  exactKeys(
+    bundle,
+    [
+      "manifestPath",
+      "signaturePath",
+      "trustPath",
+      "artifactRoot",
+      "trustedRootSha256",
+    ],
+    "release bundle input",
+  )
+  const {
+    manifestPath,
+    signaturePath,
+    trustPath,
+    artifactRoot,
+    trustedRootSha256,
+  } = bundle
   const manifestRecord = parseCanonicalJson(
     resolve(manifestPath),
     "release manifest",
@@ -636,35 +677,70 @@ export function verifyReleaseBundle({
     fail("used public release trust does not match the signed trust artifact")
   }
   return {
-    status: "VERIFIED_PACKAGED_UNQUALIFIED",
+    status: "VERIFIED_BUNDLE_INTEGRITY_ONLY",
     manifest: manifestRecord.value,
     manifestSha256,
     corePackage: validated.corePackage,
+    rollbackDescriptor: validated.rollbackDescriptor,
+    rollbackMode: validated.rollbackMode,
     signingKid: key.kid,
+  }
+}
+
+export function verifyReleaseBundle(bundle, options = {}) {
+  if (Object.keys(options).length > 0) {
+    exactKeys(options, ["rollbackTargetBundle"], "release verification options")
+  }
+  const current = verifyBundleIntegrity(bundle)
+  let rollbackTargetManifestSha256 = null
+  if (current.rollbackMode === "SIGNED_PREDECESSOR") {
+    if (!options.rollbackTargetBundle) {
+      fail("signed-predecessor verification requires its exact target bundle")
+    }
+    const target = verifyBundleIntegrity(options.rollbackTargetBundle)
+    verifyRollbackDescriptor(current.rollbackDescriptor, current, target)
+    rollbackTargetManifestSha256 = target.manifestSha256
+  } else if (options.rollbackTargetBundle) {
+    fail("initial-install verification cannot accept a rollback target bundle")
+  }
+  return {
+    ...current,
+    status: "VERIFIED_PACKAGED_UNQUALIFIED",
+    rollbackTargetManifestSha256,
   }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const arguments_ = process.argv.slice(2)
+  const hasRollbackTarget = arguments_.length === 12
   if (
-    arguments_.length !== 10 ||
+    (arguments_.length !== 10 && !hasRollbackTarget) ||
     arguments_[0] !== "--manifest" ||
     arguments_[2] !== "--signature" ||
     arguments_[4] !== "--trust" ||
     arguments_[6] !== "--artifact-root" ||
-    arguments_[8] !== "--trusted-root-sha256"
+    arguments_[8] !== "--trusted-root-sha256" ||
+    (hasRollbackTarget && arguments_[10] !== "--rollback-target-input")
   ) {
     fail(
-      "expected --manifest PATH --signature PATH --trust PATH --artifact-root PATH --trusted-root-sha256 SHA256",
+      "expected --manifest PATH --signature PATH --trust PATH --artifact-root PATH --trusted-root-sha256 SHA256 [--rollback-target-input PATH]",
     )
   }
-  const result = verifyReleaseBundle({
-    manifestPath: arguments_[1],
-    signaturePath: arguments_[3],
-    trustPath: arguments_[5],
-    artifactRoot: arguments_[7],
-    trustedRootSha256: arguments_[9],
-  })
+  const rollbackTargetBundle = hasRollbackTarget
+    ? JSON.parse(readFileSync(resolve(arguments_[11]), "utf8"))
+    : undefined
+  const result = verifyReleaseBundle(
+    {
+      manifestPath: arguments_[1],
+      signaturePath: arguments_[3],
+      trustPath: arguments_[5],
+      artifactRoot: arguments_[7],
+      trustedRootSha256: arguments_[9],
+    },
+    {
+      ...(rollbackTargetBundle ? { rollbackTargetBundle } : {}),
+    },
+  )
   process.stdout.write(
     `${JSON.stringify(
       {
@@ -672,6 +748,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         manifestSha256: result.manifestSha256,
         release: result.manifest.release,
         corePackage: result.corePackage,
+        rollbackMode: result.rollbackMode,
+        rollbackTargetManifestSha256: result.rollbackTargetManifestSha256,
         signingKid: result.signingKid,
       },
       null,

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
 import { createHash, generateKeyPairSync, sign } from "node:crypto"
 import {
   copyFileSync,
@@ -12,6 +13,7 @@ import {
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
+import { fileURLToPath } from "node:url"
 import { assembleCorePackage } from "./assemble-core-package.mjs"
 import { installCleanRoom } from "./clean-room-install.mjs"
 import {
@@ -20,7 +22,10 @@ import {
 } from "./deterministic-archive.mjs"
 import { canonicalJson } from "./generate-release-manifest.mjs"
 import {
+  commissioningEvidenceSha256,
+  generateInitialInstallDescriptor,
   generateRollbackDescriptor,
+  verifyInitialInstallDescriptor,
   verifyRollbackDescriptor,
 } from "./generate-rollback-descriptor.mjs"
 import { createDeploymentPlacement } from "./validate-deployment-placement.mjs"
@@ -370,7 +375,9 @@ function bundleFixture(version = "1.0.0", label = version) {
                     disposition: { exceptions: [] },
                   })),
                 })
-              : canonicalJson({ evidenceId, label })
+              : evidenceId === "rollback"
+                ? canonicalJson(generateInitialInstallDescriptor())
+                : canonicalJson({ evidenceId, label })
     write(join(artifactRoot, path), contents)
     artifacts.push({
       id: `evidence-${evidenceId}`,
@@ -440,6 +447,9 @@ function bundleFixture(version = "1.0.0", label = version) {
       deliveryProfileSchemaSha256: digest("3"),
       inferenceArtifactLockSchemaSha256: digest("4"),
       firecrawlSourcePackageSha256: digest("5"),
+      initialInstallDescriptorSchemaSha256: digest("a"),
+      productInstallationStateSchemaSha256: digest("b"),
+      rollbackDescriptorSchemaSha256: digest("c"),
     },
     artifacts,
     qualification: {
@@ -564,6 +574,7 @@ test("public verifier and clean-room installer preserve the unqualified boundary
   const fixture = bundleFixture()
   const verified = verifyReleaseBundle(fixture.bundle)
   assert.equal(verified.status, "VERIFIED_PACKAGED_UNQUALIFIED")
+  assert.equal(verified.rollbackMode, "INITIAL_INSTALL_NO_PREDECESSOR")
   const targetRoot = join(fixture.directory, "installed")
   const installed = installCleanRoom({ ...fixture.bundle, targetRoot })
   assert.equal(installed.status, "INSTALLED_UNQUALIFIED")
@@ -747,13 +758,282 @@ test("public verification rejects wrong purpose, revoked keys, and invalid signa
 test("rollback metadata binds two verified releases and never activates either", () => {
   const previous = bundleFixture("1.9.0", "previous")
   const current = bundleFixture("2.0.0", "current")
+  const initialCurrentVerified = verifyReleaseBundle(current.bundle)
   const descriptor = generateRollbackDescriptor({
-    currentBundle: current.bundle,
+    currentRelease: {
+      version: initialCurrentVerified.manifest.release.version,
+      sourceCommit: initialCurrentVerified.manifest.release.sourceCommit,
+      sourceTree: initialCurrentVerified.manifest.release.sourceTree,
+      corePackagePath: initialCurrentVerified.corePackage.path,
+      corePackageSize: initialCurrentVerified.corePackage.size,
+      corePackageSha256: initialCurrentVerified.corePackage.sha256,
+    },
     previousBundle: previous.bundle,
   })
   assert.equal(descriptor.action, "PREPARE_ONLY")
-  assert.match(descriptor.current.manifestSha256, /^sha256:[a-f0-9]{64}$/)
-  const currentVerified = verifyReleaseBundle(current.bundle)
+  assert.equal(descriptor.mode, "SIGNED_PREDECESSOR")
+  assert.equal(descriptor.current.manifestSha256, undefined)
+  assert.match(descriptor.target.manifestSha256, /^sha256:[a-f0-9]{64}$/)
+  const rollbackArtifact = current.manifest.artifacts.find(
+    ({ evidenceId }) => evidenceId === "rollback",
+  )
+  const rollbackPath = join(current.bundle.artifactRoot, rollbackArtifact.path)
+  writeFileSync(rollbackPath, canonicalJson(descriptor))
+  rollbackArtifact.size = readFileSync(rollbackPath).length
+  rollbackArtifact.sha256 = sha256File(rollbackPath)
+  resignManifest(current, current.manifest)
+  assert.throws(
+    () => verifyReleaseBundle(current.bundle),
+    /requires its exact target bundle/,
+  )
+  assert.throws(() =>
+    verifyReleaseBundle(current.bundle, {
+      rollbackTargetBundle: {
+        ...previous.bundle,
+        manifestPath: join(previous.directory, "missing-manifest.json"),
+      },
+    }),
+  )
+  assert.throws(
+    () =>
+      verifyReleaseBundle(current.bundle, {
+        rollbackTargetBundle: {
+          ...previous.bundle,
+          trustedRootSha256: digest("f"),
+        },
+      }),
+    /release root does not match the independently trusted fingerprint/,
+  )
+  const unrelated = bundleFixture("1.8.0", "unrelated")
+  assert.throws(
+    () =>
+      verifyReleaseBundle(current.bundle, {
+        rollbackTargetBundle: unrelated.bundle,
+      }),
+    /target release binding/,
+  )
+  const originalSignature = readFileSync(previous.bundle.signaturePath)
+  const unsignedEnvelope = JSON.parse(originalSignature.toString("utf8"))
+  unsignedEnvelope.status = "UNSIGNED"
+  writeFileSync(previous.bundle.signaturePath, canonicalJson(unsignedEnvelope))
+  assert.throws(
+    () =>
+      verifyReleaseBundle(current.bundle, {
+        rollbackTargetBundle: previous.bundle,
+      }),
+    /release signature envelope is invalid/,
+  )
+  writeFileSync(previous.bundle.signaturePath, originalSignature)
+  const originalTrust = readFileSync(previous.bundle.trustPath)
+  const revokedTrust = JSON.parse(originalTrust.toString("utf8"))
+  revokedTrust.keys[0].state = "revoked"
+  revokedTrust.keys[0].revokedAt = "2026-08-03T00:00:00.000Z"
+  revokedTrust.keys[0].revocationReason = "test revocation"
+  const { certificationSignature: _oldSignature, ...revokedPayload } =
+    revokedTrust.keys[0]
+  revokedTrust.keys[0].certificationSignature = sign(
+    null,
+    Buffer.from(canonicalJson(revokedPayload)),
+    previous.rootSigningPrivateKey,
+  ).toString("base64url")
+  writeFileSync(previous.bundle.trustPath, canonicalJson(revokedTrust))
+  assert.throws(
+    () =>
+      verifyReleaseBundle(current.bundle, {
+        rollbackTargetBundle: previous.bundle,
+      }),
+    /release signing key is revoked/,
+  )
+  writeFileSync(previous.bundle.trustPath, originalTrust)
+  const currentVerified = verifyReleaseBundle(current.bundle, {
+    rollbackTargetBundle: previous.bundle,
+  })
+  assert.equal(currentVerified.rollbackMode, "SIGNED_PREDECESSOR")
+  assert.equal(
+    currentVerified.rollbackTargetManifestSha256,
+    descriptor.target.manifestSha256,
+  )
+  const verifierPath = fileURLToPath(
+    new URL("./verify-release-bundle.mjs", import.meta.url),
+  )
+  const verifierArguments = [
+    verifierPath,
+    "--manifest",
+    current.bundle.manifestPath,
+    "--signature",
+    current.bundle.signaturePath,
+    "--trust",
+    current.bundle.trustPath,
+    "--artifact-root",
+    current.bundle.artifactRoot,
+    "--trusted-root-sha256",
+    current.bundle.trustedRootSha256,
+  ]
+  const missingTarget = spawnSync(process.execPath, verifierArguments, {
+    encoding: "utf8",
+  })
+  assert.notEqual(missingTarget.status, 0)
+  assert.match(missingTarget.stderr, /requires its exact target bundle/)
+  const targetInputPath = join(current.directory, "rollback-target-input.json")
+  writeFileSync(targetInputPath, canonicalJson(previous.bundle))
+  const verifiedCli = spawnSync(
+    process.execPath,
+    [...verifierArguments, "--rollback-target-input", targetInputPath],
+    { encoding: "utf8" },
+  )
+  assert.equal(verifiedCli.status, 0, verifiedCli.stderr)
+  assert.equal(
+    JSON.parse(verifiedCli.stdout).rollbackTargetManifestSha256,
+    descriptor.target.manifestSha256,
+  )
+  const missingTargetInstallRoot = join(
+    current.directory,
+    "later-install-missing-target",
+  )
+  assert.throws(
+    () =>
+      installCleanRoom({
+        ...current.bundle,
+        targetRoot: missingTargetInstallRoot,
+      }),
+    /requires its exact target bundle/,
+  )
+  assert.throws(
+    () =>
+      installCleanRoom({
+        ...current.bundle,
+        rollbackTargetBundle: unrelated.bundle,
+        targetRoot: join(current.directory, "later-install-mismatch"),
+      }),
+    /target release binding/,
+  )
+  const registryExportRoot = join(current.directory, "later-registry-export")
+  cpSync(
+    join(current.payloadRoot, "images"),
+    join(registryExportRoot, "images"),
+    { recursive: true },
+  )
+  const authority = "registry.customer.example:5443"
+  const placementInput = {
+    releaseBundle: current.bundle,
+    importRoot: current.payloadRoot,
+    registryExportRoot,
+    validationRoot: current.validationRoot,
+    registryAuthority: authority,
+    approvedRegistryAuthorities: [authority],
+    commissioningEvidenceId: "commissioning.image-placement.later.0001",
+    auditEvidenceId: "audit.image-placement.later.0001",
+  }
+  assert.throws(
+    () => createDeploymentPlacement(placementInput),
+    /requires its exact target bundle/,
+  )
+  assert.throws(
+    () =>
+      createDeploymentPlacement({
+        ...placementInput,
+        rollbackTargetBundle: unrelated.bundle,
+      }),
+    /target release binding/,
+  )
+  const restoredSignature = readFileSync(previous.bundle.signaturePath)
+  const downstreamUnsigned = JSON.parse(restoredSignature.toString("utf8"))
+  downstreamUnsigned.status = "UNSIGNED"
+  writeFileSync(
+    previous.bundle.signaturePath,
+    canonicalJson(downstreamUnsigned),
+  )
+  assert.throws(
+    () =>
+      installCleanRoom({
+        ...current.bundle,
+        rollbackTargetBundle: previous.bundle,
+        targetRoot: join(current.directory, "later-install-unsigned"),
+      }),
+    /release signature envelope is invalid/,
+  )
+  assert.throws(
+    () =>
+      createDeploymentPlacement({
+        ...placementInput,
+        rollbackTargetBundle: previous.bundle,
+      }),
+    /release signature envelope is invalid/,
+  )
+  writeFileSync(previous.bundle.signaturePath, restoredSignature)
+  const laterInstallRoot = join(current.directory, "later-install")
+  const laterInstallation = installCleanRoom({
+    ...current.bundle,
+    rollbackTargetBundle: previous.bundle,
+    targetRoot: laterInstallRoot,
+  })
+  assert.equal(laterInstallation.status, "INSTALLED_UNQUALIFIED")
+  const laterPlacement = createDeploymentPlacement({
+    ...placementInput,
+    rollbackTargetBundle: previous.bundle,
+  })
+  assert.equal(laterPlacement.runtimeQualified, false)
+  const installerCli = spawnSync(
+    process.execPath,
+    [
+      fileURLToPath(new URL("./clean-room-install.mjs", import.meta.url)),
+      "--manifest",
+      current.bundle.manifestPath,
+      "--signature",
+      current.bundle.signaturePath,
+      "--trust",
+      current.bundle.trustPath,
+      "--artifact-root",
+      current.bundle.artifactRoot,
+      "--trusted-root-sha256",
+      current.bundle.trustedRootSha256,
+      "--target-root",
+      join(current.directory, "later-install-cli"),
+      "--rollback-target-input",
+      targetInputPath,
+    ],
+    { encoding: "utf8" },
+  )
+  assert.equal(installerCli.status, 0, installerCli.stderr)
+  const placementCliOutput = join(current.directory, "later-placement-cli.json")
+  const placementCli = spawnSync(
+    process.execPath,
+    [
+      fileURLToPath(
+        new URL("./validate-deployment-placement.mjs", import.meta.url),
+      ),
+      "--manifest",
+      current.bundle.manifestPath,
+      "--signature",
+      current.bundle.signaturePath,
+      "--trust",
+      current.bundle.trustPath,
+      "--artifact-root",
+      current.bundle.artifactRoot,
+      "--trusted-root-sha256",
+      current.bundle.trustedRootSha256,
+      "--rollback-target-input",
+      targetInputPath,
+      "--validation-root",
+      current.validationRoot,
+      "--import-root",
+      current.payloadRoot,
+      "--registry-export-root",
+      registryExportRoot,
+      "--registry-authority",
+      authority,
+      "--approved-registry",
+      authority,
+      "--commissioning-evidence-id",
+      "commissioning.image-placement.later.cli.0001",
+      "--audit-evidence-id",
+      "audit.image-placement.later.cli.0001",
+      "--output",
+      placementCliOutput,
+    ],
+    { encoding: "utf8" },
+  )
+  assert.equal(placementCli.status, 0, placementCli.stderr)
   assert.equal(
     verifyRollbackDescriptor(
       descriptor,
@@ -773,8 +1053,142 @@ test("rollback metadata binds two verified releases and never activates either",
       ),
     /target release binding/,
   )
+  rmSync(unrelated.directory, { recursive: true, force: true })
   rmSync(previous.directory, { recursive: true, force: true })
   rmSync(current.directory, { recursive: true, force: true })
+})
+
+test("first release explicitly has no predecessor and cannot claim rollback", () => {
+  const descriptor = generateInitialInstallDescriptor()
+  assert.equal(descriptor.mode, "INITIAL_INSTALL_NO_PREDECESSOR")
+  assert.equal(descriptor.action, "NO_RELEASE_ROLLBACK")
+  assert.equal(descriptor.predecessor, null)
+  assert.equal(descriptor.runtimeQualified, false)
+  assert.equal(descriptor.contractActivation, "INACTIVE")
+  assert.equal(
+    descriptor.recoveryRequirement,
+    "Q0_PREINSTALL_BACKUP_AND_CLEAN_RESTORE",
+  )
+  const installationState = {
+    schema: "llm-machines.product-installation-state.v1",
+    status: "OBSERVED_EMPTY",
+    applianceId: "llmm-customer-site-1",
+    observedAt: "2026-08-05T09:00:00.000Z",
+    observer: {
+      type: "q0-trusted-observer",
+      id: "q0.commissioning.observer.1",
+    },
+    containsCredentials: false,
+    observation: {
+      priorProductReleaseExists: false,
+      productStateDatasetState: "EMPTY",
+      releaseHistoryState: "ABSENT",
+    },
+    evidenceId: "commissioning.product-state.empty.0001",
+  }
+  const trust = {
+    expectedApplianceId: installationState.applianceId,
+    trustedEvidenceSha256: commissioningEvidenceSha256(installationState),
+  }
+  assert.equal(
+    verifyInitialInstallDescriptor(descriptor, installationState, trust),
+    true,
+  )
+  for (const mutate of [
+    (value) => {
+      value.action = "PREPARE_ONLY"
+    },
+    (value) => {
+      value.runtimeQualified = true
+    },
+    (value) => {
+      value.contractActivation = "ACTIVE"
+    },
+    (value) => {
+      value.predecessor = { version: "fabricated" }
+    },
+  ]) {
+    const changed = structuredClone(descriptor)
+    mutate(changed)
+    assert.throws(() =>
+      verifyInitialInstallDescriptor(changed, installationState, trust),
+    )
+  }
+  const existingRelease = {
+    ...installationState,
+    observation: {
+      ...installationState.observation,
+      priorProductReleaseExists: true,
+    },
+  }
+  assert.throws(
+    () =>
+      verifyInitialInstallDescriptor(descriptor, existingRelease, {
+        ...trust,
+        trustedEvidenceSha256: commissioningEvidenceSha256(existingRelease),
+      }),
+    /requires trusted appliance-bound empty Product state/,
+  )
+  assert.throws(
+    () => verifyInitialInstallDescriptor(descriptor, installationState),
+    /requires trusted appliance-bound empty Product state/,
+  )
+  assert.throws(
+    () =>
+      verifyInitialInstallDescriptor(descriptor, installationState, {
+        ...trust,
+        expectedApplianceId: "llmm-other-site-2",
+      }),
+    /requires trusted appliance-bound empty Product state/,
+  )
+  assert.doesNotThrow(() =>
+    JSON.parse(
+      readFileSync(
+        new URL("./initial-install-descriptor.schema.json", import.meta.url),
+        "utf8",
+      ),
+    ),
+  )
+  assert.doesNotThrow(() =>
+    JSON.parse(
+      readFileSync(
+        new URL("./product-installation-state.schema.json", import.meta.url),
+        "utf8",
+      ),
+    ),
+  )
+  assert.doesNotThrow(() =>
+    JSON.parse(
+      readFileSync(
+        new URL("./rollback-descriptor.schema.json", import.meta.url),
+        "utf8",
+      ),
+    ),
+  )
+})
+
+test("public verification rejects signed arbitrary rollback evidence", () => {
+  const fixture = bundleFixture("1.0.0-rc.1", "invalid-rollback")
+  const rollbackArtifact = fixture.manifest.artifacts.find(
+    ({ evidenceId }) => evidenceId === "rollback",
+  )
+  const rollbackPath = join(fixture.bundle.artifactRoot, rollbackArtifact.path)
+  writeFileSync(
+    rollbackPath,
+    canonicalJson({
+      schema: "unreviewed.rollback",
+      predecessor: { version: "fabricated" },
+      action: "ACTIVATE",
+    }),
+  )
+  rollbackArtifact.size = readFileSync(rollbackPath).length
+  rollbackArtifact.sha256 = sha256File(rollbackPath)
+  resignManifest(fixture, fixture.manifest)
+  assert.throws(
+    () => verifyReleaseBundle(fixture.bundle),
+    /rollback descriptor/,
+  )
+  rmSync(fixture.directory, { recursive: true, force: true })
 })
 
 test("verification rejects trust substitution and a trust document outside the manifest", () => {

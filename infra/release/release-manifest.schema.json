@@ -54,7 +54,10 @@
         "deploymentPlacementSchemaSha256",
         "deliveryProfileSchemaSha256",
         "inferenceArtifactLockSchemaSha256",
-        "firecrawlSourcePackageSha256"
+        "firecrawlSourcePackageSha256",
+        "initialInstallDescriptorSchemaSha256",
+        "productInstallationStateSchemaSha256",
+        "rollbackDescriptorSchemaSha256"
       ],
       "properties": {
         "releasePlanSha256": { "$ref": "#/$defs/sha256" },
@@ -64,7 +67,14 @@
         "deploymentPlacementSchemaSha256": { "$ref": "#/$defs/sha256" },
         "deliveryProfileSchemaSha256": { "$ref": "#/$defs/sha256" },
         "inferenceArtifactLockSchemaSha256": { "$ref": "#/$defs/sha256" },
-        "firecrawlSourcePackageSha256": { "$ref": "#/$defs/sha256" }
+        "firecrawlSourcePackageSha256": { "$ref": "#/$defs/sha256" },
+        "initialInstallDescriptorSchemaSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "productInstallationStateSchemaSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "rollbackDescriptorSchemaSha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "artifacts": {
