@@ -52,6 +52,14 @@ runtime logs contain no credentials or parent-process secret sentinels, and
 that control-plane responses and runtime logs contain no prompts or completion
 content.
 
+Run `node scripts/pre-genesis/reduced-core-dev.mjs --firecrawl-slice` for the
+bounded F0-W1 per-Application Firecrawl flow. It proves default-off state,
+explicit disclaimer-bound enablement, separate inference and Firecrawl
+credentials, governed search and static scrape, exact-host scrape allowlisting,
+unsupported-route denial, Application isolation, last-use metadata, rotation,
+revocation, zero-retention request flags, and cleanup. The local Firecrawl and
+DNS doubles do not contact the web and are not runtime qualification evidence.
+
 ## Security
 
 Internal deployment topology, operational runbooks, environment credentials,
