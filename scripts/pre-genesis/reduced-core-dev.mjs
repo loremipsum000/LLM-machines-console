@@ -21,9 +21,14 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const checkMode = process.argv.includes("--check")
 const verticalSliceMode = process.argv.includes("--vertical-slice")
+const firecrawlSliceMode = process.argv.includes("--firecrawl-slice")
 
-if (checkMode && verticalSliceMode) {
-  throw new Error("Choose either --check or --vertical-slice, not both.")
+if (
+  [checkMode, verticalSliceMode, firecrawlSliceMode].filter(Boolean).length > 1
+) {
+  throw new Error(
+    "Choose only one of --check, --vertical-slice, or --firecrawl-slice.",
+  )
 }
 
 class ShutdownRequestedError extends Error {}
@@ -100,6 +105,35 @@ if (!runtime) {
       })}\n`,
     )
   }
+} else if (firecrawlSliceMode) {
+  let result
+  try {
+    result = await Promise.race([
+      verifyApplicationFirecrawlVerticalSlice(runtime),
+      runtime.failureSignal,
+      shutdownFailure(),
+    ])
+  } catch (error) {
+    if (!(error instanceof ShutdownRequestedError)) {
+      throw error
+    }
+    process.exitCode = 130
+  } finally {
+    await runtime.close()
+  }
+  if (result) {
+    process.stdout.write(
+      `${JSON.stringify({
+        architecture: process.arch,
+        credentialMaterialPrinted: false,
+        evidenceClass: "LOCAL_DETERMINISTIC_FIRECRAWL_APPLICATION_FLOW_ONLY",
+        flow: result,
+        services: runtime.publicSummary.services,
+        status: "passed",
+        temporaryStateRemoved: true,
+      })}\n`,
+    )
+  }
 } else {
   process.stdout.write(`${JSON.stringify(runtime.publicSummary, null, 2)}\n`)
   process.stdout.write("Press Ctrl-C to stop and remove temporary state.\n")
@@ -138,9 +172,10 @@ async function startReducedCoreDevelopmentRuntime() {
       bffServiceApiKey: randomBytes(32).toString("base64url"),
       liteLlmApiKey: randomBytes(32).toString("base64url"),
     }
-    const fixtureClock = verticalSliceMode
-      ? await createFixtureClock(stateRoot)
-      : null
+    const fixtureClock =
+      verticalSliceMode || firecrawlSliceMode
+        ? await createFixtureClock(stateRoot)
+        : null
     await writeFile(
       join(stateRoot, "throwaway-credentials.json"),
       `${JSON.stringify(credentials)}\n`,
@@ -148,8 +183,8 @@ async function startReducedCoreDevelopmentRuntime() {
     )
     ensureStartupActive()
 
-    const ports = await reservePorts(4)
-    const [bffPort, webPort, edgePort, inferencePort] = ports
+    const ports = await reservePorts(firecrawlSliceMode ? 5 : 4)
+    const [bffPort, webPort, edgePort, inferencePort, firecrawlPort] = ports
     const webRoot = await prepareTemporaryWebProject(stateRoot)
     ensureStartupActive()
 
@@ -162,13 +197,25 @@ async function startReducedCoreDevelopmentRuntime() {
     await listen(inference, inferencePort)
     ensureStartupActive()
 
+    const firecrawlProbe = firecrawlSliceMode ? createFirecrawlDouble() : null
+    if (firecrawlProbe && firecrawlPort) {
+      servers.push(firecrawlProbe.server)
+      await listen(firecrawlProbe.server, firecrawlPort)
+      ensureStartupActive()
+    }
+
     children.push(
       startChild(
         "bff",
         [
           process.execPath,
           resolve(repositoryRoot, "apps/bff/node_modules/tsx/dist/cli.mjs"),
-          resolve(repositoryRoot, "apps/bff/src/index.ts"),
+          resolve(
+            repositoryRoot,
+            firecrawlSliceMode
+              ? "scripts/pre-genesis/reduced-core-bff-fixture.mts"
+              : "apps/bff/src/index.ts",
+          ),
         ],
         {
           BFF_FIXTURE_MODE: "true",
@@ -176,6 +223,19 @@ async function startReducedCoreDevelopmentRuntime() {
           BFF_SERVICE_API_KEY: credentials.bffServiceApiKey,
           CONNECTED_APPS_BFF_BASE_URL: `http://api.localhost:${edgePort}`,
           CONNECTED_APPS_KEYCLOAK_FIXTURE: "true",
+          ...(firecrawlSliceMode && firecrawlPort
+            ? {
+                FIRECRAWL_APPLIANCE_KILL_SWITCH: "false",
+                FIRECRAWL_EGRESS_ALLOWED_HOSTS: "allowed.example.test",
+                FIRECRAWL_EGRESS_ALLOWLIST_DIR:
+                  "/run/llm-machines/firecrawl/local-fixture",
+                FIRECRAWL_EGRESS_POLICY_READY: "true",
+                FIRECRAWL_INSTALLED: "true",
+                FIRECRAWL_RESOURCE_PROFILE_QUALIFIED: "true",
+                FIRECRAWL_UPSTREAM_BASE_URL: "http://firecrawl-api:3002",
+                PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL: `http://127.0.0.1:${firecrawlPort}`,
+              }
+            : {}),
           FIRECRAWL_PUBLIC_BASE_URL: `http://firecrawl.localhost:${edgePort}`,
           HOST: "127.0.0.1",
           LITELLM_KEY: credentials.liteLlmApiKey,
@@ -237,7 +297,13 @@ async function startReducedCoreDevelopmentRuntime() {
       join(stateRoot, "runtime.json"),
       `${JSON.stringify({
         evidenceClass: "LOCAL_DETERMINISTIC_CONTROL_PLANE_ONLY",
-        ports: { bffPort, edgePort, inferencePort, webPort },
+        ports: {
+          bffPort,
+          edgePort,
+          ...(firecrawlPort ? { firecrawlPort } : {}),
+          inferencePort,
+          webPort,
+        },
         processGroupIds,
         services,
       })}\n`,
@@ -255,6 +321,7 @@ async function startReducedCoreDevelopmentRuntime() {
       close,
       failureSignal: runtimeFailure.signal,
       fixtureClock,
+      firecrawlProbe,
       inferenceApiKey: credentials.liteLlmApiKey,
       inferenceOrigin: `http://127.0.0.1:${inferencePort}`,
       logPaths: children.flatMap((record) => [
@@ -270,6 +337,7 @@ async function startReducedCoreDevelopmentRuntime() {
           "Identity is intentionally unavailable; Keycloak login is not qualified.",
           "Inference is deterministic and is not SGLang or capacity evidence.",
           "Run --vertical-slice for the deterministic F0-L1 Application credential and gateway flow.",
+          "Run --firecrawl-slice for the deterministic F0-W1 per-Application Firecrawl flow.",
           "Application metadata is in-memory; created temporary files are removed on shutdown.",
         ],
         services,
@@ -387,6 +455,61 @@ async function handleInferenceDoubleRequest(
     model: "fixture-model",
     object: "chat.completion",
     usage: { completion_tokens: 2, prompt_tokens: 3, total_tokens: 5 },
+  })
+}
+
+function createFirecrawlDouble() {
+  const requests = []
+  const server = createServer((request, response) => {
+    void handleFirecrawlDoubleRequest(request, response, requests).catch(() => {
+      if (!response.destroyed && !response.headersSent) {
+        sendJson(response, 400, { error: "Invalid fixture request" })
+      }
+    })
+  })
+  return { requests, server }
+}
+
+async function handleFirecrawlDoubleRequest(request, response, requests) {
+  if (
+    request.method !== "POST" ||
+    (request.url !== "/v2/search" && request.url !== "/v2/scrape")
+  ) {
+    sendJson(response, 404, { error: "Unsupported fixture route" })
+    return
+  }
+  if (request.headers.authorization || request.headers.cookie) {
+    sendJson(response, 400, { error: "Credential forwarding is forbidden" })
+    return
+  }
+  const body = await readJsonBody(request)
+  requests.push({ body, path: request.url })
+  if (request.url === "/v2/search") {
+    sendJson(response, 200, {
+      data: {
+        web: [
+          {
+            description: "Deterministic search description",
+            title: "Deterministic search result",
+            url: "https://allowed.example.test/result#fragment",
+          },
+        ],
+      },
+      success: true,
+    })
+    return
+  }
+  sendJson(response, 200, {
+    data: {
+      html: "<h1>Deterministic scrape result</h1>",
+      markdown: "# Deterministic scrape result",
+      metadata: {
+        sourceURL: "https://allowed.example.test/page#fragment",
+        statusCode: 200,
+        title: "Deterministic scrape result",
+      },
+    },
+    success: true,
   })
 }
 
@@ -787,6 +910,450 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     },
     separateApplicationCredentials: true,
     streamingChatCompletions: "passed",
+  }
+}
+
+async function verifyApplicationFirecrawlVerticalSlice(runtime) {
+  if (!runtime.firecrawlProbe) {
+    throw new Error("F0-W1 requires the deterministic Firecrawl fixture.")
+  }
+  const primary = await createFixtureApplication(runtime, {
+    allowedModels: ["fixture-model"],
+    idempotencyKey: "f0-w1-create-primary",
+    name: "F0-W1 primary client",
+  })
+  const isolated = await createFixtureApplication(runtime, {
+    allowedModels: ["fixture-model"],
+    idempotencyKey: "f0-w1-create-isolated",
+    name: "F0-W1 isolated client",
+  })
+  const primaryInferenceKey = requiredApiKey(primary)
+  const isolatedInferenceKey = requiredApiKey(isolated)
+
+  const defaultOff = await applicationDetail(runtime, primary.app.id)
+  if (
+    defaultOff.app.firecrawl.status !== "disabled" ||
+    defaultOff.app.firecrawl.credentials.length !== 0
+  ) {
+    throw new Error("F0-W1 Firecrawl was not default off.")
+  }
+  await requireFirecrawlDenied(
+    runtime,
+    primaryInferenceKey,
+    "/v2/search",
+    { limit: 1, query: "default-off fixture query" },
+    401,
+    "inference credential before enablement",
+  )
+  await requireFirecrawlEnableDenied(
+    runtime,
+    primary.app.id,
+    {},
+    "missing disclaimer acceptance",
+  )
+  await requireFirecrawlEnableDenied(
+    runtime,
+    primary.app.id,
+    { disclaimerAccepted: false },
+    "false disclaimer acceptance",
+  )
+  const stillDefaultOff = await applicationDetail(runtime, primary.app.id)
+  if (
+    stillDefaultOff.app.firecrawl.status !== "disabled" ||
+    stillDefaultOff.app.firecrawl.credentials.length !== 0
+  ) {
+    throw new Error("F0-W1 invalid disclaimer input changed Firecrawl state.")
+  }
+
+  const primaryEnabled = await enableFixtureFirecrawl(
+    runtime,
+    primary.app.id,
+    "f0-w1-enable-primary",
+  )
+  const isolatedEnabled = await enableFixtureFirecrawl(
+    runtime,
+    isolated.app.id,
+    "f0-w1-enable-isolated",
+  )
+  const primaryFirecrawlKey = requiredFirecrawlApiKey(primaryEnabled)
+  const isolatedFirecrawlKey = requiredFirecrawlApiKey(isolatedEnabled)
+  if (
+    primaryFirecrawlKey === isolatedFirecrawlKey ||
+    primaryFirecrawlKey === primaryInferenceKey ||
+    isolatedFirecrawlKey === isolatedInferenceKey
+  ) {
+    throw new Error("F0-W1 did not issue separate Firecrawl credentials.")
+  }
+
+  const wrongNamespaceInference = await openAiChatCompletion(
+    runtime,
+    primaryFirecrawlKey,
+    false,
+  )
+  if (wrongNamespaceInference.status !== 401) {
+    throw new Error("F0-W1 accepted a Firecrawl key on the inference API.")
+  }
+
+  const search = await firecrawlJson(runtime, {
+    apiKey: primaryFirecrawlKey,
+    body: { limit: 1, query: "deterministic fixture query" },
+    path: "/v2/search",
+  })
+  if (
+    search.status !== 200 ||
+    search.body.data?.web?.[0]?.title !== "Deterministic search result"
+  ) {
+    throw new Error(
+      `F0-W1 governed search failed with status ${search.status}.`,
+    )
+  }
+  const scrape = await firecrawlJson(runtime, {
+    apiKey: primaryFirecrawlKey,
+    body: {
+      formats: ["markdown", "html"],
+      url: "https://allowed.example.test/page",
+    },
+    path: "/v2/scrape",
+  })
+  if (
+    scrape.status !== 200 ||
+    scrape.body.data?.markdown !== "# Deterministic scrape result"
+  ) {
+    throw new Error("F0-W1 governed static scrape failed.")
+  }
+
+  const upstreamBeforeDenials = runtime.firecrawlProbe.requests.length
+  await requireFirecrawlDenied(
+    runtime,
+    primaryFirecrawlKey,
+    "/v2/scrape",
+    { url: "https://blocked.example.test/page" },
+    400,
+    "non-allowlisted scrape target",
+  )
+  await requireFirecrawlDenied(
+    runtime,
+    primaryFirecrawlKey,
+    "/v2/crawl",
+    { url: "https://allowed.example.test/page" },
+    404,
+    "unsupported crawl route",
+  )
+  if (runtime.firecrawlProbe.requests.length !== upstreamBeforeDenials) {
+    throw new Error("F0-W1 forwarded a denied Firecrawl request upstream.")
+  }
+
+  const isolatedSearch = await firecrawlJson(runtime, {
+    apiKey: isolatedFirecrawlKey,
+    body: { limit: 1, query: "isolated fixture query" },
+    path: "/v2/search",
+  })
+  if (isolatedSearch.status !== 200) {
+    throw new Error("F0-W1 isolated Application search failed.")
+  }
+  const primaryConnected = await applicationDetail(runtime, primary.app.id)
+  const isolatedConnected = await applicationDetail(runtime, isolated.app.id)
+  assertFirecrawlUseRecorded(
+    primaryConnected,
+    primaryEnabled.credential.credentialId,
+  )
+  assertFirecrawlUseRecorded(
+    isolatedConnected,
+    isolatedEnabled.credential.credentialId,
+  )
+
+  const crossApplicationRevoke = await adminJson(runtime, {
+    idempotencyKey: "f0-w1-cross-app-revoke",
+    method: "POST",
+    path: `/api/admin/applications/connected-apps/${isolated.app.id}/firecrawl/credentials/${primaryEnabled.credential.credentialId}/revoke`,
+  })
+  if (crossApplicationRevoke.status !== 404) {
+    throw new Error("F0-W1 accepted a cross-Application Firecrawl mutation.")
+  }
+
+  const rotated = await adminJson(runtime, {
+    credentialReveal: true,
+    idempotencyKey: "f0-w1-rotate-primary",
+    method: "POST",
+    path: `/api/admin/applications/connected-apps/${primary.app.id}/firecrawl/rotate-credentials`,
+  })
+  if (rotated.status !== 200 || rotated.body.status !== "rotated") {
+    throw new Error("F0-W1 Firecrawl credential rotation failed.")
+  }
+  const rotatedFirecrawlKey = requiredFirecrawlApiKey(rotated.body)
+  const retiringMetadata = rotated.body.app.firecrawl.credentials.find(
+    (credential) => credential.id === primaryEnabled.credential.credentialId,
+  )
+  if (
+    retiringMetadata?.status !== "retiring" ||
+    !retiringMetadata.overlapExpiresAt ||
+    !retiringMetadata.rotatedAt ||
+    Date.parse(retiringMetadata.overlapExpiresAt) -
+      Date.parse(retiringMetadata.rotatedAt) !==
+      86_400_000
+  ) {
+    throw new Error("F0-W1 rotation did not create a bounded overlap.")
+  }
+  await runtime.fixtureClock.set(
+    Date.parse(retiringMetadata.overlapExpiresAt) - 1,
+  )
+  await requireFirecrawlAccepted(
+    runtime,
+    primaryFirecrawlKey,
+    "retiring credential during overlap",
+  )
+  await requireFirecrawlAccepted(
+    runtime,
+    rotatedFirecrawlKey,
+    "rotated credential",
+  )
+  await runtime.fixtureClock.set(Date.parse(retiringMetadata.overlapExpiresAt))
+  await requireFirecrawlDenied(
+    runtime,
+    primaryFirecrawlKey,
+    "/v2/search",
+    { limit: 1, query: "expired retiring query" },
+    401,
+    "expired retiring credential",
+  )
+  await requireFirecrawlAccepted(
+    runtime,
+    rotatedFirecrawlKey,
+    "active credential after overlap expiry",
+  )
+
+  await revokeFixtureFirecrawlCredential(
+    runtime,
+    primary.app.id,
+    primaryEnabled.credential.credentialId,
+    "f0-w1-revoke-retiring",
+  )
+  await requireFirecrawlDenied(
+    runtime,
+    primaryFirecrawlKey,
+    "/v2/search",
+    { limit: 1, query: "revoked retiring query" },
+    401,
+    "revoked retiring credential",
+  )
+  await requireFirecrawlAccepted(
+    runtime,
+    rotatedFirecrawlKey,
+    "active credential after retiring-key revocation",
+  )
+
+  await revokeFixtureFirecrawlCredential(
+    runtime,
+    primary.app.id,
+    rotated.body.credential.credentialId,
+    "f0-w1-revoke-active",
+  )
+  await requireFirecrawlDenied(
+    runtime,
+    rotatedFirecrawlKey,
+    "/v2/search",
+    { limit: 1, query: "revoked active query" },
+    401,
+    "revoked active credential",
+  )
+  const finalDetail = await applicationDetail(runtime, primary.app.id)
+  if (
+    finalDetail.app.firecrawl.status !== "disabled" ||
+    !finalDetail.app.firecrawl.credentials.every(
+      (credential) => credential.status === "revoked",
+    )
+  ) {
+    throw new Error("F0-W1 did not disable Firecrawl after final revocation.")
+  }
+
+  assertFirecrawlUpstreamPolicy(runtime.firecrawlProbe.requests)
+  const allKeys = [
+    primaryInferenceKey,
+    isolatedInferenceKey,
+    primaryFirecrawlKey,
+    isolatedFirecrawlKey,
+    rotatedFirecrawlKey,
+  ]
+  runtime.registerBeforeRemoveCheck(() =>
+    assertFirecrawlSliceLeavesNoSensitiveOutput(runtime, allKeys),
+  )
+
+  return {
+    applicationIsolation: "passed",
+    credentialNamespacesSeparated: true,
+    defaultOff: "passed",
+    disclaimerBoundEnablement: "passed",
+    egressAllowlist: "passed",
+    lastUseMetadata: "passed",
+    revocation: "passed",
+    rotation: "passed",
+    search: "passed",
+    staticScrape: "passed",
+    unsupportedRoutesDenied: true,
+    upstreamCredentialForwarding: false,
+    zeroRetentionRequestFlags: true,
+  }
+}
+
+async function enableFixtureFirecrawl(runtime, applicationId, idempotencyKey) {
+  const result = await adminJson(runtime, {
+    body: {
+      disclaimerAccepted: true,
+      maxConcurrentScrapes: null,
+      scrapeRateLimitRps: null,
+      searchRateLimitRps: null,
+    },
+    credentialReveal: true,
+    idempotencyKey,
+    method: "POST",
+    path: `/api/admin/applications/connected-apps/${applicationId}/firecrawl/enable`,
+  })
+  if (
+    result.status !== 200 ||
+    result.body.status !== "enabled" ||
+    result.body.app?.firecrawl?.status !== "enabled" ||
+    !result.body.app.firecrawl.disclaimerAcceptedAt
+  ) {
+    throw new Error("F0-W1 Firecrawl enablement failed.")
+  }
+  requiredFirecrawlApiKey(result.body)
+  return result.body
+}
+
+async function requireFirecrawlEnableDenied(
+  runtime,
+  applicationId,
+  body,
+  label,
+) {
+  const result = await adminJson(runtime, {
+    body,
+    idempotencyKey: `f0-w1-enable-denied-${label.replaceAll(" ", "-")}`,
+    method: "POST",
+    path: `/api/admin/applications/connected-apps/${applicationId}/firecrawl/enable`,
+  })
+  if (result.status !== 400) {
+    throw new Error(`F0-W1 ${label} returned ${result.status}, expected 400.`)
+  }
+}
+
+async function revokeFixtureFirecrawlCredential(
+  runtime,
+  applicationId,
+  credentialId,
+  idempotencyKey,
+) {
+  const result = await adminJson(runtime, {
+    idempotencyKey,
+    method: "POST",
+    path: `/api/admin/applications/connected-apps/${applicationId}/firecrawl/credentials/${credentialId}/revoke`,
+  })
+  if (result.status !== 200 || result.body.status !== "revoked") {
+    throw new Error("F0-W1 Firecrawl credential revocation failed.")
+  }
+}
+
+async function firecrawlJson(runtime, { apiKey, body, method = "POST", path }) {
+  const response = await boundedFetch(
+    `${runtime.publicSummary.services.firecrawl}${path}`,
+    {
+      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        ...(body === undefined ? {} : { "content-type": "application/json" }),
+      },
+      method,
+    },
+  )
+  const responseBody = await response.json()
+  recordDataPlaneOutput(runtime, `firecrawl-${path}`, responseBody)
+  return { body: responseBody, status: response.status }
+}
+
+async function requireFirecrawlAccepted(runtime, apiKey, label) {
+  const result = await firecrawlJson(runtime, {
+    apiKey,
+    body: { limit: 1, query: `accepted ${label}` },
+    path: "/v2/search",
+  })
+  if (result.status !== 200) {
+    throw new Error(`F0-W1 ${label} was not accepted.`)
+  }
+}
+
+async function requireFirecrawlDenied(
+  runtime,
+  apiKey,
+  path,
+  body,
+  expectedStatus,
+  label,
+) {
+  const result = await firecrawlJson(runtime, { apiKey, body, path })
+  if (result.status !== expectedStatus) {
+    throw new Error(
+      `F0-W1 ${label} returned ${result.status}, expected ${expectedStatus}.`,
+    )
+  }
+}
+
+function requiredFirecrawlApiKey(result) {
+  const apiKey = result.credential?.apiKey
+  if (typeof apiKey !== "string" || !apiKey.startsWith("llmm_fc_")) {
+    throw new Error("F0-W1 did not receive a one-time Firecrawl credential.")
+  }
+  return apiKey
+}
+
+function assertFirecrawlUseRecorded(detail, credentialId) {
+  const credential = detail.app.firecrawl.credentials.find(
+    (candidate) => candidate.id === credentialId,
+  )
+  if (
+    detail.app.firecrawl.connectionStatus !== "connected" ||
+    !detail.app.firecrawl.lastConnectedAt ||
+    !credential?.lastUsedAt
+  ) {
+    throw new Error("F0-W1 did not record per-credential Firecrawl last use.")
+  }
+}
+
+function assertFirecrawlUpstreamPolicy(requests) {
+  if (
+    !requests.some(
+      ({ body, path }) => path === "/v2/search" && body.timeout === 25_000,
+    ) ||
+    !requests.some(
+      ({ body, path }) =>
+        path === "/v2/scrape" &&
+        body.maxAge === 0 &&
+        body.removeBase64Images === true &&
+        body.skipTlsVerification === false &&
+        body.storeInCache === false &&
+        body.zeroDataRetention === true,
+    )
+  ) {
+    throw new Error("F0-W1 did not preserve the governed upstream policy.")
+  }
+}
+
+async function assertFirecrawlSliceLeavesNoSensitiveOutput(runtime, keys) {
+  await assertVerticalSliceLeavesNoSensitiveOutput(runtime, keys)
+  const controlPlaneAndLogs = [
+    ...runtime.nonRevealBodies.map((body) => JSON.stringify(body)),
+    ...(await Promise.all(
+      runtime.logPaths.map((path) => readFile(path, "utf8")),
+    )),
+  ]
+  for (const output of controlPlaneAndLogs) {
+    for (const value of [
+      "deterministic fixture query",
+      "# Deterministic scrape result",
+    ]) {
+      if (output.includes(value)) {
+        throw new Error("F0-W1 retained workload content in control evidence.")
+      }
+    }
   }
 }
 
