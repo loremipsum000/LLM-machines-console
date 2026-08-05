@@ -261,6 +261,7 @@ async function startReducedCoreDevelopmentRuntime() {
         join(stateRoot, `${record.name}.stdout.log`),
         join(stateRoot, `${record.name}.stderr.log`),
       ]),
+      dataPlaneOutputs: [],
       nonRevealBodies: [],
       publicSummary: {
         evidenceClass: "LOCAL_DETERMINISTIC_CONTROL_PLANE_ONLY",
@@ -574,11 +575,7 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
   if (primaryKey === isolatedKey) {
     throw new Error("F0-L1 issued the same credential to two Applications.")
   }
-  const nonStreaming = await openAiChatCompletion(
-    runtime.publicSummary.services.api,
-    primaryKey,
-    false,
-  )
+  const nonStreaming = await openAiChatCompletion(runtime, primaryKey, false)
   if (
     nonStreaming.status !== 200 ||
     nonStreaming.body.choices?.[0]?.message?.content !== "fixture-response" ||
@@ -587,11 +584,8 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     throw new Error("F0-L1 non-streaming Chat Completions failed.")
   }
 
-  const streaming = await openAiChatCompletion(
-    runtime.publicSummary.services.api,
-    primaryKey,
-    true,
-    () => runtime.streamingProbe.releaseTerminal(),
+  const streaming = await openAiChatCompletion(runtime, primaryKey, true, () =>
+    runtime.streamingProbe.releaseTerminal(),
   )
   if (
     streaming.status !== 200 ||
@@ -612,10 +606,7 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     throw new Error("F0-L1 did not record initial Application last use.")
   }
 
-  const models = await openAiModels(
-    runtime.publicSummary.services.api,
-    primaryKey,
-  )
+  const models = await openAiModels(runtime, primaryKey)
   if (
     models.status !== 200 ||
     models.body.data?.length !== 1 ||
@@ -664,15 +655,11 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     Date.parse(retiringMetadata.overlapExpiresAt) - 1,
   )
   await requireSuccessfulCompletion(
-    runtime.publicSummary.services.api,
+    runtime,
     primaryKey,
     "retiring credential during overlap",
   )
-  await requireSuccessfulCompletion(
-    runtime.publicSummary.services.api,
-    rotatedKey,
-    "rotated credential",
-  )
+  await requireSuccessfulCompletion(runtime, rotatedKey, "rotated credential")
   const rotatedDetail = await applicationDetail(runtime, primary.app.id)
   assertUsage(rotatedDetail, { requests7d: 5, tokens7d: 20 })
   const activeMetadata = rotatedDetail.app.credentials.find(
@@ -683,7 +670,7 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
   }
   await runtime.fixtureClock.set(Date.parse(retiringMetadata.overlapExpiresAt))
   await requireCredentialDenied(
-    runtime.publicSummary.services.api,
+    runtime,
     primaryKey,
     "expired retiring credential",
   )
@@ -698,7 +685,7 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
   }
 
   const isolatedAttempt = await openAiChatCompletion(
-    runtime.publicSummary.services.api,
+    runtime,
     isolatedKey,
     false,
   )
@@ -717,6 +704,14 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     throw new Error("F0-L1 did not isolate Application usage attribution.")
   }
 
+  await runtime.fixtureClock.set(
+    Date.parse(retiringMetadata.overlapExpiresAt) - 1,
+  )
+  await requireSuccessfulCompletion(
+    runtime,
+    primaryKey,
+    "still-usable retiring credential immediately before revocation",
+  )
   await revokeFixtureCredential(
     runtime,
     primary.app.id,
@@ -724,12 +719,12 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     "f0-l1-revoke-retiring",
   )
   await requireCredentialDenied(
-    runtime.publicSummary.services.api,
+    runtime,
     primaryKey,
     "revoked retiring credential",
   )
   await requireSuccessfulCompletion(
-    runtime.publicSummary.services.api,
+    runtime,
     rotatedKey,
     "remaining active credential",
   )
@@ -741,13 +736,13 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     "f0-l1-revoke-active",
   )
   await requireCredentialDenied(
-    runtime.publicSummary.services.api,
+    runtime,
     rotatedKey,
     "revoked active credential",
   )
 
   const finalDetail = await applicationDetail(runtime, primary.app.id)
-  assertUsage(finalDetail, { requests7d: 6, tokens7d: 25 })
+  assertUsage(finalDetail, { requests7d: 7, tokens7d: 30 })
   if (
     finalDetail.app.status !== "disabled" ||
     !finalDetail.app.credentials.every(
@@ -900,25 +895,30 @@ function responseWithoutExpectedCredentialReveal(responseBody) {
 }
 
 async function openAiChatCompletion(
-  apiOrigin,
+  runtime,
   apiKey,
   stream,
   onFirstStreamChunk,
 ) {
-  const response = await boundedFetch(`${apiOrigin}/v1/chat/completions`, {
-    body: JSON.stringify({
-      messages: [{ content: "disposable fixture input", role: "user" }],
-      model: "fixture-model",
-      stream,
-    }),
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
+  const response = await boundedFetch(
+    `${runtime.publicSummary.services.api}/v1/chat/completions`,
+    {
+      body: JSON.stringify({
+        messages: [{ content: "disposable fixture input", role: "user" }],
+        model: "fixture-model",
+        stream,
+      }),
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      method: "POST",
     },
-    method: "POST",
-  })
+  )
   if (!stream || response.status !== 200) {
-    return { body: await response.json(), status: response.status }
+    const body = await response.json()
+    recordDataPlaneOutput(runtime, "chat-completions-json", body)
+    return { body, status: response.status }
   }
   if (!response.body) {
     throw new Error("F0-L1 streaming response had no body.")
@@ -939,6 +939,7 @@ async function openAiChatCompletion(
     }
     text += decoder.decode(value, { stream: true })
   }
+  recordDataPlaneOutput(runtime, "chat-completions-sse", text)
   let content = ""
   let done = false
   let totalTokens = null
@@ -966,15 +967,20 @@ async function openAiChatCompletion(
   }
 }
 
-async function openAiModels(apiOrigin, apiKey) {
-  const response = await boundedFetch(`${apiOrigin}/v1/models`, {
-    headers: { authorization: `Bearer ${apiKey}` },
-  })
-  return { body: await response.json(), status: response.status }
+async function openAiModels(runtime, apiKey) {
+  const response = await boundedFetch(
+    `${runtime.publicSummary.services.api}/v1/models`,
+    {
+      headers: { authorization: `Bearer ${apiKey}` },
+    },
+  )
+  const body = await response.json()
+  recordDataPlaneOutput(runtime, "models-json", body)
+  return { body, status: response.status }
 }
 
-async function requireSuccessfulCompletion(apiOrigin, apiKey, label) {
-  const result = await openAiChatCompletion(apiOrigin, apiKey, false)
+async function requireSuccessfulCompletion(runtime, apiKey, label) {
+  const result = await openAiChatCompletion(runtime, apiKey, false)
   if (
     result.status !== 200 ||
     result.body.choices?.[0]?.message?.content !== "fixture-response"
@@ -983,11 +989,18 @@ async function requireSuccessfulCompletion(apiOrigin, apiKey, label) {
   }
 }
 
-async function requireCredentialDenied(apiOrigin, apiKey, label) {
-  const result = await openAiChatCompletion(apiOrigin, apiKey, false)
+async function requireCredentialDenied(runtime, apiKey, label) {
+  const result = await openAiChatCompletion(runtime, apiKey, false)
   if (result.status !== 401) {
     throw new Error(`F0-L1 ${label} was not denied.`)
   }
+}
+
+function recordDataPlaneOutput(runtime, label, value) {
+  runtime.dataPlaneOutputs.push({
+    label,
+    value: typeof value === "string" ? value : JSON.stringify(value),
+  })
 }
 
 function requiredApiKey(result) {
@@ -1011,7 +1024,7 @@ async function assertVerticalSliceLeavesNoSensitiveOutput(
   runtime,
   applicationKeys,
 ) {
-  const forbiddenValues = [
+  const sensitiveValues = [
     ...runtime.sensitiveRuntimeValues.map((value, index) => ({
       label: `service-credential-${index}`,
       value,
@@ -1025,25 +1038,40 @@ async function assertVerticalSliceLeavesNoSensitiveOutput(
       value: "parent-database-must-not-cross",
     },
     { label: "parent-secret-sentinel", value: "parent-value-must-not-cross" },
+  ]
+  const controlPlaneOutputs = runtime.nonRevealBodies.map((body, index) => ({
+    label: `control-plane-response-${index}`,
+    value: JSON.stringify(body),
+  }))
+  const logOutputs = await Promise.all(
+    runtime.logPaths.map(async (path, index) => ({
+      label: `runtime-log-${index}`,
+      value: await readFile(path, "utf8"),
+    })),
+  )
+  const reviewedOutputs = [
+    ...controlPlaneOutputs,
+    ...runtime.dataPlaneOutputs.map((output, index) => ({
+      label: `data-plane-${output.label}-${index}`,
+      value: output.value,
+    })),
+    ...logOutputs,
+  ]
+  for (const output of reviewedOutputs) {
+    for (const sensitive of sensitiveValues) {
+      if (output.value.includes(sensitive.value)) {
+        throw new Error(`F0-L1 found ${sensitive.label} in ${output.label}.`)
+      }
+    }
+  }
+  const workloadValues = [
     { label: "request-content", value: "disposable fixture input" },
     { label: "response-content", value: "fixture-response" },
   ]
-  const reviewedOutputs = [
-    ...runtime.nonRevealBodies.map((body, index) => ({
-      label: `response-${index}`,
-      value: JSON.stringify(body),
-    })),
-    ...(await Promise.all(
-      runtime.logPaths.map(async (path, index) => ({
-        label: `runtime-log-${index}`,
-        value: await readFile(path, "utf8"),
-      })),
-    )),
-  ]
-  for (const output of reviewedOutputs) {
-    for (const forbidden of forbiddenValues) {
-      if (output.value.includes(forbidden.value)) {
-        throw new Error(`F0-L1 found ${forbidden.label} in ${output.label}.`)
+  for (const output of [...controlPlaneOutputs, ...logOutputs]) {
+    for (const workload of workloadValues) {
+      if (output.value.includes(workload.value)) {
+        throw new Error(`F0-L1 found ${workload.label} in ${output.label}.`)
       }
     }
   }

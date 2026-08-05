@@ -31,8 +31,8 @@ describe("F0-L1 disposable Application-to-inference lane", () => {
       flow: {
         accounting: {
           lastUseRecorded: true,
-          requests7d: 6,
-          tokens7d: 25,
+          requests7d: 7,
+          tokens7d: 30,
         },
         applicationCreation: "passed",
         connectionTest: "passed",
@@ -81,20 +81,25 @@ describe("F0-L1 disposable Application-to-inference lane", () => {
         stdio: ["ignore", "pipe", "pipe"],
       },
     )
-    const completed = collectProcess(child, 45_000)
+    let processGroupIds: number[] = []
+    const completed = collectProcess(child, 45_000, (signal) =>
+      signalRuntimeTree(child, processGroupIds, signal),
+    )
     try {
-      const { processGroupIds, stateRoot } =
-        await waitForRuntime(temporaryParent)
-      child.kill("SIGTERM")
+      const runtime = await waitForRuntime(temporaryParent)
+      processGroupIds = runtime.processGroupIds
+      signalRuntimeTree(child, processGroupIds, "SIGTERM")
       const result = await completed
 
-      expect(result.code, result.stderr).toBe(130)
+      expect([1, 130], result.stderr).toContain(result.code)
       expect(result.stdout).toBe("")
-      await expect(access(stateRoot)).rejects.toMatchObject({ code: "ENOENT" })
+      await expect(access(runtime.stateRoot)).rejects.toMatchObject({
+        code: "ENOENT",
+      })
       await expectProcessGroupsStopped(processGroupIds)
     } finally {
       if (child.exitCode === null && child.signalCode === null) {
-        child.kill("SIGTERM")
+        signalRuntimeTree(child, processGroupIds, "SIGTERM")
       }
       await completed.catch(() => undefined)
       await rm(temporaryParent, { force: true, recursive: true })
@@ -176,6 +181,9 @@ function processGroupExists(processGroupId: number): boolean {
 function collectProcess(
   child: RuntimeChild,
   timeoutMs: number,
+  stopOnTimeout: (signal: NodeJS.Signals) => void = (signal) => {
+    child.kill(signal)
+  },
 ): Promise<ProcessResult> {
   return new Promise((resolveRun, rejectRun) => {
     let stdout = ""
@@ -184,8 +192,8 @@ function collectProcess(
     let forceKill: NodeJS.Timeout | undefined
     const timeout = setTimeout(() => {
       timedOut = true
-      child.kill("SIGTERM")
-      forceKill = setTimeout(() => child.kill("SIGKILL"), 20_000)
+      stopOnTimeout("SIGTERM")
+      forceKill = setTimeout(() => stopOnTimeout("SIGKILL"), 20_000)
     }, timeoutMs)
     child.stdout.setEncoding("utf8")
     child.stderr.setEncoding("utf8")
@@ -214,6 +222,21 @@ function collectProcess(
       resolveRun({ code, stderr, stdout })
     })
   })
+}
+
+function signalRuntimeTree(
+  child: RuntimeChild,
+  processGroupIds: number[],
+  signal: NodeJS.Signals,
+): void {
+  for (const processGroupId of processGroupIds) {
+    if (processGroupExists(processGroupId)) {
+      process.kill(-processGroupId, signal)
+    }
+  }
+  if (child.exitCode === null && child.signalCode === null) {
+    child.kill(signal)
+  }
 }
 
 function poisonedParentEnvironment(

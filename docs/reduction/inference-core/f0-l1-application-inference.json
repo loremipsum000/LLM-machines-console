@@ -28,7 +28,7 @@
     "streaming Chat Completions through the API authority",
     "usage and last-use accounting",
     "static credential rotation with exact 24-hour overlap, old-key acceptance during overlap, and automatic denial after controlled expiry",
-    "explicit revocation of retiring and active credentials",
+    "explicit revocation of a still-usable retiring credential and of the active credential",
     "cross-Application model-policy isolation",
     "cross-Application credential-record mutation denial",
     "automatic disablement after the last credential is revoked",

@@ -48,7 +48,9 @@ revokes the credential, proves the exact 24-hour rotation overlap and controlled
 expiry, proves cross-Application policy and credential-record isolation, and
 removes the temporary runtime. Its JSON result contains only status and
 accounting metadata. It verifies that non-reveal responses and disposable
-runtime logs contain no credentials, prompts, or completion content.
+runtime logs contain no credentials or parent-process secret sentinels, and
+that control-plane responses and runtime logs contain no prompts or completion
+content.
 
 ## Security
 
