@@ -24,7 +24,6 @@
     "contract:inference-core:pr11a:policy": "node scripts/inference-core/pr11a-r1-v1-contract-revision.mjs --print-operation-policy",
     "contract:inference-core:pr11a:write": "node scripts/inference-core/pr11a-r1-v1-contract-revision.mjs --write",
     "dev": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && corepack pnpm --filter @llm-machines/web dev",
-    "dev:reduced-core": "node scripts/pre-genesis/reduced-core-dev.mjs",
     "format": "biome format --write . && corepack pnpm -r format",
     "lint": "biome lint . && corepack pnpm -r lint",
     "retention:inference-core": "corepack pnpm --filter @llm-machines/bff retention:prune",

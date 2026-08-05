@@ -29,9 +29,8 @@ test("F0-B1 starts and cleans the disposable reduced-Core lane", async () => {
 })
 
 test("F0-B1 remains a local deterministic, non-production lane", async () => {
-  const [decision, packageDocument, source] = await Promise.all([
+  const [decision, source] = await Promise.all([
     readJson("docs/reduction/inference-core/f0-b1-reduced-core-bootstrap.json"),
-    readJson("package.json"),
     readFile(
       resolve(repositoryRoot, "scripts/pre-genesis/reduced-core-dev.mjs"),
       "utf8",
@@ -50,7 +49,7 @@ test("F0-B1 remains a local deterministic, non-production lane", async () => {
   ])
   assert.ok(decision.notEvidenceFor.includes("SGLang-runtime-or-capacity"))
   assert.equal(
-    packageDocument.scripts["dev:reduced-core"],
+    decision.command,
     "node scripts/pre-genesis/reduced-core-dev.mjs",
   )
   assert.doesNotMatch(source, /NODE_ENV:\s*"production"/)

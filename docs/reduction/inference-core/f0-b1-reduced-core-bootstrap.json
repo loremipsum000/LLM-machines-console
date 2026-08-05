@@ -4,7 +4,7 @@
   "status": "source-candidate-not-runtime-qualified",
   "accepted": false,
   "runtimeQualified": false,
-  "command": "corepack pnpm dev:reduced-core",
+  "command": "node scripts/pre-genesis/reduced-core-dev.mjs",
   "evidenceClass": "LOCAL_DETERMINISTIC_CONTROL_PLANE_ONLY",
   "services": [
     "console-web",

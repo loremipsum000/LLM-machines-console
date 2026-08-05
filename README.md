@@ -19,7 +19,8 @@ clean-root publication is a source checkpoint, not a production release.
 
 ## Disposable reduced-Core development lane
 
-Run `corepack pnpm dev:reduced-core` to start Console Web, the BFF, a strict
+Run `node scripts/pre-genesis/reduced-core-dev.mjs` to start Console Web, the
+BFF, a strict
 four-authority local router, and an OpenAI-compatible deterministic inference
 double. The command creates throwaway credentials and state under the operating
 system temporary directory, prints no credential values, and removes only that
@@ -32,8 +33,8 @@ runtime no-bypass, or production capacity. The Identity authority deliberately
 returns a controlled unavailable response until a separate browser and session
 functional package supplies a qualified identity fixture.
 
-Run `corepack pnpm dev:reduced-core -- --check` for a bounded startup and
-cleanup check.
+Run `node scripts/pre-genesis/reduced-core-dev.mjs --check` for a bounded
+startup and cleanup check.
 
 ## Security
 
