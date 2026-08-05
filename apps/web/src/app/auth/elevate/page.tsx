@@ -3,9 +3,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { normalizeConsoleReturnPath } from "@/lib/auth/safe-return"
 import { consoleHighRiskActionSchema } from "@llm-machines/contracts/inference-core"
 import { ShieldCheck } from "lucide-react"
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 export const dynamic = "force-dynamic"
+export const metadata: Metadata = { referrer: "same-origin" }
 
 interface ElevationPageProps {
   searchParams: Promise<{

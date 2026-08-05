@@ -27,6 +27,8 @@ All appliance data requests are made server-side through
 
 - `CONSOLE_BFF_URL`
 - `CONSOLE_BFF_SERVICE_API_KEY`
+- `WEB_IDENTITY_ORIGIN` as the exact HTTPS Identity authority allowed for the
+  native high-risk elevation form redirect
 
 `CONSOLE_BFF_SERVICE_API_KEY` is a server-only credential. Never expose it
 through a `NEXT_PUBLIC_*` variable or send it to the browser. Web-to-BFF
