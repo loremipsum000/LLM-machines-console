@@ -53,7 +53,7 @@ test("private cloud authorities are policy decisions, not suffix guesses", () =>
     assert.deepEqual(validateRegistryAuthority(approved, [approved]), [])
   }
   assert.deepEqual(
-    validateRegistryAuthority("10.20.30.40:5443", ["10.20.30.40:5443"]),
+    validateRegistryAuthority("192.0.2.1:5443", ["192.0.2.1:5443"]),
     [],
   )
 })
