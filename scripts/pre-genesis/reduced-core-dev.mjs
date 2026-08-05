@@ -365,35 +365,39 @@ function normalizedProxyHeaders(headers, profile) {
 }
 
 async function verifyRuntime(runtime) {
-  const liveness = await fetch(`${runtime.bffOrigin}/livez`)
+  const liveness = await boundedFetch(`${runtime.bffOrigin}/livez`)
   if (!liveness.ok) {
     throw new Error("BFF liveness failed.")
   }
-  const consoleResponse = await fetch(runtime.publicSummary.services.console, {
-    redirect: "manual",
-  })
+  const consoleResponse = await boundedFetch(
+    runtime.publicSummary.services.console,
+    { redirect: "manual" },
+  )
   if (consoleResponse.status >= 500) {
     throw new Error("Console Web bootstrap failed.")
   }
-  const identityResponse = await fetch(
+  const identityResponse = await boundedFetch(
     `${runtime.publicSummary.services.identity}/realms/llm-machines`,
   )
   if (identityResponse.status !== 503) {
     throw new Error("Identity double did not fail closed.")
   }
-  const unknownResponse = await fetch(
+  const unknownResponse = await boundedFetch(
     `${runtime.publicSummary.services.api}/native/admin`,
   )
   if (unknownResponse.status !== 404) {
     throw new Error("Local authority router exposed an unsupported API route.")
   }
-  const modelsResponse = await fetch(`${runtime.inferenceOrigin}/v1/models`, {
-    headers: { authorization: `Bearer ${runtime.inferenceApiKey}` },
-  })
+  const modelsResponse = await boundedFetch(
+    `${runtime.inferenceOrigin}/v1/models`,
+    {
+      headers: { authorization: `Bearer ${runtime.inferenceApiKey}` },
+    },
+  )
   if (!modelsResponse.ok) {
     throw new Error("Inference-double model listing failed.")
   }
-  const completionResponse = await fetch(
+  const completionResponse = await boundedFetch(
     `${runtime.inferenceOrigin}/v1/chat/completions`,
     {
       body: JSON.stringify({
@@ -438,20 +442,42 @@ function startChild(name, command, environment, stateRoot, cwd) {
 }
 
 async function stopChild(record) {
-  if (processGroupExists(record.child.pid)) {
-    killProcessGroup(record.child.pid, "SIGTERM")
-    if (!(await waitForProcessGroupExit(record.child.pid, 5_000))) {
-      killProcessGroup(record.child.pid, "SIGKILL")
+  const errors = []
+  try {
+    if (processGroupExists(record.child.pid)) {
+      killProcessGroup(record.child.pid, "SIGTERM")
       if (!(await waitForProcessGroupExit(record.child.pid, 5_000))) {
-        throw new Error(
-          `${record.name} process group ${record.child.pid} survived SIGKILL.`,
-        )
+        killProcessGroup(record.child.pid, "SIGKILL")
+        if (!(await waitForProcessGroupExit(record.child.pid, 5_000))) {
+          throw new Error(
+            `${record.name} process group ${record.child.pid} survived SIGKILL.`,
+          )
+        }
       }
     }
+    await waitForChildExit(record.child, 1_000)
+  } catch (error) {
+    errors.push(error)
   }
-  await waitForChildExit(record.child, 1_000)
-  record.stdout.end()
-  record.stderr.end()
+  const streamResults = await Promise.allSettled([
+    endWritable(record.stdout),
+    endWritable(record.stderr),
+  ])
+  errors.push(
+    ...streamResults
+      .filter((result) => result.status === "rejected")
+      .map((result) => result.reason),
+  )
+  if (errors.length > 0) {
+    throw new AggregateError(errors, `${record.name} did not stop cleanly.`)
+  }
+}
+
+function endWritable(stream) {
+  return new Promise((resolveEnd, rejectEnd) => {
+    stream.once("error", rejectEnd)
+    stream.end(resolveEnd)
+  })
 }
 
 async function reservePorts(count) {
@@ -479,7 +505,7 @@ async function waitForHttp(url) {
   while (Date.now() < deadline) {
     ensureStartupActive()
     try {
-      const response = await fetch(url, { redirect: "manual" })
+      const response = await boundedFetch(url, { redirect: "manual" }, 2_000)
       if (response.status < 500) {
         return
       }
@@ -489,6 +515,13 @@ async function waitForHttp(url) {
     await new Promise((resolveWait) => setTimeout(resolveWait, 100))
   }
   throw new Error(`Timed out waiting for ${new URL(url).pathname}.`)
+}
+
+function boundedFetch(url, options = {}, timeoutMs = 5_000) {
+  return fetch(url, {
+    ...options,
+    signal: AbortSignal.timeout(timeoutMs),
+  })
 }
 
 function listen(server, port) {
