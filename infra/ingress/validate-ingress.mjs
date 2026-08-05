@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { readFileSync, readdirSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -123,6 +124,20 @@ const expectedNginxLocations = {
     "/",
   ],
 }
+const expectedRuntimeSourceHashes = {
+  "product-edge.nginx.conf.template":
+    "13c018b0bd7a762b8402a326b74c86f513680b7182c4b81ba578ac232dc50b24",
+  "proxy-common.inc":
+    "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
+  "request-headers-console-browser.inc":
+    "437d4dba7b95277260d7c0f8aa13db35d1f0747fcfbf49fc60f31182c3bc037e",
+  "request-headers-customer-api.inc":
+    "b7702c4b933206105278c1ee8f7f03ae863a2d1b0896046351514e5d279a8428",
+  "request-headers-identity-browser.inc":
+    "8dc46e0f6d875e042814d06613a520928153fe585fe45ed65ba4065c9be79dc2",
+  "request-safety.inc":
+    "148baeded4c09367b0745a80e275ac684435a5c4e18a6ceaad5b25702e284756",
+}
 
 export function validateIngressSources(sources) {
   const errors = []
@@ -141,10 +156,22 @@ export function validateIngressSources(sources) {
   }
   validatePolicy(policy, errors)
   validateNoBypass(noBypass, errors)
+  validateRuntimeSourceFingerprints(sources, errors)
   validateNginx(sources, errors)
   validateHeaders(sources, errors)
   validateCredentialSafety(sources, errors)
   return errors
+}
+
+function validateRuntimeSourceFingerprints(sources, errors) {
+  for (const [path, expected] of Object.entries(expectedRuntimeSourceHashes)) {
+    const source = sources[path]
+    add(
+      errors,
+      typeof source === "string" && sha256(source) === expected,
+      `runtime source fingerprint changed for ${path}`,
+    )
+  }
 }
 
 function validatePolicy(policy, errors) {
@@ -716,6 +743,10 @@ function sameJson(left, right) {
 
 function count(source, value) {
   return source.split(value).length - 1
+}
+
+function sha256(source) {
+  return createHash("sha256").update(source).digest("hex")
 }
 
 function hostServerSection(source, host, nextHost) {

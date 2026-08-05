@@ -237,6 +237,49 @@ test("every public Nginx location is exact-allowlisted", () => {
   }
 })
 
+test("reviewed public route implementations cannot change in place", () => {
+  for (const [label, name, before, after] of [
+    [
+      "API catch-all",
+      "product-edge.nginx.conf.template",
+      "    location / {\n      return 404;\n    }\n  }\n\n  server {\n    listen 443 ssl;\n    server_name @@PRODUCT_FIRECRAWL_HOST@@;",
+      "    location / {\n      include /etc/nginx/llm-machines/proxy-common.inc;\n      proxy_pass http://console_bff;\n    }\n  }\n\n  server {\n    listen 443 ssl;\n    server_name @@PRODUCT_FIRECRAWL_HOST@@;",
+    ],
+    [
+      "Identity catch-all",
+      "product-edge.nginx.conf.template",
+      "    location / {\n      return 404;\n    }\n  }\n}",
+      "    location / {\n      include /etc/nginx/llm-machines/proxy-common.inc;\n      proxy_pass http://keycloak_identity;\n    }\n  }\n}",
+    ],
+    [
+      "API method guard",
+      "product-edge.nginx.conf.template",
+      '      limit_except GET { deny all; }\n      if ($args != "") { return 400; }\n      proxy_pass_request_body off;',
+      '      if ($args != "") { return 400; }\n      proxy_pass_request_body off;',
+    ],
+    [
+      "Identity browser Authorization",
+      "product-edge.nginx.conf.template",
+      "      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;\n      proxy_set_header Host $llmm_public_host;",
+      "      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;\n      proxy_set_header Authorization $http_authorization;\n      proxy_set_header Host $llmm_public_host;",
+    ],
+    [
+      "Console spoofed header",
+      "request-headers-console-browser.inc",
+      'proxy_set_header Authorization "";',
+      'proxy_set_header Authorization "";\nproxy_set_header X-Original-URI $http_x_original_uri;',
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed(name, (source) => source.replace(before, after)),
+    )
+    assert.ok(
+      result.some((error) => /runtime source fingerprint/i.test(error)),
+      label,
+    )
+  }
+})
+
 test("Application client Basic auth is isolated to its exact token route", () => {
   const removedMap = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>
