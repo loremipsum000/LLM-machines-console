@@ -36,10 +36,10 @@ The checked-in validators prove only deterministic source properties:
 - no native administration route or listener declaration.
 
 The Application-realm token route alone requires a canonical HTTP Basic value
-that decodes to the Product Application client namespace and a nonempty secret.
-An internal BFF authorization subrequest performs that content check without
-retaining or returning the credential. Form-only client authentication is
-rejected.
+whose encoded boundary proves the fixed Product Application client namespace,
+the expected client identifier length, a colon separator, and a nonempty
+secret. Keycloak remains the credential authority. Form-only client
+authentication is rejected.
 Human-realm token routes and browser identity routes continue to strip
 Authorization. The normal Keycloak logout route and its exact
 `logout/logout-confirm` child retain cookies, redirects, query parameters, and

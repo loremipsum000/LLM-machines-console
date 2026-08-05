@@ -44,7 +44,6 @@ import {
   type FirecrawlIsolationTrafficGate,
   registerFirecrawlGatewayRoutes,
 } from "./routes/firecrawl-gateway"
-import { registerIngressApplicationClientAuthRoute } from "./routes/ingress-application-client-auth"
 import {
   observabilityMetricsRouteOptionsFromRuntime,
   registerObservabilityMetricsRoutes,
@@ -142,7 +141,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         requiredConsoleSessionRuntime(consoleSessionRuntime).service,
       )
 
-  registerIngressApplicationClientAuthRoute(server)
   registerAuthorization(server, authorizationOptions)
   if (consoleSessionRouteOptions) {
     registerConsoleSessionRoutes(server, consoleSessionRouteOptions)
