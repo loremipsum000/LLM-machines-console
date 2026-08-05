@@ -16,7 +16,7 @@ import {
 import { createServer, request as httpRequest } from "node:http"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const checkMode = process.argv.includes("--check")
@@ -77,21 +77,29 @@ if (!runtime) {
     result = await Promise.race([
       verifyApplicationInferenceVerticalSlice(runtime),
       runtime.failureSignal,
+      shutdownFailure(),
     ])
+  } catch (error) {
+    if (!(error instanceof ShutdownRequestedError)) {
+      throw error
+    }
+    process.exitCode = 130
   } finally {
     await runtime.close()
   }
-  process.stdout.write(
-    `${JSON.stringify({
-      architecture: process.arch,
-      credentialMaterialPrinted: false,
-      evidenceClass: "LOCAL_DETERMINISTIC_APPLICATION_FLOW_ONLY",
-      flow: result,
-      services: runtime.publicSummary.services,
-      status: "passed",
-      temporaryStateRemoved: true,
-    })}\n`,
-  )
+  if (result) {
+    process.stdout.write(
+      `${JSON.stringify({
+        architecture: process.arch,
+        credentialMaterialPrinted: false,
+        evidenceClass: "LOCAL_DETERMINISTIC_APPLICATION_FLOW_ONLY",
+        flow: result,
+        services: runtime.publicSummary.services,
+        status: "passed",
+        temporaryStateRemoved: true,
+      })}\n`,
+    )
+  }
 } else {
   process.stdout.write(`${JSON.stringify(runtime.publicSummary, null, 2)}\n`)
   process.stdout.write("Press Ctrl-C to stop and remove temporary state.\n")
@@ -104,14 +112,25 @@ if (!runtime) {
   }
 }
 
+async function shutdownFailure() {
+  await shutdownSignal
+  throw new ShutdownRequestedError()
+}
+
 async function startReducedCoreDevelopmentRuntime() {
   await assertDevelopmentDependenciesReady()
   ensureStartupActive()
   const stateRoot = await createTemporaryStateRoot()
   const children = []
   const servers = []
+  const beforeRemoveChecks = []
   const runtimeFailure = createRuntimeFailure()
-  const close = createRuntimeCleanup({ children, servers, stateRoot })
+  const close = createRuntimeCleanup({
+    beforeRemoveChecks,
+    children,
+    servers,
+    stateRoot,
+  })
 
   try {
     await chmod(stateRoot, 0o700)
@@ -119,6 +138,9 @@ async function startReducedCoreDevelopmentRuntime() {
       bffServiceApiKey: randomBytes(32).toString("base64url"),
       liteLlmApiKey: randomBytes(32).toString("base64url"),
     }
+    const fixtureClock = verticalSliceMode
+      ? await createFixtureClock(stateRoot)
+      : null
     await writeFile(
       join(stateRoot, "throwaway-credentials.json"),
       `${JSON.stringify(credentials)}\n`,
@@ -131,7 +153,11 @@ async function startReducedCoreDevelopmentRuntime() {
     const webRoot = await prepareTemporaryWebProject(stateRoot)
     ensureStartupActive()
 
-    const inference = createInferenceDouble(credentials.liteLlmApiKey)
+    const streamingProbe = createStreamingProbe()
+    const inference = createInferenceDouble(
+      credentials.liteLlmApiKey,
+      streamingProbe,
+    )
     servers.push(inference)
     await listen(inference, inferencePort)
     ensureStartupActive()
@@ -155,6 +181,7 @@ async function startReducedCoreDevelopmentRuntime() {
           LITELLM_KEY: credentials.liteLlmApiKey,
           LITELLM_URL: `http://127.0.0.1:${inferencePort}`,
           NODE_ENV: "test",
+          ...(fixtureClock?.environment ?? {}),
           PORT: String(bffPort),
           PRODUCT_API_HOST: "api.localhost",
           PRODUCT_IDENTITY_HOST: "identity.localhost",
@@ -227,8 +254,14 @@ async function startReducedCoreDevelopmentRuntime() {
       bffOrigin: `http://127.0.0.1:${bffPort}`,
       close,
       failureSignal: runtimeFailure.signal,
+      fixtureClock,
       inferenceApiKey: credentials.liteLlmApiKey,
       inferenceOrigin: `http://127.0.0.1:${inferencePort}`,
+      logPaths: children.flatMap((record) => [
+        join(stateRoot, `${record.name}.stdout.log`),
+        join(stateRoot, `${record.name}.stderr.log`),
+      ]),
+      nonRevealBodies: [],
       publicSummary: {
         evidenceClass: "LOCAL_DETERMINISTIC_CONTROL_PLANE_ONLY",
         limitations: [
@@ -241,6 +274,12 @@ async function startReducedCoreDevelopmentRuntime() {
         services,
         stateRoot,
       },
+      registerBeforeRemoveCheck(check) {
+        beforeRemoveChecks.push(check)
+      },
+      sensitiveRuntimeValues: Object.values(credentials),
+      stateRoot,
+      streamingProbe,
     }
   } catch (error) {
     await close()
@@ -248,9 +287,14 @@ async function startReducedCoreDevelopmentRuntime() {
   }
 }
 
-function createInferenceDouble(apiKey) {
+function createInferenceDouble(apiKey, streamingProbe) {
   return createServer((request, response) => {
-    void handleInferenceDoubleRequest(apiKey, request, response).catch(() => {
+    void handleInferenceDoubleRequest(
+      apiKey,
+      streamingProbe,
+      request,
+      response,
+    ).catch(() => {
       if (response.destroyed) {
         return
       }
@@ -263,7 +307,12 @@ function createInferenceDouble(apiKey) {
   })
 }
 
-async function handleInferenceDoubleRequest(apiKey, request, response) {
+async function handleInferenceDoubleRequest(
+  apiKey,
+  streamingProbe,
+  request,
+  response,
+) {
   if (request.headers.authorization !== `Bearer ${apiKey}`) {
     sendJson(response, 401, { error: { message: "Unauthorized" } })
     return
@@ -291,6 +340,12 @@ async function handleInferenceDoubleRequest(apiKey, request, response) {
     return
   }
   if (body.stream === true) {
+    if (body.stream_options?.include_usage !== true) {
+      sendJson(response, 400, {
+        error: { message: "Streaming usage evidence is required" },
+      })
+      return
+    }
     response.writeHead(200, {
       "cache-control": "no-store",
       "content-type": "text/event-stream",
@@ -303,6 +358,7 @@ async function handleInferenceDoubleRequest(apiKey, request, response) {
         object: "chat.completion.chunk",
       })}\n\n`,
     )
+    await streamingProbe.waitForTerminalRelease()
     response.write(
       `data: ${JSON.stringify({
         choices: [],
@@ -508,12 +564,14 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     runtime.publicSummary.services.api,
     primaryKey,
     true,
+    () => runtime.streamingProbe.releaseTerminal(),
   )
   if (
     streaming.status !== 200 ||
     streaming.content !== "fixture-response" ||
     streaming.totalTokens !== 5 ||
-    !streaming.done
+    !streaming.done ||
+    !streaming.firstChunkBeforeTerminal
   ) {
     throw new Error("F0-L1 streaming Chat Completions failed.")
   }
@@ -552,6 +610,7 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
   }
 
   const rotated = await adminJson(runtime, {
+    credentialReveal: true,
     idempotencyKey: "f0-l1-rotate-primary",
     method: "POST",
     path: `/api/admin/applications/connected-apps/${primary.app.id}/rotate-credentials`,
@@ -565,24 +624,41 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
   )
   if (
     retiringMetadata?.status !== "retiring" ||
-    !retiringMetadata.overlapExpiresAt
+    !retiringMetadata.overlapExpiresAt ||
+    !retiringMetadata.rotatedAt ||
+    Date.parse(retiringMetadata.overlapExpiresAt) -
+      Date.parse(retiringMetadata.rotatedAt) !==
+      86_400_000
   ) {
     throw new Error("F0-L1 rotation did not create a bounded overlap.")
   }
 
   await requireSuccessfulCompletion(
     runtime.publicSummary.services.api,
+    primaryKey,
+    "retiring credential during overlap",
+  )
+  await requireSuccessfulCompletion(
+    runtime.publicSummary.services.api,
     rotatedKey,
     "rotated credential",
   )
   const rotatedDetail = await applicationDetail(runtime, primary.app.id)
-  assertUsage(rotatedDetail, { requests7d: 4, tokens7d: 15 })
+  assertUsage(rotatedDetail, { requests7d: 5, tokens7d: 20 })
   const activeMetadata = rotatedDetail.app.credentials.find(
     (credential) => credential.id === rotated.body.credential.credentialId,
   )
   if (!activeMetadata?.lastUsedAt || activeMetadata.status !== "active") {
     throw new Error("F0-L1 did not bind last use to the rotated credential.")
   }
+  await runtime.fixtureClock.set(
+    Date.parse(retiringMetadata.overlapExpiresAt) + 1,
+  )
+  await requireCredentialDenied(
+    runtime.publicSummary.services.api,
+    primaryKey,
+    "expired retiring credential",
+  )
 
   const crossApplicationRevoke = await adminJson(runtime, {
     idempotencyKey: "f0-l1-cross-app-revoke",
@@ -604,7 +680,7 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
   const isolatedDetail = await applicationDetail(runtime, isolated.app.id)
   const primaryAfterIsolation = await applicationDetail(runtime, primary.app.id)
   assertUsage(isolatedDetail, { requests7d: 1, tokens7d: 0 })
-  assertUsage(primaryAfterIsolation, { requests7d: 4, tokens7d: 15 })
+  assertUsage(primaryAfterIsolation, { requests7d: 5, tokens7d: 20 })
   if (
     isolatedDetail.app.usage.failures7d !== 1 ||
     !isolatedDetail.app.usage.lastUsedAt ||
@@ -643,7 +719,7 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
   )
 
   const finalDetail = await applicationDetail(runtime, primary.app.id)
-  assertUsage(finalDetail, { requests7d: 5, tokens7d: 20 })
+  assertUsage(finalDetail, { requests7d: 6, tokens7d: 25 })
   if (
     finalDetail.app.status !== "disabled" ||
     !finalDetail.app.credentials.every(
@@ -652,6 +728,14 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
   ) {
     throw new Error("F0-L1 did not disable the credential-less Application.")
   }
+
+  runtime.registerBeforeRemoveCheck(() =>
+    assertVerticalSliceLeavesNoSensitiveOutput(runtime, [
+      primaryKey,
+      isolatedKey,
+      rotatedKey,
+    ]),
+  )
 
   return {
     accounting: {
@@ -673,7 +757,9 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
       retiringCredentialDenied: true,
     },
     rotation: {
+      automaticOverlapExpiryDenied: true,
       boundedOverlapRecorded: true,
+      retiringCredentialAcceptedDuringOverlap: true,
       rotatedCredentialAccepted: true,
     },
     separateApplicationCredentials: true,
@@ -691,6 +777,7 @@ async function createFixtureApplication(
       description: "Disposable F0-L1 Application-flow fixture.",
       name,
     },
+    credentialReveal: true,
     idempotencyKey,
     method: "POST",
     path: "/api/admin/applications/connected-apps",
@@ -738,7 +825,10 @@ async function applicationDetail(runtime, applicationId) {
   return result.body
 }
 
-async function adminJson(runtime, { body, idempotencyKey, method, path }) {
+async function adminJson(
+  runtime,
+  { body, credentialReveal = false, idempotencyKey, method, path },
+) {
   const response = await boundedFetch(`${runtime.bffOrigin}${path}`, {
     body: body === undefined ? undefined : JSON.stringify(body),
     headers: {
@@ -748,10 +838,19 @@ async function adminJson(runtime, { body, idempotencyKey, method, path }) {
     },
     method,
   })
-  return { body: await response.json(), status: response.status }
+  const responseBody = await response.json()
+  if (!credentialReveal) {
+    runtime.nonRevealBodies.push(responseBody)
+  }
+  return { body: responseBody, status: response.status }
 }
 
-async function openAiChatCompletion(apiOrigin, apiKey, stream) {
+async function openAiChatCompletion(
+  apiOrigin,
+  apiKey,
+  stream,
+  onFirstStreamChunk,
+) {
   const response = await boundedFetch(`${apiOrigin}/v1/chat/completions`, {
     body: JSON.stringify({
       messages: [{ content: "disposable fixture input", role: "user" }],
@@ -767,7 +866,25 @@ async function openAiChatCompletion(apiOrigin, apiKey, stream) {
   if (!stream || response.status !== 200) {
     return { body: await response.json(), status: response.status }
   }
-  const text = await response.text()
+  if (!response.body) {
+    throw new Error("F0-L1 streaming response had no body.")
+  }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let text = ""
+  let firstChunkBeforeTerminal = false
+  while (true) {
+    const { done: streamDone, value } = await reader.read()
+    if (streamDone) {
+      text += decoder.decode()
+      break
+    }
+    if (!firstChunkBeforeTerminal) {
+      firstChunkBeforeTerminal = true
+      onFirstStreamChunk?.()
+    }
+    text += decoder.decode(value, { stream: true })
+  }
   let content = ""
   let done = false
   let totalTokens = null
@@ -786,7 +903,13 @@ async function openAiChatCompletion(apiOrigin, apiKey, stream) {
       totalTokens = event.usage.total_tokens
     }
   }
-  return { content, done, status: response.status, totalTokens }
+  return {
+    content,
+    done,
+    firstChunkBeforeTerminal,
+    status: response.status,
+    totalTokens,
+  }
 }
 
 async function openAiModels(apiOrigin, apiKey) {
@@ -827,6 +950,120 @@ function assertUsage(detail, expected) {
     detail.app.usage?.tokens7d !== expected.tokens7d
   ) {
     throw new Error("F0-L1 Application usage accounting did not reconcile.")
+  }
+}
+
+async function assertVerticalSliceLeavesNoSensitiveOutput(
+  runtime,
+  applicationKeys,
+) {
+  const forbiddenValues = [
+    ...runtime.sensitiveRuntimeValues,
+    ...applicationKeys,
+    "parent-database-must-not-cross",
+    "parent-value-must-not-cross",
+    "disposable fixture input",
+    "fixture-response",
+  ]
+  const reviewedOutputs = [
+    ...runtime.nonRevealBodies.map((body) => JSON.stringify(body)),
+    ...(await Promise.all(
+      runtime.logPaths.map((path) => readFile(path, "utf8")),
+    )),
+  ]
+  for (const output of reviewedOutputs) {
+    for (const value of forbiddenValues) {
+      if (output.includes(value)) {
+        throw new Error(
+          "F0-L1 found credential or workload content in a non-reveal response or runtime log.",
+        )
+      }
+    }
+  }
+}
+
+async function createFixtureClock(stateRoot) {
+  const clockPath = join(stateRoot, "fixture-clock.txt")
+  const modulePath = join(stateRoot, "fixture-clock.mjs")
+  const initialTime = Date.parse("2026-08-05T12:00:00.000Z")
+  await writeFile(clockPath, `${initialTime}\n`, { mode: 0o600 })
+  await writeFile(
+    modulePath,
+    `import { readFileSync } from "node:fs"
+
+const NativeDate = globalThis.Date
+const clockPath = process.env.LLMM_F0_CLOCK_FILE
+
+function fixtureNow() {
+  const value = Number.parseInt(readFileSync(clockPath, "utf8").trim(), 10)
+  if (!Number.isSafeInteger(value)) {
+    throw new Error("Invalid disposable fixture clock.")
+  }
+  return value
+}
+
+class FixtureDate extends NativeDate {
+  constructor(...args) {
+    super(...(args.length === 0 ? [fixtureNow()] : args))
+  }
+
+  static now() {
+    return fixtureNow()
+  }
+}
+
+globalThis.Date = FixtureDate
+`,
+    { mode: 0o600 },
+  )
+  return {
+    environment: {
+      LLMM_F0_CLOCK_FILE: clockPath,
+      NODE_OPTIONS: `--import=${pathToFileURL(modulePath).href}`,
+    },
+    set(value) {
+      if (!Number.isSafeInteger(value)) {
+        throw new Error("F0-L1 fixture clock requires a safe integer.")
+      }
+      return writeFile(clockPath, `${value}\n`, { mode: 0o600 })
+    },
+  }
+}
+
+function createStreamingProbe() {
+  let released = false
+  let releaseTerminal
+  const terminalRelease = new Promise((resolveRelease) => {
+    releaseTerminal = resolveRelease
+  })
+  return {
+    releaseTerminal() {
+      if (!released) {
+        released = true
+        releaseTerminal()
+      }
+    },
+    waitForTerminalRelease() {
+      return promiseWithTimeout(
+        terminalRelease,
+        5_000,
+        "F0-L1 did not observe a downstream stream chunk before terminal release.",
+      )
+    },
+  }
+}
+
+async function promiseWithTimeout(promise, timeoutMs, message) {
+  let timeout
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, rejectTimeout) => {
+        timeout = setTimeout(() => rejectTimeout(new Error(message)), timeoutMs)
+      }),
+    ])
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
@@ -1053,7 +1290,12 @@ function isolatedChildEnvironment(stateRoot, overrides) {
   }
 }
 
-function createRuntimeCleanup({ children, servers, stateRoot }) {
+function createRuntimeCleanup({
+  beforeRemoveChecks,
+  children,
+  servers,
+  stateRoot,
+}) {
   let closePromise
   return () => {
     closePromise ??= (async () => {
@@ -1064,6 +1306,14 @@ function createRuntimeCleanup({ children, servers, stateRoot }) {
       const cleanupErrors = results
         .filter((result) => result.status === "rejected")
         .map((result) => result.reason)
+      const checkResults = await Promise.allSettled(
+        beforeRemoveChecks.map((check) => check()),
+      )
+      cleanupErrors.push(
+        ...checkResults
+          .filter((result) => result.status === "rejected")
+          .map((result) => result.reason),
+      )
       try {
         await rm(stateRoot, { force: true, recursive: true })
       } catch (error) {

@@ -44,10 +44,11 @@ bounded F0-L1 Application-to-inference flow. It creates two temporary
 Applications through the Console BFF control surface, uses a generated
 Application credential through the API authority for non-streaming and
 streaming Chat Completions, verifies usage and last-use metadata, rotates and
-revokes the credential, proves cross-Application policy and credential-record
-isolation, and removes the temporary runtime. Its JSON result contains only
-status and accounting metadata. It does not print credentials, prompts, or
-completion content.
+revokes the credential, proves the exact 24-hour rotation overlap and controlled
+expiry, proves cross-Application policy and credential-record isolation, and
+removes the temporary runtime. Its JSON result contains only status and
+accounting metadata. It verifies that non-reveal responses and disposable
+runtime logs contain no credentials, prompts, or completion content.
 
 ## Security
 
