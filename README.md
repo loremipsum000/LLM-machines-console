@@ -33,11 +33,24 @@ Product Nginx or TLS, Keycloak login, exact Core images, SGLang, persistence,
 runtime no-bypass, or production capacity. The Identity authority deliberately
 returns a controlled unavailable response until a separate browser and session
 functional package supplies a qualified identity fixture. Application
-credential, gateway-accounting, rotation, revocation, and isolation proof is
-owned by F0-L1, not this bootstrap check.
+credential, gateway-accounting, rotation, revocation, and isolation are not
+proved by the bootstrap check alone.
 
 Run `node scripts/pre-genesis/reduced-core-dev.mjs --check` for a bounded
 startup and cleanup check.
+
+Run `node scripts/pre-genesis/reduced-core-dev.mjs --vertical-slice` for the
+bounded F0-L1 Application-to-inference flow. It creates two temporary
+Applications through the Console BFF control surface, uses a generated
+Application credential through the API authority for non-streaming and
+streaming Chat Completions, verifies usage and last-use metadata, rotates and
+revokes the credential, proves the exact 24-hour rotation overlap and controlled
+expiry, proves cross-Application policy and credential-record isolation, and
+removes the temporary runtime. Its JSON result contains only status and
+accounting metadata. It verifies that non-reveal responses and disposable
+runtime logs contain no credentials or parent-process secret sentinels, and
+that control-plane responses and runtime logs contain no prompts or completion
+content.
 
 ## Security
 
