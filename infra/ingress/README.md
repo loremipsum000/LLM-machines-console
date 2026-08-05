@@ -1,8 +1,9 @@
 # Product edge source reference
 
-R1-E1 defines the mandatory source-only Product edge for the reduced
-inference appliance. It is not a deployment manifest and does not qualify a
-running listener.
+F0-E0 is the current source-only Product edge for the reduced inference
+appliance. It succeeds the historical R1-E1 two-authority topology without
+rewriting that evidence. It is not a deployment manifest and does not qualify
+a running listener.
 
 The edge has exactly four public host identities on TCP 443:
 
@@ -15,7 +16,7 @@ The edge has exactly four public host identities on TCP 443:
 Only fixed `console-web`, `console-bff`, and Keycloak identity upstreams occur
 in the template. LiteLLM is reached only behind the BFF. Grafana, Keycloak
 Admin, Prometheus, Alertmanager, Portainer, PostgreSQL, SGLang, and native
-Firecrawl have no host, route, redirect, or direct upstream in R1-E1. Optional
+Firecrawl have no host, route, redirect, or direct upstream in F0-E0. Optional
 Grafana work is a later package and cannot weaken this core edge.
 
 `product-edge.nginx.conf.template` is rendered by deterministic release
@@ -33,6 +34,12 @@ The checked-in validators prove only deterministic source properties:
 - no WebSocket upgrade, request or response buffering, proxy cache, target or
   query logging, or workload-content logging;
 - no native administration route or listener declaration.
+
+The Application-realm token route alone accepts a syntactically valid HTTP
+Basic client authorization value. Human-realm token routes and browser identity
+routes continue to strip Authorization. Every Nginx location on every public
+authority is exact-allowlisted, so an additional location fails source
+validation even when it points to an otherwise retained upstream.
 
 The Console session and Keycloak identity flows keep their own cookies,
 redirects, CSRF and Origin checks. The edge does not suppress `Set-Cookie` or
