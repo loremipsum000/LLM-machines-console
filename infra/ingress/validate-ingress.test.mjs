@@ -284,7 +284,7 @@ test("Application client Basic auth is isolated to its exact token route", () =>
   const removedMap = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>
       source.replace(
-        '"~^Basic[ ][A-Za-z0-9+/]+={0,2}$" $http_authorization;',
+        '"~*^Basic[ ]+[A-Za-z0-9+/]+={0,2}$" $http_authorization;',
         '"~^Bearer .+$" $http_authorization;',
       ),
     ),

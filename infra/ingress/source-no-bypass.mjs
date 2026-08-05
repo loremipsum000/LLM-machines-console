@@ -375,7 +375,8 @@ function forwardHeaders(headers, profile, host) {
     if (
       profile === "identity-application-token" &&
       normalized === "authorization" &&
-      (typeof value !== "string" || !/^Basic [A-Za-z0-9+/]+={0,2}$/.test(value))
+      (typeof value !== "string" ||
+        !/^Basic +[A-Za-z0-9+/]+={0,2}$/i.test(value))
     ) {
       continue
     }

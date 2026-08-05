@@ -19,7 +19,7 @@ http {
 
   map $http_authorization $llmm_application_client_authorization {
     default "";
-    "~^Basic[ ][A-Za-z0-9+/]+={0,2}$" $http_authorization;
+    "~*^Basic[ ]+[A-Za-z0-9+/]+={0,2}$" $http_authorization;
   }
 
   log_format llmm_ingress_metadata escape=json

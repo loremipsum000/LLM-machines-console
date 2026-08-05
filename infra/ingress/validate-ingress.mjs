@@ -126,7 +126,7 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "13c018b0bd7a762b8402a326b74c86f513680b7182c4b81ba578ac232dc50b24",
+    "2082645823ec8392d274ea14835afba9f928364091f6e3be44aa2a943837fdcc",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -497,7 +497,9 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    nginx.includes('"~^Basic[ ][A-Za-z0-9+/]+={0,2}$" $http_authorization;') &&
+    nginx.includes(
+      '"~*^Basic[ ]+[A-Za-z0-9+/]+={0,2}$" $http_authorization;',
+    ) &&
       count(
         nginx,
         "proxy_set_header Authorization $llmm_application_client_authorization;",
