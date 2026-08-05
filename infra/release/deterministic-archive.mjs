@@ -353,6 +353,27 @@ export function copyArchiveEntry({ descriptor, offset, size }, outputPath) {
   }
 }
 
+export function readArchiveEntry({ descriptor, offset, size }) {
+  const contents = Buffer.alloc(size)
+  let remaining = size
+  let position = offset
+  let destination = 0
+  while (remaining > 0) {
+    const bytesRead = readSync(
+      descriptor,
+      contents,
+      destination,
+      remaining,
+      position,
+    )
+    if (bytesRead === 0) fail("truncated archive entry")
+    remaining -= bytesRead
+    position += bytesRead
+    destination += bytesRead
+  }
+  return contents
+}
+
 export function sha256File(path) {
   const hash = createHash("sha256")
   const descriptor = openSync(path, constants.O_RDONLY)

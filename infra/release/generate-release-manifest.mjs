@@ -380,7 +380,7 @@ export function generateReleaseManifest(
   }
 
   return {
-    schema: "llm-machines.release-manifest.v1",
+    schema: "llm-machines.release-manifest.v2",
     status: "PACKAGED_UNQUALIFIED",
     release: {
       version,

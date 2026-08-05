@@ -139,6 +139,15 @@ function fixture() {
             mirrorRepository,
             imageVersion: version,
             sourceRevision,
+            ...(component.kind === "third-party-mirror"
+              ? {
+                  approvedSourceImage: {
+                    indexDigest: component.indexDigest,
+                    platform: component.platform,
+                    platformDigest: component.platformDigest,
+                  },
+                }
+              : {}),
             recipe: { path: recipePath, sha256: recipeSha256 },
           },
           internalParameters: {},
@@ -269,7 +278,7 @@ function fixture() {
     }
   })
   const coreLock = {
-    schema: "llm-machines.core-image-lock.v1",
+    schema: "llm-machines.core-image-lock.v2",
     status: "LOCKED",
     release: { version: "1.0.0-rc.1", sourceCommit, sourceTree },
     inventorySha256: coreInventorySha256(root),

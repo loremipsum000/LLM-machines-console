@@ -24,7 +24,7 @@ function syntheticCoreLock() {
   const inventory = readCoreImageInventory()
   const sourceCommit = "1".repeat(40)
   return {
-    schema: "llm-machines.core-image-lock.v1",
+    schema: "llm-machines.core-image-lock.v2",
     status: "LOCKED",
     release: {
       version: "1.0.0-test",
@@ -200,7 +200,7 @@ test("Core inventory contains no customer inference topology assumption", () => 
   )
 })
 
-test("tag-only, latest, missing platform, and digest disagreement fail", () => {
+test("tag-only, latest, missing platform, and malformed digest fail", () => {
   const inventory = readCoreImageInventory()
   const mutations = [
     (lock) => {
@@ -219,7 +219,7 @@ test("tag-only, latest, missing platform, and digest disagreement fail", () => {
       lock.images[0].platform = undefined
     },
     (lock) => {
-      lock.images[0].platformDigest = digest("f")
+      lock.images[0].platformDigest = "sha256:bad"
     },
   ]
   for (const mutate of mutations) {

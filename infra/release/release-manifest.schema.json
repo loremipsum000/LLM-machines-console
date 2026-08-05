@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://llm-machines.invalid/schemas/release-manifest.v1.json",
+  "$id": "https://llm-machines.invalid/schemas/release-manifest.v2.json",
   "title": "LLM Machines deterministic Core release manifest",
   "type": "object",
   "additionalProperties": false,
@@ -13,7 +13,7 @@
     "qualification"
   ],
   "properties": {
-    "schema": { "const": "llm-machines.release-manifest.v1" },
+    "schema": { "const": "llm-machines.release-manifest.v2" },
     "status": { "const": "PACKAGED_UNQUALIFIED" },
     "release": {
       "type": "object",

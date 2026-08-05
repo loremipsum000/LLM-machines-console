@@ -53,7 +53,7 @@ function syntheticCoreLock(version) {
   const sourceCommit = git("rev-parse", "HEAD^{commit}")
   const sourceTree = git("rev-parse", "HEAD^{tree}")
   return {
-    schema: "llm-machines.core-image-lock.v1",
+    schema: "llm-machines.core-image-lock.v2",
     status: "LOCKED",
     release: { version, sourceCommit, sourceTree },
     inventorySha256: coreInventorySha256(),
@@ -234,6 +234,15 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
             mirrorRepository: image.mirrorRepository,
             imageVersion: image.version,
             sourceRevision: image.sourceRevision,
+            ...(component.kind === "third-party-mirror"
+              ? {
+                  approvedSourceImage: {
+                    indexDigest: component.indexDigest,
+                    platform: component.platform,
+                    platformDigest: component.platformDigest,
+                  },
+                }
+              : {}),
             recipe: { path: recipe, sha256: recipeSha256 },
           },
           internalParameters: {},

@@ -95,7 +95,7 @@ export function buildReleaseEvidenceIndex(
     evidenceArtifacts.map((artifact) => [artifact.evidenceId, artifact]),
   )
   return {
-    schema: "llm-machines.release-evidence-index.v1",
+    schema: "llm-machines.release-evidence-index.v2",
     status: "SEMANTICALLY_VALIDATED",
     containsCredentials: false,
     runtimeQualified: false,
@@ -182,7 +182,7 @@ export function validateReleaseEvidenceIndex(
     ? release.sourceDateEpoch * 1000
     : Number.NaN
   if (
-    index.schema !== "llm-machines.release-evidence-index.v1" ||
+    index.schema !== "llm-machines.release-evidence-index.v2" ||
     index.status !== "SEMANTICALLY_VALIDATED" ||
     index.containsCredentials !== false ||
     index.runtimeQualified !== false ||

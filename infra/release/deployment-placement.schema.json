@@ -31,7 +31,7 @@
     },
     "registryAuthority": {
       "type": "string",
-      "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[1-9][0-9]{0,4})?$"
+      "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*(?::[1-9][0-9]{0,4})?$"
     },
     "placements": {
       "type": "array",
@@ -101,12 +101,14 @@
           "required": [
             "status",
             "importedArchiveSha256",
+            "mirroredArchiveSha256",
             "mirroredIndexDigest",
             "mirroredPlatformDigest"
           ],
           "properties": {
             "status": { "const": "VERIFIED" },
             "importedArchiveSha256": { "$ref": "#/$defs/sha256" },
+            "mirroredArchiveSha256": { "$ref": "#/$defs/sha256" },
             "mirroredIndexDigest": { "$ref": "#/$defs/sha256" },
             "mirroredPlatformDigest": { "$ref": "#/$defs/sha256" }
           }

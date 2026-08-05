@@ -239,8 +239,8 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
     ["version", "sourceCommit", "sourceTree"],
     "Core image lock release",
   )
-  if (lock?.schema !== "llm-machines.core-image-lock.v1") {
-    errors.push("Core image lock schema is not v1")
+  if (lock?.schema !== "llm-machines.core-image-lock.v2") {
+    errors.push("Core image lock schema is not v2")
   }
   if (lock?.status !== "LOCKED") {
     errors.push("Core image lock must be LOCKED")
@@ -345,12 +345,6 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
       }
       if (image.version !== expected.version) {
         errors.push(`${field} version differs from the inventory`)
-      }
-      if (image.indexDigest !== expected.indexDigest) {
-        errors.push(`${field} index digest differs from the approved source`)
-      }
-      if (image.platformDigest !== expected.platformDigest) {
-        errors.push(`${field} platform digest differs from the approved source`)
       }
     } else if (expected.sourceRevision === "release-source-commit") {
       if (image.sourceRevision !== lock?.release?.sourceCommit) {

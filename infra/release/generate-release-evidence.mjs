@@ -260,6 +260,15 @@ function validateProvenance(document, image, component, root, policy) {
     mirrorRepository: image.mirrorRepository,
     imageVersion: image.version,
     sourceRevision: image.sourceRevision,
+    ...(component.kind === "third-party-mirror"
+      ? {
+          approvedSourceImage: {
+            indexDigest: component.indexDigest,
+            platform: component.platform,
+            platformDigest: component.platformDigest,
+          },
+        }
+      : {}),
     recipe: {
       path: recipe,
       sha256: sha256File(resolve(root, recipe)),

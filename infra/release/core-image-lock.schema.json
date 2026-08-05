@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://llm-machines.invalid/schemas/core-image-lock.v1.json",
+  "$id": "https://llm-machines.invalid/schemas/core-image-lock.v2.json",
   "title": "LLM Machines immutable Core image lock",
   "type": "object",
   "additionalProperties": false,
@@ -13,7 +13,7 @@
     "images"
   ],
   "properties": {
-    "schema": { "const": "llm-machines.core-image-lock.v1" },
+    "schema": { "const": "llm-machines.core-image-lock.v2" },
     "status": { "const": "LOCKED" },
     "release": {
       "type": "object",

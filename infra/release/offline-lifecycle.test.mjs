@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import { createHash, generateKeyPairSync, sign } from "node:crypto"
 import {
+  copyFileSync,
+  cpSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -12,12 +14,16 @@ import { dirname, join } from "node:path"
 import test from "node:test"
 import { assembleCorePackage } from "./assemble-core-package.mjs"
 import { installCleanRoom } from "./clean-room-install.mjs"
-import { sha256File } from "./deterministic-archive.mjs"
+import {
+  assembleDeterministicArchive,
+  sha256File,
+} from "./deterministic-archive.mjs"
 import { canonicalJson } from "./generate-release-manifest.mjs"
 import {
   generateRollbackDescriptor,
   verifyRollbackDescriptor,
 } from "./generate-rollback-descriptor.mjs"
+import { createDeploymentPlacement } from "./validate-deployment-placement.mjs"
 import {
   coreInventorySha256,
   readCoreImageInventory,
@@ -44,7 +50,79 @@ function write(path, contents) {
   writeFileSync(path, contents)
 }
 
+function sha256Bytes(bytes) {
+  return `sha256:${createHash("sha256").update(bytes).digest("hex")}`
+}
+
+function writeOciArchive(root, id, label) {
+  const layoutRoot = join(root, `.oci-layout-${id}`)
+  const outputPath = join(root, `${id}.oci.tar.zst`)
+  const layer = Buffer.from(`${label}-${id}-layer\n`)
+  const layerDigest = sha256Bytes(layer)
+  const config = Buffer.from(
+    canonicalJson({
+      architecture: "amd64",
+      os: "linux",
+      rootfs: { type: "layers", diff_ids: [layerDigest] },
+    }),
+  )
+  const configDigest = sha256Bytes(config)
+  const manifest = Buffer.from(
+    canonicalJson({
+      schemaVersion: 2,
+      mediaType: "application/vnd.oci.image.manifest.v1+json",
+      config: {
+        mediaType: "application/vnd.oci.image.config.v1+json",
+        digest: configDigest,
+        size: config.length,
+      },
+      layers: [
+        {
+          mediaType: "application/vnd.oci.image.layer.v1.tar",
+          digest: layerDigest,
+          size: layer.length,
+        },
+      ],
+    }),
+  )
+  const manifestDigest = sha256Bytes(manifest)
+  const index = Buffer.from(
+    canonicalJson({
+      schemaVersion: 2,
+      mediaType: "application/vnd.oci.image.index.v1+json",
+      manifests: [
+        {
+          mediaType: "application/vnd.oci.image.manifest.v1+json",
+          digest: manifestDigest,
+          size: manifest.length,
+          platform: { architecture: "amd64", os: "linux" },
+        },
+      ],
+    }),
+  )
+  write(
+    join(layoutRoot, "oci-layout"),
+    canonicalJson({ imageLayoutVersion: "1.0.0" }),
+  )
+  writeFileSync(join(layoutRoot, "index.json"), index)
+  write(join(layoutRoot, "blobs", "sha256", layerDigest.slice(7)), layer)
+  write(join(layoutRoot, "blobs", "sha256", configDigest.slice(7)), config)
+  write(join(layoutRoot, "blobs", "sha256", manifestDigest.slice(7)), manifest)
+  assembleDeterministicArchive({
+    inputRoot: layoutRoot,
+    outputPath,
+    sourceDateEpoch: 1_722_772_800,
+  })
+  rmSync(layoutRoot, { recursive: true, force: true })
+  return {
+    ociArchiveSha256: sha256File(outputPath),
+    indexDigest: sha256Bytes(index),
+    platformDigest: manifestDigest,
+  }
+}
+
 function payload(root, label) {
+  const imageIdentities = new Map()
   for (const directory of [
     "config",
     "images",
@@ -54,7 +132,10 @@ function payload(root, label) {
   ]) {
     if (directory === "images") {
       for (const { id } of readCoreImageInventory().components) {
-        write(join(root, directory, `${id}.oci.tar.zst`), `${label}-${id}\n`)
+        imageIdentities.set(
+          id,
+          writeOciArchive(join(root, directory), id, label),
+        )
       }
     } else {
       write(
@@ -63,6 +144,7 @@ function payload(root, label) {
       )
     }
   }
+  return imageIdentities
 }
 
 function exportPublic(key) {
@@ -141,10 +223,11 @@ function syntheticCoreLock(
   sourceTree,
   sourceDigests,
   payloadRoot,
+  imageIdentities,
 ) {
   const inventory = readCoreImageInventory()
   return {
-    schema: "llm-machines.core-image-lock.v1",
+    schema: "llm-machines.core-image-lock.v2",
     status: "LOCKED",
     release: { version, sourceCommit, sourceTree },
     inventorySha256: coreInventorySha256(),
@@ -160,15 +243,9 @@ function syntheticCoreLock(
       ociArchiveSha256: sha256File(
         join(payloadRoot, "images", `${component.id}.oci.tar.zst`),
       ),
-      indexDigest:
-        component.kind === "third-party-mirror"
-          ? component.indexDigest
-          : digest(((index + 1) % 16).toString(16)),
+      indexDigest: imageIdentities.get(component.id).indexDigest,
       platform: "linux/amd64",
-      platformDigest:
-        component.kind === "third-party-mirror"
-          ? component.platformDigest
-          : digest(((index + 2) % 16).toString(16)),
+      platformDigest: imageIdentities.get(component.id).platformDigest,
       sourceRevision:
         component.sourceRevision === "release-source-commit"
           ? sourceCommit
@@ -203,7 +280,7 @@ function bundleFixture(version = "1.0.0", label = version) {
   const corePath = join(artifactRoot, "core", artifactName)
   mkdirSync(artifactRoot, { recursive: true })
   mkdirSync(payloadRoot)
-  payload(payloadRoot, label)
+  const imageIdentities = payload(payloadRoot, label)
   const sourceCommit = label
     .charCodeAt(0)
     .toString(16)
@@ -225,6 +302,7 @@ function bundleFixture(version = "1.0.0", label = version) {
       grafana: `sha256:${createHash("sha256").update(grafanaSource).digest("hex")}`,
     },
     payloadRoot,
+    imageIdentities,
   )
   const assembled = assembleCorePackage({
     inputRoot: payloadRoot,
@@ -318,7 +396,7 @@ function bundleFixture(version = "1.0.0", label = version) {
   publicTrustArtifact.size = Buffer.byteLength(publicTrustContents)
   publicTrustArtifact.sha256 = sha256File(publicTrustPath)
   const manifest = {
-    schema: "llm-machines.release-manifest.v1",
+    schema: "llm-machines.release-manifest.v2",
     status: "PACKAGED_UNQUALIFIED",
     release: {
       version,
@@ -380,6 +458,7 @@ function bundleFixture(version = "1.0.0", label = version) {
     coreLockValue,
     directory,
     manifest,
+    payloadRoot,
     rootSigningPrivateKey: trust.rootPrivateKey,
     signingPrivateKey: trust.privateKey,
   }
@@ -421,7 +500,14 @@ test("Core package assembly rejects OCI archive omission and digest drift", () =
     "payload",
     fixture.coreLockValue.images[0].ociArchivePath,
   )
-  writeFileSync(archivePath, "changed OCI archive bytes\n")
+  copyFileSync(
+    join(
+      fixture.directory,
+      "payload",
+      fixture.coreLockValue.images[1].ociArchivePath,
+    ),
+    archivePath,
+  )
   assert.throws(
     () =>
       assembleCorePackage({
@@ -430,7 +516,7 @@ test("Core package assembly rejects OCI archive omission and digest drift", () =
         sourceDateEpoch: 1_722_772_800,
         coreLock: fixture.coreLockValue,
       }),
-    /OCI archive digest differs/,
+    /OCI archive identity differs/,
   )
   rmSync(archivePath)
   assert.throws(
@@ -465,6 +551,60 @@ test("public verifier and clean-room installer preserve the unqualified boundary
   assert.throws(
     () => installCleanRoom({ ...fixture.bundle, targetRoot }),
     /must not already exist/,
+  )
+  rmSync(fixture.directory, { recursive: true, force: true })
+})
+
+test("commissioning placement derives signed and observed image identities", () => {
+  const fixture = bundleFixture("1.0.0-rc.1", "placement")
+  const registryExportRoot = join(fixture.directory, "registry-export")
+  cpSync(
+    join(fixture.payloadRoot, "images"),
+    join(registryExportRoot, "images"),
+    { recursive: true },
+  )
+  const authority = "registry.customer.example:5443"
+  const placement = createDeploymentPlacement({
+    releaseBundle: fixture.bundle,
+    importRoot: fixture.payloadRoot,
+    registryExportRoot,
+    registryAuthority: authority,
+    approvedRegistryAuthorities: [authority],
+    commissioningEvidenceId: "commissioning.image-placement.0001",
+    auditEvidenceId: "audit.image-placement.0001",
+  })
+  assert.equal(
+    placement.coreRelease.releaseManifestSha256,
+    sha256File(fixture.bundle.manifestPath),
+  )
+  assert.equal(placement.placements.length, fixture.coreLockValue.images.length)
+  assert.ok(
+    placement.placements.every(
+      ({ verification }) =>
+        verification.status === "VERIFIED" &&
+        verification.importedArchiveSha256 ===
+          verification.mirroredArchiveSha256,
+    ),
+  )
+
+  const first = fixture.coreLockValue.images[0]
+  const second = fixture.coreLockValue.images[1]
+  copyFileSync(
+    join(registryExportRoot, second.ociArchivePath),
+    join(registryExportRoot, first.ociArchivePath),
+  )
+  assert.throws(
+    () =>
+      createDeploymentPlacement({
+        releaseBundle: fixture.bundle,
+        importRoot: fixture.payloadRoot,
+        registryExportRoot,
+        registryAuthority: authority,
+        approvedRegistryAuthorities: [authority],
+        commissioningEvidenceId: "commissioning.image-placement.0002",
+        auditEvidenceId: "audit.image-placement.0002",
+      }),
+    /imported or mirrored content is not verified/,
   )
   rmSync(fixture.directory, { recursive: true, force: true })
 })

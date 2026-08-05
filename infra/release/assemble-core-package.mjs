@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto"
 import { lstatSync, readFileSync, readdirSync } from "node:fs"
 import { relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -6,6 +5,7 @@ import {
   assembleDeterministicArchive,
   withDeterministicArchive,
 } from "./deterministic-archive.mjs"
+import { inspectOciArchive } from "./inspect-oci-archive.mjs"
 import {
   readCoreImageInventory,
   validateCoreImageLock,
@@ -62,10 +62,6 @@ function verifyPayloadRoot(inputRoot) {
   visit()
 }
 
-function sha256File(path) {
-  return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`
-}
-
 function verifyLockedImageArchives(inputRoot, coreLock) {
   const errors = validateCoreImageLock(coreLock, readCoreImageInventory())
   if (errors.length > 0) {
@@ -81,8 +77,14 @@ function verifyLockedImageArchives(inputRoot, coreLock) {
   }
   for (const image of coreLock.images) {
     const archivePath = resolve(inputRoot, image.ociArchivePath)
-    if (sha256File(archivePath) !== image.ociArchiveSha256) {
-      fail(`${image.id} OCI archive digest differs from the Core image lock`)
+    const observed = inspectOciArchive(archivePath)
+    if (
+      observed.ociArchiveSha256 !== image.ociArchiveSha256 ||
+      observed.indexDigest !== image.indexDigest ||
+      observed.platform !== image.platform ||
+      observed.platformDigest !== image.platformDigest
+    ) {
+      fail(`${image.id} OCI archive identity differs from the Core image lock`)
     }
   }
 }

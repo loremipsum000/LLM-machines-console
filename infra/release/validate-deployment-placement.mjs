@@ -1,16 +1,17 @@
-import { createHash } from "node:crypto"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
+import { sha256File } from "./deterministic-archive.mjs"
+import { canonicalJson } from "./generate-release-manifest.mjs"
+import { inspectOciArchive } from "./inspect-oci-archive.mjs"
 import {
   readCoreImageInventory,
   validateCoreImageLock,
 } from "./validate-image-lock.mjs"
+import { verifyReleaseBundle } from "./verify-release-bundle.mjs"
 
-const sha256Pattern = /^sha256:[a-f0-9]{64}$/
-const authorityPattern =
-  /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[1-9][0-9]{0,4})?$/
-const forbiddenPublicAuthorities = new Set([
+const knownPublicAuthorities = new Set([
   "docker.io",
   "registry-1.docker.io",
   "ghcr.io",
@@ -19,12 +20,12 @@ const forbiddenPublicAuthorities = new Set([
   "public.ecr.aws",
   "registry.gitlab.com",
 ])
-const forbiddenPublicPatterns = [
-  /\.pkg\.dev$/,
-  /\.azurecr\.io$/,
-  /\.dkr\.ecr\.[a-z0-9-]+\.amazonaws\.com$/,
-]
 const credentialKeyPattern = /(?:credential|password|secret|token|username)/i
+const evidenceIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/
+
+function fail(message) {
+  throw new Error(message)
+}
 
 function exactKeys(errors, value, expected, field) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -51,41 +52,114 @@ function findCredentialField(value, path = "placement") {
   return null
 }
 
-function validateAuthority(errors, authority, approved) {
+function authorityHost(authority) {
   if (
     typeof authority !== "string" ||
-    !authorityPattern.test(authority) ||
-    authority.includes("..") ||
+    authority !== authority.toLowerCase() ||
+    authority.length > 259 ||
+    authority.includes("/") ||
     authority.includes("@") ||
-    authority.includes("/")
+    authority.includes("[") ||
+    authority.includes("]")
   ) {
-    errors.push("registry authority is malformed")
-    return
+    return null
   }
-  const [host, port] = authority.split(":")
-  if (port !== undefined && Number.parseInt(port, 10) > 65_535) {
-    errors.push("registry authority port is invalid")
-  }
+  const parts = authority.split(":")
+  if (parts.length > 2) return null
+  const [host, port] = parts
+  if (!host || host.length > 253) return null
   if (
-    forbiddenPublicAuthorities.has(host) ||
-    forbiddenPublicPatterns.some((pattern) => pattern.test(host))
+    port !== undefined &&
+    (!/^[1-9][0-9]{0,4}$/.test(port) || Number.parseInt(port, 10) > 65_535)
   ) {
+    return null
+  }
+  const labels = host.split(".")
+  if (
+    labels.some(
+      (label) =>
+        label.length < 1 ||
+        label.length > 63 ||
+        !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label),
+    )
+  ) {
+    return null
+  }
+  return host
+}
+
+export function validateRegistryAuthority(
+  authority,
+  approvedRegistryAuthorities = [],
+) {
+  const errors = []
+  const host = authorityHost(authority)
+  if (!host) {
+    errors.push("registry authority is malformed")
+    return errors
+  }
+  if (knownPublicAuthorities.has(host)) {
     errors.push("public registry authorities are forbidden")
   }
-  if (!approved.includes(authority)) {
+  if (
+    !Array.isArray(approvedRegistryAuthorities) ||
+    approvedRegistryAuthorities.length === 0 ||
+    approvedRegistryAuthorities.some(
+      (entry) => typeof entry !== "string" || authorityHost(entry) === null,
+    )
+  ) {
+    errors.push("an exact commissioning registry allowlist is required")
+  } else if (!approvedRegistryAuthorities.includes(authority)) {
     errors.push("registry authority is not approved for this commissioning")
+  }
+  return errors
+}
+
+function placementContext({ releaseBundle, importRoot, registryExportRoot }) {
+  const verified = verifyReleaseBundle(releaseBundle)
+  const lockArtifact = verified.manifest.artifacts.find(
+    ({ evidenceId }) => evidenceId === "core-image-lock",
+  )
+  if (!lockArtifact) fail("verified release omits the Core image lock")
+  const coreLockPath = resolve(releaseBundle.artifactRoot, lockArtifact.path)
+  const coreLock = JSON.parse(readFileSync(coreLockPath, "utf8"))
+  const lockErrors = validateCoreImageLock(coreLock, readCoreImageInventory())
+  if (lockErrors.length > 0) {
+    fail(`verified Core image lock is invalid: ${lockErrors.join("; ")}`)
+  }
+  const observations = coreLock.images.map((image) => ({
+    id: image.id,
+    imported: inspectOciArchive(resolve(importRoot, image.ociArchivePath)),
+    mirrored: inspectOciArchive(
+      resolve(registryExportRoot, image.ociArchivePath),
+    ),
+  }))
+  return {
+    verified,
+    coreLock,
+    coreImageLockSha256: sha256File(coreLockPath),
+    observations,
   }
 }
 
-export function validateDeploymentPlacement(
+function expectedObservation(image) {
+  return {
+    ociArchiveSha256: image.ociArchiveSha256,
+    indexDigest: image.indexDigest,
+    platform: image.platform,
+    platformDigest: image.platformDigest,
+  }
+}
+
+function validatePlacementDocument(
   placement,
   {
     coreLock,
     coreImageLockSha256,
     releaseManifestSha256,
-    approvedRegistryAuthorities = [],
-    inventory = readCoreImageInventory(),
-  } = {},
+    approvedRegistryAuthorities,
+    observations,
+  },
 ) {
   const errors = []
   exactKeys(
@@ -127,18 +201,13 @@ export function validateDeploymentPlacement(
     ["status", "eventType", "evidenceId", "metadataOnly"],
     "deployment placement audit record",
   )
-
-  if (placement?.schema !== "llm-machines.deployment-placement.v1") {
-    errors.push("deployment placement schema is not v1")
-  }
-  if (placement?.status !== "COMMISSIONING_VERIFIED") {
-    errors.push("deployment placement must be commissioning-verified")
-  }
-  if (placement?.containsCredentials !== false) {
-    errors.push("deployment placement must remain credential-free")
-  }
-  if (placement?.runtimeQualified !== false) {
-    errors.push("deployment placement cannot claim runtime qualification")
+  if (
+    placement?.schema !== "llm-machines.deployment-placement.v1" ||
+    placement?.status !== "COMMISSIONING_VERIFIED" ||
+    placement?.containsCredentials !== false ||
+    placement?.runtimeQualified !== false
+  ) {
+    errors.push("deployment placement overstates status or qualification")
   }
   const credentialField = findCredentialField(placement)
   if (credentialField) {
@@ -146,54 +215,32 @@ export function validateDeploymentPlacement(
       `deployment placement contains credential field ${credentialField}`,
     )
   }
-
-  if (!coreLock || typeof coreLock !== "object") {
-    errors.push("validated Core image lock is required")
-  } else {
-    errors.push(...validateCoreImageLock(coreLock, inventory))
-  }
-  if (!sha256Pattern.test(coreImageLockSha256 ?? "")) {
-    errors.push("exact Core image lock digest is required")
-  }
-  if (!sha256Pattern.test(releaseManifestSha256 ?? "")) {
-    errors.push("exact release manifest digest is required")
-  }
   if (
-    placement?.coreRelease?.version !== coreLock?.release?.version ||
+    placement?.coreRelease?.version !== coreLock.release.version ||
     placement?.coreRelease?.coreImageLockSha256 !== coreImageLockSha256 ||
     placement?.coreRelease?.releaseManifestSha256 !== releaseManifestSha256
   ) {
     errors.push("deployment placement does not bind the exact Core release")
   }
-
-  const approved = Array.isArray(approvedRegistryAuthorities)
-    ? approvedRegistryAuthorities
-    : []
-  if (
-    approved.length === 0 ||
-    approved.some(
-      (authority) =>
-        typeof authority !== "string" || authority !== authority.toLowerCase(),
-    )
-  ) {
-    errors.push(
-      "an exact lowercase commissioning registry allowlist is required",
-    )
-  }
-  validateAuthority(errors, placement?.registryAuthority, approved)
+  errors.push(
+    ...validateRegistryAuthority(
+      placement?.registryAuthority,
+      approvedRegistryAuthorities,
+    ),
+  )
 
   const placements = Array.isArray(placement?.placements)
     ? placement.placements
     : []
-  const images = Array.isArray(coreLock?.images) ? coreLock.images : []
   if (
-    placements.length !== images.length ||
-    placements.some((entry, index) => entry?.id !== images[index]?.id)
+    placements.length !== coreLock.images.length ||
+    placements.some((entry, index) => entry?.id !== coreLock.images[index]?.id)
   ) {
     errors.push("deployment placement must preserve the exact Core image order")
   }
   for (const [index, entry] of placements.entries()) {
-    const image = images[index]
+    const image = coreLock.images[index]
+    const observed = observations[index]
     const field = `placement ${entry?.id ?? index}`
     exactKeys(
       errors,
@@ -215,12 +262,13 @@ export function validateDeploymentPlacement(
       [
         "status",
         "importedArchiveSha256",
+        "mirroredArchiveSha256",
         "mirroredIndexDigest",
         "mirroredPlatformDigest",
       ],
       `${field} verification`,
     )
-    if (!image) continue
+    if (!image || !observed) continue
     const expectedReference = `${placement.registryAuthority}/${image.mirrorRepository}@${image.platformDigest}`
     if (
       entry.mirrorRepository !== image.mirrorRepository ||
@@ -231,27 +279,26 @@ export function validateDeploymentPlacement(
     ) {
       errors.push(`${field} differs from the signed Core lock`)
     }
+    const expected = expectedObservation(image)
     if (
-      entry.effectiveReference.includes(":latest") ||
-      !entry.effectiveReference.includes("@sha256:")
-    ) {
-      errors.push(`${field} effective reference is mutable or tag-only`)
-    }
-    if (
+      canonicalJson(observed.imported) !== canonicalJson(expected) ||
+      canonicalJson(observed.mirrored) !== canonicalJson(expected) ||
       entry.verification?.status !== "VERIFIED" ||
-      entry.verification?.importedArchiveSha256 !== image.ociArchiveSha256 ||
-      entry.verification?.mirroredIndexDigest !== image.indexDigest ||
-      entry.verification?.mirroredPlatformDigest !== image.platformDigest
+      entry.verification?.importedArchiveSha256 !==
+        observed.imported.ociArchiveSha256 ||
+      entry.verification?.mirroredArchiveSha256 !==
+        observed.mirrored.ociArchiveSha256 ||
+      entry.verification?.mirroredIndexDigest !==
+        observed.mirrored.indexDigest ||
+      entry.verification?.mirroredPlatformDigest !==
+        observed.mirrored.platformDigest
     ) {
       errors.push(`${field} imported or mirrored content is not verified`)
     }
   }
-
   if (
     placement?.records?.commissioning?.status !== "RECORDED" ||
-    !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(
-      placement?.records?.commissioning?.evidenceId ?? "",
-    )
+    !evidenceIdPattern.test(placement?.records?.commissioning?.evidenceId ?? "")
   ) {
     errors.push("commissioning evidence record is invalid")
   }
@@ -260,43 +307,133 @@ export function validateDeploymentPlacement(
     placement?.records?.audit?.eventType !==
       "release.image-placement.verified" ||
     placement?.records?.audit?.metadataOnly !== true ||
-    !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(
-      placement?.records?.audit?.evidenceId ?? "",
-    )
+    !evidenceIdPattern.test(placement?.records?.audit?.evidenceId ?? "")
   ) {
     errors.push("metadata-only audit record is invalid")
   }
   return errors
 }
 
-function sha256(bytes) {
-  return `sha256:${createHash("sha256").update(bytes).digest("hex")}`
+export function createDeploymentPlacement({
+  releaseBundle,
+  importRoot,
+  registryExportRoot,
+  registryAuthority,
+  approvedRegistryAuthorities,
+  commissioningEvidenceId,
+  auditEvidenceId,
+}) {
+  const context = placementContext({
+    releaseBundle,
+    importRoot,
+    registryExportRoot,
+  })
+  const placement = {
+    schema: "llm-machines.deployment-placement.v1",
+    status: "COMMISSIONING_VERIFIED",
+    containsCredentials: false,
+    runtimeQualified: false,
+    coreRelease: {
+      version: context.coreLock.release.version,
+      releaseManifestSha256: context.verified.manifestSha256,
+      coreImageLockSha256: context.coreImageLockSha256,
+    },
+    registryAuthority,
+    placements: context.coreLock.images.map((image, index) => {
+      const observed = context.observations[index]
+      return {
+        id: image.id,
+        mirrorRepository: image.mirrorRepository,
+        effectiveReference: `${registryAuthority}/${image.mirrorRepository}@${image.platformDigest}`,
+        ociArchiveSha256: image.ociArchiveSha256,
+        indexDigest: image.indexDigest,
+        platformDigest: image.platformDigest,
+        verification: {
+          status: "VERIFIED",
+          importedArchiveSha256: observed.imported.ociArchiveSha256,
+          mirroredArchiveSha256: observed.mirrored.ociArchiveSha256,
+          mirroredIndexDigest: observed.mirrored.indexDigest,
+          mirroredPlatformDigest: observed.mirrored.platformDigest,
+        },
+      }
+    }),
+    records: {
+      commissioning: {
+        status: "RECORDED",
+        evidenceId: commissioningEvidenceId,
+      },
+      audit: {
+        status: "RECORDED",
+        eventType: "release.image-placement.verified",
+        evidenceId: auditEvidenceId,
+        metadataOnly: true,
+      },
+    },
+  }
+  const errors = validatePlacementDocument(placement, {
+    coreLock: context.coreLock,
+    coreImageLockSha256: context.coreImageLockSha256,
+    releaseManifestSha256: context.verified.manifestSha256,
+    approvedRegistryAuthorities,
+    observations: context.observations,
+  })
+  if (errors.length > 0) fail(errors.join("\n"))
+  return placement
 }
 
 function run() {
   const { values } = parseArgs({
     options: {
-      placement: { type: "string" },
-      "core-lock": { type: "string" },
-      "release-manifest-sha256": { type: "string" },
+      manifest: { type: "string" },
+      signature: { type: "string" },
+      trust: { type: "string" },
+      "artifact-root": { type: "string" },
+      "trusted-root-sha256": { type: "string" },
+      "import-root": { type: "string" },
+      "registry-export-root": { type: "string" },
+      "registry-authority": { type: "string" },
       "approved-registry": { type: "string", multiple: true },
+      "commissioning-evidence-id": { type: "string" },
+      "audit-evidence-id": { type: "string" },
+      output: { type: "string" },
     },
     strict: true,
   })
-  if (!values.placement || !values["core-lock"]) {
-    throw new Error("--placement and --core-lock are required")
+  const required = [
+    "manifest",
+    "signature",
+    "trust",
+    "artifact-root",
+    "trusted-root-sha256",
+    "import-root",
+    "registry-export-root",
+    "registry-authority",
+    "commissioning-evidence-id",
+    "audit-evidence-id",
+    "output",
+  ]
+  for (const key of required) {
+    if (!values[key]) fail(`--${key} is required`)
   }
-  const placement = JSON.parse(readFileSync(values.placement, "utf8"))
-  const coreLockBytes = readFileSync(values["core-lock"])
-  const coreLock = JSON.parse(coreLockBytes)
-  const errors = validateDeploymentPlacement(placement, {
-    coreLock,
-    coreImageLockSha256: sha256(coreLockBytes),
-    releaseManifestSha256: values["release-manifest-sha256"],
+  if (existsSync(values.output))
+    fail("deployment placement output already exists")
+  const placement = createDeploymentPlacement({
+    releaseBundle: {
+      manifestPath: values.manifest,
+      signaturePath: values.signature,
+      trustPath: values.trust,
+      artifactRoot: values["artifact-root"],
+      trustedRootSha256: values["trusted-root-sha256"],
+    },
+    importRoot: values["import-root"],
+    registryExportRoot: values["registry-export-root"],
+    registryAuthority: values["registry-authority"],
     approvedRegistryAuthorities: values["approved-registry"],
+    commissioningEvidenceId: values["commissioning-evidence-id"],
+    auditEvidenceId: values["audit-evidence-id"],
   })
-  if (errors.length > 0) throw new Error(errors.join("\n"))
-  process.stdout.write("deployment placement valid\n")
+  writeFileSync(values.output, canonicalJson(placement), { flag: "wx" })
+  process.stdout.write(`${values.output}\n`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) run()
