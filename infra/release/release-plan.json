@@ -12,7 +12,8 @@
     "backupRepository": "separate-customer-owned-target",
     "bulkModelWeights": "excluded",
     "imageInventory": "infra/release/core-image-inventory.json",
-    "imageLockSchema": "infra/release/core-image-lock.schema.json"
+    "imageLockSchema": "infra/release/core-image-lock.schema.json",
+    "deploymentPlacementSchema": "infra/release/deployment-placement.schema.json"
   },
   "inference": {
     "bundledWithCore": false,

@@ -53,22 +53,31 @@ function syntheticCoreLock(version) {
   const sourceCommit = git("rev-parse", "HEAD^{commit}")
   const sourceTree = git("rev-parse", "HEAD^{tree}")
   return {
-    schema: "llm-machines.core-image-lock.v1",
+    schema: "llm-machines.core-image-lock.v2",
     status: "LOCKED",
     release: { version, sourceCommit, sourceTree },
     inventorySha256: coreInventorySha256(),
     platform: "linux/amd64",
-    privateRegistry: "registry.release.invalid",
     images: inventory.components.map((component, index) => {
       const first = ((index + 1) % 16).toString(16)
       const second = ((index + 2) % 16).toString(16)
       return {
         id: component.id,
-        repository: `registry.release.invalid/${component.mirrorRepository}`,
+        mirrorRepository: component.mirrorRepository,
         version:
           component.kind === "third-party-mirror"
             ? component.version
             : `${version}-build.${index + 1}`,
+        ociArchivePath: `images/${component.id}.oci.tar.zst`,
+        ociArchiveSha256: digest("9"),
+        approvedSourceIndexDigest:
+          component.kind === "third-party-mirror"
+            ? component.indexDigest
+            : null,
+        approvedSourcePlatformDigest:
+          component.kind === "third-party-mirror"
+            ? component.platformDigest
+            : null,
         indexDigest:
           component.kind === "third-party-mirror"
             ? component.indexDigest
@@ -214,7 +223,7 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
       predicateType: "https://slsa.dev/provenance/v1",
       subject: [
         {
-          name: image.repository,
+          name: image.mirrorRepository,
           digest: { sha256: image.platformDigest.slice("sha256:".length) },
         },
       ],
@@ -230,9 +239,18 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
           }[component.kind],
           externalParameters: {
             componentId: image.id,
-            imageRepository: image.repository,
+            mirrorRepository: image.mirrorRepository,
             imageVersion: image.version,
             sourceRevision: image.sourceRevision,
+            ...(component.kind === "third-party-mirror"
+              ? {
+                  approvedSourceImage: {
+                    indexDigest: component.indexDigest,
+                    platform: component.platform,
+                    platformDigest: component.platformDigest,
+                  },
+                }
+              : {}),
             recipe: { path: recipe, sha256: recipeSha256 },
           },
           internalParameters: {},
@@ -266,7 +284,7 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
       schema: "llm-machines.vulnerability-report.v1",
       image: {
         id: image.id,
-        repository: image.repository,
+        mirrorRepository: image.mirrorRepository,
         digest: image.platformDigest,
       },
       scanner: { name: "trivy", version: "0.65.0" },
@@ -300,7 +318,7 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
       status: "REVIEWED",
       component: {
         id: image.id,
-        repository: image.repository,
+        mirrorRepository: image.mirrorRepository,
         sourceRevision: image.sourceRevision,
         license: image.license,
       },

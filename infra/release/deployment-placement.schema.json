@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://llm-machines.invalid/schemas/deployment-placement.v1.json",
+  "title": "LLM Machines credential-free deployment placement",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "containsCredentials",
+    "runtimeQualified",
+    "coreRelease",
+    "registryAuthority",
+    "placements",
+    "records"
+  ],
+  "properties": {
+    "schema": { "const": "llm-machines.deployment-placement.v1" },
+    "status": { "const": "COMMISSIONING_VERIFIED" },
+    "containsCredentials": { "const": false },
+    "runtimeQualified": { "const": false },
+    "coreRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "releaseManifestSha256", "coreImageLockSha256"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "releaseManifestSha256": { "$ref": "#/$defs/sha256" },
+        "coreImageLockSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "registryAuthority": {
+      "type": "string",
+      "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*(?::[1-9][0-9]{0,4})?$"
+    },
+    "placements": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/placement" }
+    },
+    "records": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commissioning", "audit"],
+      "properties": {
+        "commissioning": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "evidenceId"],
+          "properties": {
+            "status": { "const": "RECORDED" },
+            "evidenceId": { "$ref": "#/$defs/evidenceId" }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "eventType", "evidenceId", "metadataOnly"],
+          "properties": {
+            "status": { "const": "RECORDED" },
+            "eventType": { "const": "release.image-placement.verified" },
+            "evidenceId": { "$ref": "#/$defs/evidenceId" },
+            "metadataOnly": { "const": true }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "evidenceId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$"
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "mirrorRepository",
+        "effectiveReference",
+        "ociArchiveSha256",
+        "indexDigest",
+        "platformDigest",
+        "verification"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "mirrorRepository": {
+          "type": "string",
+          "pattern": "^core/[a-z0-9][a-z0-9-]*$"
+        },
+        "effectiveReference": { "type": "string", "minLength": 80 },
+        "ociArchiveSha256": { "$ref": "#/$defs/sha256" },
+        "indexDigest": { "$ref": "#/$defs/sha256" },
+        "platformDigest": { "$ref": "#/$defs/sha256" },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "importedArchiveSha256",
+            "mirroredArchiveSha256",
+            "mirroredIndexDigest",
+            "mirroredPlatformDigest"
+          ],
+          "properties": {
+            "status": { "const": "VERIFIED" },
+            "importedArchiveSha256": { "$ref": "#/$defs/sha256" },
+            "mirroredArchiveSha256": { "$ref": "#/$defs/sha256" },
+            "mirroredIndexDigest": { "$ref": "#/$defs/sha256" },
+            "mirroredPlatformDigest": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    }
+  }
+}

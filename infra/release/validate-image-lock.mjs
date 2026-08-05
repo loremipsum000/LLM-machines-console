@@ -165,7 +165,9 @@ export function validateCoreImageInventory(inventory, root = repositoryRoot) {
       typeof component.mirrorRepository !== "string" ||
       !component.mirrorRepository.startsWith("core/")
     ) {
-      errors.push(`${field} must declare its private mirror repository`)
+      errors.push(
+        `${field} must declare its registry-neutral mirror repository`,
+      )
     }
     if (component.kind === "third-party-mirror") {
       if (!sourceRegistryPattern.test(component.repository ?? "")) {
@@ -225,8 +227,20 @@ export function validateCoreImageInventory(inventory, root = repositoryRoot) {
 
 export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
   const errors = []
-  if (lock?.schema !== "llm-machines.core-image-lock.v1") {
-    errors.push("Core image lock schema is not v1")
+  validateExactObjectKeys(
+    errors,
+    lock,
+    ["schema", "status", "release", "inventorySha256", "platform", "images"],
+    "Core image lock",
+  )
+  validateExactObjectKeys(
+    errors,
+    lock?.release,
+    ["version", "sourceCommit", "sourceTree"],
+    "Core image lock release",
+  )
+  if (lock?.schema !== "llm-machines.core-image-lock.v2") {
+    errors.push("Core image lock schema is not v2")
   }
   if (lock?.status !== "LOCKED") {
     errors.push("Core image lock must be LOCKED")
@@ -243,15 +257,6 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
   if (lock?.inventorySha256 !== coreInventorySha256(root)) {
     errors.push("Core image lock inventory fingerprint differs")
   }
-  const privateRegistry = lock?.privateRegistry
-  if (
-    typeof privateRegistry !== "string" ||
-    !/^[a-z0-9.-]+(?::[0-9]{1,5})?$/.test(privateRegistry) ||
-    ["docker.io", "ghcr.io", "quay.io"].includes(privateRegistry)
-  ) {
-    errors.push("Core image lock private registry is invalid")
-  }
-
   const images = Array.isArray(lock?.images) ? lock.images : []
   const ids = images.map(({ id }) => id)
   if (JSON.stringify(ids) !== JSON.stringify(requiredCoreImageIds)) {
@@ -270,12 +275,58 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
     if (!expected) {
       continue
     }
-    if (
-      image.repository !== `${privateRegistry}/${expected.mirrorRepository}`
-    ) {
-      errors.push(`${field} is outside the exact private mirror path`)
+    const expectedKeys = [
+      "id",
+      "mirrorRepository",
+      "version",
+      "ociArchivePath",
+      "ociArchiveSha256",
+      "approvedSourceIndexDigest",
+      "approvedSourcePlatformDigest",
+      "indexDigest",
+      "platform",
+      "platformDigest",
+      "sourceRevision",
+      "license",
+      "sbomSha256",
+      "provenanceSha256",
+      "vulnerabilityReportSha256",
+      "vulnerabilityDispositionSha256",
+      "licenseTextSha256",
+      "noticeSha256",
+      "licenseReviewSha256",
+    ]
+    if (image.correspondingSourceSha256 !== undefined) {
+      expectedKeys.push("correspondingSourceSha256")
+    }
+    validateExactObjectKeys(errors, image, expectedKeys, field)
+    if (image.mirrorRepository !== expected.mirrorRepository) {
+      errors.push(
+        `${field} differs from the exact registry-neutral mirror path`,
+      )
+    }
+    if (image.ociArchivePath !== `images/${image.id}.oci.tar.zst`) {
+      errors.push(`${field} OCI archive path is not the exact component path`)
     }
     validateReadableVersion(errors, image.version, `${field} version`)
+    validateDigest(errors, image.ociArchiveSha256, `${field} ociArchiveSha256`)
+    if (expected.kind === "third-party-mirror") {
+      validateDigest(
+        errors,
+        image.approvedSourceIndexDigest,
+        `${field} approvedSourceIndexDigest`,
+      )
+      validateDigest(
+        errors,
+        image.approvedSourcePlatformDigest,
+        `${field} approvedSourcePlatformDigest`,
+      )
+    } else if (
+      image.approvedSourceIndexDigest !== null ||
+      image.approvedSourcePlatformDigest !== null
+    ) {
+      errors.push(`${field} cannot invent an approved upstream image identity`)
+    }
     validateDigest(errors, image.indexDigest, `${field} indexDigest`)
     validateDigest(errors, image.platformDigest, `${field} platformDigest`)
     validateDigest(errors, image.sbomSha256, `${field} sbomSha256`)
@@ -314,11 +365,18 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
       if (image.version !== expected.version) {
         errors.push(`${field} version differs from the inventory`)
       }
-      if (image.indexDigest !== expected.indexDigest) {
-        errors.push(`${field} index digest differs from the approved source`)
+      if (image.approvedSourceIndexDigest !== expected.indexDigest) {
+        errors.push(`${field} approved source index differs from the inventory`)
+      }
+      if (image.approvedSourcePlatformDigest !== expected.platformDigest) {
+        errors.push(
+          `${field} approved source platform differs from the inventory`,
+        )
       }
       if (image.platformDigest !== expected.platformDigest) {
-        errors.push(`${field} platform digest differs from the approved source`)
+        errors.push(
+          `${field} archived platform differs from the approved source`,
+        )
       }
     } else if (expected.sourceRevision === "release-source-commit") {
       if (image.sourceRevision !== lock?.release?.sourceCommit) {

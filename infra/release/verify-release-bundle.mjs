@@ -341,7 +341,7 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
     "release manifest",
   )
   if (
-    manifest.schema !== "llm-machines.release-manifest.v1" ||
+    manifest.schema !== "llm-machines.release-manifest.v2" ||
     manifest.status !== "PACKAGED_UNQUALIFIED" ||
     manifest.qualification?.runtimeQualified !== false ||
     manifest.qualification?.q0 !== "NOT_STARTED" ||
@@ -369,6 +369,7 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
       "releaseEvidencePolicySha256",
       "coreImageInventorySha256",
       "coreImageLockSha256",
+      "deploymentPlacementSchemaSha256",
       "deliveryProfileSchemaSha256",
       "inferenceArtifactLockSchemaSha256",
       "firecrawlSourcePackageSha256",
@@ -526,7 +527,7 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
     readFileSync(resolve(artifactRoot, coreLock.path), "utf8"),
   )
   if (
-    coreLockValue?.schema !== "llm-machines.core-image-lock.v1" ||
+    coreLockValue?.schema !== "llm-machines.core-image-lock.v2" ||
     coreLockValue?.status !== "LOCKED" ||
     coreLockValue?.release?.version !== manifest.release?.version ||
     coreLockValue?.release?.sourceCommit !== manifest.release?.sourceCommit ||

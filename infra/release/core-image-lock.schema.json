@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://llm-machines.invalid/schemas/core-image-lock.v1.json",
+  "$id": "https://llm-machines.invalid/schemas/core-image-lock.v2.json",
   "title": "LLM Machines immutable Core image lock",
   "type": "object",
   "additionalProperties": false,
@@ -10,11 +10,10 @@
     "release",
     "inventorySha256",
     "platform",
-    "privateRegistry",
     "images"
   ],
   "properties": {
-    "schema": { "const": "llm-machines.core-image-lock.v1" },
+    "schema": { "const": "llm-machines.core-image-lock.v2" },
     "status": { "const": "LOCKED" },
     "release": {
       "type": "object",
@@ -28,10 +27,6 @@
     },
     "inventorySha256": { "$ref": "#/$defs/sha256" },
     "platform": { "const": "linux/amd64" },
-    "privateRegistry": {
-      "type": "string",
-      "pattern": "^[a-z0-9.-]+(?::[0-9]{1,5})?$"
-    },
     "images": {
       "type": "array",
       "minItems": 13,
@@ -47,8 +42,12 @@
       "additionalProperties": false,
       "required": [
         "id",
-        "repository",
+        "mirrorRepository",
         "version",
+        "ociArchivePath",
+        "ociArchiveSha256",
+        "approvedSourceIndexDigest",
+        "approvedSourcePlatformDigest",
         "indexDigest",
         "platform",
         "platformDigest",
@@ -64,11 +63,25 @@
       ],
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-        "repository": { "type": "string", "minLength": 3 },
+        "mirrorRepository": {
+          "type": "string",
+          "pattern": "^core/[a-z0-9][a-z0-9-]*$"
+        },
         "version": {
           "type": "string",
           "minLength": 1,
           "not": { "pattern": "(^|[-_.])(latest|LATEST)($|[-_.])" }
+        },
+        "ociArchivePath": {
+          "type": "string",
+          "pattern": "^images/[a-z0-9][a-z0-9-]*\\.oci\\.tar\\.zst$"
+        },
+        "ociArchiveSha256": { "$ref": "#/$defs/sha256" },
+        "approvedSourceIndexDigest": {
+          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "approvedSourcePlatformDigest": {
+          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
         },
         "indexDigest": { "$ref": "#/$defs/sha256" },
         "platform": { "const": "linux/amd64" },

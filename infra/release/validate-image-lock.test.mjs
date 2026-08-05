@@ -24,7 +24,7 @@ function syntheticCoreLock() {
   const inventory = readCoreImageInventory()
   const sourceCommit = "1".repeat(40)
   return {
-    schema: "llm-machines.core-image-lock.v1",
+    schema: "llm-machines.core-image-lock.v2",
     status: "LOCKED",
     release: {
       version: "1.0.0-test",
@@ -33,14 +33,21 @@ function syntheticCoreLock() {
     },
     inventorySha256: coreInventorySha256(),
     platform: "linux/amd64",
-    privateRegistry: "registry.release.invalid",
     images: inventory.components.map((component, index) => ({
       id: component.id,
-      repository: `registry.release.invalid/${component.mirrorRepository}`,
+      mirrorRepository: component.mirrorRepository,
       version:
         component.kind === "third-party-mirror"
           ? component.version
           : `1.0.0-build.${index + 1}`,
+      ociArchivePath: `images/${component.id}.oci.tar.zst`,
+      ociArchiveSha256: digest("9"),
+      approvedSourceIndexDigest:
+        component.kind === "third-party-mirror" ? component.indexDigest : null,
+      approvedSourcePlatformDigest:
+        component.kind === "third-party-mirror"
+          ? component.platformDigest
+          : null,
       indexDigest:
         component.kind === "third-party-mirror"
           ? component.indexDigest
@@ -199,7 +206,7 @@ test("Core inventory contains no customer inference topology assumption", () => 
   )
 })
 
-test("tag-only, latest, missing platform, and digest disagreement fail", () => {
+test("tag-only, latest, missing platform, and malformed digest fail", () => {
   const inventory = readCoreImageInventory()
   const mutations = [
     (lock) => {
@@ -209,10 +216,16 @@ test("tag-only, latest, missing platform, and digest disagreement fail", () => {
       lock.images[0].version = "latest"
     },
     (lock) => {
+      lock.images[0].ociArchivePath = "images/wrong.oci.tar.zst"
+    },
+    (lock) => {
+      lock.images[0].ociArchiveSha256 = undefined
+    },
+    (lock) => {
       lock.images[0].platform = undefined
     },
     (lock) => {
-      lock.images[0].platformDigest = digest("f")
+      lock.images[0].platformDigest = "sha256:bad"
     },
   ]
   for (const mutate of mutations) {
@@ -240,15 +253,14 @@ test("every Core image requires digest-bound security and license evidence", () 
   }
 })
 
-test("unapproved registries and omitted retained components fail", () => {
+test("registry authorities and omitted retained components fail the universal lock", () => {
   const inventory = readCoreImageInventory()
-  const publicLock = syntheticCoreLock()
-  publicLock.privateRegistry = "docker.io"
-  publicLock.images = publicLock.images.map((image) => ({
-    ...image,
-    repository: `docker.io/${image.repository.split("/").slice(1).join("/")}`,
-  }))
-  assert.notDeepEqual(validateCoreImageLock(publicLock, inventory), [])
+  const authorityBound = syntheticCoreLock()
+  authorityBound.images[0].mirrorRepository = "docker.io/core/product-edge"
+  assert.match(
+    validateCoreImageLock(authorityBound, inventory).join("\n"),
+    /registry-neutral mirror path/,
+  )
 
   const missing = syntheticCoreLock()
   missing.images.pop()
@@ -267,6 +279,25 @@ test("Product-built images must bind the exact release source commit", () => {
     assert.deepEqual(validateCoreImageLock(mismatched, inventory), [
       `image ${productImageId} must bind the release source commit`,
     ])
+  }
+})
+
+test("third-party archives retain the exact approved upstream identity", () => {
+  const inventory = readCoreImageInventory()
+  for (const mutate of [
+    (lock) => {
+      lock.images[3].approvedSourceIndexDigest = digest("f")
+    },
+    (lock) => {
+      lock.images[3].approvedSourcePlatformDigest = digest("f")
+    },
+    (lock) => {
+      lock.images[3].platformDigest = digest("f")
+    },
+  ]) {
+    const lock = syntheticCoreLock()
+    mutate(lock)
+    assert.notDeepEqual(validateCoreImageLock(lock, inventory), [])
   }
 })
 

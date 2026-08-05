@@ -353,6 +353,43 @@ export function copyArchiveEntry({ descriptor, offset, size }, outputPath) {
   }
 }
 
+export function readArchiveEntry({ descriptor, offset, size }) {
+  const contents = Buffer.alloc(size)
+  let remaining = size
+  let position = offset
+  let destination = 0
+  while (remaining > 0) {
+    const bytesRead = readSync(
+      descriptor,
+      contents,
+      destination,
+      remaining,
+      position,
+    )
+    if (bytesRead === 0) fail("truncated archive entry")
+    remaining -= bytesRead
+    position += bytesRead
+    destination += bytesRead
+  }
+  return contents
+}
+
+export function sha256ArchiveEntry({ descriptor, offset, size }) {
+  const hash = createHash("sha256")
+  const buffer = Buffer.allocUnsafe(copyBufferSize)
+  let remaining = size
+  let position = offset
+  while (remaining > 0) {
+    const length = Math.min(buffer.length, remaining)
+    const bytesRead = readSync(descriptor, buffer, 0, length, position)
+    if (bytesRead !== length) fail("truncated archive entry")
+    hash.update(buffer.subarray(0, bytesRead))
+    remaining -= bytesRead
+    position += bytesRead
+  }
+  return `sha256:${hash.digest("hex")}`
+}
+
 export function sha256File(path) {
   const hash = createHash("sha256")
   const descriptor = openSync(path, constants.O_RDONLY)

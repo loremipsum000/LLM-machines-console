@@ -50,7 +50,7 @@ function fixture() {
       component.kind === "third-party-mirror"
         ? component.platformDigest
         : `sha256:${((index + 2) % 16).toString(16).repeat(64)}`
-    const repository = `registry.release.invalid/${component.mirrorRepository}`
+    const mirrorRepository = component.mirrorRepository
     const version =
       component.kind === "third-party-mirror"
         ? component.version
@@ -120,7 +120,7 @@ function fixture() {
       predicateType: "https://slsa.dev/provenance/v1",
       subject: [
         {
-          name: repository,
+          name: mirrorRepository,
           digest: { sha256: platformDigest.slice(7) },
         },
       ],
@@ -136,9 +136,18 @@ function fixture() {
           }[component.kind],
           externalParameters: {
             componentId: component.id,
-            imageRepository: repository,
+            mirrorRepository,
             imageVersion: version,
             sourceRevision,
+            ...(component.kind === "third-party-mirror"
+              ? {
+                  approvedSourceImage: {
+                    indexDigest: component.indexDigest,
+                    platform: component.platform,
+                    platformDigest: component.platformDigest,
+                  },
+                }
+              : {}),
             recipe: { path: recipePath, sha256: recipeSha256 },
           },
           internalParameters: {},
@@ -175,7 +184,7 @@ function fixture() {
       status: "REVIEWED",
       component: {
         id: component.id,
-        repository,
+        mirrorRepository,
         sourceRevision,
         license: component.license,
       },
@@ -187,7 +196,7 @@ function fixture() {
     const licenseReviewBytes = `${canonicalJson(licenseReview)}\n`
     const vulnerabilityReport = {
       schema: "llm-machines.vulnerability-report.v1",
-      image: { id: component.id, repository, digest: platformDigest },
+      image: { id: component.id, mirrorRepository, digest: platformDigest },
       scanner: { name: "trivy", version: "0.65.0" },
       database: { updatedAt: "2026-08-03T23:00:00.000Z" },
       scannedAt: "2026-08-04T00:00:00.000Z",
@@ -236,8 +245,16 @@ function fixture() {
     )
     return {
       id: component.id,
-      repository,
+      mirrorRepository,
       version,
+      ociArchivePath: `images/${component.id}.oci.tar.zst`,
+      ociArchiveSha256: `sha256:${((index + 3) % 16).toString(16).repeat(64)}`,
+      approvedSourceIndexDigest:
+        component.kind === "third-party-mirror" ? component.indexDigest : null,
+      approvedSourcePlatformDigest:
+        component.kind === "third-party-mirror"
+          ? component.platformDigest
+          : null,
       indexDigest:
         component.kind === "third-party-mirror"
           ? component.indexDigest
@@ -267,12 +284,11 @@ function fixture() {
     }
   })
   const coreLock = {
-    schema: "llm-machines.core-image-lock.v1",
+    schema: "llm-machines.core-image-lock.v2",
     status: "LOCKED",
     release: { version: "1.0.0-rc.1", sourceCommit, sourceTree },
     inventorySha256: coreInventorySha256(root),
     platform: "linux/amd64",
-    privateRegistry: "registry.release.invalid",
     images,
   }
   const coreLockPath = join(directory, "core-image-lock.json")

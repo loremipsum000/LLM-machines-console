@@ -62,8 +62,13 @@ function exactKeys(value, keys, field) {
 function imageEvidenceProjection(image) {
   return {
     id: image.id,
-    repository: image.repository,
+    mirrorRepository: image.mirrorRepository,
+    ociArchivePath: image.ociArchivePath,
+    ociArchiveSha256: image.ociArchiveSha256,
+    approvedSourceIndexDigest: image.approvedSourceIndexDigest,
+    approvedSourcePlatformDigest: image.approvedSourcePlatformDigest,
     sourceRevision: image.sourceRevision,
+    indexDigest: image.indexDigest,
     platformDigest: image.platformDigest,
     sbomSha256: image.sbomSha256,
     provenanceSha256: image.provenanceSha256,
@@ -92,7 +97,7 @@ export function buildReleaseEvidenceIndex(
     evidenceArtifacts.map((artifact) => [artifact.evidenceId, artifact]),
   )
   return {
-    schema: "llm-machines.release-evidence-index.v1",
+    schema: "llm-machines.release-evidence-index.v2",
     status: "SEMANTICALLY_VALIDATED",
     containsCredentials: false,
     runtimeQualified: false,
@@ -179,7 +184,7 @@ export function validateReleaseEvidenceIndex(
     ? release.sourceDateEpoch * 1000
     : Number.NaN
   if (
-    index.schema !== "llm-machines.release-evidence-index.v1" ||
+    index.schema !== "llm-machines.release-evidence-index.v2" ||
     index.status !== "SEMANTICALLY_VALIDATED" ||
     index.containsCredentials !== false ||
     index.runtimeQualified !== false ||
