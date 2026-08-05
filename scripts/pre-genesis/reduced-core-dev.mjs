@@ -153,7 +153,7 @@ async function startReducedCoreDevelopmentRuntime() {
     const webRoot = await prepareTemporaryWebProject(stateRoot)
     ensureStartupActive()
 
-    const streamingProbe = createStreamingProbe()
+    const streamingProbe = verticalSliceMode ? createStreamingProbe() : null
     const inference = createInferenceDouble(
       credentials.liteLlmApiKey,
       streamingProbe,
@@ -358,7 +358,9 @@ async function handleInferenceDoubleRequest(
         object: "chat.completion.chunk",
       })}\n\n`,
     )
-    await streamingProbe.waitForTerminalRelease()
+    if (streamingProbe) {
+      await streamingProbe.waitForTerminalRelease()
+    }
     response.write(
       `data: ${JSON.stringify({
         choices: [],
@@ -527,6 +529,31 @@ async function verifyRuntime(runtime) {
     completion.usage?.total_tokens !== 5
   ) {
     throw new Error("Inference-double Chat Completions check failed.")
+  }
+  const streamingResponse = await boundedFetch(
+    `${runtime.inferenceOrigin}/v1/chat/completions`,
+    {
+      body: JSON.stringify({
+        messages: [{ content: "fixture", role: "user" }],
+        model: "fixture-model",
+        stream: true,
+        stream_options: { include_usage: true },
+      }),
+      headers: {
+        authorization: `Bearer ${runtime.inferenceApiKey}`,
+        "content-type": "application/json",
+      },
+      method: "POST",
+    },
+  )
+  const stream = await streamingResponse.text()
+  if (
+    !streamingResponse.ok ||
+    !stream.includes("fixture-response") ||
+    !stream.includes('"total_tokens":5') ||
+    !stream.endsWith("data: [DONE]\n\n")
+  ) {
+    throw new Error("Inference-double streaming Chat Completions check failed.")
   }
 }
 
