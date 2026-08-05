@@ -89,6 +89,25 @@ describe("F0-B1 disposable reduced-Core development lane", () => {
     )
     expect(await readdir(repositoryRoot)).toEqual(before)
   })
+
+  test("fails closed and cleans up when a required child exits", async () => {
+    const running = await startInteractiveRuntime()
+    const runtime = JSON.parse(
+      await readFile(join(running.summary.stateRoot, "runtime.json"), "utf8"),
+    )
+
+    process.kill(-runtime.processGroupIds[0], "SIGKILL")
+    const result = await running.completed
+
+    expect(result.code).not.toBe(0)
+    expect(result.stderr).toMatch(/exited unexpectedly|did not stop cleanly/)
+    await expect(access(running.summary.stateRoot)).rejects.toMatchObject({
+      code: "ENOENT",
+    })
+    for (const processGroupId of runtime.processGroupIds) {
+      assert.throws(() => process.kill(-processGroupId, 0), { code: "ESRCH" })
+    }
+  }, 60_000)
 })
 
 function openIncompleteRequest(

@@ -52,7 +52,7 @@ if (!runtime) {
   process.exitCode = 130
 } else if (checkMode) {
   try {
-    await verifyRuntime(runtime)
+    await Promise.race([verifyRuntime(runtime), runtime.failureSignal])
   } finally {
     await runtime.close()
   }
@@ -69,10 +69,13 @@ if (!runtime) {
 } else {
   process.stdout.write(`${JSON.stringify(runtime.publicSummary, null, 2)}\n`)
   process.stdout.write("Press Ctrl-C to stop and remove temporary state.\n")
-  if (!shutdownRequested) {
-    await shutdownSignal
+  try {
+    if (!shutdownRequested) {
+      await Promise.race([shutdownSignal, runtime.failureSignal])
+    }
+  } finally {
+    await runtime.close()
   }
-  await runtime.close()
 }
 
 async function startReducedCoreDevelopmentRuntime() {
@@ -81,6 +84,7 @@ async function startReducedCoreDevelopmentRuntime() {
   const stateRoot = await createTemporaryStateRoot()
   const children = []
   const servers = []
+  const runtimeFailure = createRuntimeFailure()
   const close = createRuntimeCleanup({ children, servers, stateRoot })
 
   try {
@@ -132,6 +136,7 @@ async function startReducedCoreDevelopmentRuntime() {
         },
         stateRoot,
         repositoryRoot,
+        runtimeFailure.report,
       ),
     )
     children.push(
@@ -154,6 +159,7 @@ async function startReducedCoreDevelopmentRuntime() {
         },
         stateRoot,
         webRoot,
+        runtimeFailure.report,
       ),
     )
 
@@ -194,6 +200,7 @@ async function startReducedCoreDevelopmentRuntime() {
       },
       bffOrigin: `http://127.0.0.1:${bffPort}`,
       close,
+      failureSignal: runtimeFailure.signal,
       inferenceApiKey: credentials.liteLlmApiKey,
       inferenceOrigin: `http://127.0.0.1:${inferencePort}`,
       publicSummary: {
@@ -435,9 +442,15 @@ async function verifyRuntime(runtime) {
   }
 }
 
-function startChild(name, command, environment, stateRoot, cwd) {
+function startChild(
+  name,
+  command,
+  environment,
+  stateRoot,
+  cwd,
+  reportRuntimeFailure,
+) {
   const errors = []
-  const rememberError = (error) => errors.push(error)
   const stdout = createWriteStream(join(stateRoot, `${name}.stdout.log`), {
     flags: "a",
     mode: 0o600,
@@ -452,16 +465,34 @@ function startChild(name, command, environment, stateRoot, cwd) {
     env: isolatedChildEnvironment(stateRoot, environment),
     stdio: ["ignore", "pipe", "pipe"],
   })
-  stdout.on("error", rememberError)
-  stderr.on("error", rememberError)
-  child.on("error", rememberError)
+  const record = { child, errors, name, stderr, stdout, stopping: false }
+  const recordFailure = (error) => {
+    if (record.stopping) {
+      record.errors.push(error)
+    } else {
+      reportRuntimeFailure(error)
+    }
+  }
+  stdout.on("error", recordFailure)
+  stderr.on("error", recordFailure)
+  child.on("error", recordFailure)
+  child.on("exit", (code, signal) => {
+    if (!record.stopping) {
+      recordFailure(
+        new Error(
+          `${name} exited unexpectedly (code=${code ?? "none"}, signal=${signal ?? "none"}).`,
+        ),
+      )
+    }
+  })
   child.stdout.pipe(stdout)
   child.stderr.pipe(stderr)
-  return { child, errors, name, stderr, stdout }
+  return record
 }
 
 async function stopChild(record) {
   const errors = []
+  record.stopping = true
   try {
     if (processGroupExists(record.child.pid)) {
       killProcessGroup(record.child.pid, "SIGTERM")
@@ -492,6 +523,24 @@ async function stopChild(record) {
   )
   if (errors.length > 0) {
     throw new AggregateError(errors, `${record.name} did not stop cleanly.`)
+  }
+}
+
+function createRuntimeFailure() {
+  let rejectFailure
+  let reported = false
+  const signal = new Promise((_, reject) => {
+    rejectFailure = reject
+  })
+  signal.catch(() => {})
+  return {
+    report(error) {
+      if (!reported) {
+        reported = true
+        rejectFailure(error)
+      }
+    },
+    signal,
   }
 }
 
