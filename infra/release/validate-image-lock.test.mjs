@@ -42,6 +42,12 @@ function syntheticCoreLock() {
           : `1.0.0-build.${index + 1}`,
       ociArchivePath: `images/${component.id}.oci.tar.zst`,
       ociArchiveSha256: digest("9"),
+      approvedSourceIndexDigest:
+        component.kind === "third-party-mirror" ? component.indexDigest : null,
+      approvedSourcePlatformDigest:
+        component.kind === "third-party-mirror"
+          ? component.platformDigest
+          : null,
       indexDigest:
         component.kind === "third-party-mirror"
           ? component.indexDigest
@@ -273,6 +279,25 @@ test("Product-built images must bind the exact release source commit", () => {
     assert.deepEqual(validateCoreImageLock(mismatched, inventory), [
       `image ${productImageId} must bind the release source commit`,
     ])
+  }
+})
+
+test("third-party archives retain the exact approved upstream identity", () => {
+  const inventory = readCoreImageInventory()
+  for (const mutate of [
+    (lock) => {
+      lock.images[3].approvedSourceIndexDigest = digest("f")
+    },
+    (lock) => {
+      lock.images[3].approvedSourcePlatformDigest = digest("f")
+    },
+    (lock) => {
+      lock.images[3].platformDigest = digest("f")
+    },
+  ]) {
+    const lock = syntheticCoreLock()
+    mutate(lock)
+    assert.notDeepEqual(validateCoreImageLock(lock, inventory), [])
   }
 })
 

@@ -46,6 +46,8 @@
         "version",
         "ociArchivePath",
         "ociArchiveSha256",
+        "approvedSourceIndexDigest",
+        "approvedSourcePlatformDigest",
         "indexDigest",
         "platform",
         "platformDigest",
@@ -75,6 +77,12 @@
           "pattern": "^images/[a-z0-9][a-z0-9-]*\\.oci\\.tar\\.zst$"
         },
         "ociArchiveSha256": { "$ref": "#/$defs/sha256" },
+        "approvedSourceIndexDigest": {
+          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "approvedSourcePlatformDigest": {
+          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
         "indexDigest": { "$ref": "#/$defs/sha256" },
         "platform": { "const": "linux/amd64" },
         "platformDigest": { "$ref": "#/$defs/sha256" },

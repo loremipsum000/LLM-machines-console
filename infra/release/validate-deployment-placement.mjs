@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { isIP } from "node:net"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
@@ -76,6 +77,7 @@ function authorityHost(authority) {
   }
   const labels = host.split(".")
   if (
+    (/^[0-9.]+$/.test(host) && isIP(host) !== 4) ||
     labels.some(
       (label) =>
         label.length < 1 ||
@@ -115,7 +117,12 @@ export function validateRegistryAuthority(
   return errors
 }
 
-function placementContext({ releaseBundle, importRoot, registryExportRoot }) {
+function placementContext({
+  releaseBundle,
+  importRoot,
+  registryExportRoot,
+  validationRoot,
+}) {
   const verified = verifyReleaseBundle(releaseBundle)
   const lockArtifact = verified.manifest.artifacts.find(
     ({ evidenceId }) => evidenceId === "core-image-lock",
@@ -123,7 +130,11 @@ function placementContext({ releaseBundle, importRoot, registryExportRoot }) {
   if (!lockArtifact) fail("verified release omits the Core image lock")
   const coreLockPath = resolve(releaseBundle.artifactRoot, lockArtifact.path)
   const coreLock = JSON.parse(readFileSync(coreLockPath, "utf8"))
-  const lockErrors = validateCoreImageLock(coreLock, readCoreImageInventory())
+  const lockErrors = validateCoreImageLock(
+    coreLock,
+    readCoreImageInventory(validationRoot),
+    validationRoot,
+  )
   if (lockErrors.length > 0) {
     fail(`verified Core image lock is invalid: ${lockErrors.join("; ")}`)
   }
@@ -318,6 +329,7 @@ export function createDeploymentPlacement({
   releaseBundle,
   importRoot,
   registryExportRoot,
+  validationRoot,
   registryAuthority,
   approvedRegistryAuthorities,
   commissioningEvidenceId,
@@ -327,6 +339,7 @@ export function createDeploymentPlacement({
     releaseBundle,
     importRoot,
     registryExportRoot,
+    validationRoot,
   })
   const placement = {
     schema: "llm-machines.deployment-placement.v1",

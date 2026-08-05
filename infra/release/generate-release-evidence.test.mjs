@@ -249,6 +249,12 @@ function fixture() {
       version,
       ociArchivePath: `images/${component.id}.oci.tar.zst`,
       ociArchiveSha256: `sha256:${((index + 3) % 16).toString(16).repeat(64)}`,
+      approvedSourceIndexDigest:
+        component.kind === "third-party-mirror" ? component.indexDigest : null,
+      approvedSourcePlatformDigest:
+        component.kind === "third-party-mirror"
+          ? component.platformDigest
+          : null,
       indexDigest:
         component.kind === "third-party-mirror"
           ? component.indexDigest

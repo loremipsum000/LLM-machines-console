@@ -62,8 +62,12 @@ function verifyPayloadRoot(inputRoot) {
   visit()
 }
 
-function verifyLockedImageArchives(inputRoot, coreLock) {
-  const errors = validateCoreImageLock(coreLock, readCoreImageInventory())
+function verifyLockedImageArchives(inputRoot, coreLock, validationRoot) {
+  const errors = validateCoreImageLock(
+    coreLock,
+    readCoreImageInventory(validationRoot),
+    validationRoot,
+  )
   if (errors.length > 0) {
     fail(`Core image lock is invalid: ${errors.join("; ")}`)
   }
@@ -92,7 +96,11 @@ function verifyLockedImageArchives(inputRoot, coreLock) {
 export function assembleCorePackage(options) {
   if (!options.coreLock) fail("Core image lock is required for assembly")
   verifyPayloadRoot(options.inputRoot)
-  verifyLockedImageArchives(options.inputRoot, options.coreLock)
+  verifyLockedImageArchives(
+    options.inputRoot,
+    options.coreLock,
+    options.validationRoot,
+  )
   const result = assembleDeterministicArchive(options)
   const paths = withDeterministicArchive(options.outputPath, () => undefined)
   for (const root of requiredRoots) {

@@ -263,9 +263,9 @@ function validateProvenance(document, image, component, root, policy) {
     ...(component.kind === "third-party-mirror"
       ? {
           approvedSourceImage: {
-            indexDigest: component.indexDigest,
+            indexDigest: image.approvedSourceIndexDigest,
             platform: component.platform,
-            platformDigest: component.platformDigest,
+            platformDigest: image.approvedSourcePlatformDigest,
           },
         }
       : {}),
@@ -662,6 +662,18 @@ function buildProductBom(coreLock) {
           name: "llm-machines:platform-manifest-digest",
           value: image.platformDigest,
         },
+        ...(image.approvedSourceIndexDigest
+          ? [
+              {
+                name: "llm-machines:approved-source-index-digest",
+                value: image.approvedSourceIndexDigest,
+              },
+              {
+                name: "llm-machines:approved-source-platform-digest",
+                value: image.approvedSourcePlatformDigest,
+              },
+            ]
+          : []),
       ],
     })),
     dependencies: [

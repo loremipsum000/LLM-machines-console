@@ -142,6 +142,8 @@ function validateCoreLockStructure(lock) {
       "version",
       "ociArchivePath",
       "ociArchiveSha256",
+      "approvedSourceIndexDigest",
+      "approvedSourcePlatformDigest",
       "indexDigest",
       "platform",
       "platformDigest",

@@ -93,7 +93,12 @@ clean seeds, and public verification material. Assembly requires the Core lock,
 rejects extra or missing OCI archives, and derives each archive digest from the
 actual payload. It also parses each normalized OCI layout and verifies the
 actual index, linux/amd64 platform manifest, and every referenced blob against
-the lock before packaging.
+the lock before packaging. Third-party entries separately bind the approved
+upstream multi-platform index and platform-manifest digests. The archived
+platform manifest must remain byte-identical to that approved source; the
+normalized single-platform OCI layout index has its own derived digest. Blob
+hashing is streamed and retained metadata is bounded, so image layers are not
+loaded wholesale into memory.
 `verify-release-bundle.mjs`
 verifies the canonical manifest, its offline Ed25519 signature, the
 root-certified scoped release key, every artifact, and the actual Core lock.

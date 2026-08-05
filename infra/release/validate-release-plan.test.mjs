@@ -70,6 +70,14 @@ function syntheticCoreLock(version) {
             : `${version}-build.${index + 1}`,
         ociArchivePath: `images/${component.id}.oci.tar.zst`,
         ociArchiveSha256: digest("9"),
+        approvedSourceIndexDigest:
+          component.kind === "third-party-mirror"
+            ? component.indexDigest
+            : null,
+        approvedSourcePlatformDigest:
+          component.kind === "third-party-mirror"
+            ? component.platformDigest
+            : null,
         indexDigest:
           component.kind === "third-party-mirror"
             ? component.indexDigest

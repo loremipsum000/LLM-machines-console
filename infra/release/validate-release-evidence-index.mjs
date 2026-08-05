@@ -65,6 +65,8 @@ function imageEvidenceProjection(image) {
     mirrorRepository: image.mirrorRepository,
     ociArchivePath: image.ociArchivePath,
     ociArchiveSha256: image.ociArchiveSha256,
+    approvedSourceIndexDigest: image.approvedSourceIndexDigest,
+    approvedSourcePlatformDigest: image.approvedSourcePlatformDigest,
     sourceRevision: image.sourceRevision,
     indexDigest: image.indexDigest,
     platformDigest: image.platformDigest,

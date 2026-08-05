@@ -281,6 +281,8 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
       "version",
       "ociArchivePath",
       "ociArchiveSha256",
+      "approvedSourceIndexDigest",
+      "approvedSourcePlatformDigest",
       "indexDigest",
       "platform",
       "platformDigest",
@@ -308,6 +310,23 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
     }
     validateReadableVersion(errors, image.version, `${field} version`)
     validateDigest(errors, image.ociArchiveSha256, `${field} ociArchiveSha256`)
+    if (expected.kind === "third-party-mirror") {
+      validateDigest(
+        errors,
+        image.approvedSourceIndexDigest,
+        `${field} approvedSourceIndexDigest`,
+      )
+      validateDigest(
+        errors,
+        image.approvedSourcePlatformDigest,
+        `${field} approvedSourcePlatformDigest`,
+      )
+    } else if (
+      image.approvedSourceIndexDigest !== null ||
+      image.approvedSourcePlatformDigest !== null
+    ) {
+      errors.push(`${field} cannot invent an approved upstream image identity`)
+    }
     validateDigest(errors, image.indexDigest, `${field} indexDigest`)
     validateDigest(errors, image.platformDigest, `${field} platformDigest`)
     validateDigest(errors, image.sbomSha256, `${field} sbomSha256`)
@@ -345,6 +364,19 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
       }
       if (image.version !== expected.version) {
         errors.push(`${field} version differs from the inventory`)
+      }
+      if (image.approvedSourceIndexDigest !== expected.indexDigest) {
+        errors.push(`${field} approved source index differs from the inventory`)
+      }
+      if (image.approvedSourcePlatformDigest !== expected.platformDigest) {
+        errors.push(
+          `${field} approved source platform differs from the inventory`,
+        )
+      }
+      if (image.platformDigest !== expected.platformDigest) {
+        errors.push(
+          `${field} archived platform differs from the approved source`,
+        )
       }
     } else if (expected.sourceRevision === "release-source-commit") {
       if (image.sourceRevision !== lock?.release?.sourceCommit) {

@@ -224,13 +224,14 @@ function syntheticCoreLock(
   sourceDigests,
   payloadRoot,
   imageIdentities,
+  validationRoot,
 ) {
-  const inventory = readCoreImageInventory()
+  const inventory = readCoreImageInventory(validationRoot)
   return {
     schema: "llm-machines.core-image-lock.v2",
     status: "LOCKED",
     release: { version, sourceCommit, sourceTree },
-    inventorySha256: coreInventorySha256(),
+    inventorySha256: coreInventorySha256(validationRoot),
     platform: "linux/amd64",
     images: inventory.components.map((component, index) => ({
       id: component.id,
@@ -243,6 +244,12 @@ function syntheticCoreLock(
       ociArchiveSha256: sha256File(
         join(payloadRoot, "images", `${component.id}.oci.tar.zst`),
       ),
+      approvedSourceIndexDigest:
+        component.kind === "third-party-mirror" ? component.indexDigest : null,
+      approvedSourcePlatformDigest:
+        component.kind === "third-party-mirror"
+          ? component.platformDigest
+          : null,
       indexDigest: imageIdentities.get(component.id).indexDigest,
       platform: "linux/amd64",
       platformDigest: imageIdentities.get(component.id).platformDigest,
@@ -281,6 +288,21 @@ function bundleFixture(version = "1.0.0", label = version) {
   mkdirSync(artifactRoot, { recursive: true })
   mkdirSync(payloadRoot)
   const imageIdentities = payload(payloadRoot, label)
+  const validationRoot = join(directory, "validation-root")
+  const inventory = readCoreImageInventory()
+  inventory.components = inventory.components.map((component) =>
+    component.kind === "third-party-mirror"
+      ? {
+          ...component,
+          indexDigest: imageIdentities.get(component.id).indexDigest,
+          platformDigest: imageIdentities.get(component.id).platformDigest,
+        }
+      : component,
+  )
+  write(
+    join(validationRoot, "infra/release/core-image-inventory.json"),
+    canonicalJson(inventory),
+  )
   const sourceCommit = label
     .charCodeAt(0)
     .toString(16)
@@ -303,12 +325,14 @@ function bundleFixture(version = "1.0.0", label = version) {
     },
     payloadRoot,
     imageIdentities,
+    validationRoot,
   )
   const assembled = assembleCorePackage({
     inputRoot: payloadRoot,
     outputPath: corePath,
     sourceDateEpoch: 1_722_772_800,
     coreLock: coreLockValue,
+    validationRoot,
   })
   const semanticPaths = new Map(semanticEvidence)
   semanticPaths.set(
@@ -459,6 +483,7 @@ function bundleFixture(version = "1.0.0", label = version) {
     directory,
     manifest,
     payloadRoot,
+    validationRoot,
     rootSigningPrivateKey: trust.rootPrivateKey,
     signingPrivateKey: trust.privateKey,
   }
@@ -487,6 +512,7 @@ test("Core package assembly is reproducible and normalized", () => {
     outputPath: secondPath,
     sourceDateEpoch: 1_722_772_800,
     coreLock: fixture.coreLockValue,
+    validationRoot: fixture.validationRoot,
   })
   assert.equal(second.sha256, fixture.assembled.sha256)
   assert.deepEqual(second.paths, fixture.assembled.paths)
@@ -515,6 +541,7 @@ test("Core package assembly rejects OCI archive omission and digest drift", () =
         outputPath: join(fixture.directory, "changed.tar.zst"),
         sourceDateEpoch: 1_722_772_800,
         coreLock: fixture.coreLockValue,
+        validationRoot: fixture.validationRoot,
       }),
     /OCI archive identity differs/,
   )
@@ -526,6 +553,7 @@ test("Core package assembly rejects OCI archive omission and digest drift", () =
         outputPath: join(fixture.directory, "missing.tar.zst"),
         sourceDateEpoch: 1_722_772_800,
         coreLock: fixture.coreLockValue,
+        validationRoot: fixture.validationRoot,
       }),
     /exact locked OCI archive set/,
   )
@@ -568,6 +596,7 @@ test("commissioning placement derives signed and observed image identities", () 
     releaseBundle: fixture.bundle,
     importRoot: fixture.payloadRoot,
     registryExportRoot,
+    validationRoot: fixture.validationRoot,
     registryAuthority: authority,
     approvedRegistryAuthorities: [authority],
     commissioningEvidenceId: "commissioning.image-placement.0001",
@@ -599,6 +628,7 @@ test("commissioning placement derives signed and observed image identities", () 
         releaseBundle: fixture.bundle,
         importRoot: fixture.payloadRoot,
         registryExportRoot,
+        validationRoot: fixture.validationRoot,
         registryAuthority: authority,
         approvedRegistryAuthorities: [authority],
         commissioningEvidenceId: "commissioning.image-placement.0002",
@@ -790,6 +820,7 @@ test("Core assembly rejects private-key-like payloads and existing outputs", () 
         outputPath: join(fixture.directory, "guard.tar.zst"),
         sourceDateEpoch: 1_722_772_800,
         coreLock: fixture.coreLockValue,
+        validationRoot: fixture.validationRoot,
       }),
     /private-key-like/,
   )
@@ -800,6 +831,7 @@ test("Core assembly rejects private-key-like payloads and existing outputs", () 
         outputPath: fixture.corePath,
         sourceDateEpoch: 1_722_772_800,
         coreLock: fixture.coreLockValue,
+        validationRoot: fixture.validationRoot,
       }),
     /already exists/,
   )

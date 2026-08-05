@@ -30,6 +30,8 @@ test("public and malformed registry authorities fail closed", () => {
     "registry-.customer.example",
     "registry.customer.example:65536",
     "user@registry.customer.example",
+    "999.999.999.999",
+    "256.1.1.1",
   ]) {
     assert.match(
       validateRegistryAuthority(malformed, [malformed]).join("\n"),
@@ -50,4 +52,8 @@ test("private cloud authorities are policy decisions, not suffix guesses", () =>
   ]) {
     assert.deepEqual(validateRegistryAuthority(approved, [approved]), [])
   }
+  assert.deepEqual(
+    validateRegistryAuthority("10.20.30.40:5443", ["10.20.30.40:5443"]),
+    [],
+  )
 })

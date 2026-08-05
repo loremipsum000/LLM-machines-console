@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { fileURLToPath } from "node:url"
 import {
   readArchiveEntry,
+  sha256ArchiveEntry,
   sha256File,
   withDeterministicArchive,
 } from "./deterministic-archive.mjs"
@@ -9,6 +10,8 @@ import {
 const digestPattern = /^sha256:[a-f0-9]{64}$/
 const indexMediaType = "application/vnd.oci.image.index.v1+json"
 const manifestMediaType = "application/vnd.oci.image.manifest.v1+json"
+const maximumMetadataBytes = 8 * 1024 * 1024
+const maximumRetainedMetadataBytes = 64 * 1024 * 1024
 
 function fail(message) {
   throw new Error(message)
@@ -41,14 +44,33 @@ function exactDescriptor(descriptor, field) {
 
 export function inspectOciArchive(archivePath) {
   const entries = new Map()
+  let retainedMetadataBytes = 0
   withDeterministicArchive(archivePath, (entry) => {
-    if (entry.type === "file") entries.set(entry.path, readArchiveEntry(entry))
+    if (entry.type !== "file") return
+    if (
+      (entry.path === "oci-layout" || entry.path === "index.json") &&
+      entry.size > maximumMetadataBytes
+    ) {
+      fail(`${entry.path} exceeds the OCI metadata limit`)
+    }
+    const retainContents = entry.size <= maximumMetadataBytes
+    if (retainContents) {
+      retainedMetadataBytes += entry.size
+      if (retainedMetadataBytes > maximumRetainedMetadataBytes) {
+        fail("OCI archive exceeds the bounded metadata retention limit")
+      }
+    }
+    entries.set(entry.path, {
+      bytes: retainContents ? readArchiveEntry(entry) : null,
+      sha256: sha256ArchiveEntry(entry),
+      size: entry.size,
+    })
   })
   const required = ["oci-layout", "index.json"]
   for (const path of required) {
     if (!entries.has(path)) fail(`OCI archive is missing ${path}`)
   }
-  const layout = parseJson(entries.get("oci-layout"), "oci-layout")
+  const layout = parseJson(entries.get("oci-layout").bytes, "oci-layout")
   if (
     Object.keys(layout).length !== 1 ||
     layout.imageLayoutVersion !== "1.0.0"
@@ -56,7 +78,7 @@ export function inspectOciArchive(archivePath) {
     fail("OCI archive layout version is not 1.0.0")
   }
 
-  const indexBytes = entries.get("index.json")
+  const indexBytes = entries.get("index.json").bytes
   const index = parseJson(indexBytes, "index.json")
   if (
     index.schemaVersion !== 2 ||
@@ -77,22 +99,26 @@ export function inspectOciArchive(archivePath) {
   }
 
   const referenced = new Set()
-  function checkedBlob(descriptor, field) {
+  function checkedBlob(descriptor, field, requireContents = false) {
     exactDescriptor(descriptor, field)
     const path = `blobs/sha256/${descriptor.digest.slice("sha256:".length)}`
-    const bytes = entries.get(path)
-    if (!bytes) fail(`${field} blob is missing`)
-    if (
-      bytes.length !== descriptor.size ||
-      digest(bytes) !== descriptor.digest
-    ) {
+    const entry = entries.get(path)
+    if (!entry) fail(`${field} blob is missing`)
+    if (entry.size !== descriptor.size || entry.sha256 !== descriptor.digest) {
       fail(`${field} blob differs from its OCI descriptor`)
     }
+    if (requireContents && entry.bytes === null) {
+      fail(`${field} exceeds the OCI metadata limit`)
+    }
     referenced.add(path)
-    return bytes
+    return entry.bytes
   }
 
-  const manifestBytes = checkedBlob(manifestDescriptor, "OCI image manifest")
+  const manifestBytes = checkedBlob(
+    manifestDescriptor,
+    "OCI image manifest",
+    true,
+  )
   const manifest = parseJson(manifestBytes, "OCI image manifest")
   if (
     manifest.schemaVersion !== 2 ||
@@ -113,7 +139,7 @@ export function inspectOciArchive(archivePath) {
     fail("OCI image manifest document is invalid")
   }
   const config = parseJson(
-    checkedBlob(manifest.config, "OCI image config"),
+    checkedBlob(manifest.config, "OCI image config", true),
     "OCI image config",
   )
   if (
