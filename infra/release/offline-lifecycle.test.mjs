@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
 import { createHash, generateKeyPairSync, sign } from "node:crypto"
 import {
   copyFileSync,
@@ -12,6 +13,7 @@ import {
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
+import { fileURLToPath } from "node:url"
 import { assembleCorePackage } from "./assemble-core-package.mjs"
 import { installCleanRoom } from "./clean-room-install.mjs"
 import {
@@ -780,8 +782,110 @@ test("rollback metadata binds two verified releases and never activates either",
   rollbackArtifact.size = readFileSync(rollbackPath).length
   rollbackArtifact.sha256 = sha256File(rollbackPath)
   resignManifest(current, current.manifest)
-  const currentVerified = verifyReleaseBundle(current.bundle)
+  assert.throws(
+    () => verifyReleaseBundle(current.bundle),
+    /requires its exact target bundle/,
+  )
+  assert.throws(() =>
+    verifyReleaseBundle(current.bundle, {
+      rollbackTargetBundle: {
+        ...previous.bundle,
+        manifestPath: join(previous.directory, "missing-manifest.json"),
+      },
+    }),
+  )
+  assert.throws(
+    () =>
+      verifyReleaseBundle(current.bundle, {
+        rollbackTargetBundle: {
+          ...previous.bundle,
+          trustedRootSha256: digest("f"),
+        },
+      }),
+    /release root does not match the independently trusted fingerprint/,
+  )
+  const unrelated = bundleFixture("1.8.0", "unrelated")
+  assert.throws(
+    () =>
+      verifyReleaseBundle(current.bundle, {
+        rollbackTargetBundle: unrelated.bundle,
+      }),
+    /target release binding/,
+  )
+  const originalSignature = readFileSync(previous.bundle.signaturePath)
+  const unsignedEnvelope = JSON.parse(originalSignature.toString("utf8"))
+  unsignedEnvelope.status = "UNSIGNED"
+  writeFileSync(previous.bundle.signaturePath, canonicalJson(unsignedEnvelope))
+  assert.throws(
+    () =>
+      verifyReleaseBundle(current.bundle, {
+        rollbackTargetBundle: previous.bundle,
+      }),
+    /release signature envelope is invalid/,
+  )
+  writeFileSync(previous.bundle.signaturePath, originalSignature)
+  const originalTrust = readFileSync(previous.bundle.trustPath)
+  const revokedTrust = JSON.parse(originalTrust.toString("utf8"))
+  revokedTrust.keys[0].state = "revoked"
+  revokedTrust.keys[0].revokedAt = "2026-08-03T00:00:00.000Z"
+  revokedTrust.keys[0].revocationReason = "test revocation"
+  const { certificationSignature: _oldSignature, ...revokedPayload } =
+    revokedTrust.keys[0]
+  revokedTrust.keys[0].certificationSignature = sign(
+    null,
+    Buffer.from(canonicalJson(revokedPayload)),
+    previous.rootSigningPrivateKey,
+  ).toString("base64url")
+  writeFileSync(previous.bundle.trustPath, canonicalJson(revokedTrust))
+  assert.throws(
+    () =>
+      verifyReleaseBundle(current.bundle, {
+        rollbackTargetBundle: previous.bundle,
+      }),
+    /release signing key is revoked/,
+  )
+  writeFileSync(previous.bundle.trustPath, originalTrust)
+  const currentVerified = verifyReleaseBundle(current.bundle, {
+    rollbackTargetBundle: previous.bundle,
+  })
   assert.equal(currentVerified.rollbackMode, "SIGNED_PREDECESSOR")
+  assert.equal(
+    currentVerified.rollbackTargetManifestSha256,
+    descriptor.target.manifestSha256,
+  )
+  const verifierPath = fileURLToPath(
+    new URL("./verify-release-bundle.mjs", import.meta.url),
+  )
+  const verifierArguments = [
+    verifierPath,
+    "--manifest",
+    current.bundle.manifestPath,
+    "--signature",
+    current.bundle.signaturePath,
+    "--trust",
+    current.bundle.trustPath,
+    "--artifact-root",
+    current.bundle.artifactRoot,
+    "--trusted-root-sha256",
+    current.bundle.trustedRootSha256,
+  ]
+  const missingTarget = spawnSync(process.execPath, verifierArguments, {
+    encoding: "utf8",
+  })
+  assert.notEqual(missingTarget.status, 0)
+  assert.match(missingTarget.stderr, /requires its exact target bundle/)
+  const targetInputPath = join(current.directory, "rollback-target-input.json")
+  writeFileSync(targetInputPath, canonicalJson(previous.bundle))
+  const verifiedCli = spawnSync(
+    process.execPath,
+    [...verifierArguments, "--rollback-target-input", targetInputPath],
+    { encoding: "utf8" },
+  )
+  assert.equal(verifiedCli.status, 0, verifiedCli.stderr)
+  assert.equal(
+    JSON.parse(verifiedCli.stdout).rollbackTargetManifestSha256,
+    descriptor.target.manifestSha256,
+  )
   assert.equal(
     verifyRollbackDescriptor(
       descriptor,
@@ -801,6 +905,7 @@ test("rollback metadata binds two verified releases and never activates either",
       ),
     /target release binding/,
   )
+  rmSync(unrelated.directory, { recursive: true, force: true })
   rmSync(previous.directory, { recursive: true, force: true })
   rmSync(current.directory, { recursive: true, force: true })
 })
@@ -822,7 +927,7 @@ test("first release explicitly has no predecessor and cannot claim rollback", ()
     applianceId: "llmm-customer-site-1",
     observedAt: "2026-08-05T09:00:00.000Z",
     observer: {
-      type: "customer-commissioning-authority",
+      type: "q0-trusted-observer",
       id: "q0.commissioning.observer.1",
     },
     containsCredentials: false,

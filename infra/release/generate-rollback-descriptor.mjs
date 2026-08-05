@@ -46,7 +46,11 @@ function targetReleaseIdentity(release, manifestSha256, corePackage) {
   }
 }
 
-export function generateRollbackDescriptor({ currentRelease, previousBundle }) {
+export function generateRollbackDescriptor({
+  currentRelease,
+  previousBundle,
+  previousRollbackTargetBundle,
+}) {
   exactKeys(
     currentRelease,
     [
@@ -59,7 +63,11 @@ export function generateRollbackDescriptor({ currentRelease, previousBundle }) {
     ],
     "current release input",
   )
-  const previous = verifyReleaseBundle(previousBundle)
+  const previous = verifyReleaseBundle(previousBundle, {
+    ...(previousRollbackTargetBundle
+      ? { rollbackTargetBundle: previousRollbackTargetBundle }
+      : {}),
+  })
   const descriptor = {
     schema: "llm-machines.rollback-descriptor.v2",
     status: "PACKAGED_UNQUALIFIED",
@@ -117,14 +125,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     exactKeys(input, ["mode"], "initial-install input")
     descriptor = generateInitialInstallDescriptor()
   } else if (input.mode === "SIGNED_PREDECESSOR") {
-    exactKeys(
-      input,
-      ["mode", "currentRelease", "previousBundle"],
-      "rollback input",
-    )
+    const expectedKeys = ["mode", "currentRelease", "previousBundle"]
+    if (input.previousRollbackTargetBundle !== undefined) {
+      expectedKeys.push("previousRollbackTargetBundle")
+    }
+    exactKeys(input, expectedKeys, "rollback input")
     descriptor = generateRollbackDescriptor({
       currentRelease: input.currentRelease,
       previousBundle: input.previousBundle,
+      previousRollbackTargetBundle: input.previousRollbackTargetBundle,
     })
   } else {
     fail("input mode must select initial install or a signed predecessor")

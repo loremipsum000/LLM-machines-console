@@ -207,7 +207,7 @@ export function verifyInitialInstallDescriptor(
     installationState.status !== "OBSERVED_EMPTY" ||
     !applianceIdPattern.test(installationState.applianceId ?? "") ||
     installationState.applianceId !== expectedApplianceId ||
-    installationState.observer.type !== "customer-commissioning-authority" ||
+    installationState.observer.type !== "q0-trusted-observer" ||
     !evidenceIdPattern.test(installationState.observer.id ?? "") ||
     installationState.containsCredentials !== false ||
     installationState.observation.priorProductReleaseExists !== false ||
