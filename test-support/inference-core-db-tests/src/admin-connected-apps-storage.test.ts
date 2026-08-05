@@ -59,14 +59,14 @@ const actor: Actor = {
   subject: "admin-storage-test",
 }
 const staticRevealEndpoints = {
-  bffBaseUrl: "https://console.example.test",
-  openAiBaseUrl: "https://console.example.test/api/app-gateway/v1",
+  bffBaseUrl: "https://api.example.test",
+  openAiBaseUrl: "https://api.example.test/v1",
   tokenUrl: null,
 } as const
 const oauthRevealEndpoints = {
   ...staticRevealEndpoints,
   tokenUrl:
-    "https://keycloak.example.test/realms/llm-machines/protocol/openid-connect/token",
+    "https://identity.example.test/realms/llm-machines-applications/protocol/openid-connect/token",
 } as const
 
 let database: PGlite
