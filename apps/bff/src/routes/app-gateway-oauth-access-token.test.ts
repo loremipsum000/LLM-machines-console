@@ -47,6 +47,7 @@ describe("Application-realm OAuth gateway authentication", () => {
   it("accepts a signed Application token, rejects a human token, and retains metadata only", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
+    vi.stubEnv("PRODUCT_IDENTITY_HOST", "keycloak.example.test")
     vi.stubEnv("KEYCLOAK_APPLICATION_ISSUER_URL", APPLICATION_ISSUER)
     vi.stubEnv("KEYCLOAK_ISSUER_URL", HUMAN_ISSUER)
     vi.stubEnv("KEYCLOAK_AUDIENCE", "console-bff")

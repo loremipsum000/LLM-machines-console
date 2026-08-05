@@ -33,6 +33,8 @@ const querylessPaths = new Set([
   "/realms/llm-machines/protocol/openid-connect/token",
   "/realms/llm-machines/protocol/openid-connect/revoke",
   "/realms/llm-machines/protocol/openid-connect/certs",
+  "/realms/llm-machines-applications/protocol/openid-connect/token",
+  "/realms/llm-machines-applications/protocol/openid-connect/certs",
 ])
 
 const headerProfiles = Object.freeze({
@@ -66,24 +68,34 @@ const headerProfiles = Object.freeze({
     "cookie",
     "origin",
   ]),
+  "identity-application-token": new Set([
+    "accept",
+    "authorization",
+    "content-length",
+    "content-type",
+  ]),
   "identity-server-form": new Set(["accept", "content-length", "content-type"]),
   "identity-server-jwks": new Set(["accept"]),
 })
 
 export function evaluateSourceBoundary(input) {
   const hosts = input.hosts ?? {
+    api: "api.appliance.test",
     console: "console.appliance.test",
+    firecrawl: "firecrawl.appliance.test",
     identity: "identity.appliance.test",
   }
   if (input.customerPort !== 443) {
     return denied("customer-port-denied")
   }
   if (
-    !hosts.console ||
-    !hosts.identity ||
-    hosts.console === hosts.identity ||
-    !validDnsHost(hosts.console) ||
-    !validDnsHost(hosts.identity)
+    JSON.stringify(Object.keys(hosts).sort()) !==
+      JSON.stringify(["api", "console", "firecrawl", "identity"]) ||
+    ![hosts.api, hosts.console, hosts.firecrawl, hosts.identity].every(
+      validDnsHost,
+    ) ||
+    new Set([hosts.api, hosts.console, hosts.firecrawl, hosts.identity])
+      .size !== 4
   ) {
     return denied("invalid-edge-host-policy")
   }
@@ -94,12 +106,7 @@ export function evaluateSourceBoundary(input) {
   if (host !== input.sni) {
     return denied("host-sni-mismatch")
   }
-  const hostId =
-    host === hosts.console
-      ? "console"
-      : host === hosts.identity
-        ? "identity"
-        : null
+  const hostId = Object.entries(hosts).find(([, value]) => value === host)?.[0]
   if (!hostId) {
     return denied("unknown-host")
   }
@@ -110,15 +117,11 @@ export function evaluateSourceBoundary(input) {
   if (hostId === "identity" && hasConsoleCookie(input.headers)) {
     return denied("console-cookie-on-identity-host")
   }
-  const route =
-    hostId === "console"
-      ? consoleRoute(input.method, target.path, input.headers)
-      : identityRoute(input.method, target.path)
+  const route = routeForHost(hostId, input.method, target.path, input.headers)
   if (!route) {
     const native =
-      hostId === "console"
-        ? nativeConsolePathPattern.test(target.path)
-        : nativeIdentityPathPattern.test(target.path)
+      (hostId === "console" && nativeConsolePathPattern.test(target.path)) ||
+      (hostId === "identity" && nativeIdentityPathPattern.test(target.path))
     return denied(native ? "native-path-denied" : "route-denied")
   }
   if (querylessPaths.has(target.path) && target.query.length > 0) {
@@ -143,7 +146,20 @@ export function evaluateSourceBoundary(input) {
   }
 }
 
-function consoleRoute(method, path, headers) {
+function routeForHost(hostId, method, path, headers) {
+  if (hostId === "api") {
+    return apiRoute(method, path)
+  }
+  if (hostId === "console") {
+    return consoleRoute(method, path, headers)
+  }
+  if (hostId === "firecrawl") {
+    return firecrawlRoute(method, path)
+  }
+  return hostId === "identity" ? identityRoute(method, path, headers) : null
+}
+
+function apiRoute(method, path) {
   if (path === "/v1/models" && ["GET", "HEAD"].includes(method)) {
     return route(
       "inference",
@@ -160,9 +176,17 @@ function consoleRoute(method, path, headers) {
       "/api/app-gateway/v1/chat/completions",
     )
   }
+  return null
+}
+
+function firecrawlRoute(method, path) {
   if (["/v2/search", "/v2/scrape"].includes(path) && method === "POST") {
     return route("firecrawl", "customer-api", "console-bff", path)
   }
+  return null
+}
+
+function consoleRoute(method, path, headers) {
   if (
     ["/api/console/session/login", "/api/console/session/callback"].includes(
       path,
@@ -223,7 +247,7 @@ function consoleRoute(method, path, headers) {
   return null
 }
 
-function identityRoute(method, path) {
+function identityRoute(method, path, headers) {
   if (
     path === "/realms/llm-machines/protocol/openid-connect/auth" &&
     ["GET", "HEAD"].includes(method)
@@ -231,7 +255,10 @@ function identityRoute(method, path) {
     return route("identity", "identity-browser", "keycloak-identity", path)
   }
   if (
-    path === "/realms/llm-machines/protocol/openid-connect/logout" &&
+    [
+      "/realms/llm-machines/protocol/openid-connect/logout",
+      "/realms/llm-machines/protocol/openid-connect/logout/logout-confirm",
+    ].includes(path) &&
     ["GET", "HEAD", "POST"].includes(method)
   ) {
     return route("identity", "identity-browser", "keycloak-identity", path)
@@ -247,6 +274,26 @@ function identityRoute(method, path) {
   }
   if (
     path === "/realms/llm-machines/protocol/openid-connect/certs" &&
+    ["GET", "HEAD"].includes(method)
+  ) {
+    return route("identity", "identity-server-jwks", "keycloak-identity", path)
+  }
+  if (
+    path ===
+      "/realms/llm-machines-applications/protocol/openid-connect/token" &&
+    method === "POST" &&
+    validApplicationClientAuthorization(headers)
+  ) {
+    return route(
+      "identity",
+      "identity-application-token",
+      "keycloak-identity",
+      path,
+    )
+  }
+  if (
+    path ===
+      "/realms/llm-machines-applications/protocol/openid-connect/certs" &&
     ["GET", "HEAD"].includes(method)
   ) {
     return route("identity", "identity-server-jwks", "keycloak-identity", path)
@@ -271,6 +318,16 @@ function identityRoute(method, path) {
     )
   }
   return null
+}
+
+function validApplicationClientAuthorization(headers) {
+  const authorization = inputHeader(headers, "authorization")
+  return (
+    singleHeader(authorization) &&
+    /^[Bb][Aa][Ss][Ii][Cc] +bGxtbS1hcHAt[A-Za-z0-9+/]{48}(?:O[g-v][AEIMQUYcgkosw048]=|O[g-v][A-Za-z0-9+/]{2}(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/][AQgw]==|[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=)?)$/.test(
+      authorization,
+    )
+  )
 }
 
 function safeRequestTarget(rawTarget) {
@@ -329,6 +386,14 @@ function forwardHeaders(headers, profile, host) {
   }
   for (const [name, value] of Object.entries(headers ?? {})) {
     const normalized = name.toLowerCase()
+    if (
+      profile === "identity-application-token" &&
+      normalized === "authorization" &&
+      (typeof value !== "string" ||
+        !/^Basic +[A-Za-z0-9+/]+={0,2}$/i.test(value))
+    ) {
+      continue
+    }
     if (allowlist.has(normalized) && singleHeader(value)) {
       forwarded[normalized] = value
     }

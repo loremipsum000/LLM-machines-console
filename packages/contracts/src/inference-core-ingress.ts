@@ -8,13 +8,19 @@ export const productEdgeSurfaceSchema = z.enum([
 ])
 export type ProductEdgeSurface = z.infer<typeof productEdgeSurfaceSchema>
 
-export const productEdgeHostIdSchema = z.enum(["console", "identity"])
+export const productEdgeHostIdSchema = z.enum([
+  "api",
+  "console",
+  "firecrawl",
+  "identity",
+])
 export type ProductEdgeHostId = z.infer<typeof productEdgeHostIdSchema>
 
 export const productEdgeHeaderProfileSchema = z.enum([
   "console-browser",
   "customer-api",
   "identity-browser",
+  "identity-application-token",
   "identity-server-form",
   "identity-server-jwks",
   "identity-backchannel",
@@ -64,7 +70,7 @@ export type ProductEdgeRuntimeQualification = z.infer<
 export const productEdgePublicRoutes = Object.freeze([
   {
     headerProfile: "customer-api",
-    hostId: "console",
+    hostId: "api",
     id: "inference-models",
     methods: ["GET", "HEAD"],
     path: { kind: "exact", value: "/v1/models" },
@@ -75,7 +81,7 @@ export const productEdgePublicRoutes = Object.freeze([
   },
   {
     headerProfile: "customer-api",
-    hostId: "console",
+    hostId: "api",
     id: "inference-chat-completions",
     methods: ["POST"],
     path: { kind: "exact", value: "/v1/chat/completions" },
@@ -86,7 +92,7 @@ export const productEdgePublicRoutes = Object.freeze([
   },
   {
     headerProfile: "customer-api",
-    hostId: "console",
+    hostId: "firecrawl",
     id: "firecrawl-search",
     methods: ["POST"],
     path: { kind: "exact", value: "/v2/search" },
@@ -97,7 +103,7 @@ export const productEdgePublicRoutes = Object.freeze([
   },
   {
     headerProfile: "customer-api",
-    hostId: "console",
+    hostId: "firecrawl",
     id: "firecrawl-scrape",
     methods: ["POST"],
     path: { kind: "exact", value: "/v2/scrape" },
@@ -115,7 +121,9 @@ export const productEdgePrivateNativeSystems = Object.freeze([
   "keycloak-admin",
   "litellm",
   "portainer",
+  "postgresql",
   "prometheus",
+  "sglang",
 ] as const)
 
 export const productEdgeCustomerFacingTcpPorts = Object.freeze([443] as const)

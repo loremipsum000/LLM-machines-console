@@ -890,8 +890,8 @@ const firecrawlReveal = {
     "llmm_fc_0123456789abcdef_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ",
   credentialId: "firecrawl-credential-active",
   exampleCurl:
-    'curl -H "Authorization: Bearer llmm_fc_0123456789abcdef_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ" https://bff.example.test/api/app-gateway/firecrawl/v2/search',
-  firecrawlBaseUrl: "https://bff.example.test/api/app-gateway/firecrawl/v2",
+    'curl -H "Authorization: Bearer llmm_fc_0123456789abcdef_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ" https://firecrawl.example.test/v2/search',
+  firecrawlBaseUrl: "https://firecrawl.example.test",
   issuedAt: "2026-07-31T08:00:00.000Z",
   keyPrefix: "llmm_fc_0123456789abcdef",
 } satisfies AdminConnectedAppFirecrawlCredential

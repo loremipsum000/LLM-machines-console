@@ -1245,8 +1245,8 @@ const firecrawlReveal = {
     "llmm_fc_0123456789abcdef_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ",
   credentialId: "firecrawl-credential-active",
   exampleCurl:
-    'curl -H "Authorization: Bearer llmm_fc_0123456789abcdef_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ" https://bff.example.test/api/app-gateway/firecrawl/v2/search',
-  firecrawlBaseUrl: "https://bff.example.test/api/app-gateway/firecrawl/v2",
+    'curl -H "Authorization: Bearer llmm_fc_0123456789abcdef_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ" https://firecrawl.example.test/v2/search',
+  firecrawlBaseUrl: "https://firecrawl.example.test",
   issuedAt: "2026-07-31T08:00:00.000Z",
   keyPrefix: "llmm_fc_0123456789abcdef",
 } satisfies AdminConnectedAppFirecrawlCredential
@@ -1254,14 +1254,14 @@ const firecrawlReveal = {
 const staticReveal = {
   apiKey: "llmm_secret_once",
   authMethod: "api_key",
-  bffBaseUrl: "https://bff.example.test",
+  bffBaseUrl: "https://api.example.test",
   credentialId: "credential-new",
   exampleCurl:
-    'curl -H "Authorization: Bearer llmm_secret_once" https://bff.example.test/api/app-gateway/v1/models',
+    'curl -H "Authorization: Bearer llmm_secret_once" https://api.example.test/v1/models',
   issuedAt: "2026-07-31T08:00:00.000Z",
   keyPrefix: "llmm_secret_",
   model: model.name,
-  openAiBaseUrl: "https://bff.example.test/api/app-gateway/v1",
+  openAiBaseUrl: "https://api.example.test/v1",
 } satisfies AdminConnectedAppCredential
 
 const secondStaticReveal = {
@@ -1269,23 +1269,23 @@ const secondStaticReveal = {
   apiKey: "llmm_second_secret_once",
   credentialId: "credential-newer",
   exampleCurl:
-    'curl -H "Authorization: Bearer llmm_second_secret_once" https://bff.example.test/api/app-gateway/v1/models',
+    'curl -H "Authorization: Bearer llmm_second_secret_once" https://api.example.test/v1/models',
   issuedAt: "2026-07-31T09:00:00.000Z",
   keyPrefix: "llmm_second_",
 } satisfies AdminConnectedAppCredential
 
 const oauthReveal = {
   authMethod: "oauth_client_credentials",
-  bffBaseUrl: "https://bff.example.test",
+  bffBaseUrl: "https://api.example.test",
   clientId: "application-client",
   clientSecret: "oauth_secret_once",
   credentialId: "credential-oauth",
   exampleCurl:
-    'curl -H "Authorization: Bearer <token>" https://bff.example.test/api/app-gateway/v1/models',
+    'curl -H "Authorization: Bearer <token>" https://api.example.test/v1/models',
   issuedAt: "2026-07-31T08:00:00.000Z",
   keyPrefix: null,
   model: model.name,
-  openAiBaseUrl: "https://bff.example.test/api/app-gateway/v1",
+  openAiBaseUrl: "https://api.example.test/v1",
   tokenUrl:
-    "https://keycloak.example.test/realms/llm/protocol/openid-connect/token",
+    "https://identity.example.test/realms/llm-machines-applications/protocol/openid-connect/token",
 } satisfies AdminConnectedAppCredential

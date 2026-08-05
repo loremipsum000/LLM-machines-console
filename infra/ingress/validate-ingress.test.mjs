@@ -181,6 +181,207 @@ test("policy cannot add a route or claim runtime proof", () => {
   assert.ok(result.some((error) => /runtime/i.test(error)))
 })
 
+test("public routes cannot drift across the four authorities", () => {
+  const policy = JSON.parse(sources["edge-policy.json"])
+  policy.routes.find((route) => route.id === "inference-models").hostId =
+    "console"
+  let result = validateIngressSources({
+    ...sources,
+    "edge-policy.json": JSON.stringify(policy),
+  })
+  assert.ok(result.some((error) => /inference|Firecrawl/i.test(error)))
+
+  const hosts = JSON.parse(sources["edge-policy.json"])
+  hosts.edge.hostTemplates.firecrawl = undefined
+  result = validateIngressSources({
+    ...sources,
+    "edge-policy.json": JSON.stringify(hosts),
+  })
+  assert.ok(result.some((error) => /public host/i.test(error)))
+})
+
+test("every public Nginx location is exact-allowlisted", () => {
+  for (const [host, before, extra] of [
+    [
+      "Console",
+      "    location = /api/console/session/login {",
+      "    location = /api/admin/hidden { return 204; }\n\n",
+    ],
+    [
+      "API",
+      "    location = /v1/models {",
+      "    location = /v1/hidden { proxy_pass http://console_bff/healthz; }\n\n",
+    ],
+    [
+      "Firecrawl",
+      "    location = /v2/search {",
+      "    location = /v2/crawl { proxy_pass http://console_bff/v2/crawl; }\n\n",
+    ],
+    [
+      "identity",
+      "    location = /realms/llm-machines/protocol/openid-connect/auth {",
+      "    location = /admin/master/console/ { proxy_pass http://keycloak_identity/admin/master/console/; }\n\n",
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, `${extra}${before}`),
+      ),
+    )
+    assert.ok(
+      result.some((error) =>
+        new RegExp(`Nginx ${host} location inventory`, "i").test(error),
+      ),
+      host,
+    )
+  }
+})
+
+test("reviewed public route implementations cannot change in place", () => {
+  for (const [label, name, before, after] of [
+    [
+      "API catch-all",
+      "product-edge.nginx.conf.template",
+      "    location / {\n      return 404;\n    }\n  }\n\n  server {\n    listen 443 ssl;\n    server_name @@PRODUCT_FIRECRAWL_HOST@@;",
+      "    location / {\n      include /etc/nginx/llm-machines/proxy-common.inc;\n      proxy_pass http://console_bff;\n    }\n  }\n\n  server {\n    listen 443 ssl;\n    server_name @@PRODUCT_FIRECRAWL_HOST@@;",
+    ],
+    [
+      "Identity catch-all",
+      "product-edge.nginx.conf.template",
+      "    location / {\n      return 404;\n    }\n  }\n}",
+      "    location / {\n      include /etc/nginx/llm-machines/proxy-common.inc;\n      proxy_pass http://keycloak_identity;\n    }\n  }\n}",
+    ],
+    [
+      "API method guard",
+      "product-edge.nginx.conf.template",
+      '      limit_except GET { deny all; }\n      if ($args != "") { return 400; }\n      proxy_pass_request_body off;',
+      '      if ($args != "") { return 400; }\n      proxy_pass_request_body off;',
+    ],
+    [
+      "Identity browser Authorization",
+      "product-edge.nginx.conf.template",
+      "      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;\n      proxy_set_header Host $llmm_public_host;",
+      "      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;\n      proxy_set_header Authorization $http_authorization;\n      proxy_set_header Host $llmm_public_host;",
+    ],
+    [
+      "Console spoofed header",
+      "request-headers-console-browser.inc",
+      'proxy_set_header Authorization "";',
+      'proxy_set_header Authorization "";\nproxy_set_header X-Original-URI $http_x_original_uri;',
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed(name, (source) => source.replace(before, after)),
+    )
+    assert.ok(
+      result.some((error) => /runtime source fingerprint/i.test(error)),
+      label,
+    )
+  }
+})
+
+test("Application client Basic auth is isolated to its exact token route", () => {
+  const mapPattern = /"~([^"\n]+)" \$http_authorization;/.exec(
+    sources["product-edge.nginx.conf.template"],
+  )?.[1]
+  assert.ok(mapPattern)
+  const clientAuthorization = new RegExp(mapPattern)
+  const clientId = "llmm-app-11111111-1111-4111-8111-111111111111"
+  for (const scheme of ["Basic", "basic", "bAsIc"]) {
+    for (const secret of ["s", "ss", "sss", "secret", "s".repeat(64)]) {
+      assert.equal(
+        clientAuthorization.test(
+          `${scheme} ${Buffer.from(`${clientId}:${secret}`).toString("base64")}`,
+        ),
+        true,
+      )
+    }
+  }
+  assert.equal(
+    clientAuthorization.test(
+      `Basic ${Buffer.from(`llmm-app-${"z".repeat(36)}:secret`).toString("base64")}`,
+    ),
+    true,
+    "Keycloak, not the edge envelope, validates the exact client ID",
+  )
+  for (const authorization of [
+    "Basic a",
+    "Basic abcde",
+    `Basic ${Buffer.from(":secret").toString("base64")}`,
+    `Basic ${Buffer.from(`${clientId}:`).toString("base64")}`,
+    `Basic ${Buffer.from("other-client:secret").toString("base64")}`,
+    `Basic ${Buffer.from(`${clientId}x:secret`).toString("base64")}`,
+    `Basic ${Buffer.from(`${clientId}:secret`).toString("base64").replace("bGxt", "bGxT")}`,
+  ]) {
+    assert.equal(clientAuthorization.test(authorization), false, authorization)
+  }
+
+  const removedMap = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        '"~^[Bb][Aa][Ss][Ii][Cc][ ]+bGxtbS1hcHAt[A-Za-z0-9+/]{48}(?:O[g-v][AEIMQUYcgkosw048]=|O[g-v][A-Za-z0-9+/]{2}(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/][AQgw]==|[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=)?)$" $http_authorization;',
+        '"~^Bearer .+$" $http_authorization;',
+      ),
+    ),
+  )
+  assert.ok(removedMap.some((error) => /Basic authentication/i.test(error)))
+
+  const humanTokenForwarding = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        "location = /realms/llm-machines/protocol/openid-connect/token {",
+        "location = /realms/llm-machines/protocol/openid-connect/token {\n      proxy_set_header Authorization $llmm_application_client_authorization;",
+      ),
+    ),
+  )
+  assert.ok(
+    humanTokenForwarding.some((error) =>
+      /Authorization forwarding|Basic authentication/i.test(error),
+    ),
+  )
+
+  const clientSecretPostFallback = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        '      if ($llmm_application_client_authorization = "") { return 401; }\n',
+        "",
+      ),
+    ),
+  )
+  assert.ok(
+    clientSecretPostFallback.some((error) =>
+      /Basic authentication/i.test(error),
+    ),
+  )
+})
+
+test("only the exact Keycloak logout confirmation route is retained", () => {
+  const removed = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        "location = /realms/llm-machines/protocol/openid-connect/logout/logout-confirm {",
+        "location = /realms/llm-machines/protocol/openid-connect/logout/confirm {",
+      ),
+    ),
+  )
+  assert.ok(
+    removed.some((error) => /location inventory|fingerprint/i.test(error)),
+  )
+})
+
+test("native listener inventory cannot omit Core or delivery-profile ports", () => {
+  const policy = JSON.parse(sources["no-bypass-policy.json"])
+  policy.customerNetwork.deniedNativeTcpPorts =
+    policy.customerNetwork.deniedNativeTcpPorts.filter((port) => port !== 5432)
+  policy.customerNetwork.deniedInferenceProfileTcpPorts = undefined
+  const result = validateIngressSources({
+    ...sources,
+    "no-bypass-policy.json": JSON.stringify(policy),
+  })
+  assert.ok(result.some((error) => /native-port/i.test(error)))
+  assert.ok(result.some((error) => /inference-profile/i.test(error)))
+})
+
 test("credential-like material fails without exposing a value", () => {
   const result = validateIngressSources(
     changed(

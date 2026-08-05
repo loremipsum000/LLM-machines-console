@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "F0-E0",
+  "scope": "pre-genesis-public-authority-correction-source-only",
+  "protectedIntegrationBaseCommit": "7e1af95925cbf462e63371cbfd329b7ab4f04f9b",
+  "protectedIntegrationBaseTree": "a4482410bac02bacf9a3cf0a61ee1f53d24432c5",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "bindingDecisions": {
+    "customerTcpPorts": [443],
+    "publicAuthorities": {
+      "console": {
+        "hostTemplate": "@@PRODUCT_CONSOLE_HOST@@",
+        "purpose": "Console browser pages and Console session endpoints"
+      },
+      "api": {
+        "hostTemplate": "@@PRODUCT_API_HOST@@",
+        "routes": ["GET /v1/models", "POST /v1/chat/completions"]
+      },
+      "identity": {
+        "hostTemplate": "@@PRODUCT_IDENTITY_HOST@@",
+        "purpose": "normal human-realm OIDC and Application-realm token or JWKS dependencies"
+      },
+      "firecrawl": {
+        "hostTemplate": "@@PRODUCT_FIRECRAWL_HOST@@",
+        "routes": ["POST /v2/search", "POST /v2/scrape"]
+      }
+    },
+    "privateNativeSystems": [
+      "alertmanager",
+      "firecrawl-native",
+      "grafana",
+      "keycloak-admin",
+      "litellm",
+      "portainer",
+      "postgresql",
+      "prometheus",
+      "sglang"
+    ],
+    "credentialReveal": {
+      "apiBase": "origin-only-no-path-or-nondefault-production-port-exact-product-api-host",
+      "applicationTokenClientAuthentication": "canonical-client-secret-basic-with-product-client-namespace-boundary-on-exact-application-realm-token-route-only",
+      "applicationIssuerOrigin": "https-default-port-exact-product-identity-host",
+      "clientSecretPostAllowed": false,
+      "browserBearerForwarding": false
+    },
+    "runtimeAuthorityBinding": {
+      "consoleOrigin": "exact-product-console-host",
+      "humanIdentityIssuer": "exact-product-identity-host",
+      "applicationIdentityIssuer": "exact-product-identity-host",
+      "applicationApiBase": "exact-product-api-host",
+      "firecrawlPublicBase": "exact-product-firecrawl-host"
+    },
+    "edgeValidation": {
+      "publicNginxLocations": "exact-inventory-no-additions",
+      "unknownRoutes": "deny",
+      "normalConsoleAndKeycloakLoginFlows": "preserved",
+      "runtimeNoBypass": "NOT_EVALUATED_RUNTIME"
+    }
+  },
+  "historicalEvidence": {
+    "r1E1Decision": "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json",
+    "r1E1SourceHeadCommit": "c60280c11318aa21d230e7002cb7d703625a7168",
+    "disposition": "immutable-history-superseded-only-for-current-public-authority-topology"
+  },
+  "forbiddenOutcomes": [
+    "native-customer-grafana",
+    "native-keycloak-admin",
+    "native-litellm",
+    "public-postgresql",
+    "public-firecrawl-internals",
+    "public-sglang-listener",
+    "runtime-activation",
+    "real-credential-binding",
+    "gitea-genesis",
+    "product-main-merge"
+  ]
+}

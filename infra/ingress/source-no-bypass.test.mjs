@@ -3,7 +3,9 @@ import { test } from "node:test"
 import { evaluateSourceBoundary } from "./source-no-bypass.mjs"
 
 const hosts = {
+  api: "api.appliance.test",
   console: "console.appliance.test",
+  firecrawl: "firecrawl.appliance.test",
   identity: "identity.appliance.test",
 }
 
@@ -21,46 +23,90 @@ function request(overrides = {}) {
 }
 
 test("only retained inference and Firecrawl routes reach the BFF", () => {
-  for (const [method, rawTarget, upstreamPath] of [
-    ["GET", "/v1/models", "/api/app-gateway/v1/models"],
-    ["HEAD", "/v1/models", "/api/app-gateway/v1/models"],
-    ["POST", "/v1/chat/completions", "/api/app-gateway/v1/chat/completions"],
-    ["POST", "/v2/search", "/v2/search"],
-    ["POST", "/v2/scrape", "/v2/scrape"],
+  for (const [hostId, method, rawTarget, upstreamPath] of [
+    ["api", "GET", "/v1/models", "/api/app-gateway/v1/models"],
+    ["api", "HEAD", "/v1/models", "/api/app-gateway/v1/models"],
+    [
+      "api",
+      "POST",
+      "/v1/chat/completions",
+      "/api/app-gateway/v1/chat/completions",
+    ],
+    ["firecrawl", "POST", "/v2/search", "/v2/search"],
+    ["firecrawl", "POST", "/v2/scrape", "/v2/scrape"],
   ]) {
-    const result = request({ method, rawTarget })
+    const result = request({
+      hostHeaders: [hosts[hostId]],
+      method,
+      rawTarget,
+      sni: hosts[hostId],
+    })
     assert.equal(result.allowed, true, `${method} ${rawTarget}`)
+    assert.equal(result.hostId, hostId)
     assert.equal(result.upstreamId, "console-bff")
     assert.equal(result.upstreamPath, upstreamPath)
   }
-  for (const [method, rawTarget] of [
-    ["POST", "/v1/models"],
-    ["GET", "/v1/chat/completions"],
-    ["GET", "/v2/search"],
-    ["POST", "/v2/crawl"],
-    ["POST", "/v2/map"],
-    ["POST", "/v2/batch/scrape"],
-    ["POST", "/v2/extract"],
+  for (const [hostId, method, rawTarget] of [
+    ["api", "POST", "/v1/models"],
+    ["api", "GET", "/v1/chat/completions"],
+    ["firecrawl", "GET", "/v2/search"],
+    ["firecrawl", "POST", "/v2/crawl"],
+    ["firecrawl", "POST", "/v2/map"],
+    ["firecrawl", "POST", "/v2/batch/scrape"],
+    ["firecrawl", "POST", "/v2/extract"],
   ]) {
-    assert.equal(request({ method, rawTarget }).allowed, false)
+    assert.equal(
+      request({
+        hostHeaders: [hosts[hostId]],
+        method,
+        rawTarget,
+        sni: hosts[hostId],
+      }).allowed,
+      false,
+    )
+  }
+  for (const [hostId, rawTarget] of [
+    ["console", "/v1/models"],
+    ["firecrawl", "/v1/models"],
+    ["console", "/v2/search"],
+    ["api", "/v2/search"],
+    ["identity", "/v1/models"],
+  ]) {
+    assert.equal(
+      request({
+        hostHeaders: [hosts[hostId]],
+        method: rawTarget === "/v1/models" ? "GET" : "POST",
+        rawTarget,
+        sni: hosts[hostId],
+      }).allowed,
+      false,
+      `${hostId} ${rawTarget}`,
+    )
   }
 })
 
 test("direct native ports and alternate authorities fail", () => {
   for (const customerPort of [
-    80, 3000, 3002, 4000, 4001, 8080, 9090, 9093, 9443,
+    80, 3000, 3002, 3128, 4000, 4001, 5432, 8080, 9090, 9093, 9443, 30000,
   ]) {
     assert.equal(request({ customerPort }).allowed, false)
   }
   for (const overrides of [
     { hostHeaders: [] },
-    { hostHeaders: [hosts.console, hosts.identity] },
+    { hostHeaders: [hosts.console, hosts.api] },
     { hostHeaders: [`${hosts.console}:443`] },
     { hostHeaders: ["litellm.appliance.test"], sni: "litellm.appliance.test" },
     { hostHeaders: [hosts.console], sni: hosts.identity },
     { hostHeaders: ["127.0.0.1"], sni: "127.0.0.1" },
   ]) {
     assert.equal(request(overrides).allowed, false)
+  }
+  for (const invalidHosts of [
+    { ...hosts, api: hosts.console },
+    { api: hosts.api, console: hosts.console, identity: hosts.identity },
+    { ...hosts, native: "litellm.appliance.test" },
+  ]) {
+    assert.equal(request({ hosts: invalidHosts }).allowed, false)
   }
 })
 
@@ -159,17 +205,22 @@ test("Console session and OIDC query shapes cannot select another route", () => 
     }).allowed,
     true,
   )
-  for (const rawTarget of [
-    "/v1/models?path=/admin",
-    "/v1/chat/completions?route=/ui/",
-    "/v2/search?url=/v2/crawl",
-    "/api/console/session/logout?returnTo=/",
-    "/api/internal/console-session/backchannel-logout?target=/admin",
+  for (const [hostId, rawTarget] of [
+    ["api", "/v1/models?path=/admin"],
+    ["api", "/v1/chat/completions?route=/ui/"],
+    ["firecrawl", "/v2/search?url=/v2/crawl"],
+    ["console", "/api/console/session/logout?returnTo=/"],
+    [
+      "console",
+      "/api/internal/console-session/backchannel-logout?target=/admin",
+    ],
   ]) {
     assert.equal(
       request({
+        hostHeaders: [hosts[hostId]],
         method: rawTarget.includes("models") ? "GET" : "POST",
         rawTarget,
+        sni: hosts[hostId],
       }).allowed,
       false,
     )
@@ -193,9 +244,14 @@ test("normal Keycloak identity flow is exact and separate", () => {
       "/realms/llm-machines/protocol/openid-connect/logout?client_id=console-web",
     ],
     ["POST", "/realms/llm-machines/protocol/openid-connect/logout"],
+    [
+      "POST",
+      "/realms/llm-machines/protocol/openid-connect/logout/logout-confirm?session_code=opaque&client_id=console-web&tab_id=opaque",
+    ],
     ["POST", "/realms/llm-machines/protocol/openid-connect/token"],
     ["POST", "/realms/llm-machines/protocol/openid-connect/revoke"],
     ["GET", "/realms/llm-machines/protocol/openid-connect/certs"],
+    ["GET", "/realms/llm-machines-applications/protocol/openid-connect/certs"],
     [
       "POST",
       "/realms/llm-machines/login-actions/authenticate?session_code=opaque&execution=opaque",
@@ -214,6 +270,91 @@ test("normal Keycloak identity flow is exact and separate", () => {
     }).allowed,
     false,
   )
+
+  const applicationToken = identityRequest({
+    headers: {
+      authorization:
+        "Basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
+    },
+    method: "POST",
+    rawTarget:
+      "/realms/llm-machines-applications/protocol/openid-connect/token",
+  })
+  assert.equal(applicationToken.allowed, true)
+  assert.equal(
+    applicationToken.forwardedHeaders.authorization,
+    "Basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
+  )
+  for (const authorization of [
+    "basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
+    "bAsIc   bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
+  ]) {
+    const result = identityRequest({
+      headers: { authorization },
+      method: "POST",
+      rawTarget:
+        "/realms/llm-machines-applications/protocol/openid-connect/token",
+    })
+    assert.equal(result.allowed, true)
+    assert.equal(result.forwardedHeaders.authorization, authorization)
+  }
+  const keycloakValidatedEnvelope = identityRequest({
+    headers: {
+      authorization: `Basic ${Buffer.from(`llmm-app-${"z".repeat(36)}:secret`).toString("base64")}`,
+    },
+    method: "POST",
+    rawTarget:
+      "/realms/llm-machines-applications/protocol/openid-connect/token",
+  })
+  assert.equal(keycloakValidatedEnvelope.allowed, true)
+  for (const authorization of [
+    "Bearer application-token",
+    "Basic a",
+    "Basic abcde",
+    "Basic invalid*base64",
+    "Basic OnNlY3JldA==",
+    "Basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOg==",
+    "Basic b3RoZXItY2xpZW50OnNlY3JldA==",
+    "Basic bGxTbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
+    "Basic\tYXBwOnNlY3JldA==",
+    [
+      "Basic bGxtbS1hcHAtMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExOnNlY3JldA==",
+      "Basic b3RoZXI6c2VjcmV0",
+    ],
+  ]) {
+    const result = identityRequest({
+      headers: { authorization },
+      method: "POST",
+      rawTarget:
+        "/realms/llm-machines-applications/protocol/openid-connect/token",
+    })
+    assert.equal(result.allowed, false)
+  }
+
+  assert.equal(
+    identityRequest({
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      method: "POST",
+      rawTarget:
+        "/realms/llm-machines-applications/protocol/openid-connect/token",
+    }).allowed,
+    false,
+  )
+
+  for (const rawTarget of [
+    "/realms/llm-machines/protocol/openid-connect/logout/confirm",
+    "/realms/llm-machines/protocol/openid-connect/logout/logout-confirm/extra",
+  ]) {
+    assert.equal(identityRequest({ rawTarget }).allowed, false, rawTarget)
+  }
+
+  const humanToken = identityRequest({
+    headers: { authorization: "Basic Y29uc29sZTpzZWNyZXQ=" },
+    method: "POST",
+    rawTarget: "/realms/llm-machines/protocol/openid-connect/token",
+  })
+  assert.equal(humanToken.allowed, true)
+  assert.equal(humanToken.forwardedHeaders.authorization, undefined)
 })
 
 test("unsafe and ambiguous raw paths fail before route selection", () => {
@@ -233,7 +374,15 @@ test("unsafe and ambiguous raw paths fail before route selection", () => {
     "/v1/models%zz",
     "/v1/models#fragment",
   ]) {
-    assert.equal(request({ rawTarget }).allowed, false, rawTarget)
+    assert.equal(
+      request({
+        hostHeaders: [hosts.api],
+        rawTarget,
+        sni: hosts.api,
+      }).allowed,
+      false,
+      rawTarget,
+    )
   }
 })
 
@@ -253,6 +402,8 @@ test("spoofed forwarding and identity headers are stripped", () => {
     },
     method: "POST",
     rawTarget: "/v1/chat/completions",
+    hostHeaders: [hosts.api],
+    sni: hosts.api,
   })
   assert.equal(result.allowed, true)
   assert.equal(
@@ -271,6 +422,6 @@ test("spoofed forwarding and identity headers are stripped", () => {
   ]) {
     assert.equal(result.forwardedHeaders[name], undefined, name)
   }
-  assert.equal(result.forwardedHeaders["x-forwarded-host"], hosts.console)
+  assert.equal(result.forwardedHeaders["x-forwarded-host"], hosts.api)
   assert.equal(result.runtimeQualified, false)
 })

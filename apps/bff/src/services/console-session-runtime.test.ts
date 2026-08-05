@@ -22,6 +22,10 @@ describe("Console session runtime configuration", () => {
 
   it.each([
     "CONSOLE_ORIGIN",
+    "PRODUCT_CONSOLE_HOST",
+    "PRODUCT_API_HOST",
+    "PRODUCT_FIRECRAWL_HOST",
+    "PRODUCT_IDENTITY_HOST",
     "KEYCLOAK_ISSUER_URL",
     "KEYCLOAK_AUDIENCE",
     "CONSOLE_OIDC_CLIENT_ID",
@@ -46,6 +50,37 @@ describe("Console session runtime configuration", () => {
 
     expect(() => readConsoleSessionRuntimeConfig(environment)).toThrow(name)
   })
+
+  it.each([
+    ["CONSOLE_ORIGIN", "https://other-console.example.test"],
+    [
+      "KEYCLOAK_ISSUER_URL",
+      "https://other-identity.example.test/realms/appliance",
+    ],
+  ])("rejects %s outside its Product authority", (name, value) => {
+    const environment = runtimeEnvironment()
+    environment[name] = value
+
+    expect(() => readConsoleSessionRuntimeConfig(environment)).toThrow(name)
+  })
+
+  it("rejects every duplicate Product authority pair", () => {
+    const names = [
+      "PRODUCT_CONSOLE_HOST",
+      "PRODUCT_API_HOST",
+      "PRODUCT_IDENTITY_HOST",
+      "PRODUCT_FIRECRAWL_HOST",
+    ] as const
+    for (let left = 0; left < names.length; left += 1) {
+      for (let right = left + 1; right < names.length; right += 1) {
+        const environment = runtimeEnvironment()
+        environment[names[right]] = environment[names[left]]
+        expect(() => readConsoleSessionRuntimeConfig(environment)).toThrow(
+          /four distinct hosts/,
+        )
+      }
+    }
+  })
 })
 
 function runtimeEnvironment(): NodeJS.ProcessEnv {
@@ -58,5 +93,10 @@ function runtimeEnvironment(): NodeJS.ProcessEnv {
     CONSOLE_SESSION_KEYRING_FILE: "/run/secrets/llmm_console_session_keyring",
     KEYCLOAK_AUDIENCE: "console-bff",
     KEYCLOAK_ISSUER_URL: "https://identity.example.test/realms/appliance/",
+    NODE_ENV: "production",
+    PRODUCT_API_HOST: "api.example.test",
+    PRODUCT_CONSOLE_HOST: "console.example.test",
+    PRODUCT_FIRECRAWL_HOST: "firecrawl.example.test",
+    PRODUCT_IDENTITY_HOST: "identity.example.test",
   }
 }

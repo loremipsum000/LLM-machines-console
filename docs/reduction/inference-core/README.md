@@ -581,6 +581,16 @@ Q0 qualifies the packaged appliance. R1-E1 does not activate the edge, expose
 Grafana, change live infrastructure, bind a credential, generate
 `PR-11A.json`, or begin R1-K1, R1-D1, R1-V1, or PR-12.
 
+F0-E0 is the current pre-Genesis successor to the historical R1-E1 public-host
+topology. It assigns Console, API, identity, and Firecrawl to four distinct
+public authorities on TCP 443. It preserves normal Console and Keycloak login,
+keeps every native administration and service listener private, and rejects
+every Nginx location not present in the exact source inventory. The Application
+realm token endpoint alone accepts HTTP Basic client authentication. Customer
+credential metadata names an origin-only API authority, never a path-prefixed
+gateway. The original R1-E1 decision, source identities, and closeout tests
+remain immutable evidence rather than being rewritten to describe F0-E0.
+
 PR-11A R1-K1 is admitted as the separate signing-custody and public-trust
 source package. It preserves the offline hardware-backed vendor release root,
 separate release-artifact, update-bundle, and offline-entitlement purposes,

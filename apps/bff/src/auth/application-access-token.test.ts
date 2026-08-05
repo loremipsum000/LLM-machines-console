@@ -43,6 +43,7 @@ describe("Application access-token verification", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] })
     vi.setSystemTime(new Date("2026-07-31T12:00:00.000Z"))
+    vi.stubEnv("PRODUCT_IDENTITY_HOST", "keycloak.example.test")
   })
 
   afterEach(() => {
@@ -108,6 +109,32 @@ describe("Application access-token verification", () => {
         { issuerUrl: APPLICATION_ISSUER },
       ),
     ).resolves.toMatchObject({ clientId: APPLICATION_CLIENT_ID })
+  })
+
+  it("rejects an issuer outside the Product identity authority", async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(
+      verifyApplicationAccessToken(signedApplicationToken(), {
+        issuerUrl:
+          "https://other-identity.example.test/realms/llm-machines-applications",
+      }),
+    ).resolves.toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects a path-prefixed Application issuer", async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(
+      verifyApplicationAccessToken(signedApplicationToken(), {
+        issuerUrl:
+          "https://keycloak.example.test/auth/realms/llm-machines-applications",
+      }),
+    ).resolves.toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -200,6 +227,8 @@ describe("Application access-token verification", () => {
     `${APPLICATION_ISSUER}-extra`,
     `${APPLICATION_ISSUER}?realm=other`,
     `${APPLICATION_ISSUER}#fragment`,
+    "http://keycloak.example.test/realms/llm-machines-applications",
+    "https://keycloak.example.test:8443/realms/llm-machines-applications",
     "https://user:password@keycloak.example.test/realms/llm-machines-applications",
     "ftp://keycloak.example.test/realms/llm-machines-applications",
   ])(

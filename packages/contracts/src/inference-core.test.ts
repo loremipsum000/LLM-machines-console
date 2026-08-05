@@ -616,18 +616,18 @@ describe("Inference Core contract boundary", () => {
       adminConnectedAppCredentialSchema.safeParse({
         apiKey: "llmm_t4_once_only",
         authMethod: "api_key",
-        bffBaseUrl: "https://bff.example.test",
+        bffBaseUrl: "https://api.example.test",
         credentialId: "credential-1",
         exampleCurl: "curl example",
         issuedAt: timestamp,
         keyPrefix: "llmm_t4_once",
         model: "local-chat",
-        openAiBaseUrl: "https://bff.example.test/api/app-gateway/v1",
+        openAiBaseUrl: "https://api.example.test/v1",
       }).success,
     ).toBe(true)
     const oauthCredential = {
       authMethod: "oauth_client_credentials",
-      bffBaseUrl: "https://bff.example.test",
+      bffBaseUrl: "https://api.example.test",
       clientId: "client-1",
       clientSecret: "one-time-secret",
       credentialId: "credential-2",
@@ -635,7 +635,7 @@ describe("Inference Core contract boundary", () => {
       issuedAt: timestamp,
       keyPrefix: null,
       model: "local-chat",
-      openAiBaseUrl: "https://bff.example.test/api/app-gateway/v1",
+      openAiBaseUrl: "https://api.example.test/v1",
       tokenUrl: "https://identity.example.test/token",
     } as const
     for (const endpoint of [

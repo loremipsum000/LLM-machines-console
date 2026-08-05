@@ -67,6 +67,8 @@ describe("Console BFF persistence preflight", () => {
     "http://127.0.0.1:4001",
     "http://[::1]:4001",
     "http://[::ffff:127.0.0.1]:4001",
+    "https://api.customer.internal:8443",
+    "https://api.customer.internal/product/",
   ])("rejects invalid connected-app base URL %s in production", (baseUrl) => {
     configureProductionRuntime()
     vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", baseUrl)
@@ -76,25 +78,49 @@ describe("Console BFF persistence preflight", () => {
     )
   })
 
-  it.each([
-    "http://10.254.254.254:4001/console/",
-    "http://[::ffff:10.254.254.254]:4001/console/",
-  ])(
-    "accepts private customer-network URL %s through PUBLIC_BFF_BASE_URL",
+  it.each(["https://api.customer.internal", "https://api.customer.internal/"])(
+    "accepts HTTPS customer API authority %s through PUBLIC_BFF_BASE_URL",
     async (baseUrl) => {
       configureProductionRuntime()
       vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "")
       vi.stubEnv("PUBLIC_BFF_BASE_URL", baseUrl)
+      vi.stubEnv("PRODUCT_API_HOST", "api.customer.internal")
 
       const server = buildServer()
       await server.close()
     },
   )
 
+  it("rejects an Application API origin outside the Product API authority", () => {
+    configureProductionRuntime()
+    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://other-api.example.test")
+
+    expect(() => buildServer()).toThrow(
+      "Connected app reveal endpoint configuration is invalid.",
+    )
+  })
+
+  it("requires the Product API authority in production", () => {
+    configureProductionRuntime()
+    vi.stubEnv("PRODUCT_API_HOST", "")
+
+    expect(() => buildServer()).toThrow(
+      "Connected app reveal endpoint configuration is invalid.",
+    )
+  })
+
+  it("requires Application identity validation without admin mutation settings", () => {
+    configureProductionRuntime()
+    vi.stubEnv("PRODUCT_IDENTITY_HOST", "")
+
+    expect(() => buildServer()).toThrow(
+      "Connected app OAuth reveal endpoint configuration is invalid.",
+    )
+  })
+
   it("rejects an invalid OAuth token reveal endpoint in production", () => {
     configureProductionRuntime()
-    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://console.example.test")
-    vi.stubEnv("KEYCLOAK_ADMIN_BASE_URL", "ftp://keycloak.invalid")
+    vi.stubEnv("KEYCLOAK_ADMIN_BASE_URL", "http://keycloak:8080")
     vi.stubEnv("KEYCLOAK_ADMIN_REALM", "llm-machines")
     vi.stubEnv("KEYCLOAK_APPLICATION_ADMIN_REALM", "llm-machines-applications")
     vi.stubEnv(
@@ -103,6 +129,52 @@ describe("Console BFF persistence preflight", () => {
     )
     vi.stubEnv("KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET", "secret")
     vi.stubEnv("KEYCLOAK_AUDIENCE", "console-bff")
+    vi.stubEnv(
+      "KEYCLOAK_APPLICATION_ISSUER_URL",
+      "https://identity.example.test/realms/wrong-realm",
+    )
+
+    expect(() => buildServer()).toThrow(
+      "Connected app OAuth reveal endpoint configuration is invalid.",
+    )
+  })
+
+  it("rejects a path-prefixed Application issuer in production", () => {
+    configureProductionRuntime()
+    vi.stubEnv("KEYCLOAK_ADMIN_BASE_URL", "http://keycloak:8080")
+    vi.stubEnv("KEYCLOAK_ADMIN_REALM", "llm-machines")
+    vi.stubEnv("KEYCLOAK_APPLICATION_ADMIN_REALM", "llm-machines-applications")
+    vi.stubEnv(
+      "KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID",
+      "console-application-admin",
+    )
+    vi.stubEnv("KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET", "secret")
+    vi.stubEnv("KEYCLOAK_AUDIENCE", "console-bff")
+    vi.stubEnv(
+      "KEYCLOAK_APPLICATION_ISSUER_URL",
+      "https://identity.example.test/auth/realms/llm-machines-applications",
+    )
+
+    expect(() => buildServer()).toThrow(
+      "Connected app OAuth reveal endpoint configuration is invalid.",
+    )
+  })
+
+  it("rejects an Application issuer outside the Product identity authority", () => {
+    configureProductionRuntime()
+    vi.stubEnv("KEYCLOAK_ADMIN_BASE_URL", "http://keycloak:8080")
+    vi.stubEnv("KEYCLOAK_ADMIN_REALM", "llm-machines")
+    vi.stubEnv("KEYCLOAK_APPLICATION_ADMIN_REALM", "llm-machines-applications")
+    vi.stubEnv(
+      "KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID",
+      "console-application-admin",
+    )
+    vi.stubEnv("KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET", "secret")
+    vi.stubEnv("KEYCLOAK_AUDIENCE", "console-bff")
+    vi.stubEnv(
+      "KEYCLOAK_APPLICATION_ISSUER_URL",
+      "https://other-identity.example.test/realms/llm-machines-applications",
+    )
 
     expect(() => buildServer()).toThrow(
       "Connected app OAuth reveal endpoint configuration is invalid.",
@@ -235,8 +307,14 @@ describe("Console BFF persistence preflight", () => {
 function configureProductionRuntime(): void {
   vi.stubEnv("NODE_ENV", "production")
   vi.stubEnv("DATABASE_URL", "postgres://fixture.invalid/console")
-  vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://console.example.test")
+  vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://api.example.test")
   vi.stubEnv("PUBLIC_BFF_BASE_URL", "")
+  vi.stubEnv("PRODUCT_API_HOST", "api.example.test")
+  vi.stubEnv("PRODUCT_IDENTITY_HOST", "identity.example.test")
+  vi.stubEnv(
+    "KEYCLOAK_APPLICATION_ISSUER_URL",
+    "https://identity.example.test/realms/llm-machines-applications",
+  )
 }
 
 function fakeConsoleSessionRuntime() {

@@ -18,10 +18,15 @@ describe("inference-core Product edge contract", () => {
     ])
     for (const route of productEdgePublicRoutes) {
       expect(productEdgeRouteSchema.parse(route)).toEqual(route)
-      expect(route.hostId).toBe("console")
       expect(route.upstreamId).toBe("console-bff")
       expect(route.queryPolicy).toBe("forbid")
     }
+    expect(productEdgePublicRoutes.map((route) => route.hostId)).toEqual([
+      "api",
+      "api",
+      "firecrawl",
+      "firecrawl",
+    ])
   })
 
   it("does not grant a native administration surface", () => {
@@ -32,7 +37,9 @@ describe("inference-core Product edge contract", () => {
       "keycloak-admin",
       "litellm",
       "portainer",
+      "postgresql",
       "prometheus",
+      "sglang",
     ])
     expect(JSON.stringify(productEdgePublicRoutes)).not.toMatch(
       /grafana|keycloak-admin|litellm|portainer|prometheus/,
@@ -49,5 +56,26 @@ describe("inference-core Product edge contract", () => {
     expect(new Set(Object.values(productEdgeRuntimeQualification))).toEqual(
       new Set(["NOT_EVALUATED_RUNTIME"]),
     )
+  })
+
+  it("separates Application token Basic authentication from browser identity", () => {
+    expect(
+      productEdgeRouteSchema.parse({
+        headerProfile: "identity-application-token",
+        hostId: "identity",
+        id: "identity-application-token",
+        methods: ["POST"],
+        path: {
+          kind: "exact",
+          value:
+            "/realms/llm-machines-applications/protocol/openid-connect/token",
+        },
+        queryPolicy: "forbid",
+        surface: "identity",
+        upstreamId: "keycloak-identity",
+        upstreamPath:
+          "/realms/llm-machines-applications/protocol/openid-connect/token",
+      }).headerProfile,
+    ).toBe("identity-application-token")
   })
 })

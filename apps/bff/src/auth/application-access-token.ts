@@ -6,6 +6,7 @@ export interface ApplicationAccessTokenIdentity {
 }
 
 export interface ApplicationAccessTokenConfig {
+  identityHost?: string
   issuerUrl?: string
 }
 
@@ -19,10 +20,14 @@ export async function verifyApplicationAccessToken(
   token: string,
   config: ApplicationAccessTokenConfig = {},
 ): Promise<ApplicationAccessTokenIdentity | null> {
+  const identityHost = normalizeIdentityHost(
+    config.identityHost ?? process.env.PRODUCT_IDENTITY_HOST ?? "",
+  )
   const issuerUrl = normalizeApplicationIssuerUrl(
     config.issuerUrl ?? process.env.KEYCLOAK_APPLICATION_ISSUER_URL ?? "",
+    identityHost,
   )
-  if (!issuerUrl) {
+  if (!identityHost || !issuerUrl) {
     return null
   }
 
@@ -65,9 +70,12 @@ function hasExactApplicationAudience(
   )
 }
 
-function normalizeApplicationIssuerUrl(value: string): string | null {
+function normalizeApplicationIssuerUrl(
+  value: string,
+  identityHost: string | null,
+): string | null {
   const candidate = value.trim().replace(/\/+$/, "")
-  if (!candidate) {
+  if (!candidate || !identityHost) {
     return null
   }
 
@@ -79,20 +87,32 @@ function normalizeApplicationIssuerUrl(value: string): string | null {
   }
 
   const authority = candidate.slice(candidate.indexOf("://") + 3).split("/")[0]
-  const expectedSuffix = `/realms/${APPLICATION_REALM}`
   if (
-    (url.protocol !== "http:" && url.protocol !== "https:") ||
-    !url.hostname ||
+    url.protocol !== "https:" ||
+    url.port !== "" ||
+    url.hostname !== identityHost ||
     url.username !== "" ||
     url.password !== "" ||
     authority?.includes("@") ||
     url.search !== "" ||
     url.hash !== "" ||
-    !url.pathname.endsWith(expectedSuffix) ||
-    url.pathname.slice(0, -expectedSuffix.length).endsWith("/")
+    url.pathname !== `/realms/${APPLICATION_REALM}`
   ) {
     return null
   }
 
   return candidate
+}
+
+function normalizeIdentityHost(value: string): string | null {
+  const candidate = value.trim()
+  return candidate.length <= 253 &&
+    candidate === candidate.toLowerCase() &&
+    !candidate.includes(":") &&
+    !/^\d{1,3}(?:\.\d{1,3}){3}$/.test(candidate) &&
+    candidate
+      .split(".")
+      .every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
+    ? candidate
+    : null
 }

@@ -535,19 +535,19 @@ export function assertProductionConnectedAppRevealEndpoints(): void {
   if (staticPreflight.status === "blocked") {
     throw new Error("Connected app reveal endpoint configuration is invalid.")
   }
+  const oauthPreflight = preflightConnectedAppCredentialReveal(
+    "oauth_client_credentials",
+  )
+  if (oauthPreflight.status === "blocked") {
+    throw new Error(
+      "Connected app OAuth reveal endpoint configuration is invalid.",
+    )
+  }
   const keycloakConfig = keycloakApplicationAdminConfigFromEnv(process.env)
   if (keycloakConfig.status === "not_configured") {
     return
   }
   if (keycloakConfig.status === "invalid") {
-    throw new Error(
-      "Connected app OAuth reveal endpoint configuration is invalid.",
-    )
-  }
-  const oauthPreflight = preflightConnectedAppCredentialReveal(
-    "oauth_client_credentials",
-  )
-  if (oauthPreflight.status === "blocked") {
     throw new Error(
       "Connected app OAuth reveal endpoint configuration is invalid.",
     )
@@ -3359,10 +3359,19 @@ function normalizedConnectedAppCredentialRevealEndpoints(
     supplied?.bffBaseUrl ?? connectedAppBffBaseUrl(),
     true,
     isProductionRuntime(),
+    true,
   )
-  const openAiBaseUrl = normalizeConnectedAppEndpointUrl(
-    `${bffBaseUrl}/api/app-gateway/v1`,
-  )
+  if (isProductionRuntime()) {
+    const apiHost = process.env.PRODUCT_API_HOST?.trim()
+    if (
+      !apiHost ||
+      !isPublicProductHostname(apiHost) ||
+      new URL(bffBaseUrl).hostname !== apiHost
+    ) {
+      throw new Error("Application API authority is unavailable or invalid.")
+    }
+  }
+  const openAiBaseUrl = normalizeConnectedAppEndpointUrl(`${bffBaseUrl}/v1`)
   if (
     supplied &&
     normalizeConnectedAppEndpointUrl(supplied.openAiBaseUrl) !== openAiBaseUrl
@@ -3389,6 +3398,7 @@ function normalizeConnectedAppEndpointUrl(
   value: string,
   removeTrailingSlash = false,
   rejectLoopback = false,
+  requireOriginOnly = false,
 ): string {
   const candidate = value.trim()
   if (!candidate || candidate.includes("?") || candidate.includes("#")) {
@@ -3397,10 +3407,13 @@ function normalizeConnectedAppEndpointUrl(
   const endpoint = new URL(candidate)
   if (
     (endpoint.protocol !== "http:" && endpoint.protocol !== "https:") ||
+    (rejectLoopback && endpoint.protocol !== "https:") ||
     endpoint.username !== "" ||
     endpoint.password !== "" ||
     !endpoint.hostname ||
     (rejectLoopback && isLoopbackHostname(endpoint.hostname)) ||
+    (rejectLoopback && endpoint.port !== "") ||
+    (requireOriginOnly && endpoint.pathname !== "/") ||
     endpoint.search !== "" ||
     endpoint.hash !== ""
   ) {
@@ -3456,11 +3469,38 @@ function connectedAppOAuthTokenUrl(): string {
   ) {
     return fixtureTokenUrl()
   }
-  const result = keycloakApplicationAdminConfigFromEnv(process.env)
-  if (result.status !== "ok") {
+  const configuredIssuer = process.env.KEYCLOAK_APPLICATION_ISSUER_URL?.trim()
+  if (!configuredIssuer) {
     throw new Error("Application OAuth identity configuration is unavailable.")
   }
-  return `${result.config.baseUrl}/realms/${encodeURIComponent(result.config.realm)}/protocol/openid-connect/token`
+  const issuer = normalizeConnectedAppEndpointUrl(
+    configuredIssuer,
+    true,
+    isProductionRuntime(),
+  )
+  const issuerUrl = new URL(issuer)
+  const identityHost = process.env.PRODUCT_IDENTITY_HOST?.trim()
+  if (
+    issuerUrl.pathname !== "/realms/llm-machines-applications" ||
+    !identityHost ||
+    !isPublicProductHostname(identityHost) ||
+    issuerUrl.hostname !== identityHost
+  ) {
+    throw new Error("Application OAuth identity configuration is unavailable.")
+  }
+  return `${issuer}/protocol/openid-connect/token`
+}
+
+function isPublicProductHostname(value: string): boolean {
+  return (
+    value.length <= 253 &&
+    value === value.toLowerCase() &&
+    !value.includes(":") &&
+    !/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value) &&
+    value
+      .split(".")
+      .every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
+  )
 }
 
 function fixtureTokenUrl(): string {

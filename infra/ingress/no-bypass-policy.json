@@ -1,10 +1,13 @@
 {
   "schemaVersion": 1,
-  "workPackage": "PR-11A-R1-E1",
+  "workPackage": "F0-E0",
   "status": "source-policy-only",
   "customerNetwork": {
     "allowedTcpPorts": [443],
-    "deniedNativeTcpPorts": [3000, 3002, 4000, 4001, 8080, 9090, 9093, 9443],
+    "deniedNativeTcpPorts": [
+      3000, 3002, 3128, 4000, 4001, 5432, 8080, 9090, 9093, 9443
+    ],
+    "deniedInferenceProfileTcpPorts": "every-instantiated-private-listener",
     "nativeServiceNetworks": "private-not-customer-routable"
   },
   "negativeCases": [

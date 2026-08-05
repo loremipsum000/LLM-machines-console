@@ -1,22 +1,23 @@
 # Product edge source reference
 
-R1-E1 defines the mandatory source-only Product edge for the reduced
-inference appliance. It is not a deployment manifest and does not qualify a
-running listener.
+F0-E0 is the current source-only Product edge for the reduced inference
+appliance. It succeeds the historical R1-E1 two-authority topology without
+rewriting that evidence. It is not a deployment manifest and does not qualify
+a running listener.
 
-The edge has exactly two public host identities on TCP 443:
+The edge has exactly four public host identities on TCP 443:
 
-- the Console host for the primary customer UI, Console session endpoints,
-  `GET /v1/models`, `POST /v1/chat/completions`, `POST /v2/search`, and
-  `POST /v2/scrape`;
+- the Console host for the primary customer UI and Console session endpoints;
+- the API host for `GET /v1/models` and `POST /v1/chat/completions`;
+- the Firecrawl host for governed `POST /v2/search` and `POST /v2/scrape`;
 - the identity host for the minimum normal Keycloak OIDC browser and BFF
-  dependencies.
+  dependencies, plus the Application realm token and JWKS endpoints.
 
 Only fixed `console-web`, `console-bff`, and Keycloak identity upstreams occur
 in the template. LiteLLM is reached only behind the BFF. Grafana, Keycloak
-Admin, Prometheus, Alertmanager, Portainer, and native Firecrawl have no host,
-route, redirect, or direct upstream in R1-E1. Optional Grafana work is a later
-package and cannot weaken this core edge.
+Admin, Prometheus, Alertmanager, Portainer, PostgreSQL, SGLang, and native
+Firecrawl have no host, route, redirect, or direct upstream in F0-E0. Optional
+Grafana work is a later package and cannot weaken this core edge.
 
 `product-edge.nginx.conf.template` is rendered by deterministic release
 packaging later. The hostname placeholders are configuration, and the TLS
@@ -33,6 +34,20 @@ The checked-in validators prove only deterministic source properties:
 - no WebSocket upgrade, request or response buffering, proxy cache, target or
   query logging, or workload-content logging;
 - no native administration route or listener declaration.
+
+The Application-realm token route alone requires a canonical HTTP Basic envelope
+with the case-sensitive encoded `llmm-app-` namespace and expected identifier
+length, followed by a colon separator and nonempty secret. This is an edge
+routing filter, not credential authentication: Keycloak remains solely
+responsible for validating the exact client ID and secret. Form-only client
+authentication is rejected.
+Human-realm token routes and browser identity routes continue to strip
+Authorization. The normal Keycloak logout route and its exact
+`logout/logout-confirm` child retain cookies, redirects, query parameters, and
+form submission while every other logout child remains denied. Every Nginx
+location on every public authority is exact-allowlisted, so an additional
+location fails source validation even when it points to an otherwise retained
+upstream.
 
 The Console session and Keycloak identity flows keep their own cookies,
 redirects, CSRF and Origin checks. The edge does not suppress `Set-Cookie` or
