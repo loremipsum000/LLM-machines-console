@@ -3468,7 +3468,7 @@ function connectedAppOAuthTokenUrl(): string {
     true,
     isProductionRuntime(),
   )
-  if (!issuer.endsWith("/realms/llm-machines-applications")) {
+  if (new URL(issuer).pathname !== "/realms/llm-machines-applications") {
     throw new Error("Application OAuth identity configuration is unavailable.")
   }
   return `${issuer}/protocol/openid-connect/token`

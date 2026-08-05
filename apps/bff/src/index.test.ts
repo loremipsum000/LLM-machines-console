@@ -111,6 +111,27 @@ describe("Console BFF persistence preflight", () => {
     )
   })
 
+  it("rejects a path-prefixed Application issuer in production", () => {
+    configureProductionRuntime()
+    vi.stubEnv("KEYCLOAK_ADMIN_BASE_URL", "http://keycloak:8080")
+    vi.stubEnv("KEYCLOAK_ADMIN_REALM", "llm-machines")
+    vi.stubEnv("KEYCLOAK_APPLICATION_ADMIN_REALM", "llm-machines-applications")
+    vi.stubEnv(
+      "KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID",
+      "console-application-admin",
+    )
+    vi.stubEnv("KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET", "secret")
+    vi.stubEnv("KEYCLOAK_AUDIENCE", "console-bff")
+    vi.stubEnv(
+      "KEYCLOAK_APPLICATION_ISSUER_URL",
+      "https://identity.example.test/auth/realms/llm-machines-applications",
+    )
+
+    expect(() => buildServer()).toThrow(
+      "Connected app OAuth reveal endpoint configuration is invalid.",
+    )
+  })
+
   it.each(["master", "llm-machines", "customer-applications"])(
     "rejects cross-wired Application realm %s during production startup",
     (realm) => {
