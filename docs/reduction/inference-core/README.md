@@ -735,6 +735,22 @@ with protected integration commit
 `5d0ecf7d8a4935ebd70d6d861f919cdd551554b3`, tree
 `2f2191d3326bd8777fef1cc21f41ea3fe4e335aa`.
 
+The first D2A construction attempt then found two packaging-contract defects.
+PR 38 removed customer-specific registry authority from the signed Core lock
+and added a separate credential-free deployment-placement contract. PR 39
+added explicit first-release no-predecessor semantics and made every later
+rollback require one exact independently verified predecessor through the
+public verifier and release consumers. Review-blocked rollback candidates
+remain historical evidence. `pr-12-source-closure-amendment-2.json` supersedes
+only the D2A release-source input with protected integration commit
+`4b2fc6a3278dfad2857b5caed4fb0d6cbdafee8f`, tree
+`1f9eea21ccf21d9b6fbc118f37a0d9fcb5c80d36`.
+
+The first-install commissioning observation remains a Q0 trust input. Q0 must
+prove its trusted observer, appliance binding, separate customer backup target,
+and clean restore. PR-12 does not select or imply its signing authority or
+custody.
+
 This is source closure only. Accepted remains false, runtimeQualified remains
 false, contract activation remains inactive, and D2A-RC and Q0 remain
 NOT_STARTED. Grafana customer access remains deferred from v1. No deployment,
