@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "workPackage": "PR-11A-R1-E1",
+  "workPackage": "F0-E0",
   "status": "source-only-not-runtime-qualified",
   "edge": {
     "implementation": "nginx-reference-template",
@@ -328,7 +328,7 @@
         "value": "/realms/llm-machines-applications/protocol/openid-connect/token"
       },
       "queryPolicy": "forbid",
-      "headerProfile": "identity-server-form",
+      "headerProfile": "identity-application-token",
       "upstreamId": "keycloak-identity",
       "upstreamPath": "/realms/llm-machines-applications/protocol/openid-connect/token"
     },
@@ -405,6 +405,12 @@
         "Origin"
       ],
       "identity-server-form": ["Accept", "Content-Length", "Content-Type"],
+      "identity-application-token": [
+        "Accept",
+        "Authorization",
+        "Content-Length",
+        "Content-Type"
+      ],
       "identity-server-jwks": ["Accept"],
       "identity-backchannel": ["Accept", "Content-Length", "Content-Type"]
     },
@@ -417,6 +423,7 @@
       "X-Request-ID"
     ],
     "browserBearerForwarding": false,
+    "applicationTokenClientSecretBasicForwarding": true,
     "consoleSessionForwardedToIdentity": false,
     "clientForwardedOrIdentityHeadersTrusted": false,
     "websocketUpgradeForwarded": false

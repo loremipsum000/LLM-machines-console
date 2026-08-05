@@ -200,6 +200,69 @@ test("public routes cannot drift across the four authorities", () => {
   assert.ok(result.some((error) => /public host/i.test(error)))
 })
 
+test("every public Nginx location is exact-allowlisted", () => {
+  for (const [host, before, extra] of [
+    [
+      "Console",
+      "    location = /api/console/session/login {",
+      "    location = /api/admin/hidden { return 204; }\n\n",
+    ],
+    [
+      "API",
+      "    location = /v1/models {",
+      "    location = /v1/hidden { proxy_pass http://console_bff/healthz; }\n\n",
+    ],
+    [
+      "Firecrawl",
+      "    location = /v2/search {",
+      "    location = /v2/crawl { proxy_pass http://console_bff/v2/crawl; }\n\n",
+    ],
+    [
+      "identity",
+      "    location = /realms/llm-machines/protocol/openid-connect/auth {",
+      "    location = /admin/master/console/ { proxy_pass http://keycloak_identity/admin/master/console/; }\n\n",
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, `${extra}${before}`),
+      ),
+    )
+    assert.ok(
+      result.some((error) =>
+        new RegExp(`Nginx ${host} location inventory`, "i").test(error),
+      ),
+      host,
+    )
+  }
+})
+
+test("Application client Basic auth is isolated to its exact token route", () => {
+  const removedMap = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        '"~^Basic[ ][A-Za-z0-9+/]+={0,2}$" $http_authorization;',
+        '"~^Bearer .+$" $http_authorization;',
+      ),
+    ),
+  )
+  assert.ok(removedMap.some((error) => /Basic authentication/i.test(error)))
+
+  const humanTokenForwarding = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        "location = /realms/llm-machines/protocol/openid-connect/token {",
+        "location = /realms/llm-machines/protocol/openid-connect/token {\n      proxy_set_header Authorization $llmm_application_client_authorization;",
+      ),
+    ),
+  )
+  assert.ok(
+    humanTokenForwarding.some((error) =>
+      /Authorization forwarding|Basic authentication/i.test(error),
+    ),
+  )
+})
+
 test("native listener inventory cannot omit Core or delivery-profile ports", () => {
   const policy = JSON.parse(sources["no-bypass-policy.json"])
   policy.customerNetwork.deniedNativeTcpPorts =

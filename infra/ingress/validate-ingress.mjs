@@ -84,6 +84,45 @@ const expectedCoreApiRoutes = [
   ["firecrawl-search", "firecrawl", "POST", "/v2/search", "console-bff"],
   ["firecrawl-scrape", "firecrawl", "POST", "/v2/scrape", "console-bff"],
 ]
+const expectedNginxLocations = {
+  api: ["= /v1/models", "= /v1/chat/completions", "/"],
+  console: [
+    "= /api/console/session/login",
+    "= /api/console/session/callback",
+    "= /api/console/session/logout",
+    "= /api/console/session/elevate",
+    "= /__llmm_identity_unavailable",
+    "= /api/internal/console-session/backchannel-logout",
+    "= /api/admin/audit/export",
+    "= /api/admin/audit/export/verification-keys",
+    "= /",
+    '~ "^/(?:activity|hardware|inference|applications|team)$"',
+    '~ "^/(?:applications/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$"',
+    "= /team/import/template",
+    "~ ^/auth/(?:signin|elevate|unavailable)$",
+    "^~ /_next/",
+    "^~ /console-v2/",
+    "^~ /fonts/",
+    "~ ^/(?:apple-touch-icon\\.png|favicon(?:-16x16|-32x32|-48x48)?\\.png|favicon\\.ico|icon\\.svg)$",
+    "~* ^/(?:api/(?:app-gateway|internal|expert-ingress|live)|realms|admin|ui|public|key|model|router|metrics|graph|-|v0|v2/(?:crawl|map|batch|extract))(?:/|$)",
+    "/",
+  ],
+  firecrawl: ["= /v2/search", "= /v2/scrape", "/"],
+  identity: [
+    "= /realms/llm-machines/protocol/openid-connect/auth",
+    "= /realms/llm-machines/protocol/openid-connect/logout",
+    "= /realms/llm-machines/protocol/openid-connect/token",
+    "= /realms/llm-machines/protocol/openid-connect/revoke",
+    "= /realms/llm-machines/protocol/openid-connect/certs",
+    "= /realms/llm-machines-applications/protocol/openid-connect/token",
+    "= /realms/llm-machines-applications/protocol/openid-connect/certs",
+    "^~ /realms/llm-machines/login-actions/",
+    "^~ /resources/",
+    "= /__llmm_identity_unavailable",
+    "~* ^/(?:admin|realms/(?:master|[^/]+)/admin|metrics|health)(?:/|$)",
+    "/",
+  ],
+}
 
 export function validateIngressSources(sources) {
   const errors = []
@@ -110,11 +149,7 @@ export function validateIngressSources(sources) {
 
 function validatePolicy(policy, errors) {
   add(errors, policy.schemaVersion === 1, "edge policy schema version changed")
-  add(
-    errors,
-    policy.workPackage === "PR-11A-R1-E1",
-    "edge policy package changed",
-  )
+  add(errors, policy.workPackage === "F0-E0", "edge policy package changed")
   add(
     errors,
     policy.status === "source-only-not-runtime-qualified",
@@ -201,6 +236,14 @@ function validatePolicy(policy, errors) {
       `route ${route.id} introduces native administration`,
     )
   }
+  const applicationTokenRoute = policy.routes?.find(
+    (route) => route.id === "identity-application-token",
+  )
+  add(
+    errors,
+    applicationTokenRoute?.headerProfile === "identity-application-token",
+    "Application token header profile changed",
+  )
   add(
     errors,
     sameJson(policy.privateNativeSystems, expectedPrivateSystems),
@@ -223,6 +266,21 @@ function validatePolicy(policy, errors) {
       `header policy ${field} must remain false`,
     )
   }
+  add(
+    errors,
+    policy.headerPolicy?.applicationTokenClientSecretBasicForwarding === true,
+    "Application token Basic authentication forwarding changed",
+  )
+  add(
+    errors,
+    sameJson(policy.headerPolicy?.allowlists?.["identity-application-token"], [
+      "Accept",
+      "Authorization",
+      "Content-Length",
+      "Content-Type",
+    ]),
+    "Application token header allowlist changed",
+  )
   add(
     errors,
     policy.responsePolicy?.consoleAndIdentitySetCookieAllowed === true &&
@@ -261,6 +319,7 @@ function validatePolicy(policy, errors) {
 
 function validateNoBypass(policy, errors) {
   add(errors, policy.schemaVersion === 1, "no-bypass schema version changed")
+  add(errors, policy.workPackage === "F0-E0", "no-bypass package changed")
   add(
     errors,
     policy.status === "source-policy-only",
@@ -362,6 +421,18 @@ function validateNginx(sources, errors) {
     "@@PRODUCT_IDENTITY_HOST@@",
   )
   const identityServer = hostServerSection(nginx, "@@PRODUCT_IDENTITY_HOST@@")
+  for (const [hostId, server] of Object.entries({
+    api: apiServer,
+    console: consoleServer,
+    firecrawl: firecrawlServer,
+    identity: identityServer,
+  })) {
+    add(
+      errors,
+      sameJson(locationDeclarations(server), expectedNginxLocations[hostId]),
+      `Nginx ${hostId} location inventory changed`,
+    )
+  }
   add(
     errors,
     !/location = \/v[12]\//.test(consoleServer),
@@ -397,6 +468,35 @@ function validateNginx(sources, errors) {
       !/location = \/v[12]\//.test(identityServer),
     "identity host route boundary changed",
   )
+  add(
+    errors,
+    nginx.includes('"~^Basic[ ][A-Za-z0-9+/]+={0,2}$" $http_authorization;') &&
+      count(
+        nginx,
+        "proxy_set_header Authorization $llmm_application_client_authorization;",
+      ) === 1 &&
+      exactLocationSection(
+        identityServer,
+        "= /realms/llm-machines-applications/protocol/openid-connect/token",
+      ).includes(
+        "proxy_set_header Authorization $llmm_application_client_authorization;",
+      ),
+    "Application token Basic authentication forwarding changed",
+  )
+  for (const declaration of [
+    "= /realms/llm-machines/protocol/openid-connect/token",
+    "= /realms/llm-machines/protocol/openid-connect/revoke",
+    "= /realms/llm-machines/protocol/openid-connect/certs",
+    "= /realms/llm-machines-applications/protocol/openid-connect/certs",
+  ]) {
+    add(
+      errors,
+      exactLocationSection(identityServer, declaration).includes(
+        'proxy_set_header Authorization "";',
+      ),
+      `unexpected Authorization forwarding on ${declaration}`,
+    )
+  }
   add(
     errors,
     count(nginx, 'if ($ssl_server_name = "") { return 421; }') === 4 &&
@@ -627,6 +727,21 @@ function hostServerSection(source, host, nextHost) {
     ? source.indexOf(`server_name ${nextHost};`, start + host.length)
     : source.length
   return source.slice(start, end < 0 ? source.length : end)
+}
+
+function locationDeclarations(server) {
+  return [...server.matchAll(/^\s*location\s+(.+)\s+\{/gm)].map(
+    (match) => match[1],
+  )
+}
+
+function exactLocationSection(server, declaration) {
+  const start = server.indexOf(`location ${declaration} {`)
+  if (start < 0) {
+    return ""
+  }
+  const next = server.indexOf("\n    location ", start + declaration.length)
+  return server.slice(start, next < 0 ? server.length : next)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

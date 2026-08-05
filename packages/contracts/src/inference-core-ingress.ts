@@ -20,6 +20,7 @@ export const productEdgeHeaderProfileSchema = z.enum([
   "console-browser",
   "customer-api",
   "identity-browser",
+  "identity-application-token",
   "identity-server-form",
   "identity-server-jwks",
   "identity-backchannel",

@@ -57,4 +57,25 @@ describe("inference-core Product edge contract", () => {
       new Set(["NOT_EVALUATED_RUNTIME"]),
     )
   })
+
+  it("separates Application token Basic authentication from browser identity", () => {
+    expect(
+      productEdgeRouteSchema.parse({
+        headerProfile: "identity-application-token",
+        hostId: "identity",
+        id: "identity-application-token",
+        methods: ["POST"],
+        path: {
+          kind: "exact",
+          value:
+            "/realms/llm-machines-applications/protocol/openid-connect/token",
+        },
+        queryPolicy: "forbid",
+        surface: "identity",
+        upstreamId: "keycloak-identity",
+        upstreamPath:
+          "/realms/llm-machines-applications/protocol/openid-connect/token",
+      }).headerProfile,
+    ).toBe("identity-application-token")
+  })
 })

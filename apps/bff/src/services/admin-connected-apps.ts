@@ -3359,6 +3359,7 @@ function normalizedConnectedAppCredentialRevealEndpoints(
     supplied?.bffBaseUrl ?? connectedAppBffBaseUrl(),
     true,
     isProductionRuntime(),
+    true,
   )
   const openAiBaseUrl = normalizeConnectedAppEndpointUrl(`${bffBaseUrl}/v1`)
   if (
@@ -3387,6 +3388,7 @@ function normalizeConnectedAppEndpointUrl(
   value: string,
   removeTrailingSlash = false,
   rejectLoopback = false,
+  requireOriginOnly = false,
 ): string {
   const candidate = value.trim()
   if (!candidate || candidate.includes("?") || candidate.includes("#")) {
@@ -3400,6 +3402,8 @@ function normalizeConnectedAppEndpointUrl(
     endpoint.password !== "" ||
     !endpoint.hostname ||
     (rejectLoopback && isLoopbackHostname(endpoint.hostname)) ||
+    (rejectLoopback && endpoint.port !== "") ||
+    (requireOriginOnly && endpoint.pathname !== "/") ||
     endpoint.search !== "" ||
     endpoint.hash !== ""
   ) {

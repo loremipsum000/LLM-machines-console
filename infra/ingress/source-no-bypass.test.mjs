@@ -267,6 +267,40 @@ test("normal Keycloak identity flow is exact and separate", () => {
     }).allowed,
     false,
   )
+
+  const applicationToken = identityRequest({
+    headers: { authorization: "Basic YXBwOnNlY3JldA==" },
+    method: "POST",
+    rawTarget:
+      "/realms/llm-machines-applications/protocol/openid-connect/token",
+  })
+  assert.equal(applicationToken.allowed, true)
+  assert.equal(
+    applicationToken.forwardedHeaders.authorization,
+    "Basic YXBwOnNlY3JldA==",
+  )
+  for (const authorization of [
+    "Bearer application-token",
+    "Basic invalid*base64",
+    ["Basic YXBwOnNlY3JldA==", "Basic b3RoZXI6c2VjcmV0"],
+  ]) {
+    const result = identityRequest({
+      headers: { authorization },
+      method: "POST",
+      rawTarget:
+        "/realms/llm-machines-applications/protocol/openid-connect/token",
+    })
+    assert.equal(result.allowed, true)
+    assert.equal(result.forwardedHeaders.authorization, undefined)
+  }
+
+  const humanToken = identityRequest({
+    headers: { authorization: "Basic Y29uc29sZTpzZWNyZXQ=" },
+    method: "POST",
+    rawTarget: "/realms/llm-machines/protocol/openid-connect/token",
+  })
+  assert.equal(humanToken.allowed, true)
+  assert.equal(humanToken.forwardedHeaders.authorization, undefined)
 })
 
 test("unsafe and ambiguous raw paths fail before route selection", () => {

@@ -67,6 +67,8 @@ describe("Console BFF persistence preflight", () => {
     "http://127.0.0.1:4001",
     "http://[::1]:4001",
     "http://[::ffff:127.0.0.1]:4001",
+    "https://api.customer.internal:8443",
+    "https://api.customer.internal/product/",
   ])("rejects invalid connected-app base URL %s in production", (baseUrl) => {
     configureProductionRuntime()
     vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", baseUrl)
@@ -76,10 +78,7 @@ describe("Console BFF persistence preflight", () => {
     )
   })
 
-  it.each([
-    "https://api.customer.internal",
-    "https://api.customer.internal/product/",
-  ])(
+  it.each(["https://api.customer.internal", "https://api.customer.internal/"])(
     "accepts HTTPS customer API authority %s through PUBLIC_BFF_BASE_URL",
     async (baseUrl) => {
       configureProductionRuntime()

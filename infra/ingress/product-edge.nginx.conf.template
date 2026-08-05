@@ -17,6 +17,11 @@ http {
     ~^POST:.+ 1;
   }
 
+  map $http_authorization $llmm_application_client_authorization {
+    default "";
+    "~^Basic[ ][A-Za-z0-9+/]+={0,2}$" $http_authorization;
+  }
+
   log_format llmm_ingress_metadata escape=json
     '{"timestamp":"$time_iso8601","request_id":"$request_id",'
     '"surface":"$llmm_surface","status":"$status",'
@@ -443,7 +448,7 @@ http {
       proxy_set_header Accept "application/json";
       proxy_set_header Content-Length $content_length;
       proxy_set_header Content-Type "application/x-www-form-urlencoded";
-      proxy_set_header Authorization "";
+      proxy_set_header Authorization $llmm_application_client_authorization;
       proxy_set_header Cookie "";
       proxy_set_header Origin "";
       proxy_pass http://keycloak_identity/realms/llm-machines-applications/protocol/openid-connect/token;

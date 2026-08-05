@@ -68,6 +68,12 @@ const headerProfiles = Object.freeze({
     "cookie",
     "origin",
   ]),
+  "identity-application-token": new Set([
+    "accept",
+    "authorization",
+    "content-length",
+    "content-type",
+  ]),
   "identity-server-form": new Set(["accept", "content-length", "content-type"]),
   "identity-server-jwks": new Set(["accept"]),
 })
@@ -274,7 +280,12 @@ function identityRoute(method, path) {
       "/realms/llm-machines-applications/protocol/openid-connect/token" &&
     method === "POST"
   ) {
-    return route("identity", "identity-server-form", "keycloak-identity", path)
+    return route(
+      "identity",
+      "identity-application-token",
+      "keycloak-identity",
+      path,
+    )
   }
   if (
     path ===
@@ -361,6 +372,13 @@ function forwardHeaders(headers, profile, host) {
   }
   for (const [name, value] of Object.entries(headers ?? {})) {
     const normalized = name.toLowerCase()
+    if (
+      profile === "identity-application-token" &&
+      normalized === "authorization" &&
+      (typeof value !== "string" || !/^Basic [A-Za-z0-9+/]+={0,2}$/.test(value))
+    ) {
+      continue
+    }
     if (allowlist.has(normalized) && singleHeader(value)) {
       forwarded[normalized] = value
     }

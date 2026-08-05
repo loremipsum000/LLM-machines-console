@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "workPackage": "PR-11A-R1-E1",
+  "workPackage": "F0-E0",
   "status": "source-policy-only",
   "customerNetwork": {
     "allowedTcpPorts": [443],
