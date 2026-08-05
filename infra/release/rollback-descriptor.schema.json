@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://llm-machines.invalid/schemas/rollback-descriptor.v2.json",
+  "title": "LLM Machines signed-predecessor rollback descriptor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "mode",
+    "current",
+    "target",
+    "action",
+    "qualification"
+  ],
+  "properties": {
+    "schema": { "const": "llm-machines.rollback-descriptor.v2" },
+    "status": { "const": "PACKAGED_UNQUALIFIED" },
+    "mode": { "const": "SIGNED_PREDECESSOR" },
+    "current": { "$ref": "#/$defs/currentRelease" },
+    "target": { "$ref": "#/$defs/targetRelease" },
+    "action": { "const": "PREPARE_ONLY" },
+    "qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtimeQualified", "q0", "contractActivation"],
+      "properties": {
+        "runtimeQualified": { "const": false },
+        "q0": { "const": "NOT_STARTED" },
+        "contractActivation": { "const": "INACTIVE" }
+      }
+    }
+  },
+  "$defs": {
+    "sha1": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "releaseBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "sourceCommit",
+        "sourceTree",
+        "corePackagePath",
+        "corePackageSize",
+        "corePackageSha256"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+        },
+        "sourceCommit": { "$ref": "#/$defs/sha1" },
+        "sourceTree": { "$ref": "#/$defs/sha1" },
+        "corePackagePath": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+        },
+        "corePackageSize": { "type": "integer", "minimum": 1 },
+        "corePackageSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "currentRelease": { "$ref": "#/$defs/releaseBase" },
+    "targetRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "sourceCommit",
+        "sourceTree",
+        "manifestSha256",
+        "corePackagePath",
+        "corePackageSize",
+        "corePackageSha256"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+        },
+        "sourceCommit": { "$ref": "#/$defs/sha1" },
+        "sourceTree": { "$ref": "#/$defs/sha1" },
+        "manifestSha256": { "$ref": "#/$defs/sha256" },
+        "corePackagePath": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+        },
+        "corePackageSize": { "type": "integer", "minimum": 1 },
+        "corePackageSha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

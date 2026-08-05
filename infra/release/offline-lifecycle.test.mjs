@@ -20,6 +20,7 @@ import {
 } from "./deterministic-archive.mjs"
 import { canonicalJson } from "./generate-release-manifest.mjs"
 import {
+  commissioningEvidenceSha256,
   generateInitialInstallDescriptor,
   generateRollbackDescriptor,
   verifyInitialInstallDescriptor,
@@ -372,7 +373,9 @@ function bundleFixture(version = "1.0.0", label = version) {
                     disposition: { exceptions: [] },
                   })),
                 })
-              : canonicalJson({ evidenceId, label })
+              : evidenceId === "rollback"
+                ? canonicalJson(generateInitialInstallDescriptor())
+                : canonicalJson({ evidenceId, label })
     write(join(artifactRoot, path), contents)
     artifacts.push({
       id: `evidence-${evidenceId}`,
@@ -442,6 +445,9 @@ function bundleFixture(version = "1.0.0", label = version) {
       deliveryProfileSchemaSha256: digest("3"),
       inferenceArtifactLockSchemaSha256: digest("4"),
       firecrawlSourcePackageSha256: digest("5"),
+      initialInstallDescriptorSchemaSha256: digest("a"),
+      productInstallationStateSchemaSha256: digest("b"),
+      rollbackDescriptorSchemaSha256: digest("c"),
     },
     artifacts,
     qualification: {
@@ -566,6 +572,7 @@ test("public verifier and clean-room installer preserve the unqualified boundary
   const fixture = bundleFixture()
   const verified = verifyReleaseBundle(fixture.bundle)
   assert.equal(verified.status, "VERIFIED_PACKAGED_UNQUALIFIED")
+  assert.equal(verified.rollbackMode, "INITIAL_INSTALL_NO_PREDECESSOR")
   const targetRoot = join(fixture.directory, "installed")
   const installed = installCleanRoom({ ...fixture.bundle, targetRoot })
   assert.equal(installed.status, "INSTALLED_UNQUALIFIED")
@@ -749,13 +756,32 @@ test("public verification rejects wrong purpose, revoked keys, and invalid signa
 test("rollback metadata binds two verified releases and never activates either", () => {
   const previous = bundleFixture("1.9.0", "previous")
   const current = bundleFixture("2.0.0", "current")
+  const initialCurrentVerified = verifyReleaseBundle(current.bundle)
   const descriptor = generateRollbackDescriptor({
-    currentBundle: current.bundle,
+    currentRelease: {
+      version: initialCurrentVerified.manifest.release.version,
+      sourceCommit: initialCurrentVerified.manifest.release.sourceCommit,
+      sourceTree: initialCurrentVerified.manifest.release.sourceTree,
+      corePackagePath: initialCurrentVerified.corePackage.path,
+      corePackageSize: initialCurrentVerified.corePackage.size,
+      corePackageSha256: initialCurrentVerified.corePackage.sha256,
+    },
     previousBundle: previous.bundle,
   })
   assert.equal(descriptor.action, "PREPARE_ONLY")
-  assert.match(descriptor.current.manifestSha256, /^sha256:[a-f0-9]{64}$/)
+  assert.equal(descriptor.mode, "SIGNED_PREDECESSOR")
+  assert.equal(descriptor.current.manifestSha256, undefined)
+  assert.match(descriptor.target.manifestSha256, /^sha256:[a-f0-9]{64}$/)
+  const rollbackArtifact = current.manifest.artifacts.find(
+    ({ evidenceId }) => evidenceId === "rollback",
+  )
+  const rollbackPath = join(current.bundle.artifactRoot, rollbackArtifact.path)
+  writeFileSync(rollbackPath, canonicalJson(descriptor))
+  rollbackArtifact.size = readFileSync(rollbackPath).length
+  rollbackArtifact.sha256 = sha256File(rollbackPath)
+  resignManifest(current, current.manifest)
   const currentVerified = verifyReleaseBundle(current.bundle)
+  assert.equal(currentVerified.rollbackMode, "SIGNED_PREDECESSOR")
   assert.equal(
     verifyRollbackDescriptor(
       descriptor,
@@ -792,13 +818,27 @@ test("first release explicitly has no predecessor and cannot claim rollback", ()
   )
   const installationState = {
     schema: "llm-machines.product-installation-state.v1",
-    status: "COMMISSIONING_VERIFIED",
+    status: "OBSERVED_EMPTY",
+    applianceId: "llmm-customer-site-1",
+    observedAt: "2026-08-05T09:00:00.000Z",
+    observer: {
+      type: "customer-commissioning-authority",
+      id: "q0.commissioning.observer.1",
+    },
     containsCredentials: false,
-    priorProductReleaseExists: false,
+    observation: {
+      priorProductReleaseExists: false,
+      productStateDatasetState: "EMPTY",
+      releaseHistoryState: "ABSENT",
+    },
     evidenceId: "commissioning.product-state.empty.0001",
   }
+  const trust = {
+    expectedApplianceId: installationState.applianceId,
+    trustedEvidenceSha256: commissioningEvidenceSha256(installationState),
+  }
   assert.equal(
-    verifyInitialInstallDescriptor(descriptor, installationState),
+    verifyInitialInstallDescriptor(descriptor, installationState, trust),
     true,
   )
   for (const mutate of [
@@ -818,16 +858,35 @@ test("first release explicitly has no predecessor and cannot claim rollback", ()
     const changed = structuredClone(descriptor)
     mutate(changed)
     assert.throws(() =>
-      verifyInitialInstallDescriptor(changed, installationState),
+      verifyInitialInstallDescriptor(changed, installationState, trust),
     )
   }
   const existingRelease = {
     ...installationState,
-    priorProductReleaseExists: true,
+    observation: {
+      ...installationState.observation,
+      priorProductReleaseExists: true,
+    },
   }
   assert.throws(
-    () => verifyInitialInstallDescriptor(descriptor, existingRelease),
-    /requires verified empty Product state/,
+    () =>
+      verifyInitialInstallDescriptor(descriptor, existingRelease, {
+        ...trust,
+        trustedEvidenceSha256: commissioningEvidenceSha256(existingRelease),
+      }),
+    /requires trusted appliance-bound empty Product state/,
+  )
+  assert.throws(
+    () => verifyInitialInstallDescriptor(descriptor, installationState),
+    /requires trusted appliance-bound empty Product state/,
+  )
+  assert.throws(
+    () =>
+      verifyInitialInstallDescriptor(descriptor, installationState, {
+        ...trust,
+        expectedApplianceId: "llmm-other-site-2",
+      }),
+    /requires trusted appliance-bound empty Product state/,
   )
   assert.doesNotThrow(() =>
     JSON.parse(
@@ -845,6 +904,38 @@ test("first release explicitly has no predecessor and cannot claim rollback", ()
       ),
     ),
   )
+  assert.doesNotThrow(() =>
+    JSON.parse(
+      readFileSync(
+        new URL("./rollback-descriptor.schema.json", import.meta.url),
+        "utf8",
+      ),
+    ),
+  )
+})
+
+test("public verification rejects signed arbitrary rollback evidence", () => {
+  const fixture = bundleFixture("1.0.0-rc.1", "invalid-rollback")
+  const rollbackArtifact = fixture.manifest.artifacts.find(
+    ({ evidenceId }) => evidenceId === "rollback",
+  )
+  const rollbackPath = join(fixture.bundle.artifactRoot, rollbackArtifact.path)
+  writeFileSync(
+    rollbackPath,
+    canonicalJson({
+      schema: "unreviewed.rollback",
+      predecessor: { version: "fabricated" },
+      action: "ACTIVATE",
+    }),
+  )
+  rollbackArtifact.size = readFileSync(rollbackPath).length
+  rollbackArtifact.sha256 = sha256File(rollbackPath)
+  resignManifest(fixture, fixture.manifest)
+  assert.throws(
+    () => verifyReleaseBundle(fixture.bundle),
+    /rollback descriptor/,
+  )
+  rmSync(fixture.directory, { recursive: true, force: true })
 })
 
 test("verification rejects trust substitution and a trust document outside the manifest", () => {

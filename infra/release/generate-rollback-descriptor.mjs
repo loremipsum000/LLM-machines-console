@@ -1,8 +1,19 @@
 import { readFileSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { canonicalJson } from "./generate-release-manifest.mjs"
+import {
+  commissioningEvidenceSha256,
+  validatePackagedRollbackDescriptor,
+  verifyInitialInstallDescriptor,
+  verifyRollbackDescriptor,
+} from "./validate-rollback-descriptor.mjs"
 import { verifyReleaseBundle } from "./verify-release-bundle.mjs"
+
+export {
+  commissioningEvidenceSha256,
+  verifyInitialInstallDescriptor,
+  verifyRollbackDescriptor,
+}
 
 function fail(message) {
   throw new Error(message)
@@ -19,7 +30,11 @@ function exactKeys(value, expected, field) {
   }
 }
 
-function releaseIdentity(release, manifestSha256, corePackage) {
+function canonicalJson(value) {
+  return `${JSON.stringify(value, null, 2)}\n`
+}
+
+function targetReleaseIdentity(release, manifestSha256, corePackage) {
   return {
     version: release.version,
     sourceCommit: release.sourceCommit,
@@ -31,21 +46,26 @@ function releaseIdentity(release, manifestSha256, corePackage) {
   }
 }
 
-export function generateRollbackDescriptor({ currentBundle, previousBundle }) {
-  const current = verifyReleaseBundle(currentBundle)
+export function generateRollbackDescriptor({ currentRelease, previousBundle }) {
+  exactKeys(
+    currentRelease,
+    [
+      "version",
+      "sourceCommit",
+      "sourceTree",
+      "corePackagePath",
+      "corePackageSize",
+      "corePackageSha256",
+    ],
+    "current release input",
+  )
   const previous = verifyReleaseBundle(previousBundle)
-  if (current.manifest.release.version === previous.manifest.release.version) {
-    fail("rollback target must use a different release version")
-  }
-  return {
-    schema: "llm-machines.rollback-descriptor.v1",
+  const descriptor = {
+    schema: "llm-machines.rollback-descriptor.v2",
     status: "PACKAGED_UNQUALIFIED",
-    current: releaseIdentity(
-      current.manifest.release,
-      current.manifestSha256,
-      current.corePackage,
-    ),
-    target: releaseIdentity(
+    mode: "SIGNED_PREDECESSOR",
+    current: currentRelease,
+    target: targetReleaseIdentity(
       previous.manifest.release,
       previous.manifestSha256,
       previous.corePackage,
@@ -57,6 +77,15 @@ export function generateRollbackDescriptor({ currentBundle, previousBundle }) {
       contractActivation: "INACTIVE",
     },
   }
+  validatePackagedRollbackDescriptor(descriptor, {
+    release: currentRelease,
+    corePackage: {
+      path: currentRelease.corePackagePath,
+      size: currentRelease.corePackageSize,
+      sha256: currentRelease.corePackageSha256,
+    },
+  })
+  return descriptor
 }
 
 export function generateInitialInstallDescriptor() {
@@ -71,95 +100,6 @@ export function generateInitialInstallDescriptor() {
     q0: "NOT_STARTED",
     recoveryRequirement: "Q0_PREINSTALL_BACKUP_AND_CLEAN_RESTORE",
   }
-}
-
-export function verifyInitialInstallDescriptor(descriptor, installationState) {
-  exactKeys(
-    descriptor,
-    [
-      "schema",
-      "status",
-      "mode",
-      "predecessor",
-      "action",
-      "runtimeQualified",
-      "contractActivation",
-      "q0",
-      "recoveryRequirement",
-    ],
-    "initial-install descriptor",
-  )
-  exactKeys(
-    installationState,
-    [
-      "schema",
-      "status",
-      "containsCredentials",
-      "priorProductReleaseExists",
-      "evidenceId",
-    ],
-    "Product installation-state evidence",
-  )
-  if (
-    descriptor.schema !== "llm-machines.initial-install-descriptor.v1" ||
-    descriptor.status !== "PACKAGED_UNQUALIFIED" ||
-    descriptor.mode !== "INITIAL_INSTALL_NO_PREDECESSOR" ||
-    descriptor.predecessor !== null ||
-    descriptor.action !== "NO_RELEASE_ROLLBACK" ||
-    descriptor.runtimeQualified !== false ||
-    descriptor.contractActivation !== "INACTIVE" ||
-    descriptor.q0 !== "NOT_STARTED" ||
-    descriptor.recoveryRequirement !== "Q0_PREINSTALL_BACKUP_AND_CLEAN_RESTORE"
-  ) {
-    fail("initial-install descriptor overstates rollback or qualification")
-  }
-  if (
-    installationState.schema !== "llm-machines.product-installation-state.v1" ||
-    installationState.status !== "COMMISSIONING_VERIFIED" ||
-    installationState.containsCredentials !== false ||
-    installationState.priorProductReleaseExists !== false ||
-    !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(
-      installationState.evidenceId ?? "",
-    )
-  ) {
-    fail("initial-install mode requires verified empty Product state")
-  }
-  return true
-}
-
-export function verifyRollbackDescriptor(
-  descriptor,
-  currentVerified,
-  previousVerified,
-) {
-  if (
-    descriptor?.schema !== "llm-machines.rollback-descriptor.v1" ||
-    descriptor?.status !== "PACKAGED_UNQUALIFIED" ||
-    descriptor?.action !== "PREPARE_ONLY" ||
-    descriptor?.qualification?.runtimeQualified !== false ||
-    descriptor?.qualification?.q0 !== "NOT_STARTED" ||
-    descriptor?.qualification?.contractActivation !== "INACTIVE"
-  ) {
-    fail("rollback descriptor overstates qualification or action")
-  }
-  const matches = (record, verified) =>
-    record?.version === verified.manifest.release.version &&
-    record?.sourceCommit === verified.manifest.release.sourceCommit &&
-    record?.sourceTree === verified.manifest.release.sourceTree &&
-    record?.manifestSha256 === verified.manifestSha256 &&
-    record?.corePackagePath === verified.corePackage.path &&
-    record?.corePackageSize === verified.corePackage.size &&
-    record?.corePackageSha256 === verified.corePackage.sha256
-  if (!matches(descriptor.current, currentVerified)) {
-    fail("rollback descriptor current release binding is invalid")
-  }
-  if (!matches(descriptor.target, previousVerified)) {
-    fail("rollback descriptor target release binding is invalid")
-  }
-  if (descriptor.current.version === descriptor.target.version) {
-    fail("rollback descriptor cannot target the current release")
-  }
-  return true
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -179,11 +119,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } else if (input.mode === "SIGNED_PREDECESSOR") {
     exactKeys(
       input,
-      ["mode", "currentBundle", "previousBundle"],
+      ["mode", "currentRelease", "previousBundle"],
       "rollback input",
     )
     descriptor = generateRollbackDescriptor({
-      currentBundle: input.currentBundle,
+      currentRelease: input.currentRelease,
       previousBundle: input.previousBundle,
     })
   } else {

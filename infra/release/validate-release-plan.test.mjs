@@ -21,6 +21,7 @@ import {
   canonicalJson,
   generateReleaseManifest,
 } from "./generate-release-manifest.mjs"
+import { generateInitialInstallDescriptor } from "./generate-rollback-descriptor.mjs"
 import {
   coreInventorySha256,
   readCoreImageInventory,
@@ -422,6 +423,8 @@ function fixture() {
       contents = readFileSync(
         join(prepared.outputRoot, semanticPaths.get(artifact.evidenceId)),
       )
+    } else if (artifact.evidenceId === "rollback") {
+      contents = canonicalJson(generateInitialInstallDescriptor())
     }
     writeArtifact(artifactRoot, artifact.path, contents)
   }
@@ -671,6 +674,44 @@ test("manifest validates the actual Core image lock", () => {
         artifactRoot: value.artifactRoot,
       }),
     /Core image lock is invalid|does not bind/,
+  )
+})
+
+test("manifest semantically validates canonical rollback evidence", () => {
+  const invalid = fixture()
+  const declaration = invalid.input.artifacts.find(
+    ({ evidenceId }) => evidenceId === "rollback",
+  )
+  writeFileSync(
+    join(invalid.artifactRoot, declaration.path),
+    canonicalJson({
+      schema: "unreviewed.rollback",
+      predecessor: { version: "fabricated" },
+      action: "ACTIVATE",
+    }),
+  )
+  assert.throws(
+    () =>
+      generateReleaseManifest(invalid.input, {
+        artifactRoot: invalid.artifactRoot,
+      }),
+    /rollback descriptor/,
+  )
+
+  const noncanonical = fixture()
+  const canonicalDeclaration = noncanonical.input.artifacts.find(
+    ({ evidenceId }) => evidenceId === "rollback",
+  )
+  writeFileSync(
+    join(noncanonical.artifactRoot, canonicalDeclaration.path),
+    JSON.stringify(generateInitialInstallDescriptor()),
+  )
+  assert.throws(
+    () =>
+      generateReleaseManifest(noncanonical.input, {
+        artifactRoot: noncanonical.artifactRoot,
+      }),
+    /rollback descriptor is not canonical JSON/,
   )
 })
 

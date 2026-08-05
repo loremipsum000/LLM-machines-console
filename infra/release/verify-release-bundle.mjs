@@ -8,6 +8,7 @@ import {
   minimumExceptionExpiryFromBundle,
   validateReleaseEvidenceIndex,
 } from "./validate-release-evidence-index.mjs"
+import { validatePackagedRollbackDescriptor } from "./validate-rollback-descriptor.mjs"
 
 const issuer = "urn:llm-machines:vendor"
 const sha256Pattern = /^sha256:[a-f0-9]{64}$/
@@ -373,6 +374,9 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
       "deliveryProfileSchemaSha256",
       "inferenceArtifactLockSchemaSha256",
       "firecrawlSourcePackageSha256",
+      "initialInstallDescriptorSchemaSha256",
+      "productInstallationStateSchemaSha256",
+      "rollbackDescriptorSchemaSha256",
     ],
     "release contracts",
   )
@@ -412,6 +416,7 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
   let vulnerabilityEvidence
   let corePackage
   let publicTrust
+  let rollback
   let previousPath = null
   for (const artifact of manifest.artifacts) {
     exactKeys(
@@ -490,6 +495,7 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
       vulnerabilityEvidence = artifact
     }
     if (artifact.evidenceId === "public-release-trust") publicTrust = artifact
+    if (artifact.evidenceId === "rollback") rollback = artifact
     if (artifact.id === "core-package") corePackage = artifact
   }
   for (const evidenceId of requiredEvidence) {
@@ -541,6 +547,13 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
   if (!vulnerabilityEvidence) {
     fail("signed manifest does not contain vulnerability evidence")
   }
+  if (
+    !rollback ||
+    rollback.classification !== "rollback" ||
+    rollback.mediaType !== "application/json"
+  ) {
+    fail("signed manifest does not contain rollback evidence")
+  }
   const evidenceIndexValue = JSON.parse(
     readFileSync(resolve(artifactRoot, evidenceIndex.path), "utf8"),
   )
@@ -557,10 +570,18 @@ function validateManifest(manifest, artifactRoot, signatureTimestamp) {
     ),
     signatureTimestamp,
   })
+  const rollbackValue = parseCanonicalJson(
+    resolve(artifactRoot, rollback.path),
+    "rollback descriptor",
+  ).value
+  const rollbackMode = validatePackagedRollbackDescriptor(rollbackValue, {
+    release: manifest.release,
+    corePackage,
+  })
   if (!publicTrust || publicTrust.classification !== "public-trust") {
     fail("signed manifest does not contain its public release trust")
   }
-  return { corePackage, publicTrust }
+  return { corePackage, publicTrust, rollbackMode }
 }
 
 export function verifyReleaseBundle({
@@ -640,6 +661,7 @@ export function verifyReleaseBundle({
     manifest: manifestRecord.value,
     manifestSha256,
     corePackage: validated.corePackage,
+    rollbackMode: validated.rollbackMode,
     signingKid: key.kid,
   }
 }
@@ -672,6 +694,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         manifestSha256: result.manifestSha256,
         release: result.manifest.release,
         corePackage: result.corePackage,
+        rollbackMode: result.rollbackMode,
         signingKid: result.signingKid,
       },
       null,

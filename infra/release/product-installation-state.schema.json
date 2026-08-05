@@ -7,15 +7,48 @@
   "required": [
     "schema",
     "status",
+    "applianceId",
+    "observedAt",
+    "observer",
     "containsCredentials",
-    "priorProductReleaseExists",
+    "observation",
     "evidenceId"
   ],
   "properties": {
     "schema": { "const": "llm-machines.product-installation-state.v1" },
-    "status": { "const": "COMMISSIONING_VERIFIED" },
+    "status": { "const": "OBSERVED_EMPTY" },
+    "applianceId": {
+      "type": "string",
+      "pattern": "^llmm-[a-z0-9][a-z0-9-]{0,31}-[a-z0-9][a-z0-9-]{0,31}-[0-9]{1,6}$"
+    },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "observer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "const": "customer-commissioning-authority" },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$"
+        }
+      }
+    },
     "containsCredentials": { "const": false },
-    "priorProductReleaseExists": { "const": false },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "priorProductReleaseExists",
+        "productStateDatasetState",
+        "releaseHistoryState"
+      ],
+      "properties": {
+        "priorProductReleaseExists": { "const": false },
+        "productStateDatasetState": { "const": "EMPTY" },
+        "releaseHistoryState": { "const": "ABSENT" }
+      }
+    },
     "evidenceId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$"
