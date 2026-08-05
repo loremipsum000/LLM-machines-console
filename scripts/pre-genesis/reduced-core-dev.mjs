@@ -19,6 +19,9 @@ import { fileURLToPath } from "node:url"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const checkMode = process.argv.includes("--check")
+
+class ShutdownRequestedError extends Error {}
+
 let shutdownRequested = false
 let resolveShutdown
 const shutdownSignal = new Promise((resolveSignal) => {
@@ -169,11 +172,13 @@ async function startReducedCoreDevelopmentRuntime() {
       firecrawl: `http://firecrawl.localhost:${edgePort}`,
       identity: `http://identity.localhost:${edgePort}`,
     }
+    const processGroupIds = children.map(({ child }) => child.pid)
     await writeFile(
       join(stateRoot, "runtime.json"),
       `${JSON.stringify({
         evidenceClass: "LOCAL_DETERMINISTIC_CONTROL_PLANE_ONLY",
         ports: { bffPort, edgePort, inferencePort, webPort },
+        processGroupIds,
         services,
       })}\n`,
       { mode: 0o600 },
@@ -433,14 +438,18 @@ function startChild(name, command, environment, stateRoot, cwd) {
 }
 
 async function stopChild(record) {
-  if (record.child.exitCode === null && record.child.signalCode === null) {
+  if (processGroupExists(record.child.pid)) {
     killProcessGroup(record.child.pid, "SIGTERM")
-    await waitForChildExit(record.child, 5_000)
-    if (record.child.exitCode === null && record.child.signalCode === null) {
+    if (!(await waitForProcessGroupExit(record.child.pid, 5_000))) {
       killProcessGroup(record.child.pid, "SIGKILL")
-      await waitForChildExit(record.child, 5_000)
+      if (!(await waitForProcessGroupExit(record.child.pid, 5_000))) {
+        throw new Error(
+          `${record.name} process group ${record.child.pid} survived SIGKILL.`,
+        )
+      }
     }
   }
+  await waitForChildExit(record.child, 1_000)
   record.stdout.end()
   record.stderr.end()
 }
@@ -493,7 +502,28 @@ function closeServer(server) {
   if (!server.listening) {
     return Promise.resolve()
   }
-  return new Promise((resolveClose) => server.close(() => resolveClose()))
+  return new Promise((resolveClose, rejectClose) => {
+    let settled = false
+    const finish = (error) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      clearTimeout(timeout)
+      if (error) {
+        rejectClose(error)
+      } else {
+        resolveClose()
+      }
+    }
+    const timeout = setTimeout(
+      () =>
+        finish(new Error("Timed out closing a local development listener.")),
+      5_000,
+    )
+    server.close((error) => finish(error))
+    server.closeAllConnections?.()
+  })
 }
 
 function isolatedChildEnvironment(stateRoot, overrides) {
@@ -510,9 +540,24 @@ function createRuntimeCleanup({ children, servers, stateRoot }) {
   let closePromise
   return () => {
     closePromise ??= (async () => {
-      await Promise.allSettled(servers.map(closeServer))
-      await Promise.allSettled(children.map(stopChild))
-      await rm(stateRoot, { force: true, recursive: true })
+      const results = await Promise.allSettled([
+        ...servers.map(closeServer),
+        ...children.map(stopChild),
+      ])
+      const cleanupErrors = results
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason)
+      try {
+        await rm(stateRoot, { force: true, recursive: true })
+      } catch (error) {
+        cleanupErrors.push(error)
+      }
+      if (cleanupErrors.length > 0) {
+        throw new AggregateError(
+          cleanupErrors,
+          "Disposable reduced-Core cleanup did not complete.",
+        )
+      }
     })()
     return closePromise
   }
@@ -585,6 +630,32 @@ function killProcessGroup(pid, signal) {
   }
 }
 
+function processGroupExists(pid) {
+  if (!pid) {
+    return false
+  }
+  try {
+    process.kill(-pid, 0)
+    return true
+  } catch (error) {
+    if (error?.code === "ESRCH") {
+      return false
+    }
+    throw error
+  }
+}
+
+async function waitForProcessGroupExit(pid, timeoutMs) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (!processGroupExists(pid)) {
+      return true
+    }
+    await new Promise((resolveWait) => setTimeout(resolveWait, 50))
+  }
+  return !processGroupExists(pid)
+}
+
 function waitForChildExit(child, timeoutMs) {
   if (child.exitCode !== null || child.signalCode !== null) {
     return Promise.resolve()
@@ -594,8 +665,6 @@ function waitForChildExit(child, timeoutMs) {
     new Promise((resolveTimeout) => setTimeout(resolveTimeout, timeoutMs)),
   ])
 }
-
-class ShutdownRequestedError extends Error {}
 
 async function readJsonBody(request) {
   const chunks = []
