@@ -221,7 +221,7 @@ describe("Console middleware", () => {
     expect(setCookie).toContain("Max-Age=0")
   })
 
-  it("renders a controlled 503 rewrite without clearing an eligible cookie", async () => {
+  it("redirects to controlled recovery without clearing an eligible cookie", async () => {
     mocks.resolveConsoleSession.mockResolvedValue({
       reason: "identity_unavailable",
       retryable: true,
@@ -230,13 +230,13 @@ describe("Console middleware", () => {
 
     const response = await runMiddleware("/team?view=members", true)
 
-    expect(response.status).toBe(503)
-    expect(response.headers.get("x-middleware-rewrite")).toBe(
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
       "https://console.example.test/auth/unavailable?returnTo=%2Fteam%3Fview%3Dmembers",
     )
     expect(response.headers.get("cache-control")).toBe("no-store, max-age=0")
     expect(response.headers.get("set-cookie")).toBeNull()
-    expect(response.headers.get("location")).toBeNull()
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull()
   })
 
   it("keeps an audit-download session during an outage without a redirect loop", async () => {
@@ -252,9 +252,7 @@ describe("Console middleware", () => {
     )
 
     expect(response.status).toBe(503)
-    expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "https://console.example.test/auth/unavailable?returnTo=%2Fapi%2Fadmin%2Faudit%2Fexport%2Fverification-keys",
-    )
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull()
     expect(response.headers.get("cache-control")).toBe("no-store, max-age=0")
     expect(response.headers.get("set-cookie")).toBeNull()
     expect(response.headers.get("location")).toBeNull()

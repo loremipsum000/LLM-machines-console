@@ -48,6 +48,7 @@ describe("ConsoleV2Shell", () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it("routes to numbered Console sections with Command shortcuts", () => {
@@ -216,6 +217,27 @@ describe("ConsoleV2Shell", () => {
     expect(navigationMocks.router.push).toHaveBeenNthCalledWith(1, "/team")
     expect(navigationMocks.router.push).toHaveBeenNthCalledWith(2, "/settings")
     expect(screen.getByText("Operator")).toBeTruthy()
+  })
+
+  it("uses a credentialed same-origin logout request and keeps failure recoverable", async () => {
+    const request = vi.fn().mockRejectedValue(new Error("identity unavailable"))
+    vi.stubGlobal("fetch", request)
+    render(
+      <ConsoleV2Shell accessRole="admin" activeSection="applications">
+        <h1>Applications</h1>
+      </ConsoleV2Shell>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }))
+
+    expect(
+      await screen.findByText("Sign-out is temporarily unavailable. Retry."),
+    ).toBeTruthy()
+    expect(request).toHaveBeenCalledWith("/api/console/session/logout", {
+      credentials: "same-origin",
+      method: "POST",
+      redirect: "follow",
+    })
   })
 })
 

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { ComponentType, ReactNode, SVGProps } from "react"
+import type { ComponentType, FormEvent, ReactNode, SVGProps } from "react"
 import { useEffect, useMemo, useState } from "react"
 import {
   type ConsoleV2SectionId,
@@ -40,6 +40,7 @@ export function ConsoleV2Shell({
   )
   const [shortcutModifier, setShortcutModifier] =
     useState<ShortcutModifier>("meta")
+  const [signOutFailed, setSignOutFailed] = useState(false)
 
   useEffect(() => {
     setShortcutModifier(detectShortcutModifier())
@@ -88,6 +89,29 @@ export function ConsoleV2Shell({
       document.removeEventListener("visibilitychange", hideModifier)
     }
   }, [router, visibleSections])
+
+  async function signOut(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSignOutFailed(false)
+    try {
+      const response = await fetch("/api/console/session/logout", {
+        credentials: "same-origin",
+        method: "POST",
+        redirect: "follow",
+      })
+      const destination = new URL(response.url, window.location.origin)
+      if (
+        !response.ok ||
+        destination.origin !== window.location.origin ||
+        destination.pathname !== "/auth/signin"
+      ) {
+        throw new Error("Console logout did not reach the sign-in page.")
+      }
+      window.location.assign(destination)
+    } catch {
+      setSignOutFailed(true)
+    }
+  }
 
   return (
     <div className="min-h-screen min-h-dvh bg-[#181818] font-sans text-[#fdfdfd]">
@@ -142,7 +166,11 @@ export function ConsoleV2Shell({
                 {accessRole === "admin" ? "Administrator" : "Operator"}
               </p>
             </div>
-            <form action="/api/console/session/logout" method="post">
+            <form
+              action="/api/console/session/logout"
+              method="post"
+              onSubmit={signOut}
+            >
               <button
                 className="flex h-8 w-full items-center rounded px-3 text-sm font-medium text-[#bdbdbd] transition-colors hover:bg-[#3d3b3d] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
                 type="submit"
@@ -150,6 +178,11 @@ export function ConsoleV2Shell({
                 Sign out
               </button>
             </form>
+            {signOutFailed ? (
+              <output className="px-3 text-xs text-status-critical">
+                Sign-out is temporarily unavailable. Retry.
+              </output>
+            ) : null}
           </div>
         </aside>
 
