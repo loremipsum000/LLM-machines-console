@@ -53,6 +53,13 @@ test("F0-E0 supersedes only the current public-authority topology", () => {
   )
   assert.deepEqual(decision.bindingDecisions.customerTcpPorts, [443])
   assert.deepEqual(noBypass.customerNetwork.allowedTcpPorts, [443])
+  assert.deepEqual(decision.bindingDecisions.runtimeAuthorityBinding, {
+    applicationApiBase: "exact-product-api-host",
+    applicationIdentityIssuer: "exact-product-identity-host",
+    consoleOrigin: "exact-product-console-host",
+    firecrawlPublicBase: "exact-product-firecrawl-host",
+    humanIdentityIssuer: "exact-product-identity-host",
+  })
 })
 
 test("F0-E0 retains only approved API and Firecrawl customer routes", () => {

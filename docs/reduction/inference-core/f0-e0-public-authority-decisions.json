@@ -39,11 +39,18 @@
       "sglang"
     ],
     "credentialReveal": {
-      "apiBase": "origin-only-no-path-or-nondefault-production-port",
+      "apiBase": "origin-only-no-path-or-nondefault-production-port-exact-product-api-host",
       "applicationTokenClientAuthentication": "canonical-client-secret-basic-with-product-client-namespace-boundary-on-exact-application-realm-token-route-only",
       "applicationIssuerOrigin": "https-default-port-exact-product-identity-host",
       "clientSecretPostAllowed": false,
       "browserBearerForwarding": false
+    },
+    "runtimeAuthorityBinding": {
+      "consoleOrigin": "exact-product-console-host",
+      "humanIdentityIssuer": "exact-product-identity-host",
+      "applicationIdentityIssuer": "exact-product-identity-host",
+      "applicationApiBase": "exact-product-api-host",
+      "firecrawlPublicBase": "exact-product-firecrawl-host"
     },
     "edgeValidation": {
       "publicNginxLocations": "exact-inventory-no-additions",

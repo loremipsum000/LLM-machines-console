@@ -84,11 +84,39 @@ describe("Console BFF persistence preflight", () => {
       configureProductionRuntime()
       vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "")
       vi.stubEnv("PUBLIC_BFF_BASE_URL", baseUrl)
+      vi.stubEnv("PRODUCT_API_HOST", "api.customer.internal")
 
       const server = buildServer()
       await server.close()
     },
   )
+
+  it("rejects an Application API origin outside the Product API authority", () => {
+    configureProductionRuntime()
+    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://other-api.example.test")
+
+    expect(() => buildServer()).toThrow(
+      "Connected app reveal endpoint configuration is invalid.",
+    )
+  })
+
+  it("requires the Product API authority in production", () => {
+    configureProductionRuntime()
+    vi.stubEnv("PRODUCT_API_HOST", "")
+
+    expect(() => buildServer()).toThrow(
+      "Connected app reveal endpoint configuration is invalid.",
+    )
+  })
+
+  it("requires Application identity validation without admin mutation settings", () => {
+    configureProductionRuntime()
+    vi.stubEnv("PRODUCT_IDENTITY_HOST", "")
+
+    expect(() => buildServer()).toThrow(
+      "Connected app OAuth reveal endpoint configuration is invalid.",
+    )
+  })
 
   it("rejects an invalid OAuth token reveal endpoint in production", () => {
     configureProductionRuntime()
@@ -281,7 +309,12 @@ function configureProductionRuntime(): void {
   vi.stubEnv("DATABASE_URL", "postgres://fixture.invalid/console")
   vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://api.example.test")
   vi.stubEnv("PUBLIC_BFF_BASE_URL", "")
+  vi.stubEnv("PRODUCT_API_HOST", "api.example.test")
   vi.stubEnv("PRODUCT_IDENTITY_HOST", "identity.example.test")
+  vi.stubEnv(
+    "KEYCLOAK_APPLICATION_ISSUER_URL",
+    "https://identity.example.test/realms/llm-machines-applications",
+  )
 }
 
 function fakeConsoleSessionRuntime() {

@@ -34,6 +34,8 @@ export interface ConsoleSessionRuntime {
 export function readConsoleSessionRuntimeConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): ConsoleSessionRuntimeConfig {
+  const consoleHost = publicProductHost(environment, "PRODUCT_CONSOLE_HOST")
+  const identityHost = publicProductHost(environment, "PRODUCT_IDENTITY_HOST")
   const consoleOrigin = secureOrigin(
     "CONSOLE_ORIGIN",
     required(environment, "CONSOLE_ORIGIN"),
@@ -42,6 +44,8 @@ export function readConsoleSessionRuntimeConfig(
     "KEYCLOAK_ISSUER_URL",
     required(environment, "KEYCLOAK_ISSUER_URL"),
   )
+  assertProductAuthority("CONSOLE_ORIGIN", consoleOrigin, consoleHost)
+  assertProductAuthority("KEYCLOAK_ISSUER_URL", issuer, identityHost)
   const oidcBase = `${issuer}/protocol/openid-connect`
   return {
     accessAudience: required(environment, "KEYCLOAK_AUDIENCE"),
@@ -141,6 +145,36 @@ function optional(
   name: string,
 ): string | undefined {
   return environment[name]?.trim() || undefined
+}
+
+function publicProductHost(
+  environment: NodeJS.ProcessEnv,
+  name: "PRODUCT_CONSOLE_HOST" | "PRODUCT_IDENTITY_HOST",
+): string {
+  const value = required(environment, name)
+  if (
+    value.length > 253 ||
+    value !== value.toLowerCase() ||
+    value.includes(":") ||
+    /^\d{1,3}(?:\.\d{1,3}){3}$/.test(value) ||
+    !value
+      .split(".")
+      .every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
+  ) {
+    throw new Error(`${name} must be a valid Product hostname.`)
+  }
+  return value
+}
+
+function assertProductAuthority(
+  name: "CONSOLE_ORIGIN" | "KEYCLOAK_ISSUER_URL",
+  value: string,
+  expectedHost: string,
+): void {
+  const url = new URL(value)
+  if (url.hostname !== expectedHost || url.port !== "") {
+    throw new Error(`${name} must use its declared Product authority.`)
+  }
 }
 
 function secureOrigin(name: string, value: string): string {

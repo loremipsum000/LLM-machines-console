@@ -535,19 +535,19 @@ export function assertProductionConnectedAppRevealEndpoints(): void {
   if (staticPreflight.status === "blocked") {
     throw new Error("Connected app reveal endpoint configuration is invalid.")
   }
+  const oauthPreflight = preflightConnectedAppCredentialReveal(
+    "oauth_client_credentials",
+  )
+  if (oauthPreflight.status === "blocked") {
+    throw new Error(
+      "Connected app OAuth reveal endpoint configuration is invalid.",
+    )
+  }
   const keycloakConfig = keycloakApplicationAdminConfigFromEnv(process.env)
   if (keycloakConfig.status === "not_configured") {
     return
   }
   if (keycloakConfig.status === "invalid") {
-    throw new Error(
-      "Connected app OAuth reveal endpoint configuration is invalid.",
-    )
-  }
-  const oauthPreflight = preflightConnectedAppCredentialReveal(
-    "oauth_client_credentials",
-  )
-  if (oauthPreflight.status === "blocked") {
     throw new Error(
       "Connected app OAuth reveal endpoint configuration is invalid.",
     )
@@ -3361,6 +3361,16 @@ function normalizedConnectedAppCredentialRevealEndpoints(
     isProductionRuntime(),
     true,
   )
+  if (isProductionRuntime()) {
+    const apiHost = process.env.PRODUCT_API_HOST?.trim()
+    if (
+      !apiHost ||
+      !isPublicProductHostname(apiHost) ||
+      new URL(bffBaseUrl).hostname !== apiHost
+    ) {
+      throw new Error("Application API authority is unavailable or invalid.")
+    }
+  }
   const openAiBaseUrl = normalizeConnectedAppEndpointUrl(`${bffBaseUrl}/v1`)
   if (
     supplied &&
@@ -3473,7 +3483,7 @@ function connectedAppOAuthTokenUrl(): string {
   if (
     issuerUrl.pathname !== "/realms/llm-machines-applications" ||
     !identityHost ||
-    !isPublicIdentityHostname(identityHost) ||
+    !isPublicProductHostname(identityHost) ||
     issuerUrl.hostname !== identityHost
   ) {
     throw new Error("Application OAuth identity configuration is unavailable.")
@@ -3481,7 +3491,7 @@ function connectedAppOAuthTokenUrl(): string {
   return `${issuer}/protocol/openid-connect/token`
 }
 
-function isPublicIdentityHostname(value: string): boolean {
+function isPublicProductHostname(value: string): boolean {
   return (
     value.length <= 253 &&
     value === value.toLowerCase() &&

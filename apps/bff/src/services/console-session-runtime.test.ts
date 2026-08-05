@@ -22,6 +22,8 @@ describe("Console session runtime configuration", () => {
 
   it.each([
     "CONSOLE_ORIGIN",
+    "PRODUCT_CONSOLE_HOST",
+    "PRODUCT_IDENTITY_HOST",
     "KEYCLOAK_ISSUER_URL",
     "KEYCLOAK_AUDIENCE",
     "CONSOLE_OIDC_CLIENT_ID",
@@ -46,6 +48,19 @@ describe("Console session runtime configuration", () => {
 
     expect(() => readConsoleSessionRuntimeConfig(environment)).toThrow(name)
   })
+
+  it.each([
+    ["CONSOLE_ORIGIN", "https://other-console.example.test"],
+    [
+      "KEYCLOAK_ISSUER_URL",
+      "https://other-identity.example.test/realms/appliance",
+    ],
+  ])("rejects %s outside its Product authority", (name, value) => {
+    const environment = runtimeEnvironment()
+    environment[name] = value
+
+    expect(() => readConsoleSessionRuntimeConfig(environment)).toThrow(name)
+  })
 })
 
 function runtimeEnvironment(): NodeJS.ProcessEnv {
@@ -58,5 +73,7 @@ function runtimeEnvironment(): NodeJS.ProcessEnv {
     CONSOLE_SESSION_KEYRING_FILE: "/run/secrets/llmm_console_session_keyring",
     KEYCLOAK_AUDIENCE: "console-bff",
     KEYCLOAK_ISSUER_URL: "https://identity.example.test/realms/appliance/",
+    PRODUCT_CONSOLE_HOST: "console.example.test",
+    PRODUCT_IDENTITY_HOST: "identity.example.test",
   }
 }

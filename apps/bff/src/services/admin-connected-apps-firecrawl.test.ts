@@ -585,6 +585,7 @@ describe("Firecrawl appliance readiness preflight", () => {
 
   it("rejects public loopback and URL credentials in production", () => {
     vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("PRODUCT_FIRECRAWL_HOST", "firecrawl.example.test")
     vi.stubEnv("FIRECRAWL_PUBLIC_BASE_URL", "http://127.0.0.1:4001")
     expect(preflightAdminConnectedAppFirecrawlReadiness()).toMatchObject({
       detail: expect.stringMatching(/public base URL/),
@@ -611,9 +612,33 @@ describe("Firecrawl appliance readiness preflight", () => {
 
   it("rejects IPv4-mapped IPv6 loopback in production", () => {
     vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("PRODUCT_FIRECRAWL_HOST", "firecrawl.example.test")
     vi.stubEnv("FIRECRAWL_PUBLIC_BASE_URL", "http://[::ffff:127.0.0.1]:4001")
     expect(preflightAdminConnectedAppFirecrawlReadiness()).toMatchObject({
       detail: expect.stringMatching(/public base URL/),
+      status: "blocked",
+    })
+  })
+
+  it("binds the public URL to the Product Firecrawl authority", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("PRODUCT_FIRECRAWL_HOST", "firecrawl.example.test")
+    vi.stubEnv("FIRECRAWL_PUBLIC_BASE_URL", "https://other.example.test")
+
+    expect(preflightAdminConnectedAppFirecrawlReadiness()).toEqual({
+      detail:
+        "The Firecrawl public base URL does not match the Product Firecrawl authority.",
+      status: "blocked",
+    })
+  })
+
+  it("requires the Product Firecrawl authority in production", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("PRODUCT_FIRECRAWL_HOST", "")
+    vi.stubEnv("FIRECRAWL_PUBLIC_BASE_URL", "https://firecrawl.example.test")
+
+    expect(preflightAdminConnectedAppFirecrawlReadiness()).toMatchObject({
+      detail: expect.stringMatching(/Product Firecrawl authority/),
       status: "blocked",
     })
   })

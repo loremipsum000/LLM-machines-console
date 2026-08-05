@@ -256,6 +256,18 @@ export function preflightAdminConnectedAppFirecrawlReadiness(
   if (!publicBaseUrl) {
     return blocked("The Firecrawl public base URL is missing or invalid.")
   }
+  if (isProductionRuntime(env)) {
+    const firecrawlHost = env.PRODUCT_FIRECRAWL_HOST?.trim()
+    if (
+      !firecrawlHost ||
+      !isPublicProductHostname(firecrawlHost) ||
+      new URL(publicBaseUrl).hostname !== firecrawlHost
+    ) {
+      return blocked(
+        "The Firecrawl public base URL does not match the Product Firecrawl authority.",
+      )
+    }
+  }
   const upstreamBaseUrl = normalizeFirecrawlBaseUrl(
     env.FIRECRAWL_UPSTREAM_BASE_URL,
     false,
@@ -2094,6 +2106,18 @@ function isGovernedFirecrawlUpstream(value: string): boolean {
     upstream.hostname.toLowerCase() === "firecrawl-api" &&
     upstream.port === "3002" &&
     upstream.pathname === "/"
+  )
+}
+
+function isPublicProductHostname(value: string): boolean {
+  return (
+    value.length <= 253 &&
+    value === value.toLowerCase() &&
+    !value.includes(":") &&
+    !/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value) &&
+    value
+      .split(".")
+      .every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
   )
 }
 
