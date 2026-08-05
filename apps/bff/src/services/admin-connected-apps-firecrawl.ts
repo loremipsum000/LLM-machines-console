@@ -2079,6 +2079,7 @@ function normalizeFirecrawlBaseUrl(
       (url.protocol !== "http:" && url.protocol !== "https:") ||
       url.username ||
       url.password ||
+      (rejectLoopback && url.port !== "") ||
       url.search ||
       url.hash ||
       (!allowPlaintextNonLoopback &&

@@ -632,6 +632,20 @@ describe("Firecrawl appliance readiness preflight", () => {
     })
   })
 
+  it("rejects a nondefault public Firecrawl port", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("PRODUCT_FIRECRAWL_HOST", "firecrawl.example.test")
+    vi.stubEnv(
+      "FIRECRAWL_PUBLIC_BASE_URL",
+      "https://firecrawl.example.test:8443",
+    )
+
+    expect(preflightAdminConnectedAppFirecrawlReadiness()).toMatchObject({
+      detail: expect.stringMatching(/public base URL/),
+      status: "blocked",
+    })
+  })
+
   it("requires the Product Firecrawl authority in production", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("PRODUCT_FIRECRAWL_HOST", "")
