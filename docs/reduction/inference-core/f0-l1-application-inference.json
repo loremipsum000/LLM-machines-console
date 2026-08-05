@@ -18,13 +18,8 @@
   "dataPlane": {
     "publicAuthority": "api.localhost",
     "protocol": "OpenAI-compatible HTTP",
-    "routes": [
-      "POST /v1/chat/completions"
-    ],
-    "modes": [
-      "non-streaming",
-      "SSE streaming with usage"
-    ]
+    "routes": ["POST /v1/chat/completions"],
+    "modes": ["non-streaming", "SSE streaming with usage"]
   },
   "proved": [
     "Application creation",
