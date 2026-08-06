@@ -40,9 +40,10 @@ per-package JSON file and contract revision.
 - Firecrawl uses a separate per-Application static credential namespace with
   no automatic expiry and an exact 86,400-second rotation overlap.
 - Admin enables or re-enables after accepting the current outbound-processing
-  disclaimer. Admin and Operator may view, passively test, rotate, revoke, or
-  disable existing access. Operator cannot enable outbound access, accept the
-  disclaimer, or change LiteLLM routes.
+  disclaimer. Admin may passively test, rotate, revoke, disable, enable, and
+  change policy. Operator access is read-only. F0-U2 supersedes the earlier
+  role split for current Product behavior without rewriting the historical
+  PR-08 record.
 - The Application permission is a Firecrawl on/off permission. Appliance
   egress uses a system-managed exact-host allowlist and public-address
   controls. Customer URL Governance is not reintroduced. Only the controlled

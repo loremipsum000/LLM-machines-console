@@ -70,6 +70,17 @@ Admin/Operator boundary. Reserved `*.llmm.test` fixture authorities are mapped
 only to loopback. This is not evidence for real Keycloak, PostgreSQL session
 persistence, appliance TLS, Product Nginx, release packaging, or Q0.
 
+Run `corepack pnpm run test:pre-genesis:browser-credential-lifecycle` for the
+bounded F0-U2 browser proof. It uses actual Console Web and BFF code to rotate
+and revoke separate inference and Firecrawl credentials, prove the exact
+24-hour static-key overlap, deny cross-Application mutation, preserve a second
+Application, display safe age and last-use metadata, and prove that one-time
+secrets do not survive in later DOM, browser history, copied Console state,
+errors, logs, screenshots, or teardown artifacts. Application credential
+testing, rotation, revocation, and disabling are Admin-only; Operator access is
+read-only. This remains a disposable in-memory proof. F0-P1 must separately
+prove PostgreSQL-backed persistence and restart behavior.
+
 ## Security
 
 Internal deployment topology, operational runbooks, environment credentials,

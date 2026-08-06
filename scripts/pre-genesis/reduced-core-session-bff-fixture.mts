@@ -22,6 +22,9 @@ const clientId = required("F0_S1_OIDC_CLIENT_ID")
 const clientSecret = required("F0_S1_OIDC_CLIENT_SECRET")
 const audience = required("F0_S1_OIDC_AUDIENCE")
 const internalServiceCredential = required("BFF_SERVICE_API_KEY")
+const firecrawlFixtureUpstream = optionalLoopbackUrl(
+  process.env.PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL,
+)
 const oidcBase = `${issuer}/protocol/openid-connect`
 const localIdentityFetch = createLoopbackIdentityFetch(
   issuer,
@@ -109,6 +112,37 @@ service.beginElevation = async (input) => {
   return result
 }
 const server = buildServer({
+  ...(firecrawlFixtureUpstream
+    ? {
+        testFirecrawlGateway: {
+          dnsLookup: async (hostname: string) => {
+            if (hostname !== "allowed.example.test") {
+              throw new Error("The Firecrawl fixture denied an unknown host.")
+            }
+            return [{ address: "93.184.216.34", family: 4 as const }]
+          },
+          fetchImpl: async (
+            input: string | URL | Request,
+            init?: RequestInit,
+          ) => {
+            const requested = new URL(input.toString())
+            if (
+              requested.origin !== "http://firecrawl-api:3002" ||
+              (requested.pathname !== "/v2/search" &&
+                requested.pathname !== "/v2/scrape") ||
+              requested.search
+            ) {
+              throw new Error("The Firecrawl fixture denied an upstream route.")
+            }
+            return fetch(
+              new URL(requested.pathname, firecrawlFixtureUpstream),
+              init,
+            )
+          },
+          upstreamBaseUrl: "http://firecrawl-api:3002",
+        },
+      }
+    : {}),
   testConsoleSessionRouteOptions: {
     backchannelVerifier: validator,
     consoleOrigin,
@@ -130,6 +164,28 @@ function required(name: string): string {
     throw new Error(`The browser-session BFF fixture requires ${name}.`)
   }
   return value
+}
+
+function optionalLoopbackUrl(value: string | undefined): URL | null {
+  if (!value) {
+    return null
+  }
+  const url = new URL(value)
+  if (
+    url.protocol !== "http:" ||
+    url.hostname !== "127.0.0.1" ||
+    !url.port ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash ||
+    url.username ||
+    url.password
+  ) {
+    throw new Error(
+      "The Firecrawl fixture upstream must be local and temporary.",
+    )
+  }
+  return url
 }
 
 function fixtureEvent(

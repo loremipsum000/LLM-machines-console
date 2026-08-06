@@ -389,9 +389,10 @@ disable, and credential revoke. They remain control-plane routes and do not
 expand public T2. Firecrawl is installed but disabled per Application by
 default and uses its own static credential namespace with no automatic expiry
 and an exact 86,400-second retiring overlap. Admin accepts a versioned
-outbound-processing disclaimer to enable or re-enable. Admin and Operator may
-view, passively test, rotate, revoke, or disable existing access; Operator
-cannot enable it or change LiteLLM routing.
+outbound-processing disclaimer to enable or re-enable. Admin may passively
+test, rotate, revoke, disable, enable, and change policy. Operator access is
+read-only. F0-U2 supersedes the earlier role split for current Product behavior
+without rewriting the historical PR-08 record.
 
 System-managed exact-host egress allowlisting and public-address validation do
 not introduce customer URL Governance. The governed internal upstream is

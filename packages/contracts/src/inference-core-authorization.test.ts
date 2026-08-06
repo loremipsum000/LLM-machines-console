@@ -8,8 +8,6 @@ import {
 
 const operatorCapabilities = [
   "console.operational.view",
-  "applications.credentials.test_rotate_revoke",
-  "applications.disable",
   "team.identity.view",
 ] as const
 
@@ -36,7 +34,7 @@ describe("Inference Core authorization target", () => {
     )
   })
 
-  it("allows Admin every retained capability and Operator exactly four", () => {
+  it("allows Admin every retained capability and keeps Operator read-only", () => {
     const allowedForOperator = inferenceCoreCapabilitySchema.options.filter(
       (capability) => roleHasInferenceCoreCapability("operator", capability),
     )

@@ -304,7 +304,9 @@ describe("PR-07 Applications experience", () => {
 
     expect(screen.getByText(staticReveal.apiKey)).toBeTruthy()
     expect(
-      screen.getByText(/previous static key remains valid for up to 24 hours/),
+      screen.getByText(
+        /previous static key remains valid for an exact 24-hour overlap/,
+      ),
     ).toBeTruthy()
     expect(screen.getByText(/shown once/)).toBeTruthy()
 
@@ -319,6 +321,11 @@ describe("PR-07 Applications experience", () => {
       screen.getByText(
         /previous OAuth client secret is invalidated immediately/,
       ),
+    ).toBeTruthy()
+    fireEvent(window, new Event("pagehide"))
+    expect(screen.queryByText(oauthReveal.clientSecret)).toBeNull()
+    expect(
+      screen.getByText(/This one-time secret is no longer available/),
     ).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/staging|production/i)
   })
@@ -390,7 +397,7 @@ describe("PR-07 Applications experience", () => {
     }
   })
 
-  it("keeps Firecrawl enablement Admin-only while Operators retain lifecycle controls", () => {
+  it("keeps all Application and Firecrawl lifecycle controls Admin-only", () => {
     const { rerender } = render(
       <ApplicationsV2Experience
         accessRole="operator"
@@ -415,21 +422,22 @@ describe("PR-07 Applications experience", () => {
         view="app-detail"
       />,
     )
+    for (const name of [
+      "Check connection",
+      "Rotate credentials",
+      "Revoke now",
+      "Disable app",
+      "Check Firecrawl connection",
+      "Rotate Firecrawl credential",
+      "Revoke Firecrawl key",
+      "Disable Firecrawl",
+      "Edit Firecrawl policy",
+    ]) {
+      expect(screen.queryByRole("button", { name })).toBeNull()
+    }
     expect(
-      screen.getByRole("button", { name: "Check Firecrawl connection" }),
-    ).toBeTruthy()
-    expect(
-      screen.getByRole("button", { name: "Rotate Firecrawl credential" }),
-    ).toBeTruthy()
-    expect(
-      screen.getByRole("button", { name: "Revoke Firecrawl key" }),
-    ).toBeTruthy()
-    expect(
-      screen.getByRole("button", { name: "Disable Firecrawl" }),
-    ).toBeTruthy()
-    expect(
-      screen.queryByRole("button", { name: "Edit Firecrawl policy" }),
-    ).toBeNull()
+      screen.getAllByText("Operator access is read-only.", { exact: false }),
+    ).toHaveLength(2)
   })
 
   it("hides open Admin-only mutation surfaces after an Operator role transition", () => {
@@ -490,7 +498,7 @@ describe("PR-07 Applications experience", () => {
     )
     render(
       <ApplicationsV2Experience
-        accessRole="operator"
+        accessRole="admin"
         connectedAppDetail={firecrawlEnabledApplication}
         view="app-detail"
       />,
@@ -738,7 +746,7 @@ describe("PR-07 Applications experience", () => {
   it("shows inference and Firecrawl status together in the Applications overview", () => {
     render(
       <ApplicationsV2Experience
-        accessRole="operator"
+        accessRole="admin"
         connectedApps={[firecrawlEnabledApplication]}
         view="overview"
       />,
@@ -893,7 +901,7 @@ describe("PR-07 Applications experience", () => {
       )
     render(
       <ApplicationsV2Experience
-        accessRole="operator"
+        accessRole="admin"
         connectedAppDetail={application}
         view="app-detail"
       />,
@@ -966,7 +974,7 @@ describe("PR-07 Applications experience", () => {
     )
     render(
       <ApplicationsV2Experience
-        accessRole="operator"
+        accessRole="admin"
         connectedAppDetail={application}
         view="app-detail"
       />,
@@ -1077,7 +1085,7 @@ describe("PR-07 Applications experience", () => {
     })
     render(
       <ApplicationsV2Experience
-        accessRole="operator"
+        accessRole="admin"
         connectedAppDetail={application}
         view="app-detail"
       />,
