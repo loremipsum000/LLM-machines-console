@@ -510,33 +510,33 @@ function ConnectedAppDetailView({
           <ConnectedAppTestStatus state={checkState} />
           <CredentialActionStatus state={rotateState} />
           <CredentialActionStatus state={revokeState} />
-          <div className="flex flex-wrap justify-end gap-2">
-            <form
-              action={checkAction}
-              onSubmit={(event) => beginMutation(event, "inference-check")}
-            >
-              <input name="appId" type="hidden" value={currentApp.id} />
-              <PendingSubmitButton
-                className={primaryButtonClass}
-                forcePending={
-                  activeOperation === "inference-check" || checkPending
-                }
-                idleLabel="Check connection"
-                pendingLabel="Checking..."
-                unavailable={
-                  mutationPending && activeOperation !== "inference-check"
-                }
-              />
-            </form>
-            <button
-              className={secondaryButtonClass}
-              disabled={mutationPending}
-              onClick={() => setShowRotateConfirm(true)}
-              type="button"
-            >
-              Rotate credentials
-            </button>
-            {isAdmin ? (
+          {isAdmin ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              <form
+                action={checkAction}
+                onSubmit={(event) => beginMutation(event, "inference-check")}
+              >
+                <input name="appId" type="hidden" value={currentApp.id} />
+                <PendingSubmitButton
+                  className={primaryButtonClass}
+                  forcePending={
+                    activeOperation === "inference-check" || checkPending
+                  }
+                  idleLabel="Check connection"
+                  pendingLabel="Checking..."
+                  unavailable={
+                    mutationPending && activeOperation !== "inference-check"
+                  }
+                />
+              </form>
+              <button
+                className={secondaryButtonClass}
+                disabled={mutationPending}
+                onClick={() => setShowRotateConfirm(true)}
+                type="button"
+              >
+                Rotate credentials
+              </button>
               <button
                 className={secondaryButtonClass}
                 disabled={mutationPending}
@@ -545,37 +545,37 @@ function ConnectedAppDetailView({
               >
                 {showPolicyEditor ? "Close policy editor" : "Edit policy"}
               </button>
-            ) : null}
-            {currentApp.status === "enabled" ? (
-              <button
-                className={dangerButtonClass}
-                disabled={mutationPending}
-                onClick={() => setShowDisableConfirm(true)}
-                type="button"
-              >
-                Disable app
-              </button>
-            ) : isAdmin ? (
-              <form
-                action={enableAdminConnectedAppAction}
-                onSubmit={(event) => beginMutation(event, "application-enable")}
-              >
-                <input name="appId" type="hidden" value={currentApp.id} />
-                <input
-                  name="returnTo"
-                  type="hidden"
-                  value={`/applications/apps/${currentApp.id}`}
-                />
+              {currentApp.status === "enabled" ? (
                 <button
-                  className={secondaryButtonClass}
+                  className={dangerButtonClass}
                   disabled={mutationPending}
-                  type="submit"
+                  onClick={() => setShowDisableConfirm(true)}
+                  type="button"
                 >
-                  Re-enable app
+                  Disable app
                 </button>
-              </form>
-            ) : null}
-            {isAdmin ? (
+              ) : (
+                <form
+                  action={enableAdminConnectedAppAction}
+                  onSubmit={(event) =>
+                    beginMutation(event, "application-enable")
+                  }
+                >
+                  <input name="appId" type="hidden" value={currentApp.id} />
+                  <input
+                    name="returnTo"
+                    type="hidden"
+                    value={`/applications/apps/${currentApp.id}`}
+                  />
+                  <button
+                    className={secondaryButtonClass}
+                    disabled={mutationPending}
+                    type="submit"
+                  >
+                    Re-enable app
+                  </button>
+                </form>
+              )}
               <button
                 className={dangerButtonClass}
                 disabled={mutationPending}
@@ -584,8 +584,13 @@ function ConnectedAppDetailView({
               >
                 Delete app
               </button>
-            ) : null}
-          </div>
+            </div>
+          ) : (
+            <p className="rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-sm text-[#b2b2b2]">
+              Operator access is read-only. An Administrator manages Application
+              credentials and lifecycle actions.
+            </p>
+          )}
         </section>
 
         {isAdmin && showPolicyEditor ? (
@@ -598,6 +603,7 @@ function ConnectedAppDetailView({
 
         <CredentialMetadataList
           app={currentApp}
+          canMutate={isAdmin}
           disabled={mutationPending}
           onRevoke={setCredentialToRevoke}
         />
@@ -605,6 +611,7 @@ function ConnectedAppDetailView({
         {rotationReveal ? (
           <ConnectedAppCredentialReveal
             credential={rotationReveal}
+            key={rotationReveal.credentialId}
             title="Rotated credential"
           />
         ) : null}
@@ -989,10 +996,15 @@ export function ConnectedAppCredentialReveal({
   title: string
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const visible = useOneTimeRevealVisibility()
 
   useEffect(() => {
     headingRef.current?.focus()
   }, [])
+
+  if (!visible) {
+    return <ExpiredCredentialRevealNotice title={title} />
+  }
 
   return (
     <section className="grid gap-3 rounded-lg border border-[#7b5d1a] bg-[#2b2414] p-4">
@@ -1009,7 +1021,7 @@ export function ConnectedAppCredentialReveal({
         </p>
         <p className="mt-1 text-xs leading-5 text-[#b2b2b2]">
           {credential.authMethod === "api_key"
-            ? "During rotation, the previous static key remains valid for up to 24 hours unless it is revoked immediately."
+            ? "During rotation, the previous static key remains valid for an exact 24-hour overlap unless it is revoked immediately."
             : "During rotation, the previous OAuth client secret is invalidated immediately. Already-issued access tokens only last until their short expiry."}
         </p>
       </div>
@@ -1059,10 +1071,12 @@ export function ConnectedAppCredentialReveal({
 
 function CredentialMetadataList({
   app,
+  canMutate,
   disabled,
   onRevoke,
 }: {
   app: AdminConnectedApp
+  canMutate: boolean
   disabled: boolean
   onRevoke: (credential: AdminConnectedAppCredentialMetadata) => void
 }) {
@@ -1119,7 +1133,7 @@ function CredentialMetadataList({
               value={dateTimeLabel(credential.revokedAt)}
             />
           </dl>
-          {credential.status !== "revoked" ? (
+          {canMutate && credential.status !== "revoked" ? (
             <div className="flex justify-end">
               <button
                 className={dangerButtonClass}
@@ -1376,7 +1390,7 @@ function FirecrawlAccessPanel({
               Only an Admin can enable or re-enable outbound Firecrawl access.
             </p>
           )
-        ) : (
+        ) : isAdmin ? (
           <div className="flex flex-wrap justify-end gap-2">
             <form
               action={checkAction}
@@ -1403,18 +1417,16 @@ function FirecrawlAccessPanel({
             >
               Rotate Firecrawl credential
             </button>
-            {isAdmin ? (
-              <button
-                className={secondaryButtonClass}
-                disabled={operationPending}
-                onClick={() => setShowPolicyEditor((current) => !current)}
-                type="button"
-              >
-                {showPolicyEditor
-                  ? "Close Firecrawl policy"
-                  : "Edit Firecrawl policy"}
-              </button>
-            ) : null}
+            <button
+              className={secondaryButtonClass}
+              disabled={operationPending}
+              onClick={() => setShowPolicyEditor((current) => !current)}
+              type="button"
+            >
+              {showPolicyEditor
+                ? "Close Firecrawl policy"
+                : "Edit Firecrawl policy"}
+            </button>
             <button
               className={dangerButtonClass}
               disabled={operationPending}
@@ -1424,6 +1436,11 @@ function FirecrawlAccessPanel({
               Disable Firecrawl
             </button>
           </div>
+        ) : (
+          <p className="rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-sm text-[#b2b2b2]">
+            Operator access is read-only. An Administrator manages Firecrawl
+            credentials and lifecycle actions.
+          </p>
         )}
       </section>
 
@@ -1462,6 +1479,7 @@ function FirecrawlAccessPanel({
       ) : null}
 
       <FirecrawlCredentialMetadataList
+        canMutate={isAdmin}
         credentials={firecrawl.credentials}
         disabled={operationPending}
         onRevoke={setCredentialToRevoke}
@@ -1470,6 +1488,7 @@ function FirecrawlAccessPanel({
       {credentialReveal ? (
         <ConnectedAppFirecrawlCredentialReveal
           credential={credentialReveal}
+          key={credentialReveal.credentialId}
           title={
             rotateState.status === "rotated"
               ? "Rotated Firecrawl credential"
@@ -1480,7 +1499,7 @@ function FirecrawlAccessPanel({
 
       {showRotateConfirm ? (
         <ConfirmationDialog
-          description="A new Firecrawl key will be shown once. The current key enters a fixed overlap and can be revoked sooner. Inference credentials are unchanged."
+          description="A new Firecrawl key will be shown once. The current key enters an exact 24-hour overlap and can be revoked sooner. Inference credentials are unchanged."
           dismissDisabled={operationPending}
           onCancel={() => setShowRotateConfirm(false)}
           title="Rotate Firecrawl credential?"
@@ -1604,10 +1623,12 @@ function FirecrawlProtectionFields({
 }
 
 function FirecrawlCredentialMetadataList({
+  canMutate,
   credentials,
   disabled,
   onRevoke,
 }: {
+  canMutate: boolean
   credentials: AdminConnectedAppFirecrawlCredentialMetadata[]
   disabled: boolean
   onRevoke: (credential: AdminConnectedAppFirecrawlCredentialMetadata) => void
@@ -1666,7 +1687,7 @@ function FirecrawlCredentialMetadataList({
                 value={dateTimeLabel(credential.revokedAt)}
               />
             </dl>
-            {credential.status !== "revoked" ? (
+            {canMutate && credential.status !== "revoked" ? (
               <div className="flex justify-end">
                 <button
                   className={dangerButtonClass}
@@ -1693,10 +1714,15 @@ export function ConnectedAppFirecrawlCredentialReveal({
   title: string
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const visible = useOneTimeRevealVisibility()
 
   useEffect(() => {
     headingRef.current?.focus()
   }, [])
+
+  if (!visible) {
+    return <ExpiredCredentialRevealNotice title={title} />
+  }
 
   return (
     <section className="grid gap-3 rounded-lg border border-[#7b5d1a] bg-[#2b2414] p-4">
@@ -1734,6 +1760,41 @@ export function ConnectedAppFirecrawlCredentialReveal({
         multiline
         value={credential.exampleCurl}
       />
+    </section>
+  )
+}
+
+function useOneTimeRevealVisibility(): boolean {
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    const clearReveal = () => setVisible(false)
+    const clearHiddenReveal = () => {
+      if (document.visibilityState === "hidden") {
+        clearReveal()
+      }
+    }
+    window.addEventListener("pagehide", clearReveal)
+    window.addEventListener("popstate", clearReveal)
+    document.addEventListener("visibilitychange", clearHiddenReveal)
+    return () => {
+      window.removeEventListener("pagehide", clearReveal)
+      window.removeEventListener("popstate", clearReveal)
+      document.removeEventListener("visibilitychange", clearHiddenReveal)
+    }
+  }, [])
+
+  return visible
+}
+
+function ExpiredCredentialRevealNotice({ title }: { title: string }) {
+  return (
+    <section className="grid gap-2 rounded-lg border border-[#353535] bg-[#232323] p-4">
+      <h2 className="text-lg font-semibold text-white">{title}</h2>
+      <p className="text-sm text-[#b2b2b2]">
+        This one-time secret is no longer available. Rotate the credential if a
+        replacement is required.
+      </p>
     </section>
   )
 }

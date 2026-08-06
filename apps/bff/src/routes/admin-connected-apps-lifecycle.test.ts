@@ -400,12 +400,22 @@ describe("Application admin lifecycle routes", () => {
     })
     expect(invalidPolicy.statusCode).toBe(400)
 
-    const checked = await server.inject({
+    const operatorChecked = await server.inject({
       method: "POST",
       url: `/api/admin/applications/connected-apps/${id}/test`,
       headers: {
         ...operatorHeaders,
-        "idempotency-key": "passive-check",
+        "idempotency-key": "operator-passive-check-denied",
+      },
+    })
+    expect(operatorChecked.statusCode).toBe(403)
+
+    const checked = await server.inject({
+      method: "POST",
+      url: `/api/admin/applications/connected-apps/${id}/test`,
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "admin-passive-check",
       },
     })
     expect(checked.statusCode).toBe(200)
@@ -421,23 +431,33 @@ describe("Application admin lifecycle routes", () => {
       ),
     ).toMatchObject({
       applicationId: id,
-      keycloakSubjectId: "operator-1",
+      keycloakSubjectId: "admin-1",
     })
     await server.close()
   })
 
-  it("enforces Operator disable and Admin-only re-enable while preserving idempotency", async () => {
+  it("keeps disablement and re-enablement Admin-only", async () => {
     configureFixtureRuntime()
     const server = buildServer()
     const created = await createApplication(server, "role-lifecycle")
     const id = created.body.app.id as string
 
-    const disabled = await server.inject({
+    const operatorDisabled = await server.inject({
       method: "POST",
       url: `/api/admin/applications/connected-apps/${id}/disable`,
       headers: {
         ...operatorHeaders,
         "idempotency-key": "disable-role-lifecycle",
+      },
+    })
+    expect(operatorDisabled.statusCode).toBe(403)
+
+    const disabled = await server.inject({
+      method: "POST",
+      url: `/api/admin/applications/connected-apps/${id}/disable`,
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "admin-disable-role-lifecycle",
       },
     })
     expect(disabled.statusCode).toBe(200)
@@ -474,19 +494,29 @@ describe("Application admin lifecycle routes", () => {
     await server.close()
   })
 
-  it("lets Operator rotate and revoke exact credentials, disabling the app when the active key is revoked", async () => {
+  it("keeps exact credential rotation and revocation Admin-only", async () => {
     configureFixtureRuntime()
     const server = buildServer()
     const created = await createApplication(server, "credential-lifecycle")
     const id = created.body.app.id as string
     const initialCredentialId = created.body.credential.credentialId as string
 
-    const rotated = await server.inject({
+    const operatorRotation = await server.inject({
       method: "POST",
       url: `/api/admin/applications/connected-apps/${id}/rotate-credentials`,
       headers: {
         ...operatorHeaders,
-        "idempotency-key": "rotate-credential",
+        "idempotency-key": "operator-rotate-denied",
+      },
+    })
+    expect(operatorRotation.statusCode).toBe(403)
+
+    const rotated = await server.inject({
+      method: "POST",
+      url: `/api/admin/applications/connected-apps/${id}/rotate-credentials`,
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "admin-rotate-credential",
       },
     })
     expect(rotated.statusCode).toBe(200)
@@ -516,8 +546,8 @@ describe("Application admin lifecycle routes", () => {
       method: "POST",
       url: `/api/admin/applications/connected-apps/${id}/credentials/${initialCredentialId}/revoke`,
       headers: {
-        ...operatorHeaders,
-        "idempotency-key": "revoke-retiring",
+        ...adminHeaders,
+        "idempotency-key": "admin-revoke-retiring",
       },
     })
     expect(revokedRetiring.statusCode).toBe(200)
@@ -527,8 +557,8 @@ describe("Application admin lifecycle routes", () => {
       method: "POST",
       url: `/api/admin/applications/connected-apps/${id}/credentials/${activeCredentialId}/revoke`,
       headers: {
-        ...operatorHeaders,
-        "idempotency-key": "revoke-active",
+        ...adminHeaders,
+        "idempotency-key": "admin-revoke-active",
       },
     })
     expect(revokedActive.statusCode).toBe(200)
@@ -541,7 +571,7 @@ describe("Application admin lifecycle routes", () => {
         (event) =>
           event.action === "admin.connected_app.credential.revoked" &&
           event.applicationId === id &&
-          event.keycloakSubjectId === "operator-1",
+          event.keycloakSubjectId === "admin-1",
       ),
     ).toHaveLength(2)
     await server.close()

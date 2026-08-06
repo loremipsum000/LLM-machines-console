@@ -110,11 +110,11 @@ vi.mock("@/lib/bff/server-request", () => ({
 describe("inference-core Admin actions", () => {
   beforeEach(() => {
     mocks.getCurrentConsoleSession.mockResolvedValue(
-      activeConsoleSession("operator"),
+      activeConsoleSession("admin"),
     )
     mocks.getBffRequest.mockResolvedValue({
       baseUrl: "http://bff.test",
-      headers: new Headers({ authorization: "Bearer operator" }),
+      headers: new Headers({ authorization: "Bearer admin" }),
       state: "active",
     })
     mocks.redirect.mockClear()
@@ -123,9 +123,9 @@ describe("inference-core Admin actions", () => {
 
   it("routes stale high-risk actions through the exact MFA elevation surface", async () => {
     mocks.getCurrentConsoleSession.mockResolvedValue({
-      ...activeConsoleSession("operator"),
+      ...activeConsoleSession("admin"),
       session: {
-        ...activeConsoleSession("operator").session,
+        ...activeConsoleSession("admin").session,
         mfaVerifiedAt: "2000-01-01T00:00:00.000Z",
       },
     })
@@ -352,29 +352,14 @@ describe("inference-core Admin actions", () => {
     vi.unstubAllGlobals()
   })
 
-  it("allows an operator to refresh passive connection evidence", async () => {
-    const app = connectedApp
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              app,
-              connectionStatus: "not_connected",
-              detail: "Waiting for a real client GET /models request.",
-              observedAt: null,
-              status: "waiting",
-            }),
-            {
-              headers: { "Content-Type": "application/json" },
-              status: 200,
-            },
-          ),
-      ) as unknown as typeof fetch,
+  it("denies an Operator passive connection refresh before any BFF call", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
     )
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const formData = new FormData()
-    formData.set("appId", app.id)
+    formData.set("appId", connectedApp.id)
 
     await expect(
       checkAdminConnectedAppConnectionAction(
@@ -387,14 +372,8 @@ describe("inference-core Admin actions", () => {
         },
         formData,
       ),
-    ).resolves.toMatchObject({
-      app: { id: app.id },
-      status: "waiting",
-    })
-    expect(fetch).toHaveBeenCalledWith(
-      `http://bff.test/api/admin/applications/connected-apps/${app.id}/test`,
-      expect.objectContaining({ method: "POST" }),
-    )
+    ).rejects.toThrow("Authorized Console session required.")
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it("lets an Admin enable Firecrawl with explicit consent and optional protections", async () => {
@@ -455,6 +434,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("denies Firecrawl enablement to an Operator before any BFF call", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     const fetchSpy = vi.fn()
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const formData = new FormData()
@@ -477,30 +459,11 @@ describe("inference-core Admin actions", () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it("lets an Operator refresh passive Firecrawl connection evidence", async () => {
-    const observedAt = "2026-07-31T09:00:00.000Z"
-    const firecrawlConnectedApp = {
-      ...firecrawlEnabledApp,
-      firecrawl: {
-        ...firecrawlEnabledApp.firecrawl,
-        connectionStatus: "connected",
-        lastConnectedAt: observedAt,
-      },
-    } satisfies AdminConnectedApp
-    const fetchSpy = vi.fn(async () =>
-      Promise.resolve(
-        new Response(
-          JSON.stringify({
-            app: firecrawlConnectedApp,
-            connectionStatus: "connected",
-            detail: "Observed a third-party /v2/search or /v2/scrape request.",
-            observedAt,
-            status: "passed",
-          }),
-          { headers: { "Content-Type": "application/json" }, status: 200 },
-        ),
-      ),
+  it("denies an Operator passive Firecrawl refresh before any BFF call", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
     )
+    const fetchSpy = vi.fn()
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const formData = new FormData()
     formData.set("appId", connectedApp.id)
@@ -516,47 +479,15 @@ describe("inference-core Admin actions", () => {
         },
         formData,
       ),
-    ).resolves.toMatchObject({ observedAt, status: "passed" })
-    expect(fetchSpy).toHaveBeenCalledWith(
-      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}/firecrawl/test`,
-      expect.objectContaining({ method: "POST" }),
-    )
+    ).rejects.toThrow("Authorized Console session required.")
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it("lets an Operator rotate, revoke, and disable Firecrawl without changing policy", async () => {
-    const fetchSpy = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            app: firecrawlEnabledApp,
-            credential: firecrawlReveal,
-            detail: "Firecrawl credential rotated.",
-            status: "rotated",
-          }),
-          { headers: { "Content-Type": "application/json" }, status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            app: firecrawlEnabledApp,
-            detail: "Firecrawl credential revoked.",
-            status: "revoked",
-          }),
-          { headers: { "Content-Type": "application/json" }, status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            app: connectedApp,
-            detail: "Firecrawl disabled.",
-            status: "disabled",
-          }),
-          { headers: { "Content-Type": "application/json" }, status: 200 },
-        ),
-      )
+  it("denies Operator Firecrawl rotation, revocation, and disablement", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
+    const fetchSpy = vi.fn()
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const appFormData = new FormData()
     appFormData.set("appId", connectedApp.id)
@@ -572,7 +503,7 @@ describe("inference-core Admin actions", () => {
         },
         appFormData,
       ),
-    ).resolves.toMatchObject({ status: "rotated" })
+    ).rejects.toThrow("Authorized Console session required.")
 
     const revokeFormData = new FormData()
     revokeFormData.set("appId", connectedApp.id)
@@ -587,7 +518,7 @@ describe("inference-core Admin actions", () => {
         },
         revokeFormData,
       ),
-    ).resolves.toMatchObject({ status: "revoked" })
+    ).rejects.toThrow("Authorized Console session required.")
     await expect(
       disableAdminConnectedAppFirecrawlAction(
         {
@@ -598,23 +529,8 @@ describe("inference-core Admin actions", () => {
         },
         appFormData,
       ),
-    ).resolves.toMatchObject({ status: "disabled" })
-
-    expect(fetchSpy).toHaveBeenNthCalledWith(
-      1,
-      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}/firecrawl/rotate-credentials`,
-      expect.objectContaining({ method: "POST" }),
-    )
-    expect(fetchSpy).toHaveBeenNthCalledWith(
-      2,
-      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}/firecrawl/credentials/firecrawl%2Fcredential/revoke`,
-      expect.objectContaining({ method: "POST" }),
-    )
-    expect(fetchSpy).toHaveBeenNthCalledWith(
-      3,
-      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}/firecrawl/disable`,
-      expect.objectContaining({ method: "POST" }),
-    )
+    ).rejects.toThrow("Authorized Console session required.")
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it("submits Firecrawl policy limits only from an Admin surface", async () => {
@@ -660,6 +576,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("denies application creation to an operator before any BFF call", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     const fetchSpy = vi.fn()
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const formData = new FormData()
@@ -681,15 +600,11 @@ describe("inference-core Admin actions", () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it("allows an operator to revoke an exact credential", async () => {
-    const fetchSpy = vi.fn(async () =>
-      Promise.resolve(
-        new Response(JSON.stringify(connectedApp), {
-          headers: { "Content-Type": "application/json" },
-          status: 200,
-        }),
-      ),
+  it("denies an Operator exact credential revocation", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
     )
+    const fetchSpy = vi.fn()
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const formData = new FormData()
     formData.set("appId", connectedApp.id)
@@ -706,11 +621,8 @@ describe("inference-core Admin actions", () => {
         },
         formData,
       ),
-    ).resolves.toMatchObject({ status: "revoked" })
-    expect(fetchSpy).toHaveBeenCalledWith(
-      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}/credentials/credential%2Fone/revoke`,
-      expect.objectContaining({ method: "POST" }),
-    )
+    ).rejects.toThrow("Authorized Console session required.")
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it("submits stable aliases and null disabled limits in an Admin policy update", async () => {
@@ -820,6 +732,9 @@ describe("inference-core Admin actions", () => {
   })
 
   it("requires Admin authority and exact confirmation for soft deletion", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
     const fetchSpy = vi.fn()
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const formData = new FormData()

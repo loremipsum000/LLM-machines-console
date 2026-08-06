@@ -96,11 +96,7 @@ describe("authorization security hardening", () => {
       "x-llm-machines-user-sub": "operator-1",
     }
 
-    for (const url of [
-      "/api/admin/read",
-      "/api/admin/credentials",
-      "/api/admin/disable",
-    ]) {
+    for (const url of ["/api/admin/read"]) {
       const response = await server.inject({
         headers: operatorHeaders,
         method: "GET",
@@ -109,7 +105,12 @@ describe("authorization security hardening", () => {
       expect(response.statusCode, url).toBe(200)
     }
 
-    for (const url of ["/api/admin/policy", "/api/admin/admin-only"]) {
+    for (const url of [
+      "/api/admin/credentials",
+      "/api/admin/disable",
+      "/api/admin/policy",
+      "/api/admin/admin-only",
+    ]) {
       const response = await server.inject({
         headers: operatorHeaders,
         method: "GET",

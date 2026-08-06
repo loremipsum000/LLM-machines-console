@@ -30,9 +30,10 @@ artifacts.
   pilot ancestry, and migration `0027` remain absent.
 - Dedicated Firecrawl keys cannot authenticate to inference, and inference,
   OAuth, human, or LiteLLM credentials cannot authenticate to Firecrawl.
-- Default-off, disclaimer, Admin and Operator role, no-expiry, 86,400-second
-  overlap, immediate revoke, parent-Application disable, and passive
-  connection-evidence tests pass.
+- Default-off, disclaimer, Admin-only mutation, Operator read-only, no-expiry,
+  86,400-second overlap, immediate revoke, parent-Application disable, and
+  passive connection-evidence tests pass. F0-U2 supersedes the earlier current
+  role split without rewriting the historical PR-08 evidence.
 - Exactly public T2 `POST /v2/search` and `POST /v2/scrape` are admitted while
   the two public inference routes remain unchanged. The six authenticated
   Application admin routes remain control-plane-only. Unsupported methods,

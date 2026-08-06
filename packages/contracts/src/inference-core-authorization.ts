@@ -34,9 +34,9 @@ export const inferenceCoreCapabilityMatrix = {
   "applications.reenable": { admin: true, operator: false },
   "applications.credentials.test_rotate_revoke": {
     admin: true,
-    operator: true,
+    operator: false,
   },
-  "applications.disable": { admin: true, operator: true },
+  "applications.disable": { admin: true, operator: false },
   "team.users_roles.manage": { admin: true, operator: false },
   "team.local_password.manage": { admin: true, operator: false },
   "team.identity.view": { admin: true, operator: true },

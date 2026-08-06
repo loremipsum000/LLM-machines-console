@@ -91,8 +91,16 @@ describe("Application Firecrawl admin routes", () => {
       method: "POST",
       url: `${applicationUrl(applicationId)}/firecrawl/test`,
     })
-    expect(passiveTest.statusCode).toBe(200)
-    expect(passiveTest.json()).toMatchObject({
+    expect(passiveTest.statusCode).toBe(403)
+
+    const adminPassiveTest = await mutate(server, {
+      headers: adminHeaders,
+      idempotencyKey: "admin-passive-test",
+      method: "POST",
+      url: `${applicationUrl(applicationId)}/firecrawl/test`,
+    })
+    expect(adminPassiveTest.statusCode).toBe(200)
+    expect(adminPassiveTest.json()).toMatchObject({
       connectionStatus: "not_connected",
       observedAt: null,
       status: "waiting",
@@ -101,9 +109,17 @@ describe("Application Firecrawl admin routes", () => {
     vi.stubEnv("FIRECRAWL_APPLIANCE_KILL_SWITCH", "true")
     vi.stubEnv("FIRECRAWL_RESOURCE_PROFILE_QUALIFIED", "false")
     vi.stubEnv("FIRECRAWL_EGRESS_POLICY_READY", "false")
-    const rotated = await mutate(server, {
+    const operatorRotated = await mutate(server, {
       headers: operatorHeaders,
       idempotencyKey: "operator-rotate-firecrawl",
+      method: "POST",
+      url: `${applicationUrl(applicationId)}/firecrawl/rotate-credentials`,
+    })
+    expect(operatorRotated.statusCode).toBe(403)
+
+    const rotated = await mutate(server, {
+      headers: adminHeaders,
+      idempotencyKey: "admin-rotate-firecrawl",
       method: "POST",
       url: `${applicationUrl(applicationId)}/firecrawl/rotate-credentials`,
     })
@@ -123,9 +139,17 @@ describe("Application Firecrawl admin routes", () => {
     expect(detail.body).not.toContain(revealedKey)
     expect(JSON.stringify(getAuditEventsForTest())).not.toContain(revealedKey)
 
-    const disabled = await mutate(server, {
+    const operatorDisabled = await mutate(server, {
       headers: operatorHeaders,
       idempotencyKey: "operator-disable-firecrawl",
+      method: "POST",
+      url: `${applicationUrl(applicationId)}/firecrawl/disable`,
+    })
+    expect(operatorDisabled.statusCode).toBe(403)
+
+    const disabled = await mutate(server, {
+      headers: adminHeaders,
+      idempotencyKey: "admin-disable-firecrawl",
       method: "POST",
       url: `${applicationUrl(applicationId)}/firecrawl/disable`,
     })

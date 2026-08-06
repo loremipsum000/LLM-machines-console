@@ -10,6 +10,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   realpath,
   rm,
   symlink,
@@ -29,13 +30,20 @@ import { fileURLToPath } from "node:url"
 import { chromium } from "playwright-core"
 import { createOidcFixture } from "./reduced-core-oidc-fixture.mjs"
 
-const applicationsMode = process.argv.includes("--applications")
+const credentialLifecycleMode = process.argv.includes("--credential-lifecycle")
+const applicationsMode =
+  process.argv.includes("--applications") || credentialLifecycleMode
+const supportedModes = new Set(["--applications", "--credential-lifecycle"])
+const selectedModes = process.argv.slice(2)
 
 if (
-  process.argv.slice(2).some((argument) => argument !== "--applications") ||
-  process.argv.filter((argument) => argument === "--applications").length > 1
+  selectedModes.some((argument) => !supportedModes.has(argument)) ||
+  new Set(selectedModes).size !== selectedModes.length ||
+  selectedModes.length > 1
 ) {
-  throw new Error("Usage: reduced-core-browser-session.mjs [--applications]")
+  throw new Error(
+    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle]",
+  )
 }
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
@@ -70,11 +78,13 @@ async function runBrowserSessionProof() {
   let evidence
   let failure
   let oidc
+  const sensitiveValues = []
   const observedOrigins = []
   const tlsErrors = []
   try {
     await chmod(stateRoot, 0o700)
-    const [bffPort, webPort, inferencePort] = await reservePorts(3)
+    const [bffPort, webPort, inferencePort, firecrawlPort] =
+      await reservePorts(4)
     const edgePort = await browserSafePort()
     const clockFile = join(stateRoot, "clock.txt")
     await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
@@ -106,6 +116,9 @@ async function runBrowserSessionProof() {
     const inference = createInferenceDouble(credentials.liteLlm)
     servers.push(inference)
     await listen(inference, inferencePort)
+    const firecrawl = createFirecrawlDouble()
+    servers.push(firecrawl)
+    await listen(firecrawl, firecrawlPort)
 
     children.push(
       startChild(
@@ -147,6 +160,7 @@ async function runBrowserSessionProof() {
                 FIRECRAWL_INSTALLED: "true",
                 FIRECRAWL_RESOURCE_PROFILE_QUALIFIED: "true",
                 FIRECRAWL_UPSTREAM_BASE_URL: "http://firecrawl-api:3002",
+                PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL: `http://127.0.0.1:${firecrawlPort}`,
               }
             : {}),
           FIRECRAWL_PUBLIC_BASE_URL: `https://${authorities.firecrawl}:${edgePort}`,
@@ -231,9 +245,15 @@ async function runBrowserSessionProof() {
       headless: true,
     })
     const context = await browser.newContext({ ignoreHTTPSErrors: true })
+    await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+      origin: consoleOrigin,
+    })
     const page = await context.newPage()
     const pageErrors = []
+    const browserMetadata = []
+    page.on("console", (message) => browserMetadata.push(message.text()))
     page.on("pageerror", (error) => pageErrors.push(error.message))
+    page.on("request", (request) => browserMetadata.push(request.url()))
     const tlsProbe = await page.goto(`https://127.0.0.1:${edgePort}/`)
     assert.equal(tlsProbe?.status(), 421)
 
@@ -249,6 +269,7 @@ async function runBrowserSessionProof() {
           consoleOrigin,
           edgePort,
           page,
+          sensitiveValues,
           synchronizeClock: async () => {
             currentTime = new Date()
             await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
@@ -256,6 +277,7 @@ async function runBrowserSessionProof() {
             })
           },
           userCredentials: credentials.admin,
+          credentialLifecycleMode,
         })
       : null
 
@@ -339,6 +361,9 @@ async function runBrowserSessionProof() {
       0,
     )
     assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
+    if (credentialLifecycleMode && applicationFlow) {
+      await assertOperatorApplicationReadOnly(page, applicationFlow)
+    }
 
     await page.goto(`${consoleOrigin}/`)
     await page.getByRole("button", { name: "Sign out" }).click()
@@ -347,6 +372,16 @@ async function runBrowserSessionProof() {
     assert.equal(new URL(page.url()).pathname, "/auth/signin")
     assert.equal(new URL(page.url()).searchParams.get("returnTo"), "/inference")
     assert.deepEqual(pageErrors, [])
+    assertNoSensitiveValues(
+      browserMetadata,
+      sensitiveValues,
+      "browser metadata",
+    )
+    await page.evaluate(async () => navigator.clipboard.writeText(""))
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), "")
+    await page.screenshot({
+      path: join(stateRoot, "credential-free-final.png"),
+    })
     await context.close()
 
     const browserVersion = browser.version()
@@ -356,9 +391,11 @@ async function runBrowserSessionProof() {
       architecture: process.arch,
       browser: { name: "Google Chrome", version: browserVersion },
       credentialMaterialPrinted: false,
-      evidenceClass: applicationsMode
-        ? "LOCAL_BROWSER_APPLICATION_FLOW_ONLY"
-        : "LOCAL_BROWSER_SESSION_AND_ROLE_FLOW_ONLY",
+      evidenceClass: credentialLifecycleMode
+        ? "LOCAL_BROWSER_CREDENTIAL_LIFECYCLE_ONLY"
+        : applicationsMode
+          ? "LOCAL_BROWSER_APPLICATION_FLOW_ONLY"
+          : "LOCAL_BROWSER_SESSION_AND_ROLE_FLOW_ONLY",
       ...(applicationFlow ? { flow: applicationFlow } : {}),
       limitations: [
         "In-memory Console session storage is not PostgreSQL restart-persistence evidence.",
@@ -384,6 +421,13 @@ async function runBrowserSessionProof() {
               "Admin creates an Application and receives separate one-time inference and Firecrawl credentials through the actual Console UI",
               "a standard OpenAI-compatible client reaches the Product API authority and updates passive connection, usage, and last-use evidence",
               "Firecrawl is disabled by default and requires explicit disclaimer acknowledgement for the selected Application",
+              ...(credentialLifecycleMode
+                ? [
+                    "Admin rotates and revokes inference and Firecrawl credentials through the Console while exact Application isolation remains enforced",
+                    "one-time secrets leave subsequent DOM, history, copied UI state, browser metadata, screenshots, and teardown artifacts",
+                    "Operator remains read-only across Application and credential lifecycle surfaces",
+                  ]
+                : []),
             ]
           : []),
       ],
@@ -398,6 +442,7 @@ async function runBrowserSessionProof() {
       })
     }
   } catch (error) {
+    const safeError = sanitizedError(error, sensitiveValues)
     const bffDiagnostics = await readFile(
       join(stateRoot, "bff.stderr.log"),
       "utf8",
@@ -422,17 +467,16 @@ async function runBrowserSessionProof() {
     ]
     failure = diagnostics.length
       ? new AggregateError(
-          [error, ...diagnostics],
+          [safeError, ...diagnostics],
           "F0-S1 browser proof failed.",
         )
-      : error
+      : safeError
   } finally {
     await browser?.close().catch(() => undefined)
     const cleanup = await Promise.allSettled([
       ...servers.map(closeServer),
       ...children.map(stopChild),
     ])
-    await rm(stateRoot, { force: true, recursive: true })
     const failures = cleanup
       .filter((result) => result.status === "rejected")
       .map((result) => result.reason)
@@ -441,6 +485,22 @@ async function runBrowserSessionProof() {
         failure ? [failure, ...failures] : failures,
         "F0-S1 cleanup did not complete.",
       )
+    }
+    if (failures.length === 0 && sensitiveValues.length > 0) {
+      try {
+        await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
+      } catch (error) {
+        failure = failure
+          ? new AggregateError(
+              [failure, error],
+              "F0-U2 secret-retention verification failed.",
+            )
+          : error
+      }
+    }
+    await rm(stateRoot, { force: true, recursive: true })
+    if (await exists(stateRoot)) {
+      failure = new Error("F0-U2 temporary state was not removed.")
     }
   }
   if (failure) {
@@ -476,12 +536,13 @@ async function completeIdentityLogin(page, userCredentials) {
   await page.getByLabel("Password").fill(userCredentials.password)
   await page.getByRole("button", { name: "Sign in" }).click()
   const navigation = page.locator("nav[aria-label='Console navigation']")
-  if ((await navigation.count()) !== 1) {
+  try {
+    await navigation.waitFor({ timeout: 10_000 })
+  } catch {
     throw new Error(
       `Console navigation was not rendered after identity callback at ${page.url()}: ${(await page.locator("body").innerText()).slice(0, 500)}`,
     )
   }
-  await navigation.waitFor()
 }
 
 async function assertRole(page, label) {
@@ -518,8 +579,10 @@ async function assertConsoleNavigation(page, consoleOrigin) {
 async function proveApplicationConsoleFlow({
   certificate,
   consoleOrigin,
+  credentialLifecycleMode,
   edgePort,
   page,
+  sensitiveValues,
   synchronizeClock,
   userCredentials,
 }) {
@@ -568,6 +631,8 @@ async function proveApplicationConsoleFlow({
   }
 
   const inferenceCredential = await revealedCredential(page, "API key")
+  const inferenceCredentialId = await revealedCredential(page, "Credential ID")
+  sensitiveValues.push(inferenceCredential)
   assertCredentialFormat(
     inferenceCredential,
     /^llmm_t4_[0-9a-f]{18}_[A-Za-z0-9_-]{43}$/,
@@ -651,6 +716,11 @@ async function proveApplicationConsoleFlow({
     page,
     "Firecrawl API key",
   )
+  const firecrawlCredentialId = await revealedCredential(
+    page,
+    "Firecrawl credential ID",
+  )
+  sensitiveValues.push(firecrawlCredential)
   assertCredentialFormat(
     firecrawlCredential,
     /^llmm_fc_[0-9a-f]{16}_[A-Za-z0-9_-]{43}$/,
@@ -664,6 +734,21 @@ async function proveApplicationConsoleFlow({
     `https://${authorities.firecrawl}:${edgePort}`,
   )
 
+  if (credentialLifecycleMode) {
+    await page.getByRole("button", { name: "Copy Firecrawl API key" }).click()
+    await page
+      .getByRole("button", { name: "Copy Firecrawl API key" })
+      .getByText("Copied")
+      .waitFor()
+    assert.equal(
+      await page.evaluate(() => navigator.clipboard.readText()),
+      firecrawlCredential,
+    )
+    await page.goto(`${consoleOrigin}/applications`)
+    await page.goBack()
+    await assertSecretsAbsentFromPage(page, sensitiveValues)
+  }
+
   await page.goto(`${consoleOrigin}/applications`)
   const applicationCard = page
     .locator("article")
@@ -673,6 +758,24 @@ async function proveApplicationConsoleFlow({
   assert.equal(await metricValue(applicationCard, "Tokens"), "5")
   assert.notEqual(await metricValue(applicationCard, "Last used"), "Never")
   assert.equal(await metricValue(applicationCard, "Firecrawl"), "Enabled")
+
+  const lifecycle = credentialLifecycleMode
+    ? await proveCredentialLifecycle({
+        certificate,
+        consoleOrigin,
+        edgePort,
+        firstApplication: {
+          detailPath,
+          firecrawlCredential,
+          firecrawlCredentialId,
+          inferenceCredential,
+          inferenceCredentialId,
+          name: applicationName,
+        },
+        page,
+        sensitiveValues,
+      })
+    : null
 
   return {
     applicationCreation: "passed",
@@ -693,6 +796,431 @@ async function proveApplicationConsoleFlow({
     },
     mfaElevation: "passed",
     oneTimeReveal: "passed",
+    ...(lifecycle ? { lifecycle } : {}),
+  }
+}
+
+async function proveCredentialLifecycle({
+  certificate,
+  consoleOrigin,
+  edgePort,
+  firstApplication,
+  page,
+  sensitiveValues,
+}) {
+  await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
+
+  await page.getByRole("button", { name: "Rotate credentials" }).click()
+  const inferenceRotation = page.getByRole("dialog", {
+    name: "Rotate Application credential?",
+  })
+  await inferenceRotation.getByRole("button", { name: "Rotate" }).click()
+  await page.getByRole("heading", { name: "Rotated credential" }).waitFor()
+  await page.getByText("exact 24-hour overlap", { exact: false }).waitFor()
+  const rotatedInferenceCredential = await revealedCredential(page, "API key")
+  const rotatedInferenceCredentialId = await revealedCredential(
+    page,
+    "Credential ID",
+  )
+  assertCredentialFormat(
+    rotatedInferenceCredential,
+    /^llmm_t4_[0-9a-f]{18}_[A-Za-z0-9_-]{43}$/,
+    "rotated inference",
+  )
+  sensitiveValues.push(rotatedInferenceCredential)
+  await assertInferenceCredentialAccepted({
+    certificate,
+    credential: firstApplication.inferenceCredential,
+    edgePort,
+  })
+  await assertInferenceCredentialAccepted({
+    certificate,
+    credential: rotatedInferenceCredential,
+    edgePort,
+  })
+  await page.getByRole("button", { name: "Check connection" }).click()
+  await page
+    .getByText("A real authenticated client reached", { exact: false })
+    .waitFor()
+  await assertCredentialCard(page, firstApplication.inferenceCredentialId, {
+    lastUse: "used",
+    status: "Retiring",
+  })
+  await assertCredentialCard(page, rotatedInferenceCredentialId, {
+    age: "Issued today",
+    status: "Active",
+  })
+
+  await page
+    .getByRole("button", { name: "Rotate Firecrawl credential" })
+    .click()
+  const firecrawlRotation = page.getByRole("dialog", {
+    name: "Rotate Firecrawl credential?",
+  })
+  await firecrawlRotation
+    .getByRole("button", { name: "Rotate Firecrawl key" })
+    .click()
+  await page
+    .getByRole("heading", { name: "Rotated Firecrawl credential" })
+    .waitFor()
+  const rotatedFirecrawlCredential = await revealedCredential(
+    page,
+    "Firecrawl API key",
+  )
+  const rotatedFirecrawlCredentialId = await revealedCredential(
+    page,
+    "Firecrawl credential ID",
+  )
+  assertCredentialFormat(
+    rotatedFirecrawlCredential,
+    /^llmm_fc_[0-9a-f]{16}_[A-Za-z0-9_-]{43}$/,
+    "rotated Firecrawl",
+  )
+  sensitiveValues.push(rotatedFirecrawlCredential)
+  await assertFirecrawlCredentialAccepted({
+    certificate,
+    credential: firstApplication.firecrawlCredential,
+    edgePort,
+  })
+  await assertFirecrawlCredentialAccepted({
+    certificate,
+    credential: rotatedFirecrawlCredential,
+    edgePort,
+  })
+  await page.getByRole("button", { name: "Check Firecrawl connection" }).click()
+  await page
+    .getByText(
+      "A real authenticated Firecrawl gateway connection was observed",
+      {
+        exact: false,
+      },
+    )
+    .waitFor()
+  await assertCredentialCard(page, firstApplication.firecrawlCredentialId, {
+    lastUse: "used",
+    status: "Retiring",
+  })
+  await assertCredentialCard(page, rotatedFirecrawlCredentialId, {
+    age: "Issued today",
+    status: "Active",
+  })
+
+  await page.goto(`${consoleOrigin}/applications/apps/new`)
+  const secondName = `Isolated browser client ${randomBytes(4).toString("hex")}`
+  await submitApplicationCreate(page, secondName)
+  await page.getByRole("heading", { name: "Application credential" }).waitFor()
+  const secondInferenceCredential = await revealedCredential(page, "API key")
+  const secondInferenceCredentialId = await revealedCredential(
+    page,
+    "Credential ID",
+  )
+  sensitiveValues.push(secondInferenceCredential)
+  const secondDetailPath = await page
+    .getByRole("link", { name: "View application" })
+    .getAttribute("href")
+  assert.match(secondDetailPath ?? "", /^\/applications\/apps\/app-/)
+  await page.getByRole("link", { name: "View application" }).click()
+  await page.getByRole("button", { name: "Enable Firecrawl" }).click()
+  await page
+    .getByLabel(
+      /I understand that enabling Firecrawl permits outbound web requests/,
+    )
+    .check()
+  await page.getByRole("button", { name: "Enable Firecrawl" }).click()
+  await page.getByRole("heading", { name: "Firecrawl credential" }).waitFor()
+  const secondFirecrawlCredential = await revealedCredential(
+    page,
+    "Firecrawl API key",
+  )
+  const secondFirecrawlCredentialId = await revealedCredential(
+    page,
+    "Firecrawl credential ID",
+  )
+  sensitiveValues.push(secondFirecrawlCredential)
+
+  await assertInferenceCredentialAccepted({
+    certificate,
+    credential: secondInferenceCredential,
+    edgePort,
+  })
+  await assertFirecrawlCredentialAccepted({
+    certificate,
+    credential: secondFirecrawlCredential,
+    edgePort,
+  })
+  await assertCrossApplicationMutationDenied({
+    foreignCredentialId: firstApplication.inferenceCredentialId,
+    ownCredentialId: secondInferenceCredentialId,
+    page,
+    type: "inference",
+  })
+  await assertCrossApplicationMutationDenied({
+    foreignCredentialId: firstApplication.firecrawlCredentialId,
+    ownCredentialId: secondFirecrawlCredentialId,
+    page,
+    type: "firecrawl",
+  })
+  await assertInferenceCredentialAccepted({
+    certificate,
+    credential: secondInferenceCredential,
+    edgePort,
+  })
+  await assertFirecrawlCredentialAccepted({
+    certificate,
+    credential: secondFirecrawlCredential,
+    edgePort,
+  })
+
+  await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
+  await revokeCredentialThroughUi(
+    page,
+    firstApplication.firecrawlCredentialId,
+    "Revoke Firecrawl key",
+  )
+  await revokeCredentialThroughUi(
+    page,
+    rotatedFirecrawlCredentialId,
+    "Revoke Firecrawl key",
+  )
+  await revokeCredentialThroughUi(
+    page,
+    firstApplication.inferenceCredentialId,
+    "Revoke now",
+  )
+  await revokeCredentialThroughUi(
+    page,
+    rotatedInferenceCredentialId,
+    "Revoke now",
+  )
+
+  for (const credential of [
+    firstApplication.inferenceCredential,
+    rotatedInferenceCredential,
+  ]) {
+    await assertCredentialDenied({
+      authority: authorities.api,
+      body: undefined,
+      certificate,
+      credential,
+      edgePort,
+      path: "/v1/models",
+    })
+  }
+  for (const credential of [
+    firstApplication.firecrawlCredential,
+    rotatedFirecrawlCredential,
+  ]) {
+    await assertCredentialDenied({
+      authority: authorities.firecrawl,
+      body: { limit: 1, query: "post-revocation fixture query" },
+      certificate,
+      credential,
+      edgePort,
+      path: "/v2/search",
+    })
+  }
+  await assertInferenceCredentialAccepted({
+    certificate,
+    credential: secondInferenceCredential,
+    edgePort,
+  })
+  await assertFirecrawlCredentialAccepted({
+    certificate,
+    credential: secondFirecrawlCredential,
+    edgePort,
+  })
+
+  await page.goto(`${consoleOrigin}/applications`)
+  await assertSecretsAbsentFromPage(page, sensitiveValues)
+
+  return {
+    ageAndLastUse: "passed",
+    crossApplicationMutationDenial: "passed",
+    exactStaticOverlapSeconds: 86_400,
+    firecrawlRotationAndRevocation: "passed",
+    inferenceRotationAndRevocation: "passed",
+    operatorPaths: [firstApplication.detailPath, secondDetailPath],
+    secondApplicationIsolation: "passed",
+    secretDomAndHistoryRetention: "none",
+  }
+}
+
+async function assertInferenceCredentialAccepted({
+  certificate,
+  credential,
+  edgePort,
+}) {
+  const response = await requestJsonThroughEdge({
+    authority: authorities.api,
+    bearerToken: credential,
+    caFile: certificate.ca,
+    edgePort,
+    method: "GET",
+    path: "/v1/models",
+  })
+  assert.equal(response.status, 200, "An expected inference credential failed.")
+}
+
+async function assertFirecrawlCredentialAccepted({
+  certificate,
+  credential,
+  edgePort,
+}) {
+  const response = await requestJsonThroughEdge({
+    authority: authorities.firecrawl,
+    bearerToken: credential,
+    body: { limit: 1, query: "deterministic lifecycle query" },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/v2/search",
+  })
+  assert.equal(response.status, 200, "An expected Firecrawl credential failed.")
+}
+
+async function assertCredentialDenied({
+  authority,
+  body,
+  certificate,
+  credential,
+  edgePort,
+  path,
+}) {
+  const response = await requestJsonThroughEdge({
+    authority,
+    bearerToken: credential,
+    body,
+    caFile: certificate.ca,
+    edgePort,
+    method: body ? "POST" : "GET",
+    path,
+  })
+  assert.equal(response.status, 401, "A revoked credential was accepted.")
+}
+
+async function assertCredentialCard(page, credentialId, expected) {
+  const card = page.locator("article").filter({ hasText: credentialId })
+  await card.waitFor()
+  let text = ""
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    text = await card.innerText()
+    if (text.split("\n").includes(expected.status)) {
+      break
+    }
+    await page.waitForTimeout(100)
+  }
+  if (!text.split("\n").includes(expected.status)) {
+    throw new Error(
+      `Credential metadata did not reach ${expected.status}: ${safeDiagnosticTail(text)}`,
+    )
+  }
+  if (expected.age) {
+    assert.equal(await metricValue(card, "Age"), expected.age)
+  }
+  if (expected.lastUse === "used") {
+    if ((await metricValue(card, "Last use")) === "Never") {
+      throw new Error(
+        `Credential last-use metadata remained empty: ${safeDiagnosticTail(text)}`,
+      )
+    }
+  }
+}
+
+async function assertCrossApplicationMutationDenied({
+  foreignCredentialId,
+  ownCredentialId,
+  page,
+  type,
+}) {
+  const buttonName =
+    type === "firecrawl" ? "Revoke Firecrawl key" : "Revoke now"
+  const ownCard = page.locator("article").filter({ hasText: ownCredentialId })
+  await ownCard.getByRole("button", { name: buttonName }).click()
+  const dialog = page.getByRole("dialog", {
+    name:
+      type === "firecrawl"
+        ? "Revoke Firecrawl credential?"
+        : "Revoke credential now?",
+  })
+  await dialog
+    .locator('input[name="credentialId"]')
+    .evaluate((input, value) => {
+      input.value = String(value)
+    }, foreignCredentialId)
+  await dialog.getByRole("button", { name: buttonName }).click()
+  await page
+    .locator("output")
+    .filter({ hasText: /not found|revocation failed/i })
+    .last()
+    .waitFor()
+  await assertCredentialCard(page, ownCredentialId, { status: "Active" })
+}
+
+async function revokeCredentialThroughUi(page, credentialId, buttonName) {
+  const card = page.locator("article").filter({ hasText: credentialId })
+  await card.getByRole("button", { name: buttonName }).click()
+  const dialog = page.getByRole("dialog", {
+    name:
+      buttonName === "Revoke Firecrawl key"
+        ? "Revoke Firecrawl credential?"
+        : "Revoke credential now?",
+  })
+  await dialog.getByRole("button", { name: buttonName }).click()
+  await page
+    .locator("output")
+    .filter({
+      hasText:
+        buttonName === "Revoke Firecrawl key"
+          ? "Firecrawl key revoked."
+          : "Credential revoked immediately.",
+    })
+    .last()
+    .waitFor()
+  await assertCredentialCard(page, credentialId, { status: "Revoked" })
+}
+
+async function assertSecretsAbsentFromPage(page, sensitiveValues) {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      const content = await page.content()
+      assertNoSensitiveValues(
+        [content, page.url()],
+        sensitiveValues,
+        "browser DOM",
+      )
+      return
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.includes("page is navigating") ||
+        attempt === 9
+      ) {
+        throw error
+      }
+      await page.waitForTimeout(100)
+    }
+  }
+}
+
+async function assertOperatorApplicationReadOnly(page, applicationFlow) {
+  for (const path of applicationFlow.lifecycle.operatorPaths) {
+    await page.goto(new URL(path, page.url()).toString())
+    await page
+      .getByText("Operator access is read-only.", { exact: false })
+      .first()
+      .waitFor()
+    for (const name of [
+      "Check connection",
+      "Rotate credentials",
+      "Revoke now",
+      "Disable app",
+      "Check Firecrawl connection",
+      "Rotate Firecrawl credential",
+      "Revoke Firecrawl key",
+      "Disable Firecrawl",
+    ]) {
+      assert.equal(await page.getByRole("button", { name }).count(), 0)
+    }
   }
 }
 
@@ -832,6 +1360,17 @@ function createDevelopmentEdge({
         )
         return
       }
+      if (host === authorities.firecrawl && applicationsMode) {
+        proxyRequest(
+          request,
+          response,
+          bffPort,
+          url.pathname + url.search,
+          edgePort,
+          true,
+        )
+        return
+      }
       if (host === authorities.api || host === authorities.firecrawl) {
         sendJson(response, 404, { error: "surface_not_used_by_f0_s1" })
         return
@@ -950,6 +1489,65 @@ function createInferenceDouble(apiKey) {
         response.destroy()
       }
     })
+  })
+}
+
+function createFirecrawlDouble() {
+  return createHttpServer((request, response) => {
+    void handleFirecrawlDoubleRequest(request, response).catch(() => {
+      if (!response.headersSent) {
+        sendJson(response, 500, { error: "fixture_failure" })
+      } else {
+        response.destroy()
+      }
+    })
+  })
+}
+
+async function handleFirecrawlDoubleRequest(request, response) {
+  if (
+    request.method !== "POST" ||
+    (request.url !== "/v2/search" && request.url !== "/v2/scrape")
+  ) {
+    sendJson(response, 404, { error: "unsupported" })
+    return
+  }
+  if (request.headers.authorization || request.headers.cookie) {
+    sendJson(response, 400, { error: "credential_forwarding_forbidden" })
+    return
+  }
+  const body = await readJsonRequest(request)
+  if (
+    !body ||
+    (request.url === "/v2/search"
+      ? typeof body.query !== "string"
+      : typeof body.url !== "string" ||
+        new URL(body.url).hostname !== "allowed.example.test")
+  ) {
+    sendJson(response, 400, { error: "invalid_fixture_request" })
+    return
+  }
+  sendJson(response, 200, {
+    data:
+      request.url === "/v2/search"
+        ? {
+            web: [
+              {
+                description: "Deterministic search description",
+                title: "Deterministic search result",
+                url: "https://allowed.example.test/result",
+              },
+            ],
+          }
+        : {
+            markdown: "# Deterministic scrape result",
+            metadata: {
+              sourceURL: "https://allowed.example.test/page",
+              statusCode: 200,
+              title: "Deterministic scrape result",
+            },
+          },
+    success: true,
   })
 }
 
@@ -1427,4 +2025,58 @@ function safeDiagnosticTail(value) {
     .slice(-4_000)
     .replaceAll(/Bearer\s+[^\s"']+/gi, "Bearer [redacted]")
     .replaceAll(/[A-Za-z0-9_-]{43,}/g, "[opaque]")
+}
+
+function sanitizedError(error, sensitiveValues) {
+  const source =
+    error instanceof Error ? (error.stack ?? error.message) : String(error)
+  let message = safeDiagnosticTail(source)
+  for (const sensitiveValue of sensitiveValues) {
+    message = message.replaceAll(sensitiveValue, "[credential]")
+  }
+  return new Error(message)
+}
+
+function assertNoSensitiveValues(values, sensitiveValues, surface) {
+  for (const value of values) {
+    for (const sensitiveValue of sensitiveValues) {
+      if (String(value).includes(sensitiveValue)) {
+        throw new Error(`F0-U2 retained credential material in ${surface}.`)
+      }
+    }
+  }
+}
+
+async function assertStateFilesCredentialFree(root, sensitiveValues) {
+  const pending = [root]
+  while (pending.length > 0) {
+    const directory = pending.pop()
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) {
+        pending.push(path)
+        continue
+      }
+      if (!entry.isFile()) {
+        continue
+      }
+      const content = await readFile(path)
+      for (const sensitiveValue of sensitiveValues) {
+        if (content.includes(Buffer.from(sensitiveValue))) {
+          throw new Error(
+            "F0-U2 retained credential material in a teardown artifact.",
+          )
+        }
+      }
+    }
+  }
+}
+
+async function exists(path) {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
 }

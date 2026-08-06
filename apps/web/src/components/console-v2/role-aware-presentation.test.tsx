@@ -56,7 +56,7 @@ afterEach(() => {
 })
 
 describe("role-aware Console presentation", () => {
-  it("keeps Operator Application reads and credential lifecycle actions without create", () => {
+  it("keeps Operator Application access read-only", () => {
     const { rerender } = render(
       <ApplicationsV2Experience
         accessRole="operator"
@@ -79,13 +79,16 @@ describe("role-aware Console presentation", () => {
     )
 
     expect(
-      screen.getByRole("button", { name: "Check connection" }),
-    ).toBeTruthy()
+      screen.queryByRole("button", { name: "Check connection" }),
+    ).toBeNull()
     expect(
-      screen.getByRole("button", { name: "Rotate credentials" }),
+      screen.queryByRole("button", { name: "Rotate credentials" }),
+    ).toBeNull()
+    expect(screen.queryByRole("button", { name: "Disable app" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Revoke now" })).toBeNull()
+    expect(
+      screen.getByText("Operator access is read-only.", { exact: false }),
     ).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Disable app" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Revoke now" })).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Edit policy" })).toBeNull()
     expect(screen.queryByRole("button", { name: "Delete app" })).toBeNull()
 
