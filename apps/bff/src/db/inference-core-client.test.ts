@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it, vi } from "vitest"
 import {
   INFERENCE_CORE_POSTGRES_OPTIONS,
+  INFERENCE_CORE_READINESS_TIMEOUT_MS,
   type InferenceCoreDatabase,
   type InferenceCoreTransaction,
+  checkInferenceCoreDbReadiness,
   runInferenceCoreReadSnapshot,
 } from "./inference-core-client"
 
@@ -18,6 +20,23 @@ describe("Inference Core PostgreSQL client bounds", () => {
       },
       max: 5,
     })
+    expect(INFERENCE_CORE_READINESS_TIMEOUT_MS).toBe(5_000)
+  })
+
+  it("fails readiness closed when PostgreSQL does not answer", async () => {
+    vi.useFakeTimers()
+    try {
+      const database = {
+        transaction: vi.fn(() => new Promise(() => undefined)),
+      } as unknown as InferenceCoreDatabase
+      const readiness = checkInferenceCoreDbReadiness(database)
+
+      await vi.advanceTimersByTimeAsync(INFERENCE_CORE_READINESS_TIMEOUT_MS)
+
+      await expect(readiness).resolves.toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("uses a read-only repeatable-read transaction for multi-query projections", async () => {

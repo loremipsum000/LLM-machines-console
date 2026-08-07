@@ -23,7 +23,7 @@
   "protectedFiles": [
     {
       "path": "package.json",
-      "sha256": "d3bbeae75bebc939685c6addd18ca6e1c126dda62e65ee460fd3482b8a5613b1"
+      "sha256": "593deef1d5dfff0d152c2e17cb25f45659c40b5d5305e0826fa9778872ab1cbc"
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",

@@ -2,11 +2,14 @@ import { randomBytes } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { request as httpsRequest } from "node:https"
 import { createConsoleSessionCipher } from "../../apps/bff/src/auth/console-session-crypto"
+import { cipherFromSerializedKeyring } from "../../apps/bff/src/auth/console-session-keyring"
 import { createConsoleTokenValidator } from "../../apps/bff/src/auth/console-session-token-validator"
+import { getInferenceCoreDb } from "../../apps/bff/src/db/inference-core-client"
 import { buildServer } from "../../apps/bff/src/index"
 import { createConsoleOidcClient } from "../../apps/bff/src/services/console-session-oidc"
 import { ConsoleSessionService } from "../../apps/bff/src/services/console-session-service"
 import { TestOnlyInMemoryConsoleSessionRepository } from "../../apps/bff/src/services/console-session-store"
+import { DrizzleConsoleSessionRepository } from "../../apps/bff/src/services/console-session-store-drizzle"
 
 if (
   process.env.NODE_ENV !== "test" ||
@@ -22,6 +25,13 @@ const clientId = required("F0_S1_OIDC_CLIENT_ID")
 const clientSecret = required("F0_S1_OIDC_CLIENT_SECRET")
 const audience = required("F0_S1_OIDC_AUDIENCE")
 const internalServiceCredential = required("BFF_SERVICE_API_KEY")
+const postgresPersistence = process.env.F0_P1_POSTGRES_PERSISTENCE === "true"
+if (
+  process.env.F0_P1_POSTGRES_PERSISTENCE !== undefined &&
+  !postgresPersistence
+) {
+  throw new Error("F0-P1 PostgreSQL persistence must be explicitly true.")
+}
 const firecrawlFixtureUpstream = optionalLoopbackUrl(
   process.env.PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL,
 )
@@ -30,10 +40,14 @@ const localIdentityFetch = createLoopbackIdentityFetch(
   issuer,
   required("F0_S1_CA_FILE"),
 )
-const cipher = createConsoleSessionCipher({
-  activeKid: "f0-s1-throwaway",
-  keys: { "f0-s1-throwaway": randomBytes(32) },
-})
+const cipher = postgresPersistence
+  ? cipherFromSerializedKeyring(
+      readFileSync(required("F0_P1_SESSION_KEYRING_FILE")),
+    )
+  : createConsoleSessionCipher({
+      activeKid: "f0-s1-throwaway",
+      keys: { "f0-s1-throwaway": randomBytes(32) },
+    })
 const now = () => new Date(readFileSync(clockFile, "utf8").trim())
 const rawOidc = createConsoleOidcClient(
   {
@@ -84,7 +98,9 @@ const validator = {
   verify: rawValidator.verify,
 }
 const service = new ConsoleSessionService(
-  new TestOnlyInMemoryConsoleSessionRepository(),
+  postgresPersistence
+    ? new DrizzleConsoleSessionRepository(requiredInferenceCoreDb())
+    : new TestOnlyInMemoryConsoleSessionRepository(),
   cipher,
   oidc,
   validator,
@@ -102,6 +118,18 @@ const service = new ConsoleSessionService(
   { clientId, issuer },
   now,
 )
+const rawBeginLogin = service.beginLogin.bind(service)
+service.beginLogin = async (returnTo) => {
+  try {
+    return await rawBeginLogin(returnTo)
+  } catch (error) {
+    const metadata = postgresErrorMetadata(error)
+    process.stderr.write(
+      `${JSON.stringify({ event: "login_storage_failure", ...metadata })}\n`,
+    )
+    throw error
+  }
+}
 const rawBeginElevation = service.beginElevation.bind(service)
 service.beginElevation = async (input) => {
   process.stderr.write(`${JSON.stringify({ event: "elevation_begin" })}\n`)
@@ -158,6 +186,14 @@ await server.listen({
   port: Number.parseInt(process.env.PORT ?? "4001", 10),
 })
 
+function requiredInferenceCoreDb() {
+  const database = getInferenceCoreDb()
+  if (!database) {
+    throw new Error("F0-P1 requires a disposable PostgreSQL database.")
+  }
+  return database
+}
+
 function required(name: string): string {
   const value = process.env[name]?.trim()
   if (!value) {
@@ -195,6 +231,57 @@ function fixtureEvent(
   process.stderr.write(
     `${JSON.stringify({ event, reason: result.reason, state: result.state })}\n`,
   )
+}
+
+function postgresErrorMetadata(error: unknown): {
+  code: string
+  constraint: string
+  name: string
+} {
+  const value = nestedErrorWithPostgresMetadata(error)
+  if (!value) {
+    return {
+      code: "unknown",
+      constraint: "unknown",
+      name: "unknown",
+    }
+  }
+  return {
+    code: typeof value.code === "string" ? value.code : "unknown",
+    constraint:
+      typeof value.constraint === "string" ? value.constraint : "unknown",
+    name: typeof value.name === "string" ? value.name : "unknown",
+  }
+}
+
+function nestedErrorWithPostgresMetadata(error: unknown): {
+  cause?: unknown
+  code?: unknown
+  constraint?: unknown
+  name?: unknown
+} | null {
+  let current = error
+  for (let depth = 0; depth < 4; depth += 1) {
+    if (!current || typeof current !== "object") {
+      return null
+    }
+    const value = current as {
+      cause?: unknown
+      code?: unknown
+      constraint?: unknown
+      name?: unknown
+    }
+    if (
+      typeof value.code === "string" ||
+      typeof value.constraint === "string"
+    ) {
+      return value
+    }
+    current = value.cause
+  }
+  return error && typeof error === "object"
+    ? (error as { cause?: unknown; name?: unknown })
+    : null
 }
 
 function createLoopbackIdentityFetch(
