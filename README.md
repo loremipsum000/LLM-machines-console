@@ -78,8 +78,20 @@ Application, display safe age and last-use metadata, and prove that one-time
 secrets do not survive in later DOM, browser history, copied Console state,
 errors, logs, screenshots, or teardown artifacts. Application credential
 testing, rotation, revocation, and disabling are Admin-only; Operator access is
-read-only. This remains a disposable in-memory proof. F0-P1 must separately
-prove PostgreSQL-backed persistence and restart behavior.
+read-only. F0-P1 supersedes the in-memory persistence limitation without
+rewriting the F0-U2 evidence.
+
+Run
+`PRE_GENESIS_DOCKER_CONTEXT=<isolated-context> corepack pnpm run test:pre-genesis:postgres-persistence`
+for the bounded F0-P1 persistence proof. It creates a labeled disposable
+PostgreSQL 17.6 container and volume with generated throwaway credentials,
+applies the real Product migration, starts actual Console Web and BFF, and
+replays the browser credential lifecycle across a controlled BFF restart. It
+also proves encrypted opaque-session persistence, bounded degraded readiness
+during a database outage, recovery without state corruption, metadata-only
+audit storage, retention-canary absence, and exact cleanup. The Docker context
+must be isolated from existing workloads. This is not exact-Core, VM103,
+backup/restore, real Keycloak, real SGLang, release, or Q0 evidence.
 
 ## Security
 

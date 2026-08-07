@@ -35,6 +35,7 @@ export const INFERENCE_CORE_POSTGRES_OPTIONS = {
   },
   max: 5,
 } as const
+export const INFERENCE_CORE_READINESS_TIMEOUT_MS = 5_000
 
 export function getInferenceCoreDb(): ReturnType<
   typeof drizzle<typeof schema>
@@ -60,7 +61,7 @@ export async function checkInferenceCoreDbReadiness(
   }
 
   try {
-    return await database.transaction(async (transaction) => {
+    const readiness = database.transaction(async (transaction) => {
       await transaction.execute(sql`SET LOCAL statement_timeout = '3s'`)
       const result = await transaction.execute(sql`
         SELECT count(*)::integer AS missing_relations
@@ -108,8 +109,26 @@ export async function checkInferenceCoreDbReadiness(
         | undefined
       return Number(row?.missing_relations) === 0
     })
+    return await boundedReadiness(readiness)
   } catch {
     return false
+  }
+}
+
+async function boundedReadiness(readiness: Promise<boolean>): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      readiness,
+      new Promise<false>((resolve) => {
+        timer = setTimeout(
+          () => resolve(false),
+          INFERENCE_CORE_READINESS_TIMEOUT_MS,
+        )
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 }
 

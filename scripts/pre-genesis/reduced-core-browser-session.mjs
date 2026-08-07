@@ -30,10 +30,16 @@ import { fileURLToPath } from "node:url"
 import { chromium } from "playwright-core"
 import { createOidcFixture } from "./reduced-core-oidc-fixture.mjs"
 
-const credentialLifecycleMode = process.argv.includes("--credential-lifecycle")
+const postgresPersistenceMode = process.argv.includes("--postgres-persistence")
+const credentialLifecycleMode =
+  process.argv.includes("--credential-lifecycle") || postgresPersistenceMode
 const applicationsMode =
   process.argv.includes("--applications") || credentialLifecycleMode
-const supportedModes = new Set(["--applications", "--credential-lifecycle"])
+const supportedModes = new Set([
+  "--applications",
+  "--credential-lifecycle",
+  "--postgres-persistence",
+])
 const selectedModes = process.argv.slice(2)
 
 if (
@@ -42,11 +48,14 @@ if (
   selectedModes.length > 1
 ) {
   throw new Error(
-    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle]",
+    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--postgres-persistence]",
   )
 }
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
+const postgresControl = postgresPersistenceMode
+  ? postgresControlFromEnvironment()
+  : null
 const initialTime = applicationsMode
   ? new Date(Date.now() - 10 * 60 * 1000)
   : new Date("2026-08-05T10:00:00.000Z")
@@ -74,11 +83,16 @@ async function runBrowserSessionProof() {
   const children = []
   const servers = []
   let browser
+  let page
   let currentTime = new Date(initialTime)
   let evidence
   let failure
   let oidc
+  let postgresOutageEvidence = null
+  let postgresPersistenceEvidence = null
   const sensitiveValues = []
+  const browserResponses = []
+  const identityFixtureFailures = []
   const observedOrigins = []
   const tlsErrors = []
   try {
@@ -101,6 +115,45 @@ async function runBrowserSessionProof() {
       liteLlm: opaqueValue(),
       oidcClient: opaqueValue(),
     }
+    const retentionCanaries = postgresPersistenceMode
+      ? {
+          prompt: `f0p1-prompt-${opaqueValue()}`,
+          request: `f0p1-request-${opaqueValue()}`,
+          response: `f0p1-response-${opaqueValue()}`,
+          secret: `f0p1-secret-${opaqueValue()}`,
+        }
+      : null
+    const sessionKeyMaterial = postgresPersistenceMode
+      ? randomBytes(32).toString("base64")
+      : null
+    const sessionKeyringFile = join(stateRoot, "f0-p1-session-keyring.json")
+    if (sessionKeyMaterial) {
+      await writeFile(
+        sessionKeyringFile,
+        `${JSON.stringify({
+          activeKid: "f0-p1-throwaway",
+          keys: [
+            {
+              kid: "f0-p1-throwaway",
+              material: sessionKeyMaterial,
+              status: "active",
+            },
+          ],
+          version: 1,
+        })}\n`,
+        { mode: 0o600 },
+      )
+      sensitiveValues.push(
+        credentials.admin.password,
+        credentials.operator.password,
+        credentials.bffService,
+        credentials.liteLlm,
+        credentials.oidcClient,
+        sessionKeyMaterial,
+        decodeURIComponent(new URL(postgresControl.databaseUrl).password),
+        ...Object.values(retentionCanaries),
+      )
+    }
     const clientId = "console-web"
     const audience = "console-bff"
     oidc = createOidcFixture({
@@ -113,73 +166,118 @@ async function runBrowserSessionProof() {
       users: { admin: credentials.admin, operator: credentials.operator },
     })
 
-    const inference = createInferenceDouble(credentials.liteLlm)
+    const inference = createInferenceDouble(
+      credentials.liteLlm,
+      retentionCanaries?.response ?? "fixture-response",
+    )
     servers.push(inference)
     await listen(inference, inferencePort)
     const firecrawl = createFirecrawlDouble()
     servers.push(firecrawl)
     await listen(firecrawl, firecrawlPort)
 
-    children.push(
-      startChild(
-        "bff",
-        [
-          process.execPath,
-          resolve(repositoryRoot, "apps/bff/node_modules/tsx/dist/cli.mjs"),
-          resolve(
-            repositoryRoot,
-            "scripts/pre-genesis/reduced-core-session-bff-fixture.mts",
-          ),
-        ],
-        {
-          BFF_FALLBACK_MODELS: "fixture-model",
-          BFF_FIXTURE_MODE: "true",
-          BFF_SERVICE_API_KEY: credentials.bffService,
-          ...(applicationsMode
-            ? {
-                ADMIN_LITELLM_API_KEY: credentials.liteLlm,
-                ADMIN_LITELLM_BASE_URL: `http://127.0.0.1:${inferencePort}`,
-              }
-            : {}),
-          CONNECTED_APPS_BFF_BASE_URL: `https://${authorities.api}:${edgePort}`,
-          CONNECTED_APPS_KEYCLOAK_FIXTURE: "true",
-          F0_S1_CA_FILE: certificate.ca,
-          F0_S1_CLOCK_FILE: clockFile,
-          F0_S1_CONSOLE_ORIGIN: consoleOrigin,
-          F0_S1_IDENTITY_ISSUER: identityIssuer,
-          F0_S1_OIDC_AUDIENCE: audience,
-          F0_S1_OIDC_CLIENT_ID: clientId,
-          F0_S1_OIDC_CLIENT_SECRET: credentials.oidcClient,
-          ...(applicationsMode
-            ? {
-                FIRECRAWL_APPLIANCE_KILL_SWITCH: "false",
-                FIRECRAWL_EGRESS_ALLOWED_HOSTS: "allowed.example.test",
-                FIRECRAWL_EGRESS_ALLOWLIST_DIR:
-                  "/run/llm-machines/firecrawl/local-fixture",
-                FIRECRAWL_EGRESS_POLICY_READY: "true",
-                FIRECRAWL_INSTALLED: "true",
-                FIRECRAWL_RESOURCE_PROFILE_QUALIFIED: "true",
-                FIRECRAWL_UPSTREAM_BASE_URL: "http://firecrawl-api:3002",
-                PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL: `http://127.0.0.1:${firecrawlPort}`,
-              }
-            : {}),
-          FIRECRAWL_PUBLIC_BASE_URL: `https://${authorities.firecrawl}:${edgePort}`,
-          HOST: "127.0.0.1",
-          LITELLM_KEY: credentials.liteLlm,
-          LITELLM_URL: `http://127.0.0.1:${inferencePort}`,
-          NODE_ENV: "test",
-          NODE_EXTRA_CA_CERTS: certificate.ca,
-          PORT: String(bffPort),
-          PRODUCT_API_HOST: authorities.api,
-          PRODUCT_CONSOLE_HOST: authorities.console,
-          PRODUCT_FIRECRAWL_HOST: authorities.firecrawl,
-          PRODUCT_IDENTITY_HOST: authorities.identity,
-          PUBLIC_BFF_BASE_URL: `https://${authorities.api}:${edgePort}`,
-        },
-        stateRoot,
+    const bffEnvironment = {
+      BFF_FALLBACK_MODELS: "fixture-model",
+      BFF_FIXTURE_MODE: "true",
+      BFF_SERVICE_API_KEY: credentials.bffService,
+      ...(applicationsMode
+        ? {
+            ADMIN_LITELLM_API_KEY: credentials.liteLlm,
+            ADMIN_LITELLM_BASE_URL: `http://127.0.0.1:${inferencePort}`,
+          }
+        : {}),
+      CONNECTED_APPS_BFF_BASE_URL: `https://${authorities.api}:${edgePort}`,
+      CONNECTED_APPS_KEYCLOAK_FIXTURE: "true",
+      F0_S1_CA_FILE: certificate.ca,
+      F0_S1_CLOCK_FILE: clockFile,
+      F0_S1_CONSOLE_ORIGIN: consoleOrigin,
+      F0_S1_IDENTITY_ISSUER: identityIssuer,
+      F0_S1_OIDC_AUDIENCE: audience,
+      F0_S1_OIDC_CLIENT_ID: clientId,
+      F0_S1_OIDC_CLIENT_SECRET: credentials.oidcClient,
+      ...(applicationsMode
+        ? {
+            FIRECRAWL_APPLIANCE_KILL_SWITCH: "false",
+            FIRECRAWL_EGRESS_ALLOWED_HOSTS: "allowed.example.test",
+            FIRECRAWL_EGRESS_ALLOWLIST_DIR:
+              "/run/llm-machines/firecrawl/local-fixture",
+            FIRECRAWL_EGRESS_POLICY_READY: "true",
+            FIRECRAWL_INSTALLED: "true",
+            FIRECRAWL_RESOURCE_PROFILE_QUALIFIED: "true",
+            FIRECRAWL_UPSTREAM_BASE_URL: "http://firecrawl-api:3002",
+            PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL: `http://127.0.0.1:${firecrawlPort}`,
+          }
+        : {}),
+      FIRECRAWL_PUBLIC_BASE_URL: `https://${authorities.firecrawl}:${edgePort}`,
+      HOST: "127.0.0.1",
+      LITELLM_KEY: credentials.liteLlm,
+      LITELLM_URL: `http://127.0.0.1:${inferencePort}`,
+      NODE_ENV: "test",
+      NODE_EXTRA_CA_CERTS: certificate.ca,
+      ...(postgresControl
+        ? {
+            DATABASE_URL: postgresControl.databaseUrl,
+            F0_P1_POSTGRES_PERSISTENCE: "true",
+            F0_P1_SESSION_KEYRING_FILE: sessionKeyringFile,
+          }
+        : {}),
+      PORT: String(bffPort),
+      PRODUCT_API_HOST: authorities.api,
+      PRODUCT_CONSOLE_HOST: authorities.console,
+      PRODUCT_FIRECRAWL_HOST: authorities.firecrawl,
+      PRODUCT_IDENTITY_HOST: authorities.identity,
+      PUBLIC_BFF_BASE_URL: `https://${authorities.api}:${edgePort}`,
+    }
+    const bffCommand = [
+      process.execPath,
+      resolve(repositoryRoot, "apps/bff/node_modules/tsx/dist/cli.mjs"),
+      resolve(
         repositoryRoot,
+        "scripts/pre-genesis/reduced-core-session-bff-fixture.mts",
       ),
+    ]
+    let bffChild = startChild(
+      postgresPersistenceMode ? "bff-before-restart" : "bff",
+      bffCommand,
+      bffEnvironment,
+      stateRoot,
+      repositoryRoot,
     )
+    children.push(bffChild)
+    const restartBff = postgresControl
+      ? async () => {
+          const before = postgresSessionSnapshot()
+          assert.ok(
+            before.count >= 2,
+            "F0-P1 requires both Admin and Operator session records before restart.",
+          )
+          await stopChild(bffChild)
+          bffChild = startChild(
+            "bff-after-restart",
+            bffCommand,
+            bffEnvironment,
+            stateRoot,
+            repositoryRoot,
+          )
+          children.push(bffChild)
+          await waitForHttp(`http://127.0.0.1:${bffPort}/livez`, children)
+          await waitForStatus(
+            `http://127.0.0.1:${bffPort}/readyz`,
+            200,
+            children,
+          )
+          const after = postgresSessionSnapshot()
+          assert.deepEqual(after.handles, before.handles)
+          assert.equal(after.count, before.count)
+          assert.equal(after.encryptedOnly, true)
+          return {
+            encryptedOpaqueSessions: true,
+            identities: ["admin", "operator"],
+            sessionCount: after.count,
+            sessionHandlesStable: true,
+          }
+        }
+      : null
     children.push(
       startChild(
         "web",
@@ -211,6 +309,7 @@ async function runBrowserSessionProof() {
       bffPort,
       certificate,
       edgePort,
+      identityFixtureFailures,
       observedOrigins,
       oidc,
       tlsErrors,
@@ -248,12 +347,23 @@ async function runBrowserSessionProof() {
     await context.grantPermissions(["clipboard-read", "clipboard-write"], {
       origin: consoleOrigin,
     })
-    const page = await context.newPage()
+    page = await context.newPage()
     const pageErrors = []
     const browserMetadata = []
     page.on("console", (message) => browserMetadata.push(message.text()))
     page.on("pageerror", (error) => pageErrors.push(error.message))
     page.on("request", (request) => browserMetadata.push(request.url()))
+    page.on("response", (response) => {
+      const url = new URL(response.url())
+      if (Object.values(authorities).includes(url.hostname)) {
+        browserResponses.push({
+          host: url.hostname,
+          path: url.pathname,
+          queryKeys: [...new Set(url.searchParams.keys())].sort(),
+          status: response.status(),
+        })
+      }
+    })
     const tlsProbe = await page.goto(`https://127.0.0.1:${edgePort}/`)
     assert.equal(tlsProbe?.status(), 421)
 
@@ -263,12 +373,32 @@ async function runBrowserSessionProof() {
     await assertRole(page, "Administrator")
     await assertConsoleNavigation(page, consoleOrigin)
 
+    let persistenceOperatorContext
+    let persistenceOperatorPage
+    if (postgresPersistenceMode) {
+      persistenceOperatorContext = await browser.newContext({
+        ignoreHTTPSErrors: true,
+      })
+      persistenceOperatorPage = await persistenceOperatorContext.newPage()
+      await signIn(
+        persistenceOperatorPage,
+        consoleOrigin,
+        credentials.operator,
+        "/applications",
+      )
+      await assertRole(persistenceOperatorPage, "Operator")
+      await assertConsoleNavigation(persistenceOperatorPage, consoleOrigin)
+    }
+
     const applicationFlow = applicationsMode
       ? await proveApplicationConsoleFlow({
           certificate,
           consoleOrigin,
           edgePort,
           page,
+          postgresControl,
+          restartBff,
+          retentionCanaries,
           sensitiveValues,
           synchronizeClock: async () => {
             currentTime = new Date()
@@ -280,6 +410,27 @@ async function runBrowserSessionProof() {
           credentialLifecycleMode,
         })
       : null
+
+    if (
+      postgresPersistenceMode &&
+      persistenceOperatorContext &&
+      persistenceOperatorPage &&
+      applicationFlow
+    ) {
+      await persistenceOperatorPage.goto(`${consoleOrigin}/applications`)
+      await assertRole(persistenceOperatorPage, "Operator")
+      await assertOperatorApplicationReadOnly(
+        persistenceOperatorPage,
+        applicationFlow,
+      )
+      await persistenceOperatorContext.close()
+      postgresOutageEvidence = await provePostgresOutageRecovery({
+        bffPort,
+        children,
+        consoleOrigin,
+        page,
+      })
+    }
 
     const sharedCookie = sessionCookie(await context.cookies(consoleOrigin))
     const revoker = await browser.newContext({ ignoreHTTPSErrors: true })
@@ -371,6 +522,9 @@ async function runBrowserSessionProof() {
     await page.goto(`${consoleOrigin}/inference`)
     assert.equal(new URL(page.url()).pathname, "/auth/signin")
     assert.equal(new URL(page.url()).searchParams.get("returnTo"), "/inference")
+    if (postgresControl) {
+      postgresPersistenceEvidence = inspectPostgresPersistence(sensitiveValues)
+    }
     assert.deepEqual(pageErrors, [])
     assertNoSensitiveValues(
       browserMetadata,
@@ -391,14 +545,28 @@ async function runBrowserSessionProof() {
       architecture: process.arch,
       browser: { name: "Google Chrome", version: browserVersion },
       credentialMaterialPrinted: false,
-      evidenceClass: credentialLifecycleMode
-        ? "LOCAL_BROWSER_CREDENTIAL_LIFECYCLE_ONLY"
-        : applicationsMode
-          ? "LOCAL_BROWSER_APPLICATION_FLOW_ONLY"
-          : "LOCAL_BROWSER_SESSION_AND_ROLE_FLOW_ONLY",
+      evidenceClass: postgresPersistenceMode
+        ? "LOCAL_POSTGRES_RESTART_PERSISTENCE_ONLY"
+        : credentialLifecycleMode
+          ? "LOCAL_BROWSER_CREDENTIAL_LIFECYCLE_ONLY"
+          : applicationsMode
+            ? "LOCAL_BROWSER_APPLICATION_FLOW_ONLY"
+            : "LOCAL_BROWSER_SESSION_AND_ROLE_FLOW_ONLY",
       ...(applicationFlow ? { flow: applicationFlow } : {}),
+      ...(postgresOutageEvidence
+        ? { postgresOutage: postgresOutageEvidence }
+        : {}),
+      ...(postgresPersistenceEvidence
+        ? { persistence: postgresPersistenceEvidence }
+        : {}),
       limitations: [
-        "In-memory Console session storage is not PostgreSQL restart-persistence evidence.",
+        ...(postgresPersistenceMode
+          ? [
+              "Disposable local PostgreSQL is functional evidence, not VM103 or exact-Core qualification.",
+            ]
+          : [
+              "In-memory Console session storage is not PostgreSQL restart-persistence evidence.",
+            ]),
         "The deterministic identity fixture is not Keycloak 26.7.0 runtime qualification.",
         "A generated local CA with browser-only trust bypass is not appliance TLS evidence.",
         "Reserved *.llmm.test aliases are loopback-only browser fixture authorities, not Product DNS constants.",
@@ -416,6 +584,15 @@ async function runBrowserSessionProof() {
         "logout clears local custody and protected navigation requires login",
         "Admin and Operator can use all retained Console navigation without native expert surfaces",
         "Operator is denied Admin-only Application, Team, and audit-export controls",
+        ...(postgresPersistenceMode
+          ? [
+              "real Product migrations initialize an empty disposable PostgreSQL database",
+              "Admin and Operator encrypted opaque sessions plus Application, credential, usage, audit, and Firecrawl metadata survive one controlled BFF restart",
+              "expired and revoked credentials remain denied while active rotated and second-Application credentials remain accepted after restart",
+              "PostgreSQL unavailability degrades readiness and recovers without state corruption",
+              "workload content and secret canaries remain absent from PostgreSQL and teardown artifacts",
+            ]
+          : []),
         ...(applicationFlow
           ? [
               "Admin creates an Application and receives separate one-time inference and Firecrawl credentials through the actual Console UI",
@@ -443,10 +620,17 @@ async function runBrowserSessionProof() {
     }
   } catch (error) {
     const safeError = sanitizedError(error, sensitiveValues)
-    const bffDiagnostics = await readFile(
-      join(stateRoot, "bff.stderr.log"),
-      "utf8",
-    ).catch(() => "")
+    const bffDiagnostics = (
+      await Promise.all(
+        ["bff", "bff-before-restart", "bff-after-restart"].flatMap((name) =>
+          ["stdout", "stderr"].map((stream) =>
+            readFile(join(stateRoot, `${name}.${stream}.log`), "utf8").catch(
+              () => "",
+            ),
+          ),
+        ),
+      )
+    ).join("\n")
     const diagnostics = [
       ...tlsErrors
         .filter(
@@ -460,6 +644,32 @@ async function runBrowserSessionProof() {
         : []),
       ...(oidc?.lastGrantFailure
         ? [new Error(`OIDC metadata: ${oidc.lastGrantFailure}`)]
+        : []),
+      ...(identityFixtureFailures.length
+        ? [
+            new Error(
+              `Identity fixture metadata: ${identityFixtureFailures.join(", ")}`,
+            ),
+          ]
+        : []),
+      ...(browserResponses.length
+        ? [
+            new Error(
+              `Browser response metadata: ${JSON.stringify(browserResponses.slice(-20))}`,
+            ),
+          ]
+        : []),
+      ...(page
+        ? [
+            new Error(
+              `Browser state: ${new URL(page.url()).pathname}\n${safeDiagnosticTail(
+                await page
+                  .locator("body")
+                  .innerText()
+                  .catch(() => ""),
+              )}`,
+            ),
+          ]
         : []),
       ...(bffDiagnostics
         ? [new Error(`BFF metadata:\n${safeDiagnosticTail(bffDiagnostics)}`)]
@@ -486,6 +696,7 @@ async function runBrowserSessionProof() {
         "F0-S1 cleanup did not complete.",
       )
     }
+    await rm(join(stateRoot, "f0-p1-session-keyring.json"), { force: true })
     if (failures.length === 0 && sensitiveValues.length > 0) {
       try {
         await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
@@ -525,7 +736,7 @@ async function signIn(page, consoleOrigin, userCredentials, returnPath) {
 async function completeIdentityLogin(page, userCredentials) {
   await page
     .getByRole("heading", { name: "Fixture identity sign in" })
-    .waitFor()
+    .waitFor({ timeout: 10_000 })
   const loginCookie = (await page.context().cookies()).find(
     (cookie) => cookie.name === "__Host-llm-machines-login",
   )
@@ -582,6 +793,9 @@ async function proveApplicationConsoleFlow({
   credentialLifecycleMode,
   edgePort,
   page,
+  postgresControl,
+  restartBff,
+  retentionCanaries,
   sensitiveValues,
   synchronizeClock,
   userCredentials,
@@ -645,6 +859,12 @@ async function proveApplicationConsoleFlow({
   const viewApplication = page.getByRole("link", { name: "View application" })
   const detailPath = await viewApplication.getAttribute("href")
   assert.match(detailPath ?? "", /^\/applications\/apps\/app-/)
+  if (postgresControl) {
+    assert.deepEqual(
+      postgresApplicationFirecrawlStatus(detailPath.split("/").at(-1)),
+      { credentialCount: 0, status: "disabled" },
+    )
+  }
 
   const models = await requestJsonThroughEdge({
     authority: authorities.api,
@@ -661,7 +881,14 @@ async function proveApplicationConsoleFlow({
     authority: authorities.api,
     bearerToken: inferenceCredential,
     body: {
-      messages: [{ content: "disposable fixture input", role: "user" }],
+      messages: [
+        {
+          content: retentionCanaries
+            ? `${retentionCanaries.prompt} ${retentionCanaries.request}`
+            : "disposable fixture input",
+          role: "user",
+        },
+      ],
       model: "fixture-model",
     },
     caFile: certificate.ca,
@@ -671,6 +898,12 @@ async function proveApplicationConsoleFlow({
   })
   assert.equal(completion.status, 200)
   assert.equal(completion.body?.usage?.total_tokens, 5)
+  if (retentionCanaries) {
+    assert.equal(
+      completion.body?.choices?.[0]?.message?.content,
+      retentionCanaries.response,
+    )
+  }
 
   await page.getByRole("button", { name: "Check connection" }).click()
   await page
@@ -773,6 +1006,8 @@ async function proveApplicationConsoleFlow({
           name: applicationName,
         },
         page,
+        postgresControl,
+        restartBff,
         sensitiveValues,
       })
     : null
@@ -806,6 +1041,8 @@ async function proveCredentialLifecycle({
   edgePort,
   firstApplication,
   page,
+  postgresControl,
+  restartBff,
   sensitiveValues,
 }) {
   await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
@@ -971,12 +1208,67 @@ async function proveCredentialLifecycle({
     edgePort,
   })
 
+  let restartEvidence = null
   await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
-  await revokeCredentialThroughUi(
-    page,
-    firstApplication.firecrawlCredentialId,
-    "Revoke Firecrawl key",
-  )
+  if (postgresControl) {
+    assert.ok(restartBff)
+    await revokeCredentialThroughUi(
+      page,
+      firstApplication.firecrawlCredentialId,
+      "Revoke Firecrawl key",
+    )
+    expireInferenceCredential(firstApplication.inferenceCredentialId)
+    restartEvidence = await restartBff()
+    await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
+    await assertRole(page, "Administrator")
+    await page
+      .getByRole("heading", { name: "Firecrawl web access" })
+      .locator("xpath=../..")
+      .getByText("Enabled", { exact: true })
+      .waitFor()
+    await assertCredentialDenied({
+      authority: authorities.api,
+      body: undefined,
+      certificate,
+      credential: firstApplication.inferenceCredential,
+      edgePort,
+      path: "/v1/models",
+    })
+    await assertInferenceCredentialAccepted({
+      certificate,
+      credential: rotatedInferenceCredential,
+      edgePort,
+    })
+    await assertCredentialDenied({
+      authority: authorities.firecrawl,
+      body: { limit: 1, query: "post-restart revoked credential" },
+      certificate,
+      credential: firstApplication.firecrawlCredential,
+      edgePort,
+      path: "/v2/search",
+    })
+    await assertFirecrawlCredentialAccepted({
+      certificate,
+      credential: rotatedFirecrawlCredential,
+      edgePort,
+    })
+    await assertInferenceCredentialAccepted({
+      certificate,
+      credential: secondInferenceCredential,
+      edgePort,
+    })
+    await assertFirecrawlCredentialAccepted({
+      certificate,
+      credential: secondFirecrawlCredential,
+      edgePort,
+    })
+  } else {
+    await revokeCredentialThroughUi(
+      page,
+      firstApplication.firecrawlCredentialId,
+      "Revoke Firecrawl key",
+    )
+  }
   await revokeCredentialThroughUi(
     page,
     rotatedFirecrawlCredentialId,
@@ -1040,6 +1332,7 @@ async function proveCredentialLifecycle({
     firecrawlRotationAndRevocation: "passed",
     inferenceRotationAndRevocation: "passed",
     operatorPaths: [firstApplication.detailPath, secondDetailPath],
+    ...(restartEvidence ? { restart: restartEvidence } : {}),
     secondApplicationIsolation: "passed",
     secretDomAndHistoryRetention: "none",
   }
@@ -1310,6 +1603,7 @@ function createDevelopmentEdge({
   bffPort,
   certificate,
   edgePort,
+  identityFixtureFailures,
   observedOrigins,
   oidc,
   tlsErrors,
@@ -1321,7 +1615,10 @@ function createDevelopmentEdge({
       const host = (request.headers.host ?? "").split(":", 1)[0].toLowerCase()
       const url = new URL(request.url ?? "/", `https://${request.headers.host}`)
       if (host === authorities.identity) {
-        void oidc.handle(request, response, url).catch(() => {
+        void oidc.handle(request, response, url).catch((error) => {
+          identityFixtureFailures.push(
+            error instanceof Error ? error.message : "unknown_fixture_failure",
+          )
           if (!response.headersSent) {
             sendJson(response, 400, { error: "identity_fixture_failure" })
           } else {
@@ -1480,9 +1777,14 @@ function withoutHopByHop(headers) {
   )
 }
 
-function createInferenceDouble(apiKey) {
+function createInferenceDouble(apiKey, responseContent) {
   return createHttpServer((request, response) => {
-    void handleInferenceDoubleRequest(request, response, apiKey).catch(() => {
+    void handleInferenceDoubleRequest(
+      request,
+      response,
+      apiKey,
+      responseContent,
+    ).catch(() => {
       if (!response.headersSent) {
         sendJson(response, 500, { error: "fixture_failure" })
       } else {
@@ -1551,7 +1853,12 @@ async function handleFirecrawlDoubleRequest(request, response) {
   })
 }
 
-async function handleInferenceDoubleRequest(request, response, apiKey) {
+async function handleInferenceDoubleRequest(
+  request,
+  response,
+  apiKey,
+  responseContent,
+) {
   if (request.headers.authorization !== `Bearer ${apiKey}`) {
     sendJson(response, 401, { error: "unauthorized" })
     return
@@ -1612,7 +1919,7 @@ async function handleInferenceDoubleRequest(request, response, apiKey) {
       {
         finish_reason: "stop",
         index: 0,
-        message: { content: "fixture-response", role: "assistant" },
+        message: { content: responseContent, role: "assistant" },
       },
     ],
     created: 0,
@@ -1710,6 +2017,285 @@ function runOpenSsl(arguments_) {
   if (result.status !== 0) {
     throw new Error(`OpenSSL fixture setup failed: ${result.stderr.trim()}`)
   }
+}
+
+function postgresControlFromEnvironment() {
+  const databaseUrl = requiredEnvironment("F0_P1_DATABASE_URL")
+  const parsed = new URL(databaseUrl)
+  if (
+    parsed.protocol !== "postgresql:" ||
+    parsed.hostname !== "127.0.0.1" ||
+    !parsed.port ||
+    !parsed.username ||
+    !parsed.password ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error("F0-P1 requires a loopback-only PostgreSQL URL.")
+  }
+  const container = requiredEnvironment("F0_P1_POSTGRES_CONTAINER")
+  const database = requiredEnvironment("F0_P1_POSTGRES_DB")
+  const user = requiredEnvironment("F0_P1_POSTGRES_USER")
+  const dockerContext = process.env.F0_P1_DOCKER_CONTEXT?.trim() || null
+  if (
+    !/^[a-z0-9][a-z0-9_.-]{0,127}$/.test(container) ||
+    !/^[a-z_][a-z0-9_]{0,62}$/.test(database) ||
+    !/^[a-z_][a-z0-9_]{0,62}$/.test(user) ||
+    (dockerContext !== null && !/^[A-Za-z0-9_.-]{1,128}$/.test(dockerContext))
+  ) {
+    throw new Error("F0-P1 PostgreSQL control metadata is invalid.")
+  }
+  return { container, database, databaseUrl, dockerContext, user }
+}
+
+function requiredEnvironment(name) {
+  const value = process.env[name]?.trim()
+  if (!value) throw new Error(`F0-P1 requires ${name}.`)
+  return value
+}
+
+function postgresSessionSnapshot() {
+  return postgresJson(`
+    SELECT json_build_object(
+      'count', count(*)::integer,
+      'handles', COALESCE(json_agg(handle_digest ORDER BY handle_digest), '[]'::json),
+      'encryptedOnly', COALESCE(bool_and(
+        encryption_kid = 'f0-p1-throwaway'
+        AND encrypted_payload ?& ARRAY['version','kid','iv','tag','ciphertext']
+        AND (encrypted_payload - 'version' - 'kid' - 'iv' - 'tag' - 'ciphertext') = '{}'::jsonb
+      ), true)
+    )
+    FROM common.console_sessions;
+  `)
+}
+
+function postgresApplicationFirecrawlStatus(applicationId) {
+  assert.match(applicationId ?? "", /^app-[a-z0-9-]+$/)
+  return postgresJson(
+    `
+      SELECT json_build_object(
+        'status', access.status,
+        'credentialCount', (
+          SELECT count(*)::integer
+          FROM admin.application_firecrawl_credentials AS credential
+          WHERE credential.app_id = access.app_id
+        )
+      )
+      FROM admin.application_firecrawl_access AS access
+      WHERE access.app_id = :'application_id';
+    `,
+    { application_id: applicationId },
+  )
+}
+
+function expireInferenceCredential(credentialId) {
+  assert.match(credentialId, /^cak-[0-9a-f-]{36}$/)
+  const updated = Number.parseInt(
+    postgresPsql(
+      `
+        WITH expired AS (
+          UPDATE admin.application_credentials
+          SET issued_at = CURRENT_TIMESTAMP - interval '2 days',
+              rotated_at = CURRENT_TIMESTAMP - interval '86401 seconds',
+              overlap_expires_at = CURRENT_TIMESTAMP - interval '1 second'
+          WHERE id = :'credential_id'
+            AND kind = 'api_key'
+            AND status = 'retiring'
+          RETURNING id
+        )
+        SELECT count(*) FROM expired;
+      `,
+      { credential_id: credentialId },
+    ),
+    10,
+  )
+  assert.equal(updated, 1, "F0-P1 could not expire the retiring credential.")
+}
+
+function inspectPostgresPersistence(sensitiveValues) {
+  const summary = postgresJson(`
+    SELECT json_build_object(
+      'applications', (SELECT count(*)::integer FROM admin.applications WHERE status <> 'deleted'),
+      'auditEvents', (SELECT count(*)::integer FROM common.audit_events),
+      'auditSubjects', (
+        SELECT count(DISTINCT keycloak_subject_id)::integer
+        FROM common.audit_events
+        WHERE keycloak_subject_id IS NOT NULL
+      ),
+      'auditMetadataOnly', NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'common'
+          AND table_name = 'audit_events'
+          AND column_name NOT IN (
+            'id','occurred_at','ingested_at','action','outcome','source_system',
+            'correlation_id','keycloak_subject_id','application_id',
+            'credential_record_id','credential_prefix','recovery_reason_code'
+          )
+      ),
+      'firecrawlCredentials', (SELECT count(*)::integer FROM admin.application_firecrawl_credentials),
+      'firecrawlEnabledApplications', (
+        SELECT count(*)::integer
+        FROM admin.application_firecrawl_access
+        WHERE status = 'enabled'
+      ),
+      'firecrawlUsageRows', (SELECT count(*)::integer FROM admin.application_firecrawl_usage_daily),
+      'humanIdentities', (SELECT count(*)::integer FROM common.human_identities),
+      'inferenceCredentials', (SELECT count(*)::integer FROM admin.application_credentials),
+      'inferenceUsageRows', (SELECT count(*)::integer FROM admin.application_usage_daily),
+      'plaintextSessionPayloads', (
+        SELECT count(*)::integer
+        FROM common.console_sessions
+        WHERE NOT (encrypted_payload ?& ARRAY['version','kid','iv','tag','ciphertext'])
+      )
+    );
+  `)
+  assert.equal(summary.applications, 2)
+  assert.equal(summary.inferenceCredentials, 3)
+  assert.equal(summary.firecrawlCredentials, 3)
+  assert.equal(summary.firecrawlEnabledApplications, 1)
+  assert.ok(summary.inferenceUsageRows > 0)
+  assert.ok(summary.firecrawlUsageRows > 0)
+  assert.ok(summary.auditEvents > 0)
+  assert.ok(summary.auditSubjects >= 2)
+  assert.ok(summary.humanIdentities >= 1)
+  assert.equal(summary.auditMetadataOnly, true)
+  assert.equal(summary.plaintextSessionPayloads, 0)
+
+  const dump = postgresDocker([
+    "exec",
+    postgresControl.container,
+    "pg_dump",
+    "--data-only",
+    "--no-owner",
+    "--no-privileges",
+    "--dbname",
+    postgresControl.database,
+    "--username",
+    postgresControl.user,
+  ])
+  assertNoSensitiveValues([dump], sensitiveValues, "PostgreSQL data")
+  return {
+    ...summary,
+    canaryRetention: "none",
+    credentialMaterialPersisted: false,
+  }
+}
+
+async function provePostgresOutageRecovery({
+  bffPort,
+  children,
+  consoleOrigin,
+  page,
+}) {
+  postgresDocker(["pause", postgresControl.container])
+  const degraded = await fetch(`http://127.0.0.1:${bffPort}/readyz`, {
+    signal: AbortSignal.timeout(15_000),
+  })
+  assert.equal(degraded.status, 503)
+  assert.deepEqual(await degraded.json(), {
+    service: "console-bff",
+    status: "degraded",
+    version: "0.0.0",
+  })
+  postgresDocker(["unpause", postgresControl.container])
+  await waitForPostgresControl()
+  await waitForStatus(`http://127.0.0.1:${bffPort}/readyz`, 200, children)
+  await page.goto(`${consoleOrigin}/applications`)
+  await page.getByRole("heading", { name: "Applications" }).waitFor()
+  await assertRole(page, "Administrator")
+  return {
+    degradedReadiness: 503,
+    outageMethod: "pause-unpause",
+    recoveredReadiness: 200,
+    statePreserved: true,
+  }
+}
+
+async function waitForPostgresControl() {
+  const deadline = Date.now() + 60_000
+  while (Date.now() < deadline) {
+    const result = postgresDockerResult([
+      "exec",
+      postgresControl.container,
+      "pg_isready",
+      "--dbname",
+      postgresControl.database,
+      "--username",
+      postgresControl.user,
+    ])
+    if (result.status === 0) return
+    await delay(250)
+  }
+  throw new Error("F0-P1 PostgreSQL did not recover.")
+}
+
+function postgresJson(sql, variables = {}) {
+  const output = postgresPsql(sql, variables)
+  try {
+    return JSON.parse(output)
+  } catch {
+    throw new Error("F0-P1 PostgreSQL returned invalid JSON evidence.")
+  }
+}
+
+function postgresPsql(sql, variables = {}) {
+  const variableArguments = Object.entries(variables).flatMap(
+    ([name, value]) => ["--set", `${name}=${value}`],
+  )
+  return postgresDocker(
+    [
+      "exec",
+      "--interactive",
+      postgresControl.container,
+      "psql",
+      "--no-align",
+      "--no-psqlrc",
+      "--set",
+      "ON_ERROR_STOP=1",
+      ...variableArguments,
+      "--tuples-only",
+      "--dbname",
+      postgresControl.database,
+      "--username",
+      postgresControl.user,
+    ],
+    sql,
+  ).trim()
+}
+
+function postgresDocker(arguments_, input) {
+  const result = postgresDockerResult(arguments_, input)
+  if (result.status !== 0) {
+    throw new Error(
+      `F0-P1 PostgreSQL control failed: ${safeDiagnosticTail(result.stderr)}`,
+    )
+  }
+  return result.stdout
+}
+
+function postgresDockerResult(arguments_, input) {
+  assert.ok(postgresControl)
+  return spawnSync(
+    "docker",
+    [
+      ...(postgresControl.dockerContext
+        ? ["--context", postgresControl.dockerContext]
+        : []),
+      ...arguments_,
+    ],
+    {
+      encoding: "utf8",
+      env: {
+        HOME: process.env.HOME ?? "",
+        LANG: "C",
+        LC_ALL: "C",
+        PATH: process.env.PATH ?? "",
+      },
+      input,
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  )
 }
 
 async function assertDevelopmentDependenciesReady() {
@@ -1965,6 +2551,29 @@ async function waitForHttp(url, children) {
     await delay(100)
   }
   throw new Error(`Timed out waiting for ${new URL(url).pathname}.`)
+}
+
+async function waitForStatus(url, expectedStatus, children) {
+  const deadline = Date.now() + 45_000
+  while (Date.now() < deadline) {
+    const failed = children.find((record) => record.exited && !record.stopping)
+    if (failed) {
+      throw new Error(`${failed.name} exited during F0-P1 recovery.`)
+    }
+    try {
+      const response = await fetch(url, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(3_000),
+      })
+      if (response.status === expectedStatus) return
+    } catch {
+      // The disposable service is still recovering.
+    }
+    await delay(100)
+  }
+  throw new Error(
+    `Timed out waiting for ${new URL(url).pathname} status ${expectedStatus}.`,
+  )
 }
 
 function readJsonRequest(request) {

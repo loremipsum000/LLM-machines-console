@@ -86,8 +86,10 @@ export class DrizzleConsoleSessionRepository
         INSERT INTO common.console_logout_token_replays (
           jti_digest, retain_until, consumed_at
         )
-        SELECT ${input.jtiDigest}, ${input.retainUntil}, ${input.now}
-        WHERE ${input.retainUntil} > ${input.now}
+        SELECT ${input.jtiDigest}, ${timestamp(input.retainUntil)}::timestamptz,
+          ${timestamp(input.now)}::timestamptz
+        WHERE ${timestamp(input.retainUntil)}::timestamptz
+          > ${timestamp(input.now)}::timestamptz
         ON CONFLICT (jti_digest) DO NOTHING
         RETURNING jti_digest
       ), revoked AS (
@@ -111,7 +113,8 @@ export class DrizzleConsoleSessionRepository
       ) VALUES (
         ${record.handleDigest}, ${record.stateDigest}, ${record.subjectDigest},
         ${record.encryptedPayload}::jsonb,
-        ${record.encryptionKid}, ${record.expiresAt}, ${record.createdAt}
+        ${record.encryptionKid}, ${timestamp(record.expiresAt)},
+        ${timestamp(record.createdAt)}
       )
     `)
   }
@@ -128,10 +131,11 @@ export class DrizzleConsoleSessionRepository
         ${record.handleDigest}, ${record.subjectDigest},
         ${record.keycloakSessionDigest}, ${record.encryptedPayload}::jsonb,
         ${record.encryptionKid}, ${record.refreshGeneration},
-        ${record.refreshBlockedUntil}, ${record.refreshFailureReason},
-        ${record.accessExpiresAt}, ${record.idleExpiresAt},
-        ${record.absoluteExpiresAt}, ${record.lastSeenAt},
-        ${record.createdAt}, ${record.updatedAt}
+        ${nullableTimestamp(record.refreshBlockedUntil)},
+        ${record.refreshFailureReason}, ${timestamp(record.accessExpiresAt)},
+        ${timestamp(record.idleExpiresAt)}, ${timestamp(record.absoluteExpiresAt)},
+        ${timestamp(record.lastSeenAt)}, ${timestamp(record.createdAt)},
+        ${timestamp(record.updatedAt)}
       )
     `)
   }
@@ -170,13 +174,13 @@ export class DrizzleConsoleSessionRepository
           encrypted_payload = ${outcome.record.encryptedPayload}::jsonb,
           encryption_kid = ${outcome.record.encryptionKid},
           refresh_generation = ${outcome.record.refreshGeneration},
-          refresh_blocked_until = ${outcome.record.refreshBlockedUntil},
+          refresh_blocked_until = ${nullableTimestamp(outcome.record.refreshBlockedUntil)},
           refresh_failure_reason = ${outcome.record.refreshFailureReason},
-          access_expires_at = ${outcome.record.accessExpiresAt},
-          idle_expires_at = ${outcome.record.idleExpiresAt},
-          absolute_expires_at = ${outcome.record.absoluteExpiresAt},
-          last_seen_at = ${outcome.record.lastSeenAt},
-          updated_at = ${outcome.record.updatedAt}
+          access_expires_at = ${timestamp(outcome.record.accessExpiresAt)},
+          idle_expires_at = ${timestamp(outcome.record.idleExpiresAt)},
+          absolute_expires_at = ${timestamp(outcome.record.absoluteExpiresAt)},
+          last_seen_at = ${timestamp(outcome.record.lastSeenAt)},
+          updated_at = ${timestamp(outcome.record.updatedAt)}
         WHERE handle_digest = ${handleDigest}
       `)
       return outcome.value
@@ -254,6 +258,17 @@ function date(value: Date | string): Date {
 
 function nullableDate(value: Date | string | null): Date | null {
   return value === null ? null : date(value)
+}
+
+function nullableTimestamp(value: Date | null): string | null {
+  return value === null ? null : timestamp(value)
+}
+
+function timestamp(value: Date): string {
+  if (!Number.isFinite(value.getTime())) {
+    throw new Error("Invalid Console session storage timestamp.")
+  }
+  return value.toISOString()
 }
 
 function refreshFailureReason(

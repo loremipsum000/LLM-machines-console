@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "F0-P1",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "2eba73cfe74ce1e26e9768bcca9ac3f4b990e936",
+  "command": "PRE_GENESIS_DOCKER_CONTEXT=<isolated-context> corepack pnpm run test:pre-genesis:postgres-persistence",
+  "prerequisites": [
+    "corepack pnpm install --frozen-lockfile",
+    "an isolated Docker-compatible context with no existing workloads",
+    "installed Chrome or Chromium, or PLAYWRIGHT_CHROME_EXECUTABLE",
+    "OpenSSL available for a disposable local certificate authority"
+  ],
+  "evidenceClass": "LOCAL_POSTGRES_RESTART_PERSISTENCE_ONLY",
+  "services": [
+    "actual Console Web",
+    "actual Console BFF with the durable Drizzle repositories",
+    "disposable PostgreSQL 17.6 with generated throwaway credentials and the real Product migration",
+    "deterministic Keycloak-compatible OIDC fixture",
+    "loopback-only HTTPS four-authority router",
+    "deterministic private inference and Firecrawl doubles"
+  ],
+  "proved": [
+    "clean database initialization creates all 34 required relations and a failed migration attempt leaves the initialized schema intact",
+    "Admin and Operator opaque encrypted sessions, Applications, credential metadata, usage metadata, audit metadata, and Firecrawl state persist across one controlled BFF restart",
+    "expired and revoked credentials remain denied while active rotated and second-Application credentials remain accepted after restart",
+    "Firecrawl starts disabled for a new Application and explicit per-Application enablement survives restart",
+    "PostgreSQL unavailability returns bounded degraded readiness and recovers without state corruption",
+    "audit storage contains only approved metadata fields",
+    "prompt, request, response, credential, secret, and database-credential canaries remain absent from PostgreSQL, logs, temporary files, and teardown artifacts",
+    "the F0-U2 browser credential lifecycle remains usable against PostgreSQL-backed state",
+    "the disposable container, volume, credentials, and temporary state are removed after the proof"
+  ],
+  "productCorrections": [
+    "durable Console-session timestamps are serialized before raw PostgreSQL binding",
+    "configured local PostgreSQL participates in BFF readiness and a stalled readiness probe fails closed within five seconds"
+  ],
+  "preservedBoundaries": [
+    "Firecrawl remains disabled by default and separately credentialed",
+    "LiteLLM and Keycloak native administration remain private",
+    "Grafana remains absent",
+    "no real identity, inference, Firecrawl, customer, or signing credential is used",
+    "all state is local, disposable, and removed after the proof"
+  ],
+  "notEvidenceFor": [
+    "Keycloak 26.7.0 runtime qualification",
+    "real LiteLLM, Firecrawl, or SGLang runtime behavior",
+    "exact amd64 Core composition or VM103 qualification",
+    "backup, restore, update, rollback, release packaging, Q0, or production inference capacity"
+  ],
+  "nextPackage": "F0-O1 disposable observability and retained Console projection behavior",
+  "forbiddenOutcomes": [
+    "real credential use",
+    "live infrastructure access",
+    "runtime qualification claim",
+    "Product main merge",
+    "Gitea Genesis"
+  ]
+}

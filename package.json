@@ -35,6 +35,7 @@
     "test:pre-genesis:browser": "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && node scripts/pre-genesis/reduced-core-browser-session.mjs",
     "test:pre-genesis:browser-applications": "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && node scripts/pre-genesis/reduced-core-browser-session.mjs --applications",
     "test:pre-genesis:browser-credential-lifecycle": "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && node scripts/pre-genesis/reduced-core-browser-session.mjs --credential-lifecycle",
+    "test:pre-genesis:postgres-persistence": "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && node scripts/pre-genesis/reduced-core-postgres-persistence.mjs",
     "test:release": "node --test infra/inference/*.test.mjs infra/release/*.test.mjs infra/firecrawl/release/*.test.mjs infra/keycloak/*.test.mjs scripts/inference-core/pr12-*.test.mjs",
     "typecheck": "corepack pnpm -r build && corepack pnpm -r typecheck && corepack pnpm run typecheck:inference-core-db",
     "typecheck:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests typecheck",

@@ -171,8 +171,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.get("/livez", liveness)
   server.get("/healthz", liveness)
   server.get("/readyz", async (_request, reply): Promise<HealthResponse> => {
-    const ready =
-      !isProductionRuntime() || (await checkInferenceCoreDbReadiness())
+    const databaseRequired =
+      isProductionRuntime() || Boolean(process.env.DATABASE_URL?.trim())
+    const ready = !databaseRequired || (await checkInferenceCoreDbReadiness())
     const response = healthResponseSchema.parse({
       service: "console-bff",
       status: ready ? "ok" : "degraded",

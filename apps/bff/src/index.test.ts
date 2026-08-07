@@ -236,6 +236,22 @@ describe("Console BFF persistence preflight", () => {
     await server.close()
   })
 
+  it("keeps disposable PostgreSQL fixture readiness fail-closed", async () => {
+    vi.stubEnv("NODE_ENV", "test")
+    vi.stubEnv("DATABASE_URL", "postgres://fixture.invalid/console")
+    vi.mocked(checkInferenceCoreDbReadiness).mockResolvedValue(false)
+    const server = buildServer()
+
+    const response = await server.inject({ method: "GET", url: "/readyz" })
+
+    expect(response.statusCode).toBe(503)
+    expect(response.json()).toMatchObject({
+      service: "console-bff",
+      status: "degraded",
+    })
+    await server.close()
+  })
+
   it("ignores injected authorization and recovery authorities outside tests", async () => {
     configureProductionRuntime()
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")

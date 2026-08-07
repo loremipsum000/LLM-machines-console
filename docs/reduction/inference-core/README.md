@@ -394,6 +394,16 @@ test, rotate, revoke, disable, enable, and change policy. Operator access is
 read-only. F0-U2 supersedes the earlier role split for current Product behavior
 without rewriting the historical PR-08 record.
 
+F0-P1 binds the local reduced-Core functional lane to the real Product
+migration and a disposable PostgreSQL 17.6 instance. Actual Console Web and
+BFF preserve encrypted opaque sessions, Applications, safe credential and
+usage metadata, audit metadata, and per-Application Firecrawl state across one
+controlled BFF restart. A configured but unavailable database degrades
+readiness within a bounded interval and recovers without state corruption.
+Workload and secret canaries remain absent from PostgreSQL, logs, temporary
+files, and teardown artifacts. This is local functional evidence only, not
+exact-Core, backup/restore, real-service, release, or Q0 qualification.
+
 System-managed exact-host egress allowlisting and public-address validation do
 not introduce customer URL Governance. The governed internal upstream is
 exactly `http://firecrawl-api:3002`; hosted, HTTPS, alternate-host, and
