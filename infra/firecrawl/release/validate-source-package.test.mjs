@@ -58,6 +58,23 @@ test("API build validation tests are exact and patch-bound", () => {
   )
 })
 
+test("Node API build input must match its admitted version, source, and OCI identity", () => {
+  const manifest = clone(readSourcePackage())
+  manifest.buildInputs[1].indexDigest = `sha256:${"0".repeat(64)}`
+  manifest.buildInputs[1].sourceRevision = "0".repeat(40)
+  const errors = validateSourcePackage(manifest)
+  assert.ok(errors.some((error) => error.includes("admitted OCI identity")))
+})
+
+test("Firecrawl build input identifiers must remain unique", () => {
+  const manifest = clone(readSourcePackage())
+  const conflicting = clone(manifest.buildInputs[1])
+  conflicting.indexDigest = `sha256:${"0".repeat(64)}`
+  manifest.buildInputs.push(conflicting)
+  const errors = validateSourcePackage(manifest)
+  assert.ok(errors.some((error) => error.includes("must be unique")))
+})
+
 test("ancillary source identity drift fails closed", () => {
   const manifest = clone(readSourcePackage())
   manifest.upstreamComponents[1].revision = "0".repeat(40)

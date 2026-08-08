@@ -73,6 +73,8 @@ const expectedLockDigests = [
   "348b5e00d070803abcc0c91ac3c9e27ddbfccf1a149fee072d00aee985655f28",
   "eb1f2fe73044351c5b51d87f60a4e14c13a9da78a8fadb992ebe717f49be02c9",
 ]
+const expectedNodeApiBuildInputSha256 =
+  "0c29de054e8215666ab9a5add5b708713501f60de24057314928fe0d1f043024"
 
 export function sha256File(file) {
   return createHash("sha256").update(readFileSync(file)).digest("hex")
@@ -232,6 +234,9 @@ export function validateSourcePackage(manifest, root = repositoryRoot) {
   const buildInputs = Array.isArray(manifest?.buildInputs)
     ? manifest.buildInputs
     : []
+  if (new Set(buildInputs.map(({ id }) => id)).size !== buildInputs.length) {
+    errors.push("Firecrawl build input identifiers must be unique")
+  }
   for (const input of buildInputs) {
     if (!input.id || !input.repository || !input.version || !input.platform) {
       errors.push("Every Firecrawl build input needs identity and platform")
@@ -253,6 +258,14 @@ export function validateSourcePackage(manifest, root = repositoryRoot) {
     if (input.platform === "linux/amd64" && !input.platformDigest) {
       errors.push(`${input.id} must bind its linux/amd64 manifest`)
     }
+  }
+  if (
+    buildInputs.length < 2 ||
+    createHash("sha256")
+      .update(JSON.stringify(buildInputs[1]))
+      .digest("hex") !== expectedNodeApiBuildInputSha256
+  ) {
+    errors.push("Node API build input differs from its admitted OCI identity")
   }
 
   for (const input of manifest?.externalByteInputs ?? []) {

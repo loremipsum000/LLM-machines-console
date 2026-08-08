@@ -4,7 +4,7 @@
   "containsCredentials": false,
   "runtimeQualified": false,
   "runs": 2,
-  "sourcePackageSha256": "56b59a2a9aedefcec4bb0fd85ff881294d432c89d07d572a8d3be9b0c8802b62",
+  "sourcePackageSha256": "640021d4a3de65cf5d3df440ef773275b1115a2aa29c52525a7b4d55454fa9be",
   "upstreamArchives": [
     {
       "id": "firecrawl",
@@ -41,9 +41,9 @@
   ],
   "fileCount": 1535,
   "symlinkCount": 0,
-  "inventorySha256": "04bc50c78e2a1113318741f81e993c7811ef6f4f30f14ec6195dd6b380295c6d",
-  "sha256SumsSha256": "ce8169072e739ee9d0823cfd0dc57591049138d2678429e84fb0f304905d200a",
-  "packetSha256": "590aa716c7367e4b320364ebebd001e38f751fd63a27e3b8bd817bb860068b91",
+  "inventorySha256": "7074c41943d877162520a6bffe97dec81a5a599ddb985ded649b033908fbcf19",
+  "sha256SumsSha256": "b9b36d804b5e9de144a0ee7d3498bfcfd2d0f29cdf64bb4cadba47e5cd7d9116",
+  "packetSha256": "cc0bdea9f1a5e04752149c792317c43f46f062e00660f25c8f14cb4b89960027",
   "workspaceCleanupVerified": true,
   "productBoundary": {
     "installed": true,
