@@ -58,8 +58,15 @@ const expectedLockPaths = [
   "infra/firecrawl/release/locks/playwright-wolfi.sha256",
 ]
 const expectedPatchDigests = [
-  "3848cd686c80759f307f6975e5dcdfe8745ed91c50375c6a2bc89d4a769df4a5",
+  "46e3de809c685b635d54dbae759bac3811b1c67397eb75d3d60c1efd59adae0a",
   "0ae6844072e0e9d9f3874838bab438434980e460d4e6f4fc95d6c5c59c4b06b9",
+]
+const expectedApiBuildValidationTests = [
+  "src/lib/canonical-url.test.ts",
+  "src/lib/validateUrl.test.ts",
+  "src/scraper/scrapeURL/__tests__/shouldCheckRobots.test.ts",
+  "src/search/highlight-budget.test.ts",
+  "src/search/scrape.test.ts",
 ]
 const expectedLockDigests = [
   "dd723e1829fb911aa8c3ccc4e1d06690ffd91a5fbc8d67cfa3b0a63e377ab2ef",
@@ -178,6 +185,30 @@ export function validateSourcePackage(manifest, root = repositoryRoot) {
     }
     validateLocalFile(errors, entry, root)
   })
+
+  if (
+    JSON.stringify(manifest?.apiBuildValidationTests) !==
+    JSON.stringify(expectedApiBuildValidationTests)
+  ) {
+    errors.push("Firecrawl API build validation tests differ")
+  }
+  const buildPatch = readFileSync(
+    path.resolve(root, expectedPatchPaths[0]),
+    "utf8",
+  )
+  const validationCommand = buildPatch
+    .split("+RUN pnpm exec vitest run \\\n")[1]
+    ?.split("\n RUN pnpm run build")[0]
+  const patchedValidationTests = validationCommand
+    ?.split("\n")
+    .filter((line) => line.startsWith("+    "))
+    .map((line) => line.slice(5).replace(/ \\$/, ""))
+  if (
+    JSON.stringify(patchedValidationTests) !==
+    JSON.stringify(expectedApiBuildValidationTests)
+  ) {
+    errors.push("build hardening patch has stale API validation tests")
+  }
 
   const lockedFiles = Array.isArray(manifest?.lockedFiles)
     ? manifest.lockedFiles

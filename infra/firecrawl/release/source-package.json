@@ -71,7 +71,7 @@
     {
       "order": 1,
       "path": "infra/firecrawl/release/patches/build-hardening.patch",
-      "sha256": "3848cd686c80759f307f6975e5dcdfe8745ed91c50375c6a2bc89d4a769df4a5",
+      "sha256": "46e3de809c685b635d54dbae759bac3811b1c67397eb75d3d60c1efd59adae0a",
       "purpose": "byte-locked Linux build inputs, dependency remediation, non-root Wolfi runtimes"
     },
     {
@@ -80,6 +80,13 @@
       "sha256": "0ae6844072e0e9d9f3874838bab438434980e460d4e6f4fc95d6c5c59c4b06b9",
       "purpose": "search-and-static-scrape-only entrypoint and self-hosted zero-content retention"
     }
+  ],
+  "apiBuildValidationTests": [
+    "src/lib/canonical-url.test.ts",
+    "src/lib/validateUrl.test.ts",
+    "src/scraper/scrapeURL/__tests__/shouldCheckRobots.test.ts",
+    "src/search/highlight-budget.test.ts",
+    "src/search/scrape.test.ts"
   ],
   "lockedFiles": [
     {

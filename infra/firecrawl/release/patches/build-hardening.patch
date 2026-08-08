@@ -69,11 +69,11 @@ index 061b1c3..1280628 100644
 
  # Build the application
 +RUN pnpm exec vitest run \
-+    src/main/runWebScraper.test.ts \
-+    src/scraper/scrapeURL/engines/playwright/index.test.ts \
-+    src/search/v2/index.test.ts \
-+    src/search/v2/searxng.test.ts \
-+    src/services/worker/team-semaphore.test.ts
++    src/lib/canonical-url.test.ts \
++    src/lib/validateUrl.test.ts \
++    src/scraper/scrapeURL/__tests__/shouldCheckRobots.test.ts \
++    src/search/highlight-budget.test.ts \
++    src/search/scrape.test.ts
  RUN pnpm run build
 
  # Remove dev dependencies
@@ -633,7 +633,7 @@ index 72adf30..93b8c54 100644
      hasBin: true
 
    proxy-addr@2.0.7:
-@@ -920,11 +920,11 @@ snapshots:
+@@ -920,10 +920,10 @@ snapshots:
 
    path-to-regexp@8.4.0: {}
 
@@ -647,4 +647,3 @@ index 72adf30..93b8c54 100644
 +      playwright-core: 1.62.0
      optionalDependencies:
        fsevents: 2.3.2
-

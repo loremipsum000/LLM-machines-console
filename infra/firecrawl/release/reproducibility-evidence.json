@@ -4,7 +4,7 @@
   "containsCredentials": false,
   "runtimeQualified": false,
   "runs": 2,
-  "sourcePackageSha256": "9417d447ed2636554a1532f5712bf922314a0d92649e72f4490a46d55b66c198",
+  "sourcePackageSha256": "56b59a2a9aedefcec4bb0fd85ff881294d432c89d07d572a8d3be9b0c8802b62",
   "upstreamArchives": [
     {
       "id": "firecrawl",
@@ -31,7 +31,7 @@
     {
       "order": 1,
       "path": "infra/firecrawl/release/patches/build-hardening.patch",
-      "sha256": "3848cd686c80759f307f6975e5dcdfe8745ed91c50375c6a2bc89d4a769df4a5"
+      "sha256": "46e3de809c685b635d54dbae759bac3811b1c67397eb75d3d60c1efd59adae0a"
     },
     {
       "order": 2,
@@ -41,9 +41,9 @@
   ],
   "fileCount": 1535,
   "symlinkCount": 0,
-  "inventorySha256": "1a322c939a3865ba5ff9026a1178e28806649d887792b47a0a6a6ad66b620c72",
-  "sha256SumsSha256": "892c204878cf4ef1762ed4f3086f2fc4e83d914fb4d08682344042301e3ed9ef",
-  "packetSha256": "7458ec24a945a7b9702aebb6550f2f97a0de6b9799e892754f7d9765399c197c",
+  "inventorySha256": "04bc50c78e2a1113318741f81e993c7811ef6f4f30f14ec6195dd6b380295c6d",
+  "sha256SumsSha256": "ce8169072e739ee9d0823cfd0dc57591049138d2678429e84fb0f304905d200a",
+  "packetSha256": "590aa716c7367e4b320364ebebd001e38f751fd63a27e3b8bd817bb860068b91",
   "workspaceCleanupVerified": true,
   "productBoundary": {
     "installed": true,

@@ -49,6 +49,15 @@ test("local patch and lock fingerprints are mandatory", () => {
   assert.ok(errors.some((error) => error.includes("invalid target")))
 })
 
+test("API build validation tests are exact and patch-bound", () => {
+  const manifest = clone(readSourcePackage())
+  manifest.apiBuildValidationTests[0] = "src/missing.test.ts"
+  const errors = validateSourcePackage(manifest)
+  assert.ok(
+    errors.some((error) => error.includes("build validation tests differ")),
+  )
+})
+
 test("ancillary source identity drift fails closed", () => {
   const manifest = clone(readSourcePackage())
   manifest.upstreamComponents[1].revision = "0".repeat(40)
