@@ -29,6 +29,7 @@ per-package JSON file and contract revision.
 | F0-O1 | Retained Console observability projection | `f0-o1-observability-projection.json` | Source candidate only: actual Web/BFF render private GET-only LiteLLM, Prometheus, and Alertmanager projections; native administration and Grafana remain absent; no real-service or runtime qualification claim |
 | F0-I1 | Disposable Keycloak identity integration | `f0-i1-keycloak-identity.json` | Source candidate only: actual Web/BFF complete role-aware password and TOTP login through exact Keycloak 26.7.0 and the Product identity allowlist; native administration and identity mutations remain excluded; no exact-Core or runtime qualification claim |
 | F0-I2 | Scoped Console Team identity mutation | `f0-i2-keycloak-team.json` | Source candidate only: actual Web/BFF use the isolated `console-human-admin` service account and reviewed Keycloak 26.7.0 FGAP v2 scopes for basic Team and local-password actions; native administration and broader realm/client authority remain absent; no exact-Core or runtime qualification claim |
+| F0-L2 | Private LiteLLM integration | `f0-l2-private-litellm.json` | Source candidate only: actual Web/BFF route Product-issued Application credentials through exact LiteLLM v1.85.0 to deterministic inference; the Console projection remains read-only, native customer access remains absent, and zero-content-retention canaries pass locally; no SGLang, capacity, exact-Core, or runtime qualification claim |
 
 ## PR-08 fixed decisions
 

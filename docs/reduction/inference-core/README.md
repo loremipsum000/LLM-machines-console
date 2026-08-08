@@ -436,6 +436,19 @@ approved metadata, and generated passwords do not survive in Product state or
 teardown files. This remains local functional evidence, not commissioning,
 exact-Core, backup/restore, Product acceptance, or Q0 qualification.
 
+F0-L2 replaces only the inference gateway double in a bounded local lane with
+the exact pinned LiteLLM v1.85.0 image and disposable PostgreSQL metadata
+storage. Product-issued Application credentials still terminate at the API
+authority; a separate throwaway routing key is private to the BFF and LiteLLM.
+Actual non-streaming and streaming Chat Completions reach deterministic
+inference, while the Console reads health, served models, usage, route summary,
+and safe credential metadata without route or virtual-key mutation. Native
+LiteLLM paths remain absent from Product ingress, outage and recovery fail
+closed, and prompt and response canaries remain absent from LiteLLM storage,
+logs, browser state, and teardown artifacts. This is local functional evidence,
+not SGLang, production capacity, exact-Core, Product acceptance, or Q0
+qualification.
+
 System-managed exact-host egress allowlisting and public-address validation do
 not introduce customer URL Governance. The governed internal upstream is
 exactly `http://firecrawl-api:3002`; hosted, HTTPS, alternate-host, and
