@@ -812,6 +812,18 @@ only the D2A release-source input with protected integration commit
 `4b2fc6a3278dfad2857b5caed4fb0d6cbdafee8f`, tree
 `1f9eea21ccf21d9b6fbc118f37a0d9fcb5c80d36`.
 
+The subsequent Firecrawl build-input audit first produced PR 54, which repaired
+the stale API build-test list without resolving the unavailable Node identity.
+PR 55 retained Node 22.23.2-bookworm and its source revision while replacing
+only the unavailable index and linux/amd64 manifest with retrievable official
+immutable OCI digests. It also regenerated the corresponding-source
+fingerprints from two disposable assemblies. Amendment 3 preserves PR 53,
+PR 54, and every earlier protected record, supersedes only the current D2A
+release-source input, and binds protected integration commit
+`059866dc07dbc2af95df84ee834fca598a9a64a9`, tree
+`f14535be105e8073668c922e306a317bed55b993`. The prior `4b2fc6a` release
+source is historical and is not the current build input.
+
 The first-install commissioning observation remains a Q0 trust input. Q0 must
 prove its trusted observer, appliance binding, separate customer backup target,
 and clean restore. PR-12 does not select or imply its signing authority or
