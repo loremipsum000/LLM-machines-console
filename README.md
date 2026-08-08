@@ -93,6 +93,14 @@ audit storage, retention-canary absence, and exact cleanup. The Docker context
 must be isolated from existing workloads. This is not exact-Core, VM103,
 backup/restore, real Keycloak, real SGLang, release, or Q0 evidence.
 
+Run `corepack pnpm run test:pre-genesis:observability` for the bounded F0-O1
+browser proof. Actual Console Web and BFF read private deterministic LiteLLM,
+Prometheus, and Alertmanager doubles through exact GET-only allowlists. The
+proof covers the retained Inference and Hardware projections, safe metadata,
+source outage and recovery, role parity, and the absence of Grafana and native
+LiteLLM or Keycloak administration. It is not real-service, exact-Core, or Q0
+evidence.
+
 ## Security
 
 Internal deployment topology, operational runbooks, environment credentials,
