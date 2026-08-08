@@ -1235,12 +1235,23 @@ async function proveKeycloakTeamConsoleFlow({
 
   await page.goto(`${consoleOrigin}${detailHref}`)
   await page.getByRole("heading", { name: `Team > ${displayName}` }).waitFor()
+  const username = await page
+    .locator("dt", { hasText: "Username" })
+    .locator("xpath=following-sibling::dd")
+    .innerText()
   assert.equal(
     (await page.locator("body").innerText()).includes(firstPassword),
     false,
   )
   await page.getByText("Operator", { exact: true }).first().waitFor()
   await page.getByText("Active", { exact: true }).first().waitFor()
+  await assertKeycloakPasswordOutcome({
+    accepted: true,
+    consoleOrigin,
+    page,
+    password: firstPassword,
+    username,
+  })
 
   await page.getByRole("button", { name: "Generate password" }).click()
   await page.getByText("Password generated.", { exact: true }).waitFor()
@@ -1250,6 +1261,20 @@ async function proveKeycloakTeamConsoleFlow({
   if (rotatedPassword) sensitiveValues.push(rotatedPassword)
   assert.ok(rotatedPassword.length >= 20)
   assert.notEqual(rotatedPassword, firstPassword)
+  await assertKeycloakPasswordOutcome({
+    accepted: false,
+    consoleOrigin,
+    page,
+    password: firstPassword,
+    username,
+  })
+  await assertKeycloakPasswordOutcome({
+    accepted: true,
+    consoleOrigin,
+    page,
+    password: rotatedPassword,
+    username,
+  })
 
   await page.goto(`${consoleOrigin}/team`)
   await page.getByRole("heading", { name: "Team" }).first().waitFor()
@@ -1319,6 +1344,42 @@ async function proveKeycloakTeamConsoleFlow({
     oneTimePasswordReveal: "passed",
     operatorMutationDenial: "passed",
     passwordRotation: "passed",
+  }
+}
+
+async function assertKeycloakPasswordOutcome({
+  accepted,
+  consoleOrigin,
+  page,
+  password,
+  username,
+}) {
+  const browser = page.context().browser()
+  assert.ok(browser)
+  const context = await browser.newContext({ ignoreHTTPSErrors: true })
+  const probe = await context.newPage()
+  try {
+    await probe.goto(`${consoleOrigin}/team`)
+    await probe.getByRole("link", { name: /Keycloak/ }).click()
+    await probe.locator("#username").fill(username)
+    await probe.locator("#password").fill(password)
+    await probe.locator("#kc-login").click()
+    if (accepted) {
+      await probe.locator("#kc-totp-settings-form").waitFor({ timeout: 20_000 })
+      assert.match(
+        new URL(probe.url()).pathname,
+        /\/realms\/llm-machines\/login-actions\/required-action$/,
+      )
+      return
+    }
+    await probe.locator("#username").waitFor({ timeout: 20_000 })
+    assert.equal(await probe.locator("#kc-totp-settings-form").count(), 0)
+    assert.match(
+      await probe.locator("body").innerText(),
+      /Invalid username or password/i,
+    )
+  } finally {
+    await context.close()
   }
 }
 
@@ -3331,7 +3392,7 @@ function inspectKeycloakTeamPersistence(sensitiveValues) {
     );
   `)
   assert.ok(summary.auditEvents >= 4)
-  assert.ok(summary.completedIdentityMutations >= 4)
+  assert.equal(summary.completedIdentityMutations, 4)
   assert.equal(summary.auditMetadataOnly, true)
   assert.equal(summary.identityMutationMetadataOnly, true)
   assert.equal(summary.plaintextSessionPayloads, 0)

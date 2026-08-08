@@ -41,6 +41,13 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   assert.match(browser, /Team > New member/)
   assert.match(browser, /operatorMutationDenial: "passed"/)
   assert.match(browser, /assert\.ok\(rotatedPassword\.length >= 20\)/)
+  assert.match(browser, /async function assertKeycloakPasswordOutcome/)
+  assert.match(browser, /accepted: false,[\s\S]*password: firstPassword/)
+  assert.match(browser, /accepted: true,[\s\S]*password: rotatedPassword/)
+  assert.match(
+    browser,
+    /assert\.equal\(summary\.completedIdentityMutations, 4\)/,
+  )
   assert.match(
     browser,
     /const mutationCountBefore = identityMutationJournalRowCount\(\)/,
