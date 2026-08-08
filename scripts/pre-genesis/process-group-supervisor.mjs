@@ -9,8 +9,6 @@ for (const signal of ["SIGHUP", "SIGINT", "SIGTERM"]) {
   process.on(signal, () => {})
 }
 
-await send({ type: "supervisor-ready" })
-
 const target = spawn(command[0], command.slice(1), {
   cwd: process.cwd(),
   env: process.env,
@@ -25,6 +23,8 @@ target.once("error", (error) => {
 target.once("exit", (code, signal) => {
   void send({ code, signal, type: "target-exit" }).catch(() => {})
 })
+
+await send({ type: "supervisor-ready" })
 
 setInterval(() => {}, 2_147_483_647)
 

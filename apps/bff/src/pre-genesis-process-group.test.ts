@@ -56,7 +56,7 @@ describe("F0-B1 owned process-group signaling", () => {
         ),
         "/bin/sh",
         "-c",
-        "sleep 30 &",
+        "sleep 0.1; sleep 30 &",
       ],
       {
         cwd: repositoryRoot,
