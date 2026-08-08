@@ -1,7 +1,12 @@
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
-import { X509Certificate, createHash, randomBytes } from "node:crypto"
-import { createWriteStream } from "node:fs"
+import {
+  X509Certificate,
+  createHash,
+  createHmac,
+  randomBytes,
+} from "node:crypto"
+import { createWriteStream, readFileSync } from "node:fs"
 import {
   access,
   chmod,
@@ -28,8 +33,10 @@ import { tmpdir } from "node:os"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { chromium } from "playwright-core"
+import { evaluateSourceBoundary } from "../../infra/ingress/source-no-bypass.mjs"
 import { createOidcFixture } from "./reduced-core-oidc-fixture.mjs"
 
+const keycloakIdentityMode = process.argv.includes("--keycloak-identity")
 const postgresPersistenceMode = process.argv.includes("--postgres-persistence")
 const observabilityMode = process.argv.includes("--observability")
 const credentialLifecycleMode =
@@ -41,6 +48,7 @@ const supportedModes = new Set([
   "--credential-lifecycle",
   "--observability",
   "--postgres-persistence",
+  "--keycloak-identity",
 ])
 const selectedModes = process.argv.slice(2)
 
@@ -50,17 +58,22 @@ if (
   selectedModes.length > 1
 ) {
   throw new Error(
-    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--observability|--postgres-persistence]",
+    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--observability|--postgres-persistence|--keycloak-identity]",
   )
 }
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
+const keycloakControl = keycloakIdentityMode
+  ? keycloakControlFromEnvironment()
+  : null
 const postgresControl = postgresPersistenceMode
   ? postgresControlFromEnvironment()
   : null
 const initialTime = applicationsMode
   ? new Date(Date.now() - 10 * 60 * 1000)
-  : new Date("2026-08-05T10:00:00.000Z")
+  : keycloakIdentityMode
+    ? new Date()
+    : new Date("2026-08-05T10:00:00.000Z")
 const authorities = {
   api: "api.llmm.test",
   console: "console.llmm.test",
@@ -107,7 +120,7 @@ async function runBrowserSessionProof() {
       prometheusPort,
       alertmanagerPort,
     ] = await reservePorts(observabilityMode ? 6 : 4)
-    const edgePort = await browserSafePort()
+    const edgePort = keycloakControl?.edgePort ?? (await browserSafePort())
     const clockFile = join(stateRoot, "clock.txt")
     await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
       mode: 0o600,
@@ -117,7 +130,7 @@ async function runBrowserSessionProof() {
     const observabilityTokenFile = join(stateRoot, "f0-o1-observability-token")
     const consoleOrigin = `https://${authorities.console}:${edgePort}`
     const identityIssuer = `https://${authorities.identity}:${edgePort}/realms/llm-machines`
-    const credentials = {
+    const credentials = keycloakControl?.credentials ?? {
       admin: user("admin"),
       operator: user("operator"),
       bffService: opaqueValue(),
@@ -169,7 +182,9 @@ async function runBrowserSessionProof() {
       )
       sensitiveValues.push(
         credentials.admin.password,
+        credentials.admin.otpSecret,
         credentials.operator.password,
+        credentials.operator.otpSecret,
         credentials.bffService,
         credentials.liteLlm,
         credentials.oidcClient,
@@ -187,15 +202,26 @@ async function runBrowserSessionProof() {
     }
     const clientId = "console-web"
     const audience = "console-bff"
-    oidc = createOidcFixture({
-      audience,
-      clientId,
-      clientSecret: credentials.oidcClient,
-      issuer: identityIssuer,
-      now: () => new Date(currentTime),
-      redirectUri: `${consoleOrigin}/api/console/session/callback`,
-      users: { admin: credentials.admin, operator: credentials.operator },
-    })
+    oidc = keycloakControl
+      ? keycloakControl
+      : createOidcFixture({
+          audience,
+          clientId,
+          clientSecret: credentials.oidcClient,
+          issuer: identityIssuer,
+          now: () => new Date(currentTime),
+          redirectUri: `${consoleOrigin}/api/console/session/callback`,
+          users: { admin: credentials.admin, operator: credentials.operator },
+        })
+    if (keycloakIdentityMode) {
+      sensitiveValues.push(
+        credentials.admin.password,
+        credentials.operator.password,
+        credentials.bffService,
+        credentials.liteLlm,
+        credentials.oidcClient,
+      )
+    }
 
     const inferenceControl = { available: true, requests: [] }
     const inference = createInferenceDouble(
@@ -385,6 +411,7 @@ async function runBrowserSessionProof() {
       certificate,
       edgePort,
       identityFixtureFailures,
+      keycloakControl,
       observedOrigins,
       oidc,
       tlsErrors,
@@ -447,6 +474,82 @@ async function runBrowserSessionProof() {
     assert.equal(new URL(page.url()).search, "?q=safe")
     await assertRole(page, "Administrator")
     await assertConsoleNavigation(page, consoleOrigin)
+
+    if (keycloakIdentityMode) {
+      const identityFlow = await proveKeycloakIdentityConsoleFlow({
+        consoleOrigin,
+        context,
+        credentials,
+        edgePort,
+        page,
+      })
+      assert.deepEqual(pageErrors, [])
+      assertNoSensitiveValues(
+        browserMetadata,
+        sensitiveValues,
+        "browser metadata",
+      )
+      await page.evaluate(async () => navigator.clipboard.writeText(""))
+      assert.equal(
+        await page.evaluate(() => navigator.clipboard.readText()),
+        "",
+      )
+      await page.screenshot({
+        path: join(stateRoot, "credential-free-final.png"),
+      })
+      await context.close()
+
+      const browserVersion = browser.version()
+      await browser.close()
+      browser = undefined
+      evidence = {
+        architecture: process.arch,
+        browser: { name: "Google Chrome", version: browserVersion },
+        credentialMaterialPrinted: false,
+        evidenceClass: "LOCAL_KEYCLOAK_IDENTITY_INTEGRATION_ONLY",
+        identity: identityFlow,
+        limitations: [
+          "Disposable Keycloak 26.7.0 is functional identity evidence, not production commissioning, exact-Core, or Q0 qualification.",
+          "The local Keycloak server uses ephemeral H2 development storage, generated throwaway identities, and the native arm64 platform selected by the pinned multi-platform image.",
+          "A generated local CA with browser-only trust bypass is not appliance TLS evidence.",
+          "Reserved *.llmm.test aliases are loopback-only browser fixture authorities, not Product DNS constants.",
+          "Refresh expiry, reuse detection, concurrency, clock skew, and identity outage remain deterministic F0-S1 evidence until synchronized-clock runtime qualification.",
+          "Console identity mutations, Keycloak FGAP, commissioning, backup, and restore are not exercised.",
+          "No result is Q0, release, capacity, or runtime-qualification evidence.",
+        ],
+        proved: [
+          "actual Console Web and BFF complete Authorization Code plus PKCE login through the approved identity authority",
+          "Admin and Operator authenticate with password and TOTP through the exact pinned Keycloak 26.7.0 image",
+          "the Product token validator accepts the exact issuer, audience, subject, auth_time, amr, nonce, and realm-role claims",
+          "Keycloak browser cookies remain identity-authority scoped while the Console receives only its opaque Product session cookie",
+          "the identity route allowlist carries native login actions and static resources while native Keycloak administration remains denied",
+          "logout clears local Console custody and protected navigation returns to the approved sign-in surface",
+          "Admin and Operator can use retained Console navigation without Grafana, LiteLLM native UI, or Keycloak Admin UI",
+          "Operator is denied Admin-only Application, Team, and audit-export controls",
+        ],
+        status: "passed",
+        temporaryStateRemoved: true,
+      }
+      const cleanup = await Promise.allSettled([
+        ...servers.map(closeServer),
+        ...children.map(stopChild),
+      ])
+      const cleanupFailures = cleanup
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason)
+      if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+          cleanupFailures,
+          "F0-I1 cleanup did not complete.",
+        )
+      }
+      servers.length = 0
+      children.length = 0
+      await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
+      await rm(stateRoot, { force: true, recursive: true })
+      assert.equal(await exists(stateRoot), false)
+      return evidence
+    }
 
     const observabilityFlow =
       observabilityMode &&
@@ -847,6 +950,44 @@ async function signIn(page, consoleOrigin, userCredentials, returnPath) {
 }
 
 async function completeIdentityLogin(page, userCredentials) {
+  if (keycloakIdentityMode) {
+    const navigation = page.locator("nav[aria-label='Console navigation']")
+    const username = page.locator("#username")
+    await Promise.race([
+      navigation.waitFor({ timeout: 20_000 }),
+      username.waitFor({ timeout: 20_000 }),
+    ])
+    if ((await navigation.count()) === 1 && (await navigation.isVisible())) {
+      return
+    }
+    const identityCookies = await page.context().cookies(page.url())
+    assert.ok(
+      identityCookies.some((cookie) => cookie.name === "AUTH_SESSION_ID"),
+      "Keycloak did not establish its identity-host login cookie.",
+    )
+    assert.equal(
+      identityCookies.some((cookie) =>
+        cookie.name.startsWith("__Host-llm-machines-"),
+      ),
+      false,
+      "A Product Console cookie reached the identity authority.",
+    )
+    await username.fill(userCredentials.username)
+    await page.locator("#password").fill(userCredentials.password)
+    await page.locator("#kc-login").click()
+    const otp = page.locator("#otp")
+    await otp.waitFor({ timeout: 20_000 })
+    await otp.fill(totp(userCredentials.otpSecret))
+    await page.locator("#kc-login").click()
+    try {
+      await navigation.waitFor({ timeout: 20_000 })
+    } catch {
+      throw new Error(
+        `Console navigation was not rendered after Keycloak callback at ${page.url()}: ${(await page.locator("body").innerText()).slice(0, 500)}`,
+      )
+    }
+    return
+  }
   await page
     .getByRole("heading", { name: "Fixture identity sign in" })
     .waitFor({ timeout: 10_000 })
@@ -898,6 +1039,93 @@ async function assertConsoleNavigation(page, consoleOrigin) {
     hrefs.some((href) => /(?:grafana|litellm|keycloak.*admin)/i.test(href)),
     false,
   )
+}
+
+async function proveKeycloakIdentityConsoleFlow({
+  consoleOrigin,
+  context,
+  credentials,
+  edgePort,
+  page,
+}) {
+  const cookies = await context.cookies()
+  const consoleCookies = cookies.filter(
+    (cookie) => cookie.domain === authorities.console,
+  )
+  const identityCookies = cookies.filter(
+    (cookie) => cookie.domain === authorities.identity,
+  )
+  const productSession = sessionCookie(consoleCookies)
+  assert.equal(productSession.httpOnly, true)
+  assert.equal(productSession.secure, true)
+  assert.ok(
+    identityCookies.some((cookie) =>
+      ["KEYCLOAK_IDENTITY", "KEYCLOAK_SESSION"].includes(cookie.name),
+    ),
+    "Keycloak did not retain a native identity-host session cookie.",
+  )
+  assert.equal(
+    identityCookies.some((cookie) =>
+      cookie.name.startsWith("__Host-llm-machines-"),
+    ),
+    false,
+    "A Product session cookie reached the identity authority.",
+  )
+  assert.equal(
+    consoleCookies.some((cookie) => cookie.name.startsWith("KEYCLOAK_")),
+    false,
+    "A Keycloak native cookie reached the Console authority.",
+  )
+
+  const deniedNativePaths = [
+    "/admin/",
+    "/admin/master/console/",
+    "/realms/master/admin/",
+    "/realms/llm-machines/admin/",
+  ]
+  for (const path of deniedNativePaths) {
+    const response = await requestHttpsEdge(
+      `https://127.0.0.1:${edgePort}${path}`,
+      `${authorities.identity}:${edgePort}`,
+    )
+    assert.equal(response.status, 404, `${path} was not denied.`)
+  }
+
+  await page.goto(`${consoleOrigin}/`)
+  await page.getByRole("button", { name: "Sign out" }).click()
+  await page.waitForURL((url) => url.pathname === "/auth/signin")
+  await page.goto(`${consoleOrigin}/inference`)
+  assert.equal(new URL(page.url()).pathname, "/auth/signin")
+  assert.equal(new URL(page.url()).searchParams.get("returnTo"), "/inference")
+
+  await context.clearCookies()
+  await signIn(page, consoleOrigin, credentials.operator, "/")
+  await assertRole(page, "Operator")
+  await assertConsoleNavigation(page, consoleOrigin)
+  await page.goto(`${consoleOrigin}/applications/apps/new`)
+  await page.getByRole("heading", { name: "Admin access required" }).waitFor()
+  await page.goto(`${consoleOrigin}/team/members/new`)
+  await page.getByRole("heading", { name: "Admin access required" }).waitFor()
+  await page.goto(`${consoleOrigin}/activity`)
+  assert.equal(await page.getByText("Export JSON", { exact: true }).count(), 0)
+  assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
+
+  await page.goto(`${consoleOrigin}/`)
+  await page.getByRole("button", { name: "Sign out" }).click()
+  await page.waitForURL((url) => url.pathname === "/auth/signin")
+  await page.goto(`${consoleOrigin}/team`)
+  assert.equal(new URL(page.url()).pathname, "/auth/signin")
+  assert.equal(new URL(page.url()).searchParams.get("returnTo"), "/team")
+
+  return {
+    adminRole: "Administrator",
+    identityCookieNames: [...new Set(identityCookies.map(({ name }) => name))]
+      .filter((name) => !name.includes("RESTART"))
+      .sort(),
+    nativeAdminPathsDenied: deniedNativePaths,
+    operatorRole: "Operator",
+    productSessionCookie: productSession.name,
+  }
 }
 
 async function proveObservabilityConsoleFlow({
@@ -1939,6 +2167,7 @@ function createDevelopmentEdge({
   certificate,
   edgePort,
   identityFixtureFailures,
+  keycloakControl,
   observedOrigins,
   oidc,
   tlsErrors,
@@ -1950,6 +2179,15 @@ function createDevelopmentEdge({
       const host = (request.headers.host ?? "").split(":", 1)[0].toLowerCase()
       const url = new URL(request.url ?? "/", `https://${request.headers.host}`)
       if (host === authorities.identity) {
+        if (keycloakControl) {
+          proxyIdentityRequest(
+            request,
+            response,
+            url,
+            keycloakControl.upstreamPort,
+          )
+          return
+        }
         void oidc.handle(request, response, url).catch((error) => {
           identityFixtureFailures.push(
             error instanceof Error ? error.message : "unknown_fixture_failure",
@@ -2012,6 +2250,46 @@ function createDevelopmentEdge({
   )
   server.on("tlsClientError", (error) => tlsErrors.push(error.message))
   return server
+}
+
+function proxyIdentityRequest(incoming, outgoing, url, upstreamPort) {
+  const boundary = evaluateSourceBoundary({
+    customerPort: 443,
+    headers: incoming.headers,
+    hostHeaders: [authorities.identity],
+    hosts: authorities,
+    method: incoming.method ?? "GET",
+    rawTarget: `${url.pathname}${url.search}`,
+    sni: authorities.identity,
+  })
+  if (!boundary.allowed) {
+    sendJson(outgoing, 404, { error: "identity_route_denied" })
+    return
+  }
+  const upstream = httpRequest(
+    {
+      headers: boundary.forwardedHeaders,
+      host: "127.0.0.1",
+      method: incoming.method,
+      path: `${boundary.upstreamPath}${url.search}`,
+      port: upstreamPort,
+    },
+    (upstreamResponse) => {
+      outgoing.writeHead(
+        upstreamResponse.statusCode ?? 502,
+        withoutHopByHop(upstreamResponse.headers),
+      )
+      upstreamResponse.pipe(outgoing)
+    },
+  )
+  upstream.on("error", () => {
+    if (!outgoing.headersSent) {
+      sendJson(outgoing, 502, { error: "identity_unavailable" })
+    } else {
+      outgoing.destroy()
+    }
+  })
+  incoming.pipe(upstream)
 }
 
 function proxyRequest(
@@ -2890,6 +3168,28 @@ async function createTemporaryStateRoot() {
   return mkdtemp(join(temporaryRealRoot, "llmm-f0-s1-"))
 }
 
+function keycloakControlFromEnvironment() {
+  const configFile = process.env.F0_I1_KEYCLOAK_CONFIG_FILE?.trim()
+  if (!configFile || !isAbsolute(configFile)) {
+    throw new Error(
+      "F0-I1 requires an absolute disposable Keycloak config file.",
+    )
+  }
+  const config = JSON.parse(readFileSync(configFile, "utf8"))
+  if (
+    !Number.isInteger(config.edgePort) ||
+    !Number.isInteger(config.upstreamPort) ||
+    !config.credentials
+  ) {
+    throw new Error("F0-I1 Keycloak control data is invalid.")
+  }
+  return {
+    credentials: config.credentials,
+    edgePort: config.edgePort,
+    upstreamPort: config.upstreamPort,
+  }
+}
+
 function pathIsInside(parent, candidate) {
   const fromParent = relative(parent, candidate)
   return (
@@ -3164,6 +3464,19 @@ function sessionCookie(cookies) {
 
 function opaqueValue() {
   return randomBytes(32).toString("base64url")
+}
+
+function totp(secret) {
+  assert.equal(typeof secret, "string")
+  const counter = Math.floor(Date.now() / 30_000)
+  const buffer = Buffer.alloc(8)
+  buffer.writeBigUInt64BE(BigInt(counter))
+  const digest = createHmac("sha256", Buffer.from(secret, "utf8"))
+    .update(buffer)
+    .digest()
+  const offset = digest.at(-1) & 0x0f
+  const value = (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000
+  return value.toString().padStart(6, "0")
 }
 
 function delay(milliseconds) {
