@@ -24,7 +24,7 @@ target.once("exit", (code, signal) => {
   void send({ code, signal, type: "target-exit" }).catch(() => {})
 })
 
-await send({ type: "supervisor-ready" })
+await send({ type: "supervisor-ready" }).catch(() => {})
 
 setInterval(() => {}, 2_147_483_647)
 

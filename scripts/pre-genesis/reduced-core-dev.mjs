@@ -1843,6 +1843,8 @@ async function stopChild(record) {
   try {
     const supervisorReady = await waitForSupervisorReady(record, 5_000)
     if (!supervisorReady) {
+      signalChildProcessGroup(record, "SIGKILL")
+      await waitForChildExit(record.child, 1_000)
       throw new Error(
         `${record.name} supervisor did not become ready before cleanup.`,
       )
