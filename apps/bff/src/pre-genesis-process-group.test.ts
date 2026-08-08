@@ -23,13 +23,21 @@ describe("F0-B1 owned process-group signaling", () => {
   })
 
   test("does not signal an unrelated group after the owner exits", () => {
-    const signalProcess = vi.fn(() => {
-      throw processError("EPERM")
-    })
+    const signalProcess = vi.fn(() => true)
 
     expect(
       signalOwnedProcessGroup(123, "SIGTERM", () => true, signalProcess),
     ).toBe(false)
+    expect(signalProcess).not.toHaveBeenCalled()
+  })
+
+  test("signals a process group only while its owner is still tracked", () => {
+    const signalProcess = vi.fn(() => true)
+
+    expect(
+      signalOwnedProcessGroup(123, "SIGTERM", () => false, signalProcess),
+    ).toBe(true)
+    expect(signalProcess).toHaveBeenCalledWith(-123, "SIGTERM")
   })
 })
 

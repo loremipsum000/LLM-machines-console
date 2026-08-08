@@ -4,7 +4,7 @@ export function signalOwnedProcessGroup(
   ownerHasExited,
   signalProcess = process.kill,
 ) {
-  if (!pid) {
+  if (!pid || ownerHasExited()) {
     return false
   }
   try {
