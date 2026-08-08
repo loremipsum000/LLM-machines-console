@@ -404,6 +404,15 @@ Workload and secret canaries remain absent from PostgreSQL, logs, temporary
 files, and teardown artifacts. This is local functional evidence only, not
 exact-Core, backup/restore, real-service, release, or Q0 qualification.
 
+F0-O1 proves the retained Console observability projection through actual Web
+and BFF code with private deterministic LiteLLM, Prometheus, and Alertmanager
+doubles. Admin and Operator receive the same read-only view of safe LiteLLM
+health, models, usage, route, and credential metadata plus curated hardware
+signals and metadata-only alerts. Source failure is controlled and recoverable.
+Grafana, native LiteLLM, and Keycloak Admin access remain absent. Queue depth
+remains explicitly unconfigured rather than synthesized. This is local browser
+evidence only, not real-service, exact-Core, or Q0 qualification.
+
 System-managed exact-host egress allowlisting and public-address validation do
 not introduce customer URL Governance. The governed internal upstream is
 exactly `http://firecrawl-api:3002`; hosted, HTTPS, alternate-host, and

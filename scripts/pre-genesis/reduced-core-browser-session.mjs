@@ -31,6 +31,7 @@ import { chromium } from "playwright-core"
 import { createOidcFixture } from "./reduced-core-oidc-fixture.mjs"
 
 const postgresPersistenceMode = process.argv.includes("--postgres-persistence")
+const observabilityMode = process.argv.includes("--observability")
 const credentialLifecycleMode =
   process.argv.includes("--credential-lifecycle") || postgresPersistenceMode
 const applicationsMode =
@@ -38,6 +39,7 @@ const applicationsMode =
 const supportedModes = new Set([
   "--applications",
   "--credential-lifecycle",
+  "--observability",
   "--postgres-persistence",
 ])
 const selectedModes = process.argv.slice(2)
@@ -48,7 +50,7 @@ if (
   selectedModes.length > 1
 ) {
   throw new Error(
-    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--postgres-persistence]",
+    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--observability|--postgres-persistence]",
   )
 }
 
@@ -97,8 +99,14 @@ async function runBrowserSessionProof() {
   const tlsErrors = []
   try {
     await chmod(stateRoot, 0o700)
-    const [bffPort, webPort, inferencePort, firecrawlPort] =
-      await reservePorts(4)
+    const [
+      bffPort,
+      webPort,
+      inferencePort,
+      firecrawlPort,
+      prometheusPort,
+      alertmanagerPort,
+    ] = await reservePorts(observabilityMode ? 6 : 4)
     const edgePort = await browserSafePort()
     const clockFile = join(stateRoot, "clock.txt")
     await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
@@ -106,6 +114,7 @@ async function runBrowserSessionProof() {
     })
     const certificate = await createCertificate(stateRoot)
     const webRoot = await prepareTemporaryWebProject(stateRoot)
+    const observabilityTokenFile = join(stateRoot, "f0-o1-observability-token")
     const consoleOrigin = `https://${authorities.console}:${edgePort}`
     const identityIssuer = `https://${authorities.identity}:${edgePort}/realms/llm-machines`
     const credentials = {
@@ -114,7 +123,22 @@ async function runBrowserSessionProof() {
       bffService: opaqueValue(),
       liteLlm: opaqueValue(),
       oidcClient: opaqueValue(),
+      observability: opaqueValue(),
     }
+    if (observabilityMode) {
+      await writeFile(
+        observabilityTokenFile,
+        `${credentials.observability}\n`,
+        { mode: 0o600 },
+      )
+    }
+    const observabilityCanaries = observabilityMode
+      ? {
+          alertLabel: `f0o1-alert-${opaqueValue()}`,
+          liteLlmCredential: `sk-f0o1-${opaqueValue()}`,
+          workload: `f0o1-workload-${opaqueValue()}`,
+        }
+      : null
     const retentionCanaries = postgresPersistenceMode
       ? {
           prompt: `f0p1-prompt-${opaqueValue()}`,
@@ -154,6 +178,13 @@ async function runBrowserSessionProof() {
         ...Object.values(retentionCanaries),
       )
     }
+    if (observabilityCanaries) {
+      sensitiveValues.push(
+        credentials.liteLlm,
+        credentials.observability,
+        ...Object.values(observabilityCanaries),
+      )
+    }
     const clientId = "console-web"
     const audience = "console-bff"
     oidc = createOidcFixture({
@@ -166,20 +197,64 @@ async function runBrowserSessionProof() {
       users: { admin: credentials.admin, operator: credentials.operator },
     })
 
+    const inferenceControl = { available: true, requests: [] }
     const inference = createInferenceDouble(
       credentials.liteLlm,
       retentionCanaries?.response ?? "fixture-response",
+      inferenceControl,
+      observabilityCanaries,
     )
     servers.push(inference)
     await listen(inference, inferencePort)
     const firecrawl = createFirecrawlDouble()
     servers.push(firecrawl)
     await listen(firecrawl, firecrawlPort)
+    const prometheusControl = observabilityMode
+      ? { available: true, requests: [] }
+      : null
+    const alertmanagerControl = observabilityMode
+      ? { available: true, requests: [] }
+      : null
+    if (
+      observabilityMode &&
+      prometheusControl &&
+      alertmanagerControl &&
+      prometheusPort &&
+      alertmanagerPort
+    ) {
+      const prometheus = createPrometheusDouble(
+        credentials.observability,
+        prometheusControl,
+      )
+      const alertmanager = createAlertmanagerDouble(
+        credentials.observability,
+        alertmanagerControl,
+        observabilityCanaries,
+      )
+      servers.push(prometheus, alertmanager)
+      await Promise.all([
+        listen(prometheus, prometheusPort),
+        listen(alertmanager, alertmanagerPort),
+      ])
+    }
 
     const bffEnvironment = {
       BFF_FALLBACK_MODELS: "fixture-model",
       BFF_FIXTURE_MODE: "true",
       BFF_SERVICE_API_KEY: credentials.bffService,
+      ...(observabilityMode && prometheusPort && alertmanagerPort
+        ? {
+            ADMIN_ALERTMANAGER_BASE_URL: `http://127.0.0.1:${alertmanagerPort}`,
+            ADMIN_ALERTMANAGER_BEARER_TOKEN_FILE: observabilityTokenFile,
+            ADMIN_ALERTMANAGER_TIMEOUT_MS: "500",
+            ADMIN_LITELLM_API_KEY: credentials.liteLlm,
+            ADMIN_LITELLM_BASE_URL: `http://127.0.0.1:${inferencePort}`,
+            ADMIN_LITELLM_TIMEOUT_MS: "500",
+            ADMIN_PROMETHEUS_BASE_URL: `http://127.0.0.1:${prometheusPort}`,
+            ADMIN_PROMETHEUS_BEARER_TOKEN_FILE: observabilityTokenFile,
+            ADMIN_PROMETHEUS_TIMEOUT_MS: "500",
+          }
+        : {}),
       ...(applicationsMode
         ? {
             ADMIN_LITELLM_API_KEY: credentials.liteLlm,
@@ -373,6 +448,21 @@ async function runBrowserSessionProof() {
     await assertRole(page, "Administrator")
     await assertConsoleNavigation(page, consoleOrigin)
 
+    const observabilityFlow =
+      observabilityMode &&
+      observabilityCanaries &&
+      prometheusControl &&
+      alertmanagerControl
+        ? await proveObservabilityConsoleFlow({
+            alertmanagerControl,
+            consoleOrigin,
+            inferenceControl,
+            observabilityCanaries,
+            page,
+            prometheusControl,
+          })
+        : null
+
     let persistenceOperatorContext
     let persistenceOperatorPage
     if (postgresPersistenceMode) {
@@ -515,6 +605,13 @@ async function runBrowserSessionProof() {
     if (credentialLifecycleMode && applicationFlow) {
       await assertOperatorApplicationReadOnly(page, applicationFlow)
     }
+    if (observabilityMode) {
+      await assertObservabilityConsoleProjection(
+        page,
+        consoleOrigin,
+        observabilityCanaries,
+      )
+    }
 
     await page.goto(`${consoleOrigin}/`)
     await page.getByRole("button", { name: "Sign out" }).click()
@@ -549,10 +646,13 @@ async function runBrowserSessionProof() {
         ? "LOCAL_POSTGRES_RESTART_PERSISTENCE_ONLY"
         : credentialLifecycleMode
           ? "LOCAL_BROWSER_CREDENTIAL_LIFECYCLE_ONLY"
-          : applicationsMode
-            ? "LOCAL_BROWSER_APPLICATION_FLOW_ONLY"
-            : "LOCAL_BROWSER_SESSION_AND_ROLE_FLOW_ONLY",
+          : observabilityMode
+            ? "LOCAL_BROWSER_OBSERVABILITY_PROJECTION_ONLY"
+            : applicationsMode
+              ? "LOCAL_BROWSER_APPLICATION_FLOW_ONLY"
+              : "LOCAL_BROWSER_SESSION_AND_ROLE_FLOW_ONLY",
       ...(applicationFlow ? { flow: applicationFlow } : {}),
+      ...(observabilityFlow ? { observability: observabilityFlow } : {}),
       ...(postgresOutageEvidence
         ? { postgresOutage: postgresOutageEvidence }
         : {}),
@@ -570,9 +670,11 @@ async function runBrowserSessionProof() {
         "The deterministic identity fixture is not Keycloak 26.7.0 runtime qualification.",
         "A generated local CA with browser-only trust bypass is not appliance TLS evidence.",
         "Reserved *.llmm.test aliases are loopback-only browser fixture authorities, not Product DNS constants.",
-        applicationsMode
-          ? "Inference is deterministic; Firecrawl upstream execution remains F0-W1 evidence."
-          : "Inference is deterministic and Firecrawl is not exercised by F0-S1.",
+        observabilityMode
+          ? "Prometheus, Alertmanager, and LiteLLM are deterministic private doubles, not packaged runtime qualification."
+          : applicationsMode
+            ? "Inference is deterministic; Firecrawl upstream execution remains F0-W1 evidence."
+            : "Inference is deterministic and Firecrawl is not exercised by F0-S1.",
         "No result is Q0, release, capacity, or runtime-qualification evidence.",
       ],
       proved: [
@@ -605,6 +707,16 @@ async function runBrowserSessionProof() {
                     "Operator remains read-only across Application and credential lifecycle surfaces",
                   ]
                 : []),
+            ]
+          : []),
+        ...(observabilityFlow
+          ? [
+              "Admin and Operator read the same source-backed Hardware and Inference projections through the actual Console",
+              "Prometheus supplies seven curated hardware signals and Alertmanager supplies allowlisted metadata-only active alerts",
+              "LiteLLM supplies health, usage, model inventory, route summary, and safe credential metadata through GET-only private reads",
+              "private source outage renders controlled unavailable states and the Console recovers without native service links",
+              "Grafana, Alertmanager, LiteLLM, and Keycloak native administration remain absent from Product navigation",
+              "queue depth remains explicitly not configured and no workload or source credential canary reaches browser or teardown state",
             ]
           : []),
       ],
@@ -697,6 +809,7 @@ async function runBrowserSessionProof() {
       )
     }
     await rm(join(stateRoot, "f0-p1-session-keyring.json"), { force: true })
+    await rm(join(stateRoot, "f0-o1-observability-token"), { force: true })
     if (failures.length === 0 && sensitiveValues.length > 0) {
       try {
         await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
@@ -785,6 +898,228 @@ async function assertConsoleNavigation(page, consoleOrigin) {
     hrefs.some((href) => /(?:grafana|litellm|keycloak.*admin)/i.test(href)),
     false,
   )
+}
+
+async function proveObservabilityConsoleFlow({
+  alertmanagerControl,
+  consoleOrigin,
+  inferenceControl,
+  observabilityCanaries,
+  page,
+  prometheusControl,
+}) {
+  await assertObservabilityConsoleProjection(
+    page,
+    consoleOrigin,
+    observabilityCanaries,
+  )
+
+  inferenceControl.available = false
+  await page.goto(`${consoleOrigin}/inference`)
+  await page
+    .getByText(
+      "LiteLLM is configured, but aggregate inference usage is unavailable.",
+    )
+    .waitFor()
+  assert.equal(
+    (await page.getByText("Unavailable", { exact: true }).count()) > 0,
+    true,
+  )
+  inferenceControl.available = true
+  await assertObservabilityConsoleProjection(
+    page,
+    consoleOrigin,
+    observabilityCanaries,
+  )
+
+  prometheusControl.available = false
+  alertmanagerControl.available = false
+  await page.goto(`${consoleOrigin}/hardware`)
+  await page
+    .getByText(
+      /Prometheus federation is configured, but hardware metrics could not be read/,
+    )
+    .waitFor()
+  await page
+    .getByText(
+      /Alert federation is configured, but its current state could not be read/,
+    )
+    .waitFor()
+  prometheusControl.available = true
+  alertmanagerControl.available = true
+  await assertObservabilityConsoleProjection(
+    page,
+    consoleOrigin,
+    observabilityCanaries,
+  )
+
+  for (const nativePath of ["/grafana", "/litellm", "/keycloak/admin"]) {
+    const response = await page.goto(`${consoleOrigin}${nativePath}`)
+    assert.equal(response?.status(), 404)
+  }
+
+  assertPrivateReadRequests(inferenceControl.requests, {
+    allowedPaths: new Set([
+      "/key/list",
+      "/model/info",
+      "/spend/logs/v2",
+      "/user/daily/activity/aggregated",
+      "/v1/model/info",
+      "/v1/models",
+    ]),
+    allowedQueryKeys: new Map([
+      [
+        "/key/list",
+        ["include_team_keys", "page", "return_full_object", "size"],
+      ],
+      ["/model/info", []],
+      [
+        "/spend/logs/v2",
+        ["end_date", "page", "page_size", "start_date", "status_filter"],
+      ],
+      ["/user/daily/activity/aggregated", ["end_date", "start_date"]],
+      ["/v1/model/info", []],
+      ["/v1/models", []],
+    ]),
+    source: "LiteLLM",
+  })
+  assertPrivateReadRequests(prometheusControl.requests, {
+    allowedPaths: new Set(["/api/v1/query", "/api/v1/query_range"]),
+    allowedQueryKeys: new Map([
+      ["/api/v1/query", ["query"]],
+      ["/api/v1/query_range", ["end", "query", "start", "step"]],
+    ]),
+    source: "Prometheus",
+  })
+  assertPrivateReadRequests(alertmanagerControl.requests, {
+    allowedPaths: new Set(["/-/ready", "/api/v2/alerts"]),
+    allowedQueryKeys: new Map([
+      ["/-/ready", []],
+      ["/api/v2/alerts", ["active", "inhibited", "silenced"]],
+    ]),
+    source: "Alertmanager",
+    unauthenticatedPaths: new Set(["/-/ready"]),
+  })
+
+  return {
+    activeAlerts: 1,
+    adminAndOperatorReadParity: "passed",
+    curatedHardwareSignals: 7,
+    grafanaAbsent: true,
+    liteLlmProjection: {
+      credentialMetadata: "safe-only",
+      models: 1,
+      requests: 17,
+      tokens: 1700,
+    },
+    nativeAdministration: "absent",
+    privateReads: {
+      alertmanager: summarizePrivateRequests(alertmanagerControl.requests),
+      liteLlm: summarizePrivateRequests(inferenceControl.requests),
+      prometheus: summarizePrivateRequests(prometheusControl.requests),
+    },
+    queueDepth: "not_configured",
+    sourceOutageRecovery: "passed",
+  }
+}
+
+async function assertObservabilityConsoleProjection(
+  page,
+  consoleOrigin,
+  observabilityCanaries,
+) {
+  await page.goto(`${consoleOrigin}/inference`)
+  await page.getByRole("heading", { name: "Inference" }).waitFor()
+  await page.getByText("LiteLLM remains private", { exact: true }).waitFor()
+  await page
+    .getByText("LiteLLM reports 17 requests and 1,700 tokens in the last 30d.")
+    .waitFor()
+  await page.getByText("fixture-model", { exact: true }).first().waitFor()
+  await page
+    .getByText("Route changes are not a v1 customer capability.", {
+      exact: false,
+    })
+    .waitFor()
+  await page.getByRole("button", { name: /Expand/ }).click()
+  await page.getByText("core-routing", { exact: true }).waitFor()
+  await page.getByText("inference-core", { exact: true }).waitFor()
+  for (const mutationName of [
+    "Create route",
+    "Create virtual key",
+    "Rotate virtual key",
+    "Revoke virtual key",
+  ]) {
+    assert.equal(
+      await page
+        .getByRole("button", { exact: true, name: mutationName })
+        .count(),
+      0,
+    )
+  }
+
+  await page.goto(`${consoleOrigin}/hardware`)
+  await page.getByRole("heading", { name: "Hardware" }).waitFor()
+  await page
+    .getByText("Prometheus is returning all 7 curated hardware signals.", {
+      exact: false,
+    })
+    .waitFor()
+  await page.getByRole("heading", { name: "LLMMGpuSaturation" }).waitFor()
+  for (const heading of [
+    "CPU utilization",
+    "GPU temperature",
+    "GPU utilization",
+    "RAM usage",
+    "Filesystem usage",
+    "Power draw",
+    "Network throughput",
+  ]) {
+    await page.getByRole("heading", { name: heading }).waitFor()
+  }
+
+  await page.goto(`${consoleOrigin}/`)
+  await page.getByRole("heading", { name: "Overview" }).waitFor()
+  await page.getByText("Models served", { exact: true }).waitFor()
+  await page.getByText("Targets up", { exact: true }).waitFor()
+
+  const body = await page.locator("body").innerText()
+  assertNoSensitiveValues(
+    [body],
+    Object.values(observabilityCanaries),
+    "Console projection",
+  )
+  assert.doesNotMatch(body, /Grafana.*(?:open|launch|visit)/i)
+}
+
+function assertPrivateReadRequests(
+  requests,
+  { allowedPaths, allowedQueryKeys, source, unauthenticatedPaths = new Set() },
+) {
+  assert.ok(requests.length > 0, `${source} received no private reads.`)
+  for (const request of requests) {
+    assert.equal(request.method, "GET", `${source} received a mutation.`)
+    if (!unauthenticatedPaths.has(request.path)) {
+      assert.equal(
+        request.authorized,
+        true,
+        `${source} read was unauthenticated.`,
+      )
+    }
+    assert.equal(
+      allowedPaths.has(request.path),
+      true,
+      `${source} received an unapproved path ${request.path}.`,
+    )
+    assert.deepEqual(
+      request.queryKeys,
+      allowedQueryKeys.get(request.path),
+      `${source} received unapproved query keys on ${request.path}.`,
+    )
+  }
+}
+
+function summarizePrivateRequests(requests) {
+  return [...new Set(requests.map((request) => request.path))].sort()
 }
 
 async function proveApplicationConsoleFlow({
@@ -1777,13 +2112,20 @@ function withoutHopByHop(headers) {
   )
 }
 
-function createInferenceDouble(apiKey, responseContent) {
+function createInferenceDouble(
+  apiKey,
+  responseContent,
+  control = { available: true, requests: [] },
+  observabilityCanaries = null,
+) {
   return createHttpServer((request, response) => {
     void handleInferenceDoubleRequest(
       request,
       response,
       apiKey,
       responseContent,
+      control,
+      observabilityCanaries,
     ).catch(() => {
       if (!response.headersSent) {
         sendJson(response, 500, { error: "fixture_failure" })
@@ -1858,12 +2200,25 @@ async function handleInferenceDoubleRequest(
   response,
   apiKey,
   responseContent,
+  control,
+  observabilityCanaries,
 ) {
-  if (request.headers.authorization !== `Bearer ${apiKey}`) {
+  const authorized = request.headers.authorization === `Bearer ${apiKey}`
+  const url = new URL(request.url ?? "/", "http://fixture.invalid")
+  control.requests.push({
+    authorized,
+    method: request.method ?? "UNKNOWN",
+    path: url.pathname,
+    queryKeys: [...new Set(url.searchParams.keys())].sort(),
+  })
+  if (!authorized) {
     sendJson(response, 401, { error: "unauthorized" })
     return
   }
-  const url = new URL(request.url ?? "/", "http://fixture.invalid")
+  if (!control.available) {
+    sendJson(response, 503, { error: "fixture_unavailable" })
+    return
+  }
   if (request.method === "GET" && url.pathname === "/v1/models") {
     sendJson(response, 200, {
       data: [{ id: "fixture-model", object: "model", owned_by: "fixture" }],
@@ -1876,8 +2231,25 @@ async function handleInferenceDoubleRequest(
     url.pathname === "/user/daily/activity/aggregated"
   ) {
     sendJson(response, 200, {
-      metadata: { total_api_requests: 0, total_tokens: 0 },
-      results: [],
+      metadata: {
+        total_api_requests: observabilityCanaries ? 17 : 0,
+        total_tokens: observabilityCanaries ? 1700 : 0,
+      },
+      results: observabilityCanaries
+        ? [
+            {
+              breakdown: {
+                model_groups: {
+                  "fixture-model": {
+                    metrics: { api_requests: 17, total_tokens: 1700 },
+                  },
+                },
+              },
+              date: "2026-08-07",
+              metrics: { total_api_requests: 17, total_tokens: 1700 },
+            },
+          ]
+        : [],
     })
     return
   }
@@ -1899,9 +2271,35 @@ async function handleInferenceDoubleRequest(
   if (request.method === "GET" && url.pathname === "/key/list") {
     sendJson(response, 200, {
       current_page: 1,
-      keys: [],
-      total_count: 0,
-      total_pages: 0,
+      keys: observabilityCanaries
+        ? [
+            {
+              blocked: false,
+              key_alias: "core-routing",
+              last_active: "2026-08-07T12:00:00.000Z",
+              models: ["fixture-model"],
+              team_alias: "inference-core",
+              token: observabilityCanaries.liteLlmCredential,
+            },
+          ]
+        : [],
+      total_count: observabilityCanaries ? 1 : 0,
+      total_pages: 1,
+    })
+    return
+  }
+  if (request.method === "GET" && url.pathname === "/spend/logs/v2") {
+    sendJson(response, 200, {
+      data: observabilityCanaries
+        ? [
+            {
+              model_group: "fixture-model",
+              spend: 0,
+              start_time: "2026-08-07T12:00:00.000Z",
+              total_tokens: 100,
+            },
+          ]
+        : [],
     })
     return
   }
@@ -1928,6 +2326,149 @@ async function handleInferenceDoubleRequest(
     object: "chat.completion",
     usage: { completion_tokens: 2, prompt_tokens: 3, total_tokens: 5 },
   })
+}
+
+function createPrometheusDouble(apiKey, control) {
+  return createHttpServer((request, response) => {
+    const authorized = request.headers.authorization === `Bearer ${apiKey}`
+    const url = new URL(request.url ?? "/", "http://fixture.invalid")
+    control.requests.push({
+      authorized,
+      method: request.method ?? "UNKNOWN",
+      path: url.pathname,
+      queryKeys: [...new Set(url.searchParams.keys())].sort(),
+    })
+    if (!authorized) {
+      sendJson(response, 401, { error: "unauthorized" })
+      return
+    }
+    if (!control.available) {
+      sendJson(response, 503, { error: "fixture_unavailable" })
+      return
+    }
+    if (request.method !== "GET") {
+      sendJson(response, 405, { error: "method_not_allowed" })
+      return
+    }
+    if (url.pathname === "/api/v1/query") {
+      const query = url.searchParams.get("query") ?? ""
+      const timestamp = Math.floor(Date.now() / 1000)
+      const result = query.startsWith("up{")
+        ? [
+            {
+              metric: { host: "core-a", job: "node" },
+              value: [timestamp, "1"],
+            },
+            {
+              metric: { host: "inference-a", job: "dcgm" },
+              value: [timestamp, "1"],
+            },
+          ]
+        : [
+            {
+              metric: { host: "core-a" },
+              value: [timestamp, query.includes("filesystem") ? "71" : "62"],
+            },
+          ]
+      sendJson(response, 200, {
+        data: { result, resultType: "vector" },
+        status: "success",
+      })
+      return
+    }
+    if (url.pathname === "/api/v1/query_range") {
+      const end = Number(url.searchParams.get("end"))
+      const start = Number(url.searchParams.get("start"))
+      const query = url.searchParams.get("query") ?? ""
+      const metric = {
+        __name__: metricNameForQuery(query),
+        device: query.includes("network") ? "eth0" : "/dev/vda1",
+        direction: query.includes("transmit") ? "TX" : "RX",
+        gpu: "0",
+        host: "core-a",
+        mountpoint: "/",
+      }
+      sendJson(response, 200, {
+        data: {
+          result: [
+            {
+              metric,
+              values: [
+                [Number.isFinite(start) ? start : 1, "41"],
+                [Number.isFinite(end) ? end : 2, "42"],
+              ],
+            },
+          ],
+          resultType: "matrix",
+        },
+        status: "success",
+      })
+      return
+    }
+    sendJson(response, 404, { error: "unsupported" })
+  })
+}
+
+function createAlertmanagerDouble(apiKey, control, observabilityCanaries) {
+  return createHttpServer((request, response) => {
+    const authorized = request.headers.authorization === `Bearer ${apiKey}`
+    const url = new URL(request.url ?? "/", "http://fixture.invalid")
+    control.requests.push({
+      authorized,
+      method: request.method ?? "UNKNOWN",
+      path: url.pathname,
+      queryKeys: [...new Set(url.searchParams.keys())].sort(),
+    })
+    if (request.method === "GET" && url.pathname === "/-/ready") {
+      sendJson(response, control.available ? 200 : 503, {
+        status: control.available ? "ready" : "unavailable",
+      })
+      return
+    }
+    if (!authorized) {
+      sendJson(response, 401, { error: "unauthorized" })
+      return
+    }
+    if (!control.available) {
+      sendJson(response, 503, { error: "fixture_unavailable" })
+      return
+    }
+    if (request.method !== "GET" || url.pathname !== "/api/v2/alerts") {
+      sendJson(response, 404, { error: "unsupported" })
+      return
+    }
+    sendJson(response, 200, [
+      {
+        labels: {
+          alertname: "LLMMGpuSaturation",
+          component: "inference",
+          severity: "warning",
+          unapproved: observabilityCanaries.workload,
+        },
+        startsAt: "2026-08-07T12:00:00.000Z",
+        status: { state: "active" },
+      },
+      {
+        labels: {
+          alertname: observabilityCanaries.alertLabel,
+          component: "inference",
+          severity: "critical",
+        },
+        startsAt: "2026-08-07T12:00:00.000Z",
+        status: { state: "active" },
+      },
+    ])
+  })
+}
+
+function metricNameForQuery(query) {
+  if (query.includes("GPU_TEMP")) return "DCGM_FI_DEV_GPU_TEMP"
+  if (query.includes("GPU_UTIL")) return "DCGM_FI_DEV_GPU_UTIL"
+  if (query.includes("memory")) return "node_memory_MemAvailable_bytes"
+  if (query.includes("filesystem")) return "node_filesystem_avail_bytes"
+  if (query.includes("power")) return "ipmi_dcmi_power_consumption_watts"
+  if (query.includes("network")) return "node_network_receive_bytes_total"
+  return "node_cpu_seconds_total"
 }
 
 async function createCertificate(stateRoot) {
