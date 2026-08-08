@@ -1739,7 +1739,11 @@ function startChild(
   reportRuntimeFailure,
 ) {
   const errors = []
+  let resolveSupervisorReady
   let resolveTargetExit
+  const supervisorReady = new Promise((resolveReady) => {
+    resolveSupervisorReady = resolveReady
+  })
   const targetExit = new Promise((resolveExit) => {
     resolveTargetExit = resolveExit
   })
@@ -1774,6 +1778,8 @@ function startChild(
     stderr,
     stdout,
     stopping: false,
+    supervisorIsReady: false,
+    supervisorReady,
     targetExit,
     targetExited: false,
   }
@@ -1791,9 +1797,18 @@ function startChild(
     if (
       !message ||
       typeof message !== "object" ||
-      !["target-error", "target-exit"].includes(message.type)
+      !["supervisor-ready", "target-error", "target-exit"].includes(
+        message.type,
+      )
     ) {
       recordFailure(new Error(`${name} supervisor sent an invalid message.`))
+      return
+    }
+    if (message.type === "supervisor-ready") {
+      if (!record.supervisorIsReady) {
+        record.supervisorIsReady = true
+        resolveSupervisorReady()
+      }
       return
     }
     if (!record.targetExited) {
@@ -1826,6 +1841,12 @@ async function stopChild(record) {
   const errors = []
   record.stopping = true
   try {
+    const supervisorReady = await waitForSupervisorReady(record, 5_000)
+    if (!supervisorReady) {
+      throw new Error(
+        `${record.name} supervisor did not become ready before cleanup.`,
+      )
+    }
     if (signalChildProcessGroup(record, "SIGTERM")) {
       await waitForTargetExit(record, 5_000)
       if (!signalChildProcessGroup(record, "SIGKILL")) {
@@ -2123,6 +2144,18 @@ function waitForTargetExit(record, timeoutMs) {
   }
   return Promise.race([
     record.targetExit.then(() => true),
+    new Promise((resolveTimeout) =>
+      setTimeout(() => resolveTimeout(false), timeoutMs),
+    ),
+  ])
+}
+
+function waitForSupervisorReady(record, timeoutMs) {
+  if (record.supervisorIsReady) {
+    return Promise.resolve(true)
+  }
+  return Promise.race([
+    record.supervisorReady.then(() => true),
     new Promise((resolveTimeout) =>
       setTimeout(() => resolveTimeout(false), timeoutMs),
     ),

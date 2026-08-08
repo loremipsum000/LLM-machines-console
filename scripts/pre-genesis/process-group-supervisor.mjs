@@ -9,6 +9,8 @@ for (const signal of ["SIGHUP", "SIGINT", "SIGTERM"]) {
   process.on(signal, () => {})
 }
 
+await send({ type: "supervisor-ready" })
+
 const target = spawn(command[0], command.slice(1), {
   cwd: process.cwd(),
   env: process.env,
@@ -16,16 +18,28 @@ const target = spawn(command[0], command.slice(1), {
 })
 
 target.once("error", (error) => {
-  send({ code: error.code ?? "spawn_failed", type: "target-error" })
+  void send({ code: error.code ?? "spawn_failed", type: "target-error" }).catch(
+    () => {},
+  )
 })
 target.once("exit", (code, signal) => {
-  send({ code, signal, type: "target-exit" })
+  void send({ code, signal, type: "target-exit" }).catch(() => {})
 })
 
 setInterval(() => {}, 2_147_483_647)
 
 function send(message) {
-  if (process.connected) {
-    process.send(message)
-  }
+  return new Promise((resolveSend, rejectSend) => {
+    if (!process.connected) {
+      rejectSend(new Error("The process-group supervisor IPC channel closed."))
+      return
+    }
+    process.send(message, (error) => {
+      if (error) {
+        rejectSend(error)
+      } else {
+        resolveSend()
+      }
+    })
+  })
 }

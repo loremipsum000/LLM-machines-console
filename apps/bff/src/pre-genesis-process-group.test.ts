@@ -67,8 +67,10 @@ describe("F0-B1 owned process-group signaling", () => {
     const processGroupId = supervisor.pid
     assert(processGroupId)
     try {
-      const [message] = await once(supervisor, "message")
-      expect(message).toMatchObject({ code: 0, type: "target-exit" })
+      const [ready] = await once(supervisor, "message")
+      expect(ready).toMatchObject({ type: "supervisor-ready" })
+      const [targetExit] = await once(supervisor, "message")
+      expect(targetExit).toMatchObject({ code: 0, type: "target-exit" })
       expect(supervisor.exitCode).toBeNull()
       expect(() => process.kill(-processGroupId, 0)).not.toThrow()
     } finally {
