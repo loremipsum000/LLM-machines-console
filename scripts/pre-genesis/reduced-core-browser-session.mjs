@@ -5,6 +5,7 @@ import {
   createHash,
   createHmac,
   randomBytes,
+  randomUUID,
 } from "node:crypto"
 import { createWriteStream, readFileSync } from "node:fs"
 import {
@@ -36,8 +37,11 @@ import { chromium } from "playwright-core"
 import { evaluateSourceBoundary } from "../../infra/ingress/source-no-bypass.mjs"
 import { createOidcFixture } from "./reduced-core-oidc-fixture.mjs"
 
-const keycloakIdentityMode = process.argv.includes("--keycloak-identity")
+const keycloakTeamMode = process.argv.includes("--keycloak-team")
+const keycloakIdentityMode =
+  process.argv.includes("--keycloak-identity") || keycloakTeamMode
 const postgresPersistenceMode = process.argv.includes("--postgres-persistence")
+const postgresBackedMode = postgresPersistenceMode || keycloakTeamMode
 const observabilityMode = process.argv.includes("--observability")
 const credentialLifecycleMode =
   process.argv.includes("--credential-lifecycle") || postgresPersistenceMode
@@ -49,6 +53,7 @@ const supportedModes = new Set([
   "--observability",
   "--postgres-persistence",
   "--keycloak-identity",
+  "--keycloak-team",
 ])
 const selectedModes = process.argv.slice(2)
 
@@ -58,7 +63,7 @@ if (
   selectedModes.length > 1
 ) {
   throw new Error(
-    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--observability|--postgres-persistence|--keycloak-identity]",
+    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--observability|--postgres-persistence|--keycloak-identity|--keycloak-team]",
   )
 }
 
@@ -66,7 +71,7 @@ const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const keycloakControl = keycloakIdentityMode
   ? keycloakControlFromEnvironment()
   : null
-const postgresControl = postgresPersistenceMode
+const postgresControl = postgresBackedMode
   ? postgresControlFromEnvironment()
   : null
 const initialTime = applicationsMode
@@ -152,7 +157,7 @@ async function runBrowserSessionProof() {
           workload: `f0o1-workload-${opaqueValue()}`,
         }
       : null
-    const retentionCanaries = postgresPersistenceMode
+    const retentionCanaries = postgresBackedMode
       ? {
           prompt: `f0p1-prompt-${opaqueValue()}`,
           request: `f0p1-request-${opaqueValue()}`,
@@ -160,7 +165,7 @@ async function runBrowserSessionProof() {
           secret: `f0p1-secret-${opaqueValue()}`,
         }
       : null
-    const sessionKeyMaterial = postgresPersistenceMode
+    const sessionKeyMaterial = postgresBackedMode
       ? randomBytes(32).toString("base64")
       : null
     const sessionKeyringFile = join(stateRoot, "f0-p1-session-keyring.json")
@@ -218,6 +223,7 @@ async function runBrowserSessionProof() {
         credentials.admin.password,
         credentials.operator.password,
         credentials.bffService,
+        ...(keycloakTeamMode ? [credentials.humanAdmin] : []),
         credentials.liteLlm,
         credentials.oidcClient,
       )
@@ -322,6 +328,16 @@ async function runBrowserSessionProof() {
             F0_P1_SESSION_KEYRING_FILE: sessionKeyringFile,
           }
         : {}),
+      ...(keycloakTeamMode
+        ? {
+            KEYCLOAK_ADMIN_BASE_URL: keycloakControl.adminBaseUrl,
+            KEYCLOAK_ADMIN_CLIENT_ID: "console-human-admin",
+            KEYCLOAK_ADMIN_CLIENT_SECRET:
+              keycloakControl.credentials.humanAdmin,
+            KEYCLOAK_ADMIN_REALM: "llm-machines",
+            TEAM_ALLOWED_EMAIL_DOMAINS: "fixture.invalid",
+          }
+        : {}),
       PORT: String(bffPort),
       PRODUCT_API_HOST: authorities.api,
       PRODUCT_CONSOLE_HOST: authorities.console,
@@ -338,7 +354,7 @@ async function runBrowserSessionProof() {
       ),
     ]
     let bffChild = startChild(
-      postgresPersistenceMode ? "bff-before-restart" : "bff",
+      postgresBackedMode ? "bff-before-restart" : "bff",
       bffCommand,
       bffEnvironment,
       stateRoot,
@@ -474,6 +490,88 @@ async function runBrowserSessionProof() {
     assert.equal(new URL(page.url()).search, "?q=safe")
     await assertRole(page, "Administrator")
     await assertConsoleNavigation(page, consoleOrigin)
+
+    if (keycloakTeamMode) {
+      const identityFlow = await proveKeycloakIdentityCookieBoundary({
+        context,
+        edgePort,
+      })
+      const teamFlow = await proveKeycloakTeamConsoleFlow({
+        bffPort,
+        consoleOrigin,
+        context,
+        credentials,
+        page,
+        sensitiveValues,
+      })
+      const postgresEvidence = inspectKeycloakTeamPersistence(sensitiveValues)
+      assert.deepEqual(pageErrors, [])
+      assertNoSensitiveValues(
+        browserMetadata,
+        sensitiveValues,
+        "browser metadata",
+      )
+      await page.evaluate(async () => navigator.clipboard.writeText(""))
+      assert.equal(
+        await page.evaluate(() => navigator.clipboard.readText()),
+        "",
+      )
+      await page.screenshot({
+        path: join(stateRoot, "credential-free-final.png"),
+      })
+      await context.close()
+
+      const browserVersion = browser.version()
+      await browser.close()
+      browser = undefined
+      evidence = {
+        architecture: process.arch,
+        browser: { name: "Google Chrome", version: browserVersion },
+        credentialMaterialPrinted: false,
+        evidenceClass: "LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY",
+        identity: identityFlow,
+        persistence: postgresEvidence,
+        team: teamFlow,
+        limitations: [
+          "Disposable Keycloak 26.7.0 and PostgreSQL prove a local functional lane, not production commissioning, exact-Core, or Q0 qualification.",
+          "The local Keycloak server uses generated throwaway identities and the native platform selected by the pinned multi-platform image.",
+          "The proof translates only the already approved console-human-admin FGAP contract and does not qualify customer-native Keycloak administration.",
+          "Email delivery, CSV import, arbitrary group CRUD, backup, restore, and production MFA enrollment remain outside this package.",
+          "No result is release, capacity, runtime-qualification, or Product acceptance evidence.",
+        ],
+        proved: [
+          "Admin creates an Operator through the actual Console Team UI using the canonical Operators group",
+          "the isolated console-human-admin service account performs user, group-membership, and password operations through Keycloak FGAP v2 without realm or client administration authority",
+          "generated passwords use the approved one-time reveal and leave subsequent DOM, browser metadata, PostgreSQL, logs, and teardown state",
+          "disable and reactivation preserve the retained role and canonical group authority",
+          "Operator can view Team identities but cannot reach Team mutation views or submit a mutation through its authenticated Console session",
+          "the durable identity mutation journal and audit store retain approved metadata only",
+          "native Keycloak administration remains denied through Product ingress",
+        ],
+        status: "passed",
+        temporaryStateRemoved: true,
+      }
+      const cleanup = await Promise.allSettled([
+        ...servers.map(closeServer),
+        ...children.map(stopChild),
+      ])
+      const cleanupFailures = cleanup
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason)
+      if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+          cleanupFailures,
+          "F0-I2 cleanup did not complete.",
+        )
+      }
+      servers.length = 0
+      children.length = 0
+      await rm(sessionKeyringFile, { force: true })
+      await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
+      await rm(stateRoot, { force: true, recursive: true })
+      assert.equal(await exists(stateRoot), false)
+      return evidence
+    }
 
     if (keycloakIdentityMode) {
       const identityFlow = await proveKeycloakIdentityConsoleFlow({
@@ -877,17 +975,25 @@ async function runBrowserSessionProof() {
       ...(page
         ? [
             new Error(
-              `Browser state: ${new URL(page.url()).pathname}\n${safeDiagnosticTail(
+              `Browser state: ${new URL(page.url()).pathname}\n${redactedDiagnosticTail(
                 await page
                   .locator("body")
                   .innerText()
                   .catch(() => ""),
+                sensitiveValues,
               )}`,
             ),
           ]
         : []),
       ...(bffDiagnostics
-        ? [new Error(`BFF metadata:\n${safeDiagnosticTail(bffDiagnostics)}`)]
+        ? [
+            new Error(
+              `BFF metadata:\n${redactedDiagnosticTail(
+                bffDiagnostics,
+                sensitiveValues,
+              )}`,
+            ),
+          ]
         : []),
     ]
     failure = diagnostics.length
@@ -1039,6 +1145,175 @@ async function assertConsoleNavigation(page, consoleOrigin) {
     hrefs.some((href) => /(?:grafana|litellm|keycloak.*admin)/i.test(href)),
     false,
   )
+}
+
+async function proveKeycloakIdentityCookieBoundary({ context, edgePort }) {
+  const cookies = await context.cookies()
+  const consoleCookies = cookies.filter(
+    (cookie) => cookie.domain === authorities.console,
+  )
+  const identityCookies = cookies.filter(
+    (cookie) => cookie.domain === authorities.identity,
+  )
+  const productSession = sessionCookie(consoleCookies)
+  assert.ok(
+    identityCookies.some((cookie) =>
+      ["KEYCLOAK_IDENTITY", "KEYCLOAK_SESSION"].includes(cookie.name),
+    ),
+    "Keycloak did not retain a native identity-host session cookie.",
+  )
+  assert.equal(
+    identityCookies.some((cookie) =>
+      cookie.name.startsWith("__Host-llm-machines-"),
+    ),
+    false,
+  )
+  assert.equal(
+    consoleCookies.some((cookie) => cookie.name.startsWith("KEYCLOAK_")),
+    false,
+  )
+
+  const deniedNativePaths = [
+    "/admin/",
+    "/admin/master/console/",
+    "/realms/master/admin/",
+    "/realms/llm-machines/admin/",
+  ]
+  for (const path of deniedNativePaths) {
+    const response = await requestHttpsEdge(
+      `https://127.0.0.1:${edgePort}${path}`,
+      `${authorities.identity}:${edgePort}`,
+    )
+    assert.equal(response.status, 404, `${path} was not denied.`)
+  }
+  return {
+    identityCookieNames: [...new Set(identityCookies.map(({ name }) => name))]
+      .filter((name) => !name.includes("RESTART"))
+      .sort(),
+    nativeAdminPathsDenied: deniedNativePaths,
+    productSessionCookie: productSession.name,
+  }
+}
+
+async function proveKeycloakTeamConsoleFlow({
+  bffPort,
+  consoleOrigin,
+  context,
+  credentials,
+  page,
+  sensitiveValues,
+}) {
+  const displayName = `F0 I2 Operator ${randomBytes(4).toString("hex")}`
+  const email = `f0-i2-${randomBytes(5).toString("hex")}@fixture.invalid`
+
+  await page.goto(`${consoleOrigin}/team`)
+  await page.getByRole("heading", { name: "Team" }).first().waitFor()
+  await page.getByText("admin fixture", { exact: true }).waitFor()
+  await page.getByText("operator fixture", { exact: true }).waitFor()
+
+  await page.goto(`${consoleOrigin}/team/members/new`)
+  await page.getByRole("heading", { name: "Team > New member" }).waitFor()
+  await page.getByLabel("Name").fill(displayName)
+  await page.getByLabel("Company email").fill(email)
+  await page.getByLabel("Role").selectOption("operator")
+  await page.getByLabel("Group").selectOption({ label: "Operators" })
+  await page.getByRole("button", { name: "Create user" }).click()
+  await page.getByText("User created.", { exact: true }).waitFor()
+  const firstPassword = await page.getByLabel("Generated password").inputValue()
+  if (firstPassword) sensitiveValues.push(firstPassword)
+  assert.ok(firstPassword.length >= 20)
+  const detailHref = await page
+    .getByRole("link", { name: "Open member detail" })
+    .getAttribute("href")
+  assert.match(detailHref ?? "", /^\/team\/members\/[0-9a-f-]{36}$/)
+  const memberId = detailHref.split("/").at(-1)
+
+  await page.goto(`${consoleOrigin}${detailHref}`)
+  await page.getByRole("heading", { name: `Team > ${displayName}` }).waitFor()
+  assert.equal(
+    (await page.locator("body").innerText()).includes(firstPassword),
+    false,
+  )
+  await page.getByText("Operator", { exact: true }).first().waitFor()
+  await page.getByText("Active", { exact: true }).first().waitFor()
+
+  await page.getByRole("button", { name: "Generate password" }).click()
+  await page.getByText("Password generated.", { exact: true }).waitFor()
+  const rotatedPassword = await page
+    .getByLabel("Generated password")
+    .inputValue()
+  if (rotatedPassword) sensitiveValues.push(rotatedPassword)
+  assert.notEqual(rotatedPassword, firstPassword)
+
+  await page.goto(`${consoleOrigin}/team`)
+  await page.getByRole("heading", { name: "Team" }).first().waitFor()
+  const teamBody = await page.locator("body").innerText()
+  assert.equal(teamBody.includes(firstPassword), false)
+  assert.equal(teamBody.includes(rotatedPassword), false)
+
+  await page.goto(`${consoleOrigin}${detailHref}`)
+  await page.getByRole("button", { name: "Disable user" }).click()
+  await page.getByText("Team member disabled.", { exact: true }).waitFor()
+  await page.getByText("Disabled", { exact: true }).first().waitFor()
+  await page.getByText("Operator", { exact: true }).first().waitFor()
+  await page.getByText("Operators", { exact: true }).first().waitFor()
+  await page.getByRole("button", { name: "Reactivate user" }).click()
+  await page.getByText("Team member reactivated.", { exact: true }).waitFor()
+  await page.getByText("Active", { exact: true }).first().waitFor()
+  await page.getByText("Operator", { exact: true }).first().waitFor()
+  await page.getByText("Operators", { exact: true }).first().waitFor()
+
+  await page.goto(`${consoleOrigin}/`)
+  await page.getByRole("button", { name: "Sign out" }).click()
+  await page.waitForURL((url) => url.pathname === "/auth/signin")
+  await context.clearCookies()
+  await signIn(page, consoleOrigin, credentials.operator, "/team")
+  await assertRole(page, "Operator")
+  await page.getByText(displayName, { exact: true }).waitFor()
+  assert.equal(await page.getByRole("link", { name: "Create user" }).count(), 0)
+  await page.goto(`${consoleOrigin}/team/members/new`)
+  await page.getByRole("heading", { name: "Admin access required" }).waitFor()
+  await page.goto(`${consoleOrigin}${detailHref}`)
+  await page.getByRole("heading", { name: `Team > ${displayName}` }).waitFor()
+  for (const action of [
+    "Generate password",
+    "Disable user",
+    "Reactivate user",
+    "Delete",
+  ]) {
+    assert.equal(await page.getByRole("button", { name: action }).count(), 0)
+  }
+  const mutationCountBefore = completedIdentityMutationCount()
+  const operatorSession = sessionCookie(await context.cookies(consoleOrigin))
+  const deniedMutation = await context.request.post(
+    `http://127.0.0.1:${bffPort}/api/admin/team/members/${encodeURIComponent(memberId)}/disable`,
+    {
+      data: {},
+      failOnStatusCode: false,
+      headers: {
+        Authorization: `Bearer ${credentials.bffService}`,
+        "Idempotency-Key": randomUUID(),
+        "x-llm-machines-console-session": operatorSession.value,
+      },
+    },
+  )
+  assert.equal(deniedMutation.status(), 403)
+  await deniedMutation.dispose()
+  assert.equal(completedIdentityMutationCount(), mutationCountBefore)
+  await page.reload()
+  await page.getByText("Active", { exact: true }).first().waitFor()
+  await page.getByText("Operator", { exact: true }).first().waitFor()
+  await page.getByText("Operators", { exact: true }).first().waitFor()
+
+  return {
+    adminCreateOperator: "passed",
+    canonicalGroup: "Operators",
+    disableReactivate: "passed",
+    memberId,
+    oneTimePasswordReveal: "passed",
+    operatorMutationDenial: "passed",
+    passwordRotation: "passed",
+  }
 }
 
 async function proveKeycloakIdentityConsoleFlow({
@@ -3001,6 +3276,91 @@ function inspectPostgresPersistence(sensitiveValues) {
   }
 }
 
+function inspectKeycloakTeamPersistence(sensitiveValues) {
+  const summary = postgresJson(`
+    SELECT json_build_object(
+      'auditEvents', (
+        SELECT count(*)::integer
+        FROM common.audit_events
+        WHERE action LIKE 'team.%'
+      ),
+      'auditMetadataOnly', NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'common'
+          AND table_name = 'audit_events'
+          AND column_name NOT IN (
+            'id','occurred_at','ingested_at','action','outcome','source_system',
+            'correlation_id','keycloak_subject_id','application_id',
+            'credential_record_id','credential_prefix','recovery_reason_code'
+          )
+      ),
+      'completedIdentityMutations', (
+        SELECT count(*)::integer
+        FROM admin.identity_mutation_journal
+        WHERE state = 'completed'
+      ),
+      'identityMutationMetadataOnly', NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'admin'
+          AND table_name = 'identity_mutation_journal'
+          AND column_name NOT IN (
+            'id','idempotency_ledger_id','keycloak_subject_id','operation_code',
+            'request_fingerprint','target_type','target_identifier','state',
+            'resource_id','created_at','updated_at','keycloak_applied_at',
+            'completed_at','reconciliation_required_at','reconciliation_reason'
+          )
+      ),
+      'plaintextSessionPayloads', (
+        SELECT count(*)::integer
+        FROM common.console_sessions
+        WHERE NOT (encrypted_payload ?& ARRAY['version','kid','iv','tag','ciphertext'])
+      ),
+      'reconciliationRequired', (
+        SELECT count(*)::integer
+        FROM admin.identity_mutation_journal
+        WHERE state = 'reconciliation_required'
+      )
+    );
+  `)
+  assert.ok(summary.auditEvents >= 4)
+  assert.ok(summary.completedIdentityMutations >= 4)
+  assert.equal(summary.auditMetadataOnly, true)
+  assert.equal(summary.identityMutationMetadataOnly, true)
+  assert.equal(summary.plaintextSessionPayloads, 0)
+  assert.equal(summary.reconciliationRequired, 0)
+
+  const dump = postgresDocker([
+    "exec",
+    postgresControl.container,
+    "pg_dump",
+    "--data-only",
+    "--no-owner",
+    "--no-privileges",
+    "--dbname",
+    postgresControl.database,
+    "--username",
+    postgresControl.user,
+  ])
+  assertNoSensitiveValues([dump], sensitiveValues, "PostgreSQL data")
+  return {
+    ...summary,
+    credentialMaterialPersisted: false,
+  }
+}
+
+function completedIdentityMutationCount() {
+  return Number.parseInt(
+    postgresPsql(`
+      SELECT count(*)::integer
+      FROM admin.identity_mutation_journal
+      WHERE state = 'completed';
+    `),
+    10,
+  )
+}
+
 async function provePostgresOutageRecovery({
   bffPort,
   children,
@@ -3183,7 +3543,16 @@ function keycloakControlFromEnvironment() {
   ) {
     throw new Error("F0-I1 Keycloak control data is invalid.")
   }
+  const adminBaseUrl = `http://127.0.0.1:${config.upstreamPort}`
+  if (
+    keycloakTeamMode &&
+    (typeof config.credentials.humanAdmin !== "string" ||
+      config.credentials.humanAdmin.length < 32)
+  ) {
+    throw new Error("F0-I2 Keycloak Team control data is invalid.")
+  }
   return {
+    adminBaseUrl,
     credentials: config.credentials,
     edgePort: config.edgePort,
     upstreamPort: config.upstreamPort,
@@ -3490,14 +3859,19 @@ function safeDiagnosticTail(value) {
     .replaceAll(/[A-Za-z0-9_-]{43,}/g, "[opaque]")
 }
 
+function redactedDiagnosticTail(value, sensitiveValues) {
+  let message = safeDiagnosticTail(value)
+  for (const sensitiveValue of sensitiveValues) {
+    if (!sensitiveValue) continue
+    message = message.replaceAll(sensitiveValue, "[credential]")
+  }
+  return message
+}
+
 function sanitizedError(error, sensitiveValues) {
   const source =
     error instanceof Error ? (error.stack ?? error.message) : String(error)
-  let message = safeDiagnosticTail(source)
-  for (const sensitiveValue of sensitiveValues) {
-    message = message.replaceAll(sensitiveValue, "[credential]")
-  }
-  return new Error(message)
+  return new Error(redactedDiagnosticTail(source, sensitiveValues))
 }
 
 function assertNoSensitiveValues(values, sensitiveValues, surface) {
@@ -3527,7 +3901,7 @@ async function assertStateFilesCredentialFree(root, sensitiveValues) {
       for (const sensitiveValue of sensitiveValues) {
         if (content.includes(Buffer.from(sensitiveValue))) {
           throw new Error(
-            "F0-U2 retained credential material in a teardown artifact.",
+            `A pre-Genesis teardown artifact retained credential material: ${relative(root, path)}.`,
           )
         }
       }
