@@ -17,6 +17,7 @@ import { createServer, request as httpRequest } from "node:http"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { signalOwnedProcessGroup } from "./process-group.mjs"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const checkMode = process.argv.includes("--check")
@@ -1781,11 +1782,10 @@ async function stopChild(record) {
   const errors = []
   record.stopping = true
   try {
-    if (processGroupExists(record.child.pid)) {
-      killProcessGroup(record.child.pid, "SIGTERM")
-      if (!(await waitForProcessGroupExit(record.child.pid, 5_000))) {
-        killProcessGroup(record.child.pid, "SIGKILL")
-        if (!(await waitForProcessGroupExit(record.child.pid, 5_000))) {
+    if (signalChildProcessGroup(record, "SIGTERM")) {
+      if (!(await waitForProcessGroupExit(record, 5_000))) {
+        signalChildProcessGroup(record, "SIGKILL")
+        if (!(await waitForProcessGroupExit(record, 5_000))) {
           throw new Error(
             `${record.name} process group ${record.child.pid} survived SIGKILL.`,
           )
@@ -2069,47 +2069,29 @@ function ensureStartupActive() {
   }
 }
 
-function killProcessGroup(pid, signal) {
-  if (!pid) {
-    return
-  }
-  try {
-    process.kill(-pid, signal)
-  } catch (error) {
-    if (error?.code !== "ESRCH") {
-      throw error
-    }
-  }
+function signalChildProcessGroup(record, signal) {
+  return signalOwnedProcessGroup(record.child.pid, signal, () =>
+    childHasExited(record.child),
+  )
 }
 
-function processGroupExists(pid) {
-  if (!pid) {
-    return false
-  }
-  try {
-    process.kill(-pid, 0)
-    return true
-  } catch (error) {
-    if (error?.code === "ESRCH") {
-      return false
-    }
-    throw error
-  }
+function childProcessGroupExists(record) {
+  return signalChildProcessGroup(record, 0)
 }
 
-async function waitForProcessGroupExit(pid, timeoutMs) {
+async function waitForProcessGroupExit(record, timeoutMs) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
-    if (!processGroupExists(pid)) {
+    if (!childProcessGroupExists(record)) {
       return true
     }
     await new Promise((resolveWait) => setTimeout(resolveWait, 50))
   }
-  return !processGroupExists(pid)
+  return !childProcessGroupExists(record)
 }
 
 function waitForChildExit(child, timeoutMs) {
-  if (child.exitCode !== null || child.signalCode !== null) {
+  if (childHasExited(child)) {
     return Promise.resolve(true)
   }
   return Promise.race([
@@ -2118,6 +2100,10 @@ function waitForChildExit(child, timeoutMs) {
       setTimeout(() => resolveTimeout(false), timeoutMs),
     ),
   ])
+}
+
+function childHasExited(child) {
+  return child.exitCode !== null || child.signalCode !== null
 }
 
 async function readJsonBody(request) {
