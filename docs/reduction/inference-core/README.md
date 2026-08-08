@@ -413,6 +413,17 @@ Grafana, native LiteLLM, and Keycloak Admin access remain absent. Queue depth
 remains explicitly unconfigured rather than synthesized. This is local browser
 evidence only, not real-service, exact-Core, or Q0 qualification.
 
+F0-I1 replaces only the deterministic identity dependency for a bounded local
+browser lane with the exact pinned Keycloak 26.7.0 image. It proves password
+and TOTP login, retained role mapping, native identity-route handling, native
+administration denial, logout, and separation between Keycloak cookies and
+opaque Console session material through the existing Product identity
+allowlist. The container, realm, and credentials are disposable. Refresh
+expiry, reuse, concurrency, clock skew, and outage behavior remain deterministic
+F0-S1 evidence until synchronized-clock runtime qualification. Production realm
+commissioning, scoped identity mutations, exact-Core behavior, and Q0 remain
+separate gates.
+
 System-managed exact-host egress allowlisting and public-address validation do
 not introduce customer URL Governance. The governed internal upstream is
 exactly `http://firecrawl-api:3002`; hosted, HTTPS, alternate-host, and
