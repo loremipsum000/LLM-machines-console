@@ -1739,6 +1739,10 @@ function startChild(
   reportRuntimeFailure,
 ) {
   const errors = []
+  let resolveTargetExit
+  const targetExit = new Promise((resolveExit) => {
+    resolveTargetExit = resolveExit
+  })
   const stdout = createWriteStream(join(stateRoot, `${name}.stdout.log`), {
     flags: "a",
     mode: 0o600,
@@ -1747,13 +1751,32 @@ function startChild(
     flags: "a",
     mode: 0o600,
   })
-  const child = spawn(command[0], command.slice(1), {
-    cwd,
-    detached: true,
-    env: isolatedChildEnvironment(stateRoot, environment),
-    stdio: ["ignore", "pipe", "pipe"],
-  })
-  const record = { child, errors, name, stderr, stdout, stopping: false }
+  const child = spawn(
+    process.execPath,
+    [
+      resolve(
+        repositoryRoot,
+        "scripts/pre-genesis/process-group-supervisor.mjs",
+      ),
+      ...command,
+    ],
+    {
+      cwd,
+      detached: true,
+      env: isolatedChildEnvironment(stateRoot, environment),
+      stdio: ["ignore", "pipe", "pipe", "ipc"],
+    },
+  )
+  const record = {
+    child,
+    errors,
+    name,
+    stderr,
+    stdout,
+    stopping: false,
+    targetExit,
+    targetExited: false,
+  }
   const recordFailure = (error) => {
     if (record.stopping) {
       record.errors.push(error)
@@ -1764,6 +1787,27 @@ function startChild(
   stdout.on("error", recordFailure)
   stderr.on("error", recordFailure)
   child.on("error", recordFailure)
+  child.on("message", (message) => {
+    if (
+      !message ||
+      typeof message !== "object" ||
+      !["target-error", "target-exit"].includes(message.type)
+    ) {
+      recordFailure(new Error(`${name} supervisor sent an invalid message.`))
+      return
+    }
+    if (!record.targetExited) {
+      record.targetExited = true
+      resolveTargetExit()
+    }
+    if (!record.stopping) {
+      recordFailure(
+        new Error(
+          `${name} exited unexpectedly (code=${message.code ?? "none"}, signal=${message.signal ?? "none"}).`,
+        ),
+      )
+    }
+  })
   child.on("exit", (code, signal) => {
     if (!record.stopping) {
       recordFailure(
@@ -1783,13 +1827,11 @@ async function stopChild(record) {
   record.stopping = true
   try {
     if (signalChildProcessGroup(record, "SIGTERM")) {
-      if (!(await waitForProcessGroupExit(record, 5_000))) {
-        signalChildProcessGroup(record, "SIGKILL")
-        if (!(await waitForProcessGroupExit(record, 5_000))) {
-          throw new Error(
-            `${record.name} process group ${record.child.pid} survived SIGKILL.`,
-          )
-        }
+      await waitForTargetExit(record, 5_000)
+      if (!signalChildProcessGroup(record, "SIGKILL")) {
+        throw new Error(
+          `${record.name} supervisor exited before final group cleanup.`,
+        )
       }
     }
     if (!(await waitForChildExit(record.child, 1_000))) {
@@ -2075,19 +2117,16 @@ function signalChildProcessGroup(record, signal) {
   )
 }
 
-function childProcessGroupExists(record) {
-  return signalChildProcessGroup(record, 0)
-}
-
-async function waitForProcessGroupExit(record, timeoutMs) {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    if (!childProcessGroupExists(record)) {
-      return true
-    }
-    await new Promise((resolveWait) => setTimeout(resolveWait, 50))
+function waitForTargetExit(record, timeoutMs) {
+  if (record.targetExited) {
+    return Promise.resolve(true)
   }
-  return !childProcessGroupExists(record)
+  return Promise.race([
+    record.targetExit.then(() => true),
+    new Promise((resolveTimeout) =>
+      setTimeout(() => resolveTimeout(false), timeoutMs),
+    ),
+  ])
 }
 
 function waitForChildExit(child, timeoutMs) {
