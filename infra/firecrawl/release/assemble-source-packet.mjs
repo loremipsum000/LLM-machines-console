@@ -169,6 +169,17 @@ export function assembleSourcePacket(
       run("git", ["apply", "--check", patchFile], { cwd: sourceRoot })
       run("git", ["apply", patchFile], { cwd: sourceRoot })
     }
+    for (const testPath of manifest.apiBuildValidationTests) {
+      const testFile = path.join(sourceRoot, "apps/api", testPath)
+      if (
+        !testFile.startsWith(`${path.join(sourceRoot, "apps/api")}${path.sep}`)
+      ) {
+        fail(`${testPath} escapes the Firecrawl API source`)
+      }
+      if (!existsSync(testFile) || !lstatSync(testFile).isFile()) {
+        fail(`${testPath} is not present in the locked Firecrawl source`)
+      }
+    }
     for (const locked of manifest.lockedFiles) {
       copyLockedFile(
         path.resolve(root, locked.path),
