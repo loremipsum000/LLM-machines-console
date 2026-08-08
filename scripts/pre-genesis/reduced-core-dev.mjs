@@ -17,6 +17,7 @@ import { createServer, request as httpRequest } from "node:http"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { signalOwnedProcessGroup } from "./process-group.mjs"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const checkMode = process.argv.includes("--check")
@@ -1738,6 +1739,14 @@ function startChild(
   reportRuntimeFailure,
 ) {
   const errors = []
+  let resolveSupervisorReady
+  let resolveTargetExit
+  const supervisorReady = new Promise((resolveReady) => {
+    resolveSupervisorReady = resolveReady
+  })
+  const targetExit = new Promise((resolveExit) => {
+    resolveTargetExit = resolveExit
+  })
   const stdout = createWriteStream(join(stateRoot, `${name}.stdout.log`), {
     flags: "a",
     mode: 0o600,
@@ -1746,13 +1755,34 @@ function startChild(
     flags: "a",
     mode: 0o600,
   })
-  const child = spawn(command[0], command.slice(1), {
-    cwd,
-    detached: true,
-    env: isolatedChildEnvironment(stateRoot, environment),
-    stdio: ["ignore", "pipe", "pipe"],
-  })
-  const record = { child, errors, name, stderr, stdout, stopping: false }
+  const child = spawn(
+    process.execPath,
+    [
+      resolve(
+        repositoryRoot,
+        "scripts/pre-genesis/process-group-supervisor.mjs",
+      ),
+      ...command,
+    ],
+    {
+      cwd,
+      detached: true,
+      env: isolatedChildEnvironment(stateRoot, environment),
+      stdio: ["ignore", "pipe", "pipe", "ipc"],
+    },
+  )
+  const record = {
+    child,
+    errors,
+    name,
+    stderr,
+    stdout,
+    stopping: false,
+    supervisorIsReady: false,
+    supervisorReady,
+    targetExit,
+    targetExited: false,
+  }
   const recordFailure = (error) => {
     if (record.stopping) {
       record.errors.push(error)
@@ -1763,6 +1793,36 @@ function startChild(
   stdout.on("error", recordFailure)
   stderr.on("error", recordFailure)
   child.on("error", recordFailure)
+  child.on("message", (message) => {
+    if (
+      !message ||
+      typeof message !== "object" ||
+      !["supervisor-ready", "target-error", "target-exit"].includes(
+        message.type,
+      )
+    ) {
+      recordFailure(new Error(`${name} supervisor sent an invalid message.`))
+      return
+    }
+    if (message.type === "supervisor-ready") {
+      if (!record.supervisorIsReady) {
+        record.supervisorIsReady = true
+        resolveSupervisorReady()
+      }
+      return
+    }
+    if (!record.targetExited) {
+      record.targetExited = true
+      resolveTargetExit()
+    }
+    if (!record.stopping) {
+      recordFailure(
+        new Error(
+          `${name} exited unexpectedly (code=${message.code ?? "none"}, signal=${message.signal ?? "none"}).`,
+        ),
+      )
+    }
+  })
   child.on("exit", (code, signal) => {
     if (!record.stopping) {
       recordFailure(
@@ -1781,15 +1841,20 @@ async function stopChild(record) {
   const errors = []
   record.stopping = true
   try {
-    if (processGroupExists(record.child.pid)) {
-      killProcessGroup(record.child.pid, "SIGTERM")
-      if (!(await waitForProcessGroupExit(record.child.pid, 5_000))) {
-        killProcessGroup(record.child.pid, "SIGKILL")
-        if (!(await waitForProcessGroupExit(record.child.pid, 5_000))) {
-          throw new Error(
-            `${record.name} process group ${record.child.pid} survived SIGKILL.`,
-          )
-        }
+    const supervisorReady = await waitForSupervisorReady(record, 5_000)
+    if (!supervisorReady) {
+      signalChildProcessGroup(record, "SIGKILL")
+      await waitForChildExit(record.child, 1_000)
+      throw new Error(
+        `${record.name} supervisor did not become ready before cleanup.`,
+      )
+    }
+    if (signalChildProcessGroup(record, "SIGTERM")) {
+      await waitForTargetExit(record, 5_000)
+      if (!signalChildProcessGroup(record, "SIGKILL")) {
+        throw new Error(
+          `${record.name} supervisor exited before final group cleanup.`,
+        )
       }
     }
     if (!(await waitForChildExit(record.child, 1_000))) {
@@ -2069,47 +2134,38 @@ function ensureStartupActive() {
   }
 }
 
-function killProcessGroup(pid, signal) {
-  if (!pid) {
-    return
-  }
-  try {
-    process.kill(-pid, signal)
-  } catch (error) {
-    if (error?.code !== "ESRCH") {
-      throw error
-    }
-  }
+function signalChildProcessGroup(record, signal) {
+  return signalOwnedProcessGroup(record.child.pid, signal, () =>
+    childHasExited(record.child),
+  )
 }
 
-function processGroupExists(pid) {
-  if (!pid) {
-    return false
+function waitForTargetExit(record, timeoutMs) {
+  if (record.targetExited) {
+    return Promise.resolve(true)
   }
-  try {
-    process.kill(-pid, 0)
-    return true
-  } catch (error) {
-    if (error?.code === "ESRCH") {
-      return false
-    }
-    throw error
-  }
+  return Promise.race([
+    record.targetExit.then(() => true),
+    new Promise((resolveTimeout) =>
+      setTimeout(() => resolveTimeout(false), timeoutMs),
+    ),
+  ])
 }
 
-async function waitForProcessGroupExit(pid, timeoutMs) {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    if (!processGroupExists(pid)) {
-      return true
-    }
-    await new Promise((resolveWait) => setTimeout(resolveWait, 50))
+function waitForSupervisorReady(record, timeoutMs) {
+  if (record.supervisorIsReady) {
+    return Promise.resolve(true)
   }
-  return !processGroupExists(pid)
+  return Promise.race([
+    record.supervisorReady.then(() => true),
+    new Promise((resolveTimeout) =>
+      setTimeout(() => resolveTimeout(false), timeoutMs),
+    ),
+  ])
 }
 
 function waitForChildExit(child, timeoutMs) {
-  if (child.exitCode !== null || child.signalCode !== null) {
+  if (childHasExited(child)) {
     return Promise.resolve(true)
   }
   return Promise.race([
@@ -2118,6 +2174,10 @@ function waitForChildExit(child, timeoutMs) {
       setTimeout(() => resolveTimeout(false), timeoutMs),
     ),
   ])
+}
+
+function childHasExited(child) {
+  return child.exitCode !== null || child.signalCode !== null
 }
 
 async function readJsonBody(request) {
