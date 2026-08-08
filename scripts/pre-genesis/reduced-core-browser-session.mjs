@@ -516,6 +516,11 @@ async function runBrowserSessionProof() {
         await page.evaluate(() => navigator.clipboard.readText()),
         "",
       )
+      assertNoSensitiveValues(
+        [await page.locator("body").innerText()],
+        sensitiveValues,
+        "final DOM",
+      )
       await page.screenshot({
         path: join(stateRoot, "credential-free-final.png"),
       })
@@ -1243,6 +1248,7 @@ async function proveKeycloakTeamConsoleFlow({
     .getByLabel("Generated password")
     .inputValue()
   if (rotatedPassword) sensitiveValues.push(rotatedPassword)
+  assert.ok(rotatedPassword.length >= 20)
   assert.notEqual(rotatedPassword, firstPassword)
 
   await page.goto(`${consoleOrigin}/team`)
@@ -1283,7 +1289,7 @@ async function proveKeycloakTeamConsoleFlow({
   ]) {
     assert.equal(await page.getByRole("button", { name: action }).count(), 0)
   }
-  const mutationCountBefore = completedIdentityMutationCount()
+  const mutationCountBefore = identityMutationJournalRowCount()
   const operatorSession = sessionCookie(await context.cookies(consoleOrigin))
   const deniedMutation = await context.request.post(
     `http://127.0.0.1:${bffPort}/api/admin/team/members/${encodeURIComponent(memberId)}/disable`,
@@ -1299,7 +1305,7 @@ async function proveKeycloakTeamConsoleFlow({
   )
   assert.equal(deniedMutation.status(), 403)
   await deniedMutation.dispose()
-  assert.equal(completedIdentityMutationCount(), mutationCountBefore)
+  assert.equal(identityMutationJournalRowCount(), mutationCountBefore)
   await page.reload()
   await page.getByText("Active", { exact: true }).first().waitFor()
   await page.getByText("Operator", { exact: true }).first().waitFor()
@@ -3350,12 +3356,11 @@ function inspectKeycloakTeamPersistence(sensitiveValues) {
   }
 }
 
-function completedIdentityMutationCount() {
+function identityMutationJournalRowCount() {
   return Number.parseInt(
     postgresPsql(`
       SELECT count(*)::integer
-      FROM admin.identity_mutation_journal
-      WHERE state = 'completed';
+      FROM admin.identity_mutation_journal;
     `),
     10,
   )

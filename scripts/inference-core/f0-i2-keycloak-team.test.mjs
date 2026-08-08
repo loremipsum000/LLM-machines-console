@@ -40,6 +40,13 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   assert.match(browser, /LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY/)
   assert.match(browser, /Team > New member/)
   assert.match(browser, /operatorMutationDenial: "passed"/)
+  assert.match(browser, /assert\.ok\(rotatedPassword\.length >= 20\)/)
+  assert.match(
+    browser,
+    /const mutationCountBefore = identityMutationJournalRowCount\(\)/,
+  )
+  assert.match(browser, /"final DOM"/)
+  assert.doesNotMatch(browser, /completedIdentityMutationCount/)
   assert.match(
     authorization,
     /"team\.users_roles\.manage": \{ admin: true, operator: false \}/,
