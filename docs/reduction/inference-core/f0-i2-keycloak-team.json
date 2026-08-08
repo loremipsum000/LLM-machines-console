@@ -1,0 +1,49 @@
+{
+  "schema": "llm-machines.pre-genesis-functional-evidence.v1",
+  "workPackage": "F0-I2",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "03997c40fec20a2b7303ebc14c62abdb1a5c40ca",
+  "command": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && node --test scripts/inference-core/f0-i2-keycloak-team.test.mjs && PRE_GENESIS_DOCKER_CONTEXT=<isolated-context> node scripts/pre-genesis/reduced-core-keycloak-identity.mjs --team",
+  "evidenceClass": "LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY",
+  "services": [
+    "actual Console Web and BFF",
+    "exact Keycloak 26.7.0 image selected by immutable digest",
+    "disposable PostgreSQL 17.6 with the real Product migration",
+    "loopback-only four-authority Product edge",
+    "deterministic private inference and Firecrawl doubles"
+  ],
+  "proved": [
+    "Admin creates an enabled Operator through the actual Team UI using the canonical Operators group",
+    "the isolated console-human-admin service account uses the reviewed FGAP v2 Users and Groups scopes without realm, client, native-admin, role-mapping, or impersonation authority",
+    "generated local passwords are revealed once, can be rotated, and do not remain in subsequent DOM state, browser metadata, PostgreSQL, logs, screenshots, or teardown files",
+    "disable and reactivation preserve the exact Operator role and canonical group",
+    "Operator can view Team identities but cannot access Team mutation views or submit a mutation through its authenticated Console session",
+    "four identity mutations complete through the durable journal with no reconciliation-required row",
+    "Team audit and identity-journal storage retain approved metadata fields only",
+    "native Keycloak administration stays denied through Product ingress"
+  ],
+  "exactRuntime": {
+    "keycloak": "quay.io/keycloak/keycloak:26.7.0@sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13",
+    "postgres": "docker.io/library/postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3"
+  },
+  "preservedBoundaries": [
+    "Keycloak remains private except for approved human identity routes",
+    "there is no native customer Keycloak Admin Console",
+    "the Console browser session and service-account credential remain separate",
+    "the service account receives query-users and query-groups plus the exact reviewed FGAP permissions, not realm-admin or manage-users",
+    "no customer, lab, release, registry, signing, Gitea, D2A, Q0, or Product main state changes"
+  ],
+  "notEvidenceFor": [
+    "production realm commissioning or credential custody",
+    "email delivery, CSV import, arbitrary group CRUD, or identity migration",
+    "exact linux/amd64 Core composition, VM103, backup, restore, or outage qualification",
+    "Q0 runtime qualification, Product acceptance, release signing, or activation"
+  ],
+  "upstreamEvidence": [
+    "https://www.keycloak.org/docs/latest/server_admin/#_fine_grained_permissions",
+    "https://www.keycloak.org/docs-api/latest/rest-api/"
+  ],
+  "nextPackage": "F0-L2 disposable real LiteLLM gateway and Console projection integration"
+}

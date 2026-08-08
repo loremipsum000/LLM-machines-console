@@ -424,6 +424,18 @@ F0-S1 evidence until synchronized-clock runtime qualification. Production realm
 commissioning, scoped identity mutations, exact-Core behavior, and Q0 remain
 separate gates.
 
+F0-I2 adds the bounded Console identity-mutation proof that F0-I1 deliberately
+left open. Actual Web and BFF use exact Keycloak 26.7.0 and disposable
+PostgreSQL while an isolated `console-human-admin` service account receives the
+reviewed FGAP v2 Users and Groups permissions. Admin creates an Operator through
+the Team UI, rotates the one-time local password, and disables and reactivates
+the account. Operator stays read-only. Realm administration, client
+administration, direct role mapping, impersonation, and native Keycloak Admin
+access remain denied. The durable identity journal and audit store retain only
+approved metadata, and generated passwords do not survive in Product state or
+teardown files. This remains local functional evidence, not commissioning,
+exact-Core, backup/restore, Product acceptance, or Q0 qualification.
+
 System-managed exact-host egress allowlisting and public-address validation do
 not introduce customer URL Governance. The governed internal upstream is
 exactly `http://firecrawl-api:3002`; hosted, HTTPS, alternate-host, and
