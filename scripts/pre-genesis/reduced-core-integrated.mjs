@@ -21,7 +21,6 @@ import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
-buildWorkspaceFixturePackages()
 const inventory = JSON.parse(
   await readFile(
     resolve(repositoryRoot, "infra/release/core-image-inventory.json"),
@@ -29,9 +28,13 @@ const inventory = JSON.parse(
   ),
 )
 const images = Object.fromEntries(
-  ["alertmanager", "grafana-private", "product-postgresql", "prometheus"].map(
-    (id) => [id, exactImage(id)],
-  ),
+  [
+    "alertmanager",
+    "grafana-private",
+    "product-edge",
+    "product-postgresql",
+    "prometheus",
+  ].map((id) => [id, exactImage(id)]),
 )
 const runId = randomBytes(8).toString("hex")
 const packageId = "F0-C1"
@@ -39,6 +42,7 @@ const network = `llmm-f0-c1-${runId}`
 const containers = {
   alertmanager: `llmm-f0-c1-alertmanager-${runId}`,
   grafana: `llmm-f0-c1-grafana-${runId}`,
+  metrics: `llmm-f0-c1-metrics-${runId}`,
   postgres: `llmm-f0-c1-postgres-${runId}`,
   prometheus: `llmm-f0-c1-prometheus-${runId}`,
 }
@@ -61,10 +65,43 @@ const files = {
   keycloakStop: join(stateRoot, "keycloak.stop"),
   liteLlmControl: join(stateRoot, "litellm-control.json"),
   liteLlmStop: join(stateRoot, "litellm.stop"),
+  metricsConfig: join(stateRoot, "metrics-nginx.conf"),
+  metricsPayload: join(stateRoot, "metrics"),
   observabilityControl: join(stateRoot, "observability-control.json"),
   postgresEnvironment: join(stateRoot, "postgres.env"),
   prometheusConfig: join(stateRoot, "prometheus.yml"),
+  workspaceBuildBackup: join(stateRoot, "workspace-build-backup"),
 }
+const workspaceBuildArtifacts = [
+  {
+    backupName: "contracts-dist",
+    path: resolve(repositoryRoot, "packages/contracts/dist"),
+  },
+  {
+    backupName: "contracts-build-info",
+    path: resolve(
+      repositoryRoot,
+      "packages/contracts/tsconfig.build.tsbuildinfo",
+    ),
+  },
+  {
+    backupName: "contracts-typecheck-info",
+    path: resolve(repositoryRoot, "packages/contracts/tsconfig.tsbuildinfo"),
+  },
+  {
+    backupName: "copy-dist",
+    path: resolve(repositoryRoot, "packages/copy/dist"),
+  },
+  {
+    backupName: "copy-build-info",
+    path: resolve(repositoryRoot, "packages/copy/tsconfig.build.tsbuildinfo"),
+  },
+  {
+    backupName: "copy-typecheck-info",
+    path: resolve(repositoryRoot, "packages/copy/tsconfig.tsbuildinfo"),
+  },
+]
+const workspaceBuildSnapshot = []
 const created = {
   containers: new Set(),
   network: false,
@@ -72,12 +109,13 @@ const created = {
 const services = []
 const sensitiveValues = [databasePassword, grafanaOidcSecret]
 let dockerContext = null
-let metricsServer = null
 let evidence = null
 let failure = null
 
 try {
   await chmod(stateRoot, 0o700)
+  await preserveWorkspaceBuildArtifacts()
+  buildWorkspaceFixturePackages()
   const edgePort = await reservePort()
   const firecrawl = startService(
     "firecrawl",
@@ -143,11 +181,8 @@ try {
     keycloakControl.credentials.oidcClient,
   )
 
-  metricsServer = await startMetricsFixture()
-  const observabilityControl = await startObservability(
-    metricsServer.address().port,
-    edgePort,
-  )
+  await startMetricsFixture()
+  const observabilityControl = await startObservability(edgePort)
   await writeFile(
     files.observabilityControl,
     `${JSON.stringify(observabilityControl)}\n`,
@@ -165,7 +200,11 @@ try {
   assert.equal(browser.evidenceClass, "LOCAL_INTEGRATED_REDUCED_CORE_ONLY")
   assert.equal(browser.runtimeQualified, false)
 
-  const retention = await verifyProductRetention(firecrawlControl)
+  const retention = await verifyProductRetention({
+    firecrawlControl,
+    keycloakControl,
+    liteLlmControl,
+  })
   evidence = {
     architecture: process.arch,
     browser,
@@ -201,6 +240,7 @@ try {
     containers.grafana,
     containers.alertmanager,
     containers.prometheus,
+    containers.metrics,
     containers.postgres,
   ]) {
     if (created.containers.has(container)) {
@@ -211,13 +251,6 @@ try {
   }
   if (created.network) {
     collectCleanup(cleanupFailures, () => docker(["network", "rm", network]))
-  }
-  if (metricsServer) {
-    try {
-      await closeServer(metricsServer)
-    } catch (error) {
-      cleanupFailures.push(safeError(error))
-    }
   }
   await stopServiceByName("firecrawl", files.firecrawlStop, cleanupFailures)
   for (const service of services) {
@@ -237,6 +270,11 @@ try {
   }
   try {
     await assertStateFreeOfSensitiveValues(stateRoot, sensitiveValues)
+  } catch (error) {
+    cleanupFailures.push(safeError(error))
+  }
+  try {
+    await restoreWorkspaceBuildArtifacts()
   } catch (error) {
     cleanupFailures.push(safeError(error))
   }
@@ -296,7 +334,11 @@ async function startProductPostgres() {
     "--label",
     `com.llm-machines.test-package=${packageId}`,
     "--log-driver",
-    "none",
+    "local",
+    "--log-opt",
+    "max-file=2",
+    "--log-opt",
+    "max-size=1m",
     "--network",
     network,
     "--network-alias",
@@ -345,7 +387,7 @@ async function startProductPostgres() {
   assert.equal(relations, 34)
 }
 
-async function startObservability(metricsPort, edgePort) {
+async function startObservability(edgePort) {
   const prometheusHostPort = await reservePort()
   const alertmanagerHostPort = await reservePort()
   const grafanaHostPort = await reservePort()
@@ -373,7 +415,7 @@ async function startObservability(metricsPort, edgePort) {
         "scrape_configs:",
         "  - job_name: node",
         "    static_configs:",
-        `      - targets: [\"host.docker.internal:${metricsPort}\"]`,
+        '      - targets: ["metrics-fixture:8080"]',
         "",
       ].join("\n"),
       { mode: 0o644 },
@@ -398,7 +440,11 @@ async function startObservability(metricsPort, edgePort) {
     "--label",
     `com.llm-machines.test-package=${packageId}`,
     "--log-driver",
-    "none",
+    "local",
+    "--log-opt",
+    "max-file=2",
+    "--log-opt",
+    "max-size=1m",
     "--network",
     network,
     "--network-alias",
@@ -424,7 +470,11 @@ async function startObservability(metricsPort, edgePort) {
     "--label",
     `com.llm-machines.test-package=${packageId}`,
     "--log-driver",
-    "none",
+    "local",
+    "--log-opt",
+    "max-file=2",
+    "--log-opt",
+    "max-size=1m",
     "--network",
     network,
     "--network-alias",
@@ -456,7 +506,11 @@ async function startObservability(metricsPort, edgePort) {
     "--label",
     `com.llm-machines.test-package=${packageId}`,
     "--log-driver",
-    "none",
+    "local",
+    "--log-opt",
+    "max-file=2",
+    "--log-opt",
+    "max-size=1m",
     "--network",
     network,
     "--network-alias",
@@ -537,7 +591,11 @@ async function runBrowser({
   return parsed
 }
 
-async function verifyProductRetention(firecrawlControl) {
+async function verifyProductRetention({
+  firecrawlControl,
+  keycloakControl,
+  liteLlmControl,
+}) {
   const dump = docker([
     "exec",
     containers.postgres,
@@ -552,17 +610,41 @@ async function verifyProductRetention(firecrawlControl) {
   ])
   assertNoSensitive([dump], sensitiveValues)
   for (const service of services) {
-    const logs = await readFile(service.stderrPath, "utf8").catch(() => "")
-    assertNoSensitive([logs], sensitiveValues)
+    const [stdout, stderr] = await Promise.all([
+      readFile(service.stdoutPath, "utf8"),
+      readFile(service.stderrPath, "utf8"),
+    ])
+    assertNoSensitive([stdout, stderr], sensitiveValues)
   }
-  for (const container of created.containers) {
-    const logs = dockerResult(["logs", container])
-    if (logs.status === 0) {
-      assertNoSensitive(
-        [logs.stdout, logs.stderr],
-        [firecrawlControl.canaries.query, firecrawlControl.canaries.url],
-      )
+  const firecrawlContainers = new Set(
+    Object.values(firecrawlControl.containers ?? {}),
+  )
+  const inspectedContainers = new Set([
+    ...created.containers,
+    keycloakControl.container,
+    liteLlmControl.container,
+    ...firecrawlContainers,
+  ])
+  for (const container of inspectedContainers) {
+    assert.equal(typeof container, "string")
+    const logDriver = docker([
+      "inspect",
+      "--format",
+      "{{.HostConfig.LogConfig.Type}}",
+      container,
+    ]).trim()
+    if (logDriver === "none") {
+      if (!firecrawlContainers.has(container)) {
+        throw new Error(`F0-C1 could not inspect logs for ${container}.`)
+      }
+      continue
     }
+    assert.ok(["json-file", "local"].includes(logDriver))
+    const logs = dockerResult(["logs", container])
+    if (logs.status !== 0) {
+      throw new Error(`F0-C1 could not read logs for ${container}.`)
+    }
+    assertNoSensitive([logs.stdout, logs.stderr], sensitiveValues)
   }
   return {
     browserAndProductLogs: "canaries-absent",
@@ -664,41 +746,122 @@ async function serviceDiagnostics(service) {
 }
 
 async function startMetricsFixture() {
-  const server = createServer((_request, response) => {
-    const body = [
-      "# TYPE node_cpu_seconds_total counter",
-      'node_cpu_seconds_total{cpu="0",host="core-a",job="node",mode="idle"} 1000',
-      "# TYPE node_memory_MemAvailable_bytes gauge",
-      'node_memory_MemAvailable_bytes{host="core-a",job="node"} 17179869184',
-      "# TYPE node_memory_MemTotal_bytes gauge",
-      'node_memory_MemTotal_bytes{host="core-a",job="node"} 34359738368',
-      "# TYPE node_filesystem_avail_bytes gauge",
-      'node_filesystem_avail_bytes{device="/dev/vda1",fstype="zfs",host="core-a",job="node",mountpoint="/"} 53687091200',
-      "# TYPE node_filesystem_size_bytes gauge",
-      'node_filesystem_size_bytes{device="/dev/vda1",fstype="zfs",host="core-a",job="node",mountpoint="/"} 107374182400',
-      "# TYPE DCGM_FI_DEV_GPU_TEMP gauge",
-      'DCGM_FI_DEV_GPU_TEMP{gpu="0",host="inference-a"} 55',
-      "# TYPE DCGM_FI_DEV_GPU_UTIL gauge",
-      'DCGM_FI_DEV_GPU_UTIL{gpu="0",host="inference-a"} 42',
-      "# TYPE ipmi_dcmi_power_consumption_watts gauge",
-      'ipmi_dcmi_power_consumption_watts{host="compute-node-a"} 410',
-      "# TYPE node_network_receive_bytes_total counter",
-      'node_network_receive_bytes_total{device="eth0",host="core-a",job="node"} 1000000',
-      "# TYPE node_network_transmit_bytes_total counter",
-      'node_network_transmit_bytes_total{device="eth0",host="core-a",job="node"} 2000000',
-      "",
-    ].join("\n")
-    response.writeHead(200, {
-      "content-length": Buffer.byteLength(body),
-      "content-type": "text/plain; version=0.0.4",
-    })
-    response.end(body)
-  })
-  await new Promise((resolveListen, rejectListen) => {
-    server.once("error", rejectListen)
-    server.listen(0, "0.0.0.0", resolveListen)
-  })
-  return server
+  await Promise.all([
+    writeFile(
+      files.metricsConfig,
+      [
+        "pid /tmp/nginx.pid;",
+        "error_log /dev/stderr warn;",
+        "events {}",
+        "http {",
+        "  access_log off;",
+        "  client_body_temp_path /tmp/client_temp;",
+        "  proxy_temp_path /tmp/proxy_temp;",
+        "  fastcgi_temp_path /tmp/fastcgi_temp;",
+        "  uwsgi_temp_path /tmp/uwsgi_temp;",
+        "  scgi_temp_path /tmp/scgi_temp;",
+        "  server {",
+        "    listen 8080;",
+        "    location = /metrics { root /srv; default_type text/plain; }",
+        "    location / { return 404; }",
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+      { mode: 0o644 },
+    ),
+    writeFile(files.metricsPayload, metricsPayload(), { mode: 0o644 }),
+  ])
+  docker([
+    "run",
+    "--detach",
+    "--name",
+    containers.metrics,
+    "--label",
+    `com.llm-machines.test-package=${packageId}`,
+    "--log-driver",
+    "local",
+    "--log-opt",
+    "max-file=2",
+    "--log-opt",
+    "max-size=1m",
+    "--network",
+    network,
+    "--network-alias",
+    "metrics-fixture",
+    "--read-only",
+    "--tmpfs",
+    "/tmp:rw,noexec,nosuid,nodev,size=16m,uid=101,gid=101,mode=0700",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges=true",
+    "--user",
+    "101:101",
+    "--mount",
+    `type=bind,source=${files.metricsConfig},target=/etc/llmm/nginx.conf,readonly`,
+    "--mount",
+    `type=bind,source=${files.metricsPayload},target=/srv/metrics,readonly`,
+    "--entrypoint",
+    "/usr/sbin/nginx",
+    images["product-edge"],
+    "-c",
+    "/etc/llmm/nginx.conf",
+    "-g",
+    "daemon off;",
+  ])
+  created.containers.add(containers.metrics)
+  await waitForMetricsFixture()
+}
+
+function metricsPayload() {
+  return [
+    "# TYPE node_cpu_seconds_total counter",
+    'node_cpu_seconds_total{cpu="0",host="core-a",job="node",mode="idle"} 1000',
+    "# TYPE node_memory_MemAvailable_bytes gauge",
+    'node_memory_MemAvailable_bytes{host="core-a",job="node"} 17179869184',
+    "# TYPE node_memory_MemTotal_bytes gauge",
+    'node_memory_MemTotal_bytes{host="core-a",job="node"} 34359738368',
+    "# TYPE node_filesystem_avail_bytes gauge",
+    'node_filesystem_avail_bytes{device="/dev/vda1",fstype="zfs",host="core-a",job="node",mountpoint="/"} 53687091200',
+    "# TYPE node_filesystem_size_bytes gauge",
+    'node_filesystem_size_bytes{device="/dev/vda1",fstype="zfs",host="core-a",job="node",mountpoint="/"} 107374182400',
+    "# TYPE DCGM_FI_DEV_GPU_TEMP gauge",
+    'DCGM_FI_DEV_GPU_TEMP{gpu="0",host="inference-a"} 55',
+    "# TYPE DCGM_FI_DEV_GPU_UTIL gauge",
+    'DCGM_FI_DEV_GPU_UTIL{gpu="0",host="inference-a"} 42',
+    "# TYPE ipmi_dcmi_power_consumption_watts gauge",
+    'ipmi_dcmi_power_consumption_watts{host="compute-node-a"} 410',
+    "# TYPE node_network_receive_bytes_total counter",
+    'node_network_receive_bytes_total{device="eth0",host="core-a",job="node"} 1000000',
+    "# TYPE node_network_transmit_bytes_total counter",
+    'node_network_transmit_bytes_total{device="eth0",host="core-a",job="node"} 2000000',
+    "",
+  ].join("\n")
+}
+
+async function waitForMetricsFixture() {
+  const deadline = Date.now() + 30_000
+  while (Date.now() < deadline) {
+    const result = dockerResult([
+      "exec",
+      containers.metrics,
+      "wget",
+      "-qO-",
+      "http://127.0.0.1:8080/metrics",
+    ])
+    if (
+      result.status === 0 &&
+      result.stdout.includes("node_cpu_seconds_total")
+    ) {
+      return
+    }
+    await delay(250)
+  }
+  const logs = dockerResult(["logs", containers.metrics])
+  throw new Error(
+    `F0-C1 private metrics fixture did not become ready: ${sanitize(logs.stderr || logs.stdout)}`,
+  )
 }
 
 async function postAlert(baseUrl) {
@@ -732,7 +895,11 @@ async function waitForPrometheusSignals(baseUrl) {
     ).catch(() => null)
     if (response?.ok) {
       const value = await response.json()
-      if (value?.data?.result?.length > 0) {
+      if (
+        value?.data?.result?.some(
+          (sample) => Array.isArray(sample.value) && sample.value[1] === "1",
+        )
+      ) {
         await delay(2_500)
         return
       }
@@ -871,6 +1038,33 @@ function buildWorkspaceFixturePackages() {
     )
     if (result.status !== 0) {
       throw new Error(`F0-C1 could not build ${packageName}.`)
+    }
+  }
+}
+
+async function preserveWorkspaceBuildArtifacts() {
+  await mkdir(files.workspaceBuildBackup, { mode: 0o700, recursive: true })
+  for (const artifact of workspaceBuildArtifacts) {
+    const backup = join(files.workspaceBuildBackup, artifact.backupName)
+    const existed = await exists(artifact.path)
+    workspaceBuildSnapshot.push({ ...artifact, backup, existed })
+    if (existed) {
+      await cp(artifact.path, backup, {
+        preserveTimestamps: true,
+        recursive: true,
+      })
+    }
+  }
+}
+
+async function restoreWorkspaceBuildArtifacts() {
+  for (const artifact of workspaceBuildSnapshot) {
+    await rm(artifact.path, { force: true, recursive: true })
+    if (artifact.existed) {
+      await cp(artifact.backup, artifact.path, {
+        preserveTimestamps: true,
+        recursive: true,
+      })
     }
   }
 }

@@ -18,6 +18,12 @@ test("F0-C1 has one bounded disposable command", () => {
     "node scripts/pre-genesis/reduced-core-integrated.mjs",
   )
   assert.match(integrated, /buildWorkspaceFixturePackages\(\)/)
+  assert.match(integrated, /await preserveWorkspaceBuildArtifacts\(\)/)
+  assert.match(integrated, /await restoreWorkspaceBuildArtifacts\(\)/)
+  assert.ok(
+    integrated.indexOf("await preserveWorkspaceBuildArtifacts()") <
+      integrated.indexOf("buildWorkspaceFixturePackages()"),
+  )
   assert.match(integrated, /LOCAL_INTEGRATED_REDUCED_CORE_ONLY/)
   assert.match(integrated, /reduced-core-firecrawl-integration\.mjs/)
   assert.match(integrated, /reduced-core-keycloak-identity\.mjs/)
@@ -32,6 +38,16 @@ test("F0-C1 has one bounded disposable command", () => {
     integrated,
     /target=\/etc\/grafana\/provisioning\/dashboards\/baseline/,
   )
+  const metricsFixture = integrated.slice(
+    integrated.indexOf("async function startMetricsFixture"),
+    integrated.indexOf("function metricsPayload"),
+  )
+  assert.match(metricsFixture, /metrics-fixture/)
+  assert.match(metricsFixture, /images\["product-edge"\]/)
+  assert.doesNotMatch(metricsFixture, /--publish/)
+  assert.match(integrated, /sample\.value\[1\] === "1"/)
+  assert.doesNotMatch(integrated, /host\.docker\.internal/)
+  assert.doesNotMatch(integrated, /server\.listen\(0, "0\.0\.0\.0"/)
 })
 
 test("F0-C1 retains the approved customer and private-service boundary", () => {
@@ -56,6 +72,14 @@ test("F0-C1 retains the approved customer and private-service boundary", () => {
   assert.match(browser, /keycloakIdentityMode && !integratedCoreMode/)
   assert.match(browser, /if \(postgresBackedMode\)/)
   assert.match(sessionFixture, /PRE_GENESIS_FIRECRAWL_ACTUAL/)
+  assert.match(integrated, /readFile\(service\.stdoutPath, "utf8"\)/)
+  assert.match(integrated, /readFile\(service\.stderrPath, "utf8"\)/)
+  assert.match(integrated, /keycloakControl\.container/)
+  assert.match(integrated, /liteLlmControl\.container/)
+  assert.match(
+    integrated,
+    /assertNoSensitive\(\[logs\.stdout, logs\.stderr\], sensitiveValues\)/,
+  )
   assert.doesNotMatch(integrated, /Customer.*Grafana|native LiteLLM access/i)
 })
 
