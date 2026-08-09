@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "id": "PR-12-SOURCE-CLOSURE-AMENDMENT-4",
+  "workPackage": "PR-12-FIRECRAWL-PLATFORM-IDENTITY-SUCCESSOR",
+  "sourceClosureStatus": "SOURCE_CLOSED",
+  "amendmentStatus": "SOURCE_CLOSURE_AMENDED",
+  "sourceClosureScope": "deterministic-release-packaging-source-only",
+  "accepted": false,
+  "releaseSourceBound": true,
+  "predecessor": {
+    "path": "docs/reduction/inference-core/pr-12-source-closure-amendment-3.json",
+    "sha256": "1839abb91a757d478424ad647c2804fcf8370212f426f514c594ae4445803032",
+    "releaseSource": {
+      "commit": "059866dc07dbc2af95df84ee834fca598a9a64a9",
+      "tree": "f14535be105e8073668c922e306a317bed55b993"
+    },
+    "protectedGovernanceAdmission": {
+      "commit": "e8e61f88e1fe101df7963a9e5df35050ce116bed",
+      "tree": "09535b0b2e2d1ca0731b92dba9e3cc3e26857b09",
+      "firstParent": "059866dc07dbc2af95df84ee834fca598a9a64a9",
+      "secondParent": "ab420d08060d52f097f7c1dc071a9ff48b992103"
+    },
+    "disposition": "PRESERVED_HISTORICAL_SOURCE_CLOSURE_AMENDMENT"
+  },
+  "reason": {
+    "defect": "The locked linux/amd64 manifest identities for the Golang, Wolfi, and Playwright build inputs did not match the platform manifests selected by their immutable indexes. The Golang source revision was also truncated and malformed.",
+    "correction": "The successor retains each immutable index and readable version, binds the exact index-selected linux/amd64 manifest, corrects the Golang source revision from official OCI annotations, validates the complete ordered build-input set, and regenerates corresponding-source evidence from two actual assemblies.",
+    "effect": "Amendment 3 remains immutable historical evidence. The successor changes release supply-chain evidence only and does not change Product behavior, Firecrawl routes, egress, credentials, retention, licensing, or runtime configuration."
+  },
+  "releaseSource": {
+    "commit": "5e7761b178e7a21a7679f6b9ede834caada994b0",
+    "tree": "38cdb571cadc19b63b13e6644efa5466c8946eef"
+  },
+  "successor": {
+    "id": "PR-12-FIRECRAWL-PLATFORM-IDENTITY-SUCCESSOR",
+    "pullRequest": 57,
+    "base": {
+      "commit": "e8e61f88e1fe101df7963a9e5df35050ce116bed",
+      "tree": "09535b0b2e2d1ca0731b92dba9e3cc3e26857b09"
+    },
+    "candidate": {
+      "commit": "efcef057a280d717a2207a360c81082c83f2a9af",
+      "tree": "38cdb571cadc19b63b13e6644efa5466c8946eef",
+      "materialReview": "PASS"
+    },
+    "protectedAdmission": {
+      "commit": "5e7761b178e7a21a7679f6b9ede834caada994b0",
+      "tree": "38cdb571cadc19b63b13e6644efa5466c8946eef",
+      "firstParent": "e8e61f88e1fe101df7963a9e5df35050ce116bed",
+      "secondParent": "efcef057a280d717a2207a360c81082c83f2a9af",
+      "candidateTreeIdentical": true
+    },
+    "productBehaviorChanged": false,
+    "runtimeQualified": false
+  },
+  "correctedBuildInputs": {
+    "golang": {
+      "repository": "docker.io/library/golang",
+      "readableVersion": "1.25.12-bookworm",
+      "sourceRevision": "294097713ad2eaf9ee4c5e9dc57e040ac4b402d6",
+      "indexDigest": "sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:eecd15e52d06149b84ac1caa56cfd07f584da6803e5621a77024f38827f342ec",
+      "configurationDigest": "sha256:bd70579a624df39bce056a80ccda1b689b89a6e8393ceaef5878b1a087ac7b1b"
+    },
+    "wolfi": {
+      "repository": "cgr.dev/chainguard/wolfi-base",
+      "readableVersion": "digest-003627df3c1e",
+      "indexDigest": "sha256:003627df3c1e1bba0c4116afcddb314aca9594ee2328c7e876a8081a6c988b2e",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:d2ad9a742d38e1ab550fbb20911056339632a5ca2f01777a32422a4c944fcb99",
+      "configurationDigest": "sha256:364b2e539d58732f08da369a3f9c57027575b2eb2c98e401bb421efc11684aec"
+    },
+    "playwright": {
+      "repository": "mcr.microsoft.com/playwright",
+      "readableVersion": "v1.62.0-noble",
+      "indexDigest": "sha256:baed2032d533817f3dbe6425de795788430ba345e819a1201337009ba17c9d07",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:02bbb2155cd7109e3e9c741941097ed1608cf8b6fa44ee2595896da2bdc1f471",
+      "configurationDigest": "sha256:50cbb76d250a50002045a95f484c5f40573cde831adbe40c784052c037e36118"
+    },
+    "licensingDisposition": "UNCHANGED_BY_INDEX_SELECTED_PLATFORM_CORRECTION"
+  },
+  "firecrawlEvidence": {
+    "sourcePackageSha256": "6dfb70fa4fa187d6c606d6b77ffe95519867807ab08f41196bd3dc0352b2dd7c",
+    "fileCount": 1535,
+    "symlinkCount": 0,
+    "inventorySha256": "b006ab3fb5bb1b7d6ad2f3ad037aa87462acda8b050f7d15352cb463279da303",
+    "sha256SumsSha256": "622525c0a3ae2a0ce7d37897128e3d539ebd22e5650a146c0f1deee3eebaf5e8",
+    "packetSha256": "8261518f1f124df051ac778f36acfb06cd81e63d1e705c454117a3a3dee8d9e3",
+    "patches": [
+      {
+        "path": "infra/firecrawl/release/patches/build-hardening.patch",
+        "sha256": "46e3de809c685b635d54dbae759bac3811b1c67397eb75d3d60c1efd59adae0a"
+      },
+      {
+        "path": "infra/firecrawl/release/patches/reduced-runtime.patch",
+        "sha256": "0ae6844072e0e9d9f3874838bab438434980e460d4e6f4fc95d6c5c59c4b06b9"
+      }
+    ]
+  },
+  "evidenceBindings": [
+    {
+      "path": "infra/firecrawl/release/assemble-source-packet.mjs",
+      "sha256": "c7be6e7f677781e9aa12385b810a4b918105cccb17c29bb412d3ce5b98a1d069"
+    },
+    {
+      "path": "infra/firecrawl/release/patches/build-hardening.patch",
+      "sha256": "46e3de809c685b635d54dbae759bac3811b1c67397eb75d3d60c1efd59adae0a"
+    },
+    {
+      "path": "infra/firecrawl/release/source-package.json",
+      "sha256": "6dfb70fa4fa187d6c606d6b77ffe95519867807ab08f41196bd3dc0352b2dd7c"
+    },
+    {
+      "path": "infra/firecrawl/release/reproducibility-evidence.json",
+      "sha256": "e1c2fec2a9a50186c1b8f928d1116033010eda92cd757f24d8f7673b5a7337b9"
+    },
+    {
+      "path": "infra/firecrawl/release/validate-source-package.mjs",
+      "sha256": "179bd22fead3b5ed1e3cf9a624b31d103ee4a31a4c54960052f1c4da3b38410e"
+    },
+    {
+      "path": "infra/firecrawl/release/validate-source-package.test.mjs",
+      "sha256": "6916bbfd207369b228ac932d78c24b9c75c3142ebd3c88ce0f1ce14006381c22"
+    }
+  ],
+  "status": {
+    "runtimeQualified": false,
+    "contractActivation": "INACTIVE",
+    "d2aRc": "NOT_STARTED",
+    "q0": "NOT_STARTED",
+    "grafanaCustomerAccess": "DEFERRED_V1",
+    "deployment": "INACTIVE",
+    "productMain": "UNCHANGED"
+  },
+  "interpretation": {
+    "sourceClosure": "The current PR-12 release source contains exact index-selected linux/amd64 identities for every corrected Firecrawl build input and regenerated deterministic corresponding-source evidence.",
+    "accepted": "False means this amendment does not assert Product acceptance, release admission, runtime qualification, contract activation, or deployment readiness.",
+    "releaseSourceBound": "Any later D2A-RC construction must use this exact release-source commit and tree. Amendment 3 and its 059866d release source remain historical evidence, not the current build input.",
+    "runtimeBoundary": "D2A-RC construction and Q0 remain not started. F0-F2 is a separate local functional package and cannot establish release or runtime qualification."
+  }
+}
