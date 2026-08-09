@@ -834,6 +834,16 @@ commit `5e7761b178e7a21a7679f6b9ede834caada994b0`, tree
 `38cdb571cadc19b63b13e6644efa5466c8946eef`, as the current D2A release
 source. The prior `059866d` release source is historical, not current.
 
+The first actual reduced Firecrawl image then failed to load Koffi 2.9.0 on
+the admitted Wolfi runtime because its linux/x64 native module requested an
+executable stack. PR 59 added a deterministic ELF program-header correction
+that clears only the executable stack flag and verifies the native module
+loads in the final runtime image. Amendment 5 preserves Amendments 1 through
+4 and binds protected integration commit
+`eefb9c3eb372a5b6789223458ccc319fa9784a04`, tree
+`884965cf79cfa77044c962614e54a8decfc2b1fd`, as the current D2A release
+source. The prior `5e7761b` release source is historical, not current.
+
 The first-install commissioning observation remains a Q0 trust input. Q0 must
 prove its trusted observer, appliance binding, separate customer backup target,
 and clean restore. PR-12 does not select or imply its signing authority or
