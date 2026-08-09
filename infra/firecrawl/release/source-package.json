@@ -77,7 +77,7 @@
     {
       "order": 2,
       "path": "infra/firecrawl/release/patches/reduced-runtime.patch",
-      "sha256": "0ae6844072e0e9d9f3874838bab438434980e460d4e6f4fc95d6c5c59c4b06b9",
+      "sha256": "d5c271d0961b90988bc86b36c4897163030624346a989b7e9480e4472e0535d6",
       "purpose": "search-and-static-scrape-only entrypoint and self-hosted zero-content retention"
     }
   ],

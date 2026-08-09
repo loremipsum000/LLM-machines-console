@@ -115,6 +115,28 @@ describe("Firecrawl v2 gateway", () => {
     await server.close()
   })
 
+  it("preserves a successful empty self-hosted search result", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      Response.json({ data: {}, success: true }),
+    )
+    const harness = createHarness({ fetchImpl })
+    const server = Fastify({ logger: false })
+    registerFirecrawlGatewayRoutes(server, harness.dependencies)
+
+    const response = await server.inject({
+      headers: { authorization: "Bearer firecrawl-token" },
+      method: "POST",
+      payload: { limit: 1, query: "no matching result" },
+      url: "/v2/search",
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({ data: { web: [] }, success: true })
+    expect(harness.settlements).toHaveLength(1)
+    expect(harness.settlements[0]?.outcome).toBe("succeeded")
+    await server.close()
+  })
+
   it("normalizes the reviewed SDK scrape payload and validates redirects and final URLs", async () => {
     const privateContent = "# private scraped content"
     const fetchImpl = vi.fn<typeof fetch>(async () =>
@@ -186,6 +208,7 @@ describe("Firecrawl v2 gateway", () => {
       maxAge: 0,
       mobile: false,
       onlyMainContent: true,
+      proxy: "basic",
       removeBase64Images: true,
       skipTlsVerification: false,
       storeInCache: false,

@@ -59,7 +59,7 @@ const expectedLockPaths = [
 ]
 const expectedPatchDigests = [
   "d60190411adb30eb6dc27100be0f0b2ffa9c1be762d79599abb19df03d4f8ed8",
-  "0ae6844072e0e9d9f3874838bab438434980e460d4e6f4fc95d6c5c59c4b06b9",
+  "d5c271d0961b90988bc86b36c4897163030624346a989b7e9480e4472e0535d6",
 ]
 const expectedApiBuildValidationTests = [
   "src/lib/canonical-url.test.ts",
@@ -324,6 +324,9 @@ export function validateSourcePackage(manifest, root = repositoryRoot) {
     'app.post(\n+  "/v2/scrape"',
     "isSelfHosted() ||",
     'response.status(404).json({ success: false, error: "Not found" })',
+    "Squid resolves the exact allowlisted hostname",
+    "if (PROXY_SERVER) {",
+    'scrapeZDR: "forced"',
   ]) {
     if (!reducedPatch.includes(required)) {
       errors.push(`reduced runtime patch is missing ${required}`)

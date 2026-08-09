@@ -23,12 +23,21 @@ const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const checkMode = process.argv.includes("--check")
 const verticalSliceMode = process.argv.includes("--vertical-slice")
 const firecrawlSliceMode = process.argv.includes("--firecrawl-slice")
+const firecrawlActualSliceMode = process.argv.includes(
+  "--firecrawl-actual-slice",
+)
+const firecrawlFlowMode = firecrawlSliceMode || firecrawlActualSliceMode
 
 if (
-  [checkMode, verticalSliceMode, firecrawlSliceMode].filter(Boolean).length > 1
+  [
+    checkMode,
+    verticalSliceMode,
+    firecrawlSliceMode,
+    firecrawlActualSliceMode,
+  ].filter(Boolean).length > 1
 ) {
   throw new Error(
-    "Choose only one of --check, --vertical-slice, or --firecrawl-slice.",
+    "Choose only one of --check, --vertical-slice, --firecrawl-slice, or --firecrawl-actual-slice.",
   )
 }
 
@@ -106,7 +115,7 @@ if (!runtime) {
       })}\n`,
     )
   }
-} else if (firecrawlSliceMode) {
+} else if (firecrawlFlowMode) {
   let result
   try {
     result = await Promise.race([
@@ -127,7 +136,9 @@ if (!runtime) {
       `${JSON.stringify({
         architecture: process.arch,
         credentialMaterialPrinted: false,
-        evidenceClass: "LOCAL_DETERMINISTIC_FIRECRAWL_APPLICATION_FLOW_ONLY",
+        evidenceClass: firecrawlActualSliceMode
+          ? "LOCAL_ACTUAL_REDUCED_FIRECRAWL_INTEGRATION_ONLY"
+          : "LOCAL_DETERMINISTIC_FIRECRAWL_APPLICATION_FLOW_ONLY",
         flow: result,
         services: runtime.publicSummary.services,
         status: "passed",
@@ -155,6 +166,9 @@ async function shutdownFailure() {
 async function startReducedCoreDevelopmentRuntime() {
   await assertDevelopmentDependenciesReady()
   ensureStartupActive()
+  const externalFirecrawl = firecrawlActualSliceMode
+    ? actualFirecrawlConfiguration()
+    : null
   const stateRoot = await createTemporaryStateRoot()
   const children = []
   const servers = []
@@ -174,7 +188,7 @@ async function startReducedCoreDevelopmentRuntime() {
       liteLlmApiKey: randomBytes(32).toString("base64url"),
     }
     const fixtureClock =
-      verticalSliceMode || firecrawlSliceMode
+      verticalSliceMode || firecrawlFlowMode
         ? await createFixtureClock(stateRoot)
         : null
     await writeFile(
@@ -184,7 +198,9 @@ async function startReducedCoreDevelopmentRuntime() {
     )
     ensureStartupActive()
 
-    const ports = await reservePorts(firecrawlSliceMode ? 5 : 4)
+    const ports = await reservePorts(
+      firecrawlSliceMode && !externalFirecrawl ? 5 : 4,
+    )
     const [bffPort, webPort, edgePort, inferencePort, firecrawlPort] = ports
     const webRoot = await prepareTemporaryWebProject(stateRoot)
     ensureStartupActive()
@@ -198,8 +214,12 @@ async function startReducedCoreDevelopmentRuntime() {
     await listen(inference, inferencePort)
     ensureStartupActive()
 
-    const firecrawlProbe = firecrawlSliceMode ? createFirecrawlDouble() : null
-    if (firecrawlProbe && firecrawlPort) {
+    const firecrawlProbe = externalFirecrawl
+      ? { kind: "actual", requests: null }
+      : firecrawlSliceMode
+        ? createFirecrawlDouble()
+        : null
+    if (firecrawlProbe?.server && firecrawlPort) {
       servers.push(firecrawlProbe.server)
       await listen(firecrawlProbe.server, firecrawlPort)
       ensureStartupActive()
@@ -213,7 +233,7 @@ async function startReducedCoreDevelopmentRuntime() {
           resolve(repositoryRoot, "apps/bff/node_modules/tsx/dist/cli.mjs"),
           resolve(
             repositoryRoot,
-            firecrawlSliceMode
+            firecrawlFlowMode
               ? "scripts/pre-genesis/reduced-core-bff-fixture.mts"
               : "apps/bff/src/index.ts",
           ),
@@ -224,17 +244,26 @@ async function startReducedCoreDevelopmentRuntime() {
           BFF_SERVICE_API_KEY: credentials.bffServiceApiKey,
           CONNECTED_APPS_BFF_BASE_URL: `http://api.localhost:${edgePort}`,
           CONNECTED_APPS_KEYCLOAK_FIXTURE: "true",
-          ...(firecrawlSliceMode && firecrawlPort
+          ...(firecrawlFlowMode
             ? {
                 FIRECRAWL_APPLIANCE_KILL_SWITCH: "false",
-                FIRECRAWL_EGRESS_ALLOWED_HOSTS: "allowed.example.test",
+                FIRECRAWL_EGRESS_ALLOWED_HOSTS:
+                  externalFirecrawl?.allowedHosts.join(",") ??
+                  "allowed.example.test",
                 FIRECRAWL_EGRESS_ALLOWLIST_DIR:
                   "/run/llm-machines/firecrawl/local-fixture",
                 FIRECRAWL_EGRESS_POLICY_READY: "true",
                 FIRECRAWL_INSTALLED: "true",
                 FIRECRAWL_RESOURCE_PROFILE_QUALIFIED: "true",
                 FIRECRAWL_UPSTREAM_BASE_URL: "http://firecrawl-api:3002",
-                PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL: `http://127.0.0.1:${firecrawlPort}`,
+                PRE_GENESIS_FIRECRAWL_ACTUAL:
+                  externalFirecrawl === null ? "false" : "true",
+                PRE_GENESIS_FIRECRAWL_ALLOWED_HOSTS:
+                  externalFirecrawl?.allowedHosts.join(",") ??
+                  "allowed.example.test",
+                PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL:
+                  externalFirecrawl?.upstreamBaseUrl ??
+                  `http://127.0.0.1:${firecrawlPort}`,
               }
             : {}),
           FIRECRAWL_PUBLIC_BASE_URL: `http://firecrawl.localhost:${edgePort}`,
@@ -323,6 +352,7 @@ async function startReducedCoreDevelopmentRuntime() {
       failureSignal: runtimeFailure.signal,
       fixtureClock,
       firecrawlProbe,
+      firecrawlWorkload: externalFirecrawl?.workload ?? null,
       inferenceApiKey: credentials.liteLlmApiKey,
       inferenceOrigin: `http://127.0.0.1:${inferencePort}`,
       logPaths: children.flatMap((record) => [
@@ -339,6 +369,7 @@ async function startReducedCoreDevelopmentRuntime() {
           "Inference is deterministic and is not SGLang or capacity evidence.",
           "Run --vertical-slice for the deterministic F0-L1 Application credential and gateway flow.",
           "Run --firecrawl-slice for the deterministic F0-W1 per-Application Firecrawl flow.",
+          "Run --firecrawl-actual-slice only through the isolated F0-F2 orchestrator.",
           "Application metadata is in-memory; created temporary files are removed on shutdown.",
         ],
         services,
@@ -468,7 +499,67 @@ function createFirecrawlDouble() {
       }
     })
   })
-  return { requests, server }
+  return { kind: "deterministic", requests, server }
+}
+
+function actualFirecrawlConfiguration() {
+  const upstreamBaseUrl = process.env.PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL
+  const queryCanary = process.env.PRE_GENESIS_FIRECRAWL_QUERY_CANARY
+  const urlCanary = process.env.PRE_GENESIS_FIRECRAWL_URL_CANARY
+  const allowedHosts = parseActualFirecrawlHosts(
+    process.env.PRE_GENESIS_FIRECRAWL_ALLOWED_HOSTS,
+  )
+  if (
+    !upstreamBaseUrl ||
+    !queryCanary ||
+    !urlCanary ||
+    !/^[a-z0-9-]{24,80}$/.test(queryCanary) ||
+    !/^[a-z0-9-]{24,80}$/.test(urlCanary)
+  ) {
+    throw new Error("F0-F2 requires generated workload canaries.")
+  }
+  const parsed = new URL(upstreamBaseUrl)
+  if (
+    parsed.protocol !== "http:" ||
+    parsed.hostname !== "127.0.0.1" ||
+    parsed.port === "" ||
+    parsed.pathname !== "/" ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.username ||
+    parsed.password
+  ) {
+    throw new Error("F0-F2 requires a loopback-only Firecrawl upstream.")
+  }
+  if (
+    !allowedHosts.includes("example.com") ||
+    !allowedHosts.includes("en.wikipedia.org")
+  ) {
+    throw new Error("F0-F2 requires both exact characterization hosts.")
+  }
+  return {
+    allowedHosts,
+    upstreamBaseUrl: parsed.origin,
+    workload: { queryCanary, urlCanary },
+  }
+}
+
+function parseActualFirecrawlHosts(value) {
+  if (!value) throw new Error("F0-F2 requires an exact egress allowlist.")
+  const hosts = value.split(",")
+  if (
+    hosts.length === 0 ||
+    hosts.length > 8 ||
+    new Set(hosts).size !== hosts.length ||
+    hosts.some(
+      (host) =>
+        host !== host.trim().toLowerCase() ||
+        !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host),
+    )
+  ) {
+    throw new Error("F0-F2 received an invalid exact egress allowlist.")
+  }
+  return hosts
 }
 
 async function handleFirecrawlDoubleRequest(request, response, requests) {
@@ -995,40 +1086,64 @@ async function verifyApplicationFirecrawlVerticalSlice(runtime) {
     throw new Error("F0-W1 accepted a Firecrawl key on the inference API.")
   }
 
+  const actual = runtime.firecrawlProbe.kind === "actual"
   const search = await firecrawlJson(runtime, {
     apiKey: primaryFirecrawlKey,
-    body: { limit: 1, query: "deterministic fixture query" },
+    body: {
+      limit: 1,
+      query: actual
+        ? runtime.firecrawlWorkload.queryCanary
+        : "deterministic fixture query",
+    },
     path: "/v2/search",
   })
-  if (
-    search.status !== 200 ||
-    search.body.data?.web?.[0]?.title !== "Deterministic search result"
-  ) {
+  if (search.status !== 200 || !Array.isArray(search.body.data?.web)) {
     throw new Error(
       `F0-W1 governed search failed with status ${search.status}.`,
     )
+  }
+  if (
+    !actual &&
+    search.body.data.web[0]?.title !== "Deterministic search result"
+  ) {
+    throw new Error("F0-W1 deterministic search response changed.")
   }
   const scrape = await firecrawlJson(runtime, {
     apiKey: primaryFirecrawlKey,
     body: {
       formats: ["markdown", "html"],
-      url: "https://allowed.example.test/page",
+      url: actual
+        ? `https://example.com/?trace=${runtime.firecrawlWorkload.urlCanary}`
+        : "https://allowed.example.test/page",
     },
     path: "/v2/scrape",
   })
   if (
     scrape.status !== 200 ||
-    scrape.body.data?.markdown !== "# Deterministic scrape result"
+    typeof scrape.body.data?.markdown !== "string" ||
+    scrape.body.data.markdown.length === 0
   ) {
-    throw new Error("F0-W1 governed static scrape failed.")
+    throw new Error(
+      `F0-W1 governed static scrape failed: status=${scrape.status} success=${String(scrape.body.success)} code=${String(scrape.body.code ?? "none")} bodyKeys=${Object.keys(scrape.body).sort().join(",")} dataKeys=${scrape.body.data && typeof scrape.body.data === "object" ? Object.keys(scrape.body.data).sort().join(",") : "none"} errorPresent=${String(typeof scrape.body.error === "string" && scrape.body.error.length > 0)}.`,
+    )
+  }
+  if (
+    !actual &&
+    scrape.body.data.markdown !== "# Deterministic scrape result"
+  ) {
+    throw new Error("F0-W1 deterministic scrape response changed.")
   }
 
-  const upstreamBeforeDenials = runtime.firecrawlProbe.requests.length
+  const upstreamBeforeDenials = actual
+    ? null
+    : runtime.firecrawlProbe.requests.length
   await requireFirecrawlDenied(
     runtime,
     primaryFirecrawlKey,
     "/v2/scrape",
-    { url: "https://blocked.example.test/page" },
+    {
+      url: actual ? "https://iana.org/" : "https://blocked.example.test/page",
+    },
     400,
     "non-allowlisted scrape target",
   )
@@ -1036,17 +1151,24 @@ async function verifyApplicationFirecrawlVerticalSlice(runtime) {
     runtime,
     primaryFirecrawlKey,
     "/v2/crawl",
-    { url: "https://allowed.example.test/page" },
+    {
+      url: actual
+        ? `https://example.com/?trace=${runtime.firecrawlWorkload.urlCanary}`
+        : "https://allowed.example.test/page",
+    },
     404,
     "unsupported crawl route",
   )
-  if (runtime.firecrawlProbe.requests.length !== upstreamBeforeDenials) {
+  if (
+    !actual &&
+    runtime.firecrawlProbe.requests.length !== upstreamBeforeDenials
+  ) {
     throw new Error("F0-W1 forwarded a denied Firecrawl request upstream.")
   }
 
   const isolatedSearch = await firecrawlJson(runtime, {
     apiKey: isolatedFirecrawlKey,
-    body: { limit: 1, query: "isolated fixture query" },
+    body: { limit: 1, query: actual ? "OpenAI" : "isolated fixture query" },
     path: "/v2/search",
   })
   if (isolatedSearch.status !== 200) {
@@ -1167,7 +1289,7 @@ async function verifyApplicationFirecrawlVerticalSlice(runtime) {
     throw new Error("F0-W1 did not disable Firecrawl after final revocation.")
   }
 
-  assertFirecrawlUpstreamPolicy(runtime.firecrawlProbe.requests)
+  if (!actual) assertFirecrawlUpstreamPolicy(runtime.firecrawlProbe.requests)
   const allKeys = [
     primaryInferenceKey,
     isolatedInferenceKey,
@@ -1265,6 +1387,7 @@ async function firecrawlJson(runtime, { apiKey, body, method = "POST", path }) {
       },
       method,
     },
+    runtime.firecrawlProbe?.kind === "actual" ? 60_000 : 5_000,
   )
   const responseBody = await response.json()
   recordDataPlaneOutput(runtime, `firecrawl-${path}`, responseBody)
@@ -1272,13 +1395,19 @@ async function firecrawlJson(runtime, { apiKey, body, method = "POST", path }) {
 }
 
 async function requireFirecrawlAccepted(runtime, apiKey, label) {
+  const actual = runtime.firecrawlProbe?.kind === "actual"
   const result = await firecrawlJson(runtime, {
     apiKey,
-    body: { limit: 1, query: `accepted ${label}` },
-    path: "/v2/search",
+    body: actual
+      ? {
+          formats: ["markdown"],
+          url: `https://example.com/?trace=${runtime.firecrawlWorkload.urlCanary}`,
+        }
+      : { limit: 1, query: `accepted ${label}` },
+    path: actual ? "/v2/scrape" : "/v2/search",
   })
   if (result.status !== 200) {
-    throw new Error(`F0-W1 ${label} was not accepted.`)
+    throw new Error(`F0-W1 ${label} returned status ${result.status}.`)
   }
 }
 
@@ -1328,6 +1457,7 @@ function assertFirecrawlUpstreamPolicy(requests) {
       ({ body, path }) =>
         path === "/v2/scrape" &&
         body.maxAge === 0 &&
+        body.proxy === "basic" &&
         body.removeBase64Images === true &&
         body.skipTlsVerification === false &&
         body.storeInCache === false &&
@@ -1350,7 +1480,9 @@ async function assertFirecrawlSliceLeavesNoSensitiveOutput(runtime, keys) {
     for (const value of [
       "deterministic fixture query",
       "# Deterministic scrape result",
-    ]) {
+      runtime.firecrawlWorkload?.queryCanary,
+      runtime.firecrawlWorkload?.urlCanary,
+    ].filter(Boolean)) {
       if (output.includes(value)) {
         throw new Error("F0-W1 retained workload content in control evidence.")
       }

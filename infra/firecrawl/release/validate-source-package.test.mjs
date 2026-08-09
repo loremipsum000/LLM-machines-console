@@ -68,6 +68,26 @@ test("Koffi executable-stack correction and runtime load check are patch-bound",
   assert.match(patch, /RUN \/usr\/bin\/node -e 'require\("koffi"\)'/)
 })
 
+test("isolated browser delegates hostname resolution only to the mandatory proxy", () => {
+  const patch = readFileSync(
+    path.join(releaseRoot, "patches/reduced-runtime.patch"),
+    "utf8",
+  )
+  assert.match(patch, /Squid resolves the exact allowlisted hostname/)
+  assert.match(patch, /if \(PROXY_SERVER\) \{\n\+ {4}return;/)
+})
+
+test("reduced self-hosted scrape accepts the Product zero-retention request", () => {
+  const patch = readFileSync(
+    path.join(releaseRoot, "patches/reduced-runtime.patch"),
+    "utf8",
+  )
+  assert.match(
+    patch,
+    /isSelfHosted\(\)\n\+ {14}\? \{ \.\.\.req\.acuc\?\.flags, scrapeZDR: "forced" \}/,
+  )
+})
+
 test("Node API build input must match its admitted version, source, and OCI identity", () => {
   const manifest = clone(readSourcePackage())
   manifest.buildInputs[1].indexDigest = `sha256:${"0".repeat(64)}`
