@@ -73,8 +73,10 @@ const expectedLockDigests = [
   "348b5e00d070803abcc0c91ac3c9e27ddbfccf1a149fee072d00aee985655f28",
   "eb1f2fe73044351c5b51d87f60a4e14c13a9da78a8fadb992ebe717f49be02c9",
 ]
-const expectedNodeApiBuildInputSha256 =
-  "0c29de054e8215666ab9a5add5b708713501f60de24057314928fe0d1f043024"
+const expectedBuildInputIdsSha256 =
+  "e0a6ac8c96347705ca06218cf3b7088e203e842f98f24851df03ecb08e9f39c0"
+const expectedBuildInputsSha256 =
+  "88f96ff604784ca33745dda83c2384ccc82df1edbacfe7c25a8ffd4f3ea86549"
 
 export function sha256File(file) {
   return createHash("sha256").update(readFileSync(file)).digest("hex")
@@ -234,6 +236,13 @@ export function validateSourcePackage(manifest, root = repositoryRoot) {
   const buildInputs = Array.isArray(manifest?.buildInputs)
     ? manifest.buildInputs
     : []
+  if (
+    createHash("sha256")
+      .update(JSON.stringify(buildInputs.map(({ id }) => id)))
+      .digest("hex") !== expectedBuildInputIdsSha256
+  ) {
+    errors.push("Firecrawl build inputs differ from the admitted ordered set")
+  }
   if (new Set(buildInputs.map(({ id }) => id)).size !== buildInputs.length) {
     errors.push("Firecrawl build input identifiers must be unique")
   }
@@ -260,12 +269,10 @@ export function validateSourcePackage(manifest, root = repositoryRoot) {
     }
   }
   if (
-    buildInputs.length < 2 ||
-    createHash("sha256")
-      .update(JSON.stringify(buildInputs[1]))
-      .digest("hex") !== expectedNodeApiBuildInputSha256
+    createHash("sha256").update(JSON.stringify(buildInputs)).digest("hex") !==
+    expectedBuildInputsSha256
   ) {
-    errors.push("Node API build input differs from its admitted OCI identity")
+    errors.push("Firecrawl build inputs differ from admitted OCI identities")
   }
 
   for (const input of manifest?.externalByteInputs ?? []) {

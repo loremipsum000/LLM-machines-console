@@ -63,7 +63,30 @@ test("Node API build input must match its admitted version, source, and OCI iden
   manifest.buildInputs[1].indexDigest = `sha256:${"0".repeat(64)}`
   manifest.buildInputs[1].sourceRevision = "0".repeat(40)
   const errors = validateSourcePackage(manifest)
-  assert.ok(errors.some((error) => error.includes("admitted OCI identity")))
+  assert.ok(errors.some((error) => error.includes("admitted OCI identities")))
+})
+
+test("every Firecrawl build input must match its admitted OCI identity", () => {
+  const mutations = [
+    [3, "sourceRevision"],
+    [4, "platformDigest"],
+    [5, "platformDigest"],
+  ]
+  for (const [index, field] of mutations) {
+    const manifest = clone(readSourcePackage())
+    const input = manifest.buildInputs[index]
+    input[field] =
+      field === "sourceRevision" ? "0".repeat(40) : `sha256:${"0".repeat(64)}`
+    const errors = validateSourcePackage(manifest)
+    assert.ok(errors.some((error) => error.includes("admitted OCI identities")))
+  }
+})
+
+test("Firecrawl build inputs must remain complete and ordered", () => {
+  const manifest = clone(readSourcePackage())
+  manifest.buildInputs.reverse()
+  const errors = validateSourcePackage(manifest)
+  assert.ok(errors.some((error) => error.includes("admitted ordered set")))
 })
 
 test("Firecrawl build input identifiers must remain unique", () => {
