@@ -63,7 +63,7 @@ const expectedHttpAccessRules = [
   "http_access deny blocked_hosted_service",
   "http_access deny blocked_v4",
   "http_access deny blocked_v6",
-  "http_access allow firecrawl_clients allowed_destinations",
+  "http_access allow firecrawl_clients allowed_destinations public_destinations",
   "http_access deny all",
 ]
 
@@ -343,6 +343,7 @@ export function validateSquid(source) {
   const errors = []
   const required = [
     'acl allowed_destinations dstdomain "/etc/squid/allowlists/allowed-hosts.txt"',
+    "acl public_destinations dst 0.0.0.0/0 2000::/3",
     "acl blocked_hosted_service dstdomain api.firecrawl.dev",
     "acl blocked_v4 dst 10.0.0.0/8",
     "acl blocked_v4 dst 100.64.0.0/10",
@@ -350,11 +351,22 @@ export function validateSquid(source) {
     "acl blocked_v4 dst 169.254.0.0/16",
     "acl blocked_v4 dst 172.16.0.0/12",
     "acl blocked_v4 dst 192.168.0.0/16",
-    "acl blocked_v6 dst ::/0",
+    "acl blocked_v6 dst ::/128",
+    "acl blocked_v6 dst ::1/128",
+    "acl blocked_v6 dst 64:ff9b::/96",
+    "acl blocked_v6 dst 64:ff9b:1::/48",
+    "acl blocked_v6 dst 100::/64",
+    "acl blocked_v6 dst 2001::/23",
+    "acl blocked_v6 dst 2001:db8::/32",
+    "acl blocked_v6 dst 2002::/16",
+    "acl blocked_v6 dst 3fff::/20",
+    "acl blocked_v6 dst fc00::/7",
+    "acl blocked_v6 dst fe80::/10",
+    "acl blocked_v6 dst ff00::/8",
     "http_access deny blocked_hosted_service",
     "http_access deny blocked_v4",
     "http_access deny blocked_v6",
-    "http_access allow firecrawl_clients allowed_destinations",
+    "http_access allow firecrawl_clients allowed_destinations public_destinations",
     "http_access deny all",
     "cache deny all",
     "access_log none",
@@ -377,6 +389,12 @@ export function validateSquid(source) {
   if (source.split(/\r?\n/).some((line) => /^\s*include(?:\s|$)/i.test(line))) {
     fail(errors, "squid policy must not include unreviewed configuration")
   }
+  if (/^\s*acl\s+blocked_v6\s+dst\s+::\/0\s*$/m.test(source)) {
+    fail(
+      errors,
+      "squid policy must not deny every dual-stack destination through ::/0",
+    )
+  }
   return errors
 }
 
@@ -389,6 +407,7 @@ export function validateSearx(source) {
     "  limiter: false",
     "    all://:",
     "      - http://firecrawl-egress:3128",
+    "  - name: wikipedia\n    disabled: false\n    timeout: 4.0\n    display_type:\n      - list",
   ]
   for (const value of required) {
     if (!source.includes(value)) fail(errors, `search policy missing: ${value}`)

@@ -98,10 +98,54 @@ test("the broad upstream harness is rejected", () => {
 
 test("proxy cannot allow clients without an exact hostname", () => {
   const changed = squid.replace(
-    "http_access allow firecrawl_clients allowed_destinations",
+    "http_access allow firecrawl_clients allowed_destinations public_destinations",
     "http_access allow firecrawl_clients",
   )
   assert.ok(validateSquid(changed).length > 0)
+})
+
+test("proxy admits only public dual-stack space for exact hostnames", () => {
+  assert.equal(validateSquid(squid).length, 0)
+
+  const blanketIpv6Denial = squid.replace(
+    "acl blocked_v6 dst ::/128",
+    "acl blocked_v6 dst ::/0",
+  )
+  assert.ok(
+    validateSquid(blanketIpv6Denial).some((error) =>
+      error.includes("must not deny every dual-stack destination"),
+    ),
+  )
+
+  const missingDocumentationRange = squid.replace(
+    "acl blocked_v6 dst 3fff::/20\n",
+    "",
+  )
+  assert.ok(
+    validateSquid(missingDocumentationRange).some((error) =>
+      error.includes("acl blocked_v6 dst 3fff::/20"),
+    ),
+  )
+
+  const broadenedIpv6Admission = squid.replace(
+    "acl public_destinations dst 0.0.0.0/0 2000::/3",
+    "acl public_destinations dst 0.0.0.0/0 ::/0",
+  )
+  assert.ok(
+    validateSquid(broadenedIpv6Admission).some((error) =>
+      error.includes("acl public_destinations dst 0.0.0.0/0 2000::/3"),
+    ),
+  )
+
+  const missingPositiveAdmission = squid.replace(
+    " public_destinations\nhttp_access deny all",
+    "\nhttp_access deny all",
+  )
+  assert.ok(
+    validateSquid(missingPositiveAdmission).some((error) =>
+      error.includes("exact governed order"),
+    ),
+  )
 })
 
 test("proxy rejects any effective allow before the governed allowlist rule", () => {
@@ -141,6 +185,15 @@ test("proxy rejects whitespace-obscured and included access rules", () => {
 test("search cannot add a shared cache", () => {
   assert.ok(
     validateSearx(`${searx}\nredis:\n  url: redis://cache\n`).length > 0,
+  )
+})
+
+test("wikipedia must emit list results consumed by Firecrawl", () => {
+  const changed = searx.replace("    display_type:\n      - list\n", "")
+  assert.ok(
+    validateSearx(changed).some((error) =>
+      error.includes("search policy missing"),
+    ),
   )
 })
 

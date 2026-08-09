@@ -1,0 +1,53 @@
+{
+  "schema": "llm-machines.pre-genesis-functional-evidence.v1",
+  "workPackage": "F0-F2",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "6220fbec6b6b2609f603e1ff3fc37af33f0fd704",
+  "command": "corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && node scripts/pre-genesis/reduced-core-firecrawl-integration.mjs",
+  "evidenceClass": "LOCAL_ACTUAL_REDUCED_FIRECRAWL_INTEGRATION_ONLY",
+  "services": [
+    "actual Console Web and BFF",
+    "loopback-only four-authority development edge",
+    "source-built reduced Firecrawl v2.11.0 API and browser",
+    "exact locked SearXNG and Squid linux/amd64 images",
+    "deterministic identity and inference fixtures"
+  ],
+  "proved": [
+    "the installed Firecrawl profile starts no service while inactive",
+    "an Admin enables Firecrawl only for a selected Application after disclaimer acceptance",
+    "inference and Firecrawl credentials remain separate and Application scoped",
+    "actual self-hosted search and static scrape traverse the Firecrawl Product authority",
+    "the Product edge and reduced native server expose only POST /v2/search and POST /v2/scrape",
+    "the exact runtime egress allowlist admits only the characterized hosts and denies an unapproved public host",
+    "the native UI and non-API services have no customer port",
+    "credential rotation, overlap, revocation, last-use metadata, and second-Application isolation remain effective against the actual upstream",
+    "query, URL, page-result, and credential canaries remain absent from logs, metrics, writable runtime paths, Product control evidence, and teardown state",
+    "all run-owned containers, networks, images, build cache, source archives, and temporary state are removed"
+  ],
+  "exactInputs": {
+    "firecrawlVersion": "v2.11.0",
+    "firecrawlRevision": "ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+    "searchVersion": "2026.7.28-c01178d03",
+    "searchPlatformDigest": "sha256:80622959f0f3512e6623d6bdbcea9f13c8d22c8d9715c498d0ae2be1c8535930",
+    "egressVersion": "SQUID_6_14",
+    "egressPlatformDigest": "sha256:94f844158e12b52f51b4ae996515e37e8fb3e8d85e1c86caba1a297376e4ec4f"
+  },
+  "preservedBoundaries": [
+    "Firecrawl remains installed and default off",
+    "each Application receives a Firecrawl credential independent of inference",
+    "native Firecrawl services remain private",
+    "no external search-provider credential is required",
+    "the test allowlist is exact and is not a general outbound network grant",
+    "no real customer, registry, release, or signing credential is used"
+  ],
+  "notEvidenceFor": [
+    "production Firecrawl capacity or availability",
+    "exact Core composition or VM103 qualification",
+    "real Keycloak, LiteLLM, or SGLang behavior",
+    "release packaging, signing, deployment, backup, restore, or Q0",
+    "customer access to a native Firecrawl UI or port"
+  ],
+  "nextPackage": "F0-C1 integrated reduced-Core disposable startup"
+}

@@ -39,6 +39,8 @@ engines:
   - name: wikipedia
     disabled: false
     timeout: 4.0
+    display_type:
+      - list
   - name: wikidata
     disabled: false
     timeout: 4.0

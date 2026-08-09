@@ -457,6 +457,7 @@ async function handleGatewayRequest(
       upstreamBody = {
         ...parsedRequest.result.data,
         maxAge: 0,
+        proxy: "basic",
         removeBase64Images: true,
         skipTlsVerification: false,
         storeInCache: false,
@@ -815,8 +816,12 @@ function shapeSearchResponse(
   }
   const source = Array.isArray(body.data)
     ? body.data
-    : isRecord(body.data) && Array.isArray(body.data.web)
-      ? body.data.web
+    : isRecord(body.data)
+      ? Array.isArray(body.data.web)
+        ? body.data.web
+        : Object.keys(body.data).length === 0
+          ? []
+          : null
       : null
   if (!source) {
     return null

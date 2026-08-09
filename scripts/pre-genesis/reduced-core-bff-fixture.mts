@@ -1,3 +1,4 @@
+import { lookup } from "node:dns/promises"
 import { buildServer } from "../../apps/bff/src/index"
 
 if (
@@ -9,9 +10,13 @@ if (
 
 const upstreamBaseUrl = process.env.PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL
 const firecrawlFixtureEnabled = upstreamBaseUrl !== undefined
+const actualFirecrawl = process.env.PRE_GENESIS_FIRECRAWL_ACTUAL === "true"
 const firecrawlHost = "allowed.example.test"
 const firecrawlAddress = "93.184.216.34"
 const fixtureUpstream = upstreamBaseUrl ? new URL(upstreamBaseUrl) : null
+const firecrawlHosts = parseFirecrawlHosts(
+  process.env.PRE_GENESIS_FIRECRAWL_ALLOWED_HOSTS ?? firecrawlHost,
+)
 
 if (
   fixtureUpstream &&
@@ -32,10 +37,12 @@ const server = buildServer({
     ? {
         testFirecrawlGateway: {
           dnsLookup: async (hostname: string) => {
-            if (hostname !== firecrawlHost) {
+            if (!firecrawlHosts.has(hostname)) {
               throw new Error("The Firecrawl fixture denied an unknown host.")
             }
-            return [{ address: firecrawlAddress, family: 4 as const }]
+            return actualFirecrawl
+              ? await lookup(hostname, { all: true, verbatim: true })
+              : [{ address: firecrawlAddress, family: 4 as const }]
           },
           fetchImpl: async (input, init) => {
             const requested = new URL(input.toString())
@@ -60,3 +67,20 @@ const port = Number.parseInt(process.env.PORT ?? "4001", 10)
 const host = process.env.HOST ?? "127.0.0.1"
 
 await server.listen({ host, port })
+
+function parseFirecrawlHosts(value: string) {
+  const hosts = value.split(",")
+  if (
+    hosts.length === 0 ||
+    hosts.length > 8 ||
+    new Set(hosts).size !== hosts.length ||
+    hosts.some(
+      (entry) =>
+        entry !== entry.trim().toLowerCase() ||
+        !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(entry),
+    )
+  ) {
+    throw new Error("The Firecrawl fixture requires exact DNS hostnames.")
+  }
+  return new Set(hosts)
+}

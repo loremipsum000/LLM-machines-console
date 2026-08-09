@@ -4,7 +4,7 @@
   "containsCredentials": false,
   "runtimeQualified": false,
   "runs": 2,
-  "sourcePackageSha256": "77f3aed3433ede986ff1a48520d813bdef248dec748da49f62fa2bcc7e2f9300",
+  "sourcePackageSha256": "03999d38ff61a58cbd7af5a655109e6d87c327423946b7782c00adc18a3faaa7",
   "upstreamArchives": [
     {
       "id": "firecrawl",
@@ -36,14 +36,14 @@
     {
       "order": 2,
       "path": "infra/firecrawl/release/patches/reduced-runtime.patch",
-      "sha256": "0ae6844072e0e9d9f3874838bab438434980e460d4e6f4fc95d6c5c59c4b06b9"
+      "sha256": "d5c271d0961b90988bc86b36c4897163030624346a989b7e9480e4472e0535d6"
     }
   ],
   "fileCount": 1535,
   "symlinkCount": 0,
-  "inventorySha256": "0762f4cc830f2abe691b8b6dd587827f31a144f56f1c5898eb915c28e26a6db8",
-  "sha256SumsSha256": "1d3091268a4dcaaf7c8bf6503474f2d803ff889515718148d864f651fa59719c",
-  "packetSha256": "22d949cc9c9dbe2f800c6a07c1bf25fb4aff983fa814c3b3e8a184ecbe90c4db",
+  "inventorySha256": "0a2be30b55a6f5f3312f6f2d27c0bdf8b427712a0d8cad100a55448b70884565",
+  "sha256SumsSha256": "b58fcbb4524734c3c4c7891b362309ce5b73404c5ca47629fcc89611f3be1b38",
+  "packetSha256": "960956bda6520e64296b276fdadb7d96f470669390a34bf43611648f23453309",
   "workspaceCleanupVerified": true,
   "productBoundary": {
     "installed": true,

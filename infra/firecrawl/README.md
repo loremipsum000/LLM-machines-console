@@ -37,7 +37,7 @@ network. Its policy:
 
 1. allows only ports 80 and 443;
 2. denies private, loopback, link-local, documentation, multicast, reserved,
-   and all IPv6 destinations after DNS resolution;
+   and non-global IPv4 or IPv6 destinations after DNS resolution;
 3. explicitly denies the hosted Firecrawl API;
 4. permits only exact hostnames from a system-managed allowlist; and
 5. disables request logs and caching.
@@ -51,6 +51,12 @@ on configuration changes. The rendered file contains configured permissions,
 never request-derived history, and is bounded to 256 entries. Wildcards, domain
 suffixes, URL strings, ports, IP literals, and private names are invalid. Each
 requested or redirected host must already have its own exact admission.
+Public dual-stack answers are permitted only for those exact admitted hostnames;
+an unapproved hostname or any mixed public/private answer remains fail-closed.
+The browser container has neither direct egress nor public DNS. It rejects
+invalid, local, and private literal targets itself, then delegates hostname
+resolution to the mandatory Squid proxy, which enforces the same exact-host and
+non-public-address boundary at connection time.
 
 Network attachment is part of the security boundary. Only the four services in
 `compose.yaml` and the governed BFF connection may join these networks.
