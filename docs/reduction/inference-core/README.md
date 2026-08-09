@@ -824,6 +824,16 @@ release-source input, and binds protected integration commit
 `f14535be105e8073668c922e306a317bed55b993`. The prior `4b2fc6a` release
 source is historical and is not the current build input.
 
+The remaining platform-identity audit found that the locked Golang, Wolfi,
+and Playwright linux/amd64 manifests did not match the manifests selected by
+their immutable indexes, and that the Golang source revision was malformed.
+PR 57 corrected only those identities, bound the complete ordered build-input
+set, and regenerated the corresponding-source evidence from two assemblies.
+Amendment 4 preserves Amendments 1 through 3 and binds protected integration
+commit `5e7761b178e7a21a7679f6b9ede834caada994b0`, tree
+`38cdb571cadc19b63b13e6644efa5466c8946eef`, as the current D2A release
+source. The prior `059866d` release source is historical, not current.
+
 The first-install commissioning observation remains a Q0 trust input. Q0 must
 prove its trusted observer, appliance binding, separate customer backup target,
 and clean restore. PR-12 does not select or imply its signing authority or
