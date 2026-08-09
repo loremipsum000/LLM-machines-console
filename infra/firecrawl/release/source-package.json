@@ -137,8 +137,8 @@
       "repository": "docker.io/library/golang",
       "platform": "linux/amd64",
       "indexDigest": "sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58",
-      "platformDigest": "sha256:eecd15e51d4fbe07d08b267923d7d12ded4ab4d9f8571aa934324797583641b0",
-      "sourceRevision": "2940977a110d5ec78b3ed67a7fd16e4b9f9659b7"
+      "platformDigest": "sha256:eecd15e52d06149b84ac1caa56cfd07f584da6803e5621a77024f38827f342ec",
+      "sourceRevision": "294097713ad2eaf9ee4c5e9dc57e040ac4b402d6"
     },
     {
       "id": "wolfi-runtime",
@@ -146,7 +146,7 @@
       "repository": "cgr.dev/chainguard/wolfi-base",
       "platform": "linux/amd64",
       "indexDigest": "sha256:003627df3c1e1bba0c4116afcddb314aca9594ee2328c7e876a8081a6c988b2e",
-      "platformDigest": "sha256:d2ad9a10dc58488e375e88fbe5a6c025cbe6bd090dd72d3ef6bbb38a89cc2c47"
+      "platformDigest": "sha256:d2ad9a742d38e1ab550fbb20911056339632a5ca2f01777a32422a4c944fcb99"
     },
     {
       "id": "playwright-browser-source",
@@ -154,7 +154,7 @@
       "repository": "mcr.microsoft.com/playwright",
       "platform": "linux/amd64",
       "indexDigest": "sha256:baed2032d533817f3dbe6425de795788430ba345e819a1201337009ba17c9d07",
-      "platformDigest": "sha256:02bbb2156e43ee8ba4e958dd8263c2cf9326b603052911719832ad1ab76d56ac"
+      "platformDigest": "sha256:02bbb2155cd7109e3e9c741941097ed1608cf8b6fa44ee2595896da2bdc1f471"
     },
     {
       "id": "searxng-runtime-source",
