@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import {
+  access,
   chmod,
   mkdtemp,
   readFile,
@@ -12,7 +13,7 @@ import {
 import { createServer } from "node:http"
 import { createServer as createNetServer } from "node:net"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const LITELLM_IMAGE =
@@ -21,6 +22,7 @@ const POSTGRES_IMAGE =
   "docker.io/library/postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3"
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const dockerContext = required("PRE_GENESIS_DOCKER_CONTEXT")
+const serviceControl = serviceControlFromEnvironment()
 const runId = randomBytes(8).toString("hex")
 const network = `llmm-f0-l2-${runId}`
 const liteLlmContainer = `llmm-f0-l2-litellm-${runId}`
@@ -157,12 +159,27 @@ try {
     })}\n`,
     { mode: 0o600 },
   )
-  const browser = await runBrowser(browserConfigFile)
-  assert.equal(browser.status, "passed")
-  assert.equal(browser.evidenceClass, "LOCAL_PRIVATE_LITELLM_INTEGRATION_ONLY")
+  if (serviceControl) {
+    await writeFile(
+      serviceControl.controlFile,
+      await readFile(browserConfigFile),
+      {
+        mode: 0o600,
+      },
+    )
+    await waitForStop(serviceControl.stopFile)
+  }
+  const browser = serviceControl ? null : await runBrowser(browserConfigFile)
+  if (browser) {
+    assert.equal(browser.status, "passed")
+    assert.equal(
+      browser.evidenceClass,
+      "LOCAL_PRIVATE_LITELLM_INTEGRATION_ONLY",
+    )
+  }
 
   const retention = inspectRetention()
-  assert.ok(retention.spendRows >= 3)
+  assert.ok(retention.spendRows >= (serviceControl ? 0 : 3))
   const dump = postgres([
     "pg_dump",
     "--data-only",
@@ -193,12 +210,14 @@ try {
     ]),
   )
   assert.equal(portBinding["4000/tcp"]?.[0]?.HostIp, "127.0.0.1")
-  assert.ok(upstreamRequests >= 3)
+  assert.ok(upstreamRequests >= (serviceControl ? 0 : 3))
   evidence = {
     architecture: process.arch,
-    browser,
+    ...(browser ? { browser } : {}),
     credentialMaterialPrinted: false,
-    evidenceClass: "LOCAL_PRIVATE_LITELLM_INTEGRATION_ONLY",
+    evidenceClass: serviceControl
+      ? "LOCAL_INTEGRATED_CORE_COMPONENT_ONLY"
+      : "LOCAL_PRIVATE_LITELLM_INTEGRATION_ONLY",
     image: LITELLM_IMAGE,
     privatePortBinding: "loopback-only-disposable-fixture",
     retention: {
@@ -582,6 +601,31 @@ function childEnvironment(configFile) {
       process.env.PLAYWRIGHT_CHROME_EXECUTABLE
   }
   return environment
+}
+
+function serviceControlFromEnvironment() {
+  const controlFile = process.env.F0_C1_SERVICE_CONTROL_FILE?.trim()
+  const stopFile = process.env.F0_C1_SERVICE_STOP_FILE?.trim()
+  if (!controlFile && !stopFile) return null
+  if (
+    !controlFile ||
+    !stopFile ||
+    !isAbsolute(controlFile) ||
+    !isAbsolute(stopFile)
+  ) {
+    throw new Error("F0-C1 LiteLLM service control is invalid.")
+  }
+  return { controlFile, stopFile }
+}
+
+async function waitForStop(path) {
+  for (;;) {
+    try {
+      await access(path)
+      return
+    } catch {}
+    await delay(100)
+  }
 }
 
 function assertNoSensitiveValues(values, sensitiveValues) {

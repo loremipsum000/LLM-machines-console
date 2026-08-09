@@ -1,0 +1,39 @@
+{
+  "schema": "llm-machines.pre-genesis-functional-evidence.v1",
+  "workPackage": "F0-C1",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "9fd7b12576cedeec4805ede4c419bbfc49815b28",
+  "command": "node scripts/pre-genesis/reduced-core-integrated.mjs",
+  "services": [
+    "actual Console Web and BFF",
+    "loopback-only four-authority functional Product edge",
+    "disposable PostgreSQL 17.6 with real Product migrations",
+    "exact Keycloak 26.7.0",
+    "exact private LiteLLM v1.85.0",
+    "source-built reduced Firecrawl v2.11.0 installed default off",
+    "actual private Prometheus 3.6.0, Alertmanager 0.29.0, and Grafana 13.1.0",
+    "deterministic OpenAI-compatible inference fixture"
+  ],
+  "proved": [
+    "clean disposable startup and generated throwaway credential custody",
+    "Admin login through actual Keycloak and retained Console navigation",
+    "Application creation with separate inference and Firecrawl credentials",
+    "streaming and non-streaming Chat Completions through private LiteLLM",
+    "actual reduced Firecrawl search and static scrape after selected-Application enablement",
+    "Console read-only LiteLLM, hardware, usage, Team, Activity & Audit, and Settings surfaces",
+    "one controlled BFF restart preserves encrypted sessions, Applications, credential state, usage, audit metadata, and Firecrawl enablement",
+    "four-authority separation and denial of native administration, alternate customer hosts, unsafe paths, and spoofed forwarding metadata",
+    "workload and credential canaries remain absent from Product storage, logs, browser artifacts, and teardown state",
+    "complete removal of run-owned containers, networks, images, build state, and temporary files"
+  ],
+  "notEvidenceFor": [
+    "exact Product Nginx, appliance TLS, or VM103 network qualification",
+    "real SGLang behavior or production inference capacity",
+    "production Keycloak, PostgreSQL, observability, or Firecrawl availability",
+    "backup, restore, update, rollback, release signing, D2A, or Q0",
+    "customer Grafana, native LiteLLM, native Keycloak Admin, or native Firecrawl access"
+  ],
+  "nextPackage": "F0-SG1 actual SGLang 0.5.13 internal integration smoke after separate inference-environment authorization"
+}

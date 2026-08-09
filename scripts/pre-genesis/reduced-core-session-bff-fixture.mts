@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto"
+import { lookup } from "node:dns/promises"
 import { readFileSync } from "node:fs"
 import { request as httpsRequest } from "node:https"
 import { createConsoleSessionCipher } from "../../apps/bff/src/auth/console-session-crypto"
@@ -34,6 +35,10 @@ if (
 }
 const firecrawlFixtureUpstream = optionalLoopbackUrl(
   process.env.PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL,
+)
+const actualFirecrawl = process.env.PRE_GENESIS_FIRECRAWL_ACTUAL === "true"
+const firecrawlHosts = parseFirecrawlHosts(
+  process.env.PRE_GENESIS_FIRECRAWL_ALLOWED_HOSTS ?? "allowed.example.test",
 )
 const oidcBase = `${issuer}/protocol/openid-connect`
 const localIdentityFetch = createLoopbackIdentityFetch(
@@ -144,10 +149,12 @@ const server = buildServer({
     ? {
         testFirecrawlGateway: {
           dnsLookup: async (hostname: string) => {
-            if (hostname !== "allowed.example.test") {
+            if (!firecrawlHosts.has(hostname)) {
               throw new Error("The Firecrawl fixture denied an unknown host.")
             }
-            return [{ address: "93.184.216.34", family: 4 as const }]
+            return actualFirecrawl
+              ? await lookup(hostname, { all: true, verbatim: true })
+              : [{ address: "93.184.216.34", family: 4 as const }]
           },
           fetchImpl: async (
             input: string | URL | Request,
@@ -222,6 +229,23 @@ function optionalLoopbackUrl(value: string | undefined): URL | null {
     )
   }
   return url
+}
+
+function parseFirecrawlHosts(value: string): Set<string> {
+  const hosts = value.split(",")
+  if (
+    hosts.length === 0 ||
+    hosts.length > 8 ||
+    new Set(hosts).size !== hosts.length ||
+    hosts.some(
+      (entry) =>
+        entry !== entry.trim().toLowerCase() ||
+        !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(entry),
+    )
+  ) {
+    throw new Error("The Firecrawl fixture requires exact DNS hostnames.")
+  }
+  return new Set(hosts)
 }
 
 function fixtureEvent(

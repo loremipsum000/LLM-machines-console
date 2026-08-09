@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import {
+  access,
   chmod,
   mkdir,
   mkdtemp,
@@ -12,7 +13,7 @@ import {
 } from "node:fs/promises"
 import { createServer } from "node:net"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { humanAdminPermissions } from "./keycloak-team-permissions.mjs"
 
@@ -26,6 +27,7 @@ if (process.argv.slice(2).some((argument) => argument !== "--team")) {
 }
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const dockerContext = required("PRE_GENESIS_DOCKER_CONTEXT")
+const serviceControl = serviceControlFromEnvironment()
 const runId = randomBytes(8).toString("hex")
 const packageId = teamMode ? "F0-I2" : "F0-I1"
 const containerName = `llmm-${packageId.toLowerCase()}-keycloak-${runId}`
@@ -54,7 +56,7 @@ let evidence
 try {
   await chmod(stateRoot, 0o700)
   await mkdir(importRoot, { mode: 0o755 })
-  const edgePort = await reservePort()
+  const edgePort = serviceControl?.edgePort ?? (await reservePort())
   await writeFile(
     realmFile,
     `${JSON.stringify(realmExport(edgePort, credentials, teamMode))}\n`,
@@ -111,36 +113,56 @@ try {
     })}\n`,
     { mode: 0o600 },
   )
-  const browser = spawnSync(
-    process.execPath,
-    [
-      resolve(
-        repositoryRoot,
-        "scripts/pre-genesis/reduced-core-browser-session.mjs",
-      ),
-      teamMode ? "--keycloak-team" : "--keycloak-identity",
-    ],
-    {
-      cwd: repositoryRoot,
-      encoding: "utf8",
-      env: childEnvironment(browserConfigFile, databaseUrl),
-      maxBuffer: 64 * 1024 * 1024,
-      timeout: 15 * 60 * 1000,
-    },
-  )
-  if (browser.status !== 0) {
+  if (serviceControl) {
+    await writeFile(
+      serviceControl.controlFile,
+      `${JSON.stringify({
+        container: containerName,
+        credentials: browserCredentials(),
+        dockerContext,
+        edgePort,
+        upstreamPort,
+      })}\n`,
+      { mode: 0o600 },
+    )
+    await waitForStop(serviceControl.stopFile)
+  }
+  const browser = serviceControl
+    ? null
+    : spawnSync(
+        process.execPath,
+        [
+          resolve(
+            repositoryRoot,
+            "scripts/pre-genesis/reduced-core-browser-session.mjs",
+          ),
+          teamMode ? "--keycloak-team" : "--keycloak-identity",
+        ],
+        {
+          cwd: repositoryRoot,
+          encoding: "utf8",
+          env: childEnvironment(browserConfigFile, databaseUrl),
+          maxBuffer: 64 * 1024 * 1024,
+          timeout: 15 * 60 * 1000,
+        },
+      )
+  if (browser && browser.status !== 0) {
     throw new Error(
       `${packageId} browser identity proof failed: ${sanitize(browser.stderr || browser.stdout)}`,
     )
   }
-  const browserEvidence = JSON.parse(browser.stdout.trim().split("\n").at(-1))
-  assert.equal(browserEvidence.status, "passed")
-  assert.equal(
-    browserEvidence.evidenceClass,
-    teamMode
-      ? "LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY"
-      : "LOCAL_KEYCLOAK_IDENTITY_INTEGRATION_ONLY",
-  )
+  const browserEvidence = browser
+    ? JSON.parse(browser.stdout.trim().split("\n").at(-1))
+    : null
+  if (browserEvidence) {
+    assert.equal(browserEvidence.status, "passed")
+    assert.equal(
+      browserEvidence.evidenceClass,
+      teamMode
+        ? "LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY"
+        : "LOCAL_KEYCLOAK_IDENTITY_INTEGRATION_ONLY",
+    )
+  }
   const image = docker([
     "image",
     "inspect",
@@ -150,11 +172,13 @@ try {
   ]).trim()
   evidence = {
     architecture: process.arch,
-    browser: browserEvidence,
+    ...(browserEvidence ? { browser: browserEvidence } : {}),
     credentialMaterialPrinted: false,
-    evidenceClass: teamMode
-      ? "LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY"
-      : "LOCAL_KEYCLOAK_IDENTITY_INTEGRATION_ONLY",
+    evidenceClass: serviceControl
+      ? "LOCAL_INTEGRATED_CORE_COMPONENT_ONLY"
+      : teamMode
+        ? "LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY"
+        : "LOCAL_KEYCLOAK_IDENTITY_INTEGRATION_ONLY",
     image: { identity: KEYCLOAK_IMAGE, localSelection: image },
     ...(teamMode
       ? {
@@ -913,6 +937,37 @@ function processEnvironment() {
     PATH: process.env.PATH ?? "",
     PLAYWRIGHT_CHROME_EXECUTABLE:
       process.env.PLAYWRIGHT_CHROME_EXECUTABLE ?? "",
+  }
+}
+
+function serviceControlFromEnvironment() {
+  const controlFile = process.env.F0_C1_SERVICE_CONTROL_FILE?.trim()
+  const stopFile = process.env.F0_C1_SERVICE_STOP_FILE?.trim()
+  const edgePortValue = process.env.F0_C1_EDGE_PORT?.trim()
+  if (!controlFile && !stopFile && !edgePortValue) return null
+  if (!controlFile || !stopFile || !edgePortValue) {
+    throw new Error("F0-C1 Keycloak service control is incomplete.")
+  }
+  const edgePort = Number.parseInt(edgePortValue, 10)
+  if (
+    !isAbsolute(controlFile) ||
+    !isAbsolute(stopFile) ||
+    !Number.isSafeInteger(edgePort) ||
+    edgePort < 1024 ||
+    edgePort > 65535
+  ) {
+    throw new Error("F0-C1 Keycloak service control is invalid.")
+  }
+  return { controlFile, edgePort, stopFile }
+}
+
+async function waitForStop(path) {
+  for (;;) {
+    try {
+      await access(path)
+      return
+    } catch {}
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100))
   }
 }
 
