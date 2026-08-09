@@ -58,7 +58,7 @@ const expectedLockPaths = [
   "infra/firecrawl/release/locks/playwright-wolfi.sha256",
 ]
 const expectedPatchDigests = [
-  "46e3de809c685b635d54dbae759bac3811b1c67397eb75d3d60c1efd59adae0a",
+  "d60190411adb30eb6dc27100be0f0b2ffa9c1be762d79599abb19df03d4f8ed8",
   "0ae6844072e0e9d9f3874838bab438434980e460d4e6f4fc95d6c5c59c4b06b9",
 ]
 const expectedApiBuildValidationTests = [
@@ -200,6 +200,16 @@ export function validateSourcePackage(manifest, root = repositoryRoot) {
     path.resolve(root, expectedPatchPaths[0]),
     "utf8",
   )
+  for (const token of [
+    "Koffi 2.9.0 ships its linux/x64 native module with an executable GNU_STACK.",
+    "elf.writeUInt32LE(flags & ~1, offset + 4);",
+    "RUN /usr/bin/node -e 'require(\"koffi\")'",
+  ]) {
+    if (!buildPatch.includes(token)) {
+      errors.push("Firecrawl API Koffi runtime hardening differs")
+      break
+    }
+  }
   const validationCommand = buildPatch
     .split("+RUN pnpm exec vitest run \\\n")[1]
     ?.split("\n RUN pnpm run build")[0]
