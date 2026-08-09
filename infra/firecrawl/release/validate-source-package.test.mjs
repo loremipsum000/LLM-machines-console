@@ -58,6 +58,16 @@ test("API build validation tests are exact and patch-bound", () => {
   )
 })
 
+test("Koffi executable-stack correction and runtime load check are patch-bound", () => {
+  const patch = readFileSync(
+    path.join(releaseRoot, "patches/build-hardening.patch"),
+    "utf8",
+  )
+  assert.match(patch, /Koffi 2\.9\.0 ships its linux\/x64 native module/)
+  assert.match(patch, /elf\.writeUInt32LE\(flags & ~1, offset \+ 4\)/)
+  assert.match(patch, /RUN \/usr\/bin\/node -e 'require\("koffi"\)'/)
+})
+
 test("Node API build input must match its admitted version, source, and OCI identity", () => {
   const manifest = clone(readSourcePackage())
   manifest.buildInputs[1].indexDigest = `sha256:${"0".repeat(64)}`
