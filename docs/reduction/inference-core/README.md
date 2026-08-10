@@ -462,6 +462,17 @@ service bindings are loopback-only test controls, so this is integrated local
 functional evidence rather than exact Product Nginx, VM103, SGLang, release,
 or Q0 qualification.
 
+F0-SG1 binds an authorized internal compatibility smoke to exact SGLang 0.5.13
+source, a digest-bound linux/amd64 Intel XPU image, an exact public model
+revision and artifact digest, and exact private LiteLLM v1.85.0. Direct and
+private-gateway streaming and non-streaming Chat Completions, token accounting,
+model and context denial, controlled outage and same-image recovery, LAN
+isolation, and zero-content canaries pass. Existing internal workloads and data
+were preserved before being stopped. The accelerator remains internal
+demonstration evidence only: capacity is unmeasured, no delivery profile is
+admitted, and no production hardware, release, Product acceptance, or Q0 claim
+is made. F0-V1 remains the next and final pre-Genesis package.
+
 System-managed exact-host egress allowlisting and public-address validation do
 not introduce customer URL Governance. The governed internal upstream is
 exactly `http://firecrawl-api:3002`; hosted, HTTPS, alternate-host, and
