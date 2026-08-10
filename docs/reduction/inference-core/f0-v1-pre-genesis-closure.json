@@ -1,0 +1,312 @@
+{
+  "schema": "llm-machines.pre-genesis-functional-closure.v1",
+  "workPackage": "F0-V1",
+  "status": "AGGREGATE_CANDIDATE_PENDING_PROTECTED_ADMISSION",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "productMainCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
+  "functionalProgramBase": {
+    "commit": "7e1af95925cbf462e63371cbfd329b7ab4f04f9b",
+    "tree": "a4482410bac02bacf9a3cf0a61ee1f53d24432c5"
+  },
+  "protectedInput": {
+    "commit": "4c5601f337b7c65b66039f1abd96c158513aa256",
+    "tree": "5a9d1b6e0311a4467a248499d2fdbcba4272d594"
+  },
+  "admission": {
+    "branch": "codex/pre-genesis-f0-v1",
+    "baseBranch": "codex/inference-core-stack-reduction",
+    "mergeMethod": "merge-commit",
+    "candidateBinding": "the reviewed candidate commit and tree are reported externally after validation",
+    "genesisBinding": "only the protected integration merge whose tree equals the reviewed candidate tree may become the Genesis candidate",
+    "publicationRequiresSeparateApproval": true
+  },
+  "functionalPackages": [
+    {
+      "id": "F0-E0",
+      "pullRequest": 41,
+      "candidateCommit": "f788ed22b6fa0593a7b97fe79b5c6c9ba63cb7b8",
+      "candidateTree": "91c81f9a6411d3b39b7a92659f8f206af709447b",
+      "integrationCommit": "2f97c5cbad70cbfc68987e9d8f5722107534537a",
+      "evidencePath": "docs/reduction/inference-core/f0-e0-public-authority-decisions.json",
+      "evidenceSha256": "47bb18a503b9d8148738fb645858b21588ba2eeba8a58412d70795b10a2c7ae2"
+    },
+    {
+      "id": "F0-B1",
+      "pullRequest": 42,
+      "candidateCommit": "4674613e292642947b9cc8001a8b361fe71d3a96",
+      "candidateTree": "87ecf6a59c646bab98e9fbd633f11c89f66759a3",
+      "integrationCommit": "22b007fb4ec3094a1336d65d706d53b9b652843a",
+      "evidencePath": "docs/reduction/inference-core/f0-b1-reduced-core-bootstrap.json",
+      "evidenceSha256": "49fb8fd236934dfd8ec464c9cb8d3a4322697cf726f699257211696075fd96ee",
+      "successor": {
+        "id": "F0-B1-H1",
+        "pullRequest": 53,
+        "candidateCommit": "b4ee9a3fe1085b97571a3746a06ad76c4d862a57",
+        "candidateTree": "4644afad2640872db73a0fa438f2860fb6608152",
+        "integrationCommit": "d3fa915d999f92b489822f4dcfd9c09732cebea3"
+      }
+    },
+    {
+      "id": "F0-L1",
+      "pullRequest": 43,
+      "candidateCommit": "464c99543f9febdb7756dc948906e7277aa9604c",
+      "candidateTree": "94cf68f19c6edbb1e2d966d0bfeb77bd12e455b6",
+      "integrationCommit": "4f8ab8e087adc30cda5ea194daaee1fe8c68d2f8",
+      "evidencePath": "docs/reduction/inference-core/f0-l1-application-inference.json",
+      "evidenceSha256": "fc59e1272bed91dee913ab1c40fcb17a60ebc42df920cac92efadada054ed8e8"
+    },
+    {
+      "id": "F0-W1",
+      "pullRequest": 44,
+      "candidateCommit": "c7e19344150f8be9c3ce452be90a99f0b9a81379",
+      "candidateTree": "9d890742e1d0363e481859b9c01b4a5b939549a6",
+      "integrationCommit": "94d2011787642ed757b63ab03fa59df300bf1ef5",
+      "evidencePath": "docs/reduction/inference-core/f0-w1-firecrawl-application.json",
+      "evidenceSha256": "ac4f68ed4f8215af401ad188e4801eeb245f7d9b9bdb114fc61ffa32ba506d57"
+    },
+    {
+      "id": "F0-S1",
+      "pullRequest": 45,
+      "candidateCommit": "170e1e4decd94648e51910a98b2fe6b2c34a5643",
+      "candidateTree": "de4dd47704790d95317258526cee8539c46d4934",
+      "integrationCommit": "6810a6077d5af1f3e99253924e36a4458729bc1d",
+      "evidencePath": "docs/reduction/inference-core/f0-s1-browser-session.json",
+      "evidenceSha256": "d2d5efab3da9f9420741ec10a277a2f58961765abc0c05ab8fc48e09621377dc"
+    },
+    {
+      "id": "F0-U1",
+      "pullRequest": 46,
+      "candidateCommit": "e497c6b7636f23e1700bf6a236d7d57979d0ea75",
+      "candidateTree": "2673d48e38dfc51ddd4ef622bb90d5295b16618f",
+      "integrationCommit": "393d76561ab7922903497ce194e1c82550cf835a",
+      "evidencePath": "docs/reduction/inference-core/f0-u1-browser-applications.json",
+      "evidenceSha256": "a397a9410d04eae22315f8871d79c242557dc9ea9dbf15044445f432cc1a3558"
+    },
+    {
+      "id": "F0-U2",
+      "pullRequest": 47,
+      "candidateCommit": "50020cb3be2599cf5362e872e3c4b12ec16d9c9b",
+      "candidateTree": "0e22914f20ec7191e3b61134d3a628a85d890752",
+      "integrationCommit": "2eba73cfe74ce1e26e9768bcca9ac3f4b990e936",
+      "evidencePath": "docs/reduction/inference-core/f0-u2-browser-credential-lifecycle.json",
+      "evidenceSha256": "be19b5ab8384bf5926d65a50d9a9130631893504a245244e9bf8aeb5678d29a4"
+    },
+    {
+      "id": "F0-P1",
+      "pullRequest": 48,
+      "candidateCommit": "ae15cd08f77c997221067150956f8a46bde1318d",
+      "candidateTree": "459d0d477a9dcfa51a1b1663fbbac14a0eb3e64a",
+      "integrationCommit": "a13d19749dc8a152cc1902180e4069687af56c4b",
+      "evidencePath": "docs/reduction/inference-core/f0-p1-postgres-persistence.json",
+      "evidenceSha256": "917222b44f16bb15eca096c6191d86de548833069d5211fd6b9f065428a61d2e"
+    },
+    {
+      "id": "F0-O1",
+      "pullRequest": 49,
+      "candidateCommit": "b3909281312e970fd3483d7da3616ed8a4148aed",
+      "candidateTree": "042789deb3bf307dca533268dc43d6e5c2d40723",
+      "integrationCommit": "5cd3a695283ad565dae2dd8764bda05d9657bec1",
+      "evidencePath": "docs/reduction/inference-core/f0-o1-observability-projection.json",
+      "evidenceSha256": "be2a793362081a96fa93044b6dd302ec98a187fbfdabc66f5382b058234b8879"
+    },
+    {
+      "id": "F0-I1",
+      "pullRequest": 50,
+      "candidateCommit": "45769373022b0946580801b06f4e3bb925e83d26",
+      "candidateTree": "f291723fdd72cd35d7d5c88e24aeb0de826a97a6",
+      "integrationCommit": "03997c40fec20a2b7303ebc14c62abdb1a5c40ca",
+      "evidencePath": "docs/reduction/inference-core/f0-i1-keycloak-identity.json",
+      "evidenceSha256": "cb03d917f0e6ae1494fdbf06c3fe9026c5a28115551e2e953cc9e767c95aef8a"
+    },
+    {
+      "id": "F0-I2",
+      "pullRequest": 51,
+      "candidateCommit": "05d8536be08425ba14234ca111cf4c54334154b1",
+      "candidateTree": "693b11fde9a7367145ff6b05ede8e6b272701f57",
+      "integrationCommit": "6fb13ba3674a69fec7a9496b81bf2feeef09599b",
+      "evidencePath": "docs/reduction/inference-core/f0-i2-keycloak-team.json",
+      "evidenceSha256": "d2312012cbe4911fe7def6dc1df5580adc6c3295f039adf8e459dc75b2cf66da"
+    },
+    {
+      "id": "F0-L2",
+      "pullRequest": 52,
+      "candidateCommit": "50e9152053575668495b0fbc313772f6071ab748",
+      "candidateTree": "10419d45479d20bedbea2a47617658c0fc4a6cd3",
+      "integrationCommit": "868153cf07221f450a468523ee5e08f5d6c9922c",
+      "evidencePath": "docs/reduction/inference-core/f0-l2-private-litellm.json",
+      "evidenceSha256": "b36845883046289bb991e46e5dc707e46cbbb85cd4c8acfe678a2bfe30b559db"
+    },
+    {
+      "id": "F0-F2",
+      "pullRequest": 61,
+      "candidateCommit": "b1a0efe18a788f5315100678404a2279a4407893",
+      "candidateTree": "df34f3ebe7ecd4992ab44edcf215a9a93eef263b",
+      "integrationCommit": "9fd7b12576cedeec4805ede4c419bbfc49815b28",
+      "evidencePath": "docs/reduction/inference-core/f0-f2-actual-firecrawl.json",
+      "evidenceSha256": "176d73f549e2d6b684ae961bc8013b43c61a20711897ba4eb7f8b4b8ceba0083"
+    },
+    {
+      "id": "F0-C1",
+      "pullRequest": 62,
+      "candidateCommit": "a1eca209bb7f6475589f02d4fbf3f7ef4f027e3e",
+      "candidateTree": "c1d43f40ee0c1604111e8ca3ed20675c9f36384c",
+      "integrationCommit": "3d0b590608a58153e3285aafcaf96b711ac684e4",
+      "evidencePath": "docs/reduction/inference-core/f0-c1-integrated-reduced-core.json",
+      "evidenceSha256": "e6eb31097e0cacc005ccb7c77cd64401ededed483672b2ad804c1a70a5f380d9"
+    },
+    {
+      "id": "F0-SG1",
+      "pullRequest": 63,
+      "candidateCommit": "c27ad3d820ca6dc7a2e3cfefb9de6aa8493f2a63",
+      "candidateTree": "5a9d1b6e0311a4467a248499d2fdbcba4272d594",
+      "integrationCommit": "4c5601f337b7c65b66039f1abd96c158513aa256",
+      "evidencePath": "docs/reduction/inference-core/f0-sg1-internal-sglang.json",
+      "evidenceSha256": "c71d1db1621984ca5ff94a04063f6ac0e33072ba9fe7e9d5015f26f6d2066b14"
+    }
+  ],
+  "preservedInterveningHistory": [
+    {
+      "pullRequest": 54,
+      "candidateCommit": "ba917666b48f8b49b6d7a10b1d000bce75655b04",
+      "integrationCommit": "01c51555256ffcb741f1539ce2498ea858a314e1"
+    },
+    {
+      "pullRequest": 55,
+      "candidateCommit": "177a74659c46c37bc67e9ea7114fe01a7553380b",
+      "integrationCommit": "059866dc07dbc2af95df84ee834fca598a9a64a9"
+    },
+    {
+      "pullRequest": 56,
+      "candidateCommit": "ab420d08060d52f097f7c1dc071a9ff48b992103",
+      "integrationCommit": "e8e61f88e1fe101df7963a9e5df35050ce116bed"
+    },
+    {
+      "pullRequest": 57,
+      "candidateCommit": "efcef057a280d717a2207a360c81082c83f2a9af",
+      "integrationCommit": "5e7761b178e7a21a7679f6b9ede834caada994b0"
+    },
+    {
+      "pullRequest": 58,
+      "candidateCommit": "523745e179b37926cbd41f0212030607fc3877e8",
+      "integrationCommit": "daec93eadb898f62ad1263b56b0793812ddb032c"
+    },
+    {
+      "pullRequest": 59,
+      "candidateCommit": "33b76b834a8e8dc4655bb01d04976f9eed40d8f0",
+      "integrationCommit": "eefb9c3eb372a5b6789223458ccc319fa9784a04"
+    },
+    {
+      "pullRequest": 60,
+      "candidateCommit": "872d532529e4d3955b08e23f8a218694620ac68a",
+      "integrationCommit": "6220fbec6b6b2609f603e1ff3fc37af33f0fd704"
+    }
+  ],
+  "reducedStartupMap": [
+    {
+      "id": "product-edge",
+      "customerSurface": "four approved TLS authorities only",
+      "nativeExposure": false
+    },
+    {
+      "id": "console-web",
+      "customerSurface": "Console authority through Product edge",
+      "nativeExposure": false
+    },
+    {
+      "id": "console-bff",
+      "customerSurface": "Console, API, and Firecrawl routes through Product edge",
+      "nativeExposure": false
+    },
+    {
+      "id": "keycloak",
+      "customerSurface": "approved Identity authority routes only",
+      "nativeExposure": false
+    },
+    {
+      "id": "litellm",
+      "customerSurface": "Console read-only projection only",
+      "nativeExposure": false
+    },
+    {
+      "id": "product-postgresql",
+      "customerSurface": "none",
+      "nativeExposure": false
+    },
+    {
+      "id": "prometheus",
+      "customerSurface": "Console projection only",
+      "nativeExposure": false
+    },
+    {
+      "id": "alertmanager",
+      "customerSurface": "Console projection only",
+      "nativeExposure": false
+    },
+    {
+      "id": "grafana-private",
+      "customerSurface": "none in v1",
+      "nativeExposure": false
+    },
+    {
+      "id": "firecrawl",
+      "customerSurface": "Firecrawl authority search and static scrape only after per-Application enablement",
+      "nativeExposure": false
+    },
+    {
+      "id": "inference",
+      "customerSurface": "API authority OpenAI-compatible routes through Product edge",
+      "nativeExposure": false
+    }
+  ],
+  "aggregateValidation": {
+    "focused": "node --test scripts/inference-core/f0-v1-pre-genesis-closure.test.mjs",
+    "repository": [
+      "corepack pnpm install --frozen-lockfile",
+      "corepack pnpm test",
+      "corepack pnpm exec biome check .",
+      "corepack pnpm typecheck",
+      "corepack pnpm build",
+      "git diff --check",
+      "git fsck --full"
+    ],
+    "functional": [
+      "node scripts/pre-genesis/reduced-core-integrated.mjs",
+      "node scripts/pre-genesis/reduced-core-keycloak-identity.mjs --team"
+    ],
+    "freshDetachedReplayRequired": true,
+    "independentMaterialReviewRequired": true
+  },
+  "retiredSurfaceScan": {
+    "forbiddenCustomerSurfaces": [
+      "LibreChat",
+      "first-party chat UI",
+      "Knowledge",
+      "RAG",
+      "corpora",
+      "MCP",
+      "native LiteLLM administration",
+      "native Keycloak administration",
+      "customer Grafana access"
+    ],
+    "enforcedBy": [
+      "scripts/inference-core/guardrails.mjs",
+      "infra/ingress/validate-ingress.mjs",
+      "infra/ingress/source-no-bypass.mjs",
+      "scripts/inference-core/f0-v1-pre-genesis-closure.test.mjs"
+    ]
+  },
+  "deferred": [
+    "Gitea Genesis publication",
+    "D2A construction and offline release signing",
+    "exact Core appliance installation and VM103 commissioning",
+    "backup and clean-restore qualification",
+    "production-class SGLang delivery-profile qualification",
+    "Q0 through Q3 and Product main admission",
+    "customer Grafana access",
+    "production capacity, availability, latency, throughput, and concurrency claims"
+  ]
+}

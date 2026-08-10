@@ -1,0 +1,110 @@
+{
+  "schema": "llm-machines.pre-genesis-git-inventory.v1",
+  "observedAtBase": "4c5601f337b7c65b66039f1abd96c158513aa256",
+  "destructiveActionPerformed": false,
+  "branchesDeleted": 0,
+  "worktreesDeleted": 0,
+  "localBranches": {
+    "count": 69,
+    "normalizedInventorySha256": "35d979dcde31681c5522ac0c7cf22cf63a59538e0324a3ef58281722b7a05e27"
+  },
+  "worktrees": {
+    "count": 60,
+    "clean": 58,
+    "dirty": 2,
+    "normalizedInventorySha256": "4c2ae9e5406ad3387689b117a60fe7a01cf175e2215c4227cc9863bc35e3533f"
+  },
+  "dirtyWorktreesPreserved": [
+    {
+      "name": "LLM-machines-console-inference-core",
+      "branch": "codex/inference-core-pr-11a",
+      "head": "e682e6106c62da7a1006e780d82621322b641d61",
+      "disposition": "frozen historical PR-11A candidate; untouched"
+    },
+    {
+      "name": "pr12-firecrawl-node-builder-lock",
+      "branch": "codex/pr12-firecrawl-node-builder-lock",
+      "head": "868153cf07221f450a468523ee5e08f5d6c9922c",
+      "disposition": "historical paused worktree; untouched"
+    }
+  ],
+  "preGenesisBranches": [
+    {
+      "branch": "codex/pre-genesis-f0-b1",
+      "head": "4674613e292642947b9cc8001a8b361fe71d3a96"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-b1-cleanup-successor",
+      "head": "b4ee9a3fe1085b97571a3746a06ad76c4d862a57"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-c1",
+      "head": "a1eca209bb7f6475589f02d4fbf3f7ef4f027e3e"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-e0",
+      "head": "f788ed22b6fa0593a7b97fe79b5c6c9ba63cb7b8"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-f2",
+      "head": "868153cf07221f450a468523ee5e08f5d6c9922c"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-f2-r2",
+      "head": "e8e61f88e1fe101df7963a9e5df35050ce116bed"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-f2-r3",
+      "head": "daec93eadb898f62ad1263b56b0793812ddb032c"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-f2-r4",
+      "head": "b1a0efe18a788f5315100678404a2279a4407893"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-i1",
+      "head": "45769373022b0946580801b06f4e3bb925e83d26"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-i2",
+      "head": "05d8536be08425ba14234ca111cf4c54334154b1"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-l1",
+      "head": "464c99543f9febdb7756dc948906e7277aa9604c"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-l2",
+      "head": "50e9152053575668495b0fbc313772f6071ab748"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-o1",
+      "head": "b3909281312e970fd3483d7da3616ed8a4148aed"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-p1",
+      "head": "ae15cd08f77c997221067150956f8a46bde1318d"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-sg1",
+      "head": "c27ad3d820ca6dc7a2e3cfefb9de6aa8493f2a63"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-u1",
+      "head": "e497c6b7636f23e1700bf6a236d7d57979d0ea75"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-u2",
+      "head": "50020cb3be2599cf5362e872e3c4b12ec16d9c9b"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-v1",
+      "head": "4c5601f337b7c65b66039f1abd96c158513aa256"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-w1",
+      "head": "c7e19344150f8be9c3ce452be90a99f0b9a81379"
+    }
+  ],
+  "cleanupDisposition": "No branch or worktree cleanup is part of F0-V1. Cleanup requires a later explicit decision after Genesis publication."
+}
