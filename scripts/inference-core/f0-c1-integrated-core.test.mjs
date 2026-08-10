@@ -1,6 +1,21 @@
 import assert from "node:assert/strict"
+import { spawn } from "node:child_process"
+import { once } from "node:events"
 import { readFileSync } from "node:fs"
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import test from "node:test"
+import { terminateProcessGroup } from "../pre-genesis/process-group.mjs"
+import { restoreWorkspaceBuildArtifacts } from "../pre-genesis/workspace-artifacts.mjs"
 
 const read = (path) => readFileSync(path, "utf8")
 const evidence = JSON.parse(
@@ -24,7 +39,7 @@ test("F0-C1 has one bounded disposable command", () => {
   )
   assert.match(integrated, /buildWorkspaceFixturePackages\(\)/)
   assert.match(integrated, /await preserveWorkspaceBuildArtifacts\(\)/)
-  assert.match(integrated, /await restoreWorkspaceBuildArtifacts\(\)/)
+  assert.match(integrated, /await restoreWorkspaceBuildArtifacts\(/)
   assert.ok(
     integrated.indexOf("await preserveWorkspaceBuildArtifacts()") <
       integrated.indexOf("buildWorkspaceFixturePackages()"),
@@ -65,12 +80,15 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(integrated, /F0_C1_SERVICE_STATE_ROOT: files\.firecrawlState/)
   assert.match(integrated, /F0_C1_BROWSER_STATE_ROOT: files\.browserState/)
   assert.match(integrated, /F0_C1_BROWSER_TEMP_ROOT: browserTemporaryRoot/)
-  assert.match(integrated, /waitForProcessGroupRemoval/)
+  assert.match(integrated, /terminationPromise = terminateProcessGroup/)
   assert.match(integrated, /await rename\(pending, backup\)/)
   assert.ok(
     integrated.indexOf("await rename(pending, backup)") <
       integrated.indexOf("workspaceBuildSnapshot.push"),
   )
+  assert.match(integrated, /let workspaceArtifactsRestored = false/)
+  assert.match(integrated, /if \(workspaceArtifactsRestored\) \{/)
+  assert.match(integrated, /workspace recovery backup is unavailable/)
   assert.match(firecrawl, /controlledRunIdFromEnvironment/)
   assert.match(firecrawl, /F0_C1_SERVICE_STATE_ROOT/)
   assert.match(browser, /identityEpochMilliseconds\(\)/)
@@ -82,6 +100,95 @@ test("F0-C1 has one bounded disposable command", () => {
   for (const source of [browser, firecrawl, integrated, keycloak, liteLlm]) {
     assert.doesNotMatch(source, /const deadline = Date\.now\(\)/)
     assert.doesNotMatch(source, /Date\.now\(\) < deadline/)
+  }
+})
+
+test(
+  "F0-C1 force-kills descendants after the browser group leader exits",
+  { timeout: 5_000 },
+  async () => {
+    const descendant =
+      'process.on("SIGTERM",()=>{});process.stdout.write("ready\\n");setInterval(()=>{},1000)'
+    const leaderSource = `const {spawn}=require("node:child_process");const child=spawn(process.execPath,["-e",${JSON.stringify(descendant)}],{stdio:["ignore","pipe","ignore"]});child.stdout.once("data",()=>process.stdout.write("ready\\n"));process.on("SIGTERM",()=>process.exit(0));setInterval(()=>{},1000)`
+    const leader = spawn(process.execPath, ["-e", leaderSource], {
+      detached: true,
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+    const pid = leader.pid
+    assert.ok(pid)
+    try {
+      await once(leader.stdout, "data")
+      assert.equal(
+        await terminateProcessGroup(pid, {
+          forceWaitMilliseconds: 2_000,
+          graceMilliseconds: 100,
+          pollMilliseconds: 10,
+        }),
+        true,
+      )
+      assert.throws(
+        () => process.kill(-pid, 0),
+        (error) => error?.code === "ESRCH",
+      )
+    } finally {
+      try {
+        process.kill(-pid, "SIGKILL")
+      } catch (error) {
+        assert.ok(error?.code === "ESRCH" || error?.code === "EPERM")
+      }
+    }
+  },
+)
+
+test("F0-C1 keeps the complete backup when atomic restore fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "llmm-f0-c1-restore-test-"))
+  const artifact = join(root, "workspace", "contracts-dist")
+  const backup = join(root, "backup", "contracts-dist")
+  const runId = "0123456789abcdef"
+  try {
+    await mkdir(artifact, { recursive: true })
+    await mkdir(backup, { recursive: true })
+    await writeFile(join(artifact, "value"), "generated")
+    await writeFile(join(backup, "value"), "pre-existing")
+    let injected = false
+    await assert.rejects(
+      restoreWorkspaceBuildArtifacts(
+        [{ backup, existed: true, path: artifact }],
+        {
+          operations: {
+            cp,
+            rename: async (source, destination) => {
+              if (
+                !injected &&
+                source.endsWith(`.llmm-f0-c1-restore-${runId}`)
+              ) {
+                injected = true
+                throw Object.assign(new Error("injected restore failure"), {
+                  code: "EIO",
+                })
+              }
+              await rename(source, destination)
+            },
+            rm,
+          },
+          runId,
+        },
+      ),
+      /injected restore failure/,
+    )
+    assert.equal(await readFile(join(backup, "value"), "utf8"), "pre-existing")
+    assert.equal(await readFile(join(artifact, "value"), "utf8"), "generated")
+    await restoreWorkspaceBuildArtifacts(
+      [{ backup, existed: true, path: artifact }],
+      { runId },
+    )
+    assert.equal(
+      await readFile(join(artifact, "value"), "utf8"),
+      "pre-existing",
+    )
+    assert.equal(await readFile(join(backup, "value"), "utf8"), "pre-existing")
+  } finally {
+    await rm(root, { force: true, recursive: true })
   }
 })
 

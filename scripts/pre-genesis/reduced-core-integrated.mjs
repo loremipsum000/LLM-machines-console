@@ -20,6 +20,8 @@ import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { terminateProcessGroup } from "./process-group.mjs"
+import { restoreWorkspaceBuildArtifacts } from "./workspace-artifacts.mjs"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const inventory = JSON.parse(
@@ -288,14 +290,26 @@ try {
   } catch (error) {
     cleanupFailures.push(safeError(error))
   }
+  let workspaceArtifactsRestored = false
   try {
-    await restoreWorkspaceBuildArtifacts()
+    await restoreWorkspaceBuildArtifacts(workspaceBuildSnapshot, { runId })
+    workspaceArtifactsRestored = true
   } catch (error) {
     cleanupFailures.push(safeError(error))
   }
-  await rm(stateRoot, { force: true, recursive: true })
-  if (await exists(stateRoot)) {
+  if (workspaceArtifactsRestored) {
+    await rm(stateRoot, { force: true, recursive: true })
+  }
+  if (workspaceArtifactsRestored && (await exists(stateRoot))) {
     cleanupFailures.push(new Error("F0-C1 temporary state remains."))
+  }
+  if (
+    !workspaceArtifactsRestored &&
+    !(await exists(files.workspaceBuildBackup))
+  ) {
+    cleanupFailures.push(
+      new Error("F0-C1 workspace recovery backup is unavailable."),
+    )
   }
   if (dockerContext) {
     for (const container of Object.values(containers)) {
@@ -1084,15 +1098,14 @@ function runChild(command, arguments_, environment, timeout) {
     })
     let stdout = ""
     let stderr = ""
-    let escalationTimer = null
+    let terminationPromise = null
     let timedOut = false
     const terminate = () => {
       if (timedOut) return
       timedOut = true
-      signalChildGroup(child, "SIGTERM")
-      escalationTimer = setTimeout(
-        () => signalChildGroup(child, "SIGKILL"),
-        10_000,
+      terminationPromise = terminateProcessGroup(child.pid).then(
+        (removed) => ({ error: null, removed }),
+        (error) => ({ error, removed: false }),
       )
     }
     child.stdout.on("data", (chunk) => {
@@ -1107,12 +1120,15 @@ function runChild(command, arguments_, environment, timeout) {
     child.once("error", rejectChild)
     child.once("exit", async (status) => {
       clearTimeout(timer)
-      if (escalationTimer) clearTimeout(escalationTimer)
-      const processGroupRemoved = timedOut
-        ? await waitForProcessGroupRemoval(child.pid, 5_000)
-        : true
+      const termination = timedOut
+        ? await terminationPromise
+        : { error: null, removed: true }
+      if (termination.error) {
+        rejectChild(termination.error)
+        return
+      }
       resolveChild({
-        processGroupRemoved,
+        processGroupRemoved: termination.removed,
         status,
         stderr,
         stdout,
@@ -1120,29 +1136,6 @@ function runChild(command, arguments_, environment, timeout) {
       })
     })
   })
-}
-
-function signalChildGroup(child, signal) {
-  if (!child.pid) return
-  try {
-    process.kill(-child.pid, signal)
-  } catch (error) {
-    if (error?.code !== "ESRCH") throw error
-  }
-}
-
-async function waitForProcessGroupRemoval(pid, timeout) {
-  const deadline = performance.now() + timeout
-  while (performance.now() < deadline) {
-    try {
-      process.kill(-pid, 0)
-    } catch (error) {
-      if (error?.code === "ESRCH") return true
-      throw error
-    }
-    await delay(50)
-  }
-  return false
 }
 
 function commandEnvironment(extra = {}) {
@@ -1186,18 +1179,6 @@ async function preserveWorkspaceBuildArtifacts() {
       await rename(pending, backup)
     }
     workspaceBuildSnapshot.push({ ...artifact, backup, existed })
-  }
-}
-
-async function restoreWorkspaceBuildArtifacts() {
-  for (const artifact of workspaceBuildSnapshot) {
-    await rm(artifact.path, { force: true, recursive: true })
-    if (artifact.existed) {
-      await cp(artifact.backup, artifact.path, {
-        preserveTimestamps: true,
-        recursive: true,
-      })
-    }
   }
 }
 
