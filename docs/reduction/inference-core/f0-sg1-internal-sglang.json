@@ -12,7 +12,15 @@
     "sourceCommit": "28b095c01005d4a3a2a5b637b7d028b07fba31b2",
     "sourceArchiveSha256": "097aaf0dcc1e8e62c4a107f21d1807734ab76ee40ac4bd7e6e72299b1008ea46",
     "sourcePatched": false,
-    "buildRecipe": "upstream docker/xpu.Dockerfile with its base image replaced by the exact equivalent OCI digest",
+    "buildRecipe": "upstream docker/xpu.Dockerfile with its base image replaced by the exact equivalent OCI digest and SG_LANG_BRANCH explicitly set to v0.5.13",
+    "sourceCheckoutBinding": {
+      "buildArgument": "SG_LANG_BRANCH=v0.5.13",
+      "resolvedTag": "v0.5.13",
+      "resolvedCommit": "28b095c01005d4a3a2a5b637b7d028b07fba31b2",
+      "ociRevisionLabel": "28b095c01005d4a3a2a5b637b7d028b07fba31b2",
+      "inImagePackageVersion": "0.5.13",
+      "verification": "digest-addressed image history plus in-image git rev-parse, exact-tag describe, and package import"
+    },
     "baseImageDigest": "sha256:4bdd1bf92a21d18411002dc43910d8296273c8ca1c0464f7c9a7142049ddf96b",
     "image": {
       "indexDigest": "sha256:8014b2facd2333dfa7057e0dd8aa1ccd4ec8ef708445c0bd10c743a7ddc14292",

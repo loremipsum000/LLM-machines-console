@@ -22,6 +22,15 @@ test("F0-SG1 binds the authorized smoke to exact engine and gateway identities",
     contract.engine.sourceArchiveSha256,
   )
   assert.equal(evidence.engine.sourcePatched, false)
+  assert.deepEqual(evidence.engine.sourceCheckoutBinding, {
+    buildArgument: "SG_LANG_BRANCH=v0.5.13",
+    inImagePackageVersion: contract.engine.version,
+    ociRevisionLabel: contract.engine.sourceCommit,
+    resolvedCommit: contract.engine.sourceCommit,
+    resolvedTag: `v${contract.engine.version}`,
+    verification:
+      "digest-addressed image history plus in-image git rev-parse, exact-tag describe, and package import",
+  })
   assert.match(evidence.engine.image.indexDigest, /^sha256:[a-f0-9]{64}$/)
   assert.match(
     evidence.engine.image.platformManifestDigest,
