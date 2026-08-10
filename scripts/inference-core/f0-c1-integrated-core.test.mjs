@@ -61,8 +61,22 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(integrated, /detached: true/)
   assert.match(integrated, /process\.kill\(-service\.child\.pid, signal\)/)
   assert.match(integrated, /cleanupFirecrawlProfile/)
+  assert.match(integrated, /colima", \["list", "--json"\]/)
+  assert.match(integrated, /F0_C1_SERVICE_STATE_ROOT: files\.firecrawlState/)
+  assert.match(integrated, /F0_C1_BROWSER_STATE_ROOT: files\.browserState/)
+  assert.match(integrated, /F0_C1_BROWSER_TEMP_ROOT: browserTemporaryRoot/)
+  assert.match(integrated, /waitForProcessGroupRemoval/)
+  assert.match(integrated, /await rename\(pending, backup\)/)
+  assert.ok(
+    integrated.indexOf("await rename(pending, backup)") <
+      integrated.indexOf("workspaceBuildSnapshot.push"),
+  )
   assert.match(firecrawl, /controlledRunIdFromEnvironment/)
+  assert.match(firecrawl, /F0_C1_SERVICE_STATE_ROOT/)
   assert.match(browser, /identityEpochMilliseconds\(\)/)
+  assert.match(browser, /periodPosition >= 5 && periodPosition <= 20/)
+  assert.match(browser, /F0_C1_BROWSER_STATE_ROOT/)
+  assert.match(browser, /const detached = !integratedCoreMode/)
   assert.match(browser, /keycloakControl\.dockerContext/)
   assert.match(browser, /keycloakControl\.container/)
   for (const source of [browser, firecrawl, integrated, keycloak, liteLlm]) {

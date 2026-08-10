@@ -11,6 +11,7 @@ import {
   readFile,
   readdir,
   realpath,
+  rename,
   rm,
   stat,
   writeFile,
@@ -54,12 +55,15 @@ const databasePassword = opaqueValue()
 const grafanaOidcSecret = opaqueValue()
 const cacheRoot = resolve(repositoryRoot, "node_modules/.cache")
 await mkdir(cacheRoot, { mode: 0o700, recursive: true })
+const browserTemporaryRoot = await realpath(tmpdir())
 const stateRoot = await mkdtemp(
   join(await realpath(cacheRoot), "llmm-f0-c1-integrated-"),
 )
 const files = {
   alertmanagerConfig: join(stateRoot, "alertmanager.yml"),
+  browserState: join(browserTemporaryRoot, `llmm-f0-c1-browser-${runId}`),
   firecrawlControl: join(stateRoot, "firecrawl-control.json"),
+  firecrawlState: join(stateRoot, "firecrawl-state"),
   firecrawlStop: join(stateRoot, "firecrawl.stop"),
   grafanaSecret: join(stateRoot, "grafana-oidc-secret"),
   grafanaProvisioning: join(stateRoot, "grafana-provisioning"),
@@ -119,12 +123,14 @@ try {
   await preserveWorkspaceBuildArtifacts()
   buildWorkspaceFixturePackages()
   const edgePort = await reservePort()
+  await mkdir(files.firecrawlState, { mode: 0o700 })
   const firecrawl = startService(
     "firecrawl",
     {
       F0_C1_SERVICE_CONTROL_FILE: files.firecrawlControl,
       F0_C1_FIRECRAWL_RUN_ID: runId,
       F0_C1_SERVICE_STOP_FILE: files.firecrawlStop,
+      F0_C1_SERVICE_STATE_ROOT: files.firecrawlState,
     },
     "reduced-core-firecrawl-integration.mjs",
   )
@@ -264,6 +270,10 @@ try {
     }
   }
   collectCleanup(cleanupFailures, cleanupFirecrawlProfile)
+  await rm(files.browserState, { force: true, recursive: true })
+  if (await exists(files.browserState)) {
+    cleanupFailures.push(new Error("F0-C1 browser temporary state remains."))
+  }
   for (const path of [
     files.firecrawlControl,
     files.keycloakControl,
@@ -560,6 +570,7 @@ async function runBrowser({
   keycloakControl,
   liteLlmControl,
 }) {
+  await mkdir(files.browserState, { mode: 0o700 })
   const result = await runChild(
     process.execPath,
     [
@@ -572,6 +583,8 @@ async function runBrowser({
     {
       F0_C1_FIRECRAWL_CONFIG_FILE: files.firecrawlControl,
       F0_C1_OBSERVABILITY_CONFIG_FILE: files.observabilityControl,
+      F0_C1_BROWSER_STATE_ROOT: files.browserState,
+      F0_C1_BROWSER_TEMP_ROOT: browserTemporaryRoot,
       F0_I1_KEYCLOAK_CONFIG_FILE: files.keycloakControl,
       F0_L2_LITELLM_CONFIG_FILE: files.liteLlmControl,
       F0_P1_DATABASE_URL: databaseUrl,
@@ -584,6 +597,9 @@ async function runBrowser({
     },
     25 * 60_000,
   )
+  if (result.timedOut && !result.processGroupRemoved) {
+    throw new Error("F0-C1 browser proof left its process group running.")
+  }
   if (result.status !== 0) {
     throw new Error(
       `F0-C1 browser proof failed: ${sanitize(result.stderr || result.stdout)}`,
@@ -753,14 +769,7 @@ function signalServiceGroup(service, signal) {
 }
 
 function cleanupFirecrawlProfile() {
-  if (
-    spawnSync("colima", ["status", "--profile", firecrawlProfile], {
-      encoding: "utf8",
-      env: commandEnvironment(),
-    }).status !== 0
-  ) {
-    return
-  }
+  if (!colimaProfiles().has(firecrawlProfile)) return
   const result = spawnSync(
     "colima",
     ["delete", "--profile", firecrawlProfile, "--data", "--force"],
@@ -775,6 +784,28 @@ function cleanupFirecrawlProfile() {
       `F0-C1 could not remove its Firecrawl profile: ${sanitize(result.stderr || result.stdout)}`,
     )
   }
+  if (colimaProfiles().has(firecrawlProfile)) {
+    throw new Error("F0-C1 Firecrawl profile remains after cleanup.")
+  }
+}
+
+function colimaProfiles() {
+  const result = spawnSync("colima", ["list", "--json"], {
+    encoding: "utf8",
+    env: commandEnvironment(),
+    maxBuffer: 8 * 1024 * 1024,
+  })
+  if (result.status !== 0) {
+    throw new Error(
+      `F0-C1 could not enumerate Colima profiles: ${sanitize(result.stderr || result.stdout)}`,
+    )
+  }
+  return new Set(
+    result.stdout
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line).name),
+  )
 }
 
 function waitForExit(service, timeout) {
@@ -1047,26 +1078,71 @@ function runChild(command, arguments_, environment, timeout) {
   return new Promise((resolveChild, rejectChild) => {
     const child = spawn(command, arguments_, {
       cwd: repositoryRoot,
+      detached: true,
       env: commandEnvironment(environment),
       stdio: ["ignore", "pipe", "pipe"],
     })
     let stdout = ""
     let stderr = ""
+    let escalationTimer = null
+    let timedOut = false
+    const terminate = () => {
+      if (timedOut) return
+      timedOut = true
+      signalChildGroup(child, "SIGTERM")
+      escalationTimer = setTimeout(
+        () => signalChildGroup(child, "SIGKILL"),
+        10_000,
+      )
+    }
     child.stdout.on("data", (chunk) => {
       stdout += chunk
-      if (stdout.length > 64 * 1024 * 1024) child.kill("SIGTERM")
+      if (stdout.length > 64 * 1024 * 1024) terminate()
     })
     child.stderr.on("data", (chunk) => {
       stderr += chunk
-      if (stderr.length > 64 * 1024 * 1024) child.kill("SIGTERM")
+      if (stderr.length > 64 * 1024 * 1024) terminate()
     })
-    const timer = setTimeout(() => child.kill("SIGTERM"), timeout)
+    const timer = setTimeout(terminate, timeout)
     child.once("error", rejectChild)
-    child.once("exit", (status) => {
+    child.once("exit", async (status) => {
       clearTimeout(timer)
-      resolveChild({ status, stderr, stdout })
+      if (escalationTimer) clearTimeout(escalationTimer)
+      const processGroupRemoved = timedOut
+        ? await waitForProcessGroupRemoval(child.pid, 5_000)
+        : true
+      resolveChild({
+        processGroupRemoved,
+        status,
+        stderr,
+        stdout,
+        timedOut,
+      })
     })
   })
+}
+
+function signalChildGroup(child, signal) {
+  if (!child.pid) return
+  try {
+    process.kill(-child.pid, signal)
+  } catch (error) {
+    if (error?.code !== "ESRCH") throw error
+  }
+}
+
+async function waitForProcessGroupRemoval(pid, timeout) {
+  const deadline = performance.now() + timeout
+  while (performance.now() < deadline) {
+    try {
+      process.kill(-pid, 0)
+    } catch (error) {
+      if (error?.code === "ESRCH") return true
+      throw error
+    }
+    await delay(50)
+  }
+  return false
 }
 
 function commandEnvironment(extra = {}) {
@@ -1101,13 +1177,15 @@ async function preserveWorkspaceBuildArtifacts() {
   for (const artifact of workspaceBuildArtifacts) {
     const backup = join(files.workspaceBuildBackup, artifact.backupName)
     const existed = await exists(artifact.path)
-    workspaceBuildSnapshot.push({ ...artifact, backup, existed })
     if (existed) {
-      await cp(artifact.path, backup, {
+      const pending = `${backup}.pending`
+      await cp(artifact.path, pending, {
         preserveTimestamps: true,
         recursive: true,
       })
+      await rename(pending, backup)
     }
+    workspaceBuildSnapshot.push({ ...artifact, backup, existed })
   }
 }
 

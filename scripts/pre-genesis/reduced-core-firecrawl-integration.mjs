@@ -13,7 +13,7 @@ import {
   writeFile,
 } from "node:fs/promises"
 import { createServer } from "node:net"
-import { isAbsolute, join, resolve } from "node:path"
+import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
@@ -38,9 +38,7 @@ const searchImage = exactPlatformImage("searxng-runtime-source")
 const egressImage = exactPlatformImage("squid-runtime-source")
 const cacheRoot = resolve(repositoryRoot, "node_modules/.cache")
 await mkdir(cacheRoot, { mode: 0o700, recursive: true })
-const stateRoot = await mkdtemp(
-  join(await realpath(cacheRoot), "llmm-f0-f2-firecrawl-"),
-)
+const stateRoot = await createStateRoot()
 const sourceInputs = join(stateRoot, "source-inputs")
 const sourcePacket = join(stateRoot, "source-packet")
 const composeOverride = join(stateRoot, "compose.override.json")
@@ -982,6 +980,27 @@ function controlledRunIdFromEnvironment() {
     throw new Error("F0-C1 Firecrawl run identity is invalid.")
   }
   return value
+}
+
+async function createStateRoot() {
+  const controlled = process.env.F0_C1_SERVICE_STATE_ROOT?.trim()
+  const realCacheRoot = await realpath(cacheRoot)
+  if (!controlled) {
+    return mkdtemp(join(realCacheRoot, "llmm-f0-f2-firecrawl-"))
+  }
+  if (!serviceControl || !isAbsolute(controlled)) {
+    throw new Error("F0-C1 Firecrawl state ownership is invalid.")
+  }
+  const realStateRoot = await realpath(controlled)
+  const fromCache = relative(realCacheRoot, realStateRoot)
+  if (
+    fromCache === "" ||
+    fromCache === ".." ||
+    fromCache.startsWith(`..${sep}`)
+  ) {
+    throw new Error("F0-C1 Firecrawl state escaped the disposable cache.")
+  }
+  return realStateRoot
 }
 
 async function waitForStop(path) {

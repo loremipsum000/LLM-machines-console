@@ -31,7 +31,7 @@ import {
   request as httpsRequest,
 } from "node:https"
 import { tmpdir } from "node:os"
-import { isAbsolute, join, relative, resolve, sep } from "node:path"
+import { basename, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { chromium } from "playwright-core"
 import { evaluateSourceBoundary } from "../../infra/ingress/source-no-bypass.mjs"
@@ -1318,7 +1318,9 @@ async function completeIdentityLogin(page, userCredentials) {
     await page.locator("#kc-login").click()
     const otp = page.locator("#otp")
     await otp.waitFor({ timeout: 20_000 })
-    await otp.fill(totp(userCredentials.otpSecret, identityEpochMilliseconds()))
+    await otp.fill(
+      totp(userCredentials.otpSecret, await identityEpochMilliseconds()),
+    )
     await page.locator("#kc-login").click()
     try {
       await navigation.waitFor({ timeout: 20_000 })
@@ -4479,10 +4481,36 @@ async function chromeExecutable() {
 }
 
 async function createTemporaryStateRoot() {
+  const controlled = process.env.F0_C1_BROWSER_STATE_ROOT?.trim()
+  const controlledTemporaryRoot = process.env.F0_C1_BROWSER_TEMP_ROOT?.trim()
   const [repositoryRealRoot, temporaryRealRoot] = await Promise.all([
     realpath(repositoryRoot),
     realpath(tmpdir()),
   ])
+  if (controlled) {
+    if (
+      !integratedCoreMode ||
+      !isAbsolute(controlled) ||
+      !controlledTemporaryRoot ||
+      !isAbsolute(controlledTemporaryRoot)
+    ) {
+      throw new Error("F0-C1 browser state ownership is invalid.")
+    }
+    const [controlledRealRoot, expectedTemporaryRoot] = await Promise.all([
+      realpath(controlled),
+      realpath(controlledTemporaryRoot),
+    ])
+    if (
+      !pathIsInside(expectedTemporaryRoot, controlledRealRoot) ||
+      basename(controlledRealRoot).match(
+        /^llmm-f0-c1-browser-[a-f0-9]{16}$/,
+      ) === null
+    ) {
+      throw new Error("F0-C1 browser state escaped its temporary boundary.")
+    }
+    await chmod(controlledRealRoot, 0o700)
+    return controlledRealRoot
+  }
   if (pathIsInside(repositoryRealRoot, temporaryRealRoot)) {
     throw new Error(
       "F0-S1 temporary state must be outside the source worktree.",
@@ -4528,7 +4556,20 @@ function keycloakControlFromEnvironment() {
   }
 }
 
-function identityEpochMilliseconds() {
+async function identityEpochMilliseconds() {
+  const deadline = performance.now() + 35_000
+  while (performance.now() < deadline) {
+    const epochSeconds = identityEpochSeconds()
+    const periodPosition = epochSeconds % 30
+    if (periodPosition >= 5 && periodPosition <= 20) {
+      return epochSeconds * 1_000
+    }
+    await delay(250)
+  }
+  throw new Error("F0-I1 identity clock did not reach a safe TOTP window.")
+}
+
+function identityEpochSeconds() {
   assert.ok(keycloakControl)
   const result = spawnSync(
     "docker",
@@ -4550,7 +4591,7 @@ function identityEpochMilliseconds() {
   if (result.status !== 0 || !Number.isSafeInteger(epochSeconds)) {
     throw new Error("F0-I1 could not read the disposable identity clock.")
   }
-  return epochSeconds * 1_000
+  return epochSeconds
 }
 
 function pathIsInside(parent, candidate) {
@@ -4605,9 +4646,10 @@ function startChild(name, command, environment, stateRoot, cwd) {
   const stderr = createWriteStream(join(stateRoot, `${name}.stderr.log`), {
     mode: 0o600,
   })
+  const detached = !integratedCoreMode
   const child = spawn(command[0], command.slice(1), {
     cwd,
-    detached: true,
+    detached,
     env: {
       HOME: stateRoot,
       LANG: "C",
@@ -4617,7 +4659,15 @@ function startChild(name, command, environment, stateRoot, cwd) {
     },
     stdio: ["ignore", "pipe", "pipe"],
   })
-  const record = { child, exited: false, name, stderr, stdout, stopping: false }
+  const record = {
+    child,
+    detached,
+    exited: false,
+    name,
+    stderr,
+    stdout,
+    stopping: false,
+  }
   child.stdout.pipe(stdout)
   child.stderr.pipe(stderr)
   child.once("exit", () => {
@@ -4630,7 +4680,8 @@ async function stopChild(record) {
   record.stopping = true
   if (!record.exited && record.child.pid) {
     try {
-      process.kill(-record.child.pid, "SIGTERM")
+      if (record.detached) process.kill(-record.child.pid, "SIGTERM")
+      else record.child.kill("SIGTERM")
     } catch (error) {
       if (error.code !== "ESRCH") throw error
     }
@@ -4640,7 +4691,8 @@ async function stopChild(record) {
     }
     if (!record.exited) {
       try {
-        process.kill(-record.child.pid, "SIGKILL")
+        if (record.detached) process.kill(-record.child.pid, "SIGKILL")
+        else record.child.kill("SIGKILL")
       } catch (error) {
         if (error.code !== "ESRCH") throw error
       }
