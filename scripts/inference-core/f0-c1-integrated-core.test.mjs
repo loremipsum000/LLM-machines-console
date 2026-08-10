@@ -7,7 +7,12 @@ const evidence = JSON.parse(
   read("docs/reduction/inference-core/f0-c1-integrated-reduced-core.json"),
 )
 const browser = read("scripts/pre-genesis/reduced-core-browser-session.mjs")
+const firecrawl = read(
+  "scripts/pre-genesis/reduced-core-firecrawl-integration.mjs",
+)
 const integrated = read("scripts/pre-genesis/reduced-core-integrated.mjs")
+const keycloak = read("scripts/pre-genesis/reduced-core-keycloak-identity.mjs")
+const liteLlm = read("scripts/pre-genesis/reduced-core-litellm-integration.mjs")
 const sessionFixture = read(
   "scripts/pre-genesis/reduced-core-session-bff-fixture.mts",
 )
@@ -48,6 +53,22 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(integrated, /sample\.value\[1\] === "1"/)
   assert.doesNotMatch(integrated, /host\.docker\.internal/)
   assert.doesNotMatch(integrated, /server\.listen\(0, "0\.0\.0\.0"/)
+  assert.match(integrated, /F0_C1_FIRECRAWL_RUN_ID: runId/)
+  assert.match(
+    integrated,
+    /assert\.equal\(dockerContext, firecrawlDockerContext\)/,
+  )
+  assert.match(integrated, /detached: true/)
+  assert.match(integrated, /process\.kill\(-service\.child\.pid, signal\)/)
+  assert.match(integrated, /cleanupFirecrawlProfile/)
+  assert.match(firecrawl, /controlledRunIdFromEnvironment/)
+  assert.match(browser, /identityEpochMilliseconds\(\)/)
+  assert.match(browser, /keycloakControl\.dockerContext/)
+  assert.match(browser, /keycloakControl\.container/)
+  for (const source of [browser, firecrawl, integrated, keycloak, liteLlm]) {
+    assert.doesNotMatch(source, /const deadline = Date\.now\(\)/)
+    assert.doesNotMatch(source, /Date\.now\(\) < deadline/)
+  }
 })
 
 test("F0-C1 retains the approved customer and private-service boundary", () => {

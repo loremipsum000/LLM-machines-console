@@ -495,8 +495,8 @@ function assertLockedImageIdentity() {
 }
 
 async function waitForPostgres() {
-  const deadline = Date.now() + 60_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 60_000
+  while (performance.now() < deadline) {
     const result = dockerResult([
       "exec",
       postgresContainer,
@@ -513,8 +513,8 @@ async function waitForPostgres() {
 }
 
 async function waitForLiteLlmPort(expectedPort) {
-  const deadline = Date.now() + 60_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 60_000
+  while (performance.now() < deadline) {
     const output = dockerResult(["port", liteLlmContainer, "4000/tcp"])
     const match = output.stdout.match(/127\.0\.0\.1:(\d+)$/m)
     if (output.status === 0 && match) {
@@ -542,8 +542,8 @@ function reservePort() {
 }
 
 async function waitForLiteLlm(baseUrl) {
-  const deadline = Date.now() + 120_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 120_000
+  while (performance.now() < deadline) {
     try {
       const response = await fetch(`${baseUrl}/v1/models`, {
         headers: { authorization: `Bearer ${adminKey}` },

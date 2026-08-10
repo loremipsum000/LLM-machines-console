@@ -666,8 +666,8 @@ async function exactClient(root, bearer, clientId) {
 }
 
 async function waitForClient(root, bearer, clientId) {
-  const deadline = Date.now() + 30_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 30_000
+  while (performance.now() < deadline) {
     try {
       return await exactClient(root, bearer, clientId)
     } catch {
@@ -802,9 +802,9 @@ async function startPostgres() {
     POSTGRES_IMAGE,
   ])
   postgresContainerCreated = true
-  const deadline = Date.now() + 60_000
+  const deadline = performance.now() + 60_000
   let postgresReady = false
-  while (Date.now() < deadline) {
+  while (performance.now() < deadline) {
     const ready = dockerResult([
       "exec",
       postgresContainerName,
@@ -874,8 +874,8 @@ function postgresPsql(sql) {
 }
 
 async function waitForKeycloak() {
-  const deadline = Date.now() + 120_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 120_000
+  while (performance.now() < deadline) {
     const port = mappedPort()
     if (port) {
       const result = await fetch(

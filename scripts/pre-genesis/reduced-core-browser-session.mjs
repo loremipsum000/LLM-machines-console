@@ -1318,7 +1318,7 @@ async function completeIdentityLogin(page, userCredentials) {
     await page.locator("#kc-login").click()
     const otp = page.locator("#otp")
     await otp.waitFor({ timeout: 20_000 })
-    await otp.fill(totp(userCredentials.otpSecret))
+    await otp.fill(totp(userCredentials.otpSecret, identityEpochMilliseconds()))
     await page.locator("#kc-login").click()
     try {
       await navigation.waitFor({ timeout: 20_000 })
@@ -2214,8 +2214,8 @@ async function proveLiteLlmConsoleFlow({
 }
 
 async function assertActualLiteLlmProjection(page, consoleOrigin) {
-  const deadline = Date.now() + 30_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 30_000
+  while (performance.now() < deadline) {
     await page.goto(`${consoleOrigin}/inference`)
     const body = await page.locator("body").innerText()
     if (
@@ -2267,9 +2267,9 @@ function startLiteLlm(control) {
 }
 
 async function waitForLiteLlm(control) {
-  const deadline = Date.now() + 120_000
+  const deadline = performance.now() + 120_000
   let lastStatus = null
-  while (Date.now() < deadline) {
+  while (performance.now() < deadline) {
     try {
       lastStatus = await requestLiteLlmStatus(control)
       if (lastStatus === 200) return
@@ -4355,8 +4355,8 @@ async function provePostgresOutageRecovery({
 }
 
 async function waitForPostgresControl() {
-  const deadline = Date.now() + 60_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 60_000
+  while (performance.now() < deadline) {
     const result = postgresDockerResult([
       "exec",
       postgresControl.container,
@@ -4502,6 +4502,10 @@ function keycloakControlFromEnvironment() {
   if (
     !Number.isInteger(config.edgePort) ||
     !Number.isInteger(config.upstreamPort) ||
+    typeof config.container !== "string" ||
+    !/^[a-z0-9][a-z0-9_.-]{0,127}$/.test(config.container) ||
+    typeof config.dockerContext !== "string" ||
+    !/^[A-Za-z0-9_.-]{1,128}$/.test(config.dockerContext) ||
     !config.credentials
   ) {
     throw new Error("F0-I1 Keycloak control data is invalid.")
@@ -4516,10 +4520,37 @@ function keycloakControlFromEnvironment() {
   }
   return {
     adminBaseUrl,
+    container: config.container,
     credentials: config.credentials,
+    dockerContext: config.dockerContext,
     edgePort: config.edgePort,
     upstreamPort: config.upstreamPort,
   }
+}
+
+function identityEpochMilliseconds() {
+  assert.ok(keycloakControl)
+  const result = spawnSync(
+    "docker",
+    [
+      "--context",
+      keycloakControl.dockerContext,
+      "exec",
+      keycloakControl.container,
+      "date",
+      "+%s",
+    ],
+    {
+      encoding: "utf8",
+      env: { LANG: "C", LC_ALL: "C", PATH: process.env.PATH ?? "" },
+      maxBuffer: 1024 * 1024,
+    },
+  )
+  const epochSeconds = Number.parseInt(result.stdout.trim(), 10)
+  if (result.status !== 0 || !Number.isSafeInteger(epochSeconds)) {
+    throw new Error("F0-I1 could not read the disposable identity clock.")
+  }
+  return epochSeconds * 1_000
 }
 
 function pathIsInside(parent, candidate) {
@@ -4603,8 +4634,8 @@ async function stopChild(record) {
     } catch (error) {
       if (error.code !== "ESRCH") throw error
     }
-    const deadline = Date.now() + 5_000
-    while (!record.exited && Date.now() < deadline) {
+    const deadline = performance.now() + 5_000
+    while (!record.exited && performance.now() < deadline) {
       await delay(50)
     }
     if (!record.exited) {
@@ -4739,8 +4770,8 @@ async function requestHttpsEdgeWithHeaders({
 }
 
 async function waitForHttp(url, children) {
-  const deadline = Date.now() + 45_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 45_000
+  while (performance.now() < deadline) {
     const failed = children.find((record) => record.exited && !record.stopping)
     if (failed) {
       throw new Error(`${failed.name} exited during F0-S1 startup.`)
@@ -4760,8 +4791,8 @@ async function waitForHttp(url, children) {
 }
 
 async function waitForStatus(url, expectedStatus, children) {
-  const deadline = Date.now() + 45_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 45_000
+  while (performance.now() < deadline) {
     const failed = children.find((record) => record.exited && !record.stopping)
     if (failed) {
       throw new Error(`${failed.name} exited during F0-P1 recovery.`)
@@ -4831,9 +4862,9 @@ function opaqueValue() {
   return randomBytes(32).toString("base64url")
 }
 
-function totp(secret) {
+function totp(secret, epochMilliseconds = Date.now()) {
   assert.equal(typeof secret, "string")
-  const counter = Math.floor(Date.now() / 30_000)
+  const counter = Math.floor(epochMilliseconds / 30_000)
   const buffer = Buffer.alloc(8)
   buffer.writeBigUInt64BE(BigInt(counter))
   const digest = createHmac("sha256", Buffer.from(secret, "utf8"))

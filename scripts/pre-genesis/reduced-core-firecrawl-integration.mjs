@@ -23,7 +23,7 @@ const serviceControl = serviceControlFromEnvironment()
 const sourcePackage = await readJson(
   resolve(repositoryRoot, "infra/firecrawl/release/source-package.json"),
 )
-const runId = randomBytes(8).toString("hex")
+const runId = controlledRunIdFromEnvironment() ?? randomBytes(8).toString("hex")
 const project = `llmmf0f2${runId}`
 const managedProfile = `llmm-f0-f2-${runId}`
 const dockerContext = `colima-${managedProfile}`
@@ -372,8 +372,8 @@ async function waitForHealthyServices() {
     egress: "firecrawl-egress",
     search: "firecrawl-search",
   }
-  const deadline = Date.now() + 8 * 60_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 8 * 60_000
+  while (performance.now() < deadline) {
     const containers = Object.fromEntries(
       Object.entries(services).map(([key, service]) => [
         key,
@@ -975,6 +975,15 @@ function serviceControlFromEnvironment() {
   return { controlFile, stopFile }
 }
 
+function controlledRunIdFromEnvironment() {
+  const value = process.env.F0_C1_FIRECRAWL_RUN_ID?.trim()
+  if (!value) return null
+  if (!/^[a-f0-9]{16}$/.test(value)) {
+    throw new Error("F0-C1 Firecrawl run identity is invalid.")
+  }
+  return value
+}
+
 async function waitForStop(path) {
   for (;;) {
     try {
@@ -1002,8 +1011,8 @@ async function reservePort() {
 }
 
 async function waitForHttp(url) {
-  const deadline = Date.now() + 120_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 120_000
+  while (performance.now() < deadline) {
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(2_000) })
       if (response.ok) return

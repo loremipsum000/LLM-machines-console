@@ -38,6 +38,8 @@ const images = Object.fromEntries(
 )
 const runId = randomBytes(8).toString("hex")
 const packageId = "F0-C1"
+const firecrawlProfile = `llmm-f0-f2-${runId}`
+const firecrawlDockerContext = `colima-${firecrawlProfile}`
 const network = `llmm-f0-c1-${runId}`
 const containers = {
   alertmanager: `llmm-f0-c1-alertmanager-${runId}`,
@@ -121,6 +123,7 @@ try {
     "firecrawl",
     {
       F0_C1_SERVICE_CONTROL_FILE: files.firecrawlControl,
+      F0_C1_FIRECRAWL_RUN_ID: runId,
       F0_C1_SERVICE_STOP_FILE: files.firecrawlStop,
     },
     "reduced-core-firecrawl-integration.mjs",
@@ -129,9 +132,10 @@ try {
   const firecrawlControl = await waitForControl(
     files.firecrawlControl,
     firecrawl,
-    20 * 60_000,
+    45 * 60_000,
   )
   dockerContext = exactDockerContext(firecrawlControl.dockerContext)
+  assert.equal(dockerContext, firecrawlDockerContext)
   docker(["info", "--format", "{{.ServerVersion}}"])
   await startProductPostgres()
 
@@ -255,10 +259,11 @@ try {
   await stopServiceByName("firecrawl", files.firecrawlStop, cleanupFailures)
   for (const service of services) {
     if (!service.exited) {
-      service.child.kill("SIGTERM")
+      signalServiceGroup(service, "SIGTERM")
       await waitForExit(service, 5_000).catch(() => undefined)
     }
   }
+  collectCleanup(cleanupFailures, cleanupFirecrawlProfile)
   for (const path of [
     files.firecrawlControl,
     files.keycloakControl,
@@ -352,8 +357,8 @@ async function startProductPostgres() {
     images["product-postgresql"],
   ])
   created.containers.add(containers.postgres)
-  const deadline = Date.now() + 90_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 90_000
+  while (performance.now() < deadline) {
     if (
       dockerResult([
         "exec",
@@ -665,6 +670,7 @@ function startService(name, extraEnvironment, script) {
     {
       cwd: repositoryRoot,
       env: commandEnvironment(extraEnvironment),
+      detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     },
   )
@@ -673,6 +679,7 @@ function startService(name, extraEnvironment, script) {
     exited: false,
     exitStatus: null,
     name,
+    ready: false,
     stderr,
     stderrPath,
     stdout,
@@ -688,8 +695,8 @@ function startService(name, extraEnvironment, script) {
 }
 
 async function waitForControl(path, service, timeout) {
-  const deadline = Date.now() + timeout
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + timeout
+  while (performance.now() < deadline) {
     if (service.exited) {
       throw new Error(
         `${service.name} exited before readiness: ${await serviceDiagnostics(service)}`,
@@ -697,6 +704,7 @@ async function waitForControl(path, service, timeout) {
     }
     try {
       const value = JSON.parse(await readFile(path, "utf8"))
+      service.ready = true
       return value
     } catch {}
     await delay(250)
@@ -710,7 +718,19 @@ async function stopServiceByName(name, stopFile, failures) {
   try {
     if (!service.exited) {
       await writeFile(stopFile, "stop\n", { mode: 0o600 })
-      await waitForExit(service, 10 * 60_000)
+      try {
+        const gracefulTimeout =
+          service.name === "firecrawl" && service.ready ? 10 * 60_000 : 30_000
+        await waitForExit(service, gracefulTimeout)
+      } catch {
+        signalServiceGroup(service, "SIGTERM")
+        await waitForExit(service, 10_000).catch(() => undefined)
+        if (!service.exited) {
+          signalServiceGroup(service, "SIGKILL")
+          await waitForExit(service, 5_000).catch(() => undefined)
+        }
+        throw new Error(`${service.name} required forced termination.`)
+      }
     }
     await Promise.all([endStream(service.stdout), endStream(service.stderr)])
     if (service.exitStatus !== 0) {
@@ -720,6 +740,40 @@ async function stopServiceByName(name, stopFile, failures) {
     }
   } catch (error) {
     failures.push(safeError(error))
+  }
+}
+
+function signalServiceGroup(service, signal) {
+  if (service.exited) return
+  try {
+    process.kill(-service.child.pid, signal)
+  } catch (error) {
+    if (error?.code !== "ESRCH") throw error
+  }
+}
+
+function cleanupFirecrawlProfile() {
+  if (
+    spawnSync("colima", ["status", "--profile", firecrawlProfile], {
+      encoding: "utf8",
+      env: commandEnvironment(),
+    }).status !== 0
+  ) {
+    return
+  }
+  const result = spawnSync(
+    "colima",
+    ["delete", "--profile", firecrawlProfile, "--data", "--force"],
+    {
+      encoding: "utf8",
+      env: commandEnvironment(),
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  )
+  if (result.status !== 0) {
+    throw new Error(
+      `F0-C1 could not remove its Firecrawl profile: ${sanitize(result.stderr || result.stdout)}`,
+    )
   }
 }
 
@@ -841,8 +895,8 @@ function metricsPayload() {
 }
 
 async function waitForMetricsFixture() {
-  const deadline = Date.now() + 30_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 30_000
+  while (performance.now() < deadline) {
     const result = dockerResult([
       "exec",
       containers.metrics,
@@ -887,8 +941,8 @@ async function postAlert(baseUrl) {
 }
 
 async function waitForPrometheusSignals(baseUrl) {
-  const deadline = Date.now() + 30_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 30_000
+  while (performance.now() < deadline) {
     const response = await fetch(
       `${baseUrl}/api/v1/query?query=${encodeURIComponent('up{job="node"}')}`,
       { signal: AbortSignal.timeout(2_000) },
@@ -1113,8 +1167,8 @@ function assertNoSensitive(values, sensitive) {
 }
 
 async function waitForHttp(url, timeout) {
-  const deadline = Date.now() + timeout
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + timeout
+  while (performance.now() < deadline) {
     const response = await fetch(url, {
       signal: AbortSignal.timeout(2_000),
     }).catch(() => null)
