@@ -2,6 +2,7 @@ import { spawn, spawnSync } from "node:child_process"
 import { createHash, randomBytes } from "node:crypto"
 import { createReadStream, createWriteStream } from "node:fs"
 import {
+  access,
   chmod,
   mkdir,
   mkdtemp,
@@ -12,16 +13,17 @@ import {
   writeFile,
 } from "node:fs/promises"
 import { createServer } from "node:net"
-import { join, resolve } from "node:path"
+import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
+const serviceControl = serviceControlFromEnvironment()
 const sourcePackage = await readJson(
   resolve(repositoryRoot, "infra/firecrawl/release/source-package.json"),
 )
-const runId = randomBytes(8).toString("hex")
+const runId = controlledRunIdFromEnvironment() ?? randomBytes(8).toString("hex")
 const project = `llmmf0f2${runId}`
 const managedProfile = `llmm-f0-f2-${runId}`
 const dockerContext = `colima-${managedProfile}`
@@ -36,9 +38,7 @@ const searchImage = exactPlatformImage("searxng-runtime-source")
 const egressImage = exactPlatformImage("squid-runtime-source")
 const cacheRoot = resolve(repositoryRoot, "node_modules/.cache")
 await mkdir(cacheRoot, { mode: 0o700, recursive: true })
-const stateRoot = await mkdtemp(
-  join(await realpath(cacheRoot), "llmm-f0-f2-firecrawl-"),
-)
+const stateRoot = await createStateRoot()
 const sourceInputs = join(stateRoot, "source-inputs")
 const sourcePacket = join(stateRoot, "source-packet")
 const composeOverride = join(stateRoot, "compose.override.json")
@@ -96,7 +96,9 @@ try {
   await verifyNativeBoundary(actualBaseUrl)
   const directSearch = await verifyDirectSearch(actualBaseUrl, containers)
   const directScrape = await verifyDirectScrape(actualBaseUrl, containers)
-  const productFlow = await runProductFlow(actualBaseUrl)
+  const productFlow = serviceControl
+    ? await serveIntegratedCore(actualBaseUrl, containers)
+    : await runProductFlow(actualBaseUrl)
   await verifyEgressDenial(containers.api)
   const retention = await verifyRetention(
     containers,
@@ -115,7 +117,9 @@ try {
       allowedHosts,
       deniedUnapprovedHost: true,
     },
-    evidenceClass: "LOCAL_ACTUAL_REDUCED_FIRECRAWL_INTEGRATION_ONLY",
+    evidenceClass: serviceControl
+      ? "LOCAL_INTEGRATED_CORE_COMPONENT_ONLY"
+      : "LOCAL_ACTUAL_REDUCED_FIRECRAWL_INTEGRATION_ONLY",
     exactSource: {
       firecrawlRevision: sourcePackage.upstreamComponents.find(
         ({ id }) => id === "firecrawl",
@@ -366,8 +370,8 @@ async function waitForHealthyServices() {
     egress: "firecrawl-egress",
     search: "firecrawl-search",
   }
-  const deadline = Date.now() + 8 * 60_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 8 * 60_000
+  while (performance.now() < deadline) {
     const containers = Object.fromEntries(
       Object.entries(services).map(([key, service]) => [
         key,
@@ -641,6 +645,28 @@ async function runProductFlow(baseUrl) {
     throw new Error("F0-F2 Product flow did not pass.")
   }
   return parsed
+}
+
+async function serveIntegratedCore(baseUrl, containers) {
+  await writeFile(
+    serviceControl.controlFile,
+    `${JSON.stringify({
+      allowedHosts,
+      baseUrl,
+      canaries: { query: queryCanary, url: urlCanary },
+      containers,
+      dockerContext,
+      project,
+    })}\n`,
+    { mode: 0o600 },
+  )
+  await waitForStop(serviceControl.stopFile)
+  return {
+    flow: {
+      authority: "F0-C1 integrated Product flow",
+      source: "external-disposable-orchestrator",
+    },
+  }
 }
 
 async function verifyEgressDenial(apiContainer) {
@@ -932,6 +958,61 @@ function commandEnvironment(extra = {}) {
   }
 }
 
+function serviceControlFromEnvironment() {
+  const controlFile = process.env.F0_C1_SERVICE_CONTROL_FILE?.trim()
+  const stopFile = process.env.F0_C1_SERVICE_STOP_FILE?.trim()
+  if (!controlFile && !stopFile) return null
+  if (
+    !controlFile ||
+    !stopFile ||
+    !isAbsolute(controlFile) ||
+    !isAbsolute(stopFile)
+  ) {
+    throw new Error("F0-C1 Firecrawl service control is invalid.")
+  }
+  return { controlFile, stopFile }
+}
+
+function controlledRunIdFromEnvironment() {
+  const value = process.env.F0_C1_FIRECRAWL_RUN_ID?.trim()
+  if (!value) return null
+  if (!/^[a-f0-9]{16}$/.test(value)) {
+    throw new Error("F0-C1 Firecrawl run identity is invalid.")
+  }
+  return value
+}
+
+async function createStateRoot() {
+  const controlled = process.env.F0_C1_SERVICE_STATE_ROOT?.trim()
+  const realCacheRoot = await realpath(cacheRoot)
+  if (!controlled) {
+    return mkdtemp(join(realCacheRoot, "llmm-f0-f2-firecrawl-"))
+  }
+  if (!serviceControl || !isAbsolute(controlled)) {
+    throw new Error("F0-C1 Firecrawl state ownership is invalid.")
+  }
+  const realStateRoot = await realpath(controlled)
+  const fromCache = relative(realCacheRoot, realStateRoot)
+  if (
+    fromCache === "" ||
+    fromCache === ".." ||
+    fromCache.startsWith(`..${sep}`)
+  ) {
+    throw new Error("F0-C1 Firecrawl state escaped the disposable cache.")
+  }
+  return realStateRoot
+}
+
+async function waitForStop(path) {
+  for (;;) {
+    try {
+      await access(path)
+      return
+    } catch {}
+    await delay(100)
+  }
+}
+
 async function reservePort() {
   const server = createServer()
   await new Promise((resolveListen, rejectListen) => {
@@ -949,8 +1030,8 @@ async function reservePort() {
 }
 
 async function waitForHttp(url) {
-  const deadline = Date.now() + 120_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 120_000
+  while (performance.now() < deadline) {
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(2_000) })
       if (response.ok) return

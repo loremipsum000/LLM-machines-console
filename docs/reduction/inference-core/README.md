@@ -449,6 +449,19 @@ logs, browser state, and teardown artifacts. This is local functional evidence,
 not SGLang, production capacity, exact-Core, Product acceptance, or Q0
 qualification.
 
+F0-C1 combines the already proven functional lanes under one disposable
+command. Actual Console Web and BFF authenticate through exact Keycloak 26.7.0,
+use the real Product migration in PostgreSQL, route Application inference
+through private LiteLLM v1.85.0 to deterministic inference, and expose actual
+reduced Firecrawl only after per-Application enablement. Actual Prometheus,
+Alertmanager, and private Grafana start as retained observability components,
+but no native customer route or link is created. The four customer authorities,
+credential lifecycle, one controlled BFF restart, metadata-only persistence,
+zero-content canaries, and complete teardown are exercised together. Native
+service bindings are loopback-only test controls, so this is integrated local
+functional evidence rather than exact Product Nginx, VM103, SGLang, release,
+or Q0 qualification.
+
 System-managed exact-host egress allowlisting and public-address validation do
 not introduce customer URL Governance. The governed internal upstream is
 exactly `http://firecrawl-api:3002`; hosted, HTTPS, alternate-host, and

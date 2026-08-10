@@ -31,21 +31,29 @@ import {
   request as httpsRequest,
 } from "node:https"
 import { tmpdir } from "node:os"
-import { isAbsolute, join, relative, resolve, sep } from "node:path"
+import { basename, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { chromium } from "playwright-core"
 import { evaluateSourceBoundary } from "../../infra/ingress/source-no-bypass.mjs"
 import { createOidcFixture } from "./reduced-core-oidc-fixture.mjs"
 
+const integratedCoreMode = process.argv.includes("--integrated-core")
 const keycloakTeamMode = process.argv.includes("--keycloak-team")
 const keycloakIdentityMode =
-  process.argv.includes("--keycloak-identity") || keycloakTeamMode
+  process.argv.includes("--keycloak-identity") ||
+  keycloakTeamMode ||
+  integratedCoreMode
 const postgresPersistenceMode = process.argv.includes("--postgres-persistence")
-const postgresBackedMode = postgresPersistenceMode || keycloakTeamMode
-const observabilityMode = process.argv.includes("--observability")
-const liteLlmIntegrationMode = process.argv.includes("--litellm")
+const postgresBackedMode =
+  postgresPersistenceMode || keycloakTeamMode || integratedCoreMode
+const observabilityMode =
+  process.argv.includes("--observability") || integratedCoreMode
+const liteLlmIntegrationMode =
+  process.argv.includes("--litellm") || integratedCoreMode
 const credentialLifecycleMode =
-  process.argv.includes("--credential-lifecycle") || postgresPersistenceMode
+  process.argv.includes("--credential-lifecycle") ||
+  postgresPersistenceMode ||
+  integratedCoreMode
 const applicationsMode =
   process.argv.includes("--applications") ||
   credentialLifecycleMode ||
@@ -58,6 +66,7 @@ const supportedModes = new Set([
   "--keycloak-identity",
   "--keycloak-team",
   "--litellm",
+  "--integrated-core",
 ])
 const selectedModes = process.argv.slice(2)
 
@@ -67,7 +76,7 @@ if (
   selectedModes.length > 1
 ) {
   throw new Error(
-    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--observability|--postgres-persistence|--keycloak-identity|--keycloak-team|--litellm]",
+    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--observability|--postgres-persistence|--keycloak-identity|--keycloak-team|--litellm|--integrated-core]",
   )
 }
 
@@ -81,11 +90,19 @@ const postgresControl = postgresBackedMode
 const liteLlmControl = liteLlmIntegrationMode
   ? liteLlmControlFromEnvironment()
   : null
-const initialTime = applicationsMode
-  ? new Date(Date.now() - 10 * 60 * 1000)
-  : keycloakIdentityMode
-    ? new Date()
-    : new Date("2026-08-05T10:00:00.000Z")
+const firecrawlControl = integratedCoreMode
+  ? integratedFirecrawlControlFromEnvironment()
+  : null
+const integratedObservabilityControl = integratedCoreMode
+  ? integratedObservabilityControlFromEnvironment()
+  : null
+const initialTime = integratedCoreMode
+  ? new Date()
+  : applicationsMode
+    ? new Date(Date.now() - 10 * 60 * 1000)
+    : keycloakIdentityMode
+      ? new Date()
+      : new Date("2026-08-05T10:00:00.000Z")
 const authorities = {
   api: "api.llmm.test",
   console: "console.llmm.test",
@@ -142,15 +159,21 @@ async function runBrowserSessionProof() {
     const observabilityTokenFile = join(stateRoot, "f0-o1-observability-token")
     const consoleOrigin = `https://${authorities.console}:${edgePort}`
     const identityIssuer = `https://${authorities.identity}:${edgePort}/realms/llm-machines`
-    const credentials = keycloakControl?.credentials ?? {
-      admin: user("admin"),
-      operator: user("operator"),
-      bffService: opaqueValue(),
-      liteLlm: liteLlmControl?.routingKey ?? opaqueValue(),
-      oidcClient: opaqueValue(),
-      observability: opaqueValue(),
-    }
-    if (observabilityMode) {
+    const credentials = keycloakControl
+      ? {
+          ...keycloakControl.credentials,
+          liteLlm: liteLlmControl?.routingKey ?? opaqueValue(),
+          observability: opaqueValue(),
+        }
+      : {
+          admin: user("admin"),
+          operator: user("operator"),
+          bffService: opaqueValue(),
+          liteLlm: liteLlmControl?.routingKey ?? opaqueValue(),
+          oidcClient: opaqueValue(),
+          observability: opaqueValue(),
+        }
+    if (observabilityMode && !integratedCoreMode) {
       await writeFile(
         observabilityTokenFile,
         `${credentials.observability}\n`,
@@ -221,6 +244,9 @@ async function runBrowserSessionProof() {
         ...Object.values(liteLlmControl.canaries),
       )
     }
+    if (firecrawlControl) {
+      sensitiveValues.push(...Object.values(firecrawlControl.canaries))
+    }
     const clientId = "console-web"
     const audience = "console-bff"
     oidc = keycloakControl
@@ -234,7 +260,7 @@ async function runBrowserSessionProof() {
           redirectUri: `${consoleOrigin}/api/console/session/callback`,
           users: { admin: credentials.admin, operator: credentials.operator },
         })
-    if (keycloakIdentityMode) {
+    if (keycloakIdentityMode && !integratedCoreMode) {
       sensitiveValues.push(
         credentials.admin.password,
         credentials.operator.password,
@@ -258,9 +284,11 @@ async function runBrowserSessionProof() {
       servers.push(inference)
       await listen(inference, inferencePort)
     }
-    const firecrawl = createFirecrawlDouble()
-    servers.push(firecrawl)
-    await listen(firecrawl, firecrawlPort)
+    if (!integratedCoreMode) {
+      const firecrawl = createFirecrawlDouble()
+      servers.push(firecrawl)
+      await listen(firecrawl, firecrawlPort)
+    }
     const prometheusControl = observabilityMode
       ? { available: true, requests: [] }
       : null
@@ -269,6 +297,7 @@ async function runBrowserSessionProof() {
       : null
     if (
       observabilityMode &&
+      !integratedCoreMode &&
       prometheusControl &&
       alertmanagerControl &&
       prometheusPort &&
@@ -296,14 +325,27 @@ async function runBrowserSessionProof() {
       BFF_SERVICE_API_KEY: credentials.bffService,
       ...(observabilityMode && prometheusPort && alertmanagerPort
         ? {
-            ADMIN_ALERTMANAGER_BASE_URL: `http://127.0.0.1:${alertmanagerPort}`,
-            ADMIN_ALERTMANAGER_BEARER_TOKEN_FILE: observabilityTokenFile,
+            ADMIN_ALERTMANAGER_BASE_URL:
+              integratedObservabilityControl?.alertmanagerBaseUrl ??
+              `http://127.0.0.1:${alertmanagerPort}`,
+            ...(integratedCoreMode
+              ? {}
+              : {
+                  ADMIN_ALERTMANAGER_BEARER_TOKEN_FILE: observabilityTokenFile,
+                }),
             ADMIN_ALERTMANAGER_TIMEOUT_MS: "500",
             ADMIN_LITELLM_API_KEY: credentials.liteLlm,
-            ADMIN_LITELLM_BASE_URL: `http://127.0.0.1:${inferencePort}`,
+            ADMIN_LITELLM_BASE_URL:
+              liteLlmControl?.baseUrl ?? `http://127.0.0.1:${inferencePort}`,
             ADMIN_LITELLM_TIMEOUT_MS: "500",
-            ADMIN_PROMETHEUS_BASE_URL: `http://127.0.0.1:${prometheusPort}`,
-            ADMIN_PROMETHEUS_BEARER_TOKEN_FILE: observabilityTokenFile,
+            ADMIN_PROMETHEUS_BASE_URL:
+              integratedObservabilityControl?.prometheusBaseUrl ??
+              `http://127.0.0.1:${prometheusPort}`,
+            ...(integratedCoreMode
+              ? {}
+              : {
+                  ADMIN_PROMETHEUS_BEARER_TOKEN_FILE: observabilityTokenFile,
+                }),
             ADMIN_PROMETHEUS_TIMEOUT_MS: "500",
           }
         : {}),
@@ -327,7 +369,9 @@ async function runBrowserSessionProof() {
       ...(applicationsMode
         ? {
             FIRECRAWL_APPLIANCE_KILL_SWITCH: "false",
-            FIRECRAWL_EGRESS_ALLOWED_HOSTS: "allowed.example.test",
+            FIRECRAWL_EGRESS_ALLOWED_HOSTS:
+              firecrawlControl?.allowedHosts.join(",") ??
+              "allowed.example.test",
             FIRECRAWL_EGRESS_ALLOWLIST_DIR:
               "/run/llm-machines/firecrawl/local-fixture",
             FIRECRAWL_EGRESS_POLICY_READY: "true",
@@ -335,6 +379,15 @@ async function runBrowserSessionProof() {
             FIRECRAWL_RESOURCE_PROFILE_QUALIFIED: "true",
             FIRECRAWL_UPSTREAM_BASE_URL: "http://firecrawl-api:3002",
             PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL: `http://127.0.0.1:${firecrawlPort}`,
+            ...(firecrawlControl
+              ? {
+                  PRE_GENESIS_FIRECRAWL_ACTUAL: "true",
+                  PRE_GENESIS_FIRECRAWL_ALLOWED_HOSTS:
+                    firecrawlControl.allowedHosts.join(","),
+                  PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL:
+                    firecrawlControl.baseUrl,
+                }
+              : {}),
           }
         : {}),
       FIRECRAWL_PUBLIC_BASE_URL: `https://${authorities.firecrawl}:${edgePort}`,
@@ -601,7 +654,7 @@ async function runBrowserSessionProof() {
       return evidence
     }
 
-    if (keycloakIdentityMode) {
+    if (keycloakIdentityMode && !integratedCoreMode) {
       const identityFlow = await proveKeycloakIdentityConsoleFlow({
         consoleOrigin,
         context,
@@ -679,6 +732,7 @@ async function runBrowserSessionProof() {
 
     const observabilityFlow =
       observabilityMode &&
+      !integratedCoreMode &&
       observabilityCanaries &&
       prometheusControl &&
       alertmanagerControl
@@ -694,7 +748,7 @@ async function runBrowserSessionProof() {
 
     let persistenceOperatorContext
     let persistenceOperatorPage
-    if (postgresPersistenceMode) {
+    if (postgresBackedMode) {
       persistenceOperatorContext = await browser.newContext({
         ignoreHTTPSErrors: true,
       })
@@ -709,42 +763,48 @@ async function runBrowserSessionProof() {
       await assertConsoleNavigation(persistenceOperatorPage, consoleOrigin)
     }
 
-    const applicationFlow = liteLlmIntegrationMode
-      ? await proveLiteLlmConsoleFlow({
+    const applicationFlow = integratedCoreMode
+      ? await proveApplicationConsoleFlow({
+          actualFirecrawl: firecrawlControl,
           certificate,
           consoleOrigin,
           edgePort,
-          liteLlmControl,
           page,
+          postgresControl,
+          restartBff,
+          retentionCanaries,
           sensitiveValues,
-          synchronizeClock: async () => {
-            currentTime = new Date()
-            await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
-              mode: 0o600,
-            })
-          },
+          streamingRequired: true,
+          synchronizeClock: synchronizeFixtureClock,
           userCredentials: credentials.admin,
+          credentialLifecycleMode,
         })
-      : applicationsMode
-        ? await proveApplicationConsoleFlow({
+      : liteLlmIntegrationMode
+        ? await proveLiteLlmConsoleFlow({
             certificate,
             consoleOrigin,
             edgePort,
+            liteLlmControl,
             page,
-            postgresControl,
-            restartBff,
-            retentionCanaries,
             sensitiveValues,
-            synchronizeClock: async () => {
-              currentTime = new Date()
-              await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
-                mode: 0o600,
-              })
-            },
+            synchronizeClock: synchronizeFixtureClock,
             userCredentials: credentials.admin,
-            credentialLifecycleMode,
           })
-        : null
+        : applicationsMode
+          ? await proveApplicationConsoleFlow({
+              certificate,
+              consoleOrigin,
+              edgePort,
+              page,
+              postgresControl,
+              restartBff,
+              retentionCanaries,
+              sensitiveValues,
+              synchronizeClock: synchronizeFixtureClock,
+              userCredentials: credentials.admin,
+              credentialLifecycleMode,
+            })
+          : null
 
     if (
       postgresPersistenceMode &&
@@ -765,6 +825,107 @@ async function runBrowserSessionProof() {
         consoleOrigin,
         page,
       })
+    }
+
+    if (integratedCoreMode) {
+      assert.ok(persistenceOperatorContext)
+      assert.ok(persistenceOperatorPage)
+      await persistenceOperatorPage.goto(`${consoleOrigin}/applications`)
+      await assertRole(persistenceOperatorPage, "Operator")
+      await assertConsoleNavigation(persistenceOperatorPage, consoleOrigin)
+      await assertOperatorApplicationReadOnly(
+        persistenceOperatorPage,
+        applicationFlow,
+      )
+      await persistenceOperatorContext.close()
+      persistenceOperatorContext = undefined
+      persistenceOperatorPage = undefined
+      const identityFlow = await proveKeycloakIdentityCookieBoundary({
+        context,
+        edgePort,
+      })
+      const observability = await proveIntegratedObservabilityConsoleFlow({
+        consoleOrigin,
+        page,
+      })
+      const noBypass = await proveIntegratedNoBypass({
+        certificate,
+        edgePort,
+      })
+      const adminSession = sessionCookie(await context.cookies(consoleOrigin))
+      assert.equal(adminSession.httpOnly, true)
+      assert.equal(adminSession.secure, true)
+      await page.goto(`${consoleOrigin}/`)
+      await page.getByRole("button", { name: "Sign out" }).click()
+      await page.waitForURL((url) => url.pathname === "/auth/signin")
+      await context.clearCookies()
+      await synchronizeFixtureClock()
+      await signIn(page, consoleOrigin, credentials.operator, "/applications")
+      await assertRole(page, "Operator")
+      await assertConsoleNavigation(page, consoleOrigin)
+      await assertOperatorApplicationReadOnly(page, applicationFlow)
+      await page.goto(`${consoleOrigin}/`)
+      await page.getByRole("button", { name: "Sign out" }).click()
+      await page.waitForURL((url) => url.pathname === "/auth/signin")
+
+      postgresPersistenceEvidence = inspectPostgresPersistence(sensitiveValues)
+      assert.deepEqual(pageErrors, [])
+      assertNoSensitiveValues(
+        browserMetadata,
+        sensitiveValues,
+        "browser metadata",
+      )
+      await page.evaluate(async () => navigator.clipboard.writeText(""))
+      await page.screenshot({
+        path: join(stateRoot, "credential-free-final.png"),
+      })
+      await context.close()
+      const browserVersion = browser.version()
+      await browser.close()
+      browser = undefined
+      evidence = {
+        architecture: process.arch,
+        browser: { name: "Google Chrome", version: browserVersion },
+        credentialMaterialPrinted: false,
+        evidenceClass: "LOCAL_INTEGRATED_REDUCED_CORE_ONLY",
+        flow: applicationFlow,
+        identity: identityFlow,
+        noBypass,
+        observability,
+        persistence: postgresPersistenceEvidence,
+        proved: [
+          "actual Console Web and BFF authenticate through disposable Keycloak 26.7.0",
+          "real Product migrations and encrypted opaque sessions persist across a controlled BFF restart",
+          "Product-issued Application credentials reach actual private LiteLLM and deterministic inference for streaming and non-streaming Chat Completions",
+          "Firecrawl remains Application-disabled by default and actual reduced search and static scrape require its separate credential",
+          "actual Prometheus, Alertmanager, and private Grafana start while the Console remains the only customer control surface",
+          "the four customer authorities deny native administration, alternate hosts, unsafe paths, and spoofed forwarding metadata",
+          "workload and credential canaries remain absent from Product state and browser artifacts",
+        ],
+        runtimeQualified: false,
+        status: "passed",
+        temporaryStateRemoved: true,
+      }
+      const cleanup = await Promise.allSettled([
+        ...servers.map(closeServer),
+        ...children.map(stopChild),
+      ])
+      const cleanupFailures = cleanup
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason)
+      if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+          cleanupFailures,
+          "F0-C1 browser cleanup did not complete.",
+        )
+      }
+      servers.length = 0
+      children.length = 0
+      await rm(sessionKeyringFile, { force: true })
+      await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
+      await rm(stateRoot, { force: true, recursive: true })
+      assert.equal(await exists(stateRoot), false)
+      return evidence
     }
 
     const sharedCookie = sessionCookie(await context.cookies(consoleOrigin))
@@ -991,6 +1152,13 @@ async function runBrowserSessionProof() {
         mode: 0o600,
       })
     }
+
+    async function synchronizeFixtureClock() {
+      currentTime = new Date()
+      await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
+        mode: 0o600,
+      })
+    }
   } catch (error) {
     const safeError = sanitizedError(error, sensitiveValues)
     const bffDiagnostics = (
@@ -1143,7 +1311,9 @@ async function completeIdentityLogin(page, userCredentials) {
     await page.locator("#kc-login").click()
     const otp = page.locator("#otp")
     await otp.waitFor({ timeout: 20_000 })
-    await otp.fill(totp(userCredentials.otpSecret))
+    await otp.fill(
+      totp(userCredentials.otpSecret, await identityEpochMilliseconds()),
+    )
     await page.locator("#kc-login").click()
     try {
       await navigation.waitFor({ timeout: 20_000 })
@@ -1648,6 +1818,112 @@ async function proveObservabilityConsoleFlow({
   }
 }
 
+async function proveIntegratedObservabilityConsoleFlow({
+  consoleOrigin,
+  page,
+}) {
+  await assertActualLiteLlmProjection(page, consoleOrigin)
+  await page.goto(`${consoleOrigin}/hardware`)
+  await page.getByRole("heading", { name: "Hardware" }).waitFor()
+  await page
+    .getByText("Prometheus is returning all 7 curated hardware signals.", {
+      exact: false,
+    })
+    .waitFor({ timeout: 30_000 })
+  for (const heading of [
+    "CPU utilization",
+    "GPU temperature",
+    "GPU utilization",
+    "RAM usage",
+    "Filesystem usage",
+    "Power draw",
+    "Network throughput",
+  ]) {
+    await page.getByRole("heading", { name: heading }).waitFor()
+  }
+  await page.goto(`${consoleOrigin}/`)
+  await page.getByRole("heading", { name: "Overview" }).waitFor()
+  await page.getByText("Models served", { exact: true }).waitFor()
+  await page.getByText("Targets up", { exact: true }).waitFor()
+  const body = await page.locator("body").innerText()
+  assert.doesNotMatch(body, /Grafana.*(?:open|launch|visit)/i)
+  return {
+    alertmanager: "actual-private-local-null-with-synthetic-alert",
+    grafana: "actual-private-no-customer-route",
+    hardwareSignals: 7,
+    liteLlmProjection:
+      "health-models-usage-route-summary-safe-credential-metadata",
+    prometheus: "actual-private",
+  }
+}
+
+async function proveIntegratedNoBypass({ certificate, edgePort }) {
+  const denied = []
+  for (const [authority, path] of [
+    [authorities.console, "/grafana"],
+    [authorities.console, "/litellm"],
+    [authorities.console, "/keycloak/admin"],
+    [authorities.api, "/ui"],
+    [authorities.api, "/key/list"],
+    [authorities.api, "/model/info"],
+    [authorities.firecrawl, "/"],
+    [authorities.firecrawl, "/v2/crawl"],
+    [authorities.identity, "/admin/"],
+    [authorities.identity, "/realms/master/account"],
+  ]) {
+    const response = await requestHttpsEdgeWithHeaders({
+      certificate,
+      edgePort,
+      headers: {
+        authorization: "Bearer spoofed-customer-authority",
+        cookie: "KEYCLOAK_SESSION=spoofed; llmm-native=spoofed",
+        host: `${authority}:${edgePort}`,
+        "x-forwarded-host": "litellm.llmm.test",
+        "x-forwarded-proto": "http",
+      },
+      method: path === "/v2/crawl" ? "POST" : "GET",
+      path,
+      servername: authority,
+    })
+    assert.ok(
+      [400, 401, 403, 404, 421].includes(response.status),
+      `${authority}${path} bypass returned ${response.status}.`,
+    )
+    denied.push(`${authority}${path}`)
+  }
+  for (const authority of [
+    "grafana.llmm.test",
+    "keycloak.llmm.test",
+    "litellm.llmm.test",
+    "postgres.llmm.test",
+  ]) {
+    const response = await requestHttpsEdgeWithHeaders({
+      certificate,
+      edgePort,
+      headers: { host: `${authority}:${edgePort}` },
+      method: "GET",
+      path: "/",
+      servername: authorities.console,
+    })
+    assert.equal(response.status, 421)
+    denied.push(authority)
+  }
+  const unsafe = await requestHttpsEdgeWithHeaders({
+    certificate,
+    edgePort,
+    headers: { host: `${authorities.firecrawl}:${edgePort}` },
+    method: "POST",
+    path: "/v2/search?route=%2Fv2%2Fscrape",
+    servername: authorities.firecrawl,
+  })
+  assert.ok([400, 404].includes(unsafe.status))
+  return {
+    alternateAuthoritiesDenied: 4,
+    nativeAndUnsafeRoutesDenied: denied,
+    spoofedCredentialAndForwardingHeadersDenied: true,
+  }
+}
+
 async function assertObservabilityConsoleProjection(
   page,
   consoleOrigin,
@@ -1933,8 +2209,8 @@ async function proveLiteLlmConsoleFlow({
 }
 
 async function assertActualLiteLlmProjection(page, consoleOrigin) {
-  const deadline = Date.now() + 30_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 30_000
+  while (performance.now() < deadline) {
     await page.goto(`${consoleOrigin}/inference`)
     const body = await page.locator("body").innerText()
     if (
@@ -1986,9 +2262,9 @@ function startLiteLlm(control) {
 }
 
 async function waitForLiteLlm(control) {
-  const deadline = Date.now() + 120_000
+  const deadline = performance.now() + 120_000
   let lastStatus = null
-  while (Date.now() < deadline) {
+  while (performance.now() < deadline) {
     try {
       lastStatus = await requestLiteLlmStatus(control)
       if (lastStatus === 200) return
@@ -2038,6 +2314,7 @@ function dockerControl(control, arguments_) {
 }
 
 async function proveApplicationConsoleFlow({
+  actualFirecrawl = null,
   certificate,
   consoleOrigin,
   credentialLifecycleMode,
@@ -2047,6 +2324,7 @@ async function proveApplicationConsoleFlow({
   restartBff,
   retentionCanaries,
   sensitiveValues,
+  streamingRequired = false,
   synchronizeClock,
   userCredentials,
 }) {
@@ -2069,9 +2347,18 @@ async function proveApplicationConsoleFlow({
     await page.getByRole("button", { name: "Continue to verification" }).click()
     const response = await responsePromise
     try {
-      await page
-        .getByRole("heading", { name: "Fixture identity sign in" })
-        .waitFor({ timeout: 5_000 })
+      if (keycloakIdentityMode) {
+        await Promise.race([
+          page.locator("#username").waitFor({ timeout: 5_000 }),
+          page
+            .locator("nav[aria-label='Console navigation']")
+            .waitFor({ timeout: 5_000 }),
+        ])
+      } else {
+        await page
+          .getByRole("heading", { name: "Fixture identity sign in" })
+          .waitFor({ timeout: 5_000 })
+      }
     } catch {
       const location = response.headers().location
       const redirect = location ? new URL(location) : null
@@ -2155,6 +2442,34 @@ async function proveApplicationConsoleFlow({
     )
   }
 
+  let streaming = null
+  if (streamingRequired) {
+    const response = await requestTextThroughEdge({
+      authority: authorities.api,
+      bearerToken: inferenceCredential,
+      body: {
+        messages: [
+          {
+            content: retentionCanaries?.request ?? "integrated stream input",
+            role: "user",
+          },
+        ],
+        model: "fixture-model",
+        stream: true,
+        stream_options: { include_usage: true },
+      },
+      caFile: certificate.ca,
+      edgePort,
+      method: "POST",
+      path: "/v1/chat/completions",
+    })
+    assert.equal(response.status, 200)
+    assert.match(response.contentType, /^text\/event-stream/)
+    assert.match(response.body, /fixture-stream-response/)
+    assert.match(response.body, /data: \[DONE\]/)
+    streaming = "passed"
+  }
+
   await page.getByRole("button", { name: "Check connection" }).click()
   await page
     .getByText(
@@ -2212,6 +2527,51 @@ async function proveApplicationConsoleFlow({
   if (firecrawlCredential === inferenceCredential) {
     throw new Error("Inference and Firecrawl credentials were not separate.")
   }
+
+  let actualFirecrawlEvidence = null
+  if (actualFirecrawl) {
+    const search = await requestJsonThroughEdge({
+      authority: authorities.firecrawl,
+      bearerToken: firecrawlCredential,
+      body: { limit: 1, query: actualFirecrawl.canaries.query },
+      caFile: certificate.ca,
+      edgePort,
+      method: "POST",
+      path: "/v2/search",
+    })
+    assert.equal(search.status, 200)
+    assert.equal(search.body?.success, true)
+    const scrape = await requestJsonThroughEdge({
+      authority: authorities.firecrawl,
+      bearerToken: firecrawlCredential,
+      body: {
+        formats: ["markdown"],
+        url: `https://example.com/?trace=${actualFirecrawl.canaries.url}`,
+      },
+      caFile: certificate.ca,
+      edgePort,
+      method: "POST",
+      path: "/v2/scrape",
+    })
+    assert.equal(scrape.status, 200)
+    assert.equal(scrape.body?.success, true)
+    assert.equal(typeof scrape.body?.data?.markdown, "string")
+    const unsupported = await requestJsonThroughEdge({
+      authority: authorities.firecrawl,
+      bearerToken: firecrawlCredential,
+      body: { url: "https://example.com" },
+      caFile: certificate.ca,
+      edgePort,
+      method: "POST",
+      path: "/v2/crawl",
+    })
+    assert.equal(unsupported.status, 404)
+    actualFirecrawlEvidence = {
+      search: "passed",
+      staticScrape: "passed",
+      unsupportedRouteDenied: true,
+    }
+  }
   assert.equal(
     await revealedCredential(page, "Firecrawl base URL"),
     `https://${authorities.firecrawl}:${edgePort}`,
@@ -2237,8 +2597,21 @@ async function proveApplicationConsoleFlow({
     .locator("article")
     .filter({ has: page.getByRole("heading", { name: applicationName }) })
   await applicationCard.waitFor()
-  assert.equal(await metricValue(applicationCard, "Requests"), "2")
-  assert.equal(await metricValue(applicationCard, "Tokens"), "5")
+  const visibleRequests = Number.parseInt(
+    await metricValue(applicationCard, "Requests"),
+    10,
+  )
+  const visibleTokens = Number.parseInt(
+    await metricValue(applicationCard, "Tokens"),
+    10,
+  )
+  if (streamingRequired) {
+    assert.ok(visibleRequests >= 3)
+    assert.ok(visibleTokens >= 10)
+  } else {
+    assert.equal(visibleRequests, 2)
+    assert.equal(visibleTokens, 5)
+  }
   assert.notEqual(await metricValue(applicationCard, "Last used"), "Never")
   assert.equal(await metricValue(applicationCard, "Firecrawl"), "Enabled")
 
@@ -2266,6 +2639,7 @@ async function proveApplicationConsoleFlow({
     applicationCreation: "passed",
     credentialMaterialPrinted: false,
     firecrawl: {
+      ...(actualFirecrawlEvidence ?? {}),
       defaultOff: true,
       disclaimerRequired: true,
       perApplicationEnablement: "passed",
@@ -2276,8 +2650,9 @@ async function proveApplicationConsoleFlow({
       connectionEvidence: "passed",
       lastUseVisible: true,
       openAiClient: "passed",
-      requestsVisible: 2,
-      tokensVisible: 5,
+      requestsVisible: visibleRequests,
+      tokensVisible: visibleTokens,
+      ...(streaming ? { streaming } : {}),
     },
     mfaElevation: "passed",
     oneTimeReveal: "passed",
@@ -3649,6 +4024,83 @@ function liteLlmControlFromEnvironment() {
   }
 }
 
+function integratedFirecrawlControlFromEnvironment() {
+  const path = requiredEnvironment("F0_C1_FIRECRAWL_CONFIG_FILE")
+  const config = readControlFile(path, "Firecrawl")
+  const baseUrl = validatedLoopbackControlUrl(config.baseUrl, "Firecrawl")
+  if (
+    !Array.isArray(config.allowedHosts) ||
+    config.allowedHosts.length === 0 ||
+    config.allowedHosts.length > 8 ||
+    new Set(config.allowedHosts).size !== config.allowedHosts.length ||
+    config.allowedHosts.some(
+      (host) =>
+        typeof host !== "string" ||
+        !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host),
+    ) ||
+    !config.canaries ||
+    !["query", "url"].every(
+      (name) =>
+        typeof config.canaries[name] === "string" &&
+        config.canaries[name].length >= 20,
+    )
+  ) {
+    throw new Error("F0-C1 Firecrawl control metadata is invalid.")
+  }
+  return {
+    allowedHosts: config.allowedHosts,
+    baseUrl,
+    canaries: config.canaries,
+  }
+}
+
+function integratedObservabilityControlFromEnvironment() {
+  const path = requiredEnvironment("F0_C1_OBSERVABILITY_CONFIG_FILE")
+  const config = readControlFile(path, "observability")
+  return {
+    alertmanagerBaseUrl: validatedLoopbackControlUrl(
+      config.alertmanagerBaseUrl,
+      "Alertmanager",
+    ),
+    grafanaBaseUrl: validatedLoopbackControlUrl(
+      config.grafanaBaseUrl,
+      "Grafana",
+    ),
+    prometheusBaseUrl: validatedLoopbackControlUrl(
+      config.prometheusBaseUrl,
+      "Prometheus",
+    ),
+  }
+}
+
+function readControlFile(path, service) {
+  if (!isAbsolute(path)) {
+    throw new Error(`F0-C1 ${service} control file must be absolute.`)
+  }
+  try {
+    return JSON.parse(readFileSync(path, "utf8"))
+  } catch {
+    throw new Error(`F0-C1 ${service} control metadata is invalid JSON.`)
+  }
+}
+
+function validatedLoopbackControlUrl(value, service) {
+  const url = new URL(String(value ?? ""))
+  if (
+    url.protocol !== "http:" ||
+    url.hostname !== "127.0.0.1" ||
+    !url.port ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash ||
+    url.username ||
+    url.password
+  ) {
+    throw new Error(`F0-C1 ${service} control URL is not loopback-only.`)
+  }
+  return url.origin
+}
+
 function requiredEnvironment(name) {
   const value = process.env[name]?.trim()
   if (!value) throw new Error(`The selected pre-Genesis mode requires ${name}.`)
@@ -3898,8 +4350,8 @@ async function provePostgresOutageRecovery({
 }
 
 async function waitForPostgresControl() {
-  const deadline = Date.now() + 60_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 60_000
+  while (performance.now() < deadline) {
     const result = postgresDockerResult([
       "exec",
       postgresControl.container,
@@ -4022,10 +4474,36 @@ async function chromeExecutable() {
 }
 
 async function createTemporaryStateRoot() {
+  const controlled = process.env.F0_C1_BROWSER_STATE_ROOT?.trim()
+  const controlledTemporaryRoot = process.env.F0_C1_BROWSER_TEMP_ROOT?.trim()
   const [repositoryRealRoot, temporaryRealRoot] = await Promise.all([
     realpath(repositoryRoot),
     realpath(tmpdir()),
   ])
+  if (controlled) {
+    if (
+      !integratedCoreMode ||
+      !isAbsolute(controlled) ||
+      !controlledTemporaryRoot ||
+      !isAbsolute(controlledTemporaryRoot)
+    ) {
+      throw new Error("F0-C1 browser state ownership is invalid.")
+    }
+    const [controlledRealRoot, expectedTemporaryRoot] = await Promise.all([
+      realpath(controlled),
+      realpath(controlledTemporaryRoot),
+    ])
+    if (
+      !pathIsInside(expectedTemporaryRoot, controlledRealRoot) ||
+      basename(controlledRealRoot).match(
+        /^llmm-f0-c1-browser-[a-f0-9]{16}$/,
+      ) === null
+    ) {
+      throw new Error("F0-C1 browser state escaped its temporary boundary.")
+    }
+    await chmod(controlledRealRoot, 0o700)
+    return controlledRealRoot
+  }
   if (pathIsInside(repositoryRealRoot, temporaryRealRoot)) {
     throw new Error(
       "F0-S1 temporary state must be outside the source worktree.",
@@ -4045,6 +4523,10 @@ function keycloakControlFromEnvironment() {
   if (
     !Number.isInteger(config.edgePort) ||
     !Number.isInteger(config.upstreamPort) ||
+    typeof config.container !== "string" ||
+    !/^[a-z0-9][a-z0-9_.-]{0,127}$/.test(config.container) ||
+    typeof config.dockerContext !== "string" ||
+    !/^[A-Za-z0-9_.-]{1,128}$/.test(config.dockerContext) ||
     !config.credentials
   ) {
     throw new Error("F0-I1 Keycloak control data is invalid.")
@@ -4059,10 +4541,50 @@ function keycloakControlFromEnvironment() {
   }
   return {
     adminBaseUrl,
+    container: config.container,
     credentials: config.credentials,
+    dockerContext: config.dockerContext,
     edgePort: config.edgePort,
     upstreamPort: config.upstreamPort,
   }
+}
+
+async function identityEpochMilliseconds() {
+  const deadline = performance.now() + 35_000
+  while (performance.now() < deadline) {
+    const epochSeconds = identityEpochSeconds()
+    const periodPosition = epochSeconds % 30
+    if (periodPosition >= 5 && periodPosition <= 20) {
+      return epochSeconds * 1_000
+    }
+    await delay(250)
+  }
+  throw new Error("F0-I1 identity clock did not reach a safe TOTP window.")
+}
+
+function identityEpochSeconds() {
+  assert.ok(keycloakControl)
+  const result = spawnSync(
+    "docker",
+    [
+      "--context",
+      keycloakControl.dockerContext,
+      "exec",
+      keycloakControl.container,
+      "date",
+      "+%s",
+    ],
+    {
+      encoding: "utf8",
+      env: { LANG: "C", LC_ALL: "C", PATH: process.env.PATH ?? "" },
+      maxBuffer: 1024 * 1024,
+    },
+  )
+  const epochSeconds = Number.parseInt(result.stdout.trim(), 10)
+  if (result.status !== 0 || !Number.isSafeInteger(epochSeconds)) {
+    throw new Error("F0-I1 could not read the disposable identity clock.")
+  }
+  return epochSeconds
 }
 
 function pathIsInside(parent, candidate) {
@@ -4117,9 +4639,10 @@ function startChild(name, command, environment, stateRoot, cwd) {
   const stderr = createWriteStream(join(stateRoot, `${name}.stderr.log`), {
     mode: 0o600,
   })
+  const detached = !integratedCoreMode
   const child = spawn(command[0], command.slice(1), {
     cwd,
-    detached: true,
+    detached,
     env: {
       HOME: stateRoot,
       LANG: "C",
@@ -4129,7 +4652,15 @@ function startChild(name, command, environment, stateRoot, cwd) {
     },
     stdio: ["ignore", "pipe", "pipe"],
   })
-  const record = { child, exited: false, name, stderr, stdout, stopping: false }
+  const record = {
+    child,
+    detached,
+    exited: false,
+    name,
+    stderr,
+    stdout,
+    stopping: false,
+  }
   child.stdout.pipe(stdout)
   child.stderr.pipe(stderr)
   child.once("exit", () => {
@@ -4142,17 +4673,19 @@ async function stopChild(record) {
   record.stopping = true
   if (!record.exited && record.child.pid) {
     try {
-      process.kill(-record.child.pid, "SIGTERM")
+      if (record.detached) process.kill(-record.child.pid, "SIGTERM")
+      else record.child.kill("SIGTERM")
     } catch (error) {
       if (error.code !== "ESRCH") throw error
     }
-    const deadline = Date.now() + 5_000
-    while (!record.exited && Date.now() < deadline) {
+    const deadline = performance.now() + 5_000
+    while (!record.exited && performance.now() < deadline) {
       await delay(50)
     }
     if (!record.exited) {
       try {
-        process.kill(-record.child.pid, "SIGKILL")
+        if (record.detached) process.kill(-record.child.pid, "SIGKILL")
+        else record.child.kill("SIGKILL")
       } catch (error) {
         if (error.code !== "ESRCH") throw error
       }
@@ -4248,9 +4781,42 @@ function requestHttpsEdge(url, host) {
   })
 }
 
+async function requestHttpsEdgeWithHeaders({
+  certificate,
+  edgePort,
+  headers,
+  method,
+  path,
+  servername,
+}) {
+  const ca = await readFile(certificate.ca)
+  return new Promise((resolveRequest, rejectRequest) => {
+    const request = httpsRequest(
+      {
+        ca,
+        headers,
+        host: "127.0.0.1",
+        method,
+        path,
+        port: edgePort,
+        rejectUnauthorized: true,
+        servername,
+      },
+      (response) => {
+        response.resume()
+        response.once("end", () => {
+          resolveRequest({ status: response.statusCode ?? 500 })
+        })
+      },
+    )
+    request.once("error", rejectRequest)
+    request.end()
+  })
+}
+
 async function waitForHttp(url, children) {
-  const deadline = Date.now() + 45_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 45_000
+  while (performance.now() < deadline) {
     const failed = children.find((record) => record.exited && !record.stopping)
     if (failed) {
       throw new Error(`${failed.name} exited during F0-S1 startup.`)
@@ -4270,8 +4836,8 @@ async function waitForHttp(url, children) {
 }
 
 async function waitForStatus(url, expectedStatus, children) {
-  const deadline = Date.now() + 45_000
-  while (Date.now() < deadline) {
+  const deadline = performance.now() + 45_000
+  while (performance.now() < deadline) {
     const failed = children.find((record) => record.exited && !record.stopping)
     if (failed) {
       throw new Error(`${failed.name} exited during F0-P1 recovery.`)
@@ -4341,9 +4907,9 @@ function opaqueValue() {
   return randomBytes(32).toString("base64url")
 }
 
-function totp(secret) {
+function totp(secret, epochMilliseconds = Date.now()) {
   assert.equal(typeof secret, "string")
-  const counter = Math.floor(Date.now() / 30_000)
+  const counter = Math.floor(epochMilliseconds / 30_000)
   const buffer = Buffer.alloc(8)
   buffer.writeBigUInt64BE(BigInt(counter))
   const digest = createHmac("sha256", Buffer.from(secret, "utf8"))
