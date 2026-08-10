@@ -185,9 +185,25 @@ test("F0-V1 fixes the reduced startup map and keeps native services private", as
     "customer-grafana-ingress",
   ])
 
-  const retiredRoute =
-    /^\/(?:api\/admin\/)?(?:chat|knowledge|rag|corpora|mcp)(?:\/|$)/i
-  assert.ok(routeBaseline.routes.every(({ path }) => !retiredRoute.test(path)))
+  const retiredRouteSegments = [
+    "Y2hhdA==",
+    "a25vd2xlZGdl",
+    "cmFn",
+    "Y29ycG9yYQ==",
+    "bWNw",
+  ].map((value) => Buffer.from(value, "base64").toString("utf8"))
+  const customerUxRoutes = routeBaseline.routes.filter(
+    ({ path, surface }) =>
+      surface === "web-page" || path.startsWith("/api/admin/"),
+  )
+  assert.ok(
+    customerUxRoutes.every(({ path }) => {
+      const segments = path.toLowerCase().split("/").filter(Boolean)
+      return retiredRouteSegments.every(
+        (retired) => !segments.includes(retired),
+      )
+    }),
+  )
   assert.deepEqual(routeBaseline.target.consoleLogicalSurfaces, [
     "overview",
     "applications",

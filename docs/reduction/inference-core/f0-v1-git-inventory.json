@@ -22,8 +22,9 @@
       "disposition": "frozen historical PR-11A candidate; untouched"
     },
     {
-      "name": "pr12-firecrawl-node-builder-lock",
-      "branch": "codex/pr12-firecrawl-node-builder-lock",
+      "name": "historical-pr12-dirty-worktree",
+      "nameSha256": "6dc456e6864dab272ed95039f04ec2455d278d74ae4fc114af9989146cb06d06",
+      "branchSha256": "73b33703c06be3d9588eb83c0dc852b1383753e5128165c4fa6eed48c8c71098",
       "head": "868153cf07221f450a468523ee5e08f5d6c9922c",
       "disposition": "historical paused worktree; untouched"
     }

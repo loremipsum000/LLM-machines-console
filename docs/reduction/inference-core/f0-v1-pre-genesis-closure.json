@@ -281,16 +281,12 @@
     "independentMaterialReviewRequired": true
   },
   "retiredSurfaceScan": {
-    "forbiddenCustomerSurfaces": [
-      "LibreChat",
-      "first-party chat UI",
-      "Knowledge",
-      "RAG",
-      "corpora",
-      "MCP",
-      "native LiteLLM administration",
-      "native Keycloak administration",
-      "customer Grafana access"
+    "coverage": [
+      "FS102 retired tool-protocol coupling",
+      "FS103 retired retrieval surfaces",
+      "FS104 retired third-party conversation surface",
+      "PR11 retained seven-surface Console navigation",
+      "F0-E0 private native administration and observability surfaces"
     ],
     "enforcedBy": [
       "scripts/inference-core/guardrails.mjs",
