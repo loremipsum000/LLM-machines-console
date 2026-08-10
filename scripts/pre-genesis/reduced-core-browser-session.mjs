@@ -775,12 +775,7 @@ async function runBrowserSessionProof() {
           retentionCanaries,
           sensitiveValues,
           streamingRequired: true,
-          synchronizeClock: async () => {
-            currentTime = new Date()
-            await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
-              mode: 0o600,
-            })
-          },
+          synchronizeClock: synchronizeFixtureClock,
           userCredentials: credentials.admin,
           credentialLifecycleMode,
         })
@@ -792,12 +787,7 @@ async function runBrowserSessionProof() {
             liteLlmControl,
             page,
             sensitiveValues,
-            synchronizeClock: async () => {
-              currentTime = new Date()
-              await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
-                mode: 0o600,
-              })
-            },
+            synchronizeClock: synchronizeFixtureClock,
             userCredentials: credentials.admin,
           })
         : applicationsMode
@@ -810,12 +800,7 @@ async function runBrowserSessionProof() {
               restartBff,
               retentionCanaries,
               sensitiveValues,
-              synchronizeClock: async () => {
-                currentTime = new Date()
-                await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
-                  mode: 0o600,
-                })
-              },
+              synchronizeClock: synchronizeFixtureClock,
               userCredentials: credentials.admin,
               credentialLifecycleMode,
             })
@@ -874,6 +859,7 @@ async function runBrowserSessionProof() {
       await page.getByRole("button", { name: "Sign out" }).click()
       await page.waitForURL((url) => url.pathname === "/auth/signin")
       await context.clearCookies()
+      await synchronizeFixtureClock()
       await signIn(page, consoleOrigin, credentials.operator, "/applications")
       await assertRole(page, "Operator")
       await assertConsoleNavigation(page, consoleOrigin)
@@ -1162,6 +1148,13 @@ async function runBrowserSessionProof() {
 
     async function advanceClock(milliseconds) {
       currentTime = new Date(currentTime.getTime() + milliseconds)
+      await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
+        mode: 0o600,
+      })
+    }
+
+    async function synchronizeFixtureClock() {
+      currentTime = new Date()
       await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
         mode: 0o600,
       })

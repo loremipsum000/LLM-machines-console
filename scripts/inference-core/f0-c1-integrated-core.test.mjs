@@ -97,6 +97,19 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(browser, /const detached = !integratedCoreMode/)
   assert.match(browser, /keycloakControl\.dockerContext/)
   assert.match(browser, /keycloakControl\.container/)
+  assert.match(browser, /synchronizeClock: synchronizeFixtureClock/)
+  const finalIdentitySwitch = browser.slice(
+    browser.indexOf("if (integratedCoreMode)"),
+    browser.indexOf("postgresPersistenceEvidence = inspectPostgresPersistence"),
+  )
+  const finalClockSync = finalIdentitySwitch.lastIndexOf(
+    "await synchronizeFixtureClock()",
+  )
+  const finalOperatorSignIn = finalIdentitySwitch.lastIndexOf(
+    'await signIn(page, consoleOrigin, credentials.operator, "/applications")',
+  )
+  assert.ok(finalClockSync >= 0)
+  assert.ok(finalOperatorSignIn > finalClockSync)
   for (const source of [browser, firecrawl, integrated, keycloak, liteLlm]) {
     assert.doesNotMatch(source, /const deadline = Date\.now\(\)/)
     assert.doesNotMatch(source, /Date\.now\(\) < deadline/)
