@@ -1,0 +1,123 @@
+{
+  "schema": "llm-machines.pre-genesis-functional-evidence.v1",
+  "workPackage": "F0-SG1",
+  "status": "internal-runtime-smoke-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "3d0b590608a58153e3285aafcaf96b711ac684e4",
+  "evidenceClass": "AUTHORIZED_INTERNAL_XPU_SMOKE_ONLY",
+  "engine": {
+    "name": "sglang",
+    "version": "0.5.13",
+    "sourceCommit": "28b095c01005d4a3a2a5b637b7d028b07fba31b2",
+    "sourceArchiveSha256": "097aaf0dcc1e8e62c4a107f21d1807734ab76ee40ac4bd7e6e72299b1008ea46",
+    "sourcePatched": false,
+    "buildRecipe": "upstream docker/xpu.Dockerfile with its base image replaced by the exact equivalent OCI digest and SG_LANG_BRANCH explicitly set to v0.5.13",
+    "sourceCheckoutBinding": {
+      "buildArgument": "SG_LANG_BRANCH=v0.5.13",
+      "resolvedTag": "v0.5.13",
+      "resolvedCommit": "28b095c01005d4a3a2a5b637b7d028b07fba31b2",
+      "ociRevisionLabel": "28b095c01005d4a3a2a5b637b7d028b07fba31b2",
+      "inImagePackageVersion": "0.5.13",
+      "verification": "digest-addressed image history plus in-image git rev-parse, exact-tag describe, and package import"
+    },
+    "baseImageDigest": "sha256:4bdd1bf92a21d18411002dc43910d8296273c8ca1c0464f7c9a7142049ddf96b",
+    "image": {
+      "indexDigest": "sha256:8014b2facd2333dfa7057e0dd8aa1ccd4ec8ef708445c0bd10c743a7ddc14292",
+      "platformManifestDigest": "sha256:bc89f9b7f13ac6189d7b1415f5352484e0aa41aa458fc77b42fcb3613fe3fdf5",
+      "configDigest": "sha256:f6a42ee0db11ebd9acd249483871e3ae08ff92effb3a27ed07e461ccb8dc2574",
+      "platform": "linux/amd64"
+    }
+  },
+  "model": {
+    "source": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "artifact": "model.safetensors",
+    "artifactSha256": "dd924a11b4c220f385b51ffa522daea7c9f3d850e31b162bb5661df483c6d3ee",
+    "servedAlias": "qwen2.5-1.5b-instruct-internal",
+    "configuredContextTokens": 4096
+  },
+  "gateway": {
+    "image": "ghcr.io/berriai/litellm:v1.85.0@sha256:2e8517e2bed423c50ab7e40fb1ac0a9cbe62a764e9d65161d871fb6a9bf75a2d",
+    "customerCredentialTerminus": "Product API authority from predecessor F0-L2 and F0-C1 evidence",
+    "sglangCaller": "private LiteLLM only",
+    "nativeCustomerAccess": false
+  },
+  "runtimeBoundary": {
+    "acceleratorClassification": "internal demonstration and compatibility evidence only",
+    "deliveryProfile": false,
+    "productionSupportClaim": false,
+    "capacityState": "UNMEASURED",
+    "publicListener": false,
+    "hostBindings": "loopback-only diagnostic controls",
+    "serviceNetwork": "isolated internal container network",
+    "existingWorkloadsPreservedAndStopped": true
+  },
+  "proved": {
+    "directSglang": {
+      "health": 200,
+      "readiness": 200,
+      "models": 200,
+      "metrics": 200,
+      "nonStreamingChatCompletions": 200,
+      "streamingChatCompletions": 200
+    },
+    "throughPrivateLiteLlm": {
+      "nonStreamingChatCompletions": 200,
+      "streamingChatCompletions": 200,
+      "nonStreamingUsage": {
+        "promptTokens": 53,
+        "completionTokens": 19,
+        "totalTokens": 72
+      },
+      "streamingUsage": {
+        "promptTokens": 53,
+        "completionTokens": 19,
+        "totalTokens": 72
+      },
+      "unapprovedModelDenied": 400,
+      "overContextDenied": 400,
+      "invalidPrivateRoutingCredentialDenied": 400
+    },
+    "failureAndRecovery": {
+      "upstreamUnavailable": 500,
+      "sameContainerAfterRestart": true,
+      "sameImageAfterRestart": true,
+      "recoveredRequest": 200,
+      "shutdownObservation": "the 30-second graceful stop expired and Docker used its hard-stop fallback; the same immutable container recovered without state repair"
+    },
+    "network": {
+      "sglangLanReachability": "denied",
+      "liteLlmLanReachability": "denied"
+    },
+    "retention": {
+      "requestAndResponseLogging": false,
+      "databaseConfigured": false,
+      "readOnlyContainerRoots": true,
+      "canaryInSglangLogs": false,
+      "canaryInLiteLlmLogs": false,
+      "canaryInWritableTemporaryStorage": false,
+      "temporaryRequestArtifactsAfterCleanup": 0
+    }
+  },
+  "preservationEvidence": {
+    "existingSglangDefinitionSha256": "2305db0e337c8132d2dd54ea0482ccdfbb97c2c74b5470dac2881994dbf09ed",
+    "existingWorkloadInventorySha256": "1a0b75cf8fc2060782ca9962a6d86ce4b20c1538a917807452212b18d4c19d56",
+    "existingSecondaryWorkloadDataInventorySha256": "b7ffbf0595e01dad3f239cb5ab99559db248e658e4e6f25ea85f1f872be07c0d"
+  },
+  "cleanup": {
+    "testContainersRemaining": 0,
+    "testNetworksRemaining": 0,
+    "throwawayCredentialFilesRemaining": 0,
+    "builtEngineImagePreserved": true,
+    "exactModelArtifactPreserved": true,
+    "preExistingWorkloadsRemainStopped": true
+  },
+  "notEvidenceFor": [
+    "production inference capacity, latency, throughput, concurrency, availability, or accelerator support",
+    "a production-class signed delivery profile or per-customer hardware qualification",
+    "exact Core composition, release admission, Product acceptance, Q0, deployment, or Product main",
+    "customer access to SGLang, LiteLLM, Keycloak Admin, or Grafana"
+  ],
+  "nextPackage": "F0-V1 pre-Genesis aggregate closure"
+}
