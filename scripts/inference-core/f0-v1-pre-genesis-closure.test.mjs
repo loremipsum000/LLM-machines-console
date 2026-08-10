@@ -24,6 +24,10 @@ test("F0-V1 binds every protected functional package without rewriting history",
   assert.equal(closure.q0, "NOT_STARTED")
   assert.equal(closure.genesisPublished, false)
   assert.equal(closure.functionalPackages.length, 15)
+  assert.deepEqual(closure.aggregateValidation.functional, [
+    "node scripts/pre-genesis/reduced-core-integrated.mjs",
+    "PRE_GENESIS_DOCKER_CONTEXT=<isolated-context> node scripts/pre-genesis/reduced-core-keycloak-identity.mjs --team",
+  ])
   assert.equal(
     git("rev-parse", `${closure.protectedInput.commit}^{tree}`),
     closure.protectedInput.tree,
