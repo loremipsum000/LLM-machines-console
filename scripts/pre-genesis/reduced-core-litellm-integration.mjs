@@ -10,7 +10,6 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises"
-import { createServer } from "node:http"
 import { createServer as createNetServer } from "node:net"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, resolve } from "node:path"
@@ -25,6 +24,7 @@ const dockerContext = required("PRE_GENESIS_DOCKER_CONTEXT")
 const serviceControl = serviceControlFromEnvironment()
 const runId = randomBytes(8).toString("hex")
 const network = `llmm-f0-l2-${runId}`
+const inferenceContainer = `llmm-f0-l2-inference-${runId}`
 const liteLlmContainer = `llmm-f0-l2-litellm-${runId}`
 const postgresContainer = `llmm-f0-l2-postgres-${runId}`
 const database = "litellm"
@@ -43,11 +43,16 @@ const canaries = {
 const stateRoot = await mkdtemp(
   join(await realpath(tmpdir()), "llmm-f0-l2-litellm-"),
 )
+const inferenceEnvironmentFile = join(stateRoot, "inference.env")
 const postgresEnvironmentFile = join(stateRoot, "postgres.env")
 const liteLlmEnvironmentFile = join(stateRoot, "litellm.env")
 const browserConfigFile = join(stateRoot, "browser-config.json")
-const created = { liteLlm: false, network: false, postgres: false }
-let upstream
+const created = {
+  inference: false,
+  liteLlm: false,
+  network: false,
+  postgres: false,
+}
 let upstreamRequests = 0
 let evidence
 let failure
@@ -56,7 +61,15 @@ try {
   await chmod(stateRoot, 0o700)
   docker(["info", "--format", "{{.ServerVersion}}"])
   assertLockedImageIdentity()
-  const upstreamPort = await listenUpstream()
+  await writeFile(
+    inferenceEnvironmentFile,
+    [
+      `UPSTREAM_API_KEY=${upstreamKey}`,
+      `UPSTREAM_RESPONSE=${canaries.response}`,
+      "",
+    ].join("\n"),
+    { mode: 0o600 },
+  )
   await writeFile(
     postgresEnvironmentFile,
     [
@@ -67,7 +80,7 @@ try {
     ].join("\n"),
     { mode: 0o600 },
   )
-  const config = liteLlmConfig(upstreamPort)
+  const config = liteLlmConfig()
   await writeFile(
     liteLlmEnvironmentFile,
     [
@@ -88,6 +101,38 @@ try {
     network,
   ])
   created.network = true
+  docker([
+    "run",
+    "--detach",
+    "--name",
+    inferenceContainer,
+    "--label",
+    "com.llm-machines.test-package=F0-L2",
+    "--network",
+    network,
+    "--network-alias",
+    "inference-double",
+    "--env-file",
+    inferenceEnvironmentFile,
+    "--read-only",
+    "--tmpfs",
+    "/tmp:rw,noexec,nosuid,nodev,size=8m,uid=65532,gid=65532,mode=0700",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges=true",
+    "--user",
+    "65532:65532",
+    "--log-driver",
+    "none",
+    "--entrypoint",
+    "python",
+    LITELLM_IMAGE,
+    "-c",
+    inferenceDoubleSource(),
+  ])
+  created.inference = true
+  await waitForInferenceDouble()
   docker([
     "run",
     "--detach",
@@ -177,6 +222,7 @@ try {
       "LOCAL_PRIVATE_LITELLM_INTEGRATION_ONLY",
     )
   }
+  upstreamRequests = inferenceRequestCount()
 
   const retention = inspectRetention()
   assert.ok(retention.spendRows >= (serviceControl ? 0 : 3))
@@ -244,21 +290,22 @@ try {
     collectCleanup(cleanupFailures, ["rm", "--force", liteLlmContainer])
   if (created.postgres)
     collectCleanup(cleanupFailures, ["rm", "--force", postgresContainer])
+  if (created.inference)
+    collectCleanup(cleanupFailures, ["rm", "--force", inferenceContainer])
   if (created.network)
     collectCleanup(cleanupFailures, ["network", "rm", network])
-  if (upstream) {
-    try {
-      await closeServer(upstream)
-    } catch (error) {
-      cleanupFailures.push(safeError(error))
-    }
-  }
   await rm(stateRoot, { force: true, recursive: true })
   if (
     created.liteLlm &&
     dockerResult(["inspect", liteLlmContainer]).status === 0
   ) {
     cleanupFailures.push(new Error("F0-L2 LiteLLM container remains."))
+  }
+  if (
+    created.inference &&
+    dockerResult(["inspect", inferenceContainer]).status === 0
+  ) {
+    cleanupFailures.push(new Error("F0-L2 inference double remains."))
   }
   if (
     created.postgres &&
@@ -284,13 +331,13 @@ if (failure) throw failure
 assert.ok(evidence)
 process.stdout.write(`${JSON.stringify(evidence)}\n`)
 
-function liteLlmConfig(upstreamPort) {
+function liteLlmConfig() {
   return [
     "model_list:",
     "  - model_name: fixture-model",
     "    litellm_params:",
     "      model: openai/fixture-model",
-    `      api_base: http://host.docker.internal:${upstreamPort}/v1`,
+    "      api_base: http://inference-double:4010/v1",
     "      api_key: os.environ/UPSTREAM_API_KEY",
     "      max_input_tokens: 8192",
     "      max_output_tokens: 1024",
@@ -310,106 +357,52 @@ function liteLlmConfig(upstreamPort) {
   ].join("\n")
 }
 
-async function listenUpstream() {
-  upstream = createServer((request, response) => {
-    void handleUpstream(request, response).catch(() => {
-      if (!response.headersSent)
-        sendJson(response, 500, { error: "fixture_failure" })
-      else response.destroy()
-    })
-  })
-  await new Promise((resolveListen, rejectListen) => {
-    upstream.once("error", rejectListen)
-    upstream.listen(0, "0.0.0.0", resolveListen)
-  })
-  return upstream.address().port
-}
-
-async function handleUpstream(request, response) {
-  if (request.headers.authorization !== `Bearer ${upstreamKey}`) {
-    sendJson(response, 401, { error: "unauthorized" })
-    return
-  }
-  if (request.method !== "POST" || request.url !== "/v1/chat/completions") {
-    sendJson(response, 404, { error: "unsupported" })
-    return
-  }
-  const body = await readJson(request)
-  if (body?.model !== "fixture-model" || !Array.isArray(body.messages)) {
-    sendJson(response, 400, { error: "invalid_request" })
-    return
-  }
-  upstreamRequests += 1
-  if (body.stream === true) {
-    response.writeHead(200, {
-      "cache-control": "no-store",
-      "content-type": "text/event-stream",
-    })
-    const chunks = [
-      streamChunk({ delta: { role: "assistant" }, finish_reason: null }),
-      streamChunk({
-        delta: { content: "fixture-stream-response" },
-        finish_reason: null,
-      }),
-      streamChunk({ delta: {}, finish_reason: "stop" }),
-      JSON.stringify({
-        choices: [],
-        created: 1,
-        id: "f0-l2-stream",
-        model: "fixture-model",
-        object: "chat.completion.chunk",
-        usage: { completion_tokens: 2, prompt_tokens: 3, total_tokens: 5 },
-      }),
-    ]
-    for (const chunk of chunks) response.write(`data: ${chunk}\n\n`)
-    response.end("data: [DONE]\n\n")
-    return
-  }
-  sendJson(response, 200, {
-    choices: [
-      {
-        finish_reason: "stop",
-        index: 0,
-        message: { content: canaries.response, role: "assistant" },
-      },
-    ],
-    created: 1,
-    id: "f0-l2-completion",
-    model: "fixture-model",
-    object: "chat.completion",
-    usage: { completion_tokens: 2, prompt_tokens: 3, total_tokens: 5 },
-  })
-}
-
-function streamChunk({ delta, finish_reason }) {
-  return JSON.stringify({
-    choices: [{ delta, finish_reason, index: 0 }],
-    created: 1,
-    id: "f0-l2-stream",
-    model: "fixture-model",
-    object: "chat.completion.chunk",
-  })
-}
-
-async function readJson(request) {
-  const chunks = []
-  let size = 0
-  for await (const chunk of request) {
-    size += chunk.length
-    if (size > 64 * 1024) throw new Error("Fixture request exceeded its limit.")
-    chunks.push(chunk)
-  }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"))
-}
-
-function sendJson(response, status, value) {
-  const body = JSON.stringify(value)
-  response.writeHead(status, {
-    "cache-control": "no-store",
-    "content-length": Buffer.byteLength(body),
-    "content-type": "application/json",
-  })
-  response.end(body)
+function inferenceDoubleSource() {
+  return [
+    "import json, os, threading",
+    "from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer",
+    'key = os.environ["UPSTREAM_API_KEY"]',
+    'response_content = os.environ["UPSTREAM_RESPONSE"]',
+    "request_count = 0",
+    "request_lock = threading.Lock()",
+    'open("/tmp/request-count", "w", encoding="utf-8").write("0")',
+    "def chunk(delta, finish_reason):",
+    ' return json.dumps({"choices":[{"delta":delta,"finish_reason":finish_reason,"index":0}],"created":1,"id":"f0-l2-stream","model":"fixture-model","object":"chat.completion.chunk"},separators=(",",":"))',
+    "class Handler(BaseHTTPRequestHandler):",
+    " def log_message(self, format, *args): pass",
+    " def send_json(self, status, value):",
+    '  body=json.dumps(value,separators=(",",":")).encode()',
+    "  self.send_response(status)",
+    '  self.send_header("Cache-Control","no-store")',
+    '  self.send_header("Content-Type","application/json")',
+    '  self.send_header("Content-Length",str(len(body)))',
+    "  self.end_headers(); self.wfile.write(body)",
+    " def do_POST(self):",
+    '  if self.headers.get("Authorization") != "Bearer " + key: return self.send_json(401,{"error":"unauthorized"})',
+    '  if self.path != "/v1/chat/completions": return self.send_json(404,{"error":"unsupported"})',
+    '  length=int(self.headers.get("Content-Length","0"))',
+    '  if length < 1 or length > 65536: return self.send_json(400,{"error":"invalid_request"})',
+    "  try: body=json.loads(self.rfile.read(length))",
+    '  except Exception: return self.send_json(400,{"error":"invalid_request"})',
+    '  if body.get("model") != "fixture-model" or not isinstance(body.get("messages"),list): return self.send_json(400,{"error":"invalid_request"})',
+    "  global request_count",
+    "  with request_lock:",
+    "   request_count += 1",
+    '   open("/tmp/request-count", "w", encoding="utf-8").write(str(request_count))',
+    '  if body.get("stream") is True:',
+    '   values=[chunk({"role":"assistant"},None),chunk({"content":"fixture-stream-response"},None),chunk({},"stop"),json.dumps({"choices":[],"created":1,"id":"f0-l2-stream","model":"fixture-model","object":"chat.completion.chunk","usage":{"completion_tokens":2,"prompt_tokens":3,"total_tokens":5}},separators=(",",":"))]',
+    "   self.send_response(200)",
+    '   self.send_header("Cache-Control","no-store")',
+    '   self.send_header("Content-Type","text/event-stream")',
+    "   self.end_headers()",
+    '   for value in values: self.wfile.write(("data: "+value+"\\n\\n").encode())',
+    '   self.wfile.write(b"data: [DONE]\\n\\n"); return',
+    '  self.send_json(200,{"choices":[{"finish_reason":"stop","index":0,"message":{"content":response_content,"role":"assistant"}}],"created":1,"id":"f0-l2-completion","model":"fixture-model","object":"chat.completion","usage":{"completion_tokens":2,"prompt_tokens":3,"total_tokens":5}})',
+    "class Server(ThreadingHTTPServer):",
+    " daemon_threads=True",
+    " def handle_error(self, request, client_address): pass",
+    'Server(("0.0.0.0",4010),Handler).serve_forever()',
+  ].join("\n")
 }
 
 async function runBrowser(configFile) {
@@ -492,6 +485,35 @@ function assertLockedImageIdentity() {
     POSTGRES_IMAGE,
     `${postgresImage.repository}:${postgresImage.version}@${postgresImage.indexDigest}`,
   )
+}
+
+async function waitForInferenceDouble() {
+  const deadline = performance.now() + 60_000
+  while (performance.now() < deadline) {
+    const result = dockerResult([
+      "exec",
+      inferenceContainer,
+      "python",
+      "-c",
+      'import socket; socket.create_connection(("127.0.0.1",4010),1).close()',
+    ])
+    if (result.status === 0) return
+    await delay(250)
+  }
+  throw new Error("F0-L2 private inference double did not become ready.")
+}
+
+function inferenceRequestCount() {
+  const value = docker([
+    "exec",
+    inferenceContainer,
+    "cat",
+    "/tmp/request-count",
+  ]).trim()
+  if (!/^[0-9]+$/.test(value)) {
+    throw new Error("F0-L2 private inference request count is invalid.")
+  }
+  return Number.parseInt(value, 10)
 }
 
 async function waitForPostgres() {
@@ -641,12 +663,6 @@ function assertNoSensitiveValues(values, sensitiveValues) {
 function collectCleanup(failures, arguments_) {
   const result = dockerResult(arguments_)
   if (result.status !== 0) failures.push(safeError(result.stderr))
-}
-
-function closeServer(server) {
-  return new Promise((resolveClose, rejectClose) => {
-    server.close((error) => (error ? rejectClose(error) : resolveClose()))
-  })
 }
 
 function required(name) {

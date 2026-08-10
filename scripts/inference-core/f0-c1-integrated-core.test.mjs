@@ -68,6 +68,12 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(integrated, /sample\.value\[1\] === "1"/)
   assert.doesNotMatch(integrated, /host\.docker\.internal/)
   assert.doesNotMatch(integrated, /server\.listen\(0, "0\.0\.0\.0"/)
+  assert.doesNotMatch(liteLlm, /host\.docker\.internal/)
+  assert.doesNotMatch(liteLlm, /upstream\.listen\(0, "0\.0\.0\.0"/)
+  assert.equal(liteLlm.match(/"--publish"/g)?.length, 1)
+  assert.match(liteLlm, /`127\.0\.0\.1:\$\{liteLlmPort\}:4000`/)
+  assert.match(liteLlm, /"--network-alias",\s+"inference-double"/)
+  assert.match(liteLlm, /"--log-driver",\s+"none"/)
   assert.match(integrated, /F0_C1_FIRECRAWL_RUN_ID: runId/)
   assert.match(
     integrated,
