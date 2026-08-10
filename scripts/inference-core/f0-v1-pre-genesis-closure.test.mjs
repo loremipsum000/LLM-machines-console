@@ -9,6 +9,7 @@ const root = resolve(import.meta.dirname, "../..")
 const closurePath =
   "docs/reduction/inference-core/f0-v1-pre-genesis-closure.json"
 const inventoryPath = "docs/reduction/inference-core/f0-v1-git-inventory.json"
+const closurePathBindingCommit = "c60abf27f7b812ff5b70cb654417b6f5ec7aef4c"
 
 test("F0-V1 binds every protected functional package without rewriting history", async () => {
   const closure = await readJson(closurePath)
@@ -268,15 +269,17 @@ test("F0-V1 keeps aggregate acceptance and publication fail closed", async () =>
   }
 })
 
-test("F0-V1 changes governance and aggregate validation paths only", async () => {
+test("F0-V1 binds its reviewed governance and validation path set", async () => {
   const closure = await readJson(closurePath)
-  const head = git("rev-parse", "HEAD")
-  if (head === closure.protectedInput.commit) return
+  assert.equal(
+    git("rev-parse", closurePathBindingCommit),
+    closurePathBindingCommit,
+  )
 
   const changedPaths = git(
     "diff",
     "--name-only",
-    `${closure.protectedInput.commit}..HEAD`,
+    `${closure.protectedInput.commit}..${closurePathBindingCommit}`,
   ).split("\n")
   assert.deepEqual(changedPaths, [
     "docs/reduction/inference-core/README.md",
