@@ -277,6 +277,12 @@
       "node scripts/pre-genesis/reduced-core-integrated.mjs",
       "node scripts/pre-genesis/reduced-core-keycloak-identity.mjs --team"
     ],
+    "validationHarnessCorrection": {
+      "owner": "F0-V1",
+      "behaviorChanged": false,
+      "reason": "The standalone F0-I2 validation runner omitted its run-owned container and Docker-context identifiers from the browser control file even though the browser validator and integrated service-control path already required them.",
+      "boundary": "Serialize the existing run-owned identifiers and add a regression assertion; no identity permission, Product route, customer role, or runtime behavior changes."
+    },
     "freshDetachedReplayRequired": true,
     "independentMaterialReviewRequired": true
   },

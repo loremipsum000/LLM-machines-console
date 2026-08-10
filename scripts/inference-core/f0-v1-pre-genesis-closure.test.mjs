@@ -280,7 +280,9 @@ test("F0-V1 changes governance and aggregate validation paths only", async () =>
     "docs/reduction/inference-core/f0-v1-git-inventory.json",
     "docs/reduction/inference-core/f0-v1-pre-genesis-closure.json",
     "docs/reduction/inference-core/validation-register.md",
+    "scripts/inference-core/f0-i2-keycloak-team.test.mjs",
     "scripts/inference-core/f0-v1-pre-genesis-closure.test.mjs",
+    "scripts/pre-genesis/reduced-core-keycloak-identity.mjs",
   ])
 })
 

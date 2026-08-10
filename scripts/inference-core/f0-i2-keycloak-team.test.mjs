@@ -26,6 +26,10 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   assert.match(wrapper, /humanAdminPermissions/)
   assert.match(
     wrapper,
+    /browserConfigFile,[\s\S]*container: containerName,[\s\S]*dockerContext,[\s\S]*edgePort,[\s\S]*upstreamPort/,
+  )
+  assert.match(
+    wrapper,
     /expectAdminStatus\(root, serviceToken, realmPath, 403\)/,
   )
   assert.match(wrapper, /clients\?max=1`, 403/)
