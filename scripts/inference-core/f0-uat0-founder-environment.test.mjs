@@ -43,7 +43,10 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
     /cpu="0"[^\n]+__LLMM_DYNAMIC_IDLE__[\s\S]+cpu="1"[^\n]+ 1000/,
   )
   assert.match(browser, /ADMIN_GRAFANA_BASE_URL:/)
-  assert.match(browser, /cpu\.getByText\("50%", \{ exact: true \}\)/)
+  assert.match(browser, /async function waitForFounderHealthyCpu\(/)
+  assert.match(browser, /latestValue < 85/)
+  assert.match(browser, /xpath=ancestor::section\[1\]/)
+  assert.doesNotMatch(browser, /cpu\.getByText\("50%"/)
   assert.match(browser, /async function openApplicationCreate\(/)
   assert.match(
     browser,

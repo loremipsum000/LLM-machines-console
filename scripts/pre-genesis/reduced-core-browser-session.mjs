@@ -1969,13 +1969,10 @@ async function proveIntegratedObservabilityConsoleFlow({
     await page.getByRole("heading", { name: heading }).waitFor()
   }
   if (founderUat) {
-    const cpu = page.locator("section").filter({
-      has: page.getByRole("heading", { name: "CPU utilization" }),
-    })
-    await cpu.getByText("50%", { exact: true }).waitFor()
-    const alerts = page.locator("section").filter({
-      has: page.getByRole("heading", { name: "Active alerts" }),
-    })
+    await waitForFounderHealthyCpu({ consoleOrigin, page })
+    const alerts = page
+      .getByRole("heading", { name: "Active alerts", exact: true })
+      .locator("xpath=ancestor::section[1]")
     await alerts.getByText("Healthy", { exact: true }).waitFor()
     await alerts
       .getByText("No active firing alerts were reported.", { exact: true })
@@ -2012,6 +2009,27 @@ async function proveIntegratedObservabilityConsoleFlow({
       "health-models-usage-route-summary-safe-credential-metadata",
     prometheus: "actual-private",
   }
+}
+
+async function waitForFounderHealthyCpu({ consoleOrigin, page }) {
+  const deadline = performance.now() + 120_000
+  let latestValue = null
+  while (performance.now() < deadline) {
+    const cpu = page
+      .getByRole("heading", { name: "CPU utilization", exact: true })
+      .locator("xpath=ancestor::section[1]")
+    await cpu.waitFor()
+    const value = cpu.getByText(/^\d+(?:\.\d+)?%$/)
+    if ((await value.count()) === 1) {
+      latestValue = Number.parseFloat((await value.innerText()).slice(0, -1))
+      if (Number.isFinite(latestValue) && latestValue < 85) return
+    }
+    await page.waitForTimeout(2_000)
+    await page.goto(`${consoleOrigin}/hardware`)
+  }
+  throw new Error(
+    `Founder CPU fixture did not warm below its warning threshold; latest=${latestValue ?? "unavailable"}`,
+  )
 }
 
 async function proveIntegratedNoBypass({ certificate, edgePort }) {
