@@ -49,6 +49,11 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(integrated, /reduced-core-keycloak-identity\.mjs/)
   assert.match(integrated, /reduced-core-litellm-integration\.mjs/)
   assert.match(integrated, /infra\/migrations\/0000_inference_core\.sql/)
+  assert.match(
+    integrated,
+    /"pg_isready",\s+"--host",\s+"127\.0\.0\.1",\s+"--port",\s+"5432"/,
+  )
+  assert.match(integrated, /if \(!postgresReady\) \{/)
   assert.match(integrated, /const prometheusHostPort = await reservePort\(\)/)
   assert.doesNotMatch(integrated, /127\.0\.0\.1:(?::|0:)/)
   assert.match(integrated, /uid=65534,gid=65534,mode=0750/)
