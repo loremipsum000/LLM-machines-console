@@ -94,6 +94,7 @@ const files = {
   liteLlmStop: join(stateRoot, "litellm.stop"),
   metricsConfig: join(stateRoot, "metrics-nginx.conf"),
   metricsPayload: join(stateRoot, "metrics"),
+  npmUserConfig: join(stateRoot, "empty-npmrc"),
   observabilityControl: join(stateRoot, "observability-control.json"),
   postgresEnvironment: join(stateRoot, "postgres.env"),
   prometheusConfig: join(stateRoot, "prometheus.yml"),
@@ -145,6 +146,8 @@ let failure = null
 
 try {
   await chmod(stateRoot, 0o700)
+  await writeFile(files.npmUserConfig, "", { mode: 0o600 })
+  installExternalClientFixture()
   await preserveWorkspaceBuildArtifacts()
   buildWorkspaceFixturePackages()
   const edgePort = await reservePort()
@@ -1247,6 +1250,32 @@ function commandEnvironment(extra = {}) {
     LC_ALL: "C",
     PATH: process.env.PATH ?? "",
     ...extra,
+  }
+}
+
+function installExternalClientFixture() {
+  const result = spawnSync(
+    "corepack",
+    [
+      "pnpm",
+      "--dir",
+      resolve(repositoryRoot, "test-support/f0-e2e2-openai-client"),
+      "install",
+      "--frozen-lockfile",
+      "--ignore-scripts",
+    ],
+    {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+      env: commandEnvironment({
+        NPM_CONFIG_USERCONFIG: files.npmUserConfig,
+      }),
+    },
+  )
+  if (result.status !== 0) {
+    throw new Error(
+      `F0-E2E2 could not install its locked external client: ${sanitize(result.stderr || result.stdout)}`,
+    )
   }
 }
 
