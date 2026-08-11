@@ -2898,14 +2898,6 @@ export const pr11ConsoleHrefManifest = [
   },
   {
     path: "apps/web/src/components/console-v2/team-v2-experience.tsx",
-    expression: "literal:/team/groups/new",
-  },
-  {
-    path: "apps/web/src/components/console-v2/team-v2-experience.tsx",
-    expression: "literal:/team/import",
-  },
-  {
-    path: "apps/web/src/components/console-v2/team-v2-experience.tsx",
     expression: "literal:/team/import/template",
   },
   {

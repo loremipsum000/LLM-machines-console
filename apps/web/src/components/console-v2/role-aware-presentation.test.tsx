@@ -232,6 +232,9 @@ describe("role-aware Console presentation", () => {
     )
     expect(screen.queryByRole("link", { name: /Open in Keycloak/ })).toBeNull()
     expect(screen.getByText(/Keycloak remains private/)).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Create user" })).toBeTruthy()
+    expect(screen.queryByRole("link", { name: "Import CSV" })).toBeNull()
+    expect(screen.queryByRole("link", { name: "Create group" })).toBeNull()
   })
 
   it.each([

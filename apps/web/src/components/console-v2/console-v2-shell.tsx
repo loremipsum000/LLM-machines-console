@@ -186,7 +186,7 @@ export function ConsoleV2Shell({
           </div>
         </aside>
 
-        <main className="min-w-0 px-5 py-8 max-lg:pt-4 sm:px-8 lg:ml-[534px] lg:w-[640px] lg:px-0 lg:py-0">
+        <main className="min-w-0 px-5 py-8 max-lg:pt-4 sm:px-8 lg:ml-[clamp(320px,calc(100vw-690px),534px)] lg:w-[min(640px,calc(100vw-352px))] lg:px-0 lg:py-0">
           {children}
         </main>
       </div>

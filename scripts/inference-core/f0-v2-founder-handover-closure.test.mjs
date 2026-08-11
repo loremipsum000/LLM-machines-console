@@ -61,9 +61,15 @@ test("F0-V2 binds the complete protected founder epoch", async () => {
 
   for (const binding of closure.evidenceBindings) {
     assert.equal(
-      sha256(await readSource(binding.path)),
+      sha256(
+        execFileSync(
+          "git",
+          ["show", `${closure.protectedInput.commit}:${binding.path}`],
+          { cwd: root },
+        ),
+      ),
       binding.sha256,
-      `${binding.path} evidence fingerprint changed`,
+      `${binding.path} historical evidence fingerprint changed`,
     )
   }
 })

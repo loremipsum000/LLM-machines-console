@@ -190,21 +190,13 @@ function TeamOverviewView({
                 Manage users
               </Link>
               {canManageTeam ? (
-                <>
-                  <Link
-                    className="flex h-5 items-center text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                    href="/team/import"
-                  >
-                    Import CSV
-                  </Link>
-                  <Link
-                    className="flex h-5 items-center gap-0.5 text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                    href="/team/members/new"
-                  >
-                    <Plus aria-hidden className="size-5" />
-                    Create user
-                  </Link>
-                </>
+                <Link
+                  className="flex h-5 items-center gap-0.5 text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+                  href="/team/members/new"
+                >
+                  <Plus aria-hidden className="size-5" />
+                  Create user
+                </Link>
               ) : null}
             </div>
           </div>
@@ -223,17 +215,6 @@ function TeamOverviewView({
             >
               Groups
             </h2>
-            <div className="flex items-center gap-3">
-              {canManageTeam ? (
-                <Link
-                  className="flex h-5 items-center gap-0.5 text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                  href="/team/groups/new"
-                >
-                  <Plus aria-hidden className="size-5" />
-                  Create group
-                </Link>
-              ) : null}
-            </div>
           </div>
           <GroupsList groups={overview.groups} />
         </section>
