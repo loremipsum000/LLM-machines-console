@@ -33,9 +33,34 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
     /F0_C1_BROWSER_TEMP_ROOT: keepRunning \? stateRoot : browserTemporaryRoot/,
   )
   assert.match(browser, /status: "READY"/)
+  assert.match(browser, /founderUatControl \? "start" : "dev"/)
+  assert.match(
+    browser,
+    /if \(founderUatControl\) \{\n {6}await buildFounderWebProject\(webRoot, webEnvironment, stateRoot\)/,
+  )
+  assert.match(
+    browser,
+    /NODE_ENV: founderUatControl \? "production" : "development"/,
+  )
   assert.match(
     browser,
     /while \(!\(await exists\(founderUatControl\.stopFile\)\)\)/,
+  )
+  const founderHandoffs = [
+    ...browser.matchAll(/await holdFounderUat\(\{([\s\S]*?)\n {8}\}\)/g),
+  ]
+  assert.equal(founderHandoffs.length, 2)
+  for (const handoff of founderHandoffs) {
+    assert.match(handoff[1], /synchronizeClock: synchronizeFixtureClock/)
+  }
+  const founderHold = browser.slice(
+    browser.indexOf("async function holdFounderUat({"),
+    browser.indexOf("function founderCredential("),
+  )
+  assert.match(founderHold, /await synchronizeClock\(\)[\s\S]*status: "READY"/)
+  assert.match(
+    founderHold,
+    /while \(!\(await exists\(founderUatControl\.stopFile\)\)\) \{\n {4}await synchronizeClock\(\)/,
   )
   const integratedHandover = browser.slice(
     browser.indexOf(

@@ -474,25 +474,29 @@ async function runBrowserSessionProof() {
           }
         }
       : null
+    const webEnvironment = {
+      CONSOLE_BFF_SERVICE_API_KEY: credentials.bffService,
+      CONSOLE_BFF_URL: `http://127.0.0.1:${bffPort}`,
+      NEXT_TELEMETRY_DISABLED: "1",
+      NODE_ENV: founderUatControl ? "production" : "development",
+      WEB_IDENTITY_ORIGIN: `https://${authorities.identity}:${edgePort}`,
+    }
+    if (founderUatControl) {
+      await buildFounderWebProject(webRoot, webEnvironment, stateRoot)
+    }
     children.push(
       startChild(
         "web",
         [
           process.execPath,
           resolve(repositoryRoot, "apps/web/node_modules/next/dist/bin/next"),
-          "dev",
+          founderUatControl ? "start" : "dev",
           "--hostname",
           "127.0.0.1",
           "--port",
           String(webPort),
         ],
-        {
-          CONSOLE_BFF_SERVICE_API_KEY: credentials.bffService,
-          CONSOLE_BFF_URL: `http://127.0.0.1:${bffPort}`,
-          NEXT_TELEMETRY_DISABLED: "1",
-          NODE_ENV: "development",
-          WEB_IDENTITY_ORIGIN: `https://${authorities.identity}:${edgePort}`,
-        },
+        webEnvironment,
         stateRoot,
         webRoot,
       ),
@@ -644,6 +648,7 @@ async function runBrowserSessionProof() {
           firecrawlControl,
           keycloakControl,
           liteLlmControl,
+          synchronizeClock: synchronizeFixtureClock,
         })
       }
       const cleanup = await Promise.allSettled([
@@ -929,6 +934,7 @@ async function runBrowserSessionProof() {
           firecrawlControl,
           keycloakControl,
           liteLlmControl,
+          synchronizeClock: synchronizeFixtureClock,
         })
       }
       const cleanup = await Promise.allSettled([
@@ -4277,8 +4283,11 @@ async function holdFounderUat({
   firecrawlControl,
   keycloakControl,
   liteLlmControl,
+  synchronizeClock,
 }) {
   assert.ok(founderUatControl)
+  assert.equal(typeof synchronizeClock, "function")
+  await synchronizeClock()
   const credentialDocument = {
     admin: founderCredential(credentials.admin),
     operator: founderCredential(credentials.operator),
@@ -4332,6 +4341,7 @@ async function holdFounderUat({
   )
 
   while (!(await exists(founderUatControl.stopFile))) {
+    await synchronizeClock()
     const failed = children.find((record) => !record.stopping && record.exited)
     if (failed) {
       throw new Error(
@@ -4913,6 +4923,41 @@ async function prepareTemporaryWebProject(stateRoot) {
     join(webRoot, "node_modules"),
   )
   return webRoot
+}
+
+async function buildFounderWebProject(webRoot, environment, stateRoot) {
+  const result = spawnSync(
+    process.execPath,
+    [
+      resolve(repositoryRoot, "apps/web/node_modules/next/dist/bin/next"),
+      "build",
+    ],
+    {
+      cwd: webRoot,
+      encoding: "utf8",
+      env: {
+        HOME: stateRoot,
+        LANG: "C",
+        LC_ALL: "C",
+        PATH: process.env.PATH ?? "",
+        TMPDIR: stateRoot,
+        ...environment,
+      },
+      maxBuffer: 16 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  )
+  await Promise.all([
+    writeFile(join(stateRoot, "web-build.stdout.log"), result.stdout ?? "", {
+      mode: 0o600,
+    }),
+    writeFile(join(stateRoot, "web-build.stderr.log"), result.stderr ?? "", {
+      mode: 0o600,
+    }),
+  ])
+  if (result.status !== 0) {
+    throw new Error("F0-UAT0 could not build the founder Console Web surface.")
+  }
 }
 
 function startChild(name, command, environment, stateRoot, cwd) {
