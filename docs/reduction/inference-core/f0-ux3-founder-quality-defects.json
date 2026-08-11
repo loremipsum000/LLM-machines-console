@@ -1,0 +1,70 @@
+{
+  "schema": "llm-machines.pre-genesis-founder-quality-defects.v1",
+  "workPackage": "F0-UX3",
+  "assessedCommit": "8354ed398402b3ccdcf43619b9df2cba0b9e29be",
+  "assessedTree": "c16afcb47b8bea9b21b34b7fa872f411ba25ab57",
+  "environment": "VM117 temporary founder QA only",
+  "productDestination": "VM103 Core Appliance with a separate private SGLang plane",
+  "status": "CORRECTION_CANDIDATE",
+  "computerUse": {
+    "status": "BLOCKED",
+    "reason": "Visible Chrome application-state inspection timed out twice; no unlock or browser-security bypass was attempted.",
+    "playwrightIsNotASubstitute": true
+  },
+  "findings": [
+    {
+      "id": "UX-01",
+      "severity": "major",
+      "roles": ["admin", "operator"],
+      "surfaces": ["Applications", "Inference", "Hardware", "Settings"],
+      "reproduction": "Open the authenticated Console at a 1024 by 768 desktop viewport.",
+      "expected": "The fixed navigation and 640-pixel Console content remain inside the viewport without horizontal scrolling or clipped controls.",
+      "actual": "The shell extends 150 pixels past the viewport and clips page actions and controls.",
+      "evidence": "Playwright measured document overflow and clipped controls in credential-free screenshots for both roles.",
+      "blocksFounderAcceptance": true,
+      "blocksVm103Cutover": true
+    },
+    {
+      "id": "UX-02",
+      "severity": "major",
+      "roles": ["admin"],
+      "surfaces": ["Team"],
+      "reproduction": "Sign in as Admin and open Team.",
+      "expected": "The v1 Team overview offers approved basic user administration only.",
+      "actual": "The overview advertises deferred CSV import and arbitrary group creation.",
+      "evidence": "Credential-free Admin Team screenshot and accessible-role inspection.",
+      "blocksFounderAcceptance": true,
+      "blocksVm103Cutover": true
+    },
+    {
+      "id": "UAT-01",
+      "severity": "major",
+      "roles": ["admin", "operator"],
+      "surfaces": ["Overview", "Hardware"],
+      "reproduction": "Start the keep-running F0-UAT0 environment from clean temporary state and open Overview.",
+      "expected": "A clean founder environment reports the actual healthy baseline unless a supported alert is active.",
+      "actual": "The UAT fixture posts an alert outside the Product allowlist, so the Product correctly omits it and reports Degraded and Needs attention.",
+      "evidence": "Overview and Hardware screenshots plus source trace from the UAT alert fixture to the strict Alertmanager allowlist.",
+      "blocksFounderAcceptance": true,
+      "blocksVm103Cutover": false
+    },
+    {
+      "id": "A11Y-01",
+      "severity": "minor",
+      "roles": ["admin", "operator"],
+      "surfaces": ["Console shell", "range controls", "text links"],
+      "reproduction": "Inspect visible interactive bounds in the authenticated Console.",
+      "expected": "Frequently used targets should be comfortably operable at desktop sizes.",
+      "actual": "Several targets are 20 to 32 pixels high. Focus-visible styling, form labels, accessible names, heading structure, and keyboard shortcuts are present.",
+      "evidence": "Playwright geometry and source-level focus-style inspection.",
+      "blocksFounderAcceptance": false,
+      "blocksVm103Cutover": false
+    }
+  ],
+  "falsePositives": [
+    {
+      "observation": "Grafana name appears in Hardware, Activity and Settings.",
+      "disposition": "Allowed private observability provenance only. No link, grant, customer hostname, native route or direct port is exposed."
+    }
+  ]
+}

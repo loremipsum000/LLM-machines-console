@@ -174,6 +174,12 @@ describe("ConsoleV2Shell", () => {
       "/api/console/session/logout",
     )
     expect(signOutForm?.getAttribute("method")).toBe("post")
+    expect(screen.getByRole("main").className).toContain(
+      "lg:ml-[clamp(320px,calc(100vw-690px),534px)]",
+    )
+    expect(screen.getByRole("main").className).toContain(
+      "lg:w-[min(640px,calc(100vw-352px))]",
+    )
   })
 
   it("gives Operator the same retained navigation and shortcut indexes", () => {

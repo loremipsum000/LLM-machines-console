@@ -9,6 +9,8 @@ const root = resolve(import.meta.dirname, "../..")
 const closurePath =
   "docs/reduction/inference-core/f0-v2-founder-handover-closure.json"
 const inventoryPath = "docs/reduction/inference-core/f0-v2-git-inventory.json"
+const f0V2CandidateCommit = "6ea73c0969db16b14ab1647a5f798223eef1cb3b"
+const f0V2CandidateTree = "c16afcb47b8bea9b21b34b7fa872f411ba25ab57"
 
 test("F0-V2 binds the complete protected founder epoch", async () => {
   const closure = await readJson(closurePath)
@@ -61,9 +63,15 @@ test("F0-V2 binds the complete protected founder epoch", async () => {
 
   for (const binding of closure.evidenceBindings) {
     assert.equal(
-      sha256(await readSource(binding.path)),
+      sha256(
+        execFileSync(
+          "git",
+          ["show", `${closure.protectedInput.commit}:${binding.path}`],
+          { cwd: root },
+        ),
+      ),
       binding.sha256,
-      `${binding.path} evidence fingerprint changed`,
+      `${binding.path} historical evidence fingerprint changed`,
     )
   }
 })
@@ -186,8 +194,12 @@ test("F0-V2 remains governance-only and preserves Git history", async () => {
   const changedPaths = git(
     "diff",
     "--name-only",
-    `${closure.protectedInput.commit}..HEAD`,
+    `${closure.protectedInput.commit}..${f0V2CandidateCommit}`,
   ).split("\n")
+  assert.equal(
+    git("rev-parse", `${f0V2CandidateCommit}^{tree}`),
+    f0V2CandidateTree,
+  )
   assert.deepEqual(changedPaths, [
     "docs/reduction/inference-core/README.md",
     "docs/reduction/inference-core/decision-register.md",

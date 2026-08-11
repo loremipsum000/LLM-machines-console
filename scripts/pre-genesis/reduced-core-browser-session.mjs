@@ -573,6 +573,7 @@ async function runBrowserSessionProof() {
     assert.equal(new URL(page.url()).search, "?q=safe")
     await assertRole(page, "Administrator")
     await assertConsoleNavigation(page, consoleOrigin)
+    await assertDesktopViewportLayout(page, consoleOrigin)
 
     if (keycloakTeamMode) {
       const identityFlow = await proveKeycloakIdentityCookieBoundary({
@@ -1422,6 +1423,50 @@ async function assertConsoleNavigation(page, consoleOrigin) {
     hrefs.some((href) => /(?:grafana|litellm|keycloak.*admin)/i.test(href)),
     false,
   )
+}
+
+async function assertDesktopViewportLayout(page, consoleOrigin) {
+  const previousViewport = page.viewportSize()
+  try {
+    await page.setViewportSize({ height: 768, width: 1024 })
+    for (const [path, heading] of [
+      ["/applications", "Applications"],
+      ["/inference", "Inference"],
+      ["/hardware", "Hardware"],
+      ["/settings", "Settings"],
+    ]) {
+      await page.goto(`${consoleOrigin}${path}`)
+      await page.getByRole("heading", { name: heading }).first().waitFor()
+      const layout = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        mainRight:
+          document.querySelector("main")?.getBoundingClientRect().right ?? 0,
+        scrollWidth: document.documentElement.scrollWidth,
+      }))
+      assert.equal(
+        layout.scrollWidth,
+        layout.clientWidth,
+        `${path} overflowed at the 1024-pixel desktop boundary.`,
+      )
+      assert.ok(
+        layout.mainRight <= layout.clientWidth,
+        `${path} clipped its main Console surface at 1024 pixels.`,
+      )
+    }
+
+    await page.goto(`${consoleOrigin}/team`)
+    await page.getByRole("heading", { name: "Team" }).first().waitFor()
+    assert.equal(
+      await page.getByRole("link", { name: "Import CSV" }).count(),
+      0,
+    )
+    assert.equal(
+      await page.getByRole("link", { name: "Create group" }).count(),
+      0,
+    )
+  } finally {
+    if (previousViewport) await page.setViewportSize(previousViewport)
+  }
 }
 
 async function proveKeycloakIdentityCookieBoundary({ context, edgePort }) {
