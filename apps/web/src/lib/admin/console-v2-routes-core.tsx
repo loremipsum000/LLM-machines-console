@@ -34,8 +34,15 @@ import {
   isConsoleBffAuthExpiredError,
   isConsoleBffUnavailableError,
 } from "@/lib/admin/server-data-core"
+import {
+  consoleMfaElevationHref,
+  hasFreshConsoleMfa,
+} from "@/lib/auth/mfa-elevation"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
-import { getCurrentConsoleSession } from "@/lib/auth/session"
+import {
+  type CurrentConsoleSessionResolution,
+  getCurrentConsoleSession,
+} from "@/lib/auth/session"
 import { notFound, redirect } from "next/navigation"
 import type { ReactNode } from "react"
 
@@ -55,6 +62,11 @@ export interface ConsoleV2SearchParams {
   step?: string
   teamAction?: string
 }
+
+type ActiveConsoleSession = Extract<
+  CurrentConsoleSessionResolution,
+  { state: "active" }
+>["session"]
 
 export async function renderOverviewConsoleRoute() {
   return withConsoleAccess("overview", async () => {
@@ -106,7 +118,7 @@ export async function renderApplicationsConsoleRoute({
   section?: string[]
   searchParams?: Promise<ConsoleV2SearchParams>
 }) {
-  return withConsoleAccess("applications", async (role) => {
+  return withConsoleAccess("applications", async (role, session) => {
     const resolvedSearchParams = searchParams ? await searchParams : undefined
     const applicationsView = resolveApplicationsView(section)
     if (applicationsView === "new-app" && role !== "admin") {
@@ -128,6 +140,14 @@ export async function renderApplicationsConsoleRoute({
     }
 
     if (applicationsView === "new-app") {
+      if (!hasFreshConsoleMfa(session.mfaVerifiedAt)) {
+        redirect(
+          consoleMfaElevationHref(
+            "applications.create_delete",
+            "/applications/apps/new",
+          ),
+        )
+      }
       const inference = await getAdminInference({ range: "7d" })
       return (
         <ApplicationsV2Experience
@@ -274,7 +294,10 @@ export async function renderSettingsConsoleRoute(
 
 async function withConsoleAccess(
   activeSection: ConsoleV2SectionId,
-  render: (role: RetainedConsoleRole) => Promise<ReactNode>,
+  render: (
+    role: RetainedConsoleRole,
+    session: ActiveConsoleSession,
+  ) => Promise<ReactNode>,
 ) {
   const session = await getCurrentConsoleSession()
   const returnTo = consoleSectionReturnPath(activeSection)
@@ -288,7 +311,7 @@ async function withConsoleAccess(
 
   let content: ReactNode
   try {
-    content = await render(role)
+    content = await render(role, session.session)
   } catch (error) {
     if (isConsoleBffAuthExpiredError(error)) {
       redirect(getConsoleExpiredSignInUrl(returnTo))

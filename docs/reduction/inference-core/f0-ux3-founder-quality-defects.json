@@ -7,8 +7,8 @@
   "productDestination": "VM103 Core Appliance with a separate private SGLang plane",
   "status": "MATERIAL_CORRECTIONS_IMPLEMENTED_PENDING_FINAL_REPLAY",
   "computerUse": {
-    "status": "BLOCKED",
-    "reason": "Visible Chrome application-state inspection repeatedly timed out, including during protected-final replay; no unlock or browser-security bypass was attempted.",
+    "status": "IN_PROGRESS_ARC",
+    "reason": "Visible Chrome remained unavailable. Arc completed the real Keycloak login and exposed the Application-creation elevation defect without changing browser security settings. Brave reproduced a Keycloak restart-cookie compatibility failure under its default protections.",
     "playwrightIsNotASubstitute": true
   },
   "findings": [
@@ -76,6 +76,19 @@
       "resolution": "F0-UAT2 uses two private deterministic idle-counter series, one clock-backed and one constant, to produce a stable 50 percent utilization signal without changing Product queries or alert policy.",
       "blocksFounderAcceptance": true,
       "blocksVm103Cutover": false
+    },
+    {
+      "id": "UAT-03",
+      "severity": "major",
+      "roles": ["admin"],
+      "surfaces": ["Applications", "High-risk verification"],
+      "reproduction": "Open Add app without a fresh elevation, complete the form, and submit Create app in visible Arc.",
+      "expected": "High-risk verification occurs before data entry, then returns the Admin to the empty creation form with a fresh elevation window.",
+      "actual": "Verification begins only after submission, returns to the Applications list, and discards the completed form, forcing duplicate entry. A later invalid submission also clears the form.",
+      "evidence": "Visible Arc Computer Use against VM117 from protected integration c89a018a67f745e8310404de045e239a9a077f00.",
+      "resolution": "F0-UX4 gates the Add app route before rendering the form, returns verified Admins to /applications/apps/new, retains the server-action capability check as defense in depth, and updates the browser harness to reject post-entry elevation.",
+      "blocksFounderAcceptance": true,
+      "blocksVm103Cutover": true
     }
   ],
   "falsePositives": [

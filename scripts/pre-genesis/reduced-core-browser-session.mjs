@@ -2192,24 +2192,13 @@ async function proveLiteLlmConsoleFlow({
 }) {
   assert.ok(liteLlmControl)
   const applicationName = `LiteLLM client ${randomBytes(4).toString("hex")}`
-  await page.goto(`${consoleOrigin}/applications/apps/new`)
+  await openApplicationCreate({
+    consoleOrigin,
+    page,
+    synchronizeClock,
+    userCredentials,
+  })
   await submitApplicationCreate(page, applicationName)
-  const elevation = page.getByRole("heading", { name: "Verify your identity" })
-  await page.waitForFunction(
-    () =>
-      document.body.innerText.includes("Verify your identity") ||
-      document.body.innerText.includes("Application credential"),
-  )
-  if ((await elevation.count()) === 1) {
-    await synchronizeClock()
-    await page.getByRole("button", { name: "Continue to verification" }).click()
-    await page
-      .getByRole("heading", { name: "Fixture identity sign in" })
-      .waitFor()
-    await completeIdentityLogin(page, userCredentials)
-    await page.goto(`${consoleOrigin}/applications/apps/new`)
-    await submitApplicationCreate(page, applicationName)
-  }
   await page.getByRole("heading", { name: "Application credential" }).waitFor()
   const applicationCredential = await revealedCredential(page, "API key")
   sensitiveValues.push(applicationCredential)
@@ -2486,48 +2475,13 @@ async function proveApplicationConsoleFlow({
   userCredentials,
 }) {
   const applicationName = `Browser client ${randomBytes(4).toString("hex")}`
-  await page.goto(`${consoleOrigin}/applications/apps/new`)
+  await openApplicationCreate({
+    consoleOrigin,
+    page,
+    synchronizeClock,
+    userCredentials,
+  })
   await submitApplicationCreate(page, applicationName)
-  const elevation = page.getByRole("heading", { name: "Verify your identity" })
-  await page.waitForFunction(
-    () =>
-      document.body.innerText.includes("Verify your identity") ||
-      document.body.innerText.includes("Application credential"),
-  )
-  if ((await elevation.count()) === 1) {
-    await elevation.waitFor()
-    await synchronizeClock()
-    const responsePromise = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname === "/api/console/session/elevate",
-    )
-    await page.getByRole("button", { name: "Continue to verification" }).click()
-    const response = await responsePromise
-    try {
-      if (keycloakIdentityMode) {
-        await Promise.race([
-          page.locator("#username").waitFor({ timeout: 5_000 }),
-          page
-            .locator("nav[aria-label='Console navigation']")
-            .waitFor({ timeout: 5_000 }),
-        ])
-      } else {
-        await page
-          .getByRole("heading", { name: "Fixture identity sign in" })
-          .waitFor({ timeout: 5_000 })
-      }
-    } catch {
-      const location = response.headers().location
-      const redirect = location ? new URL(location) : null
-      throw new Error(
-        `MFA elevation returned ${response.status()} with redirect ${redirect ? `${redirect.origin}${redirect.pathname}` : "absent"} but did not navigate at ${new URL(page.url()).pathname}: ${safeDiagnosticTail(await page.locator("body").innerText())}`,
-      )
-    }
-    await completeIdentityLogin(page, userCredentials)
-    assert.equal(new URL(page.url()).pathname, "/applications")
-    await page.goto(`${consoleOrigin}/applications/apps/new`)
-    await submitApplicationCreate(page, applicationName)
-  }
   try {
     await page
       .getByRole("heading", { name: "Application credential" })
@@ -2801,6 +2755,8 @@ async function proveApplicationConsoleFlow({
         postgresControl,
         restartBff,
         sensitiveValues,
+        synchronizeClock,
+        userCredentials,
       })
     : null
 
@@ -2839,6 +2795,8 @@ async function proveCredentialLifecycle({
   postgresControl,
   restartBff,
   sensitiveValues,
+  synchronizeClock,
+  userCredentials,
 }) {
   await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
 
@@ -2937,7 +2895,12 @@ async function proveCredentialLifecycle({
     status: "Active",
   })
 
-  await page.goto(`${consoleOrigin}/applications/apps/new`)
+  await openApplicationCreate({
+    consoleOrigin,
+    page,
+    synchronizeClock,
+    userCredentials,
+  })
   const secondName = `Isolated browser client ${randomBytes(4).toString("hex")}`
   await submitApplicationCreate(page, secondName)
   await page.getByRole("heading", { name: "Application credential" }).waitFor()
@@ -3310,6 +3273,52 @@ async function assertOperatorApplicationReadOnly(page, applicationFlow) {
       assert.equal(await page.getByRole("button", { name }).count(), 0)
     }
   }
+}
+
+async function openApplicationCreate({
+  consoleOrigin,
+  page,
+  synchronizeClock,
+  userCredentials,
+}) {
+  await page.goto(`${consoleOrigin}/applications/apps/new`)
+  const form = page.getByRole("heading", { name: "Applications > Add app" })
+  const elevation = page.getByRole("heading", { name: "Verify your identity" })
+  await Promise.race([form.waitFor(), elevation.waitFor()])
+  if ((await elevation.count()) === 0) {
+    return
+  }
+
+  await synchronizeClock()
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/console/session/elevate",
+  )
+  await page.getByRole("button", { name: "Continue to verification" }).click()
+  const response = await responsePromise
+  try {
+    if (keycloakIdentityMode) {
+      await Promise.race([
+        page.locator("#username").waitFor({ timeout: 5_000 }),
+        page
+          .locator("nav[aria-label='Console navigation']")
+          .waitFor({ timeout: 5_000 }),
+      ])
+    } else {
+      await page
+        .getByRole("heading", { name: "Fixture identity sign in" })
+        .waitFor({ timeout: 5_000 })
+    }
+  } catch {
+    const location = response.headers().location
+    const redirect = location ? new URL(location) : null
+    throw new Error(
+      `MFA elevation returned ${response.status()} with redirect ${redirect ? `${redirect.origin}${redirect.pathname}` : "absent"} but did not navigate at ${new URL(page.url()).pathname}: ${safeDiagnosticTail(await page.locator("body").innerText())}`,
+    )
+  }
+  await completeIdentityLogin(page, userCredentials)
+  assert.equal(new URL(page.url()).pathname, "/applications/apps/new")
+  await form.waitFor()
 }
 
 async function submitApplicationCreate(page, applicationName) {
