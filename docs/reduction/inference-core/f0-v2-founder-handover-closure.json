@@ -1,0 +1,189 @@
+{
+  "schema": "llm-machines.pre-genesis-founder-handover-closure.v1",
+  "workPackage": "F0-V2",
+  "status": "FOUNDER_HANDOVER_CANDIDATE_PENDING_PROTECTED_ADMISSION",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "productMainCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
+  "predecessorClosure": {
+    "workPackage": "F0-V1",
+    "integrationCommit": "5d62120b5cf2e908855cc8de2699e95d0389485e",
+    "integrationTree": "bd8dda7562cc89dbdf75a22a1e19ad14716b6f29"
+  },
+  "protectedInput": {
+    "commit": "c509e3caf79d41943668f44c9978d013f6eeece8",
+    "tree": "e1b625066b0c19b332351cc0d5a57d90a58d75c1"
+  },
+  "admission": {
+    "branch": "codex/pre-genesis-f0-v2",
+    "baseBranch": "codex/inference-core-stack-reduction",
+    "mergeMethod": "merge-commit",
+    "candidateBinding": "the exact reviewed candidate commit and tree are reported after complete validation",
+    "genesisBinding": "only the protected integration merge whose tree equals the reviewed candidate tree may be proposed as the Genesis source snapshot",
+    "publicationRequiresSeparateApproval": true
+  },
+  "protectedPackages": [
+    {
+      "id": "F0-UAT0",
+      "pullRequest": 65,
+      "candidateCommit": "81a8f30ace04b8f20dbf48a0d278586f5b2688e2",
+      "candidateTree": "5eca289c625c9c9f3186f4b962174ddbe36e8241",
+      "integrationCommit": "66f246bb7721c8c34b33862b67c6fb1ca4972c29"
+    },
+    {
+      "id": "F0-UAT0-H1",
+      "pullRequest": 66,
+      "candidateCommit": "2d314fdecd4bdb64787882161f11f94c7bb809f3",
+      "candidateTree": "f750a79c25220a874328143e0e5cdc270b4cbc07",
+      "integrationCommit": "06d5163feaa9310d7787905a86d73202c0a03849"
+    },
+    {
+      "id": "F0-UAT0-H2",
+      "pullRequest": 67,
+      "candidateCommit": "3f4b401f13c355dfb1f1e243c1fb1ef18a9b6968",
+      "candidateTree": "f33e966d6d61aa3e4d716ea3ceb7ff6434a31266",
+      "integrationCommit": "8bfafbe59823f727581d5ed805dc908844fcecf7"
+    },
+    {
+      "id": "F0-UAT0-H3",
+      "pullRequest": 68,
+      "candidateCommit": "7d2b76c9f7c591c3f9984fd407b56c442c7e5cee",
+      "candidateTree": "ec6dfb72d19f0942fc0dde5477ad4f46332214ca",
+      "integrationCommit": "2454bd871cb2fa49099318b36b607695ad76252d"
+    },
+    {
+      "id": "F0-UAT0-H4",
+      "pullRequest": 69,
+      "candidateCommit": "9b24dd651ed49a3bab9a172b77e9897fe5707072",
+      "candidateTree": "41bba3e0815d8b98a8bbf49f5497a67785e0299d",
+      "integrationCommit": "7eb808e0c889a9f50284876ff5117c55e298fe76"
+    },
+    {
+      "id": "F0-UAT0-H5",
+      "pullRequest": 70,
+      "candidateCommit": "484992644a498e1c574a0ea678db62610fb481b3",
+      "candidateTree": "79e1c26a600d8bdf60e30be3522a5f7ece4a8fb7",
+      "integrationCommit": "e78caa55940ca720b1b5ff53a112e4951eeec6f4"
+    },
+    {
+      "id": "F0-E2E2",
+      "pullRequest": 71,
+      "candidateCommit": "7cee8ef1e1529e3fbbeea089b0fe63d839edc4b1",
+      "candidateTree": "0c36934c373246608661f4b5e0c6a626ee078925",
+      "integrationCommit": "a8d4ad1cce02374af09aecd0f5dedc0ac603debe"
+    },
+    {
+      "id": "F0-UX2",
+      "pullRequest": 72,
+      "candidateCommit": "50e0e7262c67b047a27fb3f6857a03b84e91e8d9",
+      "candidateTree": "a4407168840cb00e7eec788785600e6dc5feaef0",
+      "integrationCommit": "09cdcaf3589dc3c7dee9cd3a3f5bfdfe8041d36d"
+    },
+    {
+      "id": "F0-UX2-T1",
+      "pullRequest": 73,
+      "candidateCommit": "e0c3ca0b54a9c53dff85191667ef5be78a0a57c8",
+      "candidateTree": "436635a9c2f6bc4964a0732cec5fd66ace65379b",
+      "integrationCommit": "df65b66a0c88d353ef0c2e0804453867f55cd367"
+    },
+    {
+      "id": "F0-UX2-F1",
+      "pullRequest": 74,
+      "candidateCommit": "1c2c8b521d3328de0624a5895ba8c49243e256cb",
+      "candidateTree": "e1b625066b0c19b332351cc0d5a57d90a58d75c1",
+      "integrationCommit": "c509e3caf79d41943668f44c9978d013f6eeece8"
+    }
+  ],
+  "evidenceBindings": [
+    {
+      "path": "docs/reduction/inference-core/f0-uat0-founder-environment.json",
+      "sha256": "7aed2daf83a28b13fc015a46599e16d0aa9cc8cbdf6a3469a2c0ec39c7d5a09e"
+    },
+    {
+      "path": "docs/reduction/inference-core/founder-uat-runbook.md",
+      "sha256": "99dfb60c2c1d7cfe95aa28e85f78c35a0fc1036fa7b8bce94e7d18ae821d83a1"
+    },
+    {
+      "path": "docs/reduction/inference-core/f0-e2e2-founder-journey.json",
+      "sha256": "155f2a6ac5357ba55731bf963e31f5b6f02f57217128ae479730fa29fb3a8091"
+    },
+    {
+      "path": "scripts/pre-genesis/reduced-core-uat.mjs",
+      "sha256": "8539b9642899bde642586fae60740b8ab2a877116945fa29482de6aa0194b24e"
+    },
+    {
+      "path": "scripts/pre-genesis/reduced-core-integrated.mjs",
+      "sha256": "6b5a4bbf4a3f31d5993f22cc704def30f9a4608906114b45d10894f43cade241"
+    },
+    {
+      "path": "scripts/pre-genesis/reduced-core-browser-session.mjs",
+      "sha256": "60be7f09082e91896c323ec2cfaa23ffc4c12cda256ee81a84858fee636650dd"
+    }
+  ],
+  "founderEnvironment": {
+    "platform": "linux/amd64",
+    "resources": {
+      "vcpus": 8,
+      "memoryGiB": 32,
+      "diskGiB": 100
+    },
+    "network": "private lab with one loopback-only four-authority Product edge",
+    "credentialCustody": "generated throwaway values in one operator-owned mode-0600 file outside Git and normal logs",
+    "lifecycle": "explicit start, credential-free status, and explicit stop; keep-running until founder cleanup approval"
+  },
+  "runtimeServices": [
+    "actual Console Web and BFF",
+    "PostgreSQL 17.6 with real Product migrations",
+    "Keycloak 26.7.0",
+    "private LiteLLM 1.85.0",
+    "actual reviewed reduced Firecrawl 2.11.0",
+    "self-hosted SearXNG and exact egress control",
+    "private Prometheus 3.6.0, Alertmanager 0.29.0, and Grafana 13.1.0",
+    "deterministic OpenAI-compatible inference"
+  ],
+  "journeyEvidence": [
+    "actual Keycloak Admin and Operator login, logout, expiry, safe-return, concurrency, and controlled outage recovery",
+    "actual Console Application creation and separate inference and Firecrawl credential lifecycle",
+    "external standard OpenAI SDK model discovery plus streaming and non-streaming Chat Completions through the API authority and private LiteLLM",
+    "usage, token accounting, last-use, overlap, rotation, revocation, and second-Application isolation",
+    "actual reduced Firecrawl default-off, disclaimer, enablement, search, static scrape, route denial, egress allowlist, rotation, revocation, and isolation",
+    "Admin and Operator navigation across Applications, Inference, Hardware, Team, Activity & Audit, and Settings without customer native-service access",
+    "controlled BFF restart, private-native-service denial, zero-content-retention canaries, and explicit run-owned cleanup ownership"
+  ],
+  "realSglangComposite": {
+    "status": "DEFERRED_SEPARATE_INTERNAL_SUBGATE",
+    "reason": "The preserved exact F0-SG1 Intel-XPU profile is loopback-only on a separate internal host. Attaching the founder appliance would require a new cross-host tunnel or network authority and is not silently introduced by F0-V2.",
+    "preservedEvidence": "docs/reduction/inference-core/f0-sg1-internal-sglang.json",
+    "productImpact": "none; the founder environment uses deterministic inference and makes no production-capacity claim"
+  },
+  "aggregateValidation": {
+    "focused": "node --test scripts/inference-core/f0-v2-founder-handover-closure.test.mjs",
+    "repository": [
+      "corepack pnpm install --frozen-lockfile",
+      "corepack pnpm test",
+      "corepack pnpm exec biome check .",
+      "corepack pnpm typecheck",
+      "corepack pnpm build",
+      "git diff --check",
+      "git fsck --full"
+    ],
+    "functional": "node scripts/pre-genesis/reduced-core-uat.mjs start",
+    "freshDetachedReplayRequired": true,
+    "materialReviewRequired": true,
+    "protectedTreeEqualityRequired": true
+  },
+  "deferred": [
+    "founder-reported findings and their separately approved corrections",
+    "sanitized external code audits",
+    "Gitea Genesis publication",
+    "D2A construction and offline release signing",
+    "VM103 commissioning, backup, clean restore, update, and rollback qualification",
+    "production-class SGLang delivery-profile and hardware qualification",
+    "Q0 through Q3 and Product main admission",
+    "customer Grafana access and every native administration surface",
+    "production capacity, availability, latency, throughput, and concurrency claims"
+  ]
+}

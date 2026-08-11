@@ -484,6 +484,26 @@ merge whose tree equals the independently reviewed candidate tree can be named
 as the pre-Genesis source candidate, and publication still requires separate
 approval.
 
+F0-V2 is the governance-only founder-handover closure after F0-V1. It binds
+protected PRs 65 through 74: the operator-controlled linux/amd64 UAT lane, its
+five narrowly owned startup corrections, the standard OpenAI SDK customer
+journey, the headed Console review, the Team and Activity correction, and the
+actual Firecrawl readiness projection. The environment contains actual Console
+Web and BFF, PostgreSQL migrations, Keycloak 26.7.0, private LiteLLM 1.85.0,
+reduced Firecrawl 2.11.0 with SearXNG and exact egress control, retained private
+observability, and deterministic inference. It remains private and running only
+for founder evaluation under explicit operator lifecycle control.
+
+The preserved F0-SG1 profile remains exact internal Intel-XPU compatibility
+evidence. It is loopback-only on a separate internal host. F0-V2 does not
+silently add a cross-host tunnel or network authority to replay the full
+Product-issued credential path, so that composite remains a separate internal
+subgate and makes no production-capacity claim. F0-V2 does not accept or
+runtime-qualify the Product, activate a contract, publish Genesis, resume D2A,
+start Q0, or change Product main. Only a later explicitly approved Genesis
+publication may use the protected integration merge whose tree equals the
+fully reviewed F0-V2 candidate tree.
+
 System-managed exact-host egress allowlisting and public-address validation do
 not introduce customer URL Governance. The governed internal upstream is
 exactly `http://firecrawl-api:3002`; hosted, HTTPS, alternate-host, and
