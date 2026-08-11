@@ -920,6 +920,17 @@ async function runBrowserSessionProof() {
         status: "passed",
         temporaryStateRemoved: true,
       }
+      if (founderUatControl) {
+        await holdFounderUat({
+          caFile: certificate.ca,
+          children,
+          credentials,
+          edgePort,
+          firecrawlControl,
+          keycloakControl,
+          liteLlmControl,
+        })
+      }
       const cleanup = await Promise.allSettled([
         ...servers.map(closeServer),
         ...children.map(stopChild),
