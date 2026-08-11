@@ -210,6 +210,7 @@ try {
       PRE_GENESIS_DOCKER_CONTEXT: dockerContext,
     },
     "reduced-core-keycloak-identity.mjs",
+    ["--team"],
   )
   services.push(keycloak)
   const keycloakControl = await waitForControl(
@@ -223,6 +224,7 @@ try {
     keycloakControl.credentials.operator.password,
     keycloakControl.credentials.operator.otpSecret,
     keycloakControl.credentials.bffService,
+    keycloakControl.credentials.humanAdmin,
     keycloakControl.credentials.oidcClient,
   )
 
@@ -768,14 +770,14 @@ async function verifyProductRetention({
   }
 }
 
-function startService(name, extraEnvironment, script) {
+function startService(name, extraEnvironment, script, arguments_ = []) {
   const stdoutPath = join(stateRoot, `${name}.stdout.log`)
   const stderrPath = join(stateRoot, `${name}.stderr.log`)
   const stdout = createWriteStream(stdoutPath, { mode: 0o600 })
   const stderr = createWriteStream(stderrPath, { mode: 0o600 })
   const child = spawn(
     process.execPath,
-    [resolve(repositoryRoot, "scripts/pre-genesis", script)],
+    [resolve(repositoryRoot, "scripts/pre-genesis", script), ...arguments_],
     {
       cwd: repositoryRoot,
       env: commandEnvironment(extraEnvironment),

@@ -11,9 +11,18 @@ vi.mock("next/link", () => ({
   default: ({
     children,
     href,
+    prefetch,
     ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement>) =>
-    React.createElement("a", { href: String(href), ...props }, children),
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { prefetch?: boolean }) =>
+    React.createElement(
+      "a",
+      {
+        "data-prefetch": String(prefetch),
+        href: String(href),
+        ...props,
+      },
+      children,
+    ),
 }))
 
 afterEach(() => {
@@ -57,11 +66,13 @@ describe("ActivityV2Experience", () => {
     expect(
       within(exportRegion).getByRole("button", { name: "Export CSV" }),
     ).toBeTruthy()
-    expect(
-      within(exportRegion)
-        .getByRole("link", { name: "Verification keys" })
-        .getAttribute("href"),
-    ).toBe("/api/admin/audit/export/verification-keys")
+    const verificationKeys = within(exportRegion).getByRole("link", {
+      name: "Verification keys",
+    })
+    expect(verificationKeys.getAttribute("href")).toBe(
+      "/api/admin/audit/export/verification-keys",
+    )
+    expect(verificationKeys.getAttribute("data-prefetch")).toBe("false")
     expect(
       exportRegion.querySelector<HTMLInputElement>('input[name="from"]')?.value,
     ).toBe("2026-07-02T08:01")
