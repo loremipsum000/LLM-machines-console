@@ -81,7 +81,7 @@ const stateRoot = keepRunning
 const files = {
   alertmanagerConfig: join(stateRoot, "alertmanager.yml"),
   browserState: keepRunning
-    ? join(stateRoot, "browser")
+    ? join(stateRoot, `llmm-f0-c1-browser-${runId}`)
     : join(browserTemporaryRoot, `llmm-f0-c1-browser-${runId}`),
   firecrawlControl: join(stateRoot, "firecrawl-control.json"),
   firecrawlState: join(stateRoot, "firecrawl-state"),
@@ -662,7 +662,7 @@ async function runBrowser({
       F0_C1_FIRECRAWL_CONFIG_FILE: files.firecrawlControl,
       F0_C1_OBSERVABILITY_CONFIG_FILE: files.observabilityControl,
       F0_C1_BROWSER_STATE_ROOT: files.browserState,
-      F0_C1_BROWSER_TEMP_ROOT: browserTemporaryRoot,
+      F0_C1_BROWSER_TEMP_ROOT: keepRunning ? stateRoot : browserTemporaryRoot,
       F0_I1_KEYCLOAK_CONFIG_FILE: files.keycloakControl,
       F0_L2_LITELLM_CONFIG_FILE: files.liteLlmControl,
       F0_P1_DATABASE_URL: databaseUrl,

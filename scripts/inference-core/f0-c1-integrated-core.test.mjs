@@ -90,7 +90,10 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(integrated, /colima", \["list", "--json"\]/)
   assert.match(integrated, /F0_C1_SERVICE_STATE_ROOT: files\.firecrawlState/)
   assert.match(integrated, /F0_C1_BROWSER_STATE_ROOT: files\.browserState/)
-  assert.match(integrated, /F0_C1_BROWSER_TEMP_ROOT: browserTemporaryRoot/)
+  assert.match(
+    integrated,
+    /F0_C1_BROWSER_TEMP_ROOT: keepRunning \? stateRoot : browserTemporaryRoot/,
+  )
   assert.match(integrated, /terminationPromise = terminateProcessGroup/)
   assert.match(integrated, /await rename\(pending, backup\)/)
   assert.ok(

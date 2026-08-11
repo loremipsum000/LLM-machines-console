@@ -24,6 +24,14 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
   )
   assert.match(operator, /F0_UAT0_KEEP_RUNNING: "true"/)
   assert.match(integrated, /--keep-running/)
+  assert.match(
+    integrated,
+    /browserState: keepRunning\s+\? join\(stateRoot, `llmm-f0-c1-browser-\$\{runId\}`\)/,
+  )
+  assert.match(
+    integrated,
+    /F0_C1_BROWSER_TEMP_ROOT: keepRunning \? stateRoot : browserTemporaryRoot/,
+  )
   assert.match(browser, /status: "READY"/)
   assert.match(
     browser,
