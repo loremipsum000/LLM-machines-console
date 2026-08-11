@@ -1124,6 +1124,12 @@ function exactImage(id) {
 }
 
 function exactDockerContext(value) {
+  if (nativeAmd64) {
+    if (value !== "default") {
+      throw new Error("F0-C1 rejected the native Docker context.")
+    }
+    return value
+  }
   if (
     typeof value !== "string" ||
     !/^colima-llmm-f0-f2-[a-f0-9]{16}$/.test(value)
