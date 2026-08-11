@@ -1,0 +1,79 @@
+{
+  "schema": "llm-machines.pre-genesis-git-inventory.v2",
+  "observedAtBase": "c509e3caf79d41943668f44c9978d013f6eeece8",
+  "destructiveActionPerformed": false,
+  "branchesDeleted": 0,
+  "worktreesDeleted": 0,
+  "localBranches": {
+    "count": 80,
+    "normalizedInventorySha256": "fc259263b4b50844b83845812d4e18f7a09ba11cbbf510a6c77c029ea4513a67"
+  },
+  "worktrees": {
+    "count": 71,
+    "clean": 69,
+    "dirty": 2,
+    "normalizedInventorySha256": "8d2ca3249d9a9d2b15c586e02751a960daa5c037a36e2d11913207d07198fbfb"
+  },
+  "dirtyWorktreesPreserved": [
+    {
+      "name": "LLM-machines-console-inference-core",
+      "branch": "codex/inference-core-pr-11a",
+      "head": "e682e6106c62da7a1006e780d82621322b641d61",
+      "disposition": "frozen historical PR-11A candidate; untouched"
+    },
+    {
+      "name": "historical-pr12-dirty-worktree",
+      "nameSha256": "6dc456e6864dab272ed95039f04ec2455d278d74ae4fc114af9989146cb06d06",
+      "branchSha256": "73b33703c06be3d9588eb83c0dc852b1383753e5128165c4fa6eed48c8c71098",
+      "head": "868153cf07221f450a468523ee5e08f5d6c9922c",
+      "disposition": "historical paused worktree; untouched"
+    }
+  ],
+  "terminalEpochBranches": [
+    {
+      "branch": "codex/pre-genesis-f0-uat0",
+      "head": "81a8f30ace04b8f20dbf48a0d278586f5b2688e2"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-uat0-squid-nofile",
+      "head": "2d314fdecd4bdb64787882161f11f94c7bb809f3"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-uat0-native-context",
+      "head": "3f4b401f13c355dfb1f1e243c1fb1ef18a9b6968"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-uat0-postgres-readiness",
+      "head": "7d2b76c9f7c591c3f9984fd407b56c442c7e5cee"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-uat0-browser-state",
+      "head": "9b24dd651ed49a3bab9a172b77e9897fe5707072"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-uat0-handover",
+      "head": "484992644a498e1c574a0ea678db62610fb481b3"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-e2e2",
+      "head": "7cee8ef1e1529e3fbbeea089b0fe63d839edc4b1"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-ux2",
+      "head": "50e0e7262c67b047a27fb3f6857a03b84e91e8d9"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-ux2-team-audit",
+      "head": "e0c3ca0b54a9c53dff85191667ef5be78a0a57c8"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-ux2-firecrawl-readiness",
+      "head": "1c2c8b521d3328de0624a5895ba8c49243e256cb"
+    },
+    {
+      "branch": "codex/pre-genesis-f0-v2",
+      "head": "c509e3caf79d41943668f44c9978d013f6eeece8"
+    }
+  ],
+  "cleanupDisposition": "No branch or worktree cleanup is part of F0-V2. Cleanup requires a later explicit decision after Genesis publication."
+}
