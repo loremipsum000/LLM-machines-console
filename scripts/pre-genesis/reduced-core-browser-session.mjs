@@ -96,6 +96,9 @@ const firecrawlControl = integratedCoreMode
 const integratedObservabilityControl = integratedCoreMode
   ? integratedObservabilityControlFromEnvironment()
   : null
+const founderUatControl = integratedCoreMode
+  ? founderUatControlFromEnvironment()
+  : null
 const initialTime = integratedCoreMode
   ? new Date()
   : applicationsMode
@@ -631,6 +634,17 @@ async function runBrowserSessionProof() {
         ],
         status: "passed",
         temporaryStateRemoved: true,
+      }
+      if (founderUatControl) {
+        await holdFounderUat({
+          caFile: certificate.ca,
+          children,
+          credentials,
+          edgePort,
+          firecrawlControl,
+          keycloakControl,
+          liteLlmControl,
+        })
       }
       const cleanup = await Promise.allSettled([
         ...servers.map(closeServer),
@@ -4070,6 +4084,141 @@ function integratedObservabilityControlFromEnvironment() {
       config.prometheusBaseUrl,
       "Prometheus",
     ),
+  }
+}
+
+function founderUatControlFromEnvironment() {
+  const values = {
+    controlFile: process.env.F0_UAT0_CONTROL_FILE?.trim(),
+    credentialFile: process.env.F0_UAT0_CREDENTIAL_FILE?.trim(),
+    outerInventory: process.env.F0_UAT0_OUTER_INVENTORY?.trim(),
+    stopFile: process.env.F0_UAT0_STOP_FILE?.trim(),
+  }
+  if (Object.values(values).every((value) => !value)) return null
+  if (Object.values(values).some((value) => !value)) {
+    throw new Error("F0-UAT0 operator control metadata is incomplete.")
+  }
+  for (const path of [
+    values.controlFile,
+    values.credentialFile,
+    values.stopFile,
+  ]) {
+    if (!isAbsolute(path)) {
+      throw new Error("F0-UAT0 operator control paths must be absolute.")
+    }
+  }
+  if (
+    new Set(
+      [values.controlFile, values.credentialFile, values.stopFile].map((path) =>
+        resolve(path, ".."),
+      ),
+    ).size !== 1
+  ) {
+    throw new Error("F0-UAT0 operator control paths must share one owner root.")
+  }
+  let outerInventory
+  try {
+    outerInventory = JSON.parse(values.outerInventory)
+  } catch {
+    throw new Error("F0-UAT0 outer inventory is invalid JSON.")
+  }
+  if (
+    !outerInventory ||
+    typeof outerInventory !== "object" ||
+    typeof outerInventory.network !== "string" ||
+    typeof outerInventory.postgresVolume !== "string" ||
+    !outerInventory.containers ||
+    typeof outerInventory.containers !== "object"
+  ) {
+    throw new Error("F0-UAT0 outer inventory is invalid.")
+  }
+  return { ...values, outerInventory }
+}
+
+async function holdFounderUat({
+  caFile,
+  children,
+  credentials,
+  edgePort,
+  firecrawlControl,
+  keycloakControl,
+  liteLlmControl,
+}) {
+  assert.ok(founderUatControl)
+  const credentialDocument = {
+    admin: founderCredential(credentials.admin),
+    operator: founderCredential(credentials.operator),
+    schemaVersion: 1,
+  }
+  await writeFile(
+    founderUatControl.credentialFile,
+    `${JSON.stringify(credentialDocument, null, 2)}\n`,
+    { flag: "wx", mode: 0o600 },
+  )
+  const inventory = {
+    applicationProcesses: children
+      .filter((record) => !record.stopping && !record.exited)
+      .map((record) => ({ name: record.name, pid: record.child.pid })),
+    edgeProcess: process.pid,
+    firecrawl: firecrawlControl.containers ?? {},
+    identity: keycloakControl.container,
+    liteLlm: liteLlmControl.container,
+    outer: founderUatControl.outerInventory,
+  }
+  await writeFile(
+    founderUatControl.controlFile,
+    `${JSON.stringify(
+      {
+        authorities: {
+          api: `https://${authorities.api}:${edgePort}`,
+          console: `https://${authorities.console}:${edgePort}`,
+          firecrawl: `https://${authorities.firecrawl}:${edgePort}`,
+          identity: `https://${authorities.identity}:${edgePort}`,
+        },
+        caFile,
+        credentialFile: founderUatControl.credentialFile,
+        inventory,
+        keepRunning: true,
+        privateNativeServices: [
+          "firecrawl",
+          "grafana",
+          "keycloak-admin",
+          "litellm",
+          "postgresql",
+          "prometheus",
+          "sglang-or-inference-double",
+        ],
+        schemaVersion: 1,
+        status: "READY",
+      },
+      null,
+      2,
+    )}\n`,
+    { flag: "wx", mode: 0o600 },
+  )
+
+  while (!(await exists(founderUatControl.stopFile))) {
+    const failed = children.find((record) => !record.stopping && record.exited)
+    if (failed) {
+      throw new Error(
+        `F0-UAT0 managed process exited while founder access was active: ${failed.name}.`,
+      )
+    }
+    await delay(500)
+  }
+  await Promise.all([
+    rm(founderUatControl.controlFile, { force: true }),
+    rm(founderUatControl.credentialFile, { force: true }),
+    rm(founderUatControl.stopFile, { force: true }),
+  ])
+}
+
+function founderCredential(userCredentials) {
+  return {
+    otpSecret: userCredentials.otpSecret,
+    password: userCredentials.password,
+    role: userCredentials.role,
+    username: userCredentials.username,
   }
 }
 
