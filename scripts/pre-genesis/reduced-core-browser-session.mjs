@@ -2495,6 +2495,18 @@ async function proveApplicationConsoleFlow({
     streaming = "passed"
   }
 
+  const externalOpenAiClient = integratedCoreMode
+    ? await runOpenAiClientSmoke({
+        apiKey: inferenceCredential,
+        caFile: certificate.ca,
+        edgePort,
+        prompt: retentionCanaries
+          ? `${retentionCanaries.prompt} ${retentionCanaries.request}`
+          : "external OpenAI SDK client input",
+        sensitiveValues,
+      })
+    : null
+
   await page.getByRole("button", { name: "Check connection" }).click()
   await page
     .getByText(
@@ -2674,7 +2686,8 @@ async function proveApplicationConsoleFlow({
     inference: {
       connectionEvidence: "passed",
       lastUseVisible: true,
-      openAiClient: "passed",
+      openAiClient:
+        externalOpenAiClient ?? "not-executed-outside-integrated-core",
       requestsVisible: visibleRequests,
       tokensVisible: visibleTokens,
       ...(streaming ? { streaming } : {}),
@@ -3292,6 +3305,116 @@ async function requestTextThroughEdge({
     request.once("error", rejectRequest)
     request.end(encodedBody)
   })
+}
+
+async function runOpenAiClientSmoke({
+  apiKey,
+  caFile,
+  edgePort,
+  prompt,
+  sensitiveValues,
+}) {
+  const stdoutChunks = []
+  const stderrChunks = []
+  let outputLength = 0
+  let stdinFailure = null
+  const child = spawn(
+    process.execPath,
+    [resolve(repositoryRoot, "test-support/f0-e2e2-openai-client/client.mjs")],
+    {
+      cwd: repositoryRoot,
+      env: {
+        LANG: "C",
+        LC_ALL: "C",
+        PATH: process.env.PATH ?? "",
+      },
+      stdio: ["pipe", "pipe", "pipe"],
+    },
+  )
+  const collect = (target) => (chunk) => {
+    outputLength += chunk.length
+    if (outputLength > 65_536) {
+      child.kill("SIGKILL")
+      return
+    }
+    target.push(chunk)
+  }
+  child.stdout.on("data", collect(stdoutChunks))
+  child.stderr.on("data", collect(stderrChunks))
+  child.stdin.on("error", (error) => {
+    if (error.code !== "EPIPE") stdinFailure = error
+  })
+  child.stdin.end(
+    JSON.stringify({
+      apiKey,
+      baseUrl: `https://${authorities.api}:${edgePort}/v1`,
+      caFile,
+      model: "fixture-model",
+      prompt,
+    }),
+  )
+
+  const outcome = await new Promise((resolveChild, rejectChild) => {
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL")
+      rejectChild(new Error("The external OpenAI SDK client timed out."))
+    }, 60_000)
+    child.once("error", (error) => {
+      clearTimeout(timeout)
+      rejectChild(error)
+    })
+    child.once("close", (code, signal) => {
+      clearTimeout(timeout)
+      resolveChild({ code, signal })
+    })
+  })
+  const stdout = Buffer.concat(stdoutChunks).toString("utf8")
+  const stderr = Buffer.concat(stderrChunks).toString("utf8")
+  assertNoSensitiveValues(
+    [stdout, stderr],
+    sensitiveValues,
+    "external OpenAI SDK client output",
+  )
+  if (outputLength > 65_536) {
+    throw new Error("The external OpenAI SDK client exceeded its output limit.")
+  }
+  if (stdinFailure) {
+    throw new Error("The external OpenAI SDK client input failed.")
+  }
+  if (outcome.code !== 0) {
+    throw new Error(
+      `The external OpenAI SDK client failed with ${outcome.signal ?? outcome.code}: ${redactedDiagnosticTail(stderr, sensitiveValues)}`,
+    )
+  }
+
+  let evidence
+  try {
+    evidence = JSON.parse(stdout)
+  } catch {
+    throw new Error("The external OpenAI SDK client returned invalid evidence.")
+  }
+  assert.deepEqual(
+    {
+      client: evidence.client,
+      clientVersion: evidence.clientVersion,
+      modelDiscovery: evidence.modelDiscovery,
+      nonStreamingStatus: evidence.nonStreaming?.status,
+      processBoundary: evidence.processBoundary,
+      streamingStatus: evidence.streaming?.status,
+    },
+    {
+      client: "openai-node",
+      clientVersion: "7.4.0",
+      modelDiscovery: "passed",
+      nonStreamingStatus: "passed",
+      processBoundary: "child",
+      streamingStatus: "passed",
+    },
+  )
+  assert.ok(evidence.nonStreaming.totalTokens > 0)
+  assert.ok(evidence.streaming.chunks > 0)
+  assert.ok(evidence.streaming.totalTokens > 0)
+  return evidence
 }
 
 function createDevelopmentEdge({

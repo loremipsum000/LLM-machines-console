@@ -1,0 +1,14 @@
+{
+  "name": "@llm-machines/f0-e2e2-openai-client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "openai": "7.4.0",
+    "undici": "7.29.0"
+  }
+}
