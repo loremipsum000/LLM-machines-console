@@ -102,7 +102,7 @@ try {
   let databaseUrl = null
   if (teamMode) {
     await configureTeamAuthority(upstreamPort)
-    databaseUrl = await startPostgres()
+    databaseUrl = serviceControl ? null : await startPostgres()
   }
   await writeFile(
     browserConfigFile,

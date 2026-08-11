@@ -407,7 +407,7 @@ async function runBrowserSessionProof() {
             F0_P1_SESSION_KEYRING_FILE: sessionKeyringFile,
           }
         : {}),
-      ...(keycloakTeamMode
+      ...(keycloakTeamMode || integratedCoreMode
         ? {
             KEYCLOAK_ADMIN_BASE_URL: keycloakControl.adminBaseUrl,
             KEYCLOAK_ADMIN_CLIENT_ID: "console-human-admin",
@@ -849,12 +849,18 @@ async function runBrowserSessionProof() {
     if (integratedCoreMode) {
       assert.ok(persistenceOperatorContext)
       assert.ok(persistenceOperatorPage)
+      await assertIntegratedTeamProjection(page, consoleOrigin, true)
       await persistenceOperatorPage.goto(`${consoleOrigin}/applications`)
       await assertRole(persistenceOperatorPage, "Operator")
       await assertConsoleNavigation(persistenceOperatorPage, consoleOrigin)
       await assertOperatorApplicationReadOnly(
         persistenceOperatorPage,
         applicationFlow,
+      )
+      await assertIntegratedTeamProjection(
+        persistenceOperatorPage,
+        consoleOrigin,
+        false,
       )
       await persistenceOperatorContext.close()
       persistenceOperatorContext = undefined
@@ -1600,6 +1606,31 @@ async function proveKeycloakTeamConsoleFlow({
     oneTimePasswordReveal: "passed",
     operatorMutationDenial: "passed",
     passwordRotation: "passed",
+  }
+}
+
+async function assertIntegratedTeamProjection(
+  page,
+  consoleOrigin,
+  canManageUsers,
+) {
+  await page.goto(`${consoleOrigin}/team`)
+  await page.getByRole("heading", { name: "Team" }).first().waitFor()
+  await page.getByText("admin fixture", { exact: true }).waitFor()
+  await page.getByText("operator fixture", { exact: true }).waitFor()
+  assert.equal(
+    await page
+      .getByRole("heading", { name: "Keycloak admin API not configured" })
+      .count(),
+    0,
+  )
+  assert.equal(
+    await page.getByRole("link", { name: "Create user" }).count(),
+    canManageUsers ? 1 : 0,
+  )
+  if (!canManageUsers) {
+    await page.goto(`${consoleOrigin}/team/members/new`)
+    await page.getByRole("heading", { name: "Admin access required" }).waitFor()
   }
 }
 
@@ -4826,7 +4857,7 @@ function keycloakControlFromEnvironment() {
   }
   const adminBaseUrl = `http://127.0.0.1:${config.upstreamPort}`
   if (
-    keycloakTeamMode &&
+    (keycloakTeamMode || integratedCoreMode) &&
     (typeof config.credentials.humanAdmin !== "string" ||
       config.credentials.humanAdmin.length < 32)
   ) {

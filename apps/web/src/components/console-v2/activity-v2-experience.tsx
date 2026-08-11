@@ -300,6 +300,7 @@ function ActivityExportControls({
         <Link
           className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-[#353535] bg-[#2e2e2e] px-3 text-xs font-medium text-white transition-colors hover:bg-[#353535] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
           href="/api/admin/audit/export/verification-keys"
+          prefetch={false}
         >
           Verification keys
         </Link>

@@ -111,6 +111,24 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(browser, /const detached = !integratedCoreMode/)
   assert.match(browser, /keycloakControl\.dockerContext/)
   assert.match(browser, /keycloakControl\.container/)
+  assert.match(
+    integrated,
+    /"reduced-core-keycloak-identity\.mjs",\n {4}\["--team"\]/,
+  )
+  assert.match(integrated, /keycloakControl\.credentials\.humanAdmin/)
+  assert.match(
+    keycloak,
+    /databaseUrl = serviceControl \? null : await startPostgres\(\)/,
+  )
+  assert.match(browser, /keycloakTeamMode \|\| integratedCoreMode/)
+  assert.match(
+    browser,
+    /assertIntegratedTeamProjection\(page, consoleOrigin, true\)/,
+  )
+  assert.match(
+    browser,
+    /assertIntegratedTeamProjection\(\s*persistenceOperatorPage,\s*consoleOrigin,\s*false,\s*\)/,
+  )
   assert.match(browser, /synchronizeClock: synchronizeFixtureClock/)
   const finalIdentitySwitch = browser.slice(
     browser.indexOf("if (integratedCoreMode)"),
