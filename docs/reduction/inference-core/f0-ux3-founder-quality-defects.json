@@ -5,7 +5,7 @@
   "assessedTree": "c16afcb47b8bea9b21b34b7fa872f411ba25ab57",
   "environment": "VM117 temporary founder QA only",
   "productDestination": "VM103 Core Appliance with a separate private SGLang plane",
-  "status": "CORRECTION_CANDIDATE",
+  "status": "MATERIAL_CORRECTIONS_PENDING_F0_UAT1_ADMISSION",
   "computerUse": {
     "status": "BLOCKED",
     "reason": "Visible Chrome application-state inspection timed out twice; no unlock or browser-security bypass was attempted.",
@@ -21,6 +21,7 @@
       "expected": "The fixed navigation and 640-pixel Console content remain inside the viewport without horizontal scrolling or clipped controls.",
       "actual": "The shell extends 150 pixels past the viewport and clips page actions and controls.",
       "evidence": "Playwright measured document overflow and clipped controls in credential-free screenshots for both roles.",
+      "resolution": "F0-UX3 uses a bounded responsive Console content width and enforces the 1024-pixel desktop boundary in the real-browser suite; admitted through protected PR 76.",
       "blocksFounderAcceptance": true,
       "blocksVm103Cutover": true
     },
@@ -33,6 +34,7 @@
       "expected": "The v1 Team overview offers approved basic user administration only.",
       "actual": "The overview advertises deferred CSV import and arbitrary group creation.",
       "evidence": "Credential-free Admin Team screenshot and accessible-role inspection.",
+      "resolution": "F0-UX3 removes both deferred actions from the Team overview while retaining approved basic user administration; admitted through protected PR 76.",
       "blocksFounderAcceptance": true,
       "blocksVm103Cutover": true
     },
@@ -45,6 +47,7 @@
       "expected": "A clean founder environment reports the actual healthy baseline unless a supported alert is active.",
       "actual": "The UAT fixture posts an alert outside the Product allowlist, so the Product correctly omits it and reports Degraded and Needs attention.",
       "evidence": "Overview and Hardware screenshots plus source trace from the UAT alert fixture to the strict Alertmanager allowlist.",
+      "resolution": "F0-UAT1 skips the disposable synthetic alert only in keep-running founder mode, projects private Grafana health into Settings, and adds browser assertions for healthy Hardware and System state.",
       "blocksFounderAcceptance": true,
       "blocksVm103Cutover": false
     },
@@ -57,6 +60,7 @@
       "expected": "Frequently used targets should be comfortably operable at desktop sizes.",
       "actual": "Several targets are 20 to 32 pixels high. Focus-visible styling, form labels, accessible names, heading structure, and keyboard shortcuts are present.",
       "evidence": "Playwright geometry and source-level focus-style inspection.",
+      "resolution": "Recorded as non-blocking final polish; no focus, label, naming, heading, or keyboard-access defect was demonstrated.",
       "blocksFounderAcceptance": false,
       "blocksVm103Cutover": false
     }
