@@ -1456,8 +1456,14 @@ async function assertDesktopViewportLayout(page, consoleOrigin) {
 
     await page.goto(`${consoleOrigin}/team`)
     await page.getByRole("heading", { name: "Team" }).first().waitFor()
-    assert.equal(await page.getByRole("link", { name: "Import CSV" }).count(), 0)
-    assert.equal(await page.getByRole("link", { name: "Create group" }).count(), 0)
+    assert.equal(
+      await page.getByRole("link", { name: "Import CSV" }).count(),
+      0,
+    )
+    assert.equal(
+      await page.getByRole("link", { name: "Create group" }).count(),
+      0,
+    )
   } finally {
     if (previousViewport) await page.setViewportSize(previousViewport)
   }
