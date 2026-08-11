@@ -161,8 +161,8 @@ test("F0-V2 remains governance-only and preserves Git history", async () => {
     await Promise.all([
       readJson(closurePath),
       readJson(inventoryPath),
-      readSource("docs/reduction/inference-core/decision-register.md"),
-      readSource("docs/reduction/inference-core/validation-register.md"),
+      readText("docs/reduction/inference-core/decision-register.md"),
+      readText("docs/reduction/inference-core/validation-register.md"),
     ])
 
   assert.equal(closure.admission.publicationRequiresSeparateApproval, true)
@@ -247,6 +247,10 @@ async function readSource(path) {
 
 async function readJson(path) {
   return JSON.parse((await readSource(path)).toString("utf8"))
+}
+
+async function readText(path) {
+  return (await readSource(path)).toString("utf8")
 }
 
 function sha256(source) {
