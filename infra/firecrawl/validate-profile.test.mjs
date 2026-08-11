@@ -62,6 +62,18 @@ test("a service cannot override the default-off runtime policy", () => {
   )
 })
 
+test("the egress proxy has a bounded descriptor table", () => {
+  const changed = compose.replace(
+    "        soft: 4096\n        hard: 4096",
+    "        soft: 1073741816\n        hard: 1073741816",
+  )
+  assert.ok(
+    validateCompose(changed).some((error) =>
+      error.includes("must bound the Squid descriptor table"),
+    ),
+  )
+})
+
 test("an unreviewed persistent mount is rejected", () => {
   const changed = compose.replace(
     "    tmpfs:\n      - /tmp:rw,noexec,nosuid,size=512m",

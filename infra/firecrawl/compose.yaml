@@ -184,6 +184,10 @@ services:
       - /var/spool/squid:rw,noexec,nosuid,size=32m,uid=13,gid=13,mode=0700
       - /tmp:rw,noexec,nosuid,size=16m,uid=13,gid=13,mode=0700
     pids_limit: 64
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
     cpus: "${FIRECRAWL_EGRESS_CPUS:-0.25}"
     mem_limit: "${FIRECRAWL_EGRESS_MEMORY:-128m}"
     memswap_limit: "${FIRECRAWL_EGRESS_MEMORY:-128m}"
