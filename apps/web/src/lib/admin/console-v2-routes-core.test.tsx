@@ -2,16 +2,20 @@ import { cleanup, render, screen } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  renderApplicationsConsoleRoute,
   renderInferenceConsoleRoute,
   renderOverviewConsoleRoute,
   renderSettingsConsoleRoute,
 } from "./console-v2-routes-core"
 
-function activeConsoleSession(role: "admin" | "operator") {
+function activeConsoleSession(
+  role: "admin" | "operator",
+  mfaVerifiedAt: string | null = null,
+) {
   return {
     session: {
       groups: [],
-      mfaVerifiedAt: null,
+      mfaVerifiedAt,
       role,
       subject: `${role}-1`,
     },
@@ -21,6 +25,7 @@ function activeConsoleSession(role: "admin" | "operator") {
 }
 
 const mocks = vi.hoisted(() => ({
+  applicationsV2Experience: vi.fn(() => null),
   getAdminOverview: vi.fn(),
   getAdminInference: vi.fn(),
   getAdminSettings: vi.fn(),
@@ -64,7 +69,7 @@ vi.mock("@/components/console-v2/activity-v2-experience", () => ({
 }))
 
 vi.mock("@/components/console-v2/applications-v2-experience", () => ({
-  ApplicationsV2Experience: vi.fn(),
+  ApplicationsV2Experience: mocks.applicationsV2Experience,
 }))
 
 vi.mock("@/components/console-v2/console-unavailable-panel", () => ({
@@ -228,6 +233,43 @@ describe("Overview Console route", () => {
 })
 
 describe("retained route boundaries", () => {
+  it("requires fresh MFA before rendering the Application creation form", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
+
+    await expect(
+      renderApplicationsConsoleRoute({ section: ["apps", "new"] }),
+    ).rejects.toThrow(
+      "redirect:/auth/elevate?action=applications.create_delete&returnTo=%2Fapplications%2Fapps%2Fnew",
+    )
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/auth/elevate?action=applications.create_delete&returnTo=%2Fapplications%2Fapps%2Fnew",
+    )
+    expect(mocks.getAdminInference).not.toHaveBeenCalled()
+    expect(mocks.applicationsV2Experience).not.toHaveBeenCalled()
+  })
+
+  it("renders the Application creation form after fresh MFA", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin", new Date().toISOString()),
+    )
+    mocks.getAdminInference.mockResolvedValue({ models: [] })
+
+    render(await renderApplicationsConsoleRoute({ section: ["apps", "new"] }))
+
+    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(mocks.getAdminInference).toHaveBeenCalledWith({ range: "7d" })
+    expect(mocks.applicationsV2Experience).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessRole: "admin",
+        modelOptions: [],
+        view: "new-app",
+      }),
+      undefined,
+    )
+  })
+
   it("rejects the retired nested Inference update route", async () => {
     mocks.getCurrentConsoleSession.mockResolvedValue({
       reason: "absent",

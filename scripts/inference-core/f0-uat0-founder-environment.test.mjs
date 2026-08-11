@@ -44,6 +44,15 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
   )
   assert.match(browser, /ADMIN_GRAFANA_BASE_URL:/)
   assert.match(browser, /cpu\.getByText\("50%", \{ exact: true \}\)/)
+  assert.match(browser, /async function openApplicationCreate\(/)
+  assert.match(
+    browser,
+    /assert\.equal\(new URL\(page\.url\(\)\)\.pathname, "\/applications\/apps\/new"\)/,
+  )
+  assert.doesNotMatch(
+    browser,
+    /assert\.equal\(new URL\(page\.url\(\)\)\.pathname, "\/applications"\)\n\s+await page\.goto\(`\$\{consoleOrigin\}\/applications\/apps\/new`\)/,
+  )
   assert.match(browser, /founderUat: Boolean\(founderUatControl\)/)
   assert.match(browser, /actual-private-no-synthetic-alert/)
   assert.match(
