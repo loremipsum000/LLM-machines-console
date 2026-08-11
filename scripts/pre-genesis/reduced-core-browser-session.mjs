@@ -780,6 +780,7 @@ async function runBrowserSessionProof() {
         ignoreHTTPSErrors: true,
       })
       persistenceOperatorPage = await persistenceOperatorContext.newPage()
+      await synchronizeFixtureClock()
       await signIn(
         persistenceOperatorPage,
         consoleOrigin,

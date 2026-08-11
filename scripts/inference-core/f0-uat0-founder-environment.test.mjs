@@ -39,6 +39,10 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
   assert.match(browser, /ADMIN_GRAFANA_BASE_URL:/)
   assert.match(browser, /founderUat: Boolean\(founderUatControl\)/)
   assert.match(browser, /actual-private-no-synthetic-alert/)
+  assert.match(
+    browser,
+    /persistenceOperatorPage = await persistenceOperatorContext\.newPage\(\)\n {6}await synchronizeFixtureClock\(\)\n {6}await signIn\(/,
+  )
   assert.match(browser, /status: "READY"/)
   assert.match(browser, /founderUatControl \? "start" : "dev"/)
   assert.match(
