@@ -193,6 +193,15 @@ export function validateCompose(source) {
       if (!pattern.test(block)) fail(errors, `${service} ${message}`)
     }
 
+    if (
+      service === "firecrawl-egress" &&
+      !/^ {4}ulimits:\n {6}nofile:\n {8}soft: 4096\n {8}hard: 4096$/m.test(
+        block,
+      )
+    ) {
+      fail(errors, "firecrawl-egress must bound the Squid descriptor table")
+    }
+
     const actualNetworks = extractServiceNetworks(block)
     const expected = [...requiredNetworks].sort()
     if (JSON.stringify(actualNetworks) !== JSON.stringify(expected)) {
