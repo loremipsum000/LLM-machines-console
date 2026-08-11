@@ -20,13 +20,19 @@ import { fileURLToPath } from "node:url"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const serviceControl = serviceControlFromEnvironment()
+const nativeAmd64 = process.env.F0_UAT0_NATIVE_AMD64 === "true"
+if (nativeAmd64 && (process.platform !== "linux" || process.arch !== "x64")) {
+  throw new Error("F0-UAT0 Firecrawl requires native Linux/amd64.")
+}
 const sourcePackage = await readJson(
   resolve(repositoryRoot, "infra/firecrawl/release/source-package.json"),
 )
 const runId = controlledRunIdFromEnvironment() ?? randomBytes(8).toString("hex")
 const project = `llmmf0f2${runId}`
-const managedProfile = `llmm-f0-f2-${runId}`
-const dockerContext = `colima-${managedProfile}`
+const managedProfile = nativeAmd64 ? null : `llmm-f0-f2-${runId}`
+const dockerContext = nativeAmd64
+  ? exactNativeDockerContext()
+  : `colima-${managedProfile}`
 const apiImage = `llmm-f0-f2/firecrawl-api:${runId}`
 const browserImage = `llmm-f0-f2/firecrawl-browser:${runId}`
 const bridgeContainer = `llmm-f0-f2-bridge-${runId}`
@@ -63,8 +69,10 @@ let failure
 
 try {
   await chmod(stateRoot, 0o700)
-  created.profile = true
-  startManagedProfile()
+  if (!nativeAmd64) {
+    created.profile = true
+    startManagedProfile()
+  }
   docker(["info", "--format", "{{.ServerVersion}}"])
   await mkdir(sourceInputs, { mode: 0o700 })
   await mkdir(allowlistDirectory, { mode: 0o755 })
@@ -826,6 +834,7 @@ function verifyCleanup(cleanupFailures) {
     cleanupFailures.push(new Error("F0-F2 bridge network remains."))
   }
   if (
+    !nativeAmd64 &&
     managedProfile &&
     colimaResult(["status", "--profile", managedProfile]).status === 0
   ) {
@@ -992,15 +1001,30 @@ async function createStateRoot() {
     throw new Error("F0-C1 Firecrawl state ownership is invalid.")
   }
   const realStateRoot = await realpath(controlled)
-  const fromCache = relative(realCacheRoot, realStateRoot)
+  const expectedParent = nativeAmd64
+    ? process.env.F0_UAT0_STATE_ROOT?.trim()
+    : realCacheRoot
+  if (!expectedParent || !isAbsolute(expectedParent)) {
+    throw new Error("F0-C1 Firecrawl state ownership is invalid.")
+  }
+  const realParent = await realpath(expectedParent)
+  const fromParent = relative(realParent, realStateRoot)
   if (
-    fromCache === "" ||
-    fromCache === ".." ||
-    fromCache.startsWith(`..${sep}`)
+    fromParent === "" ||
+    fromParent === ".." ||
+    fromParent.startsWith(`..${sep}`)
   ) {
-    throw new Error("F0-C1 Firecrawl state escaped the disposable cache.")
+    throw new Error("F0-C1 Firecrawl state escaped its controlled root.")
   }
   return realStateRoot
+}
+
+function exactNativeDockerContext() {
+  const value = process.env.PRE_GENESIS_DOCKER_CONTEXT?.trim() || "default"
+  if (value !== "default") {
+    throw new Error("F0-UAT0 Firecrawl requires the native default context.")
+  }
+  return value
 }
 
 async function waitForStop(path) {

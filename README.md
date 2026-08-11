@@ -101,6 +101,22 @@ source outage and recovery, role parity, and the absence of Grafana and native
 LiteLLM or Keycloak administration. It is not real-service, exact-Core, or Q0
 evidence.
 
+## Persistent founder UAT lane
+
+On a dedicated native Linux/amd64 evaluation VM, run
+`node scripts/pre-genesis/reduced-core-uat.mjs start` to start the actual
+reduced-Core services and keep them running after the integrated browser proof
+passes. Use the same command with `status` for credential-free connection and
+inventory metadata, and with `stop` for the only normal cleanup path. The
+generated Admin and Operator credentials remain in a
+mode-`0600` operator file and are never printed by these commands.
+
+The environment is loopback-only and requires an authenticated SSH tunnel plus
+the temporary four-authority hostname and CA procedure documented in
+`docs/reduction/inference-core/founder-uat-runbook.md`. It is founder functional
+evidence only, not a release, production deployment, SGLang capacity result, or
+Q0 runtime qualification.
+
 ## Security
 
 Internal deployment topology, operational runbooks, environment credentials,

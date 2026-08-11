@@ -18,12 +18,26 @@ import {
 } from "node:fs/promises"
 import { createServer } from "node:http"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { terminateProcessGroup } from "./process-group.mjs"
 import { restoreWorkspaceBuildArtifacts } from "./workspace-artifacts.mjs"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
+const keepRunning = process.argv.includes("--keep-running")
+if (
+  process.argv.slice(2).some((argument) => argument !== "--keep-running") ||
+  process.argv.slice(2).length > 1
+) {
+  throw new Error("Usage: reduced-core-integrated.mjs [--keep-running]")
+}
+const nativeAmd64 = process.env.F0_UAT0_NATIVE_AMD64 === "true"
+if (
+  keepRunning &&
+  (!nativeAmd64 || process.platform !== "linux" || process.arch !== "x64")
+) {
+  throw new Error("F0-UAT0 keep-running mode requires native Linux/amd64.")
+}
 const inventory = JSON.parse(
   await readFile(
     resolve(repositoryRoot, "infra/release/core-image-inventory.json"),
@@ -42,8 +56,11 @@ const images = Object.fromEntries(
 const runId = randomBytes(8).toString("hex")
 const packageId = "F0-C1"
 const firecrawlProfile = `llmm-f0-f2-${runId}`
-const firecrawlDockerContext = `colima-${firecrawlProfile}`
+const firecrawlDockerContext = nativeAmd64
+  ? "default"
+  : `colima-${firecrawlProfile}`
 const network = `llmm-f0-c1-${runId}`
+const postgresVolume = `llmm-f0-uat0-postgres-${runId}`
 const containers = {
   alertmanager: `llmm-f0-c1-alertmanager-${runId}`,
   grafana: `llmm-f0-c1-grafana-${runId}`,
@@ -58,12 +75,14 @@ const grafanaOidcSecret = opaqueValue()
 const cacheRoot = resolve(repositoryRoot, "node_modules/.cache")
 await mkdir(cacheRoot, { mode: 0o700, recursive: true })
 const browserTemporaryRoot = await realpath(tmpdir())
-const stateRoot = await mkdtemp(
-  join(await realpath(cacheRoot), "llmm-f0-c1-integrated-"),
-)
+const stateRoot = keepRunning
+  ? await createControlledUatStateRoot()
+  : await mkdtemp(join(await realpath(cacheRoot), "llmm-f0-c1-integrated-"))
 const files = {
   alertmanagerConfig: join(stateRoot, "alertmanager.yml"),
-  browserState: join(browserTemporaryRoot, `llmm-f0-c1-browser-${runId}`),
+  browserState: keepRunning
+    ? join(stateRoot, "browser")
+    : join(browserTemporaryRoot, `llmm-f0-c1-browser-${runId}`),
   firecrawlControl: join(stateRoot, "firecrawl-control.json"),
   firecrawlState: join(stateRoot, "firecrawl-state"),
   firecrawlStop: join(stateRoot, "firecrawl.stop"),
@@ -78,6 +97,9 @@ const files = {
   observabilityControl: join(stateRoot, "observability-control.json"),
   postgresEnvironment: join(stateRoot, "postgres.env"),
   prometheusConfig: join(stateRoot, "prometheus.yml"),
+  uatControl: join(stateRoot, "uat-control.json"),
+  uatCredentials: join(stateRoot, "credentials.json"),
+  uatStop: join(stateRoot, "uat.stop"),
   workspaceBuildBackup: join(stateRoot, "workspace-build-backup"),
 }
 const workspaceBuildArtifacts = [
@@ -113,6 +135,7 @@ const workspaceBuildSnapshot = []
 const created = {
   containers: new Set(),
   network: false,
+  postgresVolume: false,
 }
 const services = []
 const sensitiveValues = [databasePassword, grafanaOidcSecret]
@@ -133,6 +156,13 @@ try {
       F0_C1_FIRECRAWL_RUN_ID: runId,
       F0_C1_SERVICE_STOP_FILE: files.firecrawlStop,
       F0_C1_SERVICE_STATE_ROOT: files.firecrawlState,
+      ...(nativeAmd64
+        ? {
+            F0_UAT0_NATIVE_AMD64: "true",
+            F0_UAT0_STATE_ROOT: stateRoot,
+            PRE_GENESIS_DOCKER_CONTEXT: "default",
+          }
+        : {}),
     },
     "reduced-core-firecrawl-integration.mjs",
   )
@@ -264,6 +294,11 @@ try {
   if (created.network) {
     collectCleanup(cleanupFailures, () => docker(["network", "rm", network]))
   }
+  if (created.postgresVolume) {
+    collectCleanup(cleanupFailures, () =>
+      docker(["volume", "rm", postgresVolume]),
+    )
+  }
   await stopServiceByName("firecrawl", files.firecrawlStop, cleanupFailures)
   for (const service of services) {
     if (!service.exited) {
@@ -282,6 +317,9 @@ try {
     files.liteLlmControl,
     files.postgresEnvironment,
     files.grafanaSecret,
+    files.uatControl,
+    files.uatCredentials,
+    files.uatStop,
   ]) {
     await rm(path, { force: true })
   }
@@ -355,6 +393,16 @@ async function startProductPostgres() {
     network,
   ])
   created.network = true
+  if (keepRunning) {
+    docker([
+      "volume",
+      "create",
+      "--label",
+      "com.llm-machines.test-package=F0-C1",
+      postgresVolume,
+    ])
+    created.postgresVolume = true
+  }
   docker([
     "run",
     "--detach",
@@ -376,8 +424,12 @@ async function startProductPostgres() {
     files.postgresEnvironment,
     "--publish",
     `127.0.0.1:${hostPort}:5432`,
-    "--tmpfs",
-    "/var/lib/postgresql/data:rw,noexec,nosuid,nodev,size=2g",
+    ...(keepRunning
+      ? [
+          "--mount",
+          `type=volume,source=${postgresVolume},target=/var/lib/postgresql/data`,
+        ]
+      : ["--tmpfs", "/var/lib/postgresql/data:rw,noexec,nosuid,nodev,size=2g"]),
     images["product-postgresql"],
   ])
   created.containers.add(containers.postgres)
@@ -606,10 +658,22 @@ async function runBrowser({
       F0_P1_POSTGRES_CONTAINER: containers.postgres,
       F0_P1_POSTGRES_DB: database,
       F0_P1_POSTGRES_USER: databaseUser,
+      ...(keepRunning
+        ? {
+            F0_UAT0_CONTROL_FILE: files.uatControl,
+            F0_UAT0_CREDENTIAL_FILE: files.uatCredentials,
+            F0_UAT0_OUTER_INVENTORY: JSON.stringify({
+              containers,
+              network,
+              postgresVolume,
+            }),
+            F0_UAT0_STOP_FILE: files.uatStop,
+          }
+        : {}),
       PLAYWRIGHT_CHROME_EXECUTABLE:
         process.env.PLAYWRIGHT_CHROME_EXECUTABLE ?? "",
     },
-    25 * 60_000,
+    keepRunning ? null : 25 * 60_000,
   )
   if (result.timedOut && !result.processGroupRemoved) {
     throw new Error("F0-C1 browser proof left its process group running.")
@@ -783,6 +847,7 @@ function signalServiceGroup(service, signal) {
 }
 
 function cleanupFirecrawlProfile() {
+  if (nativeAmd64) return
   if (!colimaProfiles().has(firecrawlProfile)) return
   const result = spawnSync(
     "colima",
@@ -1116,10 +1181,10 @@ function runChild(command, arguments_, environment, timeout) {
       stderr += chunk
       if (stderr.length > 64 * 1024 * 1024) terminate()
     })
-    const timer = setTimeout(terminate, timeout)
+    const timer = timeout === null ? null : setTimeout(terminate, timeout)
     child.once("error", rejectChild)
     child.once("exit", async (status) => {
-      clearTimeout(timer)
+      if (timer) clearTimeout(timer)
       const termination = timedOut
         ? await terminationPromise
         : { error: null, removed: true }
@@ -1136,6 +1201,25 @@ function runChild(command, arguments_, environment, timeout) {
       })
     })
   })
+}
+
+async function createControlledUatStateRoot() {
+  const controlled = process.env.F0_UAT0_STATE_ROOT?.trim()
+  if (!controlled || !isAbsolute(controlled)) {
+    throw new Error("F0-UAT0 requires an absolute runtime state root.")
+  }
+  const repository = await realpath(repositoryRoot)
+  const candidate = resolve(controlled)
+  const fromRepository = relative(repository, candidate)
+  if (
+    fromRepository === "" ||
+    (!fromRepository.startsWith(`..${sep}`) && fromRepository !== "..")
+  ) {
+    throw new Error("F0-UAT0 state must remain outside the source worktree.")
+  }
+  await mkdir(dirname(candidate), { mode: 0o700, recursive: true })
+  await mkdir(candidate, { mode: 0o700 })
+  return realpath(candidate)
 }
 
 function commandEnvironment(extra = {}) {

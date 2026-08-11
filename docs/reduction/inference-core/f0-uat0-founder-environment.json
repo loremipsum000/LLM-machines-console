@@ -1,0 +1,29 @@
+{
+  "schema": "llm-machines.pre-genesis-functional-evidence.v1",
+  "workPackage": "F0-UAT0",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "5d62120b5cf2e908855cc8de2699e95d0389485e",
+  "commands": {
+    "start": "node scripts/pre-genesis/reduced-core-uat.mjs start",
+    "status": "node scripts/pre-genesis/reduced-core-uat.mjs status",
+    "stop": "node scripts/pre-genesis/reduced-core-uat.mjs stop"
+  },
+  "purpose": "Turn the existing F0-C1 reduced-Core proof into an operator-controlled, private, persistent founder evaluation environment.",
+  "boundaries": [
+    "native Linux/amd64 only",
+    "one loopback-only Product edge with Console, API, Identity, and Firecrawl authorities",
+    "native service ports remain private",
+    "generated throwaway credentials are written only to an operator-owned mode-0600 file",
+    "the environment remains running until the explicit stop command",
+    "stop removes only the package-owned containers, network, volume, generated images, state, and credential files"
+  ],
+  "notEvidenceFor": [
+    "production deployment or Product main admission",
+    "release packaging, D2A, signing, Q0, or runtime qualification",
+    "production inference capacity",
+    "customer Grafana or native LiteLLM, Keycloak Admin, Firecrawl, PostgreSQL, or inference access"
+  ],
+  "nextPackage": "F0-E2E2 exact customer journey against the persistent founder environment"
+}

@@ -1,0 +1,94 @@
+import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
+import { readFileSync } from "node:fs"
+import { mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import test from "node:test"
+
+const read = (path) => readFileSync(path, "utf8")
+const browser = read("scripts/pre-genesis/reduced-core-browser-session.mjs")
+const firecrawl = read(
+  "scripts/pre-genesis/reduced-core-firecrawl-integration.mjs",
+)
+const integrated = read("scripts/pre-genesis/reduced-core-integrated.mjs")
+const operator = read("scripts/pre-genesis/reduced-core-uat.mjs")
+const evidence = JSON.parse(
+  read("docs/reduction/inference-core/f0-uat0-founder-environment.json"),
+)
+
+test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
+  assert.match(
+    operator,
+    /supportedCommands = new Set\(\["start", "status", "stop"\]\)/,
+  )
+  assert.match(operator, /F0_UAT0_KEEP_RUNNING: "true"/)
+  assert.match(integrated, /--keep-running/)
+  assert.match(browser, /status: "READY"/)
+  assert.match(
+    browser,
+    /while \(!\(await exists\(founderUatControl\.stopFile\)\)\)/,
+  )
+})
+
+test("F0-UAT0 keeps the customer edge private and native services unavailable", () => {
+  assert.match(integrated, /keep-running mode requires native Linux\/amd64/)
+  assert.match(integrated, /PRE_GENESIS_DOCKER_CONTEXT: "default"/)
+  assert.match(firecrawl, /process\.platform !== "linux"/)
+  assert.match(firecrawl, /process\.arch !== "x64"/)
+  assert.match(browser, /console\.llmm\.test/)
+  assert.match(browser, /api\.llmm\.test/)
+  assert.match(browser, /identity\.llmm\.test/)
+  assert.match(browser, /firecrawl\.llmm\.test/)
+  assert.match(browser, /"keycloak-admin"/)
+  assert.match(browser, /"sglang-or-inference-double"/)
+  assert.doesNotMatch(operator, /0\.0\.0\.0|--publish|docker\.io/)
+})
+
+test("F0-UAT0 separates restricted credentials from normal operator output", () => {
+  assert.match(browser, /flag: "wx", mode: 0o600/)
+  assert.match(browser, /credentialFile: founderUatControl\.credentialFile/)
+  assert.match(
+    operator,
+    /credentialMode: credentialMode === null \? null : "0600"/,
+  )
+  assert.doesNotMatch(operator, /readFile\(paths\.credentials/)
+  assert.doesNotMatch(operator, /otpSecret:|password:|bffService|oidcClient/)
+  assert.match(operator, /assertNoOwnedRuntimeRemains/)
+  assert.match(operator, /label=com\.llm-machines\.test-package=F0-C1/)
+})
+
+test("F0-UAT0 status is safe before the environment exists", async () => {
+  const root = await mkdtemp(join(tmpdir(), "llmm-f0-uat0-status-"))
+  const controlRoot = join(root, "not-started")
+  try {
+    const result = spawnSync(
+      process.execPath,
+      ["scripts/pre-genesis/reduced-core-uat.mjs", "status"],
+      {
+        encoding: "utf8",
+        env: { ...process.env, F0_UAT0_CONTROL_ROOT: controlRoot },
+      },
+    )
+    assert.equal(result.status, 0, result.stderr)
+    assert.deepEqual(JSON.parse(result.stdout), {
+      controlRoot,
+      status: "NOT_STARTED",
+    })
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
+})
+
+test("F0-UAT0 remains pre-Genesis functional evidence only", () => {
+  assert.equal(evidence.workPackage, "F0-UAT0")
+  assert.equal(evidence.accepted, false)
+  assert.equal(evidence.runtimeQualified, false)
+  assert.match(evidence.nextPackage, /^F0-E2E2/)
+  assert.ok(evidence.notEvidenceFor.some((value) => value.includes("Q0")))
+  assert.ok(
+    evidence.notEvidenceFor.some((value) =>
+      value.includes("production inference capacity"),
+    ),
+  )
+})
