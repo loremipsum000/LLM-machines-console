@@ -37,6 +37,17 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
     browser,
     /while \(!\(await exists\(founderUatControl\.stopFile\)\)\)/,
   )
+  const integratedHandover = browser.slice(
+    browser.indexOf(
+      "if (integratedCoreMode) {\n      assert.ok(persistenceOperatorContext)",
+    ),
+    browser.indexOf("const sharedCookie ="),
+  )
+  assert.match(integratedHandover, /await holdFounderUat\(\{/)
+  assert.ok(
+    integratedHandover.indexOf("await holdFounderUat({") <
+      integratedHandover.indexOf("const cleanup = await Promise.allSettled"),
+  )
 })
 
 test("F0-UAT0 keeps the customer edge private and native services unavailable", () => {
