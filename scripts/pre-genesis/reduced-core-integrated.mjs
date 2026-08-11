@@ -434,21 +434,33 @@ async function startProductPostgres() {
   ])
   created.containers.add(containers.postgres)
   const deadline = performance.now() + 90_000
+  let postgresReady = false
   while (performance.now() < deadline) {
     if (
       dockerResult([
         "exec",
         containers.postgres,
         "pg_isready",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "5432",
         "--dbname",
         database,
         "--username",
         databaseUser,
       ]).status === 0
     ) {
+      postgresReady = true
       break
     }
     await delay(250)
+  }
+  if (!postgresReady) {
+    const logs = dockerResult(["logs", containers.postgres])
+    throw new Error(
+      `F0-C1 PostgreSQL did not become ready: ${sanitize(logs.stderr || logs.stdout)}`,
+    )
   }
   const migration = await readFile(
     resolve(repositoryRoot, "infra/migrations/0000_inference_core.sql"),
