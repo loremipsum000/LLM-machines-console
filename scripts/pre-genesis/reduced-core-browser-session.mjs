@@ -337,6 +337,13 @@ async function runBrowserSessionProof() {
                   ADMIN_ALERTMANAGER_BEARER_TOKEN_FILE: observabilityTokenFile,
                 }),
             ADMIN_ALERTMANAGER_TIMEOUT_MS: "500",
+            ...(integratedCoreMode
+              ? {
+                  ADMIN_GRAFANA_BASE_URL:
+                    integratedObservabilityControl.grafanaBaseUrl,
+                  ADMIN_GRAFANA_TIMEOUT_MS: "500",
+                }
+              : {}),
             ADMIN_LITELLM_API_KEY: credentials.liteLlm,
             ADMIN_LITELLM_BASE_URL:
               liteLlmControl?.baseUrl ?? `http://127.0.0.1:${inferencePort}`,
@@ -872,6 +879,7 @@ async function runBrowserSessionProof() {
       })
       const observability = await proveIntegratedObservabilityConsoleFlow({
         consoleOrigin,
+        founderUat: Boolean(founderUatControl),
         page,
       })
       const noBypass = await proveIntegratedNoBypass({
@@ -1937,6 +1945,7 @@ async function proveObservabilityConsoleFlow({
 
 async function proveIntegratedObservabilityConsoleFlow({
   consoleOrigin,
+  founderUat,
   page,
 }) {
   await assertActualLiteLlmProjection(page, consoleOrigin)
@@ -1958,14 +1967,40 @@ async function proveIntegratedObservabilityConsoleFlow({
   ]) {
     await page.getByRole("heading", { name: heading }).waitFor()
   }
+  if (founderUat) {
+    const alerts = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "Active alerts" }),
+    })
+    await alerts.getByText("Healthy", { exact: true }).waitFor()
+    await alerts
+      .getByText("No active firing alerts were reported.", { exact: true })
+      .waitFor()
+  }
   await page.goto(`${consoleOrigin}/`)
   await page.getByRole("heading", { name: "Overview" }).waitFor()
   await page.getByText("Models served", { exact: true }).waitFor()
   await page.getByText("Targets up", { exact: true }).waitFor()
+  if (founderUat) {
+    const hardwareTile = page.locator("article").filter({
+      has: page.getByRole("heading", { name: "Hardware" }),
+    })
+    await hardwareTile.getByText("Available", { exact: true }).waitFor()
+    const systemTile = page.locator("article").filter({
+      has: page.getByRole("heading", { name: "System" }),
+    })
+    await systemTile.getByText("Operational", { exact: true }).waitFor()
+
+    await page.goto(`${consoleOrigin}/settings`)
+    await page.getByRole("heading", { name: "Settings" }).waitFor()
+    const grafanaRow = page.getByRole("row").filter({ hasText: "Grafana" })
+    await grafanaRow.getByText("Reachable", { exact: true }).waitFor()
+  }
   const body = await page.locator("body").innerText()
   assert.doesNotMatch(body, /Grafana.*(?:open|launch|visit)/i)
   return {
-    alertmanager: "actual-private-local-null-with-synthetic-alert",
+    alertmanager: founderUat
+      ? "actual-private-no-synthetic-alert"
+      : "actual-private-local-null-with-synthetic-alert",
     grafana: "actual-private-no-customer-route",
     hardwareSignals: 7,
     liteLlmProjection:

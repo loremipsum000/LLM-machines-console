@@ -594,7 +594,7 @@ async function startObservability(edgePort) {
   const alertmanagerBaseUrl = `http://127.0.0.1:${alertmanagerHostPort}`
   await waitForHttp(`${prometheusBaseUrl}/-/ready`, 120_000)
   await waitForHttp(`${alertmanagerBaseUrl}/-/ready`, 120_000)
-  await postAlert(alertmanagerBaseUrl)
+  if (!keepRunning) await postAlert(alertmanagerBaseUrl)
 
   docker([
     "run",

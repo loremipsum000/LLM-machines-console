@@ -32,6 +32,13 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
     integrated,
     /F0_C1_BROWSER_TEMP_ROOT: keepRunning \? stateRoot : browserTemporaryRoot/,
   )
+  assert.match(
+    integrated,
+    /if \(!keepRunning\) await postAlert\(alertmanagerBaseUrl\)/,
+  )
+  assert.match(browser, /ADMIN_GRAFANA_BASE_URL:/)
+  assert.match(browser, /founderUat: Boolean\(founderUatControl\)/)
+  assert.match(browser, /actual-private-no-synthetic-alert/)
   assert.match(browser, /status: "READY"/)
   assert.match(browser, /founderUatControl \? "start" : "dev"/)
   assert.match(
