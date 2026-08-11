@@ -594,9 +594,7 @@ async function checkFirecrawl(
     ]
   }
 
-  const healthUrls = firecrawlUpstreamHealthUrls(
-    process.env.FIRECRAWL_UPSTREAM_BASE_URL,
-  )
+  const healthUrls = resolvedFirecrawlHealthUrls()
   if (!healthUrls) {
     return [
       "firecrawl",
@@ -623,6 +621,51 @@ async function checkFirecrawl(
           checkedAt,
         ),
   ]
+}
+
+function resolvedFirecrawlHealthUrls(): readonly [URL, URL] | null {
+  const productionUrls = firecrawlUpstreamHealthUrls(
+    process.env.FIRECRAWL_UPSTREAM_BASE_URL,
+  )
+  if (!productionUrls) return null
+  if (
+    process.env.NODE_ENV !== "test" ||
+    process.env.PRE_GENESIS_FIRECRAWL_ACTUAL !== "true"
+  ) {
+    return productionUrls
+  }
+  return preGenesisFirecrawlHealthUrls(
+    process.env.PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL,
+  )
+}
+
+function preGenesisFirecrawlHealthUrls(
+  configuredBaseUrl: string | undefined,
+): readonly [URL, URL] | null {
+  const value = configuredBaseUrl?.trim()
+  if (!value || value.includes("?") || value.includes("#")) return null
+  try {
+    const baseUrl = new URL(value)
+    const port = Number.parseInt(baseUrl.port, 10)
+    if (
+      baseUrl.protocol !== "http:" ||
+      baseUrl.hostname !== "127.0.0.1" ||
+      !Number.isInteger(port) ||
+      port < 1024 ||
+      port > 65_535 ||
+      baseUrl.username !== "" ||
+      baseUrl.password !== "" ||
+      baseUrl.pathname !== "/"
+    ) {
+      return null
+    }
+    return [
+      new URL("/v0/health/liveness", baseUrl),
+      new URL("/v0/health/readiness", baseUrl),
+    ]
+  } catch {
+    return null
+  }
 }
 
 function firecrawlEgressAllowlistDirectoryIsValid(): boolean {

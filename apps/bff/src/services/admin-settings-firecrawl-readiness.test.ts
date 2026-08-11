@@ -36,6 +36,8 @@ describe("Settings Firecrawl appliance readiness", () => {
       "FIRECRAWL_EGRESS_ALLOWLIST_DIR",
       "FIRECRAWL_ENABLED",
       "FIRECRAWL_API_URL",
+      "PRE_GENESIS_FIRECRAWL_ACTUAL",
+      "PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL",
     ]) {
       vi.stubEnv(name, "")
     }
@@ -132,6 +134,74 @@ describe("Settings Firecrawl appliance readiness", () => {
       expect(init).toMatchObject({ method: "GET", redirect: "error" })
       expect(init?.body).toBeUndefined()
     }
+  })
+
+  it("probes the actual loopback Firecrawl bridge only in the pre-Genesis test lane", async () => {
+    configureReadyFirecrawl()
+    vi.stubEnv("PRE_GENESIS_FIRECRAWL_ACTUAL", "true")
+    vi.stubEnv(
+      "PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL",
+      "http://127.0.0.1:43123",
+    )
+    const fetchSpy = vi.fn(
+      async (..._args: Parameters<typeof fetch>): Promise<Response> =>
+        new Response(null, { status: 200 }),
+    )
+    vi.stubGlobal("fetch", fetchSpy)
+
+    await expect(firecrawlReachability()).resolves.toMatchObject({
+      status: "ok",
+    })
+    expect(
+      fetchSpy.mock.calls.map(([input]) => input.toString()).sort(),
+    ).toEqual([
+      "http://127.0.0.1:43123/v0/health/liveness",
+      "http://127.0.0.1:43123/v0/health/readiness",
+    ])
+  })
+
+  it("ignores the pre-Genesis loopback override outside test mode", async () => {
+    configureReadyFirecrawl()
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("PRE_GENESIS_FIRECRAWL_ACTUAL", "true")
+    vi.stubEnv(
+      "PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL",
+      "http://127.0.0.1:43123",
+    )
+    const fetchSpy = vi.fn(
+      async (..._args: Parameters<typeof fetch>): Promise<Response> =>
+        new Response(null, { status: 200 }),
+    )
+    vi.stubGlobal("fetch", fetchSpy)
+
+    await expect(firecrawlReachability()).resolves.toMatchObject({
+      status: "ok",
+    })
+    expect(
+      fetchSpy.mock.calls.map(([input]) => input.toString()).sort(),
+    ).toEqual([
+      "http://firecrawl-api:3002/v0/health/liveness",
+      "http://firecrawl-api:3002/v0/health/readiness",
+    ])
+  })
+
+  it.each([
+    "http://localhost:43123",
+    "http://127.0.0.1:80",
+    "http://127.0.0.1:43123/internal",
+    "http://127.0.0.1:43123?health=1",
+    "https://127.0.0.1:43123",
+  ])("rejects unsafe pre-Genesis Firecrawl probe URL %s", async (value) => {
+    configureReadyFirecrawl()
+    vi.stubEnv("PRE_GENESIS_FIRECRAWL_ACTUAL", "true")
+    vi.stubEnv("PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL", value)
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy)
+
+    await expect(firecrawlReachability()).resolves.toMatchObject({
+      status: "unavailable",
+    })
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it.each([

@@ -121,6 +121,12 @@ test("F0-C1 has one bounded disposable command", () => {
     /databaseUrl = serviceControl \? null : await startPostgres\(\)/,
   )
   assert.match(browser, /keycloakTeamMode \|\| integratedCoreMode/)
+  assert.match(browser, /containers: config\.containers/)
+  assert.match(browser, /!\/\^\[a-f0-9\]\{64\}\$\/\.test\(container\)/)
+  assert.match(
+    browser,
+    /Settings did not project the actual private Firecrawl service as reachable/,
+  )
   assert.match(
     browser,
     /assertIntegratedTeamProjection\(page, consoleOrigin, true\)/,
