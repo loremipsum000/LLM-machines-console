@@ -107,7 +107,9 @@ try {
   await writeFile(
     browserConfigFile,
     `${JSON.stringify({
+      container: containerName,
       credentials: browserCredentials(),
+      dockerContext,
       edgePort,
       upstreamPort,
     })}\n`,

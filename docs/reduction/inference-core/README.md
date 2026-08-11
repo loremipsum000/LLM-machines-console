@@ -471,7 +471,18 @@ isolation, and zero-content canaries pass. Existing internal workloads and data
 were preserved before being stopped. The accelerator remains internal
 demonstration evidence only: capacity is unmeasured, no delivery profile is
 admitted, and no production hardware, release, Product acceptance, or Q0 claim
-is made. F0-V1 remains the next and final pre-Genesis package.
+is made. F0-V1 is the final pre-Genesis package.
+
+F0-V1 is the governance-only aggregate closure for the protected functional
+sequence. It binds the exact candidate and integration identities for F0-E0
+through F0-SG1, preserves the intervening PR-12 Firecrawl history, fixes the
+reduced startup map, and requires the complete repository and disposable
+integrated browser/API lanes to pass again from a clean detached clone. Its
+presence in source does not accept the Product, qualify runtime, activate a
+contract, publish a Genesis snapshot, or start Q0. Only a protected integration
+merge whose tree equals the independently reviewed candidate tree can be named
+as the pre-Genesis source candidate, and publication still requires separate
+approval.
 
 System-managed exact-host egress allowlisting and public-address validation do
 not introduce customer URL Governance. The governed internal upstream is

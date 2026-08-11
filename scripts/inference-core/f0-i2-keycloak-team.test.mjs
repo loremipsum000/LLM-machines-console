@@ -24,6 +24,20 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
     /quay\.io\/keycloak\/keycloak:26\.7\.0@sha256:[0-9a-f]{64}/,
   )
   assert.match(wrapper, /humanAdminPermissions/)
+  const browserConfigStart = wrapper.indexOf(
+    "  await writeFile(\n    browserConfigFile,",
+  )
+  const browserConfigEnd = wrapper.indexOf(
+    "  if (serviceControl)",
+    browserConfigStart,
+  )
+  assert.ok(browserConfigStart >= 0)
+  assert.ok(browserConfigEnd > browserConfigStart)
+  const browserConfigBlock = wrapper.slice(browserConfigStart, browserConfigEnd)
+  assert.match(browserConfigBlock, /container: containerName,/)
+  assert.match(browserConfigBlock, /dockerContext,/)
+  assert.match(browserConfigBlock, /edgePort,/)
+  assert.match(browserConfigBlock, /upstreamPort,/)
   assert.match(
     wrapper,
     /expectAdminStatus\(root, serviceToken, realmPath, 403\)/,
