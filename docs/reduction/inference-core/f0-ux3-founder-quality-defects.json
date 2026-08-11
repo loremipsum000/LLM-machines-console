@@ -73,7 +73,7 @@
       "expected": "The healthy founder fixture reports a utilization value consistent with the displayed warning and critical thresholds.",
       "actual": "A static idle counter yields a zero idle rate, so the Console correctly derives 100 percent utilization while the fixture has no corresponding alert.",
       "evidence": "Protected-final Playwright Hardware inspection at commit c89a018a67f745e8310404de045e239a9a077f00.",
-      "resolution": "F0-UAT2 uses two private deterministic idle-counter series, one clock-backed and one constant, to produce a stable 50 percent utilization signal without changing Product queries or alert policy.",
+      "resolution": "F0-UAT2 uses two private idle-counter series, one clock-backed and one constant, whose five-minute rate converges to 50 percent without changing Product queries or alert policy. F0-UX5 scopes the assertion to the exact CPU card and waits through the bounded Prometheus warm-up until the real value is below the 85 percent warning threshold.",
       "blocksFounderAcceptance": true,
       "blocksVm103Cutover": false
     },
