@@ -1016,6 +1016,16 @@ async function runBrowserSessionProof() {
     await advanceClock(6_000)
     await page.getByRole("link", { name: "Retry" }).click()
     await page.getByRole("heading", { name: "Settings" }).waitFor()
+    if (integratedCoreMode && firecrawlControl) {
+      const firecrawlRow = page
+        .getByRole("row")
+        .filter({ has: page.getByRole("cell", { name: "Firecrawl" }) })
+      assert.equal(
+        await firecrawlRow.getByRole("cell", { name: "Reachable" }).count(),
+        1,
+        "Settings did not project the actual private Firecrawl service as reachable.",
+      )
+    }
 
     await advanceClock(31 * 60 * 1000)
     await page.goto(`${consoleOrigin}/team`)
@@ -4228,6 +4238,13 @@ function integratedFirecrawlControlFromEnvironment() {
       (name) =>
         typeof config.canaries[name] === "string" &&
         config.canaries[name].length >= 20,
+    ) ||
+    !config.containers ||
+    Object.keys(config.containers).sort().join(",") !==
+      "api,browser,egress,search" ||
+    Object.values(config.containers).some(
+      (container) =>
+        typeof container !== "string" || !/^[a-f0-9]{64}$/.test(container),
     )
   ) {
     throw new Error("F0-C1 Firecrawl control metadata is invalid.")
@@ -4236,6 +4253,7 @@ function integratedFirecrawlControlFromEnvironment() {
     allowedHosts: config.allowedHosts,
     baseUrl,
     canaries: config.canaries,
+    containers: config.containers,
   }
 }
 
