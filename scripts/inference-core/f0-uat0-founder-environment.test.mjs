@@ -34,6 +34,11 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
 test("F0-UAT0 keeps the customer edge private and native services unavailable", () => {
   assert.match(integrated, /keep-running mode requires native Linux\/amd64/)
   assert.match(integrated, /PRE_GENESIS_DOCKER_CONTEXT: "default"/)
+  assert.match(
+    integrated,
+    /if \(nativeAmd64\) \{\n {4}if \(value !== "default"\)/,
+  )
+  assert.match(integrated, /\^colima-llmm-f0-f2-\[a-f0-9\]\{16\}\$/)
   assert.match(firecrawl, /process\.platform !== "linux"/)
   assert.match(firecrawl, /process\.arch !== "x64"/)
   assert.match(browser, /console\.llmm\.test/)
