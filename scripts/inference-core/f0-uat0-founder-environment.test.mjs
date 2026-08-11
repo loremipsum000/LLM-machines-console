@@ -36,7 +36,14 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
     integrated,
     /if \(!keepRunning\) await postAlert\(alertmanagerBaseUrl\)/,
   )
+  assert.match(integrated, /sub_filter '__LLMM_DYNAMIC_IDLE__' '\$msec'/)
+  assert.match(integrated, /sub_filter_types text\/plain/)
+  assert.match(
+    integrated,
+    /cpu="0"[^\n]+__LLMM_DYNAMIC_IDLE__[\s\S]+cpu="1"[^\n]+ 1000/,
+  )
   assert.match(browser, /ADMIN_GRAFANA_BASE_URL:/)
+  assert.match(browser, /cpu\.getByText\("50%", \{ exact: true \}\)/)
   assert.match(browser, /founderUat: Boolean\(founderUatControl\)/)
   assert.match(browser, /actual-private-no-synthetic-alert/)
   assert.match(

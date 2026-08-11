@@ -1969,6 +1969,10 @@ async function proveIntegratedObservabilityConsoleFlow({
     await page.getByRole("heading", { name: heading }).waitFor()
   }
   if (founderUat) {
+    const cpu = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "CPU utilization" }),
+    })
+    await cpu.getByText("50%", { exact: true }).waitFor()
     const alerts = page.locator("section").filter({
       has: page.getByRole("heading", { name: "Active alerts" }),
     })

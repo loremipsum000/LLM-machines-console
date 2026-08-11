@@ -5,10 +5,10 @@
   "assessedTree": "c16afcb47b8bea9b21b34b7fa872f411ba25ab57",
   "environment": "VM117 temporary founder QA only",
   "productDestination": "VM103 Core Appliance with a separate private SGLang plane",
-  "status": "MATERIAL_CORRECTIONS_PENDING_F0_UAT1_ADMISSION",
+  "status": "MATERIAL_CORRECTIONS_IMPLEMENTED_PENDING_FINAL_REPLAY",
   "computerUse": {
     "status": "BLOCKED",
-    "reason": "Visible Chrome application-state inspection timed out twice; no unlock or browser-security bypass was attempted.",
+    "reason": "Visible Chrome application-state inspection repeatedly timed out, including during protected-final replay; no unlock or browser-security bypass was attempted.",
     "playwrightIsNotASubstitute": true
   },
   "findings": [
@@ -62,6 +62,19 @@
       "evidence": "Playwright geometry and source-level focus-style inspection.",
       "resolution": "Recorded as non-blocking final polish; no focus, label, naming, heading, or keyboard-access defect was demonstrated.",
       "blocksFounderAcceptance": false,
+      "blocksVm103Cutover": false
+    },
+    {
+      "id": "UAT-02",
+      "severity": "major",
+      "roles": ["admin", "operator"],
+      "surfaces": ["Hardware"],
+      "reproduction": "Start the keep-running founder environment and inspect the CPU utilization signal after Prometheus has collected the deterministic metrics fixture.",
+      "expected": "The healthy founder fixture reports a utilization value consistent with the displayed warning and critical thresholds.",
+      "actual": "A static idle counter yields a zero idle rate, so the Console correctly derives 100 percent utilization while the fixture has no corresponding alert.",
+      "evidence": "Protected-final Playwright Hardware inspection at commit c89a018a67f745e8310404de045e239a9a077f00.",
+      "resolution": "F0-UAT2 uses two private deterministic idle-counter series, one clock-backed and one constant, to produce a stable 50 percent utilization signal without changing Product queries or alert policy.",
+      "blocksFounderAcceptance": true,
       "blocksVm103Cutover": false
     }
   ],
