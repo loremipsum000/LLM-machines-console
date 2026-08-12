@@ -4,6 +4,8 @@ import {
   X509Certificate,
   createHash,
   createHmac,
+  createPrivateKey,
+  createPublicKey,
   randomBytes,
   randomUUID,
 } from "node:crypto"
@@ -19,6 +21,7 @@ import {
   readdir,
   realpath,
   rm,
+  stat,
   symlink,
   writeFile,
 } from "node:fs/promises"
@@ -35,6 +38,10 @@ import { basename, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { chromium } from "playwright-core"
 import { evaluateSourceBoundary } from "../../infra/ingress/source-no-bypass.mjs"
+import {
+  authorityOrigin,
+  loadFounderUatPlacement,
+} from "./founder-uat-placement.mjs"
 import { createOidcFixture } from "./reduced-core-oidc-fixture.mjs"
 
 const integratedCoreMode = process.argv.includes("--integrated-core")
@@ -99,6 +106,13 @@ const integratedObservabilityControl = integratedCoreMode
 const founderUatControl = integratedCoreMode
   ? founderUatControlFromEnvironment()
   : null
+const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
+if (founderUatPlacementPath && !founderUatControl) {
+  throw new Error("F0-UAT0 placement requires founder operator control.")
+}
+const founderUatPlacement = founderUatControl
+  ? loadFounderUatPlacement(founderUatPlacementPath)
+  : null
 const initialTime = integratedCoreMode
   ? new Date()
   : applicationsMode
@@ -106,11 +120,30 @@ const initialTime = integratedCoreMode
     : keycloakIdentityMode
       ? new Date()
       : new Date("2026-08-05T10:00:00.000Z")
-const authorities = {
-  api: "api.llmm.test",
-  console: "console.llmm.test",
-  firecrawl: "firecrawl.llmm.test",
-  identity: "identity.llmm.test",
+const authorities = founderUatPlacement
+  ? Object.fromEntries(
+      Object.entries(founderUatPlacement.authorities).map(([name, origin]) => [
+        name,
+        new URL(origin).hostname,
+      ]),
+    )
+  : {
+      api: "api.llmm.test",
+      console: "console.llmm.test",
+      firecrawl: "firecrawl.llmm.test",
+      identity: "identity.llmm.test",
+    }
+
+function publicOrigin(name, edgePort) {
+  return authorityOrigin(founderUatPlacement, name, edgePort)
+}
+
+function publicAuthorityHost(authority, edgePort) {
+  const name = Object.entries(authorities).find(
+    ([, hostname]) => hostname === authority,
+  )?.[0]
+  if (!name) throw new Error(`Unknown Product authority: ${authority}.`)
+  return new URL(publicOrigin(name, edgePort)).host
 }
 const consolePaths = [
   ["/", "Overview"],
@@ -153,6 +186,12 @@ async function runBrowserSessionProof() {
       alertmanagerPort,
     ] = await reservePorts(observabilityMode ? 6 : 4)
     const edgePort = keycloakControl?.edgePort ?? (await browserSafePort())
+    if (founderUatPlacement && founderUatPlacement.edgePort !== edgePort) {
+      throw new Error(
+        "F0-UAT0 placement edge port does not match browser control.",
+      )
+    }
+    const edgeBindAddress = founderUatPlacement?.edgeBindAddress ?? "127.0.0.1"
     const clockFile = join(stateRoot, "clock.txt")
     await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
       mode: 0o600,
@@ -160,8 +199,8 @@ async function runBrowserSessionProof() {
     const certificate = await createCertificate(stateRoot)
     const webRoot = await prepareTemporaryWebProject(stateRoot)
     const observabilityTokenFile = join(stateRoot, "f0-o1-observability-token")
-    const consoleOrigin = `https://${authorities.console}:${edgePort}`
-    const identityIssuer = `https://${authorities.identity}:${edgePort}/realms/llm-machines`
+    const consoleOrigin = publicOrigin("console", edgePort)
+    const identityIssuer = `${publicOrigin("identity", edgePort)}/realms/llm-machines`
     const credentials = keycloakControl
       ? {
           ...keycloakControl.credentials,
@@ -367,7 +406,7 @@ async function runBrowserSessionProof() {
               liteLlmControl?.baseUrl ?? `http://127.0.0.1:${inferencePort}`,
           }
         : {}),
-      CONNECTED_APPS_BFF_BASE_URL: `https://${authorities.api}:${edgePort}`,
+      CONNECTED_APPS_BFF_BASE_URL: publicOrigin("api", edgePort),
       CONNECTED_APPS_KEYCLOAK_FIXTURE: "true",
       F0_S1_CA_FILE: certificate.ca,
       F0_S1_CLOCK_FILE: clockFile,
@@ -400,7 +439,7 @@ async function runBrowserSessionProof() {
               : {}),
           }
         : {}),
-      FIRECRAWL_PUBLIC_BASE_URL: `https://${authorities.firecrawl}:${edgePort}`,
+      FIRECRAWL_PUBLIC_BASE_URL: publicOrigin("firecrawl", edgePort),
       HOST: "127.0.0.1",
       LITELLM_KEY: credentials.liteLlm,
       LITELLM_URL:
@@ -429,7 +468,7 @@ async function runBrowserSessionProof() {
       PRODUCT_CONSOLE_HOST: authorities.console,
       PRODUCT_FIRECRAWL_HOST: authorities.firecrawl,
       PRODUCT_IDENTITY_HOST: authorities.identity,
-      PUBLIC_BFF_BASE_URL: `https://${authorities.api}:${edgePort}`,
+      PUBLIC_BFF_BASE_URL: publicOrigin("api", edgePort),
     }
     const bffCommand = [
       process.execPath,
@@ -486,7 +525,7 @@ async function runBrowserSessionProof() {
       CONSOLE_BFF_URL: `http://127.0.0.1:${bffPort}`,
       NEXT_TELEMETRY_DISABLED: "1",
       NODE_ENV: founderUatControl ? "production" : "development",
-      WEB_IDENTITY_ORIGIN: `https://${authorities.identity}:${edgePort}`,
+      WEB_IDENTITY_ORIGIN: publicOrigin("identity", edgePort),
     }
     if (founderUatControl) {
       await buildFounderWebProject(webRoot, webEnvironment, stateRoot)
@@ -525,33 +564,46 @@ async function runBrowserSessionProof() {
     }
     const edge = createDevelopmentEdge(edgeInput)
     servers.push(edge)
-    await listen(edge, edgePort)
+    await listen(edge, edgePort, edgeBindAddress)
+    if (founderUatPlacement) {
+      const loopbackEdge = createDevelopmentEdge(edgeInput)
+      servers.push(loopbackEdge)
+      await listen(loopbackEdge, edgePort)
+    }
     const ipv6Edge = createDevelopmentEdge(edgeInput)
     if (await listenLoopbackIpv6(ipv6Edge, edgePort)) {
       servers.push(ipv6Edge)
     }
     const edgeProbe = await requestHttpsEdge(
-      `https://127.0.0.1:${edgePort}/applications?q=safe`,
-      `${authorities.console}:${edgePort}`,
+      `https://${edgeBindAddress}:${edgePort}/applications?q=safe`,
+      publicAuthorityHost(authorities.console, edgePort),
     )
     assert.ok(edgeProbe.status >= 300 && edgeProbe.status < 400)
-    assert.match(edgeProbe.location ?? "", /^https:\/\/console\.llmm\.test:/)
+    assert.equal(
+      new URL(edgeProbe.location ?? "", consoleOrigin).origin,
+      consoleOrigin,
+    )
 
     const executablePath = await chromeExecutable()
-    browser = await chromium.launch({
-      args: [
+    const browserArguments = ["--no-proxy-server"]
+    if (!founderUatPlacement) {
+      browserArguments.unshift(
         "--allow-insecure-localhost",
         `--host-resolver-rules=${Object.values(authorities)
           .map((host) => `MAP ${host} 127.0.0.1`)
           .join(",")}`,
         "--ignore-certificate-errors",
         `--ignore-certificate-errors-spki-list=${certificate.spki}`,
-        "--no-proxy-server",
-      ],
+      )
+    }
+    browser = await chromium.launch({
+      args: browserArguments,
       executablePath,
       headless: true,
     })
-    const context = await browser.newContext({ ignoreHTTPSErrors: true })
+    const context = await browser.newContext({
+      ignoreHTTPSErrors: !founderUatPlacement,
+    })
     await context.grantPermissions(["clipboard-read", "clipboard-write"], {
       origin: consoleOrigin,
     })
@@ -572,8 +624,15 @@ async function runBrowserSessionProof() {
         })
       }
     })
-    const tlsProbe = await page.goto(`https://127.0.0.1:${edgePort}/`)
-    assert.equal(tlsProbe?.status(), 421)
+    if (founderUatPlacement) {
+      const tlsProbe = await requestHttpsEdge(
+        `https://${edgeBindAddress}:${edgePort}/`,
+      )
+      assert.equal(tlsProbe.status, 421)
+    } else {
+      const tlsProbe = await page.goto(`https://127.0.0.1:${edgePort}/`)
+      assert.equal(tlsProbe?.status(), 421)
+    }
 
     await signIn(page, consoleOrigin, credentials.admin, "/applications?q=safe")
     assert.equal(new URL(page.url()).pathname, "/applications")
@@ -1513,7 +1572,7 @@ async function proveKeycloakIdentityCookieBoundary({ context, edgePort }) {
   for (const path of deniedNativePaths) {
     const response = await requestHttpsEdge(
       `https://127.0.0.1:${edgePort}${path}`,
-      `${authorities.identity}:${edgePort}`,
+      publicAuthorityHost(authorities.identity, edgePort),
     )
     assert.equal(response.status, 404, `${path} was not denied.`)
   }
@@ -1779,7 +1838,7 @@ async function proveKeycloakIdentityConsoleFlow({
   for (const path of deniedNativePaths) {
     const response = await requestHttpsEdge(
       `https://127.0.0.1:${edgePort}${path}`,
-      `${authorities.identity}:${edgePort}`,
+      publicAuthorityHost(authorities.identity, edgePort),
     )
     assert.equal(response.status, 404, `${path} was not denied.`)
   }
@@ -2052,7 +2111,7 @@ async function proveIntegratedNoBypass({ certificate, edgePort }) {
       headers: {
         authorization: "Bearer spoofed-customer-authority",
         cookie: "KEYCLOAK_SESSION=spoofed; llmm-native=spoofed",
-        host: `${authority}:${edgePort}`,
+        host: publicAuthorityHost(authority, edgePort),
         "x-forwarded-host": "litellm.llmm.test",
         "x-forwarded-proto": "http",
       },
@@ -2075,7 +2134,7 @@ async function proveIntegratedNoBypass({ certificate, edgePort }) {
     const response = await requestHttpsEdgeWithHeaders({
       certificate,
       edgePort,
-      headers: { host: `${authority}:${edgePort}` },
+      headers: { host: publicAuthorityHost(authority, edgePort) },
       method: "GET",
       path: "/",
       servername: authorities.console,
@@ -2086,7 +2145,9 @@ async function proveIntegratedNoBypass({ certificate, edgePort }) {
   const unsafe = await requestHttpsEdgeWithHeaders({
     certificate,
     edgePort,
-    headers: { host: `${authorities.firecrawl}:${edgePort}` },
+    headers: {
+      host: publicAuthorityHost(authorities.firecrawl, edgePort),
+    },
     method: "POST",
     path: "/v2/search?route=%2Fv2%2Fscrape",
     servername: authorities.firecrawl,
@@ -2520,7 +2581,7 @@ async function proveApplicationConsoleFlow({
   )
   assert.equal(
     await revealedCredential(page, "OpenAI base URL"),
-    `https://${authorities.api}:${edgePort}/v1`,
+    `${publicOrigin("api", edgePort)}/v1`,
   )
   const viewApplication = page.getByRole("link", { name: "View application" })
   const detailPath = await viewApplication.getAttribute("href")
@@ -2715,7 +2776,7 @@ async function proveApplicationConsoleFlow({
   }
   assert.equal(
     await revealedCredential(page, "Firecrawl base URL"),
-    `https://${authorities.firecrawl}:${edgePort}`,
+    publicOrigin("firecrawl", edgePort),
   )
 
   if (credentialLifecycleMode) {
@@ -3384,7 +3445,7 @@ async function requestJsonThroughEdge({
         ca,
         headers: {
           authorization: `Bearer ${bearerToken}`,
-          host: `${authority}:${edgePort}`,
+          host: publicAuthorityHost(authority, edgePort),
           ...(encodedBody
             ? {
                 "content-length": Buffer.byteLength(encodedBody),
@@ -3440,7 +3501,7 @@ async function requestTextThroughEdge({
           authorization: `Bearer ${bearerToken}`,
           "content-length": Buffer.byteLength(encodedBody),
           "content-type": "application/json",
-          host: `${authority}:${edgePort}`,
+          host: publicAuthorityHost(authority, edgePort),
         },
         host: "127.0.0.1",
         method,
@@ -3506,7 +3567,7 @@ async function runOpenAiClientSmoke({
   child.stdin.end(
     JSON.stringify({
       apiKey,
-      baseUrl: `https://${authorities.api}:${edgePort}/v1`,
+      baseUrl: `${publicOrigin("api", edgePort)}/v1`,
       caFile,
       model: "fixture-model",
       prompt,
@@ -3752,7 +3813,7 @@ function normalizedConsoleLocation(location, edgePort, upstreamPort) {
   if (typeof location !== "string") {
     return location
   }
-  const url = new URL(location, `https://${authorities.console}:${edgePort}`)
+  const url = new URL(location, publicOrigin("console", edgePort))
   if (
     (url.protocol === "http:" &&
       url.hostname === authorities.console &&
@@ -3760,9 +3821,10 @@ function normalizedConsoleLocation(location, edgePort, upstreamPort) {
     (["127.0.0.1", "localhost"].includes(url.hostname) &&
       url.port === String(upstreamPort))
   ) {
-    url.protocol = "https:"
-    url.hostname = authorities.console
-    url.port = String(edgePort)
+    const publicConsole = new URL(publicOrigin("console", edgePort))
+    url.protocol = publicConsole.protocol
+    url.hostname = publicConsole.hostname
+    url.port = publicConsole.port
     return url.toString()
   }
   return location
@@ -4165,6 +4227,67 @@ function metricNameForQuery(query) {
 }
 
 async function createCertificate(stateRoot) {
+  if (founderUatPlacement) {
+    const { caFile, certificateFile, privateKeyFile } = founderUatPlacement.tls
+    for (const path of [caFile, certificateFile, privateKeyFile]) {
+      if ((await realpath(path)) !== resolve(path)) {
+        throw new Error("F0-UAT0 placement TLS files must not be symlinks.")
+      }
+    }
+    const [caMode, certificateMode, privateKeyMode] = await Promise.all(
+      [caFile, certificateFile, privateKeyFile].map(
+        async (path) => (await stat(path)).mode & 0o777,
+      ),
+    )
+    if (
+      caMode & 0o022 ||
+      certificateMode & 0o022 ||
+      privateKeyMode & 0o077 ||
+      !(privateKeyMode & 0o400)
+    ) {
+      throw new Error("F0-UAT0 placement TLS file permissions are unsafe.")
+    }
+    const [caBytes, certBytes, keyBytes] = await Promise.all([
+      readFile(caFile),
+      readFile(certificateFile),
+      readFile(privateKeyFile),
+    ])
+    const caCertificate = new X509Certificate(caBytes)
+    const certificate = new X509Certificate(certBytes)
+    const now = Date.now()
+    if (
+      Date.parse(certificate.validFrom) > now ||
+      Date.parse(certificate.validTo) <= now ||
+      !certificate.verify(caCertificate.publicKey)
+    ) {
+      throw new Error("F0-UAT0 placement edge certificate is not valid.")
+    }
+    for (const host of Object.values(authorities)) {
+      if (!certificate.checkHost(host)) {
+        throw new Error(
+          `F0-UAT0 placement edge certificate does not cover ${host}.`,
+        )
+      }
+    }
+    const certificatePublicKey = certificate.publicKey.export({
+      format: "der",
+      type: "spki",
+    })
+    const privatePublicKey = createPublicKey(createPrivateKey(keyBytes)).export(
+      { format: "der", type: "spki" },
+    )
+    if (!certificatePublicKey.equals(privatePublicKey)) {
+      throw new Error(
+        "F0-UAT0 placement edge certificate and private key do not match.",
+      )
+    }
+    return {
+      ca: caFile,
+      cert: certBytes,
+      key: keyBytes,
+      spki: createHash("sha256").update(certificatePublicKey).digest("base64"),
+    }
+  }
   const caKey = join(stateRoot, "ca.key")
   const ca = join(stateRoot, "ca.crt")
   const key = join(stateRoot, "edge.key")
@@ -4474,10 +4597,10 @@ async function holdFounderUat({
     `${JSON.stringify(
       {
         authorities: {
-          api: `https://${authorities.api}:${edgePort}`,
-          console: `https://${authorities.console}:${edgePort}`,
-          firecrawl: `https://${authorities.firecrawl}:${edgePort}`,
-          identity: `https://${authorities.identity}:${edgePort}`,
+          api: publicOrigin("api", edgePort),
+          console: publicOrigin("console", edgePort),
+          firecrawl: publicOrigin("firecrawl", edgePort),
+          identity: publicOrigin("identity", edgePort),
         },
         caFile,
         credentialFile: founderUatControl.credentialFile,
@@ -5219,10 +5342,10 @@ async function browserSafePort() {
   throw new Error("No disposable browser-safe HTTPS port was available.")
 }
 
-function listen(server, port) {
+function listen(server, port, host = "127.0.0.1") {
   return new Promise((resolveListen, rejectListen) => {
     server.once("error", rejectListen)
-    server.listen(port, "127.0.0.1", resolveListen)
+    server.listen(port, host, resolveListen)
   })
 }
 

@@ -5,6 +5,10 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
+import {
+  authorityOrigin,
+  parseFounderUatPlacement,
+} from "../pre-genesis/founder-uat-placement.mjs"
 
 const read = (path) => readFileSync(path, "utf8")
 const browser = read("scripts/pre-genesis/reduced-core-browser-session.mjs")
@@ -121,7 +125,71 @@ test("F0-UAT0 keeps the customer edge private and native services unavailable", 
   assert.match(browser, /firecrawl\.llmm\.test/)
   assert.match(browser, /"keycloak-admin"/)
   assert.match(browser, /"sglang-or-inference-double"/)
+  assert.match(integrated, /F0_UAT0_PLACEMENT_FILE/)
+  assert.match(browser, /edgeBindAddress/)
+  assert.match(browser, /publicOrigin\("identity", edgePort\)/)
+  assert.match(browser, /ignoreHTTPSErrors: !founderUatPlacement/)
   assert.doesNotMatch(operator, /0\.0\.0\.0|--publish|docker\.io/)
+})
+
+test("F0-UAT0 validates one private edge and four canonical deployment authorities", () => {
+  const placement = parseFounderUatPlacement({
+    authorities: {
+      api: "https://api.lab.llm-machines.com",
+      console: "https://console.lab.llm-machines.com",
+      firecrawl: "https://firecrawl.lab.llm-machines.com",
+      identity: "https://identity.lab.llm-machines.com",
+    },
+    edgeBindAddress: "192.168.42.10",
+    edgePort: 18443,
+    schemaVersion: 1,
+    tls: {
+      caFile: "/run/llm-machines/edge/ca.crt",
+      certificateFile: "/run/llm-machines/edge/edge.crt",
+      privateKeyFile: "/run/llm-machines/edge/edge.key",
+    },
+  })
+  assert.equal(placement.edgeBindAddress, "192.168.42.10")
+  assert.equal(placement.edgePort, 18443)
+  assert.equal(
+    authorityOrigin(placement, "console", 65535),
+    "https://console.lab.llm-machines.com",
+  )
+  assert.equal(
+    authorityOrigin(null, "console", 18443),
+    "https://console.llmm.test:18443",
+  )
+
+  for (const mutation of [
+    { edgeBindAddress: "127.0.0.1" },
+    { edgeBindAddress: "0.0.0.0" },
+    { edgeBindAddress: "203.0.113.10" },
+    {
+      authorities: {
+        ...placement.authorities,
+        api: "http://api.lab.llm-machines.com",
+      },
+    },
+    {
+      authorities: {
+        ...placement.authorities,
+        api: "https://api.lab.llm-machines.com:8443",
+      },
+    },
+    {
+      authorities: {
+        ...placement.authorities,
+        api: placement.authorities.console,
+      },
+    },
+  ]) {
+    assert.throws(() =>
+      parseFounderUatPlacement({
+        ...placement,
+        ...mutation,
+      }),
+    )
+  }
 })
 
 test("F0-UAT0 separates restricted credentials from normal operator output", () => {

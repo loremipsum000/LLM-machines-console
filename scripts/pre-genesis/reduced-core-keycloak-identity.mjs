@@ -15,6 +15,10 @@ import { createServer } from "node:net"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+  authorityOrigin,
+  loadFounderUatPlacement,
+} from "./founder-uat-placement.mjs"
 import { humanAdminPermissions } from "./keycloak-team-permissions.mjs"
 
 const KEYCLOAK_IMAGE =
@@ -28,6 +32,15 @@ if (process.argv.slice(2).some((argument) => argument !== "--team")) {
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const dockerContext = required("PRE_GENESIS_DOCKER_CONTEXT")
 const serviceControl = serviceControlFromEnvironment()
+const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
+if (founderUatPlacementPath && !serviceControl) {
+  throw new Error(
+    "F0-UAT0 placement requires managed Keycloak service control.",
+  )
+}
+const founderUatPlacement = serviceControl
+  ? loadFounderUatPlacement(founderUatPlacementPath)
+  : null
 const runId = randomBytes(8).toString("hex")
 const packageId = teamMode ? "F0-I2" : "F0-I1"
 const containerName = `llmm-${packageId.toLowerCase()}-keycloak-${runId}`
@@ -57,9 +70,24 @@ try {
   await chmod(stateRoot, 0o700)
   await mkdir(importRoot, { mode: 0o755 })
   const edgePort = serviceControl?.edgePort ?? (await reservePort())
+  if (founderUatPlacement && founderUatPlacement.edgePort !== edgePort) {
+    throw new Error(
+      "F0-UAT0 placement edge port does not match Keycloak control.",
+    )
+  }
+  const consoleOrigin = authorityOrigin(
+    founderUatPlacement,
+    "console",
+    edgePort,
+  )
+  const identityOrigin = authorityOrigin(
+    founderUatPlacement,
+    "identity",
+    edgePort,
+  )
   await writeFile(
     realmFile,
-    `${JSON.stringify(realmExport(edgePort, credentials, teamMode))}\n`,
+    `${JSON.stringify(realmExport(consoleOrigin, credentials, teamMode))}\n`,
     { mode: 0o644 },
   )
   if (teamMode) {
@@ -91,7 +119,7 @@ try {
     "start-dev",
     "--import-realm",
     "--http-port=8080",
-    `--hostname=https://identity.llmm.test:${edgePort}`,
+    `--hostname=${identityOrigin}`,
     "--hostname-strict=true",
     "--proxy-headers=xforwarded",
   ])
@@ -250,7 +278,7 @@ if (failure) throw failure
 assert.ok(evidence)
 process.stdout.write(`${JSON.stringify(evidence)}\n`)
 
-function realmExport(edgePort, values, includeTeamAuthority) {
+function realmExport(consoleOrigin, values, includeTeamAuthority) {
   const passwordAmr = "llmm-password-amr"
   const otpAmr = "llmm-otp-amr"
   return {
@@ -388,9 +416,7 @@ function realmExport(edgePort, values, includeTeamAuthority) {
         implicitFlowEnabled: false,
         serviceAccountsEnabled: false,
         fullScopeAllowed: true,
-        redirectUris: [
-          `https://console.llmm.test:${edgePort}/api/console/session/callback`,
-        ],
+        redirectUris: [`${consoleOrigin}/api/console/session/callback`],
         webOrigins: [],
         attributes: {
           "pkce.code.challenge.method": "S256",
