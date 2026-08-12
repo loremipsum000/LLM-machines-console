@@ -29,7 +29,54 @@ status. Read it over the authenticated SSH session with a pager when founder
 access is required. Do not copy it into chat, shell history, screenshots, or
 test evidence.
 
-## Reversible founder workstation access
+## Private appliance placement
+
+The default remains the loopback-only `.llmm.test` founder lane. A durable
+private lab placement may set `F0_UAT0_PLACEMENT_FILE` to an absolute,
+credential-free JSON document before `start`:
+
+```json
+{
+  "schemaVersion": 1,
+  "authorities": {
+    "console": "https://console.example.invalid",
+    "api": "https://api.example.invalid",
+    "identity": "https://identity.example.invalid",
+    "firecrawl": "https://firecrawl.example.invalid"
+  },
+  "edgeBindAddress": "<private-core-ipv4>",
+  "edgePort": 18443,
+  "tls": {
+    "caFile": "/run/llm-machines/edge/ca.crt",
+    "certificateFile": "/run/llm-machines/edge/edge.crt",
+    "privateKeyFile": "/run/llm-machines/edge/edge.key"
+  }
+}
+```
+
+All four authorities must be distinct canonical HTTPS DNS origins on port 443.
+The edge bind must be one explicit non-loopback RFC1918 address. The Product
+continues to bind every native service to loopback; only the Product edge also
+listens on the declared private address. The fixed edge port lets the upstream
+gateway be configured before startup without a broad port rule.
+
+The edge certificate must cover all four authority hostnames, chain to the
+declared CA, match the declared private key, and be currently valid. The key
+must be owner-readable with no group or other permission; the CA and
+certificate must not be group- or world-writable. These runtime files are
+generated and held outside Git. Install only the CA certificate on the
+upstream gateway and require upstream certificate verification. Never copy the
+edge private key to the gateway.
+
+In placed mode the integrated browser proof uses normal DNS and the upstream
+gateway on port 443. It does not add host-resolver overrides or ignore TLS
+errors. The placement is rejected outside keep-running founder mode.
+
+## Reversible loopback-only founder workstation access
+
+This tunnel procedure applies only when no placement document is supplied. A
+placed Core uses its approved upstream gateway and canonical authorities; it
+must not use an SSH tunnel as Product topology.
 
 Use the private VM address and edge port reported out of band. Keep the SSH
 tunnel in its own terminal:

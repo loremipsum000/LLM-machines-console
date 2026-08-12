@@ -20,6 +20,10 @@ import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+  authorityOrigin,
+  loadFounderUatPlacement,
+} from "./founder-uat-placement.mjs"
 import { terminateProcessGroup } from "./process-group.mjs"
 import { restoreWorkspaceBuildArtifacts } from "./workspace-artifacts.mjs"
 
@@ -38,6 +42,13 @@ if (
 ) {
   throw new Error("F0-UAT0 keep-running mode requires native Linux/amd64.")
 }
+const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
+if (founderUatPlacementPath && !keepRunning) {
+  throw new Error("F0-UAT0 placement is valid only in keep-running mode.")
+}
+const founderUatPlacement = keepRunning
+  ? loadFounderUatPlacement(founderUatPlacementPath)
+  : null
 const inventory = JSON.parse(
   await readFile(
     resolve(repositoryRoot, "infra/release/core-image-inventory.json"),
@@ -150,7 +161,7 @@ try {
   installExternalClientFixture()
   await preserveWorkspaceBuildArtifacts()
   buildWorkspaceFixturePackages()
-  const edgePort = await reservePort()
+  const edgePort = founderUatPlacement?.edgePort ?? (await reservePort())
   await mkdir(files.firecrawlState, { mode: 0o700 })
   const firecrawl = startService(
     "firecrawl",
@@ -207,6 +218,9 @@ try {
       F0_C1_EDGE_PORT: String(edgePort),
       F0_C1_SERVICE_CONTROL_FILE: files.keycloakControl,
       F0_C1_SERVICE_STOP_FILE: files.keycloakStop,
+      ...(founderUatPlacement
+        ? { F0_UAT0_PLACEMENT_FILE: founderUatPlacementPath }
+        : {}),
       PRE_GENESIS_DOCKER_CONTEXT: dockerContext,
     },
     "reduced-core-keycloak-identity.mjs",
@@ -486,6 +500,11 @@ async function startProductPostgres() {
 }
 
 async function startObservability(edgePort) {
+  const identityOrigin = authorityOrigin(
+    founderUatPlacement,
+    "identity",
+    edgePort,
+  )
   const prometheusHostPort = await reservePort()
   const alertmanagerHostPort = await reservePort()
   const grafanaHostPort = await reservePort()
@@ -629,13 +648,13 @@ async function startObservability(edgePort) {
     "--mount",
     `type=bind,source=${files.grafanaSecret},target=/run/secrets/llmm_grafana_oidc_client_secret,readonly`,
     "--env",
-    `LLMM_KEYCLOAK_AUTH_URL=https://identity.llmm.test:${edgePort}/realms/llm-machines/protocol/openid-connect/auth`,
+    `LLMM_KEYCLOAK_AUTH_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/auth`,
     "--env",
-    `LLMM_KEYCLOAK_JWKS_URL=https://identity.llmm.test:${edgePort}/realms/llm-machines/protocol/openid-connect/certs`,
+    `LLMM_KEYCLOAK_JWKS_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/certs`,
     "--env",
-    `LLMM_KEYCLOAK_TOKEN_URL=https://identity.llmm.test:${edgePort}/realms/llm-machines/protocol/openid-connect/token`,
+    `LLMM_KEYCLOAK_TOKEN_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/token`,
     "--env",
-    `LLMM_KEYCLOAK_USERINFO_URL=https://identity.llmm.test:${edgePort}/realms/llm-machines/protocol/openid-connect/userinfo`,
+    `LLMM_KEYCLOAK_USERINFO_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/userinfo`,
     "--env",
     "LLMM_PROMETHEUS_URL=http://prometheus:9090",
     images["grafana-private"],
@@ -685,6 +704,9 @@ async function runBrowser({
               postgresVolume,
             }),
             F0_UAT0_STOP_FILE: files.uatStop,
+            ...(founderUatPlacement
+              ? { F0_UAT0_PLACEMENT_FILE: founderUatPlacementPath }
+              : {}),
           }
         : {}),
       PLAYWRIGHT_CHROME_EXECUTABLE:
