@@ -1,14 +1,21 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
+import { isIP } from "node:net"
 import OpenAI from "openai"
-import { Agent, fetch as undiciFetch } from "undici"
+import { Agent, buildConnector, fetch as undiciFetch } from "undici"
 
 const config = await readConfig()
 const baseUrl = new URL(config.baseUrl)
 
 assert.equal(baseUrl.protocol, "https:")
-assert.equal(baseUrl.hostname, "api.llmm.test")
+assert.equal(baseUrl.hostname, approvedApiAuthority(config.apiAuthority))
 assert.equal(baseUrl.pathname, "/v1")
+assert.equal(baseUrl.username, "")
+assert.equal(baseUrl.password, "")
+assert.equal(baseUrl.search, "")
+assert.equal(baseUrl.hash, "")
+const connectAddress = approvedPrivateAddress(config.connectAddress)
+const connectPort = approvedPort(config.connectPort)
 if (!/^llmm_t4_[0-9a-f]{18}_[A-Za-z0-9_-]{43}$/.test(config.apiKey)) {
   throw new Error("The external client credential format was invalid.")
 }
@@ -17,20 +24,25 @@ assert.equal(typeof config.caFile, "string")
 assert.equal(typeof config.prompt, "string")
 assert.ok(config.prompt.length > 0 && config.prompt.length <= 1_024)
 
+const tlsConnector = buildConnector({ ca: await readFile(config.caFile) })
 const dispatcher = new Agent({
-  connect: {
-    ca: await readFile(config.caFile),
-    lookup(hostname, options, callback) {
-      if (hostname !== "api.llmm.test") {
-        callback(new Error("The external client attempted an unapproved host."))
-        return
-      }
-      if (options?.all) {
-        callback(null, [{ address: "127.0.0.1", family: 4 }])
-        return
-      }
-      callback(null, "127.0.0.1", 4)
-    },
+  connect(options, callback) {
+    if (
+      options.hostname !== config.apiAuthority ||
+      options.protocol !== "https:"
+    ) {
+      callback(new Error("The external client attempted an unapproved host."))
+      return
+    }
+    tlsConnector(
+      {
+        ...options,
+        hostname: connectAddress,
+        port: String(connectPort),
+        servername: config.apiAuthority,
+      },
+      callback,
+    )
   },
 })
 
@@ -111,6 +123,40 @@ async function readConfig() {
   const value = JSON.parse(raw)
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("The external client input was invalid.")
+  }
+  return value
+}
+
+function approvedApiAuthority(value) {
+  if (
+    typeof value !== "string" ||
+    value !== value.trim().toLowerCase() ||
+    !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(value)
+  ) {
+    throw new Error("The external client API authority was invalid.")
+  }
+  return value
+}
+
+function approvedPrivateAddress(value) {
+  if (typeof value !== "string" || isIP(value) !== 4) {
+    throw new Error("The external client edge address was invalid.")
+  }
+  const [first, second] = value.split(".").map(Number)
+  if (
+    value !== "127.0.0.1" &&
+    first !== 10 &&
+    !(first === 172 && second >= 16 && second <= 31) &&
+    !(first === 192 && second === 168)
+  ) {
+    throw new Error("The external client edge address was invalid.")
+  }
+  return value
+}
+
+function approvedPort(value) {
+  if (!Number.isSafeInteger(value) || value < 1 || value > 65_535) {
+    throw new Error("The external client edge port was invalid.")
   }
   return value
 }

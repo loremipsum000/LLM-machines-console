@@ -861,6 +861,7 @@ async function runBrowserSessionProof() {
           actualFirecrawl: firecrawlControl,
           certificate,
           consoleOrigin,
+          edgeBindAddress,
           edgePort,
           page,
           postgresControl,
@@ -887,6 +888,7 @@ async function runBrowserSessionProof() {
           ? await proveApplicationConsoleFlow({
               certificate,
               consoleOrigin,
+              edgeBindAddress,
               edgePort,
               page,
               postgresControl,
@@ -2549,6 +2551,7 @@ async function proveApplicationConsoleFlow({
   certificate,
   consoleOrigin,
   credentialLifecycleMode,
+  edgeBindAddress,
   edgePort,
   page,
   postgresControl,
@@ -2669,7 +2672,10 @@ async function proveApplicationConsoleFlow({
   const externalOpenAiClient = integratedCoreMode
     ? await runOpenAiClientSmoke({
         apiKey: inferenceCredential,
+        apiAuthority: authorities.api,
         caFile: certificate.ca,
+        connectAddress: edgeBindAddress,
+        connectPort: edgePort,
         edgePort,
         prompt: retentionCanaries
           ? `${retentionCanaries.prompt} ${retentionCanaries.request}`
@@ -3535,7 +3541,10 @@ async function requestTextThroughEdge({
 
 async function runOpenAiClientSmoke({
   apiKey,
+  apiAuthority,
   caFile,
+  connectAddress,
+  connectPort,
   edgePort,
   prompt,
   sensitiveValues,
@@ -3573,8 +3582,11 @@ async function runOpenAiClientSmoke({
   child.stdin.end(
     JSON.stringify({
       apiKey,
+      apiAuthority,
       baseUrl: `${publicOrigin("api", edgePort)}/v1`,
       caFile,
+      connectAddress,
+      connectPort,
       model: "fixture-model",
       prompt,
     }),
