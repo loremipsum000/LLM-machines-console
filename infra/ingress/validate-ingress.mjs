@@ -128,7 +128,7 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "65ccb749ee4a814d2507dbb09265dcb54f459a7adab0de20e754eb8e9c3187bd",
+    "4e17d0cc2ff41cb9c638ebace65c56065c08075fe7a6a3f377f8644e1325f447",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -497,6 +497,23 @@ function validateNginx(sources, errors) {
       ) &&
       !/location = \/v[12]\//.test(identityServer),
     "identity host route boundary changed",
+  )
+  const identityUnavailable = exactLocationSection(
+    identityServer,
+    "= /__llmm_identity_unavailable",
+  )
+  add(
+    errors,
+    count(
+      identityServer,
+      "error_page 502 503 504 =303 /__llmm_identity_unavailable?;",
+    ) === 2 &&
+      identityUnavailable.includes("internal;") &&
+      identityUnavailable.includes(
+        "return 303 https://@@PRODUCT_CONSOLE_HOST@@/auth/unavailable?returnTo=%2Fauth%2Fsignin;",
+      ) &&
+      !/\$(?:args|http_|request_uri|uri)\b/.test(identityUnavailable),
+    "identity browser outage recovery changed",
   )
   add(
     errors,

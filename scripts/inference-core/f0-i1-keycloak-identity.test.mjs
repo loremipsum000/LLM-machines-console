@@ -32,7 +32,9 @@ test("F0-I1 remains a bounded disposable Keycloak identity proof", async () => {
     new RegExp(escapeRegExp(policy.keycloakRuntime.q0Image)),
   )
   assert.match(wrapper, /--import-realm/)
-  assert.match(wrapper, /--publish",\s*"127\.0\.0\.1::8080"/s)
+  assert.match(wrapper, /const upstreamPort = await reservePort\(\)/)
+  assert.match(wrapper, /--publish",\s*`127\.0\.0\.1:\$\{upstreamPort\}:8080`/s)
+  assert.doesNotMatch(wrapper, /127\.0\.0\.1::8080/)
   assert.match(wrapper, /"pkce\.code\.challenge\.method": "S256"/)
   assert.match(wrapper, /"default\.reference\.value": value/)
   assert.match(wrapper, /otpPolicyAlgorithm: "HmacSHA256"/)

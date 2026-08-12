@@ -131,6 +131,26 @@ test("retained cookies and redirects cannot be suppressed", () => {
   }
 })
 
+test("identity outage recovery is fixed to the Console sign-in surface", () => {
+  for (const replacement of [
+    'return 503 \'{"error":"identity_unavailable"}\';',
+    "return 303 https://@@PRODUCT_CONSOLE_HOST@@$request_uri;",
+    "return 303 https://attacker.invalid/;",
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(
+          "return 303 https://@@PRODUCT_CONSOLE_HOST@@/auth/unavailable?returnTo=%2Fauth%2Fsignin;",
+          replacement,
+        ),
+      ),
+    )
+    assert.ok(
+      result.some((error) => /identity browser outage recovery/i.test(error)),
+    )
+  }
+})
+
 test("Console cookies, bearer tokens, and WebSockets stay separated", () => {
   const identityCookie = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>

@@ -70,6 +70,7 @@ try {
   await chmod(stateRoot, 0o700)
   await mkdir(importRoot, { mode: 0o755 })
   const edgePort = serviceControl?.edgePort ?? (await reservePort())
+  const upstreamPort = await reservePort()
   if (founderUatPlacement && founderUatPlacement.edgePort !== edgePort) {
     throw new Error(
       "F0-UAT0 placement edge port does not match Keycloak control.",
@@ -114,7 +115,7 @@ try {
     "--memory",
     "2g",
     "--publish",
-    "127.0.0.1::8080",
+    `127.0.0.1:${upstreamPort}:8080`,
     KEYCLOAK_IMAGE,
     "start-dev",
     "--import-realm",
@@ -126,7 +127,7 @@ try {
   containerCreated = true
   docker(["cp", importRoot, `${containerName}:/opt/keycloak/data/import`])
   docker(["start", containerName])
-  const upstreamPort = await waitForKeycloak()
+  await waitForKeycloak(upstreamPort)
   let databaseUrl = null
   if (teamMode) {
     await configureTeamAuthority(upstreamPort)
@@ -901,10 +902,13 @@ function postgresPsql(sql) {
   }
 }
 
-async function waitForKeycloak() {
+async function waitForKeycloak(expectedPort) {
   const deadline = performance.now() + 120_000
   while (performance.now() < deadline) {
     const port = mappedPort()
+    if (port && port !== expectedPort) {
+      throw new Error(`${packageId} Keycloak host port changed unexpectedly.`)
+    }
     if (port) {
       const result = await fetch(
         `http://127.0.0.1:${port}/realms/llm-machines/.well-known/openid-configuration`,

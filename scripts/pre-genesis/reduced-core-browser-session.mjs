@@ -967,6 +967,14 @@ async function runBrowserSessionProof() {
         certificate,
         edgePort,
       })
+      const identityOutage = await proveKeycloakOutageRecovery({
+        browser,
+        consoleOrigin,
+        edgePort,
+        keycloakControl,
+        synchronizeClock: synchronizeFixtureClock,
+        userCredentials: credentials.admin,
+      })
       const adminSession = sessionCookie(await context.cookies(consoleOrigin))
       assert.equal(adminSession.httpOnly, true)
       assert.equal(adminSession.secure, true)
@@ -1004,7 +1012,7 @@ async function runBrowserSessionProof() {
         credentialMaterialPrinted: false,
         evidenceClass: "LOCAL_INTEGRATED_REDUCED_CORE_ONLY",
         flow: applicationFlow,
-        identity: identityFlow,
+        identity: { ...identityFlow, outageRecovery: identityOutage },
         noBypass,
         observability,
         persistence: postgresPersistenceEvidence,
@@ -1015,6 +1023,7 @@ async function runBrowserSessionProof() {
           "Firecrawl remains Application-disabled by default and actual reduced search and static scrape require its separate credential",
           "actual Prometheus, Alertmanager, and private Grafana start while the Console remains the only customer control surface",
           "the four customer authorities deny native administration, alternate hosts, unsafe paths, and spoofed forwarding metadata",
+          "an actual Keycloak stop renders the controlled Console retry state and restart recovers on the same private loopback port",
           "workload and credential canaries remain absent from Product state and browser artifacts",
         ],
         runtimeQualified: false,
@@ -2488,6 +2497,120 @@ async function assertActualLiteLlmProjection(page, consoleOrigin) {
   }
 }
 
+async function proveKeycloakOutageRecovery({
+  browser,
+  consoleOrigin,
+  edgePort,
+  keycloakControl,
+  synchronizeClock,
+  userCredentials,
+}) {
+  assert.ok(keycloakControl)
+  const initialPort = mappedKeycloakPort(keycloakControl)
+  assert.equal(initialPort, keycloakControl.upstreamPort)
+  const outageContext = await browser.newContext({
+    ignoreHTTPSErrors: !founderUatPlacement,
+  })
+  const outagePage = await outageContext.newPage()
+  try {
+    let stopped = false
+    let outageFailure = null
+    try {
+      const stop = dockerControl(keycloakControl, [
+        "stop",
+        "--time",
+        "5",
+        keycloakControl.container,
+      ])
+      if (stop.status !== 0) {
+        throw new Error("F0-C1 could not stop the disposable identity service.")
+      }
+      stopped = true
+      await outagePage.goto(
+        `${consoleOrigin}/auth/signin?returnTo=${encodeURIComponent("/settings")}`,
+      )
+      await outagePage.getByRole("link", { name: /Keycloak/ }).click()
+      await outagePage
+        .getByRole("heading", {
+          name: "Identity service temporarily unavailable",
+        })
+        .waitFor({ timeout: 20_000 })
+      const unavailableUrl = new URL(outagePage.url())
+      assert.equal(unavailableUrl.origin, consoleOrigin)
+      assert.equal(unavailableUrl.pathname, "/auth/unavailable")
+      assert.equal(unavailableUrl.searchParams.get("returnTo"), "/auth/signin")
+      await outagePage.waitForTimeout(1_000)
+      assert.equal(outagePage.url(), unavailableUrl.href)
+    } catch (error) {
+      outageFailure = error
+    }
+    if (stopped) {
+      try {
+        const start = dockerControl(keycloakControl, [
+          "start",
+          keycloakControl.container,
+        ])
+        if (start.status !== 0) {
+          throw new Error(
+            "F0-C1 could not restart the disposable identity service.",
+          )
+        }
+        await waitForKeycloakControl(keycloakControl)
+      } catch (recoveryError) {
+        if (outageFailure) {
+          throw new AggregateError(
+            [outageFailure, recoveryError],
+            "F0-C1 identity outage and recovery proof failed.",
+          )
+        }
+        throw recoveryError
+      }
+    }
+    if (outageFailure) throw outageFailure
+
+    assert.equal(mappedKeycloakPort(keycloakControl), initialPort)
+    await outagePage.getByRole("link", { name: "Retry" }).click()
+    await outagePage.getByRole("link", { name: /Keycloak/ }).waitFor()
+    await synchronizeClock()
+    await signIn(outagePage, consoleOrigin, userCredentials, "/settings")
+    await outagePage.getByRole("heading", { name: "Settings" }).waitFor()
+    return {
+      controlledConsoleState: true,
+      redirectLoopAbsent: true,
+      restartPortStable: true,
+      retryRecovered: true,
+    }
+  } finally {
+    await outageContext.close()
+  }
+}
+
+function mappedKeycloakPort(control) {
+  const result = dockerControl(control, ["port", control.container, "8080/tcp"])
+  if (result.status !== 0) return null
+  const match = result.stdout.trim().match(/127\.0\.0\.1:(\d+)$/)
+  return match ? Number.parseInt(match[1], 10) : null
+}
+
+async function waitForKeycloakControl(control) {
+  const deadline = performance.now() + 120_000
+  while (performance.now() < deadline) {
+    if (mappedKeycloakPort(control) !== control.upstreamPort) {
+      throw new Error("F0-C1 identity service restarted on an unexpected port.")
+    }
+    const response = await fetch(
+      `http://127.0.0.1:${control.upstreamPort}/realms/llm-machines/.well-known/openid-configuration`,
+    ).catch(() => null)
+    if (response) {
+      const status = response.status
+      await response.body?.cancel()
+      if (status === 200) return
+    }
+    await delay(250)
+  }
+  throw new Error("F0-C1 identity service did not recover.")
+}
+
 function stopLiteLlm(control) {
   const result = dockerControl(control, [
     "stop",
@@ -3688,6 +3811,7 @@ function createDevelopmentEdge({
             response,
             url,
             keycloakControl.upstreamPort,
+            edgePort,
           )
           return
         }
@@ -3755,7 +3879,7 @@ function createDevelopmentEdge({
   return server
 }
 
-function proxyIdentityRequest(incoming, outgoing, url, upstreamPort) {
+function proxyIdentityRequest(incoming, outgoing, url, upstreamPort, edgePort) {
   const boundary = evaluateSourceBoundary({
     customerPort: 443,
     headers: incoming.headers,
@@ -3778,6 +3902,11 @@ function proxyIdentityRequest(incoming, outgoing, url, upstreamPort) {
       port: upstreamPort,
     },
     (upstreamResponse) => {
+      if ([502, 503, 504].includes(upstreamResponse.statusCode ?? 0)) {
+        upstreamResponse.resume()
+        redirectIdentityUnavailable(outgoing, edgePort)
+        return
+      }
       outgoing.writeHead(
         upstreamResponse.statusCode ?? 502,
         withoutHopByHop(upstreamResponse.headers),
@@ -3787,12 +3916,27 @@ function proxyIdentityRequest(incoming, outgoing, url, upstreamPort) {
   )
   upstream.on("error", () => {
     if (!outgoing.headersSent) {
-      sendJson(outgoing, 502, { error: "identity_unavailable" })
+      redirectIdentityUnavailable(outgoing, edgePort)
     } else {
       outgoing.destroy()
     }
   })
   incoming.pipe(upstream)
+}
+
+function redirectIdentityUnavailable(response, edgePort) {
+  const location = new URL(
+    "/auth/unavailable",
+    publicOrigin("console", edgePort),
+  )
+  location.searchParams.set("returnTo", "/auth/signin")
+  response.writeHead(303, {
+    "cache-control": "no-store",
+    location: location.href,
+    pragma: "no-cache",
+    "retry-after": "5",
+  })
+  response.end()
 }
 
 function proxyRequest(

@@ -107,6 +107,9 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(firecrawl, /F0_C1_SERVICE_STATE_ROOT/)
   assert.match(browser, /identityEpochMilliseconds\(\)/)
   assert.match(browser, /periodPosition >= 5 && periodPosition <= 20/)
+  assert.match(browser, /proveKeycloakOutageRecovery\(\{/)
+  assert.match(browser, /controlledConsoleState: true/)
+  assert.match(browser, /restartPortStable: true/)
   assert.match(browser, /F0_C1_BROWSER_STATE_ROOT/)
   assert.match(browser, /const detached = !integratedCoreMode/)
   assert.match(browser, /keycloakControl\.dockerContext/)
@@ -120,6 +123,10 @@ test("F0-C1 has one bounded disposable command", () => {
     keycloak,
     /databaseUrl = serviceControl \? null : await startPostgres\(\)/,
   )
+  assert.match(keycloak, /const upstreamPort = await reservePort\(\)/)
+  assert.match(keycloak, /`127\.0\.0\.1:\$\{upstreamPort\}:8080`/)
+  assert.match(keycloak, /await waitForKeycloak\(upstreamPort\)/)
+  assert.doesNotMatch(keycloak, /127\.0\.0\.1::8080/)
   assert.match(browser, /keycloakTeamMode \|\| integratedCoreMode/)
   assert.match(browser, /containers: config\.containers/)
   assert.match(browser, /!\/\^\[a-f0-9\]\{64\}\$\/\.test\(container\)/)
