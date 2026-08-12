@@ -827,6 +827,43 @@ describe("PR-07 Applications experience", () => {
     expect(screen.getByText("Reached (non-blocking)")).toBeTruthy()
   })
 
+  it("recovers when an interrupted credential action returns no state", async () => {
+    actionMocks.revoke.mockResolvedValueOnce(undefined)
+    render(
+      <ApplicationsV2Experience
+        accessRole="admin"
+        connectedAppDetail={application}
+        modelOptions={[model]}
+        view="app-detail"
+      />,
+    )
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Revoke now" })[0])
+    const revokeConfirmation = screen
+      .getAllByRole("button", { name: "Revoke now" })
+      .at(-1)
+    if (!revokeConfirmation) {
+      throw new Error("Expected revoke confirmation button.")
+    }
+    fireEvent.click(revokeConfirmation)
+
+    expect(
+      await screen.findByText(
+        "The action did not complete. Sign in again or retry.",
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.queryByRole("dialog", { name: "Revoke credential now?" }),
+    ).toBeNull()
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Rotate credentials",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false)
+  })
+
   it("uses the rotation snapshot after an earlier revoke", async () => {
     const revokedApp = applicationSnapshot("Snapshot after revoke")
     const rotatedApp = applicationSnapshot("Snapshot after rotate")
