@@ -415,6 +415,12 @@ async function runBrowserSessionProof() {
       F0_S1_OIDC_AUDIENCE: audience,
       F0_S1_OIDC_CLIENT_ID: clientId,
       F0_S1_OIDC_CLIENT_SECRET: credentials.oidcClient,
+      ...(founderUatPlacement
+        ? {
+            F0_S1_IDENTITY_TARGET_HOST: founderUatPlacement.edgeBindAddress,
+            F0_S1_IDENTITY_TARGET_PORT: String(founderUatPlacement.edgePort),
+          }
+        : {}),
       ...(applicationsMode
         ? {
             FIRECRAWL_APPLIANCE_KILL_SWITCH: "false",
