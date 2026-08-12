@@ -23,7 +23,10 @@ test("F0-E2E2 pins a standard OpenAI SDK client and its transport", () => {
   assert.equal(rootPackageDocument.dependencies?.undici, undefined)
   assert.equal(rootPackageDocument.devDependencies?.undici, undefined)
   assert.match(client, /import OpenAI from "openai"/)
-  assert.match(client, /import \{ Agent, fetch as undiciFetch \} from "undici"/)
+  assert.match(
+    client,
+    /import \{ Agent, buildConnector, fetch as undiciFetch \} from "undici"/,
+  )
   assert.match(client, /await client\.models\.list\(\)/)
   assert.equal(client.match(/client\.chat\.completions\.create\(/g)?.length, 2)
   assert.match(client, /stream: true/)
@@ -36,7 +39,8 @@ test("F0-E2E2 executes the SDK outside the browser and BFF processes", () => {
   assert.match(integrated, /"--frozen-lockfile"/)
   assert.match(integrated, /"--ignore-scripts"/)
   assert.match(browser, /processBoundary: "child"/)
-  assert.match(browser, /apiKey,\s*baseUrl:/)
+  assert.match(browser, /apiKey,\s*apiAuthority,/)
+  assert.match(browser, /baseUrl:/)
   assert.match(browser, /child\.stdin\.end\(/)
   assert.doesNotMatch(browser, /OPENAI_API_KEY/)
   assert.doesNotMatch(client, /process\.env\.(?:OPENAI|LLMM|API_KEY)/)
@@ -44,10 +48,22 @@ test("F0-E2E2 executes the SDK outside the browser and BFF processes", () => {
 })
 
 test("F0-E2E2 preserves the exact API authority and TLS boundary", () => {
-  assert.match(client, /baseUrl\.hostname, "api\.llmm\.test"/)
-  assert.match(client, /hostname !== "api\.llmm\.test"/)
-  assert.match(client, /address: "127\.0\.0\.1"/)
-  assert.match(client, /ca: await readFile\(config\.caFile\)/)
+  assert.match(browser, /apiAuthority: authorities\.api/)
+  assert.match(browser, /connectAddress: edgeBindAddress/)
+  assert.match(browser, /connectPort: edgePort/)
+  assert.match(
+    client,
+    /baseUrl\.hostname, approvedApiAuthority\(config\.apiAuthority\)/,
+  )
+  assert.match(client, /hostname !== config\.apiAuthority/)
+  assert.match(client, /approvedPrivateAddress\(config\.connectAddress\)/)
+  assert.match(client, /approvedPort\(config\.connectPort\)/)
+  assert.match(client, /value !== "127\.0\.0\.1"/)
+  assert.match(
+    client,
+    /buildConnector\(\{ ca: await readFile\(config\.caFile\) \}\)/,
+  )
+  assert.match(client, /servername: config\.apiAuthority/)
   assert.match(client, /redirect: "manual"/)
   assert.doesNotMatch(client, /rejectUnauthorized:\s*false/)
   assert.doesNotMatch(client, /NODE_TLS_REJECT_UNAUTHORIZED/)
@@ -60,8 +76,11 @@ test("F0-E2E2 never passes or emits the Application credential as metadata", () 
     env: { LANG: "C", LC_ALL: "C", PATH: process.env.PATH ?? "" },
     input: JSON.stringify({
       apiKey: credential,
+      apiAuthority: "unapproved.invalid",
       baseUrl: "https://unapproved.invalid/v1",
       caFile: "/unavailable",
+      connectAddress: "203.0.113.10",
+      connectPort: 18443,
       model: "fixture-model",
       prompt: "bounded negative test",
     }),
