@@ -96,6 +96,48 @@ const initialFirecrawlTestState: ConnectedAppFirecrawlTestActionState = {
   status: "idle",
 }
 
+const interruptedActionError =
+  "The action did not complete. Sign in again or retry."
+
+const interruptedConnectedAppCreateState: ConnectedAppCreateActionState = {
+  ...initialConnectedAppCreateState,
+  error: interruptedActionError,
+  status: "failed",
+}
+
+const interruptedConnectedAppTestState: ConnectedAppTestActionState = {
+  ...initialConnectedAppTestState,
+  error: interruptedActionError,
+  status: "failed",
+}
+
+const interruptedConnectedAppCredentialState: ConnectedAppCredentialActionState =
+  {
+    ...initialConnectedAppCredentialState,
+    error: interruptedActionError,
+    status: "failed",
+  }
+
+const interruptedFirecrawlCredentialState: ConnectedAppFirecrawlCredentialActionState =
+  {
+    ...initialFirecrawlCredentialState,
+    error: interruptedActionError,
+    status: "failed",
+  }
+
+const interruptedFirecrawlLifecycleState: ConnectedAppFirecrawlLifecycleActionState =
+  {
+    ...initialFirecrawlLifecycleState,
+    error: interruptedActionError,
+    status: "failed",
+  }
+
+const interruptedFirecrawlTestState: ConnectedAppFirecrawlTestActionState = {
+  ...initialFirecrawlTestState,
+  error: interruptedActionError,
+  status: "failed",
+}
+
 type ApplicationMutationOperation =
   | "application-delete"
   | "application-disable"
@@ -183,14 +225,16 @@ function AddConnectedAppView({
 }: {
   modelOptions: AdminInferenceModel[]
 }) {
-  const [createState, createAction, createPending] = useActionState(
+  const [createResult, createAction, createPending] = useActionState(
     createAdminConnectedAppAction,
     initialConnectedAppCreateState,
   )
-  const [checkState, checkAction, checkPending] = useActionState(
+  const [checkResult, checkAction, checkPending] = useActionState(
     checkAdminConnectedAppConnectionAction,
     initialConnectedAppTestState,
   )
+  const createState = createResult ?? interruptedConnectedAppCreateState
+  const checkState = checkResult ?? interruptedConnectedAppTestState
   const [authMethod, setAuthMethod] = useState<
     "api_key" | "oauth_client_credentials"
   >("api_key")
@@ -318,18 +362,21 @@ function ConnectedAppDetailView({
   const [showRotateConfirm, setShowRotateConfirm] = useState(false)
   const [credentialToRevoke, setCredentialToRevoke] =
     useState<AdminConnectedAppCredentialMetadata | null>(null)
-  const [checkState, checkAction, checkPending] = useActionState(
+  const [checkResult, checkAction, checkPending] = useActionState(
     checkAdminConnectedAppConnectionAction,
     initialConnectedAppTestState,
   )
-  const [rotateState, rotateAction, rotatePending] = useActionState(
+  const [rotateResult, rotateAction, rotatePending] = useActionState(
     rotateAdminConnectedAppCredentialsAction,
     initialConnectedAppCredentialState,
   )
-  const [revokeState, revokeAction, revokePending] = useActionState(
+  const [revokeResult, revokeAction, revokePending] = useActionState(
     revokeAdminConnectedAppCredentialAction,
     initialConnectedAppCredentialState,
   )
+  const checkState = checkResult ?? interruptedConnectedAppTestState
+  const rotateState = rotateResult ?? interruptedConnectedAppCredentialState
+  const revokeState = revokeResult ?? interruptedConnectedAppCredentialState
   const [latestApp, setLatestApp] = useState(app)
   const [activeOperation, setActiveOperation] =
     useState<ApplicationMutationOperation | null>(null)
@@ -1167,26 +1214,31 @@ function FirecrawlAccessPanel({
   const [showRotateConfirm, setShowRotateConfirm] = useState(false)
   const [credentialToRevoke, setCredentialToRevoke] =
     useState<AdminConnectedAppFirecrawlCredentialMetadata | null>(null)
-  const [enableState, enableAction, enablePending] = useActionState(
+  const [enableResult, enableAction, enablePending] = useActionState(
     enableAdminConnectedAppFirecrawlAction,
     initialFirecrawlCredentialState,
   )
-  const [checkState, checkAction, checkPending] = useActionState(
+  const [checkResult, checkAction, checkPending] = useActionState(
     checkAdminConnectedAppFirecrawlConnectionAction,
     initialFirecrawlTestState,
   )
-  const [rotateState, rotateAction, rotatePending] = useActionState(
+  const [rotateResult, rotateAction, rotatePending] = useActionState(
     rotateAdminConnectedAppFirecrawlCredentialAction,
     initialFirecrawlCredentialState,
   )
-  const [revokeState, revokeAction, revokePending] = useActionState(
+  const [revokeResult, revokeAction, revokePending] = useActionState(
     revokeAdminConnectedAppFirecrawlCredentialAction,
     initialFirecrawlLifecycleState,
   )
-  const [disableState, disableAction, disablePending] = useActionState(
+  const [disableResult, disableAction, disablePending] = useActionState(
     disableAdminConnectedAppFirecrawlAction,
     initialFirecrawlLifecycleState,
   )
+  const enableState = enableResult ?? interruptedFirecrawlCredentialState
+  const checkState = checkResult ?? interruptedFirecrawlTestState
+  const rotateState = rotateResult ?? interruptedFirecrawlCredentialState
+  const revokeState = revokeResult ?? interruptedFirecrawlLifecycleState
+  const disableState = disableResult ?? interruptedFirecrawlLifecycleState
   const [credentialReveal, setCredentialReveal] =
     useState<AdminConnectedAppFirecrawlCredential | null>(null)
   const {
