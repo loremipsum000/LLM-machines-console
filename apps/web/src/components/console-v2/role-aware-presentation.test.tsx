@@ -188,11 +188,30 @@ describe("role-aware Console presentation", () => {
     )
 
     expect(screen.getByText("Ada Lovelace")).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Manage users" })).toBeTruthy()
+    expect(screen.getByRole("link", { name: "View members" })).toBeTruthy()
     expect(screen.queryByRole("link", { name: "Create user" })).toBeNull()
     expect(screen.queryByRole("link", { name: "Import CSV" })).toBeNull()
     expect(screen.queryByText(/managed in Keycloak/)).toBeNull()
     expect(screen.queryByText("Team group created.")).toBeNull()
+    expect(screen.getByText("Identity access")).toBeTruthy()
+    expect(
+      screen.getByText(/only Administrators can make identity changes/),
+    ).toBeTruthy()
+
+    rerender(
+      <TeamV2Experience
+        accessRole="operator"
+        overview={teamOverview}
+        view="manage-users"
+      />,
+    )
+
+    expect(screen.getByRole("heading", { name: "Members" })).toBeTruthy()
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Team > Members" }),
+    ).toBeTruthy()
+    expect(screen.queryByText("Manage users")).toBeNull()
+    expect(screen.queryByRole("link", { name: "Create user" })).toBeNull()
 
     rerender(
       <TeamV2Experience
@@ -232,6 +251,7 @@ describe("role-aware Console presentation", () => {
     )
     expect(screen.queryByRole("link", { name: /Open in Keycloak/ })).toBeNull()
     expect(screen.getByText(/Keycloak remains private/)).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Manage users" })).toBeTruthy()
     expect(screen.getByRole("link", { name: "Create user" })).toBeTruthy()
     expect(screen.queryByRole("link", { name: "Import CSV" })).toBeNull()
     expect(screen.queryByRole("link", { name: "Create group" })).toBeNull()

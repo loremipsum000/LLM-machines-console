@@ -187,7 +187,7 @@ function TeamOverviewView({
                 className="flex h-5 items-center text-sm font-medium text-white transition-colors hover:text-[#d8d8d8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
                 href="/team/members"
               >
-                Manage users
+                {canManageTeam ? "Manage users" : "View members"}
               </Link>
               {canManageTeam ? (
                 <Link
@@ -227,11 +227,12 @@ function TeamOverviewView({
             className="text-lg font-semibold leading-none text-[#fdfdfd]"
             id="console-v2-team-identity-title"
           >
-            Identity controls
+            {canManageTeam ? "Identity controls" : "Identity access"}
           </h2>
           <p className="text-sm leading-5 text-[#777]">
-            Keycloak remains private. Manage approved users, roles, and password
-            actions here in Console.
+            {canManageTeam
+              ? "Keycloak remains private. Manage approved users, roles, and password actions here in Console."
+              : "Keycloak remains private. Operators can view approved users and roles here; only Administrators can make identity changes."}
           </p>
         </section>
       </div>
@@ -549,15 +550,17 @@ function ManageUsersView({
   members: AdminTeamMember[]
   teamAction?: string
 }) {
+  const pageTitle = canManageTeam ? "Manage users" : "Members"
+
   return (
     <div className="relative w-full lg:h-[1024px]">
-      <SubpageHeader title="Team > Manage users" />
+      <SubpageHeader title={`Team > ${pageTitle}`} />
       <BackToTeamLink />
       <TeamActionNotice action={teamAction} />
       <section className="mt-8 lg:absolute lg:top-[164px] lg:mt-0 lg:w-[860px]">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-[28px] font-semibold leading-none text-white">
-            Manage users
+            {pageTitle}
           </h2>
           {canManageTeam ? (
             <Link
