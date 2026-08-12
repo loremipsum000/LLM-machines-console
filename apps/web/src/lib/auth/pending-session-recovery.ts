@@ -13,9 +13,12 @@ type PendingConsoleSessionState =
   | "unavailable"
   | "unknown"
 
-export function usePendingConsoleSessionRecovery(pending: boolean): void {
+export function usePendingConsoleSessionRecovery(
+  pending: boolean,
+  interrupted = false,
+): void {
   useEffect(() => {
-    if (!pending) {
+    if (!pending && !interrupted) {
       return
     }
 
@@ -47,14 +50,14 @@ export function usePendingConsoleSessionRecovery(pending: boolean): void {
       timer = setTimeout(probe, REPEATED_PROBE_DELAY_MS)
     }
 
-    timer = setTimeout(probe, FIRST_PROBE_DELAY_MS)
+    timer = setTimeout(probe, interrupted ? 0 : FIRST_PROBE_DELAY_MS)
     return () => {
       cancelled = true
       if (timer) {
         clearTimeout(timer)
       }
     }
-  }, [pending])
+  }, [interrupted, pending])
 }
 
 export async function probePendingConsoleSession(

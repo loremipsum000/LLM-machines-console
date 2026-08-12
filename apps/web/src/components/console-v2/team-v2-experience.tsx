@@ -391,7 +391,10 @@ function CsvImportView() {
     commitAdminTeamCsvImportAction,
     initialCsvImportState,
   )
-  usePendingConsoleSessionRecovery(previewPending || commitPending)
+  usePendingConsoleSessionRecovery(
+    previewPending || commitPending,
+    previewState == null || commitState == null,
+  )
   const activeState = commitState.status !== "idle" ? commitState : previewState
   const rows = activeState.preview?.rows ?? activeState.commit?.rows ?? []
   const canCommit = Boolean(activeState.preview?.valid && activeState.csv)
@@ -712,7 +715,7 @@ function NewMemberView({ groups }: { groups: AdminTeamGroup[] }) {
     createAdminTeamMemberAction,
     initialTeamActionState,
   )
-  usePendingConsoleSessionRecovery(pending)
+  usePendingConsoleSessionRecovery(pending, state == null)
   const assignableGroups = realGroups(groups)
 
   return (
@@ -878,7 +881,7 @@ function MemberActions({
     generateAdminTeamPasswordAction,
     initialTeamActionState,
   )
-  usePendingConsoleSessionRecovery(passwordPending)
+  usePendingConsoleSessionRecovery(passwordPending, passwordState == null)
   const returnTo = `/team/members/${member.id}`
 
   return (

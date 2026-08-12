@@ -828,6 +828,9 @@ describe("PR-07 Applications experience", () => {
   })
 
   it("recovers when an interrupted credential action returns no state", async () => {
+    const sessionProbe = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 200 }))
     actionMocks.revoke.mockResolvedValueOnce(undefined)
     render(
       <ApplicationsV2Experience
@@ -862,6 +865,19 @@ describe("PR-07 Applications experience", () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(false)
+    await waitFor(
+      () =>
+        expect(sessionProbe).toHaveBeenCalledWith(
+          "/",
+          expect.objectContaining({
+            cache: "no-store",
+            credentials: "same-origin",
+            method: "HEAD",
+          }),
+        ),
+      { timeout: 2_000 },
+    )
+    sessionProbe.mockRestore()
   })
 
   it("uses the rotation snapshot after an earlier revoke", async () => {
