@@ -22,6 +22,7 @@ import {
   updateAdminConnectedAppFirecrawlPolicyAction,
   updateAdminConnectedAppPolicyAction,
 } from "@/lib/admin/actions-core"
+import { usePendingConsoleSessionRecovery } from "@/lib/auth/pending-session-recovery"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import { cn } from "@/lib/utils"
 import type {
@@ -233,6 +234,7 @@ function AddConnectedAppView({
     checkAdminConnectedAppConnectionAction,
     initialConnectedAppTestState,
   )
+  usePendingConsoleSessionRecovery(createPending || checkPending)
   const createState = createResult ?? interruptedConnectedAppCreateState
   const checkState = checkResult ?? interruptedConnectedAppTestState
   const [authMethod, setAuthMethod] = useState<
@@ -385,6 +387,7 @@ function ConnectedAppDetailView({
   const operationLockRef = useRef<ApplicationMutationOperation | null>(null)
   const mutationPending =
     activeOperation !== null || checkPending || rotatePending || revokePending
+  usePendingConsoleSessionRecovery(mutationPending)
 
   const beginMutation = useCallback(
     (
