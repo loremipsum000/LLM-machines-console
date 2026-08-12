@@ -145,6 +145,19 @@ function publicAuthorityHost(authority, edgePort) {
   if (!name) throw new Error(`Unknown Product authority: ${authority}.`)
   return new URL(publicOrigin(name, edgePort)).host
 }
+
+function deniedNativeAuthority(service) {
+  const [, ...suffix] = authorities.console.split(".")
+  if (suffix.length < 2 || !/^[a-z][a-z0-9-]{0,62}$/.test(service)) {
+    throw new Error("The denied native authority is invalid.")
+  }
+  return [service, ...suffix].join(".")
+}
+
+function deniedAuthorityHost(authority, edgePort) {
+  const port = new URL(publicOrigin("console", edgePort)).port
+  return port ? `${authority}:${port}` : authority
+}
 const consolePaths = [
   ["/", "Overview"],
   ["/applications", "Applications"],
@@ -2133,16 +2146,12 @@ async function proveIntegratedNoBypass({ certificate, edgePort }) {
     )
     denied.push(`${authority}${path}`)
   }
-  for (const authority of [
-    "grafana.llmm.test",
-    "keycloak.llmm.test",
-    "litellm.llmm.test",
-    "postgres.llmm.test",
-  ]) {
+  for (const service of ["grafana", "keycloak", "litellm", "postgres"]) {
+    const authority = deniedNativeAuthority(service)
     const response = await requestHttpsEdgeWithHeaders({
       certificate,
       edgePort,
-      headers: { host: publicAuthorityHost(authority, edgePort) },
+      headers: { host: deniedAuthorityHost(authority, edgePort) },
       method: "GET",
       path: "/",
       servername: authorities.console,
