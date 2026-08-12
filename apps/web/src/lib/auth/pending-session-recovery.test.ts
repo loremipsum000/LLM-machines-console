@@ -76,6 +76,15 @@ describe("pending Console session recovery", () => {
       ),
     ).toBe("/")
   })
+
+  it("keeps an interrupted action on the same safe recovery policy", () => {
+    expect(pendingSessionRecoveryHref("terminal", "/team", 0)).toBe(
+      "/auth/signin?session=expired&returnTo=%2Fteam",
+    )
+    expect(pendingSessionRecoveryHref("unavailable", "/team", 0)).toBe(
+      "/auth/unavailable?returnTo=%2Fteam",
+    )
+  })
 })
 
 function responseAt(url: string, status: number): Response {

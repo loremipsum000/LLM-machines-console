@@ -234,7 +234,10 @@ function AddConnectedAppView({
     checkAdminConnectedAppConnectionAction,
     initialConnectedAppTestState,
   )
-  usePendingConsoleSessionRecovery(createPending || checkPending)
+  usePendingConsoleSessionRecovery(
+    createPending || checkPending,
+    createResult == null || checkResult == null,
+  )
   const createState = createResult ?? interruptedConnectedAppCreateState
   const checkState = checkResult ?? interruptedConnectedAppTestState
   const [authMethod, setAuthMethod] = useState<
@@ -387,7 +390,10 @@ function ConnectedAppDetailView({
   const operationLockRef = useRef<ApplicationMutationOperation | null>(null)
   const mutationPending =
     activeOperation !== null || checkPending || rotatePending || revokePending
-  usePendingConsoleSessionRecovery(mutationPending)
+  usePendingConsoleSessionRecovery(
+    mutationPending,
+    checkResult == null || rotateResult == null || revokeResult == null,
+  )
 
   const beginMutation = useCallback(
     (
@@ -1258,6 +1264,14 @@ function FirecrawlAccessPanel({
     rotatePending ||
     revokePending ||
     disablePending
+  usePendingConsoleSessionRecovery(
+    operationPending,
+    enableResult == null ||
+      checkResult == null ||
+      rotateResult == null ||
+      revokeResult == null ||
+      disableResult == null,
+  )
   const isAdmin = accessRole === "admin"
   const firecrawl = app.firecrawl
 
