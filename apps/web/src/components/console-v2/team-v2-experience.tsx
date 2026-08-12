@@ -1,5 +1,6 @@
 "use client"
 
+import { usePendingConsoleSessionRecovery } from "@/lib/auth/pending-session-recovery"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import type {
   AdminTeamCsvImportPreviewResponse,
@@ -382,14 +383,15 @@ function GroupDetailView({
 }
 
 function CsvImportView() {
-  const [previewState, previewAction] = useActionState(
+  const [previewState, previewAction, previewPending] = useActionState(
     previewAdminTeamCsvImportAction,
     initialCsvImportState,
   )
-  const [commitState, commitAction] = useActionState(
+  const [commitState, commitAction, commitPending] = useActionState(
     commitAdminTeamCsvImportAction,
     initialCsvImportState,
   )
+  usePendingConsoleSessionRecovery(previewPending || commitPending)
   const activeState = commitState.status !== "idle" ? commitState : previewState
   const rows = activeState.preview?.rows ?? activeState.commit?.rows ?? []
   const canCommit = Boolean(activeState.preview?.valid && activeState.csv)
@@ -706,10 +708,11 @@ function UserLifecycleActions({
 }
 
 function NewMemberView({ groups }: { groups: AdminTeamGroup[] }) {
-  const [state, formAction] = useActionState(
+  const [state, formAction, pending] = useActionState(
     createAdminTeamMemberAction,
     initialTeamActionState,
   )
+  usePendingConsoleSessionRecovery(pending)
   const assignableGroups = realGroups(groups)
 
   return (
@@ -871,10 +874,11 @@ function MemberActions({
 }: {
   member: AdminTeamMember
 }) {
-  const [passwordState, passwordAction] = useActionState(
+  const [passwordState, passwordAction, passwordPending] = useActionState(
     generateAdminTeamPasswordAction,
     initialTeamActionState,
   )
+  usePendingConsoleSessionRecovery(passwordPending)
   const returnTo = `/team/members/${member.id}`
 
   return (
