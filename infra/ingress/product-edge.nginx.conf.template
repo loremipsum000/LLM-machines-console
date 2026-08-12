@@ -381,7 +381,7 @@ http {
       proxy_set_header Content-Length "";
       proxy_set_header Content-Type "";
       proxy_intercept_errors on;
-      error_page 502 503 504 =503 /__llmm_identity_unavailable?;
+      error_page 502 503 504 =303 /__llmm_identity_unavailable?;
       proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/auth;
     }
 
@@ -486,7 +486,7 @@ http {
       include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
       proxy_set_header Host $llmm_public_host;
       proxy_intercept_errors on;
-      error_page 502 503 504 =503 /__llmm_identity_unavailable?;
+      error_page 502 503 504 =303 /__llmm_identity_unavailable?;
       proxy_pass http://keycloak_identity/realms/llm-machines/login-actions/;
     }
 
@@ -503,12 +503,11 @@ http {
 
     location = /__llmm_identity_unavailable {
       internal;
-      default_type application/problem+json;
       add_header Cache-Control "no-store" always;
       add_header Pragma "no-cache" always;
       add_header Retry-After "5" always;
       add_header X-Content-Type-Options "nosniff" always;
-      return 503 '{"type":"urn:llm-machines:identity-unavailable","title":"Identity service unavailable","status":503,"detail":"Identity is temporarily unavailable. Retry this operation."}';
+      return 303 https://@@PRODUCT_CONSOLE_HOST@@/auth/unavailable?returnTo=%2Fauth%2Fsignin;
     }
 
     location ~* ^/(?:admin|realms/(?:master|[^/]+)/admin|metrics|health)(?:/|$) {

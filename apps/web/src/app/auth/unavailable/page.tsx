@@ -17,8 +17,8 @@ export default async function IdentityUnavailablePage({
             Identity service temporarily unavailable
           </h1>
           <p className="mt-4 text-sm text-fg-muted">
-            Your local Console session was preserved. Retry when the appliance
-            identity service is available.
+            Console could not reach the appliance identity service. No local
+            session data was cleared. Retry when the service is available.
           </p>
           <a
             className="mt-6 inline-flex rounded-md border border-line-subtle px-4 py-2 text-sm"
