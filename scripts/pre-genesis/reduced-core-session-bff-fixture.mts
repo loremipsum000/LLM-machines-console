@@ -11,6 +11,7 @@ import { createConsoleOidcClient } from "../../apps/bff/src/services/console-ses
 import { ConsoleSessionService } from "../../apps/bff/src/services/console-session-service"
 import { TestOnlyInMemoryConsoleSessionRepository } from "../../apps/bff/src/services/console-session-store"
 import { DrizzleConsoleSessionRepository } from "../../apps/bff/src/services/console-session-store-drizzle"
+import { resolveIdentityBackchannelTarget } from "./identity-backchannel-target.mjs"
 
 if (
   process.env.NODE_ENV !== "test" ||
@@ -41,9 +42,15 @@ const firecrawlHosts = parseFirecrawlHosts(
   process.env.PRE_GENESIS_FIRECRAWL_ALLOWED_HOSTS ?? "allowed.example.test",
 )
 const oidcBase = `${issuer}/protocol/openid-connect`
-const localIdentityFetch = createLoopbackIdentityFetch(
+const identityBackchannelTarget = resolveIdentityBackchannelTarget({
+  issuer,
+  targetHost: process.env.F0_S1_IDENTITY_TARGET_HOST,
+  targetPort: process.env.F0_S1_IDENTITY_TARGET_PORT,
+})
+const localIdentityFetch = createIdentityBackchannelFetch(
   issuer,
   required("F0_S1_CA_FILE"),
+  identityBackchannelTarget,
 )
 const cipher = postgresPersistence
   ? cipherFromSerializedKeyring(
@@ -308,9 +315,10 @@ function nestedErrorWithPostgresMetadata(error: unknown): {
     : null
 }
 
-function createLoopbackIdentityFetch(
+function createIdentityBackchannelFetch(
   issuerValue: string,
   caFile: string,
+  target: { host: string; port: number },
 ): typeof fetch {
   const issuerUrl = new URL(issuerValue)
   const ca = readFileSync(caFile)
@@ -335,10 +343,10 @@ function createLoopbackIdentityFetch(
         {
           ca,
           headers: Object.fromEntries(headers),
-          host: "127.0.0.1",
+          host: target.host,
           method: init.method ?? "GET",
           path: `${url.pathname}${url.search}`,
-          port: Number.parseInt(url.port, 10),
+          port: target.port,
           servername: url.hostname,
         },
         (response) => {
