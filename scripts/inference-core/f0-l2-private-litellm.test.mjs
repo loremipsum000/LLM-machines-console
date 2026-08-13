@@ -18,8 +18,8 @@ test("F0-L2 binds actual LiteLLM to the private Product flow", async () => {
 
   const locked = inventory.components.find(({ id }) => id === "litellm")
   assert.ok(locked)
-  const identity = `${locked.repository}:${locked.version}@${locked.indexDigest}`
-  assert.match(wrapper, new RegExp(identity.replaceAll(".", "\\.")))
+  const historicalIdentity = evidence.exactRuntime.litellm
+  assert.match(wrapper, new RegExp(historicalIdentity.replaceAll(".", "\\.")))
   assert.match(wrapper, /turn_off_message_logging: true/)
   assert.match(wrapper, /store_prompts_in_spend_logs: false/)
   assert.match(wrapper, /log_raw_request_response: false/)
@@ -42,10 +42,15 @@ test("F0-L2 binds actual LiteLLM to the private Product flow", async () => {
   assert.equal(evidence.baseCommit, "6fb13ba3674a69fec7a9496b81bf2feeef09599b")
   assert.equal(evidence.accepted, false)
   assert.equal(evidence.runtimeQualified, false)
-  assert.equal(evidence.exactRuntime.litellm, identity)
+  assert.equal(locked.kind, "litellm-oss-build-output")
+  assert.equal(locked.version, "v1.96.2-llmm.1")
+  assert.equal(
+    locked.sourcePackage,
+    "infra/litellm/oss-downstream/source-package.json",
+  )
 })
 
-test("F0-L2 keeps native administration and capacity claims out", async () => {
+test("F0-L2 remains historical while F0-N1 prospectively restores native administration", async () => {
   const [evidence, inventory, ingress] = await Promise.all([
     readSource("docs/reduction/inference-core/f0-l2-private-litellm.json"),
     readJson("infra/release/core-image-inventory.json"),
@@ -53,8 +58,11 @@ test("F0-L2 keeps native administration and capacity claims out", async () => {
   ])
   const parsed = JSON.parse(evidence)
   const locked = inventory.components.find(({ id }) => id === "litellm")
-  assert.equal(locked.customerExposure, "private-console-projection-only")
-  assert.ok(inventory.excluded.includes("native-litellm-ui"))
+  assert.equal(
+    locked.customerExposure,
+    "product-edge-native-sso-and-console-projection",
+  )
+  assert.ok(!inventory.excluded.includes("native-litellm-ui"))
   assert.match(ingress, /nativeConsolePathPattern/)
   assert.match(ingress, /ui\|public\|key\|model\|router/)
   assert.ok(

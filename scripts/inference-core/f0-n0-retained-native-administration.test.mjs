@@ -8,6 +8,8 @@ const root = resolve(import.meta.dirname, "../..")
 const decisionPath =
   "docs/reduction/inference-core/f0-n0-retained-native-administration.json"
 const protectedInput = "eecbdc6099d36876b94b78689a54c914f6228eb4"
+const f0N0Candidate = "d142cc9bef3c90a51abe6d9a818c73dc667a44ea"
+const f0N0Merge = "1419006baff63c9861218872a41f64c096b8f9a8"
 
 test("F0-N0 binds the prospective correction without activating native access", async () => {
   const decision = await readJson(decisionPath)
@@ -184,7 +186,13 @@ test("F0-N0 assigns every superseded current surface without rewriting history",
   assert.match(validationRegister, /\| F0-N0 \|/)
   assert.match(readme, /Prospective retained native administration correction/)
 
-  assert.deepEqual(changedPathsSince(protectedInput), [
+  assert.equal(git("rev-parse", `${f0N0Merge}^1`), protectedInput)
+  assert.equal(git("rev-parse", `${f0N0Merge}^2`), f0N0Candidate)
+  assert.equal(
+    git("rev-parse", `${f0N0Merge}^{tree}`),
+    git("rev-parse", `${f0N0Candidate}^{tree}`),
+  )
+  assert.deepEqual(changedPathsBetween(protectedInput, f0N0Candidate), [
     "docs/reduction/inference-core/README.md",
     "docs/reduction/inference-core/decision-register.md",
     "docs/reduction/inference-core/f0-n0-retained-native-administration.json",
@@ -210,13 +218,11 @@ function git(...args) {
   }).trim()
 }
 
-function changedPathsSince(base) {
-  return [
-    ...git("diff", "--name-only", base).split("\n").filter(Boolean),
-    ...git("ls-files", "--others", "--exclude-standard")
-      .split("\n")
-      .filter(Boolean),
-  ].sort()
+function changedPathsBetween(base, candidate) {
+  return git("diff", "--name-only", base, candidate)
+    .split("\n")
+    .filter(Boolean)
+    .sort()
 }
 
 async function readJson(path) {

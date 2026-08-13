@@ -1,0 +1,122 @@
+{
+  "schema": "llm-machines.pre-genesis-native-administration-evidence.v1",
+  "workPackage": "F0-N1",
+  "status": "SOURCE_CHARACTERIZED_NOT_ACTIVATED",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "1419006baff63c9861218872a41f64c096b8f9a8",
+    "tree": "96d97a91eed7f5aeb49c57f0968b60d3937f89a3"
+  },
+  "upstream": {
+    "version": "v1.96.2",
+    "commit": "83d6d84bfb7abbbff70d456bc89028d426db8c33",
+    "tree": "dfc8f21f0a23a6ec279b22921d82b61306a05bc1",
+    "sourceArchiveSha256": "fc864419108ace3251b0d1f7f9f27fa7841afb1b229377ce014aecf6ac16103c",
+    "ociIndex": "sha256:154e23bb5f31b1f10e16392a8ef299bd2cde08de3a64a6849002cfcc25ce3c63",
+    "linuxAmd64Manifest": "sha256:6378c0f68aa9d91820b80cd2ac68b8bb8d70f6c498f504edc7296a9dfd44b0a8",
+    "config": "sha256:71cc55d2953cd6b42a2ed34706c0f66d7177901005e197ca7d2108ca780df97b",
+    "cosign": {
+      "result": "PASS",
+      "publicKeySha256": "ff8869bf14ba9d10af7b64b9d479543b44daec0165e715753c43ff8a998f6dd3"
+    },
+    "license": "MIT",
+    "containsEnterpriseTree": true,
+    "disposition": "NOT_DISTRIBUTED_UNCHANGED"
+  },
+  "downstream": {
+    "version": "v1.96.2-llmm.1",
+    "sourcePackage": "infra/litellm/oss-downstream/source-package.json",
+    "patchSha256": "d046a6befb02be75598eeb966c69b1952b35fcefc117e0e17f0813ffd63fbf33",
+    "bridgeStripSha256": "737942a2f65f06b29ff6bbc30c67cc199d72cfc4ca2d3812082d07147c94cf64",
+    "sanitizedFiles": 9019,
+    "sanitizedInventorySha256": "4d1afbdc042e71ed96cbef390e534d3a78fd767369c9c09853aca6ba6257e90c",
+    "sourcePacketSha256": "4f6983e5b27351e95a9b60757a0cb31caa2a76c8efa93cbe4f97c1a6536c4227",
+    "ociArchiveSha256": "3b5f3d8005b3a7ba87e2ccbbd8002e61e5875d1c9ca8945f14f485f88f499509",
+    "manifest": "sha256:37be0e64e02f7cd2667f6aaa318a69bdde737c6c564ee0a03471bbfff2912244",
+    "config": "sha256:d1396589f1fed1fa3e67142c5f93189e257db14ce92ce9d952fbf18a58350f6b",
+    "deterministicBuilds": 2,
+    "byteIdentical": true,
+    "enterpriseSourceInstalledEnvironmentOciRuntimeSbomAndNoticeScan": "PASS_ABSENT",
+    "licenseMaterial": "NONE",
+    "trialMaterial": "NONE"
+  },
+  "securityEvidence": {
+    "sbom": {
+      "format": "CycloneDX 1.7",
+      "tool": "Syft 1.50.0",
+      "sha256": "c4d92bf467767d9e9df335765f4a6606aba92824c68c4a32109c4a0fc01f74e7",
+      "components": 3867,
+      "dependencies": 165
+    },
+    "vulnerability": {
+      "tool": "Trivy 0.73.0",
+      "databaseUpdatedAt": "2026-08-13T13:03:34.300611711Z",
+      "reportSha256": "776643cf6ce36402f8ec85f3ec1884599b332a5a4d8f2472b8373de74423a0c9",
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "unknown": 0
+    },
+    "transitiveCopyleft": {
+      "present": true,
+      "sourcePacketRequired": true,
+      "sourcePacketId": "litellm-oss-transitive-sources",
+      "releaseGateUpdated": true,
+      "releaseArtifactConstructed": false
+    },
+    "secretsOrCredentialsRetained": false
+  },
+  "authenticationAndRoles": {
+    "mechanism": "Generic OIDC Authorization Code with PKCE S256",
+    "identityProvider": "Keycloak 26.7.0 llm-machines realm",
+    "paidLicense": false,
+    "trialLicense": false,
+    "billableUsersTested": 2,
+    "billableUserLimit": 5,
+    "Admin": "proxy_admin",
+    "Operator": "internal_user",
+    "operatorOwnKeyCreateViewDelete": "PASS",
+    "operatorOwnSpend": "PASS",
+    "crossUserAndGlobalMutationDenial": "PASS",
+    "consoleSessionForwarded": false,
+    "nativeSession": true,
+    "logout": "PASS_SERVICE_LOCAL",
+    "identityOutage": "CONTROLLED_NATIVE_LOGIN_UNAVAILABLE_SERVICE_REMAINS_HEALTHY",
+    "keycloakIdleSeconds": 28800,
+    "keycloakMaximumSeconds": 86400,
+    "liteLlmFixedMaximumSeconds": 28800,
+    "nativeSlidingIdleSupported": false
+  },
+  "functionalEvidence": {
+    "databaseMigration": "PASS_1_85_0_TO_1_96_2_OSS",
+    "restartPersistence": "PASS",
+    "nonStreamingInference": "PASS_DETERMINISTIC_UPSTREAM",
+    "streamingInference": "PASS_DETERMINISTIC_UPSTREAM",
+    "accounting": "PASS",
+    "zeroPromptAndResponseRetention": "PASS",
+    "directCustomerPort": "DENIED_LOOPBACK_ONLY_CHARACTERIZATION",
+    "cleanup": "PASS"
+  },
+  "routeEvidence": "docs/reduction/inference-core/f0-n1-litellm-native-route-characterization.json",
+  "preservedBoundaries": [
+    "Console Application credentials remain the recommended integration path",
+    "Console retains its read-only LiteLLM projection",
+    "no Console route or virtual-key mutation is added",
+    "no Console cookie or token is forwarded",
+    "no shared human credential or master key is used as a human credential",
+    "native access remains inactive until the exact F0-N5 edge profile passes",
+    "MCP and agent-management routes remain outside the Product boundary"
+  ],
+  "knownLimitations": [
+    "LiteLLM OSS v1.96.2 supports a fixed native UI JWT lifetime rather than a sliding native idle timeout; the admitted characterization caps it at eight hours.",
+    "Free Generic OIDC SSO is limited to five billable users. Exceeding that limit requires a new Product and licensing decision.",
+    "The upstream dashboard makes background reads beyond the visible Operator pages. F0-N5 must admit only the exact required set and continue denying MCP, agent, external blog-feed, and unauthorized mutation routes.",
+    "The transitive copyleft source packet is mandatory for a future distributable release but is not constructed or signed in this pre-Genesis package."
+  ],
+  "nextPackage": "F0-N2 Grafana Admin-only Generic OAuth/OIDC"
+}

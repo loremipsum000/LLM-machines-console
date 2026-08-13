@@ -28,6 +28,8 @@ export const expectedReleaseEvidencePolicy = {
         "https://llm-machines.invalid/build-types/oci-mirror/v1",
       "product-build-output":
         "https://llm-machines.invalid/build-types/product-container/v1",
+      "litellm-oss-build-output":
+        "https://llm-machines.invalid/build-types/litellm-oss-container/v1",
       "firecrawl-build-output":
         "https://llm-machines.invalid/build-types/firecrawl-reduced-container/v1",
     },
@@ -148,6 +150,7 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
     "license-reviews",
     "firecrawl-corresponding-source",
     "grafana-corresponding-source",
+    "litellm-oss-transitive-sources",
     "image-vulnerability-evidence",
     "clean-database-seed",
     "clean-keycloak-seed",

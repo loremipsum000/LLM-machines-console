@@ -57,6 +57,10 @@
     {
       "id": "grafana-corresponding-source",
       "components": ["grafana-private"]
+    },
+    {
+      "id": "litellm-oss-transitive-sources",
+      "components": ["litellm"]
     }
   ]
 }

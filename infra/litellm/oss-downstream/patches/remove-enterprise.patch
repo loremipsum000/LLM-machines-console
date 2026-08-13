@@ -1,0 +1,316 @@
+diff --git a/.llmm/normalize_oss_build.py b/.llmm/normalize_oss_build.py
+new file mode 100644
+index 00000000..33c8f1c4
+--- /dev/null
++++ b/.llmm/normalize_oss_build.py
+@@ -0,0 +1,40 @@
++#!/usr/bin/env python3
++
++import base64
++import csv
++import hashlib
++import os
++from pathlib import Path
++import shutil
++import subprocess
++import sys
++
++
++site_packages = Path(sys.argv[1]).resolve() / "lib" / "python3.13" / "site-packages"
++
++for cache in sorted(site_packages.rglob("__pycache__"), reverse=True):
++    shutil.rmtree(cache)
++for bytecode in site_packages.rglob("*.pyc"):
++    bytecode.unlink()
++
++for extension in sorted(site_packages.rglob("*.so")):
++    subprocess.run(["strip", "--strip-debug", extension], check=True)
++
++for cache_metadata in site_packages.glob("*.dist-info/uv_cache.json"):
++    cache_metadata.unlink()
++
++for record in sorted(site_packages.glob("*.dist-info/RECORD")):
++    retained = []
++    with record.open(newline="") as source:
++        for relative, _, _ in csv.reader(source):
++            absolute = site_packages / relative
++            if absolute == record:
++                retained.append((relative, "", ""))
++            elif absolute.is_file():
++                content = absolute.read_bytes()
++                digest = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b"=").decode()
++                retained.append((relative, f"sha256={digest}", str(len(content))))
++    temporary = record.with_suffix(".tmp")
++    with temporary.open("w", newline="") as destination:
++        csv.writer(destination, lineterminator="\n").writerows(retained)
++    os.replace(temporary, record)
+diff --git a/Dockerfile b/Dockerfile
+index a127cdab..04717939 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,4 +1,4 @@
+-# syntax=docker/dockerfile:1.7
++# syntax=docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+
+ # Base image for building
+ ARG LITELLM_BUILD_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:42df77a9974d6ec8b17a5ee8bc23b532600a44d705acef2409e0933c1251b45f
+@@ -16,7 +16,9 @@ FROM $UV_IMAGE AS uvbin
+ # instead of once per target arch under QEMU.
+ FROM --platform=$BUILDPLATFORM $UI_BUILD_IMAGE AS ui-builder
+
++ARG SOURCE_DATE_EPOCH=1786480994
+ ENV NEXT_TELEMETRY_DISABLED=1 \
++    SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
+     npm_config_fund=false \
+     npm_config_audit=false
+
+@@ -31,6 +33,7 @@ RUN npm run build
+ # Builder stage
+ FROM $LITELLM_BUILD_IMAGE AS builder
+
++ARG SOURCE_DATE_EPOCH=1786480994
+ WORKDIR /app
+ USER root
+
+@@ -38,24 +41,26 @@ COPY --from=uvbin /uv /usr/local/bin/uv
+ COPY --from=uvbin /uvx /usr/local/bin/uvx
+
+ RUN apk add --no-cache \
+-    bash \
+-    gcc \
+-    python3 \
+-    python3-dev \
+-    rust \
+-    openssl \
+-    openssl-dev \
+-    nodejs \
+-    npm \
+-    libsndfile
++    bash=5.3-r12 \
++    gcc=16.1.0-r4 \
++    python3=3.13.15-r0 \
++    python3-dev=3.13.15-r0 \
++    rust=1.97.1-r0 \
++    openssl=3.6.3-r4 \
++    openssl-dev=3.6.3-r4 \
++    nodejs=26.7.0-r0 \
++    npm=12.0.2-r2 \
++    libsndfile=1.2.2-r4 && \
++    rm -f /var/cache/ldconfig/aux-cache
+
+ ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
+     UV_LINK_MODE=copy \
++    PYTHONDONTWRITEBYTECODE=1 \
++    SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
+     PATH="/app/.venv/bin:${PATH}"
+
+ # Copy dependency metadata first for layer caching
+ COPY pyproject.toml uv.lock ./
+-COPY enterprise/pyproject.toml enterprise/
+ COPY litellm-proxy-extras/pyproject.toml litellm-proxy-extras/
+
+ # Install third-party dependencies (cached unless pyproject.toml/uv.lock change)
+@@ -76,9 +81,6 @@ COPY . .
+ RUN rm -rf litellm/proxy/_experimental/out
+ COPY --from=ui-builder /ui/out/. litellm/proxy/_experimental/out/
+
+-# Build Admin UI before final sync (applies the enterprise color override when present)
+-RUN sed -i 's/\r$//' docker/build_admin_ui.sh && chmod +x docker/build_admin_ui.sh && ./docker/build_admin_ui.sh
+-
+ # Install project and workspace packages (fast - deps already cached)
+ RUN uv sync --frozen --no-default-groups --no-editable \
+     --extra proxy \
+@@ -90,7 +92,10 @@ RUN uv sync --frozen --no-default-groups --no-editable \
+
+ RUN HOME=/opt/prisma XDG_CACHE_HOME=/opt/prisma/.cache PRISMA_BINARY_CACHE_DIR=/opt/prisma/binaries \
+     npm_config_cache=/root/.npm \
+-    prisma generate --schema=./schema.prisma
++    prisma generate --schema=./schema.prisma && \
++    rm -rf /opt/prisma/.cache
++
++RUN python .llmm/normalize_oss_build.py /app/.venv
+
+ RUN sed -i 's/\r$//' docker/entrypoint.sh && chmod +x docker/entrypoint.sh && \
+     sed -i 's/\r$//' docker/prod_entrypoint.sh && chmod +x docker/prod_entrypoint.sh
+@@ -100,11 +105,25 @@ FROM $LITELLM_RUNTIME_IMAGE AS runtime
+
+ USER root
+
++LABEL org.opencontainers.image.title="LiteLLM OSS Downstream" \
++      org.opencontainers.image.version="v1.96.2-llmm.1" \
++      org.opencontainers.image.revision="83d6d84bfb7abbbff70d456bc89028d426db8c33" \
++      org.opencontainers.image.source="https://github.com/BerriAI/litellm" \
++      org.opencontainers.image.licenses="MIT"
++
+ # node (without npm) is required by the prisma CLI at runtime
+-RUN apk add --no-cache bash openssl tzdata nodejs python3 libsndfile
++RUN apk add --no-cache \
++    bash=5.3-r12 \
++    openssl=3.6.3-r4 \
++    tzdata=2026c-r0 \
++    nodejs=26.7.0-r0 \
++    python3=3.13.15-r0 \
++    libsndfile=1.2.2-r4 && \
++    rm -f /var/cache/ldconfig/aux-cache
+
+ WORKDIR /app
+ ENV PATH="/app/.venv/bin:${PATH}" \
++    PYTHONDONTWRITEBYTECODE=1 \
+     PRISMA_BINARY_CACHE_DIR=/opt/prisma/binaries \
+     PRISMA_CLI_PATH=/opt/prisma/binaries/node_modules/.bin/prisma \
+     PRISMA_CLI_QUERY_ENGINE_TYPE=binary \
+@@ -118,10 +137,6 @@ COPY --from=builder /app/.venv /app/.venv
+ COPY --from=builder /app/docker /app/docker
+ COPY --from=builder /app/schema.prisma /app/schema.prisma
+ COPY --from=builder /app/litellm/proxy/prisma_migration.py /app/litellm/proxy/prisma_migration.py
+-# enterprise/ is imported by source path at runtime (proxy_cli puts the
+-# working directory on sys.path; litellm/proxy/hooks resolves
+-# enterprise.enterprise_hooks from it)
+-COPY --from=builder /app/enterprise /app/enterprise
+ COPY --from=builder /app/litellm-proxy-extras /app/litellm-proxy-extras
+ # Prisma CLI + engines are baked under /opt/prisma, a fixed path every
+ # runtime uid can read and that no cache volume mount shadows. The paths are
+@@ -130,8 +145,11 @@ COPY --from=builder /app/litellm-proxy-extras /app/litellm-proxy-extras
+ # database needs no npm and no network access (#33650, #24554).
+ COPY --from=builder /opt/prisma /opt/prisma
+
++RUN python -c 'import importlib.util, pathlib; assert importlib.util.find_spec("litellm_enterprise") is None; assert not pathlib.Path("/app/enterprise").exists()'
++
+ RUN find /app/.venv -type f -path "*/tornado/test/*" -delete && \
+     find /app/.venv -type d -path "*/tornado/test" -delete && \
++    rm -f /var/cache/ldconfig/aux-cache && \
+     chmod -R a+rX /opt/prisma && \
+     test -x /opt/prisma/binaries/node_modules/.bin/prisma && \
+     test -f /opt/prisma/binaries/node_modules/prisma/build/index.js
+diff --git a/docker/Dockerfile.database b/docker/Dockerfile.database
+index 9ee076ce..c73211a4 100644
+--- a/docker/Dockerfile.database
++++ b/docker/Dockerfile.database
+@@ -53,7 +53,6 @@ ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
+
+ # Copy dependency metadata first for layer caching
+ COPY pyproject.toml uv.lock ./
+-COPY enterprise/pyproject.toml enterprise/
+ COPY litellm-proxy-extras/pyproject.toml litellm-proxy-extras/
+
+ # Install third-party dependencies (cached unless pyproject.toml/uv.lock change)
+@@ -74,9 +73,6 @@ COPY . .
+ RUN rm -rf litellm/proxy/_experimental/out
+ COPY --from=ui-builder /ui/out/. litellm/proxy/_experimental/out/
+
+-# Build Admin UI before final sync (applies the enterprise color override when present)
+-RUN sed -i 's/\r$//' docker/build_admin_ui.sh && chmod +x docker/build_admin_ui.sh && ./docker/build_admin_ui.sh
+-
+ # Install project and workspace packages (fast - deps already cached)
+ RUN uv sync --frozen --no-default-groups --no-editable \
+     --extra proxy \
+@@ -115,10 +111,6 @@ COPY --from=builder /app/.venv /app/.venv
+ COPY --from=builder /app/docker /app/docker
+ COPY --from=builder /app/schema.prisma /app/schema.prisma
+ COPY --from=builder /app/litellm/proxy/prisma_migration.py /app/litellm/proxy/prisma_migration.py
+-# enterprise/ is imported by source path at runtime (proxy_cli puts the
+-# working directory on sys.path; litellm/proxy/hooks resolves
+-# enterprise.enterprise_hooks from it)
+-COPY --from=builder /app/enterprise /app/enterprise
+ COPY --from=builder /app/litellm-proxy-extras /app/litellm-proxy-extras
+ # Prisma CLI + engines are baked under /opt/prisma, a fixed path every
+ # runtime uid can read and that no cache volume mount shadows (unlike
+diff --git a/docker/Dockerfile.non_root b/docker/Dockerfile.non_root
+index 946b4de6..2e4b0093 100644
+--- a/docker/Dockerfile.non_root
++++ b/docker/Dockerfile.non_root
+@@ -58,7 +58,6 @@ ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
+
+ # Copy dependency metadata first for layer caching
+ COPY pyproject.toml uv.lock ./
+-COPY enterprise/pyproject.toml enterprise/
+ COPY litellm-proxy-extras/pyproject.toml litellm-proxy-extras/
+
+ # Install third-party dependencies (cached unless pyproject.toml/uv.lock change)
+@@ -135,10 +134,6 @@ COPY --from=builder /app/.venv /app/.venv
+ COPY --from=builder /app/docker /app/docker
+ COPY --from=builder /app/schema.prisma /app/schema.prisma
+ COPY --from=builder /app/litellm/proxy/prisma_migration.py /app/litellm/proxy/prisma_migration.py
+-# enterprise/ is imported by source path at runtime (proxy_cli puts the
+-# working directory on sys.path; litellm/proxy/hooks resolves
+-# enterprise.enterprise_hooks from it)
+-COPY --from=builder /app/enterprise /app/enterprise
+ COPY --from=builder /app/litellm-proxy-extras /app/litellm-proxy-extras
+ # Prisma CLI + engines are baked under /opt/prisma, a fixed path every runtime
+ # uid can read and that no cache volume mount shadows (unlike /app/.cache or
+diff --git a/pyproject.toml b/pyproject.toml
+index 922ea581..a595df0c 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -64,7 +64,6 @@ proxy = [
+     "azure-storage-blob>=12.28.0,<13.0",
+     "mcp>=1.28.1,<2.0",
+     "litellm-proxy-extras==0.4.81",
+-    "litellm-enterprise==0.1.53",
+     "RestrictedPython>=8.1,<9.0",
+     "rich>=13.9.4,<14.0",
+     "InquirerPy>=0.3.4,<1.0",
+@@ -294,10 +293,9 @@ exclude-newer = "3 days"
+
+ [tool.uv.sources]
+ litellm-proxy-extras = { workspace = true }
+-litellm-enterprise = { workspace = true }
+
+ [tool.uv.workspace]
+-members = ["enterprise", "litellm-proxy-extras"]
++members = ["litellm-proxy-extras"]
+
+ [tool.isort]
+ profile = "black"
+diff --git a/ui/litellm-dashboard/next.config.mjs b/ui/litellm-dashboard/next.config.mjs
+index 876df2b4..51614778 100644
+--- a/ui/litellm-dashboard/next.config.mjs
++++ b/ui/litellm-dashboard/next.config.mjs
+@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename);
+
+ const nextConfig = {
+   output: "export",
++  generateBuildId: async () => "litellm-1-96-2-llmm-1",
+   compiler: {
+     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+   },
+diff --git a/uv.lock b/uv.lock
+index d96f5375..6a5029bc 100644
+--- a/uv.lock
++++ b/uv.lock
+@@ -16,7 +16,6 @@ exclude-newer-span = "P3D"
+ [manifest]
+ members = [
+     "litellm",
+-    "litellm-enterprise",
+     "litellm-proxy-extras",
+ ]
+ constraints = [
+@@ -4179,7 +4178,6 @@ proxy = [
+     { name = "granian" },
+     { name = "gunicorn" },
+     { name = "inquirerpy" },
+-    { name = "litellm-enterprise" },
+     { name = "litellm-proxy-extras" },
+     { name = "mcp" },
+     { name = "orjson" },
+@@ -4366,7 +4364,6 @@ requires-dist = [
+     { name = "jinja2", specifier = ">=3.1.6,<4.0" },
+     { name = "jsonschema", specifier = ">=4.0.0,<5.0" },
+     { name = "langfuse", marker = "extra == 'proxy-runtime'", specifier = ">=2.59.7,<3.0" },
+-    { name = "litellm-enterprise", marker = "extra == 'proxy'", editable = "enterprise" },
+     { name = "litellm-proxy-extras", marker = "extra == 'proxy'", editable = "litellm-proxy-extras" },
+     { name = "llm-sandbox", marker = "extra == 'proxy-runtime'", specifier = ">=0.3.39,<1.0" },
+     { name = "mangum", marker = "extra == 'proxy-runtime'", specifier = ">=0.17.0,<1.0" },
+@@ -4503,11 +4500,6 @@ proxy-dev = [
+     { name = "prometheus-client", specifier = "==0.20.0" },
+ ]
+
+-[[package]]
+-name = "litellm-enterprise"
+-version = "0.1.53"
+-source = { editable = "enterprise" }
+-
+ [[package]]
+ name = "litellm-proxy-extras"
+ version = "0.4.81"

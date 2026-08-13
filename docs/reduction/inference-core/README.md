@@ -946,3 +946,40 @@ credential binding remain unauthorized and must be resolved before native
 deployment. Accepted remains false, runtimeQualified remains false, contract
 activation remains inactive, Q0 remains NOT_STARTED, and Genesis remains
 unpublished.
+
+## LiteLLM OSS-only downstream characterization
+
+F0-N1 replaces the distributable LiteLLM input with a deterministic
+`v1.96.2-llmm.1` image built from exact upstream source. The repeatable overlay
+removes the `litellm-enterprise` workspace and dependency, the Enterprise
+source trees, runtime copies, import bridges, hooks, routes, tests, and build
+assets. The reviewed upstream image remains signature evidence only and is not
+distributed unchanged.
+
+Two clean linux/amd64 builds produced the same OCI archive, manifest, and
+configuration. Source, installed-package, OCI, runtime-import, CycloneDX, and
+license scans found no Enterprise material. A fresh Trivy scan found no known
+vulnerabilities. The SBOM identified ordinary copyleft dependencies in the
+runtime stack, so the release gate now requires a separate
+`litellm-oss-transitive-sources` packet before a distributable artifact can be
+assembled. This package does not construct, sign, or publish that release
+artifact.
+
+Disposable browser characterization against Keycloak 26.7.0 proves Generic
+OIDC Authorization Code with PKCE without license or trial material. Admin maps
+to `proxy_admin`; Operator maps to `internal_user` and can create, view, and
+delete only their own virtual keys and view their own spend. Cross-user key
+access plus model, team, organization, user, system, MCP, and cross-user key
+mutations are denied. Migration from v1.85.0, restart, identity outage,
+streaming and non-streaming routing, accounting, native logout, and zero
+prompt/response retention pass in the isolated characterization lane.
+
+The free SSO boundary remains five billable users. Keycloak retains the target
+8-hour idle and 24-hour maximum session. LiteLLM OSS v1.96.2 offers a fixed
+native UI JWT lifetime rather than a sliding idle timeout, so the supported
+safe profile caps the separate LiteLLM session at eight hours. F0-N1 does not
+activate customer ingress: direct access remained loopback-only, and the exact
+route allowlist plus denial of MCP, agent, external blog-feed, and unauthorized
+native routes remains F0-N5 work. Accepted remains false, runtimeQualified
+remains false, contract activation remains inactive, Q0 remains NOT_STARTED,
+and Genesis remains unpublished.

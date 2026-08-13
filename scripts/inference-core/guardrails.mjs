@@ -325,6 +325,122 @@ export const pr11aR1D1ReviewedNegativeFindings = [
     removeBy: "PR-04",
   },
 ]
+export const f0N1ReviewedNegativeFindings = [
+  {
+    ruleId: "FS102_MCP",
+    path: "docs/reduction/inference-core/f0-n1-litellm-native-route-characterization.json",
+    count: 2,
+    fingerprints: {
+      "2cc660406bd14c3a2670fb1f520b7f0f0264a112c6ffd00de24d887507b03269": 1,
+      e71c46c1dc4405be109f2278e334211d725354d2a0f99600730854d6329a0839: 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "docs/reduction/inference-core/f0-n1-litellm-oss-downstream.json",
+    count: 2,
+    fingerprints: {
+      "7d06515b81ec9d77bbd48405f7238c4474d2b8f878e003a83fc5746f66466e6a": 1,
+      f6a6d3b467ad0a0f72cb14aaf24054dbcebcf06853aaddb0b56cdb5aee74f404: 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "infra/litellm/oss-downstream/patches/remove-enterprise.patch",
+    count: 2,
+    fingerprints: {
+      "19104910245ab2283701a0dff7565442f94dd00b68895a0a74d9ae96c93a969e": 1,
+      "8f6f601aec8c14974c6373fa3a9a73a38b478b18000d08427d6f804624fa7f1a": 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "scripts/inference-core/f0-n1-litellm-oss-downstream.test.mjs",
+    count: 2,
+    fingerprints: {
+      "784bb15db04a18aa8229729f8f69d57a2c3a2bc0d0243a68d241c48af9010a1b": 1,
+      e71c46c1dc4405be109f2278e334211d725354d2a0f99600730854d6329a0839: 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "scripts/pre-genesis/litellm-oss-browser-characterization.mjs",
+    count: 2,
+    fingerprints: {
+      "784bb15db04a18aa8229729f8f69d57a2c3a2bc0d0243a68d241c48af9010a1b": 1,
+      c8a2062d6c1b4b061bece01678416fd839d98b325caf5b96153ca36df8d08aed: 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/litellm/oss-downstream/patches/remove-enterprise.patch",
+    count: 25,
+    fingerprints: {
+      "15cb21ef25db400adf321e9934b6e527d7d0f335607c8d56523dc024e01945f4": 3,
+      "371f4010a3fadb05c58b3327c3952a8ddeb213590fe2d1be9e22d11431d30093": 1,
+      "3a30d1fe4add3617823ce20a58576b4643b37cfc3df2eadeb951393d9939c629": 3,
+      "486078709041d0ee0dbf25d312e985318e3913882898ca4c9b7b8c798122f593": 2,
+      "523d32a746374c929d373b5f199a7b73255cacd1c5354f5b028c3288422d6acc": 1,
+      "64c99f7bf863f1a474a65339f85f78d519f0771de54b20e3782c3675c6018ea1": 1,
+      "823c115f11b5c0b8843d465de49bcd6cb1d969d214cd2dcd5db01ae658888ec8": 1,
+      "973df181c15f381c94fb5ae3bab3de156f3ab5945ea3ef349f9ec2418f55c6c1": 3,
+      "9fe815b69bc57f491fcb42a8cb3b22b866acd15da1b2584dac8eaf82a56fdfe4": 1,
+      b689a4d8a0a23c61b344f53eb3a119c9f486843318ed3c0610680cab4c9e2c63: 1,
+      b9943466ba5b7bcfb6e5623b2838276bd6bd9ac2bd2618e61436134d2c3d0616: 1,
+      bd26bc6b5d47e5bf56ae3eb1fa04e868b6b74a88b9f280088b8cf1129687016f: 3,
+      bd519084180923dcae5f8dda67a77fed2f5e26b008846968e69df9692a6beea9: 3,
+      e95a6e22f8aef6233420d0a7d889d036df3a54f70b0aba4cd2a56f0bb26393a7: 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/litellm/oss-downstream/source-package.json",
+    count: 3,
+    fingerprints: {
+      "5e4a6264a60b5d69ee334e08c0017c7dd828bc0c79fd5f32355bda74b6d44e0f": 1,
+      bb84a3a2083543fa7d222452cae3df000d16f19f36649ea7445ca1e3d0dfcae9: 1,
+      fbd2b6a91054e7bc282421802cc864048477e50e72cda08108fe14ce844c7b48: 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/litellm/oss-downstream/validate-source-package.mjs",
+    count: 5,
+    fingerprints: {
+      "1637d7018ee060bcf09a3a4b7b98e4ac33b3d6f896dfa20e70fb376b1debdac2": 1,
+      "3bc221600ac3c9e26246c29e9665221bca4ffb8132837d3c164386262c11247e": 1,
+      "6af8d866b79a23201e09ca9a863a475692ed6b33b05a72c2152466c3ae137d71": 1,
+      "8e2164d0aa428df77ecdfa25a6563358fa82316e3c60a1e9c8e90f148cf96045": 1,
+      "99cd90875c376f750c82379997374a9b12354161c46f19ad3c0dd107fea3de88": 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/litellm/oss-downstream/validate-source-package.test.mjs",
+    count: 1,
+    fingerprints: {
+      "6af8d866b79a23201e09ca9a863a475692ed6b33b05a72c2152466c3ae137d71": 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "scripts/inference-core/f0-n1-litellm-oss-downstream.test.mjs",
+    count: 1,
+    fingerprints: {
+      "5ba773d9a345636c560db7effd14c12936d2e510f39aa81e72d4478969ccc24c": 1,
+    },
+    removeBy: "PR-03",
+  },
+]
 const pr01BootstrapBase = "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a"
 const pr02IntegrationBase = "bb60cb0dfe46a39189e2a80fe1839e8288201492"
 export const pr03ContractBase = "964ff087f39111862c90f72ec57ab33bb937f5d2"
@@ -6001,6 +6117,7 @@ export function verifyPr11aR1V1SourceClosurePackage({
   const expectedIntegratedFindings = [
     ...expectedAllowlist.entries,
     ...pr11aR1D1ReviewedNegativeFindings,
+    ...f0N1ReviewedNegativeFindings,
   ].sort(compareFindingKeys)
   const actualIntegratedFindings = [...actualAllowlist.entries].sort(
     compareFindingKeys,

@@ -68,7 +68,9 @@ function syntheticCoreLock(version) {
         version:
           component.kind === "third-party-mirror"
             ? component.version
-            : `${version}-build.${index + 1}`,
+            : component.kind === "litellm-oss-build-output"
+              ? component.version
+              : `${version}-build.${index + 1}`,
         ociArchivePath: `images/${component.id}.oci.tar.zst`,
         ociArchiveSha256: digest("9"),
         approvedSourceIndexDigest:
@@ -102,7 +104,8 @@ function syntheticCoreLock(version) {
         licenseTextSha256: digest("f"),
         noticeSha256: digest("7"),
         licenseReviewSha256: digest("8"),
-        ...(/(?:AGPL|GPL)/.test(component.license)
+        ...(/(?:AGPL|GPL)/.test(component.license) ||
+        component.transitiveCopyleftSourceRequired === true
           ? { correspondingSourceSha256: digest("c") }
           : {}),
       }
@@ -116,6 +119,7 @@ function classificationFor(evidenceId) {
   if (evidenceId === "public-release-trust") return "public-trust"
   if (evidenceId === "firecrawl-corresponding-source") return "source"
   if (evidenceId === "grafana-corresponding-source") return "source"
+  if (evidenceId === "litellm-oss-transitive-sources") return "source"
   if (evidenceId.includes("license") || evidenceId === "third-party-notices") {
     return "license"
   }
@@ -143,6 +147,7 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
   const outputRoot = join(directory, "semantic-outputs")
   const firecrawlPacket = "exact Firecrawl corresponding source fixture\n"
   const grafanaPacket = "exact Grafana corresponding source fixture\n"
+  const litellmPacket = "exact LiteLLM transitive source fixture\n"
   writeArtifact(
     correspondingSourceRoot,
     "firecrawl-corresponding-source.tar.zst",
@@ -152,6 +157,11 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
     correspondingSourceRoot,
     "grafana-corresponding-source.tar.zst",
     grafanaPacket,
+  )
+  writeArtifact(
+    correspondingSourceRoot,
+    "litellm-oss-transitive-sources.tar.zst",
+    litellmPacket,
   )
   const inventory = readCoreImageInventory()
   const inventoryById = new Map(
@@ -165,7 +175,9 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
     const recipe =
       component.kind === "product-build-output"
         ? component.dockerfile
-        : component.kind === "firecrawl-build-output"
+        : ["firecrawl-build-output", "litellm-oss-build-output"].includes(
+              component.kind,
+            )
           ? component.sourcePackage
           : "infra/release/core-image-inventory.json"
     const recipeSha256 = sha256Bytes(readFileSync(join(rootPath, recipe)))
@@ -235,6 +247,8 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
               "https://llm-machines.invalid/build-types/oci-mirror/v1",
             "product-build-output":
               "https://llm-machines.invalid/build-types/product-container/v1",
+            "litellm-oss-build-output":
+              "https://llm-machines.invalid/build-types/litellm-oss-container/v1",
             "firecrawl-build-output":
               "https://llm-machines.invalid/build-types/firecrawl-reduced-container/v1",
           }[component.kind],
@@ -356,7 +370,11 @@ function prepareSemanticEvidence(directory, lock, evidenceEvaluatedAt) {
     image.licenseReviewSha256 = sha256Bytes(reviewBytes)
     if (image.correspondingSourceSha256) {
       image.correspondingSourceSha256 = sha256Bytes(
-        image.id === "grafana-private" ? grafanaPacket : firecrawlPacket,
+        image.id === "grafana-private"
+          ? grafanaPacket
+          : image.id === "litellm"
+            ? litellmPacket
+            : firecrawlPacket,
       )
     }
   }

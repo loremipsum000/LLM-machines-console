@@ -186,6 +186,16 @@ export function validateCoreImageInventory(inventory, root = repositoryRoot) {
       if (!component.dockerfile) {
         errors.push(`${field} must bind a Dockerfile`)
       }
+    } else if (component.kind === "litellm-oss-build-output") {
+      if (component.dockerfile !== "Dockerfile") {
+        errors.push(`${field} must bind the reviewed upstream Dockerfile`)
+      }
+      if (
+        component.sourcePackage !==
+        "infra/litellm/oss-downstream/source-package.json"
+      ) {
+        errors.push(`${field} must bind the LiteLLM OSS source package`)
+      }
     } else if (component.kind === "firecrawl-build-output") {
       if (
         component.sourceLock !== "infra/firecrawl/provenance/source-lock.json"
@@ -394,7 +404,14 @@ export function validateCoreImageLock(lock, inventory, root = repositoryRoot) {
       errors.push(`${field} source revision differs from the inventory`)
     }
     if (
-      /(?:AGPL|GPL)/.test(expected.license) &&
+      expected.kind === "litellm-oss-build-output" &&
+      image.version !== expected.version
+    ) {
+      errors.push(`${field} version differs from the OSS downstream inventory`)
+    }
+    if (
+      (/(?:AGPL|GPL)/.test(expected.license) ||
+        expected.transitiveCopyleftSourceRequired === true) &&
       !digestPattern.test(image.correspondingSourceSha256 ?? "")
     ) {
       errors.push(`${field} requires corresponding-source evidence`)
