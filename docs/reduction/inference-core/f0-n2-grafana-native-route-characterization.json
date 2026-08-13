@@ -1,0 +1,178 @@
+{
+  "schema": "llm-machines.f0-n2-grafana-native-route-characterization.v1",
+  "workPackage": "F0-N2",
+  "status": "CHARACTERIZED_NOT_ACTIVATED",
+  "accepted": false,
+  "runtimeQualified": false,
+  "authority": "https://grafana.lab.llm-machines.com/",
+  "observed": {
+    "browser": "Chromium 151.0.7922.108",
+    "routeCount": 93,
+    "grafanaStaticAssetCount": 54,
+    "identityStaticAssetCount": 10,
+    "rawEvidenceSha256": "8b66ae278b5ef54282c7649c9ac81b9f4d7f594e95d9f901b47aeaeea96779e7"
+  },
+  "authentication": {
+    "issuer": "Keycloak llm-machines realm",
+    "flow": "Authorization Code with PKCE S256",
+    "loginEntry": "GET /login/generic_oauth",
+    "identityAuthorization": "GET /realms/llm-machines/protocol/openid-connect/auth",
+    "identityLoginAction": "POST /realms/llm-machines/login-actions/authenticate",
+    "callback": "GET /login/generic_oauth",
+    "callbackQueryKeys": ["code", "iss", "session_state", "state"],
+    "authorizationQueryKeys": [
+      "client_id",
+      "code_challenge",
+      "code_challenge_method",
+      "redirect_uri",
+      "response_type",
+      "scope",
+      "state"
+    ],
+    "identityLoginActionQueryKeys": [
+      "client_data",
+      "client_id",
+      "execution",
+      "session_code",
+      "tab_id"
+    ],
+    "identityLogout": "GET /realms/llm-machines/protocol/openid-connect/logout",
+    "identityLogoutQueryKeys": [
+      "client_id",
+      "id_token_hint",
+      "post_logout_redirect_uri"
+    ],
+    "identityCookieNames": [
+      "AUTH_SESSION_ID",
+      "KC_AUTH_SESSION_HASH",
+      "KEYCLOAK_IDENTITY",
+      "KEYCLOAK_SESSION"
+    ],
+    "nativeCookieNames": ["grafana_session", "grafana_session_expiry"],
+    "consoleSessionForwarded": false,
+    "sharedCookie": false,
+    "logout": "native Grafana session clear followed by Keycloak logout redirect"
+  },
+  "qualifiedRoleBoundary": {
+    "Admin": "Editor",
+    "Operator": "DENY",
+    "mixedAdminOperator": "DENY",
+    "unknownRole": "DENY",
+    "grafanaServerAdministrator": false,
+    "adminDashboardCreateDelete": "PASS",
+    "adminDatasourceMutation": "DENY_403"
+  },
+  "nativeUi": {
+    "dynamicRoutes": [
+      {
+        "method": "GET",
+        "path": "/",
+        "queryKeys": ["from", "orgId", "timezone", "to"]
+      },
+      { "method": "GET", "path": "/login", "queryKeys": ["redirectTo"] },
+      {
+        "method": "GET",
+        "path": "/login/generic_oauth",
+        "queryKeys": ["code", "iss", "session_state", "state"]
+      },
+      { "method": "GET", "path": "/logout", "queryKeys": [] },
+      { "method": "GET", "path": "/api/dashboards/home", "queryKeys": [] },
+      { "method": "POST", "path": "/api/dashboards/db", "queryKeys": [] },
+      {
+        "method": "DELETE",
+        "path": "/api/dashboards/uid/{uid}",
+        "queryKeys": []
+      },
+      { "method": "GET", "path": "/api/login/ping", "queryKeys": [] },
+      { "method": "GET", "path": "/api/plugins", "queryKeys": [] },
+      {
+        "method": "GET",
+        "path": "/api/plugins/{approved-plugin-id}/settings",
+        "queryKeys": []
+      },
+      { "method": "GET", "path": "/api/user", "queryKeys": [] },
+      { "method": "GET", "path": "/api/user/orgs", "queryKeys": [] },
+      { "method": "GET", "path": "/api/user/preferences", "queryKeys": [] },
+      { "method": "GET", "path": "/api/user/stars", "queryKeys": [] },
+      { "method": "POST", "path": "/api/frontend-metrics", "queryKeys": [] },
+      {
+        "method": "GET",
+        "path": "/apis/dashboard.grafana.app/",
+        "queryKeys": []
+      },
+      {
+        "method": "GET",
+        "path": "/apis/dashboard.grafana.app/v0alpha1/namespaces/default/search",
+        "queryKeys": ["limit", "query", "type"]
+      },
+      {
+        "method": "POST",
+        "path": "/apis/features.grafana.app/v0alpha1/namespaces/default/ofrep/v1/evaluate/flags",
+        "queryKeys": []
+      },
+      { "method": "GET", "path": "/avatar/{hash}", "queryKeys": [] }
+    ],
+    "staticPathPrefixes": [
+      "/public/build/",
+      "/public/fonts/",
+      "/public/img/",
+      "/public/plugins/",
+      "/resources/"
+    ],
+    "requestHeadersToPreserve": [
+      "Cookie",
+      "Content-Type",
+      "Origin when supplied by the browser",
+      "Referer",
+      "X-Grafana-Device-Id",
+      "X-Grafana-Org-Id"
+    ],
+    "responseHeadersToPreserve": [
+      "Location",
+      "Set-Cookie",
+      "Content-Type",
+      "Content-Encoding",
+      "Cache-Control",
+      "Vary",
+      "X-Content-Type-Options",
+      "X-Frame-Options"
+    ],
+    "browserAuthorizationHeaderRequired": false,
+    "webSocketRequired": false,
+    "sseRequired": false
+  },
+  "csrf": {
+    "sameOriginBrowserMutationMayOmitOrigin": true,
+    "sameOriginRefererObserved": true,
+    "crossOriginMutationStatus": 403,
+    "edgeRequirement": "Preserve native Origin and Referer behavior. Do not require Origin when the browser legitimately omits it, and reject an explicit foreign Origin."
+  },
+  "securityControls": {
+    "disabledPlugins": ["elasticsearch", "tempo", "zipkin"],
+    "disabledPluginSettingsStatus": 404,
+    "disabledPluginsAbsentFromInventory": true,
+    "editorDatasourceMutationStatus": 403,
+    "provisionedDatasourceIds": ["prometheus"],
+    "directCustomerPort": "DENY"
+  },
+  "f0N5ReviewRequired": {
+    "reason": "F0-N2 characterizes native Grafana and its exact role boundary but does not activate customer ingress.",
+    "mustPreserve": [
+      "native Grafana Cookie and Set-Cookie",
+      "native Grafana and Keycloak Location redirects",
+      "OIDC callback query keys",
+      "Keycloak login-action query keys",
+      "native CSRF Origin and Referer behavior"
+    ],
+    "mustRemainDenied": [
+      "Operator Grafana login",
+      "Grafana server-administrator authority",
+      "disabled Elasticsearch, Tempo, and Zipkin plugins",
+      "direct native port access",
+      "alternate hostnames and mismatched SNI or Host",
+      "unsafe paths, traversal, and spoofed forwarding headers",
+      "Console cookies or tokens as Grafana credentials"
+    ],
+    "activation": "INACTIVE_PENDING_EXACT_F0_N5_ALLOWLIST_AND_HTTPS_BROWSER_REPLAY"
+  }
+}

@@ -10,12 +10,15 @@ placement, credentials, secret-file mounts, and release qualification.
 - Prometheus metrics and alert state retain for 30 days.
 - Alertmanager notification and silence state retains for 720 hours.
 - The product-owned Grafana datasource, dashboard, and Prometheus rule files
-  are locked. Admin and Operator can view the baseline.
-- Admin maps to Grafana Editor and Operator maps to Grafana Viewer. Grafana
-  Editor can edit all non-provisioned Grafana content in the single-customer
-  appliance, not only the designated customer folder.
+  are locked. Customer Admin can view the baseline; Operator has no native
+  Grafana session.
+- Admin maps to Grafana Editor. Operator, mixed retained roles, and unknown
+  roles are denied by strict role mapping. Grafana Editor can edit all
+  non-provisioned Grafana content in the single-customer appliance, not only
+  the designated customer folder, and never receives Grafana server-admin.
 - `Customer Editable` is an unprovisioned folder created during PR-12
-  commissioning. Admin can edit its dashboards; Operator can only view them.
+  commissioning. Admin can edit its dashboards; Operator has no native
+  Grafana access.
 - Alerts protect appliance operations. They do not impose a commercial quota
   or stop a customer from consuming hardware the customer owns.
 - Alertmanager has only a local null receiver by default. Customer-owned SMTP

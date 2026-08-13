@@ -27,7 +27,7 @@
     },
     {
       "path": "scripts/inference-core/guardrails.mjs",
-      "sha256": "a61064e6fb2a768aa26fce84ef92496e5e0a03772fe6b0438d92b1beacc5bc0b"
+      "sha256": "15a474f0e32145193abcea4fa4b1f3b7cd35cb7b39f296639407768729f28476"
     },
     {
       "path": "scripts/inference-core/pr12-release-gate.test.mjs",

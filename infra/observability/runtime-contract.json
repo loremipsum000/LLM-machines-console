@@ -152,7 +152,7 @@
     },
     "customerFolder": {
       "adminPermission": "Edit",
-      "operatorPermission": "View",
+      "operatorPermission": "DENY",
       "provisioned": false,
       "title": "Customer Editable",
       "uid": "llmm-customer-editable"
@@ -161,7 +161,7 @@
       "adminRole": "Editor",
       "ambiguousRetainedRoles": "deny",
       "clientId": "grafana",
-      "operatorRole": "Viewer",
+      "operatorRole": "DENY",
       "roleClaim": "realm_access.roles",
       "strict": true,
       "unknownRole": "deny"

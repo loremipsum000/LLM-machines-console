@@ -983,3 +983,43 @@ route allowlist plus denial of MCP, agent, external blog-feed, and unauthorized
 native routes remains F0-N5 work. Accepted remains false, runtimeQualified
 remains false, contract activation remains inactive, Q0 remains NOT_STARTED,
 and Genesis remains unpublished.
+
+## Grafana 13.1.3 Admin-only native characterization
+
+F0-N2 replaces the former Grafana 13.1.0 lock with exact official Grafana
+13.1.3. The annotated source tag peels to commit
+`45a27d64b64a82d666b06aa5c5bb3521587edb0d`; the exact linux/amd64 image
+reports that same version and commit. The Core inventory binds OCI index
+`sha256:ab5cb380e3ff3172d6c8bd2e7cfd31cce977d2881b260e1f5bc089bf0b759b43`
+and platform manifest
+`sha256:e27e68cfd5795c1bea54950766078a02e84dfa3bafe0a4d0e5382f713dfd8e4e`.
+
+Disposable browser characterization against Keycloak 26.7.0 proves Grafana
+Generic OAuth Authorization Code with PKCE. Admin maps to Editor. Operator,
+mixed Admin and Operator, and unknown roles receive no Grafana native session.
+The Admin is not a Grafana server administrator, can create and delete a
+dashboard, and receives `403` when attempting datasource creation. Basic and
+anonymous authentication remain disabled. Native session state survives a
+Grafana restart, logout clears the Grafana session and enters Keycloak logout,
+identity outage leaves Grafana healthy while native login is unavailable, and
+an explicit cross-origin mutation is denied.
+
+The policy-fresh Trivy 0.73.0 scan has zero Critical findings and 15 High
+occurrences across 12 unique advisories. Two occur in the embedded Tempo
+datasource backend; the remainder occur only in the bundled Elasticsearch and
+Zipkin datasource executables. The Product profile disables all three plugins,
+runtime proof shows each absent from plugin inventory and returning `404`, no
+such datasource is provisioned, and Editor cannot create one. F0-N2 therefore
+admits the exact image for pre-Genesis source use under a founder-authorized,
+30-day nonreachability disposition expiring 2026-09-12. Expiry fails closed.
+A future release must run a fresh exact-image scan and satisfy the release
+evidence policy at construction time.
+
+F0-N2 does not activate customer ingress. The local HTTP characterization
+overrides `cookie_secure` only for loopback execution; the checked-in Product
+profile requires Secure, SameSite=Lax Grafana cookies. The exact dedicated
+authority, redirects, native Cookie and Set-Cookie, Location, query keys,
+Origin and Referer handling, static assets, and no-bypass policy must be
+replayed through HTTPS in F0-N5. Accepted remains false, runtimeQualified
+remains false, contract activation remains inactive, Q0 remains NOT_STARTED,
+and Genesis remains unpublished.
