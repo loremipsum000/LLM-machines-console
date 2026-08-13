@@ -19,10 +19,7 @@ test("F0-L2 binds actual LiteLLM to the private Product flow", async () => {
   const locked = inventory.components.find(({ id }) => id === "litellm")
   assert.ok(locked)
   const historicalIdentity = evidence.exactRuntime.litellm
-  assert.match(
-    wrapper,
-    new RegExp(historicalIdentity.replaceAll(".", "\\.")),
-  )
+  assert.match(wrapper, new RegExp(historicalIdentity.replaceAll(".", "\\.")))
   assert.match(wrapper, /turn_off_message_logging: true/)
   assert.match(wrapper, /store_prompts_in_spend_logs: false/)
   assert.match(wrapper, /log_raw_request_response: false/)
