@@ -20,6 +20,7 @@
     "buildTypes": {
       "third-party-mirror": "https://llm-machines.invalid/build-types/oci-mirror/v1",
       "product-build-output": "https://llm-machines.invalid/build-types/product-container/v1",
+      "litellm-oss-build-output": "https://llm-machines.invalid/build-types/litellm-oss-container/v1",
       "firecrawl-build-output": "https://llm-machines.invalid/build-types/firecrawl-reduced-container/v1"
     },
     "orderedTimestampsRequired": true,

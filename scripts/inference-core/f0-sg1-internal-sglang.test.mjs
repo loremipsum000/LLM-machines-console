@@ -6,12 +6,10 @@ import test from "node:test"
 const root = resolve(import.meta.dirname, "../..")
 
 test("F0-SG1 binds the authorized smoke to exact engine and gateway identities", async () => {
-  const [evidence, contract, inventory] = await Promise.all([
+  const [evidence, contract] = await Promise.all([
     readJson("docs/reduction/inference-core/f0-sg1-internal-sglang.json"),
     readJson("infra/inference/sglang-engine-contract.json"),
-    readJson("infra/release/core-image-inventory.json"),
   ])
-  const liteLlm = inventory.components.find(({ id }) => id === "litellm")
 
   assert.equal(evidence.workPackage, "F0-SG1")
   assert.equal(evidence.baseCommit, "3d0b590608a58153e3285aafcaf96b711ac684e4")
@@ -40,7 +38,7 @@ test("F0-SG1 binds the authorized smoke to exact engine and gateway identities",
   assert.equal(evidence.engine.image.platform, "linux/amd64")
   assert.equal(
     evidence.gateway.image,
-    `${liteLlm.repository}:${liteLlm.version}@${liteLlm.indexDigest}`,
+    "ghcr.io/berriai/litellm:v1.85.0@sha256:2e8517e2bed423c50ab7e40fb1ac0a9cbe62a764e9d65161d871fb6a9bf75a2d",
   )
 })
 

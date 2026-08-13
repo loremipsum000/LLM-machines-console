@@ -89,17 +89,16 @@
     },
     {
       "id": "litellm",
-      "kind": "third-party-mirror",
+      "kind": "litellm-oss-build-output",
       "required": true,
-      "customerExposure": "private-console-projection-only",
-      "repository": "ghcr.io/berriai/litellm",
-      "version": "v1.85.0",
-      "indexDigest": "sha256:2e8517e2bed423c50ab7e40fb1ac0a9cbe62a764e9d65161d871fb6a9bf75a2d",
-      "platform": "linux/amd64",
-      "platformDigest": "sha256:2016cc74d44f6821752c5c846cf79929cf4d3eef92d86e10b8ec8297d0350e10",
-      "sourceRevision": "e58a561caa21169fb02174148444c08509ce7028",
+      "customerExposure": "product-edge-native-sso-and-console-projection",
+      "dockerfile": "Dockerfile",
+      "sourcePackage": "infra/litellm/oss-downstream/source-package.json",
+      "version": "v1.96.2-llmm.1",
+      "sourceRevision": "83d6d84bfb7abbbff70d456bc89028d426db8c33",
       "license": "MIT",
-      "mirrorRepository": "core/litellm"
+      "transitiveCopyleftSourceRequired": true,
+      "mirrorRepository": "core/litellm-oss"
     },
     {
       "id": "product-postgresql",
@@ -213,9 +212,5 @@
     "backup-and-restore",
     "update-and-rollback"
   ],
-  "excluded": [
-    "native-litellm-ui",
-    "native-keycloak-admin-ui",
-    "customer-grafana-ingress"
-  ]
+  "excluded": ["native-keycloak-admin-ui", "customer-grafana-ingress"]
 }

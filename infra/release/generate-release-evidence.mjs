@@ -228,6 +228,8 @@ function validateSbom(document, image, policy) {
 
 function recipePath(component) {
   if (component.kind === "product-build-output") return component.dockerfile
+  if (component.kind === "litellm-oss-build-output")
+    return component.sourcePackage
   if (component.kind === "firecrawl-build-output")
     return component.sourcePackage
   return "infra/release/core-image-inventory.json"
@@ -340,7 +342,11 @@ function readLicensePolicy(root, inventory) {
   }
   const copyleftIds = new Set(
     inventory.components
-      .filter(({ license }) => /(?:AGPL|GPL)/.test(license))
+      .filter(
+        ({ license, transitiveCopyleftSourceRequired }) =>
+          /(?:AGPL|GPL)/.test(license) ||
+          transitiveCopyleftSourceRequired === true,
+      )
       .map(({ id }) => id),
   )
   const packetComponents = []
@@ -1111,10 +1117,10 @@ export function generateReleaseEvidence(
       ...vulnerabilityDisposition.exceptions.map(({ expiresAt }) => expiresAt),
     )
     const licensePolicy = licenses.get(image.license)
-    if (
-      licensePolicy.sourceRequired !==
-      Object.hasOwn(image, "correspondingSourceSha256")
-    ) {
+    const sourceRequired =
+      licensePolicy.sourceRequired ||
+      inventoryById.get(image.id)?.transitiveCopyleftSourceRequired === true
+    if (sourceRequired !== Object.hasOwn(image, "correspondingSourceSha256")) {
       fail(`${image.id} corresponding-source policy differs from its license`)
     }
     sboms.push({ id: image.id, document: sbom })

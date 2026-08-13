@@ -244,7 +244,9 @@ function syntheticCoreLock(
       version:
         component.kind === "third-party-mirror"
           ? component.version
-          : `${version}-build.${index + 1}`,
+          : component.kind === "litellm-oss-build-output"
+            ? component.version
+            : `${version}-build.${index + 1}`,
       ociArchivePath: `images/${component.id}.oci.tar.zst`,
       ociArchiveSha256: sha256File(
         join(payloadRoot, "images", `${component.id}.oci.tar.zst`),
@@ -272,7 +274,8 @@ function syntheticCoreLock(
       licenseTextSha256: digest("f"),
       noticeSha256: digest("7"),
       licenseReviewSha256: digest("8"),
-      ...(/(?:AGPL|GPL)/.test(component.license)
+      ...(/(?:AGPL|GPL)/.test(component.license) ||
+      component.transitiveCopyleftSourceRequired === true
         ? {
             correspondingSourceSha256:
               component.id === "grafana-private"

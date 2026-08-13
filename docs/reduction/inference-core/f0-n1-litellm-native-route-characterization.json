@@ -1,0 +1,109 @@
+{
+  "schema": "llm-machines.f0-n1-litellm-native-route-characterization.v1",
+  "workPackage": "F0-N1",
+  "status": "CHARACTERIZED_NOT_ACTIVATED",
+  "accepted": false,
+  "runtimeQualified": false,
+  "authority": "https://litellm.lab.llm-machines.com/ui/",
+  "observed": {
+    "browser": "Chromium 140.0.7339.16",
+    "routeCount": 122,
+    "staticAssetCount": 65,
+    "rawEvidenceSha256": "550e34d708a4d5d850b6a8c198198dc185abe67b55abfbf2ae895a2bd72b21ba",
+    "canonicalRouteInventorySha256": "43a3aa7c34999dbedeb1a32ee1af4e46295df39380ba1b152c8bcd1db0c84f4e"
+  },
+  "authentication": {
+    "issuer": "Keycloak llm-machines realm",
+    "flow": "Authorization Code with PKCE S256",
+    "loginEntry": "GET /sso/key/generate",
+    "identityAuthorization": "GET /realms/llm-machines/protocol/openid-connect/auth",
+    "identityLoginAction": "POST /realms/llm-machines/login-actions/authenticate",
+    "callback": "GET /sso/callback",
+    "callbackQueryKeys": ["code", "iss", "session_state", "state"],
+    "authorizationQueryKeys": [
+      "client_id",
+      "code_challenge",
+      "code_challenge_method",
+      "redirect_uri",
+      "response_type",
+      "scope",
+      "state"
+    ],
+    "identityCookieNames": [
+      "AUTH_SESSION_ID",
+      "KEYCLOAK_IDENTITY",
+      "KEYCLOAK_SESSION"
+    ],
+    "nativeCookieNames": ["litellm_oauth_state", "token"],
+    "consoleSessionForwarded": false,
+    "sharedCookie": false,
+    "logout": "service-local native token cookie removal followed by native login",
+    "serviceSession": {
+      "keycloakIdleSeconds": 28800,
+      "keycloakMaximumSeconds": 86400,
+      "liteLlmFixedMaximumSeconds": 28800,
+      "slidingNativeIdleSupported": false
+    }
+  },
+  "nativeUi": {
+    "entryPaths": ["/ui/", "/ui/login/"],
+    "staticPathPrefixes": [
+      "/litellm-asset-prefix/_next/static/",
+      "/ui/__next.",
+      "/litellm/.well-known/litellm-ui-config"
+    ],
+    "requiredUiQueryKeys": ["_rsc", "login", "page", "redirect_to"],
+    "webSocketRequired": false,
+    "sseRequiredForAdministration": false,
+    "inferenceStreamingUses": "POST /v1/chat/completions response streaming"
+  },
+  "qualifiedRoleBoundary": {
+    "Admin": "proxy_admin",
+    "Operator": "internal_user",
+    "operatorUiPages": ["Virtual Keys", "Usage"],
+    "operatorAllowed": [
+      "POST /key/generate for own user",
+      "GET /key/list for own user",
+      "GET /key/info for own credential",
+      "POST /key/delete for own key",
+      "GET /user/info for own spend"
+    ],
+    "operatorDenied": [
+      "POST /model/new",
+      "POST /team/new",
+      "POST /organization/new",
+      "POST /user/new",
+      "POST /config/update",
+      "POST /v1/mcp/server",
+      "POST /key/generate for another user",
+      "POST /key/delete for another user"
+    ]
+  },
+  "f0N5ReviewRequired": {
+    "reason": "The upstream dashboard performs background reads beyond the two visible Operator pages. The Product edge may not admit them generically.",
+    "observedBackgroundReads": [
+      "GET /api/plugins",
+      "GET /models",
+      "GET /organization/list",
+      "GET /policies/list",
+      "GET /project/list",
+      "GET /prompts/list",
+      "GET /public/litellm_blog_posts",
+      "GET /team/list",
+      "GET /user/available_roles",
+      "GET /user/available_users",
+      "GET /v1/agents",
+      "GET /v2/guardrails/list",
+      "GET /v2/team/list",
+      "GET /v2/user/info"
+    ],
+    "mustRemainDenied": [
+      "MCP management and execution routes",
+      "agent management routes",
+      "external blog-feed egress",
+      "unauthorized mutation routes",
+      "direct native port access"
+    ],
+    "activation": "INACTIVE_PENDING_EXACT_F0_N5_ALLOWLIST_AND_BROWSER_REPLAY"
+  }
+}

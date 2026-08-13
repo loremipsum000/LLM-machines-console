@@ -39,7 +39,9 @@ function syntheticCoreLock() {
       version:
         component.kind === "third-party-mirror"
           ? component.version
-          : `1.0.0-build.${index + 1}`,
+          : component.kind === "litellm-oss-build-output"
+            ? component.version
+            : `1.0.0-build.${index + 1}`,
       ociArchivePath: `images/${component.id}.oci.tar.zst`,
       ociArchiveSha256: digest("9"),
       approvedSourceIndexDigest:
@@ -71,7 +73,8 @@ function syntheticCoreLock() {
       licenseTextSha256: digest("f"),
       noticeSha256: digest("7"),
       licenseReviewSha256: digest("8"),
-      ...(/(?:AGPL|GPL)/.test(component.license)
+      ...(/(?:AGPL|GPL)/.test(component.license) ||
+      component.transitiveCopyleftSourceRequired === true
         ? { correspondingSourceSha256: digest("c") }
         : {}),
     })),

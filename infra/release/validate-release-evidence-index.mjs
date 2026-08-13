@@ -27,6 +27,10 @@ export const semanticEvidence = [
     "grafana-corresponding-source",
     "source/grafana-corresponding-source.tar.zst",
   ],
+  [
+    "litellm-oss-transitive-sources",
+    "source/litellm-oss-transitive-sources.tar.zst",
+  ],
 ]
 
 function fail(message) {

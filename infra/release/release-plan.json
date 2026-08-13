@@ -78,6 +78,7 @@
     "license-reviews",
     "firecrawl-corresponding-source",
     "grafana-corresponding-source",
+    "litellm-oss-transitive-sources",
     "image-vulnerability-evidence",
     "clean-database-seed",
     "clean-keycloak-seed",

@@ -39,8 +39,13 @@ function fixture() {
     correspondingSourceRoot,
     "grafana-corresponding-source.tar.zst",
   )
+  const litellmSourcePacket = join(
+    correspondingSourceRoot,
+    "litellm-oss-transitive-sources.tar.zst",
+  )
   write(firecrawlSourcePacket, "exact firecrawl corresponding source\n")
   write(grafanaSourcePacket, "exact grafana corresponding source\n")
+  write(litellmSourcePacket, "exact LiteLLM transitive corresponding source\n")
   const inventory = readCoreImageInventory(root)
   const sourceCommit = git("rev-parse", "HEAD^{commit}")
   const sourceTree = git("rev-parse", "HEAD^{tree}")
@@ -54,7 +59,9 @@ function fixture() {
     const version =
       component.kind === "third-party-mirror"
         ? component.version
-        : `1.0.0-build.${index + 1}`
+        : component.kind === "litellm-oss-build-output"
+          ? component.version
+          : `1.0.0-build.${index + 1}`
     const sourceRevision =
       component.sourceRevision === "release-source-commit"
         ? sourceCommit
@@ -64,7 +71,9 @@ function fixture() {
     const recipePath =
       component.kind === "product-build-output"
         ? component.dockerfile
-        : component.kind === "firecrawl-build-output"
+        : ["firecrawl-build-output", "litellm-oss-build-output"].includes(
+              component.kind,
+            )
           ? component.sourcePackage
           : "infra/release/core-image-inventory.json"
     const recipeSha256 = sha256(readFileSync(resolve(root, recipePath)))
@@ -131,6 +140,8 @@ function fixture() {
               "https://llm-machines.invalid/build-types/oci-mirror/v1",
             "product-build-output":
               "https://llm-machines.invalid/build-types/product-container/v1",
+            "litellm-oss-build-output":
+              "https://llm-machines.invalid/build-types/litellm-oss-container/v1",
             "firecrawl-build-output":
               "https://llm-machines.invalid/build-types/firecrawl-reduced-container/v1",
           }[component.kind],
@@ -270,13 +281,16 @@ function fixture() {
       licenseTextSha256: sha256(licenseText),
       noticeSha256: sha256(noticeText),
       licenseReviewSha256: sha256(licenseReviewBytes),
-      ...(/(?:AGPL|GPL)/.test(component.license)
+      ...(/(?:AGPL|GPL)/.test(component.license) ||
+      component.transitiveCopyleftSourceRequired === true
         ? {
             correspondingSourceSha256: sha256(
               readFileSync(
                 component.id === "grafana-private"
                   ? grafanaSourcePacket
-                  : firecrawlSourcePacket,
+                  : component.id === "litellm"
+                    ? litellmSourcePacket
+                    : firecrawlSourcePacket,
               ),
             ),
           }
@@ -310,7 +324,7 @@ test("release evidence is deterministic and covers every locked image", () => {
   const firstResult = generateReleaseEvidence(first, { root })
   const secondResult = generateReleaseEvidence(second, { root })
   assert.deepEqual(firstResult, secondResult)
-  assert.equal(firstResult.outputs.length, 11)
+  assert.equal(firstResult.outputs.length, 12)
   for (const path of firstResult.outputs) {
     assert.deepEqual(
       readFileSync(join(first.outputRoot, path)),

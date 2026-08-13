@@ -185,7 +185,6 @@ test("F0-V1 fixes the reduced startup map and keeps native services private", as
     assert.ok(retainedComponents.has(id), `missing retained component ${id}`)
   }
   assert.deepEqual(imageInventory.excluded, [
-    "native-litellm-ui",
     "native-keycloak-admin-ui",
     "customer-grafana-ingress",
   ])
