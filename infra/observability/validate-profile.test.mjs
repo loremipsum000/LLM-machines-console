@@ -220,7 +220,7 @@ test("content-bearing alert labels are rejected", () => {
 
 test("Grafana role mapping requires exactly one retained role", () => {
   assert.equal(mapGrafanaRole(["admin"]), "Editor")
-  assert.equal(mapGrafanaRole(["operator"]), "Viewer")
+  assert.equal(mapGrafanaRole(["operator"]), null)
   assert.equal(mapGrafanaRole(["operator", "admin"]), null)
   assert.equal(mapGrafanaRole(["unrelated"]), null)
   assert.deepEqual(
@@ -267,7 +267,7 @@ test("the provisioned baseline cannot become UI editable", () => {
   )
 })
 
-test("the customer folder remains unprovisioned with Admin edit and Operator view", () => {
+test("the customer folder remains unprovisioned with Admin edit and Operator denied", () => {
   const folder = JSON.parse(sources.folderBoundary)
   folder.customerEditable.operatorPermission = "Edit"
   assert.ok(

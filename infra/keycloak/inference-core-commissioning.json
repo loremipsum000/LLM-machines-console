@@ -58,7 +58,7 @@
         "scope-offline_access-does-not-yield-an-offline-token",
         "grafana-exact-root-origin-and-callback-were-bound-outside-git",
         "grafana-admin-token-maps-to-Editor",
-        "grafana-operator-token-maps-to-Viewer",
+        "grafana-operator-native-login-is-denied",
         "grafana-unrecognized-role-is-denied",
         "grafana-dual-retained-role-token-is-denied"
       ],
@@ -96,8 +96,8 @@
         "operator-has-no-standing-admin-authority",
         "grafana-client-secret-is-stored-outside-git",
         "grafana-admin-is-not-Grafana-Admin",
-        "grafana-operator-is-read-only",
-        "grafana-native-access-remains-inactive-until-PR-12-admission"
+        "grafana-operator-native-login-is-denied",
+        "grafana-native-access-remains-inactive-until-F0-N5-admission"
       ],
       "id": "close-commissioning",
       "mutationOwner": "commissioning-control-plane"

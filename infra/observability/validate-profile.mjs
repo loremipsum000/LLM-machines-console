@@ -99,6 +99,7 @@ const allowedBindings = new Set([
   "$__env{LLMM_KEYCLOAK_JWKS_URL}",
   "$__env{LLMM_KEYCLOAK_TOKEN_URL}",
   "$__env{LLMM_KEYCLOAK_USERINFO_URL}",
+  "$__env{LLMM_GRAFANA_SIGNOUT_REDIRECT_URL}",
   "$__file{/run/secrets/llmm_grafana_oidc_client_secret}",
 ])
 
@@ -174,9 +175,7 @@ function extractBindings(source) {
 export function mapGrafanaRole(roles) {
   const admin = roles.includes("admin")
   const operator = roles.includes("operator")
-  if (admin === operator) return null
-  if (admin) return "Editor"
-  if (operator) return "Viewer"
+  if (admin && !operator) return "Editor"
   return null
 }
 
@@ -378,11 +377,14 @@ export function validateRuntimeContract(source) {
   if (
     contract?.grafana?.oidc?.adminRole !== "Editor" ||
     contract?.grafana?.oidc?.ambiguousRetainedRoles !== "deny" ||
-    contract?.grafana?.oidc?.operatorRole !== "Viewer" ||
+    contract?.grafana?.oidc?.operatorRole !== "DENY" ||
     contract?.grafana?.oidc?.strict !== true ||
     contract?.grafana?.oidc?.unknownRole !== "deny"
   ) {
-    add(errors, "Grafana OIDC roles must be Editor, Viewer, and strict deny")
+    add(
+      errors,
+      "Grafana OIDC roles must be Admin Editor and strict deny otherwise",
+    )
   }
   return errors
 }
@@ -650,7 +652,7 @@ export function validateGrafana(
 ) {
   const errors = []
   const roleExpression =
-    "contains(realm_access.roles[*], 'admin') && !contains(realm_access.roles[*], 'operator') && 'Editor' || contains(realm_access.roles[*], 'operator') && !contains(realm_access.roles[*], 'admin') && 'Viewer'"
+    "contains(realm_access.roles[*], 'admin') && !contains(realm_access.roles[*], 'operator') && 'Editor'"
   const exactIniValues = new Map([
     ["client_id", "grafana"],
     ["client_secret", "$__file{/run/secrets/llmm_grafana_oidc_client_secret}"],
@@ -664,6 +666,13 @@ export function validateGrafana(
     ["skip_org_role_sync", "false"],
     ["allow_assign_grafana_admin", "false"],
     ["tls_skip_verify_insecure", "false"],
+    ["login_maximum_inactive_lifetime_duration", "8h"],
+    ["login_maximum_lifetime_duration", "24h"],
+    ["token_rotation_interval_minutes", "10"],
+    ["signout_redirect_url", "$__env{LLMM_GRAFANA_SIGNOUT_REDIRECT_URL}"],
+    ["cookie_secure", "true"],
+    ["cookie_samesite", "lax"],
+    ["disable_plugins", "elasticsearch,tempo,zipkin"],
   ])
   for (const [key, expected] of exactIniValues) {
     if (iniValue(grafana, key) !== expected) {
@@ -713,9 +722,9 @@ export function validateGrafana(
     folder?.baseline?.disableDeletion !== true ||
     folder?.customerEditable?.provisioned !== false ||
     folder?.customerEditable?.adminPermission !== "Edit" ||
-    folder?.customerEditable?.operatorPermission !== "View" ||
+    folder?.customerEditable?.operatorPermission !== "DENY" ||
     folder?.ossRoleBoundary?.adminOrgRole !== "Editor" ||
-    folder?.ossRoleBoundary?.operatorOrgRole !== "Viewer" ||
+    folder?.ossRoleBoundary?.operatorOrgRole !== "DENY" ||
     folder?.ossRoleBoundary?.strictFolderOnlyEditing !== false
   ) {
     add(errors, "Grafana folder permissions do not match the OSS role boundary")
@@ -795,10 +804,10 @@ export function validateKeycloak(seedSource, commissioningSource) {
     "grafana-client-uses-authorization-code-pkce-s256-only",
     "grafana-client-scope-is-limited-to-admin-and-operator",
     "grafana-admin-token-maps-to-Editor",
-    "grafana-operator-token-maps-to-Viewer",
+    "grafana-operator-native-login-is-denied",
     "grafana-unrecognized-role-is-denied",
     "grafana-admin-is-not-Grafana-Admin",
-    "grafana-native-access-remains-inactive-until-PR-12-admission",
+    "grafana-native-access-remains-inactive-until-F0-N5-admission",
   ]) {
     if (!assertions.includes(assertion)) {
       add(errors, `Keycloak commissioning is missing ${assertion}`)

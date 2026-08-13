@@ -1,0 +1,142 @@
+{
+  "schema": "llm-machines.pre-genesis-native-administration-evidence.v1",
+  "workPackage": "F0-N2",
+  "status": "SOURCE_CHARACTERIZED_NOT_ACTIVATED",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "74d6a13ea4ffc0ea97fbda0abfec67cb957c5d26",
+    "tree": "46352a6e2901a7c383200a76af63cbb15b8a1b62"
+  },
+  "upstream": {
+    "version": "v13.1.3",
+    "tagObject": "12cb42922a6c6604e62d5f9ed512fd0d9febf4ec",
+    "commit": "45a27d64b64a82d666b06aa5c5bb3521587edb0d",
+    "ociIndex": "sha256:ab5cb380e3ff3172d6c8bd2e7cfd31cce977d2881b260e1f5bc089bf0b759b43",
+    "linuxAmd64Manifest": "sha256:e27e68cfd5795c1bea54950766078a02e84dfa3bafe0a4d0e5382f713dfd8e4e",
+    "imageConfig": "sha256:8b5e93ab63f515a9d1d0eea03d99e5896b09074996164c6a500fc713c1d2d451",
+    "imageReportedVersion": "13.1.3",
+    "imageReportedCommit": "45a27d64b64a82d666b06aa5c5bb3521587edb0d",
+    "platform": "linux/amd64",
+    "license": "AGPL-3.0-only",
+    "licenseTextSha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+  },
+  "securityAdmission": {
+    "decision": "PASS_WITH_TIME_BOUNDED_NONREACHABILITY_EXCEPTIONS",
+    "scope": "PRE_GENESIS_SOURCE_ONLY",
+    "scanner": {
+      "name": "trivy",
+      "version": "0.73.0",
+      "databaseUpdatedAt": "2026-08-13T13:03:34.300611711Z",
+      "scannedAt": "2026-08-13T18:37:48.872508Z",
+      "rawReportSha256": "e752f9ae02f9b35b0f11218e70378f1fbe4594a2b451779c8fad8c85218b868e"
+    },
+    "occurrenceCounts": {
+      "critical": 0,
+      "high": 15,
+      "medium": 7,
+      "low": 0,
+      "unknown": 3
+    },
+    "uniqueFindingCounts": {
+      "critical": 0,
+      "high": 12,
+      "medium": 5,
+      "low": 0,
+      "unknown": 2
+    },
+    "secretsFound": 0,
+    "highFindingGroups": [
+      {
+        "component": "Grafana Tempo datasource backend",
+        "findingIds": ["CVE-2026-21728", "CVE-2026-28377"],
+        "control": "The Tempo datasource plugin is disabled, absent from the runtime plugin inventory, has no configured datasource, and the Editor role cannot create a datasource. The Tempo server status/config endpoint implicated by CVE-2026-28377 is not a Grafana endpoint."
+      },
+      {
+        "component": "bundled Elasticsearch datasource executable",
+        "findingIds": ["CVE-2026-27145", "CVE-2026-39822", "CVE-2026-42504"],
+        "control": "The Elasticsearch datasource plugin is disabled, absent from the runtime plugin inventory, has no configured datasource, and the Editor role cannot create a datasource."
+      },
+      {
+        "component": "bundled Zipkin datasource executable",
+        "findingIds": [
+          "CVE-2026-25681",
+          "CVE-2026-27136",
+          "CVE-2026-27145",
+          "CVE-2026-33814",
+          "CVE-2026-39821",
+          "CVE-2026-39822",
+          "CVE-2026-42504",
+          "CVE-2026-46600",
+          "CVE-2026-56852",
+          "GHSA-hrxh-6v49-42gf"
+        ],
+        "control": "The Zipkin datasource plugin is disabled, absent from the runtime plugin inventory, has no configured datasource, and the Editor role cannot create a datasource."
+      }
+    ],
+    "approvedBy": "founder-authorization-2026-08-13",
+    "approvedAt": "2026-08-13T19:16:36Z",
+    "expiresAt": "2026-09-12T19:16:36Z",
+    "releaseRequirement": "A future release build must rerun the exact image scan with a policy-fresh database and either contain no unexcepted High or Critical finding or retain a still-valid independently reviewed exception. Expiry fails closed."
+  },
+  "authenticationAndRoles": {
+    "mechanism": "Grafana Generic OAuth Authorization Code with PKCE S256",
+    "identityProvider": "Keycloak 26.7.0 llm-machines realm",
+    "Admin": "Editor",
+    "Operator": "DENY",
+    "mixedAdminOperator": "DENY",
+    "unknownRole": "DENY",
+    "grafanaServerAdministrator": false,
+    "basicAuthentication": false,
+    "anonymousAuthentication": false,
+    "consoleSessionForwarded": false,
+    "nativeSession": true,
+    "dashboardCreateDelete": "PASS",
+    "editorDatasourceMutationStatus": 403,
+    "disabledVulnerablePlugins": ["elasticsearch", "tempo", "zipkin"]
+  },
+  "sessionAndFailureEvidence": {
+    "keycloakIdleSeconds": 28800,
+    "keycloakMaximumSeconds": 86400,
+    "grafanaIdle": "8h",
+    "grafanaMaximum": "24h",
+    "tokenRotationMinutes": 10,
+    "nativeCookieSecureInProductProfile": true,
+    "nativeCookieSameSite": "Lax",
+    "logout": "PASS_NATIVE_SESSION_CLEARED_AND_KEYCLOAK_LOGOUT_REDIRECTED",
+    "restart": "PASS_NATIVE_SESSION_AND_GRAFANA_STATE",
+    "identityOutage": "CONTROLLED_NATIVE_LOGIN_REDIRECT_UNAVAILABLE_GRAFANA_REMAINS_HEALTHY"
+  },
+  "functionalEvidence": {
+    "browser": "Chromium 151.0.7922.108",
+    "rawBrowserEvidenceSha256": "8b66ae278b5ef54282c7649c9ac81b9f4d7f594e95d9f901b47aeaeea96779e7",
+    "adminEditorLogin": "PASS",
+    "operatorLogin": "DENY",
+    "mixedRoleLogin": "DENY",
+    "unknownRoleLogin": "DENY",
+    "crossOriginMutation": "DENY_403",
+    "webSocketRequired": false,
+    "sseRequired": false,
+    "directCustomerPort": "DENIED_LOOPBACK_ONLY_CHARACTERIZATION",
+    "cleanup": "PASS"
+  },
+  "routeEvidence": "docs/reduction/inference-core/f0-n2-grafana-native-route-characterization.json",
+  "preservedBoundaries": [
+    "Console remains complete without Grafana",
+    "Grafana is a deeper Admin-only observability surface",
+    "Operator receives no native Grafana session",
+    "Grafana server-administrator authority is never granted",
+    "Console browser-session material is never forwarded",
+    "the Grafana route remains inactive until the exact F0-N5 Product-edge profile passes",
+    "direct Grafana ports remain private"
+  ],
+  "knownLimitations": [
+    "The admitted image has time-bounded nonreachability exceptions for vulnerable disabled datasource code. The package fails closed after 2026-09-12 unless a clean replacement or renewed reviewed disposition is admitted.",
+    "The disposable characterization uses loopback HTTP and overrides Grafana cookie_secure to false only for that local run. The checked-in Product profile requires secure cookies and must be replayed through HTTPS in F0-N5.",
+    "Customer ingress is not activated by F0-N2. The dedicated authority, exact native redirects, header handling, and no-bypass boundary remain F0-N5 work."
+  ],
+  "nextPackage": "F0-N3 LLM Machines Keycloak theme and appliance-realm Admin Console"
+}

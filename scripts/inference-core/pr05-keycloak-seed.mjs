@@ -1140,7 +1140,7 @@ export function validateCommissioningPlan(plan) {
     "console-web-audience-mapper-hardcodes-console-bff",
     "scope-offline_access-does-not-yield-an-offline-token",
     "grafana-admin-token-maps-to-Editor",
-    "grafana-operator-token-maps-to-Viewer",
+    "grafana-operator-native-login-is-denied",
     "grafana-unrecognized-role-is-denied",
     "grafana-dual-retained-role-token-is-denied",
   ]) {

@@ -17686,7 +17686,53 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
       errors.push(`PR-09 observability contract metric is missing ${metric}`)
     }
   }
+  let f0N2Evidence = null
+  let f0N2Routes = null
+  const f0N2EvidencePath =
+    "docs/reduction/inference-core/f0-n2-grafana-native-access.json"
+  const f0N2RoutePath =
+    "docs/reduction/inference-core/f0-n2-grafana-native-route-characterization.json"
   if (
+    isRegularFile(resolve(root, f0N2EvidencePath)) &&
+    isRegularFile(resolve(root, f0N2RoutePath))
+  ) {
+    try {
+      f0N2Evidence = JSON.parse(read(f0N2EvidencePath))
+      f0N2Routes = JSON.parse(read(f0N2RoutePath))
+    } catch {
+      errors.push("F0-N2 Grafana successor evidence is invalid JSON")
+    }
+  }
+  const f0N2ApprovedAt = Date.parse(f0N2Evidence?.securityAdmission?.approvedAt)
+  const f0N2ExpiresAt = Date.parse(f0N2Evidence?.securityAdmission?.expiresAt)
+  const hasBoundedF0N2GrafanaSuccessor =
+    f0N2Evidence?.workPackage === "F0-N2" &&
+    f0N2Evidence?.status === "SOURCE_CHARACTERIZED_NOT_ACTIVATED" &&
+    f0N2Evidence?.accepted === false &&
+    f0N2Evidence?.runtimeQualified === false &&
+    f0N2Evidence?.contractActivation === "INACTIVE" &&
+    f0N2Evidence?.q0 === "NOT_STARTED" &&
+    f0N2Evidence?.genesisPublished === false &&
+    f0N2Evidence?.authenticationAndRoles?.Admin === "Editor" &&
+    f0N2Evidence?.authenticationAndRoles?.Operator === "DENY" &&
+    f0N2Evidence?.authenticationAndRoles?.mixedAdminOperator === "DENY" &&
+    f0N2Evidence?.authenticationAndRoles?.unknownRole === "DENY" &&
+    f0N2Evidence?.authenticationAndRoles?.grafanaServerAdministrator ===
+      false &&
+    f0N2Evidence?.securityAdmission?.decision ===
+      "PASS_WITH_TIME_BOUNDED_NONREACHABILITY_EXCEPTIONS" &&
+    f0N2Evidence?.securityAdmission?.occurrenceCounts?.critical === 0 &&
+    Number.isFinite(f0N2ApprovedAt) &&
+    Number.isFinite(f0N2ExpiresAt) &&
+    f0N2ExpiresAt > f0N2ApprovedAt &&
+    f0N2ExpiresAt > Date.now() &&
+    f0N2ExpiresAt - f0N2ApprovedAt <= 30 * 24 * 60 * 60 * 1000 &&
+    f0N2Routes?.status === "CHARACTERIZED_NOT_ACTIVATED" &&
+    f0N2Routes?.qualifiedRoleBoundary?.Admin === "Editor" &&
+    f0N2Routes?.qualifiedRoleBoundary?.Operator === "DENY" &&
+    f0N2Routes?.qualifiedRoleBoundary?.mixedAdminOperator === "DENY" &&
+    f0N2Routes?.qualifiedRoleBoundary?.grafanaServerAdministrator === false
+  const matchesPr09RuntimeContract = !(
     runtimeContract?.metadata?.activation !== "PR-12" ||
     runtimeContract?.metadata?.sourceOnly !== true ||
     runtimeContract?.metadata?.containsCredentials !== false ||
@@ -17704,7 +17750,27 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
     runtimeContract?.grafana?.oidc?.unknownRole !== "deny" ||
     runtimeContract?.grafana?.customerFolder?.adminPermission !== "Edit" ||
     runtimeContract?.grafana?.customerFolder?.operatorPermission !== "View"
-  ) {
+  )
+  const matchesF0N2RuntimeContract =
+    hasBoundedF0N2GrafanaSuccessor &&
+    runtimeContract?.metadata?.activation === "PR-12" &&
+    runtimeContract?.metadata?.sourceOnly === true &&
+    runtimeContract?.metadata?.containsCredentials === false &&
+    runtimeContract?.prometheus?.retention === "30d" &&
+    runtimeContract?.prometheus?.scrapeTimeout === "20s" &&
+    runtimeContract?.prometheus?.scrapeAuthentication?.credentialSource ===
+      "mounted-file" &&
+    runtimeContract?.prometheus?.scrapeDiscovery?.seedTargetCount === 0 &&
+    runtimeContract?.prometheus?.queueDepthFallback === "none" &&
+    runtimeContract?.alertmanager?.defaultReceiver === "local-null" &&
+    runtimeContract?.alertmanager?.externalReceiverState === "disabled" &&
+    runtimeContract?.grafana?.oidc?.adminRole === "Editor" &&
+    runtimeContract?.grafana?.oidc?.operatorRole === "DENY" &&
+    runtimeContract?.grafana?.oidc?.ambiguousRetainedRoles === "deny" &&
+    runtimeContract?.grafana?.oidc?.unknownRole === "deny" &&
+    runtimeContract?.grafana?.customerFolder?.adminPermission === "Edit" &&
+    runtimeContract?.grafana?.customerFolder?.operatorPermission === "DENY"
+  if (!matchesPr09RuntimeContract && !matchesF0N2RuntimeContract) {
     errors.push("PR-09 observability runtime contract changed")
   }
   const queueMetric = normalizedMetrics.find(
@@ -17720,12 +17786,25 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
   )
   const exactGrafanaRoleExpression =
     "contains(realm_access.roles[*], 'admin') && !contains(realm_access.roles[*], 'operator') && 'Editor' || contains(realm_access.roles[*], 'operator') && !contains(realm_access.roles[*], 'admin') && 'Viewer'"
+  const exactF0N2GrafanaRoleExpression =
+    "contains(realm_access.roles[*], 'admin') && !contains(realm_access.roles[*], 'operator') && 'Editor'"
+  const matchesPr09GrafanaRoleBoundary = grafanaSource.includes(
+    `role_attribute_path = ${exactGrafanaRoleExpression}`,
+  )
+  const matchesF0N2GrafanaRoleBoundary =
+    hasBoundedF0N2GrafanaSuccessor &&
+    grafanaSource.includes(
+      `role_attribute_path = ${exactF0N2GrafanaRoleExpression}`,
+    ) &&
+    observabilityValidator.includes(
+      'if (admin && !operator) return "Editor"',
+    ) &&
+    observabilityValidator.includes(exactF0N2GrafanaRoleExpression)
   if (
-    !grafanaSource.includes(
-      `role_attribute_path = ${exactGrafanaRoleExpression}`,
-    ) ||
-    !observabilityValidator.includes("if (admin === operator) return null") ||
-    !observabilityValidator.includes(exactGrafanaRoleExpression)
+    (!matchesPr09GrafanaRoleBoundary ||
+      !observabilityValidator.includes("if (admin === operator) return null") ||
+      !observabilityValidator.includes(exactGrafanaRoleExpression)) &&
+    !matchesF0N2GrafanaRoleBoundary
   ) {
     errors.push("PR-09 exact-one retained Grafana role boundary changed")
   }
