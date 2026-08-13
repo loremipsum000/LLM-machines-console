@@ -909,3 +909,40 @@ false, contract activation remains inactive, and D2A-RC and Q0 remain
 NOT_STARTED. Grafana customer access remains deferred from v1. No deployment,
 runtime activation, real secret binding, private signing material, hardware
 qualification, or Product main transition is part of PR-12 source closure.
+
+## Prospective retained native administration correction
+
+F0-N0 records a prospective correction to the reduction target from protected
+integration commit `eecbdc6099d36876b94b78689a54c914f6228eb4`, tree
+`c5d9b5e8282418441e9c3c55fe85e858caa70d1e`. The reduction removes
+LibreChat, first-party chat and conversations, Knowledge, RAG, corpora, MCP,
+and the Product corpus pipeline. It retains Grafana, scoped Keycloak Admin,
+Portainer, and LiteLLM native administration as deeper technical appliance
+surfaces behind dedicated Product-edge authorities. Console remains the
+primary simplified surface and remains complete without those tools.
+
+This correction is prospective. Earlier decision and closure artifacts remain
+immutable evidence of the narrower boundary at their original commits. The
+new scope contract inventories each current source, validator, test, release,
+startup, and governance surface that must be superseded by the ordered F0-N1
+through F0-N8 packages. F0-N0 changes no Product behavior, route, image lock,
+runtime, customer permission, or live infrastructure. All native routes remain
+inactive and direct native ports remain denied until their exact upstream
+authentication, session, role, route, retention, restart, and no-bypass gates
+pass.
+
+Unified login means Keycloak SSO with an independent native session for each
+tool. Console cookies or tokens are never forwarded to native services. Shared
+human accounts, anonymous administration, and reverse-proxy impersonation
+remain forbidden. The pre-Genesis target is password-only login with an
+8-hour idle session and a 24-hour maximum session, while refresh rotation,
+revocation, safe redirect, outage recovery, role enforcement, and logout remain
+mandatory.
+
+The read-only gateway capture on 2026-08-13 found the retained native
+hostnames still fail closed. The active wildcard certificate expires at
+2026-08-16 08:40:46 UTC. Certificate renewal, DNS mutation, and external
+credential binding remain unauthorized and must be resolved before native
+deployment. Accepted remains false, runtimeQualified remains false, contract
+activation remains inactive, Q0 remains NOT_STARTED, and Genesis remains
+unpublished.
