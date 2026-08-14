@@ -12,12 +12,16 @@ const directory = dirname(fileURLToPath(import.meta.url))
 const sourceNames = [
   "README.md",
   "edge-policy.json",
+  "native-admin-edge-profile.json",
   "no-bypass-policy.json",
   "product-edge.nginx.conf.template",
   "proxy-common.inc",
   "request-headers-console-browser.inc",
   "request-headers-customer-api.inc",
   "request-headers-identity-browser.inc",
+  "request-headers-grafana-browser.inc",
+  "request-headers-keycloak-admin-browser.inc",
+  "request-headers-litellm-browser.inc",
   "request-safety.inc",
   "source-no-bypass.mjs",
   "source-no-bypass.test.mjs",
@@ -39,11 +43,23 @@ test("checked-in Product edge package passes", () => {
   assert.deepEqual(validateIngressPackage(), [])
 })
 
-test("native administration hosts and upstreams are rejected", () => {
+test("only the three admitted native hosts and upstreams are present", () => {
+  assert.match(
+    sources["product-edge.nginx.conf.template"],
+    /server_name @@PRODUCT_GRAFANA_HOST@@;/,
+  )
+  assert.match(
+    sources["product-edge.nginx.conf.template"],
+    /server_name @@PRODUCT_LITELLM_HOST@@;/,
+  )
+  assert.match(
+    sources["product-edge.nginx.conf.template"],
+    /server_name @@PRODUCT_KEYCLOAK_ADMIN_HOST@@;/,
+  )
   for (const mutation of [
-    "\nupstream litellm { server litellm:4000; }\n",
-    "\nserver { listen 443 ssl; server_name litellm.appliance.test; }\n",
-    "\nupstream grafana { server grafana:3000; }\n",
+    "\nupstream portainer { server portainer:9443; }\n",
+    "\nserver { listen 443 ssl; server_name portainer.appliance.test; }\n",
+    "\nupstream prometheus { server prometheus:9090; }\n",
   ]) {
     const result = validateIngressSources(
       changed(
@@ -51,7 +67,11 @@ test("native administration hosts and upstreams are rejected", () => {
         (source) => source + mutation,
       ),
     )
-    assert.ok(result.some((error) => /upstream|hostname|listener/i.test(error)))
+    assert.ok(
+      result.some((error) =>
+        /upstream|hostname|listener|fingerprint/i.test(error),
+      ),
+    )
   }
 })
 
@@ -242,6 +262,21 @@ test("every public Nginx location is exact-allowlisted", () => {
       "    location = /realms/llm-machines/protocol/openid-connect/auth {",
       "    location = /admin/master/console/ { proxy_pass http://keycloak_identity/admin/master/console/; }\n\n",
     ],
+    [
+      "grafana",
+      "    location = /login/generic_oauth {",
+      "    location = /api/admin/users { proxy_pass http://grafana_native; }\n\n",
+    ],
+    [
+      "litellm",
+      "    location = /key/generate {",
+      "    location = /router/settings { proxy_pass http://litellm_native; }\n\n",
+    ],
+    [
+      "keycloakAdmin",
+      "    location = /keycloak/admin/realms/llm-machines/users {",
+      "    location = /keycloak/admin/master/console/ { proxy_pass http://keycloak_identity; }\n\n",
+    ],
   ]) {
     const result = validateIngressSources(
       changed("product-edge.nginx.conf.template", (source) =>
@@ -255,6 +290,100 @@ test("every public Nginx location is exact-allowlisted", () => {
       host,
     )
   }
+})
+
+test("native profiles remain source-only and preserve admitted roles", () => {
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  profile.activation = "ACTIVE"
+  profile.runtimeQualified = true
+  let result = validateIngressSources({
+    ...sources,
+    "native-admin-edge-profile.json": JSON.stringify(profile),
+  })
+  assert.ok(
+    result.some((error) => /activation|qualification|runtime/i.test(error)),
+  )
+
+  const roles = JSON.parse(sources["native-admin-edge-profile.json"])
+  roles.services.grafana.roles.Operator = "Editor"
+  roles.services.litellm.roles.Operator = "proxy_admin"
+  result = validateIngressSources({
+    ...sources,
+    "native-admin-edge-profile.json": JSON.stringify(roles),
+  })
+  assert.ok(result.some((error) => /Grafana|LiteLLM/i.test(error)))
+})
+
+test("native hosts reject Console sessions and Product credentials", () => {
+  for (const before of [
+    '    if ($http_cookie ~* "(?:^|;\\\\s*)__Host-llm-machines-(?:session|login)=") { return 400; }\n',
+    "    if ($llmm_native_product_credential = 1) { return 400; }\n",
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, ""),
+      ),
+    )
+    assert.ok(
+      result.some((error) => /Console|credential|fingerprint/i.test(error)),
+    )
+  }
+})
+
+test("native query-key allowlists cannot be broadened or removed", () => {
+  for (const [before, after] of [
+    [
+      "if ($llmm_query_grafana_login = 0) { return 400; }",
+      "if ($args = blocked) { return 400; }",
+    ],
+    [
+      "if ($llmm_query_litellm_key_list = 0) { return 400; }",
+      "if ($args = blocked) { return 400; }",
+    ],
+    [
+      "if ($llmm_query_keycloak_authorization = 0) { return 400; }",
+      "if ($args = blocked) { return 400; }",
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, after),
+      ),
+    )
+    assert.ok(result.some((error) => /fingerprint|route|query/i.test(error)))
+  }
+})
+
+test("Keycloak native user deletion remains denied before upstream", () => {
+  const result = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        "if ($request_method = DELETE) { return 403; }",
+        "if ($request_method = TRACE) { return 403; }",
+      ),
+    ),
+  )
+  assert.ok(result.some((error) => /user deletion/i.test(error)))
+})
+
+test("native sessions stay service-owned without proxy impersonation", () => {
+  const forwardedConsole = validateIngressSources(
+    changed("request-headers-litellm-browser.inc", (source) =>
+      source.replace(
+        'proxy_set_header X-LLM-Machines-Console-Session "";',
+        "proxy_set_header X-LLM-Machines-Console-Session $http_cookie;",
+      ),
+    ),
+  )
+  assert.ok(forwardedConsole.some((error) => /LiteLLM browser/i.test(error)))
+
+  const impersonation = validateIngressSources(
+    changed(
+      "product-edge.nginx.conf.template",
+      (source) => `${source}\nauth_request /console-session;\n`,
+    ),
+  )
+  assert.ok(impersonation.some((error) => /impersonation/i.test(error)))
 })
 
 test("reviewed public route implementations cannot change in place", () => {
