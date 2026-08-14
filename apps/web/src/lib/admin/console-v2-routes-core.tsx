@@ -34,6 +34,7 @@ import {
   isConsoleBffAuthExpiredError,
   isConsoleBffUnavailableError,
 } from "@/lib/admin/server-data-core"
+import { technicalToolsForRole } from "@/lib/admin/technical-tools"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import {
   type CurrentConsoleSessionResolution,
@@ -275,6 +276,7 @@ export async function renderSettingsConsoleRoute(
         settingsAction={
           role === "admin" ? resolvedSearchParams?.settingsAction : undefined
         }
+        technicalTools={technicalToolsForRole(role)}
       />
     )
   })

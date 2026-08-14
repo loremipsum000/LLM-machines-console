@@ -1,9 +1,11 @@
 "use client"
 
+import { TechnicalToolsPanel } from "@/components/technical-tools-panel"
 import {
   updateAdminSettingsOrganizationAction,
   updateAdminSettingsTelemetryAction,
 } from "@/lib/admin/actions-core"
+import type { TechnicalToolLink } from "@/lib/admin/technical-tools"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import { cn } from "@/lib/utils"
 import type {
@@ -30,6 +32,7 @@ interface SettingsV2ExperienceProps {
   accessRole: RetainedConsoleRole
   settings: AdminSettingsResponse
   settingsAction?: string
+  technicalTools?: TechnicalToolLink[]
 }
 
 interface LogoCandidate {
@@ -45,6 +48,7 @@ export function SettingsV2Experience({
   accessRole,
   settings,
   settingsAction,
+  technicalTools = [],
 }: SettingsV2ExperienceProps) {
   const persistenceReady = settings.sourceStatus === "ok"
   return (
@@ -93,6 +97,7 @@ export function SettingsV2Experience({
           generatedAt={settings.generatedAt}
           services={settings.reachability}
         />
+        <TechnicalToolsPanel tools={technicalTools} />
         <UpdatesLicensePanel settings={settings} />
         <PrivacyPanel
           accessRole={accessRole}
