@@ -5,7 +5,7 @@ import { normalizeConsoleReturnPath } from "./safe-return"
 
 export const CONSOLE_SESSION_COOKIE = "__Host-llm-machines-session"
 export const CONSOLE_SESSION_HEADER = "x-llm-machines-console-session"
-export const CONSOLE_SESSION_MAX_AGE_SECONDS = 30 * 60
+export const CONSOLE_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60
 const SESSION_RESOLVE_TIMEOUT_MS = 5_000
 const MAXIMUM_RESOLVE_RESPONSE_BYTES = 64 * 1024
 const opaqueHandlePattern = /^[A-Za-z0-9_-]{43}$/

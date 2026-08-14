@@ -377,12 +377,12 @@ CREATE TABLE common.console_sessions (
     ),
   CONSTRAINT console_sessions_lifetime_check
     CHECK (
-      absolute_expires_at = created_at + interval '8 hours'
+      absolute_expires_at = created_at + interval '24 hours'
       AND created_at <= last_seen_at
       AND last_seen_at <= updated_at
       AND updated_at < absolute_expires_at
       AND idle_expires_at = LEAST(
-        last_seen_at + interval '30 minutes',
+        last_seen_at + interval '8 hours',
         absolute_expires_at
       )
       AND access_expires_at >= updated_at - interval '1 minute'

@@ -14,7 +14,7 @@ import type {
 } from "../services/console-session-service"
 import { normalizeConsoleReturnPath } from "../services/console-session-service"
 
-const SESSION_MAX_AGE_SECONDS = 30 * 60
+const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60
 const LOGIN_MAX_AGE_SECONDS = 2 * 60
 
 export interface ConsoleSessionRouteOptions {

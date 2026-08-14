@@ -30,6 +30,7 @@ if (process.argv.slice(2).some((argument) => argument !== "--team")) {
   throw new Error("Usage: reduced-core-keycloak-identity.mjs [--team]")
 }
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
+const themeRoot = resolve(repositoryRoot, "infra/keycloak/themes/llm-machines")
 const dockerContext = required("PRE_GENESIS_DOCKER_CONTEXT")
 const serviceControl = serviceControlFromEnvironment()
 const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
@@ -126,6 +127,11 @@ try {
   ])
   containerCreated = true
   docker(["cp", importRoot, `${containerName}:/opt/keycloak/data/import`])
+  docker([
+    "cp",
+    themeRoot,
+    `${containerName}:/opt/keycloak/themes/llm-machines`,
+  ])
   docker(["start", containerName])
   await waitForKeycloak(upstreamPort)
   let databaseUrl = null
@@ -281,27 +287,20 @@ process.stdout.write(`${JSON.stringify(evidence)}\n`)
 
 function realmExport(consoleOrigin, values, includeTeamAuthority) {
   const passwordAmr = "llmm-password-amr"
-  const otpAmr = "llmm-otp-amr"
   return {
     realm: "llm-machines",
     enabled: true,
+    loginTheme: "llm-machines",
     accessTokenLifespan: 300,
-    ssoSessionIdleTimeout: 1800,
-    ssoSessionMaxLifespan: 28800,
+    ssoSessionIdleTimeout: 28800,
+    ssoSessionMaxLifespan: 86400,
     revokeRefreshToken: true,
     refreshTokenMaxReuse: 0,
-    otpPolicyType: "totp",
-    otpPolicyAlgorithm: "HmacSHA256",
-    otpPolicyDigits: 6,
-    otpPolicyPeriod: 30,
-    browserFlow: "llm-machines-browser-mfa",
-    authenticatorConfig: [
-      amrConfig(passwordAmr, "pwd"),
-      amrConfig(otpAmr, "otp"),
-    ],
+    browserFlow: "llm-machines-browser-password",
+    authenticatorConfig: [amrConfig(passwordAmr, "pwd")],
     authenticationFlows: [
       {
-        alias: "llm-machines-browser-mfa",
+        alias: "llm-machines-browser-password",
         builtIn: false,
         providerId: "basic-flow",
         topLevel: true,
@@ -314,14 +313,14 @@ function realmExport(consoleOrigin, values, includeTeamAuthority) {
           },
           {
             authenticatorFlow: true,
-            flowAlias: "llm-machines-browser-mfa-forms",
+            flowAlias: "llm-machines-browser-password-forms",
             priority: 20,
             requirement: "ALTERNATIVE",
           },
         ],
       },
       {
-        alias: "llm-machines-browser-mfa-forms",
+        alias: "llm-machines-browser-password-forms",
         builtIn: false,
         providerId: "basic-flow",
         topLevel: false,
@@ -331,13 +330,6 @@ function realmExport(consoleOrigin, values, includeTeamAuthority) {
             authenticatorConfig: passwordAmr,
             authenticatorFlow: false,
             priority: 10,
-            requirement: "REQUIRED",
-          },
-          {
-            authenticator: "auth-otp-form",
-            authenticatorConfig: otpAmr,
-            authenticatorFlow: false,
-            priority: 20,
             requirement: "REQUIRED",
           },
         ],
@@ -494,7 +486,7 @@ function amrConfig(alias, value) {
   return {
     alias,
     config: {
-      "default.reference.maxAge": "28800",
+      "default.reference.maxAge": "86400",
       "default.reference.value": value,
     },
   }
@@ -510,22 +502,7 @@ function userExport(user, role, group) {
     lastName: "fixture",
     realmRoles: [role],
     groups: [group],
-    credentials: [
-      { type: "password", value: user.password, temporary: false },
-      {
-        type: "otp",
-        userLabel: `${packageId} disposable TOTP`,
-        secretData: JSON.stringify({ value: user.otpSecret }),
-        credentialData: JSON.stringify({
-          algorithm: "HmacSHA256",
-          counter: 0,
-          digits: 6,
-          period: 30,
-          secretEncoding: null,
-          subType: "totp",
-        }),
-      },
-    ],
+    credentials: [{ type: "password", value: user.password, temporary: false }],
   }
 }
 
@@ -560,7 +537,6 @@ function browserCredentials() {
 
 function generatedUser(role) {
   return {
-    otpSecret: randomBytes(20).toString("hex"),
     password: opaqueValue(),
     role,
     subject: `keycloak-${role}-${randomBytes(8).toString("hex")}`,
@@ -1034,9 +1010,7 @@ function sanitize(value) {
   let output = String(value ?? "")
   const secrets = [
     credentials.admin.password,
-    credentials.admin.otpSecret,
     credentials.operator.password,
-    credentials.operator.otpSecret,
     credentials.bootstrap.password,
     credentials.bffService,
     credentials.humanAdmin,

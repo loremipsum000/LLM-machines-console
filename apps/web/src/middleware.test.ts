@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth/session-client", () => ({
   CONSOLE_SESSION_COOKIE: "__Host-llm-machines-session",
-  CONSOLE_SESSION_MAX_AGE_SECONDS: 1800,
+  CONSOLE_SESSION_MAX_AGE_SECONDS: 28800,
   opaqueConsoleSessionHandle: mocks.opaqueConsoleSessionHandle,
   resolveConsoleSession: mocks.resolveConsoleSession,
 }))
@@ -109,7 +109,7 @@ describe("Console middleware", () => {
     expect(mocks.resolveConsoleSession).not.toHaveBeenCalled()
   })
 
-  it("slides an active host-only opaque cookie for exactly 1800 seconds", async () => {
+  it("slides an active host-only opaque cookie for exactly eight hours", async () => {
     const response = await runMiddleware("/applications", true)
     const setCookie = response.headers.get("set-cookie") ?? ""
 
@@ -119,7 +119,7 @@ describe("Console middleware", () => {
     )
     expect(setCookie).toContain(`__Host-llm-machines-session=${sessionHandle}`)
     expect(setCookie).toContain("Path=/")
-    expect(setCookie).toContain("Max-Age=1800")
+    expect(setCookie).toContain("Max-Age=28800")
     expect(setCookie).toContain("HttpOnly")
     expect(setCookie).toContain("Secure")
     expect(setCookie).toContain("SameSite=lax")

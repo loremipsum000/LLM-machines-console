@@ -362,7 +362,7 @@ export class KeycloakAdminClient extends KeycloakAdminApiClient {
         enabled: input.enabled,
         firstName: firstName(input.displayName),
         lastName: lastName(input.displayName),
-        requiredActions: ["CONFIGURE_TOTP"],
+        requiredActions: [],
         username: input.username,
       }),
       headers: { "content-type": "application/json" },

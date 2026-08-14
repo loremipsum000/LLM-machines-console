@@ -462,12 +462,12 @@ export const consoleSessions = common.table(
     ),
     check(
       "console_sessions_lifetime_check",
-      sql`${table.absoluteExpiresAt} = ${table.createdAt} + interval '8 hours'
+      sql`${table.absoluteExpiresAt} = ${table.createdAt} + interval '24 hours'
         AND ${table.createdAt} <= ${table.lastSeenAt}
         AND ${table.lastSeenAt} <= ${table.updatedAt}
         AND ${table.updatedAt} < ${table.absoluteExpiresAt}
         AND ${table.idleExpiresAt} = LEAST(
-          ${table.lastSeenAt} + interval '30 minutes',
+          ${table.lastSeenAt} + interval '8 hours',
           ${table.absoluteExpiresAt}
         )
         AND ${table.accessExpiresAt} >= ${table.updatedAt} - interval '1 minute'

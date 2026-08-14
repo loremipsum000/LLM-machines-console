@@ -42,9 +42,9 @@
     },
     {
       "completionAssertions": [
-        "llm-machines-browser-mfa-is-the-browser-binding",
+        "llm-machines-browser-password-is-the-browser-binding",
         "username-password-execution-reference-is-pwd",
-        "required-otp-execution-reference-is-otp",
+        "mandatory-totp-is-disabled-for-pre-genesis",
         "oidc-amr-mapper-adds-amr-to-access-token",
         "basic-client-scope-adds-auth_time-to-access-token",
         "console-web-audience-mapper-hardcodes-console-bff",
@@ -52,8 +52,7 @@
         "bootstrap-admin-is-only-in-Admins",
         "temporary-login-value-was-shown-once",
         "UPDATE_PASSWORD-completed",
-        "CONFIGURE_TOTP-completed",
-        "access-token-amr-proves-mfa",
+        "access-token-amr-proves-password-authentication",
         "access-token-auth_time-is-recent",
         "scope-offline_access-does-not-yield-an-offline-token",
         "grafana-exact-root-origin-and-callback-were-bound-outside-git",
@@ -64,15 +63,14 @@
       ],
       "id": "commission-bootstrap-admin",
       "mutationOwner": "commissioning-control-plane",
-      "requiredActions": ["UPDATE_PASSWORD", "CONFIGURE_TOTP"]
+      "requiredActions": ["UPDATE_PASSWORD"]
     },
     {
       "completionAssertions": [
         "first-operator-is-enabled",
         "first-operator-is-only-in-Operators",
         "UPDATE_PASSWORD-completed",
-        "CONFIGURE_TOTP-completed",
-        "access-token-amr-proves-mfa",
+        "access-token-amr-proves-password-authentication",
         "access-token-auth_time-is-recent",
         "offline-recovery-value-was-shown-once",
         "only-hardened-recovery-verifier-was-persisted",
@@ -80,17 +78,17 @@
       ],
       "id": "commission-first-operator",
       "mutationOwner": "console-admin-workflow",
-      "requiredActions": ["UPDATE_PASSWORD", "CONFIGURE_TOTP"]
+      "requiredActions": ["UPDATE_PASSWORD"]
     },
     {
       "completionAssertions": [
         "all-fgap-v2-evaluations-match-the-verification-matrix",
+        "customer-admin-user-delete-is-denied-by-F0-N5-product-edge-before-activation",
         "fgap-users-manage-residual-controls-are-active",
         "fgap-groups-manage-residual-controls-are-active",
         "temporary-bootstrap-login-value-destroyed",
         "service-client-values-stored-outside-git",
-        "delegated-admin-can-manage-Admins-members",
-        "delegated-admin-can-only-view-Operators-members",
+        "delegated-admin-can-view-canonical-groups-without-membership-mutation",
         "delegated-service-non-system-group-scopes-are-active",
         "canonical-groups-are-the-only-role-assignment-path",
         "operator-has-no-standing-admin-authority",
@@ -114,6 +112,13 @@
     {
       "expected": "PERMIT",
       "principal": "customer-admin-role",
+      "resource": "user:any",
+      "resourceType": "Users",
+      "scope": "manage"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "customer-admin-role",
       "resource": "group:Admins",
       "resourceType": "Groups",
       "scope": "view"
@@ -133,7 +138,7 @@
       "scope": "view-members"
     },
     {
-      "expected": "PERMIT",
+      "expected": "DENY",
       "principal": "customer-admin-role",
       "resource": "group:Admins",
       "resourceType": "Groups",
@@ -184,14 +189,14 @@
     {
       "expected": "PERMIT",
       "principal": "customer-admin-role",
-      "resource": "user:member-of:Admins",
+      "resource": "user:any",
       "resourceType": "Users",
       "scope": "reset-password"
     },
     {
-      "expected": "DENY",
+      "expected": "PERMIT",
       "principal": "customer-admin-role",
-      "resource": "user:member-of:Operators",
+      "resource": "user:any",
       "resourceType": "Users",
       "scope": "reset-password"
     },
@@ -324,9 +329,10 @@
       "requestingClients": ["console-human-admin", "console-web", "grafana"]
     }
   ],
-  "recoveryMfaEvidence": {
-    "acceptedAmrMethods": ["hwk", "otp", "webauthn", "webauthn-passwordless"],
-    "acrAloneAccepted": false,
-    "requiredAccessTokenClaims": ["amr", "auth_time"]
+  "preGenesisAuthenticationEvidence": {
+    "mandatoryTotp": false,
+    "passwordReference": "pwd",
+    "requiredAccessTokenClaims": ["amr", "auth_time"],
+    "roleAuthorizationRequired": true
   }
 }

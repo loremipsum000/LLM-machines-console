@@ -125,7 +125,7 @@ test("delegated customer Admin cannot gain membership or role-mapping scopes", (
   ]) {
     const seed = clone(artifacts.seed)
     const permission = seed.adminFineGrainedAuthorization.permissions.find(
-      ({ name }) => name === "customer-admin-view-all-users",
+      ({ name }) => name === "customer-admin-manage-all-users",
     )
     permission.scopes.push(scope)
     assert.match(
@@ -135,15 +135,15 @@ test("delegated customer Admin cannot gain membership or role-mapping scopes", (
   }
 })
 
-test("delegated customer Admin can manage Admin members but only view Operator members", () => {
+test("delegated customer Admin can only view canonical group members", () => {
   const permissions = artifacts.seed.adminFineGrainedAuthorization.permissions
   const admins = permissions.find(
-    ({ name }) => name === "customer-admin-manage-Admins-members",
+    ({ name }) => name === "customer-admin-view-Admins-members",
   )
   const operators = permissions.find(
     ({ name }) => name === "customer-admin-view-Operators-members",
   )
-  assert.deepEqual(admins.scopes, ["manage-members", "view", "view-members"])
+  assert.deepEqual(admins.scopes, ["view", "view-members"])
   assert.deepEqual(operators.scopes, ["view", "view-members"])
 
   const seed = clone(artifacts.seed)
@@ -338,7 +338,12 @@ test("the Application FGAP policy cannot escape Clients or grant role mapping", 
 })
 
 test("the broad Users and Groups manage residuals are immutable", () => {
-  const [users, groups] = artifacts.seed.knownResiduals
+  const users = artifacts.seed.knownResiduals.find(
+    ({ id }) => id === "fgap-users-manage-operation-breadth",
+  )
+  const groups = artifacts.seed.knownResiduals.find(
+    ({ id }) => id === "fgap-groups-manage-operation-breadth",
+  )
   assert.equal(users.accepted, true)
   assert.deepEqual(users.inseparableOperations, ["create", "delete", "update"])
   assert.deepEqual(users.compensatingControls, [
@@ -355,7 +360,9 @@ test("the broad Users and Groups manage residuals are immutable", () => {
   assert.deepEqual(groups.inseparableOperations, ["create", "delete", "update"])
 
   const seed = clone(artifacts.seed)
-  seed.knownResiduals[0].compensatingControls.pop()
+  seed.knownResiduals
+    .find(({ id }) => id === "fgap-users-manage-operation-breadth")
+    .compensatingControls.pop()
   assert.match(validateKeycloakSeed(seed).join("\n"), /accepted FGAP residuals/)
 })
 
@@ -508,7 +515,7 @@ test("the Application realm contains no human identity surface", () => {
   )
 })
 
-test("the browser flow exact-binds password and required OTP AMR references", () => {
+test("the browser flow exact-binds password AMR without required OTP", () => {
   const executions = artifacts.seed.authentication.browserFlow.executions
   assert.deepEqual(
     executions
@@ -524,17 +531,15 @@ test("the browser flow exact-binds password and required OTP AMR references", ()
         authenticator: "auth-username-password-form",
         requirement: "REQUIRED",
       },
-      {
-        amrReference: "otp",
-        authenticator: "auth-otp-form",
-        requirement: "REQUIRED",
-      },
     ],
   )
 
   const seed = clone(artifacts.seed)
   seed.authentication.browserFlow.executions.at(-1).amrReference = "mfa"
-  assert.match(validateKeycloakSeed(seed).join("\n"), /browser MFA flow/)
+  assert.match(
+    validateKeycloakSeed(seed).join("\n"),
+    /password-only browser flow/,
+  )
 })
 
 test("the built-in AMR mapper and basic auth_time mapper are exact", () => {
@@ -691,36 +696,37 @@ test("Application metadata and runtime objects are exact", () => {
   )
 })
 
-test("human recovery requires auth_time and AMR evidence, not ACR alone", () => {
+test("password-only human authentication requires auth_time and pwd AMR evidence", () => {
   const seed = clone(artifacts.seed)
-  seed.authentication.humanMfa.accessTokenEvidence = {
-    acrOnlySufficient: true,
-    requiredClaims: ["acr"],
-  }
+  seed.authentication.humanAuthentication.accessTokenEvidence.requiredClaims = [
+    "acr",
+  ]
+  seed.authentication.humanAuthentication.accessTokenEvidence.requiredPasswordReference =
+    "otp"
   assert.match(
     validateKeycloakSeed(seed).join("\n"),
-    /MFA access-token claims|ACR/,
+    /human authentication access-token claims|password AMR reference/,
   )
 
   const plan = clone(artifacts.commissioning)
-  plan.recoveryMfaEvidence.acrAloneAccepted = true
-  plan.recoveryMfaEvidence.requiredAccessTokenClaims = ["acr"]
+  plan.preGenesisAuthenticationEvidence.requiredAccessTokenClaims = ["acr"]
+  plan.preGenesisAuthenticationEvidence.passwordReference = "otp"
   assert.match(
     validateCommissioningPlan(plan).join("\n"),
-    /access-token claims|ACR/,
+    /authentication claims|password AMR reference/,
   )
 })
 
-test("Operator MFA and last-Operator commissioning assertions are mandatory", () => {
+test("password-only profile and last-Operator assertions are mandatory", () => {
   const seed = clone(artifacts.seed)
-  seed.authentication.humanMfa.requiredForRealmRoles = ["admin"]
-  assert.match(validateKeycloakSeed(seed).join("\n"), /human MFA roles/)
+  seed.authentication.humanAuthentication.mandatoryTotp = true
+  assert.match(validateKeycloakSeed(seed).join("\n"), /mandatory TOTP state/)
 
   const plan = clone(artifacts.commissioning)
   const operatorPhase = plan.phases.find(
     ({ id }) => id === "commission-first-operator",
   )
-  operatorPhase.requiredActions = ["UPDATE_PASSWORD"]
+  operatorPhase.requiredActions = ["UPDATE_PASSWORD", "CONFIGURE_TOTP"]
   operatorPhase.completionAssertions =
     operatorPhase.completionAssertions.filter(
       (item) => item !== "last-enabled-operator-protection-passed",
@@ -733,7 +739,7 @@ test("Operator MFA and last-Operator commissioning assertions are mandatory", ()
 
 test("the FGAP live-evaluation matrix is exact and includes negative controls", () => {
   const matrix = artifacts.commissioning.fgapV2EvaluationMatrix
-  assert.equal(matrix.length, 30)
+  assert.equal(matrix.length, 31)
   assert.equal(matrix.filter(({ expected }) => expected === "DENY").length, 14)
   assert.deepEqual(
     matrix

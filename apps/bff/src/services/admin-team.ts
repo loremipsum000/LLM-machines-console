@@ -200,7 +200,6 @@ export async function createAdminTeamMember(
         await keycloak.writeAfterFirst(() =>
           prepared.service.client.executeEmailActions(userId, [
             "UPDATE_PASSWORD",
-            "CONFIGURE_TOTP",
           ]),
         )
       }
@@ -254,10 +253,7 @@ export async function sendAdminTeamInvite(
     apply: async (prepared, keycloak) => {
       await keycloak.firstWrite(
         () =>
-          prepared.service.client.executeEmailActions(id, [
-            "UPDATE_PASSWORD",
-            "CONFIGURE_TOTP",
-          ]),
+          prepared.service.client.executeEmailActions(id, ["UPDATE_PASSWORD"]),
         id,
       )
       return { member: prepared.member, status: "sent" }
@@ -679,7 +675,6 @@ export async function commitAdminTeamCsvImport(
             await keycloak.writeAfterFirst(() =>
               prepared.service.client.executeEmailActions(userId, [
                 "UPDATE_PASSWORD",
-                "CONFIGURE_TOTP",
               ]),
             )
           }

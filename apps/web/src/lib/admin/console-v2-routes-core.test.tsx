@@ -233,26 +233,9 @@ describe("Overview Console route", () => {
 })
 
 describe("retained route boundaries", () => {
-  it("requires fresh MFA before rendering the Application creation form", async () => {
+  it("renders the Application creation form for an Admin without MFA", async () => {
     mocks.getCurrentConsoleSession.mockResolvedValue(
       activeConsoleSession("admin"),
-    )
-
-    await expect(
-      renderApplicationsConsoleRoute({ section: ["apps", "new"] }),
-    ).rejects.toThrow(
-      "redirect:/auth/elevate?action=applications.create_delete&returnTo=%2Fapplications%2Fapps%2Fnew",
-    )
-    expect(mocks.redirect).toHaveBeenCalledWith(
-      "/auth/elevate?action=applications.create_delete&returnTo=%2Fapplications%2Fapps%2Fnew",
-    )
-    expect(mocks.getAdminInference).not.toHaveBeenCalled()
-    expect(mocks.applicationsV2Experience).not.toHaveBeenCalled()
-  })
-
-  it("renders the Application creation form after fresh MFA", async () => {
-    mocks.getCurrentConsoleSession.mockResolvedValue(
-      activeConsoleSession("admin", new Date().toISOString()),
     )
     mocks.getAdminInference.mockResolvedValue({ models: [] })
 

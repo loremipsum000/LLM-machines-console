@@ -234,9 +234,7 @@ try {
   )
   sensitiveValues.push(
     keycloakControl.credentials.admin.password,
-    keycloakControl.credentials.admin.otpSecret,
     keycloakControl.credentials.operator.password,
-    keycloakControl.credentials.operator.otpSecret,
     keycloakControl.credentials.bffService,
     keycloakControl.credentials.humanAdmin,
     keycloakControl.credentials.oidcClient,

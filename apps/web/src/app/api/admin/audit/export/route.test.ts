@@ -118,7 +118,7 @@ describe("Admin audit export proxy", () => {
     })
   })
 
-  it("requires fresh MFA before exporting and preserves the exact safe request", async () => {
+  it("authorizes Admin export by role without MFA elevation", async () => {
     mocks.getCurrentConsoleSession.mockResolvedValue({
       ...activeConsoleSession("admin"),
       session: {
@@ -127,18 +127,28 @@ describe("Admin audit export proxy", () => {
       },
     })
 
+    mocks.getBffRequest.mockResolvedValue({
+      baseUrl: "http://bff.test",
+      headers: { Authorization: "Bearer service-key" },
+      state: "active",
+    })
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("signed-export", {
+        headers: { "Content-Type": "application/jose" },
+        status: 200,
+      }),
+    )
+
     const response = await GET(
       new Request(
         "https://console.example.test/api/admin/audit/export?format=json&from=2026-07-01T08%3A00&to=2026-08-01T08%3A00",
       ),
     )
 
-    expect(response.status).toBe(303)
-    expect(response.headers.get("location")).toBe(
-      "https://console.example.test/auth/elevate?action=activity_audit.export&returnTo=%2Fapi%2Fadmin%2Faudit%2Fexport%3Fformat%3Djson%26from%3D2026-07-01T08%253A00%26to%3D2026-08-01T08%253A00",
-    )
-    expect(response.headers.get("cache-control")).toBe("no-store")
-    expect(mocks.getBffRequest).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe("signed-export")
+    expect(response.headers.get("location")).toBeNull()
+    expect(mocks.getBffRequest).toHaveBeenCalledTimes(1)
   })
 
   it("rejects unsupported formats", async () => {

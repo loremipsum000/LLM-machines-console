@@ -106,7 +106,7 @@ describe("Console session HTTP boundary", () => {
     expect(internal.headers["cache-control"]).toContain("no-store")
   })
 
-  it("sets a 30-minute sliding opaque cookie after callback", async () => {
+  it("sets an eight-hour sliding opaque cookie after callback", async () => {
     const server = buildServer(serviceStub as unknown as ConsoleSessionService)
     const response = await server.inject({
       headers: { cookie: `__Host-llm-machines-login=${loginHandle}` },
@@ -116,7 +116,7 @@ describe("Console session HTTP boundary", () => {
     const cookies = response.headers["set-cookie"]
     expect(response.statusCode).toBe(303)
     expect(cookies).toContain(
-      `__Host-llm-machines-session=${sessionHandle}; Path=/; Max-Age=1800; HttpOnly; Secure; SameSite=Lax`,
+      `__Host-llm-machines-session=${sessionHandle}; Path=/; Max-Age=28800; HttpOnly; Secure; SameSite=Lax`,
     )
     expect(JSON.stringify(cookies)).not.toMatch(/server-only-access|refresh-/)
   })

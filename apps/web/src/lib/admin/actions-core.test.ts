@@ -117,11 +117,13 @@ describe("inference-core Admin actions", () => {
       headers: new Headers({ authorization: "Bearer admin" }),
       state: "active",
     })
+    mocks.getCurrentConsoleSession.mockClear()
+    mocks.getBffRequest.mockClear()
     mocks.redirect.mockClear()
     mocks.revalidatePath.mockClear()
   })
 
-  it("routes stale high-risk actions through the exact MFA elevation surface", async () => {
+  it("authorizes Admin mutations by role without MFA elevation", async () => {
     mocks.getCurrentConsoleSession.mockResolvedValue({
       ...activeConsoleSession("admin"),
       session: {
@@ -129,7 +131,12 @@ describe("inference-core Admin actions", () => {
         mfaVerifiedAt: "2000-01-01T00:00:00.000Z",
       },
     })
-    const fetchSpy = vi.fn()
+    const fetchSpy = vi.fn(async () =>
+      Response.json(
+        { detail: "Identity service temporarily unavailable." },
+        { status: 503 },
+      ),
+    )
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const formData = new FormData()
     formData.set("appId", connectedApp.id)
@@ -145,10 +152,12 @@ describe("inference-core Admin actions", () => {
         },
         formData,
       ),
-    ).rejects.toThrow(
-      "redirect:/auth/elevate?action=applications.credentials.test_rotate_revoke&returnTo=%2Fapplications",
-    )
-    expect(fetchSpy).not.toHaveBeenCalled()
+    ).resolves.toMatchObject({
+      error: "Identity service temporarily unavailable.",
+      status: "failed",
+    })
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(mocks.redirect).not.toHaveBeenCalled()
   })
 
   it("hands a terminal capability check to the expired-session login flow", async () => {

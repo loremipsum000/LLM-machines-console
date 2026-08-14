@@ -3,7 +3,6 @@ import { spawn, spawnSync } from "node:child_process"
 import {
   X509Certificate,
   createHash,
-  createHmac,
   createPrivateKey,
   createPublicKey,
   randomBytes,
@@ -274,9 +273,7 @@ async function runBrowserSessionProof() {
       )
       sensitiveValues.push(
         credentials.admin.password,
-        credentials.admin.otpSecret,
         credentials.operator.password,
-        credentials.operator.otpSecret,
         credentials.bffService,
         credentials.liteLlm,
         credentials.oidcClient,
@@ -1454,12 +1451,6 @@ async function completeIdentityLogin(page, userCredentials) {
     )
     await username.fill(userCredentials.username)
     await page.locator("#password").fill(userCredentials.password)
-    await page.locator("#kc-login").click()
-    const otp = page.locator("#otp")
-    await otp.waitFor({ timeout: 20_000 })
-    await otp.fill(
-      totp(userCredentials.otpSecret, await identityEpochMilliseconds()),
-    )
     await page.locator("#kc-login").click()
     try {
       await navigation.waitFor({ timeout: 20_000 })
@@ -3003,7 +2994,7 @@ async function proveApplicationConsoleFlow({
       tokensVisible: visibleTokens,
       ...(streaming ? { streaming } : {}),
     },
-    mfaElevation: "passed",
+    mutationAuthorization: "ADMIN_ROLE_PASSWORD_SESSION",
     oneTimeReveal: "passed",
     ...(lifecycle ? { lifecycle } : {}),
   }
@@ -4814,7 +4805,6 @@ async function holdFounderUat({
 
 function founderCredential(userCredentials) {
   return {
-    otpSecret: userCredentials.otpSecret,
     password: userCredentials.password,
     role: userCredentials.role,
     username: userCredentials.username,
@@ -5297,44 +5287,6 @@ function keycloakControlFromEnvironment() {
   }
 }
 
-async function identityEpochMilliseconds() {
-  const deadline = performance.now() + 35_000
-  while (performance.now() < deadline) {
-    const epochSeconds = identityEpochSeconds()
-    const periodPosition = epochSeconds % 30
-    if (periodPosition >= 5 && periodPosition <= 20) {
-      return epochSeconds * 1_000
-    }
-    await delay(250)
-  }
-  throw new Error("F0-I1 identity clock did not reach a safe TOTP window.")
-}
-
-function identityEpochSeconds() {
-  assert.ok(keycloakControl)
-  const result = spawnSync(
-    "docker",
-    [
-      "--context",
-      keycloakControl.dockerContext,
-      "exec",
-      keycloakControl.container,
-      "date",
-      "+%s",
-    ],
-    {
-      encoding: "utf8",
-      env: { LANG: "C", LC_ALL: "C", PATH: process.env.PATH ?? "" },
-      maxBuffer: 1024 * 1024,
-    },
-  )
-  const epochSeconds = Number.parseInt(result.stdout.trim(), 10)
-  if (result.status !== 0 || !Number.isSafeInteger(epochSeconds)) {
-    throw new Error("F0-I1 could not read the disposable identity clock.")
-  }
-  return epochSeconds
-}
-
 function pathIsInside(parent, candidate) {
   const fromParent = relative(parent, candidate)
   return (
@@ -5688,19 +5640,6 @@ function sessionCookie(cookies) {
 
 function opaqueValue() {
   return randomBytes(32).toString("base64url")
-}
-
-function totp(secret, epochMilliseconds = Date.now()) {
-  assert.equal(typeof secret, "string")
-  const counter = Math.floor(epochMilliseconds / 30_000)
-  const buffer = Buffer.alloc(8)
-  buffer.writeBigUInt64BE(BigInt(counter))
-  const digest = createHmac("sha256", Buffer.from(secret, "utf8"))
-    .update(buffer)
-    .digest()
-  const offset = digest.at(-1) & 0x0f
-  const value = (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000
-  return value.toString().padStart(6, "0")
 }
 
 function delay(milliseconds) {

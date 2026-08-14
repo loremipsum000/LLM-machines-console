@@ -1,0 +1,818 @@
+{
+  "schema": "llm-machines.f0-n3-keycloak-native-characterization.v1",
+  "status": "PASS",
+  "version": "26.7.0",
+  "image": {
+    "index": "sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13",
+    "platform": "linux/amd64",
+    "platformManifest": "sha256:26939e1318d6f008fc2ee6e10cec1cf8f1ba8a21846c1bc81b91ed0506bc2a7a"
+  },
+  "authority": {
+    "productionOrigin": "https://keycloak.lab.llm-machines.com",
+    "adminConsolePath": "/keycloak/admin/llm-machines/console/",
+    "nativeIngress": "INACTIVE_PENDING_F0_N5",
+    "directListener": "LOOPBACK_ONLY_CHARACTERIZATION"
+  },
+  "authentication": {
+    "authorizationCode": true,
+    "pkceS256": true,
+    "mandatoryTotp": false,
+    "passwordOnly": true,
+    "brandedTheme": "llm-machines",
+    "nativeSession": true,
+    "consoleSessionForwarded": false,
+    "subjectBound": {
+      "adminEventDetailsRetained": false,
+      "authenticatedUserIdMatched": true,
+      "createAndUpdateEventsBound": true,
+      "mechanism": "KEYCLOAK_ADMIN_EVENT_AUTH_DETAILS_USER_ID"
+    },
+    "idleSeconds": 28800,
+    "maximumSeconds": 86400
+  },
+  "theme": {
+    "fileCount": 25,
+    "inventorySha256": "ec32ce8b4f5f6d1de830ba2285bf51f90721d9cce386f5ebbd351108beb4ae45",
+    "name": "llm-machines"
+  },
+  "authorization": {
+    "Admin": {
+      "approvedOperations": {
+        "usersList": 200,
+        "userCreate": 201,
+        "userUpdate": 204,
+        "passwordReset": 204,
+        "sessionsList": 200,
+        "sessionInvalidateUnknown": 404,
+        "upstreamUserDelete": 204
+      },
+      "deniedOperations": {
+        "masterRealm": 403,
+        "unrelatedRealm": 404,
+        "realmCreation": 403,
+        "clients": 403,
+        "identityProviders": 403,
+        "roles": 403,
+        "groupMutation": 403,
+        "impersonation": 403,
+        "roleMapping": 403,
+        "realmMutation": 403
+      }
+    },
+    "Operator": {
+      "adminConsole": "DENY",
+      "browserDenialPage": true,
+      "logout": "NATIVE_SESSION_CLEARED",
+      "usersListStatus": 403
+    },
+    "masterRealm": "DENY",
+    "unrelatedRealm": "DENY",
+    "serverAdministrator": false
+  },
+  "browser": "151.0.7922.108",
+  "cookies": [
+    {
+      "domain": "keycloak.lab.llm-machines.com",
+      "httpOnly": true,
+      "name": "AUTH_SESSION_ID",
+      "path": "/keycloak/realms/llm-machines/",
+      "sameSite": "None",
+      "secure": true
+    },
+    {
+      "domain": "keycloak.lab.llm-machines.com",
+      "httpOnly": false,
+      "name": "KC_AUTH_SESSION_HASH",
+      "path": "/keycloak/realms/llm-machines/",
+      "sameSite": "None",
+      "secure": true
+    },
+    {
+      "domain": "keycloak.lab.llm-machines.com",
+      "httpOnly": true,
+      "name": "KEYCLOAK_IDENTITY",
+      "path": "/keycloak/realms/llm-machines/",
+      "sameSite": "None",
+      "secure": true
+    },
+    {
+      "domain": "keycloak.lab.llm-machines.com",
+      "httpOnly": false,
+      "name": "KEYCLOAK_SESSION",
+      "path": "/keycloak/realms/llm-machines/",
+      "sameSite": "None",
+      "secure": true
+    }
+  ],
+  "csrfAndCors": {
+    "crossOriginBearerMutationObservedStatus": 403,
+    "edgeRequirement": "The Product edge must preserve reviewed native Origin behavior and never rely on browser Origin as the authorization boundary.",
+    "bearerSubjectBindingRequired": true
+  },
+  "logout": "NATIVE_SESSION_CLEARED",
+  "restart": "SERVER_RESTARTED_PERSISTENT_REALM_READY_NATIVE_SESSION_MUST_REVALIDATE",
+  "outage": "IDENTITY_UNAVAILABLE_WITHOUT_FALLBACK_OR_ALTERNATE_AUTHORITY",
+  "routeInventory": [
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/admin/llm-machines/console/",
+      "queryKeys": ["code", "iss", "session_state", "state"],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type", "x-frame-options"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/admin/llm-machines/console/whoami",
+      "queryKeys": ["currentRealm"],
+      "requestHeaders": ["accept", "authorization"],
+      "responseHeaders": ["content-type", "x-frame-options"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/admin/realms/llm-machines",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "authorization"],
+      "responseHeaders": ["content-type", "x-frame-options"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/admin/serverinfo",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "authorization"],
+      "responseHeaders": ["content-type", "x-frame-options"],
+      "responseStatuses": [200, 403],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "POST",
+      "path": "/keycloak/realms/llm-machines/login-actions/authenticate",
+      "queryKeys": [
+        "client_data",
+        "client_id",
+        "execution",
+        "session_code",
+        "tab_id"
+      ],
+      "requestHeaders": ["accept", "content-type", "cookie", "origin"],
+      "responseHeaders": ["location", "set-cookie", "x-frame-options"],
+      "responseStatuses": [302],
+      "redirectOrigins": [
+        "https://keycloak.lab.llm-machines.com/keycloak/admin/llm-machines/console/"
+      ]
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/realms/llm-machines/protocol/openid-connect/3p-cookies/step1.html",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "cookie"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/realms/llm-machines/protocol/openid-connect/3p-cookies/step2.html",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "cookie"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/realms/llm-machines/protocol/openid-connect/auth",
+      "queryKeys": [
+        "client_id",
+        "code_challenge",
+        "code_challenge_method",
+        "nonce",
+        "redirect_uri",
+        "response_mode",
+        "response_type",
+        "scope",
+        "state"
+      ],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type", "set-cookie", "x-frame-options"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/realms/llm-machines/protocol/openid-connect/login-status-iframe.html",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "cookie"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init",
+      "queryKeys": ["client_id", "origin"],
+      "requestHeaders": ["accept", "cookie"],
+      "responseHeaders": [],
+      "responseStatuses": [204],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/realms/llm-machines/protocol/openid-connect/logout",
+      "queryKeys": ["client_id", "id_token_hint", "post_logout_redirect_uri"],
+      "requestHeaders": ["accept", "cookie"],
+      "responseHeaders": ["location", "set-cookie"],
+      "responseStatuses": [302],
+      "redirectOrigins": [
+        "https://keycloak.lab.llm-machines.com/keycloak/admin/llm-machines/console/"
+      ]
+    },
+    {
+      "authority": "identity",
+      "method": "POST",
+      "path": "/keycloak/realms/llm-machines/protocol/openid-connect/token",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "content-type", "cookie", "origin"],
+      "responseHeaders": ["content-type", "x-frame-options"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/llm-machines/admin/en",
+      "queryKeys": [],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type", "x-frame-options"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/ActionListItem-BJe01BGx.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/ActionListItem-QYuNxDT2.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/Brand-aJQZaPjg.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/Brand-Bc-ckUOB.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/ClientSelect-DBaQyvFN.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/CodeEditor-BUDNOFQn.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/CodeEditor-YFvMvTG9.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/ConfirmDialog-lig2Nkmo.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/constants-BclHbWtx.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/Dashboard-BZlCREjn.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/Dashboard-DKarnTQ7.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/DataListItemRow-0rnekGZx.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/DataListItemRow-wvQMeUKf.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/DescriptionListTerm-CnWIgpjt.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/DescriptionListTerm-DesQLGah.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/DynamicComponents-DniN0CZn.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/DynamicComponents-tOm9a0eM.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/ExpandableSection-Bbwii8N8.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/ExpandableSection-Dg4Hu-zD.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/GroupPickerDialog-CULdDAp-.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/GroupPickerDialog-Dl_Lyzxi.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/IdentityProviderSelect-QjkpFQc8.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/main-BbID33M6.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200, 304],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/main-DmoViYol.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200, 304],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/MultiLineInput-CqMpLuMw.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/PageHandler-CFi6gCnw.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/RedHatDisplay-Medium-C1BzJLzv.woff2",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin", "referer"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/RedHatText-Medium-CFPgPIaW.woff2",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin", "referer"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/RedHatText-Regular-BDARZx4I.woff2",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin", "referer"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/RoleMapping-BAjxIZNK.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/RoleMapping-Cz6tDcfR.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/RoutableTabs-D_RiO5M1.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/Tabs-ViNVmBYo.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/Tabs-zsKwB_A5.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/translationFormatter-CPB2IxCD.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/useLocaleSort-BzSBnJAy.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/assets/useParams-Dfu2nytI.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/favicon.svg",
+      "queryKeys": [],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/icon.svg",
+      "queryKeys": [],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/admin/keycloak.v2/logo.svg",
+      "queryKeys": [],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/common/keycloak/vendor/patternfly-v5/assets/fonts/webfonts/fa-solid-900.woff2",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/common/keycloak/vendor/patternfly-v5/patternfly-addons.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/common/keycloak/vendor/patternfly-v5/patternfly.min.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/common/keycloak/vendor/react-dom/react-dom.production.min.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/common/keycloak/vendor/react/react-jsx-runtime.production.min.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/common/keycloak/vendor/react/react.production.min.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/login/llm-machines/css/login.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/login/llm-machines/css/styles.css",
+      "queryKeys": [],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/login/llm-machines/fonts/urbanist/Urbanist-Bold.ttf",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/login/llm-machines/fonts/urbanist/Urbanist-Regular.ttf",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/login/llm-machines/fonts/urbanist/Urbanist-SemiBold.ttf",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/login/llm-machines/img/llm-machines-logo-full.png",
+      "queryKeys": [],
+      "requestHeaders": ["accept"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/login/llm-machines/js/authChecker.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    },
+    {
+      "authority": "identity",
+      "method": "GET",
+      "path": "/keycloak/resources/ox1dd/login/llm-machines/js/passwordVisibility.js",
+      "queryKeys": [],
+      "requestHeaders": ["accept", "origin"],
+      "responseHeaders": ["content-type"],
+      "responseStatuses": [200],
+      "redirectOrigins": []
+    }
+  ],
+  "layeredDeleteControl": {
+    "upstreamStatus": 204,
+    "requiredEdgeStatus": 403,
+    "requiredMethod": "DELETE",
+    "requiredPath": "/keycloak/admin/realms/llm-machines/users/{uuid}",
+    "activationBlockedUntilEdgeProof": true
+  },
+  "consoleSessionForwarded": false,
+  "credentialMaterialPrinted": false,
+  "credentialsRetained": false,
+  "runtimeQualified": false
+}

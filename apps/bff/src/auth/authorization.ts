@@ -2,7 +2,6 @@ import {
   type EmergencyRecoveryResolution,
   type InferenceCoreCapability,
   type InferenceCoreHumanRole,
-  consoleHighRiskActions,
   emergencyRecoveryApprovedMfaMethods,
   emergencyRecoveryResolutionSchema,
   inferenceCoreHumanRoleSchema,
@@ -112,10 +111,7 @@ const legacyForwardingHeaders = [
   "x-llm-machines-user-roles",
   "x-llm-machines-user-groups",
 ] as const
-const highRiskCapabilities = new Set<string>(consoleHighRiskActions)
 const approvedMfaMethods = new Set<string>(emergencyRecoveryApprovedMfaMethods)
-const mfaFreshnessMs = 5 * 60 * 1000
-const mfaFutureClockSkewMs = 60 * 1000
 
 export function registerAuthorization(
   server: FastifyInstance,
@@ -212,19 +208,6 @@ function authorizationHook(
     if (!actorSatisfiesPolicy(policyActor, policy)) {
       await auditDenial(request, liveActor.subject)
       return forbidden(reply, policyDenialDetail(policy))
-    }
-
-    if (policy.kind === "capability" && requiresFreshMfa(policyActor, policy)) {
-      await auditDenial(request, liveActor.subject)
-      return reply.code(403).send({
-        type: "about:blank",
-        title: "MFA elevation required",
-        status: 403,
-        detail:
-          "Fresh multi-factor authentication is required for this action.",
-        code: "mfa_elevation_required",
-        action: policy.capability,
-      })
     }
 
     request.actor = policyActor
@@ -326,28 +309,6 @@ function actorSatisfiesPolicy(
   return policy.kind === "admin-only"
     ? actor.role === "admin"
     : roleHasInferenceCoreCapability(policyRole, policy.capability)
-}
-
-function requiresFreshMfa(
-  actor: Actor,
-  policy: HumanRouteAuthorizationPolicy,
-): boolean {
-  if (
-    actor.authMode === "service-forwarded" ||
-    policy.kind !== "capability" ||
-    !highRiskCapabilities.has(policy.capability)
-  ) {
-    return false
-  }
-  const verifiedAt = actor.mfaVerifiedAt?.getTime()
-  if (verifiedAt === undefined || !Number.isFinite(verifiedAt)) {
-    return true
-  }
-  const currentTime = Date.now()
-  return (
-    verifiedAt < currentTime - mfaFreshnessMs ||
-    verifiedAt > currentTime + mfaFutureClockSkewMs
-  )
 }
 
 function policyDenialDetail(policy: HumanRouteAuthorizationPolicy): string {
