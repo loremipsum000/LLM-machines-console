@@ -497,7 +497,7 @@ describe("inference-core Keycloak Admin boundary", () => {
     })
   })
 
-  it("requires MFA enrollment on every newly created human identity", async () => {
+  it("creates human identities without mandatory TOTP enrollment", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -524,7 +524,7 @@ describe("inference-core Keycloak Admin boundary", () => {
     ).resolves.toBe("user-1")
     expect(requestBody(fetchMock, 1)).toMatchObject({
       enabled: false,
-      requiredActions: ["CONFIGURE_TOTP"],
+      requiredActions: [],
     })
   })
 

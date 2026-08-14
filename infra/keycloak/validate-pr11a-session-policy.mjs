@@ -23,6 +23,7 @@ const exactPolicy = {
   metadata: {
     changePackage: "R1-S1",
     containsCredentials: false,
+    currentProfileOwner: "F0-N3",
     parentPackage: "PR-11A",
     runtimeQualification: "NOT_EVALUATED_RUNTIME",
     runtimeQualificationOwner: "Q0",
@@ -39,8 +40,8 @@ const exactPolicy = {
     offlineBrowserTokens: false,
     refreshTokenMaxReuse: 0,
     revokeRefreshToken: true,
-    ssoSessionIdleSeconds: 1800,
-    ssoSessionMaxSeconds: 28800,
+    ssoSessionIdleSeconds: 28800,
+    ssoSessionMaxSeconds: 86400,
   },
   consoleClient: {
     authorizationCodeFlow: true,
@@ -65,21 +66,20 @@ const exactPolicy = {
       sessionRequired: true,
     },
   },
-  mfa: {
-    acceptedAmrMethods: ["hwk", "otp", "webauthn", "webauthn-passwordless"],
-    adminRequired: true,
-    exactHighRiskActions,
-    freshAuthTimeRequired: true,
-    freshnessSeconds: 300,
-    highRiskElevationRequired: true,
-    operatorSignInMfa: true,
+  preGenesisAuthentication: {
+    mandatoryTotp: false,
+    passwordOnly: true,
+    passwordReference: "pwd",
+    requiredAccessTokenClaims: ["amr", "auth_time"],
+    roleAuthorizationRequired: true,
+    roleProtectedActions: exactHighRiskActions,
   },
   sourceBoundary: {
     browserReceivesAccessToken: false,
     browserReceivesRefreshToken: false,
     credentialsInSource: false,
     liveKeycloakMutation: false,
-    nativeCustomerKeycloakAdminConsole: false,
+    nativeCustomerKeycloakAdminConsole: "INACTIVE_PENDING_F0_N5",
     sourceBehaviorRequired: [
       "concurrent-refresh-serialization",
       "expired-and-revoked-session-classification",
@@ -98,7 +98,7 @@ const exactPolicy = {
       "live-client-policy",
       "live-offline-token-rejection",
       "live-refresh-reuse-detection",
-      "mfa-enforcement",
+      "password-only-role-authorization",
     ],
   },
 }
@@ -199,20 +199,17 @@ export function validatePr11aSessionPolicy(policy, seed) {
     }
   }
 
-  const humanMfa = seed?.authentication?.humanMfa
+  const human = seed?.authentication?.humanAuthentication
   if (
-    !sameJson(
-      humanMfa?.acceptedAmrMethods,
-      exactPolicy.mfa.acceptedAmrMethods,
-    ) ||
-    !sameJson(humanMfa?.requiredForRealmRoles, ["admin", "operator"]) ||
-    !sameJson(humanMfa?.accessTokenEvidence?.requiredClaims, [
-      "amr",
-      "auth_time",
-    ]) ||
-    humanMfa?.accessTokenEvidence?.acrOnlySufficient !== false
+    human?.mandatoryTotp !== false ||
+    human?.passwordOnlyPreGenesis !== true ||
+    human?.roleAuthorizationRequired !== true ||
+    human?.accessTokenEvidence?.requiredPasswordReference !== "pwd" ||
+    !sameJson(human?.accessTokenEvidence?.requiredClaims, ["amr", "auth_time"])
   ) {
-    errors.push("human MFA evidence differs from the R1-S1 source contract")
+    errors.push(
+      "human password-only evidence differs from the F0-N3 session profile",
+    )
   }
 
   const optionalScopes = seed?.offlineAccessPolicy?.retainedClientOptionalScopes
@@ -232,7 +229,7 @@ export function validatePr11aSessionPolicy(policy, seed) {
   }
 
   if (
-    policy?.mfa?.exactHighRiskActions?.some?.((action) =>
+    policy?.preGenesisAuthentication?.roleProtectedActions?.some?.((action) =>
       /^(expert_access|grafana|litellm|vendor_maintenance)\./.test(action),
     )
   ) {

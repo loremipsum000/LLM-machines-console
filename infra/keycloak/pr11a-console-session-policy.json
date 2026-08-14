@@ -4,6 +4,7 @@
   "metadata": {
     "changePackage": "R1-S1",
     "containsCredentials": false,
+    "currentProfileOwner": "F0-N3",
     "parentPackage": "PR-11A",
     "runtimeQualification": "NOT_EVALUATED_RUNTIME",
     "runtimeQualificationOwner": "Q0",
@@ -19,8 +20,8 @@
     "offlineBrowserTokens": false,
     "refreshTokenMaxReuse": 0,
     "revokeRefreshToken": true,
-    "ssoSessionIdleSeconds": 1800,
-    "ssoSessionMaxSeconds": 28800
+    "ssoSessionIdleSeconds": 28800,
+    "ssoSessionMaxSeconds": 86400
   },
   "consoleClient": {
     "authorizationCodeFlow": true,
@@ -45,10 +46,13 @@
       "sessionRequired": true
     }
   },
-  "mfa": {
-    "acceptedAmrMethods": ["hwk", "otp", "webauthn", "webauthn-passwordless"],
-    "adminRequired": true,
-    "exactHighRiskActions": [
+  "preGenesisAuthentication": {
+    "mandatoryTotp": false,
+    "passwordOnly": true,
+    "passwordReference": "pwd",
+    "requiredAccessTokenClaims": ["amr", "auth_time"],
+    "roleAuthorizationRequired": true,
+    "roleProtectedActions": [
       "activity_audit.export",
       "applications.create_delete",
       "applications.credentials.test_rotate_revoke",
@@ -59,18 +63,14 @@
       "team.local_password.manage",
       "team.users_roles.manage",
       "updates.apply"
-    ],
-    "freshAuthTimeRequired": true,
-    "freshnessSeconds": 300,
-    "highRiskElevationRequired": true,
-    "operatorSignInMfa": true
+    ]
   },
   "sourceBoundary": {
     "browserReceivesAccessToken": false,
     "browserReceivesRefreshToken": false,
     "credentialsInSource": false,
     "liveKeycloakMutation": false,
-    "nativeCustomerKeycloakAdminConsole": false,
+    "nativeCustomerKeycloakAdminConsole": "INACTIVE_PENDING_F0_N5",
     "sourceBehaviorRequired": [
       "concurrent-refresh-serialization",
       "expired-and-revoked-session-classification",
@@ -89,7 +89,7 @@
       "live-client-policy",
       "live-offline-token-rejection",
       "live-refresh-reuse-detection",
-      "mfa-enforcement"
+      "password-only-role-authorization"
     ]
   }
 }

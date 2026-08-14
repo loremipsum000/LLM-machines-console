@@ -29,8 +29,7 @@ export const applicationCommissioningPlanPath = fileURLToPath(
 )
 
 const expectedQueryRoles = ["query-groups", "query-users"]
-const acceptedMfaMethods = ["hwk", "otp", "webauthn", "webauthn-passwordless"]
-const requiredMfaClaims = ["amr", "auth_time"]
+const requiredAuthenticationClaims = ["amr", "auth_time"]
 const forbiddenCoarseAdminRoles = new Set([
   "create-client",
   "impersonation",
@@ -103,31 +102,25 @@ const expectedOfflineAccessPolicy = {
 }
 
 const expectedBrowserFlow = {
-  alias: "llm-machines-browser-mfa",
+  alias: "llm-machines-browser-password",
   binding: "browser",
   builtIn: false,
   executions: [
     {
       amrReference: null,
       authenticator: "auth-cookie",
-      path: "llm-machines-browser-mfa/Cookie",
+      path: "llm-machines-browser-password/Cookie",
       requirement: "ALTERNATIVE",
     },
     {
-      flowAlias: "llm-machines-browser-mfa-forms",
-      path: "llm-machines-browser-mfa/Forms",
+      flowAlias: "llm-machines-browser-password-forms",
+      path: "llm-machines-browser-password/Forms",
       requirement: "ALTERNATIVE",
     },
     {
       amrReference: "pwd",
       authenticator: "auth-username-password-form",
-      path: "llm-machines-browser-mfa/Forms/Username Password Form",
-      requirement: "REQUIRED",
-    },
-    {
-      amrReference: "otp",
-      authenticator: "auth-otp-form",
-      path: "llm-machines-browser-mfa/Forms/OTP Form",
+      path: "llm-machines-browser-password/Forms/Username Password Form",
       requirement: "REQUIRED",
     },
   ],
@@ -331,15 +324,15 @@ const expectedFgapPolicies = [
 
 const expectedFgapPermissions = [
   fgapPermission(
-    "customer-admin-view-all-users",
+    "customer-admin-manage-all-users",
     "Users",
-    ["view"],
+    ["manage", "view"],
     ["customer-admin-role"],
   ),
   fgapPermission(
-    "customer-admin-manage-Admins-members",
+    "customer-admin-view-Admins-members",
     "Groups",
-    ["manage-members", "view", "view-members"],
+    ["view", "view-members"],
     ["customer-admin-role"],
     ["group:Admins"],
   ),
@@ -409,6 +402,20 @@ const expectedIntentionallyUninstalledScopes = [
 const expectedResiduals = [
   {
     accepted: true,
+    appliesToPermission: "customer-admin-manage-all-users",
+    compensatingControls: [
+      "native-ingress-inactive-until-F0-N5",
+      "product-edge-denies-user-delete-by-exact-method-and-path",
+      "direct-Keycloak-port-denied-to-customer-networks",
+      "no-bypass-proof-required-before-activation",
+    ],
+    id: "customer-admin-users-manage-delete-residual",
+    inseparableOperations: ["create", "delete", "update"],
+    reason:
+      "Keycloak 26.7.0 FGAP v2 Users/manage does not isolate create and update from delete",
+  },
+  {
+    accepted: true,
     appliesToPermission: "console-human-admin-manage-all-users",
     compensatingControls: [
       "service-credential-isolated-from-customer-humans",
@@ -438,6 +445,7 @@ const expectedResiduals = [
 
 const expectedFgapEvaluationMatrix = [
   evaluation("customer-admin-role", "Users", "user:any", "view", "PERMIT"),
+  evaluation("customer-admin-role", "Users", "user:any", "manage", "PERMIT"),
   evaluation("customer-admin-role", "Groups", "group:Admins", "view", "PERMIT"),
   evaluation(
     "customer-admin-role",
@@ -458,7 +466,7 @@ const expectedFgapEvaluationMatrix = [
     "Groups",
     "group:Admins",
     "manage-members",
-    "PERMIT",
+    "DENY",
   ),
   evaluation("customer-admin-role", "Groups", "group:Admins", "manage", "DENY"),
   evaluation(
@@ -499,16 +507,16 @@ const expectedFgapEvaluationMatrix = [
   evaluation(
     "customer-admin-role",
     "Users",
-    "user:member-of:Admins",
+    "user:any",
     "reset-password",
     "PERMIT",
   ),
   evaluation(
     "customer-admin-role",
     "Users",
-    "user:member-of:Operators",
+    "user:any",
     "reset-password",
-    "DENY",
+    "PERMIT",
   ),
   evaluation(
     "customer-admin-role",
@@ -999,7 +1007,7 @@ export function validateKeycloakSeed(seed) {
   requireJsonEqual(errors, seed?.roles, expectedRoles, "realm roles")
   requireJsonEqual(errors, seed?.groups, expectedGroups, "identity groups")
   rejectCoarseRoleMappings(errors, seed?.roles, seed?.clients)
-  validateMfa(errors, seed?.authentication)
+  validateHumanAuthentication(errors, seed?.authentication)
   requireJsonEqual(
     errors,
     seed?.clientScopes,
@@ -1024,7 +1032,7 @@ export function validateKeycloakSeed(seed) {
   requireEqual(
     errors,
     seed?.operatorProtection?.customerNativeKeycloak,
-    "read-only",
+    "denied",
     "Operator native mutation protection",
   )
   requireEqual(
@@ -1132,9 +1140,9 @@ export function validateCommissioningPlan(plan) {
     )
   }
   for (const assertion of [
-    "llm-machines-browser-mfa-is-the-browser-binding",
+    "llm-machines-browser-password-is-the-browser-binding",
     "username-password-execution-reference-is-pwd",
-    "required-otp-execution-reference-is-otp",
+    "mandatory-totp-is-disabled-for-pre-genesis",
     "oidc-amr-mapper-adds-amr-to-access-token",
     "basic-client-scope-adds-auth_time-to-access-token",
     "console-web-audience-mapper-hardcodes-console-bff",
@@ -1154,13 +1162,13 @@ export function validateCommissioningPlan(plan) {
   requireExactStrings(
     errors,
     bootstrap?.requiredActions,
-    ["UPDATE_PASSWORD", "CONFIGURE_TOTP"],
+    ["UPDATE_PASSWORD"],
     "bootstrap Admin required actions",
   )
   requireExactStrings(
     errors,
     firstOperator?.requiredActions,
-    ["UPDATE_PASSWORD", "CONFIGURE_TOTP"],
+    ["UPDATE_PASSWORD"],
     "first Operator required actions",
   )
   requireIncludes(
@@ -1174,6 +1182,12 @@ export function validateCommissioningPlan(plan) {
     firstOperator?.completionAssertions,
     "only-hardened-recovery-verifier-was-persisted",
     "first Operator commissioning",
+  )
+  requireIncludes(
+    errors,
+    close?.completionAssertions,
+    "customer-admin-user-delete-is-denied-by-F0-N5-product-edge-before-activation",
+    "commissioning closure",
   )
   requireIncludes(
     errors,
@@ -1218,24 +1232,30 @@ export function validateCommissioningPlan(plan) {
     "offline-access token negative tests",
   )
 
-  const evidence = plan?.recoveryMfaEvidence ?? {}
-  requireExactStrings(
-    errors,
-    evidence.acceptedAmrMethods,
-    acceptedMfaMethods,
-    "recovery AMR methods",
-  )
+  const evidence = plan?.preGenesisAuthenticationEvidence ?? {}
   requireExactStrings(
     errors,
     evidence.requiredAccessTokenClaims,
-    requiredMfaClaims,
-    "recovery access-token claims",
+    requiredAuthenticationClaims,
+    "pre-Genesis authentication claims",
   )
   requireEqual(
     errors,
-    evidence.acrAloneAccepted,
+    evidence.passwordReference,
+    "pwd",
+    "pre-Genesis password AMR reference",
+  )
+  requireEqual(
+    errors,
+    evidence.mandatoryTotp,
     false,
-    "recovery ACR boundary",
+    "pre-Genesis mandatory TOTP state",
+  )
+  requireEqual(
+    errors,
+    evidence.roleAuthorizationRequired,
+    true,
+    "pre-Genesis role authorization boundary",
   )
 
   for (const path of findForbiddenCredentialKeys(plan)) {
@@ -1599,6 +1619,7 @@ function validateRuntime(errors, runtime) {
 function validateRealm(errors, realm) {
   requireEqual(errors, realm?.name, "llm-machines", "appliance realm name")
   requireEqual(errors, realm?.masterRealm, false, "master-realm boundary")
+  requireEqual(errors, realm?.loginTheme, "llm-machines", "login theme")
   require(errors, realm?.name !==
     "master", "customer realm must never be master")
   requireEqual(errors, realm?.enabled, true, "realm enabled state")
@@ -1629,11 +1650,11 @@ function validateRealm(errors, realm) {
     60,
     "authorization-code lifetime",
   )
-  requireAtMost(errors, realm?.ssoSessionIdleSeconds, 1800, "SSO idle lifetime")
-  requireAtMost(
+  requireEqual(errors, realm?.ssoSessionIdleSeconds, 28800, "SSO idle lifetime")
+  requireEqual(
     errors,
     realm?.ssoSessionMaxSeconds,
-    28800,
+    86400,
     "SSO maximum lifetime",
   )
 }
@@ -1661,44 +1682,38 @@ function validateOfflineAccess(errors, policy, clients) {
   ), "realm default role must not include offline_access")
 }
 
-function validateMfa(errors, authentication) {
+function validateHumanAuthentication(errors, authentication) {
   requireJsonEqual(
     errors,
     authentication?.browserFlow,
     expectedBrowserFlow,
-    "browser MFA flow",
+    "password-only browser flow",
   )
-  const mfa = authentication?.humanMfa ?? {}
-  requireExactStrings(
-    errors,
-    mfa.requiredForRealmRoles,
-    ["admin", "operator"],
-    "human MFA roles",
-  )
-  requireEqual(errors, mfa.requiredAction, "CONFIGURE_TOTP", "human MFA action")
+  const human = authentication?.humanAuthentication ?? {}
   requireEqual(
     errors,
-    mfa.currentBrowserSecondFactorReference,
-    "otp",
-    "browser second-factor AMR reference",
+    human.passwordOnlyPreGenesis,
+    true,
+    "password-only pre-Genesis profile",
+  )
+  requireEqual(errors, human.mandatoryTotp, false, "mandatory TOTP state")
+  requireEqual(
+    errors,
+    human.roleAuthorizationRequired,
+    true,
+    "role authorization boundary",
   )
   requireExactStrings(
     errors,
-    mfa.acceptedAmrMethods,
-    acceptedMfaMethods,
-    "human AMR methods",
-  )
-  requireExactStrings(
-    errors,
-    mfa.accessTokenEvidence?.requiredClaims,
-    requiredMfaClaims,
-    "human MFA access-token claims",
+    human.accessTokenEvidence?.requiredClaims,
+    requiredAuthenticationClaims,
+    "human authentication access-token claims",
   )
   requireEqual(
     errors,
-    mfa.accessTokenEvidence?.acrOnlySufficient,
-    false,
-    "human MFA ACR boundary",
+    human.accessTokenEvidence?.requiredPasswordReference,
+    "pwd",
+    "password AMR reference",
   )
   const totpAction = authentication?.requiredActions?.find(
     ({ alias }) => alias === "CONFIGURE_TOTP",
@@ -1706,10 +1721,10 @@ function validateMfa(errors, authentication) {
   requireEqual(
     errors,
     totpAction?.enabled,
-    true,
-    "TOTP required action enabled",
+    false,
+    "TOTP required action disabled",
   )
-  requireEqual(errors, totpAction?.defaultAction, true, "TOTP default action")
+  requireEqual(errors, totpAction?.defaultAction, false, "TOTP default action")
 }
 
 function validateFgap(errors, fgap) {

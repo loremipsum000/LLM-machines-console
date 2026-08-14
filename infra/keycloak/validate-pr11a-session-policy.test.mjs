@@ -21,10 +21,10 @@ test("version, lifecycle, PKCE, and offline-token drift fail closed", () => {
       value.realm.accessTokenSeconds = 301
     },
     (value) => {
-      value.realm.ssoSessionIdleSeconds = 1801
+      value.realm.ssoSessionIdleSeconds = 28801
     },
     (value) => {
-      value.realm.ssoSessionMaxSeconds = 28801
+      value.realm.ssoSessionMaxSeconds = 86401
     },
     (value) => {
       value.realm.refreshTokenMaxReuse = 1
@@ -66,10 +66,12 @@ test("native administration, retired authority, and false runtime status fail cl
       value.metadata.runtimeQualification = "PASSED"
     },
     (value) => {
-      value.mfa.exactHighRiskActions.push("litellm.routes_keys.edit")
+      value.preGenesisAuthentication.roleProtectedActions.push(
+        "litellm.routes_keys.edit",
+      )
     },
     (value) => {
-      value.mfa.operatorSignInMfa = false
+      value.preGenesisAuthentication.mandatoryTotp = true
     },
   ]
 

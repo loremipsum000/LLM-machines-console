@@ -1023,3 +1023,29 @@ Origin and Referer handling, static assets, and no-bypass policy must be
 replayed through HTTPS in F0-N5. Accepted remains false, runtimeQualified
 remains false, contract activation remains inactive, Q0 remains NOT_STARTED,
 and Genesis remains unpublished.
+
+## Keycloak 26.7.0 scoped appliance-realm administration
+
+F0-N3 restores the repository-owned `llm-machines` login theme and binds the
+pre-Genesis human login profile to password authentication, an eight-hour idle
+session, and a 24-hour maximum session. Console and every retained native tool
+use Keycloak SSO but keep separate native sessions. Console cookies and tokens
+are never forwarded to the Keycloak Admin Console.
+
+The customer Admin receives only `query-users` and `query-groups` plus FGAP v2
+Users `view` and `manage` and read-only view of the canonical Admin and Operator
+groups. Disposable Keycloak 26.7.0 browser and Admin REST characterization
+proves user list, create, update, password reset, and session inspection, while
+Operator, master realm, realm creation, unrelated realm, client,
+identity-provider, role, group mutation, impersonation, role mapping, and realm
+mutation access fail closed. Metadata-only Keycloak admin events bind the
+tested mutations to the exact authenticated Admin subject.
+
+Keycloak Users `manage` also authorizes user deletion. The approved layered
+design therefore blocks native activation until F0-N5 denies exact user DELETE
+requests at the Product edge. The native Admin Console remains
+`INACTIVE_PENDING_F0_N5`, direct characterization is loopback-only, and the
+exact browser route, cookie, redirect, PKCE, Origin, CORS, CSRF, logout,
+restart, and outage inventory is source-controlled without token or cookie
+values. Product acceptance, runtime qualification, Genesis, Q0, and Product
+main remain unchanged.

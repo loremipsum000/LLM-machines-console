@@ -85,25 +85,34 @@ describe("opaque server-side Console sessions", () => {
     expect(fixture.repository.loginRecords.size).toBe(0)
   })
 
-  it("rejects Admin login without MFA and offline browser authority", async () => {
-    for (const identity of [
-      fixtureIdentity({ role: "admin" }),
-      fixtureIdentity({ offlineAccess: true }),
-    ]) {
-      const fixture = createFixture({ identity })
-      const login = await fixture.service.beginLogin("/")
-      await expect(
-        fixture.service.completeLogin({
-          code: "authorization-code",
-          loginHandle: login.loginHandle,
-          state: fixture.lastState(),
-        }),
-      ).resolves.toMatchObject({ reason: "invalid", state: "terminal" })
-    }
+  it("accepts password-only Admin login and rejects offline browser authority", async () => {
+    const adminFixture = createFixture({
+      identity: fixtureIdentity({ role: "admin" }),
+    })
+    const adminLogin = await adminFixture.service.beginLogin("/")
+    await expect(
+      adminFixture.service.completeLogin({
+        code: "authorization-code",
+        loginHandle: adminLogin.loginHandle,
+        state: adminFixture.lastState(),
+      }),
+    ).resolves.toMatchObject({ state: "active" })
+
+    const offlineFixture = createFixture({
+      identity: fixtureIdentity({ offlineAccess: true }),
+    })
+    const offlineLogin = await offlineFixture.service.beginLogin("/")
+    await expect(
+      offlineFixture.service.completeLogin({
+        code: "authorization-code",
+        loginHandle: offlineLogin.loginHandle,
+        state: offlineFixture.lastState(),
+      }),
+    ).resolves.toMatchObject({ reason: "invalid", state: "terminal" })
   })
 
   it("expires idle and maximum sessions and clears their encrypted authority", async () => {
-    for (const advanceMs of [30 * 60 * 1000, 8 * 60 * 60 * 1000]) {
+    for (const advanceMs of [8 * 60 * 60 * 1000, 24 * 60 * 60 * 1000]) {
       const fixture = createFixture()
       const session = await fixture.login()
       fixture.advance(advanceMs)
@@ -477,65 +486,7 @@ describe("opaque server-side Console sessions", () => {
     expect(fixture.repository.sessionRecords.size).toBe(1)
   })
 
-  it("requires recent MFA for high-risk elevation", () => {
-    const now = new Date("2026-08-02T10:00:00.000Z")
-    expect(
-      ConsoleSessionService.highRiskMfaCurrent(
-        {
-          accessToken: "server-only",
-          accessTokenExpiresAt: new Date(now.getTime() + 300_000),
-          groups: [],
-          mfaVerifiedAt: new Date(now.getTime() - 299_999),
-          role: "operator",
-          subject: "operator-1",
-        },
-        now,
-      ),
-    ).toBe(true)
-    expect(
-      ConsoleSessionService.highRiskMfaCurrent(
-        {
-          accessToken: "server-only",
-          accessTokenExpiresAt: new Date(now.getTime() + 300_000),
-          groups: [],
-          mfaVerifiedAt: new Date(now.getTime() - 300_001),
-          role: "operator",
-          subject: "operator-1",
-        },
-        now,
-      ),
-    ).toBe(false)
-    expect(
-      ConsoleSessionService.actionAuthorized(
-        "applications.credentials.test_rotate_revoke",
-        {
-          accessToken: "server-only",
-          accessTokenExpiresAt: new Date(now.getTime() + 300_000),
-          groups: [],
-          mfaVerifiedAt: null,
-          role: "admin",
-          subject: "admin-1",
-        },
-        now,
-      ),
-    ).toBe(false)
-    expect(
-      ConsoleSessionService.actionAuthorized(
-        "overview.read",
-        {
-          accessToken: "server-only",
-          accessTokenExpiresAt: new Date(now.getTime() + 300_000),
-          groups: [],
-          mfaVerifiedAt: null,
-          role: "operator",
-          subject: "operator-1",
-        },
-        now,
-      ),
-    ).toBe(true)
-  })
-
-  it("binds high-risk elevation to the current subject and fresh MFA", async () => {
+  it("binds an explicit reauthentication transaction to the current subject", async () => {
     const mfaVerifiedAt = new Date("2026-08-02T10:00:00.000Z")
     const fixture = createFixture({
       identity: fixtureIdentity({ mfaVerifiedAt }),
@@ -565,7 +516,7 @@ describe("opaque server-side Console sessions", () => {
     expect(fixture.oidc.revoke).toHaveBeenCalledWith("refresh-1")
   })
 
-  it("fails high-risk elevation closed when auth_time evidence is stale", async () => {
+  it("allows explicit password reauthentication without MFA evidence", async () => {
     const fixture = createFixture({
       identity: fixtureIdentity({
         mfaVerifiedAt: new Date("2026-08-02T09:54:59.000Z"),
@@ -586,7 +537,7 @@ describe("opaque server-side Console sessions", () => {
         loginHandle: elevation.loginHandle,
         state: fixture.lastState(),
       }),
-    ).resolves.toMatchObject({ reason: "invalid", state: "terminal" })
+    ).resolves.toMatchObject({ returnPath: "/team", state: "active" })
   })
 })
 

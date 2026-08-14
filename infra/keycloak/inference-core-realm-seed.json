@@ -20,6 +20,7 @@
     "editUsernameAllowed": false,
     "enabled": true,
     "loginWithEmailAllowed": true,
+    "loginTheme": "llm-machines",
     "masterRealm": false,
     "name": "llm-machines",
     "refreshTokenMaxReuse": 0,
@@ -27,8 +28,8 @@
     "rememberMe": false,
     "resetPasswordAllowed": true,
     "revokeRefreshToken": true,
-    "ssoSessionIdleSeconds": 1800,
-    "ssoSessionMaxSeconds": 28800,
+    "ssoSessionIdleSeconds": 28800,
+    "ssoSessionMaxSeconds": 86400,
     "sslRequired": "external"
   },
   "offlineAccessPolicy": {
@@ -72,59 +73,44 @@
   ],
   "authentication": {
     "browserFlow": {
-      "alias": "llm-machines-browser-mfa",
+      "alias": "llm-machines-browser-password",
       "binding": "browser",
       "builtIn": false,
       "executions": [
         {
           "amrReference": null,
           "authenticator": "auth-cookie",
-          "path": "llm-machines-browser-mfa/Cookie",
+          "path": "llm-machines-browser-password/Cookie",
           "requirement": "ALTERNATIVE"
         },
         {
-          "flowAlias": "llm-machines-browser-mfa-forms",
-          "path": "llm-machines-browser-mfa/Forms",
+          "flowAlias": "llm-machines-browser-password-forms",
+          "path": "llm-machines-browser-password/Forms",
           "requirement": "ALTERNATIVE"
         },
         {
           "amrReference": "pwd",
           "authenticator": "auth-username-password-form",
-          "path": "llm-machines-browser-mfa/Forms/Username Password Form",
-          "requirement": "REQUIRED"
-        },
-        {
-          "amrReference": "otp",
-          "authenticator": "auth-otp-form",
-          "path": "llm-machines-browser-mfa/Forms/OTP Form",
+          "path": "llm-machines-browser-password/Forms/Username Password Form",
           "requirement": "REQUIRED"
         }
       ],
       "providerId": "basic-flow"
     },
-    "humanMfa": {
-      "acceptedAmrMethods": ["hwk", "otp", "webauthn", "webauthn-passwordless"],
+    "humanAuthentication": {
       "accessTokenEvidence": {
-        "acrOnlySufficient": false,
-        "requiredClaims": ["amr", "auth_time"]
+        "requiredClaims": ["amr", "auth_time"],
+        "requiredPasswordReference": "pwd"
       },
-      "currentBrowserSecondFactorReference": "otp",
-      "requiredAction": "CONFIGURE_TOTP",
-      "requiredForRealmRoles": ["admin", "operator"]
-    },
-    "otpPolicy": {
-      "algorithm": "HmacSHA256",
-      "digits": 6,
-      "initialCounter": 0,
-      "lookAheadWindow": 1,
-      "periodSeconds": 30,
-      "type": "totp"
+      "mandatoryTotp": false,
+      "passwordOnlyPreGenesis": true,
+      "roleAuthorizationRequired": true
     },
     "requiredActions": [
       {
         "alias": "CONFIGURE_TOTP",
-        "defaultAction": true,
-        "enabled": true
+        "defaultAction": false,
+        "enabled": false
       },
       {
         "alias": "UPDATE_PASSWORD",
@@ -320,17 +306,17 @@
     "feature": "admin-fine-grained-authz:v2",
     "permissions": [
       {
-        "name": "customer-admin-view-all-users",
+        "name": "customer-admin-manage-all-users",
         "policies": ["customer-admin-role"],
         "resourceType": "Users",
-        "scopes": ["view"]
+        "scopes": ["manage", "view"]
       },
       {
-        "name": "customer-admin-manage-Admins-members",
+        "name": "customer-admin-view-Admins-members",
         "policies": ["customer-admin-role"],
         "resources": ["group:Admins"],
         "resourceType": "Groups",
-        "scopes": ["manage-members", "view", "view-members"]
+        "scopes": ["view", "view-members"]
       },
       {
         "name": "customer-admin-view-Operators-members",
@@ -411,6 +397,19 @@
   "knownResiduals": [
     {
       "accepted": true,
+      "appliesToPermission": "customer-admin-manage-all-users",
+      "compensatingControls": [
+        "native-ingress-inactive-until-F0-N5",
+        "product-edge-denies-user-delete-by-exact-method-and-path",
+        "direct-Keycloak-port-denied-to-customer-networks",
+        "no-bypass-proof-required-before-activation"
+      ],
+      "id": "customer-admin-users-manage-delete-residual",
+      "inseparableOperations": ["create", "delete", "update"],
+      "reason": "Keycloak 26.7.0 FGAP v2 Users/manage does not isolate create and update from delete"
+    },
+    {
+      "accepted": true,
       "appliesToPermission": "console-human-admin-manage-all-users",
       "compensatingControls": [
         "service-credential-isolated-from-customer-humans",
@@ -436,7 +435,7 @@
     }
   ],
   "operatorProtection": {
-    "customerNativeKeycloak": "read-only",
+    "customerNativeKeycloak": "denied",
     "lastEnabledOperatorInvariant": "console-bff",
     "nativeMutationPath": "none",
     "serviceMutationPath": "console-human-admin"

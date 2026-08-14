@@ -1,7 +1,3 @@
-import {
-  consoleMfaElevationHref,
-  hasFreshConsoleMfa,
-} from "@/lib/auth/mfa-elevation"
 import { getCurrentConsoleSession } from "@/lib/auth/session"
 import { expiredConsoleSessionRedirectResponse } from "@/lib/auth/session-client"
 import { getBffRequest } from "@/lib/bff/server-request"
@@ -32,22 +28,6 @@ export async function GET(request: Request) {
   }
 
   const requestUrl = new URL(request.url)
-  if (!hasFreshConsoleMfa(session.session.mfaVerifiedAt)) {
-    const elevationUrl = new URL(
-      consoleMfaElevationHref(
-        "activity_audit.export",
-        `${requestUrl.pathname}${requestUrl.search}`,
-      ),
-      requestUrl.origin,
-    )
-    return new Response(null, {
-      headers: {
-        "Cache-Control": "no-store",
-        Location: elevationUrl.toString(),
-      },
-      status: 303,
-    })
-  }
   const format = requestUrl.searchParams.get("format")
   if (format !== "json" && format !== "csv") {
     return problemResponse(400, "Invalid audit export format")

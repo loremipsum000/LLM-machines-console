@@ -2,10 +2,6 @@
 
 import { Buffer } from "node:buffer"
 import { createHash, randomUUID } from "node:crypto"
-import {
-  consoleMfaElevationHref,
-  hasFreshConsoleMfa,
-} from "@/lib/auth/mfa-elevation"
 import { normalizeConsoleReturnPath } from "@/lib/auth/safe-return"
 import { getCurrentConsoleSession } from "@/lib/auth/session"
 import { getBffRequest } from "@/lib/bff/server-request"
@@ -39,7 +35,6 @@ import {
   adminTeamCsvImportPreviewResponseSchema,
   adminTeamGroupMutationResponseSchema,
   adminTeamMemberMutationResponseSchema,
-  consoleHighRiskActionSchema,
   createAdminTeamGroupRequestSchema,
   createAdminTeamMemberRequestSchema,
   deleteAdminTeamMemberRequestSchema,
@@ -1193,13 +1188,6 @@ async function requireCapability(capability: InferenceCoreCapability) {
   }
   if (!roleHasInferenceCoreCapability(resolution.session.role, capability)) {
     throw new Error("Authorized Console session required.")
-  }
-  const highRiskAction = consoleHighRiskActionSchema.safeParse(capability)
-  if (
-    highRiskAction.success &&
-    !hasFreshConsoleMfa(resolution.session.mfaVerifiedAt)
-  ) {
-    redirectTo(consoleMfaElevationHref(highRiskAction.data, returnTo))
   }
   return resolution.session
 }

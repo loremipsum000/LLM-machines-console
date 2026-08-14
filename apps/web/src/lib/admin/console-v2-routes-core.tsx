@@ -34,10 +34,6 @@ import {
   isConsoleBffAuthExpiredError,
   isConsoleBffUnavailableError,
 } from "@/lib/admin/server-data-core"
-import {
-  consoleMfaElevationHref,
-  hasFreshConsoleMfa,
-} from "@/lib/auth/mfa-elevation"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import {
   type CurrentConsoleSessionResolution,
@@ -140,14 +136,6 @@ export async function renderApplicationsConsoleRoute({
     }
 
     if (applicationsView === "new-app") {
-      if (!hasFreshConsoleMfa(session.mfaVerifiedAt)) {
-        redirect(
-          consoleMfaElevationHref(
-            "applications.create_delete",
-            "/applications/apps/new",
-          ),
-        )
-      }
       const inference = await getAdminInference({ range: "7d" })
       return (
         <ApplicationsV2Experience

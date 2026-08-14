@@ -38,12 +38,16 @@ Product-owned opaque Console cookie. The BFF stores encrypted refresh-token
 state and receives backchannel logout at
 `/api/internal/console-session/backchannel-logout` through Product ingress.
 
-The current realm seed preserves its existing stronger sign-in rule by
-requiring MFA for both Admin and Operator. R1-S1 additionally requires a fresh
-five-minute MFA event for the exact high-risk actions in the policy. The list
-contains no LiteLLM, Keycloak Admin Console, Grafana, generic expert-access, or
-vendor-maintenance authority. There is no native customer Keycloak Admin
-Console in v1, and this source package performs no live Keycloak mutation.
+F0-N3 supersedes the earlier pre-Genesis human sign-in profile with password
+authentication, an eight-hour idle session, and a 24-hour maximum session.
+TOTP is not mandatory. Role and capability checks remain authoritative for
+every Console mutation. Emergency recovery retains its separately controlled
+out-of-band factor contract and is not a routine customer sign-in path.
+
+The scoped native Keycloak Admin Console is a distinct Keycloak browser
+session. It does not receive the Console cookie or Console tokens and remains
+inactive until F0-N5 supplies the exact Product-edge route and no-bypass proof.
+Its source contract is `native-admin-profile.json`.
 
 Validate the source contract without contacting a runtime:
 
@@ -71,11 +75,13 @@ secret-file mount, OIDC claims, and direct-access boundary.
 
 The human realm is `llm-machines`. The `master` realm is never a customer
 administration target. Its only human roles are `admin` and `operator`, mapped
-by the `Admins` and `Operators` groups. The only `realm-management` roles for
-customer Admins and the Console human-admin service account are `query-users`
-and `query-groups`; these expose navigation and search but do not bypass FGAP.
-The human realm contains no Application admin client, Application service
-permission class, Application FGAP policy, or Clients permission.
+by the `Admins` and `Operators` groups. Customer Admin and the Console
+human-admin service account receive only the separately defined
+`realm-management` roles required by their own FGAP policies. Customer Admin
+receives `query-users` and `query-groups`; these expose native navigation and
+search but do not bypass FGAP. The human realm contains no Application admin
+client, Application service permission class, Application FGAP policy, or
+Clients permission.
 
 ## FGAP v2 permissions
 
@@ -84,19 +90,23 @@ types and their supported scopes. Logical `group:*`, `realm-role:*`, and
 `service-account:*` selectors are resolved to appliance-realm UUIDs by PR-12.
 There is no active `Roles` permission.
 
-Customer Admin policy:
+Customer Admin native policy:
 
-- `Users`, all resources: `view`.
-- `Groups`, `Admins`: `view`, `view-members`, `manage-members`.
-- `Groups`, `Operators`: `view`, `view-members` only.
-- No `manage-group-membership`, `manage-membership`, role mapping, realm
-  management, client management, or coarse `manage-users` authority.
+- `Users`, all resources: `view`, `manage`.
+- `Groups`, `Admins` and `Operators`: `view`, `view-members` only.
+- No group membership mutation, role mapping, realm management, client
+  management, identity-provider management, impersonation, or coarse
+  `manage-users` authority.
 
-Consequently, a customer Admin can view every identity and manage existing
-Admin member accounts. The Admin cannot add or remove group members, map
-roles, or mutate Operator member accounts through native Keycloak.
-`query-groups` supplies Admin Console navigation and search only. Each retained
-group also needs its explicit FGAP `view` scope to be a viewable resource.
+This is the narrowest Keycloak 26.7.0 FGAP v2 profile that supports user
+creation and update, password reset, and session inspection and invalidation.
+Keycloak's Users `manage` scope also permits user deletion. The founder-accepted
+layered design therefore keeps native ingress inactive until F0-N5 denies the
+exact `DELETE /keycloak/admin/realms/llm-machines/users/{uuid}` request at the
+Product edge. Keycloak continues to authorize the remaining operation and to
+bind its metadata-only admin event to the authenticated Admin subject. The
+native UI may still render its delete control; support copy must explain that
+the Product edge denies the operation.
 
 The `console-human-admin` service account is separate from all future
 Application OAuth-client administration. Its FGAP policy receives:
@@ -180,13 +190,14 @@ absent from every retained client's optional client scopes and absent from the
 `scope=offline_access` against each token-capable retained client and prove
 that the granted scope omits `offline_access` and no offline token is issued.
 
-## MFA and token claims
+## Password sign-in and token claims
 
-The bound `llm-machines-browser-mfa` flow uses the built-in
-`auth-username-password-form` execution with AMR reference `pwd`, followed by a
-required built-in `auth-otp-form` execution with AMR reference `otp`. The
+The bound `llm-machines-browser-password` flow uses the built-in
+`auth-username-password-form` execution with AMR reference `pwd`. The
 `llm-machines-amr` default client scope uses Keycloak's built-in
-`oidc-amr-mapper` and explicitly adds `amr` to regular access tokens.
+`oidc-amr-mapper` and explicitly adds `amr` to regular access tokens. The
+repository-owned `llm-machines` login theme is copied into the exact Keycloak
+26.7.0 runtime and selected by the appliance realm.
 
 The built-in `basic` client scope is required and its `auth_time` mapper is
 bound to the `AUTH_TIME` user-session note through
@@ -194,11 +205,12 @@ bound to the `AUTH_TIME` user-session note through
 `oidc-audience-mapper` whose included client audience is exactly
 `console-bff`. It does not rely on audience resolution from role mappings.
 
-Emergency recovery accepts MFA only when `amr` contains `otp`, `hwk`,
-`webauthn`, or `webauthn-passwordless`, and it separately validates recent
-`auth_time`; an ACR value alone is insufficient. The current seeded browser
-flow produces `otp`. Any later WebAuthn flow must bind its exact execution AMR
-reference and pass a reviewed contract update before its evidence is accepted.
+Emergency recovery accepts its separate recovery factor only when `amr`
+contains `otp`, `hwk`, `webauthn`, or `webauthn-passwordless`, and it
+separately validates recent `auth_time`; an ACR value alone is insufficient.
+The routine pre-Genesis browser flow does not satisfy that special recovery
+contract. Any later WebAuthn or mandatory MFA flow requires a reviewed
+contract update.
 
 ## Secret-free verification
 
@@ -222,7 +234,7 @@ managed Application client contract, residual controls, and negative token
 tests. It rejects coarse administrative roles, wildcards, active human-realm
 `Roles` or `Clients` permissions, Application-realm human identity authority,
 role-mapping scopes, native Operator mutation permissions, embedded
-credentials, and missing MFA evidence claims.
+credentials, and missing password-authentication evidence claims.
 
 Keycloak sources used for this contract:
 

@@ -274,7 +274,7 @@ describe("authorization security hardening", () => {
     }
   })
 
-  it("requires fresh trusted MFA for high-risk Console capabilities", async () => {
+  it("authorizes high-risk Console capabilities by retained role without MFA", async () => {
     useProductionServiceAuth()
     const resolveConsoleSession = vi
       .fn()
@@ -295,11 +295,7 @@ describe("authorization security hardening", () => {
     const stale = await server.inject(request)
     const fresh = await server.inject(request)
 
-    expect(stale.statusCode).toBe(403)
-    expect(stale.json()).toMatchObject({
-      action: "applications.credentials.test_rotate_revoke",
-      code: "mfa_elevation_required",
-    })
+    expect(stale.statusCode).toBe(200)
     expect(fresh.statusCode).toBe(200)
     await server.close()
   })

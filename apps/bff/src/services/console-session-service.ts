@@ -22,11 +22,10 @@ import type {
 } from "./console-session-store"
 
 const ACCESS_LIFETIME_MS = 5 * 60 * 1000
-const IDLE_LIFETIME_MS = 30 * 60 * 1000
-const ABSOLUTE_LIFETIME_MS = 8 * 60 * 60 * 1000
+const IDLE_LIFETIME_MS = 8 * 60 * 60 * 1000
+const ABSOLUTE_LIFETIME_MS = 24 * 60 * 60 * 1000
 const REFRESH_SKEW_MS = 60 * 1000
 const LOGIN_LIFETIME_MS = 2 * 60 * 1000
-const HIGH_RISK_MFA_AGE_MS = 5 * 60 * 1000
 const REFRESH_OUTAGE_BACKOFF_MS = 5 * 1000
 
 interface SecretPayload {
@@ -324,9 +323,7 @@ export class ConsoleSessionService {
     if (
       !acceptedIdentity(validation.identity, now) ||
       (loginSecret.expectedSubject &&
-        validation.identity.subject !== loginSecret.expectedSubject) ||
-      (loginSecret.elevation &&
-        !mfaFresh(validation.identity.mfaVerifiedAt ?? null, now))
+        validation.identity.subject !== loginSecret.expectedSubject)
     ) {
       return {
         reason: "invalid",
@@ -453,24 +450,6 @@ export class ConsoleSessionService {
       return { reason: "revoked", state: "terminal" }
     }
     return { state: "ok", value: replay.value }
-  }
-
-  static highRiskMfaCurrent(
-    session: ConsoleSessionView,
-    now = new Date(),
-  ): boolean {
-    return mfaFresh(session.mfaVerifiedAt, now)
-  }
-
-  static actionAuthorized(
-    action: string,
-    session: ConsoleSessionView,
-    now = new Date(),
-  ): boolean {
-    return (
-      !isConsoleHighRiskAction(action) ||
-      ConsoleSessionService.highRiskMfaCurrent(session, now)
-    )
   }
 
   private async resolveLocked(
@@ -892,8 +871,7 @@ function acceptedIdentity(
   return (
     !identity.offlineAccess &&
     lifetime > -REFRESH_SKEW_MS &&
-    lifetime <= ACCESS_LIFETIME_MS + REFRESH_SKEW_MS &&
-    (identity.role !== "admin" || Boolean(identity.mfaVerifiedAt))
+    lifetime <= ACCESS_LIFETIME_MS + REFRESH_SKEW_MS
   )
 }
 
@@ -901,14 +879,6 @@ function terminal(
   reason: string,
 ): Extract<ConsoleSessionResolution, { state: "terminal" }> {
   return { reason, state: "terminal" }
-}
-
-function mfaFresh(mfaVerifiedAt: Date | null, now: Date): boolean {
-  return Boolean(
-    mfaVerifiedAt &&
-      now.getTime() - mfaVerifiedAt.getTime() <= HIGH_RISK_MFA_AGE_MS &&
-      mfaVerifiedAt.getTime() <= now.getTime() + REFRESH_SKEW_MS,
-  )
 }
 
 function secretFromIdentity(

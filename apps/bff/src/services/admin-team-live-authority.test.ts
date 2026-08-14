@@ -678,7 +678,7 @@ describe("Admin Team live authority protection", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("includes password update and MFA enrollment in a Team invitation", async () => {
+  it("includes password update without mandatory TOTP in a Team invitation", async () => {
     stubKeycloakAdminEnv()
     let emailActions: unknown = null
     const fetchMock = vi.fn<typeof fetch>(async (request, init) => {
@@ -704,9 +704,13 @@ describe("Admin Team live authority protection", () => {
     vi.stubGlobal("fetch", fetchMock)
 
     await expect(
-      sendAdminTeamInvite(adminActor, "user-1", mutationContext("invite-mfa")),
+      sendAdminTeamInvite(
+        adminActor,
+        "user-1",
+        mutationContext("invite-password"),
+      ),
     ).resolves.toMatchObject({ status: "sent" })
-    expect(emailActions).toEqual(["UPDATE_PASSWORD", "CONFIGURE_TOTP"])
+    expect(emailActions).toEqual(["UPDATE_PASSWORD"])
   })
 
   it("rejects deleting or renaming the reserved Operators group", async () => {

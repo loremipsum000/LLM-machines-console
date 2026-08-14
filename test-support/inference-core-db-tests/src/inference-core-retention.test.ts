@@ -244,8 +244,8 @@ async function seedRetentionRows(client: PGlite): Promise<void> {
         'session-v1',
         0,
         TIMESTAMPTZ '2026-07-30T00:05:00Z',
-        TIMESTAMPTZ '2026-07-30T00:30:00Z',
         TIMESTAMPTZ '2026-07-30T08:00:00Z',
+        TIMESTAMPTZ '2026-07-31T00:00:00Z',
         TIMESTAMPTZ '2026-07-30T00:00:00Z',
         TIMESTAMPTZ '2026-07-30T00:00:00Z',
         TIMESTAMPTZ '2026-07-30T00:00:00Z'
@@ -257,8 +257,8 @@ async function seedRetentionRows(client: PGlite): Promise<void> {
         'session-v1',
         0,
         TIMESTAMPTZ '2026-07-31T00:20:00Z',
-        TIMESTAMPTZ '2026-07-31T00:45:00Z',
-        TIMESTAMPTZ '2026-07-31T08:00:00Z',
+        TIMESTAMPTZ '2026-07-31T08:15:00Z',
+        TIMESTAMPTZ '2026-08-01T00:00:00Z',
         TIMESTAMPTZ '2026-07-31T00:15:00Z',
         TIMESTAMPTZ '2026-07-31T00:00:00Z',
         TIMESTAMPTZ '2026-07-31T00:15:00Z'
