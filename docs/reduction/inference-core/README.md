@@ -1049,3 +1049,28 @@ exact browser route, cookie, redirect, PKCE, Origin, CORS, CSRF, logout,
 restart, and outage inventory is source-controlled without token or cookie
 values. Product acceptance, runtime qualification, Genesis, Q0, and Product
 main remain unchanged.
+
+## Portainer upstream-security deferral
+
+F0-N4 records Portainer as `DEFERRED_UPSTREAM_SECURITY`. The bounded Portainer
+CE 2.39.6 feasibility pass produced a byte-reproducible downstream image, but
+fresh scanning found reachable vulnerabilities in appliance-administration
+paths that a narrow build-only overlay cannot safely resolve. The exact source,
+reproducibility, SBOM, Trivy, and govulncheck identities are preserved in the
+deferral artifact as historical non-admission evidence.
+
+Portainer is not admitted, packaged, deployed, exposed, linked, advertised, or
+included in the current Core BOM or immutable image lock. No broad downstream
+fork, vulnerability workaround, alternative administration bridge, shared
+account, or proxy impersonation layer is authorized. Existing defense-only
+Portainer denial references may remain, but there is no Portainer authority,
+upstream, startup definition, or Console navigation entry.
+
+This is a deferral, not permanent removal. A separately authorized F0-N4R may
+reconsider Portainer after a suitable newer upstream CE release is available,
+but it must repeat complete supply-chain, vulnerability, licensing, SSO,
+administrator-mapping, recovery, backup, restart, route, and no-bypass
+qualification. The remaining pre-Genesis sequence continues with three-service
+F0-N5, F0-N6, F0-N7, and F0-N8. Product acceptance and runtime qualification
+remain false, contract activation remains inactive, Q0 remains NOT_STARTED,
+and Genesis remains unpublished.
