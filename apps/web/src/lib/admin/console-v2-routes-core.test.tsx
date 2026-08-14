@@ -7,6 +7,7 @@ import {
   renderOverviewConsoleRoute,
   renderSettingsConsoleRoute,
 } from "./console-v2-routes-core"
+import type { TechnicalToolLink } from "./technical-tools"
 
 function activeConsoleSession(
   role: "admin" | "operator",
@@ -24,6 +25,16 @@ function activeConsoleSession(
   } as const
 }
 
+function technicalToolLink(id: TechnicalToolLink["id"]): TechnicalToolLink {
+  return {
+    access: `${id} access`,
+    description: `${id} description`,
+    href: `https://${id}.example.test/`,
+    id,
+    label: id,
+  }
+}
+
 const mocks = vi.hoisted(() => ({
   applicationsV2Experience: vi.fn(() => null),
   getAdminOverview: vi.fn(),
@@ -38,6 +49,9 @@ const mocks = vi.hoisted(() => ({
   redirect: vi.fn((href: string) => {
     throw new Error(`redirect:${href}`)
   }),
+  technicalToolsForRole: vi.fn(
+    (_role: "admin" | "operator"): TechnicalToolLink[] => [],
+  ),
 }))
 
 vi.mock("next/navigation", () => ({
@@ -62,6 +76,10 @@ vi.mock("@/lib/admin/server-data-core", () => ({
   getAdminTeamOverview: vi.fn(),
   isConsoleBffAuthExpiredError: mocks.isConsoleBffAuthExpiredError,
   isConsoleBffUnavailableError: mocks.isConsoleBffUnavailableError,
+}))
+
+vi.mock("@/lib/admin/technical-tools", () => ({
+  technicalToolsForRole: mocks.technicalToolsForRole,
 }))
 
 vi.mock("@/components/console-v2/activity-v2-experience", () => ({
@@ -92,13 +110,18 @@ vi.mock("@/components/console-v2/settings-v2-experience", () => ({
   SettingsV2Experience: ({
     accessRole,
     settingsAction,
+    technicalTools,
   }: {
     accessRole: string
     settingsAction?: string
+    technicalTools?: Array<{ id: string }>
   }) => (
     <div>
       Settings role {accessRole}
       {settingsAction ? ` action ${settingsAction}` : ""}
+      {technicalTools?.map(({ id }) => (
+        <span key={id}> tool {id}</span>
+      ))}
     </div>
   ),
 }))
@@ -273,6 +296,7 @@ describe("retained route boundaries", () => {
       activeConsoleSession("operator"),
     )
     mocks.getAdminSettings.mockResolvedValue({ generatedAt: "test" })
+    mocks.technicalToolsForRole.mockReturnValue([technicalToolLink("litellm")])
 
     render(
       await renderSettingsConsoleRoute(
@@ -281,8 +305,10 @@ describe("retained route boundaries", () => {
     )
 
     expect(screen.getByText("Settings role operator")).toBeTruthy()
+    expect(screen.getByText("tool litellm")).toBeTruthy()
     expect(screen.queryByText(/organizationSaved/)).toBeNull()
     expect(mocks.getAdminSettings).toHaveBeenCalledOnce()
+    expect(mocks.technicalToolsForRole).toHaveBeenCalledWith("operator")
   })
 
   it("keeps the Admin post-redirect Settings notice", async () => {
@@ -290,6 +316,11 @@ describe("retained route boundaries", () => {
       activeConsoleSession("admin"),
     )
     mocks.getAdminSettings.mockResolvedValue({ generatedAt: "test" })
+    mocks.technicalToolsForRole.mockReturnValue([
+      technicalToolLink("grafana"),
+      technicalToolLink("litellm"),
+      technicalToolLink("keycloak"),
+    ])
 
     render(
       await renderSettingsConsoleRoute(
@@ -300,5 +331,9 @@ describe("retained route boundaries", () => {
     expect(
       screen.getByText("Settings role admin action organizationSaved"),
     ).toBeTruthy()
+    expect(screen.getByText("tool grafana")).toBeTruthy()
+    expect(screen.getByText("tool litellm")).toBeTruthy()
+    expect(screen.getByText("tool keycloak")).toBeTruthy()
+    expect(mocks.technicalToolsForRole).toHaveBeenCalledWith("admin")
   })
 })

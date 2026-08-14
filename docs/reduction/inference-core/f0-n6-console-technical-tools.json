@@ -1,0 +1,116 @@
+{
+  "schema": "llm-machines.f0-n6-console-technical-tools.v1",
+  "workPackage": "F0-N6",
+  "status": "SOURCE_UI_COMPLETE_RUNTIME_VALIDATION_PENDING",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "ace103d9bdc6db24e616444e6e5d8a234a3c9414",
+    "tree": "0e05f05b73b1ea0a5c3933d9833854ec27db6768"
+  },
+  "placement": {
+    "surface": "Settings",
+    "section": "Technical Tools",
+    "newPrimaryConsoleSurface": false,
+    "consoleRemainsPrimary": true,
+    "consoleRemainsUsefulWithoutNativeTools": true
+  },
+  "roleNavigation": {
+    "Admin": ["grafana", "litellm", "keycloak"],
+    "Operator": ["litellm"],
+    "portainer": "DEFERRED_UPSTREAM_SECURITY_ABSENT"
+  },
+  "authorities": [
+    {
+      "id": "grafana",
+      "hostInput": "PRODUCT_GRAFANA_HOST",
+      "fixedPath": "/",
+      "role": "Admin",
+      "nativeAuthority": "Editor"
+    },
+    {
+      "id": "litellm",
+      "hostInput": "PRODUCT_LITELLM_HOST",
+      "fixedPath": "/ui/",
+      "role": "Admin and Operator",
+      "nativeAuthority": "proxy_admin and internal_user"
+    },
+    {
+      "id": "keycloak",
+      "hostInput": "PRODUCT_KEYCLOAK_ADMIN_HOST",
+      "fixedPath": "/keycloak/admin/llm-machines/console/",
+      "role": "Admin",
+      "nativeAuthority": "scoped llm-machines appliance-realm administration"
+    }
+  ],
+  "securityBoundary": {
+    "roleFiltering": "SERVER_SIDE_FROM_ACTIVE_CONSOLE_SESSION",
+    "authorityInput": "DNS_HOSTNAME_ONLY",
+    "scheme": "HTTPS_ONLY",
+    "paths": "FIXED_SOURCE_CONTROLLED",
+    "query": "FORBIDDEN",
+    "fragment": "FORBIDDEN",
+    "userinfo": "FORBIDDEN",
+    "ports": "FORBIDDEN",
+    "unsafeOrMissingInput": "NON_LINK_NOT_CONFIGURED_STATE",
+    "externalNavigation": "NEW_TAB_NOOPENER_NOREFERRER",
+    "nativeSessions": "SERVICE_OWNED_KEYCLOAK_SSO",
+    "consoleSessionForwarded": false,
+    "consoleTokenForwarded": false,
+    "applicationCredentialForwarded": false,
+    "credentialsOrTokensInUrl": false,
+    "credentialsOrTokensInDomPersistence": false,
+    "credentialsOrTokensInHistory": false,
+    "credentialsOrTokensInLogs": false,
+    "credentialsOrTokensInScreenshots": false,
+    "credentialsOrTokensInAudit": false
+  },
+  "copyBoundary": {
+    "consoleApplicationCredentials": "RECOMMENDED_CUSTOMER_INTEGRATION_PATH",
+    "litellmVirtualKeys": "SEPARATE_ADVANCED_NATIVE_TECHNICAL_PATH",
+    "nativeToolsReplaceConsole": false
+  },
+  "sourceArtifacts": {
+    ".env.example": "sha256:316de95145e60d210c321dfabc786b1d84b6d33b1c3453d1fc7138a494413ab6",
+    "apps/web/src/lib/admin/technical-tools.ts": "sha256:46be40dde7ee5053b56737df2179fb6f19256fa819f61477c3dc7060bcb8de1b",
+    "apps/web/src/components/technical-tools-panel.tsx": "sha256:92fcb1fdcc7c98354fd5d19a197a8360e5d296ae20b428cd35385cf0e27f26c5",
+    "apps/web/src/components/console-v2/settings-v2-experience.tsx": "sha256:16543c8d7064911f8b47e9bd78121eb512d07f5d7e46200c8526574b73a3c9eb",
+    "apps/web/src/lib/admin/console-v2-routes-core.tsx": "sha256:ab2d3f6b5a62399f4a23ed4d0f57cd80c3467247f5bf5d942b46bdc523ae952d"
+  },
+  "runtimeEvidence": {
+    "httpsNativeNavigation": "NOT_STARTED_F0_N7",
+    "adminAndOperatorRoleReplay": "NOT_STARTED_F0_N7",
+    "nativeSessionIsolation": "NOT_STARTED_F0_N7",
+    "browserArtifactCredentialScan": "NOT_STARTED_F0_N7",
+    "liveIngressChanged": false,
+    "liveRuntimeChanged": false
+  },
+  "sourceChangeBoundary": {
+    "nativeIngressActivated": false,
+    "runtimeChanged": false,
+    "vm103Changed": false,
+    "dnsChanged": false,
+    "certificateChanged": false,
+    "gatewayChanged": false,
+    "historicalEvidenceRewritten": false,
+    "changedPaths": [
+      ".env.example",
+      "apps/web/src/components/console-v2/settings-v2-experience.tsx",
+      "apps/web/src/components/technical-tools-panel.test.tsx",
+      "apps/web/src/components/technical-tools-panel.tsx",
+      "apps/web/src/lib/admin/console-v2-routes-core.test.tsx",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "apps/web/src/lib/admin/technical-tools.test.ts",
+      "apps/web/src/lib/admin/technical-tools.ts",
+      "docs/reduction/inference-core/README.md",
+      "docs/reduction/inference-core/decision-register.md",
+      "docs/reduction/inference-core/f0-n6-console-technical-tools.json",
+      "docs/reduction/inference-core/validation-register.md",
+      "scripts/inference-core/f0-n6-console-technical-tools.test.mjs"
+    ]
+  },
+  "nextPackage": "F0-N7 aggregate native-access runtime validation"
+}

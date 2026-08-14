@@ -122,3 +122,22 @@ per-package JSON file and contract revision.
   PR-08 bytes remain bound through the reviewed PR-11 successor-historical
   evidence mapping; earlier contract revisions and fingerprints are not
   rewritten.
+
+## F0-N6 prospective Console Technical Tools decision
+
+- Technical Tools is a role-filtered section inside Settings, not an eighth
+  primary Console surface. Console remains the recommended simplified Product
+  experience and remains complete without native tools.
+- Admin sees Grafana, LiteLLM, and the scoped Keycloak Admin Console. Operator
+  sees LiteLLM only. Portainer remains `DEFERRED_UPSTREAM_SECURITY` and absent.
+- Native links are built server-side from three credential-free commissioning
+  hostname inputs and fixed source-controlled paths. Invalid or missing input
+  produces a non-link state. URLs never carry credentials, tokens, query
+  parameters, fragments, user information, or arbitrary paths.
+- Native tools open outside Console and retain their own Keycloak-backed
+  sessions. Console session material, Product credentials, and native
+  credentials are never shared or forwarded.
+- Console Application credentials remain the recommended customer integration
+  path. LiteLLM virtual keys are a separate advanced technical path.
+- This is source UI only. Native ingress, runtime, VM103, DNS, certificates,
+  and gateway state remain unchanged pending F0-N7.

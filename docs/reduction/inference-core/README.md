@@ -1118,3 +1118,25 @@ authority, upstream, route, image, startup definition, or navigation entry.
 Accepted remains false, runtimeQualified remains false, contract activation is
 `INACTIVE_PENDING_F0_N7`, Q0 remains NOT_STARTED, and Genesis remains
 unpublished.
+
+## Console Technical Tools
+
+F0-N6 adds a role-filtered Technical Tools section inside Settings while
+preserving the seven primary Console surfaces. This keeps Console as the
+recommended simplified experience instead of turning native administration
+into a replacement product surface. Admin sees Grafana, LiteLLM, and the
+scoped Keycloak Admin Console. Operator sees LiteLLM only. Portainer remains
+deferred and absent.
+
+The server derives each external HTTPS link from a credential-free,
+commissioning-supplied DNS hostname and one fixed source-controlled path.
+Schemes, ports, paths, queries, fragments, user information, IP addresses, and
+malformed hostnames supplied as host inputs fail closed to a non-link state.
+Links open in a new tab with `noopener noreferrer`; the Console session,
+tokens, and Application credentials are not forwarded.
+
+The page states that Console Application credentials remain the recommended
+customer integration path and that LiteLLM virtual keys are a separate,
+advanced native capability. F0-N6 does not activate ingress or change runtime,
+VM103, DNS, certificates, or the gateway. Exact HTTPS navigation, role replay,
+native-session separation, and browser-artifact scanning remain F0-N7 gates.
