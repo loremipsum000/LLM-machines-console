@@ -940,12 +940,13 @@ revocation, safe redirect, outage recovery, role enforcement, and logout remain
 mandatory.
 
 The read-only gateway capture on 2026-08-13 found the retained native
-hostnames still fail closed. The active wildcard certificate expires at
-2026-08-16 08:40:46 UTC. Certificate renewal, DNS mutation, and external
-credential binding remain unauthorized and must be resolved before native
-deployment. Accepted remains false, runtimeQualified remains false, contract
-activation remains inactive, Q0 remains NOT_STARTED, and Genesis remains
-unpublished.
+hostnames still fail closed. That capture's certificate was subsequently
+renewed outside this source package. The carried operator-verified certificate
+evidence now expires at 2026-11-12 08:25:59 UTC with SHA-256 fingerprint
+`EA:D3:7B:FB:0B:5F:08:64:6A:8A:D9:1A:FE:EF:6D:BC:73:C8:4C:5F:23:60:17:B6:C2:14:6C:7E:E3:CC:66:41`.
+F0-N5 changes no live certificate, DNS, or external credential. Accepted
+remains false, runtimeQualified remains false, contract activation remains
+inactive, Q0 remains NOT_STARTED, and Genesis remains unpublished.
 
 ## LiteLLM OSS-only downstream characterization
 
@@ -1074,3 +1075,46 @@ qualification. The remaining pre-Genesis sequence continues with three-service
 F0-N5, F0-N6, F0-N7, and F0-N8. Product acceptance and runtime qualification
 remain false, contract activation remains inactive, Q0 remains NOT_STARTED,
 and Genesis remains unpublished.
+
+## Three-service native Product-edge profiles
+
+F0-N5 adds exact source-only Product-edge profiles for Grafana 13.1.3,
+LiteLLM OSS `v1.96.2-llmm.1`, and Keycloak 26.7.0 appliance-realm
+administration. It preserves the four-authority Console, API, identity, and
+Firecrawl core without rewriting the historical F0-E0 contract. The three
+native tools use dedicated hostnames, fixed private upstreams, exact method,
+path and query-key inventories, and their own supported Keycloak OIDC sessions.
+Console sessions and tokens are never forwarded. Product Application
+credentials are rejected on native authorities.
+
+Grafana admits Admin as Editor; Operator and every other role are denied and
+server-administrator authority remains disabled. LiteLLM admits Admin as
+`proxy_admin` and Operator as `internal_user`; the native application remains
+responsible for limiting Operator to the Operator's own virtual keys and spend.
+Keycloak admits Admin only to the `llm-machines` appliance realm. The Product
+edge returns `403` for
+`DELETE /keycloak/admin/realms/llm-machines/users/{uuid}` before Keycloak,
+closing the F0-N3 upstream Users `manage` residual. Master and unrelated realms,
+unlisted routes, alternate hosts, Host/SNI mismatch, unsafe paths, spoofed
+forwarding headers, WebSocket upgrades, and direct native ports fail closed.
+
+Native cookies, redirects, Origin, Referer, CSRF, PKCE callbacks, static assets,
+logout, and required REST calls are preserved only on the characterized
+profiles. LiteLLM's advanced native inference route may use SSE; no retained
+native surface requires WebSockets. Ingress audit remains metadata-only and
+records no target, query, arbitrary header, cookie, or body.
+
+Production authorities are customer-domain commissioning inputs under customer
+DNS custody. Connected deployments use provider-neutral, narrowly scoped
+DNS-01 or a delegated challenge zone; disconnected deployments use a
+customer-owned private CA. No Porkbun dependency or DNS credential enters the
+Product source.
+
+F0-N5 does not activate or deploy the profiles. HTTPS browser role replay,
+native logout and invalidation, service and identity outage, restart,
+zero-retention, direct-port, and alternate-host proof remain
+`NOT_STARTED_F0_N7`. Portainer remains `DEFERRED_UPSTREAM_SECURITY` with no
+authority, upstream, route, image, startup definition, or navigation entry.
+Accepted remains false, runtimeQualified remains false, contract activation is
+`INACTIVE_PENDING_F0_N7`, Q0 remains NOT_STARTED, and Genesis remains
+unpublished.

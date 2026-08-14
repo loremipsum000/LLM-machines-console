@@ -8,12 +8,16 @@ const repositoryRoot = resolve(moduleDirectory, "../..")
 const expectedFiles = [
   "README.md",
   "edge-policy.json",
+  "native-admin-edge-profile.json",
   "no-bypass-policy.json",
   "product-edge.nginx.conf.template",
   "proxy-common.inc",
   "request-headers-console-browser.inc",
   "request-headers-customer-api.inc",
   "request-headers-identity-browser.inc",
+  "request-headers-grafana-browser.inc",
+  "request-headers-keycloak-admin-browser.inc",
+  "request-headers-litellm-browser.inc",
   "request-safety.inc",
   "source-no-bypass.mjs",
   "source-no-bypass.test.mjs",
@@ -24,6 +28,13 @@ const expectedUpstreams = [
   { id: "console-web", authority: "console-web:3000" },
   { id: "console-bff", authority: "console-bff:4001" },
   { id: "keycloak-identity", authority: "keycloak:8080" },
+]
+const expectedNginxUpstreams = [
+  "console_web",
+  "console_bff",
+  "keycloak_identity",
+  "grafana_native",
+  "litellm_native",
 ]
 const expectedPrivateSystems = [
   "alertmanager",
@@ -125,10 +136,73 @@ const expectedNginxLocations = {
     "~* ^/(?:admin|realms/(?:master|[^/]+)/admin|metrics|health)(?:/|$)",
     "/",
   ],
+  grafana: [
+    "= /",
+    "= /login",
+    "= /login/generic_oauth",
+    "= /logout",
+    "~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",
+    "~ ^/api/(?:dashboards/home|login/ping|plugins|user|user/orgs|user/preferences|user/stars)$",
+    '~ "^/api/plugins/[a-z0-9_-]{1,128}/settings$"',
+    "= /api/dashboards/db",
+    '~ "^/api/dashboards/uid/[A-Za-z0-9_-]{1,128}$"',
+    "= /api/frontend-metrics",
+    "= /apis/dashboard.grafana.app/",
+    "= /apis/dashboard.grafana.app/v0alpha1/namespaces/default/search",
+    "= /apis/features.grafana.app/v0alpha1/namespaces/default/ofrep/v1/evaluate/flags",
+    '~ "^/avatar/[A-Za-z0-9_-]{1,256}$"',
+    "~ ^/(?:public/(?:build|fonts|img|plugins)/|resources/).+$",
+    "= /__llmm_native_unavailable",
+    "/",
+  ],
+  litellm: [
+    "~ ^/ui/(?:login/?)?$",
+    "~ ^/(?:litellm-asset-prefix/_next/static/|ui/__next\\.|litellm/\\.well-known/litellm-ui-config).*$",
+    "= /sso/key/generate",
+    "= /sso/callback",
+    "= /key/generate",
+    "= /key/list",
+    "= /key/info",
+    "= /key/delete",
+    "= /v2/key/info",
+    "= /user/info",
+    "~ ^/(?:api/plugins|models|organization/list|policies/list|project/list|prompts/list|team/list|user/available_roles|user/available_users|v2/guardrails/list|v2/team/list|v2/user/info)$",
+    "~ ^/(?:model/new|team/new|organization/new|user/new|config/update)$",
+    "= /v1/models",
+    "= /v1/chat/completions",
+    "~* ^/(?:public/litellm_blog_posts|v1/agents)(?:/|$)",
+    "= /__llmm_native_unavailable",
+    "/",
+  ],
+  keycloakAdmin: [
+    "= /keycloak/admin/llm-machines/console/whoami",
+    "^~ /keycloak/admin/llm-machines/console/",
+    "= /keycloak/admin/realms/llm-machines",
+    "= /keycloak/admin/serverinfo",
+    "= /keycloak/admin/realms/llm-machines/users",
+    '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}$"',
+    '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/reset-password$"',
+    '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/sessions$"',
+    '~ "^/keycloak/admin/realms/llm-machines/sessions/[0-9a-f-]{36}$"',
+    '~ "^/keycloak/admin/realms/llm-machines/groups(?:/[0-9a-f-]{36}(?:/members)?)?$"',
+    "= /keycloak/realms/llm-machines/protocol/openid-connect/auth",
+    "= /keycloak/realms/llm-machines/protocol/openid-connect/token",
+    "= /keycloak/realms/llm-machines/protocol/openid-connect/logout",
+    "~ ^/keycloak/realms/llm-machines/protocol/openid-connect/3p-cookies/step[12]\\.html$",
+    "= /keycloak/realms/llm-machines/protocol/openid-connect/login-status-iframe.html",
+    "= /keycloak/realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init",
+    "^~ /keycloak/realms/llm-machines/login-actions/",
+    "^~ /keycloak/resources/",
+    "= /__llmm_native_unavailable",
+    "~* ^/keycloak/(?:admin/(?:master|realms/(?:master|(?!(?:llm-machines)(?:/|$))[^/]+))|realms/(?:master|(?!(?:llm-machines)(?:/|$))[^/]+))(?:/|$)",
+    "/",
+  ],
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "4e17d0cc2ff41cb9c638ebace65c56065c08075fe7a6a3f377f8644e1325f447",
+    "e25b3e88aa723ea9eb24c36669bbf77e25634467fc7fb767bd370a908441884b",
+  "native-admin-edge-profile.json":
+    "8db3bfcc7bbd08065a000f1a6cc2293c261564dcfe5a9f4951eb7dd92ced4274",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -137,6 +211,12 @@ const expectedRuntimeSourceHashes = {
     "b7702c4b933206105278c1ee8f7f03ae863a2d1b0896046351514e5d279a8428",
   "request-headers-identity-browser.inc":
     "8dc46e0f6d875e042814d06613a520928153fe585fe45ed65ba4065c9be79dc2",
+  "request-headers-grafana-browser.inc":
+    "86b48ede17e1d05b8e16f286598dc7df63da083bde49f8f885440a37ccf2a5f9",
+  "request-headers-keycloak-admin-browser.inc":
+    "1cd73c5689efa144908db278ed8a01d941c2d7f327bd6b6a76f9cf9faf0fd8fd",
+  "request-headers-litellm-browser.inc":
+    "1cd73c5689efa144908db278ed8a01d941c2d7f327bd6b6a76f9cf9faf0fd8fd",
   "request-safety.inc":
     "148baeded4c09367b0745a80e275ac684435a5c4e18a6ceaad5b25702e284756",
 }
@@ -153,16 +233,167 @@ export function validateIngressSources(sources) {
     "no-bypass-policy.json",
     errors,
   )
-  if (!policy || !noBypass) {
+  const nativeAdmin = parseJson(
+    sources["native-admin-edge-profile.json"],
+    "native-admin-edge-profile.json",
+    errors,
+  )
+  if (!policy || !noBypass || !nativeAdmin) {
     return errors
   }
   validatePolicy(policy, errors)
   validateNoBypass(noBypass, errors)
+  validateNativeAdmin(nativeAdmin, errors)
   validateRuntimeSourceFingerprints(sources, errors)
   validateNginx(sources, errors)
   validateHeaders(sources, errors)
   validateCredentialSafety(sources, errors)
   return errors
+}
+
+function validateNativeAdmin(profile, errors) {
+  add(
+    errors,
+    profile.schema === "llm-machines.f0-n5-native-admin-edge.v1" &&
+      profile.workPackage === "F0-N5",
+    "native-admin profile identity changed",
+  )
+  add(
+    errors,
+    profile.status === "SOURCE_PROFILE_NOT_DEPLOYED" &&
+      profile.accepted === false &&
+      profile.runtimeQualified === false &&
+      profile.activation === "INACTIVE_PENDING_F0_N7",
+    "native-admin profile overstates activation or qualification",
+  )
+  add(
+    errors,
+    profile.protectedInput?.commit ===
+      "bbc36142ae528576e82759bb3ccec5027bd26917" &&
+      profile.protectedInput?.tree ===
+        "e96471cd847b470e20822d62a92bacd33a338fe0",
+    "native-admin protected input changed",
+  )
+  add(
+    errors,
+    sameJson(Object.keys(profile.services ?? {}), [
+      "grafana",
+      "litellm",
+      "keycloakAdmin",
+    ]),
+    "native-admin service set changed",
+  )
+  const grafana = profile.services?.grafana
+  add(
+    errors,
+    grafana?.version === "13.1.3" &&
+      grafana?.hostTemplate === "@@PRODUCT_GRAFANA_HOST@@" &&
+      grafana?.upstream === "grafana:3000" &&
+      sameJson(grafana?.roles, {
+        Admin: "Editor",
+        Operator: "DENY",
+        other: "DENY",
+        serverAdministrator: false,
+      }) &&
+      grafana?.webSocketRequired === false &&
+      grafana?.sseRequired === false,
+    "Grafana native role or transport contract changed",
+  )
+  const litellm = profile.services?.litellm
+  add(
+    errors,
+    litellm?.version === "v1.96.2-llmm.1" &&
+      litellm?.hostTemplate === "@@PRODUCT_LITELLM_HOST@@" &&
+      litellm?.upstream === "litellm:4000" &&
+      litellm?.roles?.Admin === "proxy_admin" &&
+      litellm?.roles?.Operator === "internal_user" &&
+      litellm?.billableUserLimit === 5 &&
+      litellm?.webSocketRequired === false &&
+      litellm?.sseSupportedForNativeInference === true,
+    "LiteLLM native role or transport contract changed",
+  )
+  add(
+    errors,
+    sameJson(litellm?.operatorAuthority?.allow, [
+      "own virtual keys",
+      "own spend",
+    ]) &&
+      sameJson(litellm?.operatorAuthority?.deny, [
+        "routes",
+        "models",
+        "teams",
+        "organizations",
+        "other users",
+        "shared keys",
+        "global budgets",
+        "system configuration",
+      ]),
+    "LiteLLM Operator authority broadened",
+  )
+  const keycloak = profile.services?.keycloakAdmin
+  add(
+    errors,
+    keycloak?.version === "26.7.0" &&
+      keycloak?.hostTemplate === "@@PRODUCT_KEYCLOAK_ADMIN_HOST@@" &&
+      keycloak?.upstream === "keycloak:8080" &&
+      keycloak?.roles?.Admin === "SCOPED_APPLIANCE_REALM_ADMIN" &&
+      keycloak?.roles?.Operator === "DENY" &&
+      keycloak?.roles?.other === "DENY" &&
+      keycloak?.explicitDenials?.includes("/keycloak/admin/master") &&
+      keycloak?.explicitDenials?.includes(
+        "/keycloak/admin/realms/{unrelated-realm}",
+      ),
+    "Keycloak native role or realm contract changed",
+  )
+  add(
+    errors,
+    keycloak?.explicitDenials?.includes(
+      "DELETE /keycloak/admin/realms/llm-machines/users/{uuid}",
+    ),
+    "Keycloak user-delete denial is missing",
+  )
+  add(
+    errors,
+    profile.edge?.customerFacingTcpPorts?.length === 1 &&
+      profile.edge.customerFacingTcpPorts[0] === 443 &&
+      profile.edge?.dedicatedHostnamesOnly === true &&
+      profile.edge?.directNativePortsRemainPrivate === true &&
+      profile.edge?.consoleSessionForwarded === false &&
+      profile.edge?.consoleTokenForwarded === false &&
+      profile.edge?.reverseProxyImpersonation === false &&
+      profile.edge?.webSocketForwarding === false,
+    "native-admin edge boundary changed",
+  )
+  add(
+    errors,
+    profile.globalDenials?.keycloakUserDelete === 403 &&
+      profile.globalDenials?.portainerAuthority === "ABSENT" &&
+      profile.globalDenials?.portainerUpstream === "ABSENT" &&
+      profile.globalDenials?.portainerRoute === "ABSENT",
+    "native-admin explicit denial set changed",
+  )
+  add(
+    errors,
+    profile.authorityProvisioning?.productionDomainOwner === "customer" &&
+      profile.authorityProvisioning
+        ?.customerSpecificAuthoritiesAreCommissioningInputs === true &&
+      profile.authorityProvisioning?.connectedTls ===
+        "PROVIDER_NEUTRAL_SCOPED_DNS_01_OR_DELEGATED_CHALLENGE_ZONE" &&
+      profile.authorityProvisioning?.porkbunDependency === false &&
+      profile.authorityProvisioning?.disconnectedTls ===
+        "CUSTOMER_OWNED_PRIVATE_CA" &&
+      profile.authorityProvisioning?.registryOrDnsCredentialInProductSource ===
+        false,
+    "native-admin authority custody contract changed",
+  )
+  add(
+    errors,
+    Object.entries(profile.runtimeGates ?? {})
+      .filter(([key]) => key !== "f0N7RequiredBeforeActivation")
+      .every(([, value]) => value === "NOT_STARTED") &&
+      profile.runtimeGates?.f0N7RequiredBeforeActivation === true,
+    "native-admin runtime evidence was claimed before F0-N7",
+  )
 }
 
 function validateRuntimeSourceFingerprints(sources, errors) {
@@ -401,23 +632,21 @@ function validateNginx(sources, errors) {
       [...nginx.matchAll(/\bupstream\s+([a-z0-9_]+)\s*\{/g)].map(
         (match) => match[1],
       ),
-      ["console_web", "console_bff", "keycloak_identity"],
+      expectedNginxUpstreams,
     ),
     "Nginx upstream declarations changed",
   )
   add(
     errors,
-    !/upstream\s+(?:grafana|litellm|prometheus|alertmanager|portainer)/i.test(
-      nginx,
-    ),
-    "Nginx declares a native administration upstream",
+    !/upstream\s+(?:prometheus|alertmanager|portainer)/i.test(nginx),
+    "Nginx declares an unapproved native administration upstream",
   )
   const listens = [...nginx.matchAll(/^\s*listen\s+([^;]+);/gm)].map(
     (match) => match[1],
   )
   add(
     errors,
-    listens.length === 5 &&
+    listens.length === 8 &&
       listens.every((value) => value.startsWith("443 ssl")),
     "Nginx customer listeners changed",
   )
@@ -432,7 +661,10 @@ function validateNginx(sources, errors) {
     count(nginx, "server_name @@PRODUCT_API_HOST@@;") === 1 &&
       count(nginx, "server_name @@PRODUCT_CONSOLE_HOST@@;") === 1 &&
       count(nginx, "server_name @@PRODUCT_FIRECRAWL_HOST@@;") === 1 &&
-      count(nginx, "server_name @@PRODUCT_IDENTITY_HOST@@;") === 1,
+      count(nginx, "server_name @@PRODUCT_IDENTITY_HOST@@;") === 1 &&
+      count(nginx, "server_name @@PRODUCT_GRAFANA_HOST@@;") === 1 &&
+      count(nginx, "server_name @@PRODUCT_LITELLM_HOST@@;") === 1 &&
+      count(nginx, "server_name @@PRODUCT_KEYCLOAK_ADMIN_HOST@@;") === 1,
     "public Nginx hosts changed",
   )
   const consoleServer = hostServerSection(
@@ -450,12 +682,33 @@ function validateNginx(sources, errors) {
     "@@PRODUCT_FIRECRAWL_HOST@@",
     "@@PRODUCT_IDENTITY_HOST@@",
   )
-  const identityServer = hostServerSection(nginx, "@@PRODUCT_IDENTITY_HOST@@")
+  const identityServer = hostServerSection(
+    nginx,
+    "@@PRODUCT_IDENTITY_HOST@@",
+    "@@PRODUCT_GRAFANA_HOST@@",
+  )
+  const grafanaServer = hostServerSection(
+    nginx,
+    "@@PRODUCT_GRAFANA_HOST@@",
+    "@@PRODUCT_LITELLM_HOST@@",
+  )
+  const litellmServer = hostServerSection(
+    nginx,
+    "@@PRODUCT_LITELLM_HOST@@",
+    "@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
+  )
+  const keycloakAdminServer = hostServerSection(
+    nginx,
+    "@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
+  )
   for (const [hostId, server] of Object.entries({
     api: apiServer,
     console: consoleServer,
     firecrawl: firecrawlServer,
     identity: identityServer,
+    grafana: grafanaServer,
+    litellm: litellmServer,
+    keycloakAdmin: keycloakAdminServer,
   })) {
     add(
       errors,
@@ -498,6 +751,85 @@ function validateNginx(sources, errors) {
       !/location = \/v[12]\//.test(identityServer),
     "identity host route boundary changed",
   )
+  add(
+    errors,
+    grafanaServer.includes("proxy_pass http://grafana_native;") &&
+      grafanaServer.includes("location = /login/generic_oauth") &&
+      grafanaServer.includes("location = /api/dashboards/db") &&
+      grafanaServer.includes(
+        "location ~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",
+      ) &&
+      !/proxy_set_header\s+Authorization\s+\$http_authorization/.test(
+        grafanaServer,
+      ),
+    "Grafana native route or browser-authorization boundary changed",
+  )
+  add(
+    errors,
+    litellmServer.includes("proxy_pass http://litellm_native;") &&
+      litellmServer.includes("location = /key/generate") &&
+      litellmServer.includes("location = /key/delete") &&
+      litellmServer.includes("location = /v1/chat/completions") &&
+      litellmServer.includes(
+        "location ~* ^/(?:public/litellm_blog_posts|v1/agents)(?:/|$)",
+      ) &&
+      !/location[^\n]*(?:router|global|budget)/i.test(litellmServer),
+    "LiteLLM native route boundary changed",
+  )
+  add(
+    errors,
+    keycloakAdminServer.includes(
+      "location ^~ /keycloak/admin/llm-machines/console/",
+    ) &&
+      keycloakAdminServer.includes(
+        "location ~* ^/keycloak/(?:admin/(?:master|realms/",
+      ) &&
+      !keycloakAdminServer.includes("/keycloak/admin/master/console/") &&
+      !keycloakAdminServer.includes("location = /keycloak/admin/realms {"),
+    "Keycloak appliance-realm route boundary changed",
+  )
+  const keycloakUser = exactLocationSection(
+    keycloakAdminServer,
+    '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}$"',
+  )
+  add(
+    errors,
+    keycloakUser.includes("if ($request_method = DELETE) { return 403; }") &&
+      keycloakUser.includes("limit_except GET HEAD PUT { deny all; }"),
+    "Keycloak user deletion is not denied at the Product edge",
+  )
+  add(
+    errors,
+    nginx.includes("map $http_authorization $llmm_native_product_credential") &&
+      nginx.includes("~*^Bearer[ ]+llmm_(?:t4|fc)_ 1;") &&
+      count(
+        nginx,
+        "if ($llmm_native_product_credential = 1) { return 400; }",
+      ) === 3,
+    "Console Application credentials are not rejected on every native host",
+  )
+  add(
+    errors,
+    count(
+      nginx,
+      'if ($http_cookie ~* "(?:^|;\\\\s*)__Host-llm-machines-(?:session|login)=") { return 400; }',
+    ) === 4,
+    "Console session cookies are not rejected on identity and native hosts",
+  )
+  for (const [label, server] of [
+    ["Grafana", grafanaServer],
+    ["LiteLLM", litellmServer],
+    ["Keycloak Admin", keycloakAdminServer],
+  ]) {
+    add(
+      errors,
+      server.includes("location = /__llmm_native_unavailable") &&
+        server.includes("internal;") &&
+        server.includes("return 503") &&
+        server.includes("error_page 502 503 504 =503"),
+      `${label} controlled outage response changed`,
+    )
+  }
   const identityUnavailable = exactLocationSection(
     identityServer,
     "= /__llmm_identity_unavailable",
@@ -554,13 +886,13 @@ function validateNginx(sources, errors) {
   }
   add(
     errors,
-    count(nginx, 'if ($ssl_server_name = "") { return 421; }') === 4 &&
-      count(nginx, "if ($http_host != $ssl_server_name) { return 421; }") === 4,
+    count(nginx, 'if ($ssl_server_name = "") { return 421; }') === 7 &&
+      count(nginx, "if ($http_host != $ssl_server_name) { return 421; }") === 7,
     "Host and SNI equality checks changed",
   )
   add(
     errors,
-    count(nginx, "include /etc/nginx/llm-machines/request-safety.inc;") === 4,
+    count(nginx, "include /etc/nginx/llm-machines/request-safety.inc;") === 7,
     "raw-path safety is not applied to every public host",
   )
   for (const fixedProxy of [
@@ -581,7 +913,7 @@ function validateNginx(sources, errors) {
   for (const proxyPass of nginx.matchAll(/proxy_pass\s+([^;]+);/g)) {
     add(
       errors,
-      /^http:\/\/(?:console_web|console_bff|keycloak_identity)(?:\/[^$\s]*)?$/.test(
+      /^http:\/\/(?:console_web|console_bff|keycloak_identity|grafana_native|litellm_native)(?:\/[^$\s]*)?$/.test(
         proxyPass[1],
       ),
       `variable or unapproved proxy target ${proxyPass[1]}`,
@@ -589,10 +921,8 @@ function validateNginx(sources, errors) {
   }
   add(
     errors,
-    !/server_name[^;]*(?:grafana|litellm|portainer|prometheus|alertmanager)/i.test(
-      nginx,
-    ),
-    "native administration public hostname added",
+    !/server_name[^;]*(?:portainer|prometheus|alertmanager)/i.test(nginx),
+    "unapproved native administration public hostname added",
   )
   add(
     errors,
@@ -656,6 +986,10 @@ function validateHeaders(sources, errors) {
   const customer = sources["request-headers-customer-api.inc"] ?? ""
   const consoleBrowser = sources["request-headers-console-browser.inc"] ?? ""
   const identityBrowser = sources["request-headers-identity-browser.inc"] ?? ""
+  const grafanaBrowser = sources["request-headers-grafana-browser.inc"] ?? ""
+  const litellmBrowser = sources["request-headers-litellm-browser.inc"] ?? ""
+  const keycloakAdminBrowser =
+    sources["request-headers-keycloak-admin-browser.inc"] ?? ""
   for (const name of [
     "Forwarded",
     "X-Forwarded-Host",
@@ -700,6 +1034,33 @@ function validateHeaders(sources, errors) {
       ),
     "identity browser header profile changed",
   )
+  add(
+    errors,
+    grafanaBrowser.includes("proxy_set_header Cookie $http_cookie;") &&
+      grafanaBrowser.includes('proxy_set_header Authorization "";') &&
+      grafanaBrowser.includes("proxy_set_header Origin $http_origin;") &&
+      grafanaBrowser.includes("proxy_set_header Referer $http_referer;") &&
+      grafanaBrowser.includes(
+        'proxy_set_header X-LLM-Machines-Console-Session "";',
+      ),
+    "Grafana browser header profile changed",
+  )
+  for (const [label, browser] of [
+    ["LiteLLM", litellmBrowser],
+    ["Keycloak Admin", keycloakAdminBrowser],
+  ]) {
+    add(
+      errors,
+      browser.includes("proxy_set_header Cookie $http_cookie;") &&
+        browser.includes(
+          "proxy_set_header Authorization $http_authorization;",
+        ) &&
+        browser.includes("proxy_set_header Origin $http_origin;") &&
+        browser.includes("proxy_set_header Referer $http_referer;") &&
+        browser.includes('proxy_set_header X-LLM-Machines-Console-Session "";'),
+      `${label} browser header profile changed`,
+    )
+  }
 }
 
 function validateCredentialSafety(sources, errors) {
