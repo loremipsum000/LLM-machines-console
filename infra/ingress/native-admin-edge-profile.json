@@ -1,13 +1,13 @@
 {
-  "schema": "llm-machines.f0-n5r-native-admin-edge.v1",
-  "workPackage": "F0-N5R",
-  "status": "SOURCE_PROFILE_CORRECTED_NOT_DEPLOYED",
+  "schema": "llm-machines.f0-n5s-native-admin-edge.v1",
+  "workPackage": "F0-N5S",
+  "status": "SOURCE_PROFILE_CORRECTED_NOT_DEPLOYED_F0_N7_PENDING",
   "accepted": false,
   "runtimeQualified": false,
   "activation": "INACTIVE_PENDING_F0_N7",
   "protectedInput": {
-    "commit": "4585830069cb91cf1806a3a3308c7663860b6822",
-    "tree": "ebf20ea7c95ba4a4900fc4a8c64d147bf06fe3f5"
+    "commit": "dbdc1005711ea2cbfb3658a268181dbd2deef6e0",
+    "tree": "ca9ea9debf1d78f9bd95d75f4c34d1f1cfecfd1e"
   },
   "edge": {
     "customerFacingTcpPorts": [443],
@@ -45,6 +45,12 @@
   "queryPolicies": {
     "forbid": [],
     "oidc-callback": ["code", "iss", "session_state", "state"],
+    "grafana-oauth-entry-or-callback": [
+      "code",
+      "iss",
+      "session_state",
+      "state"
+    ],
     "grafana-root": ["from", "orgId", "timezone", "to"],
     "grafana-login": ["redirectTo"],
     "grafana-search": ["limit", "query", "type"],
@@ -137,10 +143,11 @@
           "queryPolicy": "grafana-login"
         },
         {
-          "id": "oauth-callback",
+          "id": "oauth-entry-or-callback",
           "methods": ["GET", "HEAD"],
           "path": { "kind": "exact", "value": "/login/generic_oauth" },
-          "queryPolicy": "oidc-callback"
+          "queryPolicy": "grafana-oauth-entry-or-callback",
+          "emptyQueryAllowed": true
         },
         {
           "id": "logout",

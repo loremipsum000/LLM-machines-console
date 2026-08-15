@@ -197,9 +197,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "8df431c396995392d6893177b1b9addbc25cfb8da6c6cc3ff2c9d4b7f6de0ac1",
+    "670f64d62485bff2881cf38ba5f5b9099ef628cbe06624564da63e3a294d8e5a",
   "native-admin-edge-profile.json":
-    "92895956c08c3b3e84f976f1e6bf50360aa300153fab2c356f9ecccf981c3d9f",
+    "f03df0321b244350011f431519b9f41ee9574f35053d25ae5b06a90b4f4de999",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -251,13 +251,13 @@ export function validateIngressSources(sources) {
 function validateNativeAdmin(profile, errors) {
   add(
     errors,
-    profile.schema === "llm-machines.f0-n5r-native-admin-edge.v1" &&
-      profile.workPackage === "F0-N5R",
+    profile.schema === "llm-machines.f0-n5s-native-admin-edge.v1" &&
+      profile.workPackage === "F0-N5S",
     "native-admin profile identity changed",
   )
   add(
     errors,
-    profile.status === "SOURCE_PROFILE_CORRECTED_NOT_DEPLOYED" &&
+    profile.status === "SOURCE_PROFILE_CORRECTED_NOT_DEPLOYED_F0_N7_PENDING" &&
       profile.accepted === false &&
       profile.runtimeQualified === false &&
       profile.activation === "INACTIVE_PENDING_F0_N7",
@@ -266,9 +266,9 @@ function validateNativeAdmin(profile, errors) {
   add(
     errors,
     profile.protectedInput?.commit ===
-      "4585830069cb91cf1806a3a3308c7663860b6822" &&
+      "dbdc1005711ea2cbfb3658a268181dbd2deef6e0" &&
       profile.protectedInput?.tree ===
-        "ebf20ea7c95ba4a4900fc4a8c64d147bf06fe3f5",
+        "ca9ea9debf1d78f9bd95d75f4c34d1f1cfecfd1e",
     "native-admin protected input changed",
   )
   add(
@@ -385,6 +385,24 @@ function validateNativeAdmin(profile, errors) {
       profile.globalDenials?.portainerUpstream === "ABSENT" &&
       profile.globalDenials?.portainerRoute === "ABSENT",
     "native-admin explicit denial set changed",
+  )
+  const grafanaOauth = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "oauth-entry-or-callback",
+  )
+  add(
+    errors,
+    sameJson(profile.queryPolicies?.["grafana-oauth-entry-or-callback"], [
+      "code",
+      "iss",
+      "session_state",
+      "state",
+    ]) &&
+      grafanaOauth?.path?.kind === "exact" &&
+      grafanaOauth?.path?.value === "/login/generic_oauth" &&
+      sameJson(grafanaOauth?.methods, ["GET", "HEAD"]) &&
+      grafanaOauth?.queryPolicy === "grafana-oauth-entry-or-callback" &&
+      grafanaOauth?.emptyQueryAllowed === true,
+    "Grafana OAuth entry-or-callback policy changed",
   )
   add(
     errors,

@@ -37,6 +37,12 @@ http {
     ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;
   }
 
+  map $args $llmm_query_grafana_oauth {
+    default 0;
+    "" 1;
+    ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;
+  }
+
   map $args $llmm_query_grafana_root {
     default 0;
     "" 1;
@@ -706,7 +712,7 @@ http {
 
     location = /login/generic_oauth {
       limit_except GET HEAD { deny all; }
-      if ($llmm_query_oidc_callback = 0) { return 400; }
+      if ($llmm_query_grafana_oauth = 0) { return 400; }
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
       proxy_set_header Host $llmm_public_host;
