@@ -1233,6 +1233,21 @@ browser, outage, restart, retention, and no-bypass gate. Product acceptance and
 runtime qualification remain false, activation remains inactive, Q0 remains
 NOT_STARTED, and Genesis remains unpublished.
 
+## Keycloak Admin browser token Origin correction
+
+F0-N5T corrects one dual-authority browser dependency without broadening the
+native surface. The human-realm token endpoint continues to admit an absent
+Origin for confidential server-side exchange. It preserves the Origin header
+only when it exactly equals the commissioned Keycloak Admin authority and
+returns `403` for every other browser Origin before contacting Keycloak.
+Authorization, Cookie, and Console session material remain stripped.
+
+Exact Keycloak 26.7.0 browser proof on isolated VM117 completed the native
+Admin Console token exchange and appliance-realm API load without changing the
+`security-admin-console` client. All owned runtime state was removed and the
+founder environment was preserved. Native ingress remains inactive pending the
+complete F0-N7 replay.
+
 ## Console Technical Tools
 
 F0-N6 adds a role-filtered Technical Tools section inside Settings while
