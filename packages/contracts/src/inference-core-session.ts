@@ -1,10 +1,10 @@
 import { z } from "zod"
 
 export const consoleSessionPolicy = {
-  absoluteLifetimeSeconds: 8 * 60 * 60,
+  absoluteLifetimeSeconds: 24 * 60 * 60,
   accessTokenLifetimeSeconds: 5 * 60,
   clockSkewSeconds: 60,
-  idleLifetimeSeconds: 30 * 60,
+  idleLifetimeSeconds: 8 * 60 * 60,
   loginTransactionLifetimeSeconds: 2 * 60,
   maximumRefreshAttemptsPerRequest: 1,
   maximumRequestReplays: 1,

@@ -11,10 +11,10 @@ import {
 describe("Inference Core Console session contract", () => {
   it("pins the accepted session and replay policy", () => {
     expect(consoleSessionPolicy).toEqual({
-      absoluteLifetimeSeconds: 28_800,
+      absoluteLifetimeSeconds: 86_400,
       accessTokenLifetimeSeconds: 300,
       clockSkewSeconds: 60,
-      idleLifetimeSeconds: 1_800,
+      idleLifetimeSeconds: 28_800,
       loginTransactionLifetimeSeconds: 120,
       maximumRefreshAttemptsPerRequest: 1,
       maximumRequestReplays: 1,

@@ -1123,7 +1123,7 @@ async function runBrowserSessionProof() {
       )
     }
 
-    await advanceClock(31 * 60 * 1000)
+    await advanceClock(8 * 60 * 60 * 1000 + 1)
     await page.goto(`${consoleOrigin}/team`)
     await assertExpiredSignIn(page, "/team")
     assert.equal(
