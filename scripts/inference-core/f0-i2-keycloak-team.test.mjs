@@ -1,8 +1,13 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
-import { resolve } from "node:path"
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join, resolve } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
+import {
+  prepareKeycloakImportRoot,
+  writeKeycloakRealmImport,
+} from "../pre-genesis/keycloak-import-root.mjs"
 import { humanAdminPermissions } from "../pre-genesis/keycloak-team-permissions.mjs"
 
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
@@ -56,6 +61,15 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   assert.match(browser, /operatorMutationDenial: "passed"/)
   assert.match(browser, /assert\.ok\(rotatedPassword\.length >= 20\)/)
   assert.match(browser, /async function assertKeycloakPasswordOutcome/)
+  assert.match(
+    browser,
+    /proveKeycloakTeamConsoleFlow\(\{[\s\S]*synchronizeClock: synchronizeFixtureClock/,
+  )
+  assert.match(browser, /await probe\.waitForURL/)
+  assert.doesNotMatch(
+    browser,
+    /await probe\.locator\("#kc-totp-settings-form"\)\.waitFor/,
+  )
   assert.match(browser, /accepted: false,[\s\S]*password: firstPassword/)
   assert.match(browser, /accepted: true,[\s\S]*password: rotatedPassword/)
   assert.match(
@@ -133,6 +147,26 @@ test("F0-I2 permission translation matches the current logical seed", async () =
   })
   assert.deepEqual(normalizePermissions(actual), normalizePermissions(expected))
   assert.match(wrapper, /humanAdminPermissions\(\{/)
+  assert.match(wrapper, /name: "default-roles-llm-machines"/)
+  assert.match(wrapper, /name: "offline_access"/)
+  assert.match(wrapper, /optionalClientScopes: \["profile", "email"\]/)
+  assert.doesNotMatch(wrapper, /optionalClientScopes: \[[^\]]*offline_access/)
+})
+
+test("F0-I2 renders a Keycloak-readable import root under a restrictive umask", async () => {
+  const stateRoot = await mkdtemp(join(tmpdir(), "llmm-f0-i2-import-root-"))
+  const importRoot = join(stateRoot, "import")
+  const realmFile = join(importRoot, "llm-machines-realm.json")
+  const previousUmask = process.umask(0o077)
+  try {
+    await prepareKeycloakImportRoot(importRoot)
+    await writeKeycloakRealmImport(realmFile, "{}\n")
+    assert.equal((await stat(importRoot)).mode & 0o777, 0o755)
+    assert.equal((await stat(realmFile)).mode & 0o777, 0o644)
+  } finally {
+    process.umask(previousUmask)
+    await rm(stateRoot, { force: true, recursive: true })
+  }
 })
 
 function normalizePermissions(permissions) {

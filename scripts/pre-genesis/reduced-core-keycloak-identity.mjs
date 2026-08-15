@@ -4,7 +4,6 @@ import { randomBytes } from "node:crypto"
 import {
   access,
   chmod,
-  mkdir,
   mkdtemp,
   readFile,
   realpath,
@@ -19,6 +18,10 @@ import {
   authorityOrigin,
   loadFounderUatPlacement,
 } from "./founder-uat-placement.mjs"
+import {
+  prepareKeycloakImportRoot,
+  writeKeycloakRealmImport,
+} from "./keycloak-import-root.mjs"
 import { humanAdminPermissions } from "./keycloak-team-permissions.mjs"
 
 const KEYCLOAK_IMAGE =
@@ -69,7 +72,7 @@ let evidence
 
 try {
   await chmod(stateRoot, 0o700)
-  await mkdir(importRoot, { mode: 0o755 })
+  await prepareKeycloakImportRoot(importRoot)
   const edgePort = serviceControl?.edgePort ?? (await reservePort())
   const upstreamPort = await reservePort()
   if (founderUatPlacement && founderUatPlacement.edgePort !== edgePort) {
@@ -87,10 +90,9 @@ try {
     "identity",
     edgePort,
   )
-  await writeFile(
+  await writeKeycloakRealmImport(
     realmFile,
     `${JSON.stringify(realmExport(consoleOrigin, credentials, teamMode))}\n`,
-    { mode: 0o644 },
   )
   if (teamMode) {
     await writeFile(
@@ -335,7 +337,20 @@ function realmExport(consoleOrigin, values, includeTeamAuthority) {
         ],
       },
     ],
-    roles: { realm: [{ name: "admin" }, { name: "operator" }] },
+    defaultRole: {
+      description: "Empty appliance default role",
+      name: "default-roles-llm-machines",
+    },
+    roles: {
+      realm: [
+        { name: "admin" },
+        { name: "operator" },
+        {
+          description: "OpenID Connect offline access",
+          name: "offline_access",
+        },
+      ],
+    },
     groups: [
       { name: "Admins", realmRoles: ["admin"] },
       { name: "Operators", realmRoles: ["operator"] },
@@ -376,6 +391,16 @@ function realmExport(consoleOrigin, values, includeTeamAuthority) {
       },
       simpleScope("profile"),
       simpleScope("email"),
+      {
+        name: "offline_access",
+        description: "OpenID Connect built-in scope: offline_access",
+        protocol: "openid-connect",
+        attributes: {
+          "consent.screen.text": "${offlineAccessScopeConsentText}",
+          "display.on.consent.screen": "true",
+          "include.in.token.scope": "true",
+        },
+      },
       {
         name: "llm-machines-amr",
         protocol: "openid-connect",
@@ -1019,7 +1044,8 @@ function sanitize(value) {
     credentials.postgres,
   ]
   for (const secret of secrets) output = output.split(secret).join("[redacted]")
-  return output.slice(-8_000)
+  if (output.length <= 8_000) return output
+  return `${output.slice(0, 4_000)}\n[diagnostic truncated]\n${output.slice(-4_000)}`
 }
 
 function safeError(error) {
