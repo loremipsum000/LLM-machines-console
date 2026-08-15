@@ -75,5 +75,12 @@
     "vm103Touched": false,
     "giteaTouched": false
   },
+  "governanceCorrection": {
+    "historicalPackage": "F0-N5S",
+    "defect": "changed-path validation compared immutable evidence to the moving worktree",
+    "resolution": "bind source artifacts and changed paths to the exact admitted F0-N5S candidate",
+    "historicalEvidenceChanged": false,
+    "productBehaviorChanged": false
+  },
   "next": "RESTART_F0_N7_FROM_PROTECTED_F0_L2S_INTEGRATION"
 }

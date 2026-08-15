@@ -99,6 +99,9 @@ test("F0-L2S preserves historical LiteLLM evidence and Product boundaries", asyn
   assert.equal(evidence.sourceChangeBoundary.nativeIngressActivated, false)
   assert.equal(evidence.sourceChangeBoundary.vm103Touched, false)
   assert.equal(evidence.sourceChangeBoundary.giteaTouched, false)
+  assert.equal(evidence.governanceCorrection.historicalPackage, "F0-N5S")
+  assert.equal(evidence.governanceCorrection.historicalEvidenceChanged, false)
+  assert.equal(evidence.governanceCorrection.productBehaviorChanged, false)
 })
 
 test("F0-L2S evidence and current registers contain no credential material", async () => {

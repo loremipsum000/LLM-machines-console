@@ -10,6 +10,7 @@ const root = resolve(import.meta.dirname, "../..")
 const evidencePath =
   "docs/reduction/inference-core/f0-n5s-grafana-oauth-entry.json"
 const protectedInput = "dbdc1005711ea2cbfb3658a268181dbd2deef6e0"
+const sourceCandidate = "e1f45dab020c27a4ae734499063ab2db7e1d2abf"
 
 test("F0-N5S binds the protected input and remains inactive", async () => {
   const evidence = await readJson(evidencePath)
@@ -21,6 +22,7 @@ test("F0-N5S binds the protected input and remains inactive", async () => {
   assert.equal(evidence.q0, "NOT_STARTED")
   assert.equal(evidence.genesisPublished, false)
   assert.equal(evidence.protectedInput.commit, protectedInput)
+  assert.equal(git("rev-parse", `${sourceCandidate}^1`), protectedInput)
   assert.equal(
     git("rev-parse", `${protectedInput}^{tree}`),
     evidence.protectedInput.tree,
@@ -104,19 +106,17 @@ test("F0-N5S preserves historical F0-N5 and F0-N5R evidence", async () => {
 test("F0-N5S fingerprints and changed paths are exact and credential-free", async () => {
   const evidence = await readJson(evidencePath)
   for (const [path, expected] of Object.entries(evidence.sourceArtifacts)) {
-    assert.equal(`sha256:${sha256(await readText(path))}`, expected, path)
+    assert.equal(
+      `sha256:${sha256(gitRaw("show", `${sourceCandidate}:${path}`))}`,
+      expected,
+      path,
+    )
   }
   assert.deepEqual(
-    [
-      ...new Set([
-        ...git("diff", "--name-only", protectedInput)
-          .split("\n")
-          .filter(Boolean),
-        ...git("ls-files", "--others", "--exclude-standard")
-          .split("\n")
-          .filter(Boolean),
-      ]),
-    ].sort(),
+    git("diff", "--name-only", `${protectedInput}..${sourceCandidate}`)
+      .split("\n")
+      .filter(Boolean)
+      .sort(),
     evidence.changedPaths,
   )
   const text = await readText(evidencePath)
