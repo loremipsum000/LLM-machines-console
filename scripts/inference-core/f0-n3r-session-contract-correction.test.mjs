@@ -122,7 +122,11 @@ test("F0-N3R source fingerprints and changed-path inventory are exact", async ()
     [...evidence.sourceChangeBoundary.changedPaths].sort(),
   )
   for (const [path, expected] of Object.entries(evidence.sourceArtifacts)) {
-    assert.equal(`sha256:${sha256(await readText(path))}`, expected, path)
+    assert.equal(
+      `sha256:${sha256(gitBlob(`${packageCommit}:${path}`))}`,
+      expected,
+      path,
+    )
   }
   assert.equal(
     evidence.sourceChangeBoundary.runtimeImplementationChanged,
@@ -142,6 +146,13 @@ test("F0-N3R evidence contains no credential or token material", async () => {
 
 function git(...args) {
   return execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim()
+}
+
+function gitBlob(revision) {
+  return execFileSync("git", ["show", revision], {
+    cwd: root,
+    encoding: "utf8",
+  })
 }
 
 function sha256(value) {

@@ -1,0 +1,97 @@
+{
+  "schema": "llm-machines.f0-n3t-keycloak-runtime-bootstrap.v1",
+  "workPackage": "F0-N3T",
+  "status": "LOCAL_KEYCLOAK_RUNTIME_BOOTSTRAP_CORRECTED",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "155a4fe5004b7a0d0e2ae880aea752e69deeafd2",
+    "tree": "05b479a09365cd6f13fd077fe47108cc2c3ff269"
+  },
+  "sourceCorrection": {
+    "commit": "f8d0549bd2af8d733c7d66e6c1c17f8479eedf97",
+    "tree": "2df9f7cc8333a3e0ca684a6aeb76603aa0f6cb44"
+  },
+  "corrections": {
+    "restrictiveUmask": {
+      "hostStateRootMode": "0700",
+      "containerImportDirectoryMode": "0755",
+      "containerRealmFileMode": "0644",
+      "throwawayCredentialsOnly": true
+    },
+    "offlineBrowserTokens": {
+      "realmDefaultRole": "default-roles-llm-machines",
+      "realmDefaultRoleComposites": [],
+      "offlineAccessRoleAndScopeExist": true,
+      "consoleOptionalOfflineAccess": false
+    },
+    "browserLogin": {
+      "passwordOnly": true,
+      "totpRequired": false,
+      "controlledClockSynchronizedBeforeRealIdentityLogin": true,
+      "callbackFailureDiagnosticsMetadataOnly": true
+    }
+  },
+  "runtimeEvidence": {
+    "environment": "VM117_ISOLATED_LINUX_AMD64",
+    "keycloakImage": "quay.io/keycloak/keycloak:26.7.0@sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13",
+    "keycloakPlatformImage": "sha256:60e153026e8f53ee2c3877b23aa664a6fb24ea99c57085b40cbb77ca2be01e3d",
+    "postgresImage": "docker.io/library/postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3",
+    "credentialFreeLogSha256": "7f2d7490315be3bd139763dbd2c1c0238ac70194be4af3089b0566066f1b88d7",
+    "credentialFreeLogBytes": 3040,
+    "genericSecretMatches": 0,
+    "adminCreateOperator": "PASSED",
+    "passwordRotation": "PASSED",
+    "disableReactivate": "PASSED",
+    "operatorMutationDenial": "PASSED",
+    "auditMetadataOnly": true,
+    "credentialMaterialPersisted": false,
+    "runOwnedContainersRemoved": true,
+    "persistentFounderEnvironmentPreserved": true
+  },
+  "historicalEvidence": [
+    {
+      "path": "docs/reduction/inference-core/f0-i2-keycloak-team.json",
+      "sha256": "d2312012cbe4911fe7def6dc1df5580adc6c3295f039adf8e459dc75b2cf66da",
+      "rewritten": false
+    },
+    {
+      "path": "docs/reduction/inference-core/f0-n3-keycloak-native-access.json",
+      "sha256": "c8e53c3dd9c4eea473c58f587a8c821b95872bc15e2806a2368d87c7d9014c84",
+      "rewritten": false
+    },
+    {
+      "path": "docs/reduction/inference-core/f0-n3r-session-contract-correction.json",
+      "sha256": "e5c9cea56d3948fedb5d4d79df5205ae9f72bd95103888921a35964a535487fa",
+      "rewritten": false
+    }
+  ],
+  "sourceArtifacts": {
+    "scripts/inference-core/f0-i2-keycloak-team.test.mjs": "sha256:b9e182463d2f11b83f3c74bcdfe91eb83019dbc983a15e3ad431a76f8d57a9e6",
+    "scripts/pre-genesis/keycloak-import-root.mjs": "sha256:f9e004f233c5b4933406a766f661e06499a471c66ee22d8f61687067236c5fc3",
+    "scripts/pre-genesis/reduced-core-browser-session.mjs": "sha256:4b74c37816a03a2eb4a64c1f88a9e3554b65e97f203a74716f1de631279617bd",
+    "scripts/pre-genesis/reduced-core-keycloak-identity.mjs": "sha256:9dea033dc0ea5f0c1e7a644efe095ba6cb1f7d18e981bf128912edd361daad07"
+  },
+  "sourceChangeBoundary": {
+    "productRuntimeBehaviorChanged": false,
+    "testRuntimeBootstrapChanged": true,
+    "productBoundaryChanged": false,
+    "historicalEvidenceRewritten": false,
+    "changedPaths": [
+      "docs/reduction/inference-core/README.md",
+      "docs/reduction/inference-core/decision-register.md",
+      "docs/reduction/inference-core/f0-n3t-keycloak-runtime-bootstrap.json",
+      "docs/reduction/inference-core/validation-register.md",
+      "scripts/inference-core/f0-i2-keycloak-team.test.mjs",
+      "scripts/inference-core/f0-n3r-session-contract-correction.test.mjs",
+      "scripts/inference-core/f0-n3t-keycloak-runtime-bootstrap.test.mjs",
+      "scripts/pre-genesis/keycloak-import-root.mjs",
+      "scripts/pre-genesis/reduced-core-browser-session.mjs",
+      "scripts/pre-genesis/reduced-core-keycloak-identity.mjs"
+    ]
+  },
+  "nextPackage": "F0-L2R LiteLLM OSS integrated runtime binding recreated from the resulting protected integration tip"
+}

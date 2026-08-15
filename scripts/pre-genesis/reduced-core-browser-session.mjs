@@ -669,6 +669,7 @@ async function runBrowserSessionProof() {
         credentials,
         page,
         sensitiveValues,
+        synchronizeClock: synchronizeFixtureClock,
       })
       const postgresEvidence = inspectKeycloakTeamPersistence(sensitiveValues)
       assert.deepEqual(pageErrors, [])
@@ -1613,6 +1614,7 @@ async function proveKeycloakTeamConsoleFlow({
   credentials,
   page,
   sensitiveValues,
+  synchronizeClock,
 }) {
   const displayName = `F0 I2 Operator ${randomBytes(4).toString("hex")}`
   const email = `f0-i2-${randomBytes(5).toString("hex")}@fixture.invalid`
@@ -1651,6 +1653,7 @@ async function proveKeycloakTeamConsoleFlow({
   )
   await page.getByText("Operator", { exact: true }).first().waitFor()
   await page.getByText("Active", { exact: true }).first().waitFor()
+  await synchronizeClock()
   await assertKeycloakPasswordOutcome({
     accepted: true,
     consoleOrigin,
@@ -1667,6 +1670,7 @@ async function proveKeycloakTeamConsoleFlow({
   if (rotatedPassword) sensitiveValues.push(rotatedPassword)
   assert.ok(rotatedPassword.length >= 20)
   assert.notEqual(rotatedPassword, firstPassword)
+  await synchronizeClock()
   await assertKeycloakPasswordOutcome({
     accepted: false,
     consoleOrigin,
@@ -1674,6 +1678,7 @@ async function proveKeycloakTeamConsoleFlow({
     password: firstPassword,
     username,
   })
+  await synchronizeClock()
   await assertKeycloakPasswordOutcome({
     accepted: true,
     consoleOrigin,
@@ -1704,6 +1709,7 @@ async function proveKeycloakTeamConsoleFlow({
   await page.getByRole("button", { name: "Sign out" }).click()
   await page.waitForURL((url) => url.pathname === "/auth/signin")
   await context.clearCookies()
+  await synchronizeClock()
   await signIn(page, consoleOrigin, credentials.operator, "/team")
   await assertRole(page, "Operator")
   await page.getByText(displayName, { exact: true }).waitFor()
@@ -1794,13 +1800,37 @@ async function assertKeycloakPasswordOutcome({
     await probe.getByRole("link", { name: /Keycloak/ }).click()
     await probe.locator("#username").fill(username)
     await probe.locator("#password").fill(password)
+    const callbackResponsePromise = probe
+      .waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/console/session/callback",
+        { timeout: 20_000 },
+      )
+      .catch(() => null)
     await probe.locator("#kc-login").click()
     if (accepted) {
-      await probe.locator("#kc-totp-settings-form").waitFor({ timeout: 20_000 })
-      assert.match(
-        new URL(probe.url()).pathname,
-        /\/realms\/llm-machines\/login-actions\/required-action$/,
-      )
+      const expectedConsole = new URL(consoleOrigin)
+      try {
+        await probe.waitForURL(
+          (url) =>
+            url.origin === expectedConsole.origin && url.pathname === "/team",
+          { timeout: 20_000 },
+        )
+      } catch {
+        const observed = new URL(probe.url())
+        const callbackResponse = await callbackResponsePromise
+        const callbackLocation = callbackResponse?.headers().location
+        const callbackTarget = callbackLocation
+          ? new URL(callbackLocation, consoleOrigin)
+          : null
+        const cookieMetadata = (await context.cookies())
+          .map((cookie) => `${cookie.name}@${cookie.domain}${cookie.path}`)
+          .sort()
+        throw new Error(
+          `F0-I2 accepted password login stopped at ${observed.hostname}${observed.pathname}; callback=${callbackResponse?.status() ?? "missing"}->${callbackTarget ? `${callbackTarget.hostname}${callbackTarget.pathname}` : "missing"}; cookies=${cookieMetadata.join(",") || "none"}.`,
+        )
+      }
+      assert.equal(await probe.locator("#kc-totp-settings-form").count(), 0)
       return
     }
     await probe.locator("#username").waitFor({ timeout: 20_000 })
