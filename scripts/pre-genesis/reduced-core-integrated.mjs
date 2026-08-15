@@ -851,7 +851,11 @@ async function stopServiceByName(name, stopFile, failures) {
       await writeFile(stopFile, "stop\n", { mode: 0o600 })
       try {
         const gracefulTimeout =
-          service.name === "firecrawl" && service.ready ? 10 * 60_000 : 30_000
+          service.name === "firecrawl" && service.ready
+            ? 10 * 60_000
+            : service.name === "litellm" && service.ready
+              ? 150_000
+              : 30_000
         await waitForExit(service, gracefulTimeout)
       } catch {
         signalServiceGroup(service, "SIGTERM")

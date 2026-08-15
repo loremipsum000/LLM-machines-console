@@ -1223,7 +1223,7 @@ async function runBrowserSessionProof() {
         "A generated local CA with browser-only trust bypass is not appliance TLS evidence.",
         "Reserved *.llmm.test aliases are loopback-only browser fixture authorities, not Product DNS constants.",
         liteLlmIntegrationMode
-          ? "Exact LiteLLM v1.85.0 is private and disposable; deterministic inference is not SGLang or production-capacity evidence."
+          ? `Exact LiteLLM ${liteLlmControl.imageContract.version} is private and disposable; deterministic inference is not SGLang or production-capacity evidence.`
           : observabilityMode
             ? "Prometheus, Alertmanager, and LiteLLM are deterministic private doubles, not packaged runtime qualification."
             : applicationsMode
@@ -4621,6 +4621,15 @@ function liteLlmControlFromEnvironment() {
     !/^[a-z0-9][a-z0-9_.-]{0,127}$/.test(config.container) ||
     typeof config.dockerContext !== "string" ||
     !/^[A-Za-z0-9_.-]{1,128}$/.test(config.dockerContext) ||
+    !/^sha256:[a-f0-9]{64}$/.test(config.image ?? "") ||
+    config.image !==
+      "sha256:d1396589f1fed1fa3e67142c5f93189e257db14ce92ce9d952fbf18a58350f6b" ||
+    config.imageContract?.manifestDigest !==
+      "sha256:37be0e64e02f7cd2667f6aaa318a69bdde737c6c564ee0a03471bbfff2912244" ||
+    config.imageContract?.platform !== "linux/amd64" ||
+    config.imageContract?.sourceRevision !==
+      "83d6d84bfb7abbbff70d456bc89028d426db8c33" ||
+    config.imageContract?.version !== "v1.96.2-llmm.1" ||
     !config.canaries ||
     ![
       "outagePrompt",
@@ -4642,6 +4651,8 @@ function liteLlmControlFromEnvironment() {
     canaries: config.canaries,
     container: config.container,
     dockerContext: config.dockerContext,
+    image: config.image,
+    imageContract: config.imageContract,
     routingKey: config.routingKey,
   }
 }
