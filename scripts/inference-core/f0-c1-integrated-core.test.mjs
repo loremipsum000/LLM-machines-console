@@ -73,6 +73,8 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(metricsFixture, /target=\/tmp\/llmm-nginx\.conf,readonly/)
   assert.match(metricsFixture, /target=\/tmp\/metrics,readonly/)
   assert.doesNotMatch(metricsFixture, /target=\/etc\/llmm/)
+  assert.match(metricsFixture, /chmod\(files\.metricsConfig, 0o644\)/)
+  assert.match(metricsFixture, /chmod\(files\.metricsPayload, 0o644\)/)
   assert.match(integrated, /sample\.value\[1\] === "1"/)
   assert.doesNotMatch(integrated, /host\.docker\.internal/)
   assert.doesNotMatch(integrated, /server\.listen\(0, "0\.0\.0\.0"/)

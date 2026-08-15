@@ -983,6 +983,10 @@ async function startMetricsFixture() {
     ),
     writeFile(files.metricsPayload, metricsPayload(), { mode: 0o644 }),
   ])
+  await Promise.all([
+    chmod(files.metricsConfig, 0o644),
+    chmod(files.metricsPayload, 0o644),
+  ])
   docker([
     "run",
     "--detach",
