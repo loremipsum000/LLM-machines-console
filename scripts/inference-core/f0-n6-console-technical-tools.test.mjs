@@ -8,6 +8,7 @@ import test from "node:test"
 const root = resolve(import.meta.dirname, "../..")
 const evidencePath =
   "docs/reduction/inference-core/f0-n6-console-technical-tools.json"
+const admittedCandidate = "8b81412792feb57d7c89b82fc4b04d28b3f4d939"
 
 test("F0-N6 binds the exact protected input and remains source-only", async () => {
   const evidence = await readJson(evidencePath)
@@ -106,7 +107,7 @@ test("F0-N6 source fingerprints and changed-path inventory are exact", async () 
   const changedPaths = git(
     "diff",
     "--name-only",
-    evidence.protectedInput.commit,
+    `${evidence.protectedInput.commit}..${admittedCandidate}`,
   )
     .split("\n")
     .filter(Boolean)

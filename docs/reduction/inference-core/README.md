@@ -1051,6 +1051,24 @@ restart, and outage inventory is source-controlled without token or cookie
 values. Product acceptance, runtime qualification, Genesis, Q0, and Product
 main remain unchanged.
 
+## F0-N3R Console session contract correction
+
+F0-N3R prospectively aligns the stale shared Console session contract with the
+already-approved and implemented Keycloak and Console profile: five-minute
+access tokens, an eight-hour idle session, and a 24-hour maximum session. It
+replaces the stale 31-minute browser-expiry assertion with controlled-time
+proof at the eight-hour idle boundary and independently proves the 24-hour
+maximum using controlled session timestamps. No eight-hour wall-clock wait is
+part of the test gate.
+
+Refresh rotation, revocation, safe same-origin redirect, identity-outage
+recovery, concurrent refresh, and logout remain unchanged. The F0-N3 evidence
+is preserved byte-for-byte; F0-N3R is a prospective source-security correction,
+not a rewrite of historical characterization or a runtime-activation claim.
+The F0-N6 path-inventory test now compares its exact admitted candidate rather
+than the moving current worktree, so later independently reviewed successors do
+not invalidate the historical F0-N6 package boundary.
+
 ## Portainer upstream-security deferral
 
 F0-N4 records Portainer as `DEFERRED_UPSTREAM_SECURITY`. The bounded Portainer

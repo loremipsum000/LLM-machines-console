@@ -112,19 +112,35 @@ describe("opaque server-side Console sessions", () => {
   })
 
   it("expires idle and maximum sessions and clears their encrypted authority", async () => {
-    for (const advanceMs of [8 * 60 * 60 * 1000, 24 * 60 * 60 * 1000]) {
-      const fixture = createFixture()
-      const session = await fixture.login()
-      fixture.advance(advanceMs)
+    const idleFixture = createFixture()
+    const idleSession = await idleFixture.login()
+    const [idleRecord] = idleFixture.repository.sessionRecords.values()
+    expect(idleRecord?.idleExpiresAt.getTime()).toBe(
+      idleRecord?.createdAt.getTime() + 8 * 60 * 60 * 1000,
+    )
+    expect(idleRecord?.absoluteExpiresAt.getTime()).toBe(
+      idleRecord?.createdAt.getTime() + 24 * 60 * 60 * 1000,
+    )
+    idleFixture.advance(8 * 60 * 60 * 1000)
 
-      await expect(
-        fixture.service.resolve(session.sessionHandle),
-      ).resolves.toEqual({
-        reason: "expired",
-        state: "terminal",
-      })
-      expect(fixture.repository.sessionRecords.size).toBe(0)
-    }
+    await expect(
+      idleFixture.service.resolve(idleSession.sessionHandle),
+    ).resolves.toEqual({ reason: "expired", state: "terminal" })
+    expect(idleFixture.repository.sessionRecords.size).toBe(0)
+
+    const maximumFixture = createFixture()
+    const maximumSession = await maximumFixture.login()
+    const [maximumRecord] = maximumFixture.repository.sessionRecords.values()
+    if (!maximumRecord) throw new Error("Expected a Console session record.")
+    maximumRecord.idleExpiresAt = new Date(
+      maximumRecord.createdAt.getTime() + 25 * 60 * 60 * 1000,
+    )
+    maximumFixture.advance(24 * 60 * 60 * 1000)
+
+    await expect(
+      maximumFixture.service.resolve(maximumSession.sessionHandle),
+    ).resolves.toEqual({ reason: "expired", state: "terminal" })
+    expect(maximumFixture.repository.sessionRecords.size).toBe(0)
   })
 
   it("serializes one-time refresh across concurrent requests and browser tabs", async () => {

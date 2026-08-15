@@ -1,0 +1,60 @@
+{
+  "schema": "llm-machines.f0-n3r-session-contract-correction.v1",
+  "workPackage": "F0-N3R",
+  "status": "SOURCE_SECURITY_CONTRACT_CORRECTED",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "0b0240c3aac9348198fd3959a5ba571ff94d57ac",
+    "tree": "75ef5947989abbebbe0ec7aed416bf9d1e75e8e8"
+  },
+  "sessionPolicy": {
+    "accessTokenSeconds": 300,
+    "idleSeconds": 28800,
+    "maximumSeconds": 86400,
+    "refreshRotationPreserved": true,
+    "revocationPreserved": true,
+    "safeSameOriginRedirectPreserved": true,
+    "identityOutageRecoveryPreserved": true,
+    "concurrentRefreshPreserved": true,
+    "logoutPreserved": true
+  },
+  "expiryProof": {
+    "idle": "CONTROLLED_CLOCK_AT_28800_SECONDS",
+    "maximum": "CONTROLLED_SESSION_TIMESTAMP_AND_CLOCK_AT_86400_SECONDS",
+    "wallClockWait": false
+  },
+  "historicalEvidence": {
+    "path": "docs/reduction/inference-core/f0-n3-keycloak-native-access.json",
+    "sha256": "c8e53c3dd9c4eea473c58f587a8c821b95872bc15e2806a2368d87c7d9014c84",
+    "rewritten": false
+  },
+  "sourceArtifacts": {
+    "apps/bff/src/services/console-session-service.test.ts": "sha256:e40680f6f185d64bfd8c57571a976ee549bb5e9590f9815aac6fb0a9b82b6e8b",
+    "packages/contracts/src/inference-core-session.test.ts": "sha256:7405806033272d1ee70e6a2b246f30a8e1560c8bb3caa10ef5b374d9ba3bd4bc",
+    "packages/contracts/src/inference-core-session.ts": "sha256:1d9a075e5337489d9556c1e7c89fa44947cb06ab5cfaf2dbf795b9312ae09c7b",
+    "scripts/inference-core/f0-n6-console-technical-tools.test.mjs": "sha256:a9f08c93b8bfa615acaaddd54436e183207ac58ae741665d194c16ee6a9f3518",
+    "scripts/pre-genesis/reduced-core-browser-session.mjs": "sha256:ac62abbfde312b296bc1402392909ff74c227dfb896b27463e94c8be0017b61a"
+  },
+  "sourceChangeBoundary": {
+    "runtimeImplementationChanged": false,
+    "productBoundaryChanged": false,
+    "historicalEvidenceRewritten": false,
+    "changedPaths": [
+      "apps/bff/src/services/console-session-service.test.ts",
+      "docs/reduction/inference-core/README.md",
+      "docs/reduction/inference-core/decision-register.md",
+      "docs/reduction/inference-core/f0-n3r-session-contract-correction.json",
+      "docs/reduction/inference-core/validation-register.md",
+      "packages/contracts/src/inference-core-session.test.ts",
+      "packages/contracts/src/inference-core-session.ts",
+      "scripts/inference-core/f0-n3r-session-contract-correction.test.mjs",
+      "scripts/inference-core/f0-n6-console-technical-tools.test.mjs",
+      "scripts/pre-genesis/reduced-core-browser-session.mjs"
+    ]
+  },
+  "nextPackage": "F0-L2R LiteLLM OSS integrated runtime binding recreated from the corrected protected integration tip"
+}
