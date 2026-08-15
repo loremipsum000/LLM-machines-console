@@ -547,6 +547,12 @@ async function startObservability(edgePort) {
     ),
     writeFile(files.grafanaSecret, `${grafanaOidcSecret}\n`, { mode: 0o444 }),
   ])
+  await Promise.all([
+    chmod(files.prometheusConfig, 0o644),
+    chmod(files.alertmanagerConfig, 0o644),
+    chmod(files.grafanaSecret, 0o444),
+    makeContainerReadableTree(files.grafanaProvisioning),
+  ])
   docker([
     "run",
     "--detach",
@@ -1123,6 +1129,21 @@ async function waitForPrometheusSignals(baseUrl) {
     await delay(500)
   }
   throw new Error("F0-C1 Prometheus did not scrape its fixture.")
+}
+
+async function makeContainerReadableTree(root) {
+  await chmod(root, 0o755)
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const path = join(root, entry.name)
+    if (entry.isDirectory()) {
+      await makeContainerReadableTree(path)
+      continue
+    }
+    if (!entry.isFile()) {
+      throw new Error("F0-C1 rejected a non-file Grafana provisioning entry.")
+    }
+    await chmod(path, 0o644)
+  }
 }
 
 function postgres(sql) {
