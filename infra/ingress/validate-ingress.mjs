@@ -197,9 +197,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "670f64d62485bff2881cf38ba5f5b9099ef628cbe06624564da63e3a294d8e5a",
+    "2e9e3990c32aa66d16ad92de883d5a5eb684c73e0367de6f1b5fed42a50a1d1b",
   "native-admin-edge-profile.json":
-    "f03df0321b244350011f431519b9f41ee9574f35053d25ae5b06a90b4f4de999",
+    "44014f72acdb488479f27c650169b7b4ad1d8f6a26596e060423a5b1f24c90da",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -352,6 +352,12 @@ function validateNativeAdmin(profile, errors) {
       keycloak?.roles?.Admin === "SCOPED_APPLIANCE_REALM_ADMIN" &&
       keycloak?.roles?.Operator === "DENY" &&
       keycloak?.roles?.other === "DENY" &&
+      sameJson(keycloak?.tokenEndpointOriginPolicy, {
+        noOrigin: "ALLOW_SERVER_SIDE_EXCHANGE",
+        allowedBrowserOrigin: "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
+        otherBrowserOrigins: "DENY_403_BEFORE_UPSTREAM",
+        forwardedValue: "EXACT_ALLOWED_BROWSER_ORIGIN_ONLY",
+      }) &&
       keycloak?.explicitDenials?.includes("/keycloak/admin/master") &&
       keycloak?.explicitDenials?.includes(
         "/keycloak/admin/realms/{unrelated-realm}",
@@ -931,6 +937,27 @@ function validateNginx(sources, errors) {
       `unexpected Authorization forwarding on ${declaration}`,
     )
   }
+  const identityToken = exactLocationSection(
+    identityServer,
+    "= /realms/llm-machines/protocol/openid-connect/token",
+  )
+  add(
+    errors,
+    nginx.includes("map $http_origin $llmm_identity_token_origin_allowed {") &&
+      nginx.includes('"https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@" 1;') &&
+      nginx.includes("map $http_origin $llmm_identity_token_origin {") &&
+      nginx.includes(
+        '"https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@" $http_origin;',
+      ) &&
+      identityToken.includes(
+        "if ($llmm_identity_token_origin_allowed = 0) { return 403; }",
+      ) &&
+      identityToken.includes(
+        "proxy_set_header Origin $llmm_identity_token_origin;",
+      ) &&
+      !identityToken.includes("proxy_set_header Origin $http_origin;"),
+    "Keycloak Admin token Origin allowlist changed",
+  )
   add(
     errors,
     count(nginx, 'if ($ssl_server_name = "") { return 421; }') === 7 &&

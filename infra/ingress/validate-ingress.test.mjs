@@ -410,6 +410,37 @@ test("Keycloak native user deletion remains denied before upstream", () => {
   assert.ok(result.some((error) => /user deletion/i.test(error)))
 })
 
+test("Keycloak Admin browser token exchange preserves only the exact origin", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  assert.match(
+    nginx,
+    /map \$http_origin \$llmm_identity_token_origin_allowed \{[\s\S]{0,180}"" 1;[\s\S]{0,180}"https:\/\/@@PRODUCT_KEYCLOAK_ADMIN_HOST@@" 1;/,
+  )
+  assert.match(
+    nginx,
+    /location = \/realms\/llm-machines\/protocol\/openid-connect\/token \{[\s\S]{0,260}if \(\$llmm_identity_token_origin_allowed = 0\) \{ return 403; \}[\s\S]{0,520}proxy_set_header Origin \$llmm_identity_token_origin;/,
+  )
+
+  for (const [before, after] of [
+    ['    "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@" 1;', "    ~^https:// 1;"],
+    [
+      "if ($llmm_identity_token_origin_allowed = 0) { return 403; }",
+      "if ($llmm_identity_token_origin_allowed = 2) { return 403; }",
+    ],
+    [
+      "proxy_set_header Origin $llmm_identity_token_origin;",
+      "proxy_set_header Origin $http_origin;",
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, after),
+      ),
+    )
+    assert.ok(result.some((error) => /Origin|fingerprint/i.test(error)))
+  }
+})
+
 test("Keycloak admin prefix normalization cannot escape its exact allowlist", () => {
   for (const [name, before, after] of [
     [
