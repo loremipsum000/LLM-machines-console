@@ -481,6 +481,12 @@
         "bearerSubjectBindingRequired": true,
         "crossOriginMutationDeniedByKeycloak": true
       },
+      "tokenEndpointOriginPolicy": {
+        "noOrigin": "ALLOW_SERVER_SIDE_EXCHANGE",
+        "allowedBrowserOrigin": "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
+        "otherBrowserOrigins": "DENY_403_BEFORE_UPSTREAM",
+        "forwardedValue": "EXACT_ALLOWED_BROWSER_ORIGIN_ONLY"
+      },
       "webSocketRequired": false,
       "sseRequired": false,
       "routes": [

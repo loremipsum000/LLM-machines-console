@@ -27,6 +27,17 @@ http {
     "~*^Bearer[ ]+llmm_(?:t4|fc)_" 1;
   }
 
+  map $http_origin $llmm_identity_token_origin_allowed {
+    default 0;
+    "" 1;
+    "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@" 1;
+  }
+
+  map $http_origin $llmm_identity_token_origin {
+    default "";
+    "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@" $http_origin;
+  }
+
   map $args $llmm_query_none {
     default 0;
     "" 1;
@@ -514,6 +525,7 @@ http {
     location = /realms/llm-machines/protocol/openid-connect/token {
       limit_except POST { deny all; }
       if ($args != "") { return 400; }
+      if ($llmm_identity_token_origin_allowed = 0) { return 403; }
       client_max_body_size 24k;
       include /etc/nginx/llm-machines/proxy-common.inc;
       proxy_set_header Host $llmm_public_host;
@@ -522,7 +534,7 @@ http {
       proxy_set_header Content-Type "application/x-www-form-urlencoded";
       proxy_set_header Authorization "";
       proxy_set_header Cookie "";
-      proxy_set_header Origin "";
+      proxy_set_header Origin $llmm_identity_token_origin;
       proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/token;
     }
 
