@@ -1,0 +1,91 @@
+{
+  "workPackage": "F0-L2R",
+  "status": "LOCAL_INTEGRATED_LITELLM_OSS_RUNTIME_BOUND",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "f8ac8d762ff2838937c46e4826c5faeeb53a0ab5",
+    "tree": "9d44d35ef0872193c568086e6c8bb22407e23df7",
+    "package": "F0-N3T"
+  },
+  "sourceCandidate": {
+    "commit": "1b72985ee3e45336b78ca917a2dd70defc5ff77f",
+    "tree": "df220172aac3e2fe8f06e185eafa266eae8ad9b0"
+  },
+  "liteLlmIdentity": {
+    "version": "v1.96.2-llmm.1",
+    "upstreamSourceRevision": "83d6d84bfb7abbbff70d456bc89028d426db8c33",
+    "imageId": "sha256:d1396589f1fed1fa3e67142c5f93189e257db14ce92ce9d952fbf18a58350f6b",
+    "manifestDigest": "sha256:37be0e64e02f7cd2667f6aaa318a69bdde737c6c564ee0a03471bbfff2912244",
+    "platform": "linux/amd64",
+    "edition": "OSS_ONLY_DOWNSTREAM"
+  },
+  "runtimeEvidence": {
+    "environment": "VM117_ISOLATED_LINUX_AMD64",
+    "credentialFreeLogSha256": "af5fa0da34899e205d57ba68e13bb935ba8c9b6611f9f0e1f57c372d3cfd8147",
+    "credentialFreeLogBytes": 5362,
+    "genericSecretMatches": 0,
+    "browser": "Google Chrome 151.0.7922.108",
+    "applicationCreation": "PASSED",
+    "modelDiscovery": "PASSED",
+    "nonStreamingChatCompletions": "PASSED",
+    "streamingChatCompletions": "PASSED",
+    "usageAndLastUse": "PASSED",
+    "keycloakLoginAndOutageRecovery": "PASSED",
+    "firecrawlSearchAndStaticScrape": "PASSED",
+    "observabilityStartup": "PASSED",
+    "restartPersistence": "PASSED",
+    "noBypass": "PASSED",
+    "workloadContentCanaries": 0,
+    "credentialMaterialPersisted": false,
+    "runOwnedResourcesRemoved": true,
+    "persistentFounderEnvironmentPreserved": true
+  },
+  "sourceArtifacts": {
+    "scripts/inference-core/f0-c1-integrated-core.test.mjs": "sha256:cdd863aab187223e18f9c93a991c066587c8a231d50035e89df18af1311b9211",
+    "scripts/inference-core/f0-l2-private-litellm.test.mjs": "sha256:3f1c6fa13034170593bc389abb06c3ed61942ca1a13ef7b16ebfdd9032c6f668",
+    "scripts/inference-core/f0-l2r-litellm-runtime-binding.test.mjs": "sha256:6d393dfbd89ddad2542d876bd0041c310377f2a3b2b7b566ca4ceacccac3217e",
+    "scripts/inference-core/f0-n3t-keycloak-runtime-bootstrap.test.mjs": "sha256:1f0799db5e9d49ed09eae954d0a84ac2922e2f58eb3abdadb0e429c18883eb01",
+    "scripts/pre-genesis/litellm-oss-runtime-contract.mjs": "sha256:4294a4280cf8a1a794c27586fb247ea25b77eedfd0f6b01e07b1b4c05047ff9d",
+    "scripts/pre-genesis/reduced-core-browser-session.mjs": "sha256:6b7869140c60ed06dbc6bc62a52c6285671f191ce0d4055b21db829614cfdb30",
+    "scripts/pre-genesis/reduced-core-integrated.mjs": "sha256:2086799427765569bf29558aee0e8792891cf2839b8d07e793b1c4ba1ac21d1a",
+    "scripts/pre-genesis/reduced-core-litellm-integration.mjs": "sha256:2756b66e5f8edb0641197c2a1edbad0922493f0b64665f22ddcbebc3a4172745"
+  },
+  "sourceChangeBoundary": {
+    "changedPaths": [
+      "scripts/inference-core/f0-c1-integrated-core.test.mjs",
+      "scripts/inference-core/f0-l2-private-litellm.test.mjs",
+      "scripts/inference-core/f0-l2r-litellm-runtime-binding.test.mjs",
+      "scripts/inference-core/f0-n3t-keycloak-runtime-bootstrap.test.mjs",
+      "scripts/pre-genesis/litellm-oss-runtime-contract.mjs",
+      "scripts/pre-genesis/reduced-core-browser-session.mjs",
+      "scripts/pre-genesis/reduced-core-integrated.mjs",
+      "scripts/pre-genesis/reduced-core-litellm-integration.mjs"
+    ],
+    "productRuntimeBehaviorChanged": false,
+    "productBoundaryChanged": false,
+    "nativeIngressActivated": false,
+    "vm103Touched": false
+  },
+  "preservedLocalEvidence": [
+    {
+      "commit": "9d5a2f54e9bf3b4107cf970724780ebf18f14960",
+      "published": false,
+      "disposition": "UNPUSHED_HISTORICAL_EVIDENCE"
+    },
+    {
+      "commit": "94324e3975cb8b0fe848837170aff7a6f8b67d91",
+      "published": false,
+      "disposition": "UNPUSHED_HISTORICAL_EVIDENCE"
+    },
+    {
+      "commit": "2ba1a8661f762a6f292c4874f64b776dd9b1344c",
+      "published": false,
+      "disposition": "UNPUSHED_HISTORICAL_EVIDENCE"
+    }
+  ],
+  "next": "F0_N7_RESTART_FROM_PROTECTED_F0_L2R_INTEGRATION"
+}
