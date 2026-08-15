@@ -366,6 +366,36 @@ test("Keycloak native user deletion remains denied before upstream", () => {
   assert.ok(result.some((error) => /user deletion/i.test(error)))
 })
 
+test("Keycloak admin prefix normalization cannot escape its exact allowlist", () => {
+  for (const [name, before, after] of [
+    [
+      "product-edge.nginx.conf.template",
+      "rewrite ^/keycloak/(.*)$ /$1 break;",
+      "rewrite ^/(.*)$ /$1 break;",
+    ],
+    [
+      "request-headers-keycloak-admin-browser.inc",
+      "proxy_set_header X-Forwarded-Prefix /keycloak;",
+      'proxy_set_header X-Forwarded-Prefix "";',
+    ],
+    [
+      "product-edge.nginx.conf.template",
+      "    location = /realms/llm-machines/protocol/openid-connect/auth {",
+      "    location = /keycloak/realms/llm-machines/protocol/openid-connect/auth {",
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed(name, (source) => source.replace(before, after)),
+    )
+    assert.ok(
+      result.some((error) =>
+        /fingerprint|prefix|identity|Keycloak|location inventory/i.test(error),
+      ),
+      name,
+    )
+  }
+})
+
 test("native sessions stay service-owned without proxy impersonation", () => {
   const forwardedConsole = validateIngressSources(
     changed("request-headers-litellm-browser.inc", (source) =>

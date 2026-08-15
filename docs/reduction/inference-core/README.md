@@ -1197,6 +1197,24 @@ Accepted remains false, runtimeQualified remains false, contract activation is
 `INACTIVE_PENDING_F0_N7`, Q0 remains NOT_STARTED, and Genesis remains
 unpublished.
 
+## Keycloak dual-authority edge correction
+
+F0-N5R prospectively corrects the Keycloak part of F0-N5 without rewriting its
+historical evidence. Exact Keycloak 26.7.0 serves root paths internally. Its
+frontend hostname is the identity authority, while its admin hostname is the
+dedicated Keycloak authority with the external `/keycloak` context. The edge
+strips that prefix only after an exact admin-route allowlist match. Normal OIDC,
+login-action, cookie, and logout traffic remains on the identity authority.
+
+A disposable VM117 proof using the exact Keycloak and Nginx images confirmed
+the external admin path, root internal path, duplicate-admin-host OIDC denial,
+and the required pre-upstream user-delete `403`. The proof removed all owned
+containers, listeners, credentials, and temporary files. It does not activate
+native ingress or replace the complete F0-N7 browser, role, outage, restart,
+retention, and no-bypass gate. Product acceptance and runtime qualification
+remain false, activation remains inactive, Q0 remains NOT_STARTED, and Genesis
+remains unpublished.
+
 ## Console Technical Tools
 
 F0-N6 adds a role-filtered Technical Tools section inside Settings while

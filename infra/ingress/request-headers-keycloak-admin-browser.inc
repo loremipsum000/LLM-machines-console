@@ -7,4 +7,5 @@ proxy_set_header Content-Type $http_content_type;
 proxy_set_header Cookie $http_cookie;
 proxy_set_header Origin $http_origin;
 proxy_set_header Referer $http_referer;
+proxy_set_header X-Forwarded-Prefix /keycloak;
 proxy_set_header X-LLM-Machines-Console-Session "";
