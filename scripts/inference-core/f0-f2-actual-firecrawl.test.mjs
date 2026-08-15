@@ -1,7 +1,9 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
-import { resolve } from "node:path"
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join, resolve } from "node:path"
 import test from "node:test"
+import { writeFirecrawlEgressAllowlist } from "../pre-genesis/firecrawl-egress-allowlist.mjs"
 
 const root = resolve(import.meta.dirname, "../..")
 
@@ -35,6 +37,16 @@ test("F0-F2 binds the reviewed reduced Firecrawl source to the Product flow", as
   assert.match(harness, /exactPlatformImage\("squid-runtime-source"\)/)
   assert.match(harness, /--firecrawl-actual-slice/)
   assert.match(development, /LOCAL_ACTUAL_REDUCED_FIRECRAWL_INTEGRATION_ONLY/)
+  assert.match(development, /transport\.hostname = "127\.0\.0\.1"/)
+  assert.match(
+    development,
+    /headers: \{ \.\.\.options\.headers, host: authority\.host \}/,
+  )
+  assert.match(development, /Readable\.toWeb\(response\)/)
+  assert.match(
+    development,
+    /\["api\.localhost", "firecrawl\.localhost"\]\.includes/,
+  )
   assert.match(fixture, /requested\.origin !== "http:\/\/firecrawl-api:3002"/)
   assert.match(fixture, /lookup\(hostname, \{ all: true, verbatim: true \}\)/)
   assert.match(profile, /profiles:\n {4}- firecrawl/)
@@ -70,6 +82,26 @@ test("F0-F2 remains isolated, zero-retention, and non-qualifying", async () => {
     evidence.nextPackage,
     "F0-C1 integrated reduced-Core disposable startup",
   )
+})
+
+test("F0-F2 renders a Squid-readable allowlist under a restrictive umask", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "llmm-f0-f2r-allowlist-"))
+  const previousUmask = process.umask(0o077)
+  try {
+    const path = await writeFirecrawlEgressAllowlist(directory, [
+      "en.wikipedia.org",
+      "example.com",
+    ])
+    assert.equal((await stat(directory)).mode & 0o777, 0o755)
+    assert.equal((await stat(path)).mode & 0o777, 0o644)
+    assert.equal(
+      await readFile(path, "utf8"),
+      "en.wikipedia.org\nexample.com\n",
+    )
+  } finally {
+    process.umask(previousUmask)
+    await rm(directory, { force: true, recursive: true })
+  }
 })
 
 async function readSource(path) {
