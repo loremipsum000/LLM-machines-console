@@ -333,6 +333,10 @@ test("native hosts reject Console sessions and Product credentials", () => {
 test("native query-key allowlists cannot be broadened or removed", () => {
   for (const [before, after] of [
     [
+      "if ($llmm_query_grafana_oauth = 0) { return 400; }",
+      "if ($args = blocked) { return 400; }",
+    ],
+    [
       "if ($llmm_query_grafana_login = 0) { return 400; }",
       "if ($args = blocked) { return 400; }",
     ],
@@ -351,6 +355,46 @@ test("native query-key allowlists cannot be broadened or removed", () => {
       ),
     )
     assert.ok(result.some((error) => /fingerprint|route|query/i.test(error)))
+  }
+})
+
+test("Grafana OAuth admits only empty initiation or exact callback keys", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  const map = nginx.match(
+    /map \$args \$llmm_query_grafana_oauth \{[\s\S]*?\n {2}\}/,
+  )?.[0]
+  assert.equal(
+    map,
+    [
+      "map $args $llmm_query_grafana_oauth {",
+      "    default 0;",
+      '    "" 1;',
+      "    ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;",
+      "  }",
+    ].join("\n"),
+  )
+  assert.match(
+    nginx,
+    /location = \/login\/generic_oauth \{[\s\S]{0,200}if \(\$llmm_query_grafana_oauth = 0\) \{ return 400; \}/,
+  )
+
+  for (const changedMap of [
+    map.replace('    "" 1;', '    "" 0;'),
+    map.replace(
+      "    ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;",
+      "    ~^.*$ 1;",
+    ),
+    map.replaceAll(
+      "code|iss|session_state|state",
+      "code|iss|redirect_uri|session_state|state",
+    ),
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(map, changedMap),
+      ),
+    )
+    assert.ok(result.some((error) => /fingerprint|query|Grafana/i.test(error)))
   }
 })
 

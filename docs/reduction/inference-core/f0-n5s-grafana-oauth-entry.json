@@ -1,0 +1,84 @@
+{
+  "schema": "llm-machines.f0-n5s-grafana-oauth-entry.v1",
+  "workPackage": "F0-N5S",
+  "status": "SOURCE_CORRECTION_COMPLETE_F0_N7_PENDING",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "dbdc1005711ea2cbfb3658a268181dbd2deef6e0",
+    "tree": "ca9ea9debf1d78f9bd95d75f4c34d1f1cfecfd1e"
+  },
+  "defect": {
+    "owner": "F0-N5",
+    "description": "The Grafana OAuth path accepted callback query keys but rejected the same empty-query path used to initiate Generic OAuth.",
+    "historicalEvidenceRewritten": false,
+    "f0N5EvidenceSha256": "6f27c25a8fb3bacd62f9c15490a7944fefe1b1fbd6bf3e66480f8c2cd27ef21e",
+    "f0N5rEvidenceSha256": "085327fcafbe0bb8e6c997c1713652d694f0ea5fcceea2b493f08b8cc6e0d213"
+  },
+  "correction": {
+    "path": "/login/generic_oauth",
+    "methods": ["GET", "HEAD"],
+    "emptyQueryInitiatesOauth": true,
+    "callbackQueryKeys": ["code", "iss", "session_state", "state"],
+    "unapprovedQueryStatus": 400,
+    "grafanaSpecificPolicy": true,
+    "sharedLiteLlmCallbackPolicyChanged": false,
+    "consoleSessionForwarded": false,
+    "consoleTokenForwarded": false,
+    "nativeSessionRemainsGrafanaOwned": true
+  },
+  "disposableRuntimeObservation": {
+    "date": "2026-08-15",
+    "environment": "VM117 isolated linux/amd64",
+    "browser": "Chromium 151.0.7922.108",
+    "grafanaVersion": "13.1.3",
+    "keycloakVersion": "26.7.0",
+    "rawEvidenceSha256": "cd25fcf12d32575c94d1e76d68a78997a6550b5bc978aaaff6827f7097b95460",
+    "results": {
+      "oauthInitiationWithoutQuery": "PASS",
+      "oauthCallbackWithExactKeys": "PASS",
+      "pkceS256": "PASS",
+      "adminRole": "Editor",
+      "operator": "DENY",
+      "grafanaServerAdministrator": false,
+      "dashboardMutation": "PASS",
+      "datasourceMutationStatus": 404,
+      "unapprovedQueryStatus": 400
+    },
+    "credentialValuesRecorded": false,
+    "workloadContentRecorded": false,
+    "containersRemoved": true,
+    "networksRemoved": true,
+    "volumesRemoved": true,
+    "temporarySecretsRemoved": true
+  },
+  "sourceArtifacts": {
+    "infra/ingress/product-edge.nginx.conf.template": "sha256:670f64d62485bff2881cf38ba5f5b9099ef628cbe06624564da63e3a294d8e5a",
+    "infra/ingress/native-admin-edge-profile.json": "sha256:f03df0321b244350011f431519b9f41ee9574f35053d25ae5b06a90b4f4de999"
+  },
+  "sourceBoundary": {
+    "liveRuntimeChanged": false,
+    "vm103Changed": false,
+    "dnsCertificateOrGatewayChanged": false,
+    "releaseInventoryChanged": false,
+    "litellmPolicyChanged": false,
+    "keycloakPolicyChanged": false,
+    "portainerChanged": false,
+    "remainingGate": "F0-N7_COMPLETE_THREE_SERVICE_VALIDATION"
+  },
+  "changedPaths": [
+    "docs/reduction/inference-core/README.md",
+    "docs/reduction/inference-core/decision-register.md",
+    "docs/reduction/inference-core/f0-n5s-grafana-oauth-entry.json",
+    "docs/reduction/inference-core/validation-register.md",
+    "infra/ingress/native-admin-edge-profile.json",
+    "infra/ingress/product-edge.nginx.conf.template",
+    "infra/ingress/validate-ingress.mjs",
+    "infra/ingress/validate-ingress.test.mjs",
+    "scripts/inference-core/f0-n5r-keycloak-dual-authority.test.mjs",
+    "scripts/inference-core/f0-n5s-grafana-oauth-entry.test.mjs"
+  ]
+}

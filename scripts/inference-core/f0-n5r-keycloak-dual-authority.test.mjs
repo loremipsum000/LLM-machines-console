@@ -11,6 +11,7 @@ const evidencePath =
   "docs/reduction/inference-core/f0-n5r-keycloak-dual-authority.json"
 const historicalEvidencePath =
   "docs/reduction/inference-core/f0-n5-native-edge.json"
+const admittedCandidate = "aa41359c0e0b35b0b3fb0a44bf9c5fa92e7c2486"
 
 test("F0-N5R binds the protected input and remains inactive", async () => {
   const evidence = await readJson(evidencePath)
@@ -113,7 +114,11 @@ test("F0-N5R preserves historical F0-N5 evidence byte-for-byte", async () => {
 test("F0-N5R source fingerprints and evidence are credential-free", async () => {
   const evidence = await readJson(evidencePath)
   for (const [path, expected] of Object.entries(evidence.sourceArtifacts)) {
-    assert.equal(`sha256:${sha256(await readText(path))}`, expected, path)
+    assert.equal(
+      `sha256:${sha256(gitRaw("show", `${admittedCandidate}:${path}`))}`,
+      expected,
+      path,
+    )
   }
   const text = await readText(evidencePath)
   assert.doesNotMatch(

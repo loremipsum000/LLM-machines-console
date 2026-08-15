@@ -1215,6 +1215,24 @@ retention, and no-bypass gate. Product acceptance and runtime qualification
 remain false, activation remains inactive, Q0 remains NOT_STARTED, and Genesis
 remains unpublished.
 
+## Grafana OAuth entry query correction
+
+F0-N5S prospectively corrects the Grafana query discriminator without
+rewriting F0-N5 or F0-N5R evidence. Grafana uses
+`GET /login/generic_oauth` both to initiate Generic OAuth without a query and
+to receive the authorization callback with `code`, `iss`, `session_state`, and
+`state`. The edge now uses a Grafana-specific policy for those two exact cases.
+LiteLLM keeps its separate callback-only policy, and unapproved Grafana query
+keys still return `400`.
+
+A disposable VM117 HTTPS browser proof confirmed PKCE S256, Admin Editor,
+Operator denial without a native session, no Grafana server administrator,
+dashboard mutation, datasource denial, and complete cleanup. The correction
+does not activate native ingress or replace the complete F0-N7 three-service
+browser, outage, restart, retention, and no-bypass gate. Product acceptance and
+runtime qualification remain false, activation remains inactive, Q0 remains
+NOT_STARTED, and Genesis remains unpublished.
+
 ## Console Technical Tools
 
 F0-N6 adds a role-filtered Technical Tools section inside Settings while
