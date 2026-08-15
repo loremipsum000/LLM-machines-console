@@ -1081,6 +1081,29 @@ The F0-N6 path-inventory test now compares its exact admitted candidate rather
 than the moving current worktree, so later independently reviewed successors do
 not invalidate the historical F0-N6 package boundary.
 
+## F0-N3T Keycloak runtime-bootstrap correction
+
+F0-N3T corrects only the disposable Keycloak Team proof exposed by the first
+native-Linux F0-L2R replay. Under a restrictive `umask`, the generated import
+directory and realm file were unreadable to Keycloak's non-root container user.
+The helper now keeps the host state root at `0700` while explicitly making the
+container import directory `0755` and its generated throwaway realm file `0644`.
+
+The disposable realm also now implements the existing no-offline-browser-token
+contract: the global `offline_access` role and client scope exist, but the empty
+appliance default role does not inherit them and Console clients cannot request
+them as optional scopes. Controlled BFF time is resynchronized before real
+Keycloak login attempts, and the browser proof expects the approved
+password-only flow instead of historical TOTP enrollment. Callback failure
+diagnostics retain only host, path, status, and cookie-name metadata.
+
+The exact Keycloak 26.7.0 and PostgreSQL 17.6 VM117 replay passes user creation,
+password rotation, disable/reactivate, Operator denial, metadata-only audit and
+session storage, credential-retention checks, and complete run-owned cleanup.
+Historical F0-I2, F0-N3, and F0-N3R evidence remains byte-identical. This is a
+test-runtime successor, not Product acceptance, runtime qualification, native
+route activation, or Q0 evidence.
+
 ## Portainer upstream-security deferral
 
 F0-N4 records Portainer as `DEFERRED_UPSTREAM_SECURITY`. The bounded Portainer
