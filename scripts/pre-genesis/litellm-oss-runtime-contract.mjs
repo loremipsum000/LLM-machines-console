@@ -137,4 +137,3 @@ function requireEqual(actual, expected, field) {
 function requireValue(value, message) {
   if (!value) throw new Error(message)
 }
-
