@@ -1,0 +1,46 @@
+{
+  "schema": "llm-machines.litellm-native-user-commissioning.v1",
+  "status": "SOURCE_CONTRACT_ONLY",
+  "activation": "INACTIVE_PENDING_F0_N7",
+  "identity": {
+    "issuer": "Keycloak llm-machines realm",
+    "immutableUserIdClaim": "sub",
+    "roleClaim": "litellm_role",
+    "roles": {
+      "Admin": "proxy_admin",
+      "Operator": "internal_user"
+    },
+    "maximumBillableUsers": 5
+  },
+  "commissioning": {
+    "transport": "private-service-network-only",
+    "authentication": "root-only-mounted-LiteLLM-master-secret",
+    "humanCredential": false,
+    "idempotent": true,
+    "automaticDeletion": false,
+    "autoCreateVirtualKey": false,
+    "internalEndpoints": [
+      "GET /user/list",
+      "POST /user/new",
+      "POST /user/update",
+      "PATCH /update/ui_settings"
+    ]
+  },
+  "operatorUi": {
+    "enabledPages": ["api-keys", "new_usage"],
+    "chatUi": false,
+    "authority": ["own virtual keys", "own spend"]
+  },
+  "custody": {
+    "masterSecretInGit": false,
+    "masterSecretInEvidence": false,
+    "masterSecretAsHumanCredential": false,
+    "credentialValuesInLogs": false
+  },
+  "boundaries": {
+    "nativeIngressActivated": false,
+    "consoleMutationAdded": false,
+    "paidLicenseRequired": false,
+    "unknownUsersAutoProvisionedByCommissioner": false
+  }
+}

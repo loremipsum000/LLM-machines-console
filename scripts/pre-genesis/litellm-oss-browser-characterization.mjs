@@ -25,6 +25,8 @@ try {
   const operator = await login("operator", state.secrets.operatorPassword)
   assert.equal(admin.claims.user_role, "proxy_admin")
   assert.equal(operator.claims.user_role, "internal_user")
+  assert.equal(admin.claims.user_id, state.identities.admin)
+  assert.equal(operator.claims.user_id, state.identities.operator)
   assert.notEqual(admin.claims.user_id, operator.claims.user_id)
   assertSessionLifetime(admin.claims)
   assertSessionLifetime(operator.claims)
@@ -52,7 +54,7 @@ try {
   const ownList = await api(
     operator.token,
     "GET",
-    "/key/list?user_id=operator&return_full_object=true&include_created_by_keys=true",
+    `/key/list?user_id=${encodeURIComponent(operator.claims.user_id)}&return_full_object=true&include_created_by_keys=true`,
   )
   assert.equal(ownList.status, 200)
   assert.ok(
@@ -178,6 +180,11 @@ try {
           },
           pkceS256: admin.pkceS256 && operator.pkceS256,
           roles: { Admin: "proxy_admin", Operator: "internal_user" },
+          subjectBinding: {
+            commissioning: state.commissioning,
+            immutableUserIdClaim: "sub",
+            result: "PASS",
+          },
           serviceSession: {
             keycloakIdleSeconds: 28_800,
             keycloakMaximumSeconds: 86_400,
@@ -457,10 +464,14 @@ function chromeExecutable() {
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
     "/Applications/Arc.app/Contents/MacOS/Arc",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
   ]
   for (const candidate of candidates)
     if (existsSync(candidate)) return candidate
-  throw new Error("Chrome, Brave, or Arc is required")
+  throw new Error("Chrome, Chromium, Brave, or Arc is required")
 }
 
 async function eventually(check, timeout = 10_000) {

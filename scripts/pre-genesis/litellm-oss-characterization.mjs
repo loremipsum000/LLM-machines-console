@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
-import { randomBytes } from "node:crypto"
+import { randomBytes, randomUUID } from "node:crypto"
 import {
   chmod,
   chown,
@@ -12,6 +12,11 @@ import {
 import { createServer } from "node:net"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
+import { commissionLiteLlmNativeUsers } from "./litellm-native-commissioning.mjs"
+import {
+  loadLiteLlmOssRuntimeContract,
+  validateLiteLlmOssRuntimeInspection,
+} from "./litellm-oss-runtime-contract.mjs"
 
 const POSTGRES_IMAGE =
   "docker.io/library/postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3"
@@ -19,7 +24,7 @@ const KEYCLOAK_IMAGE =
   "quay.io/keycloak/keycloak:26.7.0@sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13"
 const PREDECESSOR_IMAGE =
   "ghcr.io/berriai/litellm:v1.85.0@sha256:2e8517e2bed423c50ab7e40fb1ac0a9cbe62a764e9d65161d871fb6a9bf75a2d"
-const packageLabel = "F0-N1"
+const packageLabel = process.env.F0_N1_PACKAGE_LABEL ?? "F0-N1"
 const mode = process.argv[2]
 const stateFile = resolve(required("F0_N1_STATE_FILE"))
 
@@ -37,7 +42,12 @@ async function start() {
   let startupStage = "initialize"
   const downstreamImage = required("F0_N1_LITELLM_IMAGE")
   assert.match(downstreamImage, /^sha256:[a-f0-9]{64}$/)
-  docker(["image", "inspect", downstreamImage])
+  const runtimeContract = loadLiteLlmOssRuntimeContract(process.cwd())
+  assert.equal(downstreamImage, runtimeContract.image)
+  const imageInspection = JSON.parse(
+    docker(["image", "inspect", downstreamImage]),
+  )[0]
+  validateLiteLlmOssRuntimeInspection(imageInspection, runtimeContract)
   const runId = randomBytes(8).toString("hex")
   const root = await mkdtemp(join(tmpdir(), "llmm-f0-n1-runtime-"))
   await chmod(root, 0o700)
@@ -64,6 +74,15 @@ async function start() {
       keycloak: KEYCLOAK_IMAGE,
       postgres: POSTGRES_IMAGE,
       predecessor: PREDECESSOR_IMAGE,
+    },
+    imageContract: {
+      platform: runtimeContract.platform,
+      sourceRevision: runtimeContract.sourceRevision,
+      version: runtimeContract.version,
+    },
+    identities: {
+      admin: randomUUID(),
+      operator: randomUUID(),
     },
     secrets: {
       adminPassword: opaque(),
@@ -251,34 +270,37 @@ async function start() {
     await waitForHttp(
       `http://127.0.0.1:${state.ports.litellm}/health/liveliness`,
     )
-    startupStage = "provision-native-users"
-    for (const [userId, userRole] of [
-      ["admin", "proxy_admin"],
-      ["operator", "internal_user"],
-    ]) {
-      const provisioned = await requestJson(
-        `http://127.0.0.1:${state.ports.litellm}/user/new`,
-        state.secrets.proxyMasterKey,
-        "POST",
-        {
-          user_email: `f0-n1-${userId}@example.com`,
-          user_id: userId,
-          user_role: userRole,
-        },
-      )
-      assert.equal(provisioned.status, 200)
+    startupStage = "commission-native-users"
+    const commissioningInput = {
+      baseUrl: `http://127.0.0.1:${state.ports.litellm}`,
+      masterKey: state.secrets.proxyMasterKey,
+      users: nativeUsers(state),
     }
-    startupStage = "restrict-operator-native-ui"
-    const uiSettings = await requestJson(
-      `http://127.0.0.1:${state.ports.litellm}/update/ui_settings`,
-      state.secrets.proxyMasterKey,
-      "PATCH",
-      {
-        enabled_ui_pages_internal_users: ["api-keys", "new_usage"],
-        enable_chat_ui: false,
-      },
-    )
-    assert.equal(uiSettings.status, 200)
+    const firstCommissioning =
+      await commissionLiteLlmNativeUsers(commissioningInput)
+    assert.deepEqual(firstCommissioning, {
+      created: 2,
+      credentialMaterialReturned: false,
+      immutableUserIdClaim: "sub",
+      unchanged: 0,
+      updated: 0,
+      users: 2,
+    })
+    const repeatedCommissioning =
+      await commissionLiteLlmNativeUsers(commissioningInput)
+    assert.deepEqual(repeatedCommissioning, {
+      created: 0,
+      credentialMaterialReturned: false,
+      immutableUserIdClaim: "sub",
+      unchanged: 2,
+      updated: 0,
+      users: 2,
+    })
+    state.commissioning = {
+      first: firstCommissioning,
+      repeated: repeatedCommissioning,
+    }
+    await writeState(state)
     startupStage = "verify-migration"
     const migration = await requestJson(
       `http://127.0.0.1:${state.ports.litellm}/key/info`,
@@ -306,7 +328,32 @@ async function restart() {
     state.migratedKey,
   )
   assert.equal(migrated.status, 200)
-  process.stdout.write(`${JSON.stringify({ restartPersistence: "PASS" })}\n`)
+  const commissioning = await commissionLiteLlmNativeUsers({
+    baseUrl: `http://127.0.0.1:${state.ports.litellm}`,
+    masterKey: state.secrets.proxyMasterKey,
+    users: nativeUsers(state),
+  })
+  assert.equal(commissioning.created, 0)
+  assert.equal(commissioning.updated, 0)
+  assert.equal(commissioning.unchanged, 2)
+  process.stdout.write(
+    `${JSON.stringify({ nativeUserRestartPersistence: "PASS", restartPersistence: "PASS" })}\n`,
+  )
+}
+
+function nativeUsers(state) {
+  return [
+    {
+      email: "f0-n1-admin@example.com",
+      productRole: "Admin",
+      subject: state.identities.admin,
+    },
+    {
+      email: "f0-n1-operator@example.com",
+      productRole: "Operator",
+      subject: state.identities.operator,
+    },
+  ]
 }
 
 async function identityOutage() {
@@ -474,6 +521,7 @@ async function writeRuntimeFiles(state) {
       "GENERIC_INCLUDE_CLIENT_ID=true",
       "GENERIC_SCOPE=openid email profile",
       "GENERIC_TOKEN_ENDPOINT=http://keycloak:8080/realms/llm-machines/protocol/openid-connect/token",
+      "GENERIC_USER_ID_ATTRIBUTE=sub",
       "GENERIC_USERINFO_ENDPOINT=http://keycloak:8080/realms/llm-machines/protocol/openid-connect/userinfo",
       "GENERIC_USER_ROLE_ATTRIBUTE=litellm_role",
       "AUTO_REDIRECT_UI_LOGIN_TO_SSO=false",
@@ -493,9 +541,18 @@ async function writeRuntimeFiles(state) {
     `${JSON.stringify(realmSeed(state), null, 2)}\n`,
     { mode: 0o600 },
   )
-  await chown(paths.realmSeed, 1000, 0)
-  await chmod(paths.realmSeed, 0o400)
+  await protectRealmSeed(paths.realmSeed)
   return paths
+}
+
+async function protectRealmSeed(path) {
+  if (process.getuid?.() === 0) {
+    await chown(path, 1000, 0)
+    await chmod(path, 0o400)
+    return
+  }
+  execFileSync("sudo", ["-n", "chown", "1000:0", path])
+  execFileSync("sudo", ["-n", "chmod", "0400", path])
 }
 
 function realmSeed(state) {
@@ -538,14 +595,25 @@ function realmSeed(state) {
       },
     ],
     users: [
-      fixtureUser("admin", state.secrets.adminPassword, "proxy_admin"),
-      fixtureUser("operator", state.secrets.operatorPassword, "internal_user"),
+      fixtureUser(
+        state.identities.admin,
+        "admin",
+        state.secrets.adminPassword,
+        "proxy_admin",
+      ),
+      fixtureUser(
+        state.identities.operator,
+        "operator",
+        state.secrets.operatorPassword,
+        "internal_user",
+      ),
     ],
   }
 }
 
-function fixtureUser(username, password, role) {
+function fixtureUser(subject, username, password, role) {
   return {
+    id: subject,
     username,
     email: `f0-n1-${username}@example.com`,
     emailVerified: true,
