@@ -128,6 +128,10 @@ const expectedNginxLocations = {
     "= /realms/llm-machines/protocol/openid-connect/token",
     "= /realms/llm-machines/protocol/openid-connect/revoke",
     "= /realms/llm-machines/protocol/openid-connect/certs",
+    "= /realms/llm-machines/protocol/openid-connect/userinfo",
+    "~ ^/realms/llm-machines/protocol/openid-connect/3p-cookies/step[12]\\.html$",
+    "= /realms/llm-machines/protocol/openid-connect/login-status-iframe.html",
+    "= /realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init",
     "= /realms/llm-machines-applications/protocol/openid-connect/token",
     "= /realms/llm-machines-applications/protocol/openid-connect/certs",
     "^~ /realms/llm-machines/login-actions/",
@@ -185,13 +189,6 @@ const expectedNginxLocations = {
     '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/sessions$"',
     '~ "^/keycloak/admin/realms/llm-machines/sessions/[0-9a-f-]{36}$"',
     '~ "^/keycloak/admin/realms/llm-machines/groups(?:/[0-9a-f-]{36}(?:/members)?)?$"',
-    "= /keycloak/realms/llm-machines/protocol/openid-connect/auth",
-    "= /keycloak/realms/llm-machines/protocol/openid-connect/token",
-    "= /keycloak/realms/llm-machines/protocol/openid-connect/logout",
-    "~ ^/keycloak/realms/llm-machines/protocol/openid-connect/3p-cookies/step[12]\\.html$",
-    "= /keycloak/realms/llm-machines/protocol/openid-connect/login-status-iframe.html",
-    "= /keycloak/realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init",
-    "^~ /keycloak/realms/llm-machines/login-actions/",
     "^~ /keycloak/resources/",
     "= /__llmm_native_unavailable",
     "~* ^/keycloak/(?:admin/(?:master|realms/(?:master|(?!(?:llm-machines)(?:/|$))[^/]+))|realms/(?:master|(?!(?:llm-machines)(?:/|$))[^/]+))(?:/|$)",
@@ -200,9 +197,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "e25b3e88aa723ea9eb24c36669bbf77e25634467fc7fb767bd370a908441884b",
+    "8df431c396995392d6893177b1b9addbc25cfb8da6c6cc3ff2c9d4b7f6de0ac1",
   "native-admin-edge-profile.json":
-    "8db3bfcc7bbd08065a000f1a6cc2293c261564dcfe5a9f4951eb7dd92ced4274",
+    "92895956c08c3b3e84f976f1e6bf50360aa300153fab2c356f9ecccf981c3d9f",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -214,7 +211,7 @@ const expectedRuntimeSourceHashes = {
   "request-headers-grafana-browser.inc":
     "86b48ede17e1d05b8e16f286598dc7df63da083bde49f8f885440a37ccf2a5f9",
   "request-headers-keycloak-admin-browser.inc":
-    "1cd73c5689efa144908db278ed8a01d941c2d7f327bd6b6a76f9cf9faf0fd8fd",
+    "9990f36d83640ee2c2c87505a87394e0e15d810c61964f3c144c957a9c215f62",
   "request-headers-litellm-browser.inc":
     "1cd73c5689efa144908db278ed8a01d941c2d7f327bd6b6a76f9cf9faf0fd8fd",
   "request-safety.inc":
@@ -254,13 +251,13 @@ export function validateIngressSources(sources) {
 function validateNativeAdmin(profile, errors) {
   add(
     errors,
-    profile.schema === "llm-machines.f0-n5-native-admin-edge.v1" &&
-      profile.workPackage === "F0-N5",
+    profile.schema === "llm-machines.f0-n5r-native-admin-edge.v1" &&
+      profile.workPackage === "F0-N5R",
     "native-admin profile identity changed",
   )
   add(
     errors,
-    profile.status === "SOURCE_PROFILE_NOT_DEPLOYED" &&
+    profile.status === "SOURCE_PROFILE_CORRECTED_NOT_DEPLOYED" &&
       profile.accepted === false &&
       profile.runtimeQualified === false &&
       profile.activation === "INACTIVE_PENDING_F0_N7",
@@ -269,9 +266,9 @@ function validateNativeAdmin(profile, errors) {
   add(
     errors,
     profile.protectedInput?.commit ===
-      "bbc36142ae528576e82759bb3ccec5027bd26917" &&
+      "4585830069cb91cf1806a3a3308c7663860b6822" &&
       profile.protectedInput?.tree ===
-        "e96471cd847b470e20822d62a92bacd33a338fe0",
+        "ebf20ea7c95ba4a4900fc4a8c64d147bf06fe3f5",
     "native-admin protected input changed",
   )
   add(
@@ -336,13 +333,30 @@ function validateNativeAdmin(profile, errors) {
     keycloak?.version === "26.7.0" &&
       keycloak?.hostTemplate === "@@PRODUCT_KEYCLOAK_ADMIN_HOST@@" &&
       keycloak?.upstream === "keycloak:8080" &&
+      keycloak?.frontendHostTemplate === "@@PRODUCT_IDENTITY_HOST@@" &&
+      keycloak?.frontendContextPath === "/" &&
+      keycloak?.adminContextPath === "/keycloak" &&
+      keycloak?.upstreamContextPath === "/" &&
+      sameJson(keycloak?.hostnameContract, {
+        hostname: "https://@@PRODUCT_IDENTITY_HOST@@",
+        hostnameAdmin: "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@/keycloak",
+        proxyHeaders: "xforwarded",
+        hostnameStrict: true,
+      }) &&
+      keycloak?.pathNormalization?.scope ===
+        "ALLOWLISTED_KEYCLOAK_ADMIN_LOCATIONS_ONLY" &&
+      keycloak?.pathNormalization?.externalPrefix === "/keycloak/" &&
+      keycloak?.pathNormalization?.upstreamPrefix === "/" &&
+      keycloak?.pathNormalization?.traversalRejectedBeforeRewrite === true &&
+      keycloak?.pathNormalization?.unlistedPathCannotReachRewrite === true &&
       keycloak?.roles?.Admin === "SCOPED_APPLIANCE_REALM_ADMIN" &&
       keycloak?.roles?.Operator === "DENY" &&
       keycloak?.roles?.other === "DENY" &&
       keycloak?.explicitDenials?.includes("/keycloak/admin/master") &&
       keycloak?.explicitDenials?.includes(
         "/keycloak/admin/realms/{unrelated-realm}",
-      ),
+      ) &&
+      keycloak?.explicitDenials?.includes("/keycloak/realms/*"),
     "Keycloak native role or realm contract changed",
   )
   add(
@@ -743,6 +757,12 @@ function validateNginx(sources, errors) {
       "location = /realms/llm-machines/protocol/openid-connect/auth",
     ) &&
       identityServer.includes(
+        "location = /realms/llm-machines/protocol/openid-connect/userinfo",
+      ) &&
+      identityServer.includes(
+        "location = /realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init",
+      ) &&
+      identityServer.includes(
         "location = /realms/llm-machines-applications/protocol/openid-connect/token",
       ) &&
       identityServer.includes(
@@ -784,9 +804,18 @@ function validateNginx(sources, errors) {
       keycloakAdminServer.includes(
         "location ~* ^/keycloak/(?:admin/(?:master|realms/",
       ) &&
+      !keycloakAdminServer.includes("/keycloak/realms/llm-machines/") &&
       !keycloakAdminServer.includes("/keycloak/admin/master/console/") &&
       !keycloakAdminServer.includes("location = /keycloak/admin/realms {"),
     "Keycloak appliance-realm route boundary changed",
+  )
+  add(
+    errors,
+    count(keycloakAdminServer, "rewrite ^/keycloak/(.*)$ /$1 break;") === 11 &&
+      keycloakAdminServer.includes(
+        "include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;",
+      ),
+    "Keycloak external admin prefix normalization changed",
   )
   const keycloakUser = exactLocationSection(
     keycloakAdminServer,
@@ -801,7 +830,7 @@ function validateNginx(sources, errors) {
   add(
     errors,
     nginx.includes("map $http_authorization $llmm_native_product_credential") &&
-      nginx.includes("~*^Bearer[ ]+llmm_(?:t4|fc)_ 1;") &&
+      nginx.includes('"~*^Bearer[ ]+llmm_(?:t4|fc)_" 1;') &&
       count(
         nginx,
         "if ($llmm_native_product_credential = 1) { return 400; }",
@@ -1061,6 +1090,13 @@ function validateHeaders(sources, errors) {
       `${label} browser header profile changed`,
     )
   }
+  add(
+    errors,
+    keycloakAdminBrowser.includes(
+      "proxy_set_header X-Forwarded-Prefix /keycloak;",
+    ) && !identityBrowser.includes("X-Forwarded-Prefix /keycloak"),
+    "Keycloak external admin prefix header changed",
+  )
 }
 
 function validateCredentialSafety(sources, errors) {

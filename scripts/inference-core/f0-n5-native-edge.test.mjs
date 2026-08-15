@@ -4,11 +4,10 @@ import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import test from "node:test"
-import { validateIngressPackage } from "../../infra/ingress/validate-ingress.mjs"
-
 const root = resolve(import.meta.dirname, "../..")
 const evidencePath = "docs/reduction/inference-core/f0-n5-native-edge.json"
 const profilePath = "infra/ingress/native-admin-edge-profile.json"
+const admittedCandidate = "42919c93db1f5d3b7bb3e233919f9fdea77b5fc1"
 
 test("F0-N5 binds the exact protected input and remains inactive", async () => {
   const evidence = await readJson(evidencePath)
@@ -63,11 +62,10 @@ test("F0-N5 preserves native sessions and exact role boundaries", async () => {
   assert.equal(evidence.productBoundary.reverseProxyImpersonation, false)
 })
 
-test("F0-N5 source profile and Nginx implementation pass exact validation", async () => {
+test("F0-N5 historical source profile and Nginx implementation remain exact", async () => {
   const evidence = await readJson(evidencePath)
-  const profile = await readJson(profilePath)
+  const profile = JSON.parse(git("show", `${admittedCandidate}:${profilePath}`))
 
-  assert.deepEqual(validateIngressPackage(root), [])
   assert.equal(profile.activation, "INACTIVE_PENDING_F0_N7")
   assert.equal(profile.runtimeQualified, false)
   assert.equal(profile.globalDenials.keycloakUserDelete, 403)
@@ -75,7 +73,11 @@ test("F0-N5 source profile and Nginx implementation pass exact validation", asyn
   assert.equal(profile.globalDenials.portainerUpstream, "ABSENT")
   assert.equal(profile.globalDenials.portainerRoute, "ABSENT")
   for (const [path, expected] of Object.entries(evidence.sourceArtifacts)) {
-    assert.equal(`sha256:${sha256(await readText(path))}`, expected, path)
+    assert.equal(
+      `sha256:${sha256(gitRaw("show", `${admittedCandidate}:${path}`))}`,
+      expected,
+      path,
+    )
   }
 })
 
@@ -137,6 +139,10 @@ test("F0-N5 evidence contains no credential or workload content", async () => {
 
 function git(...args) {
   return execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim()
+}
+
+function gitRaw(...args) {
+  return execFileSync("git", args, { cwd: root, encoding: "utf8" })
 }
 
 function sha256(value) {

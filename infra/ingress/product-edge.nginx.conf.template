@@ -24,7 +24,7 @@ http {
 
   map $http_authorization $llmm_native_product_credential {
     default 0;
-    ~*^Bearer[ ]+llmm_(?:t4|fc)_ 1;
+    "~*^Bearer[ ]+llmm_(?:t4|fc)_" 1;
   }
 
   map $args $llmm_query_none {
@@ -81,7 +81,7 @@ http {
 
   map $args $llmm_query_keycloak_authorization {
     default 0;
-    ~^(?:client_id|code_challenge|code_challenge_method|nonce|redirect_uri|response_mode|response_type|scope|state)=[^&]*(?:&(?:client_id|code_challenge|code_challenge_method|nonce|redirect_uri|response_mode|response_type|scope|state)=[^&]*)*$ 1;
+    ~^(?:acr_values|client_id|code_challenge|code_challenge_method|max_age|nonce|prompt|redirect_uri|response_mode|response_type|scope|state)=[^&]*(?:&(?:acr_values|client_id|code_challenge|code_challenge_method|max_age|nonce|prompt|redirect_uri|response_mode|response_type|scope|state)=[^&]*)*$ 1;
   }
 
   map $args $llmm_query_keycloak_login_action {
@@ -474,6 +474,7 @@ http {
 
     location = /realms/llm-machines/protocol/openid-connect/auth {
       limit_except GET { deny all; }
+      if ($llmm_query_keycloak_authorization = 0) { return 400; }
       proxy_pass_request_body off;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
@@ -487,6 +488,7 @@ http {
 
     location = /realms/llm-machines/protocol/openid-connect/logout {
       limit_except GET HEAD POST { deny all; }
+      if ($llmm_query_keycloak_logout = 0) { return 400; }
       client_max_body_size 24k;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
@@ -548,6 +550,48 @@ http {
       proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/certs;
     }
 
+    location = /realms/llm-machines/protocol/openid-connect/userinfo {
+      limit_except GET HEAD POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Authorization $http_authorization;
+      proxy_set_header Referer $http_referer;
+      proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/userinfo;
+    }
+
+    location ~ ^/realms/llm-machines/protocol/openid-connect/3p-cookies/step[12]\.html$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/login-status-iframe.html {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_keycloak_login_status = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://keycloak_identity;
+    }
+
     location = /realms/llm-machines-applications/protocol/openid-connect/token {
       limit_except POST { deny all; }
       if ($args != "") { return 400; }
@@ -581,6 +625,7 @@ http {
 
     location ^~ /realms/llm-machines/login-actions/ {
       limit_except GET HEAD POST { deny all; }
+      if ($llmm_query_keycloak_login_action = 0) { return 400; }
       client_max_body_size 24k;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
@@ -592,6 +637,7 @@ http {
 
     location ^~ /resources/ {
       limit_except GET { deny all; }
+      if ($args != "") { return 400; }
       proxy_pass_request_body off;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
@@ -989,6 +1035,7 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 
@@ -1000,6 +1047,7 @@ http {
       proxy_set_header Host $llmm_public_host;
       proxy_intercept_errors on;
       error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 
@@ -1009,6 +1057,7 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 
@@ -1018,6 +1067,7 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 
@@ -1028,6 +1078,7 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 
@@ -1039,6 +1090,7 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 
@@ -1049,6 +1101,7 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 
@@ -1058,6 +1111,7 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 
@@ -1067,6 +1121,7 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 
@@ -1076,80 +1131,7 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
       proxy_set_header Host $llmm_public_host;
-      proxy_pass http://keycloak_identity;
-    }
-
-    location = /keycloak/realms/llm-machines/protocol/openid-connect/auth {
-      limit_except GET HEAD { deny all; }
-      if ($llmm_query_keycloak_authorization = 0) { return 400; }
-      proxy_pass_request_body off;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_intercept_errors on;
-      error_page 502 503 504 =503 /__llmm_native_unavailable?;
-      proxy_pass http://keycloak_identity;
-    }
-
-    location = /keycloak/realms/llm-machines/protocol/openid-connect/token {
-      limit_except POST { deny all; }
-      if ($llmm_query_none = 0) { return 400; }
-      client_max_body_size 24k;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_pass http://keycloak_identity;
-    }
-
-    location = /keycloak/realms/llm-machines/protocol/openid-connect/logout {
-      limit_except GET HEAD POST { deny all; }
-      if ($llmm_query_keycloak_logout = 0) { return 400; }
-      client_max_body_size 24k;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_pass http://keycloak_identity;
-    }
-
-    location ~ ^/keycloak/realms/llm-machines/protocol/openid-connect/3p-cookies/step[12]\.html$ {
-      limit_except GET HEAD { deny all; }
-      if ($llmm_query_none = 0) { return 400; }
-      proxy_pass_request_body off;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_pass http://keycloak_identity;
-    }
-
-    location = /keycloak/realms/llm-machines/protocol/openid-connect/login-status-iframe.html {
-      limit_except GET HEAD { deny all; }
-      if ($llmm_query_none = 0) { return 400; }
-      proxy_pass_request_body off;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_pass http://keycloak_identity;
-    }
-
-    location = /keycloak/realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init {
-      limit_except GET HEAD { deny all; }
-      if ($llmm_query_keycloak_login_status = 0) { return 400; }
-      proxy_pass_request_body off;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_pass http://keycloak_identity;
-    }
-
-    location ^~ /keycloak/realms/llm-machines/login-actions/ {
-      limit_except POST { deny all; }
-      if ($llmm_query_keycloak_login_action = 0) { return 400; }
-      client_max_body_size 24k;
-      include /etc/nginx/llm-machines/proxy-common.inc;
-      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
-      proxy_set_header Host $llmm_public_host;
-      proxy_intercept_errors on;
-      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 
@@ -1160,6 +1142,7 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
       proxy_pass http://keycloak_identity;
     }
 

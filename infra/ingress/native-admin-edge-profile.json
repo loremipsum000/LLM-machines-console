@@ -1,13 +1,13 @@
 {
-  "schema": "llm-machines.f0-n5-native-admin-edge.v1",
-  "workPackage": "F0-N5",
-  "status": "SOURCE_PROFILE_NOT_DEPLOYED",
+  "schema": "llm-machines.f0-n5r-native-admin-edge.v1",
+  "workPackage": "F0-N5R",
+  "status": "SOURCE_PROFILE_CORRECTED_NOT_DEPLOYED",
   "accepted": false,
   "runtimeQualified": false,
   "activation": "INACTIVE_PENDING_F0_N7",
   "protectedInput": {
-    "commit": "bbc36142ae528576e82759bb3ccec5027bd26917",
-    "tree": "e96471cd847b470e20822d62a92bacd33a338fe0"
+    "commit": "4585830069cb91cf1806a3a3308c7663860b6822",
+    "tree": "ebf20ea7c95ba4a4900fc4a8c64d147bf06fe3f5"
   },
   "edge": {
     "customerFacingTcpPorts": [443],
@@ -56,30 +56,6 @@
     ],
     "keycloak-console": ["code", "iss", "session_state", "state"],
     "keycloak-whoami": ["currentRealm"],
-    "keycloak-authorization": [
-      "client_id",
-      "code_challenge",
-      "code_challenge_method",
-      "nonce",
-      "redirect_uri",
-      "response_mode",
-      "response_type",
-      "scope",
-      "state"
-    ],
-    "keycloak-login-action": [
-      "client_data",
-      "client_id",
-      "execution",
-      "session_code",
-      "tab_id"
-    ],
-    "keycloak-logout": [
-      "client_id",
-      "id_token_hint",
-      "post_logout_redirect_uri"
-    ],
-    "keycloak-login-status": ["client_id", "origin"],
     "keycloak-users": [
       "briefRepresentation",
       "email",
@@ -434,6 +410,23 @@
       "labAuthority": "https://keycloak.lab.llm-machines.com",
       "hostTemplate": "@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
       "upstream": "keycloak:8080",
+      "frontendHostTemplate": "@@PRODUCT_IDENTITY_HOST@@",
+      "frontendContextPath": "/",
+      "adminContextPath": "/keycloak",
+      "upstreamContextPath": "/",
+      "hostnameContract": {
+        "hostname": "https://@@PRODUCT_IDENTITY_HOST@@",
+        "hostnameAdmin": "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@/keycloak",
+        "proxyHeaders": "xforwarded",
+        "hostnameStrict": true
+      },
+      "pathNormalization": {
+        "scope": "ALLOWLISTED_KEYCLOAK_ADMIN_LOCATIONS_ONLY",
+        "externalPrefix": "/keycloak/",
+        "upstreamPrefix": "/",
+        "traversalRejectedBeforeRewrite": true,
+        "unlistedPathCannotReachRewrite": true
+      },
       "realm": "llm-machines",
       "authentication": "Keycloak native Authorization Code with PKCE S256",
       "roles": {
@@ -441,12 +434,15 @@
         "Operator": "DENY",
         "other": "DENY"
       },
-      "nativeCookies": [
-        "AUTH_SESSION_ID",
-        "KC_AUTH_SESSION_HASH",
-        "KEYCLOAK_IDENTITY",
-        "KEYCLOAK_SESSION"
-      ],
+      "nativeCookies": {
+        "identityAuthority": [
+          "AUTH_SESSION_ID",
+          "KC_AUTH_SESSION_HASH",
+          "KEYCLOAK_IDENTITY",
+          "KEYCLOAK_SESSION"
+        ],
+        "adminAuthority": []
+      },
       "requestHeaders": [
         "Accept",
         "Accept-Encoding",
@@ -468,7 +464,10 @@
         "X-Content-Type-Options",
         "X-Frame-Options"
       ],
-      "redirectOrigins": ["https://keycloak.lab.llm-machines.com"],
+      "redirectOrigins": [
+        "https://identity.lab.llm-machines.com",
+        "https://keycloak.lab.llm-machines.com"
+      ],
       "csrf": {
         "preserveOrigin": true,
         "preserveReferer": true,
@@ -567,74 +566,46 @@
           "queryPolicy": "keycloak-groups"
         },
         {
-          "id": "authorization",
-          "methods": ["GET", "HEAD"],
-          "path": {
-            "kind": "exact",
-            "value": "/keycloak/realms/llm-machines/protocol/openid-connect/auth"
-          },
-          "queryPolicy": "keycloak-authorization"
-        },
-        {
-          "id": "token",
-          "methods": ["POST"],
-          "path": {
-            "kind": "exact",
-            "value": "/keycloak/realms/llm-machines/protocol/openid-connect/token"
-          },
-          "queryPolicy": "forbid"
-        },
-        {
-          "id": "logout",
-          "methods": ["GET", "HEAD", "POST"],
-          "path": {
-            "kind": "exact",
-            "value": "/keycloak/realms/llm-machines/protocol/openid-connect/logout"
-          },
-          "queryPolicy": "keycloak-logout"
-        },
-        {
-          "id": "third-party-cookie-check",
-          "methods": ["GET", "HEAD"],
-          "path": {
-            "kind": "regex",
-            "value": "^/keycloak/realms/llm-machines/protocol/openid-connect/3p-cookies/step[12]\\.html$"
-          },
-          "queryPolicy": "forbid"
-        },
-        {
-          "id": "login-status",
-          "methods": ["GET", "HEAD"],
-          "path": {
-            "kind": "exact",
-            "value": "/keycloak/realms/llm-machines/protocol/openid-connect/login-status-iframe.html"
-          },
-          "queryPolicy": "forbid"
-        },
-        {
-          "id": "login-status-init",
-          "methods": ["GET", "HEAD"],
-          "path": {
-            "kind": "exact",
-            "value": "/keycloak/realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init"
-          },
-          "queryPolicy": "keycloak-login-status"
-        },
-        {
-          "id": "login-actions",
-          "methods": ["POST"],
-          "path": {
-            "kind": "prefix",
-            "value": "/keycloak/realms/llm-machines/login-actions/"
-          },
-          "queryPolicy": "keycloak-login-action"
-        },
-        {
           "id": "static-assets",
           "methods": ["GET", "HEAD"],
           "path": { "kind": "prefix", "value": "/keycloak/resources/" },
           "queryPolicy": "forbid"
         }
+      ],
+      "identityBrowserDependencies": [
+        {
+          "id": "authorization",
+          "path": "/realms/llm-machines/protocol/openid-connect/auth"
+        },
+        {
+          "id": "token",
+          "path": "/realms/llm-machines/protocol/openid-connect/token"
+        },
+        {
+          "id": "userinfo",
+          "path": "/realms/llm-machines/protocol/openid-connect/userinfo"
+        },
+        {
+          "id": "logout",
+          "path": "/realms/llm-machines/protocol/openid-connect/logout"
+        },
+        {
+          "id": "third-party-cookie-check",
+          "path": "/realms/llm-machines/protocol/openid-connect/3p-cookies/step[12].html"
+        },
+        {
+          "id": "login-status",
+          "path": "/realms/llm-machines/protocol/openid-connect/login-status-iframe.html"
+        },
+        {
+          "id": "login-status-init",
+          "path": "/realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init"
+        },
+        {
+          "id": "login-actions",
+          "path": "/realms/llm-machines/login-actions/"
+        },
+        { "id": "static-assets", "path": "/resources/" }
       ],
       "explicitDenials": [
         "/keycloak/admin/master",
@@ -642,6 +613,7 @@
         "/keycloak/admin/realms/{unrelated-realm}",
         "POST /keycloak/admin/realms",
         "DELETE /keycloak/admin/realms/llm-machines/users/{uuid}",
+        "/keycloak/realms/*",
         "client mutation",
         "identity-provider mutation",
         "impersonation",

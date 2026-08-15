@@ -6,7 +6,7 @@ two-authority topology without rewriting that evidence. F0-N5 adds a separate,
 prospective three-service native-administration profile. Neither package is a
 deployment manifest or qualifies a running listener.
 
-The edge has exactly four public host identities on TCP 443:
+The Core edge has four primary Product host identities on TCP 443:
 
 - the Console host for the primary customer UI and Console session endpoints;
 - the API host for `GET /v1/models` and `POST /v1/chat/completions`;
@@ -64,10 +64,10 @@ firewall, DNS, certificate, and packaged Nginx behavior as
 network before a release may claim no bypass. Source tests never substitute
 for that runtime evidence.
 
-## F0-N5 native-administration overlay
+## F0-N5R native-administration overlay
 
 `native-admin-edge-profile.json` and the three native browser-header includes
-bind the source-only profiles for Grafana 13.1.3, the LiteLLM OSS-only
+prospectively correct the F0-N5 source-only profiles for Grafana 13.1.3, the LiteLLM OSS-only
 `v1.96.2-llmm.1` downstream, and Keycloak 26.7.0 appliance-realm
 administration. Each service uses a dedicated hostname and its own supported
 Keycloak OIDC session. Console session cookies and tokens are rejected rather
@@ -78,7 +78,12 @@ Grafana admits Admin as Editor only; Operator and other roles are denied by
 Grafana and server-administrator authority is disabled. LiteLLM admits Admin as
 `proxy_admin` and Operator as `internal_user`; its characterized native policy
 limits Operator to the Operator's virtual keys and spend. Keycloak admits Admin
-only under the `llm-machines` realm. The Product edge returns `403` for exact
+only under the `llm-machines` realm. Keycloak 26.7.0 runs at root internally
+with `hostname` bound to the identity authority and `hostname-admin` bound to
+the dedicated admin authority plus `/keycloak`. Only the exact allowlisted
+admin locations strip that external prefix before proxying; normal OIDC,
+login-action, cookie, and logout traffic stays on the identity authority. The
+Product edge returns `403` for exact
 user DELETE requests before they reach Keycloak, compensating for the narrowest
 supported upstream Users `manage` authority. Master and unrelated realms,
 unlisted routes, alternate hosts, mismatched Host/SNI, unsafe paths, spoofed
@@ -91,7 +96,8 @@ path may stream using SSE; no native surface requires WebSocket forwarding.
 Metadata-only ingress logging does not record paths, queries, headers, cookies,
 or bodies.
 
-The profile remains `INACTIVE_PENDING_F0_N7`. F0-N5 is source evidence only;
+The profile remains `INACTIVE_PENDING_F0_N7`. F0-N5R is a prospective source
+correction and bounded disposable path proof only;
 F0-N7 must replay HTTPS browser roles, logout, outage, restart, retention, and
 no-bypass behavior before activation. Portainer remains
 `DEFERRED_UPSTREAM_SECURITY` and has no authority, upstream, route, image,

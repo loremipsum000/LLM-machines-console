@@ -1,0 +1,87 @@
+{
+  "schema": "llm-machines.f0-n5r-keycloak-dual-authority.v1",
+  "workPackage": "F0-N5R",
+  "status": "SOURCE_CORRECTION_COMPLETE_F0_N7_PENDING",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "4585830069cb91cf1806a3a3308c7663860b6822",
+    "tree": "ebf20ea7c95ba4a4900fc4a8c64d147bf06fe3f5"
+  },
+  "defect": {
+    "owner": "F0-N5",
+    "description": "The admitted edge forwarded the external /keycloak administration prefix unchanged to a Keycloak 26.7.0 listener that serves the appliance realm at root paths.",
+    "historicalEvidenceRewritten": false,
+    "historicalEvidenceSha256": "6f27c25a8fb3bacd62f9c15490a7944fefe1b1fbd6bf3e66480f8c2cd27ef21e"
+  },
+  "keycloakContract": {
+    "version": "26.7.0",
+    "frontendAuthority": "https://@@PRODUCT_IDENTITY_HOST@@",
+    "adminAuthority": "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@/keycloak",
+    "upstreamContextPath": "/",
+    "proxyHeaders": "xforwarded",
+    "hostnameStrict": true,
+    "identityBrowserDependenciesRemainOnFrontendAuthority": true,
+    "adminHostOidcRoutes": "DENY",
+    "externalPrefixNormalization": {
+      "from": "/keycloak/",
+      "to": "/",
+      "scope": "ALLOWLISTED_KEYCLOAK_ADMIN_LOCATIONS_ONLY",
+      "unsafePathRejectedBeforeRewrite": true
+    },
+    "userDelete": {
+      "method": "DELETE",
+      "path": "/keycloak/admin/realms/llm-machines/users/{uuid}",
+      "edgeStatus": 403,
+      "evaluatedBeforeRewrite": true
+    },
+    "consoleSessionForwarded": false,
+    "consoleTokenForwarded": false,
+    "nativeSessionRemainsKeycloakOwned": true
+  },
+  "primaryEvidence": [
+    "https://www.keycloak.org/server/hostname",
+    "https://www.keycloak.org/server/reverseproxy"
+  ],
+  "disposableRuntimeObservation": {
+    "date": "2026-08-15",
+    "environment": "VM117 isolated linux/amd64",
+    "keycloakImage": "quay.io/keycloak/keycloak:26.7.0@sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13",
+    "edgeImage": "docker.io/library/nginx:1.29.1-alpine@sha256:42a516af16b852e33b7682d5ef8acbd5d13fe08fecadc7ed98605ba5e3b26ab8",
+    "results": {
+      "externalAdminConsole": 200,
+      "externalUserDelete": 403,
+      "adminHostDuplicateOidc": 404,
+      "directUpstreamPrefixedAdmin": 404,
+      "directUpstreamRootAdmin": 200,
+      "identityAuthorizationReachedKeycloak": 400
+    },
+    "identityAuthorizationResultMeaning": "The edge admitted the exact query shape and Keycloak rejected the deliberately unknown client.",
+    "credentialValuesRecorded": false,
+    "workloadContentRecorded": false,
+    "containersRemoved": true,
+    "listenersRemoved": true,
+    "temporaryFilesRemoved": true
+  },
+  "sourceArtifacts": {
+    "infra/ingress/product-edge.nginx.conf.template": "sha256:8df431c396995392d6893177b1b9addbc25cfb8da6c6cc3ff2c9d4b7f6de0ac1",
+    "infra/ingress/native-admin-edge-profile.json": "sha256:92895956c08c3b3e84f976f1e6bf50360aa300153fab2c356f9ecccf981c3d9f",
+    "infra/ingress/request-headers-keycloak-admin-browser.inc": "sha256:9990f36d83640ee2c2c87505a87394e0e15d810c61964f3c144c957a9c215f62"
+  },
+  "sourceBoundary": {
+    "productBehaviorActivated": false,
+    "liveRuntimeChanged": false,
+    "vm103Changed": false,
+    "dnsCertificateOrGatewayChanged": false,
+    "releaseInventoryChanged": false,
+    "grafanaOrLitellmPolicyChanged": false,
+    "portainerChanged": false
+  },
+  "remainingGate": {
+    "package": "F0-N7",
+    "required": "Complete HTTPS browser, role, outage, restart, retention, and no-bypass replay for Grafana, LiteLLM, and Keycloak."
+  }
+}
