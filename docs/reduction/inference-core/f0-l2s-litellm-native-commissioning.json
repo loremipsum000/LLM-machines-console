@@ -1,0 +1,79 @@
+{
+  "workPackage": "F0-L2S",
+  "status": "LOCAL_LITELLM_NATIVE_SUBJECT_BINDING_PROVEN",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "9adf82ffbf8f4617a7846e69e436acd21b9270c8",
+    "tree": "d936b55d8da4938745fb06185f503bf50ff98bf6"
+  },
+  "sourceImplementation": {
+    "commit": "9458ff5596331f9e0bb2bc99ccf47ad13a7e7e6e",
+    "tree": "42d77ca275b170b2806cbd79c39419b5fbcafd1f"
+  },
+  "liteLlmIdentity": {
+    "version": "v1.96.2-llmm.1",
+    "sourceRevision": "83d6d84bfb7abbbff70d456bc89028d426db8c33",
+    "imageId": "sha256:d1396589f1fed1fa3e67142c5f93189e257db14ce92ce9d952fbf18a58350f6b",
+    "platform": "linux/amd64",
+    "license": "MIT"
+  },
+  "commissioning": {
+    "identityClaim": "sub",
+    "roleClaim": "litellm_role",
+    "roles": {
+      "Admin": "proxy_admin",
+      "Operator": "internal_user"
+    },
+    "firstRunCreated": 2,
+    "repeatedRunUnchanged": 2,
+    "postRestartUnchanged": 2,
+    "updates": 0,
+    "automaticDeletion": false,
+    "autoCreatedVirtualKey": false,
+    "credentialMaterialReturned": false,
+    "maximumBillableUsers": 5
+  },
+  "runtimeEvidence": {
+    "environment": "VM117_ISOLATED_LINUX_AMD64",
+    "browser": "Chromium 151.0.7922.108",
+    "browserEvidenceSha256": "2f06c74bc547b66308e99dd9fbe01e24d5696b50f713fb99ab4c4bd648520352",
+    "authorizationCode": "PASS",
+    "pkceS256": "PASS",
+    "immutableSubjectBinding": "PASS",
+    "adminOwnKeyLifecycle": "PASS",
+    "operatorOwnKeyLifecycle": "PASS",
+    "operatorOwnSpend": "PASS",
+    "crossUserAndGlobalMutationDenial": "PASS",
+    "nonStreamingInference": "PASS_DETERMINISTIC_UPSTREAM",
+    "streamingInference": "PASS_DETERMINISTIC_UPSTREAM",
+    "accounting": "PASS",
+    "nativeLogout": "PASS",
+    "restartPersistence": "PASS",
+    "identityOutage": "CONTROLLED_NATIVE_LOGIN_UNAVAILABLE_SERVICE_REMAINS_HEALTHY",
+    "zeroContentRetention": "PASS",
+    "directCustomerPort": "DENIED_LOOPBACK_ONLY_CHARACTERIZATION",
+    "consoleSessionForwarded": false,
+    "enterpriseRuntimeMaterial": false,
+    "runOwnedResourcesRemoved": true,
+    "persistentFounderEnvironmentPreserved": true
+  },
+  "sourceArtifacts": {
+    "infra/litellm/native-user-commissioning.json": "sha256:e0c166b12d11c3aaa0d57e3e178499b1b4d9f952433357419bfbd7b7f8d5b2f4",
+    "scripts/inference-core/f0-l2s-litellm-native-commissioning.test.mjs": "sha256:9f27934b67ae19aa3dfd4bddcd45fa8325c1e8722e2501ff212b9ed03fdc4c85",
+    "scripts/pre-genesis/litellm-native-commissioning.mjs": "sha256:55925b1e50383b414f168741e2407f6d8cf5a46a31d9d059807fbaa3954bfa42",
+    "scripts/pre-genesis/litellm-oss-browser-characterization.mjs": "sha256:515adfcd12acbf9a6abf4c4b7fc817c9e92769f1d2aa331382e9e66ac8ccf422",
+    "scripts/pre-genesis/litellm-oss-characterization.mjs": "sha256:8fe5a91326170db5bf58995076fd6e629b006bd6b7671af8247d3c056fe4bdf1"
+  },
+  "sourceChangeBoundary": {
+    "productRuntimeBehaviorChanged": false,
+    "productBoundaryChanged": false,
+    "nativeIngressActivated": false,
+    "vm103Touched": false,
+    "giteaTouched": false
+  },
+  "next": "RESTART_F0_N7_FROM_PROTECTED_F0_L2S_INTEGRATION"
+}

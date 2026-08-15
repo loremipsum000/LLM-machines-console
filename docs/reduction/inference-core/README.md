@@ -1254,3 +1254,21 @@ customer integration path and that LiteLLM virtual keys are a separate,
 advanced native capability. F0-N6 does not activate ingress or change runtime,
 VM103, DNS, certificates, or the gateway. Exact HTTPS navigation, role replay,
 native-session separation, and browser-artifact scanning remain F0-N7 gates.
+
+## LiteLLM immutable-subject native commissioning
+
+F0-L2S closes the integrated startup gap found during the first F0-N7 attempt.
+The system commissioner now binds each approved native LiteLLM user to the
+immutable Keycloak `sub` claim, with Admin mapped to `proxy_admin` and Operator
+mapped to `internal_user`. It reads before creating or reconciling a user, does
+not delete users, does not create a virtual key, and returns no credential
+material. The LiteLLM master secret remains a system commissioning credential,
+never a human browser credential.
+
+Exact LiteLLM OSS `v1.96.2-llmm.1` passed create-then-no-op commissioning,
+post-restart persistence, Authorization Code plus PKCE, role and own-key
+isolation, routing, accounting, logout, controlled identity outage, and
+zero-content-retention proof on isolated VM117. The native listener remained
+loopback-only and all run-owned resources were removed. This successor does
+not activate native ingress or accept or qualify the Product. Complete
+three-service browser and no-bypass validation remains F0-N7.
