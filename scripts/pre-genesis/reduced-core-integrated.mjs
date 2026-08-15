@@ -547,6 +547,12 @@ async function startObservability(edgePort) {
     ),
     writeFile(files.grafanaSecret, `${grafanaOidcSecret}\n`, { mode: 0o444 }),
   ])
+  await Promise.all([
+    chmod(files.prometheusConfig, 0o644),
+    chmod(files.alertmanagerConfig, 0o644),
+    chmod(files.grafanaSecret, 0o444),
+    makeContainerReadableTree(files.grafanaProvisioning),
+  ])
   docker([
     "run",
     "--detach",
@@ -851,7 +857,11 @@ async function stopServiceByName(name, stopFile, failures) {
       await writeFile(stopFile, "stop\n", { mode: 0o600 })
       try {
         const gracefulTimeout =
-          service.name === "firecrawl" && service.ready ? 10 * 60_000 : 30_000
+          service.name === "firecrawl" && service.ready
+            ? 10 * 60_000
+            : service.name === "litellm" && service.ready
+              ? 150_000
+              : 30_000
         await waitForExit(service, gracefulTimeout)
       } catch {
         signalServiceGroup(service, "SIGTERM")
@@ -964,7 +974,7 @@ async function startMetricsFixture() {
         "  server {",
         "    listen 8080;",
         "    location = /metrics {",
-        "      root /srv;",
+        "      root /tmp;",
         "      default_type text/plain;",
         "      sub_filter '__LLMM_DYNAMIC_IDLE__' '$msec';",
         "      sub_filter_once off;",
@@ -978,6 +988,10 @@ async function startMetricsFixture() {
       { mode: 0o644 },
     ),
     writeFile(files.metricsPayload, metricsPayload(), { mode: 0o644 }),
+  ])
+  await Promise.all([
+    chmod(files.metricsConfig, 0o644),
+    chmod(files.metricsPayload, 0o644),
   ])
   docker([
     "run",
@@ -1006,14 +1020,14 @@ async function startMetricsFixture() {
     "--user",
     "101:101",
     "--mount",
-    `type=bind,source=${files.metricsConfig},target=/etc/llmm/nginx.conf,readonly`,
+    `type=bind,source=${files.metricsConfig},target=/tmp/llmm-nginx.conf,readonly`,
     "--mount",
-    `type=bind,source=${files.metricsPayload},target=/srv/metrics,readonly`,
+    `type=bind,source=${files.metricsPayload},target=/tmp/metrics,readonly`,
     "--entrypoint",
     "/usr/sbin/nginx",
     images["product-edge"],
     "-c",
-    "/etc/llmm/nginx.conf",
+    "/tmp/llmm-nginx.conf",
     "-g",
     "daemon off;",
   ])
@@ -1115,6 +1129,21 @@ async function waitForPrometheusSignals(baseUrl) {
     await delay(500)
   }
   throw new Error("F0-C1 Prometheus did not scrape its fixture.")
+}
+
+async function makeContainerReadableTree(root) {
+  await chmod(root, 0o755)
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const path = join(root, entry.name)
+    if (entry.isDirectory()) {
+      await makeContainerReadableTree(path)
+      continue
+    }
+    if (!entry.isFile()) {
+      throw new Error("F0-C1 rejected a non-file Grafana provisioning entry.")
+    }
+    await chmod(path, 0o644)
+  }
 }
 
 function postgres(sql) {

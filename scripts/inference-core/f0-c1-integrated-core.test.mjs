@@ -70,6 +70,19 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(metricsFixture, /metrics-fixture/)
   assert.match(metricsFixture, /images\["product-edge"\]/)
   assert.doesNotMatch(metricsFixture, /--publish/)
+  assert.match(metricsFixture, /target=\/tmp\/llmm-nginx\.conf,readonly/)
+  assert.match(metricsFixture, /target=\/tmp\/metrics,readonly/)
+  assert.doesNotMatch(metricsFixture, /target=\/etc\/llmm/)
+  assert.match(metricsFixture, /chmod\(files\.metricsConfig, 0o644\)/)
+  assert.match(metricsFixture, /chmod\(files\.metricsPayload, 0o644\)/)
+  assert.match(integrated, /chmod\(files\.prometheusConfig, 0o644\)/)
+  assert.match(integrated, /chmod\(files\.alertmanagerConfig, 0o644\)/)
+  assert.match(integrated, /chmod\(files\.grafanaSecret, 0o444\)/)
+  assert.match(
+    integrated,
+    /makeContainerReadableTree\(files\.grafanaProvisioning\)/,
+  )
+  assert.match(integrated, /rejected a non-file Grafana provisioning entry/)
   assert.match(integrated, /sample\.value\[1\] === "1"/)
   assert.doesNotMatch(integrated, /host\.docker\.internal/)
   assert.doesNotMatch(integrated, /server\.listen\(0, "0\.0\.0\.0"/)

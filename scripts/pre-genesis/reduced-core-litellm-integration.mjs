@@ -14,12 +14,16 @@ import { createServer as createNetServer } from "node:net"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+  loadLiteLlmOssRuntimeContract,
+  validateLiteLlmOssRuntimeInspection,
+} from "./litellm-oss-runtime-contract.mjs"
 
-const LITELLM_IMAGE =
-  "ghcr.io/berriai/litellm:v1.85.0@sha256:2e8517e2bed423c50ab7e40fb1ac0a9cbe62a764e9d65161d871fb6a9bf75a2d"
 const POSTGRES_IMAGE =
   "docker.io/library/postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3"
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
+const liteLlmRuntime = loadLiteLlmOssRuntimeContract(repositoryRoot)
+const LITELLM_IMAGE = liteLlmRuntime.image
 const dockerContext = required("PRE_GENESIS_DOCKER_CONTEXT")
 const serviceControl = serviceControlFromEnvironment()
 const runId = randomBytes(8).toString("hex")
@@ -200,6 +204,13 @@ try {
       canaries,
       container: liteLlmContainer,
       dockerContext,
+      image: LITELLM_IMAGE,
+      imageContract: {
+        manifestDigest: liteLlmRuntime.manifestDigest,
+        platform: liteLlmRuntime.platform,
+        sourceRevision: liteLlmRuntime.sourceRevision,
+        version: liteLlmRuntime.version,
+      },
       routingKey,
     })}\n`,
     { mode: 0o600 },
@@ -224,8 +235,7 @@ try {
   }
   upstreamRequests = inferenceRequestCount()
 
-  const retention = inspectRetention()
-  assert.ok(retention.spendRows >= (serviceControl ? 0 : 3))
+  const retention = await waitForRetention(serviceControl ? 2 : 3)
   const dump = postgres([
     "pg_dump",
     "--data-only",
@@ -265,6 +275,12 @@ try {
       ? "LOCAL_INTEGRATED_CORE_COMPONENT_ONLY"
       : "LOCAL_PRIVATE_LITELLM_INTEGRATION_ONLY",
     image: LITELLM_IMAGE,
+    imageContract: {
+      manifestDigest: liteLlmRuntime.manifestDigest,
+      platform: liteLlmRuntime.platform,
+      sourceRevision: liteLlmRuntime.sourceRevision,
+      version: liteLlmRuntime.version,
+    },
     privatePortBinding: "loopback-only-disposable-fixture",
     retention: {
       metadataRows: {
@@ -466,7 +482,22 @@ function inspectRetention() {
   return JSON.parse(result.trim())
 }
 
+async function waitForRetention(expectedSpendRows) {
+  const deadline = performance.now() + 120_000
+  let lastRetention = null
+  while (performance.now() < deadline) {
+    lastRetention = inspectRetention()
+    if (lastRetention.spendRows >= expectedSpendRows) return lastRetention
+    await delay(250)
+  }
+  throw new Error(
+    `F0-L2 LiteLLM accounting metadata did not settle: ${JSON.stringify(lastRetention)}`,
+  )
+}
+
 function assertLockedImageIdentity() {
+  const [inspection] = JSON.parse(docker(["image", "inspect", LITELLM_IMAGE]))
+  validateLiteLlmOssRuntimeInspection(inspection, liteLlmRuntime)
   const inventory = JSON.parse(
     spawnSync("git", ["show", "HEAD:infra/release/core-image-inventory.json"], {
       cwd: repositoryRoot,
@@ -477,10 +508,9 @@ function assertLockedImageIdentity() {
   const postgresImage = inventory.components.find(
     ({ id }) => id === "product-postgresql",
   )
-  assert.equal(
-    LITELLM_IMAGE,
-    `${liteLlm.repository}:${liteLlm.version}@${liteLlm.indexDigest}`,
-  )
+  assert.equal(liteLlm.kind, "litellm-oss-build-output")
+  assert.equal(liteLlm.version, liteLlmRuntime.version)
+  assert.equal(liteLlm.sourceRevision, liteLlmRuntime.sourceRevision)
   assert.equal(
     POSTGRES_IMAGE,
     `${postgresImage.repository}:${postgresImage.version}@${postgresImage.indexDigest}`,

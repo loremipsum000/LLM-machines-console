@@ -1104,6 +1104,31 @@ Historical F0-I2, F0-N3, and F0-N3R evidence remains byte-identical. This is a
 test-runtime successor, not Product acceptance, runtime qualification, native
 route activation, or Q0 evidence.
 
+## F0-L2R integrated LiteLLM OSS runtime binding
+
+F0-L2R binds the disposable integrated reduced-Core lane to exact admitted
+LiteLLM OSS `v1.96.2-llmm.1`. Before execution, the harness verifies its exact
+image ID, linux/amd64 manifest, source revision, downstream version, and
+OSS-only labels. Historical LiteLLM 1.85, mutable upstream images, and fallback
+substitution fail closed.
+
+The exact candidate passes a native-linux VM117 replay with actual Console Web
+and BFF, PostgreSQL migrations, Keycloak 26.7.0, the admitted private LiteLLM
+image, reviewed reduced Firecrawl, retained observability, and deterministic
+inference. Application creation, model discovery, streaming and non-streaming
+Chat Completions, accounting, last-use metadata, credential rotation and
+revocation, Firecrawl search and static scrape, identity-outage recovery, BFF
+restart, no-bypass controls, run-owned cleanup, and zero workload-content
+canaries pass.
+
+The restrictive-umask corrections make only generated credential-free service
+fixtures readable to their non-root containers. Credential-bearing host roots
+remain restrictive. Product behavior, customer authority, routes, permissions,
+and native ingress do not change. Earlier local F0-L2R candidates remain
+unpushed historical evidence. Product acceptance and runtime qualification
+remain false, native activation remains pending F0-N7, Q0 is not started, and
+Genesis is unpublished.
+
 ## Portainer upstream-security deferral
 
 F0-N4 records Portainer as `DEFERRED_UPSTREAM_SECURITY`. The bounded Portainer
