@@ -118,14 +118,7 @@ test("F0-N3T source fingerprints and changed paths are exact", async () => {
     .sort()
   assert.deepEqual(sourcePaths, Object.keys(evidence.sourceArtifacts).sort())
 
-  const packageCommit = git(
-    "log",
-    "-1",
-    "--format=%H",
-    "--diff-filter=A",
-    "--",
-    evidencePath,
-  )
+  const packageCommit = git("log", "-1", "--format=%H", "--", evidencePath)
   const changedPaths = git(
     "diff",
     "--name-only",

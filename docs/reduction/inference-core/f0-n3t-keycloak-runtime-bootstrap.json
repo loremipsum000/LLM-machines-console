@@ -86,6 +86,7 @@
       "docs/reduction/inference-core/f0-n3t-keycloak-runtime-bootstrap.json",
       "docs/reduction/inference-core/validation-register.md",
       "scripts/inference-core/f0-i2-keycloak-team.test.mjs",
+      "scripts/inference-core/f0-n3r-session-contract-correction.test.mjs",
       "scripts/inference-core/f0-n3t-keycloak-runtime-bootstrap.test.mjs",
       "scripts/pre-genesis/keycloak-import-root.mjs",
       "scripts/pre-genesis/reduced-core-browser-session.mjs",
