@@ -17,6 +17,7 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
+import { writeFirecrawlEgressAllowlist } from "./firecrawl-egress-allowlist.mjs"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const serviceControl = serviceControlFromEnvironment()
@@ -50,7 +51,6 @@ const sourcePacket = join(stateRoot, "source-packet")
 const composeOverride = join(stateRoot, "compose.override.json")
 const environmentFile = join(stateRoot, "firecrawl.env")
 const allowlistDirectory = join(stateRoot, "allowlist")
-const allowlistFile = join(allowlistDirectory, "allowed-hosts.txt")
 const composeFile = resolve(repositoryRoot, "infra/firecrawl/compose.yaml")
 const queryCanary = `f0f2-query-${randomBytes(18).toString("hex")}`
 const urlCanary = `f0f2-url-${randomBytes(18).toString("hex")}`
@@ -76,6 +76,7 @@ try {
   docker(["info", "--format", "{{.ServerVersion}}"])
   await mkdir(sourceInputs, { mode: 0o700 })
   await mkdir(allowlistDirectory, { mode: 0o755 })
+  await chmod(allowlistDirectory, 0o755)
   await downloadLockedSources()
   runNode([
     "infra/firecrawl/release/assemble-source-packet.mjs",
@@ -303,9 +304,7 @@ async function ensureRuntimeImage(image) {
 }
 
 async function writeRuntimeFiles() {
-  await writeFile(allowlistFile, `${allowedHosts.join("\n")}\n`, {
-    mode: 0o644,
-  })
+  await writeFirecrawlEgressAllowlist(allowlistDirectory, allowedHosts)
   const networkName = (name) => `${project}-${name}`
   await writeFile(
     composeOverride,

@@ -16,6 +16,7 @@ import {
 import { createServer, request as httpRequest } from "node:http"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
+import { Readable } from "node:stream"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { signalOwnedProcessGroup } from "./process-group.mjs"
 
@@ -1377,8 +1378,11 @@ async function revokeFixtureFirecrawlCredential(
 }
 
 async function firecrawlJson(runtime, { apiKey, body, method = "POST", path }) {
-  const response = await boundedFetch(
+  const firecrawlAuthority = new URL(
     `${runtime.publicSummary.services.firecrawl}${path}`,
+  )
+  const response = await localAuthorityFetch(
+    firecrawlAuthority,
     {
       body: body === undefined ? undefined : JSON.stringify(body),
       headers: {
@@ -1392,6 +1396,46 @@ async function firecrawlJson(runtime, { apiKey, body, method = "POST", path }) {
   const responseBody = await response.json()
   recordDataPlaneOutput(runtime, `firecrawl-${path}`, responseBody)
   return { body: responseBody, status: response.status }
+}
+
+function localAuthorityFetch(authority, options, timeoutMs) {
+  if (
+    authority.protocol !== "http:" ||
+    !["api.localhost", "firecrawl.localhost"].includes(authority.hostname)
+  ) {
+    throw new Error("The local Product authority is invalid.")
+  }
+  const transport = new URL(authority)
+  transport.hostname = "127.0.0.1"
+  return new Promise((resolveRequest, rejectRequest) => {
+    const request = httpRequest(
+      transport,
+      {
+        headers: { ...options.headers, host: authority.host },
+        method: options.method,
+      },
+      (response) => {
+        const headers = new Headers()
+        for (const [name, value] of Object.entries(response.headers)) {
+          for (const item of Array.isArray(value) ? value : [value]) {
+            if (item !== undefined) headers.append(name, item)
+          }
+        }
+        resolveRequest(
+          new Response(Readable.toWeb(response), {
+            headers,
+            status: response.statusCode ?? 500,
+            statusText: response.statusMessage,
+          }),
+        )
+      },
+    )
+    request.setTimeout(timeoutMs, () => {
+      request.destroy(new Error("The local Firecrawl request timed out."))
+    })
+    request.once("error", rejectRequest)
+    request.end(options.body)
+  })
 }
 
 async function requireFirecrawlAccepted(runtime, apiKey, label) {
@@ -1600,8 +1644,8 @@ async function openAiChatCompletion(
   stream,
   onFirstStreamChunk,
 ) {
-  const response = await boundedFetch(
-    `${runtime.publicSummary.services.api}/v1/chat/completions`,
+  const response = await localAuthorityFetch(
+    new URL(`${runtime.publicSummary.services.api}/v1/chat/completions`),
     {
       body: JSON.stringify({
         messages: [{ content: "disposable fixture input", role: "user" }],
@@ -1614,6 +1658,7 @@ async function openAiChatCompletion(
       },
       method: "POST",
     },
+    5_000,
   )
   if (!stream || response.status !== 200) {
     const body = await response.json()

@@ -1,0 +1,90 @@
+{
+  "schema": "llm-machines.f0-f2r-firecrawl-linux-runtime.v1",
+  "workPackage": "F0-F2R",
+  "status": "SOURCE_AND_NATIVE_LINUX_FUNCTIONAL_CORRECTED",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "adde6ff484213a4dab1ae1207d8840ad14a4eb52",
+    "tree": "288b93d235b555e35b4c9bbee80de781759728b1"
+  },
+  "owningFailure": {
+    "blockedPackage": "F0-L2R",
+    "blockedCandidate": "94324e3975cb8b0fe848837170aff7a6f8b67d91",
+    "evidenceSha256": "4c2a3fa572256a6b1a8f1c74cfeb96da0f71076b512cdc26e9c6eee2ee8750e3",
+    "reason": "A restrictive host umask made the generated allowlist directory and file unreadable to Squid UID/GID 13, and the standalone Linux fixture relied on platform-specific *.localhost name resolution."
+  },
+  "correction": {
+    "allowlistDirectoryMode": "0755",
+    "allowlistFileMode": "0644",
+    "allowedHosts": ["en.wikipedia.org", "example.com"],
+    "localAuthorityTransport": {
+      "connectAddress": "127.0.0.1",
+      "preservedAuthorities": ["api.localhost", "firecrawl.localhost"],
+      "arbitraryAuthorityAllowed": false,
+      "streamingPreserved": true
+    },
+    "newCredential": false,
+    "egressExpanded": false,
+    "licenseChanged": false,
+    "productBoundaryChanged": false
+  },
+  "sourceCorrection": {
+    "commit": "230368592a09e21e4edee8e6e502fffda2b1425e",
+    "tree": "a71579d885340d3bf6ddb78da28f7f4b0b86b8f9"
+  },
+  "runtimeEvidence": {
+    "environment": "VM117_ISOLATED_NATIVE_LINUX_AMD64",
+    "command": "F0_UAT0_NATIVE_AMD64=true PRE_GENESIS_DOCKER_CONTEXT=default node scripts/pre-genesis/reduced-core-firecrawl-integration.mjs",
+    "restrictiveUmask": "0077",
+    "logSha256": "d575c7fdde8b5829369d3401ed24cb3e232ed02a0de64604b9645c647d1fd514",
+    "status": "passed",
+    "applicationFlow": {
+      "defaultOff": "passed",
+      "disclaimerBoundEnablement": "passed",
+      "credentialNamespacesSeparated": true,
+      "applicationIsolation": "passed",
+      "search": "passed",
+      "staticScrape": "passed",
+      "rotation": "passed",
+      "revocation": "passed",
+      "lastUseMetadata": "passed",
+      "unsupportedRoutesDenied": true,
+      "unapprovedHostDenied": true
+    },
+    "retention": {
+      "workloadContentCanaries": 0,
+      "containerLogs": "disabled",
+      "persistentVolumes": 0,
+      "temporaryState": "removed-on-exit"
+    },
+    "cleanupVerified": true,
+    "credentialMaterialPrinted": false
+  },
+  "exactRuntime": {
+    "firecrawlRevision": "ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+    "sourcePackageSha256": "03999d38ff61a58cbd7af5a655109e6d87c327423946b7782c00adc18a3faaa7",
+    "search": "docker.io/searxng/searxng@sha256:80622959f0f3512e6623d6bdbcea9f13c8d22c8d9715c498d0ae2be1c8535930",
+    "egress": "docker.io/ubuntu/squid@sha256:94f844158e12b52f51b4ae996515e37e8fb3e8d85e1c86caba1a297376e4ec4f"
+  },
+  "historicalEvidence": {
+    "path": "docs/reduction/inference-core/f0-f2-actual-firecrawl.json",
+    "sha256": "176d73f549e2d6b684ae961bc8013b43c61a20711897ba4eb7f8b4b8ceba0083",
+    "rewritten": false
+  },
+  "changedPaths": [
+    "docs/reduction/inference-core/README.md",
+    "docs/reduction/inference-core/decision-register.md",
+    "docs/reduction/inference-core/f0-f2r-firecrawl-linux-runtime.json",
+    "docs/reduction/inference-core/validation-register.md",
+    "scripts/inference-core/f0-f2-actual-firecrawl.test.mjs",
+    "scripts/inference-core/f0-f2r-firecrawl-linux-runtime.test.mjs",
+    "scripts/pre-genesis/firecrawl-egress-allowlist.mjs",
+    "scripts/pre-genesis/reduced-core-dev.mjs",
+    "scripts/pre-genesis/reduced-core-firecrawl-integration.mjs"
+  ],
+  "nextPackage": "F0-L2R recreated from the protected F0-F2R integration result"
+}
