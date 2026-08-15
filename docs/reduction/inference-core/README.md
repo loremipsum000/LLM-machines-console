@@ -449,6 +449,18 @@ logs, browser state, and teardown artifacts. This is local functional evidence,
 not SGLang, production capacity, exact-Core, Product acceptance, or Q0
 qualification.
 
+F0-F2R is the prospective owning-package correction discovered while replaying
+F0-L2R on native Linux/amd64. It makes the generated non-secret egress
+allowlist explicitly readable by the non-root Squid process even under a
+restrictive host umask, and makes the local deterministic client connect to
+loopback while preserving the exact API and Firecrawl Host authorities. The
+same exact allowlist, source-built reduced Firecrawl, SearXNG, and Squid images
+then pass default-off, enablement, credential isolation, actual search, static
+scrape, rotation, revocation, unsupported-route denial, retention, and cleanup
+on VM117. No provider credential, hostname, egress grant, license, Product
+route, or customer boundary changes. Historical F0-F2 evidence remains
+unchanged, and this is not Product acceptance or runtime qualification.
+
 F0-C1 combines the already proven functional lanes under one disposable
 command. Actual Console Web and BFF authenticate through exact Keycloak 26.7.0,
 use the real Product migration in PostgreSQL, route Application inference
