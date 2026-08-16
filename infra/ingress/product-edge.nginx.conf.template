@@ -1133,7 +1133,7 @@ http {
       proxy_pass http://keycloak_identity;
     }
 
-    location ~ "^/keycloak/admin/realms/llm-machines/sessions/[0-9a-f-]{36}$" {
+    location ~ "^/keycloak/admin/realms/llm-machines/sessions/[A-Za-z0-9_-]{24}$" {
       limit_except DELETE { deny all; }
       if ($llmm_query_none = 0) { return 400; }
       include /etc/nginx/llm-machines/proxy-common.inc;
