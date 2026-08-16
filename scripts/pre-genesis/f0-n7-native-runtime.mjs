@@ -272,6 +272,14 @@ process.stdout.write(
 async function assertPreflight() {
   assert.equal(process.platform, "linux")
   assert.equal(process.arch, "x64")
+  const edgeTemplate = await readFile(
+    resolve(repositoryRoot, "infra/ingress/product-edge.nginx.conf.template"),
+    "utf8",
+  )
+  assert.match(
+    edgeTemplate,
+    /proxy_cookie_flags ~\^\(\?:litellm_cp_return_to\|litellm_oauth_state\|sso_state\)\$ secure httponly samesite=lax;/,
+  )
   await reserveExactPorts(Object.values(ports))
   assert.doesNotMatch(
     docker(["ps", "--format", "{{.Ports}}"]),
@@ -906,6 +914,8 @@ async function proveLiteLlm() {
   return {
     admin: "proxy_admin",
     authorizationCode: true,
+    conditionalReturnToCookie:
+      "POLICY_BOUND_NOT_EMITTED_BY_APPROVED_QUERY_FREE_ENTRY",
     cookies,
     logout: "NATIVE_SESSION_CLEARED",
     operator: "internal_user",
@@ -1561,16 +1571,19 @@ async function captureNativeCookieMetadata(context, origin, observations) {
 }
 
 function assertLiteLlmCookieSecurity(observations) {
-  const expectedNames = [
+  const allowedNames = new Set([
     "litellm_cp_return_to",
     "litellm_oauth_state",
     "sso_state",
     "token",
-  ]
-  assert.deepEqual(
-    observations.map(({ name }) => name).sort(),
-    expectedNames,
+  ])
+  const emittedNames = observations.map(({ name }) => name).sort()
+  assert.equal(
+    emittedNames.every((name) => allowedNames.has(name)),
+    true,
+    `Unexpected LiteLLM native cookie: ${JSON.stringify(emittedNames)}`,
   )
+  assert.deepEqual(emittedNames, ["litellm_oauth_state", "sso_state", "token"])
   for (const cookie of observations) {
     assert.equal(cookie.domain.replace(/^\./, ""), hosts.litellm)
     assert.equal(cookie.path, "/")
