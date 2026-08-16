@@ -1248,6 +1248,22 @@ Admin Console token exchange and appliance-realm API load without changing the
 founder environment was preserved. Native ingress remains inactive pending the
 complete F0-N7 replay.
 
+## Keycloak session identifier edge correction
+
+F0-N5U corrects the session-invalidation path without broadening Keycloak
+administration. Exact Keycloak 26.7.0 source generates user-session identifiers
+from 18 random bytes with URL-safe Base64, yielding exactly 24 characters in
+`A-Za-z0-9_-`. The Product edge now admits only that source-proven identifier
+shape on the existing exact `DELETE` route. Queries, other methods, malformed
+identifiers, Console material, and Product credentials remain denied.
+
+A focused disposable VM117 browser proof invalidated two real sessions, denied
+five malformed identifier cases, denied a wrong method, and preserved the
+existing user-delete `403`. No identifier value, cookie, credential, or
+workload content enters evidence. All run-owned resources were removed and the
+founder environment was preserved. Complete logout, outage, restart, retention,
+and three-service no-bypass proof remains F0-N7.
+
 ## Console Technical Tools
 
 F0-N6 adds a role-filtered Technical Tools section inside Settings while
