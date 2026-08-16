@@ -529,6 +529,42 @@ test("native sessions stay service-owned without proxy impersonation", () => {
   assert.ok(impersonation.some((error) => /impersonation/i.test(error)))
 })
 
+test("LiteLLM native cookies retain exact transport and UI-readability flags", () => {
+  for (const [before, after] of [
+    [
+      "proxy_cookie_flags ~^(?:litellm_cp_return_to|litellm_oauth_state|sso_state)$ secure httponly samesite=lax;",
+      "proxy_cookie_flags ~^(?:litellm_cp_return_to|litellm_oauth_state|sso_state)$ secure samesite=lax;",
+    ],
+    [
+      "proxy_cookie_flags token secure samesite=lax;",
+      "proxy_cookie_flags token samesite=lax;",
+    ],
+    [
+      "proxy_cookie_flags token secure samesite=lax;",
+      "proxy_cookie_flags token secure httponly samesite=lax;",
+    ],
+    [
+      "proxy_cookie_flags token secure samesite=lax;",
+      "proxy_cookie_flags token secure samesite=none;",
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, after),
+      ),
+    )
+    assert.ok(result.some((error) => /LiteLLM native cookie/i.test(error)))
+  }
+
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  profile.services.litellm.cookieSecurity.nativeUiToken.httpOnly = true
+  const result = validateIngressSources({
+    ...sources,
+    "native-admin-edge-profile.json": JSON.stringify(profile),
+  })
+  assert.ok(result.some((error) => /LiteLLM native cookie/i.test(error)))
+})
+
 test("reviewed public route implementations cannot change in place", () => {
   for (const [label, name, before, after] of [
     [

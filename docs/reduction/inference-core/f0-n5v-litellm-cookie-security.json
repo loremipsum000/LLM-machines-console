@@ -1,0 +1,127 @@
+{
+  "schema": "llm-machines.f0-n5v-litellm-cookie-security.v1",
+  "workPackage": "F0-N5V/F0-N1",
+  "status": "SOURCE_SECURITY_CORRECTION_COMPLETE_F0_N7_PENDING",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "0317d2effb29a1a6cbaa4fc0fc8332b140a5a03f",
+    "tree": "f88a319a7129331d484d5fed81c38bd6fefb3bad"
+  },
+  "implementationCandidate": {
+    "commit": "c718d5f8ffdf47e8c5f1b90023f8a8e2562e3abc",
+    "tree": "9858411fbaec7c11722298f668adf82c3229f9c3"
+  },
+  "defect": {
+    "owners": ["F0-N1", "F0-N5"],
+    "description": "Exact LiteLLM OSS v1.96.2 sets native UI authentication cookies without a complete HTTPS cookie policy. The token cookie must remain JavaScript-readable for the pinned native UI, while all native UI cookies require Secure and SameSite=Lax at the Product edge.",
+    "historicalEvidenceRewritten": false,
+    "historicalEvidenceSha256": {
+      "f0N1Downstream": "02ec42f4b69bbbbaee4d8185456a33a0a155873cc4c86c0f668402b18a765f03",
+      "f0N1Routes": "fff10d317f84b388fdc1794074e8157157fb05267188910f56ed188f65edfc34",
+      "f0N5": "6f27c25a8fb3bacd62f9c15490a7944fefe1b1fbd6bf3e66480f8c2cd27ef21e",
+      "f0N5r": "085327fcafbe0bb8e6c997c1713652d694f0ea5fcceea2b493f08b8cc6e0d213",
+      "f0N5s": "f871c18021d58412fda288a06eaa0d6f17bd22710f560d1058aa9c1a95e3dd59",
+      "f0N5t": "a0c33d5719c3851814b6bd1e40c2def92019a3655a531da7146f63e2739062d5",
+      "f0N5u": "2d48af93d3baede2139c09033eb772848d71ab08d52f6b3a854e54f45038aa0f"
+    }
+  },
+  "upstreamSourceProof": {
+    "version": "v1.96.2",
+    "tagCommit": "83d6d84bfb7abbbff70d456bc89028d426db8c33",
+    "sourceSha256": {
+      "litellm/proxy/proxy_server.py": "96083a824773bf8fe61ade0185663bb52b55ac0a1b7f4f1cdf8230682ac6efbd",
+      "litellm/proxy/management_endpoints/ui_sso.py": "532bbfad073484ecaa889bb26ecfe01b5d265921295b44b2bd58dcef03bcee2d",
+      "ui/litellm-dashboard/src/utils/cookieUtils.ts": "1d0628911b56f83b654ca0ba826d503b3605926e73b985e754513832eeab5592",
+      "ui/litellm-dashboard/src/components/networking.tsx": "1c67c7fd4481bd5df4a8b5a145342bec85140123b4a192116b663ef4c7b43b31",
+      "ui/litellm-dashboard/src/contexts/AuthContext.tsx": "57966149b133b2cc5be424026c5dec226936774de2993086b3db1d8396b69ca2"
+    },
+    "observations": {
+      "tokenCookieReadByJavascript": true,
+      "tokenCookieCanBeHttpOnly": false,
+      "oauthStateCookieIsBackendManaged": true,
+      "unapprovedJavascriptTokenExchangeRouteAllowed": false
+    }
+  },
+  "securityDecision": {
+    "stateCookies": {
+      "names": ["litellm_cp_return_to", "litellm_oauth_state", "sso_state"],
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "Lax"
+    },
+    "nativeUiTokenCookie": {
+      "name": "token",
+      "secure": true,
+      "httpOnly": false,
+      "sameSite": "Lax",
+      "javascriptReadableLimitationAccepted": true,
+      "reason": "The exact pinned native UI reads this cookie through document.cookie. Marking it HttpOnly would make the supported UI nonfunctional."
+    },
+    "compensatingBoundaries": [
+      "dedicated HTTPS LiteLLM authority",
+      "exact route and query allowlist",
+      "private direct native port",
+      "no Console session or Product credential forwarding",
+      "no credentials in URLs or metadata-only evidence",
+      "unexpected native cookie fails F0-N7"
+    ],
+    "downstreamImageRebuildRequired": false
+  },
+  "disposableRuntimeObservation": {
+    "date": "2026-08-16",
+    "environment": "VM117 isolated linux/amd64",
+    "browser": "Chromium 151.0.7922.108",
+    "litellmVersion": "v1.96.2-llmm.1",
+    "litellmImage": "sha256:d1396589f1fed1fa3e67142c5f93189e257db14ce92ce9d952fbf18a58350f6b",
+    "edgeImage": "docker.io/library/nginx:1.29.1-alpine@sha256:42a516af16b852e33b7682d5ef8acbd5d13fe08fecadc7ed98605ba5e3b26ab8",
+    "rawEvidenceSha256": "9465fa9ff7823d2af3247f310d544c346d9093815bf1ee4c2c745c334ac52aad",
+    "results": {
+      "adminOidcPkceAndRole": "PASS_PROXY_ADMIN",
+      "operatorOidcPkceAndRole": "PASS_INTERNAL_USER",
+      "logout": "PASS",
+      "litellm_cp_return_to": "SECURE_HTTPONLY_SAMESITE_LAX",
+      "litellm_oauth_state": "SECURE_HTTPONLY_SAMESITE_LAX",
+      "sso_state": "SECURE_HTTPONLY_SAMESITE_LAX",
+      "token": "SECURE_JAVASCRIPT_READABLE_SAMESITE_LAX"
+    },
+    "credentialsRecorded": false,
+    "cookieValuesRecorded": false,
+    "workloadContentRecorded": false,
+    "containersRemoved": true,
+    "networkRemoved": true,
+    "volumeRemoved": true,
+    "temporaryFilesRemoved": true,
+    "founderEnvironmentPreserved": true
+  },
+  "sourceArtifacts": {
+    "infra/ingress/README.md": "sha256:10e7fd983efb21221846636db390ad005d13e1983f12b0f7e9f6d3c56f7ceec4",
+    "infra/ingress/native-admin-edge-profile.json": "sha256:4ef0adb5ad4291b6c86f69e02a78469f80e6c3cfa47d0b95ed5b2132d43c4b6e",
+    "infra/ingress/product-edge.nginx.conf.template": "sha256:a5b926e972b673b4b908287c5b060c7a1d020d9eb49062a0c76f82b6332ed2c3",
+    "infra/ingress/validate-ingress.mjs": "sha256:c53a02ae696f916483449da8e51e2250ff092d1e0791dea4078240a9d1727f4b",
+    "infra/ingress/validate-ingress.test.mjs": "sha256:189d03905b7f19d26c71d4d70430bbfaaf31f7e4e8422967f29cf2844e857143"
+  },
+  "implementationChangedPaths": [
+    "infra/ingress/README.md",
+    "infra/ingress/native-admin-edge-profile.json",
+    "infra/ingress/product-edge.nginx.conf.template",
+    "infra/ingress/validate-ingress.mjs",
+    "infra/ingress/validate-ingress.test.mjs"
+  ],
+  "sourceBoundary": {
+    "productBehaviorActivated": false,
+    "liveRuntimeChanged": false,
+    "vm103Changed": false,
+    "dnsCertificateOrGatewayChanged": false,
+    "releaseInventoryChanged": false,
+    "downstreamLiteLlmImageChanged": false,
+    "portainerChanged": false
+  },
+  "remainingGate": {
+    "package": "F0-N7",
+    "required": "Repeat complete HTTPS browser, role, native-cookie, logout, outage, restart, retention, and no-bypass qualification for Grafana, LiteLLM, and Keycloak."
+  }
+}
