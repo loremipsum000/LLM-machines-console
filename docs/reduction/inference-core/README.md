@@ -1303,3 +1303,24 @@ zero-content-retention proof on isolated VM117. The native listener remained
 loopback-only and all run-owned resources were removed. This successor does
 not activate native ingress or accept or qualify the Product. Complete
 three-service browser and no-bypass validation remains F0-N7.
+
+## F0-N8 retained native-access closure
+
+F0-N8 binds the exact protected PR 90 through PR 107 first-parent history and
+the byte-exact evidence for every retained native-access package. The passing
+F0-N7 VM117 matrix proves Grafana Admin Editor access, LiteLLM Admin
+`proxy_admin` and Operator `internal_user` own-key access, and Admin-only
+appliance-realm Keycloak administration with user deletion denied at the
+Product edge. Native sessions remain service-owned and direct ports remain
+private. Console remains the primary complete customer experience.
+
+Portainer remains `DEFERRED_UPSTREAM_SECURITY`, is not currently admitted, and
+requires a separately authorized F0-N4R against a suitable upstream CE
+release. The retired Product boundary remains absent and is bound by the
+original F0-N0 decision fingerprint plus the F0-N7 runtime absence result.
+
+This closure is governance-only. Product acceptance and runtime qualification
+remain false, contract activation remains inactive, Q0 is not started,
+Genesis is unpublished, and Product main is unchanged. VM103 inspection,
+deployment, durable founder qualification, and Genesis publication each
+require a separate approval.
