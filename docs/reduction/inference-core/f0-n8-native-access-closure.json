@@ -1,0 +1,375 @@
+{
+  "schema": "llm-machines.f0-n8-native-access-closure.v1",
+  "workPackage": "F0-N8",
+  "status": "NATIVE_ACCESS_CLOSURE_CANDIDATE_PENDING_PROTECTED_ADMISSION",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_VM103_DEPLOYMENT_APPROVAL",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "productMainCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
+  "nativeAccessProgramBase": {
+    "commit": "eecbdc6099d36876b94b78689a54c914f6228eb4",
+    "tree": "c5d9b5e8282418441e9c3c55fe85e858caa70d1e"
+  },
+  "protectedInput": {
+    "commit": "67707a8cb14256f8a02f3c2bf20b539dfa7a059f",
+    "tree": "ac74faf1c4ba394661cdf642ba0c3e80a0ddaa44"
+  },
+  "admission": {
+    "branch": "codex/pre-genesis-f0-n8",
+    "baseBranch": "codex/inference-core-stack-reduction",
+    "mergeMethod": "merge-commit",
+    "candidateBinding": "the exact reviewed candidate commit and tree are reported after complete validation",
+    "genesisBinding": "only a later separately approved snapshot derived from the protected integration result may be proposed as Genesis",
+    "deploymentRequiresSeparateApproval": true,
+    "genesisPublicationRequiresSeparateApproval": true
+  },
+  "protectedPackages": [
+    {
+      "id": "F0-N0",
+      "pullRequest": 90,
+      "candidateCommit": "d142cc9bef3c90a51abe6d9a818c73dc667a44ea",
+      "candidateTree": "96d97a91eed7f5aeb49c57f0968b60d3937f89a3",
+      "integrationCommit": "1419006baff63c9861218872a41f64c096b8f9a8",
+      "integrationTree": "96d97a91eed7f5aeb49c57f0968b60d3937f89a3",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n0-retained-native-administration.json",
+          "sha256": "b78281357729c4cb6dbf5180be30e00c1a9394995fe769aaf0a89da95bc567bc"
+        }
+      ]
+    },
+    {
+      "id": "F0-N1",
+      "pullRequest": 91,
+      "candidateCommit": "cfbae3f0da72eac6b7d622a7bdb8ada8c8914948",
+      "candidateTree": "46352a6e2901a7c383200a76af63cbb15b8a1b62",
+      "integrationCommit": "74d6a13ea4ffc0ea97fbda0abfec67cb957c5d26",
+      "integrationTree": "46352a6e2901a7c383200a76af63cbb15b8a1b62",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n1-litellm-oss-downstream.json",
+          "sha256": "02ec42f4b69bbbbaee4d8185456a33a0a155873cc4c86c0f668402b18a765f03"
+        },
+        {
+          "path": "docs/reduction/inference-core/f0-n1-litellm-native-route-characterization.json",
+          "sha256": "fff10d317f84b388fdc1794074e8157157fb05267188910f56ed188f65edfc34"
+        }
+      ]
+    },
+    {
+      "id": "F0-N2",
+      "pullRequest": 92,
+      "candidateCommit": "b81ddc25584c2e7cc8d46cc4998a0ff3e35657b1",
+      "candidateTree": "9d3c042cb114d828d81ebc9a3c88c0621804ecbf",
+      "integrationCommit": "a031e5399e629bf273c83f55a6a11b7b1f1c536a",
+      "integrationTree": "9d3c042cb114d828d81ebc9a3c88c0621804ecbf",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n2-grafana-native-access.json",
+          "sha256": "65b328ddfeb57de12adbc5fa21da771ee66d102f17a41cca496b1e415741c3e9"
+        },
+        {
+          "path": "docs/reduction/inference-core/f0-n2-grafana-native-route-characterization.json",
+          "sha256": "17839952838929edd743de391e94a6614b41a8a988864b65c512cbe343a5a0a2"
+        }
+      ]
+    },
+    {
+      "id": "F0-N3",
+      "pullRequest": 93,
+      "candidateCommit": "d19a5f97b0c376904216350b184b74a4d957a877",
+      "candidateTree": "4e80e9d177da4bdd7dabeea2ab932e0a69f59529",
+      "integrationCommit": "2193952c191dc0db7a2f0d5a0072e63e30d8c0ad",
+      "integrationTree": "4e80e9d177da4bdd7dabeea2ab932e0a69f59529",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n3-keycloak-native-access.json",
+          "sha256": "c8e53c3dd9c4eea473c58f587a8c821b95872bc15e2806a2368d87c7d9014c84"
+        }
+      ]
+    },
+    {
+      "id": "F0-N4",
+      "pullRequest": 94,
+      "candidateCommit": "a10f86e9afd530bef0a600053488317a3be6df5f",
+      "candidateTree": "e96471cd847b470e20822d62a92bacd33a338fe0",
+      "integrationCommit": "bbc36142ae528576e82759bb3ccec5027bd26917",
+      "integrationTree": "e96471cd847b470e20822d62a92bacd33a338fe0",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n4-portainer-upstream-security-deferral.json",
+          "sha256": "5d8f60a80fc63b984ecc285e9cbb093bbad9c12538213279c1bc41ec85f30cbd"
+        }
+      ]
+    },
+    {
+      "id": "F0-N5",
+      "pullRequest": 95,
+      "candidateCommit": "42919c93db1f5d3b7bb3e233919f9fdea77b5fc1",
+      "candidateTree": "0e05f05b73b1ea0a5c3933d9833854ec27db6768",
+      "integrationCommit": "ace103d9bdc6db24e616444e6e5d8a234a3c9414",
+      "integrationTree": "0e05f05b73b1ea0a5c3933d9833854ec27db6768",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n5-native-edge.json",
+          "sha256": "6f27c25a8fb3bacd62f9c15490a7944fefe1b1fbd6bf3e66480f8c2cd27ef21e"
+        }
+      ]
+    },
+    {
+      "id": "F0-N6",
+      "pullRequest": 96,
+      "candidateCommit": "8b81412792feb57d7c89b82fc4b04d28b3f4d939",
+      "candidateTree": "75ef5947989abbebbe0ec7aed416bf9d1e75e8e8",
+      "integrationCommit": "0b0240c3aac9348198fd3959a5ba571ff94d57ac",
+      "integrationTree": "75ef5947989abbebbe0ec7aed416bf9d1e75e8e8",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n6-console-technical-tools.json",
+          "sha256": "40e3a568d8bbba0532e65ce36bc2435da633761609f89539f566425d79e336d9"
+        }
+      ]
+    },
+    {
+      "id": "F0-N3R",
+      "pullRequest": 97,
+      "candidateCommit": "bcab5ac92674f3710edc363f7c2ed8f3f12da523",
+      "candidateTree": "288b93d235b555e35b4c9bbee80de781759728b1",
+      "integrationCommit": "adde6ff484213a4dab1ae1207d8840ad14a4eb52",
+      "integrationTree": "288b93d235b555e35b4c9bbee80de781759728b1",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n3r-session-contract-correction.json",
+          "sha256": "e5c9cea56d3948fedb5d4d79df5205ae9f72bd95103888921a35964a535487fa"
+        }
+      ]
+    },
+    {
+      "id": "F0-N3T",
+      "pullRequest": 99,
+      "candidateCommit": "80694d932de98dc35a8dbeea250dec90607a5436",
+      "candidateTree": "9d44d35ef0872193c568086e6c8bb22407e23df7",
+      "integrationCommit": "f8ac8d762ff2838937c46e4826c5faeeb53a0ab5",
+      "integrationTree": "9d44d35ef0872193c568086e6c8bb22407e23df7",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n3t-keycloak-runtime-bootstrap.json",
+          "sha256": "849929cea7603939937eecadb6fd338d984ef1c365568cace6da9461b89c9f08"
+        }
+      ]
+    },
+    {
+      "id": "F0-L2R",
+      "pullRequest": 100,
+      "candidateCommit": "aa81061e819835ad7dede071754fc46d8686a252",
+      "candidateTree": "ebf20ea7c95ba4a4900fc4a8c64d147bf06fe3f5",
+      "integrationCommit": "4585830069cb91cf1806a3a3308c7663860b6822",
+      "integrationTree": "ebf20ea7c95ba4a4900fc4a8c64d147bf06fe3f5",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-l2r-litellm-runtime-binding.json",
+          "sha256": "5bc27280ecd126a5ce5ace3a4575f2895dd2097674c30f8dc5b543e2276b9e09"
+        }
+      ]
+    },
+    {
+      "id": "F0-N5R",
+      "pullRequest": 101,
+      "candidateCommit": "aa41359c0e0b35b0b3fb0a44bf9c5fa92e7c2486",
+      "candidateTree": "ca9ea9debf1d78f9bd95d75f4c34d1f1cfecfd1e",
+      "integrationCommit": "dbdc1005711ea2cbfb3658a268181dbd2deef6e0",
+      "integrationTree": "ca9ea9debf1d78f9bd95d75f4c34d1f1cfecfd1e",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n5r-keycloak-dual-authority.json",
+          "sha256": "085327fcafbe0bb8e6c997c1713652d694f0ea5fcceea2b493f08b8cc6e0d213"
+        }
+      ]
+    },
+    {
+      "id": "F0-N5S",
+      "pullRequest": 102,
+      "candidateCommit": "e1f45dab020c27a4ae734499063ab2db7e1d2abf",
+      "candidateTree": "d936b55d8da4938745fb06185f503bf50ff98bf6",
+      "integrationCommit": "9adf82ffbf8f4617a7846e69e436acd21b9270c8",
+      "integrationTree": "d936b55d8da4938745fb06185f503bf50ff98bf6",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n5s-grafana-oauth-entry.json",
+          "sha256": "f871c18021d58412fda288a06eaa0d6f17bd22710f560d1058aa9c1a95e3dd59"
+        }
+      ]
+    },
+    {
+      "id": "F0-L2S",
+      "pullRequest": 103,
+      "candidateCommit": "fac97af7411d0163e237a36efc6a17e8d2591f27",
+      "candidateTree": "75e2a2f94228d68a391522c81c2e8b4f653fea6a",
+      "integrationCommit": "ec2508c76f2b35b34407738dd2f3cdcc286e4608",
+      "integrationTree": "75e2a2f94228d68a391522c81c2e8b4f653fea6a",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-l2s-litellm-native-commissioning.json",
+          "sha256": "a7ea070cb6741883c81ab5a13ac076daaad0db689484c3e2f421402ae9bceb5a"
+        }
+      ]
+    },
+    {
+      "id": "F0-N5T",
+      "pullRequest": 104,
+      "candidateCommit": "cfa4f1b5113b12881bd1f00d30281598ee35b3b9",
+      "candidateTree": "ba4d086d85ea8c02ebac5443d7c86a0c53449731",
+      "integrationCommit": "fbcc7d81bef80c0346942380a0361fe64c2b69fa",
+      "integrationTree": "ba4d086d85ea8c02ebac5443d7c86a0c53449731",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n5t-keycloak-admin-token-origin.json",
+          "sha256": "a0c33d5719c3851814b6bd1e40c2def92019a3655a531da7146f63e2739062d5"
+        }
+      ]
+    },
+    {
+      "id": "F0-N5U",
+      "pullRequest": 105,
+      "candidateCommit": "e1e093309f68b00e59d68d4f05f18bf5f7644c83",
+      "candidateTree": "f88a319a7129331d484d5fed81c38bd6fefb3bad",
+      "integrationCommit": "0317d2effb29a1a6cbaa4fc0fc8332b140a5a03f",
+      "integrationTree": "f88a319a7129331d484d5fed81c38bd6fefb3bad",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n5u-keycloak-session-identifier.json",
+          "sha256": "2d48af93d3baede2139c09033eb772848d71ab08d52f6b3a854e54f45038aa0f"
+        }
+      ]
+    },
+    {
+      "id": "F0-N5V/F0-N1",
+      "pullRequest": 106,
+      "candidateCommit": "82e7f9106df75e427d003a90a29cd4d7adbd0dd5",
+      "candidateTree": "5b8560a677548d8cc3be328ff75541e5222e6aa3",
+      "integrationCommit": "a714672c91fc512e075e93dd084a88a26e77c22a",
+      "integrationTree": "5b8560a677548d8cc3be328ff75541e5222e6aa3",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n5v-litellm-cookie-security.json",
+          "sha256": "bdce7c5d9e21a7d0f3b22667f9a83e8b87ba7290ed2da966986189db8e62bee3"
+        }
+      ]
+    },
+    {
+      "id": "F0-N7",
+      "pullRequest": 107,
+      "candidateCommit": "773c0b39c4fc2a7f1e311f8ef3b3b56a9fc380dd",
+      "candidateTree": "ac74faf1c4ba394661cdf642ba0c3e80a0ddaa44",
+      "integrationCommit": "67707a8cb14256f8a02f3c2bf20b539dfa7a059f",
+      "integrationTree": "ac74faf1c4ba394661cdf642ba0c3e80a0ddaa44",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-n7-native-access-validation.json",
+          "sha256": "aa1aa7db02a6d8e105d9708579d356d3228c35a52cccd63051a706f0b5c0e445"
+        }
+      ]
+    }
+  ],
+  "preservedInterveningHistory": [
+    {
+      "id": "F0-F2R",
+      "pullRequest": 98,
+      "candidateCommit": "f751e944d13039603cf956b72e82da8772b776b9",
+      "candidateTree": "05b479a09365cd6f13fd077fe47108cc2c3ff269",
+      "integrationCommit": "155a4fe5004b7a0d0e2ae880aea752e69deeafd2",
+      "integrationTree": "05b479a09365cd6f13fd077fe47108cc2c3ff269",
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/f0-f2r-firecrawl-linux-runtime.json",
+          "sha256": "fe9c25a4889f66e2aa10c0ceed1d55ba89520f8ca9f15682e4a971f231441f60"
+        }
+      ],
+      "disposition": "PRESERVED_PROTECTED_HISTORY_OUTSIDE_NATIVE_ACCESS_SCOPE"
+    }
+  ],
+  "productBoundary": {
+    "console": "PRIMARY_SIMPLIFIED_CUSTOMER_EXPERIENCE_COMPLETE_WITHOUT_NATIVE_TOOLS",
+    "retired": [
+      "LibreChat",
+      "first-party chat",
+      "conversations",
+      "Knowledge",
+      "RAG",
+      "corpora",
+      "MCP",
+      "Product corpus pipeline"
+    ],
+    "retainedNative": {
+      "grafana": "ADMIN_EDITOR_ONLY_NO_SERVER_ADMIN",
+      "litellm": "ADMIN_PROXY_ADMIN_OPERATOR_INTERNAL_USER_OWN_KEYS_AND_SPEND_ONLY",
+      "keycloak": "ADMIN_APPLIANCE_REALM_USER_PASSWORD_AND_SESSION_ADMINISTRATION_ONLY_USER_DELETE_DENIED_AT_EDGE"
+    },
+    "portainer": "DEFERRED_UPSTREAM_SECURITY_NOT_CURRENTLY_ADMITTED",
+    "nativeSessions": "SERVICE_OWNED_KEYCLOAK_SSO",
+    "consoleSessionForwarded": false,
+    "productCredentialForwarded": false,
+    "directNativePorts": "PRIVATE",
+    "customerIngress": "PRODUCT_EDGE_DEDICATED_AUTHORITIES_ONLY"
+  },
+  "runtimeEvidence": {
+    "environment": "VM117 isolated disposable linux/amd64 validation lane",
+    "candidateCommit": "e34760ecc63b23a36efd24551fec7b92698e3ca2",
+    "candidateTree": "b0ef0f15304636437c972aac3e5e2d2a4366cf2e",
+    "rawEvidenceSha256": "ffb7ac412637c2c739daeeecee16afd7719a20130bf9586134ad3948102ca958",
+    "credentialsRecorded": false,
+    "cookieValuesRecorded": false,
+    "workloadContentRecorded": false,
+    "vm103Qualification": "NOT_STARTED"
+  },
+  "aggregateValidation": {
+    "focused": "node --test scripts/inference-core/f0-n8-native-access-closure.test.mjs",
+    "repository": [
+      "corepack pnpm install --frozen-lockfile",
+      "corepack pnpm test",
+      "corepack pnpm exec biome check .",
+      "corepack pnpm typecheck",
+      "corepack pnpm build",
+      "git diff --check",
+      "git fsck --full"
+    ],
+    "freshDetachedReplayRequired": true,
+    "securityScanRequired": true,
+    "materialReviewRequired": true,
+    "protectedTreeEqualityRequired": true
+  },
+  "deferred": [
+    "read-only VM103 preflight and rollback plan",
+    "VM103 deployment and durable founder browser qualification",
+    "Portainer F0-N4R reconsideration against a suitable upstream CE release",
+    "sanitized external code audits",
+    "Gitea Genesis publication",
+    "D2A construction and offline signing",
+    "Q0 through Q3 runtime qualification",
+    "Product main admission",
+    "production inference capacity qualification"
+  ],
+  "sourceChangeBoundary": {
+    "governanceOnly": true,
+    "productBehaviorChanged": false,
+    "runtimeConfigurationChanged": false,
+    "nativeIngressActivated": false,
+    "vm103Touched": false,
+    "gatewayDnsOrCertificatesChanged": false,
+    "productMainChanged": false,
+    "giteaTouched": false,
+    "genesisCreated": false,
+    "d2aSigningQ0Started": false,
+    "historicalEvidenceRewritten": false,
+    "changedPaths": [
+      "docs/reduction/inference-core/README.md",
+      "docs/reduction/inference-core/decision-register.md",
+      "docs/reduction/inference-core/f0-n8-native-access-closure.json",
+      "docs/reduction/inference-core/validation-register.md",
+      "scripts/inference-core/f0-n8-native-access-closure.test.mjs"
+    ]
+  },
+  "nextGate": "SEPARATE_APPROVAL_REQUIRED_BEFORE_VM103_PREFLIGHT_OR_DEPLOYMENT"
+}
