@@ -156,7 +156,7 @@ per-package JSON file and contract revision.
 ## F0-N7 aggregate retained native-access decision
 
 - The complete three-service browser and API matrix passes on isolated VM117
-  from exact candidate `766bf7006dd9db3842a061e28fd885df50dad9ba`.
+  from exact candidate `e34760ecc63b23a36efd24551fec7b92698e3ca2`.
 - Grafana admits Admin as Editor and denies Operator and server-administrator
   authority. LiteLLM admits Admin as `proxy_admin` and Operator as
   `internal_user` with own keys and spend only. Keycloak admits Admin only to
