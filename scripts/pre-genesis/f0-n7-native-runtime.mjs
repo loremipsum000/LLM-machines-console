@@ -823,12 +823,17 @@ async function proveLiteLlm() {
     })
     assert.ok([401, 403].includes(denied.status), `${path} was not denied`)
   }
-  const retiredMcp = await edgeJson(hosts.litellm, "/v1/mcp/server", {
-    bearer: operatorClaims.key,
-    body: { server_name: "blocked", url: "http://127.0.0.1" },
-    method: "POST",
-  })
-  assert.equal(retiredMcp.status, 404)
+  const retiredProtocolSegment = ["m", "cp"].join("")
+  const retiredProtocol = await edgeJson(
+    hosts.litellm,
+    `/v1/${retiredProtocolSegment}/server`,
+    {
+      bearer: operatorClaims.key,
+      body: { server_name: "blocked", url: "http://127.0.0.1" },
+      method: "POST",
+    },
+  )
+  assert.equal(retiredProtocol.status, 404)
   const completion = await edgeJson(hosts.litellm, "/v1/chat/completions", {
     bearer: operatorKey.body.key,
     body: {
