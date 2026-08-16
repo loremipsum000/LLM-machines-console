@@ -74,7 +74,6 @@
   "disposableRuntimeObservation": {
     "date": "2026-08-16",
     "environment": "VM117 isolated linux/amd64",
-    "hostIdentity": "llmm-uat-core-f0",
     "browser": "Chromium 151.0.7922.108",
     "litellmVersion": "v1.96.2-llmm.1",
     "litellmImage": "sha256:d1396589f1fed1fa3e67142c5f93189e257db14ce92ce9d952fbf18a58350f6b",
