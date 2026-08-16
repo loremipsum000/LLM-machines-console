@@ -1,0 +1,114 @@
+{
+  "schema": "llm-machines.f0-n5u-keycloak-session-identifier.v1",
+  "workPackage": "F0-N5U",
+  "status": "SOURCE_SECURITY_CORRECTION_COMPLETE_F0_N7_PENDING",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "fbcc7d81bef80c0346942380a0361fe64c2b69fa",
+    "tree": "ba4d086d85ea8c02ebac5443d7c86a0c53449731"
+  },
+  "implementationCandidate": {
+    "commit": "7fa96d8332fbb1778dfdcb208593a73901e61c11",
+    "tree": "21032d469ad3427e739a0b92fbac54537fc422bc"
+  },
+  "defect": {
+    "owner": "F0-N5",
+    "description": "The edge assumed UUID-shaped Keycloak user-session IDs, while exact Keycloak 26.7.0 generates 24-character URL-safe Base64 identifiers from 18 random bytes.",
+    "historicalEvidenceRewritten": false,
+    "historicalEvidenceSha256": {
+      "f0N5": "6f27c25a8fb3bacd62f9c15490a7944fefe1b1fbd6bf3e66480f8c2cd27ef21e",
+      "f0N5r": "085327fcafbe0bb8e6c997c1713652d694f0ea5fcceea2b493f08b8cc6e0d213",
+      "f0N5s": "f871c18021d58412fda288a06eaa0d6f17bd22710f560d1058aa9c1a95e3dd59",
+      "f0N5t": "a0c33d5719c3851814b6bd1e40c2def92019a3655a531da7146f63e2739062d5"
+    }
+  },
+  "upstreamSourceProof": {
+    "version": "26.7.0",
+    "tagCommit": "6c73e3027811d9c7b22683edd825e839272e9547",
+    "generator": "SecretGenerator.SECURE_ID_GENERATOR",
+    "entropyBytes": 18,
+    "encoding": "BASE64URL_PADDED_ENCODER_WITH_NO_PADDING_FOR_18_BYTE_INPUT",
+    "length": 24,
+    "alphabet": "A-Za-z0-9_-",
+    "sourceSha256": {
+      "common/src/main/java/org/keycloak/common/util/SecretGenerator.java": "03ff7216edd3bf3f7bd896b8d59155dcfcbdea536352f73483a232e8e0aec892",
+      "model/infinispan/src/main/java/org/keycloak/models/sessions/infinispan/InfinispanUserSessionProvider.java": "ff82c2db4e18bc50168670147626b0bbb483210f88407def5a2c7338595f50b3",
+      "model/infinispan/src/main/java/org/keycloak/models/sessions/infinispan/InfinispanUserSessionProviderFactory.java": "ceee33bd59432dc9002b3a5bd201eaecaa5c2cbc37a6584994c3fc0818c88bd7"
+    }
+  },
+  "correction": {
+    "method": "DELETE",
+    "externalPath": "/keycloak/admin/realms/llm-machines/sessions/{session-id}",
+    "allowedSessionIdPattern": "^[A-Za-z0-9_-]{24}$",
+    "queryPolicy": "FORBID",
+    "authorization": "KEYCLOAK_NATIVE_BEARER_ONLY",
+    "consoleSessionForwarded": false,
+    "productCredentialForwarded": false,
+    "userDeletionStillDenied": true,
+    "broaderRouteAdded": false
+  },
+  "disposableRuntimeObservation": {
+    "date": "2026-08-16",
+    "environment": "VM117 isolated linux/amd64",
+    "browser": "Chromium 151.0.7922.108",
+    "keycloakVersion": "26.7.0",
+    "rawEvidenceSha256": "5798b854fafb2ef07a8962fff726ada80bc2b8b1ea320fc98d2c844351c5d760",
+    "results": {
+      "sessionIdentifierContract": "BASE64URL_24",
+      "sessionsInvalidated": 2,
+      "malformedIdentifierStatuses": [404, 404, 404, 404, 400],
+      "wrongMethodStatus": 403,
+      "userDeleteStatus": 403,
+      "operatorAdminAccess": "DENY",
+      "adminSubjectBinding": "KEYCLOAK_ADMIN_EVENT_AUTH_DETAILS_USER_ID",
+      "adminEventDetailsRetained": false
+    },
+    "credentialsRecorded": false,
+    "cookieValuesRecorded": false,
+    "sessionIdentifierValuesRecorded": false,
+    "workloadContentRecorded": false,
+    "containersRemoved": true,
+    "networkRemoved": true,
+    "volumeRemoved": true,
+    "temporaryFilesRemoved": true,
+    "founderEnvironmentPreserved": true
+  },
+  "testHarnessDisposition": {
+    "productDefectsBeyondOwningScope": false,
+    "correctedAssertions": [
+      "read-only Keycloak server-info dependency is allowed while mutation is denied",
+      "focused Keycloak scope provisions required placeholder upstream aliases",
+      "F0-N5U proof stops before unrelated aggregate restart and logout gates"
+    ],
+    "aggregateLogoutRemainsF0N7": true
+  },
+  "sourceArtifacts": {
+    "infra/ingress/product-edge.nginx.conf.template": "sha256:207048829ad23d57246641d8a5da11cfd6a645cf040240ad5d967160703873c6",
+    "infra/ingress/native-admin-edge-profile.json": "sha256:ed4398d9c83c696b5a52f3bad34f1e12b6b7e4432e8447da0c73d6acacd62625",
+    "infra/ingress/validate-ingress.mjs": "sha256:917e1cfa2268ffeb9c771d6fe163f45ad32a64cbf9f562f847abdf8f3134d46e",
+    "infra/ingress/validate-ingress.test.mjs": "sha256:b81cbeec510299a4bec6ddac920fcc71ded81452449c892e7c8d3c386d0f5119"
+  },
+  "implementationChangedPaths": [
+    "infra/ingress/native-admin-edge-profile.json",
+    "infra/ingress/product-edge.nginx.conf.template",
+    "infra/ingress/validate-ingress.mjs",
+    "infra/ingress/validate-ingress.test.mjs"
+  ],
+  "sourceBoundary": {
+    "productBehaviorActivated": false,
+    "liveRuntimeChanged": false,
+    "vm103Changed": false,
+    "dnsCertificateOrGatewayChanged": false,
+    "releaseInventoryChanged": false,
+    "grafanaOrLitellmPolicyChanged": false,
+    "portainerChanged": false
+  },
+  "remainingGate": {
+    "package": "F0-N7",
+    "required": "Complete HTTPS browser, role, logout, outage, restart, retention, and no-bypass replay for Grafana, LiteLLM, and Keycloak."
+  }
+}

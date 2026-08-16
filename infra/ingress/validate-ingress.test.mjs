@@ -410,6 +410,44 @@ test("Keycloak native user deletion remains denied before upstream", () => {
   assert.ok(result.some((error) => /user deletion/i.test(error)))
 })
 
+test("Keycloak session invalidation accepts only exact 26.7.0 session IDs", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  const declaration =
+    'location ~ "^/keycloak/admin/realms/llm-machines/sessions/[A-Za-z0-9_-]{24}$"'
+  assert.match(
+    nginx,
+    new RegExp(declaration.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  )
+
+  for (const [before, after] of [
+    ["[A-Za-z0-9_-]{24}", "[A-Za-z0-9_-]{20,128}"],
+    ["[A-Za-z0-9_-]{24}", "[0-9a-f-]{36}"],
+    [
+      "limit_except DELETE { deny all; }",
+      "limit_except GET DELETE { deny all; }",
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, after),
+      ),
+    )
+    assert.ok(
+      result.some((error) =>
+        /fingerprint|location inventory|session invalidation/i.test(error),
+      ),
+    )
+  }
+
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  profile.services.keycloakAdmin.sessionIdentifierContract.entropyBytes = 16
+  const result = validateIngressSources({
+    ...sources,
+    "native-admin-edge-profile.json": JSON.stringify(profile),
+  })
+  assert.ok(result.some((error) => /Keycloak native role|session/i.test(error)))
+})
+
 test("Keycloak Admin browser token exchange preserves only the exact origin", () => {
   const nginx = sources["product-edge.nginx.conf.template"]
   assert.match(

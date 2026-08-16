@@ -487,6 +487,21 @@
         "otherBrowserOrigins": "DENY_403_BEFORE_UPSTREAM",
         "forwardedValue": "EXACT_ALLOWED_BROWSER_ORIGIN_ONLY"
       },
+      "sessionIdentifierContract": {
+        "upstreamVersion": "26.7.0",
+        "upstreamSourceCommit": "6c73e3027811d9c7b22683edd825e839272e9547",
+        "generator": "SecretGenerator.SECURE_ID_GENERATOR",
+        "entropyBytes": 18,
+        "encoding": "BASE64URL_PADDED_ENCODER_WITH_NO_PADDING_FOR_18_BYTE_INPUT",
+        "length": 24,
+        "alphabet": "A-Za-z0-9_-",
+        "edgePathPattern": "^/keycloak/admin/realms/llm-machines/sessions/[A-Za-z0-9_-]{24}$",
+        "sourceSha256": {
+          "common/src/main/java/org/keycloak/common/util/SecretGenerator.java": "03ff7216edd3bf3f7bd896b8d59155dcfcbdea536352f73483a232e8e0aec892",
+          "model/infinispan/src/main/java/org/keycloak/models/sessions/infinispan/InfinispanUserSessionProvider.java": "ff82c2db4e18bc50168670147626b0bbb483210f88407def5a2c7338595f50b3",
+          "model/infinispan/src/main/java/org/keycloak/models/sessions/infinispan/InfinispanUserSessionProviderFactory.java": "ceee33bd59432dc9002b3a5bd201eaecaa5c2cbc37a6584994c3fc0818c88bd7"
+        }
+      },
       "webSocketRequired": false,
       "sseRequired": false,
       "routes": [
@@ -565,7 +580,7 @@
           "methods": ["DELETE"],
           "path": {
             "kind": "regex",
-            "value": "^/keycloak/admin/realms/llm-machines/sessions/[0-9a-f-]{36}$"
+            "value": "^/keycloak/admin/realms/llm-machines/sessions/[A-Za-z0-9_-]{24}$"
           },
           "queryPolicy": "forbid"
         },

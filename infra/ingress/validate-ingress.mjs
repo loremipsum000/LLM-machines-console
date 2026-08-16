@@ -187,7 +187,7 @@ const expectedNginxLocations = {
     '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}$"',
     '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/reset-password$"',
     '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/sessions$"',
-    '~ "^/keycloak/admin/realms/llm-machines/sessions/[0-9a-f-]{36}$"',
+    '~ "^/keycloak/admin/realms/llm-machines/sessions/[A-Za-z0-9_-]{24}$"',
     '~ "^/keycloak/admin/realms/llm-machines/groups(?:/[0-9a-f-]{36}(?:/members)?)?$"',
     "^~ /keycloak/resources/",
     "= /__llmm_native_unavailable",
@@ -197,9 +197,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "2e9e3990c32aa66d16ad92de883d5a5eb684c73e0367de6f1b5fed42a50a1d1b",
+    "207048829ad23d57246641d8a5da11cfd6a645cf040240ad5d967160703873c6",
   "native-admin-edge-profile.json":
-    "44014f72acdb488479f27c650169b7b4ad1d8f6a26596e060423a5b1f24c90da",
+    "ed4398d9c83c696b5a52f3bad34f1e12b6b7e4432e8447da0c73d6acacd62625",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -357,6 +357,25 @@ function validateNativeAdmin(profile, errors) {
         allowedBrowserOrigin: "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
         otherBrowserOrigins: "DENY_403_BEFORE_UPSTREAM",
         forwardedValue: "EXACT_ALLOWED_BROWSER_ORIGIN_ONLY",
+      }) &&
+      sameJson(keycloak?.sessionIdentifierContract, {
+        upstreamVersion: "26.7.0",
+        upstreamSourceCommit: "6c73e3027811d9c7b22683edd825e839272e9547",
+        generator: "SecretGenerator.SECURE_ID_GENERATOR",
+        entropyBytes: 18,
+        encoding: "BASE64URL_PADDED_ENCODER_WITH_NO_PADDING_FOR_18_BYTE_INPUT",
+        length: 24,
+        alphabet: "A-Za-z0-9_-",
+        edgePathPattern:
+          "^/keycloak/admin/realms/llm-machines/sessions/[A-Za-z0-9_-]{24}$",
+        sourceSha256: {
+          "common/src/main/java/org/keycloak/common/util/SecretGenerator.java":
+            "03ff7216edd3bf3f7bd896b8d59155dcfcbdea536352f73483a232e8e0aec892",
+          "model/infinispan/src/main/java/org/keycloak/models/sessions/infinispan/InfinispanUserSessionProvider.java":
+            "ff82c2db4e18bc50168670147626b0bbb483210f88407def5a2c7338595f50b3",
+          "model/infinispan/src/main/java/org/keycloak/models/sessions/infinispan/InfinispanUserSessionProviderFactory.java":
+            "ceee33bd59432dc9002b3a5bd201eaecaa5c2cbc37a6584994c3fc0818c88bd7",
+        },
       }) &&
       keycloak?.explicitDenials?.includes("/keycloak/admin/master") &&
       keycloak?.explicitDenials?.includes(
@@ -850,6 +869,19 @@ function validateNginx(sources, errors) {
     keycloakUser.includes("if ($request_method = DELETE) { return 403; }") &&
       keycloakUser.includes("limit_except GET HEAD PUT { deny all; }"),
     "Keycloak user deletion is not denied at the Product edge",
+  )
+  const keycloakSession = exactLocationSection(
+    keycloakAdminServer,
+    '~ "^/keycloak/admin/realms/llm-machines/sessions/[A-Za-z0-9_-]{24}$"',
+  )
+  add(
+    errors,
+    keycloakSession.includes("limit_except DELETE { deny all; }") &&
+      keycloakSession.includes("if ($llmm_query_none = 0) { return 400; }") &&
+      keycloakSession.includes(
+        "include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;",
+      ),
+    "Keycloak session invalidation identifier or method contract changed",
   )
   add(
     errors,
