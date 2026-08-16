@@ -869,6 +869,8 @@ http {
     if ($http_host != $ssl_server_name) { return 421; }
     if ($http_cookie ~* "(?:^|;\\s*)__Host-llm-machines-(?:session|login)=") { return 400; }
     if ($llmm_native_product_credential = 1) { return 400; }
+    proxy_cookie_flags ~^(?:litellm_cp_return_to|litellm_oauth_state|sso_state)$ secure httponly samesite=lax;
+    proxy_cookie_flags token secure samesite=lax;
     proxy_intercept_errors on;
     error_page 502 503 504 =503 /__llmm_native_unavailable?;
 

@@ -96,6 +96,15 @@ path may stream using SSE; no native surface requires WebSocket forwarding.
 Metadata-only ingress logging does not record paths, queries, headers, cookies,
 or bodies.
 
+The pinned LiteLLM UI reads its service-local `token` cookie from JavaScript.
+The Product edge therefore cannot add `HttpOnly` without breaking the supported
+native UI. It forces that cookie to `Secure` and `SameSite=Lax` on the dedicated
+LiteLLM authority. The `litellm_cp_return_to`, `litellm_oauth_state`, and
+`sso_state` cookies are forced to `Secure`, `HttpOnly`, and `SameSite=Lax`.
+This limitation does not permit Console material, Product credentials, shared
+human credentials, or the LiteLLM master secret to become browser credentials.
+An unexpected LiteLLM cookie blocks F0-N7 rather than being admitted implicitly.
+
 The profile remains `INACTIVE_PENDING_F0_N7`. F0-N5R is a prospective source
 correction and bounded disposable path proof only;
 F0-N7 must replay HTTPS browser roles, logout, outage, restart, retention, and

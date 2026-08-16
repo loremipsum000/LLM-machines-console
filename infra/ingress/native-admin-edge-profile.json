@@ -269,7 +269,31 @@
           "system configuration"
         ]
       },
-      "nativeCookies": ["litellm_oauth_state", "token"],
+      "nativeCookies": [
+        "litellm_cp_return_to",
+        "litellm_oauth_state",
+        "sso_state",
+        "token"
+      ],
+      "cookieSecurity": {
+        "edgeEnforcement": "NGINX_PROXY_COOKIE_FLAGS",
+        "stateCookies": {
+          "names": ["litellm_cp_return_to", "litellm_oauth_state", "sso_state"],
+          "secure": true,
+          "httpOnly": true,
+          "sameSite": "Lax"
+        },
+        "nativeUiToken": {
+          "name": "token",
+          "secure": true,
+          "httpOnly": false,
+          "sameSite": "Lax",
+          "javascriptReadableRequiredByPinnedUi": true,
+          "dedicatedAuthorityOnly": true,
+          "consoleMaterialForwarded": false
+        },
+        "unexpectedCookie": "FAIL_F0_N7_BROWSER_VALIDATION"
+      },
       "requestHeaders": [
         "Accept",
         "Accept-Encoding",

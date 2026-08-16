@@ -197,9 +197,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "207048829ad23d57246641d8a5da11cfd6a645cf040240ad5d967160703873c6",
+    "a5b926e972b673b4b908287c5b060c7a1d020d9eb49062a0c76f82b6332ed2c3",
   "native-admin-edge-profile.json":
-    "ed4398d9c83c696b5a52f3bad34f1e12b6b7e4432e8447da0c73d6acacd62625",
+    "4ef0adb5ad4291b6c86f69e02a78469f80e6c3cfa47d0b95ed5b2132d43c4b6e",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -326,6 +326,35 @@ function validateNativeAdmin(profile, errors) {
         "system configuration",
       ]),
     "LiteLLM Operator authority broadened",
+  )
+  add(
+    errors,
+    sameJson(litellm?.nativeCookies, [
+      "litellm_cp_return_to",
+      "litellm_oauth_state",
+      "sso_state",
+      "token",
+    ]) &&
+      sameJson(litellm?.cookieSecurity, {
+        edgeEnforcement: "NGINX_PROXY_COOKIE_FLAGS",
+        stateCookies: {
+          names: ["litellm_cp_return_to", "litellm_oauth_state", "sso_state"],
+          secure: true,
+          httpOnly: true,
+          sameSite: "Lax",
+        },
+        nativeUiToken: {
+          name: "token",
+          secure: true,
+          httpOnly: false,
+          sameSite: "Lax",
+          javascriptReadableRequiredByPinnedUi: true,
+          dedicatedAuthorityOnly: true,
+          consoleMaterialForwarded: false,
+        },
+        unexpectedCookie: "FAIL_F0_N7_BROWSER_VALIDATION",
+      }),
+    "LiteLLM native cookie security contract changed",
   )
   const keycloak = profile.services?.keycloakAdmin
   add(
@@ -838,6 +867,18 @@ function validateNginx(sources, errors) {
       ) &&
       !/location[^\n]*(?:router|global|budget)/i.test(litellmServer),
     "LiteLLM native route boundary changed",
+  )
+  add(
+    errors,
+    litellmServer.includes(
+      "proxy_cookie_flags ~^(?:litellm_cp_return_to|litellm_oauth_state|sso_state)$ secure httponly samesite=lax;",
+    ) &&
+      litellmServer.includes("proxy_cookie_flags token secure samesite=lax;") &&
+      !litellmServer.includes(
+        "proxy_cookie_flags token secure httponly samesite=lax;",
+      ) &&
+      count(litellmServer, "proxy_cookie_flags ") === 2,
+    "LiteLLM native cookie transport boundary changed",
   )
   add(
     errors,
