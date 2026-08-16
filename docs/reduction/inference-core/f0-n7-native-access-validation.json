@@ -1,0 +1,135 @@
+{
+  "schema": "llm-machines.f0-n7-native-access-validation.v1",
+  "workPackage": "F0-N7",
+  "status": "LOCAL_AGGREGATE_NATIVE_ACCESS_PROVEN",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N8_AND_DEPLOYMENT",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "a714672c91fc512e075e93dd084a88a26e77c22a",
+    "tree": "5b8560a677548d8cc3be328ff75541e5222e6aa3"
+  },
+  "runtimeCandidate": {
+    "commit": "e34760ecc63b23a36efd24551fec7b92698e3ca2",
+    "tree": "b0ef0f15304636437c972aac3e5e2d2a4366cf2e"
+  },
+  "environment": {
+    "host": "VM117 llmm-uat-core-f0",
+    "purpose": "isolated disposable linux/amd64 native-access validation",
+    "cpu": 8,
+    "memoryGiB": 32,
+    "browser": "Chromium 151.0.7922.108",
+    "founderEnvironmentPreserved": true,
+    "liveCustomerRuntimeChanged": false
+  },
+  "images": {
+    "edge": "docker.io/library/nginx:1.29.1-alpine@sha256:42a516af16b852e33b7682d5ef8acbd5d13fe08fecadc7ed98605ba5e3b26ab8",
+    "grafana": "docker.io/grafana/grafana:13.1.3@sha256:ab5cb380e3ff3172d6c8bd2e7cfd31cce977d2881b260e1f5bc089bf0b759b43",
+    "keycloak": "quay.io/keycloak/keycloak:26.7.0@sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13",
+    "litellm": "sha256:d1396589f1fed1fa3e67142c5f93189e257db14ce92ce9d952fbf18a58350f6b",
+    "litellmVersion": "v1.96.2-llmm.1",
+    "postgres": "docker.io/library/postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3"
+  },
+  "runtimeEvidence": {
+    "date": "2026-08-16",
+    "rawEvidenceSha256": "ffb7ac412637c2c739daeeecee16afd7719a20130bf9586134ad3948102ca958",
+    "credentialsRecorded": false,
+    "cookieValuesRecorded": false,
+    "workloadContentRecorded": false,
+    "grafana": {
+      "admin": "EDITOR",
+      "operator": "DENY",
+      "serverAdministrator": false,
+      "authorizationCodePkceS256": "PASS",
+      "nativeSessionAndLogout": "PASS",
+      "restartAndOutage": "PASS",
+      "crossOriginMutation": "DENY"
+    },
+    "litellm": {
+      "admin": "PROXY_ADMIN",
+      "operator": "INTERNAL_USER_OWN_KEYS_AND_SPEND_ONLY",
+      "globalAndCrossUserMutation": "DENY",
+      "authorizationCodePkceS256": "PASS",
+      "nativeSessionAndLogout": "PASS",
+      "restartAndOutage": "PASS",
+      "routingStreamingAccountingAndRevocation": "PASS",
+      "emittedCookieNames": ["litellm_oauth_state", "sso_state", "token"],
+      "emittedCookiePolicy": {
+        "litellm_oauth_state": "SECURE_HTTPONLY_SAMESITE_LAX",
+        "sso_state": "SECURE_HTTPONLY_SAMESITE_LAX",
+        "token": "SECURE_JAVASCRIPT_READABLE_SAMESITE_LAX"
+      },
+      "conditionalReturnToCookie": {
+        "name": "litellm_cp_return_to",
+        "edgePolicy": "SECURE_HTTPONLY_SAMESITE_LAX",
+        "approvedFlowObservation": "NOT_EMITTED",
+        "reason": "The admitted query-free /sso/key/generate route does not supply the upstream return_to parameter. The edge security directive remains source-bound for any upstream emission without broadening the query policy."
+      }
+    },
+    "keycloak": {
+      "admin": "APPLIANCE_REALM_USER_ADMIN",
+      "operator": "DENY",
+      "authorizationCodePkceS256": "PASS",
+      "createUpdatePasswordResetAndSessionInvalidation": "PASS",
+      "authenticatedSubjectBinding": "PASS",
+      "userDeleteAtEdge": 403,
+      "masterAndUnrelatedRealm": "DENY",
+      "serverWideMutation": "DENY",
+      "nativeSessionAndLogout": "PASS",
+      "restartAndOutage": "PASS"
+    },
+    "noBypass": {
+      "alternateHostAndSni": "DENY",
+      "directPorts": "LOOPBACK_ONLY",
+      "consoleCookies": "DENY",
+      "productCredentials": "DENY",
+      "spoofedForwardingHeaders": "NORMALIZED_TO_EDGE_VALUES",
+      "traversalAndUnsafeRoutes": "DENY",
+      "unapprovedMethods": "DENY",
+      "unapprovedWebSocketAndSse": "DENY"
+    },
+    "retention": {
+      "postgres": "METADATA_ONLY",
+      "logs": "WORKLOAD_AND_CREDENTIAL_VALUES_ABSENT",
+      "credentialValues": 0,
+      "workloadContentCanaries": 0
+    },
+    "portainer": "ABSENT_DEFERRED_UPSTREAM_SECURITY",
+    "retiredProductSurfaces": "ABSENT"
+  },
+  "failedClosedAttempt": {
+    "commit": "b0295f7bcf20a37b40acb46fbd752fb077af9c06",
+    "tree": "67be96e6dbd7454befb53fa82fba19f6315de012",
+    "classification": "TEST_EXPECTATION_DEFECT_NO_PRODUCT_BEHAVIOR_DEFECT",
+    "reason": "The first aggregate assertion incorrectly required the route-conditional litellm_cp_return_to cookie during the approved query-free login flow.",
+    "policyBroadened": false,
+    "runOwnedResourcesRemoved": true
+  },
+  "cleanup": {
+    "preExistingStaleF0N7SecretDirectoriesFound": 2,
+    "preExistingStaleF0N7SecretDirectoriesRemoved": 2,
+    "runOwnedContainersRemaining": 0,
+    "runOwnedNetworksRemaining": 0,
+    "runOwnedVolumesRemaining": 0,
+    "runOwnedTemporaryDirectoriesRemaining": 0,
+    "founderContainersPreserved": 10,
+    "credentialRecoveryAttempted": false
+  },
+  "sourceArtifacts": {
+    "scripts/pre-genesis/f0-n7-native-runtime.mjs": "sha256:5584918ffe2b3aabbf6ae8b3e4b24e0f5e6dd2c89fd89080f2ad6192f08019e1"
+  },
+  "sourceBoundary": {
+    "productBehaviorChanged": false,
+    "nativeIngressActivated": false,
+    "vm103Touched": false,
+    "gatewayDnsOrCertificatesChanged": false,
+    "productMainChanged": false,
+    "giteaTouched": false,
+    "genesisCreated": false,
+    "d2aSigningQ0Started": false,
+    "historicalEvidenceRewritten": false
+  },
+  "nextPackage": "F0-N8 governance-only pre-Genesis closure amendment"
+}

@@ -52,6 +52,7 @@ per-package JSON file and contract revision.
 | F0-N5T | Keycloak Admin browser token Origin correction | `f0-n5t-keycloak-admin-token-origin.json` and `infra/ingress/native-admin-edge-profile.json` | Prospective security correction from protected input `ec2508c76f2b35b34407738dd2f3cdcc286e4608`: the human-realm token endpoint permits Origin-less server exchange and preserves only the exact dedicated Keycloak Admin browser Origin. Every other browser Origin receives `403` before Keycloak. Exact Keycloak 26.7.0 browser proof passes token exchange and appliance-realm Admin Console loading without changing `security-admin-console`, forwarding Console material, or broadening CORS. Historical F0-N5, F0-N5R, and F0-N5S evidence remains unchanged. Complete F0-N7 validation and activation remain pending. |
 | F0-N5U | Keycloak session identifier edge correction | `f0-n5u-keycloak-session-identifier.json` and `infra/ingress/native-admin-edge-profile.json` | Prospective security correction from protected input `fbcc7d81bef80c0346942380a0361fe64c2b69fa`: exact Keycloak 26.7.0 source proves that user-session IDs are 24-character URL-safe Base64 values generated from 18 random bytes. The existing session-invalidation route admits only that exact shape and `DELETE`; malformed identifiers, queries, other methods, user deletion, Console material, and Product credentials remain denied. Focused VM117 proof invalidates real sessions and removes all owned state. Historical F0-N5 through F0-N5T evidence remains unchanged. Complete F0-N7 validation and activation remain pending. |
 | F0-N5V/F0-N1 | LiteLLM native cookie security correction | `f0-n5v-litellm-cookie-security.json` and `infra/ingress/native-admin-edge-profile.json` | Prospective security correction from protected input `0317d2effb29a1a6cbaa4fc0fc8332b140a5a03f`: the Product edge forces Secure and SameSite=Lax on the exact pinned LiteLLM native cookies, and additionally forces HttpOnly on all three state cookies. The `token` cookie remains deliberately JavaScript-readable because exact LiteLLM OSS v1.96.2 requires `document.cookie`; dedicated HTTPS authority, strict route allowlisting, private direct port, and no Console-token forwarding compensate for that upstream limitation. Focused VM117 OIDC, PKCE, role, cookie, logout, and cleanup proof passes without recording values. Historical F0-N1 and F0-N5 through F0-N5U evidence remains unchanged. Complete F0-N7 qualification and activation remain pending. |
+| F0-N7 | Aggregate retained native-access validation | `f0-n7-native-access-validation.json` | Exact Grafana 13.1.3, LiteLLM OSS `v1.96.2-llmm.1`, Keycloak 26.7.0, PostgreSQL 17.6, Product edge, and Chromium pass the complete isolated VM117 browser, role, session, outage, restart, retention, and no-bypass matrix. Admin receives Grafana Editor, LiteLLM `proxy_admin`, and scoped appliance-realm identity authority; Operator receives only LiteLLM `internal_user` own-key and spend authority. Keycloak user deletion remains denied at the edge. Portainer and retired Product surfaces remain absent. Product acceptance and runtime qualification remain false, native activation remains pending F0-N8 and deployment approval, Q0 is not started, and Genesis is unpublished. |
 
 ## PR-08 fixed decisions
 
@@ -151,3 +152,27 @@ per-package JSON file and contract revision.
   path. LiteLLM virtual keys are a separate advanced technical path.
 - This is source UI only. Native ingress, runtime, VM103, DNS, certificates,
   and gateway state remain unchanged pending F0-N7.
+
+## F0-N7 aggregate retained native-access decision
+
+- The complete three-service browser and API matrix passes on isolated VM117
+  from exact candidate `e34760ecc63b23a36efd24551fec7b92698e3ca2`.
+- Grafana admits Admin as Editor and denies Operator and server-administrator
+  authority. LiteLLM admits Admin as `proxy_admin` and Operator as
+  `internal_user` with own keys and spend only. Keycloak admits Admin only to
+  the appliance-realm user, password, and session boundary.
+- The edge denies Keycloak user deletion, alternate hosts, direct native
+  ports, Console cookies, Product credentials, unsafe routes, traversal,
+  unapproved methods, WebSocket upgrades, and unapproved SSE.
+- The approved query-free LiteLLM login emits `litellm_oauth_state`,
+  `sso_state`, and `token`. The conditional `litellm_cp_return_to` cookie is
+  not emitted because `return_to` is forbidden at that edge route; its strict
+  cookie flags remain source-bound without broadening the query policy.
+- Metadata-only retention checks pass. No credential, cookie value, prompt,
+  or response is retained in evidence, PostgreSQL, or captured logs.
+- The first aggregate attempt failed closed on an incorrect test expectation,
+  changed no Product behavior, and removed all owned resources. The corrected
+  uninterrupted run passed and also removed all owned state.
+- This is pre-Genesis functional evidence, not Product acceptance or Q0
+  runtime qualification. Native activation remains inactive pending F0-N8,
+  deployment approval, and the later durable environment replay.
