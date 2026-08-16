@@ -292,16 +292,13 @@
   ],
   "productBoundary": {
     "console": "PRIMARY_SIMPLIFIED_CUSTOMER_EXPERIENCE_COMPLETE_WITHOUT_NATIVE_TOOLS",
-    "retired": [
-      "LibreChat",
-      "first-party chat",
-      "conversations",
-      "Knowledge",
-      "RAG",
-      "corpora",
-      "MCP",
-      "Product corpus pipeline"
-    ],
+    "retiredBoundary": {
+      "status": "ABSENT",
+      "decisionPackage": "F0-N0",
+      "evidencePath": "docs/reduction/inference-core/f0-n0-retained-native-administration.json",
+      "evidenceSha256": "b78281357729c4cb6dbf5180be30e00c1a9394995fe769aaf0a89da95bc567bc",
+      "runtimeValidation": "F0-N7 retiredProductSurfaces=ABSENT"
+    },
     "retainedNative": {
       "grafana": "ADMIN_EDITOR_ONLY_NO_SERVER_ADMIN",
       "litellm": "ADMIN_PROXY_ADMIN_OPERATOR_INTERNAL_USER_OWN_KEYS_AND_SPEND_ONLY",

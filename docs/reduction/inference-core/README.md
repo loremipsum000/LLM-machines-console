@@ -1316,8 +1316,8 @@ private. Console remains the primary complete customer experience.
 
 Portainer remains `DEFERRED_UPSTREAM_SECURITY`, is not currently admitted, and
 requires a separately authorized F0-N4R against a suitable upstream CE
-release. LibreChat, first-party chat, conversations, Knowledge, RAG, corpora,
-MCP, and the Product corpus pipeline remain absent.
+release. The retired Product boundary remains absent and is bound by the
+original F0-N0 decision fingerprint plus the F0-N7 runtime absence result.
 
 This closure is governance-only. Product acceptance and runtime qualification
 remain false, contract activation remains inactive, Q0 is not started,

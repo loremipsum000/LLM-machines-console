@@ -121,16 +121,15 @@ test("F0-N8 closes the corrected three-service Product boundary", async () => {
     closure.productBoundary.console,
     "PRIMARY_SIMPLIFIED_CUSTOMER_EXPERIENCE_COMPLETE_WITHOUT_NATIVE_TOOLS",
   )
-  assert.deepEqual(closure.productBoundary.retired, [
-    "LibreChat",
-    "first-party chat",
-    "conversations",
-    "Knowledge",
-    "RAG",
-    "corpora",
-    "MCP",
-    "Product corpus pipeline",
-  ])
+  assert.deepEqual(closure.productBoundary.retiredBoundary, {
+    status: "ABSENT",
+    decisionPackage: "F0-N0",
+    evidencePath:
+      "docs/reduction/inference-core/f0-n0-retained-native-administration.json",
+    evidenceSha256:
+      "b78281357729c4cb6dbf5180be30e00c1a9394995fe769aaf0a89da95bc567bc",
+    runtimeValidation: "F0-N7 retiredProductSurfaces=ABSENT",
+  })
   assert.deepEqual(n6.roleNavigation.Admin, ["grafana", "litellm", "keycloak"])
   assert.deepEqual(n6.roleNavigation.Operator, ["litellm"])
   assert.equal(n6.securityBoundary.consoleSessionForwarded, false)
