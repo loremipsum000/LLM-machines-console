@@ -62,6 +62,7 @@ d-i pkgsel/include string sudo qemu-guest-agent jq ca-certificates curl git gnup
 d-i pkgsel/upgrade select none
 popularity-contest popularity-contest/participate boolean false
 d-i grub-installer/only_debian boolean true
+d-i grub-installer/bootdev string /dev/sda
 d-i preseed/late_command string \\
   in-target install -d -m 0700 -o dberisha -g dberisha /home/dberisha/.ssh; \\
   in-target /bin/sh -c "printf '%s\\n' '${quotedKey}' > /home/dberisha/.ssh/authorized_keys"; \\

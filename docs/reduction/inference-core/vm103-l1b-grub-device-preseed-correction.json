@@ -1,0 +1,38 @@
+{
+  "schema": "llm-machines.vm103-l1b-grub-device-preseed-correction.v1",
+  "workPackage": "VM103-L1B-P6",
+  "status": "SOURCE_PROVISIONING_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "a53e79513e576db0fd64e9ad5718f597c2edda10",
+    "tree": "5aa3337334aeb040ba319e832a323018ea8f6add"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "result": "INTERACTIVE_GRUB_BOOT_DEVICE_PROMPT",
+    "cause": "GRUB_BOOT_DEVICE_NOT_PRESEEDED",
+    "partitionDevice": "/dev/sda",
+    "assemblyVolumesAttached": false,
+    "manualSelectionMade": false,
+    "vmStateAfterObservation": "STOPPED_PARTIAL_INSTALL_PRESERVED",
+    "failedAttemptSnapshot": "rpool/data/vm-118-disk-0@failed-grub-bootdev-a53e795"
+  },
+  "correction": {
+    "directive": "d-i grub-installer/bootdev string /dev/sda",
+    "primaryEvidence": "https://www.debian.org/releases/trixie/amd64/apbs04.en.html",
+    "partitionAndBootDeviceMatch": true,
+    "singleInstallationDiskRequired": true
+  },
+  "boundaries": {
+    "manualInstallerSelectionProhibited": true,
+    "assemblyVolumesRemainDetached": true,
+    "productRuntimeChanged": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}

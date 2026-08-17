@@ -31,6 +31,8 @@ test("preseed uses HTTPS and embeds only the supplied public key", () => {
   assert.match(preseed, /mirror\/https\/proxy string\n/)
   assert.match(preseed, /mirror\/suite select trixie/)
   assert.doesNotMatch(preseed, /mirror\/http\//)
+  assert.match(preseed, /^d-i grub-installer\/bootdev string \/dev\/sda$/m)
+  assert.equal(preseed.match(/^d-i grub-installer\/bootdev /gm)?.length, 1)
   assert.match(preseed, new RegExp(publicKey))
   assert.match(preseed, /passwd\/user-password-crypted password !/)
 })

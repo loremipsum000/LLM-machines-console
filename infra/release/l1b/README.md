@@ -44,10 +44,11 @@ interactive.
 Installation is a single-disk phase. `manage-vm118-installer-disks.sh isolate`
 snapshots and detaches the two exact assembly volumes while VM118 is stopped,
 leaving only `scsi0` available to Debian. This prevents `/dev/sd*` enumeration
-from selecting an assembly disk. After the installed system has booted and is
-stopped again, `restore` resets only the two snapshotted assembly volumes and
-reattaches their exact Proxmox identities. The snapshots preserve the observed
-pre-reset state.
+from selecting an assembly disk. The preseed binds both partitioning and GRUB
+installation to that sole `/dev/sda` device. After the installed system has
+booted and is stopped again, `restore` resets only the two snapshotted assembly
+volumes and reattaches their exact Proxmox identities. The snapshots preserve
+the observed pre-reset state.
 
 Each assembly fetches and verifies its own locked source archives, assembles
 the reviewed LiteLLM and Firecrawl source, imports third-party images by exact
