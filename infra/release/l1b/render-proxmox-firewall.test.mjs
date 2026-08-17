@@ -24,6 +24,7 @@ test("rendered VM118 firewall is default-deny and VPN-key-SSH only", () => {
   const rendered = renderFirewall(policy, resolution(), profile)
   assert.match(rendered, /policy_in: DROP/)
   assert.match(rendered, /policy_out: DROP/)
+  assert.doesNotMatch(rendered, /^policy_forward:/m)
   assert.match(rendered, /IN ACCEPT -source 10\.93\.74\.0\/24 -p tcp -dport 22/)
   assert.match(rendered, /OUT ACCEPT -dest \+llmm-l1b-egress -p tcp -dport 443/)
   assert.doesNotMatch(rendered, /policy_(?:in|out): ACCEPT/)
