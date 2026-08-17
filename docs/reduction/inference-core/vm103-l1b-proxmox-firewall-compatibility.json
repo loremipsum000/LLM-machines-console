@@ -1,0 +1,48 @@
+{
+  "schema": "llm-machines.vm103-l1b-proxmox-firewall-compatibility.v1",
+  "workPackage": "VM103-L1B-P1",
+  "status": "SOURCE_SECURITY_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "f81260e3a86b33453c130e76ecaddca8ee0d5cfa",
+    "tree": "b38a843da69892c7e6cfedb15fa41c57313243d2"
+  },
+  "historicalPredecessor": {
+    "candidate": "9e388007f81f485968bce4783a335b9355d745d6",
+    "candidateTree": "b38a843da69892c7e6cfedb15fa41c57313243d2",
+    "protectedMerge": "f81260e3a86b33453c130e76ecaddca8ee0d5cfa",
+    "protectedMergeTree": "b38a843da69892c7e6cfedb15fa41c57313243d2"
+  },
+  "runtimeObservation": {
+    "host": "nihal01.openit.internal",
+    "proxmoxVersion": "pve-manager/9.2.3",
+    "vmid": 118,
+    "vmState": "STOPPED_NOT_INSTALLED",
+    "guestBooted": false,
+    "compilerCommand": "pve-firewall compile",
+    "diagnostic": "/etc/pve/firewall/118.fw (line 5): can't parse option 'policy_forward: DROP'",
+    "disposition": "BLOCKED_BEFORE_FIRST_BOOT"
+  },
+  "correction": {
+    "path": "infra/release/l1b/render-proxmox-firewall.mjs",
+    "unsupportedDirectiveRemoved": "policy_forward",
+    "policyIn": "DROP",
+    "policyOut": "DROP",
+    "policyForward": "UNAVAILABLE_IN_PROXMOX_VM_FIREWALL_PROFILE",
+    "acceptedRulesUnchanged": true,
+    "productBehaviorChanged": false,
+    "runtimeActivated": false
+  },
+  "boundaries": {
+    "vm118RemainsStoppedUntilProtectedAdmission": true,
+    "existingVmOrWorkloadChanged": false,
+    "productRuntimeChanged": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}

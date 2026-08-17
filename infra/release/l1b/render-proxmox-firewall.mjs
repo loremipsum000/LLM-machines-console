@@ -42,7 +42,6 @@ export function renderFirewall(policy, resolution, profile) {
     "enable: 1",
     "policy_in: DROP",
     "policy_out: DROP",
-    "policy_forward: DROP",
     "log_level_in: warning",
     "log_level_out: warning",
     "",

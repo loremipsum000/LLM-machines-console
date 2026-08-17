@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { readFileSync, readdirSync } from "node:fs"
 import { resolve } from "node:path"
@@ -8,6 +9,7 @@ const root = resolve(import.meta.dirname, "../..")
 const evidence = readJson(
   "docs/reduction/inference-core/vm103-l1b-executable-toolchain-predecessor.json",
 )
+const historicalCandidate = "9e388007f81f485968bce4783a335b9355d745d6"
 
 test("L1B predecessor preserves inactive source-only governance", () => {
   assert.equal(evidence.workPackage, "VM103-L1B-P0")
@@ -30,7 +32,7 @@ test("L1B predecessor records every fail-closed host and media gate", () => {
   )
 })
 
-test("L1B predecessor binds exact executable source bytes", () => {
+test("L1B predecessor preserves exact candidate-era source bytes", () => {
   const sourceRoot = resolve(root, "infra/release/l1b")
   const expectedPaths = readdirSync(sourceRoot)
     .filter(
@@ -43,7 +45,12 @@ test("L1B predecessor binds exact executable source bytes", () => {
     expectedPaths,
   )
   for (const entry of evidence.sourcePackage.files) {
-    assert.equal(sha256(readFileSync(resolve(root, entry.path))), entry.sha256)
+    const historical = execFileSync(
+      "git",
+      ["show", `${historicalCandidate}:${entry.path}`],
+      { cwd: root },
+    )
+    assert.equal(sha256(historical), entry.sha256)
   }
 })
 
