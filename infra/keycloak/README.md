@@ -66,10 +66,9 @@ secret are bound outside Git during PR-12 packaging. `offline_access` is not a
 default or optional scope.
 
 Grafana evaluates `realm_access.roles` with strict role synchronization:
-`admin` maps to Grafana Editor and `operator` maps to Grafana Viewer. Admin is
-not mapped to Grafana organization Admin or server Admin. A principal with
-neither retained role, or with both retained roles, is denied. The Grafana
-source configuration is under
+`admin` maps to Grafana Editor while `operator`, mixed-role, and unknown
+principals are denied native login. Admin is not mapped to Grafana
+organization Admin or server Admin. The Grafana source configuration is under
 `infra/observability`; it remains inactive until PR-12 proves the callback,
 secret-file mount, OIDC claims, and direct-access boundary.
 
