@@ -1,0 +1,38 @@
+{
+  "schema": "llm-machines.vm103-l1b-bootstrap-fetch-correction.v1",
+  "workPackage": "VM103-L1B-P7",
+  "status": "SOURCE_BOOTSTRAP_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "f93905e6435cfe8b0cd6df5f98c63031008f9c9f",
+    "tree": "6d0def2f2fbd2cec464b8ed528b97e13ab89f849"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "result": "LOCKED_PNPM_INPUT_NOT_FETCHED",
+    "cause": "JQ_INPUT_ENUMERATION_PRECEDENCE_AND_HTTP_SECURITY_SOURCE_MISMATCH",
+    "assemblyVolumesFormatted": false,
+    "vmStateAfterObservation": "STOPPED_PARTIAL_BOOTSTRAP_PRESERVED",
+    "failedAttemptSnapshot": "rpool/data/vm-118-disk-0@failed-bootstrap-input-enumeration-f93905e"
+  },
+  "correction": {
+    "allLockedHostAndDockerInputsEnumerated": true,
+    "jqFailurePropagatesBeforeInstallation": true,
+    "debianSecuritySourceUsesHttps": true,
+    "ipv4TransportBound": true,
+    "repositoryUpdateWarningsFailClosed": true,
+    "egressPolicyBroadened": false
+  },
+  "boundaries": {
+    "assemblyVolumesRemainUnformatted": true,
+    "otherVmOrWorkloadChanged": false,
+    "productRuntimeChanged": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}
