@@ -13,6 +13,16 @@ DIRECTORY = pathlib.Path(__file__).resolve().parent
 BEGIN_MARKER = "# BEGIN LLM MACHINES VM103-L1B EGRESS BINDING"
 END_MARKER = "# END LLM MACHINES VM103-L1B EGRESS BINDING"
 ACTIVE_VM118_FIREWALL = pathlib.Path("/etc/pve/firewall/118.fw")
+CANONICAL_IPV4_ORDER = "IPV4_NUMERIC_ASCENDING"
+
+
+def canonical_ipv4(addresses: list[str]) -> list[str]:
+    parsed = []
+    for address in addresses:
+        if not isinstance(address, str):
+            raise RuntimeError("IPv4 address is not a string")
+        parsed.append(ipaddress.IPv4Address(address))
+    return [str(address) for address in sorted(set(parsed))]
 
 
 def load_and_validate(resolution_path: pathlib.Path) -> tuple[dict, dict]:
@@ -21,9 +31,12 @@ def load_and_validate(resolution_path: pathlib.Path) -> tuple[dict, dict]:
     resolution = json.loads(resolution_path.read_text(encoding="utf-8"))
     expected_hash = f"sha256:{hashlib.sha256(policy_bytes).hexdigest()}"
     if (
-        resolution.get("schema") != "llm-machines.vm103-l1b-egress-resolution.v2"
+        policy.get("addressOrder") != CANONICAL_IPV4_ORDER
+        or resolution.get("schema")
+        != "llm-machines.vm103-l1b-egress-resolution.v3"
         or resolution.get("policySha256") != expected_hash
         or resolution.get("dnsResolver") != policy["dnsResolver"]
+        or resolution.get("addressOrder") != CANONICAL_IPV4_ORDER
         or sorted(resolution.get("resolutions", {}).keys()) != policy["hosts"]
     ):
         raise RuntimeError("egress resolution does not bind the exact allowlist")
@@ -32,13 +45,9 @@ def load_and_validate(resolution_path: pathlib.Path) -> tuple[dict, dict]:
         if (
             not isinstance(addresses, list)
             or not addresses
-            or addresses != sorted(set(addresses))
+            or addresses != canonical_ipv4(addresses)
         ):
             raise RuntimeError(f"{host} resolution is invalid or non-canonical")
-        for address in addresses:
-            if not isinstance(address, str):
-                raise RuntimeError(f"{host} resolution is invalid or non-canonical")
-            ipaddress.IPv4Address(address)
     return policy, resolution
 
 
@@ -224,11 +233,13 @@ def verify_system_hosts(policy: dict, resolution: dict) -> None:
     if not services or services[0] != "files":
         raise RuntimeError("NSS hosts lookup is not files-first")
     for host in policy["hosts"]:
-        observed = sorted(
-            {
-                item[4][0]
-                for item in socket.getaddrinfo(host, 443, socket.AF_INET)
-            }
+        observed = canonical_ipv4(
+            list(
+                {
+                    item[4][0]
+                    for item in socket.getaddrinfo(host, 443, socket.AF_INET)
+                }
+            )
         )
         if observed != resolution["resolutions"][host]:
             raise RuntimeError(f"system resolver differs for {host}")

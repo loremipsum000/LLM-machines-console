@@ -12,9 +12,10 @@ const policy = JSON.parse(policyBytes)
 
 function resolution() {
   return {
-    schema: "llm-machines.vm103-l1b-egress-resolution.v2",
+    schema: "llm-machines.vm103-l1b-egress-resolution.v3",
     policySha256: `sha256:${createHash("sha256").update(policyBytes).digest("hex")}`,
     dnsResolver: policy.dnsResolver,
+    addressOrder: policy.addressOrder,
     resolutions: Object.fromEntries(
       policy.hosts.map((host, index) => [host, [`192.0.2.${index + 1}`]]),
     ),
@@ -58,6 +59,24 @@ test("hosts binding pins every exact approved hostname", () => {
     rendered.output,
     /^# END LLM MACHINES VM103-L1B EGRESS BINDING$/m,
   )
+})
+
+test("binding renderer accepts only the shared numeric IPv4 order", () => {
+  const numeric = resolution()
+  numeric.resolutions[policy.hosts[0]] = [
+    "192.0.2.2",
+    "192.0.2.34",
+    "192.0.2.109",
+  ]
+  assert.equal(render("hosts", numeric).result.status, 0)
+
+  const lexical = structuredClone(numeric)
+  lexical.resolutions[policy.hosts[0]] = [
+    "192.0.2.109",
+    "192.0.2.2",
+    "192.0.2.34",
+  ]
+  assert.notEqual(render("hosts", lexical).result.status, 0)
 })
 
 test("dnsmasq binding is exact, non-forwarding, and assembly-local", () => {

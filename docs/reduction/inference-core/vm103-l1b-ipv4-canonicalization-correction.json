@@ -1,0 +1,43 @@
+{
+  "schema": "llm-machines.vm103-l1b-ipv4-canonicalization-correction.v1",
+  "workPackage": "VM103-L1B-P10",
+  "status": "SOURCE_CANONICALIZATION_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "8744e5613b3c33722c0d508031416eed8eb53ac4",
+    "tree": "16b3b9c8d2af69a5453ad9fbf1ca0bcfe0f25050"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "stage": "PRE_TRANSACTION",
+    "result": "CANONICAL_ADDRESS_ORDER_MISMATCH",
+    "resolutionSha256": "a1f6f7b6ba8696b97cb3c4fc8e43263fb79f512441c6f7ce03c1436d8cc8e7fe",
+    "failureStderrSha256": "a4903f37ce6c662db4e91d750455279cea31f8696cedd40939f60639c91f8924",
+    "diagnosticSha256": "92ee62aafe6d66c173c1f6d272328479003f0967c79852150619bda392f721cc",
+    "affectedHostCount": 12,
+    "firewallChanged": false,
+    "bootstrapStarted": false,
+    "assemblyAStarted": false
+  },
+  "correction": {
+    "canonicalRule": "IPV4_NUMERIC_ASCENDING",
+    "resolutionSchema": "llm-machines.vm103-l1b-egress-resolution.v3",
+    "resolverEnforcesRule": true,
+    "javascriptValidatorEnforcesRule": true,
+    "pythonBindingValidatorEnforcesRule": true,
+    "lexicalOrderRejected": true,
+    "egressPolicyBroadened": false
+  },
+  "boundaries": {
+    "productRuntimeChanged": false,
+    "firewallInstalled": false,
+    "assemblyVolumesRemainUnformatted": true,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}

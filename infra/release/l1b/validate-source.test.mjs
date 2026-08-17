@@ -31,6 +31,15 @@ test("broadened egress and shared assembly state fail closed", () => {
   assert.match(errors, /independent assembly/)
 })
 
+test("the shared IPv4 canonicalization rule cannot drift", () => {
+  const source = clone(readL1bSource())
+  source.egress.addressOrder = "LEXICAL"
+  assert.match(
+    validateL1bSource(source).join("\n"),
+    /egress allowlist is not exact/,
+  )
+})
+
 test("installation requires the exact verified read-only media attachment", () => {
   const source = clone(readL1bSource())
   source.profile.installationMedia.attachment.bus = "sata0"

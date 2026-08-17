@@ -12,9 +12,10 @@ const profile = JSON.parse(readFileSync(resolve(root, "builder-profile.json")))
 
 function resolution() {
   return {
-    schema: "llm-machines.vm103-l1b-egress-resolution.v2",
+    schema: "llm-machines.vm103-l1b-egress-resolution.v3",
     policySha256: `sha256:${createHash("sha256").update(policyBytes).digest("hex")}`,
     dnsResolver: policy.dnsResolver,
+    addressOrder: policy.addressOrder,
     resolutions: Object.fromEntries(
       policy.hosts.map((host, index) => [host, [`192.0.2.${index + 1}`]]),
     ),
