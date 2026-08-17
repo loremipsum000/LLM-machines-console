@@ -1,0 +1,45 @@
+{
+  "schema": "llm-machines.vm103-l1b-dns-firewall-binding-correction.v1",
+  "workPackage": "VM103-L1B-P9",
+  "status": "SOURCE_NETWORK_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "fd96f0c819e440e68b0fca0142d58ee462bf318e",
+    "tree": "73cd9f7162dd6d6f52ce9882aebd30b0b86426dd"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "result": "POINT_IN_TIME_DNS_AND_FIREWALL_RACE",
+    "cause": "APPROVED_HOST_CHANGED_ADDRESS_AFTER_FIREWALL_RENDER",
+    "observedHost": "github.com",
+    "firstAddress": "140.82.121.4",
+    "laterAddress": "140.82.121.3",
+    "initialFirewallSha256": "c4fbe2d4a7d1925547023b683fb61dfb0c9f3466b03751ca6f43b52b46c2c0af",
+    "refreshedResolutionSha256": "99da4734ec8023d06d8fa5109eb1ffd8a921f8f237eb53914f0438c8828a468c",
+    "refreshedFirewallSha256": "e27776268a44bc949c21323ab6295ae2cd7100737719e94a60ed1916daf1adfa",
+    "preservedFirewallPath": "/var/lib/llmm-vm118-evidence/118.fw.c4fbe2d4.pre-egress-refresh",
+    "assemblyVolumesFormatted": false,
+    "vmStateAfterObservation": "RUNNING_CLEAN_OS_WITH_FAILED_CLONE_EVIDENCE_PRESERVED"
+  },
+  "correction": {
+    "firewallAndGuestUseSameResolution": true,
+    "filesFirstHostBindingBeforeFetch": true,
+    "assemblyResolutionCopiesIndependent": true,
+    "assemblyDnsHasNoForwarder": true,
+    "hostNetworkUsedByBuildContainers": false,
+    "dnsmasqPackageBytePinned": true,
+    "egressPolicyBroadened": false
+  },
+  "boundaries": {
+    "assemblyVolumesRemainUnformatted": true,
+    "otherVmOrWorkloadChanged": false,
+    "productRuntimeChanged": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}

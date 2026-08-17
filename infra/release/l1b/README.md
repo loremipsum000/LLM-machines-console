@@ -21,6 +21,15 @@ converting it into a VM-specific default-deny firewall. The rendered firewall
 is reviewed before it is installed as `/etc/pve/firewall/118.fw`; DNS
 resolution is not performed implicitly by the firewall renderer.
 
+The same reviewed resolution document is mandatory bootstrap input. Bootstrap
+renders a files-first host binding before any network fetch and copies the
+exact resolution onto both assembly volumes. Each assembly starts a private,
+non-forwarding dnsmasq instance from that copy and assigns it to its isolated
+Docker bridge. BuildKit, image import, source fetch, and scan containers do not
+use host networking. A DNS answer that differs from the installed Proxmox
+firewall set therefore fails closed instead of silently resolving to a newly
+rotated address outside the reviewed policy.
+
 The official Debian checksum manifest and signature must be verified before
 `render-preseed.mjs` and `build-preseed-boot-files.sh` add the operator public
 key to a deterministic installer initrd. VM118 boots the kernel and derived

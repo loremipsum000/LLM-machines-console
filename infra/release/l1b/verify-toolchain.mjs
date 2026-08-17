@@ -31,6 +31,8 @@ export function verifyHostToolchain(run = command) {
     zstd: run("zstd", ["--version"]),
     docker: run("docker", ["version", "--format", "{{.Client.Version}}"]),
     buildx: run("docker", ["buildx", "version"]),
+    dnsmasqPackage: run("dpkg-query", ["-W", "-f=${Version}", "dnsmasq-base"]),
+    dnsmasqBinary: run("dnsmasq", ["--version"]),
   }
   const expected = new Map(
     lock.hostTools.map((entry) => [entry.id, entry.version]),
@@ -43,6 +45,15 @@ export function verifyHostToolchain(run = command) {
   if (observation.docker !== "29.5.3") fail("Docker CLI version differs")
   if (!observation.buildx.includes("v0.34.1"))
     fail("Docker Buildx version differs")
+  if (observation.dnsmasqPackage !== expected.get("dnsmasq"))
+    fail("dnsmasq package version differs")
+  const dnsmasq = lock.hostTools.find(({ id }) => id === "dnsmasq")
+  if (
+    !observation.dnsmasqBinary.includes(
+      `Dnsmasq version ${dnsmasq.binaryVersion}`,
+    )
+  )
+    fail("dnsmasq binary version differs")
   return observation
 }
 

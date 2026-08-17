@@ -17,6 +17,7 @@ test("bootstrap enumerates every locked host and Docker input before installatio
   assert.deepEqual(expected, [
     "node",
     "pnpm",
+    "dnsmasq",
     "docker-ce",
     "docker-ce-cli",
     "containerd.io",
@@ -27,6 +28,27 @@ test("bootstrap enumerates every locked host and Docker input before installatio
     /jq -ce '\[\(\.hostTools\[\] \| select\(\.url != null\)\), \.dockerPackages\[\]\] \| \.\[\]'/,
   )
   assert.match(script, /done < "\$locked_inputs"/)
+})
+
+test("bootstrap binds host resolution to the exact reviewed firewall observation", () => {
+  assert.match(script, /--egress-resolution/)
+  assert.match(script, /render-egress-bindings\.py/)
+  assert.match(script, /# BEGIN LLM MACHINES VM103-L1B EGRESS BINDING/)
+  assert.match(script, /--format verify-system/)
+  assert.match(script, /\.llmm-l1b-egress-resolution\.json/)
+})
+
+test("bootstrap installs the content-addressed dnsmasq package", () => {
+  const dnsmasq = toolchain.hostTools.find(({ id }) => id === "dnsmasq")
+  assert.equal(dnsmasq.version, "2.91-1+deb13u1")
+  assert.equal(
+    dnsmasq.sha256,
+    "32fe2686b0adbe31dbedfadeea7eee8e47785e0ab39ffa9f655ca1bd7ba25d55",
+  )
+  assert.match(
+    script,
+    /apt-get install -y --no-install-recommends \$docker_debs "\$dnsmasq_deb"/,
+  )
 })
 
 test("bootstrap keeps Debian package retrieval inside the HTTPS-only IPv4 policy", () => {

@@ -2,32 +2,53 @@
 set -eu
 
 usage() {
-  echo "usage: bootstrap-builder.sh --assembly-a-device DEVICE --assembly-b-device DEVICE --ssh-public-key FILE" >&2
+  echo "usage: bootstrap-builder.sh --assembly-a-device DEVICE --assembly-b-device DEVICE --ssh-public-key FILE --egress-resolution FILE" >&2
   exit 2
 }
 
 assembly_a_device=
 assembly_b_device=
 ssh_public_key=
+egress_resolution=
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --assembly-a-device) assembly_a_device=$2; shift 2 ;;
     --assembly-b-device) assembly_b_device=$2; shift 2 ;;
     --ssh-public-key) ssh_public_key=$2; shift 2 ;;
+    --egress-resolution) egress_resolution=$2; shift 2 ;;
     *) usage ;;
   esac
 done
-[ -n "$assembly_a_device" ] && [ -n "$assembly_b_device" ] && [ -n "$ssh_public_key" ] || usage
+[ -n "$assembly_a_device" ] && [ -n "$assembly_b_device" ] && [ -n "$ssh_public_key" ] && [ -n "$egress_resolution" ] || usage
 [ "$(id -u)" -eq 0 ] || { echo "bootstrap must run as root" >&2; exit 1; }
 [ "$(dpkg --print-architecture)" = amd64 ] || { echo "builder is not amd64" >&2; exit 1; }
 . /etc/os-release
 [ "$ID" = debian ] && [ "$VERSION_ID" = 13 ] || { echo "builder is not Debian 13" >&2; exit 1; }
 [ -f "$ssh_public_key" ] || { echo "SSH public key file is missing" >&2; exit 1; }
+[ -f "$egress_resolution" ] || { echo "egress resolution file is missing" >&2; exit 1; }
 grep -Eq '^ssh-(ed25519|rsa) ' "$ssh_public_key" || { echo "SSH public key format is unsupported" >&2; exit 1; }
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 toolchain_lock=$script_dir/toolchain-lock.json
+binding_renderer=$script_dir/render-egress-bindings.py
 command -v jq >/dev/null 2>&1 || { echo "jq is required before locked bootstrap" >&2; exit 1; }
+command -v python3 >/dev/null 2>&1 || { echo "python3 is required before locked bootstrap" >&2; exit 1; }
+
+binding_root=/var/lib/llmm-l1b/network
+install -d -m 0700 "$binding_root"
+bound_resolution=$binding_root/egress-resolution.json
+install -m 0600 "$egress_resolution" "$bound_resolution"
+hosts_binding=$binding_root/hosts.binding
+python3 "$binding_renderer" \
+  --resolution "$bound_resolution" \
+  --format hosts \
+  --output "$hosts_binding"
+if grep -q '^# BEGIN LLM MACHINES VM103-L1B EGRESS BINDING$' /etc/hosts; then
+  echo "L1B egress binding already exists in /etc/hosts" >&2
+  exit 1
+fi
+cat "$hosts_binding" >> /etc/hosts
+python3 "$binding_renderer" --resolution "$bound_resolution" --format verify-system
 
 export DEBIAN_FRONTEND=noninteractive
 find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) \
@@ -88,9 +109,11 @@ for package_id in containerd.io docker-ce-cli docker-ce docker-buildx-plugin; do
   package_url=$(jq -r --arg id "$package_id" '.dockerPackages[] | select(.id == $id) | .url' "$toolchain_lock")
   docker_debs="$docker_debs $input_root/$(basename "$package_url")"
 done
+dnsmasq_url=$(jq -r '.hostTools[] | select(.id == "dnsmasq") | .url' "$toolchain_lock")
+dnsmasq_deb=$input_root/$(basename "$dnsmasq_url")
 # Exact downloaded package bytes are verified above. Debian resolves only their
 # declared base-library dependencies.
-apt-get install -y --no-install-recommends $docker_debs
+apt-get install -y --no-install-recommends $docker_debs "$dnsmasq_deb"
 systemctl disable --now docker.service docker.socket containerd.service || true
 
 install -d -m 0755 /home/dberisha/.ssh
@@ -131,6 +154,8 @@ prepare_volume() {
 EOF
   chown dberisha:dberisha "$mountpoint/.llmm-l1b-volume.json"
   chmod 0600 "$mountpoint/.llmm-l1b-volume.json"
+  install -m 0600 -o dberisha -g dberisha \
+    "$bound_resolution" "$mountpoint/.llmm-l1b-egress-resolution.json"
 }
 
 prepare_volume "$assembly_a_device" llmm-l1b-a /srv/llmm-l1b/assembly-a A
