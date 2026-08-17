@@ -12,11 +12,14 @@ serializes the runs and starts one assembly-owned Docker daemon at a time.
 
 `toolchain-lock.json` content-addresses the Debian installer, Node and Docker
 packages, BuildKit, Skopeo, Syft, and Trivy. `egress-allowlist.json` is the
-complete outbound hostname policy. `resolve-egress-hosts.mjs` creates a bounded
-point-in-time DNS observation and `render-proxmox-firewall.mjs` converts that
-observation into a VM-specific default-deny firewall. The rendered firewall is
-reviewed before it is installed as `/etc/pve/firewall/118.fw`; DNS resolution
-is not performed implicitly by the firewall renderer.
+complete outbound hostname policy. `resolve-egress-hosts.py` uses the
+provisioning host's `/usr/bin/dig` to create a bounded point-in-time DNS
+observation through the policy's exact deployment-network resolver and records
+that resolver in the observation. This avoids installing Node.js on Proxmox.
+The renderer rejects an observation from any other DNS authority before
+converting it into a VM-specific default-deny firewall. The rendered firewall
+is reviewed before it is installed as `/etc/pve/firewall/118.fw`; DNS
+resolution is not performed implicitly by the firewall renderer.
 
 The official Debian checksum manifest and signature must be verified before
 `render-preseed.mjs` and `build-preseed-boot-files.sh` add the operator public
