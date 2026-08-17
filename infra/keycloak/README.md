@@ -45,9 +45,11 @@ every Console mutation. Emergency recovery retains its separately controlled
 out-of-band factor contract and is not a routine customer sign-in path.
 
 The scoped native Keycloak Admin Console is a distinct Keycloak browser
-session. It does not receive the Console cookie or Console tokens and remains
-inactive until F0-N5 supplies the exact Product-edge route and no-bypass proof.
-Its source contract is `native-admin-profile.json`.
+session. It does not receive the Console cookie or Console tokens. F0-N5 and
+F0-N7 admitted its exact Product-edge route and no-bypass proof in source and
+VM117 validation evidence. Live ingress remains inactive until the VM103
+deployment is separately approved and qualified. Its source contract is
+`native-admin-profile.json`.
 
 Validate the source contract without contacting a runtime:
 
@@ -62,15 +64,17 @@ The human realm contains one credential-free logical client named `grafana`.
 It uses only the authorization-code flow with PKCE S256, has no service
 account or direct grant, and receives only the `admin` and `operator` realm
 roles through an explicit mapper. The exact callback, web origin, and client
-secret are bound outside Git during PR-12 packaging. `offline_access` is not a
-default or optional scope.
+secret remain credential-free commissioning inputs and are bound outside Git.
+`offline_access` is not a default or optional scope.
 
 Grafana evaluates `realm_access.roles` with strict role synchronization:
 `admin` maps to Grafana Editor while `operator`, mixed-role, and unknown
 principals are denied native login. Admin is not mapped to Grafana
 organization Admin or server Admin. The Grafana source configuration is under
-`infra/observability`; it remains inactive until PR-12 proves the callback,
-secret-file mount, OIDC claims, and direct-access boundary.
+`infra/observability`. F0-N2 and F0-N7 admitted the callback, OIDC claims,
+role boundary, and direct-access denial in source and VM117 evidence. Live
+ingress remains inactive pending the separately approved VM103 deployment and
+commissioning-time secret-file mount.
 
 The human realm is `llm-machines`. The `master` realm is never a customer
 administration target. Its only human roles are `admin` and `operator`, mapped
@@ -100,9 +104,10 @@ Customer Admin native policy:
 This is the narrowest Keycloak 26.7.0 FGAP v2 profile that supports user
 creation and update, password reset, and session inspection and invalidation.
 Keycloak's Users `manage` scope also permits user deletion. The founder-accepted
-layered design therefore keeps native ingress inactive until F0-N5 denies the
-exact `DELETE /keycloak/admin/realms/llm-machines/users/{uuid}` request at the
-Product edge. Keycloak continues to authorize the remaining operation and to
+layered design therefore requires the F0-N5 Product-edge profile to deny the
+exact `DELETE /keycloak/admin/realms/llm-machines/users/{uuid}` request. Live
+native ingress remains inactive until that profile is deployed and qualified.
+Keycloak continues to authorize the remaining operation and to
 bind its metadata-only admin event to the authenticated Admin subject. The
 native UI may still render its delete control; support copy must explain that
 the Product edge denies the operation.

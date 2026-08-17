@@ -13,6 +13,10 @@ authority. Product-built Web and BFF, the admitted LiteLLM downstream, and the
 four reduced Firecrawl outputs remain blocked on exact final Core-lock digests.
 They must never fall back to a tag or a historical lab image.
 
+The native-ingress profile's embedded candidate-era status remains historical
+because its admitted fingerprint is immutable; F0-N8 is the current protected
+source-closure record.
+
 ## Placement
 
 The future Compose project is `llmm-core`. Its immutable release payload lives
