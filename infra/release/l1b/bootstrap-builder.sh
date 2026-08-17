@@ -94,7 +94,12 @@ apt-get install -y --no-install-recommends $docker_debs
 systemctl disable --now docker.service docker.socket containerd.service || true
 
 install -d -m 0755 /home/dberisha/.ssh
-install -m 0600 "$ssh_public_key" /home/dberisha/.ssh/authorized_keys
+authorized_keys=/home/dberisha/.ssh/authorized_keys
+if [ "$ssh_public_key" -ef "$authorized_keys" ]; then
+  chmod 0600 "$authorized_keys"
+else
+  install -m 0600 "$ssh_public_key" "$authorized_keys"
+fi
 chown -R dberisha:dberisha /home/dberisha/.ssh
 passwd -l dberisha >/dev/null
 cat > /etc/ssh/sshd_config.d/90-llmm-l1b.conf <<'EOF'
