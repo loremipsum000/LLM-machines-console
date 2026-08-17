@@ -52,8 +52,26 @@ test("clean seeds contain no users, credentials, customer data, or runtime claim
   assert.equal(keycloak.containsCredentials, false)
   assert.equal(keycloak.containsUsers, false)
   assert.equal(keycloak.commissioning.oneTimeValuesGeneratedAtRuntime, true)
-  assert.equal(keycloak.commissioning.nativeAdminConsoleCustomerAccess, false)
-  assert.equal(keycloak.commissioning.grafanaCustomerAccess, "DEFERRED_V1")
+  assert.equal(
+    keycloak.commissioning.nativeAccessSourceProfile,
+    "ADMITTED_INACTIVE_PENDING_VM103_DEPLOYMENT",
+  )
+  assert.equal(
+    keycloak.commissioning.nativeAdminConsoleCustomerAccess,
+    "ADMIN_APPLIANCE_REALM_SCOPED_USER_DELETE_EDGE_DENIED",
+  )
+  assert.equal(
+    keycloak.commissioning.grafanaCustomerAccess,
+    "ADMIN_EDITOR_ONLY_NO_SERVER_ADMIN",
+  )
+  assert.equal(
+    keycloak.commissioning.litellmNativeCustomerAccess,
+    "ADMIN_PROXY_ADMIN_OPERATOR_INTERNAL_USER_OWN_KEYS_AND_SPEND_ONLY",
+  )
+  assert.equal(
+    keycloak.commissioning.portainerAccess,
+    "DEFERRED_UPSTREAM_SECURITY",
+  )
   assert.deepEqual(keycloak.documents.humanRealm.document.users, [])
   assert.deepEqual(keycloak.documents.applicationRealm.document.users, [])
 })

@@ -178,12 +178,18 @@ export function validateReleasePlan(plan, root = repositoryRoot) {
       manifestStatus: "PACKAGED_UNQUALIFIED",
       q0: "NOT_STARTED",
       contractActivation: "INACTIVE",
-      grafanaCustomerAccess: "DEFERRED_V1",
-      nativeLiteLlmAccess: "ABSENT",
-      nativeKeycloakAdminAccess: "ABSENT",
+      nativeAccessSourceProfile: "ADMITTED_INACTIVE_PENDING_VM103_DEPLOYMENT",
+      grafanaCustomerAccess: "ADMIN_EDITOR_ONLY_NO_SERVER_ADMIN",
+      nativeLiteLlmAccess:
+        "ADMIN_PROXY_ADMIN_OPERATOR_INTERNAL_USER_OWN_KEYS_AND_SPEND_ONLY",
+      nativeKeycloakAdminAccess:
+        "ADMIN_APPLIANCE_REALM_SCOPED_USER_DELETE_EDGE_DENIED",
+      portainerAccess: "DEFERRED_UPSTREAM_SECURITY",
     })
   ) {
-    errors.push("release plan overstates qualification or native access")
+    errors.push(
+      "release plan overstates qualification or changes native access",
+    )
   }
 
   for (const path of [

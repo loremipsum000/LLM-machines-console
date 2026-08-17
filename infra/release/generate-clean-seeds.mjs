@@ -309,8 +309,13 @@ export function generateCleanSeedEvidence(
     ),
     commissioning: {
       oneTimeValuesGeneratedAtRuntime: true,
-      nativeAdminConsoleCustomerAccess: false,
-      grafanaCustomerAccess: "DEFERRED_V1",
+      nativeAccessSourceProfile: "ADMITTED_INACTIVE_PENDING_VM103_DEPLOYMENT",
+      nativeAdminConsoleCustomerAccess:
+        "ADMIN_APPLIANCE_REALM_SCOPED_USER_DELETE_EDGE_DENIED",
+      grafanaCustomerAccess: "ADMIN_EDITOR_ONLY_NO_SERVER_ADMIN",
+      litellmNativeCustomerAccess:
+        "ADMIN_PROXY_ADMIN_OPERATOR_INTERNAL_USER_OWN_KEYS_AND_SPEND_ONLY",
+      portainerAccess: "DEFERRED_UPSTREAM_SECURITY",
     },
   }
   writeExclusiveJson(

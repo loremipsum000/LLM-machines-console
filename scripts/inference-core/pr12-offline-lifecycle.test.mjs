@@ -13,9 +13,23 @@ test("PR-12 offline lifecycle remains source-only and unqualified", () => {
 
   assert.equal(plan.qualification.q0, "NOT_STARTED")
   assert.equal(plan.qualification.contractActivation, "INACTIVE")
-  assert.equal(plan.qualification.grafanaCustomerAccess, "DEFERRED_V1")
-  assert.equal(plan.qualification.nativeLiteLlmAccess, "ABSENT")
-  assert.equal(plan.qualification.nativeKeycloakAdminAccess, "ABSENT")
+  assert.equal(
+    plan.qualification.nativeAccessSourceProfile,
+    "ADMITTED_INACTIVE_PENDING_VM103_DEPLOYMENT",
+  )
+  assert.equal(
+    plan.qualification.grafanaCustomerAccess,
+    "ADMIN_EDITOR_ONLY_NO_SERVER_ADMIN",
+  )
+  assert.equal(
+    plan.qualification.nativeLiteLlmAccess,
+    "ADMIN_PROXY_ADMIN_OPERATOR_INTERNAL_USER_OWN_KEYS_AND_SPEND_ONLY",
+  )
+  assert.equal(
+    plan.qualification.nativeKeycloakAdminAccess,
+    "ADMIN_APPLIANCE_REALM_SCOPED_USER_DELETE_EDGE_DENIED",
+  )
+  assert.equal(plan.qualification.portainerAccess, "DEFERRED_UPSTREAM_SECURITY")
   assert.match(installer, /INSTALLED_UNQUALIFIED/)
   assert.match(rollback, /PREPARE_ONLY/)
   assert.match(rollback, /INITIAL_INSTALL_NO_PREDECESSOR/)

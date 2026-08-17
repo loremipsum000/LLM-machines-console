@@ -1,0 +1,63 @@
+{
+  "schema": "llm-machines.vm103-l0-release-boundary-reconciliation.v1",
+  "workPackage": "VM103-L0",
+  "status": "SOURCE_RECONCILIATION_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "8b57d31e47a827966190f83b27004bca040efca9",
+    "tree": "7a69a6a220bc13a832e3c7e4cbbc5b875c2c07d3"
+  },
+  "currentBoundary": {
+    "releaseQualification": {
+      "manifestStatus": "PACKAGED_UNQUALIFIED",
+      "q0": "NOT_STARTED",
+      "contractActivation": "INACTIVE",
+      "nativeAccessSourceProfile": "ADMITTED_INACTIVE_PENDING_VM103_DEPLOYMENT",
+      "grafanaCustomerAccess": "ADMIN_EDITOR_ONLY_NO_SERVER_ADMIN",
+      "nativeLiteLlmAccess": "ADMIN_PROXY_ADMIN_OPERATOR_INTERNAL_USER_OWN_KEYS_AND_SPEND_ONLY",
+      "nativeKeycloakAdminAccess": "ADMIN_APPLIANCE_REALM_SCOPED_USER_DELETE_EDGE_DENIED",
+      "portainerAccess": "DEFERRED_UPSTREAM_SECURITY"
+    },
+    "nativeSessions": "SERVICE_OWNED_KEYCLOAK_SSO",
+    "consoleSessionForwarded": false,
+    "productCredentialForwarded": false
+  },
+  "releaseMetadataCorrection": {
+    "scope": [
+      "release-plan qualification boundary",
+      "Core image customer-exposure inventory",
+      "credential-free clean-seed commissioning metadata",
+      "directly dependent validators and tests"
+    ],
+    "productBehaviorChanged": false,
+    "runtimeConfigurationChanged": false,
+    "nativeIngressActivated": false,
+    "liveInfrastructureChanged": false,
+    "finalImageDigestsAdded": false,
+    "composePayloadAdded": false
+  },
+  "historicalEvidencePreserved": [
+    {
+      "path": "docs/reduction/inference-core/pr-12-aggregate-evidence.json",
+      "sha256": "8b83176ebb167e2651cc58d76cbebf91990d11dc88dd17204a6023de4b196c14"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-12-source-closure-amendment-5.json",
+      "sha256": "8299a534dd17507b58861d07b16b1ada9f58f677d14a2aef4d3ae0e983b46e14"
+    },
+    {
+      "path": "docs/reduction/inference-core/f0-n8-native-access-closure.json",
+      "sha256": "bc3a9322910af26ed72751f0d9f7a9a06b14cec08df20b2d0143e513da97fa76"
+    }
+  ],
+  "futureReleaseBoundary": {
+    "sourceIdentity": "CHECKED_OUT_PROTECTED_INTEGRATION_AT_FINAL_ASSEMBLY",
+    "finalCoreImageLockRequired": true,
+    "vm103ComposeRequired": true,
+    "deploymentAllowed": false
+  }
+}
