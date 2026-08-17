@@ -1,0 +1,41 @@
+{
+  "schema": "llm-machines.vm103-l1b-install-media-compatibility.v1",
+  "workPackage": "VM103-L1B-P2",
+  "status": "SOURCE_PROVISIONING_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "2ab059f0d74cb9d4683ba743c6a3d630e3db2c36",
+    "tree": "8a1dc5da50177900cfad6d4afcca0071ef84b26c"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "firstBootResult": "INSTALLATION_MEDIA_REQUIRED",
+    "installerDiagnostic": "installation media could not be mounted",
+    "vmStateAfterObservation": "STOPPED_NOT_INSTALLED",
+    "systemDiskUsedBytes": 57344,
+    "assemblyAUsedBytes": 57344,
+    "assemblyBUsedBytes": 57344,
+    "disksWrittenByInstaller": false
+  },
+  "correction": {
+    "verifiedMedia": "debian-13.4.0-amd64-netinst.iso",
+    "sha256": "0b813535dd76f2ea96eff908c65e8521512c92a0631fd41c95756ffd7d4896dc",
+    "attachmentBus": "ide2",
+    "attachmentMode": "read-only-cdrom",
+    "requiredDuringInstallation": true,
+    "removeAfterInstallation": true,
+    "directKernelBootPreserved": true
+  },
+  "boundaries": {
+    "vm118RemainsStoppedUntilProtectedAdmission": true,
+    "otherVmOrWorkloadChanged": false,
+    "productRuntimeChanged": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}

@@ -17,7 +17,13 @@
     "version": "13.4.0",
     "file": "debian-13.4.0-amd64-netinst.iso",
     "sha256": "0b813535dd76f2ea96eff908c65e8521512c92a0631fd41c95756ffd7d4896dc",
-    "checksumSignerFingerprint": "DF9B9C49EAA9298432589D76DA87E80D6294BE9B"
+    "checksumSignerFingerprint": "DF9B9C49EAA9298432589D76DA87E80D6294BE9B",
+    "attachment": {
+      "bus": "ide2",
+      "mode": "read-only-cdrom",
+      "requiredDuringInstallation": true,
+      "removeAfterInstallation": true
+    }
   },
   "disks": [
     { "id": "system", "sizeGiB": 40, "mount": "/" },

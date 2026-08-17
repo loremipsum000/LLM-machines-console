@@ -26,6 +26,12 @@ files are VM118 provisioning evidence, not official Debian media and not a
 Product release artifact. The source preseed uses HTTPS because VM118 permits
 no outbound cleartext package transport.
 
+The verified Debian ISO remains attached on `ide2` as a read-only CD-ROM for
+the complete installation. Direct-kernel boot selects the reviewed kernel,
+initrd, and preseed, while the installer reads its required packages from the
+same verified media. The CD-ROM is removed only after installation completes
+and before the normal disk boot.
+
 Each assembly fetches and verifies its own locked source archives, assembles
 the reviewed LiteLLM and Firecrawl source, imports third-party images by exact
 platform digest, builds Product and downstream outputs with an exact BuildKit
