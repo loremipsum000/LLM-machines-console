@@ -21,6 +21,21 @@ converting it into a VM-specific default-deny firewall. The rendered firewall
 is reviewed before it is installed as `/etc/pve/firewall/118.fw`; DNS
 resolution is not performed implicitly by the firewall renderer.
 
+`egress-transaction.mjs` creates one exact three-file transaction containing
+the reviewed resolution, the firewall rendered from it, and hashes binding
+both files to the source-controlled policy and builder profile. Only the
+transaction firewall may be installed, and its read-back bytes must pass
+the Proxmox-side `create-firewall-receipt` command, which is hard-bound to
+`/etc/pve/firewall/118.fw`, to create a VMID-118 receipt. The complete
+transaction and its matching receipt are mandatory bootstrap inputs. Bootstrap
+revalidates both before and after its private copy, then renders a files-first host binding
+before any network fetch and copies the exact transaction onto both assembly
+volumes. Each assembly starts a private,
+non-forwarding dnsmasq instance from that copy and assigns it to its isolated
+Docker bridge. BuildKit, image import, source fetch, and scan containers do not
+use host networking. Substituting a second, individually valid DNS observation
+therefore fails the transaction hash before bootstrap or assembly starts.
+
 The official Debian checksum manifest and signature must be verified before
 `render-preseed.mjs` and `build-preseed-boot-files.sh` add the operator public
 key to a deterministic installer initrd. VM118 boots the kernel and derived

@@ -19,6 +19,7 @@ import { tmpdir } from "node:os"
 import { basename, dirname, join, relative, resolve } from "node:path"
 import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
+import { validateFirewallReceipt } from "./egress-transaction.mjs"
 import { fetchLockedInputs } from "./fetch-locked-inputs.mjs"
 import { normalizeOciLayout } from "./normalize-oci-layout.mjs"
 import { verifyHostToolchain } from "./verify-toolchain.mjs"
@@ -187,7 +188,7 @@ function prepareBuildkit({ toolchain, builderName, assemblyRoot }) {
       "--driver-opt",
       `image=${reference}`,
       "--driver-opt",
-      "network=host",
+      "network=bridge",
       "--platform",
       "linux/amd64",
       "--bootstrap",
@@ -220,7 +221,7 @@ function importImage({
       "--platform",
       "linux/amd64",
       "--network",
-      "host",
+      "bridge",
       "--volume",
       `${assemblyRoot}:/assembly`,
       skopeoReference,
@@ -257,7 +258,7 @@ function buildImage({
       "linux/amd64",
       "--provenance=false",
       "--sbom=false",
-      "--network=host",
+      "--network=default",
       "--build-arg",
       `SOURCE_DATE_EPOCH=${sourceDateEpoch}`,
       "--file",
@@ -464,6 +465,14 @@ export async function runCoreAssembly(options) {
   const firecrawl = readJson(
     resolve(sourceRoot, "infra/firecrawl/release/source-package.json"),
   )
+  const egressTransactionPath = resolve(options.egressTransaction)
+  within(assemblyRoot, egressTransactionPath, "egress transaction")
+  const firewallReceiptPath = resolve(options.firewallReceipt)
+  within(assemblyRoot, firewallReceiptPath, "installed firewall receipt")
+  const egressTransaction = validateFirewallReceipt(
+    egressTransactionPath,
+    firewallReceiptPath,
+  )
   const runRoot = resolve(assemblyRoot, "run")
   if (existsSync(runRoot)) fail("assembly run root already exists")
   const inputsRoot = join(runRoot, "inputs")
@@ -594,6 +603,10 @@ export async function runCoreAssembly(options) {
     toolchainLockSha256: await sha256File(
       resolve(sourceRoot, "infra/release/l1b/toolchain-lock.json"),
     ),
+    egressTransactionSha256: egressTransaction.manifestSha256,
+    egressResolutionSha256: egressTransaction.manifest.resolutionSha256,
+    egressFirewallSha256: egressTransaction.manifest.firewallSha256,
+    egressFirewallReceiptSha256: egressTransaction.receiptSha256,
     trivyDatabase,
     images,
   }
@@ -641,6 +654,8 @@ function parseArguments(argv) {
     "--expected-tree",
     "--release-version",
     "--builder-name",
+    "--egress-transaction",
+    "--firewall-receipt",
   ]
   if (
     values.size !== required.length ||
@@ -656,6 +671,8 @@ function parseArguments(argv) {
     expectedTree: values.get("--expected-tree"),
     releaseVersion: values.get("--release-version"),
     builderName: values.get("--builder-name"),
+    egressTransaction: values.get("--egress-transaction"),
+    firewallReceipt: values.get("--firewall-receipt"),
   }
 }
 

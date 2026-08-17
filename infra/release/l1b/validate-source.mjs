@@ -108,6 +108,17 @@ export function validateL1bSource({ profile, toolchain, egress }) {
   ) {
     errors.push("pnpm is not byte-pinned")
   }
+  const dnsmasq = hostToolsById.get("dnsmasq")
+  if (
+    dnsmasq?.version !== "2.91-1+deb13u1" ||
+    dnsmasq?.binaryVersion !== "2.91" ||
+    dnsmasq?.url !==
+      "https://deb.debian.org/debian/pool/main/d/dnsmasq/dnsmasq-base_2.91-1%2bdeb13u1_amd64.deb" ||
+    dnsmasq?.sha256 !==
+      "32fe2686b0adbe31dbedfadeea7eee8e47785e0ab39ffa9f655ca1bd7ba25d55"
+  ) {
+    errors.push("dnsmasq is not byte-pinned")
+  }
   for (const entry of toolchain?.dockerPackages ?? []) {
     if (
       !entry.url?.startsWith("https://download.docker.com/") ||

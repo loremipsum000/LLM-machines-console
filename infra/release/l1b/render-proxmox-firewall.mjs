@@ -1,42 +1,24 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto"
 import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { validateEgressResolution } from "./egress-resolution.mjs"
 
 const directory = dirname(fileURLToPath(import.meta.url))
-const ipv4Pattern =
-  /^(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}$/
-
 function fail(message) {
   throw new Error(message)
 }
 
 export function renderFirewall(policy, resolution, profile) {
   const policyBytes = readFileSync(resolve(directory, "egress-allowlist.json"))
-  const expectedPolicyHash = `sha256:${createHash("sha256").update(policyBytes).digest("hex")}`
-  if (
-    resolution?.schema !== "llm-machines.vm103-l1b-egress-resolution.v2" ||
-    resolution?.policySha256 !== expectedPolicyHash ||
-    resolution?.dnsResolver !== policy.dnsResolver ||
-    JSON.stringify(Object.keys(resolution?.resolutions ?? {}).sort()) !==
-      JSON.stringify(policy.hosts)
-  ) {
-    fail("egress resolution does not bind the exact allowlist")
-  }
-  const addresses = []
-  for (const host of policy.hosts) {
-    const values = resolution.resolutions[host]
-    if (
-      !Array.isArray(values) ||
-      values.length === 0 ||
-      values.some((value) => !ipv4Pattern.test(value))
-    ) {
-      fail(`${host} resolution is invalid`)
-    }
-    addresses.push(...values.map((value) => ({ value, host })))
-  }
+  const addresses = validateEgressResolution(
+    policy,
+    policyBytes,
+    resolution,
+  ).flatMap(({ host, addresses: values }) =>
+    values.map((value) => ({ value, host })),
+  )
   const unique = new Map(addresses.map((entry) => [entry.value, entry.host]))
   return [
     "[OPTIONS]",

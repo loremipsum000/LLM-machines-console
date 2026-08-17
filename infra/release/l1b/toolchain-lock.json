@@ -17,7 +17,14 @@
       "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.0.0.tgz",
       "sha256": "43abf6e720fb7bc53c591b0862605c7d323d0a9d2dd33bcac07b062e13cf4948"
     },
-    { "id": "zstd", "version": "1.5.7", "source": "debian" }
+    { "id": "zstd", "version": "1.5.7", "source": "debian" },
+    {
+      "id": "dnsmasq",
+      "version": "2.91-1+deb13u1",
+      "binaryVersion": "2.91",
+      "url": "https://deb.debian.org/debian/pool/main/d/dnsmasq/dnsmasq-base_2.91-1%2bdeb13u1_amd64.deb",
+      "sha256": "32fe2686b0adbe31dbedfadeea7eee8e47785e0ab39ffa9f655ca1bd7ba25d55"
+    }
   ],
   "dockerPackages": [
     {
