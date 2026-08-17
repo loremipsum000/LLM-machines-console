@@ -1,0 +1,132 @@
+{
+  "schema": "llm-machines.core-image-build-contract.v1",
+  "status": "SOURCE_CONTRACT_NOT_EXECUTED",
+  "containsCredentials": false,
+  "releaseSource": {
+    "commit": "CHECKED_OUT_PROTECTED_INTEGRATION_COMMIT",
+    "tree": "CHECKED_OUT_PROTECTED_INTEGRATION_TREE",
+    "version": "SEMANTIC_RELEASE_INPUT",
+    "sourceDateEpoch": "CHECKED_OUT_COMMIT_EPOCH",
+    "cleanWorktreeRequired": true,
+    "protectedIntegrationRequired": true
+  },
+  "builder": {
+    "operatingSystem": "linux",
+    "architecture": "amd64",
+    "nativeArchitectureRequired": true,
+    "emulationQualifiesForOutputAdmission": false,
+    "isolatedWorkspaceRequired": true,
+    "twoIndependentAssembliesRequired": true,
+    "workspaceCapacityProofRequired": true,
+    "freshTrivyDatabaseMaximumAgeHours": 72,
+    "sourceControlledToolchainLockRequired": true,
+    "registryMutationAllowed": false,
+    "credentialsAllowed": false,
+    "privateSigningMaterialAllowed": false
+  },
+  "components": [
+    {
+      "id": "product-edge",
+      "mode": "SOURCE_PLATFORM_IMPORT",
+      "source": "CORE_INVENTORY_COMPONENT",
+      "output": "images/product-edge.oci.tar.zst"
+    },
+    {
+      "id": "console-web",
+      "mode": "PRODUCT_BUILD",
+      "context": ".",
+      "dockerfile": "apps/web/Dockerfile",
+      "sourceRevision": "CHECKED_OUT_PROTECTED_INTEGRATION_COMMIT",
+      "output": "images/console-web.oci.tar.zst"
+    },
+    {
+      "id": "console-bff",
+      "mode": "PRODUCT_BUILD",
+      "context": ".",
+      "dockerfile": "apps/bff/Dockerfile",
+      "sourceRevision": "CHECKED_OUT_PROTECTED_INTEGRATION_COMMIT",
+      "output": "images/console-bff.oci.tar.zst"
+    },
+    {
+      "id": "keycloak",
+      "mode": "SOURCE_PLATFORM_IMPORT",
+      "source": "CORE_INVENTORY_COMPONENT",
+      "output": "images/keycloak.oci.tar.zst"
+    },
+    {
+      "id": "litellm",
+      "mode": "REVIEWED_DOWNSTREAM_BUILD",
+      "sourcePackage": "infra/litellm/oss-downstream/source-package.json",
+      "sourceAssembler": "infra/litellm/oss-downstream/assemble-source.mjs",
+      "context": "ASSEMBLED_LITELLM_OSS_SOURCE_ROOT",
+      "dockerfile": "Dockerfile",
+      "output": "images/litellm.oci.tar.zst"
+    },
+    {
+      "id": "product-postgresql",
+      "mode": "SOURCE_PLATFORM_IMPORT",
+      "source": "CORE_INVENTORY_COMPONENT",
+      "output": "images/product-postgresql.oci.tar.zst"
+    },
+    {
+      "id": "prometheus",
+      "mode": "SOURCE_PLATFORM_IMPORT",
+      "source": "CORE_INVENTORY_COMPONENT",
+      "output": "images/prometheus.oci.tar.zst"
+    },
+    {
+      "id": "alertmanager",
+      "mode": "SOURCE_PLATFORM_IMPORT",
+      "source": "CORE_INVENTORY_COMPONENT",
+      "output": "images/alertmanager.oci.tar.zst"
+    },
+    {
+      "id": "grafana-private",
+      "mode": "SOURCE_PLATFORM_IMPORT",
+      "source": "CORE_INVENTORY_COMPONENT",
+      "output": "images/grafana-private.oci.tar.zst"
+    },
+    {
+      "id": "firecrawl-api",
+      "mode": "REVIEWED_DOWNSTREAM_BUILD",
+      "sourcePackage": "infra/firecrawl/release/source-package.json",
+      "sourceAssembler": "infra/firecrawl/release/assemble-source-packet.mjs",
+      "context": "ASSEMBLED_FIRECRAWL_SOURCE_ROOT/apps/api",
+      "dockerfile": "Dockerfile",
+      "output": "images/firecrawl-api.oci.tar.zst"
+    },
+    {
+      "id": "firecrawl-browser",
+      "mode": "REVIEWED_DOWNSTREAM_BUILD",
+      "sourcePackage": "infra/firecrawl/release/source-package.json",
+      "sourceAssembler": "infra/firecrawl/release/assemble-source-packet.mjs",
+      "context": "ASSEMBLED_FIRECRAWL_SOURCE_ROOT/apps/playwright-service-ts",
+      "dockerfile": "Dockerfile",
+      "output": "images/firecrawl-browser.oci.tar.zst"
+    },
+    {
+      "id": "firecrawl-search",
+      "mode": "LOCKED_SOURCE_PLATFORM_IMPORT",
+      "sourcePackage": "infra/firecrawl/release/source-package.json",
+      "sourcePackageInputId": "searxng-runtime-source",
+      "output": "images/firecrawl-search.oci.tar.zst"
+    },
+    {
+      "id": "firecrawl-egress",
+      "mode": "LOCKED_SOURCE_PLATFORM_IMPORT",
+      "sourcePackage": "infra/firecrawl/release/source-package.json",
+      "sourcePackageInputId": "squid-runtime-source",
+      "output": "images/firecrawl-egress.oci.tar.zst"
+    }
+  ],
+  "outputs": {
+    "coreLock": "locks/core-image-lock.json",
+    "coreLockStatus": "GENERATE_ONLY_AFTER_TWO_IDENTICAL_ASSEMBLIES",
+    "ociArchiveFormat": "NORMALIZED_SINGLE_PLATFORM_OCI_ZSTD",
+    "platform": "linux/amd64",
+    "fallbackSubstitutionAllowed": false,
+    "tagOnlyReferenceAllowed": false,
+    "registryPushAllowed": false,
+    "deploymentAllowed": false
+  }
+}

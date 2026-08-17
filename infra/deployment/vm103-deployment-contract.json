@@ -25,6 +25,10 @@
     "backupRepositoryAllowed": false
   },
   "releaseBinding": {
+    "buildContract": {
+      "path": "infra/release/core-image-build-contract.json",
+      "sha256": "sha256:ca212986442583efc30f50fda37325a2852a6620db0b5d86640ce49b72dbfa20"
+    },
     "sourceInventory": {
       "path": "infra/release/core-image-inventory.json",
       "sha256": "sha256:5fc2eb14c912b093bd39556447628b25b9fc891b08222a0d350c8bddfad63c3e"

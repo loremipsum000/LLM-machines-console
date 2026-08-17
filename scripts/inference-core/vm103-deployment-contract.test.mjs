@@ -28,6 +28,12 @@ test("checked-in VM103 deployment contract is exact and source-only", () => {
 test("release identities and unresolved build outputs fail closed", () => {
   assert.match(
     changed((value) => {
+      value.releaseBinding.buildContract.sha256 = `sha256:${"0".repeat(64)}`
+    }),
+    /build contract fingerprint/,
+  )
+  assert.match(
+    changed((value) => {
       value.releaseBinding.sourceInventory.sha256 = `sha256:${"0".repeat(64)}`
     }),
     /fingerprint/,

@@ -1,0 +1,58 @@
+{
+  "schema": "llm-machines.vm103-l1a-core-image-build-contract.v1",
+  "workPackage": "VM103-L1A",
+  "status": "SOURCE_CONTRACT_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "f10ebff28840979b716d3966f55702aee22b3070",
+    "tree": "5fec8ddffebcc71b3ec2662166947d5fd11d1136"
+  },
+  "sourceContract": {
+    "path": "infra/release/core-image-build-contract.json",
+    "sha256": "ca212986442583efc30f50fda37325a2852a6620db0b5d86640ce49b72dbfa20",
+    "componentCount": 13,
+    "platform": "linux/amd64",
+    "requiresTwoIndependentAssemblies": true,
+    "allowsRegistryMutation": false,
+    "allowsCredentials": false,
+    "allowsDeployment": false
+  },
+  "currentWorkstationPreflight": {
+    "observedAt": "2026-08-17T10:15:00Z",
+    "operatingSystem": "darwin",
+    "architecture": "arm64",
+    "nativeArchitecture": false,
+    "dockerClientVersion": "29.5.3",
+    "defaultDockerServerAvailable": false,
+    "availableIsolatedBuildPlatforms": ["linux/arm64", "linux/386"],
+    "trivyVersion": "0.73.0",
+    "trivyDatabaseUpdatedAt": "2026-08-13T13:03:34.300Z",
+    "twoIndependentWorkRoots": false,
+    "workspaceCapacityProven": false,
+    "toolchainLockVerified": false,
+    "result": "BLOCKED_NO_ADMITTED_NATIVE_AMD64_BUILDER"
+  },
+  "outputs": {
+    "ociArchivesCreated": false,
+    "coreImageLockCreated": false,
+    "registryArtifactsCreated": false,
+    "credentialsCreated": false,
+    "deploymentChanged": false
+  },
+  "nextPackage": {
+    "id": "VM103-L1B",
+    "purpose": "build two complete native linux/amd64 assemblies, compare them, generate evidence, and bind the final Core image lock",
+    "requiresApprovedBuilder": true,
+    "requiredBuilderProperties": [
+      "isolated native linux/amd64",
+      "source-controlled exact toolchain lock",
+      "Trivy database no older than 72 hours",
+      "capacity for two independent complete assemblies",
+      "no registry mutation, credentials, or private signing material"
+    ]
+  }
+}
