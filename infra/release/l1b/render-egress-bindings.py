@@ -12,6 +12,7 @@ import socket
 DIRECTORY = pathlib.Path(__file__).resolve().parent
 BEGIN_MARKER = "# BEGIN LLM MACHINES VM103-L1B EGRESS BINDING"
 END_MARKER = "# END LLM MACHINES VM103-L1B EGRESS BINDING"
+ACTIVE_VM118_FIREWALL = pathlib.Path("/etc/pve/firewall/118.fw")
 
 
 def load_and_validate(resolution_path: pathlib.Path) -> tuple[dict, dict]:
@@ -147,6 +148,35 @@ def verify_firewall_receipt(
         raise RuntimeError("installed firewall receipt differs from the transaction")
 
 
+def create_firewall_receipt(
+    transaction_directory: pathlib.Path,
+    receipt_output: pathlib.Path,
+    active_firewall: pathlib.Path = ACTIVE_VM118_FIREWALL,
+) -> None:
+    manifest = verify_transaction(transaction_directory)
+    expected_firewall = transaction_directory / "vm118.firewall"
+    if (
+        not active_firewall.is_file()
+        or active_firewall.is_symlink()
+        or active_firewall.read_bytes() != expected_firewall.read_bytes()
+        or sha256(active_firewall) != manifest["firewallSha256"]
+    ):
+        raise RuntimeError("active VM118 firewall differs from the transaction")
+    receipt = {
+        "schema": "llm-machines.vm103-l1b-firewall-receipt.v1",
+        "status": "INSTALLED_FIREWALL_VERIFIED",
+        "vmid": 118,
+        "transactionManifestSha256": sha256(
+            transaction_directory / "transaction.json"
+        ),
+        "installedFirewallSha256": manifest["firewallSha256"],
+    }
+    with receipt_output.open("x", encoding="utf-8") as output:
+        json.dump(receipt, output, indent=2)
+        output.write("\n")
+    receipt_output.chmod(0o600)
+
+
 def hosts_binding(policy: dict, resolution: dict) -> str:
     lines = [BEGIN_MARKER]
     for host in policy["hosts"]:
@@ -215,7 +245,13 @@ def main() -> None:
     parser.add_argument("--resolution", type=pathlib.Path)
     parser.add_argument(
         "--format",
-        choices=("hosts", "dnsmasq", "verify-system", "verify-transaction"),
+        choices=(
+            "hosts",
+            "dnsmasq",
+            "verify-system",
+            "verify-transaction",
+            "create-firewall-receipt",
+        ),
         required=True,
     )
     parser.add_argument("--output", type=pathlib.Path)
@@ -223,7 +259,23 @@ def main() -> None:
     parser.add_argument("--listen-address")
     parser.add_argument("--transaction-directory", type=pathlib.Path)
     parser.add_argument("--firewall-receipt", type=pathlib.Path)
+    parser.add_argument("--receipt-output", type=pathlib.Path)
     arguments = parser.parse_args()
+    if arguments.format == "create-firewall-receipt":
+        if (
+            not arguments.transaction_directory
+            or not arguments.receipt_output
+            or arguments.output
+            or arguments.interface
+            or arguments.listen_address
+            or arguments.resolution
+            or arguments.firewall_receipt
+        ):
+            raise RuntimeError("firewall receipt creation arguments are invalid")
+        create_firewall_receipt(
+            arguments.transaction_directory, arguments.receipt_output
+        )
+        return
     if arguments.format == "verify-transaction":
         if (
             not arguments.transaction_directory
@@ -232,6 +284,7 @@ def main() -> None:
             or arguments.listen_address
             or arguments.resolution
             or not arguments.firewall_receipt
+            or arguments.receipt_output
         ):
             raise RuntimeError("transaction verification accepts no rendering output")
         verify_firewall_receipt(
@@ -241,6 +294,7 @@ def main() -> None:
     if (
         arguments.transaction_directory
         or arguments.firewall_receipt
+        or arguments.receipt_output
         or not arguments.resolution
     ):
         raise RuntimeError("rendering and system verification require one resolution")

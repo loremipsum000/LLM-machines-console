@@ -219,17 +219,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     )
   } else if (
     values.has("--transaction-directory") &&
-    values.has("--installed-firewall") &&
-    values.has("--receipt-output")
-  ) {
-    if (values.size !== 3) fail("firewall receipt create arguments differ")
-    createFirewallReceipt(
-      values.get("--transaction-directory"),
-      values.get("--installed-firewall"),
-      values.get("--receipt-output"),
-    )
-  } else if (
-    values.has("--transaction-directory") &&
     values.has("--firewall-receipt")
   ) {
     if (values.size !== 2) fail("firewall receipt verify arguments differ")
@@ -238,16 +227,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       values.get("--firewall-receipt"),
     )
   } else if (values.has("--transaction-directory")) {
-    if (
-      values.size > 2 ||
-      (values.size === 2 && !values.has("--installed-firewall"))
-    ) {
+    if (values.size !== 1) {
       fail("egress transaction verify arguments differ")
     }
-    validateEgressTransaction(
-      values.get("--transaction-directory"),
-      values.get("--installed-firewall"),
-    )
+    validateEgressTransaction(values.get("--transaction-directory"))
   } else {
     fail("expected create or verify egress transaction arguments")
   }

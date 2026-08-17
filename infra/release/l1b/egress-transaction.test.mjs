@@ -15,6 +15,10 @@ import {
 const root = resolve(import.meta.dirname)
 const policyBytes = readFileSync(resolve(root, "egress-allowlist.json"))
 const policy = JSON.parse(policyBytes)
+const bindingRenderer = readFileSync(
+  resolve(root, "render-egress-bindings.py"),
+  "utf8",
+)
 
 function resolution(offset = 0) {
   return {
@@ -68,6 +72,15 @@ test("one transaction binds the exact resolution and rendered firewall", () => {
     { encoding: "utf8" },
   )
   assert.equal(bootstrapValidation.status, 0, bootstrapValidation.stderr)
+})
+
+test("the production receipt command is hard-bound to VM118 active firewall", () => {
+  assert.match(
+    bindingRenderer,
+    /ACTIVE_VM118_FIREWALL = pathlib\.Path\("\/etc\/pve\/firewall\/118\.fw"\)/,
+  )
+  assert.match(bindingRenderer, /format == "create-firewall-receipt"/)
+  assert.doesNotMatch(bindingRenderer, /--installed-firewall/)
 })
 
 test("a second complete valid transaction cannot use the installed-firewall receipt from the first", () => {
