@@ -38,6 +38,14 @@ The preseed binds Debian's protocol-specific `mirror/https/*` questions to
 questions selected by the HTTPS protocol and would leave installation
 interactive.
 
+Installation is a single-disk phase. `manage-vm118-installer-disks.sh isolate`
+snapshots and detaches the two exact assembly volumes while VM118 is stopped,
+leaving only `scsi0` available to Debian. This prevents `/dev/sd*` enumeration
+from selecting an assembly disk. After the installed system has booted and is
+stopped again, `restore` resets only the two snapshotted assembly volumes and
+reattaches their exact Proxmox identities. The snapshots preserve the observed
+pre-reset state.
+
 Each assembly fetches and verifies its own locked source archives, assembles
 the reviewed LiteLLM and Firecrawl source, imports third-party images by exact
 platform digest, builds Product and downstream outputs with an exact BuildKit

@@ -40,3 +40,12 @@ test("installation requires the exact verified read-only media attachment", () =
     /installation media and toolchain lock disagree/,
   )
 })
+
+test("installation requires a single attached system disk", () => {
+  const source = clone(readL1bSource())
+  source.profile.installationDiskBoundary.assemblyVolumesDetachedDuringInstallation = false
+  assert.match(
+    validateL1bSource(source).join("\n"),
+    /installer disk boundary differs/,
+  )
+})
