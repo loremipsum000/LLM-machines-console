@@ -77,7 +77,7 @@
       "id": "keycloak",
       "kind": "third-party-mirror",
       "required": true,
-      "customerExposure": "identity-routes-only",
+      "customerExposure": "product-edge-identity-and-scoped-admin-sso",
       "repository": "quay.io/keycloak/keycloak",
       "version": "26.7.0",
       "indexDigest": "sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13",
@@ -212,5 +212,5 @@
     "backup-and-restore",
     "update-and-rollback"
   ],
-  "excluded": ["native-keycloak-admin-ui", "customer-grafana-ingress"]
+  "excluded": ["portainer"]
 }

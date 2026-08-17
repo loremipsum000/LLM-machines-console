@@ -491,6 +491,33 @@ test("qualification and signing cannot be overstated", () => {
   assert.match(errors, /overstates qualification/)
 })
 
+test("retained native access and Portainer deferral cannot regress", () => {
+  for (const mutate of [
+    (value) => {
+      value.qualification.nativeAccessSourceProfile = "ABSENT"
+    },
+    (value) => {
+      value.qualification.grafanaCustomerAccess = "DEFERRED_V1"
+    },
+    (value) => {
+      value.qualification.nativeLiteLlmAccess = "ABSENT"
+    },
+    (value) => {
+      value.qualification.nativeKeycloakAdminAccess = "ABSENT"
+    },
+    (value) => {
+      value.qualification.portainerAccess = "ADMITTED"
+    },
+  ]) {
+    const changed = structuredClone(plan)
+    mutate(changed)
+    assert.match(
+      validateReleasePlan(changed).join("\n"),
+      /changes native access/,
+    )
+  }
+})
+
 test("release evidence policy and required evidence cannot drift", () => {
   const changedPolicy = structuredClone(plan)
   changedPolicy.evidencePolicy = "infra/release/unreviewed-policy.json"

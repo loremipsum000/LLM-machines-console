@@ -136,6 +136,34 @@ export function validateCoreImageInventory(inventory, root = repositoryRoot) {
     errors.push("Core image inventory contains duplicate components")
   }
 
+  const componentsById = new Map(
+    components.map((component) => [component.id, component]),
+  )
+  if (
+    componentsById.get("grafana-private")?.customerExposure !==
+    "product-edge-admin-only-native-sso"
+  ) {
+    errors.push("Grafana must retain Admin-only Product-edge native SSO")
+  }
+  if (
+    componentsById.get("litellm")?.customerExposure !==
+    "product-edge-native-sso-and-console-projection"
+  ) {
+    errors.push("LiteLLM must retain native SSO and the Console projection")
+  }
+  if (
+    componentsById.get("keycloak")?.customerExposure !==
+    "product-edge-identity-and-scoped-admin-sso"
+  ) {
+    errors.push("Keycloak must retain identity and scoped Admin SSO")
+  }
+  if (JSON.stringify(inventory?.excluded) !== JSON.stringify(["portainer"])) {
+    errors.push("Core image inventory must defer only Portainer")
+  }
+  if (ids.some((id) => /portainer/i.test(id))) {
+    errors.push("Portainer cannot enter the Core inventory while deferred")
+  }
+
   const nodeBase = inventory?.buildInputs?.find(
     ({ id }) => id === "node-runtime-base",
   )

@@ -110,9 +110,26 @@ test("PR-12 aggregate preserves the source-only qualification boundary", () => {
   assert.equal(releasePlan.qualification.manifestStatus, "PACKAGED_UNQUALIFIED")
   assert.equal(releasePlan.qualification.q0, "NOT_STARTED")
   assert.equal(releasePlan.qualification.contractActivation, "INACTIVE")
-  assert.equal(releasePlan.qualification.grafanaCustomerAccess, "DEFERRED_V1")
-  assert.equal(releasePlan.qualification.nativeLiteLlmAccess, "ABSENT")
-  assert.equal(releasePlan.qualification.nativeKeycloakAdminAccess, "ABSENT")
+  assert.equal(
+    releasePlan.qualification.nativeAccessSourceProfile,
+    "ADMITTED_INACTIVE_PENDING_VM103_DEPLOYMENT",
+  )
+  assert.equal(
+    releasePlan.qualification.grafanaCustomerAccess,
+    "ADMIN_EDITOR_ONLY_NO_SERVER_ADMIN",
+  )
+  assert.equal(
+    releasePlan.qualification.nativeLiteLlmAccess,
+    "ADMIN_PROXY_ADMIN_OPERATOR_INTERNAL_USER_OWN_KEYS_AND_SPEND_ONLY",
+  )
+  assert.equal(
+    releasePlan.qualification.nativeKeycloakAdminAccess,
+    "ADMIN_APPLIANCE_REALM_SCOPED_USER_DELETE_EDGE_DENIED",
+  )
+  assert.equal(
+    releasePlan.qualification.portainerAccess,
+    "DEFERRED_UPSTREAM_SECURITY",
+  )
   assert.equal(sglang.engine.name, "sglang")
   assert.equal(sglang.engine.version, "0.5.13")
   assert.deepEqual(sglang.engine.excludedEngines, ["vllm"])

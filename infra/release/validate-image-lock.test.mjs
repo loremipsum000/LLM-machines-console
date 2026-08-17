@@ -209,6 +209,36 @@ test("Core inventory contains no customer inference topology assumption", () => 
   )
 })
 
+test("Core inventory retains exact native exposure and Portainer deferral", () => {
+  const inventory = readCoreImageInventory()
+  const mutations = [
+    (value) => {
+      value.components.find(
+        ({ id }) => id === "grafana-private",
+      ).customerExposure = "private"
+    },
+    (value) => {
+      value.components.find(({ id }) => id === "litellm").customerExposure =
+        "private-console-projection-only"
+    },
+    (value) => {
+      value.components.find(({ id }) => id === "keycloak").customerExposure =
+        "identity-routes-only"
+    },
+    (value) => {
+      value.excluded = ["customer-grafana-ingress"]
+    },
+    (value) => {
+      value.components.push({ id: "portainer" })
+    },
+  ]
+  for (const mutate of mutations) {
+    const changed = clone(inventory)
+    mutate(changed)
+    assert.notDeepEqual(validateCoreImageInventory(changed), [])
+  }
+})
+
 test("tag-only, latest, missing platform, and malformed digest fail", () => {
   const inventory = readCoreImageInventory()
   const mutations = [

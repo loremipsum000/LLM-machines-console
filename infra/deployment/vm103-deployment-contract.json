@@ -27,7 +27,7 @@
   "releaseBinding": {
     "sourceInventory": {
       "path": "infra/release/core-image-inventory.json",
-      "sha256": "sha256:dd4ca39d58a60ecfe98d499239037b2b7853c8f7da951c707a8977642d4f7de7"
+      "sha256": "sha256:5fc2eb14c912b093bd39556447628b25b9fc891b08222a0d350c8bddfad63c3e"
     },
     "requiredComponentIds": [
       "product-edge",
