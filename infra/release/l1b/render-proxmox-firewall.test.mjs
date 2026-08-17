@@ -12,8 +12,9 @@ const profile = JSON.parse(readFileSync(resolve(root, "builder-profile.json")))
 
 function resolution() {
   return {
-    schema: "llm-machines.vm103-l1b-egress-resolution.v1",
+    schema: "llm-machines.vm103-l1b-egress-resolution.v2",
     policySha256: `sha256:${createHash("sha256").update(policyBytes).digest("hex")}`,
+    dnsResolver: policy.dnsResolver,
     resolutions: Object.fromEntries(
       policy.hosts.map((host, index) => [host, [`192.0.2.${index + 1}`]]),
     ),
@@ -33,5 +34,11 @@ test("rendered VM118 firewall is default-deny and VPN-key-SSH only", () => {
 test("missing hostname resolution fails closed", () => {
   const value = resolution()
   delete value.resolutions[policy.hosts[0]]
+  assert.throws(() => renderFirewall(policy, value, profile), /exact allowlist/)
+})
+
+test("resolution from a different DNS authority fails closed", () => {
+  const value = resolution()
+  value.dnsResolver = "192.0.2.53"
   assert.throws(() => renderFirewall(policy, value, profile), /exact allowlist/)
 })

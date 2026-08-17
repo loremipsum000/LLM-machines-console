@@ -41,8 +41,9 @@ test("rendered VM firewall uses only supported default-deny policy options", () 
   const rendered = renderFirewall(
     policy,
     {
-      schema: "llm-machines.vm103-l1b-egress-resolution.v1",
+      schema: "llm-machines.vm103-l1b-egress-resolution.v2",
       policySha256: `sha256:${createHash("sha256").update(policyBytes).digest("hex")}`,
+      dnsResolver: policy.dnsResolver,
       resolutions,
     },
     profile,

@@ -17,8 +17,9 @@ export function renderFirewall(policy, resolution, profile) {
   const policyBytes = readFileSync(resolve(directory, "egress-allowlist.json"))
   const expectedPolicyHash = `sha256:${createHash("sha256").update(policyBytes).digest("hex")}`
   if (
-    resolution?.schema !== "llm-machines.vm103-l1b-egress-resolution.v1" ||
+    resolution?.schema !== "llm-machines.vm103-l1b-egress-resolution.v2" ||
     resolution?.policySha256 !== expectedPolicyHash ||
+    resolution?.dnsResolver !== policy.dnsResolver ||
     JSON.stringify(Object.keys(resolution?.resolutions ?? {}).sort()) !==
       JSON.stringify(policy.hosts)
   ) {
