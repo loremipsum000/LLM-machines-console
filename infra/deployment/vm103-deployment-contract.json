@@ -1,0 +1,479 @@
+{
+  "schema": "llm-machines.vm103-deployment-contract.v1",
+  "status": "SOURCE_CONTRACT_NOT_DEPLOYED",
+  "containsCredentials": false,
+  "protectedInput": {
+    "commit": "e994a738aff6f1d85afc82a2dc5566c62dca9fd8",
+    "tree": "71208853d15a26b28e028ec8a3c88a54c6d00807",
+    "role": "SOURCE_PACKAGE_BASE_ONLY",
+    "deployableReleaseIdentity": false
+  },
+  "qualification": {
+    "productAccepted": false,
+    "runtimeQualified": false,
+    "contractActivation": "INACTIVE",
+    "q0": "NOT_STARTED",
+    "genesis": "UNPUBLISHED"
+  },
+  "hostProfile": {
+    "vmid": 103,
+    "vcpus": 8,
+    "memoryGiB": 32,
+    "localDiskGiB": 100,
+    "platform": "linux/amd64",
+    "bulkModelWeightsAllowed": false,
+    "backupRepositoryAllowed": false
+  },
+  "releaseBinding": {
+    "sourceInventory": {
+      "path": "infra/release/core-image-inventory.json",
+      "sha256": "sha256:dd4ca39d58a60ecfe98d499239037b2b7853c8f7da951c707a8977642d4f7de7"
+    },
+    "requiredComponentIds": [
+      "product-edge",
+      "console-web",
+      "console-bff",
+      "keycloak",
+      "litellm",
+      "product-postgresql",
+      "prometheus",
+      "alertmanager",
+      "grafana-private",
+      "firecrawl-api",
+      "firecrawl-browser",
+      "firecrawl-search",
+      "firecrawl-egress"
+    ],
+    "exactSourceDigestComponents": [
+      "product-edge",
+      "keycloak",
+      "product-postgresql",
+      "prometheus",
+      "alertmanager",
+      "grafana-private"
+    ],
+    "releaseLockRequiredComponents": [
+      "console-web",
+      "console-bff",
+      "litellm",
+      "firecrawl-api",
+      "firecrawl-browser",
+      "firecrawl-search",
+      "firecrawl-egress"
+    ],
+    "deployableReleaseSource": {
+      "status": "DERIVED_FROM_CHECKED_OUT_PROTECTED_INTEGRATION",
+      "commit": "CHECKED_OUT_PROTECTED_INTEGRATION_COMMIT",
+      "tree": "CHECKED_OUT_PROTECTED_INTEGRATION_TREE",
+      "mustEqualCheckedOutReleaseInput": true,
+      "mustBeProtectedIntegration": true,
+      "packageBaseMayBeUsedAsFinalIdentity": false
+    },
+    "requiredArtifactsNotPresent": {
+      "status": "NOT_PRESENT_IN_THIS_SOURCE_PACKAGE",
+      "deploymentAllowedWhileMissing": false,
+      "outputs": [
+        "locks/core-image-lock.json",
+        "config/vm103-compose.yaml",
+        "config/placement.env",
+        "commissioning/deployment-placement.json",
+        "release-manifest.json",
+        "release-signature.json",
+        "public-release-trust.json",
+        "verified-core-payload",
+        "credential-free-mirror-exports",
+        "commissioning-secret-files"
+      ]
+    },
+    "finalCoreLockRequired": true,
+    "deploymentPlacementRequired": true,
+    "tagOnlyReferencesAllowed": false,
+    "fallbackSubstitutionAllowed": false,
+    "registryAuthority": "COMMISSIONING_INPUT",
+    "registryCredentialsInContract": false,
+    "deploymentAllowedBeforeEveryDigestIsVerified": false
+  },
+  "placement": {
+    "composeProjectName": "llmm-core",
+    "releaseRoot": "/opt/llm-machines/core/releases",
+    "activeReleaseLink": "/opt/llm-machines/core/current",
+    "configurationRoot": "/etc/llm-machines/core",
+    "secretRoot": "/etc/llm-machines/core/secrets",
+    "runtimeRoot": "/run/llm-machines/core",
+    "stateRoot": "/srv/llm-machines",
+    "edge": {
+      "bindAddress": "COMMISSIONING_INPUT_VM103_PRIVATE_ADDRESS",
+      "publishedPort": 18443,
+      "containerPort": 443,
+      "protocol": "https",
+      "onlyPublishedProductPort": true
+    },
+    "networks": [
+      {
+        "name": "llmm-core-edge",
+        "cidr": "COMMISSIONING_INPUT_NO_OVERLAP",
+        "internal": false
+      },
+      {
+        "name": "llmm-core-control",
+        "cidr": "COMMISSIONING_INPUT_NO_OVERLAP",
+        "internal": true
+      },
+      {
+        "name": "llmm-core-data",
+        "cidr": "COMMISSIONING_INPUT_NO_OVERLAP",
+        "internal": true
+      },
+      {
+        "name": "llmm-core-observability",
+        "cidr": "COMMISSIONING_INPUT_NO_OVERLAP",
+        "internal": true
+      },
+      {
+        "name": "llmm-core-web-access",
+        "cidr": "COMMISSIONING_INPUT_NO_OVERLAP",
+        "internal": true
+      }
+    ],
+    "collisionPolicy": {
+      "existingProjectNameAllowed": false,
+      "existingPathAllowed": false,
+      "existingNetworkNameAllowed": false,
+      "overlappingCidrAllowed": false,
+      "occupiedPublishedPortAllowed": false,
+      "sideBySideListenerActivation": false,
+      "preflightEvidenceRequired": true
+    }
+  },
+  "persistence": {
+    "sourceContract": {
+      "path": "infra/storage/profile.json",
+      "sha256": "sha256:9ac364ad1e69d7d0ffc0732806094f4eb4579332d098de9f3546c67094490afc"
+    },
+    "datasets": [
+      {
+        "name": "product_state",
+        "mountpoint": "/srv/llm-machines/product_state",
+        "backupDisposition": "ALLOWLISTED_SUBSET"
+      },
+      {
+        "name": "databases",
+        "mountpoint": "/srv/llm-machines/databases",
+        "backupDisposition": "ALLOWLISTED_SUBSET"
+      },
+      {
+        "name": "models",
+        "mountpoint": "/srv/llm-machines/models",
+        "backupDisposition": "EXCLUDED"
+      },
+      {
+        "name": "logs",
+        "mountpoint": "/srv/llm-machines/logs",
+        "backupDisposition": "EXCLUDED"
+      },
+      {
+        "name": "staging",
+        "mountpoint": "/srv/llm-machines/staging",
+        "backupDisposition": "EXCLUDED"
+      }
+    ],
+    "serviceState": [
+      {
+        "service": "product-postgresql",
+        "hostPath": "/srv/llm-machines/databases/postgresql",
+        "containerPath": "/var/lib/postgresql/data",
+        "backup": true
+      },
+      {
+        "service": "grafana-private",
+        "hostPath": "/srv/llm-machines/product_state/grafana",
+        "containerPath": "/var/lib/grafana",
+        "backup": true
+      },
+      {
+        "service": "alertmanager",
+        "hostPath": "/srv/llm-machines/product_state/alertmanager",
+        "containerPath": "/alertmanager",
+        "backup": true
+      },
+      {
+        "service": "prometheus",
+        "hostPath": "/srv/llm-machines/logs/prometheus",
+        "containerPath": "/prometheus",
+        "backup": false
+      }
+    ],
+    "databaseOwnership": {
+      "console-bff": "postgresql-database",
+      "keycloak": "postgresql-database",
+      "litellm": "postgresql-database"
+    },
+    "ephemeralServices": [
+      "product-edge",
+      "console-web",
+      "console-bff",
+      "keycloak",
+      "litellm",
+      "firecrawl-api",
+      "firecrawl-browser",
+      "firecrawl-search",
+      "firecrawl-egress"
+    ],
+    "backup": {
+      "engine": "restic",
+      "target": "SEPARATE_CUSTOMER_OWNED_TARGET",
+      "localSnapshotsCountAsBackup": false,
+      "cleanRestoreRequiredBeforeCutover": true,
+      "workloadContentAllowed": false
+    }
+  },
+  "secretCustody": {
+    "generation": "COMMISSIONING_ONLY_CSPRNG",
+    "directoryMode": "0700",
+    "fileMode": "0600",
+    "owner": "root",
+    "group": "root",
+    "containerMountMode": "READ_ONLY",
+    "inlineValuesAllowed": false,
+    "commandLineValuesAllowed": false,
+    "gitValuesAllowed": false,
+    "normalLogValuesAllowed": false,
+    "environmentFileValuesAllowed": false,
+    "files": [
+      "postgres_password",
+      "keycloak_bootstrap_password",
+      "console_oidc_client_secret",
+      "console_session_keyring",
+      "keycloak_console_admin_client_secret",
+      "keycloak_application_admin_client_secret",
+      "bff_service_api_key",
+      "console_bff_service_api_key",
+      "litellm_master_key",
+      "litellm_oidc_client_secret",
+      "grafana_oidc_client_secret",
+      "prometheus_query_bearer",
+      "prometheus_scrape_bearer",
+      "alertmanager_bearer",
+      "firecrawl_searxng_secret",
+      "audit_export_ed25519",
+      "edge_tls_private_key",
+      "restic_repository_locator",
+      "restic_password"
+    ],
+    "oneTimeBootstrapFilesRemovedAfterCommissioning": [
+      "keycloak_bootstrap_password"
+    ],
+    "customerRecoveryMaterialOutsideAppliance": [
+      "audit_export_recovery_envelope",
+      "restic_recovery_material"
+    ]
+  },
+  "services": [
+    {
+      "id": "product-edge",
+      "restart": "unless-stopped",
+      "health": "TLS_HOST_MATRIX_AND_EDGE_POLICY",
+      "published": true
+    },
+    {
+      "id": "console-web",
+      "restart": "unless-stopped",
+      "health": "HTTP_ROOT_THROUGH_PRODUCT_EDGE",
+      "published": false
+    },
+    {
+      "id": "console-bff",
+      "restart": "unless-stopped",
+      "health": "GET_/readyz_REQUIRES_DATABASE_SCHEMA",
+      "published": false
+    },
+    {
+      "id": "product-postgresql",
+      "restart": "unless-stopped",
+      "health": "PG_ISREADY_WITHOUT_PASSWORD_OUTPUT",
+      "published": false
+    },
+    {
+      "id": "keycloak",
+      "restart": "unless-stopped",
+      "health": "PRIVATE_KEYCLOAK_HEALTH",
+      "published": false
+    },
+    {
+      "id": "litellm",
+      "restart": "unless-stopped",
+      "health": "PRIVATE_LITELLM_HEALTH",
+      "published": false
+    },
+    {
+      "id": "prometheus",
+      "restart": "unless-stopped",
+      "health": "GET_/-/ready",
+      "published": false
+    },
+    {
+      "id": "alertmanager",
+      "restart": "unless-stopped",
+      "health": "GET_/-/ready",
+      "published": false
+    },
+    {
+      "id": "grafana-private",
+      "restart": "unless-stopped",
+      "health": "GET_/api/health",
+      "published": false
+    },
+    {
+      "id": "firecrawl-api",
+      "restart": "unless-stopped",
+      "health": "PRIVATE_LIVENESS_AND_READINESS",
+      "published": false
+    },
+    {
+      "id": "firecrawl-browser",
+      "restart": "unless-stopped",
+      "health": "PRIVATE_BROWSER_HEALTH",
+      "published": false
+    },
+    {
+      "id": "firecrawl-search",
+      "restart": "unless-stopped",
+      "health": "PRIVATE_SEARCH_HEALTH",
+      "published": false
+    },
+    {
+      "id": "firecrawl-egress",
+      "restart": "unless-stopped",
+      "health": "PRIVATE_EGRESS_HEALTH",
+      "published": false
+    }
+  ],
+  "gateway": {
+    "sourceProfile": {
+      "path": "infra/ingress/native-admin-edge-profile.json",
+      "sha256": "sha256:4ef0adb5ad4291b6c86f69e02a78469f80e6c3cfa47d0b95ed5b2132d43c4b6e"
+    },
+    "edgeTemplate": {
+      "path": "infra/ingress/product-edge.nginx.conf.template",
+      "sha256": "sha256:a5b926e972b673b4b908287c5b060c7a1d020d9eb49062a0c76f82b6332ed2c3"
+    },
+    "gatewayUpstream": "VM103_PRIVATE_ADDRESS:18443",
+    "gatewayForwardsHost": true,
+    "gatewaySetsUpstreamSniToHost": true,
+    "gatewayAcceptsOnlyTrustedTlsAuthorities": true,
+    "authorities": [
+      {
+        "id": "console",
+        "labHost": "console.lab.llm-machines.com",
+        "paths": "PRODUCT_EDGE_CONSOLE_PROFILE"
+      },
+      {
+        "id": "api",
+        "labHost": "api.lab.llm-machines.com",
+        "paths": "PRODUCT_EDGE_API_PROFILE"
+      },
+      {
+        "id": "identity",
+        "labHost": "identity.lab.llm-machines.com",
+        "paths": "PRODUCT_EDGE_IDENTITY_PROFILE"
+      },
+      {
+        "id": "firecrawl",
+        "labHost": "firecrawl.lab.llm-machines.com",
+        "paths": "PRODUCT_EDGE_FIRECRAWL_PROFILE"
+      },
+      {
+        "id": "grafana",
+        "labHost": "grafana.lab.llm-machines.com",
+        "paths": "PRODUCT_EDGE_GRAFANA_NATIVE_PROFILE"
+      },
+      {
+        "id": "litellm",
+        "labHost": "litellm.lab.llm-machines.com",
+        "paths": "PRODUCT_EDGE_LITELLM_NATIVE_PROFILE"
+      },
+      {
+        "id": "keycloak-admin",
+        "labHost": "keycloak.lab.llm-machines.com",
+        "paths": "PRODUCT_EDGE_KEYCLOAK_ADMIN_PROFILE"
+      }
+    ],
+    "nativeSessionsRemainServiceOwned": true,
+    "consoleSessionForwarded": false,
+    "directNativePortsAllowed": false,
+    "defaultVhostAction": "DROP_OR_421",
+    "nodeExporterVpnClosure": "SEPARATE_LIVE_GATEWAY_SECURITY_CHANGE_REQUIRED"
+  },
+  "retiredSurfaces": {
+    "enforcement": {
+      "policy": "ADMITTED_INFERENCE_CORE_GUARDRAIL",
+      "path": "scripts/inference-core/guardrails.mjs",
+      "sourceClosureEvidence": "docs/reduction/inference-core/pr11a-r1-v1-source-closure.json",
+      "nativeAccessClosureEvidence": "docs/reduction/inference-core/f0-n8-native-access-closure.json"
+    },
+    "deferredAdministration": "PORTAINER_DEFERRED_UPSTREAM_SECURITY",
+    "firecrawlNativeUiAllowed": false,
+    "prometheusCustomerAuthorityAllowed": false,
+    "alertmanagerCustomerAuthorityAllowed": false,
+    "postgresqlCustomerAuthorityAllowed": false,
+    "sglangCustomerAuthorityAllowed": false
+  },
+  "lifecycle": {
+    "installationCommands": [
+      "node infra/release/clean-room-install.mjs --manifest <release-manifest.json> --signature <release-signature.json> --trust <public-release-trust.json> --artifact-root <verified-artifact-root> --trusted-root-sha256 <out-of-band-root-sha256> --target-root /opt/llm-machines/core/releases/<release-id>",
+      "node infra/release/validate-deployment-placement.mjs --manifest <release-manifest.json> --signature <release-signature.json> --trust <public-release-trust.json> --artifact-root <verified-artifact-root> --trusted-root-sha256 <out-of-band-root-sha256> --import-root <verified-core-payload> --registry-export-root <credential-free-mirror-exports> --registry-authority <approved-private-registry> --approved-registry <approved-private-registry> --commissioning-evidence-id <id> --audit-evidence-id <id> --output /etc/llm-machines/core/deployment-placement.json",
+      "sudo docker compose --project-name llmm-core --env-file /etc/llm-machines/core/placement.env --file /opt/llm-machines/core/current/config/vm103-compose.yaml up --detach --wait"
+    ],
+    "statusCommand": "sudo docker compose --project-name llmm-core --env-file /etc/llm-machines/core/placement.env --file /opt/llm-machines/core/current/config/vm103-compose.yaml ps --all",
+    "stopCommand": "sudo docker compose --project-name llmm-core --env-file /etc/llm-machines/core/placement.env --file /opt/llm-machines/core/current/config/vm103-compose.yaml stop",
+    "rollbackCommands": [
+      "sudo docker compose --project-name llmm-core --env-file /etc/llm-machines/core/placement.env --file /opt/llm-machines/core/current/config/vm103-compose.yaml stop",
+      "RESTORE_VM102_AND_VM103_FROM_APPROVED_PREIMAGE_AND_PBS_RECORD",
+      "VERIFY_PRESERVED_POSTGRESQL_FOUNDER_STATE_SOURCE_VOLUMES_AND_VM_DISKS",
+      "RESTART_PRESERVED_LEGACY_DEFINITIONS_ONLY_AFTER_ROLLBACK_VERIFICATION"
+    ],
+    "mutationPreconditions": [
+      "EXACT_FINAL_CORE_LOCK_VERIFIED",
+      "DEPLOYMENT_PLACEMENT_VERIFIED",
+      "VM102_ROLLBACK_POINT_RECORDED",
+      "VM103_ROLLBACK_POINT_RECORDED",
+      "FRESH_PBS_BACKUPS_VERIFIED",
+      "ISOLATED_CLEAN_RESTORE_PASSED",
+      "SECRET_FILES_COMMISSIONED",
+      "COLLISION_PREFLIGHT_PASSED",
+      "GATEWAY_NODE_EXPORTER_VPN_CLOSURE_PASSED",
+      "EXACT_INTERNAL_TEST_INFERENCE_PROFILE_ADMITTED"
+    ]
+  },
+  "separateGates": {
+    "gatewaySecurity": {
+      "scope": "CLOSE_VPN_SIDE_NODE_EXPORTER_9100",
+      "preimageRequired": true,
+      "bundledWithDeployment": false,
+      "status": "NOT_STARTED"
+    },
+    "rollbackEstablishment": {
+      "vmids": [102, 103],
+      "pbsBackupRequired": true,
+      "isolatedRestoreRequired": true,
+      "preserve": [
+        "postgresql",
+        "founder-state",
+        "current-source",
+        "unidentified-volumes",
+        "vm102-disk",
+        "vm103-disk"
+      ],
+      "status": "NOT_STARTED"
+    },
+    "inferencePreparation": {
+      "engine": "sglang",
+      "version": "0.5.13",
+      "profileClass": "INTERNAL_TEST_ONLY",
+      "productionCapacityClaimAllowed": false,
+      "existingImagesOrModelsMayBeDeleted": false,
+      "storageChangeRequiresSeparateApproval": true,
+      "status": "NOT_STARTED"
+    }
+  }
+}

@@ -14,8 +14,20 @@ The product source contains the API-first inference control plane. Customer
 chat and agent interfaces are third-party applications and are not included
 in this repository.
 
-The repository is undergoing an inference-core product reduction. This
-clean-root publication is a source checkpoint, not a production release.
+The protected reduced Product retains Grafana, LiteLLM, and scoped Keycloak
+administration as deeper native tools behind dedicated Product-edge
+authorities. Console remains the primary simplified experience. Grafana is
+Admin-only Editor, LiteLLM maps Admin to `proxy_admin` and Operator to
+`internal_user` with own-key and own-spend authority only, and Keycloak native
+administration is Admin-only and appliance-realm scoped. Portainer remains
+deferred for upstream security work. Native sessions remain service-owned and
+never receive Console session material.
+
+The repository remains a source checkpoint, not a production release. The
+credential-free, non-deployed VM103 source contract is documented in
+`infra/deployment/README.md`. It blocks mutation until exact release digests,
+placement, backups, an isolated restore, gateway security, and an admitted
+internal-test inference profile are independently proved.
 
 ## Disposable reduced-Core development lane
 
