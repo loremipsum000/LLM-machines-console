@@ -25,8 +25,9 @@ resolution is not performed implicitly by the firewall renderer.
 the reviewed resolution, the firewall rendered from it, and hashes binding
 both files to the source-controlled policy and builder profile. Only the
 transaction firewall may be installed, and its read-back bytes must pass
-`--installed-firewall` verification before bootstrap. The complete transaction
-is mandatory bootstrap input. Bootstrap renders a files-first host binding
+`--installed-firewall` verification to create a VMID-118 receipt. The complete
+transaction and its matching receipt are mandatory bootstrap inputs. Bootstrap
+revalidates both before and after its private copy, then renders a files-first host binding
 before any network fetch and copies the exact transaction onto both assembly
 volumes. Each assembly starts a private,
 non-forwarding dnsmasq instance from that copy and assigns it to its isolated

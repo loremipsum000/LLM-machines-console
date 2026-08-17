@@ -81,7 +81,7 @@ def transaction_firewall(policy: dict, resolution: dict, profile: dict) -> str:
     return "\n".join(lines)
 
 
-def verify_transaction(transaction_directory: pathlib.Path) -> None:
+def verify_transaction(transaction_directory: pathlib.Path) -> dict:
     expected_names = ["egress-resolution.json", "transaction.json", "vm118.firewall"]
     if sorted(path.name for path in transaction_directory.iterdir()) != expected_names:
         raise RuntimeError("egress transaction inventory is not exact")
@@ -118,6 +118,33 @@ def verify_transaction(transaction_directory: pathlib.Path) -> None:
         policy, resolution, profile
     ):
         raise RuntimeError("egress transaction firewall differs from resolution")
+    return manifest
+
+
+def verify_firewall_receipt(
+    transaction_directory: pathlib.Path, receipt_path: pathlib.Path
+) -> None:
+    manifest = verify_transaction(transaction_directory)
+    if not receipt_path.is_file() or receipt_path.is_symlink():
+        raise RuntimeError("installed firewall receipt is not a regular file")
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if list(receipt.keys()) != [
+        "schema",
+        "status",
+        "vmid",
+        "transactionManifestSha256",
+        "installedFirewallSha256",
+    ]:
+        raise RuntimeError("installed firewall receipt is invalid")
+    transaction_manifest_sha256 = sha256(transaction_directory / "transaction.json")
+    if (
+        receipt["schema"] != "llm-machines.vm103-l1b-firewall-receipt.v1"
+        or receipt["status"] != "INSTALLED_FIREWALL_VERIFIED"
+        or receipt["vmid"] != 118
+        or receipt["transactionManifestSha256"] != transaction_manifest_sha256
+        or receipt["installedFirewallSha256"] != manifest["firewallSha256"]
+    ):
+        raise RuntimeError("installed firewall receipt differs from the transaction")
 
 
 def hosts_binding(policy: dict, resolution: dict) -> str:
@@ -195,6 +222,7 @@ def main() -> None:
     parser.add_argument("--interface")
     parser.add_argument("--listen-address")
     parser.add_argument("--transaction-directory", type=pathlib.Path)
+    parser.add_argument("--firewall-receipt", type=pathlib.Path)
     arguments = parser.parse_args()
     if arguments.format == "verify-transaction":
         if (
@@ -203,11 +231,18 @@ def main() -> None:
             or arguments.interface
             or arguments.listen_address
             or arguments.resolution
+            or not arguments.firewall_receipt
         ):
             raise RuntimeError("transaction verification accepts no rendering output")
-        verify_transaction(arguments.transaction_directory)
+        verify_firewall_receipt(
+            arguments.transaction_directory, arguments.firewall_receipt
+        )
         return
-    if arguments.transaction_directory or not arguments.resolution:
+    if (
+        arguments.transaction_directory
+        or arguments.firewall_receipt
+        or not arguments.resolution
+    ):
         raise RuntimeError("rendering and system verification require one resolution")
     policy, resolution = load_and_validate(arguments.resolution)
     if arguments.format == "verify-system":

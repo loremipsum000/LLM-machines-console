@@ -152,6 +152,56 @@ export function validateEgressTransaction(
   return { manifest, manifestSha256: sha256(manifestBytes) }
 }
 
+export function createFirewallReceipt(
+  transactionDirectory,
+  installedFirewallPath,
+  outputPath,
+) {
+  const validated = validateEgressTransaction(
+    transactionDirectory,
+    installedFirewallPath,
+  )
+  const receipt = {
+    schema: "llm-machines.vm103-l1b-firewall-receipt.v1",
+    status: "INSTALLED_FIREWALL_VERIFIED",
+    vmid: 118,
+    transactionManifestSha256: validated.manifestSha256,
+    installedFirewallSha256: validated.manifest.firewallSha256,
+  }
+  writeFileSync(resolve(outputPath), `${JSON.stringify(receipt, null, 2)}\n`, {
+    flag: "wx",
+    mode: 0o600,
+  })
+  return receipt
+}
+
+export function validateFirewallReceipt(transactionDirectory, receiptPath) {
+  const validated = validateEgressTransaction(transactionDirectory)
+  const receiptBytes = readRegularFile(
+    resolve(receiptPath),
+    "installed firewall receipt",
+  )
+  const receipt = JSON.parse(receiptBytes)
+  if (
+    JSON.stringify(Object.keys(receipt)) !==
+      JSON.stringify([
+        "schema",
+        "status",
+        "vmid",
+        "transactionManifestSha256",
+        "installedFirewallSha256",
+      ]) ||
+    receipt.schema !== "llm-machines.vm103-l1b-firewall-receipt.v1" ||
+    receipt.status !== "INSTALLED_FIREWALL_VERIFIED" ||
+    receipt.vmid !== 118 ||
+    receipt.transactionManifestSha256 !== validated.manifestSha256 ||
+    receipt.installedFirewallSha256 !== validated.manifest.firewallSha256
+  ) {
+    fail("installed firewall receipt differs from the egress transaction")
+  }
+  return { ...validated, receipt, receiptSha256: sha256(receiptBytes) }
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const values = new Map()
   for (let index = 2; index < process.argv.length; index += 2) {
@@ -166,6 +216,26 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     createEgressTransaction(
       values.get("--resolution"),
       values.get("--output-directory"),
+    )
+  } else if (
+    values.has("--transaction-directory") &&
+    values.has("--installed-firewall") &&
+    values.has("--receipt-output")
+  ) {
+    if (values.size !== 3) fail("firewall receipt create arguments differ")
+    createFirewallReceipt(
+      values.get("--transaction-directory"),
+      values.get("--installed-firewall"),
+      values.get("--receipt-output"),
+    )
+  } else if (
+    values.has("--transaction-directory") &&
+    values.has("--firewall-receipt")
+  ) {
+    if (values.size !== 2) fail("firewall receipt verify arguments differ")
+    validateFirewallReceipt(
+      values.get("--transaction-directory"),
+      values.get("--firewall-receipt"),
     )
   } else if (values.has("--transaction-directory")) {
     if (

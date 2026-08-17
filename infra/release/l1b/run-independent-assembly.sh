@@ -34,9 +34,11 @@ case "$assembly_id" in
 esac
 egress_transaction=$assembly_root/.llmm-l1b-egress-transaction
 egress_resolution=$egress_transaction/egress-resolution.json
+firewall_receipt=$assembly_root/.llmm-l1b-firewall-receipt.json
 dnsmasq_config=$assembly_root/dnsmasq.conf
 dnsmasq_log=$assembly_root/dnsmasq.log
 [ -d "$egress_transaction" ] || { echo "assembly egress transaction is missing" >&2; exit 1; }
+[ -f "$firewall_receipt" ] || { echo "assembly firewall receipt is missing" >&2; exit 1; }
 
 install -d -m 0700 -o dberisha -g dberisha "$docker_root" "$docker_exec" "$temporary_root"
 [ ! -e "$assembly_root/run" ] || { echo "assembly run output already exists" >&2; exit 1; }
@@ -99,4 +101,5 @@ node "$source_root/infra/release/l1b/run-core-assembly.mjs" \
   --expected-tree "$expected_tree" \
   --release-version "$release_version" \
   --builder-name "llmm-l1b-$assembly_lower" \
-  --egress-transaction "$egress_transaction"
+  --egress-transaction "$egress_transaction" \
+  --firewall-receipt "$firewall_receipt"

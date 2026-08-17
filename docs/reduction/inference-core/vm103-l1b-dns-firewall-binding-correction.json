@@ -31,6 +31,8 @@
     "assemblyResolutionCopiesIndependent": true,
     "firewallAndBootstrapTransactionHashBound": true,
     "installedFirewallReadbackRequired": true,
+    "bootstrapRequiresInstalledFirewallReceipt": true,
+    "copiedTransactionRevalidatedBeforeNetwork": true,
     "secondValidResolutionSubstitutionDenied": true,
     "assemblyDnsHasNoForwarder": true,
     "hostNetworkUsedByBuildContainers": false,

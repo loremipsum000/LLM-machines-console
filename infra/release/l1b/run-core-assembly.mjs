@@ -19,7 +19,7 @@ import { tmpdir } from "node:os"
 import { basename, dirname, join, relative, resolve } from "node:path"
 import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
-import { validateEgressTransaction } from "./egress-transaction.mjs"
+import { validateFirewallReceipt } from "./egress-transaction.mjs"
 import { fetchLockedInputs } from "./fetch-locked-inputs.mjs"
 import { normalizeOciLayout } from "./normalize-oci-layout.mjs"
 import { verifyHostToolchain } from "./verify-toolchain.mjs"
@@ -467,7 +467,12 @@ export async function runCoreAssembly(options) {
   )
   const egressTransactionPath = resolve(options.egressTransaction)
   within(assemblyRoot, egressTransactionPath, "egress transaction")
-  const egressTransaction = validateEgressTransaction(egressTransactionPath)
+  const firewallReceiptPath = resolve(options.firewallReceipt)
+  within(assemblyRoot, firewallReceiptPath, "installed firewall receipt")
+  const egressTransaction = validateFirewallReceipt(
+    egressTransactionPath,
+    firewallReceiptPath,
+  )
   const runRoot = resolve(assemblyRoot, "run")
   if (existsSync(runRoot)) fail("assembly run root already exists")
   const inputsRoot = join(runRoot, "inputs")
@@ -601,6 +606,7 @@ export async function runCoreAssembly(options) {
     egressTransactionSha256: egressTransaction.manifestSha256,
     egressResolutionSha256: egressTransaction.manifest.resolutionSha256,
     egressFirewallSha256: egressTransaction.manifest.firewallSha256,
+    egressFirewallReceiptSha256: egressTransaction.receiptSha256,
     trivyDatabase,
     images,
   }
@@ -649,6 +655,7 @@ function parseArguments(argv) {
     "--release-version",
     "--builder-name",
     "--egress-transaction",
+    "--firewall-receipt",
   ]
   if (
     values.size !== required.length ||
@@ -665,6 +672,7 @@ function parseArguments(argv) {
     releaseVersion: values.get("--release-version"),
     builderName: values.get("--builder-name"),
     egressTransaction: values.get("--egress-transaction"),
+    firewallReceipt: values.get("--firewall-receipt"),
   }
 }
 

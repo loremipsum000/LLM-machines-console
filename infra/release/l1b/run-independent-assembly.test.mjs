@@ -15,6 +15,7 @@ test("each assembly binds Docker to its own exact non-forwarding DNS service", (
   assert.match(runner, /render-egress-bindings\.py/)
   assert.match(runner, /dnsmasq --keep-in-foreground/)
   assert.match(runner, /--egress-transaction "\$egress_transaction"/)
+  assert.match(runner, /--firewall-receipt "\$firewall_receipt"/)
   assert.doesNotMatch(runner, /--egress-resolution/)
 })
 

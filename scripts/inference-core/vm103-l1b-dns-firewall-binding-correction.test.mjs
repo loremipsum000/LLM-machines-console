@@ -33,6 +33,14 @@ test("L1B network successor binds one resolution without broadening egress", () 
   )
   assert.equal(evidence.correction.installedFirewallReadbackRequired, true)
   assert.equal(
+    evidence.correction.bootstrapRequiresInstalledFirewallReceipt,
+    true,
+  )
+  assert.equal(
+    evidence.correction.copiedTransactionRevalidatedBeforeNetwork,
+    true,
+  )
+  assert.equal(
     evidence.correction.secondValidResolutionSubstitutionDenied,
     true,
   )

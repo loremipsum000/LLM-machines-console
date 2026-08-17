@@ -7,7 +7,9 @@ import { join, resolve } from "node:path"
 import test from "node:test"
 import {
   createEgressTransaction,
+  createFirewallReceipt,
   validateEgressTransaction,
+  validateFirewallReceipt,
 } from "./egress-transaction.mjs"
 
 const root = resolve(import.meta.dirname)
@@ -37,12 +39,19 @@ function writeResolution(directory, name, value) {
 test("one transaction binds the exact resolution and rendered firewall", () => {
   const temporary = mkdtempSync(join(tmpdir(), "llmm-l1b-transaction-"))
   const transaction = join(temporary, "transaction")
+  const receipt = join(temporary, "receipt.json")
   const input = writeResolution(temporary, "resolution.json", resolution())
   const created = createEgressTransaction(input, transaction)
+  createFirewallReceipt(
+    transaction,
+    join(transaction, "vm118.firewall"),
+    receipt,
+  )
   const validated = validateEgressTransaction(
     transaction,
     join(transaction, "vm118.firewall"),
   )
+  validateFirewallReceipt(transaction, receipt)
   assert.equal(validated.manifest.resolutionSha256, created.resolutionSha256)
   assert.equal(validated.manifest.firewallSha256, created.firewallSha256)
   const bootstrapValidation = spawnSync(
@@ -53,13 +62,49 @@ test("one transaction binds the exact resolution and rendered firewall", () => {
       "verify-transaction",
       "--transaction-directory",
       transaction,
+      "--firewall-receipt",
+      receipt,
     ],
     { encoding: "utf8" },
   )
   assert.equal(bootstrapValidation.status, 0, bootstrapValidation.stderr)
 })
 
-test("a second individually valid resolution cannot replace the transaction input", () => {
+test("a second complete valid transaction cannot use the installed-firewall receipt from the first", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "llmm-l1b-transaction-"))
+  const transactionA = join(temporary, "transaction-a")
+  const transactionB = join(temporary, "transaction-b")
+  const receiptA = join(temporary, "receipt-a.json")
+  const first = writeResolution(temporary, "first.json", resolution())
+  const second = writeResolution(temporary, "second.json", resolution(20))
+  createEgressTransaction(first, transactionA)
+  createEgressTransaction(second, transactionB)
+  createFirewallReceipt(
+    transactionA,
+    join(transactionA, "vm118.firewall"),
+    receiptA,
+  )
+  assert.throws(
+    () => validateFirewallReceipt(transactionB, receiptA),
+    /receipt differs/,
+  )
+  const bootstrapValidation = spawnSync(
+    "python3",
+    [
+      resolve(root, "render-egress-bindings.py"),
+      "--format",
+      "verify-transaction",
+      "--transaction-directory",
+      transactionB,
+      "--firewall-receipt",
+      receiptA,
+    ],
+    { encoding: "utf8" },
+  )
+  assert.notEqual(bootstrapValidation.status, 0)
+})
+
+test("a resolution cannot be replaced inside an existing transaction", () => {
   const temporary = mkdtempSync(join(tmpdir(), "llmm-l1b-transaction-"))
   const transaction = join(temporary, "transaction")
   const first = writeResolution(temporary, "first.json", resolution())
@@ -70,18 +115,6 @@ test("a second individually valid resolution cannot replace the transaction inpu
     () => validateEgressTransaction(transaction),
     /hash binding failed/,
   )
-  const bootstrapValidation = spawnSync(
-    "python3",
-    [
-      resolve(root, "render-egress-bindings.py"),
-      "--format",
-      "verify-transaction",
-      "--transaction-directory",
-      transaction,
-    ],
-    { encoding: "utf8" },
-  )
-  assert.notEqual(bootstrapValidation.status, 0)
 })
 
 test("firewall substitution and untracked transaction files fail closed", () => {
