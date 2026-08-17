@@ -1,3 +1,4 @@
+import "./l1b/bootstrap-builder.test.mjs"
 import "./l1b/compare-assemblies.test.mjs"
 import "./l1b/generate-core-image-lock.test.mjs"
 import "./l1b/normalize-oci-layout.test.mjs"

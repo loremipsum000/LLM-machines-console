@@ -30,12 +30,24 @@ toolchain_lock=$script_dir/toolchain-lock.json
 command -v jq >/dev/null 2>&1 || { echo "jq is required before locked bootstrap" >&2; exit 1; }
 
 export DEBIAN_FRONTEND=noninteractive
+find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) \
+  -exec sed -i 's|http://security.debian.org/|https://security.debian.org/|g' {} +
+if grep -Rqs 'http://security.debian.org/' /etc/apt; then
+  echo "Debian security source still requires prohibited tcp/80 egress" >&2
+  exit 1
+fi
+cat > /etc/apt/apt.conf.d/99-llmm-l1b-network <<'EOF'
+Acquire::ForceIPv4 "true";
+APT::Update::Error-Mode "any";
+EOF
 apt-get update
 apt-get install -y --no-install-recommends ca-certificates curl git gnupg jq nftables openssh-server tar xz-utils zstd
 
 input_root=/var/lib/llmm-l1b/bootstrap-inputs
 install -d -m 0700 "$input_root"
-jq -c '.hostTools[] | select(.url != null), .dockerPackages[]' "$toolchain_lock" |
+locked_inputs=$input_root/locked-inputs.jsonl
+jq -ce '[(.hostTools[] | select(.url != null)), .dockerPackages[]] | .[]' \
+  "$toolchain_lock" > "$locked_inputs"
 while IFS= read -r entry; do
   url=$(printf '%s' "$entry" | jq -r .url)
   expected=$(printf '%s' "$entry" | jq -r .sha256)
@@ -45,7 +57,7 @@ while IFS= read -r entry; do
   fi
   actual=$(sha256sum "$output" | awk '{print $1}')
   [ "$actual" = "$expected" ] || { echo "locked bootstrap input differs: $(basename "$output")" >&2; exit 1; }
-done
+done < "$locked_inputs"
 
 node_archive=$(jq -r '.hostTools[] | select(.id == "node") | .url' "$toolchain_lock")
 node_archive=$input_root/$(basename "$node_archive")
