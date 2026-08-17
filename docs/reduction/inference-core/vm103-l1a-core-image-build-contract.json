@@ -13,7 +13,7 @@
   },
   "sourceContract": {
     "path": "infra/release/core-image-build-contract.json",
-    "sha256": "ca212986442583efc30f50fda37325a2852a6620db0b5d86640ce49b72dbfa20",
+    "sha256": "08841c90659cb6411d9485b314a52bc2bf26f73f09433c07c3bcbb3ccb16f070",
     "componentCount": 13,
     "platform": "linux/amd64",
     "requiresTwoIndependentAssemblies": true,
@@ -34,7 +34,7 @@
     "twoIndependentWorkRoots": false,
     "workspaceCapacityProven": false,
     "toolchainLockVerified": false,
-    "result": "BLOCKED_NO_ADMITTED_NATIVE_AMD64_BUILDER"
+    "result": "BLOCKED_NO_ADMITTED_NATIVE_AMD64_BUILD_ENVIRONMENT"
   },
   "outputs": {
     "ociArchivesCreated": false,
@@ -46,8 +46,8 @@
   "nextPackage": {
     "id": "VM103-L1B",
     "purpose": "build two complete native linux/amd64 assemblies, compare them, generate evidence, and bind the final Core image lock",
-    "requiresApprovedBuilder": true,
-    "requiredBuilderProperties": [
+    "requiresApprovedBuildEnvironment": true,
+    "requiredBuildEnvironmentProperties": [
       "isolated native linux/amd64",
       "source-controlled exact toolchain lock",
       "Trivy database no older than 72 hours",

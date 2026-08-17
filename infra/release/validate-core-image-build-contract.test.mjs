@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import test from "node:test"
 import {
-  validateBuilderCapability,
+  validateBuildCapability,
   validateCoreImageBuildContract,
   verifyCheckedInCoreImageBuildContract,
 } from "./validate-core-image-build-contract.mjs"
@@ -26,7 +26,7 @@ test("checked-in Core image build contract passes", () => {
   assert.deepEqual(verifyCheckedInCoreImageBuildContract(root), [])
 })
 
-test("release source and native amd64 builder requirements fail closed", () => {
+test("release source and native amd64 build requirements fail closed", () => {
   assert.match(
     changed((value) => {
       value.releaseSource.commit = "f10ebff28840979b716d3966f55702aee22b3070"
@@ -35,21 +35,21 @@ test("release source and native amd64 builder requirements fail closed", () => {
   )
   assert.match(
     changed((value) => {
-      value.builder.nativeArchitectureRequired = false
+      value.buildEnvironment.nativeArchitectureRequired = false
     }),
-    /builder admission/,
+    /build environment admission/,
   )
   assert.match(
     changed((value) => {
-      value.builder.emulationQualifiesForOutputAdmission = true
+      value.buildEnvironment.emulationQualifiesForOutputAdmission = true
     }),
-    /builder admission/,
+    /build environment admission/,
   )
   assert.match(
     changed((value) => {
-      value.builder.freshTrivyDatabaseMaximumAgeHours = 96
+      value.buildEnvironment.freshTrivyDatabaseMaximumAgeHours = 96
     }),
-    /builder admission/,
+    /build environment admission/,
   )
 })
 
@@ -90,7 +90,7 @@ test("component omissions, substitutions, and unsafe outputs fail closed", () =>
   )
 })
 
-test("builder capability admits only a fresh isolated native amd64 lane", () => {
+test("build capability admits only a fresh isolated native amd64 lane", () => {
   const now = new Date("2026-08-17T12:00:00Z")
   const capability = {
     operatingSystem: "linux",
@@ -102,7 +102,7 @@ test("builder capability admits only a fresh isolated native amd64 lane", () => 
     toolchainLockVerified: true,
     trivyDatabaseUpdatedAt: "2026-08-16T12:00:00Z",
   }
-  assert.deepEqual(validateBuilderCapability(capability, now), [])
+  assert.deepEqual(validateBuildCapability(capability, now), [])
 
   const workstation = {
     ...capability,
@@ -115,7 +115,7 @@ test("builder capability admits only a fresh isolated native amd64 lane", () => 
     trivyDatabaseUpdatedAt: "2026-08-13T13:03:34.300Z",
   }
   assert.match(
-    validateBuilderCapability(workstation, now).join("\n"),
+    validateBuildCapability(workstation, now).join("\n"),
     /not Linux|not amd64|not native|two independent|unproven|unverified|72-hour/,
   )
 })

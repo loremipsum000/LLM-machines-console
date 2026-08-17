@@ -10,7 +10,7 @@
     "cleanWorktreeRequired": true,
     "protectedIntegrationRequired": true
   },
-  "builder": {
+  "buildEnvironment": {
     "operatingSystem": "linux",
     "architecture": "amd64",
     "nativeArchitectureRequired": true,

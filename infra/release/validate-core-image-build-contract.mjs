@@ -150,7 +150,7 @@ export function validateCoreImageBuildContract(
     errors.push("release source must bind the checked-out protected input")
   }
   if (
-    !same(contract?.builder, {
+    !same(contract?.buildEnvironment, {
       operatingSystem: "linux",
       architecture: "amd64",
       nativeArchitectureRequired: true,
@@ -165,7 +165,7 @@ export function validateCoreImageBuildContract(
       privateSigningMaterialAllowed: false,
     })
   ) {
-    errors.push("builder admission boundary differs")
+    errors.push("build environment admission boundary differs")
   }
 
   const inventory = readCoreImageInventory(root)
@@ -243,28 +243,28 @@ export function validateCoreImageBuildContract(
   return errors
 }
 
-export function validateBuilderCapability(capability, now = new Date()) {
+export function validateBuildCapability(capability, now = new Date()) {
   const errors = []
   if (capability?.operatingSystem !== "linux") {
-    errors.push("builder operating system is not Linux")
+    errors.push("build environment operating system is not Linux")
   }
   if (capability?.architecture !== "amd64") {
-    errors.push("builder architecture is not amd64")
+    errors.push("build environment architecture is not amd64")
   }
   if (capability?.nativeArchitecture !== true) {
-    errors.push("builder is not native amd64")
+    errors.push("build environment is not native amd64")
   }
   if (capability?.isolatedWorkspace !== true) {
-    errors.push("builder workspace is not isolated")
+    errors.push("build workspace is not isolated")
   }
   if (capability?.twoIndependentWorkRoots !== true) {
-    errors.push("builder cannot hold two independent assemblies")
+    errors.push("build environment cannot hold two independent assemblies")
   }
   if (capability?.workspaceCapacityProven !== true) {
-    errors.push("builder workspace capacity is unproven")
+    errors.push("build workspace capacity is unproven")
   }
   if (capability?.toolchainLockVerified !== true) {
-    errors.push("builder toolchain lock is unverified")
+    errors.push("build toolchain lock is unverified")
   }
   const updatedAt = Date.parse(capability?.trivyDatabaseUpdatedAt ?? "")
   const ageHours = (now.getTime() - updatedAt) / 3_600_000

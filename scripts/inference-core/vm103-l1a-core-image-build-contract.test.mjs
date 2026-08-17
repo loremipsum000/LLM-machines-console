@@ -3,7 +3,7 @@ import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import test from "node:test"
-import { validateBuilderCapability } from "../../infra/release/validate-core-image-build-contract.mjs"
+import { validateBuildCapability } from "../../infra/release/validate-core-image-build-contract.mjs"
 
 const root = resolve(import.meta.dirname, "../..")
 const evidence = readJson(
@@ -35,7 +35,7 @@ test("VM103-L1A binds the credential-free build contract", () => {
 
 test("VM103-L1A records the current workstation as a fail-closed blocker", () => {
   const preflight = evidence.currentWorkstationPreflight
-  const errors = validateBuilderCapability(
+  const errors = validateBuildCapability(
     {
       operatingSystem: preflight.operatingSystem,
       architecture: preflight.architecture,
@@ -52,7 +52,10 @@ test("VM103-L1A records the current workstation as a fail-closed blocker", () =>
     errors.join("\n"),
     /not Linux|not amd64|not native|two independent|unproven|unverified|72-hour/,
   )
-  assert.equal(preflight.result, "BLOCKED_NO_ADMITTED_NATIVE_AMD64_BUILDER")
+  assert.equal(
+    preflight.result,
+    "BLOCKED_NO_ADMITTED_NATIVE_AMD64_BUILD_ENVIRONMENT",
+  )
 })
 
 test("VM103-L1A creates no image, registry, credential, or deployment output", () => {
@@ -63,7 +66,7 @@ test("VM103-L1A creates no image, registry, credential, or deployment output", (
     credentialsCreated: false,
     deploymentChanged: false,
   })
-  assert.equal(evidence.nextPackage.requiresApprovedBuilder, true)
+  assert.equal(evidence.nextPackage.requiresApprovedBuildEnvironment, true)
 })
 
 function readJson(path) {

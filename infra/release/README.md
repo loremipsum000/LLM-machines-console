@@ -50,7 +50,7 @@ built only from their reviewed downstream source assemblies. The Firecrawl
 search and egress images are imported from the exact source-package platform
 digests. The contract does not contain output digests and cannot generate a
 Core lock by itself. Output admission requires an isolated native linux/amd64
-builder, an exact source-controlled toolchain lock, a Trivy database no older
+build environment, an exact source-controlled toolchain lock, a Trivy database no older
 than 72 hours, enough capacity for two independent complete assemblies, and
 byte-identical results. Emulated builds do not qualify for output admission.
 The build contract permits no credentials, registry mutation, signing, or
