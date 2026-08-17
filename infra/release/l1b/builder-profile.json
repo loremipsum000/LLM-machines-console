@@ -38,6 +38,13 @@
       "mount": "/srv/llmm-l1b/assembly-b"
     }
   ],
+  "installationDiskBoundary": {
+    "systemSlot": "scsi0",
+    "systemVolume": "local-zfs:vm-118-disk-0",
+    "assemblyVolumesDetachedDuringInstallation": true,
+    "assemblyVolumesReattachedAfterInstallation": true,
+    "assemblyVolumesResetOnlyAfterEvidenceSnapshot": true
+  },
   "network": {
     "bridge": "vmbr0",
     "addressAssignment": "private-lab-dhcp",

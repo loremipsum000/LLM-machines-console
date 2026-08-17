@@ -60,6 +60,18 @@ export function validateL1bSource({ profile, toolchain, egress }) {
     errors.push("builder disk ownership differs")
   }
   if (
+    JSON.stringify(profile?.installationDiskBoundary) !==
+    JSON.stringify({
+      systemSlot: "scsi0",
+      systemVolume: "local-zfs:vm-118-disk-0",
+      assemblyVolumesDetachedDuringInstallation: true,
+      assemblyVolumesReattachedAfterInstallation: true,
+      assemblyVolumesResetOnlyAfterEvidenceSnapshot: true,
+    })
+  ) {
+    errors.push("installer disk boundary differs")
+  }
+  if (
     profile?.assembly?.sequential !== true ||
     profile?.assembly?.maximumRootGiB !== 80 ||
     Object.entries(profile?.assembly ?? {}).some(

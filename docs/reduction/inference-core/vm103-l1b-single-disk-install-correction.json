@@ -1,0 +1,42 @@
+{
+  "schema": "llm-machines.vm103-l1b-single-disk-install-correction.v1",
+  "workPackage": "VM103-L1B-P4",
+  "status": "SOURCE_PROVISIONING_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "dde4e36cdf19acb625173b48ee3bdd2f13bd2606",
+    "tree": "81130712ce751ff217e43b677d0378fad113f3db"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "result": "ASSEMBLY_A_ENUMERATED_AS_PRESEED_DEV_SDA",
+    "vmStateAfterObservation": "STOPPED_FAIL_CLOSED",
+    "systemDiskUsedBytes": 483680256,
+    "assemblyAUsedBytesBefore": 57344,
+    "assemblyAUsedBytesAfter": 273924096,
+    "assemblyBUsedBytes": 57344,
+    "capacityOrMemoryFailure": false
+  },
+  "correction": {
+    "installationPhase": "SINGLE_ATTACHED_SYSTEM_DISK",
+    "systemSlot": "scsi0",
+    "systemVolume": "local-zfs:vm-118-disk-0",
+    "assemblyVolumesDetachedAndPreserved": true,
+    "assemblyEvidenceSnapshottedBeforeReset": true,
+    "assemblyVolumesReattachedAfterInstallation": true,
+    "dynamicGuestDiskEnumerationTrusted": false
+  },
+  "boundaries": {
+    "manualInstallerSelectionProhibited": true,
+    "vm118RemainsStoppedUntilProtectedAdmission": true,
+    "otherVmOrWorkloadChanged": false,
+    "productRuntimeChanged": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}

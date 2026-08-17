@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { readFileSync, readdirSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import test from "node:test"
 
@@ -33,12 +33,16 @@ test("L1B predecessor records every fail-closed host and media gate", () => {
 })
 
 test("L1B predecessor preserves exact candidate-era source bytes", () => {
-  const sourceRoot = resolve(root, "infra/release/l1b")
-  const expectedPaths = readdirSync(sourceRoot)
+  const expectedPaths = execFileSync(
+    "git",
+    ["ls-tree", "-r", "--name-only", historicalCandidate, "infra/release/l1b"],
+    { cwd: root, encoding: "utf8" },
+  )
+    .trim()
+    .split("\n")
     .filter(
-      (name) => /\.(?:json|mjs|sh)$/.test(name) && !name.endsWith(".test.mjs"),
+      (path) => /\.(?:json|mjs|sh)$/.test(path) && !path.endsWith(".test.mjs"),
     )
-    .map((name) => `infra/release/l1b/${name}`)
     .sort()
   assert.deepEqual(
     evidence.sourcePackage.files.map(({ path }) => path).sort(),
