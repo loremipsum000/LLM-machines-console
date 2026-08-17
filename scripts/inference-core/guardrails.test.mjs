@@ -1399,6 +1399,20 @@ test("self-describing exclusions are exact and text scanning is extension indepe
   )
 })
 
+test("L1B release tooling is not confused with the retired customer Builder surface", () => {
+  const root = temporaryRoot()
+  const path = "infra/release/l1b/fixture.mjs"
+  writeFixture(
+    root,
+    path,
+    'const role = "builder"\nconst retired = "librechat"\n',
+  )
+  assert.deepEqual(
+    scanForbiddenSurfaces({ root, paths: [path] }).map(({ ruleId }) => ruleId),
+    ["FS104_LIBRECHAT"],
+  )
+})
+
 test("FS103 uses identifier-aware retired-surface boundaries", () => {
   const root = temporaryRoot()
   const negativePath = "tools/fs103-ordinary-words.txt"
