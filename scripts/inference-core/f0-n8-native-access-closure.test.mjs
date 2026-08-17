@@ -8,6 +8,7 @@ import test from "node:test"
 const root = resolve(import.meta.dirname, "../..")
 const closurePath =
   "docs/reduction/inference-core/f0-n8-native-access-closure.json"
+const f0N8CandidateCommit = "3e7f7df90be559dc9439b0001b6a832b9e0b94bb"
 
 test("F0-N8 binds the exact protected native-access history", async () => {
   const closure = await readJson(closurePath)
@@ -172,10 +173,16 @@ test("F0-N8 is governance-only and preserves every later gate", async () => {
     "scripts/inference-core/f0-n8-native-access-closure.test.mjs",
   ])
   assert.deepEqual(
-    git("diff", "--name-only", `${closure.protectedInput.commit}...HEAD`).split(
-      "\n",
-    ),
+    git(
+      "diff",
+      "--name-only",
+      `${closure.protectedInput.commit}...${f0N8CandidateCommit}`,
+    ).split("\n"),
     closure.sourceChangeBoundary.changedPaths,
+  )
+  assert.equal(
+    git("rev-parse", `${f0N8CandidateCommit}^{tree}`),
+    "71208853d15a26b28e028ec8a3c88a54c6d00807",
   )
   assert.equal(closure.sourceChangeBoundary.governanceOnly, true)
   assert.equal(closure.sourceChangeBoundary.productBehaviorChanged, false)
