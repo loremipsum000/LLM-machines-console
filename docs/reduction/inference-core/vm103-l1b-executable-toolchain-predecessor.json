@@ -1,0 +1,139 @@
+{
+  "schema": "llm-machines.vm103-l1b-executable-toolchain-predecessor.v1",
+  "workPackage": "VM103-L1B-P0",
+  "status": "SOURCE_PREDECESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "a002ef9a556c9c2ac4944fe75be5f68bda1ab08e",
+    "tree": "21f454fdd759d9a5b0a068e941a463a3af23d809"
+  },
+  "proxmoxPreflight": {
+    "vmid118": "UNUSED",
+    "vmid118Config": "ABSENT",
+    "vmid118Firewall": "ABSENT",
+    "vmid118ZfsVolumes": "ABSENT",
+    "zfsAvailableBytes": 293331415040,
+    "zfsAvailableGiB": 273.186,
+    "hostMemoryAvailableKiB": 44286824,
+    "hostMemoryAvailableGiB": 42.235,
+    "cpuPressureAvg10": 0,
+    "memoryPressureAvg10": 0,
+    "ioPressureAvg10": 6.02,
+    "loadAverage1": 1.1,
+    "result": "PASS_SERIAL_EXECUTION_REQUIRED"
+  },
+  "debianMedia": {
+    "file": "debian-13.4.0-amd64-netinst.iso",
+    "bytes": 790626304,
+    "sha256": "0b813535dd76f2ea96eff908c65e8521512c92a0631fd41c95756ffd7d4896dc",
+    "signedManifest": "https://cdimage.debian.org/cdimage/archive/13.4.0/amd64/iso-cd/SHA256SUMS",
+    "signatureResult": "GOODSIG_VALID",
+    "signerFingerprint": "DF9B9C49EAA9298432589D76DA87E80D6294BE9B"
+  },
+  "sourcePackage": {
+    "directory": "infra/release/l1b",
+    "componentCount": 13,
+    "files": [
+      {
+        "path": "infra/release/l1b/builder-profile.json",
+        "sha256": "eb9e7e013f42a3847ceb007ad893e340cf34049b4d5718017a01610ed6a3711d"
+      },
+      {
+        "path": "infra/release/l1b/toolchain-lock.json",
+        "sha256": "26a340bb7938bf59a4a83b287b0c809f986840b67c4e1d5d3a14ca5ada29c768"
+      },
+      {
+        "path": "infra/release/l1b/egress-allowlist.json",
+        "sha256": "5940933de418e3afb5fc21b11bbb8173dffb1baf8df953984c8a7d90177c316b"
+      },
+      {
+        "path": "infra/release/l1b/run-core-assembly.mjs",
+        "sha256": "988ec631f23bd207f15324c9abac0548cbbfce1d557d8485143dd15ba86d6b74"
+      },
+      {
+        "path": "infra/release/l1b/normalize-oci-layout.mjs",
+        "sha256": "b54d0b2fdd9ed18241a39604476732d0f8041a637e319cbee3778bac5364aff4"
+      },
+      {
+        "path": "infra/release/l1b/compare-assemblies.mjs",
+        "sha256": "44451297614cf203bada4b6884df96e4020c0aa183c6eef5acb3306a3e30c66e"
+      },
+      {
+        "path": "infra/release/l1b/generate-core-image-lock.mjs",
+        "sha256": "26749d7b0a9f4fc162b6c891c158728474cf7b519fb83f91fcf4576736fdd6ea"
+      },
+      {
+        "path": "infra/release/l1b/bootstrap-builder.sh",
+        "sha256": "3b3bfb907571ab7612c7c98473c10d71084ae61a1cdcaebc930f480092a83bd1"
+      },
+      {
+        "path": "infra/release/l1b/render-proxmox-firewall.mjs",
+        "sha256": "a64c2417d346ecaf17b8cf9708666428e34bb52f646d392db5286a26070a5388"
+      },
+      {
+        "path": "infra/release/l1b/build-preseed-boot-files.sh",
+        "sha256": "2ab061cd9f36c1ec3bcd8ba05f5bb9770cd47b7eba5396a3be513d85f6a1e4d6"
+      },
+      {
+        "path": "infra/release/l1b/fetch-locked-inputs.mjs",
+        "sha256": "69b8c10e7491fba3175a12651a16da1efd2d0b971c779ecc4f1e9c4d0fc4d436"
+      },
+      {
+        "path": "infra/release/l1b/monitor-builder.sh",
+        "sha256": "581a9af344eb01902339d7e70a8744f4800d63764e1616ad8d657f9f693c0135"
+      },
+      {
+        "path": "infra/release/l1b/render-preseed.mjs",
+        "sha256": "9a8e3572f8dd1deb90e7e3097525d75f9557d2b7bca0498090775f8f9e283d71"
+      },
+      {
+        "path": "infra/release/l1b/resolve-egress-hosts.mjs",
+        "sha256": "68ebd2cff0c4191e5b2dfeea8d4674984f964a17be7b18fbdbecdf960acc30c5"
+      },
+      {
+        "path": "infra/release/l1b/run-independent-assembly.sh",
+        "sha256": "6913b4bc877cabbd43782c1c107a489543315a475b8bdeee2b611db624230822"
+      },
+      {
+        "path": "infra/release/l1b/validate-source.mjs",
+        "sha256": "48221133f40f25751d744af9beabe265000fafb90cc4349cd793c4ca885aebc3"
+      },
+      {
+        "path": "infra/release/l1b/verify-toolchain.mjs",
+        "sha256": "e5da368002ebb5de3d703fdca61571c347d75a7788f70ff99d6f5974dc9a45a8"
+      }
+    ]
+  },
+  "boundaries": {
+    "nativeLinuxAmd64": true,
+    "independentAssemblyRoots": 2,
+    "assemblyRootGiB": 80,
+    "sequential": true,
+    "defaultDenyNetwork": true,
+    "keyOnlySsh": true,
+    "credentialsAllowed": false,
+    "registryMutationAllowed": false,
+    "signingAllowed": false,
+    "deploymentAllowed": false,
+    "runtimeActivationAllowed": false
+  },
+  "outputs": {
+    "vmProvisioned": false,
+    "ociArchivesCreated": false,
+    "coreImageLockCreated": false,
+    "registryArtifactsCreated": false,
+    "credentialsCreated": false,
+    "deploymentChanged": false
+  },
+  "nextPackage": {
+    "id": "VM103-L1B",
+    "buildSource": "RESULTING_PROTECTED_INTEGRATION_COMMIT_AND_TREE",
+    "requiresVm118Provisioning": true,
+    "requiresTwoIndependentAssemblies": true,
+    "requiresFinalEvidenceReview": true
+  }
+}

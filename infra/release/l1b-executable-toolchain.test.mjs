@@ -1,0 +1,6 @@
+import "./l1b/compare-assemblies.test.mjs"
+import "./l1b/generate-core-image-lock.test.mjs"
+import "./l1b/normalize-oci-layout.test.mjs"
+import "./l1b/render-preseed.test.mjs"
+import "./l1b/render-proxmox-firewall.test.mjs"
+import "./l1b/validate-source.test.mjs"

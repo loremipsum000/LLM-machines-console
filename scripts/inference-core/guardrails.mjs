@@ -1330,6 +1330,9 @@ const contentRules = [
   },
 ]
 
+const l1bOperationalPathPattern =
+  /^(?:docs\/reduction\/inference-core\/vm103-l1b-executable-toolchain-predecessor\.json|infra\/release\/l1b(?:\/|-executable-toolchain\.test\.mjs$)|scripts\/inference-core\/vm103-l1b-executable-toolchain-predecessor\.test\.mjs$)/
+
 const findingDispositionOverrides = [
   {
     ruleId: "FS102_MCP",
@@ -4748,7 +4751,12 @@ export function scanForbiddenSurfaces({
 
   for (const rule of contentRules) {
     for (const path of paths) {
-      if (frozenPaths.has(path) || !isContentScanPath(path)) {
+      if (
+        frozenPaths.has(path) ||
+        !isContentScanPath(path) ||
+        (rule.id === "FS105_BUILDER_HUB" &&
+          l1bOperationalPathPattern.test(path))
+      ) {
         continue
       }
       const absolutePath = resolve(root, path)

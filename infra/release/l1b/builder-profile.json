@@ -1,0 +1,69 @@
+{
+  "schema": "llm-machines.vm103-l1b-builder-profile.v1",
+  "status": "SOURCE_PROFILE_NOT_PROVISIONED",
+  "containsCredentials": false,
+  "vm": {
+    "vmid": 118,
+    "name": "llmm-vm103-l1b-builder",
+    "architecture": "amd64",
+    "vcpus": 6,
+    "memoryMiB": 24576,
+    "ballooning": false,
+    "onboot": false,
+    "protectionRequiredAfterInstallation": true
+  },
+  "installationMedia": {
+    "distribution": "Debian",
+    "version": "13.4.0",
+    "file": "debian-13.4.0-amd64-netinst.iso",
+    "sha256": "0b813535dd76f2ea96eff908c65e8521512c92a0631fd41c95756ffd7d4896dc",
+    "checksumSignerFingerprint": "DF9B9C49EAA9298432589D76DA87E80D6294BE9B"
+  },
+  "disks": [
+    { "id": "system", "sizeGiB": 40, "mount": "/" },
+    {
+      "id": "assembly-a",
+      "sizeGiB": 80,
+      "mount": "/srv/llmm-l1b/assembly-a"
+    },
+    {
+      "id": "assembly-b",
+      "sizeGiB": 80,
+      "mount": "/srv/llmm-l1b/assembly-b"
+    }
+  ],
+  "network": {
+    "bridge": "vmbr0",
+    "addressAssignment": "private-lab-dhcp",
+    "publicDns": false,
+    "publicListeners": false,
+    "operatorSsh": {
+      "user": "dberisha",
+      "authentication": "key-only",
+      "sourceCidr": "10.93.74.0/24"
+    },
+    "policyIn": "DROP",
+    "policyOut": "DROP",
+    "egressAllowlist": "infra/release/l1b/egress-allowlist.json"
+  },
+  "assembly": {
+    "sequential": true,
+    "maximumRootGiB": 80,
+    "sharedCheckout": false,
+    "sharedBuildkit": false,
+    "sharedDockerData": false,
+    "sharedCache": false,
+    "sharedTemporaryRoot": false,
+    "sharedOutputRoot": false,
+    "dockerOnSystemDisk": false
+  },
+  "forbidden": [
+    "registry credentials",
+    "signing material",
+    "production secrets",
+    "customer data",
+    "registry mutation",
+    "deployment",
+    "runtime activation"
+  ]
+}
