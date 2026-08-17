@@ -27,6 +27,7 @@ test("VM103-L0 binds the exact protected source-only input", () => {
 test("VM103-L0 reconciles the retained native boundary without activation", () => {
   const plan = readJson("infra/release/release-plan.json")
   const inventory = readJson("infra/release/core-image-inventory.json")
+  const deployment = readJson("infra/deployment/vm103-deployment-contract.json")
   const components = new Map(
     inventory.components.map((component) => [component.id, component]),
   )
@@ -48,6 +49,12 @@ test("VM103-L0 reconciles the retained native boundary without activation", () =
     "product-edge-identity-and-scoped-admin-sso",
   )
   assert.deepEqual(inventory.excluded, ["portainer"])
+  assert.equal(
+    deployment.releaseBinding.sourceInventory.sha256,
+    `sha256:${sha256(
+      readFileSync(resolve(root, "infra/release/core-image-inventory.json")),
+    )}`,
+  )
   assert.equal(
     inventory.components.some(({ id }) => /portainer/i.test(id)),
     false,

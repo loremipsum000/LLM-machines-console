@@ -30,6 +30,7 @@
     "scope": [
       "release-plan qualification boundary",
       "Core image customer-exposure inventory",
+      "VM103 deployment-contract Core inventory fingerprint",
       "credential-free clean-seed commissioning metadata",
       "directly dependent validators and tests"
     ],
