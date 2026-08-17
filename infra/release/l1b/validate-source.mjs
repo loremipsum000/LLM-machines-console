@@ -142,8 +142,16 @@ export function validateL1bSource({ profile, toolchain, egress }) {
       "file",
       "sha256",
       "checksumSignerFingerprint",
+      "attachment",
     ]) ||
-    profile.installationMedia.sha256 !== toolchain.installationMediaSha256
+    profile.installationMedia.sha256 !== toolchain.installationMediaSha256 ||
+    JSON.stringify(profile.installationMedia.attachment) !==
+      JSON.stringify({
+        bus: "ide2",
+        mode: "read-only-cdrom",
+        requiredDuringInstallation: true,
+        removeAfterInstallation: true,
+      })
   ) {
     errors.push("installation media and toolchain lock disagree")
   }

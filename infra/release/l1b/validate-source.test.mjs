@@ -30,3 +30,13 @@ test("broadened egress and shared assembly state fail closed", () => {
   assert.match(errors, /egress allowlist/)
   assert.match(errors, /independent assembly/)
 })
+
+test("installation requires the exact verified read-only media attachment", () => {
+  const source = clone(readL1bSource())
+  source.profile.installationMedia.attachment.bus = "sata0"
+  source.profile.installationMedia.attachment.removeAfterInstallation = false
+  assert.match(
+    validateL1bSource(source).join("\n"),
+    /installation media and toolchain lock disagree/,
+  )
+})
