@@ -14,7 +14,7 @@ function fixtureDig(directory) {
   const path = join(directory, "dig")
   writeFileSync(
     path,
-    '#!/bin/sh\nprintf "%s\\n" "$@" >> "$FAKE_DIG_LOG"\nprintf "example.invalid.\\n192.0.2.2\\n192.0.2.1\\n192.0.2.2\\n"\n',
+    '#!/bin/sh\nprintf "%s\\n" "$@" >> "$FAKE_DIG_LOG"\nprintf "example.invalid.\\n192.0.2.109\\n192.0.2.2\\n192.0.2.34\\n192.0.2.109\\n"\n',
     { mode: 0o700 },
   )
   chmodSync(path, 0o700)
@@ -39,10 +39,15 @@ test("egress hosts resolve only through the declared deployment resolver", () =>
   assert.equal(result.status, 0, result.stderr)
 
   const resolution = JSON.parse(readFileSync(output, "utf8"))
-  assert.equal(resolution.schema, "llm-machines.vm103-l1b-egress-resolution.v2")
+  assert.equal(resolution.schema, "llm-machines.vm103-l1b-egress-resolution.v3")
   assert.equal(resolution.dnsResolver, policy.dnsResolver)
+  assert.equal(resolution.addressOrder, "IPV4_NUMERIC_ASCENDING")
   for (const host of policy.hosts) {
-    assert.deepEqual(resolution.resolutions[host], ["192.0.2.1", "192.0.2.2"])
+    assert.deepEqual(resolution.resolutions[host], [
+      "192.0.2.2",
+      "192.0.2.34",
+      "192.0.2.109",
+    ])
   }
 
   const invocations = readFileSync(log, "utf8").split("\n")

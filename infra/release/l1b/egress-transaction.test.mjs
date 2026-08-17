@@ -22,9 +22,10 @@ const bindingRenderer = readFileSync(
 
 function resolution(offset = 0) {
   return {
-    schema: "llm-machines.vm103-l1b-egress-resolution.v2",
+    schema: "llm-machines.vm103-l1b-egress-resolution.v3",
     policySha256: `sha256:${createHash("sha256").update(policyBytes).digest("hex")}`,
     dnsResolver: policy.dnsResolver,
+    addressOrder: policy.addressOrder,
     resolutions: Object.fromEntries(
       policy.hosts.map((host, index) => [
         host,
@@ -33,6 +34,35 @@ function resolution(offset = 0) {
     ),
   }
 }
+
+test("transaction accepts only the shared numeric IPv4 order", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "llmm-l1b-transaction-"))
+  const numeric = resolution()
+  numeric.resolutions[policy.hosts[0]] = [
+    "192.0.2.2",
+    "192.0.2.34",
+    "192.0.2.109",
+  ]
+  createEgressTransaction(
+    writeResolution(temporary, "numeric.json", numeric),
+    join(temporary, "numeric-transaction"),
+  )
+
+  const lexical = structuredClone(numeric)
+  lexical.resolutions[policy.hosts[0]] = [
+    "192.0.2.109",
+    "192.0.2.2",
+    "192.0.2.34",
+  ]
+  assert.throws(
+    () =>
+      createEgressTransaction(
+        writeResolution(temporary, "lexical.json", lexical),
+        join(temporary, "lexical-transaction"),
+      ),
+    /invalid or non-canonical/,
+  )
+})
 
 function writeResolution(directory, name, value) {
   const path = join(directory, name)

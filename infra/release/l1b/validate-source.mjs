@@ -146,6 +146,7 @@ export function validateL1bSource({ profile, toolchain, egress }) {
     egress?.defaultPolicy !== "DROP" ||
     JSON.stringify(egress?.transport) !== JSON.stringify(["tcp/443"]) ||
     egress?.dnsResolver !== "10.33.74.1" ||
+    egress?.addressOrder !== "IPV4_NUMERIC_ASCENDING" ||
     !Array.isArray(egress?.hosts) ||
     egress.hosts.length === 0 ||
     [...egress.hosts].sort().join("\n") !== egress.hosts.join("\n") ||

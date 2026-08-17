@@ -9,10 +9,13 @@ import subprocess
 
 
 DIRECTORY = pathlib.Path(__file__).resolve().parent
+CANONICAL_IPV4_ORDER = "IPV4_NUMERIC_ASCENDING"
 
 
 def resolve_hosts(policy_bytes: bytes, dig_path: pathlib.Path) -> dict:
     policy = json.loads(policy_bytes)
+    if policy.get("addressOrder") != CANONICAL_IPV4_ORDER:
+        raise RuntimeError("egress address order contract differs")
     resolver = policy["dnsResolver"]
     resolutions = {}
     for host in policy["hosts"]:
@@ -42,9 +45,10 @@ def resolve_hosts(policy_bytes: bytes, dig_path: pathlib.Path) -> dict:
             raise RuntimeError(f"{host} has no IPv4 address")
         resolutions[host] = addresses
     return {
-        "schema": "llm-machines.vm103-l1b-egress-resolution.v2",
+        "schema": "llm-machines.vm103-l1b-egress-resolution.v3",
         "policySha256": f"sha256:{hashlib.sha256(policy_bytes).hexdigest()}",
         "dnsResolver": resolver,
+        "addressOrder": CANONICAL_IPV4_ORDER,
         "resolutions": resolutions,
     }
 

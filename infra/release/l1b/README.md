@@ -36,6 +36,11 @@ Docker bridge. BuildKit, image import, source fetch, and scan containers do not
 use host networking. Substituting a second, individually valid DNS observation
 therefore fails the transaction hash before bootstrap or assembly starts.
 
+The allowlist, resolver output, JavaScript transaction validator, and Python
+guest binding validator share the explicit `IPV4_NUMERIC_ASCENDING` address
+order contract. A resolution using lexical ordering or a different declared
+rule fails before firewall installation or guest bootstrap.
+
 The official Debian checksum manifest and signature must be verified before
 `render-preseed.mjs` and `build-preseed-boot-files.sh` add the operator public
 key to a deterministic installer initrd. VM118 boots the kernel and derived

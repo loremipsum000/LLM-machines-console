@@ -5,6 +5,7 @@
   "defaultPolicy": "DROP",
   "transport": ["tcp/443"],
   "dnsResolver": "10.33.74.1",
+  "addressOrder": "IPV4_NUMERIC_ASCENDING",
   "hosts": [
     "apk.cgr.dev",
     "auth.docker.io",
