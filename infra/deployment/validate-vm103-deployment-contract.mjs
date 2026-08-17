@@ -161,13 +161,27 @@ function findCredentialValue(value, path = "contract") {
 
 function validateReleaseBinding(errors, contract, root) {
   const binding = contract.releaseBinding
+  const buildContract = validateSourceBinding(
+    errors,
+    root,
+    binding?.buildContract,
+    "Core image build contract",
+  )
   const inventory = validateSourceBinding(
     errors,
     root,
     binding?.sourceInventory,
     "Core image inventory",
   )
-  if (!inventory) return
+  if (!buildContract || !inventory) return
+  if (
+    buildContract.schema !== "llm-machines.core-image-build-contract.v1" ||
+    buildContract.status !== "SOURCE_CONTRACT_NOT_EXECUTED" ||
+    buildContract.containsCredentials !== false ||
+    buildContract.outputs?.deploymentAllowed !== false
+  ) {
+    errors.push("Core image build contract is not source-only and inactive")
+  }
   const ids = inventory.components?.map(({ id }) => id) ?? []
   if (!sameValues(ids, expectedComponents)) {
     errors.push(

@@ -42,6 +42,20 @@ lock.
 These files are source and packaging contracts only. They do not build, mirror,
 sign, deploy, activate, or runtime-qualify an image.
 
+`core-image-build-contract.json` fixes the source-to-OCI build modes for all 13
+retained Core images. Third-party images are imported from their exact approved
+linux/amd64 platform manifests. Console Web and BFF are built from the checked
+out protected integration source. LiteLLM and the Firecrawl API and browser are
+built only from their reviewed downstream source assemblies. The Firecrawl
+search and egress images are imported from the exact source-package platform
+digests. The contract does not contain output digests and cannot generate a
+Core lock by itself. Output admission requires an isolated native linux/amd64
+build environment, an exact source-controlled toolchain lock, a Trivy database no older
+than 72 hours, enough capacity for two independent complete assemblies, and
+byte-identical results. Emulated builds do not qualify for output admission.
+The build contract permits no credentials, registry mutation, signing, or
+deployment.
+
 ## Deterministic release manifest
 
 `release-plan.json` fixes the source-only PR-12 packaging envelope. The Core
