@@ -32,6 +32,12 @@ initrd, and preseed, while the installer reads its required packages from the
 same verified media. The CD-ROM is removed only after installation completes
 and before the normal disk boot.
 
+The preseed binds Debian's protocol-specific `mirror/https/*` questions to
+`deb.debian.org`, `/debian`, and the `trixie` suite. The stale
+`mirror/http/*` namespace is rejected because it does not answer the exact
+questions selected by the HTTPS protocol and would leave installation
+interactive.
+
 Each assembly fetches and verifies its own locked source archives, assembles
 the reviewed LiteLLM and Firecrawl source, imports third-party images by exact
 platform digest, builds Product and downstream outputs with an exact BuildKit

@@ -37,10 +37,11 @@ d-i netcfg/choose_interface select auto
 d-i netcfg/get_hostname string llmm-vm103-l1b-builder
 d-i netcfg/get_domain string local
 d-i mirror/country string manual
-d-i mirror/protocol string https
-d-i mirror/http/hostname string deb.debian.org
-d-i mirror/http/directory string /debian
-d-i mirror/http/proxy string
+d-i mirror/protocol select https
+d-i mirror/https/hostname string deb.debian.org
+d-i mirror/https/directory string /debian
+d-i mirror/https/proxy string
+d-i mirror/suite select trixie
 d-i passwd/root-login boolean false
 d-i passwd/user-fullname string LLM Machines Builder Operator
 d-i passwd/username string dberisha
