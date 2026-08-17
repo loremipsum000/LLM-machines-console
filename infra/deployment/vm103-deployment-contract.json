@@ -4,7 +4,9 @@
   "containsCredentials": false,
   "protectedInput": {
     "commit": "e994a738aff6f1d85afc82a2dc5566c62dca9fd8",
-    "tree": "71208853d15a26b28e028ec8a3c88a54c6d00807"
+    "tree": "71208853d15a26b28e028ec8a3c88a54c6d00807",
+    "role": "SOURCE_PACKAGE_BASE_ONLY",
+    "deployableReleaseIdentity": false
   },
   "qualification": {
     "productAccepted": false,
@@ -59,6 +61,30 @@
       "firecrawl-search",
       "firecrawl-egress"
     ],
+    "deployableReleaseSource": {
+      "status": "DERIVED_FROM_CHECKED_OUT_PROTECTED_INTEGRATION",
+      "commit": "CHECKED_OUT_PROTECTED_INTEGRATION_COMMIT",
+      "tree": "CHECKED_OUT_PROTECTED_INTEGRATION_TREE",
+      "mustEqualCheckedOutReleaseInput": true,
+      "mustBeProtectedIntegration": true,
+      "packageBaseMayBeUsedAsFinalIdentity": false
+    },
+    "requiredArtifactsNotPresent": {
+      "status": "NOT_PRESENT_IN_THIS_SOURCE_PACKAGE",
+      "deploymentAllowedWhileMissing": false,
+      "outputs": [
+        "locks/core-image-lock.json",
+        "config/vm103-compose.yaml",
+        "config/placement.env",
+        "commissioning/deployment-placement.json",
+        "release-manifest.json",
+        "release-signature.json",
+        "public-release-trust.json",
+        "verified-core-payload",
+        "credential-free-mirror-exports",
+        "commissioning-secret-files"
+      ]
+    },
     "finalCoreLockRequired": true,
     "deploymentPlacementRequired": true,
     "tagOnlyReferencesAllowed": false,

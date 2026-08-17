@@ -56,6 +56,19 @@ const releaseLockRequiredComponents = [
   "firecrawl-egress",
 ]
 
+const requiredArtifactsNotPresent = [
+  "locks/core-image-lock.json",
+  "config/vm103-compose.yaml",
+  "config/placement.env",
+  "commissioning/deployment-placement.json",
+  "release-manifest.json",
+  "release-signature.json",
+  "public-release-trust.json",
+  "verified-core-payload",
+  "credential-free-mirror-exports",
+  "commissioning-secret-files",
+]
+
 const expectedAuthorities = [
   "console",
   "api",
@@ -181,6 +194,35 @@ function validateReleaseBinding(errors, contract, root) {
     )
   ) {
     errors.push("release-lock-required component set differs")
+  }
+  if (
+    binding?.deployableReleaseSource?.status !==
+      "DERIVED_FROM_CHECKED_OUT_PROTECTED_INTEGRATION" ||
+    binding?.deployableReleaseSource?.commit !==
+      "CHECKED_OUT_PROTECTED_INTEGRATION_COMMIT" ||
+    binding?.deployableReleaseSource?.tree !==
+      "CHECKED_OUT_PROTECTED_INTEGRATION_TREE" ||
+    binding?.deployableReleaseSource?.mustEqualCheckedOutReleaseInput !==
+      true ||
+    binding?.deployableReleaseSource?.mustBeProtectedIntegration !== true ||
+    binding?.deployableReleaseSource?.packageBaseMayBeUsedAsFinalIdentity !==
+      false
+  ) {
+    errors.push(
+      "deployable release source must derive from the checked-out protected integration",
+    )
+  }
+  if (
+    binding?.requiredArtifactsNotPresent?.status !==
+      "NOT_PRESENT_IN_THIS_SOURCE_PACKAGE" ||
+    binding?.requiredArtifactsNotPresent?.deploymentAllowedWhileMissing !==
+      false ||
+    !sameValues(
+      binding?.requiredArtifactsNotPresent?.outputs ?? [],
+      requiredArtifactsNotPresent,
+    )
+  ) {
+    errors.push("required deployment artifact absence contract differs")
   }
   for (const component of inventory.components ?? []) {
     if (
@@ -551,7 +593,9 @@ export function validateVm103DeploymentContract(contract, root) {
     contract?.protectedInput?.commit !==
       "e994a738aff6f1d85afc82a2dc5566c62dca9fd8" ||
     contract?.protectedInput?.tree !==
-      "71208853d15a26b28e028ec8a3c88a54c6d00807"
+      "71208853d15a26b28e028ec8a3c88a54c6d00807" ||
+    contract?.protectedInput?.role !== "SOURCE_PACKAGE_BASE_ONLY" ||
+    contract?.protectedInput?.deployableReleaseIdentity !== false
   ) {
     errors.push("protected Product input differs")
   }

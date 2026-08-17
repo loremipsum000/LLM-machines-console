@@ -1,10 +1,14 @@
 # VM103 source-only deployment contract
 
-`vm103-deployment-contract.json` binds the first durable pre-Genesis Core
-placement to protected Product input `e994a738aff6f1d85afc82a2dc5566c62dca9fd8`,
-tree `71208853d15a26b28e028ec8a3c88a54c6d00807`. It is a source contract, not a
-deployment record. Product acceptance and runtime qualification remain false,
-contract activation remains inactive, and Q0 and Genesis remain unstarted.
+`vm103-deployment-contract.json` was authored from protected Product input
+`e994a738aff6f1d85afc82a2dc5566c62dca9fd8`, tree
+`71208853d15a26b28e028ec8a3c88a54c6d00807`. That identity is the source
+package base only and is explicitly not a deployable release identity. A
+future release manifest must derive its commit and tree from the exact
+checked-out protected integration used for assembly. It is a source contract,
+not a deployment record. Product acceptance and runtime qualification remain
+false, contract activation remains inactive, and Q0 and Genesis remain
+unstarted.
 
 The contract reuses the existing release inventory, release placement,
 storage, backup, ingress, clean-room installation, and rollback formats. It
@@ -16,6 +20,18 @@ They must never fall back to a tag or a historical lab image.
 The native-ingress profile's embedded candidate-era status remains historical
 because its admitted fingerprint is immutable; F0-N8 is the current protected
 source-closure record.
+
+## Outputs not present in this package
+
+This package does not contain a final Core image lock, VM103 Compose payload,
+non-secret placement environment, commissioning placement record, release
+manifest, release signature, public trust material, verified Core payload,
+credential-free mirror exports, or commissioned secret files. The exact
+expected output identifiers are recorded under
+`releaseBinding.requiredArtifactsNotPresent`. Deployment remains forbidden
+while any one is missing. The next source package must generate and validate
+them without substituting `e994a738...` for its eventual protected integration
+commit and tree.
 
 ## Placement
 

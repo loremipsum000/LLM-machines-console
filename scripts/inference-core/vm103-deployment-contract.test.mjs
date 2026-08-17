@@ -44,6 +44,25 @@ test("release identities and unresolved build outputs fail closed", () => {
     }),
     /deploymentAllowedBeforeEveryDigestIsVerified/,
   )
+  assert.match(
+    changed((value) => {
+      value.releaseBinding.deployableReleaseSource.commit =
+        value.protectedInput.commit
+    }),
+    /deployable release source/,
+  )
+  assert.match(
+    changed((value) => {
+      value.releaseBinding.requiredArtifactsNotPresent.outputs.pop()
+    }),
+    /artifact absence/,
+  )
+  assert.match(
+    changed((value) => {
+      value.releaseBinding.requiredArtifactsNotPresent.deploymentAllowedWhileMissing = true
+    }),
+    /artifact absence/,
+  )
 })
 
 test("native publication, retired surfaces, and gateway bypass fail closed", () => {
