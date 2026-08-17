@@ -86,6 +86,16 @@ export function validateL1bSource({ profile, toolchain, egress }) {
       errors.push(`${entry.id} host tool is not content-addressed`)
     }
   }
+  const hostToolsById = new Map(
+    (toolchain?.hostTools ?? []).map((entry) => [entry.id, entry]),
+  )
+  if (
+    hostToolsById.get("pnpm")?.url !==
+      "https://registry.npmjs.org/pnpm/-/pnpm-10.0.0.tgz" ||
+    !sha256Pattern.test(hostToolsById.get("pnpm")?.sha256 ?? "")
+  ) {
+    errors.push("pnpm is not byte-pinned")
+  }
   for (const entry of toolchain?.dockerPackages ?? []) {
     if (
       !entry.url?.startsWith("https://download.docker.com/") ||

@@ -58,8 +58,18 @@ ln -s "$node_root/bin/node" /usr/local/bin/node
 ln -s "$node_root/bin/corepack" /usr/local/bin/corepack
 ln -s "$node_root/bin/npm" /usr/local/bin/npm
 ln -s "$node_root/bin/npx" /usr/local/bin/npx
-corepack enable --install-directory /usr/local/bin
-corepack prepare pnpm@10.0.0 --activate
+pnpm_archive_url=$(jq -r '.hostTools[] | select(.id == "pnpm") | .url' "$toolchain_lock")
+pnpm_archive=$input_root/$(basename "$pnpm_archive_url")
+pnpm_root=/opt/llmm/pnpm-10.0.0
+"$node_root/bin/npm" install \
+  --global \
+  --prefix "$pnpm_root" \
+  --ignore-scripts \
+  --no-audit \
+  --no-fund \
+  "$pnpm_archive"
+ln -s "$pnpm_root/bin/pnpm" /usr/local/bin/pnpm
+ln -s "$pnpm_root/bin/pnpx" /usr/local/bin/pnpx
 
 docker_debs=
 for package_id in containerd.io docker-ce-cli docker-ce docker-buildx-plugin; do

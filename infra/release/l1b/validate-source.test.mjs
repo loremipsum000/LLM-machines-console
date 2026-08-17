@@ -14,10 +14,11 @@ test("mutable or incomplete tool identities fail closed", () => {
   const source = clone(readL1bSource())
   source.toolchain.containerTools[0].indexDigest = "latest"
   source.toolchain.dockerPackages[0].sha256 = "missing"
-  assert.match(
-    validateL1bSource(source).join("\n"),
-    /buildkit is not immutable|docker-ce is not immutable/,
-  )
+  source.toolchain.hostTools.find(({ id }) => id === "pnpm").sha256 = "missing"
+  const errors = validateL1bSource(source).join("\n")
+  assert.match(errors, /buildkit is not immutable/)
+  assert.match(errors, /docker-ce is not immutable/)
+  assert.match(errors, /pnpm host tool is not content-addressed/)
 })
 
 test("broadened egress and shared assembly state fail closed", () => {

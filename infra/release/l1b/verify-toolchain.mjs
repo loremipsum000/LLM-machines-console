@@ -27,7 +27,7 @@ export function verifyHostToolchain(run = command) {
     schema: "llm-machines.vm103-l1b-toolchain-observation.v1",
     platform: "linux/amd64",
     node: run("node", ["--version"]),
-    pnpm: run("corepack", ["pnpm", "--version"]),
+    pnpm: run("pnpm", ["--version"]),
     zstd: run("zstd", ["--version"]),
     docker: run("docker", ["version", "--format", "{{.Client.Version}}"]),
     buildx: run("docker", ["buildx", "version"]),

@@ -11,7 +11,12 @@
       "url": "https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-x64.tar.xz",
       "sha256": "d60acfe00a2932254bb0ad20e01b0d74397a0875595de719654b214f4b03f307"
     },
-    { "id": "pnpm", "version": "10.0.0", "source": "corepack" },
+    {
+      "id": "pnpm",
+      "version": "10.0.0",
+      "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.0.0.tgz",
+      "sha256": "43abf6e720fb7bc53c591b0862605c7d323d0a9d2dd33bcac07b062e13cf4948"
+    },
     { "id": "zstd", "version": "1.5.7", "source": "debian" }
   ],
   "dockerPackages": [

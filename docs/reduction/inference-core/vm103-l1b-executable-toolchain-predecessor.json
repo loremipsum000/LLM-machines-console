@@ -44,7 +44,7 @@
       },
       {
         "path": "infra/release/l1b/toolchain-lock.json",
-        "sha256": "26a340bb7938bf59a4a83b287b0c809f986840b67c4e1d5d3a14ca5ada29c768"
+        "sha256": "24ba76bd0c744f005f5ce93cee1a99b688bc704819139ca6fd97e8c048c8e64e"
       },
       {
         "path": "infra/release/l1b/egress-allowlist.json",
@@ -68,7 +68,7 @@
       },
       {
         "path": "infra/release/l1b/bootstrap-builder.sh",
-        "sha256": "3b3bfb907571ab7612c7c98473c10d71084ae61a1cdcaebc930f480092a83bd1"
+        "sha256": "110bb3b2106bddba03b3e85e74026bb28ada090bd8c69d87933af9d2f56efdae"
       },
       {
         "path": "infra/release/l1b/render-proxmox-firewall.mjs",
@@ -100,11 +100,11 @@
       },
       {
         "path": "infra/release/l1b/validate-source.mjs",
-        "sha256": "48221133f40f25751d744af9beabe265000fafb90cc4349cd793c4ca885aebc3"
+        "sha256": "9d5c13ca90957f260f1cef69ebf700567482a28b8f1617c996091ee39b663b3f"
       },
       {
         "path": "infra/release/l1b/verify-toolchain.mjs",
-        "sha256": "e5da368002ebb5de3d703fdca61571c347d75a7788f70ff99d6f5974dc9a45a8"
+        "sha256": "e48e6ee232298759ed7352692936dd6163014e7e6ef1c26568bd52d7e88bb69f"
       }
     ]
   },
