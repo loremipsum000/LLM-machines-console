@@ -38,3 +38,10 @@ test("bootstrap keeps Debian package retrieval inside the HTTPS-only IPv4 policy
   assert.match(script, /APT::Update::Error-Mode "any";/)
   assert.match(script, /prohibited tcp\/80 egress/)
 })
+
+test("bootstrap accepts the preseed-owned authorized key without self-copy", () => {
+  assert.match(script, /if \[ "\$ssh_public_key" -ef "\$authorized_keys" \]/)
+  assert.match(script, /chmod 0600 "\$authorized_keys"/)
+  assert.match(script, /install -m 0600 "\$ssh_public_key" "\$authorized_keys"/)
+  assert.match(script, /chown -R dberisha:dberisha \/home\/dberisha\/\.ssh/)
+})

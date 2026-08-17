@@ -1,0 +1,37 @@
+{
+  "schema": "llm-machines.vm103-l1b-ssh-key-custody-correction.v1",
+  "workPackage": "VM103-L1B-P8",
+  "status": "SOURCE_BOOTSTRAP_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "79b74105b55dda7ce624340198bdef151a2d5789",
+    "tree": "babbf9c417c780482f3e206daeb28b6a9ed841e6"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "result": "AUTHORIZED_KEY_SELF_COPY_REJECTED",
+    "cause": "PRESEED_KEY_SOURCE_EQUALS_BOOTSTRAP_DESTINATION",
+    "assemblyVolumesFormatted": false,
+    "vmStateAfterObservation": "STOPPED_PARTIAL_BOOTSTRAP_PRESERVED",
+    "failedAttemptSnapshot": "rpool/data/vm-118-disk-0@failed-bootstrap-ssh-self-copy-79b7410"
+  },
+  "correction": {
+    "sameFileUsesPermissionNormalization": true,
+    "differentFileUsesVerifiedInstall": true,
+    "keyOnlyAccessPreserved": true,
+    "passwordAuthenticationEnabled": false,
+    "sharedCredentialIntroduced": false
+  },
+  "boundaries": {
+    "assemblyVolumesRemainUnformatted": true,
+    "otherVmOrWorkloadChanged": false,
+    "productRuntimeChanged": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}
