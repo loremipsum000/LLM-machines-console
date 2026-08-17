@@ -41,6 +41,85 @@ def load_and_validate(resolution_path: pathlib.Path) -> tuple[dict, dict]:
     return policy, resolution
 
 
+def sha256(path: pathlib.Path) -> str:
+    return f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
+
+
+def transaction_firewall(policy: dict, resolution: dict, profile: dict) -> str:
+    by_address = {}
+    for host in policy["hosts"]:
+        for address in resolution["resolutions"][host]:
+            by_address[address] = host
+    lines = [
+        "[OPTIONS]",
+        "enable: 1",
+        "policy_in: DROP",
+        "policy_out: DROP",
+        "log_level_in: warning",
+        "log_level_out: warning",
+        "",
+        "[IPSET llmm-l1b-egress]",
+    ]
+    for address in sorted(
+        by_address, key=lambda value: tuple(int(part) for part in value.split("."))
+    ):
+        lines.append(f"{address} # {by_address[address]}")
+    lines.extend(
+        [
+            "",
+            "[RULES]",
+            f"IN ACCEPT -source {profile['network']['operatorSsh']['sourceCidr']} -p tcp -dport 22 -log nolog",
+            "IN ACCEPT -source 10.33.74.1 -p udp -sport 67 -dport 68 -log nolog",
+            "OUT ACCEPT -dest 255.255.255.255 -p udp -sport 68 -dport 67 -log nolog",
+            f"OUT ACCEPT -dest {policy['dnsResolver']} -p udp -dport 53 -log nolog",
+            f"OUT ACCEPT -dest {policy['dnsResolver']} -p tcp -dport 53 -log nolog",
+            f"OUT ACCEPT -dest {policy['dnsResolver']} -p udp -dport 123 -log nolog",
+            "OUT ACCEPT -dest +llmm-l1b-egress -p tcp -dport 443 -log nolog",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def verify_transaction(transaction_directory: pathlib.Path) -> None:
+    expected_names = ["egress-resolution.json", "transaction.json", "vm118.firewall"]
+    if sorted(path.name for path in transaction_directory.iterdir()) != expected_names:
+        raise RuntimeError("egress transaction inventory is not exact")
+    resolution_path = transaction_directory / "egress-resolution.json"
+    firewall_path = transaction_directory / "vm118.firewall"
+    manifest_path = transaction_directory / "transaction.json"
+    for path in (resolution_path, firewall_path, manifest_path):
+        if not path.is_file() or path.is_symlink():
+            raise RuntimeError("egress transaction contains a non-regular file")
+    policy, resolution = load_and_validate(resolution_path)
+    profile_path = DIRECTORY / "builder-profile.json"
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if list(manifest.keys()) != [
+        "schema",
+        "vmid",
+        "policySha256",
+        "profileSha256",
+        "resolutionSha256",
+        "firewallSha256",
+    ]:
+        raise RuntimeError("egress transaction manifest is invalid")
+    if (
+        manifest["schema"] != "llm-machines.vm103-l1b-egress-transaction.v1"
+        or manifest["vmid"] != 118
+        or manifest["policySha256"]
+        != f"sha256:{hashlib.sha256((DIRECTORY / 'egress-allowlist.json').read_bytes()).hexdigest()}"
+        or manifest["profileSha256"] != sha256(profile_path)
+        or manifest["resolutionSha256"] != sha256(resolution_path)
+        or manifest["firewallSha256"] != sha256(firewall_path)
+    ):
+        raise RuntimeError("egress transaction hash binding failed")
+    if firewall_path.read_text(encoding="utf-8") != transaction_firewall(
+        policy, resolution, profile
+    ):
+        raise RuntimeError("egress transaction firewall differs from resolution")
+
+
 def hosts_binding(policy: dict, resolution: dict) -> str:
     lines = [BEGIN_MARKER]
     for host in policy["hosts"]:
@@ -106,12 +185,30 @@ def write_exclusive(path: pathlib.Path, content: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--resolution", required=True, type=pathlib.Path)
-    parser.add_argument("--format", choices=("hosts", "dnsmasq", "verify-system"), required=True)
+    parser.add_argument("--resolution", type=pathlib.Path)
+    parser.add_argument(
+        "--format",
+        choices=("hosts", "dnsmasq", "verify-system", "verify-transaction"),
+        required=True,
+    )
     parser.add_argument("--output", type=pathlib.Path)
     parser.add_argument("--interface")
     parser.add_argument("--listen-address")
+    parser.add_argument("--transaction-directory", type=pathlib.Path)
     arguments = parser.parse_args()
+    if arguments.format == "verify-transaction":
+        if (
+            not arguments.transaction_directory
+            or arguments.output
+            or arguments.interface
+            or arguments.listen_address
+            or arguments.resolution
+        ):
+            raise RuntimeError("transaction verification accepts no rendering output")
+        verify_transaction(arguments.transaction_directory)
+        return
+    if arguments.transaction_directory or not arguments.resolution:
+        raise RuntimeError("rendering and system verification require one resolution")
     policy, resolution = load_and_validate(arguments.resolution)
     if arguments.format == "verify-system":
         if arguments.output or arguments.interface or arguments.listen_address:

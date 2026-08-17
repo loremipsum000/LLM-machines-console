@@ -21,14 +21,18 @@ converting it into a VM-specific default-deny firewall. The rendered firewall
 is reviewed before it is installed as `/etc/pve/firewall/118.fw`; DNS
 resolution is not performed implicitly by the firewall renderer.
 
-The same reviewed resolution document is mandatory bootstrap input. Bootstrap
-renders a files-first host binding before any network fetch and copies the
-exact resolution onto both assembly volumes. Each assembly starts a private,
+`egress-transaction.mjs` creates one exact three-file transaction containing
+the reviewed resolution, the firewall rendered from it, and hashes binding
+both files to the source-controlled policy and builder profile. Only the
+transaction firewall may be installed, and its read-back bytes must pass
+`--installed-firewall` verification before bootstrap. The complete transaction
+is mandatory bootstrap input. Bootstrap renders a files-first host binding
+before any network fetch and copies the exact transaction onto both assembly
+volumes. Each assembly starts a private,
 non-forwarding dnsmasq instance from that copy and assigns it to its isolated
 Docker bridge. BuildKit, image import, source fetch, and scan containers do not
-use host networking. A DNS answer that differs from the installed Proxmox
-firewall set therefore fails closed instead of silently resolving to a newly
-rotated address outside the reviewed policy.
+use host networking. Substituting a second, individually valid DNS observation
+therefore fails the transaction hash before bootstrap or assembly starts.
 
 The official Debian checksum manifest and signature must be verified before
 `render-preseed.mjs` and `build-preseed-boot-files.sh` add the operator public

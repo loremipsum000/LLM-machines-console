@@ -31,11 +31,15 @@ test("bootstrap enumerates every locked host and Docker input before installatio
 })
 
 test("bootstrap binds host resolution to the exact reviewed firewall observation", () => {
-  assert.match(script, /--egress-resolution/)
+  assert.match(script, /--egress-transaction/)
+  assert.doesNotMatch(script, /--egress-resolution/)
   assert.match(script, /render-egress-bindings\.py/)
   assert.match(script, /# BEGIN LLM MACHINES VM103-L1B EGRESS BINDING/)
+  assert.match(script, /--format verify-transaction/)
   assert.match(script, /--format verify-system/)
-  assert.match(script, /\.llmm-l1b-egress-resolution\.json/)
+  assert.match(script, /\.llmm-l1b-egress-transaction/)
+  assert.match(script, /vm118\.firewall/)
+  assert.match(script, /transaction\.json/)
 })
 
 test("bootstrap installs the content-addressed dnsmasq package", () => {

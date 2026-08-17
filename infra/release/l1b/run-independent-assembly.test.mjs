@@ -14,7 +14,8 @@ test("each assembly binds Docker to its own exact non-forwarding DNS service", (
   assert.match(runner, /--dns "\$bridge_ip"/)
   assert.match(runner, /render-egress-bindings\.py/)
   assert.match(runner, /dnsmasq --keep-in-foreground/)
-  assert.match(runner, /--egress-resolution "\$egress_resolution"/)
+  assert.match(runner, /--egress-transaction "\$egress_transaction"/)
+  assert.doesNotMatch(runner, /--egress-resolution/)
 })
 
 test("build and import containers never use host networking", () => {

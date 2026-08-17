@@ -19,7 +19,7 @@ import { tmpdir } from "node:os"
 import { basename, dirname, join, relative, resolve } from "node:path"
 import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
-import { validateEgressResolution } from "./egress-resolution.mjs"
+import { validateEgressTransaction } from "./egress-transaction.mjs"
 import { fetchLockedInputs } from "./fetch-locked-inputs.mjs"
 import { normalizeOciLayout } from "./normalize-oci-layout.mjs"
 import { verifyHostToolchain } from "./verify-toolchain.mjs"
@@ -465,18 +465,9 @@ export async function runCoreAssembly(options) {
   const firecrawl = readJson(
     resolve(sourceRoot, "infra/firecrawl/release/source-package.json"),
   )
-  const egressPolicyPath = resolve(
-    sourceRoot,
-    "infra/release/l1b/egress-allowlist.json",
-  )
-  const egressPolicyBytes = readFileSync(egressPolicyPath)
-  const egressResolutionPath = resolve(options.egressResolution)
-  within(assemblyRoot, egressResolutionPath, "egress resolution")
-  validateEgressResolution(
-    JSON.parse(egressPolicyBytes),
-    egressPolicyBytes,
-    readJson(egressResolutionPath),
-  )
+  const egressTransactionPath = resolve(options.egressTransaction)
+  within(assemblyRoot, egressTransactionPath, "egress transaction")
+  const egressTransaction = validateEgressTransaction(egressTransactionPath)
   const runRoot = resolve(assemblyRoot, "run")
   if (existsSync(runRoot)) fail("assembly run root already exists")
   const inputsRoot = join(runRoot, "inputs")
@@ -607,7 +598,9 @@ export async function runCoreAssembly(options) {
     toolchainLockSha256: await sha256File(
       resolve(sourceRoot, "infra/release/l1b/toolchain-lock.json"),
     ),
-    egressResolutionSha256: await sha256File(egressResolutionPath),
+    egressTransactionSha256: egressTransaction.manifestSha256,
+    egressResolutionSha256: egressTransaction.manifest.resolutionSha256,
+    egressFirewallSha256: egressTransaction.manifest.firewallSha256,
     trivyDatabase,
     images,
   }
@@ -655,7 +648,7 @@ function parseArguments(argv) {
     "--expected-tree",
     "--release-version",
     "--builder-name",
-    "--egress-resolution",
+    "--egress-transaction",
   ]
   if (
     values.size !== required.length ||
@@ -671,7 +664,7 @@ function parseArguments(argv) {
     expectedTree: values.get("--expected-tree"),
     releaseVersion: values.get("--release-version"),
     builderName: values.get("--builder-name"),
-    egressResolution: values.get("--egress-resolution"),
+    egressTransaction: values.get("--egress-transaction"),
   }
 }
 

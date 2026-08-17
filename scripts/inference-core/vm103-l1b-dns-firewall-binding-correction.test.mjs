@@ -27,6 +27,15 @@ test("L1B network successor binds one resolution without broadening egress", () 
   assert.equal(evidence.correction.firewallAndGuestUseSameResolution, true)
   assert.equal(evidence.correction.filesFirstHostBindingBeforeFetch, true)
   assert.equal(evidence.correction.assemblyResolutionCopiesIndependent, true)
+  assert.equal(
+    evidence.correction.firewallAndBootstrapTransactionHashBound,
+    true,
+  )
+  assert.equal(evidence.correction.installedFirewallReadbackRequired, true)
+  assert.equal(
+    evidence.correction.secondValidResolutionSubstitutionDenied,
+    true,
+  )
   assert.equal(evidence.correction.assemblyDnsHasNoForwarder, true)
   assert.equal(evidence.correction.hostNetworkUsedByBuildContainers, false)
   assert.equal(evidence.correction.dnsmasqPackageBytePinned, true)
