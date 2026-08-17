@@ -32,12 +32,9 @@ test("rendered VM firewall uses only supported default-deny policy options", () 
     resolve(root, "infra/release/l1b/egress-allowlist.json"),
   )
   const policy = JSON.parse(policyBytes)
-  const profile = JSON.parse(
-    readFileSync(
-      resolve(root, "infra/release/l1b/builder-profile.json"),
-      "utf8",
-    ),
-  )
+  const profile = {
+    network: { operatorSsh: { sourceCidr: "10.93.74.0/24" } },
+  }
   const resolutions = Object.fromEntries(
     policy.hosts.map((host, index) => [host, [`203.0.113.${index + 1}`]]),
   )
