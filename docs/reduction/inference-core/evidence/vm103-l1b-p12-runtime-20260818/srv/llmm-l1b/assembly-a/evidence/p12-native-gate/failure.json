@@ -1,0 +1,24 @@
+{
+  "schema": "llm-machines.vm103-l1b-p12-native-gate-failure.v1",
+  "status": "BLOCKED_BEFORE_ASSEMBLY_A",
+  "reason": "DOCKER_FIREWALL_CLEANUP_RESIDUE",
+  "protectedCommit": "d17d7837060c1cbafc0b3bb1b3789bf96f2387a1",
+  "protectedTree": "19643fcde836502bea7654170f044feffb1bcff0",
+  "bootstrap": "PASS",
+  "nativeDockerReadiness": "PASS",
+  "cleanup": {
+    "processResidue": false,
+    "socketResidue": false,
+    "pidResidue": false,
+    "bridgeResidue": false,
+    "routeResidue": false,
+    "firewallResidue": true
+  },
+  "assemblyAStarted": false,
+  "imageInventoryCount": 0,
+  "bootstrapLogSha256": "c70859c9fe507ec4ff7d2019d080c1b15fbc44d376cfcaf0113f36eba9cb3d1a",
+  "dockerLogSha256": "7eb33999ce85fe7d44ac5baa080644399c9b0b17b9e3fd172fd4cabafccd9c8f",
+  "iptablesSaveSha256": "c27b272d469a608a10023cfe4c6f95094dfdefbb3835e0e6da0bcc147381f769",
+  "nftRulesetSha256": "46ba667ef8b7428b706f9c67f29bd17a480a42a599636114bcb448e1f3bfa1fb",
+  "containsCredentials": false
+}

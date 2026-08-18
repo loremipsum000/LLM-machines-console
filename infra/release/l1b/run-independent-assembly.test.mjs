@@ -15,6 +15,8 @@ test("each assembly binds Docker to its own exact non-forwarding DNS service", (
   assert.match(runner, /llmm_l1b_load_bridge_profile "\$assembly_id"/)
   assert.match(runner, /llmm_l1b_start_docker/)
   assert.match(runner, /llmm_l1b_verify_docker/)
+  assert.match(runner, /llmm_l1b_capture_pre_start_firewall/)
+  assert.match(runner, /llmm_l1b_capture_active_firewall/)
   assert.match(runner, /render-egress-bindings\.py/)
   assert.match(runner, /dnsmasq --keep-in-foreground/)
   assert.match(runner, /--interface "\$LLMM_L1B_BRIDGE"/)

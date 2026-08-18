@@ -14,7 +14,9 @@ llmm_l1b_require_root() {
 }
 
 llmm_l1b_require_commands() {
-  for llmm_command in docker dockerd ip iptables-save nft ps jq; do
+  for llmm_command in \
+    docker dockerd ip iptables iptables-save ip6tables ip6tables-save \
+    nft ps jq node sysctl find awk cat; do
     command -v "$llmm_command" >/dev/null 2>&1 ||
       llmm_l1b_lifecycle_fail "L1B Docker lifecycle requires $llmm_command" ||
       return 1
@@ -64,17 +66,24 @@ llmm_l1b_path_absent() {
 }
 
 llmm_l1b_process_residue() {
-  ps -eo comm=,args= | awk \
-    '$1 ~ /^(dockerd|containerd|dnsmasq|buildkitd)$/ { found = 1 }
+  llmm_process_inventory=$(ps -eo comm=,args=) || return 2
+  printf '%s\n' "$llmm_process_inventory" | awk \
+    '$1 ~ /^(dockerd|containerd|containerd-shim|dnsmasq|buildkitd|buildkit-runc)$/ { found = 1 }
       END { exit found ? 0 : 1 }
     '
 }
 
 llmm_l1b_namespace_residue() {
-  [ -n "$(ip netns list)" ] && return 0
+  llmm_netns_inventory=$(ip netns list) || return 2
+  [ -n "$llmm_netns_inventory" ] && return 0
   for llmm_namespace_root in /run/docker/netns "$LLMM_L1B_DOCKER_EXEC"; do
-    if [ -d "$llmm_namespace_root" ] &&
-      [ -n "$(find "$llmm_namespace_root" -mindepth 1 -path '*/netns/*' -print -quit)" ]; then
+    if [ -d "$llmm_namespace_root" ]; then
+      llmm_namespace_inventory=$(find "$llmm_namespace_root" \
+        -mindepth 1 -path '*/netns/*' -print -quit) || return 2
+    else
+      llmm_namespace_inventory=
+    fi
+    if [ -n "$llmm_namespace_inventory" ]; then
       return 0
     fi
   done
@@ -82,11 +91,15 @@ llmm_l1b_namespace_residue() {
 }
 
 llmm_l1b_network_residue() {
-  ip link show dev "$LLMM_L1B_BRIDGE" >/dev/null 2>&1 ||
-    ip -o -4 address show | grep -Fq "$LLMM_L1B_ADDRESS_PREFIX" ||
-    ip -o -4 route show table all | grep -Eq \
-      "(^|[[:space:]])${LLMM_L1B_NETWORK_CIDR%/*}(/24)?([[:space:]]|$)|dev[[:space:]]+$LLMM_L1B_BRIDGE([[:space:]]|$)" ||
-    ip netns list | grep -Fq "$LLMM_L1B_BRIDGE"
+  [ -e "$LLMM_L1B_SYS_CLASS_NET/$LLMM_L1B_BRIDGE" ] && return 0
+  llmm_address_inventory=$(ip -o -4 address show) || return 2
+  llmm_route_inventory=$(ip -o -4 route show table all) || return 2
+  llmm_netns_inventory=$(ip netns list) || return 2
+  printf '%s\n' "$llmm_address_inventory" |
+    grep -Fq "$LLMM_L1B_ADDRESS_PREFIX" && return 0
+  printf '%s\n' "$llmm_route_inventory" | grep -Eq \
+    "(^|[[:space:]])${LLMM_L1B_NETWORK_CIDR%/*}(/24)?([[:space:]]|$)|dev[[:space:]]+$LLMM_L1B_BRIDGE([[:space:]]|$)" && return 0
+  printf '%s\n' "$llmm_netns_inventory" | grep -Fq "$LLMM_L1B_BRIDGE"
 }
 
 llmm_l1b_firewall_residue() {
@@ -99,8 +112,34 @@ llmm_l1b_firewall_residue() {
 
 llmm_l1b_assert_no_process_residue() {
   if llmm_l1b_process_residue; then
-    llmm_l1b_lifecycle_fail "runner-owned process residue is present"
+    llmm_inspection_status=0
+  else
+    llmm_inspection_status=$?
   fi
+  case "$llmm_inspection_status" in
+    0) llmm_l1b_lifecycle_fail "runner-owned process residue is present" ;;
+    1) return 0 ;;
+    *) llmm_l1b_lifecycle_fail "runner process state could not be inspected" ;;
+  esac
+}
+
+llmm_l1b_find_first_child() {
+  llmm_find_result=$(find "$1" -mindepth 1 -maxdepth 1 -print -quit) ||
+    return 2
+  [ -n "$llmm_find_result" ]
+}
+
+llmm_l1b_assert_find_root_empty() {
+  if llmm_l1b_find_first_child "$1"; then
+    llmm_find_status=0
+  else
+    llmm_find_status=$?
+  fi
+  case "$llmm_find_status" in
+    0) llmm_l1b_lifecycle_fail "global Docker runtime root is not empty" ;;
+    1) return 0 ;;
+    *) llmm_l1b_lifecycle_fail "global Docker runtime root could not be inspected" ;;
+  esac
 }
 
 llmm_l1b_assert_global_runtime_roots_clean() {
@@ -110,24 +149,104 @@ llmm_l1b_assert_global_runtime_roots_clean() {
       llmm_l1b_lifecycle_fail "global Docker runtime root is not a regular directory"
       return 1
     fi
-    if [ -d "$llmm_global_root" ] &&
-      [ -n "$(find "$llmm_global_root" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
-      llmm_l1b_lifecycle_fail "global Docker runtime root is not empty"
-      return 1
-    fi
+    [ ! -d "$llmm_global_root" ] ||
+      llmm_l1b_assert_find_root_empty "$llmm_global_root" || return 1
   done
 }
 
 llmm_l1b_assert_no_namespace_residue() {
   if llmm_l1b_namespace_residue; then
-    llmm_l1b_lifecycle_fail "pre-existing Docker network namespace residue is present"
+    llmm_inspection_status=0
+  else
+    llmm_inspection_status=$?
   fi
+  case "$llmm_inspection_status" in
+    0) llmm_l1b_lifecycle_fail "pre-existing Docker network namespace residue is present" ;;
+    1) return 0 ;;
+    *) llmm_l1b_lifecycle_fail "Docker network namespace state could not be inspected" ;;
+  esac
 }
 
 llmm_l1b_assert_no_network_residue() {
   if llmm_l1b_network_residue; then
-    llmm_l1b_lifecycle_fail "runner-owned bridge, address, route, or namespace residue is present"
+    llmm_inspection_status=0
+  else
+    llmm_inspection_status=$?
   fi
+  case "$llmm_inspection_status" in
+    0) llmm_l1b_lifecycle_fail "runner-owned bridge, address, route, or namespace residue is present" ;;
+    1) return 0 ;;
+    *) llmm_l1b_lifecycle_fail "runner network state could not be inspected" ;;
+  esac
+}
+
+llmm_l1b_mount_state_from_file() {
+  llmm_mountinfo_path=$1
+  llmm_mount_target=$2
+  case "$llmm_mount_target" in
+    /*) ;;
+    *) return 2 ;;
+  esac
+  case "$llmm_mount_target" in
+    *[!A-Za-z0-9_./-]*) return 2 ;;
+  esac
+  [ -r "$llmm_mountinfo_path" ] || return 2
+  llmm_mount_inventory=$(cat "$llmm_mountinfo_path") || return 2
+  printf '%s\n' "$llmm_mount_inventory" | awk -v target="$llmm_mount_target" '
+    function valid_path(value, reduced) {
+      if (substr(value, 1, 1) != "/") return 0
+      reduced = value
+      gsub(/\\040|\\011|\\012|\\134/, "", reduced)
+      return reduced !~ /\\/
+    }
+    {
+      seen = 1
+      separator = NF - 3
+      line_invalid = 0
+      if (NF < 10) line_invalid = 1
+      if (separator < 7) line_invalid = 1
+      if (!line_invalid && $(separator) != "-") line_invalid = 1
+      if ($1 !~ /^[0-9]+$/) line_invalid = 1
+      if ($2 !~ /^[0-9]+$/) line_invalid = 1
+      if ($3 !~ /^[0-9]+:[0-9]+$/) line_invalid = 1
+      if (!valid_path($4)) line_invalid = 1
+      if (!valid_path($5)) line_invalid = 1
+      if ($6 !~ /^[^,[:space:]]+(,[^,[:space:]]+)*$/) line_invalid = 1
+      if (!line_invalid && $(separator + 1) !~ /^[^[:space:]-][^[:space:]]*$/) line_invalid = 1
+      if (!line_invalid && $(separator + 2) !~ /^[^[:space:]]+$/) line_invalid = 1
+      if (!line_invalid && $(separator + 3) !~ /^[^,[:space:]]+(,[^,[:space:]]+)*$/) line_invalid = 1
+      if ($1 in ids) line_invalid = 1
+      ids[$1] = 1
+      if (!line_invalid) {
+        for (field = 7; field < separator; field += 1) {
+          if ($field !~ /^[^[:space:]-][^[:space:]]*$/) line_invalid = 1
+        }
+      }
+      if (line_invalid) invalid = 1
+      if (!line_invalid && ($5 == target || index($5, target "/") == 1)) mounted = 1
+    }
+    END {
+      if (!seen || invalid) exit 2
+      exit mounted ? 0 : 1
+    }
+  '
+}
+
+llmm_l1b_mount_state() {
+  llmm_l1b_mount_state_from_file /proc/self/mountinfo "$1"
+}
+
+llmm_l1b_assert_path_unmounted() {
+  if llmm_l1b_mount_state "$1"; then
+    llmm_mount_status=0
+  else
+    llmm_mount_status=$?
+  fi
+  case "$llmm_mount_status" in
+    0) llmm_l1b_lifecycle_fail "runner runtime path remains mounted: $1" ;;
+    1) return 0 ;;
+    *) llmm_l1b_lifecycle_fail "runner runtime mount state could not be inspected: $1" ;;
+  esac
 }
 
 llmm_l1b_assert_no_firewall_residue() {
@@ -152,9 +271,10 @@ llmm_l1b_preflight() {
   LLMM_L1B_DOCKER_LOG=$6
   LLMM_L1B_DNSMASQ_CONFIG=$7
   LLMM_L1B_DNSMASQ_LOG=$8
+  LLMM_L1B_FIREWALL_EVIDENCE=$9
 
-  llmm_l1b_require_root
-  llmm_l1b_require_commands
+  llmm_l1b_require_root || return 1
+  llmm_l1b_require_commands || return 1
   [ -d "$LLMM_L1B_RUNTIME_ROOT" ] ||
     llmm_l1b_lifecycle_fail "assembly runtime root is missing" || return 1
   for llmm_path in \
@@ -164,7 +284,8 @@ llmm_l1b_preflight() {
     "$LLMM_L1B_DOCKER_PID" \
     "$LLMM_L1B_DOCKER_LOG" \
     "$LLMM_L1B_DNSMASQ_CONFIG" \
-    "$LLMM_L1B_DNSMASQ_LOG"; do
+    "$LLMM_L1B_DNSMASQ_LOG" \
+    "$LLMM_L1B_FIREWALL_EVIDENCE"; do
     llmm_l1b_path_absent "$llmm_path" || return 1
   done
   llmm_l1b_assert_no_process_residue || return 1
@@ -172,9 +293,26 @@ llmm_l1b_preflight() {
   llmm_l1b_assert_no_namespace_residue || return 1
   llmm_l1b_assert_no_network_residue || return 1
   llmm_l1b_assert_no_firewall_residue || return 1
+  [ -x "$LLMM_L1B_FIREWALL_TOOL" ] ||
+    llmm_l1b_lifecycle_fail "firewall lifecycle tool is missing" || return 1
+  install -d -m 0700 "$LLMM_L1B_FIREWALL_EVIDENCE"
+  LLMM_L1B_FIREWALL_INITIAL=$LLMM_L1B_FIREWALL_EVIDENCE/pre-existing
+  node "$LLMM_L1B_FIREWALL_TOOL" \
+    --action capture \
+    --output "$LLMM_L1B_FIREWALL_INITIAL" || return 1
+  node "$LLMM_L1B_FIREWALL_TOOL" \
+    --action assert-clean \
+    --snapshot "$LLMM_L1B_FIREWALL_INITIAL" \
+    --bridge "$LLMM_L1B_BRIDGE" \
+    --cidr "$LLMM_L1B_NETWORK_CIDR" \
+    --gateway "$LLMM_L1B_GATEWAY_ADDRESS" || return 1
   LLMM_L1B_BRIDGE_CREATED=false
   LLMM_L1B_BRIDGE_ALIAS_SET=false
   LLMM_L1B_BRIDGE_IFINDEX=
+  LLMM_L1B_FIREWALL_BASELINE_CAPTURED=false
+  LLMM_L1B_FIREWALL_ACTIVE_CAPTURED=false
+  LLMM_L1B_FIREWALL_CLEANUP_ACTIVE_CAPTURED=false
+  LLMM_L1B_DOCKER_LAUNCH_ATTEMPTED=false
 }
 
 llmm_l1b_create_bridge() {
@@ -189,6 +327,47 @@ llmm_l1b_create_bridge() {
   LLMM_L1B_BRIDGE_ALIAS_SET=true
   ip address add "$LLMM_L1B_GATEWAY_CIDR" dev "$LLMM_L1B_BRIDGE"
   ip link set dev "$LLMM_L1B_BRIDGE" up
+}
+
+llmm_l1b_capture_pre_start_firewall() {
+  LLMM_L1B_FIREWALL_BASELINE=$LLMM_L1B_FIREWALL_EVIDENCE/pre-start
+  node "$LLMM_L1B_FIREWALL_TOOL" \
+    --action capture \
+    --output "$LLMM_L1B_FIREWALL_BASELINE"
+  LLMM_L1B_FIREWALL_BASELINE_CAPTURED=true
+}
+
+llmm_l1b_capture_active_firewall() {
+  LLMM_L1B_FIREWALL_ACTIVE=$LLMM_L1B_FIREWALL_EVIDENCE/active
+  LLMM_L1B_FIREWALL_ACTIVE_PLAN=$LLMM_L1B_FIREWALL_EVIDENCE/active-delta.json
+  node "$LLMM_L1B_FIREWALL_TOOL" \
+    --action capture \
+    --output "$LLMM_L1B_FIREWALL_ACTIVE" || return 1
+  node "$LLMM_L1B_FIREWALL_TOOL" \
+    --action plan \
+    --baseline "$LLMM_L1B_FIREWALL_BASELINE" \
+    --current "$LLMM_L1B_FIREWALL_ACTIVE" \
+    --plan "$LLMM_L1B_FIREWALL_ACTIVE_PLAN" \
+    --bridge "$LLMM_L1B_BRIDGE" \
+    --cidr "$LLMM_L1B_NETWORK_CIDR" \
+    --gateway "$LLMM_L1B_GATEWAY_ADDRESS" || return 1
+  LLMM_L1B_FIREWALL_ACTIVE_CAPTURED=true
+}
+
+llmm_l1b_capture_cleanup_firewall_ceiling() {
+  LLMM_L1B_FIREWALL_CLEANUP_ACTIVE=$LLMM_L1B_FIREWALL_EVIDENCE/cleanup-active
+  node "$LLMM_L1B_FIREWALL_TOOL" \
+    --action capture \
+    --output "$LLMM_L1B_FIREWALL_CLEANUP_ACTIVE" || return 1
+  node "$LLMM_L1B_FIREWALL_TOOL" \
+    --action plan \
+    --baseline "$LLMM_L1B_FIREWALL_BASELINE" \
+    --current "$LLMM_L1B_FIREWALL_CLEANUP_ACTIVE" \
+    --plan "$LLMM_L1B_FIREWALL_EVIDENCE/cleanup-active-delta.json" \
+    --bridge "$LLMM_L1B_BRIDGE" \
+    --cidr "$LLMM_L1B_NETWORK_CIDR" \
+    --gateway "$LLMM_L1B_GATEWAY_ADDRESS" || return 1
+  LLMM_L1B_FIREWALL_CLEANUP_ACTIVE_CAPTURED=true
 }
 
 llmm_l1b_emit_bounded_docker_log() {
@@ -219,6 +398,7 @@ llmm_l1b_start_docker() {
     --log-driver local \
     >"$LLMM_L1B_DOCKER_LOG" 2>&1 &
   LLMM_L1B_DOCKER_LAUNCHER_PID=$!
+  LLMM_L1B_DOCKER_LAUNCH_ATTEMPTED=true
 }
 
 llmm_l1b_wait_for_docker() {
@@ -328,8 +508,27 @@ llmm_l1b_stop_pid() {
   wait "$llmm_stop_pid" 2>/dev/null || true
 }
 
+llmm_l1b_remove_runtime_paths() {
+  for llmm_runtime_path in "$@"; do
+    [ -n "$llmm_runtime_path" ] || return 1
+    llmm_l1b_assert_path_unmounted "$llmm_runtime_path" || return 1
+  done
+  for llmm_runtime_path in "$@"; do
+    if [ -e "$llmm_runtime_path" ] || [ -L "$llmm_runtime_path" ]; then
+      rm -rf -- "$llmm_runtime_path" || return 1
+    fi
+  done
+}
+
 llmm_l1b_cleanup() {
   llmm_cleanup_status=0
+  if [ "${LLMM_L1B_FIREWALL_BASELINE_CAPTURED:-false}" = true ] &&
+    [ "${LLMM_L1B_DOCKER_LAUNCH_ATTEMPTED:-false}" = true ]; then
+    if ! llmm_l1b_capture_cleanup_firewall_ceiling; then
+      LLMM_L1B_FIREWALL_CLEANUP_ACTIVE_CAPTURED=false
+      llmm_cleanup_status=1
+    fi
+  fi
   llmm_l1b_stop_pid "${LLMM_L1B_MONITOR_PID:-}" || llmm_cleanup_status=1
   llmm_l1b_stop_pid "${LLMM_L1B_WORK_PID:-}" || llmm_cleanup_status=1
   llmm_l1b_stop_pid "${LLMM_L1B_DNSMASQ_PID:-}" || llmm_cleanup_status=1
@@ -340,6 +539,30 @@ llmm_l1b_cleanup() {
   fi
   if [ -e "$LLMM_L1B_DOCKER_PID" ] || [ -L "$LLMM_L1B_DOCKER_PID" ]; then
     rm -f -- "$LLMM_L1B_DOCKER_PID" || llmm_cleanup_status=1
+  fi
+
+  if [ "${LLMM_L1B_FIREWALL_BASELINE_CAPTURED:-false}" = true ] &&
+    [ "${LLMM_L1B_DOCKER_LAUNCH_ATTEMPTED:-false}" = true ] &&
+    [ "${LLMM_L1B_FIREWALL_CLEANUP_ACTIVE_CAPTURED:-false}" = true ]; then
+    LLMM_L1B_FIREWALL_POST_GRACEFUL=$LLMM_L1B_FIREWALL_EVIDENCE/post-graceful
+    LLMM_L1B_FIREWALL_PLAN=$LLMM_L1B_FIREWALL_EVIDENCE/cleanup-plan.json
+    if node "$LLMM_L1B_FIREWALL_TOOL" \
+      --action capture \
+      --output "$LLMM_L1B_FIREWALL_POST_GRACEFUL" &&
+      node "$LLMM_L1B_FIREWALL_TOOL" \
+        --action cleanup \
+        --baseline "$LLMM_L1B_FIREWALL_BASELINE" \
+        --active "$LLMM_L1B_FIREWALL_CLEANUP_ACTIVE" \
+        --current "$LLMM_L1B_FIREWALL_POST_GRACEFUL" \
+        --plan "$LLMM_L1B_FIREWALL_PLAN" \
+        --bridge "$LLMM_L1B_BRIDGE" \
+        --cidr "$LLMM_L1B_NETWORK_CIDR" \
+        --gateway "$LLMM_L1B_GATEWAY_ADDRESS"; then
+      LLMM_L1B_FIREWALL_EXACT_CLEANUP=true
+    else
+      LLMM_L1B_FIREWALL_EXACT_CLEANUP=false
+      llmm_cleanup_status=1
+    fi
   fi
   if [ "${LLMM_L1B_BRIDGE_CREATED:-false}" = true ]; then
     llmm_current_ifindex=$(cat "$LLMM_L1B_SYS_CLASS_NET/$LLMM_L1B_BRIDGE/ifindex" 2>/dev/null || true)
@@ -357,12 +580,26 @@ llmm_l1b_cleanup() {
     fi
   fi
 
+  if [ "${LLMM_L1B_FIREWALL_EXACT_CLEANUP:-false}" = true ]; then
+    LLMM_L1B_FIREWALL_FINAL=$LLMM_L1B_FIREWALL_EVIDENCE/final
+    if ! node "$LLMM_L1B_FIREWALL_TOOL" \
+      --action capture \
+      --output "$LLMM_L1B_FIREWALL_FINAL" ||
+      ! node "$LLMM_L1B_FIREWALL_TOOL" \
+        --action verify-equivalent \
+        --baseline "$LLMM_L1B_FIREWALL_BASELINE" \
+        --current "$LLMM_L1B_FIREWALL_FINAL"; then
+      llmm_cleanup_status=1
+    fi
+  fi
+
   LLMM_L1B_BRIDGE_CREATED=false
   LLMM_L1B_BRIDGE_ALIAS_SET=false
   LLMM_L1B_DOCKER_LAUNCHER_PID=
   LLMM_L1B_DNSMASQ_PID=
   LLMM_L1B_WORK_PID=
   LLMM_L1B_MONITOR_PID=
+  LLMM_L1B_DOCKER_LAUNCH_ATTEMPTED=false
   llmm_l1b_assert_no_process_residue || llmm_cleanup_status=1
   llmm_l1b_assert_global_runtime_roots_clean || llmm_cleanup_status=1
   llmm_l1b_assert_no_namespace_residue || llmm_cleanup_status=1

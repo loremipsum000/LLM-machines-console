@@ -21,6 +21,8 @@ case "$source_root" in "$assembly_root"/*) ;; *) echo "source checkout is outsid
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 bridge_profile=$script_dir/docker-bridge-profiles.json
+LLMM_L1B_FIREWALL_TOOL=$script_dir/firewall-lifecycle.mjs
+export LLMM_L1B_FIREWALL_TOOL
 node "$script_dir/validate-docker-bridge-profiles.mjs"
 . "$script_dir/docker-lifecycle.sh"
 llmm_l1b_require_root
@@ -33,13 +35,15 @@ docker_root=$assembly_root/docker-data
 docker_exec=$assembly_root/docker-exec
 docker_socket=$assembly_root/docker.sock
 docker_pid=$assembly_root/dockerd.pid
-docker_log=$assembly_root/dockerd.log
 temporary_root=$assembly_root/tmp
+runtime_evidence=$assembly_root/evidence/runtime
+docker_log=$runtime_evidence/dockerd.log
 egress_transaction=$assembly_root/.llmm-l1b-egress-transaction
 egress_resolution=$egress_transaction/egress-resolution.json
 firewall_receipt=$assembly_root/.llmm-l1b-firewall-receipt.json
-dnsmasq_config=$assembly_root/dnsmasq.conf
-dnsmasq_log=$assembly_root/dnsmasq.log
+dnsmasq_config=$temporary_root/dnsmasq.conf
+dnsmasq_log=$runtime_evidence/dnsmasq.log
+firewall_evidence=$assembly_root/evidence/firewall-lifecycle-$assembly_id
 [ -d "$egress_transaction" ] || { echo "assembly egress transaction is missing" >&2; exit 1; }
 [ -f "$firewall_receipt" ] || { echo "assembly firewall receipt is missing" >&2; exit 1; }
 
@@ -53,7 +57,8 @@ llmm_l1b_preflight \
   "$docker_pid" \
   "$docker_log" \
   "$dnsmasq_config" \
-  "$dnsmasq_log"
+  "$dnsmasq_log" \
+  "$firewall_evidence"
 
 finalize() {
   original_status=$?
@@ -61,22 +66,33 @@ finalize() {
   set +e
   llmm_l1b_cleanup
   cleanup_status=$?
+  if [ "$cleanup_status" -eq 0 ]; then
+    llmm_l1b_remove_runtime_paths "$docker_root" "$docker_exec" "$temporary_root"
+    runtime_cleanup_status=$?
+  else
+    runtime_cleanup_status=1
+  fi
   set -e
   if [ "$original_status" -ne 0 ]; then
     exit "$original_status"
   fi
-  exit "$cleanup_status"
+  if [ "$cleanup_status" -ne 0 ]; then
+    exit "$cleanup_status"
+  fi
+  exit "$runtime_cleanup_status"
 }
 trap finalize EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-install -d -m 0700 -o dberisha -g dberisha "$temporary_root"
+install -d -m 0700 -o dberisha -g dberisha "$temporary_root" "$runtime_evidence"
 llmm_l1b_create_bridge
+llmm_l1b_capture_pre_start_firewall
 llmm_l1b_start_docker
 llmm_l1b_wait_for_docker
 llmm_l1b_verify_docker
+llmm_l1b_capture_active_firewall
 
 python3 "$source_root/infra/release/l1b/render-egress-bindings.py" \
   --resolution "$egress_resolution" \
