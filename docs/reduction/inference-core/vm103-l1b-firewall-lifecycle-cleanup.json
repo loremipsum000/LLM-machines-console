@@ -30,6 +30,8 @@
     "expectedImageCount": 13,
     "completeEvidenceBundleId": "vm103-l1b-p12-runtime-20260818",
     "sourceEvidencePath": "docs/reduction/inference-core/evidence/vm103-l1b-p12-runtime-20260818",
+    "externalForensicPath": "/Users/dardanberisha/Temp/LLM-machines/product-evidence/vm103-l1b-p12-runtime-20260818",
+    "externalForensicManifestSha256": "cc9bce70880dfc7a510efb07c9fcbf043cc6297daab1bca6b2ce954bf7cca4ab",
     "externalLogSha256": {
       "bootstrap": "c70859c9fe507ec4ff7d2019d080c1b15fbc44d376cfcaf0113f36eba9cb3d1a",
       "docker": "7eb33999ce85fe7d44ac5baa080644399c9b0b17b9e3fd172fd4cabafccd9c8f"
@@ -57,6 +59,7 @@
       "exactDockerDelta"
     ],
     "cleanupOrder": [
+      "CAPTURE_CLEANUP_ACTIVE_CEILING",
       "STOP_WORKLOAD_AND_DNSMASQ",
       "GRACEFULLY_STOP_DOCKER",
       "CAPTURE_POST_GRACEFUL_STATE",
@@ -122,6 +125,74 @@
       "unsafeExecutableFirewallFindings": 0,
       "unapprovedInternalAddressFindings": 0,
       "approvedAssemblyCidrs": ["172.30.118.0/24", "172.31.118.0/24"]
+    },
+    "finalExecutable": {
+      "commit": "32b41b5417b558f298ba9153b2922302a1b7070d",
+      "tree": "348da8c4b56a9dad4b5bf1f36f63ba7131e5d2a3",
+      "local": {
+        "install": "bc9c2e455198773986f5a032f635ce19f7a87cc45fd3fd33eeb71d7d026b5c1e",
+        "focused112": "5c0b88b680a943ff706fb355a012a569ab4fd7dde9d7ba3c9369a01dfc96ea9a",
+        "rootProductGate672": "60868bd4894547f2f485b14762a1abb9946723431ecd49fd23aeed550d900c55",
+        "release212": "c805454d5d872299188ac3ca5f1b625f9e1f43f8fe0bf792834e96a4d33c552d",
+        "biome643": "3ad4bf7da67fac94a61539c5e211dbe639cfe1bd6f560e081551d251b3485d78",
+        "typecheck": "4123029e12b1f711226d843ae59fccc2447bb122f0220c1ec564e11d03d3ca5c",
+        "productionBuild": "b98d6390d3a9bfd303b87e0521166ba13c3a394caf0c2f4e634b85d898a8c355",
+        "diffCheck": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fsck": "b3e2a772009f4c70391d4c00ddfc8fe379fa988d6ff8ec707fc3fbb8664d32a8",
+        "fsckDisposition": "PASS_WITH_SHARED_REPOSITORY_DANGLING_OBJECT_INVENTORY",
+        "cleanStatus": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "detached": {
+        "install": "452c28a679f42c73d632747b7c3f3a9d42b444dcd53f9a1447676afea09d832f",
+        "focused112": "b6264a16a36ee86ec49b3a4dfb617a4c99112359a56826c60fcae1f2b85803e1",
+        "rootProductGate672": "6cfbe3a697d656674bbabdc1b152885decad4897416333068b46a75f9b3ffdf6",
+        "release212": "3e5fe8cee7073101711aad6e082f4ebce481bcd5c838a46f2b711c17fb367ac9",
+        "biome643": "98aef1f13c266acdbbebe89b99c0415369b0cc0d085891063e04a4aa4db656d9",
+        "typecheck": "d244692032a2df684e466919298fd68082c9627687ff5fa481c678daaa4c4008",
+        "productionBuild": "b959eb54e6d9300542695d4d915861d20d9e033845c17ac4c42941f90683b3b9",
+        "diffCheck": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fsck": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanStatus": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "securityScan": {
+        "logSha256": "74bf348980d319aedc9a534299e3859221211c5529d963c6bfe4ec4052842be1",
+        "changedPathCount": 17,
+        "secretFindings": 0,
+        "credentialValueFindings": 0,
+        "internalAddressObservations": 21,
+        "unapprovedInternalAddressFindings": 0,
+        "mutableImageFindings": 0,
+        "unsafeExecutableFirewallFindings": 0,
+        "dockerdBipInvocationFindings": 0,
+        "approvedAssemblyCidrs": ["172.30.118.0/24", "172.31.118.0/24"]
+      }
+    },
+    "materialReview": {
+      "reviewer": "l1b_material_review",
+      "reviewedCommit": "32b41b5417b558f298ba9153b2922302a1b7070d",
+      "reviewedTree": "348da8c4b56a9dad4b5bf1f36f63ba7131e5d2a3",
+      "verdict": "PASS",
+      "materialFindings": 0,
+      "reviewHistory": [
+        {
+          "commit": "581dbbe1a562b78099edec541b49aa32305728df",
+          "tree": "4a4f61744e695859176f854c35badaf863daf4c0",
+          "verdict": "BLOCK",
+          "reason": "BROAD_RULE_OWNERSHIP_AND_FAIL_OPEN_RESIDUE_INSPECTION"
+        },
+        {
+          "commit": "44130e0bec00428b2c3f175777c18a43f47b7417",
+          "tree": "0647c267578ed7798f4450a78264ff423c3e9077",
+          "verdict": "BLOCK",
+          "reason": "AMBIGUOUS_FINDMNT_EXIT_STATUS"
+        },
+        {
+          "commit": "a11334d5dea436016322e40b62b559ac4a33c782",
+          "tree": "3bb94bf22e7de6d4b9fa3c2a8e076719037740a8",
+          "verdict": "BLOCK",
+          "reason": "INCOMPLETE_MOUNTINFO_GRAMMAR_VALIDATION"
+        }
+      ]
     }
   },
   "postAdmissionRuntimeSequence": [

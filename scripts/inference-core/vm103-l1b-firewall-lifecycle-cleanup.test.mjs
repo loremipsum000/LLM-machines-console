@@ -47,6 +47,15 @@ test("P13 permits only exact-delta cleanup and canonical equivalence", () => {
   assert.doesNotMatch(firewall, /iptables-restore/)
   assert.doesNotMatch(firewall, /flush ruleset/)
   assert.match(lifecycle, /verify-equivalent/)
+  assert.equal(
+    contract.correction.cleanupOrder[0],
+    "CAPTURE_CLEANUP_ACTIVE_CEILING",
+  )
+  assert.match(
+    lifecycle,
+    /llmm_l1b_mount_state_from_file \/proc\/self\/mountinfo "\$1"/,
+  )
+  assert.doesNotMatch(lifecycle, /LLMM_L1B_MOUNTINFO_PATH/)
 })
 
 test("P13 binds the complete requested lifecycle test and redesign boundary", () => {
@@ -69,4 +78,28 @@ test("P13 binds the complete requested lifecycle test and redesign boundary", ()
     /SEPARATELY_RESTORED_VM_STATE_PER_ASSEMBLY/,
   )
   assert.equal(contract.boundaries.l1bSuccessful, false)
+})
+
+test("P13 binds exact final executable validation and independent review", () => {
+  const executable = contract.sourceValidation.finalExecutable
+  assert.equal(executable.commit, "32b41b5417b558f298ba9153b2922302a1b7070d")
+  assert.equal(executable.tree, "348da8c4b56a9dad4b5bf1f36f63ba7131e5d2a3")
+  assert.equal(executable.local.focused112.length, 64)
+  assert.equal(executable.local.rootProductGate672.length, 64)
+  assert.equal(executable.detached.focused112.length, 64)
+  assert.equal(executable.detached.rootProductGate672.length, 64)
+  assert.equal(executable.securityScan.secretFindings, 0)
+  assert.equal(executable.securityScan.credentialValueFindings, 0)
+  assert.equal(executable.securityScan.unapprovedInternalAddressFindings, 0)
+  assert.equal(executable.securityScan.mutableImageFindings, 0)
+  assert.equal(executable.securityScan.unsafeExecutableFirewallFindings, 0)
+  assert.equal(executable.securityScan.dockerdBipInvocationFindings, 0)
+  assert.equal(contract.sourceValidation.materialReview.verdict, "PASS")
+  assert.equal(contract.sourceValidation.materialReview.materialFindings, 0)
+  assert.deepEqual(
+    contract.sourceValidation.materialReview.reviewHistory.map(
+      ({ verdict }) => verdict,
+    ),
+    ["BLOCK", "BLOCK", "BLOCK"],
+  )
 })
