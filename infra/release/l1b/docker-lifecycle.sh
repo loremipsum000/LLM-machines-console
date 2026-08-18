@@ -16,7 +16,7 @@ llmm_l1b_require_root() {
 llmm_l1b_require_commands() {
   for llmm_command in \
     docker dockerd ip iptables iptables-save ip6tables ip6tables-save \
-    nft ps jq node sysctl find findmnt; do
+    nft ps jq node sysctl find awk cat; do
     command -v "$llmm_command" >/dev/null 2>&1 ||
       llmm_l1b_lifecycle_fail "L1B Docker lifecycle requires $llmm_command" ||
       return 1
@@ -181,13 +181,25 @@ llmm_l1b_assert_no_network_residue() {
 }
 
 llmm_l1b_mount_state() {
-  findmnt -R "$1" >/dev/null 2>&1
-  llmm_findmnt_status=$?
-  case "$llmm_findmnt_status" in
-    0) return 0 ;;
-    1) return 1 ;;
+  llmm_mount_target=$1
+  case "$llmm_mount_target" in
+    /*) ;;
     *) return 2 ;;
   esac
+  case "$llmm_mount_target" in
+    *[!A-Za-z0-9_./-]*) return 2 ;;
+  esac
+  llmm_mountinfo_path=${LLMM_L1B_MOUNTINFO_PATH:-/proc/self/mountinfo}
+  [ -r "$llmm_mountinfo_path" ] || return 2
+  llmm_mount_inventory=$(cat "$llmm_mountinfo_path") || return 2
+  printf '%s\n' "$llmm_mount_inventory" | awk -v target="$llmm_mount_target" '
+    NF < 10 { invalid = 1; next }
+    $5 == target || index($5, target "/") == 1 { mounted = 1 }
+    END {
+      if (invalid) exit 2
+      exit mounted ? 0 : 1
+    }
+  '
 }
 
 llmm_l1b_assert_path_unmounted() {

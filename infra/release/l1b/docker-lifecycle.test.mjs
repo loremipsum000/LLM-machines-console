@@ -31,9 +31,11 @@ function fixture() {
   const bin = resolve(directory, "bin")
   const assembly = resolve(directory, "assembly")
   const sysClassNet = resolve(directory, "sys-class-net")
+  const mountinfo = resolve(directory, "mountinfo")
   mkdirSync(bin)
   mkdirSync(assembly)
   mkdirSync(sysClassNet)
+  writeFileSync(mountinfo, "24 1 0:1 / / rw - tmpfs tmpfs rw\n")
   executable(resolve(bin, "id"), '#!/bin/sh\n[ "$1" = -u ] && echo 0\n')
   for (const command of ["jq"]) {
     executable(resolve(bin, command), "#!/bin/sh\nexit 0\n")
@@ -46,10 +48,6 @@ if [ "\${1:-}" = info ] && [ "\${LLMM_FAKE_DOCKER_READY:-1}" != 1 ]; then
 fi
 exit 0
 `,
-  )
-  executable(
-    resolve(bin, "findmnt"),
-    '#!/bin/sh\n[ "${LLMM_FAKE_FINDMNT_ERROR:-0}" != 1 ] || exit 2\nexit 1\n',
   )
   executable(
     resolve(bin, "find"),
@@ -115,7 +113,7 @@ case "$*" in
 esac
 `,
   )
-  return { directory, bin, assembly, sysClassNet }
+  return { directory, bin, assembly, sysClassNet, mountinfo }
 }
 
 function runFixture(fixture_, script, extra = {}) {
@@ -123,12 +121,13 @@ function runFixture(fixture_, script, extra = {}) {
     encoding: "utf8",
     env: {
       ...process.env,
-      ...extra,
       LIFECYCLE: lifecyclePath,
       PATH: `${fixture_.bin}:${process.env.PATH}`,
       ASSEMBLY_ROOT: fixture_.assembly,
       LLMM_L1B_FIREWALL_TOOL: resolve(root, "firewall-lifecycle.mjs"),
       LLMM_L1B_SYS_CLASS_NET: fixture_.sysClassNet,
+      LLMM_L1B_MOUNTINFO_PATH: fixture_.mountinfo,
+      ...extra,
     },
   })
 }
@@ -269,10 +268,30 @@ llmm_l1b_assert_find_root_empty "$ASSEMBLY_ROOT"
 . "$LIFECYCLE"
 llmm_l1b_remove_runtime_paths "$ASSEMBLY_ROOT/docker-data"
 `,
-      { LLMM_FAKE_FINDMNT_ERROR: "1" },
+      {
+        LLMM_L1B_MOUNTINFO_PATH: resolve(
+          mountFixture.directory,
+          "missing-mountinfo",
+        ),
+      },
     )
     assert.equal(result.status, 1)
     assert.match(result.stderr, /mount state could not be inspected/)
+    assert.equal(existsSync(runtimePath), true)
+
+    writeFileSync(
+      mountFixture.mountinfo,
+      `24 1 0:1 / / rw - tmpfs tmpfs rw\n25 24 0:2 / ${runtimePath} rw - ext4 /dev/vdb rw\n`,
+    )
+    const mountedResult = runFixture(
+      mountFixture,
+      `set -eu
+. "$LIFECYCLE"
+llmm_l1b_remove_runtime_paths "$ASSEMBLY_ROOT/docker-data"
+`,
+    )
+    assert.equal(mountedResult.status, 1)
+    assert.match(mountedResult.stderr, /remains mounted/)
     assert.equal(existsSync(runtimePath), true)
   } finally {
     rmSync(mountFixture.directory, { force: true, recursive: true })
