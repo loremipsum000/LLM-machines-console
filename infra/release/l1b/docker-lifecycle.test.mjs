@@ -126,7 +126,7 @@ function runFixture(fixture_, script, extra = {}) {
       ASSEMBLY_ROOT: fixture_.assembly,
       LLMM_L1B_FIREWALL_TOOL: resolve(root, "firewall-lifecycle.mjs"),
       LLMM_L1B_SYS_CLASS_NET: fixture_.sysClassNet,
-      LLMM_L1B_MOUNTINFO_PATH: fixture_.mountinfo,
+      LLMM_TEST_MOUNTINFO: fixture_.mountinfo,
       ...extra,
     },
   })
@@ -135,6 +135,9 @@ function runFixture(fixture_, script, extra = {}) {
 const setup = `
 set -eu
 . "$LIFECYCLE"
+llmm_l1b_mount_state() {
+  llmm_l1b_mount_state_from_file "$LLMM_TEST_MOUNTINFO" "$1"
+}
 LLMM_L1B_ASSEMBLY=A
 LLMM_L1B_BRIDGE=llmml1ba0
 LLMM_L1B_NETWORK_CIDR=172.30.118.0/24
@@ -266,10 +269,13 @@ llmm_l1b_assert_find_root_empty "$ASSEMBLY_ROOT"
       mountFixture,
       `set -eu
 . "$LIFECYCLE"
+llmm_l1b_mount_state() {
+  llmm_l1b_mount_state_from_file "$LLMM_TEST_MOUNTINFO" "$1"
+}
 llmm_l1b_remove_runtime_paths "$ASSEMBLY_ROOT/docker-data"
-`,
+      `,
       {
-        LLMM_L1B_MOUNTINFO_PATH: resolve(
+        LLMM_TEST_MOUNTINFO: resolve(
           mountFixture.directory,
           "missing-mountinfo",
         ),
@@ -287,6 +293,9 @@ llmm_l1b_remove_runtime_paths "$ASSEMBLY_ROOT/docker-data"
       mountFixture,
       `set -eu
 . "$LIFECYCLE"
+llmm_l1b_mount_state() {
+  llmm_l1b_mount_state_from_file "$LLMM_TEST_MOUNTINFO" "$1"
+}
 llmm_l1b_remove_runtime_paths "$ASSEMBLY_ROOT/docker-data"
 `,
     )
@@ -295,6 +304,33 @@ llmm_l1b_remove_runtime_paths "$ASSEMBLY_ROOT/docker-data"
     assert.equal(existsSync(runtimePath), true)
   } finally {
     rmSync(mountFixture.directory, { force: true, recursive: true })
+  }
+})
+
+test("runtime cleanup rejects malformed mountinfo with ten or more fields", () => {
+  const fixture_ = fixture()
+  try {
+    const runtimePath = resolve(fixture_.assembly, "docker-data")
+    mkdirSync(runtimePath)
+    writeFileSync(
+      fixture_.mountinfo,
+      `not-an-id 1 0:1 / ${runtimePath} rw shared:1 - ext4 /dev/vdb rw\n`,
+    )
+    const result = runFixture(
+      fixture_,
+      `set -eu
+. "$LIFECYCLE"
+llmm_l1b_mount_state() {
+  llmm_l1b_mount_state_from_file "$LLMM_TEST_MOUNTINFO" "$1"
+}
+llmm_l1b_remove_runtime_paths "$ASSEMBLY_ROOT/docker-data"
+`,
+    )
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /mount state could not be inspected/)
+    assert.equal(existsSync(runtimePath), true)
+  } finally {
+    rmSync(fixture_.directory, { force: true, recursive: true })
   }
 })
 

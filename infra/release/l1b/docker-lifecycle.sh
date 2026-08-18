@@ -180,8 +180,9 @@ llmm_l1b_assert_no_network_residue() {
   esac
 }
 
-llmm_l1b_mount_state() {
-  llmm_mount_target=$1
+llmm_l1b_mount_state_from_file() {
+  llmm_mountinfo_path=$1
+  llmm_mount_target=$2
   case "$llmm_mount_target" in
     /*) ;;
     *) return 2 ;;
@@ -189,17 +190,50 @@ llmm_l1b_mount_state() {
   case "$llmm_mount_target" in
     *[!A-Za-z0-9_./-]*) return 2 ;;
   esac
-  llmm_mountinfo_path=${LLMM_L1B_MOUNTINFO_PATH:-/proc/self/mountinfo}
   [ -r "$llmm_mountinfo_path" ] || return 2
   llmm_mount_inventory=$(cat "$llmm_mountinfo_path") || return 2
   printf '%s\n' "$llmm_mount_inventory" | awk -v target="$llmm_mount_target" '
-    NF < 10 { invalid = 1; next }
-    $5 == target || index($5, target "/") == 1 { mounted = 1 }
+    function valid_path(value, reduced) {
+      if (substr(value, 1, 1) != "/") return 0
+      reduced = value
+      gsub(/\\040|\\011|\\012|\\134/, "", reduced)
+      return reduced !~ /\\/
+    }
+    {
+      seen = 1
+      separator = NF - 3
+      line_invalid = 0
+      if (NF < 10) line_invalid = 1
+      if (separator < 7) line_invalid = 1
+      if (!line_invalid && $(separator) != "-") line_invalid = 1
+      if ($1 !~ /^[0-9]+$/) line_invalid = 1
+      if ($2 !~ /^[0-9]+$/) line_invalid = 1
+      if ($3 !~ /^[0-9]+:[0-9]+$/) line_invalid = 1
+      if (!valid_path($4)) line_invalid = 1
+      if (!valid_path($5)) line_invalid = 1
+      if ($6 !~ /^[^,[:space:]]+(,[^,[:space:]]+)*$/) line_invalid = 1
+      if (!line_invalid && $(separator + 1) !~ /^[^[:space:]-][^[:space:]]*$/) line_invalid = 1
+      if (!line_invalid && $(separator + 2) !~ /^[^[:space:]]+$/) line_invalid = 1
+      if (!line_invalid && $(separator + 3) !~ /^[^,[:space:]]+(,[^,[:space:]]+)*$/) line_invalid = 1
+      if ($1 in ids) line_invalid = 1
+      ids[$1] = 1
+      if (!line_invalid) {
+        for (field = 7; field < separator; field += 1) {
+          if ($field !~ /^[^[:space:]-][^[:space:]]*$/) line_invalid = 1
+        }
+      }
+      if (line_invalid) invalid = 1
+      if (!line_invalid && ($5 == target || index($5, target "/") == 1)) mounted = 1
+    }
     END {
-      if (invalid) exit 2
+      if (!seen || invalid) exit 2
       exit mounted ? 0 : 1
     }
   '
+}
+
+llmm_l1b_mount_state() {
+  llmm_l1b_mount_state_from_file /proc/self/mountinfo "$1"
 }
 
 llmm_l1b_assert_path_unmounted() {
