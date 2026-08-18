@@ -2,9 +2,8 @@
 
 This directory is the credential-free export captured before VM118 disk
 restoration. The complete copy is also preserved outside the disposable guest
-at:
-
-`/Users/dardanberisha/Temp/LLM-machines/product-evidence/vm103-l1b-p12-runtime-20260818`
+under evidence bundle ID `vm103-l1b-p12-runtime-20260818`. Its operator-local
+path is deliberately not a Product source constant.
 
 The complete external inventory manifest is `SHA256SUMS.relative`, with SHA-256
 `cc9bce70880dfc7a510efb07c9fcbf043cc6297daab1bca6b2ce954bf7cca4ab`.

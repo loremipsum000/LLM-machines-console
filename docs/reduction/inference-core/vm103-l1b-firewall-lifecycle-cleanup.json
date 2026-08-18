@@ -28,13 +28,13 @@
     "assemblyBStarted": false,
     "producedImageCount": 0,
     "expectedImageCount": 13,
-    "completeEvidencePath": "/Users/dardanberisha/Temp/LLM-machines/product-evidence/vm103-l1b-p12-runtime-20260818",
+    "completeEvidenceBundleId": "vm103-l1b-p12-runtime-20260818",
     "sourceEvidencePath": "docs/reduction/inference-core/evidence/vm103-l1b-p12-runtime-20260818",
     "externalLogSha256": {
       "bootstrap": "c70859c9fe507ec4ff7d2019d080c1b15fbc44d376cfcaf0113f36eba9cb3d1a",
       "docker": "7eb33999ce85fe7d44ac5baa080644399c9b0b17b9e3fd172fd4cabafccd9c8f"
     },
-    "evidenceManifestSha256": "8a412edcf227f328af5d8e47a2b74e92b6cdc3627aae6c5a9fb1b756b16b6c8c",
+    "evidenceManifestSha256": "265580b1810681b77129befb513f38c0d9afed4ab7753b2a3ce6ea6dd25afbd4",
     "knownGap": "P12_CAPTURED_POST_CLEANUP_FIREWALL_ONLY"
   },
   "correction": {
@@ -89,6 +89,41 @@
     "SIMULTANEOUS_BRIDGE_AND_BIP_REJECTION",
     "NATIVE_DOCKER_29_5_3_STARTUP_AND_CLEANUP"
   ],
+  "sourceValidation": {
+    "implementationCommit": "a03103ce69b69df2ffefc325f50a579f01e755d2",
+    "implementationTree": "9e93a486f38d329f039875bff592a7fad8071670",
+    "local": {
+      "install": "fd760761550a1df521b7a3fe846e1f5c529510fdaa253f6e68c0a2e5a3013174",
+      "focused109": "6d44de7c54e3f14344c459e8aa87d8ee94c0cd4a68896eb366db1f97a391aab4",
+      "rootProductGate": "79e2ee49033ab4f9a1160f5d93382fa1ac39d7ae959fae3875166980aa2a0c76",
+      "release212": "79b550db998ec465cc4a2f2858df8a913c802647544baf0285b598d99373d0f1",
+      "biome643": "62dfefc3e7d6bf5a1534594c4d1981b387f89168f64434a9d9472843fba9a75c",
+      "typecheck": "d1e5fc67e16240dddbeaaecfb8480ebe4b24413517b7295142c91dc18c993d92",
+      "productionBuild": "81a06c362c4837f5d3a0dd5636f1cadc5ef2566c6aa9d109428b18a65d2eb1b9",
+      "diffCheck": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cleanStatus": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "detached": {
+      "install": "b07d810fa25dd76b2ec3f748a53d80476a3d5394cfb18cba4899480a704bd8f3",
+      "focused109": "2e645729637c095a0bb729b239be8d705271a20cb1cf79a4c513f668be46841a",
+      "rootProductGate": "5c6d99a3c11de32543ba76abf35c4af00ad1d220879bd22a1078648fa84467a1",
+      "release212": "ed68d161893f9279388e8a0766ab8f932c2c40a62561a23172c60c429ef664a1",
+      "biome643": "bb636b295b82bd9397482aeafe160efc5e8a0935193fb3f66fdc9b2195d18202",
+      "typecheck": "4465b4ea0a6334ea46bf2e43bb3e4316dddb51df9a690051e7303563eaaf4a7b",
+      "productionBuild": "e18d8abd67ba1abf342ebc902821f69fe8fab790a7c7db1f5db25ed559d263d1",
+      "diffCheck": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fsck": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cleanStatus": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "securityScan": {
+      "secretFindings": 0,
+      "credentialValueFindings": 0,
+      "mutableImageFindings": 0,
+      "unsafeExecutableFirewallFindings": 0,
+      "unapprovedInternalAddressFindings": 0,
+      "approvedAssemblyCidrs": ["172.30.118.0/24", "172.31.118.0/24"]
+    }
+  },
   "postAdmissionRuntimeSequence": [
     "RESTORE_SYSTEM_DISK_TO_pre-protected-bootstrap-retry-20260817T192504Z",
     "BLKDISCARD_ASSEMBLY_A_AND_B",
