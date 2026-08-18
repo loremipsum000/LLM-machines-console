@@ -34,6 +34,14 @@ test("P13 preserves P12 as a failed pre-image-construction observation", () => {
   assert.equal(contract.preservedP12Observation.producedImageCount, 0)
   assert.equal(contract.preservedP12Observation.assemblyAStarted, false)
   assert.equal(contract.preservedP12Observation.assemblyBStarted, false)
+  assert.equal(
+    "externalForensicPath" in contract.preservedP12Observation,
+    false,
+  )
+  assert.equal(
+    contract.preservedP12Observation.externalForensicManifestSha256.length,
+    64,
+  )
 })
 
 test("P13 permits only exact-delta cleanup and canonical equivalence", () => {

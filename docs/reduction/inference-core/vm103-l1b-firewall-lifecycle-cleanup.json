@@ -30,7 +30,6 @@
     "expectedImageCount": 13,
     "completeEvidenceBundleId": "vm103-l1b-p12-runtime-20260818",
     "sourceEvidencePath": "docs/reduction/inference-core/evidence/vm103-l1b-p12-runtime-20260818",
-    "externalForensicPath": "/Users/dardanberisha/Temp/LLM-machines/product-evidence/vm103-l1b-p12-runtime-20260818",
     "externalForensicManifestSha256": "cc9bce70880dfc7a510efb07c9fcbf043cc6297daab1bca6b2ce954bf7cca4ab",
     "externalLogSha256": {
       "bootstrap": "c70859c9fe507ec4ff7d2019d080c1b15fbc44d376cfcaf0113f36eba9cb3d1a",
