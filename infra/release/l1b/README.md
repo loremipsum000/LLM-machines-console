@@ -74,6 +74,12 @@ Each assembly fetches and verifies its own locked source archives, assembles
 the reviewed LiteLLM and Firecrawl source, imports third-party images by exact
 platform digest, builds Product and downstream outputs with an exact BuildKit
 image, normalizes every OCI layout, and emits raw Syft and Trivy evidence.
+Bootstrap installs Docker packages behind a temporary, fail-closed Debian
+service-start policy. Docker, its socket, and containerd must remain inactive
+and disabled under the same canonical runtime-unit rule, and both global data
+roots must remain absent or empty, before
+either assembly disk is formatted. The policy is removed only after those
+checks pass; a pre-existing policy is never overwritten.
 `compare-assemblies.mjs` admits only 13-image, byte-identical canonical
 inventories. License review, vulnerability disposition, complete
 corresponding-source evidence, and final Core-lock generation remain fail-closed

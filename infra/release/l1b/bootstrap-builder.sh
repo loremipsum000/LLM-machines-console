@@ -37,6 +37,29 @@ binding_renderer=$script_dir/render-egress-bindings.py
 command -v jq >/dev/null 2>&1 || { echo "jq is required before locked bootstrap" >&2; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required before locked bootstrap" >&2; exit 1; }
 
+assert_global_runtime_storage_clean() {
+  storage_path=$1
+  storage_label=$2
+  if [ -L "$storage_path" ] || { [ -e "$storage_path" ] && [ ! -d "$storage_path" ]; }; then
+    echo "$storage_label global storage path is not a regular directory" >&2
+    exit 1
+  fi
+  storage_entry=
+  if [ -d "$storage_path" ]; then
+    if ! storage_entry=$(find "$storage_path" -mindepth 1 -maxdepth 1 -print -quit); then
+      echo "$storage_label global storage inspection failed" >&2
+      exit 1
+    fi
+  fi
+  if [ -n "$storage_entry" ]; then
+    echo "$storage_label state appeared on the system disk" >&2
+    exit 1
+  fi
+}
+
+assert_global_runtime_storage_clean /var/lib/docker Docker
+assert_global_runtime_storage_clean /var/lib/containerd containerd
+
 binding_root=/var/lib/llmm-l1b/network
 install -d -m 0700 "$binding_root"
 python3 "$binding_renderer" \
@@ -128,10 +151,40 @@ for package_id in containerd.io docker-ce-cli docker-ce docker-buildx-plugin; do
 done
 dnsmasq_url=$(jq -r '.hostTools[] | select(.id == "dnsmasq") | .url' "$toolchain_lock")
 dnsmasq_deb=$input_root/$(basename "$dnsmasq_url")
+runtime_units="docker.service docker.socket containerd.service"
 # Exact downloaded package bytes are verified above. Debian resolves only their
 # declared base-library dependencies.
+service_start_guard=/usr/sbin/policy-rc.d
+if [ -e "$service_start_guard" ] || [ -L "$service_start_guard" ]; then
+  echo "pre-existing service-start policy blocks locked bootstrap" >&2
+  exit 1
+fi
+service_start_guard_active=true
+cleanup_service_start_guard() {
+  if [ "$service_start_guard_active" = true ]; then
+    rm -f "$service_start_guard"
+  fi
+}
+trap cleanup_service_start_guard EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+umask 022
+printf '%s\n' '#!/bin/sh' 'exit 101' > "$service_start_guard"
+chmod 0755 "$service_start_guard"
 apt-get install -y --no-install-recommends $docker_debs "$dnsmasq_deb"
-systemctl disable --now docker.service docker.socket containerd.service || true
+systemctl disable --now $runtime_units
+for runtime_unit in $runtime_units; do
+  runtime_state=$(systemctl is-active "$runtime_unit" 2>/dev/null || true)
+  [ "$runtime_state" = inactive ] || { echo "$runtime_unit became active during bootstrap" >&2; exit 1; }
+  runtime_enablement=$(systemctl is-enabled "$runtime_unit" 2>/dev/null || true)
+  [ "$runtime_enablement" = disabled ] || { echo "$runtime_unit remains enabled after bootstrap" >&2; exit 1; }
+done
+assert_global_runtime_storage_clean /var/lib/docker Docker
+assert_global_runtime_storage_clean /var/lib/containerd containerd
+rm -f "$service_start_guard"
+service_start_guard_active=false
+trap - EXIT HUP INT TERM
 
 install -d -m 0755 /home/dberisha/.ssh
 authorized_keys=/home/dberisha/.ssh/authorized_keys
@@ -186,9 +239,5 @@ prepare_volume "$assembly_a_device" llmm-l1b-a /srv/llmm-l1b/assembly-a A
 prepare_volume "$assembly_b_device" llmm-l1b-b /srv/llmm-l1b/assembly-b B
 
 install -d -m 0700 -o dberisha -g dberisha /srv/llmm-l1b
-if [ -e /var/lib/docker ] && [ -n "$(ls -A /var/lib/docker 2>/dev/null)" ]; then
-  echo "Docker state appeared on the system disk" >&2
-  exit 1
-fi
 
 echo "VM103-L1B builder bootstrap completed; outbound policy and assembly execution remain separate."
