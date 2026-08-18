@@ -151,6 +151,8 @@ for package_id in containerd.io docker-ce-cli docker-ce docker-buildx-plugin; do
 done
 dnsmasq_url=$(jq -r '.hostTools[] | select(.id == "dnsmasq") | .url' "$toolchain_lock")
 dnsmasq_deb=$input_root/$(basename "$dnsmasq_url")
+iproute2_url=$(jq -r '.hostTools[] | select(.id == "iproute2") | .url' "$toolchain_lock")
+iproute2_deb=$input_root/$(basename "$iproute2_url")
 runtime_units="docker.service docker.socket containerd.service"
 # Exact downloaded package bytes are verified above. Debian resolves only their
 # declared base-library dependencies.
@@ -172,7 +174,7 @@ trap 'exit 143' TERM
 umask 022
 printf '%s\n' '#!/bin/sh' 'exit 101' > "$service_start_guard"
 chmod 0755 "$service_start_guard"
-apt-get install -y --no-install-recommends $docker_debs "$dnsmasq_deb"
+apt-get install -y --no-install-recommends $docker_debs "$dnsmasq_deb" "$iproute2_deb"
 systemctl disable --now $runtime_units
 for runtime_unit in $runtime_units; do
   runtime_state=$(systemctl is-active "$runtime_unit" 2>/dev/null || true)
@@ -182,6 +184,14 @@ for runtime_unit in $runtime_units; do
 done
 assert_global_runtime_storage_clean /var/lib/docker Docker
 assert_global_runtime_storage_clean /var/lib/containerd containerd
+[ "$(dpkg-query -W -f='${Version}' iproute2)" = "6.15.0-1" ] || {
+  echo "iproute2 package version differs" >&2
+  exit 1
+}
+ip -Version | grep -Fq "ip utility, iproute2-6.15.0" || {
+  echo "iproute2 binary version differs" >&2
+  exit 1
+}
 rm -f "$service_start_guard"
 service_start_guard_active=false
 trap - EXIT HUP INT TERM

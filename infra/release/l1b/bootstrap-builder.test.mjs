@@ -20,6 +20,7 @@ test("bootstrap enumerates every locked host and Docker input before installatio
     "node",
     "pnpm",
     "dnsmasq",
+    "iproute2",
     "docker-ce",
     "docker-ce-cli",
     "containerd.io",
@@ -59,7 +60,24 @@ test("bootstrap installs the content-addressed dnsmasq package", () => {
   )
   assert.match(
     script,
-    /apt-get install -y --no-install-recommends \$docker_debs "\$dnsmasq_deb"/,
+    /apt-get install -y --no-install-recommends \$docker_debs "\$dnsmasq_deb" "\$iproute2_deb"/,
+  )
+})
+
+test("bootstrap installs and verifies the content-addressed iproute2 package", () => {
+  const iproute2 = toolchain.hostTools.find(({ id }) => id === "iproute2")
+  assert.deepEqual(iproute2, {
+    id: "iproute2",
+    version: "6.15.0-1",
+    binaryVersion: "ip utility, iproute2-6.15.0",
+    url: "https://deb.debian.org/debian/pool/main/i/iproute2/iproute2_6.15.0-1_amd64.deb",
+    sha256: "7b2dcade4a83ded723fcab21c5a53c47f29352c9c5e1661a089a1e481b3fb48a",
+  })
+  assert.match(script, /iproute2_deb=/)
+  assert.match(script, /dpkg-query -W -f='\$\{Version\}' iproute2/)
+  assert.match(
+    script,
+    /ip -Version \| grep -Fq "ip utility, iproute2-6\.15\.0"/,
   )
 })
 
@@ -90,7 +108,7 @@ test("bootstrap denies package-triggered Docker and containerd startup", () => {
 
   const guardIndex = script.indexOf("service_start_guard=/usr/sbin/policy-rc.d")
   const dockerInstallIndex = script.indexOf(
-    'apt-get install -y --no-install-recommends $docker_debs "$dnsmasq_deb"',
+    'apt-get install -y --no-install-recommends $docker_debs "$dnsmasq_deb" "$iproute2_deb"',
   )
   const guardRemovalIndex = script.lastIndexOf('rm -f "$service_start_guard"')
   assert.ok(guardIndex >= 0)
@@ -169,7 +187,7 @@ test("bootstrap proves both global runtime roots clean before formatting", () =>
   assert.equal(dockerChecks.length, 2)
   assert.equal(containerdChecks.length, 2)
   const dockerInstallIndex = script.indexOf(
-    'apt-get install -y --no-install-recommends $docker_debs "$dnsmasq_deb"',
+    'apt-get install -y --no-install-recommends $docker_debs "$dnsmasq_deb" "$iproute2_deb"',
   )
   const postInstallDockerCheck = dockerChecks.at(-1).index
   const postInstallContainerdCheck = containerdChecks.at(-1).index

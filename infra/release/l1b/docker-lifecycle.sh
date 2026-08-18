@@ -1,0 +1,376 @@
+#!/bin/sh
+
+# This file is sourced by the assembly runner and native lifecycle gate. Both
+# callers use the same exact bridge, daemon, verification, and cleanup rules.
+
+llmm_l1b_lifecycle_fail() {
+  echo "$1" >&2
+  return 1
+}
+
+llmm_l1b_require_root() {
+  [ "$(id -u)" -eq 0 ] ||
+    llmm_l1b_lifecycle_fail "L1B Docker lifecycle requires root privileges"
+}
+
+llmm_l1b_require_commands() {
+  for llmm_command in docker dockerd ip iptables-save nft ps jq; do
+    command -v "$llmm_command" >/dev/null 2>&1 ||
+      llmm_l1b_lifecycle_fail "L1B Docker lifecycle requires $llmm_command" ||
+      return 1
+  done
+}
+
+llmm_l1b_load_bridge_profile() {
+  LLMM_L1B_ASSEMBLY=$1
+  LLMM_L1B_BRIDGE_PROFILE=$2
+  [ -f "$LLMM_L1B_BRIDGE_PROFILE" ] ||
+    llmm_l1b_lifecycle_fail "Docker bridge profile is missing" || return 1
+  LLMM_L1B_BRIDGE=$(
+    jq -er --arg assembly "$LLMM_L1B_ASSEMBLY" \
+      '.profiles[] | select(.assembly == $assembly) | .bridge' \
+      "$LLMM_L1B_BRIDGE_PROFILE"
+  ) || return 1
+  LLMM_L1B_NETWORK_CIDR=$(
+    jq -er --arg assembly "$LLMM_L1B_ASSEMBLY" \
+      '.profiles[] | select(.assembly == $assembly) | .networkCidr' \
+      "$LLMM_L1B_BRIDGE_PROFILE"
+  ) || return 1
+  LLMM_L1B_GATEWAY_ADDRESS=$(
+    jq -er --arg assembly "$LLMM_L1B_ASSEMBLY" \
+      '.profiles[] | select(.assembly == $assembly) | .gatewayAddress' \
+      "$LLMM_L1B_BRIDGE_PROFILE"
+  ) || return 1
+  LLMM_L1B_GATEWAY_CIDR=$(
+    jq -er --arg assembly "$LLMM_L1B_ASSEMBLY" \
+      '.profiles[] | select(.assembly == $assembly) | .gatewayCidr' \
+      "$LLMM_L1B_BRIDGE_PROFILE"
+  ) || return 1
+  LLMM_L1B_ADDRESS_PREFIX=$(
+    jq -er --arg assembly "$LLMM_L1B_ASSEMBLY" \
+      '.profiles[] | select(.assembly == $assembly) | .addressPrefix' \
+      "$LLMM_L1B_BRIDGE_PROFILE"
+  ) || return 1
+  case "$LLMM_L1B_ASSEMBLY:$LLMM_L1B_BRIDGE:$LLMM_L1B_NETWORK_CIDR:$LLMM_L1B_GATEWAY_CIDR" in
+    A:llmml1ba0:172.30.118.0/24:172.30.118.1/24) ;;
+    B:llmml1bb0:172.31.118.0/24:172.31.118.1/24) ;;
+    *) llmm_l1b_lifecycle_fail "Docker bridge profile differs"; return 1 ;;
+  esac
+}
+
+llmm_l1b_path_absent() {
+  [ ! -e "$1" ] && [ ! -L "$1" ] ||
+    llmm_l1b_lifecycle_fail "pre-existing runner path is denied: $1"
+}
+
+llmm_l1b_process_residue() {
+  ps -eo comm=,args= | awk \
+    '$1 ~ /^(dockerd|containerd|dnsmasq|buildkitd)$/ { found = 1 }
+      END { exit found ? 0 : 1 }
+    '
+}
+
+llmm_l1b_namespace_residue() {
+  [ -n "$(ip netns list)" ] && return 0
+  for llmm_namespace_root in /run/docker/netns "$LLMM_L1B_DOCKER_EXEC"; do
+    if [ -d "$llmm_namespace_root" ] &&
+      [ -n "$(find "$llmm_namespace_root" -mindepth 1 -path '*/netns/*' -print -quit)" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+llmm_l1b_network_residue() {
+  ip link show dev "$LLMM_L1B_BRIDGE" >/dev/null 2>&1 ||
+    ip -o -4 address show | grep -Fq "$LLMM_L1B_ADDRESS_PREFIX" ||
+    ip -o -4 route show table all | grep -Eq \
+      "(^|[[:space:]])${LLMM_L1B_NETWORK_CIDR%/*}(/24)?([[:space:]]|$)|dev[[:space:]]+$LLMM_L1B_BRIDGE([[:space:]]|$)" ||
+    ip netns list | grep -Fq "$LLMM_L1B_BRIDGE"
+}
+
+llmm_l1b_firewall_residue() {
+  llmm_firewall_pattern="$LLMM_L1B_BRIDGE|${LLMM_L1B_NETWORK_CIDR%/*}|$LLMM_L1B_GATEWAY_ADDRESS"
+  llmm_iptables=$(iptables-save) || return 2
+  printf '%s\n' "$llmm_iptables" | grep -Eq "$llmm_firewall_pattern" && return 0
+  llmm_nft=$(nft list ruleset) || return 2
+  printf '%s\n' "$llmm_nft" | grep -Eq "$llmm_firewall_pattern"
+}
+
+llmm_l1b_assert_no_process_residue() {
+  if llmm_l1b_process_residue; then
+    llmm_l1b_lifecycle_fail "runner-owned process residue is present"
+  fi
+}
+
+llmm_l1b_assert_global_runtime_roots_clean() {
+  for llmm_global_root in /var/lib/docker /var/lib/containerd; do
+    if [ -L "$llmm_global_root" ] ||
+      { [ -e "$llmm_global_root" ] && [ ! -d "$llmm_global_root" ]; }; then
+      llmm_l1b_lifecycle_fail "global Docker runtime root is not a regular directory"
+      return 1
+    fi
+    if [ -d "$llmm_global_root" ] &&
+      [ -n "$(find "$llmm_global_root" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+      llmm_l1b_lifecycle_fail "global Docker runtime root is not empty"
+      return 1
+    fi
+  done
+}
+
+llmm_l1b_assert_no_namespace_residue() {
+  if llmm_l1b_namespace_residue; then
+    llmm_l1b_lifecycle_fail "pre-existing Docker network namespace residue is present"
+  fi
+}
+
+llmm_l1b_assert_no_network_residue() {
+  if llmm_l1b_network_residue; then
+    llmm_l1b_lifecycle_fail "runner-owned bridge, address, route, or namespace residue is present"
+  fi
+}
+
+llmm_l1b_assert_no_firewall_residue() {
+  if llmm_l1b_firewall_residue; then
+    llmm_firewall_status=0
+  else
+    llmm_firewall_status=$?
+  fi
+  case "$llmm_firewall_status" in
+    0) llmm_l1b_lifecycle_fail "runner-owned firewall residue is present" ;;
+    1) return 0 ;;
+    *) llmm_l1b_lifecycle_fail "runner-owned firewall state could not be inspected" ;;
+  esac
+}
+
+llmm_l1b_preflight() {
+  LLMM_L1B_RUNTIME_ROOT=$1
+  LLMM_L1B_DOCKER_ROOT=$2
+  LLMM_L1B_DOCKER_EXEC=$3
+  LLMM_L1B_DOCKER_SOCKET=$4
+  LLMM_L1B_DOCKER_PID=$5
+  LLMM_L1B_DOCKER_LOG=$6
+  LLMM_L1B_DNSMASQ_CONFIG=$7
+  LLMM_L1B_DNSMASQ_LOG=$8
+
+  llmm_l1b_require_root
+  llmm_l1b_require_commands
+  [ -d "$LLMM_L1B_RUNTIME_ROOT" ] ||
+    llmm_l1b_lifecycle_fail "assembly runtime root is missing" || return 1
+  for llmm_path in \
+    "$LLMM_L1B_DOCKER_ROOT" \
+    "$LLMM_L1B_DOCKER_EXEC" \
+    "$LLMM_L1B_DOCKER_SOCKET" \
+    "$LLMM_L1B_DOCKER_PID" \
+    "$LLMM_L1B_DOCKER_LOG" \
+    "$LLMM_L1B_DNSMASQ_CONFIG" \
+    "$LLMM_L1B_DNSMASQ_LOG"; do
+    llmm_l1b_path_absent "$llmm_path" || return 1
+  done
+  llmm_l1b_assert_no_process_residue || return 1
+  llmm_l1b_assert_global_runtime_roots_clean || return 1
+  llmm_l1b_assert_no_namespace_residue || return 1
+  llmm_l1b_assert_no_network_residue || return 1
+  llmm_l1b_assert_no_firewall_residue || return 1
+  LLMM_L1B_BRIDGE_CREATED=false
+  LLMM_L1B_BRIDGE_ALIAS_SET=false
+  LLMM_L1B_BRIDGE_IFINDEX=
+}
+
+llmm_l1b_create_bridge() {
+  LLMM_L1B_SYS_CLASS_NET=${LLMM_L1B_SYS_CLASS_NET:-/sys/class/net}
+  LLMM_L1B_BRIDGE_OWNER="llmm-l1b-$LLMM_L1B_ASSEMBLY-$$"
+  ip link add name "$LLMM_L1B_BRIDGE" type bridge
+  LLMM_L1B_BRIDGE_CREATED=true
+  LLMM_L1B_BRIDGE_IFINDEX=$(cat "$LLMM_L1B_SYS_CLASS_NET/$LLMM_L1B_BRIDGE/ifindex")
+  [ -n "$LLMM_L1B_BRIDGE_IFINDEX" ] ||
+    llmm_l1b_lifecycle_fail "runner-owned bridge ifindex is missing" || return 1
+  ip link set dev "$LLMM_L1B_BRIDGE" alias "$LLMM_L1B_BRIDGE_OWNER"
+  LLMM_L1B_BRIDGE_ALIAS_SET=true
+  ip address add "$LLMM_L1B_GATEWAY_CIDR" dev "$LLMM_L1B_BRIDGE"
+  ip link set dev "$LLMM_L1B_BRIDGE" up
+}
+
+llmm_l1b_emit_bounded_docker_log() {
+  [ -f "$LLMM_L1B_DOCKER_LOG" ] || return 0
+  echo "bounded credential-free Docker log follows" >&2
+  tail -n 80 "$LLMM_L1B_DOCKER_LOG" | tail -c 16384 | awk '
+    BEGIN { IGNORECASE = 1 }
+    !/(authorization|bearer|cookie|credential|password|secret|token)/ { print }
+  ' >&2
+  echo "complete Docker log preserved at $LLMM_L1B_DOCKER_LOG" >&2
+}
+
+llmm_l1b_start_docker() {
+  install -d -m 0700 "$LLMM_L1B_DOCKER_ROOT" "$LLMM_L1B_DOCKER_EXEC"
+  umask 077
+  : > "$LLMM_L1B_DOCKER_LOG"
+  chmod 0600 "$LLMM_L1B_DOCKER_LOG"
+  dockerd \
+    --host "unix://$LLMM_L1B_DOCKER_SOCKET" \
+    --data-root "$LLMM_L1B_DOCKER_ROOT" \
+    --exec-root "$LLMM_L1B_DOCKER_EXEC" \
+    --pidfile "$LLMM_L1B_DOCKER_PID" \
+    --bridge "$LLMM_L1B_BRIDGE" \
+    --iptables=true \
+    --ip-forward=true \
+    --storage-driver overlay2 \
+    --dns "$LLMM_L1B_GATEWAY_ADDRESS" \
+    --log-driver local \
+    >"$LLMM_L1B_DOCKER_LOG" 2>&1 &
+  LLMM_L1B_DOCKER_LAUNCHER_PID=$!
+}
+
+llmm_l1b_wait_for_docker() {
+  llmm_attempt=0
+  while [ "$llmm_attempt" -lt 60 ]; do
+    if ! kill -0 "$LLMM_L1B_DOCKER_LAUNCHER_PID" 2>/dev/null; then
+      set +e
+      wait "$LLMM_L1B_DOCKER_LAUNCHER_PID"
+      LLMM_L1B_DOCKER_EXIT_STATUS=$?
+      set -e
+      LLMM_L1B_DOCKER_LAUNCHER_PID=
+      llmm_l1b_emit_bounded_docker_log
+      llmm_l1b_lifecycle_fail "assembly Docker daemon exited before readiness"
+      return 1
+    fi
+    if DOCKER_HOST="unix://$LLMM_L1B_DOCKER_SOCKET" docker info >/dev/null 2>&1; then
+      return 0
+    fi
+    llmm_attempt=$((llmm_attempt + 1))
+    sleep 1
+  done
+  llmm_l1b_emit_bounded_docker_log
+  llmm_l1b_lifecycle_fail "assembly Docker daemon did not become ready"
+}
+
+llmm_l1b_verify_docker() {
+  llmm_versions=$(DOCKER_HOST="unix://$LLMM_L1B_DOCKER_SOCKET" \
+    docker version --format '{{.Client.Version}}|{{.Server.Version}}')
+  [ "$llmm_versions" = "29.5.3|29.5.3" ] ||
+    llmm_l1b_lifecycle_fail "Docker version differs" || return 1
+  [ -S "$LLMM_L1B_DOCKER_SOCKET" ] ||
+    llmm_l1b_lifecycle_fail "assembly Docker socket is missing" || return 1
+  llmm_observed_root=$(DOCKER_HOST="unix://$LLMM_L1B_DOCKER_SOCKET" \
+    docker info --format '{{.DockerRootDir}}')
+  [ "$llmm_observed_root" = "$LLMM_L1B_DOCKER_ROOT" ] ||
+    llmm_l1b_lifecycle_fail "Docker data root differs" || return 1
+  llmm_pid=$(cat "$LLMM_L1B_DOCKER_PID")
+  [ "$llmm_pid" = "$LLMM_L1B_DOCKER_LAUNCHER_PID" ] ||
+    llmm_l1b_lifecycle_fail "Docker PID differs" || return 1
+  llmm_cmdline=$(tr '\000' ' ' < "/proc/$llmm_pid/cmdline")
+  printf '%s\n' "$llmm_cmdline" | grep -Fq -- "--data-root $LLMM_L1B_DOCKER_ROOT" ||
+    llmm_l1b_lifecycle_fail "Docker data-root argument differs" || return 1
+  printf '%s\n' "$llmm_cmdline" | grep -Fq -- "--exec-root $LLMM_L1B_DOCKER_EXEC" ||
+    llmm_l1b_lifecycle_fail "Docker exec-root argument differs" || return 1
+  printf '%s\n' "$llmm_cmdline" | grep -Fq -- "--bridge $LLMM_L1B_BRIDGE" ||
+    llmm_l1b_lifecycle_fail "Docker bridge argument differs" || return 1
+  if printf '%s\n' "$llmm_cmdline" | grep -Fq -- "--bip"; then
+    llmm_l1b_lifecycle_fail "simultaneous Docker --bridge and --bip is denied"
+    return 1
+  fi
+  [ "$(cat "$LLMM_L1B_SYS_CLASS_NET/$LLMM_L1B_BRIDGE/ifindex")" = "$LLMM_L1B_BRIDGE_IFINDEX" ] ||
+    llmm_l1b_lifecycle_fail "runner-owned bridge identity differs" || return 1
+  [ "$(cat "$LLMM_L1B_SYS_CLASS_NET/$LLMM_L1B_BRIDGE/ifalias")" = "$LLMM_L1B_BRIDGE_OWNER" ] ||
+    llmm_l1b_lifecycle_fail "runner-owned bridge ownership differs" || return 1
+  ip -o -4 address show dev "$LLMM_L1B_BRIDGE" | grep -Fq "$LLMM_L1B_GATEWAY_CIDR" ||
+    llmm_l1b_lifecycle_fail "runner-owned bridge gateway differs" || return 1
+  ip -o -4 route show table all | grep -Eq \
+    "^$LLMM_L1B_NETWORK_CIDR dev $LLMM_L1B_BRIDGE([[:space:]]|$)" ||
+    llmm_l1b_lifecycle_fail "runner-owned bridge route differs" || return 1
+}
+
+llmm_l1b_run_with_docker_watch() {
+  "$@" &
+  LLMM_L1B_WORK_PID=$!
+  (
+    while kill -0 "$LLMM_L1B_WORK_PID" 2>/dev/null; do
+      if ! kill -0 "$LLMM_L1B_DOCKER_LAUNCHER_PID" 2>/dev/null; then
+        kill -TERM "$LLMM_L1B_WORK_PID" 2>/dev/null || true
+        exit 99
+      fi
+      sleep 1
+    done
+  ) &
+  LLMM_L1B_MONITOR_PID=$!
+  set +e
+  wait "$LLMM_L1B_WORK_PID"
+  llmm_work_status=$?
+  wait "$LLMM_L1B_MONITOR_PID"
+  llmm_monitor_status=$?
+  set -e
+  LLMM_L1B_WORK_PID=
+  LLMM_L1B_MONITOR_PID=
+  if [ "$llmm_monitor_status" -eq 99 ]; then
+    llmm_l1b_emit_bounded_docker_log
+    llmm_l1b_lifecycle_fail "assembly Docker daemon exited while the workload was active"
+    return 99
+  fi
+  return "$llmm_work_status"
+}
+
+llmm_l1b_stop_pid() {
+  llmm_stop_pid=$1
+  [ -n "$llmm_stop_pid" ] || return 0
+  kill -TERM "$llmm_stop_pid" 2>/dev/null || true
+  llmm_wait=0
+  while kill -0 "$llmm_stop_pid" 2>/dev/null && [ "$llmm_wait" -lt 30 ]; do
+    llmm_process_state="$(ps -o stat= -p "$llmm_stop_pid" 2>/dev/null | tr -d '[:space:]')"
+    case "$llmm_process_state" in
+      ""|Z*) break ;;
+    esac
+    llmm_wait=$((llmm_wait + 1))
+    sleep 1
+  done
+  if kill -0 "$llmm_stop_pid" 2>/dev/null; then
+    kill -KILL "$llmm_stop_pid" 2>/dev/null || true
+  fi
+  wait "$llmm_stop_pid" 2>/dev/null || true
+}
+
+llmm_l1b_cleanup() {
+  llmm_cleanup_status=0
+  llmm_l1b_stop_pid "${LLMM_L1B_MONITOR_PID:-}" || llmm_cleanup_status=1
+  llmm_l1b_stop_pid "${LLMM_L1B_WORK_PID:-}" || llmm_cleanup_status=1
+  llmm_l1b_stop_pid "${LLMM_L1B_DNSMASQ_PID:-}" || llmm_cleanup_status=1
+  llmm_l1b_stop_pid "${LLMM_L1B_DOCKER_LAUNCHER_PID:-}" || llmm_cleanup_status=1
+
+  if [ -e "$LLMM_L1B_DOCKER_SOCKET" ] || [ -L "$LLMM_L1B_DOCKER_SOCKET" ]; then
+    rm -f -- "$LLMM_L1B_DOCKER_SOCKET" || llmm_cleanup_status=1
+  fi
+  if [ -e "$LLMM_L1B_DOCKER_PID" ] || [ -L "$LLMM_L1B_DOCKER_PID" ]; then
+    rm -f -- "$LLMM_L1B_DOCKER_PID" || llmm_cleanup_status=1
+  fi
+  if [ "${LLMM_L1B_BRIDGE_CREATED:-false}" = true ]; then
+    llmm_current_ifindex=$(cat "$LLMM_L1B_SYS_CLASS_NET/$LLMM_L1B_BRIDGE/ifindex" 2>/dev/null || true)
+    llmm_current_alias=$(cat "$LLMM_L1B_SYS_CLASS_NET/$LLMM_L1B_BRIDGE/ifalias" 2>/dev/null || true)
+    llmm_expected_alias=
+    if [ "${LLMM_L1B_BRIDGE_ALIAS_SET:-false}" = true ]; then
+      llmm_expected_alias=$LLMM_L1B_BRIDGE_OWNER
+    fi
+    if [ "$llmm_current_ifindex" = "$LLMM_L1B_BRIDGE_IFINDEX" ] &&
+      [ "$llmm_current_alias" = "$llmm_expected_alias" ]; then
+      ip link delete dev "$LLMM_L1B_BRIDGE" type bridge || llmm_cleanup_status=1
+    else
+      echo "runner-owned bridge identity changed; foreign state was not removed" >&2
+      llmm_cleanup_status=1
+    fi
+  fi
+
+  LLMM_L1B_BRIDGE_CREATED=false
+  LLMM_L1B_BRIDGE_ALIAS_SET=false
+  LLMM_L1B_DOCKER_LAUNCHER_PID=
+  LLMM_L1B_DNSMASQ_PID=
+  LLMM_L1B_WORK_PID=
+  LLMM_L1B_MONITOR_PID=
+  llmm_l1b_assert_no_process_residue || llmm_cleanup_status=1
+  llmm_l1b_assert_global_runtime_roots_clean || llmm_cleanup_status=1
+  llmm_l1b_assert_no_namespace_residue || llmm_cleanup_status=1
+  llmm_l1b_assert_no_network_residue || llmm_cleanup_status=1
+  llmm_l1b_assert_no_firewall_residue || llmm_cleanup_status=1
+  [ ! -e "$LLMM_L1B_DOCKER_SOCKET" ] && [ ! -L "$LLMM_L1B_DOCKER_SOCKET" ] ||
+    llmm_cleanup_status=1
+  [ ! -e "$LLMM_L1B_DOCKER_PID" ] && [ ! -L "$LLMM_L1B_DOCKER_PID" ] ||
+    llmm_cleanup_status=1
+  return "$llmm_cleanup_status"
+}

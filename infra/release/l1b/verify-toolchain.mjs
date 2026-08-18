@@ -33,6 +33,8 @@ export function verifyHostToolchain(run = command) {
     buildx: run("docker", ["buildx", "version"]),
     dnsmasqPackage: run("dpkg-query", ["-W", "-f=${Version}", "dnsmasq-base"]),
     dnsmasqBinary: run("dnsmasq", ["--version"]),
+    iproute2Package: run("dpkg-query", ["-W", "-f=${Version}", "iproute2"]),
+    iproute2Binary: run("ip", ["-Version"]),
   }
   const expected = new Map(
     lock.hostTools.map((entry) => [entry.id, entry.version]),
@@ -54,6 +56,11 @@ export function verifyHostToolchain(run = command) {
     )
   )
     fail("dnsmasq binary version differs")
+  const iproute2 = lock.hostTools.find(({ id }) => id === "iproute2")
+  if (observation.iproute2Package !== iproute2.version)
+    fail("iproute2 package version differs")
+  if (!observation.iproute2Binary.includes(iproute2.binaryVersion))
+    fail("iproute2 binary version differs")
   return observation
 }
 

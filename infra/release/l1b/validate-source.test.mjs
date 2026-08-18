@@ -21,6 +21,17 @@ test("mutable or incomplete tool identities fail closed", () => {
   assert.match(errors, /pnpm host tool is not content-addressed/)
 })
 
+test("unverified iproute2 or bridge lifecycle identities fail closed", () => {
+  const source = clone(readL1bSource())
+  source.toolchain.hostTools.find(({ id }) => id === "iproute2").sha256 =
+    "missing"
+  source.bridgeProfiles.profiles[1].networkCidr = "172.30.118.0/24"
+  const errors = validateL1bSource(source).join("\n")
+  assert.match(errors, /iproute2 host tool is not content-addressed/)
+  assert.match(errors, /iproute2 is not byte-pinned/)
+  assert.match(errors, /Docker bridge profiles differ/)
+})
+
 test("broadened egress and shared assembly state fail closed", () => {
   const source = clone(readL1bSource())
   source.egress.defaultPolicy = "ACCEPT"
