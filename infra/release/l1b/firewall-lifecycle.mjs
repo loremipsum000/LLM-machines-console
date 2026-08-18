@@ -136,8 +136,8 @@ export function captureFirewallState(outputDirectory, run = command) {
   const rawNft = run("nft", ["list", "ruleset"]).stdout
   const sysctls = Object.fromEntries(
     sysctlKeys.map((key) => {
-      const result = run("sysctl", ["-n", key], { allowFailure: true })
-      return [key, result.status === 0 ? result.stdout.trim() : null]
+      const result = run("sysctl", ["-n", key])
+      return [key, result.stdout.trim()]
     }),
   )
   const state = {
@@ -163,7 +163,7 @@ export function captureFirewallState(outputDirectory, run = command) {
   return state
 }
 
-function ruleOwned(rule, { bridge, cidr, gateway }) {
+function mentionsRunnerIdentity(rule, { bridge, cidr, gateway }) {
   return (
     rule.includes(bridge) ||
     rule.includes(cidr) ||
@@ -172,13 +172,75 @@ function ruleOwned(rule, { bridge, cidr, gateway }) {
   )
 }
 
+const dockerChains = new Set([
+  "DOCKER",
+  "DOCKER-BRIDGE",
+  "DOCKER-CT",
+  "DOCKER-FORWARD",
+  "DOCKER-INTERNAL",
+  "DOCKER-USER",
+])
+
+function runnerIptablesRules(family, table, chain, profile) {
+  const { bridge, cidr } = profile
+  const rules = new Set()
+  if (table === "filter" && chain === "FORWARD") {
+    rules.add("-A FORWARD -j DOCKER-USER")
+    rules.add("-A FORWARD -j DOCKER-FORWARD")
+  }
+  if (family === "ip" && table === "filter") {
+    if (chain === "DOCKER")
+      rules.add(`-A DOCKER ! -i ${bridge} -o ${bridge} -j DROP`)
+    if (chain === "DOCKER-BRIDGE")
+      rules.add(`-A DOCKER-BRIDGE -o ${bridge} -j DOCKER`)
+    if (chain === "DOCKER-CT")
+      rules.add(
+        `-A DOCKER-CT -o ${bridge} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT`,
+      )
+    if (chain === "DOCKER-FORWARD") {
+      rules.add("-A DOCKER-FORWARD -j DOCKER-CT")
+      rules.add("-A DOCKER-FORWARD -j DOCKER-INTERNAL")
+      rules.add("-A DOCKER-FORWARD -j DOCKER-BRIDGE")
+      rules.add(`-A DOCKER-FORWARD -i ${bridge} -j ACCEPT`)
+    }
+  }
+  if (family === "ip6" && table === "filter" && chain === "DOCKER-FORWARD") {
+    rules.add("-A DOCKER-FORWARD -j DOCKER-CT")
+    rules.add("-A DOCKER-FORWARD -j DOCKER-INTERNAL")
+    rules.add("-A DOCKER-FORWARD -j DOCKER-BRIDGE")
+  }
+  if (table === "nat") {
+    if (chain === "PREROUTING")
+      rules.add("-A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER")
+    if (chain === "OUTPUT") {
+      rules.add(
+        family === "ip"
+          ? "-A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER"
+          : "-A OUTPUT ! -d ::1/128 -m addrtype --dst-type LOCAL -j DOCKER",
+      )
+    }
+    if (family === "ip" && chain === "POSTROUTING")
+      rules.add(`-A POSTROUTING -s ${cidr} ! -o ${bridge} -j MASQUERADE`)
+  }
+  return rules
+}
+
+function ruleOwned(rule, family, table, chain, profile) {
+  return runnerIptablesRules(family, table, chain, profile).has(rule)
+}
+
 export function assertNoFirewallCollision(state, profile) {
   for (const family of ["iptablesV4", "iptablesV6"]) {
     for (const table of Object.values(state[family])) {
       for (const [name, chain] of Object.entries(table.chains)) {
-        if (name.startsWith("DOCKER"))
-          fail("pre-existing Docker chain is denied")
-        if (chain.rules.some((rule) => ruleOwned(rule, profile))) {
+        if (dockerChains.has(name)) fail("pre-existing Docker chain is denied")
+        if (
+          chain.rules.some(
+            (rule) =>
+              mentionsRunnerIdentity(rule, profile) ||
+              /(?:^| )-j DOCKER(?:-| |$)/.test(rule),
+          )
+        ) {
           fail("pre-existing runner firewall rule is denied")
         }
       }
@@ -227,11 +289,15 @@ function planFamily(baseline, current, family, profile) {
       for (const [chainName, chain] of Object.entries(table.chains)) {
         if (
           !builtins[tableName].has(chainName) &&
-          !chainName.startsWith("DOCKER")
+          !dockerChains.has(chainName)
         ) {
           fail("an unapproved chain appeared in a runner-created table")
         }
-        if (chain.rules.some((rule) => !ruleOwned(rule, profile)))
+        if (
+          chain.rules.some(
+            (rule) => !ruleOwned(rule, family, tableName, chainName, profile),
+          )
+        )
           fail("a runner-created table contains an unrelated rule")
       }
       operations.push({ action: "delete-nft-table", family, table: tableName })
@@ -244,12 +310,14 @@ function planFamily(baseline, current, family, profile) {
     const newChains = Object.keys(table.chains).filter(
       (name) => !prior.chains[name],
     )
-    if (newChains.some((name) => !name.startsWith("DOCKER"))) {
+    if (newChains.some((name) => !dockerChains.has(name))) {
       fail("an unapproved iptables chain appeared")
     }
     for (const chainName of newChains) {
       if (
-        table.chains[chainName].rules.some((rule) => !ruleOwned(rule, profile))
+        table.chains[chainName].rules.some(
+          (rule) => !ruleOwned(rule, family, tableName, chainName, profile),
+        )
       )
         fail("a runner-created chain contains an unrelated rule")
     }
@@ -257,7 +325,15 @@ function planFamily(baseline, current, family, profile) {
       const currentChain = table.chains[chainName]
       const indexes = addedRuleIndexes(chain.rules, currentChain.rules)
       for (const index of indexes) {
-        if (!ruleOwned(currentChain.rules[index - 1], profile)) {
+        if (
+          !ruleOwned(
+            currentChain.rules[index - 1],
+            family,
+            tableName,
+            chainName,
+            profile,
+          )
+        ) {
           fail("an unrelated iptables rule appeared")
         }
       }
@@ -302,8 +378,8 @@ function planFamily(baseline, current, family, profile) {
 }
 
 function nftAddedLines(baseline, current) {
-  const before = baseline.split("\n")
-  const after = current.split("\n")
+  const before = baseline === "" ? [] : baseline.split("\n")
+  const after = current === "" ? [] : current.split("\n")
   const added = []
   let beforeIndex = 0
   for (const line of after) {
@@ -316,21 +392,44 @@ function nftAddedLines(baseline, current) {
 }
 
 function nftLineOwned(line, profile) {
-  return (
-    line === "" ||
-    line === "}" ||
-    /^table (?:ip|ip6) (?:filter|nat) \{$/.test(line) ||
-    /^chain (?:INPUT|FORWARD|OUTPUT|PREROUTING|POSTROUTING|DOCKER(?:-[A-Z]+)?) \{$/.test(
-      line,
-    ) ||
-    /^type (?:filter|nat) hook (?:forward|prerouting|output|postrouting) priority [^;]+; policy (?:accept|drop);$/.test(
-      line,
-    ) ||
-    line.includes(profile.bridge) ||
-    line.includes(profile.cidr) ||
-    line.includes(profile.gateway) ||
-    /(?:^| )jump DOCKER(?:-| |$)/.test(line)
-  )
+  const { bridge, cidr } = profile
+  return new Set([
+    "",
+    "}",
+    "table ip filter {",
+    "table ip nat {",
+    "table ip6 filter {",
+    "table ip6 nat {",
+    "chain INPUT {",
+    "chain FORWARD {",
+    "chain OUTPUT {",
+    "chain PREROUTING {",
+    "chain POSTROUTING {",
+    "chain DOCKER {",
+    "chain DOCKER-BRIDGE {",
+    "chain DOCKER-CT {",
+    "chain DOCKER-FORWARD {",
+    "chain DOCKER-INTERNAL {",
+    "chain DOCKER-USER {",
+    "type filter hook forward priority filter; policy accept;",
+    "type filter hook forward priority filter; policy drop;",
+    "type nat hook prerouting priority dstnat; policy accept;",
+    "type nat hook output priority dstnat; policy accept;",
+    "type nat hook postrouting priority srcnat; policy accept;",
+    "fib daddr type local counter packets 0 bytes 0 jump DOCKER",
+    "ip daddr != 127.0.0.0/8 fib daddr type local counter packets 0 bytes 0 jump DOCKER",
+    "ip6 daddr != ::1 fib daddr type local counter packets 0 bytes 0 jump DOCKER",
+    `ip saddr ${cidr} oifname != "${bridge}" counter packets 0 bytes 0 masquerade`,
+    `iifname != "${bridge}" oifname "${bridge}" counter packets 0 bytes 0 drop`,
+    "counter packets 0 bytes 0 jump DOCKER-CT",
+    "counter packets 0 bytes 0 jump DOCKER-INTERNAL",
+    "counter packets 0 bytes 0 jump DOCKER-BRIDGE",
+    `iifname "${bridge}" counter packets 0 bytes 0 accept`,
+    `oifname "${bridge}" counter packets 0 bytes 0 jump DOCKER`,
+    `oifname "${bridge}" ct state related,established counter packets 0 bytes 0 accept`,
+    "counter packets 0 bytes 0 jump DOCKER-USER",
+    "counter packets 0 bytes 0 jump DOCKER-FORWARD",
+  ]).has(line)
 }
 
 function validateNftDelta(baseline, current, plannedFamilies, profile) {
@@ -396,6 +495,107 @@ export function planFirewallCleanup(baseline, current, profile) {
     profile,
     operations,
   }
+}
+
+function pushDelta(records, value) {
+  records.push(canonicalJson(value))
+}
+
+function iptablesDeltaRecords(baseline, current, family) {
+  const records = []
+  for (const [tableName, table] of Object.entries(current)) {
+    const prior = baseline[tableName]
+    if (!prior) {
+      pushDelta(records, { family, table: tableName, kind: "table" })
+    }
+    for (const [chainName, chain] of Object.entries(table.chains)) {
+      const priorChain = prior?.chains[chainName]
+      if (!priorChain) {
+        pushDelta(records, {
+          family,
+          table: tableName,
+          chain: chainName,
+          kind: "chain",
+          policy: chain.policy,
+        })
+        for (const rule of chain.rules) {
+          pushDelta(records, {
+            family,
+            table: tableName,
+            chain: chainName,
+            kind: "rule",
+            rule,
+          })
+        }
+        continue
+      }
+      const addedIndexes = addedRuleIndexes(priorChain.rules, chain.rules)
+      for (const index of addedIndexes) {
+        pushDelta(records, {
+          family,
+          table: tableName,
+          chain: chainName,
+          kind: "rule",
+          rule: chain.rules[index - 1],
+        })
+      }
+      if (priorChain.policy !== chain.policy) {
+        pushDelta(records, {
+          family,
+          table: tableName,
+          chain: chainName,
+          kind: "policy",
+          value: chain.policy,
+        })
+      }
+    }
+  }
+  return records
+}
+
+function firewallDeltaRecords(baseline, current) {
+  const records = [
+    ...iptablesDeltaRecords(baseline.iptablesV4, current.iptablesV4, "ip"),
+    ...iptablesDeltaRecords(baseline.iptablesV6, current.iptablesV6, "ip6"),
+  ]
+  for (const line of nftAddedLines(baseline.nft, current.nft)) {
+    pushDelta(records, { kind: "nft-line", line })
+  }
+  for (const key of sysctlKeys) {
+    if (baseline.sysctls[key] !== current.sysctls[key]) {
+      pushDelta(records, {
+        kind: "sysctl",
+        key,
+        value: current.sysctls[key],
+      })
+    }
+  }
+  return records
+}
+
+function assertMultisetSubset(allowed, observed) {
+  const counts = new Map()
+  for (const value of allowed) counts.set(value, (counts.get(value) ?? 0) + 1)
+  for (const value of observed) {
+    const count = counts.get(value) ?? 0
+    if (count === 0)
+      fail("post-graceful firewall delta exceeds the captured active delta")
+    counts.set(value, count - 1)
+  }
+}
+
+export function assertCleanupWithinActiveDelta(
+  baseline,
+  active,
+  current,
+  profile,
+) {
+  planFirewallCleanup(baseline, active, profile)
+  planFirewallCleanup(baseline, current, profile)
+  assertMultisetSubset(
+    firewallDeltaRecords(baseline, active),
+    firewallDeltaRecords(baseline, current),
+  )
 }
 
 function executePlan(plan, run = command) {
@@ -467,13 +667,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     captureFirewallState(args.get("--output"))
   } else if (action === "assert-clean" && args.size === 5) {
     assertNoFirewallCollision(readState(args.get("--snapshot")), profile)
-  } else if ((action === "plan" || action === "cleanup") && args.size === 7) {
+  } else if (action === "plan" && args.size === 7) {
     const baseline = readState(args.get("--baseline"))
     const current = readState(args.get("--current"))
     const plan = planFirewallCleanup(baseline, current, profile)
     const planBytes = `${canonicalJson(plan)}\n`
     writeExclusive(resolve(args.get("--plan")), planBytes)
-    if (action === "cleanup") executePlan(plan)
+  } else if (action === "cleanup" && args.size === 8) {
+    const baseline = readState(args.get("--baseline"))
+    const active = readState(args.get("--active"))
+    const current = readState(args.get("--current"))
+    assertCleanupWithinActiveDelta(baseline, active, current, profile)
+    const plan = planFirewallCleanup(baseline, current, profile)
+    const planBytes = `${canonicalJson(plan)}\n`
+    writeExclusive(resolve(args.get("--plan")), planBytes)
+    executePlan(plan)
   } else if (action === "verify-equivalent" && args.size === 3) {
     if (
       !statesEquivalent(

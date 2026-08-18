@@ -47,7 +47,14 @@ fi
 exit 0
 `,
   )
-  executable(resolve(bin, "findmnt"), "#!/bin/sh\nexit 1\n")
+  executable(
+    resolve(bin, "findmnt"),
+    '#!/bin/sh\n[ "${LLMM_FAKE_FINDMNT_ERROR:-0}" != 1 ] || exit 2\nexit 1\n',
+  )
+  executable(
+    resolve(bin, "find"),
+    '#!/bin/sh\n[ "${LLMM_FAKE_FIND_ERROR:-0}" != 1 ] || exit 2\nexec /usr/bin/find "$@"\n',
+  )
   executable(
     resolve(bin, "dockerd"),
     `#!/bin/sh
@@ -80,13 +87,14 @@ fi
   executable(resolve(bin, "sysctl"), "#!/bin/sh\nprintf '0\\n'\n")
   executable(
     resolve(bin, "ps"),
-    '#!/bin/sh\n[ "${LLMM_FAKE_PROCESS:-0}" = 1 ] && echo "dockerd dockerd --data-root $LLMM_RUNTIME_ROOT"\n',
+    '#!/bin/sh\n[ "${LLMM_FAKE_PS_ERROR:-0}" != 1 ] || exit 2\n[ "${LLMM_FAKE_PROCESS:-0}" != 1 ] || echo "dockerd dockerd --data-root $LLMM_RUNTIME_ROOT"\nexit 0\n',
   )
   executable(resolve(bin, "nft"), "#!/bin/sh\nexit 0\n")
   executable(
     resolve(bin, "ip"),
     `#!/bin/sh
 set -eu
+[ "\${LLMM_FAKE_IP_ERROR:-0}" != 1 ] || exit 2
 bridge=llmml1ba0
 state=$LLMM_L1B_SYS_CLASS_NET/$bridge
 case "$*" in
@@ -216,6 +224,58 @@ test("pre-existing runtime roots and firewall residue fail closed", () => {
     assert.match(processResult.stderr, /runner-owned process residue/)
   } finally {
     rmSync(fixture_.directory, { force: true, recursive: true })
+  }
+})
+
+test("process, network, filesystem, and mount inspection errors fail closed", () => {
+  const cases = [
+    ["LLMM_FAKE_PS_ERROR", /process state could not be inspected/],
+    ["LLMM_FAKE_IP_ERROR", /network.*could not be inspected/],
+  ]
+  for (const [variable, message] of cases) {
+    const fixture_ = fixture()
+    try {
+      const result = runFixture(fixture_, setup, { [variable]: "1" })
+      assert.equal(result.status, 1)
+      assert.match(result.stderr, message)
+    } finally {
+      rmSync(fixture_.directory, { force: true, recursive: true })
+    }
+  }
+
+  const findFixture = fixture()
+  try {
+    const result = runFixture(
+      findFixture,
+      `set -eu
+. "$LIFECYCLE"
+llmm_l1b_assert_find_root_empty "$ASSEMBLY_ROOT"
+`,
+      { LLMM_FAKE_FIND_ERROR: "1" },
+    )
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /could not be inspected/)
+  } finally {
+    rmSync(findFixture.directory, { force: true, recursive: true })
+  }
+
+  const mountFixture = fixture()
+  try {
+    const runtimePath = resolve(mountFixture.assembly, "docker-data")
+    mkdirSync(runtimePath)
+    const result = runFixture(
+      mountFixture,
+      `set -eu
+. "$LIFECYCLE"
+llmm_l1b_remove_runtime_paths "$ASSEMBLY_ROOT/docker-data"
+`,
+      { LLMM_FAKE_FINDMNT_ERROR: "1" },
+    )
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /mount state could not be inspected/)
+    assert.equal(existsSync(runtimePath), true)
+  } finally {
+    rmSync(mountFixture.directory, { force: true, recursive: true })
   }
 })
 

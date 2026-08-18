@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import test from "node:test"
 import {
+  assertCleanupWithinActiveDelta,
   assertNoFirewallCollision,
   normalizeNft,
   parseIptablesSave,
@@ -56,7 +57,8 @@ test("plans deletion of only the exact Docker-created tables and sysctl delta", 
 :FORWARD DROP [0:0]
 :OUTPUT ACCEPT [0:0]
 :DOCKER - [0:0]
--A FORWARD -j DOCKER
+:DOCKER-USER - [0:0]
+-A FORWARD -j DOCKER-USER
 -A DOCKER ! -i llmml1ba0 -o llmml1ba0 -j DROP
 COMMIT
 *nat
@@ -131,6 +133,103 @@ COMMIT
   assert.throws(
     () => planFirewallCleanup(empty, nativeNftDrift, profile),
     /unrelated rule/,
+  )
+
+  const misleadingNft = structuredClone(empty)
+  misleadingNft.iptablesV4 = parseIptablesSave(`*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:DOCKER - [0:0]
+COMMIT
+`)
+  misleadingNft.nft = `table ip filter {
+\tchain DOCKER {
+\t\tmeta mark 7 comment "llmml1ba0" counter packets 0 bytes 0 accept
+\t}
+}`
+  assert.throws(
+    () => planFirewallCleanup(empty, misleadingNft, profile),
+    /unrelated rule/,
+  )
+
+  const misleadingComment = structuredClone(empty)
+  misleadingComment.iptablesV4 = parseIptablesSave(`*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -m comment --comment llmml1ba0 -j ACCEPT
+COMMIT
+`)
+  assert.throws(
+    () => planFirewallCleanup(empty, misleadingComment, profile),
+    /unrelated rule/,
+  )
+})
+
+test("cleanup is bounded by the exact captured active delta", () => {
+  const active = structuredClone(empty)
+  active.iptablesV4 = parseIptablesSave(`*filter
+:INPUT ACCEPT [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+:DOCKER - [0:0]
+:DOCKER-USER - [0:0]
+-A FORWARD -j DOCKER-USER
+-A DOCKER ! -i llmml1ba0 -o llmml1ba0 -j DROP
+COMMIT
+`)
+  const withinCeiling = structuredClone(active)
+  withinCeiling.iptablesV4.filter.chains.DOCKER.rules = []
+  assert.doesNotThrow(() =>
+    assertCleanupWithinActiveDelta(empty, active, withinCeiling, profile),
+  )
+
+  const exceedsCeiling = structuredClone(active)
+  exceedsCeiling.iptablesV4.filter.chains["DOCKER-BRIDGE"] = {
+    policy: "-",
+    rules: ["-A DOCKER-BRIDGE -o llmml1ba0 -j DOCKER"],
+  }
+  assert.throws(
+    () =>
+      assertCleanupWithinActiveDelta(empty, active, exceedsCeiling, profile),
+    /exceeds the captured active delta/,
+  )
+
+  const nftActive = structuredClone(empty)
+  nftActive.iptablesV4 = parseIptablesSave(`*filter
+:INPUT ACCEPT [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+:DOCKER - [0:0]
+:DOCKER-USER - [0:0]
+-A FORWARD -j DOCKER-USER
+COMMIT
+`)
+  nftActive.nft = `table ip filter {
+\tchain DOCKER {
+\t}
+\n\tchain FORWARD {
+\t\ttype filter hook forward priority filter; policy drop;
+\t\tcounter packets 0 bytes 0 jump DOCKER-USER
+\t}
+\n\tchain DOCKER-USER {
+\t}
+}`
+  const nftExceeds = structuredClone(nftActive)
+  nftExceeds.iptablesV4.filter.chains["DOCKER-BRIDGE"] = {
+    policy: "-",
+    rules: [],
+  }
+  nftExceeds.nft = nftExceeds.nft.replace(
+    "\tchain DOCKER {\n\t}",
+    `\tchain DOCKER {
+\t}\n\n\tchain DOCKER-BRIDGE {
+\t}`,
+  )
+  assert.throws(
+    () => assertCleanupWithinActiveDelta(empty, nftActive, nftExceeds, profile),
+    /exceeds the captured active delta/,
   )
 })
 
