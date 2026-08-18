@@ -11,7 +11,8 @@ caches, temporary files, outputs, and evidence. `run-independent-assembly.sh`
 serializes the runs and starts one assembly-owned Docker daemon at a time.
 
 `toolchain-lock.json` content-addresses the Debian installer, Node and Docker
-packages, BuildKit, Skopeo, Syft, and Trivy. `egress-allowlist.json` is the
+packages, the exact Debian `iproute2` package used for bridge management,
+BuildKit, Skopeo, Syft, and Trivy. `egress-allowlist.json` is the
 complete outbound hostname policy. `resolve-egress-hosts.py` uses the
 provisioning host's `/usr/bin/dig` to create a bounded point-in-time DNS
 observation through the policy's exact deployment-network resolver and records
@@ -35,6 +36,27 @@ non-forwarding dnsmasq instance from that copy and assigns it to its isolated
 Docker bridge. BuildKit, image import, source fetch, and scan containers do not
 use host networking. Substituting a second, individually valid DNS observation
 therefore fails the transaction hash before bootstrap or assembly starts.
+
+`docker-bridge-profiles.json` is the single A/B network authority. Assembly A
+uses `llmml1ba0` and `172.30.118.0/24`; Assembly B uses `llmml1bb0` and
+`172.31.118.0/24`. `docker-lifecycle.sh` requires root, rejects any prior
+runner-owned path, process, bridge, address, route, namespace, or firewall
+state, creates the exact named bridge before Docker, and passes only
+`--bridge` to Docker 29.5.3. The same lifecycle starts, verifies, monitors, and
+cleans both assemblies and the separate privileged native gate. Complete
+Docker logs remain permission-restricted evidence; only a bounded log with
+credential-like lines removed may reach normal command output. Cleanup keeps
+the workload's original failure status, deletes only the bridge whose ifindex
+and alias still match the runner's ownership record, and proves that no
+runner-owned runtime or network state remains. A successful cleanup failure
+therefore converts an otherwise successful run into a failure.
+
+`run-native-docker-lifecycle-gate.sh` is mandatory after bootstrap and before
+Assembly A. It exercises Docker 29.5.3 startup, socket and root binding, bridge
+and CIDR verification, and complete cleanup without building or importing an
+image. Its runtime roots are deleted only after a passing residue check; its
+complete Docker log and credential-free receipt remain in the supplied
+evidence directory. A failed gate preserves its runtime root for inspection.
 
 The allowlist, resolver output, JavaScript transaction validator, and Python
 guest binding validator share the explicit `IPV4_NUMERIC_ASCENDING` address

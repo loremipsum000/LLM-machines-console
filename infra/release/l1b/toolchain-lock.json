@@ -24,6 +24,13 @@
       "binaryVersion": "2.91",
       "url": "https://deb.debian.org/debian/pool/main/d/dnsmasq/dnsmasq-base_2.91-1%2bdeb13u1_amd64.deb",
       "sha256": "32fe2686b0adbe31dbedfadeea7eee8e47785e0ab39ffa9f655ca1bd7ba25d55"
+    },
+    {
+      "id": "iproute2",
+      "version": "6.15.0-1",
+      "binaryVersion": "ip utility, iproute2-6.15.0",
+      "url": "https://deb.debian.org/debian/pool/main/i/iproute2/iproute2_6.15.0-1_amd64.deb",
+      "sha256": "7b2dcade4a83ded723fcab21c5a53c47f29352c9c5e1661a089a1e481b3fb48a"
     }
   ],
   "dockerPackages": [

@@ -20,7 +20,12 @@ function exactKeys(value, expected) {
   )
 }
 
-export function validateL1bSource({ profile, toolchain, egress }) {
+export function validateL1bSource({
+  profile,
+  toolchain,
+  egress,
+  bridgeProfiles,
+}) {
   const errors = []
   if (
     profile?.schema !== "llm-machines.vm103-l1b-builder-profile.v1" ||
@@ -119,6 +124,17 @@ export function validateL1bSource({ profile, toolchain, egress }) {
   ) {
     errors.push("dnsmasq is not byte-pinned")
   }
+  const iproute2 = hostToolsById.get("iproute2")
+  if (
+    iproute2?.version !== "6.15.0-1" ||
+    iproute2?.binaryVersion !== "ip utility, iproute2-6.15.0" ||
+    iproute2?.url !==
+      "https://deb.debian.org/debian/pool/main/i/iproute2/iproute2_6.15.0-1_amd64.deb" ||
+    iproute2?.sha256 !==
+      "7b2dcade4a83ded723fcab21c5a53c47f29352c9c5e1661a089a1e481b3fb48a"
+  ) {
+    errors.push("iproute2 is not byte-pinned")
+  }
   for (const entry of toolchain?.dockerPackages ?? []) {
     if (
       !entry.url?.startsWith("https://download.docker.com/") ||
@@ -179,6 +195,34 @@ export function validateL1bSource({ profile, toolchain, egress }) {
   ) {
     errors.push("installation media and toolchain lock disagree")
   }
+  if (
+    bridgeProfiles?.schema !==
+      "llm-machines.vm103-l1b-docker-bridge-profiles.v1" ||
+    bridgeProfiles?.status !== "LOCKED_SOURCE_PROFILE" ||
+    bridgeProfiles?.containsCredentials !== false ||
+    bridgeProfiles?.requiredPrivilege !== "ROOT" ||
+    JSON.stringify(bridgeProfiles?.profiles) !==
+      JSON.stringify([
+        {
+          assembly: "A",
+          bridge: "llmml1ba0",
+          networkCidr: "172.30.118.0/24",
+          gatewayAddress: "172.30.118.1",
+          gatewayCidr: "172.30.118.1/24",
+          addressPrefix: "172.30.118.",
+        },
+        {
+          assembly: "B",
+          bridge: "llmml1bb0",
+          networkCidr: "172.31.118.0/24",
+          gatewayAddress: "172.31.118.1",
+          gatewayCidr: "172.31.118.1/24",
+          addressPrefix: "172.31.118.",
+        },
+      ])
+  ) {
+    errors.push("Docker bridge profiles differ")
+  }
   return errors
 }
 
@@ -187,6 +231,7 @@ export function readL1bSource() {
     profile: readJson("builder-profile.json"),
     toolchain: readJson("toolchain-lock.json"),
     egress: readJson("egress-allowlist.json"),
+    bridgeProfiles: readJson("docker-bridge-profiles.json"),
   }
 }
 
