@@ -1,0 +1,115 @@
+{
+  "schema": "llm-machines.vm103-l1b-firewall-lifecycle-cleanup.v1",
+  "workPackage": "VM103-L1B-P13",
+  "status": "SOURCE_FIREWALL_LIFECYCLE_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "d17d7837060c1cbafc0b3bb1b3789bf96f2387a1",
+    "tree": "19643fcde836502bea7654170f044feffb1bcff0"
+  },
+  "preservedP12Observation": {
+    "vmid": 118,
+    "snapshot": "l1b-p12-fw-failure-20260818T142436Z",
+    "externalSnapshotMetadataSha256": "3172ae079cccd133836ed4355abc515885e1f1ad1258974f499ad14851884edf",
+    "snapshotDiskGuids": {
+      "system": "4516318612850449331",
+      "assemblyA": "15814342907805903741",
+      "assemblyB": "6346196969424042395"
+    },
+    "bootstrapPassed": true,
+    "dockerVersion": "29.5.3",
+    "nativeLifecycleGatePassed": false,
+    "failure": "DOCKER_FIREWALL_RESIDUE_AFTER_GRACEFUL_DAEMON_STOP",
+    "assemblyAStarted": false,
+    "assemblyBStarted": false,
+    "producedImageCount": 0,
+    "expectedImageCount": 13,
+    "completeEvidencePath": "/Users/dardanberisha/Temp/LLM-machines/product-evidence/vm103-l1b-p12-runtime-20260818",
+    "sourceEvidencePath": "docs/reduction/inference-core/evidence/vm103-l1b-p12-runtime-20260818",
+    "externalLogSha256": {
+      "bootstrap": "c70859c9fe507ec4ff7d2019d080c1b15fbc44d376cfcaf0113f36eba9cb3d1a",
+      "docker": "7eb33999ce85fe7d44ac5baa080644399c9b0b17b9e3fd172fd4cabafccd9c8f"
+    },
+    "evidenceManifestSha256": "8a412edcf227f328af5d8e47a2b74e92b6cdc3627aae6c5a9fb1b756b16b6c8c",
+    "knownGap": "P12_CAPTURED_POST_CLEANUP_FIREWALL_ONLY"
+  },
+  "correction": {
+    "scope": "RUNNER_OWNED_NETWORK_AND_FIREWALL_LIFECYCLE_ONLY",
+    "firewallTool": "infra/release/l1b/firewall-lifecycle.mjs",
+    "sharedLifecycle": "infra/release/l1b/docker-lifecycle.sh",
+    "nativeGate": "infra/release/l1b/run-native-docker-lifecycle-gate.sh",
+    "assemblyRunner": "infra/release/l1b/run-independent-assembly.sh",
+    "preStartEvidence": [
+      "iptablesV4",
+      "iptablesV6",
+      "nftables",
+      "chainPolicies",
+      "relevantSysctls"
+    ],
+    "activeEvidence": [
+      "iptablesV4",
+      "iptablesV6",
+      "nftables",
+      "exactDockerDelta"
+    ],
+    "cleanupOrder": [
+      "STOP_WORKLOAD_AND_DNSMASQ",
+      "GRACEFULLY_STOP_DOCKER",
+      "CAPTURE_POST_GRACEFUL_STATE",
+      "REMOVE_EXACT_RUNNER_OWNED_FIREWALL_DELTA_IF_REQUIRED",
+      "RESTORE_CHANGED_RELEVANT_SYSCTLS",
+      "DELETE_EXACT_RUNNER_OWNED_BRIDGE",
+      "VERIFY_CANONICAL_PRE_START_EQUIVALENCE",
+      "VERIFY_NO_RUNTIME_RESIDUE",
+      "REMOVE_EXACT_RUNTIME_ROOTS"
+    ],
+    "broadFirewallFlushDenied": true,
+    "iptablesRestoreDenied": true,
+    "unrelatedRuleMutationDenied": true,
+    "unrelatedPolicyMutationDenied": true,
+    "foreignBridgeMutationDenied": true,
+    "simultaneousBridgeAndBipDenied": true,
+    "runtimeRootRemovalRequiresNoMounts": true
+  },
+  "requiredTests": [
+    "SUCCESSFUL_STARTUP_AND_READINESS",
+    "NORMAL_SHUTDOWN",
+    "FAILURE_BEFORE_DNSMASQ",
+    "FAILURE_AFTER_DNSMASQ",
+    "DOCKER_READINESS_FAILURE",
+    "FORCED_DOCKER_TERMINATION",
+    "SIGNAL_AND_INTERRUPTION",
+    "REPEATED_INVOCATION",
+    "SEQUENTIAL_A_B_ISOLATION",
+    "UNRELATED_FIREWALL_STATE_PRESERVATION",
+    "SIMULTANEOUS_BRIDGE_AND_BIP_REJECTION",
+    "NATIVE_DOCKER_29_5_3_STARTUP_AND_CLEANUP"
+  ],
+  "postAdmissionRuntimeSequence": [
+    "RESTORE_SYSTEM_DISK_TO_pre-protected-bootstrap-retry-20260817T192504Z",
+    "BLKDISCARD_ASSEMBLY_A_AND_B",
+    "PROVE_NO_STALE_FILESYSTEM_OR_RUNTIME_SIGNATURES",
+    "REPLAY_BOOTSTRAP_FROM_NEW_PROTECTED_COMMIT",
+    "RUN_NATIVE_DOCKER_LIFECYCLE_GATE_ONCE",
+    "PRESERVE_COMPLETE_GATE_EVIDENCE",
+    "RUN_ASSEMBLY_A_ONCE_ONLY_IF_GATE_PASSES"
+  ],
+  "redesignStop": "IF_CLEAN_EQUIVALENCE_FAILS_REPLACE_SHARED_SHELL_CLEANUP_WITH_SEPARATELY_RESTORED_VM_STATE_PER_ASSEMBLY",
+  "boundaries": {
+    "productBehaviorChanged": false,
+    "imageConstructionLogicChanged": false,
+    "imageProduced": false,
+    "coreLockProduced": false,
+    "assemblyAComplete": false,
+    "assemblyBStarted": false,
+    "l1bSuccessful": false,
+    "vm103Changed": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}

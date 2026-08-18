@@ -51,6 +51,18 @@ and alias still match the runner's ownership record, and proves that no
 runner-owned runtime or network state remains. A successful cleanup failure
 therefore converts an otherwise successful run into a failure.
 
+The lifecycle captures credential-free iptables v4, iptables v6, nftables, and
+relevant sysctl state before Docker starts, while Docker is active, after its
+graceful stop, and after cleanup. `firewall-lifecycle.mjs` derives the exact
+Docker-created delta. It accepts only rules, chains, tables, policies, and
+sysctl changes attributable to the admitted bridge profile. Graceful shutdown
+is attempted first. Any remaining Docker-owned rule is removed by exact rule
+index or exact Docker-created table identity. The runner never flushes a
+firewall, invokes `iptables-restore`, or replaces an unrelated policy. The
+final normalized state must equal the pre-start state, with volatile counters
+ignored. Runtime roots are deleted only after mount and residue checks pass;
+complete logs and firewall evidence remain outside those roots.
+
 `run-native-docker-lifecycle-gate.sh` is mandatory after bootstrap and before
 Assembly A. It exercises Docker 29.5.3 startup, socket and root binding, bridge
 and CIDR verification, and complete cleanup without building or importing an
