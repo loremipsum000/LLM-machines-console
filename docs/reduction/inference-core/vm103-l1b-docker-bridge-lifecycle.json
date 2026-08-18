@@ -1,0 +1,192 @@
+{
+  "schema": "llm-machines.vm103-l1b-docker-bridge-lifecycle.v1",
+  "workPackage": "VM103-L1B-P12",
+  "status": "SOURCE_DOCKER_LIFECYCLE_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "b8c02ba6069e77939e9a7997834cbf507ede587a",
+    "tree": "1b6d20c7cfb68078e483c694cde6663447ab461e"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "runId": "20260818T125528Z",
+    "stage": "DOCKER_STARTUP_PRE_IMAGE_CONSTRUCTION",
+    "result": "SIMULTANEOUS_BRIDGE_AND_BIP_REJECTED",
+    "bootstrapPassed": true,
+    "assemblyAInvocationStarted": true,
+    "imageConstructionStarted": false,
+    "expectedImageCount": 13,
+    "producedImageCount": 0,
+    "assemblyBStarted": false,
+    "vmStateAfterObservation": "STOPPED_PROTECTED_FAILURE_PRESERVED",
+    "restoreTarget": "pre-protected-bootstrap-retry-20260817T192504Z",
+    "evidenceSha256": {
+      "bootstrapLog": "3f2c1adb3d5f419f4b764f92da8366572b464c800025d0832217400fdb131d4a",
+      "assemblyLog": "288663c7b739cf22c6ba74e4a6ac554fccc7782345593fecb3264cd3b40ffe49",
+      "dockerLog": "cef8489a1b0f641c9a47453291e5d804687fb302fc4b0e1c81ba95a266d1a1d0"
+    },
+    "assemblyABytesAfterFailure": 16188738,
+    "failureEvidencePreserved": true
+  },
+  "correction": {
+    "implementationCommit": "a1f2068e5161dee7b86b8df00e2a7104c51b8d80",
+    "implementationTree": "1c86f38e8c340864ea353a9e9d0053b15e5d7e3a",
+    "requiredPrivilege": "ROOT",
+    "dockerVersion": "29.5.3",
+    "iproute2": {
+      "version": "6.15.0-1",
+      "binaryVersion": "ip utility, iproute2-6.15.0",
+      "url": "https://deb.debian.org/debian/pool/main/i/iproute2/iproute2_6.15.0-1_amd64.deb",
+      "sha256": "7b2dcade4a83ded723fcab21c5a53c47f29352c9c5e1661a089a1e481b3fb48a"
+    },
+    "bridgeProfiles": [
+      {
+        "assembly": "A",
+        "bridge": "llmml1ba0",
+        "networkCidr": "172.30.118.0/24",
+        "gatewayAddress": "172.30.118.1"
+      },
+      {
+        "assembly": "B",
+        "bridge": "llmml1bb0",
+        "networkCidr": "172.31.118.0/24",
+        "gatewayAddress": "172.31.118.1"
+      }
+    ],
+    "singleGlobalAssemblyLock": "/run/lock/llmm-l1b-assembly.lock",
+    "dockerArguments": {
+      "bridgeOnly": true,
+      "bipDenied": true
+    },
+    "preExistingStateDenied": [
+      "bridge",
+      "cidr",
+      "route",
+      "socket",
+      "pidFile",
+      "process",
+      "dockerDataRoot",
+      "dockerExecRoot",
+      "networkNamespace",
+      "runnerFirewallState"
+    ],
+    "readinessVerified": [
+      "dockerVersion",
+      "socket",
+      "dataRoot",
+      "execRoot",
+      "pid",
+      "bridge",
+      "cidr",
+      "route"
+    ],
+    "daemonExitFailsImmediately": true,
+    "normalOutputDockerLog": {
+      "maximumLines": 80,
+      "maximumBytes": 16384,
+      "credentialLikeLinesRemoved": true
+    },
+    "completeDockerLog": {
+      "preserved": true,
+      "mode": "0600"
+    },
+    "cleanup": {
+      "originalFailureStatusPreserved": true,
+      "successfulRunFailsOnCleanupFailure": true,
+      "partiallyCreatedOwnedBridgeRemoved": true,
+      "foreignBridgeIdentityPreservedAndFails": true,
+      "processResidueDenied": true,
+      "socketResidueDenied": true,
+      "pidResidueDenied": true,
+      "bridgeResidueDenied": true,
+      "routeResidueDenied": true,
+      "namespaceResidueDenied": true,
+      "firewallResidueDenied": true
+    },
+    "nativeGate": {
+      "script": "infra/release/l1b/run-native-docker-lifecycle-gate.sh",
+      "usesSharedLifecycle": true,
+      "imageConstruction": false,
+      "requiredBeforeAssemblyA": true
+    }
+  },
+  "validation": {
+    "commands": [
+      "corepack pnpm install --frozen-lockfile",
+      "node --test infra/release/l1b/*.test.mjs scripts/inference-core/vm103-l1b-*.test.mjs",
+      "corepack pnpm test",
+      "corepack pnpm run test:release",
+      "corepack pnpm exec biome check .",
+      "corepack pnpm run typecheck",
+      "corepack pnpm run build",
+      "git diff --check b8c02ba6069e77939e9a7997834cbf507ede587a..a1f2068e5161dee7b86b8df00e2a7104c51b8d80",
+      "git fsck --full"
+    ],
+    "testCounts": {
+      "focused": 90,
+      "guardrails": 664,
+      "release": 212,
+      "database": 126,
+      "contracts": 69,
+      "web": 187,
+      "bff": 887
+    },
+    "localLogSha256": {
+      "install": "9b98b7e918c6acb607dd5c75294822ad2ecf6868efaa1f7bf591242adccaa7bd",
+      "focused": "c65de2e3cc3e7e4ae5bd56961bc380c9d931383a029f28ad1a1d02088a4ff236",
+      "root": "c6be99e31188faa30393aef9592b3a93d9f3bd0cff264534e2ef8700a0c14d49",
+      "release": "e7560fcc6da7d72153b17452fa31a5c176b285d2ba0313ecfb7abd9c686bc542",
+      "biome": "8f3bee9680b0fe4fad5ec1d5f16465a8963c4344fc1799f01dfd1672492b7244",
+      "typecheck": "30db38803f647350141357460839725f6027034e644abf45783a97e042b6a18e",
+      "build": "02ba518d8eebcd497313aeb49b54b95471b59262dc8056e709ceb4505e19c51a",
+      "diffCheck": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fsck": "b33fc957ef8d29a3673f11e28cc75e10ae31dca26ad2482891e81da171b415d4",
+      "securityScan": "e9a1f46d38c831b6ddb55724353eccc3e6d1fce269d2102ccf0868dc45c5818e"
+    },
+    "securityScan": {
+      "secretFindings": 0,
+      "credentialFindings": 0,
+      "unapprovedInternalAddressFindings": 0,
+      "mutableImageFindings": 0,
+      "unsafeConfigurationFindings": 0,
+      "approvedAssemblyCidrs": ["172.30.118.0/24", "172.31.118.0/24"]
+    },
+    "materialReview": {
+      "reviewerId": "p12-primary-material-source-review",
+      "reviewedCommit": "a1f2068e5161dee7b86b8df00e2a7104c51b8d80",
+      "reviewedTree": "1c86f38e8c340864ea353a9e9d0053b15e5d7e3a",
+      "initialFinding": "PARTIAL_BRIDGE_SETUP_CLEANUP_IDENTITY",
+      "initialFindingCorrectedBeforeReviewedCommit": true,
+      "verdict": "PASS",
+      "materialFindingsRemaining": 0
+    }
+  },
+  "postAdmissionRuntimeSequence": [
+    "PRESERVE_CURRENT_FAILURE_EVIDENCE",
+    "RESTORE_SYSTEM_DISK_TO_pre-protected-bootstrap-retry-20260817T192504Z",
+    "BLKDISCARD_ASSEMBLY_A_AND_B",
+    "PROVE_NO_ASSEMBLY_DISK_SIGNATURES",
+    "REPLAY_BOOTSTRAP_ONCE_FROM_PROTECTED_P12_COMMIT",
+    "RUN_NATIVE_DOCKER_LIFECYCLE_GATE",
+    "RUN_ASSEMBLY_A_ONCE_IF_GATE_PASSES"
+  ],
+  "boundaries": {
+    "vm118ChangedBySourcePackage": false,
+    "runtimeRetryStarted": false,
+    "failedAttemptEvidencePreserved": true,
+    "productBehaviorChanged": false,
+    "imageConstructionLogicChanged": false,
+    "egressPolicyChanged": false,
+    "credentialsCreated": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false,
+    "assemblyAComplete": false,
+    "assemblyBStarted": false,
+    "l1bSuccessful": false
+  }
+}
