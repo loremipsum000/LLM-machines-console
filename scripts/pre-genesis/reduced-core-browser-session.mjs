@@ -1000,6 +1000,7 @@ async function runBrowserSessionProof() {
       persistenceOperatorContext = undefined
       persistenceOperatorPage = undefined
       const identityFlow = await proveKeycloakIdentityCookieBoundary({
+        certificate,
         context,
         edgePort,
       })

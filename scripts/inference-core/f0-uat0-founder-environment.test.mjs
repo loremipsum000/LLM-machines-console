@@ -77,6 +77,12 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
   )
   assert.match(browser, /founderUat: Boolean\(founderUatControl\)/)
   assert.match(browser, /WEB_CONSOLE_ORIGIN: consoleOrigin/)
+  assert.equal(
+    browser.match(
+      /proveKeycloakIdentityCookieBoundary\(\{\n {8}certificate,\n {8}context,\n {8}edgePort,/g,
+    )?.length,
+    2,
+  )
   assert.match(
     browser,
     /const unsupported = await requestHttpsEdgeWithHeaders\(\{[\s\S]*path: "\/v2\/crawl"/,
