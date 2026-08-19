@@ -53,6 +53,15 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
     browser,
     /Product edge readiness failed:[\s\S]*probe=[\s\S]*logs=/,
   )
+  assert.match(browser, /const edgeUid = process\.getuid\?\.\(\)/)
+  assert.match(browser, /const edgeGid = process\.getgid\?\.\(\)/)
+  assert.match(browser, /"--user",\n {4}edgeIdentity/)
+  assert.match(
+    browser,
+    /Product edge mount is unreadable by its native identity/,
+  )
+  assert.match(browser, /mode=0700/)
+  assert.doesNotMatch(browser, /--cap-add/)
   assert.match(browser, /\.State\.Status.*\.State\.ExitCode/)
   assert.match(browser, /latestValue < 85/)
   assert.match(browser, /xpath=ancestor::section\[1\]/)

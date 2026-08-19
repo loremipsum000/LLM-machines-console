@@ -4426,6 +4426,26 @@ async function startFounderProductEdge({
       `/etc/nginx/llm-machines/${name}`,
     ]),
   ]
+  const edgeUid = process.getuid?.()
+  const edgeGid = process.getgid?.()
+  if (!Number.isSafeInteger(edgeUid) || !Number.isSafeInteger(edgeGid)) {
+    throw new Error("F0-UAT0 Product edge requires a native numeric identity.")
+  }
+  for (const [source] of mounts) {
+    const sourceStat = await stat(source)
+    const mode = sourceStat.mode & 0o777
+    const readable =
+      (sourceStat.uid === edgeUid && Boolean(mode & 0o400)) ||
+      (sourceStat.gid === edgeGid && Boolean(mode & 0o040)) ||
+      Boolean(mode & 0o004)
+    if (!sourceStat.isFile() || !readable) {
+      throw new Error(
+        `F0-UAT0 Product edge mount is unreadable by its native identity: ${basename(source)}`,
+      )
+    }
+  }
+  const edgeIdentity = `${edgeUid}:${edgeGid}`
+  const edgeTmpfsOwnership = `uid=${edgeUid},gid=${edgeGid},mode=0700`
   const result = dockerControl(keycloakControl, [
     "run",
     "--detach",
@@ -4435,17 +4455,19 @@ async function startFounderProductEdge({
     "com.llm-machines.test-package=F0-UAT0",
     "--network",
     "host",
+    "--user",
+    edgeIdentity,
     "--read-only",
     "--cap-drop",
     "ALL",
     "--security-opt",
     "no-new-privileges=true",
     "--tmpfs",
-    "/var/cache/nginx:rw,noexec,nosuid,nodev,size=16m",
+    `/var/cache/nginx:rw,noexec,nosuid,nodev,size=16m,${edgeTmpfsOwnership}`,
     "--tmpfs",
-    "/var/log/nginx:rw,noexec,nosuid,nodev,size=16m",
+    `/var/log/nginx:rw,noexec,nosuid,nodev,size=16m,${edgeTmpfsOwnership}`,
     "--tmpfs",
-    "/var/run:rw,noexec,nosuid,nodev,size=4m",
+    `/var/run:rw,noexec,nosuid,nodev,size=4m,${edgeTmpfsOwnership}`,
     ...mounts.flatMap(([source, target]) => [
       "--mount",
       `type=bind,src=${source},dst=${target},readonly`,
