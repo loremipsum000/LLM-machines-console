@@ -76,6 +76,35 @@ describe("Console middleware", () => {
     expect(response.headers.get("location")).not.toContain("returnTo=https%3A")
   })
 
+  it("uses the configured Console authority behind the private Product edge", async () => {
+    process.env.WEB_CONSOLE_ORIGIN = "https://console.lab.llm-machines.com"
+    try {
+      const response = await runMiddleware(
+        "/applications?tab=credentials",
+        false,
+        "https://localhost:45881",
+      )
+
+      expect(response.headers.get("location")).toBe(
+        "https://console.lab.llm-machines.com/auth/signin?returnTo=%2Fapplications%3Ftab%3Dcredentials",
+      )
+    } finally {
+      Reflect.deleteProperty(process.env, "WEB_CONSOLE_ORIGIN")
+    }
+  })
+
+  it("rejects an inexact configured Console authority", async () => {
+    process.env.WEB_CONSOLE_ORIGIN =
+      "https://console.lab.llm-machines.com/unapproved"
+    try {
+      await expect(runMiddleware("/applications")).rejects.toThrow(
+        "WEB_CONSOLE_ORIGIN must be an exact HTTPS origin.",
+      )
+    } finally {
+      Reflect.deleteProperty(process.env, "WEB_CONSOLE_ORIGIN")
+    }
+  })
+
   it("clears malformed and duplicate host cookies with explicit expiry", async () => {
     const cases = [
       {
@@ -310,8 +339,9 @@ describe("Console middleware", () => {
 async function runMiddleware(
   pathname: string,
   withSession: boolean | string = false,
+  origin = "https://console.example.test",
 ): Promise<Response> {
-  const request = new NextRequest(`https://console.example.test${pathname}`, {
+  const request = new NextRequest(`${origin}${pathname}`, {
     headers: withSession
       ? {
           cookie:

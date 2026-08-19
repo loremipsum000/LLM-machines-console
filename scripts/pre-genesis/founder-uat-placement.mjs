@@ -1,7 +1,15 @@
 import { readFileSync } from "node:fs"
 import { isAbsolute, resolve } from "node:path"
 
-const authorityNames = ["api", "console", "firecrawl", "identity"]
+const authorityNames = [
+  "api",
+  "console",
+  "firecrawl",
+  "grafana",
+  "identity",
+  "keycloak",
+  "litellm",
+]
 
 export function loadFounderUatPlacement(pathValue) {
   const path = pathValue?.trim()

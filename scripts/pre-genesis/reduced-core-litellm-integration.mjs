@@ -15,6 +15,13 @@ import { tmpdir } from "node:os"
 import { isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import {
+  authorityOrigin,
+  loadFounderUatPlacement,
+} from "./founder-uat-placement.mjs"
+import { commissionLiteLlmNativeUsers } from "./litellm-native-commissioning.mjs"
+import {
+  inspectLiteLlmOssRuntimeImage,
+  loadCoreImageInventoryAtHead,
   loadLiteLlmOssRuntimeContract,
   validateLiteLlmOssRuntimeInspection,
 } from "./litellm-oss-runtime-contract.mjs"
@@ -26,6 +33,22 @@ const liteLlmRuntime = loadLiteLlmOssRuntimeContract(repositoryRoot)
 const LITELLM_IMAGE = liteLlmRuntime.image
 const dockerContext = required("PRE_GENESIS_DOCKER_CONTEXT")
 const serviceControl = serviceControlFromEnvironment()
+const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
+const keycloakControlPath = process.env.F0_I1_KEYCLOAK_CONFIG_FILE?.trim()
+if (
+  (founderUatPlacementPath || keycloakControlPath) &&
+  (!serviceControl || !founderUatPlacementPath || !keycloakControlPath)
+) {
+  throw new Error(
+    "LiteLLM native UAT commissioning requires managed control, placement, and Keycloak control together.",
+  )
+}
+const founderUatPlacement = founderUatPlacementPath
+  ? loadFounderUatPlacement(founderUatPlacementPath)
+  : null
+const keycloakControl = keycloakControlPath
+  ? JSON.parse(await readFile(resolve(keycloakControlPath), "utf8"))
+  : null
 const runId = randomBytes(8).toString("hex")
 const network = `llmm-f0-l2-${runId}`
 const inferenceContainer = `llmm-f0-l2-inference-${runId}`
@@ -84,7 +107,10 @@ try {
     ].join("\n"),
     { mode: 0o600 },
   )
-  const config = liteLlmConfig()
+  const config = liteLlmConfig(Boolean(keycloakControl))
+  const nativeEnvironment = founderUatPlacement
+    ? nativeLiteLlmEnvironment(founderUatPlacement, keycloakControl)
+    : []
   await writeFile(
     liteLlmEnvironmentFile,
     [
@@ -93,6 +119,7 @@ try {
       `LITELLM_MASTER_KEY=${adminKey}`,
       `LITELLM_SALT_KEY=${saltKey}`,
       `UPSTREAM_API_KEY=${upstreamKey}`,
+      ...nativeEnvironment,
       "",
     ].join("\n"),
     { mode: 0o600 },
@@ -196,6 +223,16 @@ try {
   assert.equal(keyResponse.status, 200)
   assert.match(keyResponse.body?.key ?? "", /^sk-/)
   const routingKey = keyResponse.body.key
+  const nativeCommissioning = keycloakControl
+    ? await commissionLiteLlmNativeUsers({
+        baseUrl,
+        masterKey: adminKey,
+        users: [
+          nativeLiteLlmUser(keycloakControl.credentials.admin, "Admin"),
+          nativeLiteLlmUser(keycloakControl.credentials.operator, "Operator"),
+        ],
+      })
+    : null
   await writeFile(
     browserConfigFile,
     `${JSON.stringify({
@@ -211,6 +248,7 @@ try {
         sourceRevision: liteLlmRuntime.sourceRevision,
         version: liteLlmRuntime.version,
       },
+      ...(nativeCommissioning ? { nativeCommissioning } : {}),
       routingKey,
     })}\n`,
     { mode: 0o600 },
@@ -347,7 +385,58 @@ if (failure) throw failure
 assert.ok(evidence)
 process.stdout.write(`${JSON.stringify(evidence)}\n`)
 
-function liteLlmConfig() {
+function nativeLiteLlmEnvironment(placement, control) {
+  if (
+    control?.edgePort !== placement.edgePort ||
+    !/^[A-Za-z0-9_-]{24,}$/.test(control?.credentials?.liteLlm ?? "") ||
+    !control?.credentials?.admin ||
+    !control?.credentials?.operator
+  ) {
+    throw new Error("LiteLLM native Keycloak control is invalid.")
+  }
+  const identityOrigin = authorityOrigin(
+    placement,
+    "identity",
+    placement.edgePort,
+  )
+  const liteLlmOrigin = authorityOrigin(
+    placement,
+    "litellm",
+    placement.edgePort,
+  )
+  return [
+    `GENERIC_AUTHORIZATION_ENDPOINT=${identityOrigin}/realms/llm-machines/protocol/openid-connect/auth`,
+    "GENERIC_CLIENT_ID=litellm-native",
+    `GENERIC_CLIENT_SECRET=${control.credentials.liteLlm}`,
+    "GENERIC_CLIENT_USE_PKCE=true",
+    "GENERIC_INCLUDE_CLIENT_ID=true",
+    "GENERIC_SCOPE=openid email profile",
+    `GENERIC_TOKEN_ENDPOINT=${identityOrigin}/realms/llm-machines/protocol/openid-connect/token`,
+    "GENERIC_USER_ID_ATTRIBUTE=sub",
+    `GENERIC_USERINFO_ENDPOINT=${identityOrigin}/realms/llm-machines/protocol/openid-connect/userinfo`,
+    "GENERIC_USER_ROLE_ATTRIBUTE=litellm_role",
+    "AUTO_REDIRECT_UI_LOGIN_TO_SSO=false",
+    "LITELLM_UI_SESSION_DURATION=8h",
+    `PROXY_BASE_URL=${liteLlmOrigin}`,
+    `PROXY_LOGOUT_URL=${liteLlmOrigin}/ui/login/`,
+  ]
+}
+
+function nativeLiteLlmUser(identity, productRole) {
+  if (
+    typeof identity?.subject !== "string" ||
+    typeof identity?.username !== "string"
+  ) {
+    throw new Error("LiteLLM native identity is invalid.")
+  }
+  return {
+    email: `${identity.username}@fixture.invalid`,
+    productRole,
+    subject: identity.subject,
+  }
+}
+
+function liteLlmConfig(nativeAdministration = false) {
   return [
     "model_list:",
     "  - model_name: fixture-model",
@@ -367,7 +456,7 @@ function liteLlmConfig() {
     "general_settings:",
     "  allow_requests_on_db_unavailable: false",
     "  master_key: os.environ/LITELLM_MASTER_KEY",
-    "  store_model_in_db: false",
+    `  store_model_in_db: ${nativeAdministration ? "true" : "false"}`,
     "  store_prompts_in_spend_logs: false",
     "",
   ].join("\n")
@@ -496,13 +585,11 @@ async function waitForRetention(expectedSpendRows) {
 }
 
 function assertLockedImageIdentity() {
-  const [inspection] = JSON.parse(docker(["image", "inspect", LITELLM_IMAGE]))
+  const inspection = inspectLiteLlmOssRuntimeImage(dockerResult, LITELLM_IMAGE)
   validateLiteLlmOssRuntimeInspection(inspection, liteLlmRuntime)
-  const inventory = JSON.parse(
-    spawnSync("git", ["show", "HEAD:infra/release/core-image-inventory.json"], {
-      cwd: repositoryRoot,
-      encoding: "utf8",
-    }).stdout,
+  const inventory = loadCoreImageInventoryAtHead(
+    (arguments_, options) => spawnSync("git", arguments_, options),
+    repositoryRoot,
   )
   const liteLlm = inventory.components.find(({ id }) => id === "litellm")
   const postgresImage = inventory.components.find(

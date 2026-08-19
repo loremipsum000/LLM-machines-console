@@ -18,11 +18,12 @@ import {
   authorityOrigin,
   loadFounderUatPlacement,
 } from "./founder-uat-placement.mjs"
+import { validateKeycloakCommissioning } from "./keycloak-commissioning-readiness.mjs"
 import {
   prepareKeycloakImportRoot,
   writeKeycloakRealmImport,
 } from "./keycloak-import-root.mjs"
-import { humanAdminPermissions } from "./keycloak-team-permissions.mjs"
+import { integratedHumanAdminPermissions } from "./keycloak-team-permissions.mjs"
 
 const KEYCLOAK_IMAGE =
   "quay.io/keycloak/keycloak:26.7.0@sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13"
@@ -36,6 +37,9 @@ const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const themeRoot = resolve(repositoryRoot, "infra/keycloak/themes/llm-machines")
 const dockerContext = required("PRE_GENESIS_DOCKER_CONTEXT")
 const serviceControl = serviceControlFromEnvironment()
+const preserveFailureState =
+  Boolean(serviceControl) &&
+  process.env.F0_C1_PRESERVE_FAILURE_STATE?.trim() === "true"
 const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
 if (founderUatPlacementPath && !serviceControl) {
   throw new Error(
@@ -69,9 +73,11 @@ let postgresContainerCreated = false
 let postgresVolumeCreated = false
 let failure
 let evidence
+let startupStage = "INITIALIZING"
 
 try {
   await chmod(stateRoot, 0o700)
+  startupStage = "PREPARING_REALM_IMPORT"
   await prepareKeycloakImportRoot(importRoot)
   const edgePort = serviceControl?.edgePort ?? (await reservePort())
   const upstreamPort = await reservePort()
@@ -90,9 +96,32 @@ try {
     "identity",
     edgePort,
   )
+  const grafanaOrigin = authorityOrigin(
+    founderUatPlacement,
+    "grafana",
+    edgePort,
+  )
+  const keycloakOrigin = authorityOrigin(
+    founderUatPlacement,
+    "keycloak",
+    edgePort,
+  )
+  const liteLlmOrigin = authorityOrigin(
+    founderUatPlacement,
+    "litellm",
+    edgePort,
+  )
   await writeKeycloakRealmImport(
     realmFile,
-    `${JSON.stringify(realmExport(consoleOrigin, credentials, teamMode))}\n`,
+    `${JSON.stringify(
+      realmExport({
+        consoleOrigin,
+        grafanaOrigin,
+        includeTeamAuthority: teamMode,
+        liteLlmOrigin,
+        values: credentials,
+      }),
+    )}\n`,
   )
   if (teamMode) {
     await writeFile(
@@ -124,6 +153,7 @@ try {
     "--import-realm",
     "--http-port=8080",
     `--hostname=${identityOrigin}`,
+    `--hostname-admin=${keycloakOrigin}/keycloak`,
     "--hostname-strict=true",
     "--proxy-headers=xforwarded",
   ])
@@ -134,17 +164,24 @@ try {
     themeRoot,
     `${containerName}:/opt/keycloak/themes/llm-machines`,
   ])
+  startupStage = "STARTING_KEYCLOAK"
   docker(["start", containerName])
   await waitForKeycloak(upstreamPort)
+  startupStage = "COMMISSIONING_IDENTITIES"
   let databaseUrl = null
+  let commissioning = null
   if (teamMode) {
-    await configureTeamAuthority(upstreamPort)
+    commissioning = validateKeycloakCommissioning(
+      await configureTeamAuthority(upstreamPort),
+    )
     databaseUrl = serviceControl ? null : await startPostgres()
   }
+  startupStage = "PUBLISHING_COMMISSIONED_CONTROL"
   await writeFile(
     browserConfigFile,
     `${JSON.stringify({
       container: containerName,
+      ...(commissioning ? { commissioning } : {}),
       credentials: browserCredentials(),
       dockerContext,
       edgePort,
@@ -157,6 +194,7 @@ try {
       serviceControl.controlFile,
       `${JSON.stringify({
         container: containerName,
+        ...(commissioning ? { commissioning } : {}),
         credentials: browserCredentials(),
         dockerContext,
         edgePort,
@@ -236,41 +274,68 @@ try {
   const diagnostic =
     logs && (logs.stdout || logs.stderr)
       ? new Error(
-          `${packageId} Keycloak metadata:\n${sanitize(`${logs.stdout}\n${logs.stderr}`)}`,
+          `${packageId} Keycloak metadata at ${startupStage}:\n${sanitize(`${logs.stdout}\n${logs.stderr}`)}`,
         )
       : null
   failure = diagnostic
     ? new AggregateError([safeError(error), diagnostic], `${packageId} failed.`)
     : safeError(error)
+  if (preserveFailureState) {
+    await writeFile(
+      serviceControl.controlFile,
+      `${JSON.stringify(
+        {
+          diagnosticState: {
+            container: containerCreated ? containerName : null,
+            postgresContainer: postgresContainerCreated
+              ? postgresContainerName
+              : null,
+            postgresVolume: postgresVolumeCreated ? postgresVolumeName : null,
+            stateRoot,
+          },
+          schemaVersion: 1,
+          startupStage,
+          status: "BLOCKED",
+        },
+        null,
+        2,
+      )}\n`,
+      { mode: 0o600 },
+    )
+  }
 } finally {
   const cleanupFailures = []
-  if (containerCreated) {
+  const preserve = preserveFailureState && failure
+  if (containerCreated && !preserve) {
     const result = dockerResult(["rm", "--force", containerName])
     if (result.status !== 0) cleanupFailures.push(safeError(result.stderr))
   }
-  if (postgresContainerCreated) {
+  if (postgresContainerCreated && !preserve) {
     const result = dockerResult(["rm", "--force", postgresContainerName])
     if (result.status !== 0) cleanupFailures.push(safeError(result.stderr))
   }
-  if (postgresVolumeCreated) {
+  if (postgresVolumeCreated && !preserve) {
     const result = dockerResult(["volume", "rm", postgresVolumeName])
     if (result.status !== 0) cleanupFailures.push(safeError(result.stderr))
   }
-  await rm(stateRoot, { force: true, recursive: true })
+  if (!preserve) await rm(stateRoot, { force: true, recursive: true })
   if (
     containerCreated &&
+    !preserve &&
     dockerResult(["inspect", containerName]).status === 0
   ) {
     cleanupFailures.push(new Error(`${packageId} Keycloak container remains.`))
   }
   if (
     postgresContainerCreated &&
+    !preserve &&
     dockerResult(["inspect", postgresContainerName]).status === 0
   ) {
     cleanupFailures.push(new Error("F0-I2 PostgreSQL container remains."))
   }
   if (
     postgresVolumeCreated &&
+    !preserve &&
     dockerResult(["volume", "inspect", postgresVolumeName]).status === 0
   ) {
     cleanupFailures.push(new Error("F0-I2 PostgreSQL volume remains."))
@@ -287,7 +352,13 @@ if (failure) throw failure
 assert.ok(evidence)
 process.stdout.write(`${JSON.stringify(evidence)}\n`)
 
-function realmExport(consoleOrigin, values, includeTeamAuthority) {
+function realmExport({
+  consoleOrigin,
+  grafanaOrigin,
+  includeTeamAuthority,
+  liteLlmOrigin,
+  values,
+}) {
   const passwordAmr = "llmm-password-amr"
   return {
     realm: "llm-machines",
@@ -485,17 +556,139 @@ function realmExport(consoleOrigin, values, includeTeamAuthority) {
               defaultClientScopes: [],
               optionalClientScopes: [],
             },
+            nativeOidcClient({
+              clientId: "grafana",
+              claimName: "realm_access.roles",
+              mapper: "oidc-usermodel-realm-role-mapper",
+              redirectUri: `${grafanaOrigin}/login/generic_oauth`,
+              secret: values.observability,
+              userAttribute: null,
+            }),
+            nativeOidcClient({
+              clientId: "litellm-native",
+              claimName: "litellm_role",
+              mapper: "oidc-usermodel-attribute-mapper",
+              redirectUri: `${liteLlmOrigin}/sso/callback`,
+              secret: values.liteLlm,
+              userAttribute: "litellm_role",
+            }),
           ]
         : []),
     ],
     users: [
-      userExport(values.admin, "admin", "/Admins"),
-      userExport(values.operator, "operator", "/Operators"),
+      userExport(
+        values.admin,
+        "admin",
+        "/Admins",
+        includeTeamAuthority ? "proxy_admin" : null,
+      ),
+      userExport(
+        values.operator,
+        "operator",
+        "/Operators",
+        includeTeamAuthority ? "internal_user" : null,
+      ),
     ],
   }
 }
 
+function nativeOidcClient({
+  claimName,
+  clientId,
+  mapper,
+  redirectUri,
+  secret,
+  userAttribute,
+}) {
+  const config = {
+    "access.token.claim": "true",
+    "claim.name": claimName,
+    "id.token.claim": "true",
+    "jsonType.label": "String",
+    "userinfo.token.claim": "true",
+  }
+  if (userAttribute) config["user.attribute"] = userAttribute
+  else config.multivalued = "true"
+  const origin = new URL(redirectUri).origin
+  return {
+    attributes: {
+      "pkce.code.challenge.method": "S256",
+      "post.logout.redirect.uris": `${origin}/*`,
+    },
+    clientId,
+    defaultClientScopes: ["basic", "email", "profile"],
+    directAccessGrantsEnabled: false,
+    enabled: true,
+    fullScopeAllowed: false,
+    implicitFlowEnabled: false,
+    optionalClientScopes: [],
+    protocol: "openid-connect",
+    protocolMappers: [
+      {
+        config,
+        name: `${clientId}-role`,
+        protocol: "openid-connect",
+        protocolMapper: mapper,
+      },
+    ],
+    publicClient: false,
+    redirectUris: [redirectUri],
+    secret,
+    serviceAccountsEnabled: false,
+    standardFlowEnabled: true,
+    webOrigins: [origin],
+  }
+}
+
 function simpleScope(name) {
+  const protocolMappers =
+    name === "email"
+      ? [
+          {
+            name: "email verified",
+            protocol: "openid-connect",
+            protocolMapper: "oidc-usermodel-property-mapper",
+            config: {
+              "access.token.claim": "true",
+              "claim.name": "email_verified",
+              "id.token.claim": "true",
+              "introspection.token.claim": "true",
+              "jsonType.label": "boolean",
+              "user.attribute": "emailVerified",
+              "userinfo.token.claim": "true",
+            },
+          },
+          {
+            name: "email",
+            protocol: "openid-connect",
+            protocolMapper: "oidc-usermodel-attribute-mapper",
+            config: {
+              "access.token.claim": "true",
+              "claim.name": "email",
+              "id.token.claim": "true",
+              "introspection.token.claim": "true",
+              "jsonType.label": "String",
+              "user.attribute": "email",
+              "userinfo.token.claim": "true",
+            },
+          },
+        ]
+      : [
+          {
+            name: "username",
+            protocol: "openid-connect",
+            protocolMapper: "oidc-usermodel-attribute-mapper",
+            config: {
+              "access.token.claim": "true",
+              "claim.name": "preferred_username",
+              "id.token.claim": "true",
+              "introspection.token.claim": "true",
+              "jsonType.label": "String",
+              "user.attribute": "username",
+              "userinfo.token.claim": "true",
+            },
+          },
+        ]
   return {
     name,
     protocol: "openid-connect",
@@ -503,7 +696,7 @@ function simpleScope(name) {
       "display.on.consent.screen": "false",
       "include.in.token.scope": "true",
     },
-    protocolMappers: [],
+    protocolMappers,
   }
 }
 
@@ -517,11 +710,19 @@ function amrConfig(alias, value) {
   }
 }
 
-function userExport(user, role, group) {
+function userExport(user, role, group, liteLlmRole = null) {
   return {
+    ...(liteLlmRole ? { attributes: { litellm_role: [liteLlmRole] } } : {}),
+    ...(role === "admin" && liteLlmRole
+      ? {
+          clientRoles: {
+            "realm-management": ["query-groups", "query-users"],
+          },
+        }
+      : {}),
     username: user.username,
     enabled: true,
-    email: `${user.username}@fixture.invalid`,
+    email: `${user.username}@fixture.example.com`,
     emailVerified: true,
     firstName: role,
     lastName: "fixture",
@@ -639,8 +840,54 @@ async function configureTeamAuthority(upstreamPort) {
     exactGroup(root, bootstrapToken, "Admins"),
     exactGroup(root, bootstrapToken, "Operators"),
   ])
+  const [adminUser, adminRole, operatorRole] = await Promise.all([
+    exactUser(root, bootstrapToken, credentials.admin.username),
+    adminJson(root, bootstrapToken, `${realmPath}/roles/admin`),
+    adminJson(root, bootstrapToken, `${realmPath}/roles/operator`),
+  ])
+  await adminRequest(
+    root,
+    bootstrapToken,
+    `${realmPath}/clients/${encodeURIComponent(permissionClient.id)}/authz/resource-server/policy/role`,
+    {
+      body: {
+        logic: "POSITIVE",
+        name: "customer-admin-role",
+        roles: [{ id: adminRole.id, required: true }],
+      },
+      method: "POST",
+    },
+  )
+  const [serviceAccountPolicy, customerAdminPolicy] = await Promise.all([
+    exactAuthorizationPolicy(
+      root,
+      bootstrapToken,
+      permissionClient.id,
+      "console-human-admin-service-account",
+    ),
+    exactAuthorizationPolicy(
+      root,
+      bootstrapToken,
+      permissionClient.id,
+      "customer-admin-role",
+    ),
+  ])
+  await adminRequest(
+    root,
+    bootstrapToken,
+    `${realmPath}/clients/${encodeURIComponent(permissionClient.id)}/authz/resource-server/policy/aggregate`,
+    {
+      body: {
+        decisionStrategy: "AFFIRMATIVE",
+        logic: "POSITIVE",
+        name: "appliance-user-administration-callers",
+        policies: [serviceAccountPolicy.id, customerAdminPolicy.id],
+      },
+      method: "POST",
+    },
+  )
   const permissionPath = `${realmPath}/clients/${encodeURIComponent(permissionClient.id)}/authz/resource-server/permission/scope`
-  for (const permission of humanAdminPermissions({
+  for (const permission of applianceUserAdministrationPermissions({
     adminsGroupId: adminsGroup.id,
     operatorsGroupId: operatorsGroup.id,
   })) {
@@ -649,6 +896,14 @@ async function configureTeamAuthority(upstreamPort) {
       method: "POST",
     })
   }
+
+  const grafana = await exactClient(root, bootstrapToken, "grafana")
+  await adminRequest(
+    root,
+    bootstrapToken,
+    `${realmPath}/clients/${encodeURIComponent(grafana.id)}/scope-mappings/realm`,
+    { body: [adminRole, operatorRole], method: "POST" },
+  )
 
   const serviceToken = await token(root, "llm-machines", {
     client_id: "console-human-admin",
@@ -664,11 +919,6 @@ async function configureTeamAuthority(upstreamPort) {
     bootstrapToken,
     credentials.operator.username,
   )
-  const adminRole = await adminJson(
-    root,
-    bootstrapToken,
-    `${realmPath}/roles/admin`,
-  )
   await expectAdminStatus(
     root,
     serviceToken,
@@ -683,6 +933,111 @@ async function configureTeamAuthority(upstreamPort) {
     403,
     { method: "POST" },
   )
+  assert.match(adminUser.id, /^[0-9a-f-]{36}$/)
+  return {
+    browserProof: "AUTHORIZATION_CODE_PKCE_PENDING",
+    status: "COMMISSIONED",
+    users: {
+      admin: await verifyCommissionedUser(
+        root,
+        bootstrapToken,
+        credentials.admin,
+        "admin",
+        "Admins",
+      ),
+      operator: await verifyCommissionedUser(
+        root,
+        bootstrapToken,
+        credentials.operator,
+        "operator",
+        "Operators",
+      ),
+    },
+  }
+}
+
+function applianceUserAdministrationPermissions({
+  adminsGroupId,
+  operatorsGroupId,
+}) {
+  return integratedHumanAdminPermissions({ adminsGroupId, operatorsGroupId })
+}
+
+async function verifyCommissionedUser(
+  root,
+  bearer,
+  expectedUser,
+  realmRole,
+  groupName,
+) {
+  const realmPath = "/admin/realms/llm-machines"
+  const user = await exactUser(root, bearer, expectedUser.username)
+  assert.match(user.id ?? "", /^[0-9a-f-]{36}$/)
+  expectedUser.subject = user.id
+  assert.equal(user.username, expectedUser.username)
+  assert.equal(user.enabled, true)
+  assert.equal(user.email, `${expectedUser.username}@fixture.example.com`)
+  assert.equal(user.emailVerified, true)
+  assert.deepEqual(user.requiredActions ?? [], [])
+
+  const [groups, roles, passwordCredentials] = await Promise.all([
+    adminJson(
+      root,
+      bearer,
+      `${realmPath}/users/${encodeURIComponent(user.id)}/groups`,
+    ),
+    adminJson(
+      root,
+      bearer,
+      `${realmPath}/users/${encodeURIComponent(user.id)}/role-mappings/realm`,
+    ),
+    adminJson(
+      root,
+      bearer,
+      `${realmPath}/users/${encodeURIComponent(user.id)}/credentials`,
+    ),
+  ])
+  assert.deepEqual(
+    groups.map(({ name }) => name),
+    [groupName],
+  )
+  assert.ok(roles.some(({ name }) => name === realmRole))
+  assert.equal(
+    roles.some(({ name }) =>
+      realmRole === "admin" ? name === "operator" : name === "admin",
+    ),
+    false,
+  )
+  assert.equal(
+    passwordCredentials.filter(({ type }) => type === "password").length,
+    1,
+  )
+
+  return {
+    emailVerified: true,
+    enabled: true,
+    group: groupName,
+    passwordCredentialPresent: true,
+    realmRole,
+    requiredActions: 0,
+  }
+}
+
+async function exactAuthorizationPolicy(
+  root,
+  bearer,
+  permissionClientId,
+  name,
+) {
+  const policies = await adminJson(
+    root,
+    bearer,
+    `/admin/realms/llm-machines/clients/${encodeURIComponent(permissionClientId)}/authz/resource-server/policy`,
+  )
+  const matches = policies.filter((policy) => policy.name === name)
+  assert.equal(matches.length, 1)
+  assert.match(matches[0].id ?? "", /^[0-9a-f-]{36}$/)
+  return matches[0]
 }
 
 async function exactClient(root, bearer, clientId) {
@@ -1034,7 +1389,10 @@ function opaqueValue() {
 function sanitize(value) {
   let output = String(value ?? "")
   const secrets = [
+    credentials.admin.username,
     credentials.admin.password,
+    credentials.bootstrap.username,
+    credentials.operator.username,
     credentials.operator.password,
     credentials.bootstrap.password,
     credentials.bffService,
@@ -1044,6 +1402,14 @@ function sanitize(value) {
     credentials.postgres,
   ]
   for (const secret of secrets) output = output.split(secret).join("[redacted]")
+  output = output.replace(
+    /([?&](?:client_data|code|execution|session_code|tab_id)=)[^&\s"']+/g,
+    "$1[redacted]",
+  )
+  output = output.replace(
+    /\b(userId|username)="?[^,"\s]+"?/g,
+    '$1="[redacted]"',
+  )
   if (output.length <= 8_000) return output
   return `${output.slice(0, 4_000)}\n[diagnostic truncated]\n${output.slice(-4_000)}`
 }

@@ -32,6 +32,7 @@ const paths = {
   credentials: join(controlRoot, "runtime/credentials.json"),
   metadata: join(controlRoot, "supervisor.json"),
   runtime: join(controlRoot, "runtime"),
+  stage: join(controlRoot, "runtime/commissioning-stage.json"),
   stderr: join(controlRoot, "supervisor.stderr.log"),
   stdout: join(controlRoot, "supervisor.stdout.log"),
   stop: join(controlRoot, "runtime/uat.stop"),
@@ -70,6 +71,7 @@ async function start() {
         "scripts/pre-genesis/reduced-core-integrated.mjs",
       ),
       "--keep-running",
+      "--incremental",
     ],
     {
       cwd: repositoryRoot,
@@ -171,6 +173,9 @@ async function statusReport() {
   const control = (await exists(paths.control))
     ? await readJson(paths.control)
     : null
+  const commissioningStage = (await exists(paths.stage))
+    ? await readJson(paths.stage)
+    : null
   const credentialMode = (await exists(paths.credentials))
     ? (await stat(paths.credentials)).mode & 0o777
     : null
@@ -181,6 +186,7 @@ async function statusReport() {
     architecture: metadata.architecture,
     authorities: control?.authorities ?? null,
     caFile: control?.caFile ?? null,
+    commissioningStage,
     credentialFile: control?.credentialFile ?? null,
     credentialMode: credentialMode === null ? null : "0600",
     inventory: control?.inventory ?? null,

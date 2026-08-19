@@ -112,6 +112,62 @@ export function validateLiteLlmOssRuntimeInspection(inspection, contract) {
   )
 }
 
+export function inspectLiteLlmOssRuntimeImage(runDocker, image) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const result = runDocker(["image", "inspect", image])
+    if (result.error || result.status !== 0) {
+      throw new Error("LiteLLM Docker image inspection failed")
+    }
+    const output = result.stdout?.trim()
+    if (!output) continue
+
+    let inspections
+    try {
+      inspections = JSON.parse(output)
+    } catch {
+      throw new Error("LiteLLM Docker image inspection returned malformed JSON")
+    }
+    if (!Array.isArray(inspections) || inspections.length !== 1) {
+      throw new Error("LiteLLM Docker image inspection must return one image")
+    }
+    return inspections[0]
+  }
+  throw new Error("LiteLLM Docker image inspection returned no output")
+}
+
+export function loadCoreImageInventoryAtHead(runGit, repositoryRoot) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const result = runGit(
+      [
+        "-c",
+        `safe.directory=${repositoryRoot}`,
+        "show",
+        "HEAD:infra/release/core-image-inventory.json",
+      ],
+      { cwd: repositoryRoot, encoding: "utf8" },
+    )
+    if (result.error || result.status !== 0) {
+      throw new Error("Core image inventory Git read failed")
+    }
+    const output = result.stdout?.trim()
+    if (!output) continue
+
+    let inventory
+    try {
+      inventory = JSON.parse(output)
+    } catch {
+      throw new Error("Core image inventory Git read returned malformed JSON")
+    }
+    if (!inventory || !Array.isArray(inventory.components)) {
+      throw new Error(
+        "Core image inventory Git read returned an invalid inventory",
+      )
+    }
+    return inventory
+  }
+  throw new Error("Core image inventory Git read returned no output")
+}
+
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"))
 }

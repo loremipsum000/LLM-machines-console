@@ -17,7 +17,14 @@ node scripts/pre-genesis/reduced-core-uat.mjs stop
 
 `start` creates generated state below
 `~/.local/state/llm-machines/founder-uat`, performs the integrated startup and
-browser proof, and returns only after the environment reports `READY`. The
+browser proof, and returns only after the environment reports `READY`. On a
+placed native Linux/amd64 candidate, commissioning is incremental:
+PostgreSQL and Keycloak, Console login, LiteLLM and inference, Firecrawl, then
+the complete candidate journey. `status` reports the current stage without
+including credentials. If the Console-login harness is blocked, PostgreSQL and
+Keycloak remain available for diagnosis; correct only the demonstrated source
+defect and create the exact retry file reported by `status`. Never use the
+retry file to bypass a failed assertion. The
 supervisor and all Product services then remain running. `stop` is the only
 normal cleanup action. It waits for orderly teardown and fails if owned
 containers remain. It never targets an unrelated container or directory.
@@ -58,7 +65,11 @@ All four authorities must be distinct canonical HTTPS DNS origins on port 443.
 The edge bind must be one explicit non-loopback RFC1918 address. The Product
 continues to bind every native service to loopback; only the Product edge also
 listens on the declared private address. The fixed edge port lets the upstream
-gateway be configured before startup without a broad port rule.
+gateway be configured before startup without a broad port rule. The gateway
+must route every canonical authority to this exact candidate edge before
+`start` is run. Startup compares the public identity JWKS with the disposable
+candidate Keycloak and fails before submitting a browser credential if the
+gateway still targets an older environment.
 
 The edge certificate must cover all four authority hostnames, chain to the
 declared CA, match the declared private key, and be currently valid. The key
@@ -69,8 +80,14 @@ upstream gateway and require upstream certificate verification. Never copy the
 edge private key to the gateway.
 
 In placed mode the integrated browser proof uses normal DNS and the upstream
-gateway on port 443. It does not add host-resolver overrides or ignore TLS
-errors. The placement is rejected outside keep-running founder mode.
+gateway on port 443. Public Identity metadata is verified with the operating
+system trust store against the public certificate. Gateway-to-edge traffic is
+verified separately with the private edge CA. The two trust paths are never
+combined and TLS verification is never disabled. Startup also compares the
+public Identity JWKS with the candidate Keycloak metadata before browser
+credentials are submitted. It does not add host-resolver overrides or ignore
+TLS errors. The placement is rejected outside keep-running founder or the
+bounded commissioning-login stage.
 
 ## Reversible loopback-only founder workstation access
 

@@ -48,6 +48,21 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
   )
   assert.match(browser, /ADMIN_GRAFANA_BASE_URL:/)
   assert.match(browser, /async function waitForFounderHealthyCpu\(/)
+  assert.match(browser, /async function eventually\(check, timeout = 10_000\)/)
+  assert.match(
+    browser,
+    /Product edge readiness failed:[\s\S]*probe=[\s\S]*logs=/,
+  )
+  assert.match(browser, /const edgeUid = process\.getuid\?\.\(\)/)
+  assert.match(browser, /const edgeGid = process\.getgid\?\.\(\)/)
+  assert.match(browser, /"--user",\n {4}edgeIdentity/)
+  assert.match(
+    browser,
+    /Product edge mount is unreadable by its native identity/,
+  )
+  assert.match(browser, /mode=0700/)
+  assert.doesNotMatch(browser, /--cap-add/)
+  assert.match(browser, /\.State\.Status.*\.State\.ExitCode/)
   assert.match(browser, /latestValue < 85/)
   assert.match(browser, /xpath=ancestor::section\[1\]/)
   assert.doesNotMatch(browser, /cpu\.getByText\("50%"/)
@@ -61,6 +76,35 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
     /assert\.equal\(new URL\(page\.url\(\)\)\.pathname, "\/applications"\)\n\s+await page\.goto\(`\$\{consoleOrigin\}\/applications\/apps\/new`\)/,
   )
   assert.match(browser, /founderUat: Boolean\(founderUatControl\)/)
+  assert.match(browser, /WEB_CONSOLE_ORIGIN: consoleOrigin/)
+  assert.match(
+    browser,
+    /async function browserJson\([\s\S]*credentials: "same-origin"/,
+  )
+  assert.match(browser, /requiredCookieName: "grafana_session"/)
+  assert.match(browser, /deniedCookieName: "login_error"/)
+  assert.match(
+    browser,
+    /context\.cookies\(entryOrigin\)[\s\S]*name === requiredCookieName/,
+  )
+  assert.match(
+    browser,
+    /headersArray\(\)[\s\S]*name\.toLowerCase\(\) !== "set-cookie"[\s\S]*responseCookieNames\.add\(cookieName\)/,
+  )
+  assert.match(
+    browser,
+    /deniedCookieName && responseCookieNames\.has\(deniedCookieName\)/,
+  )
+  assert.equal(
+    browser.match(
+      /proveKeycloakIdentityCookieBoundary\(\{\n {8}certificate,\n {8}context,\n {8}edgePort,/g,
+    )?.length,
+    2,
+  )
+  assert.match(
+    browser,
+    /const unsupported = await requestHttpsEdgeWithHeaders\(\{[\s\S]*path: "\/v2\/crawl"/,
+  )
   assert.match(browser, /actual-private-no-synthetic-alert/)
   assert.match(
     browser,
@@ -109,7 +153,7 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
   )
 })
 
-test("F0-UAT0 keeps the customer edge private and native services unavailable", () => {
+test("F0-UAT0 keeps every retained native service behind the private edge", () => {
   assert.match(integrated, /keep-running mode requires native Linux\/amd64/)
   assert.match(integrated, /PRE_GENESIS_DOCKER_CONTEXT: "default"/)
   assert.match(
@@ -123,22 +167,51 @@ test("F0-UAT0 keeps the customer edge private and native services unavailable", 
   assert.match(browser, /api\.llmm\.test/)
   assert.match(browser, /identity\.llmm\.test/)
   assert.match(browser, /firecrawl\.llmm\.test/)
-  assert.match(browser, /"keycloak-admin"/)
+  assert.match(browser, /grafana\.llmm\.test/)
+  assert.match(browser, /keycloak\.llmm\.test/)
+  assert.match(browser, /litellm\.llmm\.test/)
+  assert.match(browser, /"keycloak-upstream"/)
+  assert.match(browser, /"grafana-upstream"/)
+  assert.match(browser, /"litellm-upstream"/)
   assert.match(browser, /"sglang-or-inference-double"/)
   assert.match(integrated, /F0_UAT0_PLACEMENT_FILE/)
   assert.match(browser, /edgeBindAddress/)
   assert.match(browser, /publicOrigin\("identity", edgePort\)/)
   assert.match(browser, /ignoreHTTPSErrors: !founderUatPlacement/)
+  assert.match(
+    browser,
+    /Product edge returned invalid JSON for \$\{method\} https:\/\/\$\{authority\}\$\{path\} \(status \$\{response\.statusCode \?\? 500\}, content-type \$\{contentType\}\)\./,
+  )
+  assert.match(
+    browser,
+    /const deleteDenied = await requestHttpsEdgeWithHeaders\(\{[\s\S]*?method: "DELETE",[\s\S]*?assert\.equal\(deleteDenied\.status, 403\)/,
+  )
+  assert.match(
+    browser,
+    /const masterDenied = await requestHttpsEdgeWithHeaders\(\{[\s\S]*?path: "\/keycloak\/admin\/realms\/master"/,
+  )
+  assert.match(
+    browser,
+    /function inspectPostgresPersistence\(sensitiveValues, applicationFlow = null\)/,
+  )
+  assert.match(
+    browser,
+    /applicationFlow\.lifecycle\.operatorPaths\.map\(\(path\) =>[\s\S]*?path\.split\("\/"\)\.at\(-1\)/,
+  )
+  assert.match(browser, /AND app_id IN \(:'application_1', :'application_2'\)/)
   assert.doesNotMatch(operator, /0\.0\.0\.0|--publish|docker\.io/)
 })
 
-test("F0-UAT0 validates one private edge and four canonical deployment authorities", () => {
+test("F0-UAT0 validates one private edge and seven canonical deployment authorities", () => {
   const placement = parseFounderUatPlacement({
     authorities: {
       api: "https://api.lab.llm-machines.com",
       console: "https://console.lab.llm-machines.com",
       firecrawl: "https://firecrawl.lab.llm-machines.com",
+      grafana: "https://grafana.lab.llm-machines.com",
       identity: "https://identity.lab.llm-machines.com",
+      keycloak: "https://keycloak.lab.llm-machines.com",
+      litellm: "https://litellm.lab.llm-machines.com",
     },
     edgeBindAddress: "192.168.42.10",
     edgePort: 18443,

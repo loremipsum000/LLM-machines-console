@@ -8,7 +8,10 @@ import {
   prepareKeycloakImportRoot,
   writeKeycloakRealmImport,
 } from "../pre-genesis/keycloak-import-root.mjs"
-import { humanAdminPermissions } from "../pre-genesis/keycloak-team-permissions.mjs"
+import {
+  humanAdminPermissions,
+  integratedHumanAdminPermissions,
+} from "../pre-genesis/keycloak-team-permissions.mjs"
 
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 
@@ -28,7 +31,10 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
     wrapper,
     /quay\.io\/keycloak\/keycloak:26\.7\.0@sha256:[0-9a-f]{64}/,
   )
-  assert.match(wrapper, /humanAdminPermissions/)
+  assert.match(wrapper, /integratedHumanAdminPermissions/)
+  assert.match(wrapper, /verifyCommissionedUser/)
+  assert.match(wrapper, /expectedUser\.subject = user\.id/)
+  assert.match(wrapper, /AUTHORIZATION_CODE_PKCE_PENDING/)
   const browserConfigStart = wrapper.indexOf(
     "  await writeFile(\n    browserConfigFile,",
   )
@@ -40,6 +46,7 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   assert.ok(browserConfigEnd > browserConfigStart)
   const browserConfigBlock = wrapper.slice(browserConfigStart, browserConfigEnd)
   assert.match(browserConfigBlock, /container: containerName,/)
+  assert.match(browserConfigBlock, /commissioning/)
   assert.match(browserConfigBlock, /dockerContext,/)
   assert.match(browserConfigBlock, /edgePort,/)
   assert.match(browserConfigBlock, /upstreamPort,/)
@@ -52,6 +59,10 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   assert.match(wrapper, /impersonation`[\s\S]*403/)
   assert.match(wrapper, /"pg_isready",[\s\S]*"--host",\s*"127\.0\.0\.1"/)
   assert.match(wrapper, /if \(!postgresReady\)/)
+  assert.ok(
+    wrapper.indexOf("await configureTeamAuthority(upstreamPort)") <
+      wrapper.indexOf("serviceControl.controlFile"),
+  )
   assert.doesNotMatch(wrapper, /["']realm-admin["']/)
   assert.doesNotMatch(wrapper, /["']manage-users["']/)
 
@@ -146,11 +157,91 @@ test("F0-I2 permission translation matches the current logical seed", async () =
     operatorsGroupId: groupIds["group:Operators"],
   })
   assert.deepEqual(normalizePermissions(actual), normalizePermissions(expected))
-  assert.match(wrapper, /humanAdminPermissions\(\{/)
+  assert.match(wrapper, /integratedHumanAdminPermissions\(\{/)
+  assert.match(wrapper, /name: "appliance-user-administration-callers"/)
+  assert.match(wrapper, /decisionStrategy: "AFFIRMATIVE"/)
+  assert.match(
+    wrapper,
+    /policies: \[serviceAccountPolicy\.id, customerAdminPolicy\.id\]/,
+  )
+  assert.doesNotMatch(wrapper, /function customerAdminPermissions/)
+  assert.equal(
+    wrapper.match(/name: "customer-admin-manage-all-users"/g)?.length ?? 0,
+    0,
+  )
   assert.match(wrapper, /name: "default-roles-llm-machines"/)
   assert.match(wrapper, /name: "offline_access"/)
   assert.match(wrapper, /optionalClientScopes: \["profile", "email"\]/)
+  assert.match(wrapper, /"claim\.name": "email"/)
+  assert.match(wrapper, /"claim\.name": "email_verified"/)
+  assert.match(wrapper, /"claim\.name": "preferred_username"/)
+  assert.match(wrapper, /"userinfo\.token\.claim": "true"/)
+  assert.match(wrapper, /@fixture\.example\.com/)
+  assert.doesNotMatch(wrapper, /@fixture\.invalid/)
+  assert.doesNotMatch(
+    wrapper,
+    /function simpleScope\(name\) \{[\s\S]*protocolMappers: \[\]/,
+  )
   assert.doesNotMatch(wrapper, /optionalClientScopes: \[[^\]]*offline_access/)
+})
+
+test("F0-I2 preserves blocked incremental commissioning state", async () => {
+  const wrapper = await readFile(
+    resolve(root, "scripts/pre-genesis/reduced-core-keycloak-identity.mjs"),
+    "utf8",
+  )
+  assert.match(wrapper, /F0_C1_PRESERVE_FAILURE_STATE/)
+  assert.match(wrapper, /status: "BLOCKED"/)
+  assert.match(wrapper, /diagnosticState:/)
+  assert.match(wrapper, /const preserve = preserveFailureState && failure/)
+  assert.doesNotMatch(
+    wrapper,
+    /password:.*diagnosticState|secret:.*diagnosticState/,
+  )
+})
+
+test("F0-I2 composes non-overlapping native and Console FGAP scopes", () => {
+  const permissions = integratedHumanAdminPermissions({
+    adminsGroupId: "fixture-admins-id",
+    operatorsGroupId: "fixture-operators-id",
+  })
+  const users = permissions.filter(
+    (permission) => permission.resourceType === "Users",
+  )
+  assert.deepEqual(
+    users.map(({ name, policies, scopes }) => ({ name, policies, scopes })),
+    [
+      {
+        name: "appliance-user-administration-manage-all-users",
+        policies: ["appliance-user-administration-callers"],
+        scopes: ["view", "manage"],
+      },
+      {
+        name: "console-human-admin-manage-all-user-membership",
+        policies: ["console-human-admin-service-account"],
+        scopes: ["manage-group-membership"],
+      },
+    ],
+  )
+  for (const group of ["Admins", "Operators"]) {
+    const shared = permissions.find(
+      ({ name }) =>
+        name === `appliance-user-administration-view-${group}-group`,
+    )
+    const service = permissions.find(
+      ({ name }) => name === `console-human-admin-manage-${group}-group`,
+    )
+    assert.deepEqual(shared?.policies, [
+      "appliance-user-administration-callers",
+    ])
+    assert.deepEqual(shared?.scopes, ["view", "view-members"])
+    assert.deepEqual(service?.policies, ["console-human-admin-service-account"])
+    assert.deepEqual(service?.scopes, [
+      "manage-members",
+      "manage-membership",
+      "manage-membership-of-members",
+    ])
+  }
 })
 
 test("F0-I2 renders a Keycloak-readable import root under a restrictive umask", async () => {
