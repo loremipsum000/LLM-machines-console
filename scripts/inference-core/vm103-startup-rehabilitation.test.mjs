@@ -247,6 +247,15 @@ test("VM103 commissioning orders identity before dependent services", () => {
     integrated,
     /Incremental commissioning was stopped while blocked/,
   )
+  assert.match(
+    integrated,
+    /const preserveDiagnosticState = incrementalCommissioning && failure/,
+  )
+  assert.match(integrated, /F0_C1_PRESERVE_FAILURE_STATE: "true"/)
+  assert.match(
+    integrated,
+    /writeCommissioningStage\(commissioningLayer, "BLOCKED"/,
+  )
 })
 
 function commissionedUser(group, realmRole) {

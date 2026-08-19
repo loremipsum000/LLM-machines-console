@@ -169,6 +169,7 @@ let failure = null
 let firecrawlControl = null
 let keycloakControl = null
 let liteLlmControl = null
+let commissioningLayer = "INITIALIZING"
 
 try {
   await chmod(stateRoot, 0o700)
@@ -179,14 +180,18 @@ try {
   const edgePort = founderUatPlacement?.edgePort ?? (await reservePort())
   await mkdir(files.firecrawlState, { mode: 0o700 })
   if (incrementalCommissioning) {
+    commissioningLayer = "POSTGRESQL_AND_KEYCLOAK"
     dockerContext = "default"
     docker(["info", "--format", "{{.ServerVersion}}"])
     await startProductPostgres()
     keycloakControl = await startKeycloak(edgePort)
     await writeCommissioningStage("POSTGRESQL_AND_KEYCLOAK", "PASSED")
+    commissioningLayer = "CONSOLE_LOGIN"
     await retryableConsoleLoginStage({ edgePort, keycloakControl })
+    commissioningLayer = "LITELLM_AND_INFERENCE"
     liteLlmControl = await startLiteLlm(keycloakControl)
     await writeCommissioningStage("LITELLM_AND_INFERENCE", "PASSED")
+    commissioningLayer = "FIRECRAWL"
     firecrawlControl = await startFirecrawl()
     await writeCommissioningStage("FIRECRAWL", "PASSED")
   } else {
@@ -252,10 +257,18 @@ try {
   }
 } catch (error) {
   failure = safeError(error)
+  if (incrementalCommissioning) {
+    await writeCommissioningStage(commissioningLayer, "BLOCKED", {
+      error: sanitize(failure.message),
+    }).catch(() => undefined)
+  }
 } finally {
   const cleanupFailures = []
-  await stopServiceByName("keycloak", files.keycloakStop, cleanupFailures)
-  await stopServiceByName("litellm", files.liteLlmStop, cleanupFailures)
+  const preserveDiagnosticState = incrementalCommissioning && failure
+  if (!preserveDiagnosticState) {
+    await stopServiceByName("keycloak", files.keycloakStop, cleanupFailures)
+    await stopServiceByName("litellm", files.liteLlmStop, cleanupFailures)
+  }
   for (const container of [
     containers.grafana,
     containers.alertmanager,
@@ -263,50 +276,54 @@ try {
     containers.metrics,
     containers.postgres,
   ]) {
-    if (created.containers.has(container)) {
+    if (!preserveDiagnosticState && created.containers.has(container)) {
       collectCleanup(cleanupFailures, () =>
         docker(["rm", "--force", container]),
       )
     }
   }
-  if (created.network) {
+  if (!preserveDiagnosticState && created.network) {
     collectCleanup(cleanupFailures, () => docker(["network", "rm", network]))
   }
-  if (created.postgresVolume) {
+  if (!preserveDiagnosticState && created.postgresVolume) {
     collectCleanup(cleanupFailures, () =>
       docker(["volume", "rm", postgresVolume]),
     )
   }
-  await stopServiceByName("firecrawl", files.firecrawlStop, cleanupFailures)
-  for (const service of services) {
-    if (!service.exited) {
-      signalServiceGroup(service, "SIGTERM")
-      await waitForExit(service, 5_000).catch(() => undefined)
+  if (!preserveDiagnosticState) {
+    await stopServiceByName("firecrawl", files.firecrawlStop, cleanupFailures)
+    for (const service of services) {
+      if (!service.exited) {
+        signalServiceGroup(service, "SIGTERM")
+        await waitForExit(service, 5_000).catch(() => undefined)
+      }
     }
+    collectCleanup(cleanupFailures, cleanupFirecrawlProfile)
+    await rm(files.browserState, { force: true, recursive: true })
   }
-  collectCleanup(cleanupFailures, cleanupFirecrawlProfile)
-  await rm(files.browserState, { force: true, recursive: true })
-  if (await exists(files.browserState)) {
+  if (!preserveDiagnosticState && (await exists(files.browserState))) {
     cleanupFailures.push(new Error("F0-C1 browser temporary state remains."))
   }
-  for (const path of [
-    files.firecrawlControl,
-    files.keycloakControl,
-    files.liteLlmControl,
-    files.postgresEnvironment,
-    files.grafanaSecret,
-    files.commissioningRetry,
-    files.commissioningStage,
-    files.uatControl,
-    files.uatCredentials,
-    files.uatStop,
-  ]) {
-    await rm(path, { force: true })
-  }
-  try {
-    await assertStateFreeOfSensitiveValues(stateRoot, sensitiveValues)
-  } catch (error) {
-    cleanupFailures.push(safeError(error))
+  if (!preserveDiagnosticState) {
+    for (const path of [
+      files.firecrawlControl,
+      files.keycloakControl,
+      files.liteLlmControl,
+      files.postgresEnvironment,
+      files.grafanaSecret,
+      files.commissioningRetry,
+      files.commissioningStage,
+      files.uatControl,
+      files.uatCredentials,
+      files.uatStop,
+    ]) {
+      await rm(path, { force: true })
+    }
+    try {
+      await assertStateFreeOfSensitiveValues(stateRoot, sensitiveValues)
+    } catch (error) {
+      cleanupFailures.push(safeError(error))
+    }
   }
   let workspaceArtifactsRestored = false
   try {
@@ -315,10 +332,14 @@ try {
   } catch (error) {
     cleanupFailures.push(safeError(error))
   }
-  if (workspaceArtifactsRestored) {
+  if (workspaceArtifactsRestored && !preserveDiagnosticState) {
     await rm(stateRoot, { force: true, recursive: true })
   }
-  if (workspaceArtifactsRestored && (await exists(stateRoot))) {
+  if (
+    workspaceArtifactsRestored &&
+    !preserveDiagnosticState &&
+    (await exists(stateRoot))
+  ) {
     cleanupFailures.push(new Error("F0-C1 temporary state remains."))
   }
   if (
@@ -329,7 +350,7 @@ try {
       new Error("F0-C1 workspace recovery backup is unavailable."),
     )
   }
-  if (dockerContext) {
+  if (dockerContext && !preserveDiagnosticState) {
     for (const container of Object.values(containers)) {
       if (dockerResult(["inspect", container]).status === 0) {
         cleanupFailures.push(
@@ -420,6 +441,9 @@ async function startKeycloak(edgePort) {
     "keycloak",
     {
       F0_C1_EDGE_PORT: String(edgePort),
+      ...(incrementalCommissioning
+        ? { F0_C1_PRESERVE_FAILURE_STATE: "true" }
+        : {}),
       F0_C1_SERVICE_CONTROL_FILE: files.keycloakControl,
       F0_C1_SERVICE_STOP_FILE: files.keycloakStop,
       ...(founderUatPlacement
@@ -980,6 +1004,11 @@ async function waitForControl(path, service, timeout) {
     }
     try {
       const value = JSON.parse(await readFile(path, "utf8"))
+      if (value.status === "BLOCKED") {
+        throw new Error(
+          `${service.name} preserved blocked startup state at ${value.startupStage ?? "UNKNOWN"}.`,
+        )
+      }
       service.ready = true
       return value
     } catch {}

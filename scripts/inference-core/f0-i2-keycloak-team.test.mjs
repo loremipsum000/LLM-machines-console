@@ -154,10 +154,34 @@ test("F0-I2 permission translation matches the current logical seed", async () =
   })
   assert.deepEqual(normalizePermissions(actual), normalizePermissions(expected))
   assert.match(wrapper, /humanAdminPermissions\(\{/)
+  assert.match(wrapper, /decisionStrategy: "AFFIRMATIVE"/)
+  assert.match(
+    wrapper,
+    /policies: \[\s+"console-human-admin-service-account",\s+"customer-admin-role",\s+\]/,
+  )
+  assert.equal(
+    wrapper.match(/name: "customer-admin-manage-all-users"/g)?.length ?? 0,
+    0,
+  )
   assert.match(wrapper, /name: "default-roles-llm-machines"/)
   assert.match(wrapper, /name: "offline_access"/)
   assert.match(wrapper, /optionalClientScopes: \["profile", "email"\]/)
   assert.doesNotMatch(wrapper, /optionalClientScopes: \[[^\]]*offline_access/)
+})
+
+test("F0-I2 preserves blocked incremental commissioning state", async () => {
+  const wrapper = await readFile(
+    resolve(root, "scripts/pre-genesis/reduced-core-keycloak-identity.mjs"),
+    "utf8",
+  )
+  assert.match(wrapper, /F0_C1_PRESERVE_FAILURE_STATE/)
+  assert.match(wrapper, /status: "BLOCKED"/)
+  assert.match(wrapper, /diagnosticState:/)
+  assert.match(wrapper, /const preserve = preserveFailureState && failure/)
+  assert.doesNotMatch(
+    wrapper,
+    /password:.*diagnosticState|secret:.*diagnosticState/,
+  )
 })
 
 test("F0-I2 renders a Keycloak-readable import root under a restrictive umask", async () => {

@@ -37,6 +37,9 @@ const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const themeRoot = resolve(repositoryRoot, "infra/keycloak/themes/llm-machines")
 const dockerContext = required("PRE_GENESIS_DOCKER_CONTEXT")
 const serviceControl = serviceControlFromEnvironment()
+const preserveFailureState =
+  Boolean(serviceControl) &&
+  process.env.F0_C1_PRESERVE_FAILURE_STATE?.trim() === "true"
 const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
 if (founderUatPlacementPath && !serviceControl) {
   throw new Error(
@@ -277,35 +280,62 @@ try {
   failure = diagnostic
     ? new AggregateError([safeError(error), diagnostic], `${packageId} failed.`)
     : safeError(error)
+  if (preserveFailureState) {
+    await writeFile(
+      serviceControl.controlFile,
+      `${JSON.stringify(
+        {
+          diagnosticState: {
+            container: containerCreated ? containerName : null,
+            postgresContainer: postgresContainerCreated
+              ? postgresContainerName
+              : null,
+            postgresVolume: postgresVolumeCreated ? postgresVolumeName : null,
+            stateRoot,
+          },
+          schemaVersion: 1,
+          startupStage,
+          status: "BLOCKED",
+        },
+        null,
+        2,
+      )}\n`,
+      { mode: 0o600 },
+    )
+  }
 } finally {
   const cleanupFailures = []
-  if (containerCreated) {
+  const preserve = preserveFailureState && failure
+  if (containerCreated && !preserve) {
     const result = dockerResult(["rm", "--force", containerName])
     if (result.status !== 0) cleanupFailures.push(safeError(result.stderr))
   }
-  if (postgresContainerCreated) {
+  if (postgresContainerCreated && !preserve) {
     const result = dockerResult(["rm", "--force", postgresContainerName])
     if (result.status !== 0) cleanupFailures.push(safeError(result.stderr))
   }
-  if (postgresVolumeCreated) {
+  if (postgresVolumeCreated && !preserve) {
     const result = dockerResult(["volume", "rm", postgresVolumeName])
     if (result.status !== 0) cleanupFailures.push(safeError(result.stderr))
   }
-  await rm(stateRoot, { force: true, recursive: true })
+  if (!preserve) await rm(stateRoot, { force: true, recursive: true })
   if (
     containerCreated &&
+    !preserve &&
     dockerResult(["inspect", containerName]).status === 0
   ) {
     cleanupFailures.push(new Error(`${packageId} Keycloak container remains.`))
   }
   if (
     postgresContainerCreated &&
+    !preserve &&
     dockerResult(["inspect", postgresContainerName]).status === 0
   ) {
     cleanupFailures.push(new Error("F0-I2 PostgreSQL container remains."))
   }
   if (
     postgresVolumeCreated &&
+    !preserve &&
     dockerResult(["volume", "inspect", postgresVolumeName]).status === 0
   ) {
     cleanupFailures.push(new Error("F0-I2 PostgreSQL volume remains."))
@@ -781,7 +811,7 @@ async function configureTeamAuthority(upstreamPort) {
     },
   )
   const permissionPath = `${realmPath}/clients/${encodeURIComponent(permissionClient.id)}/authz/resource-server/permission/scope`
-  for (const permission of humanAdminPermissions({
+  for (const permission of applianceUserAdministrationPermissions({
     adminsGroupId: adminsGroup.id,
     operatorsGroupId: operatorsGroup.id,
   })) {
@@ -859,15 +889,28 @@ async function configureTeamAuthority(upstreamPort) {
   }
 }
 
+function applianceUserAdministrationPermissions({
+  adminsGroupId,
+  operatorsGroupId,
+}) {
+  return humanAdminPermissions({ adminsGroupId, operatorsGroupId }).map(
+    (permission) =>
+      permission.resourceType === "Users"
+        ? {
+            ...permission,
+            decisionStrategy: "AFFIRMATIVE",
+            policies: [
+              "console-human-admin-service-account",
+              "customer-admin-role",
+            ],
+          }
+        : permission,
+  )
+}
+
 function customerAdminPermissions({ adminsGroupId, operatorsGroupId }) {
   const policies = ["customer-admin-role"]
   return [
-    {
-      name: "customer-admin-manage-all-users",
-      policies,
-      resourceType: "Users",
-      scopes: ["manage", "view"],
-    },
     ...[
       ["Admins", adminsGroupId],
       ["Operators", operatorsGroupId],
