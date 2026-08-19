@@ -4513,14 +4513,8 @@ async function startFounderProductEdge({
       container,
     ])
     await closeServer(owner).catch(() => undefined)
-    throw new AggregateError(
-      [
-        error instanceof Error ? error : new Error(String(error)),
-        new Error(
-          `F0-UAT0 Product edge readiness metadata: probe=${safeDiagnosticTail(JSON.stringify(lastProbe))}; logs=${safeDiagnosticTail(`${logs.stdout}\n${logs.stderr}`)}`,
-        ),
-      ],
-      "F0-UAT0 Product edge readiness failed.",
+    throw new Error(
+      `F0-UAT0 Product edge readiness failed: ${safeDiagnosticTail(error instanceof Error ? error.message : String(error))}; probe=${safeDiagnosticTail(JSON.stringify(lastProbe))}; logs=${safeDiagnosticTail(`${logs.stdout}\n${logs.stderr}`)}`,
     )
   }
   return owner
