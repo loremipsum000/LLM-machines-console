@@ -722,7 +722,7 @@ function userExport(user, role, group, liteLlmRole = null) {
       : {}),
     username: user.username,
     enabled: true,
-    email: `${user.username}@fixture.invalid`,
+    email: `${user.username}@fixture.example.com`,
     emailVerified: true,
     firstName: role,
     lastName: "fixture",
@@ -974,7 +974,7 @@ async function verifyCommissionedUser(
   const user = await exactUser(root, bearer, expectedUser.username)
   assert.equal(user.username, expectedUser.username)
   assert.equal(user.enabled, true)
-  assert.equal(user.email, `${expectedUser.username}@fixture.invalid`)
+  assert.equal(user.email, `${expectedUser.username}@fixture.example.com`)
   assert.equal(user.emailVerified, true)
   assert.deepEqual(user.requiredActions ?? [], [])
 

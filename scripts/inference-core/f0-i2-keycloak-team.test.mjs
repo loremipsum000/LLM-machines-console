@@ -175,6 +175,8 @@ test("F0-I2 permission translation matches the current logical seed", async () =
   assert.match(wrapper, /"claim\.name": "email_verified"/)
   assert.match(wrapper, /"claim\.name": "preferred_username"/)
   assert.match(wrapper, /"userinfo\.token\.claim": "true"/)
+  assert.match(wrapper, /@fixture\.example\.com/)
+  assert.doesNotMatch(wrapper, /@fixture\.invalid/)
   assert.doesNotMatch(
     wrapper,
     /function simpleScope\(name\) \{[\s\S]*protocolMappers: \[\]/,
