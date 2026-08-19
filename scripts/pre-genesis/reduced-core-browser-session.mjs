@@ -5703,7 +5703,7 @@ function inspectPostgresPersistence(sensitiveValues, applicationFlow = null) {
     }
   }
   const applicationFilter = applicationIds.length
-    ? "AND application_id IN (:'application_1', :'application_2')"
+    ? "AND app_id IN (:'application_1', :'application_2')"
     : ""
   const idFilter = applicationIds.length
     ? "AND id IN (:'application_1', :'application_2')"

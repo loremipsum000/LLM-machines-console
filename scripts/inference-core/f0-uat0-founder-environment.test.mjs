@@ -198,10 +198,7 @@ test("F0-UAT0 keeps every retained native service behind the private edge", () =
     browser,
     /applicationFlow\.lifecycle\.operatorPaths\.map\(\(path\) =>[\s\S]*?path\.split\("\/"\)\.at\(-1\)/,
   )
-  assert.match(
-    browser,
-    /AND application_id IN \(:'application_1', :'application_2'\)/,
-  )
+  assert.match(browser, /AND app_id IN \(:'application_1', :'application_2'\)/)
   assert.doesNotMatch(operator, /0\.0\.0\.0|--publish|docker\.io/)
 })
 
