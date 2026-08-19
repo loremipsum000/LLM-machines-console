@@ -23,7 +23,7 @@ import {
   prepareKeycloakImportRoot,
   writeKeycloakRealmImport,
 } from "./keycloak-import-root.mjs"
-import { humanAdminPermissions } from "./keycloak-team-permissions.mjs"
+import { integratedHumanAdminPermissions } from "./keycloak-team-permissions.mjs"
 
 const KEYCLOAK_IMAGE =
   "quay.io/keycloak/keycloak:26.7.0@sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13"
@@ -848,15 +848,6 @@ async function configureTeamAuthority(upstreamPort) {
       method: "POST",
     })
   }
-  for (const permission of customerAdminPermissions({
-    adminsGroupId: adminsGroup.id,
-    operatorsGroupId: operatorsGroup.id,
-  })) {
-    await adminRequest(root, bootstrapToken, permissionPath, {
-      body: permission,
-      method: "POST",
-    })
-  }
 
   const grafana = await exactClient(root, bootstrapToken, "grafana")
   await adminRequest(
@@ -921,31 +912,7 @@ function applianceUserAdministrationPermissions({
   adminsGroupId,
   operatorsGroupId,
 }) {
-  return humanAdminPermissions({ adminsGroupId, operatorsGroupId }).map(
-    (permission) =>
-      permission.resourceType === "Users"
-        ? {
-            ...permission,
-            policies: ["appliance-user-administration-callers"],
-          }
-        : permission,
-  )
-}
-
-function customerAdminPermissions({ adminsGroupId, operatorsGroupId }) {
-  const policies = ["customer-admin-role"]
-  return [
-    ...[
-      ["Admins", adminsGroupId],
-      ["Operators", operatorsGroupId],
-    ].map(([name, id]) => ({
-      name: `customer-admin-view-${name}-members`,
-      policies,
-      resources: [id],
-      resourceType: "Groups",
-      scopes: ["view", "view-members"],
-    })),
-  ]
+  return integratedHumanAdminPermissions({ adminsGroupId, operatorsGroupId })
 }
 
 async function verifyCommissionedUser(
