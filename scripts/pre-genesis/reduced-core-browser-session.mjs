@@ -2482,22 +2482,28 @@ async function proveIntegratedNativeAdministration({
     ({ username }) => username === credentials.operator.username,
   )
   assert.match(operator?.id ?? "", /^[0-9a-f-]{36}$/)
-  const deleteDenied = await requestJsonThroughEdge({
-    authority: authorities.keycloak,
-    bearerToken: keycloakAdmin.bearer,
-    caFile: certificate.ca,
+  const deleteDenied = await requestHttpsEdgeWithHeaders({
+    certificate,
     edgePort,
+    headers: {
+      authorization: `Bearer ${keycloakAdmin.bearer}`,
+      host: publicAuthorityHost(authorities.keycloak, edgePort),
+    },
     method: "DELETE",
     path: `/keycloak/admin/realms/llm-machines/users/${operator.id}`,
+    servername: authorities.keycloak,
   })
   assert.equal(deleteDenied.status, 403)
-  const masterDenied = await requestJsonThroughEdge({
-    authority: authorities.keycloak,
-    bearerToken: keycloakAdmin.bearer,
-    caFile: certificate.ca,
+  const masterDenied = await requestHttpsEdgeWithHeaders({
+    certificate,
     edgePort,
+    headers: {
+      authorization: `Bearer ${keycloakAdmin.bearer}`,
+      host: publicAuthorityHost(authorities.keycloak, edgePort),
+    },
     method: "GET",
     path: "/keycloak/admin/realms/master",
+    servername: authorities.keycloak,
   })
   assert.ok([403, 404].includes(masterDenied.status))
   const keycloakOperator = await nativeBrowserLogin({

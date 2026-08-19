@@ -182,6 +182,14 @@ test("F0-UAT0 keeps every retained native service behind the private edge", () =
     browser,
     /Product edge returned invalid JSON for \$\{method\} https:\/\/\$\{authority\}\$\{path\} \(status \$\{response\.statusCode \?\? 500\}, content-type \$\{contentType\}\)\./,
   )
+  assert.match(
+    browser,
+    /const deleteDenied = await requestHttpsEdgeWithHeaders\(\{[\s\S]*?method: "DELETE",[\s\S]*?assert\.equal\(deleteDenied\.status, 403\)/,
+  )
+  assert.match(
+    browser,
+    /const masterDenied = await requestHttpsEdgeWithHeaders\(\{[\s\S]*?path: "\/keycloak\/admin\/realms\/master"/,
+  )
   assert.doesNotMatch(operator, /0\.0\.0\.0|--publish|docker\.io/)
 })
 
