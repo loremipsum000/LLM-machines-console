@@ -171,6 +171,14 @@ test("F0-I2 permission translation matches the current logical seed", async () =
   assert.match(wrapper, /name: "default-roles-llm-machines"/)
   assert.match(wrapper, /name: "offline_access"/)
   assert.match(wrapper, /optionalClientScopes: \["profile", "email"\]/)
+  assert.match(wrapper, /"claim\.name": "email"/)
+  assert.match(wrapper, /"claim\.name": "email_verified"/)
+  assert.match(wrapper, /"claim\.name": "preferred_username"/)
+  assert.match(wrapper, /"userinfo\.token\.claim": "true"/)
+  assert.doesNotMatch(
+    wrapper,
+    /function simpleScope\(name\) \{[\s\S]*protocolMappers: \[\]/,
+  )
   assert.doesNotMatch(wrapper, /optionalClientScopes: \[[^\]]*offline_access/)
 })
 

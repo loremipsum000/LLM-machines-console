@@ -641,6 +641,54 @@ function nativeOidcClient({
 }
 
 function simpleScope(name) {
+  const protocolMappers =
+    name === "email"
+      ? [
+          {
+            name: "email verified",
+            protocol: "openid-connect",
+            protocolMapper: "oidc-usermodel-property-mapper",
+            config: {
+              "access.token.claim": "true",
+              "claim.name": "email_verified",
+              "id.token.claim": "true",
+              "introspection.token.claim": "true",
+              "jsonType.label": "boolean",
+              "user.attribute": "emailVerified",
+              "userinfo.token.claim": "true",
+            },
+          },
+          {
+            name: "email",
+            protocol: "openid-connect",
+            protocolMapper: "oidc-usermodel-attribute-mapper",
+            config: {
+              "access.token.claim": "true",
+              "claim.name": "email",
+              "id.token.claim": "true",
+              "introspection.token.claim": "true",
+              "jsonType.label": "String",
+              "user.attribute": "email",
+              "userinfo.token.claim": "true",
+            },
+          },
+        ]
+      : [
+          {
+            name: "username",
+            protocol: "openid-connect",
+            protocolMapper: "oidc-usermodel-attribute-mapper",
+            config: {
+              "access.token.claim": "true",
+              "claim.name": "preferred_username",
+              "id.token.claim": "true",
+              "introspection.token.claim": "true",
+              "jsonType.label": "String",
+              "user.attribute": "username",
+              "userinfo.token.claim": "true",
+            },
+          },
+        ]
   return {
     name,
     protocol: "openid-connect",
@@ -648,7 +696,7 @@ function simpleScope(name) {
       "display.on.consent.screen": "false",
       "include.in.token.scope": "true",
     },
-    protocolMappers: [],
+    protocolMappers,
   }
 }
 
