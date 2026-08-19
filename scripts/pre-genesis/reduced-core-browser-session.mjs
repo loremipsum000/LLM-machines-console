@@ -4499,7 +4499,12 @@ function proxyIdentityRequest(incoming, outgoing, url, upstreamPort, edgePort) {
     customerPort: 443,
     headers: incoming.headers,
     hostHeaders: [authorities.identity],
-    hosts: authorities,
+    hosts: Object.fromEntries(
+      ["api", "console", "firecrawl", "identity"].map((name) => [
+        name,
+        authorities[name],
+      ]),
+    ),
     method: incoming.method ?? "GET",
     rawTarget: `${url.pathname}${url.search}`,
     sni: authorities.identity,
