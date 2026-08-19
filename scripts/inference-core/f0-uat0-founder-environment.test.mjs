@@ -81,6 +81,11 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
     browser,
     /async function browserJson\([\s\S]*credentials: "same-origin"/,
   )
+  assert.match(browser, /requiredCookieName: "grafana_session"/)
+  assert.match(
+    browser,
+    /context\.cookies\(entryOrigin\)[\s\S]*name === requiredCookieName/,
+  )
   assert.equal(
     browser.match(
       /proveKeycloakIdentityCookieBoundary\(\{\n {8}certificate,\n {8}context,\n {8}edgePort,/g,

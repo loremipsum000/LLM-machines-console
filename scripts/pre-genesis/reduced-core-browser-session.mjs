@@ -2337,6 +2337,7 @@ async function proveIntegratedNativeAdministration({
     browser,
     credentials: credentials.admin,
     entry: `${publicOrigin("grafana", edgePort)}/login/generic_oauth`,
+    requiredCookieName: "grafana_session",
   })
   const grafanaUser = await browserJson(grafanaAdmin.page, "/api/user")
   const grafanaOrganizations = await browserJson(
@@ -2536,6 +2537,7 @@ async function nativeBrowserLogin({
   credentials,
   entry,
   expectDenied = false,
+  requiredCookieName = null,
 }) {
   const entryOrigin = new URL(entry).origin
   const context = await browser.newContext({ ignoreHTTPSErrors: false })
@@ -2606,6 +2608,15 @@ async function nativeBrowserLogin({
   assert.equal(pkce, true)
   if (!expectDenied) {
     assert.equal(new URL(page.url()).origin, entryOrigin)
+  }
+  if (requiredCookieName && !expectDenied) {
+    await eventually(
+      async () =>
+        (await context.cookies(entryOrigin)).some(
+          ({ name }) => name === requiredCookieName,
+        ),
+      120_000,
+    )
   }
   if (captureKeycloakBearer && !expectDenied) {
     await eventually(() => Promise.resolve(Boolean(bearer)), 120_000)
