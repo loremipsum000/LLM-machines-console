@@ -633,6 +633,7 @@ async function runBrowserSessionProof() {
 
     const identityAuthorityBinding = await proveIdentityAuthorityBinding({
       keycloakControl,
+      waitForPublicMatch: commissioningLoginMode,
     })
     const executablePath = await chromeExecutable()
     const browserArguments = ["--no-proxy-server"]
@@ -5954,7 +5955,10 @@ function keycloakControlFromEnvironment() {
   }
 }
 
-async function proveIdentityAuthorityBinding({ keycloakControl }) {
+async function proveIdentityAuthorityBinding({
+  keycloakControl,
+  waitForPublicMatch = false,
+}) {
   if (!founderUatPlacement) {
     return { status: "LOOPBACK_CANDIDATE_EDGE" }
   }
@@ -5962,16 +5966,26 @@ async function proveIdentityAuthorityBinding({ keycloakControl }) {
     throw new Error("F0-UAT0 placed identity requires Keycloak control.")
   }
   const jwksPath = "/realms/llm-machines/protocol/openid-connect/certs"
-  const [candidateJwks, publicJwks] = await Promise.all([
-    requestKeycloakJson(
-      `http://127.0.0.1:${keycloakControl.upstreamPort}${jwksPath}`,
-    ),
-    requestPublicIdentityJson({
-      edgePort: keycloakControl.edgePort,
-      path: jwksPath,
-    }),
-  ])
-  return assertIdentityAuthorityBinding({ candidateJwks, publicJwks })
+  const candidateJwks = await requestKeycloakJson(
+    `http://127.0.0.1:${keycloakControl.upstreamPort}${jwksPath}`,
+  )
+  const deadline = performance.now() + (waitForPublicMatch ? 20 * 60_000 : 1)
+  let lastError = null
+  do {
+    try {
+      const publicJwks = await requestPublicIdentityJson({
+        edgePort: keycloakControl.edgePort,
+        path: jwksPath,
+      })
+      return assertIdentityAuthorityBinding({ candidateJwks, publicJwks })
+    } catch (error) {
+      lastError = safeError(error)
+    }
+    if (performance.now() < deadline) await delay(1_000)
+  } while (performance.now() < deadline)
+  throw new Error(
+    `The public Identity authority did not bind to the candidate: ${safeDiagnosticTail(lastError?.message ?? "unknown failure")}`,
+  )
 }
 
 async function requestKeycloakJson(url) {
