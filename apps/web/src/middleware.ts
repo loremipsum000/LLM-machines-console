@@ -156,7 +156,7 @@ function getSignInRedirectUrl(
   returnTo: string,
   expired: boolean,
 ): URL {
-  const signInUrl = new URL("/auth/signin", requestUrl.origin)
+  const signInUrl = new URL("/auth/signin", consoleOrigin(requestUrl))
   if (expired) {
     signInUrl.searchParams.set("session", "expired")
   }
@@ -165,9 +165,32 @@ function getSignInRedirectUrl(
 }
 
 function getUnavailableUrl(requestUrl: URL, returnTo: string): URL {
-  const unavailableUrl = new URL("/auth/unavailable", requestUrl.origin)
+  const unavailableUrl = new URL("/auth/unavailable", consoleOrigin(requestUrl))
   unavailableUrl.searchParams.set("returnTo", returnTo)
   return unavailableUrl
+}
+
+function consoleOrigin(requestUrl: URL): string {
+  const configured = process.env.WEB_CONSOLE_ORIGIN?.trim()
+  if (!configured) return requestUrl.origin
+  let parsed: URL
+  try {
+    parsed = new URL(configured)
+  } catch {
+    throw new Error("WEB_CONSOLE_ORIGIN must be an exact HTTPS origin.")
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.username ||
+    parsed.password ||
+    parsed.pathname !== "/" ||
+    parsed.search ||
+    parsed.hash ||
+    configured !== parsed.origin
+  ) {
+    throw new Error("WEB_CONSOLE_ORIGIN must be an exact HTTPS origin.")
+  }
+  return parsed.origin
 }
 
 function setSlidingSessionCookie(

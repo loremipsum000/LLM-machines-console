@@ -76,6 +76,7 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
     /assert\.equal\(new URL\(page\.url\(\)\)\.pathname, "\/applications"\)\n\s+await page\.goto\(`\$\{consoleOrigin\}\/applications\/apps\/new`\)/,
   )
   assert.match(browser, /founderUat: Boolean\(founderUatControl\)/)
+  assert.match(browser, /WEB_CONSOLE_ORIGIN: consoleOrigin/)
   assert.match(browser, /actual-private-no-synthetic-alert/)
   assert.match(
     browser,

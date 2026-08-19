@@ -543,6 +543,7 @@ async function runBrowserSessionProof() {
       CONSOLE_BFF_URL: `http://127.0.0.1:${bffPort}`,
       NEXT_TELEMETRY_DISABLED: "1",
       NODE_ENV: founderUatControl ? "production" : "development",
+      WEB_CONSOLE_ORIGIN: consoleOrigin,
       WEB_IDENTITY_ORIGIN: publicOrigin("identity", edgePort),
     }
     if (founderUatControl) {
