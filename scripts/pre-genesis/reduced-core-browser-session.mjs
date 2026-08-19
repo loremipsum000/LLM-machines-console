@@ -4475,21 +4475,53 @@ async function startFounderProductEdge({
     container,
     listening: true,
   }
+  let lastProbe = null
   try {
     await eventually(async () => {
-      const probe = await requestHttpsEdgeWithHeaders({
-        certificate,
-        edgePort,
-        headers: { host: authorities.console },
-        method: "GET",
-        path: "/auth/signin",
-        servername: authorities.console,
-      }).catch(() => null)
-      return probe?.status === 200
+      const state = dockerControl(keycloakControl, [
+        "inspect",
+        "--format",
+        "{{.State.Status}} {{.State.ExitCode}}",
+        container,
+      ])
+      if (state.status !== 0 || state.stdout.trim().startsWith("exited ")) {
+        throw new Error(
+          `F0-UAT0 Product edge exited before readiness: ${safeDiagnosticTail(state.stdout || state.stderr)}`,
+        )
+      }
+      try {
+        lastProbe = await requestHttpsEdgeWithHeaders({
+          certificate,
+          edgePort,
+          headers: { host: authorities.console },
+          method: "GET",
+          path: "/auth/signin",
+          servername: authorities.console,
+        })
+      } catch (error) {
+        lastProbe = {
+          error: error instanceof Error ? error.message : "unknown error",
+        }
+      }
+      return lastProbe?.status === 200
     }, 30_000)
   } catch (error) {
+    const logs = dockerControl(keycloakControl, [
+      "logs",
+      "--tail",
+      "100",
+      container,
+    ])
     await closeServer(owner).catch(() => undefined)
-    throw error
+    throw new AggregateError(
+      [
+        error instanceof Error ? error : new Error(String(error)),
+        new Error(
+          `F0-UAT0 Product edge readiness metadata: probe=${safeDiagnosticTail(JSON.stringify(lastProbe))}; logs=${safeDiagnosticTail(`${logs.stdout}\n${logs.stderr}`)}`,
+        ),
+      ],
+      "F0-UAT0 Product edge readiness failed.",
+    )
   }
   return owner
 }

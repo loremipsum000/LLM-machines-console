@@ -49,6 +49,8 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
   assert.match(browser, /ADMIN_GRAFANA_BASE_URL:/)
   assert.match(browser, /async function waitForFounderHealthyCpu\(/)
   assert.match(browser, /async function eventually\(check, timeout = 10_000\)/)
+  assert.match(browser, /Product edge readiness metadata:/)
+  assert.match(browser, /\.State\.Status.*\.State\.ExitCode/)
   assert.match(browser, /latestValue < 85/)
   assert.match(browser, /xpath=ancestor::section\[1\]/)
   assert.doesNotMatch(browser, /cpu\.getByText\("50%"/)
