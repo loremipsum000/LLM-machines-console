@@ -2308,6 +2308,25 @@ async function proveIntegratedNoBypass({ certificate, edgePort }) {
   }
 }
 
+async function browserJson(page, path, options = {}) {
+  return page.evaluate(
+    async ({ body, method, path }) => {
+      const response = await fetch(path, {
+        body: body ? JSON.stringify(body) : undefined,
+        credentials: "same-origin",
+        headers: body ? { "content-type": "application/json" } : undefined,
+        method,
+      })
+      let parsed = null
+      try {
+        parsed = await response.json()
+      } catch {}
+      return { body: parsed, status: response.status }
+    },
+    { body: options.body, method: options.method ?? "GET", path },
+  )
+}
+
 async function proveIntegratedNativeAdministration({
   browser,
   certificate,
