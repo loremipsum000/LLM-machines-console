@@ -18,6 +18,7 @@ import {
   authorityOrigin,
   loadFounderUatPlacement,
 } from "./founder-uat-placement.mjs"
+import { validateKeycloakCommissioning } from "./keycloak-commissioning-readiness.mjs"
 import {
   prepareKeycloakImportRoot,
   writeKeycloakRealmImport,
@@ -69,9 +70,11 @@ let postgresContainerCreated = false
 let postgresVolumeCreated = false
 let failure
 let evidence
+let startupStage = "INITIALIZING"
 
 try {
   await chmod(stateRoot, 0o700)
+  startupStage = "PREPARING_REALM_IMPORT"
   await prepareKeycloakImportRoot(importRoot)
   const edgePort = serviceControl?.edgePort ?? (await reservePort())
   const upstreamPort = await reservePort()
@@ -134,17 +137,24 @@ try {
     themeRoot,
     `${containerName}:/opt/keycloak/themes/llm-machines`,
   ])
+  startupStage = "STARTING_KEYCLOAK"
   docker(["start", containerName])
   await waitForKeycloak(upstreamPort)
+  startupStage = "COMMISSIONING_IDENTITIES"
   let databaseUrl = null
+  let commissioning = null
   if (teamMode) {
-    await configureTeamAuthority(upstreamPort)
+    commissioning = validateKeycloakCommissioning(
+      await configureTeamAuthority(upstreamPort),
+    )
     databaseUrl = serviceControl ? null : await startPostgres()
   }
+  startupStage = "PUBLISHING_COMMISSIONED_CONTROL"
   await writeFile(
     browserConfigFile,
     `${JSON.stringify({
       container: containerName,
+      ...(commissioning ? { commissioning } : {}),
       credentials: browserCredentials(),
       dockerContext,
       edgePort,
@@ -157,6 +167,7 @@ try {
       serviceControl.controlFile,
       `${JSON.stringify({
         container: containerName,
+        ...(commissioning ? { commissioning } : {}),
         credentials: browserCredentials(),
         dockerContext,
         edgePort,
@@ -236,7 +247,7 @@ try {
   const diagnostic =
     logs && (logs.stdout || logs.stderr)
       ? new Error(
-          `${packageId} Keycloak metadata:\n${sanitize(`${logs.stdout}\n${logs.stderr}`)}`,
+          `${packageId} Keycloak metadata at ${startupStage}:\n${sanitize(`${logs.stdout}\n${logs.stderr}`)}`,
         )
       : null
   failure = diagnostic
@@ -683,6 +694,84 @@ async function configureTeamAuthority(upstreamPort) {
     403,
     { method: "POST" },
   )
+  return {
+    browserProof: "AUTHORIZATION_CODE_PKCE_PENDING",
+    status: "COMMISSIONED",
+    users: {
+      admin: await verifyCommissionedUser(
+        root,
+        bootstrapToken,
+        credentials.admin,
+        "admin",
+        "Admins",
+      ),
+      operator: await verifyCommissionedUser(
+        root,
+        bootstrapToken,
+        credentials.operator,
+        "operator",
+        "Operators",
+      ),
+    },
+  }
+}
+
+async function verifyCommissionedUser(
+  root,
+  bearer,
+  expectedUser,
+  realmRole,
+  groupName,
+) {
+  const realmPath = "/admin/realms/llm-machines"
+  const user = await exactUser(root, bearer, expectedUser.username)
+  assert.equal(user.username, expectedUser.username)
+  assert.equal(user.enabled, true)
+  assert.equal(user.email, `${expectedUser.username}@fixture.invalid`)
+  assert.equal(user.emailVerified, true)
+  assert.deepEqual(user.requiredActions ?? [], [])
+
+  const [groups, roles, passwordCredentials] = await Promise.all([
+    adminJson(
+      root,
+      bearer,
+      `${realmPath}/users/${encodeURIComponent(user.id)}/groups`,
+    ),
+    adminJson(
+      root,
+      bearer,
+      `${realmPath}/users/${encodeURIComponent(user.id)}/role-mappings/realm`,
+    ),
+    adminJson(
+      root,
+      bearer,
+      `${realmPath}/users/${encodeURIComponent(user.id)}/credentials`,
+    ),
+  ])
+  assert.deepEqual(
+    groups.map(({ name }) => name),
+    [groupName],
+  )
+  assert.ok(roles.some(({ name }) => name === realmRole))
+  assert.equal(
+    roles.some(({ name }) =>
+      realmRole === "admin" ? name === "operator" : name === "admin",
+    ),
+    false,
+  )
+  assert.equal(
+    passwordCredentials.filter(({ type }) => type === "password").length,
+    1,
+  )
+
+  return {
+    emailVerified: true,
+    enabled: true,
+    group: groupName,
+    passwordCredentialPresent: true,
+    realmRole,
+    requiredActions: 0,
+  }
 }
 
 async function exactClient(root, bearer, clientId) {
@@ -1034,7 +1123,10 @@ function opaqueValue() {
 function sanitize(value) {
   let output = String(value ?? "")
   const secrets = [
+    credentials.admin.username,
     credentials.admin.password,
+    credentials.bootstrap.username,
+    credentials.operator.username,
     credentials.operator.password,
     credentials.bootstrap.password,
     credentials.bffService,
@@ -1044,6 +1136,14 @@ function sanitize(value) {
     credentials.postgres,
   ]
   for (const secret of secrets) output = output.split(secret).join("[redacted]")
+  output = output.replace(
+    /([?&](?:client_data|code|execution|session_code|tab_id)=)[^&\s"']+/g,
+    "$1[redacted]",
+  )
+  output = output.replace(
+    /\b(userId|username)="?[^,"\s]+"?/g,
+    '$1="[redacted]"',
+  )
   if (output.length <= 8_000) return output
   return `${output.slice(0, 4_000)}\n[diagnostic truncated]\n${output.slice(-4_000)}`
 }

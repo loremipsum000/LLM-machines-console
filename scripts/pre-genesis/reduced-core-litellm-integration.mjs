@@ -15,6 +15,8 @@ import { tmpdir } from "node:os"
 import { isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import {
+  inspectLiteLlmOssRuntimeImage,
+  loadCoreImageInventoryAtHead,
   loadLiteLlmOssRuntimeContract,
   validateLiteLlmOssRuntimeInspection,
 } from "./litellm-oss-runtime-contract.mjs"
@@ -496,13 +498,11 @@ async function waitForRetention(expectedSpendRows) {
 }
 
 function assertLockedImageIdentity() {
-  const [inspection] = JSON.parse(docker(["image", "inspect", LITELLM_IMAGE]))
+  const inspection = inspectLiteLlmOssRuntimeImage(dockerResult, LITELLM_IMAGE)
   validateLiteLlmOssRuntimeInspection(inspection, liteLlmRuntime)
-  const inventory = JSON.parse(
-    spawnSync("git", ["show", "HEAD:infra/release/core-image-inventory.json"], {
-      cwd: repositoryRoot,
-      encoding: "utf8",
-    }).stdout,
+  const inventory = loadCoreImageInventoryAtHead(
+    (arguments_, options) => spawnSync("git", arguments_, options),
+    repositoryRoot,
   )
   const liteLlm = inventory.components.find(({ id }) => id === "litellm")
   const postgresImage = inventory.components.find(

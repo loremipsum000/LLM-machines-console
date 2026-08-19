@@ -29,6 +29,8 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
     /quay\.io\/keycloak\/keycloak:26\.7\.0@sha256:[0-9a-f]{64}/,
   )
   assert.match(wrapper, /humanAdminPermissions/)
+  assert.match(wrapper, /verifyCommissionedUser/)
+  assert.match(wrapper, /AUTHORIZATION_CODE_PKCE_PENDING/)
   const browserConfigStart = wrapper.indexOf(
     "  await writeFile(\n    browserConfigFile,",
   )
@@ -40,6 +42,7 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   assert.ok(browserConfigEnd > browserConfigStart)
   const browserConfigBlock = wrapper.slice(browserConfigStart, browserConfigEnd)
   assert.match(browserConfigBlock, /container: containerName,/)
+  assert.match(browserConfigBlock, /commissioning/)
   assert.match(browserConfigBlock, /dockerContext,/)
   assert.match(browserConfigBlock, /edgePort,/)
   assert.match(browserConfigBlock, /upstreamPort,/)
@@ -52,6 +55,10 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   assert.match(wrapper, /impersonation`[\s\S]*403/)
   assert.match(wrapper, /"pg_isready",[\s\S]*"--host",\s*"127\.0\.0\.1"/)
   assert.match(wrapper, /if \(!postgresReady\)/)
+  assert.ok(
+    wrapper.indexOf("await configureTeamAuthority(upstreamPort)") <
+      wrapper.indexOf("serviceControl.controlFile"),
+  )
   assert.doesNotMatch(wrapper, /["']realm-admin["']/)
   assert.doesNotMatch(wrapper, /["']manage-users["']/)
 

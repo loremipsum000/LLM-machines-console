@@ -30,7 +30,10 @@ test("F0-L2R binds integrated startup to the admitted OSS image", async () => {
     "83d6d84bfb7abbbff70d456bc89028d426db8c33",
   )
   assert.match(source, /loadLiteLlmOssRuntimeContract/)
-  assert.match(source, /docker\(\["image", "inspect", LITELLM_IMAGE\]\)/)
+  assert.match(
+    source,
+    /inspectLiteLlmOssRuntimeImage\(dockerResult, LITELLM_IMAGE\)/,
+  )
   assert.match(source, /imageContract:/)
   assert.match(source, /await waitForRetention\(serviceControl \? 2 : 3\)/)
   assert.match(source, /performance\.now\(\) \+ 120_000/)

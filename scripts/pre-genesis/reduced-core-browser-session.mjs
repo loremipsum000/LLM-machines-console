@@ -41,6 +41,11 @@ import {
   authorityOrigin,
   loadFounderUatPlacement,
 } from "./founder-uat-placement.mjs"
+import {
+  assertIdentityAuthorityBinding,
+  sanitizedIdentityUrl,
+  validateKeycloakCommissioning,
+} from "./keycloak-commissioning-readiness.mjs"
 import { createOidcFixture } from "./reduced-core-oidc-fixture.mjs"
 
 const integratedCoreMode = process.argv.includes("--integrated-core")
@@ -600,6 +605,10 @@ async function runBrowserSessionProof() {
       consoleOrigin,
     )
 
+    const identityAuthorityBinding = await proveIdentityAuthorityBinding({
+      certificate,
+      keycloakControl,
+    })
     const executablePath = await chromeExecutable()
     const browserArguments = ["--no-proxy-server"]
     if (!founderUatPlacement) {
@@ -730,6 +739,7 @@ async function runBrowserSessionProof() {
           credentials,
           edgePort,
           firecrawlControl,
+          identityAuthorityBinding,
           keycloakControl,
           liteLlmControl,
           synchronizeClock: synchronizeFixtureClock,
@@ -1010,7 +1020,12 @@ async function runBrowserSessionProof() {
         credentialMaterialPrinted: false,
         evidenceClass: "LOCAL_INTEGRATED_REDUCED_CORE_ONLY",
         flow: applicationFlow,
-        identity: { ...identityFlow, outageRecovery: identityOutage },
+        identity: {
+          ...identityFlow,
+          authorityBinding: identityAuthorityBinding,
+          commissioning: keycloakControl.commissioning,
+          outageRecovery: identityOutage,
+        },
         noBypass,
         observability,
         persistence: postgresPersistenceEvidence,
@@ -1035,6 +1050,7 @@ async function runBrowserSessionProof() {
           credentials,
           edgePort,
           firecrawlControl,
+          identityAuthorityBinding,
           keycloakControl,
           liteLlmControl,
           synchronizeClock: synchronizeFixtureClock,
@@ -1456,8 +1472,9 @@ async function completeIdentityLogin(page, userCredentials) {
     try {
       await navigation.waitFor({ timeout: 20_000 })
     } catch {
+      const loginEvents = sanitizedKeycloakLoginEvents()
       throw new Error(
-        `Console navigation was not rendered after Keycloak callback at ${page.url()}: ${(await page.locator("body").innerText()).slice(0, 500)}`,
+        `Console navigation was not rendered after Keycloak callback at ${sanitizedIdentityUrl(page.url())}: ${(await page.locator("body").innerText()).slice(0, 500)}; candidateIdentityEvents=${JSON.stringify(loginEvents)}`,
       )
     }
     return
@@ -4768,6 +4785,7 @@ async function holdFounderUat({
   credentials,
   edgePort,
   firecrawlControl,
+  identityAuthorityBinding,
   keycloakControl,
   liteLlmControl,
   synchronizeClock,
@@ -4807,6 +4825,8 @@ async function holdFounderUat({
         },
         caFile,
         credentialFile: founderUatControl.credentialFile,
+        identityAuthorityBinding,
+        identityCommissioning: keycloakControl.commissioning,
         inventory,
         keepRunning: true,
         privateNativeServices: [
@@ -5318,14 +5338,129 @@ function keycloakControlFromEnvironment() {
   ) {
     throw new Error("F0-I2 Keycloak Team control data is invalid.")
   }
+  const commissioning =
+    keycloakTeamMode || integratedCoreMode
+      ? validateKeycloakCommissioning(config.commissioning)
+      : (config.commissioning ?? null)
   return {
     adminBaseUrl,
+    commissioning,
     container: config.container,
     credentials: config.credentials,
     dockerContext: config.dockerContext,
     edgePort: config.edgePort,
     upstreamPort: config.upstreamPort,
   }
+}
+
+async function proveIdentityAuthorityBinding({ certificate, keycloakControl }) {
+  if (!founderUatPlacement) {
+    return { status: "LOOPBACK_CANDIDATE_EDGE" }
+  }
+  if (!keycloakControl) {
+    throw new Error("F0-UAT0 placed identity requires Keycloak control.")
+  }
+  const jwksPath = "/realms/llm-machines/protocol/openid-connect/certs"
+  const [candidateJwks, publicJwks] = await Promise.all([
+    requestKeycloakJson(
+      `http://127.0.0.1:${keycloakControl.upstreamPort}${jwksPath}`,
+    ),
+    requestPublicIdentityJson({
+      caFile: certificate.ca,
+      edgePort: keycloakControl.edgePort,
+      path: jwksPath,
+    }),
+  ])
+  return assertIdentityAuthorityBinding({ candidateJwks, publicJwks })
+}
+
+async function requestKeycloakJson(url) {
+  const response = await fetch(url, {
+    redirect: "error",
+    signal: AbortSignal.timeout(5_000),
+  })
+  if (response.status !== 200) {
+    await response.body?.cancel()
+    throw new Error(
+      `Keycloak readiness request failed with ${response.status}.`,
+    )
+  }
+  return response.json()
+}
+
+async function requestPublicIdentityJson({ caFile, edgePort, path }) {
+  const origin = new URL(publicOrigin("identity", edgePort))
+  const ca = await readFile(caFile)
+  return new Promise((resolveRequest, rejectRequest) => {
+    const request = httpsRequest(
+      {
+        ca,
+        headers: { accept: "application/json", host: origin.host },
+        host: origin.hostname,
+        method: "GET",
+        path,
+        port: 443,
+        rejectUnauthorized: true,
+        servername: origin.hostname,
+        timeout: 5_000,
+      },
+      (response) => {
+        const chunks = []
+        let size = 0
+        response.on("data", (chunk) => {
+          size += chunk.length
+          if (size > 1024 * 1024) {
+            response.destroy(
+              new Error("Public Keycloak readiness response was too large."),
+            )
+            return
+          }
+          chunks.push(chunk)
+        })
+        response.once("end", () => {
+          if (response.statusCode !== 200) {
+            rejectRequest(
+              new Error(
+                `Public Keycloak readiness request failed with ${response.statusCode ?? 500}.`,
+              ),
+            )
+            return
+          }
+          try {
+            resolveRequest(JSON.parse(Buffer.concat(chunks).toString("utf8")))
+          } catch {
+            rejectRequest(
+              new Error("Public Keycloak readiness response was invalid JSON."),
+            )
+          }
+        })
+      },
+    )
+    request.once("error", rejectRequest)
+    request.once("timeout", () =>
+      request.destroy(
+        new Error("Public Keycloak readiness request timed out."),
+      ),
+    )
+    request.end()
+  })
+}
+
+function sanitizedKeycloakLoginEvents() {
+  if (!keycloakControl) return []
+  const result = dockerControl(keycloakControl, [
+    "logs",
+    "--tail",
+    "200",
+    keycloakControl.container,
+  ])
+  if (result.status !== 0) return ["logs-unavailable"]
+  return result.stdout
+    .split("\n")
+    .filter((line) => line.includes('type="LOGIN_ERROR"'))
+    .map((line) => line.match(/error="([a-z0-9_-]+)"/)?.[1])
+    .filter(Boolean)
+    .slice(-5)
 }
 
 function pathIsInside(parent, candidate) {

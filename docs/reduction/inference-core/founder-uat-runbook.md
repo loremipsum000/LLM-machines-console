@@ -58,7 +58,11 @@ All four authorities must be distinct canonical HTTPS DNS origins on port 443.
 The edge bind must be one explicit non-loopback RFC1918 address. The Product
 continues to bind every native service to loopback; only the Product edge also
 listens on the declared private address. The fixed edge port lets the upstream
-gateway be configured before startup without a broad port rule.
+gateway be configured before startup without a broad port rule. The gateway
+must route every canonical authority to this exact candidate edge before
+`start` is run. Startup compares the public identity JWKS with the disposable
+candidate Keycloak and fails before submitting a browser credential if the
+gateway still targets an older environment.
 
 The edge certificate must cover all four authority hostnames, chain to the
 declared CA, match the declared private key, and be currently valid. The key
