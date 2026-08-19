@@ -2350,6 +2350,7 @@ async function proveIntegratedNativeAdministration({
   const grafanaOperator = await nativeBrowserLogin({
     browser,
     credentials: credentials.operator,
+    deniedCookieName: "login_error",
     entry: `${publicOrigin("grafana", edgePort)}/login/generic_oauth`,
     expectDenied: true,
   })
@@ -2535,6 +2536,7 @@ async function nativeBrowserLogin({
   browser,
   captureKeycloakBearer = false,
   credentials,
+  deniedCookieName = null,
   entry,
   expectDenied = false,
   requiredCookieName = null,
@@ -2542,8 +2544,25 @@ async function nativeBrowserLogin({
   const entryOrigin = new URL(entry).origin
   const context = await browser.newContext({ ignoreHTTPSErrors: false })
   const page = await context.newPage()
+  const responseCookieNames = new Set()
+  const responseHeaderTasks = []
   let bearer = null
   let pkce = false
+  page.on("response", (response) => {
+    if (new URL(response.url()).origin !== entryOrigin) return
+    responseHeaderTasks.push(
+      response
+        .headersArray()
+        .then((headers) => {
+          for (const { name, value } of headers) {
+            if (name.toLowerCase() !== "set-cookie") continue
+            const cookieName = value.split("=", 1)[0]?.trim()
+            if (cookieName) responseCookieNames.add(cookieName)
+          }
+        })
+        .catch(() => undefined),
+    )
+  })
   page.on("request", async (request) => {
     const url = new URL(request.url())
     if (url.pathname.endsWith("/protocol/openid-connect/auth")) {
@@ -2600,10 +2619,11 @@ async function nativeBrowserLogin({
     .locator("body")
     .innerText()
     .catch(() => "")
+  await Promise.all(responseHeaderTasks)
   const denied =
     /do not have permission|access denied|failed to get user info|login failed/i.test(
       text,
-    )
+    ) || Boolean(deniedCookieName && responseCookieNames.has(deniedCookieName))
   assert.equal(denied, expectDenied)
   assert.equal(pkce, true)
   if (!expectDenied) {

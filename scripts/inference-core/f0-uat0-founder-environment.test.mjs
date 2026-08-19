@@ -82,9 +82,18 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
     /async function browserJson\([\s\S]*credentials: "same-origin"/,
   )
   assert.match(browser, /requiredCookieName: "grafana_session"/)
+  assert.match(browser, /deniedCookieName: "login_error"/)
   assert.match(
     browser,
     /context\.cookies\(entryOrigin\)[\s\S]*name === requiredCookieName/,
+  )
+  assert.match(
+    browser,
+    /headersArray\(\)[\s\S]*name\.toLowerCase\(\) !== "set-cookie"[\s\S]*responseCookieNames\.add\(cookieName\)/,
+  )
+  assert.match(
+    browser,
+    /deniedCookieName && responseCookieNames\.has\(deniedCookieName\)/,
   )
   assert.equal(
     browser.match(
