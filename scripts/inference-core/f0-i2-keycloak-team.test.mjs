@@ -33,6 +33,7 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   )
   assert.match(wrapper, /integratedHumanAdminPermissions/)
   assert.match(wrapper, /verifyCommissionedUser/)
+  assert.match(wrapper, /expectedUser\.subject = user\.id/)
   assert.match(wrapper, /AUTHORIZATION_CODE_PKCE_PENDING/)
   const browserConfigStart = wrapper.indexOf(
     "  await writeFile(\n    browserConfigFile,",

@@ -972,6 +972,8 @@ async function verifyCommissionedUser(
 ) {
   const realmPath = "/admin/realms/llm-machines"
   const user = await exactUser(root, bearer, expectedUser.username)
+  assert.match(user.id ?? "", /^[0-9a-f-]{36}$/)
+  expectedUser.subject = user.id
   assert.equal(user.username, expectedUser.username)
   assert.equal(user.enabled, true)
   assert.equal(user.email, `${expectedUser.username}@fixture.example.com`)
