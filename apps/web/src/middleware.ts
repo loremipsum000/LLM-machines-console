@@ -152,11 +152,12 @@ function isProtectedConsolePath(pathname: string): boolean {
 }
 
 function getSignInRedirectUrl(
-  requestUrl: URL,
+  sourceRequestUrl: URL,
   returnTo: string,
   expired: boolean,
 ): URL {
-  const signInUrl = new URL("/auth/signin", consoleOrigin(requestUrl))
+  const requestUrl = consoleRequestUrl(sourceRequestUrl)
+  const signInUrl = new URL("/auth/signin", requestUrl.origin)
   if (expired) {
     signInUrl.searchParams.set("session", "expired")
   }
@@ -164,15 +165,16 @@ function getSignInRedirectUrl(
   return signInUrl
 }
 
-function getUnavailableUrl(requestUrl: URL, returnTo: string): URL {
-  const unavailableUrl = new URL("/auth/unavailable", consoleOrigin(requestUrl))
+function getUnavailableUrl(sourceRequestUrl: URL, returnTo: string): URL {
+  const requestUrl = consoleRequestUrl(sourceRequestUrl)
+  const unavailableUrl = new URL("/auth/unavailable", requestUrl.origin)
   unavailableUrl.searchParams.set("returnTo", returnTo)
   return unavailableUrl
 }
 
-function consoleOrigin(requestUrl: URL): string {
+function consoleRequestUrl(requestUrl: URL): URL {
   const configured = process.env.WEB_CONSOLE_ORIGIN?.trim()
-  if (!configured) return requestUrl.origin
+  if (!configured) return requestUrl
   let parsed: URL
   try {
     parsed = new URL(configured)
@@ -190,7 +192,7 @@ function consoleOrigin(requestUrl: URL): string {
   ) {
     throw new Error("WEB_CONSOLE_ORIGIN must be an exact HTTPS origin.")
   }
-  return parsed.origin
+  return parsed
 }
 
 function setSlidingSessionCookie(
