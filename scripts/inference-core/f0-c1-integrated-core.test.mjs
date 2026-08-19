@@ -114,7 +114,10 @@ test("F0-C1 has one bounded disposable command", () => {
       integrated.indexOf("workspaceBuildSnapshot.push"),
   )
   assert.match(integrated, /let workspaceArtifactsRestored = false/)
-  assert.match(integrated, /if \(workspaceArtifactsRestored\) \{/)
+  assert.match(
+    integrated,
+    /if \(workspaceArtifactsRestored && !preserveDiagnosticState\) \{/,
+  )
   assert.match(integrated, /workspace recovery backup is unavailable/)
   assert.match(firecrawl, /controlledRunIdFromEnvironment/)
   assert.match(firecrawl, /F0_C1_SERVICE_STATE_ROOT/)
