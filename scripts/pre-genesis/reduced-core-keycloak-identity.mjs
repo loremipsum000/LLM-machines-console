@@ -93,9 +93,32 @@ try {
     "identity",
     edgePort,
   )
+  const grafanaOrigin = authorityOrigin(
+    founderUatPlacement,
+    "grafana",
+    edgePort,
+  )
+  const keycloakOrigin = authorityOrigin(
+    founderUatPlacement,
+    "keycloak",
+    edgePort,
+  )
+  const liteLlmOrigin = authorityOrigin(
+    founderUatPlacement,
+    "litellm",
+    edgePort,
+  )
   await writeKeycloakRealmImport(
     realmFile,
-    `${JSON.stringify(realmExport(consoleOrigin, credentials, teamMode))}\n`,
+    `${JSON.stringify(
+      realmExport({
+        consoleOrigin,
+        grafanaOrigin,
+        includeTeamAuthority: teamMode,
+        liteLlmOrigin,
+        values: credentials,
+      }),
+    )}\n`,
   )
   if (teamMode) {
     await writeFile(
@@ -127,6 +150,7 @@ try {
     "--import-realm",
     "--http-port=8080",
     `--hostname=${identityOrigin}`,
+    `--hostname-admin=${keycloakOrigin}/keycloak`,
     "--hostname-strict=true",
     "--proxy-headers=xforwarded",
   ])
@@ -298,7 +322,13 @@ if (failure) throw failure
 assert.ok(evidence)
 process.stdout.write(`${JSON.stringify(evidence)}\n`)
 
-function realmExport(consoleOrigin, values, includeTeamAuthority) {
+function realmExport({
+  consoleOrigin,
+  grafanaOrigin,
+  includeTeamAuthority,
+  liteLlmOrigin,
+  values,
+}) {
   const passwordAmr = "llmm-password-amr"
   return {
     realm: "llm-machines",
@@ -496,13 +526,87 @@ function realmExport(consoleOrigin, values, includeTeamAuthority) {
               defaultClientScopes: [],
               optionalClientScopes: [],
             },
+            nativeOidcClient({
+              clientId: "grafana",
+              claimName: "realm_access.roles",
+              mapper: "oidc-usermodel-realm-role-mapper",
+              redirectUri: `${grafanaOrigin}/login/generic_oauth`,
+              secret: values.observability,
+              userAttribute: null,
+            }),
+            nativeOidcClient({
+              clientId: "litellm-native",
+              claimName: "litellm_role",
+              mapper: "oidc-usermodel-attribute-mapper",
+              redirectUri: `${liteLlmOrigin}/sso/callback`,
+              secret: values.liteLlm,
+              userAttribute: "litellm_role",
+            }),
           ]
         : []),
     ],
     users: [
-      userExport(values.admin, "admin", "/Admins"),
-      userExport(values.operator, "operator", "/Operators"),
+      userExport(
+        values.admin,
+        "admin",
+        "/Admins",
+        includeTeamAuthority ? "proxy_admin" : null,
+      ),
+      userExport(
+        values.operator,
+        "operator",
+        "/Operators",
+        includeTeamAuthority ? "internal_user" : null,
+      ),
     ],
+  }
+}
+
+function nativeOidcClient({
+  claimName,
+  clientId,
+  mapper,
+  redirectUri,
+  secret,
+  userAttribute,
+}) {
+  const config = {
+    "access.token.claim": "true",
+    "claim.name": claimName,
+    "id.token.claim": "true",
+    "jsonType.label": "String",
+    "userinfo.token.claim": "true",
+  }
+  if (userAttribute) config["user.attribute"] = userAttribute
+  else config.multivalued = "true"
+  const origin = new URL(redirectUri).origin
+  return {
+    attributes: {
+      "pkce.code.challenge.method": "S256",
+      "post.logout.redirect.uris": `${origin}/*`,
+    },
+    clientId,
+    defaultClientScopes: ["basic", "email", "profile"],
+    directAccessGrantsEnabled: false,
+    enabled: true,
+    fullScopeAllowed: false,
+    implicitFlowEnabled: false,
+    optionalClientScopes: [],
+    protocol: "openid-connect",
+    protocolMappers: [
+      {
+        config,
+        name: `${clientId}-role`,
+        protocol: "openid-connect",
+        protocolMapper: mapper,
+      },
+    ],
+    publicClient: false,
+    redirectUris: [redirectUri],
+    secret,
+    serviceAccountsEnabled: false,
+    standardFlowEnabled: true,
+    webOrigins: [origin],
   }
 }
 
@@ -528,8 +632,16 @@ function amrConfig(alias, value) {
   }
 }
 
-function userExport(user, role, group) {
+function userExport(user, role, group, liteLlmRole = null) {
   return {
+    ...(liteLlmRole ? { attributes: { litellm_role: [liteLlmRole] } } : {}),
+    ...(role === "admin" && liteLlmRole
+      ? {
+          clientRoles: {
+            "realm-management": ["query-groups", "query-users"],
+          },
+        }
+      : {}),
     username: user.username,
     enabled: true,
     email: `${user.username}@fixture.invalid`,
@@ -650,6 +762,24 @@ async function configureTeamAuthority(upstreamPort) {
     exactGroup(root, bootstrapToken, "Admins"),
     exactGroup(root, bootstrapToken, "Operators"),
   ])
+  const [adminUser, adminRole, operatorRole] = await Promise.all([
+    exactUser(root, bootstrapToken, credentials.admin.username),
+    adminJson(root, bootstrapToken, `${realmPath}/roles/admin`),
+    adminJson(root, bootstrapToken, `${realmPath}/roles/operator`),
+  ])
+  await adminRequest(
+    root,
+    bootstrapToken,
+    `${realmPath}/clients/${encodeURIComponent(permissionClient.id)}/authz/resource-server/policy/role`,
+    {
+      body: {
+        logic: "POSITIVE",
+        name: "customer-admin-role",
+        roles: [{ id: adminRole.id, required: true }],
+      },
+      method: "POST",
+    },
+  )
   const permissionPath = `${realmPath}/clients/${encodeURIComponent(permissionClient.id)}/authz/resource-server/permission/scope`
   for (const permission of humanAdminPermissions({
     adminsGroupId: adminsGroup.id,
@@ -660,6 +790,23 @@ async function configureTeamAuthority(upstreamPort) {
       method: "POST",
     })
   }
+  for (const permission of customerAdminPermissions({
+    adminsGroupId: adminsGroup.id,
+    operatorsGroupId: operatorsGroup.id,
+  })) {
+    await adminRequest(root, bootstrapToken, permissionPath, {
+      body: permission,
+      method: "POST",
+    })
+  }
+
+  const grafana = await exactClient(root, bootstrapToken, "grafana")
+  await adminRequest(
+    root,
+    bootstrapToken,
+    `${realmPath}/clients/${encodeURIComponent(grafana.id)}/scope-mappings/realm`,
+    { body: [adminRole, operatorRole], method: "POST" },
+  )
 
   const serviceToken = await token(root, "llm-machines", {
     client_id: "console-human-admin",
@@ -675,11 +822,6 @@ async function configureTeamAuthority(upstreamPort) {
     bootstrapToken,
     credentials.operator.username,
   )
-  const adminRole = await adminJson(
-    root,
-    bootstrapToken,
-    `${realmPath}/roles/admin`,
-  )
   await expectAdminStatus(
     root,
     serviceToken,
@@ -694,6 +836,7 @@ async function configureTeamAuthority(upstreamPort) {
     403,
     { method: "POST" },
   )
+  assert.match(adminUser.id, /^[0-9a-f-]{36}$/)
   return {
     browserProof: "AUTHORIZATION_CODE_PKCE_PENDING",
     status: "COMMISSIONED",
@@ -714,6 +857,28 @@ async function configureTeamAuthority(upstreamPort) {
       ),
     },
   }
+}
+
+function customerAdminPermissions({ adminsGroupId, operatorsGroupId }) {
+  const policies = ["customer-admin-role"]
+  return [
+    {
+      name: "customer-admin-manage-all-users",
+      policies,
+      resourceType: "Users",
+      scopes: ["manage", "view"],
+    },
+    ...[
+      ["Admins", adminsGroupId],
+      ["Operators", operatorsGroupId],
+    ].map(([name, id]) => ({
+      name: `customer-admin-view-${name}-members`,
+      policies,
+      resources: [id],
+      resourceType: "Groups",
+      scopes: ["view", "view-members"],
+    })),
+  ]
 }
 
 async function verifyCommissionedUser(

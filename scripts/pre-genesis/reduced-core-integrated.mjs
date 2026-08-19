@@ -93,7 +93,6 @@ const containers = {
 const database = "llmm_f0_c1"
 const databaseUser = "llmm_f0_c1"
 const databasePassword = opaqueValue()
-const grafanaOidcSecret = opaqueValue()
 const cacheRoot = resolve(repositoryRoot, "node_modules/.cache")
 await mkdir(cacheRoot, { mode: 0o700, recursive: true })
 const browserTemporaryRoot = await realpath(tmpdir())
@@ -163,7 +162,7 @@ const created = {
   postgresVolume: false,
 }
 const services = []
-const sensitiveValues = [databasePassword, grafanaOidcSecret]
+const sensitiveValues = [databasePassword]
 let dockerContext = null
 let evidence = null
 let failure = null
@@ -186,7 +185,7 @@ try {
     keycloakControl = await startKeycloak(edgePort)
     await writeCommissioningStage("POSTGRESQL_AND_KEYCLOAK", "PASSED")
     await retryableConsoleLoginStage({ edgePort, keycloakControl })
-    liteLlmControl = await startLiteLlm()
+    liteLlmControl = await startLiteLlm(keycloakControl)
     await writeCommissioningStage("LITELLM_AND_INFERENCE", "PASSED")
     firecrawlControl = await startFirecrawl()
     await writeCommissioningStage("FIRECRAWL", "PASSED")
@@ -196,12 +195,15 @@ try {
     assert.equal(dockerContext, firecrawlDockerContext)
     docker(["info", "--format", "{{.ServerVersion}}"])
     await startProductPostgres()
-    liteLlmControl = await startLiteLlm()
+    liteLlmControl = await startLiteLlm(keycloakControl)
     keycloakControl = await startKeycloak(edgePort)
   }
 
   await startMetricsFixture()
-  const observabilityControl = await startObservability(edgePort)
+  const observabilityControl = await startObservability(
+    edgePort,
+    keycloakControl,
+  )
   await writeFile(
     files.observabilityControl,
     `${JSON.stringify(observabilityControl)}\n`,
@@ -218,10 +220,6 @@ try {
   assert.equal(browser.status, "passed")
   assert.equal(browser.evidenceClass, "LOCAL_INTEGRATED_REDUCED_CORE_ONLY")
   assert.equal(browser.runtimeQualified, false)
-  if (incrementalCommissioning) {
-    await writeCommissioningStage("COMPLETE_CANDIDATE_JOURNEY", "PASSED")
-  }
-
   const retention = await verifyProductRetention({
     firecrawlControl,
     keycloakControl,
@@ -386,12 +384,19 @@ async function startFirecrawl() {
   return control
 }
 
-async function startLiteLlm() {
+async function startLiteLlm(currentKeycloakControl) {
+  assert.equal(currentKeycloakControl, keycloakControl)
   const service = startService(
     "litellm",
     {
       F0_C1_SERVICE_CONTROL_FILE: files.liteLlmControl,
       F0_C1_SERVICE_STOP_FILE: files.liteLlmStop,
+      ...(founderUatPlacement
+        ? {
+            F0_I1_KEYCLOAK_CONFIG_FILE: files.keycloakControl,
+            F0_UAT0_PLACEMENT_FILE: founderUatPlacementPath,
+          }
+        : {}),
       PRE_GENESIS_DOCKER_CONTEXT: dockerContext,
     },
     "reduced-core-litellm-integration.mjs",
@@ -436,6 +441,8 @@ async function startKeycloak(edgePort) {
     keycloakControl.credentials.operator.password,
     keycloakControl.credentials.bffService,
     keycloakControl.credentials.humanAdmin,
+    keycloakControl.credentials.liteLlm,
+    keycloakControl.credentials.observability,
     keycloakControl.credentials.oidcClient,
   )
   return keycloakControl
@@ -618,7 +625,7 @@ async function startProductPostgres() {
   assert.equal(relations, 34)
 }
 
-async function startObservability(edgePort) {
+async function startObservability(edgePort, currentKeycloakControl) {
   const identityOrigin = authorityOrigin(
     founderUatPlacement,
     "identity",
@@ -666,7 +673,11 @@ async function startObservability(edgePort) {
       ),
       { mode: 0o644 },
     ),
-    writeFile(files.grafanaSecret, `${grafanaOidcSecret}\n`, { mode: 0o444 }),
+    writeFile(
+      files.grafanaSecret,
+      `${currentKeycloakControl.credentials.observability}\n`,
+      { mode: 0o444 },
+    ),
   ])
   await Promise.all([
     chmod(files.prometheusConfig, 0o644),
@@ -773,6 +784,10 @@ async function startObservability(edgePort) {
     "--mount",
     `type=bind,source=${files.grafanaSecret},target=/run/secrets/llmm_grafana_oidc_client_secret,readonly`,
     "--env",
+    `GF_SERVER_DOMAIN=${new URL(authorityOrigin(founderUatPlacement, "grafana", edgePort)).hostname}`,
+    "--env",
+    `GF_SERVER_ROOT_URL=${authorityOrigin(founderUatPlacement, "grafana", edgePort)}/`,
+    "--env",
     `LLMM_KEYCLOAK_AUTH_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/auth`,
     "--env",
     `LLMM_KEYCLOAK_JWKS_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/certs`,
@@ -780,6 +795,8 @@ async function startObservability(edgePort) {
     `LLMM_KEYCLOAK_TOKEN_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/token`,
     "--env",
     `LLMM_KEYCLOAK_USERINFO_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/userinfo`,
+    "--env",
+    `LLMM_GRAFANA_SIGNOUT_REDIRECT_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/logout?client_id=grafana&post_logout_redirect_uri=${encodeURIComponent(`${authorityOrigin(founderUatPlacement, "grafana", edgePort)}/login`)}`,
     "--env",
     "LLMM_PROMETHEUS_URL=http://prometheus:9090",
     images["grafana-private"],
@@ -822,6 +839,7 @@ async function runBrowser({
       ...(keepRunning
         ? {
             F0_UAT0_CONTROL_FILE: files.uatControl,
+            F0_UAT0_COMMISSIONING_STAGE_FILE: files.commissioningStage,
             F0_UAT0_CREDENTIAL_FILE: files.uatCredentials,
             F0_UAT0_OUTER_INVENTORY: JSON.stringify({
               containers,

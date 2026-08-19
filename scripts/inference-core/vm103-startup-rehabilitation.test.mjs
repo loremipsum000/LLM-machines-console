@@ -216,11 +216,20 @@ test("VM103 identity probes keep public and private trust paths separate", () =>
 
 test("VM103 commissioning orders identity before dependent services", () => {
   const integrated = read("scripts/pre-genesis/reduced-core-integrated.mjs")
-  const postgres = integrated.indexOf("await startProductPostgres()")
-  const keycloak = integrated.indexOf("keycloakControl = await startKeycloak")
-  const consoleLogin = integrated.indexOf("await retryableConsoleLoginStage")
-  const liteLlm = integrated.indexOf("liteLlmControl = await startLiteLlm()")
-  const firecrawl = integrated.indexOf(
+  const commissioning = integrated.slice(
+    integrated.indexOf("if (incrementalCommissioning) {"),
+    integrated.indexOf(
+      "} else {",
+      integrated.indexOf("if (incrementalCommissioning) {"),
+    ),
+  )
+  const postgres = commissioning.indexOf("await startProductPostgres()")
+  const keycloak = commissioning.indexOf(
+    "keycloakControl = await startKeycloak",
+  )
+  const consoleLogin = commissioning.indexOf("await retryableConsoleLoginStage")
+  const liteLlm = commissioning.indexOf("liteLlmControl = await startLiteLlm(")
+  const firecrawl = commissioning.indexOf(
     "firecrawlControl = await startFirecrawl()",
   )
 

@@ -109,7 +109,7 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
   )
 })
 
-test("F0-UAT0 keeps the customer edge private and native services unavailable", () => {
+test("F0-UAT0 keeps every retained native service behind the private edge", () => {
   assert.match(integrated, /keep-running mode requires native Linux\/amd64/)
   assert.match(integrated, /PRE_GENESIS_DOCKER_CONTEXT: "default"/)
   assert.match(
@@ -123,7 +123,12 @@ test("F0-UAT0 keeps the customer edge private and native services unavailable", 
   assert.match(browser, /api\.llmm\.test/)
   assert.match(browser, /identity\.llmm\.test/)
   assert.match(browser, /firecrawl\.llmm\.test/)
-  assert.match(browser, /"keycloak-admin"/)
+  assert.match(browser, /grafana\.llmm\.test/)
+  assert.match(browser, /keycloak\.llmm\.test/)
+  assert.match(browser, /litellm\.llmm\.test/)
+  assert.match(browser, /"keycloak-upstream"/)
+  assert.match(browser, /"grafana-upstream"/)
+  assert.match(browser, /"litellm-upstream"/)
   assert.match(browser, /"sglang-or-inference-double"/)
   assert.match(integrated, /F0_UAT0_PLACEMENT_FILE/)
   assert.match(browser, /edgeBindAddress/)
@@ -132,13 +137,16 @@ test("F0-UAT0 keeps the customer edge private and native services unavailable", 
   assert.doesNotMatch(operator, /0\.0\.0\.0|--publish|docker\.io/)
 })
 
-test("F0-UAT0 validates one private edge and four canonical deployment authorities", () => {
+test("F0-UAT0 validates one private edge and seven canonical deployment authorities", () => {
   const placement = parseFounderUatPlacement({
     authorities: {
       api: "https://api.lab.llm-machines.com",
       console: "https://console.lab.llm-machines.com",
       firecrawl: "https://firecrawl.lab.llm-machines.com",
+      grafana: "https://grafana.lab.llm-machines.com",
       identity: "https://identity.lab.llm-machines.com",
+      keycloak: "https://keycloak.lab.llm-machines.com",
+      litellm: "https://litellm.lab.llm-machines.com",
     },
     edgeBindAddress: "192.168.42.10",
     edgePort: 18443,

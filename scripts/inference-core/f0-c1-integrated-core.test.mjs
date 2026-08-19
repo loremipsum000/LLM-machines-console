@@ -273,22 +273,22 @@ test("F0-C1 retains the approved customer and private-service boundary", () => {
     "api.llmm.test",
     "identity.llmm.test",
     "firecrawl.llmm.test",
+    "grafana.llmm.test",
+    "keycloak.llmm.test",
+    "litellm.llmm.test",
   ]) {
     assert.match(browser, new RegExp(value.replaceAll(".", "\\.")))
   }
-  assert.match(
-    browser,
-    /for \(const service of \["grafana", "keycloak", "litellm", "postgres"\]\)/,
-  )
-  assert.match(browser, /const authority = deniedNativeAuthority\(service\)/)
-  assert.match(
-    browser,
-    /const \[, \.\.\.suffix\] = authorities\.console\.split/,
-  )
-  assert.match(
-    browser,
-    /headers: \{ host: deniedAuthorityHost\(authority, edgePort\) \}/,
-  )
+  for (const privateBackend of [
+    "grafana-upstream",
+    "keycloak-upstream",
+    "litellm-upstream",
+    "postgresql",
+  ]) {
+    assert.match(browser, new RegExp(`"${privateBackend}"`))
+  }
+  assert.match(browser, /nativeAuthoritiesExactRoutesOnly/)
+  assert.match(browser, /alternateAuthoritiesDenied/)
   assert.match(browser, /spoofedCredentialAndForwardingHeadersDenied/)
   assert.match(browser, /observabilityMode && !integratedCoreMode/)
   assert.match(browser, /keycloakIdentityMode && !integratedCoreMode/)
