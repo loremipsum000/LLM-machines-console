@@ -212,6 +212,7 @@ test("VM103 identity probes keep public and private trust paths separate", () =>
   assert.match(browser, /waitForPublicMatch: commissioningLoginMode/)
   assert.match(browser, /20 \* 60_000/)
   assert.match(browser, /await delay\(1_000\)/)
+  assert.doesNotMatch(browser, /lastError = safeError\(error\)/)
   assert.doesNotMatch(publicProbe, /certificate\.ca|caFile/)
   assert.match(privateProbe, /readFile\(certificate\.ca\)/)
   assert.match(privateProbe, /rejectUnauthorized: true/)

@@ -5979,7 +5979,10 @@ async function proveIdentityAuthorityBinding({
       })
       return assertIdentityAuthorityBinding({ candidateJwks, publicJwks })
     } catch (error) {
-      lastError = safeError(error)
+      lastError =
+        error instanceof Error
+          ? error
+          : new Error("Unknown Identity authority binding failure.")
     }
     if (performance.now() < deadline) await delay(1_000)
   } while (performance.now() < deadline)
