@@ -679,7 +679,7 @@ async function runBrowserSessionProof() {
       const tlsProbe = await requestHttpsEdgeWithHeaders({
         certificate,
         edgePort,
-        headers: { host: authorities.console },
+        headers: { host: founderUatPlacement.edgeBindAddress },
         method: "GET",
         path: "/",
         servername: authorities.console,

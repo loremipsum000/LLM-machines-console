@@ -217,6 +217,10 @@ test("VM103 identity probes keep public and private trust paths separate", () =>
   assert.doesNotMatch(publicProbe, /certificate\.ca|caFile/)
   assert.match(privateProbe, /readFile\(certificate\.ca\)/)
   assert.match(privateProbe, /rejectUnauthorized: true/)
+  assert.match(
+    browser,
+    /headers: \{ host: founderUatPlacement\.edgeBindAddress \}/,
+  )
 })
 
 test("VM103 commissioning orders identity before dependent services", () => {
