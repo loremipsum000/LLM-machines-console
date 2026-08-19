@@ -6456,6 +6456,15 @@ function delay(milliseconds) {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds))
 }
 
+async function eventually(check, timeout = 10_000) {
+  const deadline = performance.now() + timeout
+  while (performance.now() < deadline) {
+    if (await check()) return
+    await delay(250)
+  }
+  throw new Error(`F0-S1 condition did not pass within ${timeout}ms.`)
+}
+
 function safeDiagnosticTail(value) {
   return value
     .slice(-4_000)
