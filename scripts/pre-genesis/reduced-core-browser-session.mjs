@@ -34,6 +34,7 @@ import {
 } from "node:https"
 import { tmpdir } from "node:os"
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path"
+import { getCACertificates } from "node:tls"
 import { fileURLToPath } from "node:url"
 import { chromium } from "playwright-core"
 import { evaluateSourceBoundary } from "../../infra/ingress/source-no-bypass.mjs"
@@ -49,7 +50,9 @@ import {
 import { createOidcFixture } from "./reduced-core-oidc-fixture.mjs"
 
 const integratedCoreMode = process.argv.includes("--integrated-core")
-const keycloakTeamMode = process.argv.includes("--keycloak-team")
+const commissioningLoginMode = process.argv.includes("--commissioning-login")
+const keycloakTeamMode =
+  process.argv.includes("--keycloak-team") || commissioningLoginMode
 const keycloakIdentityMode =
   process.argv.includes("--keycloak-identity") ||
   keycloakTeamMode ||
@@ -76,6 +79,7 @@ const supportedModes = new Set([
   "--postgres-persistence",
   "--keycloak-identity",
   "--keycloak-team",
+  "--commissioning-login",
   "--litellm",
   "--integrated-core",
 ])
@@ -87,7 +91,7 @@ if (
   selectedModes.length > 1
 ) {
   throw new Error(
-    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--observability|--postgres-persistence|--keycloak-identity|--keycloak-team|--litellm|--integrated-core]",
+    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--observability|--postgres-persistence|--keycloak-identity|--keycloak-team|--commissioning-login|--litellm|--integrated-core]",
   )
 }
 
@@ -111,12 +115,13 @@ const founderUatControl = integratedCoreMode
   ? founderUatControlFromEnvironment()
   : null
 const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
-if (founderUatPlacementPath && !founderUatControl) {
+if (founderUatPlacementPath && !founderUatControl && !commissioningLoginMode) {
   throw new Error("F0-UAT0 placement requires founder operator control.")
 }
-const founderUatPlacement = founderUatControl
-  ? loadFounderUatPlacement(founderUatPlacementPath)
-  : null
+const founderUatPlacement =
+  founderUatControl || commissioningLoginMode
+    ? loadFounderUatPlacement(founderUatPlacementPath)
+    : null
 const initialTime = integratedCoreMode
   ? new Date()
   : applicationsMode
@@ -606,7 +611,6 @@ async function runBrowserSessionProof() {
     )
 
     const identityAuthorityBinding = await proveIdentityAuthorityBinding({
-      certificate,
       keycloakControl,
     })
     const executablePath = await chromeExecutable()
@@ -709,7 +713,9 @@ async function runBrowserSessionProof() {
         architecture: process.arch,
         browser: { name: "Google Chrome", version: browserVersion },
         credentialMaterialPrinted: false,
-        evidenceClass: "LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY",
+        evidenceClass: commissioningLoginMode
+          ? "INCREMENTAL_CONSOLE_LOGIN_ONLY"
+          : "LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY",
         identity: identityFlow,
         persistence: postgresEvidence,
         team: teamFlow,
@@ -5353,7 +5359,7 @@ function keycloakControlFromEnvironment() {
   }
 }
 
-async function proveIdentityAuthorityBinding({ certificate, keycloakControl }) {
+async function proveIdentityAuthorityBinding({ keycloakControl }) {
   if (!founderUatPlacement) {
     return { status: "LOOPBACK_CANDIDATE_EDGE" }
   }
@@ -5366,7 +5372,6 @@ async function proveIdentityAuthorityBinding({ certificate, keycloakControl }) {
       `http://127.0.0.1:${keycloakControl.upstreamPort}${jwksPath}`,
     ),
     requestPublicIdentityJson({
-      caFile: certificate.ca,
       edgePort: keycloakControl.edgePort,
       path: jwksPath,
     }),
@@ -5388,13 +5393,16 @@ async function requestKeycloakJson(url) {
   return response.json()
 }
 
-async function requestPublicIdentityJson({ caFile, edgePort, path }) {
+async function requestPublicIdentityJson({ edgePort, path }) {
   const origin = new URL(publicOrigin("identity", edgePort))
-  const ca = await readFile(caFile)
+  const systemTrust = getCACertificates("system")
+  if (!Array.isArray(systemTrust) || systemTrust.length === 0) {
+    throw new Error("The public Identity probe has no system trust anchors.")
+  }
   return new Promise((resolveRequest, rejectRequest) => {
     const request = httpsRequest(
       {
-        ca,
+        ca: systemTrust,
         headers: { accept: "application/json", host: origin.host },
         host: origin.hostname,
         method: "GET",

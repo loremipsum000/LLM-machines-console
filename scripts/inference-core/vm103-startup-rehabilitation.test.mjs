@@ -196,6 +196,50 @@ test("VM103 placed startup binds identity before browser credentials", () => {
   assert.match(runbook, /fails before submitting a browser credential/)
 })
 
+test("VM103 identity probes keep public and private trust paths separate", () => {
+  const browser = read("scripts/pre-genesis/reduced-core-browser-session.mjs")
+  const publicProbe = browser.slice(
+    browser.indexOf("async function requestPublicIdentityJson"),
+    browser.indexOf("function sanitizedKeycloakLoginEvents"),
+  )
+  const privateProbe = browser.slice(
+    browser.indexOf("async function requestHttpsEdgeWithHeaders"),
+  )
+
+  assert.match(publicProbe, /getCACertificates\("system"\)/)
+  assert.match(publicProbe, /ca: systemTrust/)
+  assert.match(publicProbe, /rejectUnauthorized: true/)
+  assert.doesNotMatch(publicProbe, /certificate\.ca|caFile/)
+  assert.match(privateProbe, /readFile\(certificate\.ca\)/)
+  assert.match(privateProbe, /rejectUnauthorized: true/)
+})
+
+test("VM103 commissioning orders identity before dependent services", () => {
+  const integrated = read("scripts/pre-genesis/reduced-core-integrated.mjs")
+  const postgres = integrated.indexOf("await startProductPostgres()")
+  const keycloak = integrated.indexOf("keycloakControl = await startKeycloak")
+  const consoleLogin = integrated.indexOf("await retryableConsoleLoginStage")
+  const liteLlm = integrated.indexOf("liteLlmControl = await startLiteLlm()")
+  const firecrawl = integrated.indexOf(
+    "firecrawlControl = await startFirecrawl()",
+  )
+
+  assert.ok(postgres >= 0)
+  assert.ok(keycloak > postgres)
+  assert.ok(consoleLogin > keycloak)
+  assert.ok(liteLlm > consoleLogin)
+  assert.ok(firecrawl > liteLlm)
+  assert.match(integrated, /"CONSOLE_LOGIN", "BLOCKED"/)
+  assert.match(
+    integrated,
+    /while \(!\(await exists\(files\.commissioningRetry\)\)\)/,
+  )
+  assert.match(
+    integrated,
+    /Incremental commissioning was stopped while blocked/,
+  )
+})
+
 function commissionedUser(group, realmRole) {
   return {
     emailVerified: true,

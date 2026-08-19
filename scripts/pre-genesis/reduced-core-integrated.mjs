@@ -29,11 +29,19 @@ import { restoreWorkspaceBuildArtifacts } from "./workspace-artifacts.mjs"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const keepRunning = process.argv.includes("--keep-running")
+const incrementalCommissioning = process.argv.includes("--incremental")
 if (
-  process.argv.slice(2).some((argument) => argument !== "--keep-running") ||
-  process.argv.slice(2).length > 1
+  process.argv
+    .slice(2)
+    .some(
+      (argument) =>
+        argument !== "--keep-running" && argument !== "--incremental",
+    ) ||
+  new Set(process.argv.slice(2)).size !== process.argv.slice(2).length
 ) {
-  throw new Error("Usage: reduced-core-integrated.mjs [--keep-running]")
+  throw new Error(
+    "Usage: reduced-core-integrated.mjs [--keep-running] [--incremental]",
+  )
 }
 const nativeAmd64 = process.env.F0_UAT0_NATIVE_AMD64 === "true"
 if (
@@ -41,6 +49,9 @@ if (
   (!nativeAmd64 || process.platform !== "linux" || process.arch !== "x64")
 ) {
   throw new Error("F0-UAT0 keep-running mode requires native Linux/amd64.")
+}
+if (incrementalCommissioning && !keepRunning) {
+  throw new Error("Incremental commissioning requires keep-running mode.")
 }
 const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
 if (founderUatPlacementPath && !keepRunning) {
@@ -94,6 +105,8 @@ const files = {
   browserState: keepRunning
     ? join(stateRoot, `llmm-f0-c1-browser-${runId}`)
     : join(browserTemporaryRoot, `llmm-f0-c1-browser-${runId}`),
+  commissioningRetry: join(stateRoot, "commissioning.retry"),
+  commissioningStage: join(stateRoot, "commissioning-stage.json"),
   firecrawlControl: join(stateRoot, "firecrawl-control.json"),
   firecrawlState: join(stateRoot, "firecrawl-state"),
   firecrawlStop: join(stateRoot, "firecrawl.stop"),
@@ -154,6 +167,9 @@ const sensitiveValues = [databasePassword, grafanaOidcSecret]
 let dockerContext = null
 let evidence = null
 let failure = null
+let firecrawlControl = null
+let keycloakControl = null
+let liteLlmControl = null
 
 try {
   await chmod(stateRoot, 0o700)
@@ -163,82 +179,26 @@ try {
   buildWorkspaceFixturePackages()
   const edgePort = founderUatPlacement?.edgePort ?? (await reservePort())
   await mkdir(files.firecrawlState, { mode: 0o700 })
-  const firecrawl = startService(
-    "firecrawl",
-    {
-      F0_C1_SERVICE_CONTROL_FILE: files.firecrawlControl,
-      F0_C1_FIRECRAWL_RUN_ID: runId,
-      F0_C1_SERVICE_STOP_FILE: files.firecrawlStop,
-      F0_C1_SERVICE_STATE_ROOT: files.firecrawlState,
-      ...(nativeAmd64
-        ? {
-            F0_UAT0_NATIVE_AMD64: "true",
-            F0_UAT0_STATE_ROOT: stateRoot,
-            PRE_GENESIS_DOCKER_CONTEXT: "default",
-          }
-        : {}),
-    },
-    "reduced-core-firecrawl-integration.mjs",
-  )
-  services.push(firecrawl)
-  const firecrawlControl = await waitForControl(
-    files.firecrawlControl,
-    firecrawl,
-    45 * 60_000,
-  )
-  dockerContext = exactDockerContext(firecrawlControl.dockerContext)
-  assert.equal(dockerContext, firecrawlDockerContext)
-  docker(["info", "--format", "{{.ServerVersion}}"])
-  await startProductPostgres()
-
-  const liteLlm = startService(
-    "litellm",
-    {
-      F0_C1_SERVICE_CONTROL_FILE: files.liteLlmControl,
-      F0_C1_SERVICE_STOP_FILE: files.liteLlmStop,
-      PRE_GENESIS_DOCKER_CONTEXT: dockerContext,
-    },
-    "reduced-core-litellm-integration.mjs",
-  )
-  services.push(liteLlm)
-  const liteLlmControl = await waitForControl(
-    files.liteLlmControl,
-    liteLlm,
-    5 * 60_000,
-  )
-  sensitiveValues.push(
-    liteLlmControl.adminKey,
-    liteLlmControl.routingKey,
-    ...Object.values(liteLlmControl.canaries),
-  )
-
-  const keycloak = startService(
-    "keycloak",
-    {
-      F0_C1_EDGE_PORT: String(edgePort),
-      F0_C1_SERVICE_CONTROL_FILE: files.keycloakControl,
-      F0_C1_SERVICE_STOP_FILE: files.keycloakStop,
-      ...(founderUatPlacement
-        ? { F0_UAT0_PLACEMENT_FILE: founderUatPlacementPath }
-        : {}),
-      PRE_GENESIS_DOCKER_CONTEXT: dockerContext,
-    },
-    "reduced-core-keycloak-identity.mjs",
-    ["--team"],
-  )
-  services.push(keycloak)
-  const keycloakControl = await waitForControl(
-    files.keycloakControl,
-    keycloak,
-    5 * 60_000,
-  )
-  sensitiveValues.push(
-    keycloakControl.credentials.admin.password,
-    keycloakControl.credentials.operator.password,
-    keycloakControl.credentials.bffService,
-    keycloakControl.credentials.humanAdmin,
-    keycloakControl.credentials.oidcClient,
-  )
+  if (incrementalCommissioning) {
+    dockerContext = "default"
+    docker(["info", "--format", "{{.ServerVersion}}"])
+    await startProductPostgres()
+    keycloakControl = await startKeycloak(edgePort)
+    await writeCommissioningStage("POSTGRESQL_AND_KEYCLOAK", "PASSED")
+    await retryableConsoleLoginStage({ edgePort, keycloakControl })
+    liteLlmControl = await startLiteLlm()
+    await writeCommissioningStage("LITELLM_AND_INFERENCE", "PASSED")
+    firecrawlControl = await startFirecrawl()
+    await writeCommissioningStage("FIRECRAWL", "PASSED")
+  } else {
+    firecrawlControl = await startFirecrawl()
+    dockerContext = exactDockerContext(firecrawlControl.dockerContext)
+    assert.equal(dockerContext, firecrawlDockerContext)
+    docker(["info", "--format", "{{.ServerVersion}}"])
+    await startProductPostgres()
+    liteLlmControl = await startLiteLlm()
+    keycloakControl = await startKeycloak(edgePort)
+  }
 
   await startMetricsFixture()
   const observabilityControl = await startObservability(edgePort)
@@ -258,6 +218,9 @@ try {
   assert.equal(browser.status, "passed")
   assert.equal(browser.evidenceClass, "LOCAL_INTEGRATED_REDUCED_CORE_ONLY")
   assert.equal(browser.runtimeQualified, false)
+  if (incrementalCommissioning) {
+    await writeCommissioningStage("COMPLETE_CANDIDATE_JOURNEY", "PASSED")
+  }
 
   const retention = await verifyProductRetention({
     firecrawlControl,
@@ -334,6 +297,8 @@ try {
     files.liteLlmControl,
     files.postgresEnvironment,
     files.grafanaSecret,
+    files.commissioningRetry,
+    files.commissioningStage,
     files.uatControl,
     files.uatCredentials,
     files.uatStop,
@@ -389,6 +354,162 @@ try {
 if (failure) throw failure
 assert.ok(evidence)
 process.stdout.write(`${JSON.stringify(evidence)}\n`)
+
+async function startFirecrawl() {
+  const service = startService(
+    "firecrawl",
+    {
+      F0_C1_SERVICE_CONTROL_FILE: files.firecrawlControl,
+      F0_C1_FIRECRAWL_RUN_ID: runId,
+      F0_C1_SERVICE_STOP_FILE: files.firecrawlStop,
+      F0_C1_SERVICE_STATE_ROOT: files.firecrawlState,
+      ...(nativeAmd64
+        ? {
+            F0_UAT0_NATIVE_AMD64: "true",
+            F0_UAT0_STATE_ROOT: stateRoot,
+            PRE_GENESIS_DOCKER_CONTEXT: "default",
+          }
+        : {}),
+    },
+    "reduced-core-firecrawl-integration.mjs",
+  )
+  services.push(service)
+  const control = await waitForControl(
+    files.firecrawlControl,
+    service,
+    45 * 60_000,
+  )
+  assert.equal(
+    exactDockerContext(control.dockerContext),
+    firecrawlDockerContext,
+  )
+  return control
+}
+
+async function startLiteLlm() {
+  const service = startService(
+    "litellm",
+    {
+      F0_C1_SERVICE_CONTROL_FILE: files.liteLlmControl,
+      F0_C1_SERVICE_STOP_FILE: files.liteLlmStop,
+      PRE_GENESIS_DOCKER_CONTEXT: dockerContext,
+    },
+    "reduced-core-litellm-integration.mjs",
+  )
+  services.push(service)
+  const control = await waitForControl(
+    files.liteLlmControl,
+    service,
+    5 * 60_000,
+  )
+  sensitiveValues.push(
+    control.adminKey,
+    control.routingKey,
+    ...Object.values(control.canaries),
+  )
+  return control
+}
+
+async function startKeycloak(edgePort) {
+  const service = startService(
+    "keycloak",
+    {
+      F0_C1_EDGE_PORT: String(edgePort),
+      F0_C1_SERVICE_CONTROL_FILE: files.keycloakControl,
+      F0_C1_SERVICE_STOP_FILE: files.keycloakStop,
+      ...(founderUatPlacement
+        ? { F0_UAT0_PLACEMENT_FILE: founderUatPlacementPath }
+        : {}),
+      PRE_GENESIS_DOCKER_CONTEXT: dockerContext,
+    },
+    "reduced-core-keycloak-identity.mjs",
+    ["--team"],
+  )
+  services.push(service)
+  const keycloakControl = await waitForControl(
+    files.keycloakControl,
+    service,
+    5 * 60_000,
+  )
+  sensitiveValues.push(
+    keycloakControl.credentials.admin.password,
+    keycloakControl.credentials.operator.password,
+    keycloakControl.credentials.bffService,
+    keycloakControl.credentials.humanAdmin,
+    keycloakControl.credentials.oidcClient,
+  )
+  return keycloakControl
+}
+
+async function retryableConsoleLoginStage({ edgePort, keycloakControl }) {
+  while (true) {
+    await writeCommissioningStage("CONSOLE_LOGIN", "RUNNING")
+    const databaseUrl = `postgresql://${databaseUser}:${encodeURIComponent(databasePassword)}@127.0.0.1:${postgresPort()}/${database}`
+    const result = await runChild(
+      process.execPath,
+      [
+        resolve(
+          repositoryRoot,
+          "scripts/pre-genesis/reduced-core-browser-session.mjs",
+        ),
+        "--commissioning-login",
+      ],
+      {
+        F0_I1_KEYCLOAK_CONFIG_FILE: files.keycloakControl,
+        F0_P1_DATABASE_URL: databaseUrl,
+        F0_P1_DOCKER_CONTEXT: dockerContext,
+        F0_P1_POSTGRES_CONTAINER: containers.postgres,
+        F0_P1_POSTGRES_DB: database,
+        F0_P1_POSTGRES_USER: databaseUser,
+        F0_UAT0_PLACEMENT_FILE: founderUatPlacementPath,
+        PLAYWRIGHT_CHROME_EXECUTABLE:
+          process.env.PLAYWRIGHT_CHROME_EXECUTABLE ?? "",
+      },
+      25 * 60_000,
+    )
+    if (result.status === 0) {
+      const parsed = JSON.parse(result.stdout.trim().split("\n").at(-1))
+      assert.equal(parsed.status, "passed")
+      assert.equal(parsed.evidenceClass, "INCREMENTAL_CONSOLE_LOGIN_ONLY")
+      assert.equal(keycloakControl.edgePort, edgePort)
+      await writeCommissioningStage("CONSOLE_LOGIN", "PASSED")
+      return parsed
+    }
+    await writeCommissioningStage("CONSOLE_LOGIN", "BLOCKED", {
+      error: sanitize(result.stderr || result.stdout),
+    })
+    while (!(await exists(files.commissioningRetry))) {
+      if (await exists(files.uatStop)) {
+        throw new Error("Incremental commissioning was stopped while blocked.")
+      }
+      await delay(500)
+    }
+    await rm(files.commissioningRetry, { force: true })
+  }
+}
+
+async function writeCommissioningStage(stage, status, detail = {}) {
+  const allowedStatuses = new Set(["BLOCKED", "PASSED", "RUNNING"])
+  if (!/^[A-Z][A-Z0-9_]{1,63}$/.test(stage) || !allowedStatuses.has(status)) {
+    throw new Error("Incremental commissioning stage metadata is invalid.")
+  }
+  await writeFile(
+    files.commissioningStage,
+    `${JSON.stringify(
+      {
+        ...detail,
+        retryFile: files.commissioningRetry,
+        schemaVersion: 1,
+        stage,
+        status,
+        updatedAt: new Date().toISOString(),
+      },
+      null,
+      2,
+    )}\n`,
+    { mode: 0o600 },
+  )
+}
 
 async function startProductPostgres() {
   const hostPort = await reservePort()
