@@ -4119,7 +4119,12 @@ async function requestJsonThroughEdge({
               status: response.statusCode ?? 500,
             })
           } catch {
-            rejectRequest(new Error("The Product edge returned invalid JSON."))
+            const contentType = response.headers["content-type"] ?? "absent"
+            rejectRequest(
+              new Error(
+                `The Product edge returned invalid JSON for ${method} https://${authority}${path} (status ${response.statusCode ?? 500}, content-type ${contentType}).`,
+              ),
+            )
           }
         })
       },

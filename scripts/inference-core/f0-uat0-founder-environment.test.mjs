@@ -178,6 +178,10 @@ test("F0-UAT0 keeps every retained native service behind the private edge", () =
   assert.match(browser, /edgeBindAddress/)
   assert.match(browser, /publicOrigin\("identity", edgePort\)/)
   assert.match(browser, /ignoreHTTPSErrors: !founderUatPlacement/)
+  assert.match(
+    browser,
+    /Product edge returned invalid JSON for \$\{method\} https:\/\/\$\{authority\}\$\{path\} \(status \$\{response\.statusCode \?\? 500\}, content-type \$\{contentType\}\)\./,
+  )
   assert.doesNotMatch(operator, /0\.0\.0\.0|--publish|docker\.io/)
 })
 
