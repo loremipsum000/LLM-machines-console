@@ -1045,7 +1045,10 @@ async function runBrowserSessionProof() {
       await page.getByRole("button", { name: "Sign out" }).click()
       await page.waitForURL((url) => url.pathname === "/auth/signin")
 
-      postgresPersistenceEvidence = inspectPostgresPersistence(sensitiveValues)
+      postgresPersistenceEvidence = inspectPostgresPersistence(
+        sensitiveValues,
+        applicationFlow,
+      )
       assert.deepEqual(pageErrors, [])
       assertNoSensitiveValues(
         browserMetadata,
@@ -1236,7 +1239,10 @@ async function runBrowserSessionProof() {
     assert.equal(new URL(page.url()).pathname, "/auth/signin")
     assert.equal(new URL(page.url()).searchParams.get("returnTo"), "/inference")
     if (postgresControl) {
-      postgresPersistenceEvidence = inspectPostgresPersistence(sensitiveValues)
+      postgresPersistenceEvidence = inspectPostgresPersistence(
+        sensitiveValues,
+        applicationFlow,
+      )
     }
     assert.deepEqual(pageErrors, [])
     assertNoSensitiveValues(
@@ -5684,10 +5690,34 @@ function expireInferenceCredential(credentialId) {
   assert.equal(updated, 1, "F0-P1 could not expire the retiring credential.")
 }
 
-function inspectPostgresPersistence(sensitiveValues) {
-  const summary = postgresJson(`
+function inspectPostgresPersistence(sensitiveValues, applicationFlow = null) {
+  const applicationIds = applicationFlow
+    ? applicationFlow.lifecycle.operatorPaths.map((path) =>
+        path.split("/").at(-1),
+      )
+    : []
+  if (applicationFlow) {
+    assert.equal(applicationIds.length, 2)
+    for (const applicationId of applicationIds) {
+      assert.match(applicationId ?? "", /^app-[a-z0-9-]+$/)
+    }
+  }
+  const applicationFilter = applicationIds.length
+    ? "AND application_id IN (:'application_1', :'application_2')"
+    : ""
+  const idFilter = applicationIds.length
+    ? "AND id IN (:'application_1', :'application_2')"
+    : ""
+  const variables = Object.fromEntries(
+    applicationIds.map((applicationId, index) => [
+      `application_${index + 1}`,
+      applicationId,
+    ]),
+  )
+  const summary = postgresJson(
+    `
     SELECT json_build_object(
-      'applications', (SELECT count(*)::integer FROM admin.applications WHERE status <> 'deleted'),
+      'applications', (SELECT count(*)::integer FROM admin.applications WHERE status <> 'deleted' ${idFilter}),
       'auditEvents', (SELECT count(*)::integer FROM common.audit_events),
       'auditSubjects', (
         SELECT count(DISTINCT keycloak_subject_id)::integer
@@ -5705,23 +5735,25 @@ function inspectPostgresPersistence(sensitiveValues) {
             'credential_record_id','credential_prefix','recovery_reason_code'
           )
       ),
-      'firecrawlCredentials', (SELECT count(*)::integer FROM admin.application_firecrawl_credentials),
+      'firecrawlCredentials', (SELECT count(*)::integer FROM admin.application_firecrawl_credentials WHERE true ${applicationFilter}),
       'firecrawlEnabledApplications', (
         SELECT count(*)::integer
         FROM admin.application_firecrawl_access
-        WHERE status = 'enabled'
+        WHERE status = 'enabled' ${applicationFilter}
       ),
-      'firecrawlUsageRows', (SELECT count(*)::integer FROM admin.application_firecrawl_usage_daily),
+      'firecrawlUsageRows', (SELECT count(*)::integer FROM admin.application_firecrawl_usage_daily WHERE true ${applicationFilter}),
       'humanIdentities', (SELECT count(*)::integer FROM common.human_identities),
-      'inferenceCredentials', (SELECT count(*)::integer FROM admin.application_credentials),
-      'inferenceUsageRows', (SELECT count(*)::integer FROM admin.application_usage_daily),
+      'inferenceCredentials', (SELECT count(*)::integer FROM admin.application_credentials WHERE true ${applicationFilter}),
+      'inferenceUsageRows', (SELECT count(*)::integer FROM admin.application_usage_daily WHERE true ${applicationFilter}),
       'plaintextSessionPayloads', (
         SELECT count(*)::integer
         FROM common.console_sessions
         WHERE NOT (encrypted_payload ?& ARRAY['version','kid','iv','tag','ciphertext'])
       )
     );
-  `)
+  `,
+    variables,
+  )
   assert.equal(summary.applications, 2)
   assert.equal(summary.inferenceCredentials, 3)
   assert.equal(summary.firecrawlCredentials, 3)

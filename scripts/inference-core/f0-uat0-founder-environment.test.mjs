@@ -190,6 +190,18 @@ test("F0-UAT0 keeps every retained native service behind the private edge", () =
     browser,
     /const masterDenied = await requestHttpsEdgeWithHeaders\(\{[\s\S]*?path: "\/keycloak\/admin\/realms\/master"/,
   )
+  assert.match(
+    browser,
+    /function inspectPostgresPersistence\(sensitiveValues, applicationFlow = null\)/,
+  )
+  assert.match(
+    browser,
+    /applicationFlow\.lifecycle\.operatorPaths\.map\(\(path\) =>[\s\S]*?path\.split\("\/"\)\.at\(-1\)/,
+  )
+  assert.match(
+    browser,
+    /AND application_id IN \(:'application_1', :'application_2'\)/,
+  )
   assert.doesNotMatch(operator, /0\.0\.0\.0|--publish|docker\.io/)
 })
 
