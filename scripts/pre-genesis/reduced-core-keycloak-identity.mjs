@@ -810,6 +810,34 @@ async function configureTeamAuthority(upstreamPort) {
       method: "POST",
     },
   )
+  const [serviceAccountPolicy, customerAdminPolicy] = await Promise.all([
+    exactAuthorizationPolicy(
+      root,
+      bootstrapToken,
+      permissionClient.id,
+      "console-human-admin-service-account",
+    ),
+    exactAuthorizationPolicy(
+      root,
+      bootstrapToken,
+      permissionClient.id,
+      "customer-admin-role",
+    ),
+  ])
+  await adminRequest(
+    root,
+    bootstrapToken,
+    `${realmPath}/clients/${encodeURIComponent(permissionClient.id)}/authz/resource-server/policy/aggregate`,
+    {
+      body: {
+        decisionStrategy: "AFFIRMATIVE",
+        logic: "POSITIVE",
+        name: "appliance-user-administration-callers",
+        policies: [serviceAccountPolicy.id, customerAdminPolicy.id],
+      },
+      method: "POST",
+    },
+  )
   const permissionPath = `${realmPath}/clients/${encodeURIComponent(permissionClient.id)}/authz/resource-server/permission/scope`
   for (const permission of applianceUserAdministrationPermissions({
     adminsGroupId: adminsGroup.id,
@@ -898,11 +926,7 @@ function applianceUserAdministrationPermissions({
       permission.resourceType === "Users"
         ? {
             ...permission,
-            decisionStrategy: "AFFIRMATIVE",
-            policies: [
-              "console-human-admin-service-account",
-              "customer-admin-role",
-            ],
+            policies: ["appliance-user-administration-callers"],
           }
         : permission,
   )
@@ -980,6 +1004,23 @@ async function verifyCommissionedUser(
     realmRole,
     requiredActions: 0,
   }
+}
+
+async function exactAuthorizationPolicy(
+  root,
+  bearer,
+  permissionClientId,
+  name,
+) {
+  const policies = await adminJson(
+    root,
+    bearer,
+    `/admin/realms/llm-machines/clients/${encodeURIComponent(permissionClientId)}/authz/resource-server/policy`,
+  )
+  const matches = policies.filter((policy) => policy.name === name)
+  assert.equal(matches.length, 1)
+  assert.match(matches[0].id ?? "", /^[0-9a-f-]{36}$/)
+  return matches[0]
 }
 
 async function exactClient(root, bearer, clientId) {

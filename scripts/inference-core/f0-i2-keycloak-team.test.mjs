@@ -154,11 +154,13 @@ test("F0-I2 permission translation matches the current logical seed", async () =
   })
   assert.deepEqual(normalizePermissions(actual), normalizePermissions(expected))
   assert.match(wrapper, /humanAdminPermissions\(\{/)
+  assert.match(wrapper, /name: "appliance-user-administration-callers"/)
   assert.match(wrapper, /decisionStrategy: "AFFIRMATIVE"/)
   assert.match(
     wrapper,
-    /policies: \[\s+"console-human-admin-service-account",\s+"customer-admin-role",\s+\]/,
+    /policies: \[serviceAccountPolicy\.id, customerAdminPolicy\.id\]/,
   )
+  assert.match(wrapper, /policies: \["appliance-user-administration-callers"\]/)
   assert.equal(
     wrapper.match(/name: "customer-admin-manage-all-users"/g)?.length ?? 0,
     0,
