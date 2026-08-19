@@ -3353,14 +3353,16 @@ async function proveApplicationConsoleFlow({
     assert.equal(scrape.status, 200)
     assert.equal(scrape.body?.success, true)
     assert.equal(typeof scrape.body?.data?.markdown, "string")
-    const unsupported = await requestJsonThroughEdge({
-      authority: authorities.firecrawl,
-      bearerToken: firecrawlCredential,
-      body: { url: "https://example.com" },
-      caFile: certificate.ca,
+    const unsupported = await requestHttpsEdgeWithHeaders({
+      certificate,
       edgePort,
+      headers: {
+        authorization: `Bearer ${firecrawlCredential}`,
+        host: publicAuthorityHost(authorities.firecrawl, edgePort),
+      },
       method: "POST",
       path: "/v2/crawl",
+      servername: authorities.firecrawl,
     })
     assert.equal(unsupported.status, 404)
     actualFirecrawlEvidence = {
