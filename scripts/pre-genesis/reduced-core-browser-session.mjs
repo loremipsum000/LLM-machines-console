@@ -423,6 +423,7 @@ async function runBrowserSessionProof() {
       F0_S1_CA_FILE: certificate.ca,
       F0_S1_CLOCK_FILE: clockFile,
       F0_S1_CONSOLE_ORIGIN: consoleOrigin,
+      F0_S1_GRAFANA_ORIGIN: publicOrigin("grafana", edgePort),
       F0_S1_IDENTITY_ISSUER: identityIssuer,
       F0_S1_OIDC_AUDIENCE: audience,
       F0_S1_OIDC_CLIENT_ID: clientId,

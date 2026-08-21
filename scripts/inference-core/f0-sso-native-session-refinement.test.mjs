@@ -64,6 +64,11 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
   assert.match(service, /await this\.oidc\.endSession\(refreshToken\)/)
   assert.match(fixture, /logoutEndpoint: `\$\{oidcBase}\/logout`/)
   assert.match(fixture, /endSession: rawOidc\.endSession/)
+  assert.match(fixture, /nativeLogoutStartUrl: `\$\{grafanaOrigin}\/logout`/)
+  assert.match(
+    await read("scripts/pre-genesis/reduced-core-browser-session.mjs"),
+    /F0_S1_GRAFANA_ORIGIN: publicOrigin\("grafana", edgePort\)/,
+  )
   assert.doesNotMatch(shell, /fetch\("\/api\/console\/session\/logout"/)
   assert.match(shell, /action="\/api\/console\/session\/logout"/)
 

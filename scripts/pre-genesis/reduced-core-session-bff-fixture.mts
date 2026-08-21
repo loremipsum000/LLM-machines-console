@@ -21,6 +21,7 @@ if (
 }
 
 const consoleOrigin = required("F0_S1_CONSOLE_ORIGIN")
+const grafanaOrigin = required("F0_S1_GRAFANA_ORIGIN")
 const issuer = required("F0_S1_IDENTITY_ISSUER")
 const clockFile = required("F0_S1_CLOCK_FILE")
 const clientId = required("F0_S1_OIDC_CLIENT_ID")
@@ -192,6 +193,7 @@ const server = buildServer({
     consoleOrigin,
     identityIssuer: issuer,
     internalServiceCredential,
+    nativeLogoutStartUrl: `${grafanaOrigin}/logout`,
     service,
   },
 })
