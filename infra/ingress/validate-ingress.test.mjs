@@ -370,6 +370,7 @@ test("Grafana OAuth admits only empty initiation or exact callback keys", () => 
       "    default 0;",
       '    "" 1;',
       '    "redirectTo=" 1;',
+      '    "~^redirectTo=%2F(?!%2F)(?!.*%(?:25|5[Cc]))(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})*$" 1;',
       "    ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;",
       "  }",
     ].join("\n"),
@@ -382,6 +383,10 @@ test("Grafana OAuth admits only empty initiation or exact callback keys", () => 
   for (const changedMap of [
     map.replace('    "" 1;', '    "" 0;'),
     map.replace('    "redirectTo=" 1;', "    ~^redirectTo=.*$ 1;"),
+    map.replace(
+      '    "~^redirectTo=%2F(?!%2F)(?!.*%(?:25|5[Cc]))(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})*$" 1;',
+      '    "~^redirectTo=.*$" 1;',
+    ),
     map.replace(
       "    ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;",
       "    ~^.*$ 1;",

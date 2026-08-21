@@ -1,8 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { firecrawlNetworkPlan } from "../pre-genesis/firecrawl-network-plan.mjs"
+import {
+  firecrawlNetworkPlan,
+  reducedCoreNetworkPlan,
+} from "../pre-genesis/firecrawl-network-plan.mjs"
 
-test("F0-F2 allocates six deterministic isolated networks without Docker defaults", () => {
+test("reduced Core allocates eight deterministic isolated networks without Docker defaults", () => {
   const plan = firecrawlNetworkPlan("751db1b2906649d5")
   assert.deepEqual(Object.keys(plan), [
     "browser",
@@ -11,8 +14,10 @@ test("F0-F2 allocates six deterministic isolated networks without Docker default
     "proxy",
     "search",
     "bridge-access",
+    "core",
+    "litellm",
   ])
-  assert.equal(new Set(Object.values(plan).map(({ subnet }) => subnet)).size, 6)
+  assert.equal(new Set(Object.values(plan).map(({ subnet }) => subnet)).size, 8)
   for (const { gateway, subnet } of Object.values(plan)) {
     assert.match(
       subnet,
@@ -24,13 +29,17 @@ test("F0-F2 allocates six deterministic isolated networks without Docker default
     )
   }
   assert.deepEqual(plan, firecrawlNetworkPlan("751db1b2906649d5"))
+  assert.deepEqual(plan, reducedCoreNetworkPlan("751db1b2906649d5"))
   assert.notDeepEqual(plan, firecrawlNetworkPlan("751db1b2906649d6"))
 })
 
-test("F0-F2 rejects caller-controlled malformed run IDs", () => {
-  assert.throws(() => firecrawlNetworkPlan("../shared"), /16-character run ID/)
+test("reduced Core rejects caller-controlled malformed run IDs", () => {
   assert.throws(
-    () => firecrawlNetworkPlan("A".repeat(16)),
+    () => reducedCoreNetworkPlan("../shared"),
+    /16-character run ID/,
+  )
+  assert.throws(
+    () => reducedCoreNetworkPlan("A".repeat(16)),
     /16-character run ID/,
   )
 })
