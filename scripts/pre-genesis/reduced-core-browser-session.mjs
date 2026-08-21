@@ -645,6 +645,7 @@ async function runBrowserSessionProof() {
       keycloakControl,
       waitForPublicMatch: commissioningLoginMode,
     })
+    if (commissioningLoginMode) await synchronizeFixtureClock()
     const executablePath = await chromeExecutable()
     const browserArguments = ["--no-proxy-server"]
     if (!founderUatPlacement) {

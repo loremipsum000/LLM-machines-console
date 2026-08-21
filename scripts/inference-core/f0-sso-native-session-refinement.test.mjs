@@ -129,6 +129,17 @@ test("integrated browser children cannot collide through a shared IPC directory"
   assert.match(browser, /\[400, 403, 404, 421\]\.includes\(response\.status\)/)
 })
 
+test("commissioning synchronizes validation time after public identity convergence", async () => {
+  const browser = await read(
+    "scripts/pre-genesis/reduced-core-browser-session.mjs",
+  )
+
+  assert.match(
+    browser,
+    /const identityAuthorityBinding = await proveIdentityAuthorityBinding\([\s\S]*?if \(commissioningLoginMode\) await synchronizeFixtureClock\(\)[\s\S]*?const executablePath = await chromeExecutable\(\)/,
+  )
+})
+
 async function read(path) {
   return readFile(resolve(root, path), "utf8")
 }
