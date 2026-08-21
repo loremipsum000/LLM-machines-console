@@ -14,7 +14,7 @@ import { createServer as createNetServer } from "node:net"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { firecrawlNetworkPlan } from "./firecrawl-network-plan.mjs"
+import { reducedCoreNetworkPlan } from "./firecrawl-network-plan.mjs"
 import {
   authorityOrigin,
   loadFounderUatPlacement,
@@ -51,7 +51,7 @@ const keycloakControl = keycloakControlPath
   ? JSON.parse(await readFile(resolve(keycloakControlPath), "utf8"))
   : null
 const runId = randomBytes(8).toString("hex")
-const liteLlmNetwork = firecrawlNetworkPlan(runId)["bridge-access"]
+const liteLlmNetwork = reducedCoreNetworkPlan(runId).litellm
 const network = `llmm-f0-l2-${runId}`
 const inferenceContainer = `llmm-f0-l2-inference-${runId}`
 const liteLlmContainer = `llmm-f0-l2-litellm-${runId}`

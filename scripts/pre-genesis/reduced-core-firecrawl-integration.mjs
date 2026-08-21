@@ -18,7 +18,7 @@ import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
 import { writeFirecrawlEgressAllowlist } from "./firecrawl-egress-allowlist.mjs"
-import { firecrawlNetworkPlan } from "./firecrawl-network-plan.mjs"
+import { reducedCoreNetworkPlan } from "./firecrawl-network-plan.mjs"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const serviceControl = serviceControlFromEnvironment()
@@ -39,7 +39,7 @@ const apiImage = `llmm-f0-f2/firecrawl-api:${runId}`
 const browserImage = `llmm-f0-f2/firecrawl-browser:${runId}`
 const bridgeContainer = `llmm-f0-f2-bridge-${runId}`
 const bridgeNetwork = `${project}-bridge-access`
-const networkPlan = firecrawlNetworkPlan(runId)
+const networkPlan = reducedCoreNetworkPlan(runId)
 const packageById = new Map(
   sourcePackage.buildInputs.map((input) => [input.id, input]),
 )

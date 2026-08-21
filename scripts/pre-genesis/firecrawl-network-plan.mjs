@@ -7,12 +7,14 @@ const networkOrder = [
   "proxy",
   "search",
   "bridge-access",
+  "core",
+  "litellm",
 ]
 
-export function firecrawlNetworkPlan(runId) {
+export function reducedCoreNetworkPlan(runId) {
   if (!/^[a-f0-9]{16}$/.test(runId)) {
     throw new Error(
-      "Firecrawl network planning requires a 16-character run ID.",
+      "Reduced-Core network planning requires a 16-character run ID.",
     )
   }
 
@@ -34,3 +36,5 @@ export function firecrawlNetworkPlan(runId) {
     }),
   )
 }
+
+export const firecrawlNetworkPlan = reducedCoreNetworkPlan
