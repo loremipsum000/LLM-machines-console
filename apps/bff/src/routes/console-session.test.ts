@@ -241,6 +241,21 @@ describe("Console session HTTP boundary", () => {
     expect(response.headers["set-cookie"]).toContain("Max-Age=0")
   })
 
+  it("allows only the shared isolated test port for the native logout hop", () => {
+    expect(() =>
+      buildServer(serviceStub as unknown as ConsoleSessionService, undefined, {
+        consoleOrigin: "https://console.llmm.test:24443",
+        nativeLogoutStartUrl: "https://grafana.llmm.test:24443/logout",
+      }),
+    ).not.toThrow()
+    expect(() =>
+      buildServer(serviceStub as unknown as ConsoleSessionService, undefined, {
+        consoleOrigin: "https://console.example.test",
+        nativeLogoutStartUrl: "https://grafana.example.test:24443/logout",
+      }),
+    ).toThrow("Native logout must use the exact HTTPS edge route.")
+  })
+
   it("verifies back-channel logout tokens before consuming replay state", async () => {
     const verify = vi.fn(async () => ({
       expiresAt: new Date("2026-08-02T10:01:00.000Z"),
@@ -338,14 +353,19 @@ describe("Console session HTTP boundary", () => {
 function buildServer(
   sessionService: ConsoleSessionService,
   verify: ConsoleBackchannelVerifier["verify"] = async () => null,
+  overrides: Partial<{
+    consoleOrigin: string
+    nativeLogoutStartUrl: string
+  }> = {},
 ) {
   const server = Fastify()
   registerConsoleSessionRoutes(server, {
     backchannelVerifier: { verify },
-    consoleOrigin: "https://console.example.test",
+    consoleOrigin: overrides.consoleOrigin ?? "https://console.example.test",
     identityIssuer: "https://identity.example.test/realms/appliance",
     internalServiceCredential: "web-to-bff",
-    nativeLogoutStartUrl: "https://grafana.example.test/logout",
+    nativeLogoutStartUrl:
+      overrides.nativeLogoutStartUrl ?? "https://grafana.example.test/logout",
     service: sessionService,
   })
   return server

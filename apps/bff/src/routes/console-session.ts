@@ -34,6 +34,7 @@ export function registerConsoleSessionRoutes(
   const identityIssuer = normalizedIssuer(options.identityIssuer)
   const nativeLogoutStartUrl = normalizedNativeLogoutStartUrl(
     options.nativeLogoutStartUrl,
+    consoleOrigin,
   )
   if (!server.hasContentTypeParser("application/x-www-form-urlencoded")) {
     server.addContentTypeParser(
@@ -259,13 +260,22 @@ export function registerConsoleSessionRoutes(
   )
 }
 
-function normalizedNativeLogoutStartUrl(value: string): string {
+function normalizedNativeLogoutStartUrl(
+  value: string,
+  consoleOrigin: string,
+): string {
   const url = new URL(value)
+  const consoleUrl = new URL(consoleOrigin)
+  const isolatedTestPort =
+    url.hostname === "grafana.llmm.test" &&
+    consoleUrl.hostname === "console.llmm.test" &&
+    Boolean(url.port) &&
+    url.port === consoleUrl.port
   if (
     url.protocol !== "https:" ||
     url.username ||
     url.password ||
-    url.port ||
+    (url.port && !isolatedTestPort) ||
     url.pathname !== "/logout" ||
     url.search ||
     url.hash
