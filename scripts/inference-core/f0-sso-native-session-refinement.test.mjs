@@ -61,6 +61,52 @@ test("Grafana automatic OAuth entry accepts only the observed empty redirect", a
   assert.doesNotMatch(oauthMap, /~\^redirectTo=/)
 })
 
+test("native UI background queries remain exact and credential-free", async () => {
+  const edge = await read("infra/ingress/product-edge.nginx.conf.template")
+
+  assert.match(
+    edge,
+    /map \$args \$llmm_query_grafana_static \{[\s\S]*?"~\^_cache=\[A-Za-z0-9\._-\]\{1,128\}\$" 1;[\s\S]*?\n {2}\}/,
+  )
+  const grafanaStaticStart = edge.indexOf(
+    "location ~ ^/(?:public/(?:build|fonts|img|plugins)/|resources/).+$",
+  )
+  const grafanaStatic = edge.slice(
+    grafanaStaticStart,
+    edge.indexOf("location = /__llmm_native_unavailable", grafanaStaticStart),
+  )
+  assert.notEqual(grafanaStaticStart, -1)
+  assert.match(grafanaStatic, /\$llmm_query_grafana_static/)
+  assert.match(
+    edge,
+    /location = \/models \{[\s\S]*?\$llmm_query_litellm_models/,
+  )
+  assert.match(
+    edge,
+    /location = \/v2\/team\/list \{[\s\S]*?\$llmm_query_litellm_team_list/,
+  )
+  const backgroundReadsStart = edge.indexOf(
+    "location ~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|team/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$",
+  )
+  const backgroundReads = edge.slice(
+    backgroundReadsStart,
+    edge.indexOf("location ~ ^/(?:model/new", backgroundReadsStart),
+  )
+  assert.notEqual(backgroundReadsStart, -1)
+  assert.doesNotMatch(backgroundReads, /\bmodels\b|v2\/team\/list/)
+  const addedMaps = ["grafana_static", "litellm_models", "litellm_team_list"]
+    .map(
+      (name) =>
+        edge.match(
+          new RegExp(
+            `map \\$args \\$llmm_query_${name} \\{[\\s\\S]*?\\n {2}\\}`,
+          ),
+        )?.[0] ?? "",
+    )
+    .join("\n")
+  assert.doesNotMatch(addedMaps, /token|authorization|cookie/i)
+})
+
 test("Console sign-out uses a fixed credential-free native logout chain", async () => {
   const [edge, fixture, route, runtime, service, shell] = await Promise.all([
     read("infra/ingress/product-edge.nginx.conf.template"),

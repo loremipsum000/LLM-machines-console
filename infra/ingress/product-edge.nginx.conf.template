@@ -75,6 +75,12 @@ http {
     ~^(?:limit|query|type)=[^&]*(?:&(?:limit|query|type)=[^&]*)*$ 1;
   }
 
+  map $args $llmm_query_grafana_static {
+    default 0;
+    "" 1;
+    "~^_cache=[A-Za-z0-9._-]{1,128}$" 1;
+  }
+
   map $args $llmm_query_litellm_ui {
     default 0;
     "" 1;
@@ -97,7 +103,19 @@ http {
   map $args $llmm_query_litellm_key_list {
     default 0;
     "" 1;
-    ~^(?:include_created_by_keys|return_full_object|user_id)=[^&]*(?:&(?:include_created_by_keys|return_full_object|user_id)=[^&]*)*$ 1;
+    ~^(?:expand|include_created_by_keys|include_team_keys|page|return_full_object|size|sort_by|sort_order|substring_matching|user_id)=[^&]*(?:&(?:expand|include_created_by_keys|include_team_keys|page|return_full_object|size|sort_by|sort_order|substring_matching|user_id)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_litellm_models {
+    default 0;
+    "" 1;
+    ~^(?:include_model_access_groups|return_wildcard_routes)=[^&]*(?:&(?:include_model_access_groups|return_wildcard_routes)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_litellm_team_list {
+    default 0;
+    "" 1;
+    ~^(?:page|page_size)=[^&]*(?:&(?:page|page_size)=[^&]*)*$ 1;
   }
 
   map $args $llmm_query_keycloak_console {
@@ -870,7 +888,7 @@ http {
 
     location ~ ^/(?:public/(?:build|fonts|img|plugins)/|resources/).+$ {
       limit_except GET HEAD { deny all; }
-      if ($llmm_query_none = 0) { return 400; }
+      if ($llmm_query_grafana_static = 0) { return 400; }
       proxy_pass_request_body off;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
@@ -1031,7 +1049,25 @@ http {
       proxy_pass http://litellm_native;
     }
 
-    location ~ ^/(?:api/plugins|models|organization/list|policies/list|project/list|prompts/list|team/list|user/available_roles|user/available_users|v2/guardrails/list|v2/team/list|v2/user/info)$ {
+    location = /models {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_models = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /v2/team/list {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_team_list = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location ~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|team/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$ {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }
       include /etc/nginx/llm-machines/proxy-common.inc;

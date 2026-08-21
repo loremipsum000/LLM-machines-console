@@ -2441,11 +2441,25 @@ async function proveIntegratedNativeAdministration({
   assert.equal(adminClaims.user_id, credentials.admin.subject)
   assert.equal(operatorClaims.user_role, "internal_user")
   assert.equal(operatorClaims.user_id, credentials.operator.subject)
+  const adminKeyAlias = `founder-admin-${randomBytes(4).toString("hex")}`
+  const adminKey = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: adminClaims.key,
+    body: { key_alias: adminKeyAlias, models: ["fixture-model"] },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/key/generate",
+  })
+  assert.equal(adminKey.status, 200)
+  assert.match(adminKey.body?.key ?? "", /^sk-/)
+  assert.equal(adminKey.body?.user_id, credentials.admin.subject)
+  const operatorKeyAlias = `founder-operator-${randomBytes(4).toString("hex")}`
   const operatorKey = await requestJsonThroughEdge({
     authority: authorities.litellm,
     bearerToken: operatorClaims.key,
     body: {
-      key_alias: `founder-operator-${randomBytes(4).toString("hex")}`,
+      key_alias: operatorKeyAlias,
       models: ["fixture-model"],
     },
     caFile: certificate.ca,
@@ -2456,6 +2470,18 @@ async function proveIntegratedNativeAdministration({
   assert.equal(operatorKey.status, 200)
   assert.match(operatorKey.body?.key ?? "", /^sk-/)
   assert.equal(operatorKey.body?.user_id, credentials.operator.subject)
+  const operatorUiKeyList = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: operatorClaims.key,
+    caFile: certificate.ca,
+    edgePort,
+    method: "GET",
+    path: "/key/list?expand=false&include_created_by_keys=false&include_team_keys=false&page=1&return_full_object=true&size=50&sort_by=created_at&sort_order=desc&substring_matching=false",
+  })
+  assert.equal(operatorUiKeyList.status, 200)
+  const operatorUiKeyListJson = JSON.stringify(operatorUiKeyList.body)
+  assert.match(operatorUiKeyListJson, new RegExp(operatorKeyAlias))
+  assert.doesNotMatch(operatorUiKeyListJson, new RegExp(adminKeyAlias))
   const globalMutation = await requestJsonThroughEdge({
     authority: authorities.litellm,
     bearerToken: operatorClaims.key,
@@ -2488,6 +2514,16 @@ async function proveIntegratedNativeAdministration({
     path: "/key/delete",
   })
   assert.equal(ownKeyDelete.status, 200)
+  const adminKeyDelete = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: adminClaims.key,
+    body: { keys: [adminKey.body.key] },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/key/delete",
+  })
+  assert.equal(adminKeyDelete.status, 200)
   await Promise.all(
     [liteLlmAdmin, liteLlmOperator].map((session) =>
       logoutNativeLiteLlm(session, edgePort),
@@ -2563,6 +2599,7 @@ async function proveIntegratedNativeAdministration({
       admin: "proxy_admin",
       operator: "internal_user",
       operatorGlobalMutation: "DENY",
+      operatorOwnKeyListIsolation: "PASS",
       operatorOwnKeyAndSpend: "PASS",
     },
     nativeSessions: "SERVICE_OWNED",

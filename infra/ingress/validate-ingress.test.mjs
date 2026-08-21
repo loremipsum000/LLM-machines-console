@@ -369,6 +369,7 @@ test("Grafana OAuth admits only empty initiation or exact callback keys", () => 
       "map $args $llmm_query_grafana_oauth {",
       "    default 0;",
       '    "" 1;',
+      '    "redirectTo=" 1;',
       "    ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;",
       "  }",
     ].join("\n"),
@@ -380,6 +381,7 @@ test("Grafana OAuth admits only empty initiation or exact callback keys", () => 
 
   for (const changedMap of [
     map.replace('    "" 1;', '    "" 0;'),
+    map.replace('    "redirectTo=" 1;', "    ~^redirectTo=.*$ 1;"),
     map.replace(
       "    ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;",
       "    ~^.*$ 1;",

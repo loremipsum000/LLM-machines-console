@@ -174,7 +174,9 @@ const expectedNginxLocations = {
     "= /key/delete",
     "= /v2/key/info",
     "= /user/info",
-    "~ ^/(?:api/plugins|models|organization/list|policies/list|project/list|prompts/list|team/list|user/available_roles|user/available_users|v2/guardrails/list|v2/team/list|v2/user/info)$",
+    "= /models",
+    "= /v2/team/list",
+    "~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|team/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$",
     "~ ^/(?:model/new|team/new|organization/new|user/new|config/update)$",
     "= /v1/models",
     "= /v1/chat/completions",
@@ -201,9 +203,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "a64cfde1d3583050f86b6b947b5539ddb8f045bba0465270288dff0388b6246e",
+    "edb7ace5fa3510c6ae73ecec307a4d97896f99892d626b210de99e4b968b7eed",
   "native-admin-edge-profile.json":
-    "31fab44e1d571791bf65c110554688f543e934865c4d33d20bedde79f46e2993",
+    "d1d0fff9ef3cc125fc92d908a4c2a418c239ccaa161a5b704c6b137ee19b6384",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -459,6 +461,7 @@ function validateNativeAdmin(profile, errors) {
     sameJson(profile.queryPolicies?.["grafana-oauth-entry-or-callback"], [
       "code",
       "iss",
+      "redirectTo",
       "session_state",
       "state",
     ]) &&
@@ -468,6 +471,49 @@ function validateNativeAdmin(profile, errors) {
       grafanaOauth?.queryPolicy === "grafana-oauth-entry-or-callback" &&
       grafanaOauth?.emptyQueryAllowed === true,
     "Grafana OAuth entry-or-callback policy changed",
+  )
+  const grafanaStatic = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "static-assets",
+  )
+  const liteLlmModels = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "models",
+  )
+  const liteLlmTeamList = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "team-list",
+  )
+  const liteLlmKeyList = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "key-list",
+  )
+  add(
+    errors,
+    sameJson(profile.queryPolicies?.["grafana-static-cache"], ["_cache"]) &&
+      grafanaStatic?.queryPolicy === "grafana-static-cache" &&
+      sameJson(profile.queryPolicies?.["litellm-models"], [
+        "include_model_access_groups",
+        "return_wildcard_routes",
+      ]) &&
+      liteLlmModels?.path?.value === "/models" &&
+      liteLlmModels?.queryPolicy === "litellm-models" &&
+      sameJson(profile.queryPolicies?.["litellm-team-list"], [
+        "page",
+        "page_size",
+      ]) &&
+      liteLlmTeamList?.path?.value === "/v2/team/list" &&
+      liteLlmTeamList?.queryPolicy === "litellm-team-list" &&
+      sameJson(profile.queryPolicies?.["litellm-key-list"], [
+        "expand",
+        "include_created_by_keys",
+        "include_team_keys",
+        "page",
+        "return_full_object",
+        "size",
+        "sort_by",
+        "sort_order",
+        "substring_matching",
+        "user_id",
+      ]) &&
+      liteLlmKeyList?.queryPolicy === "litellm-key-list",
+    "observed native UI query policy changed",
   )
   const grafanaLogout = profile.services?.grafana?.routes?.find(
     ({ id }) => id === "logout",
