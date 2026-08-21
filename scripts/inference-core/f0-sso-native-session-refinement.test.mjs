@@ -126,6 +126,7 @@ test("integrated browser children cannot collide through a shared IPC directory"
     browser,
     /await rm\(processTemporaryRoot, \{ force: true, recursive: true \}\)/,
   )
+  assert.match(browser, /\[400, 403, 404, 421\]\.includes\(response\.status\)/)
 })
 
 async function read(path) {

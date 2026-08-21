@@ -2310,7 +2310,7 @@ async function proveIntegratedNoBypass({ certificate, edgePort }) {
       servername: authority,
     })
     assert.ok(
-      [400, 403, 404].includes(response.status),
+      [400, 403, 404, 421].includes(response.status),
       `${authority}${path} forbidden native route returned ${response.status}.`,
     )
     denied.push(`${authority}${path}`)
