@@ -24,6 +24,7 @@ const consoleSessionFixture = vi.hoisted(() => {
       consoleOrigin: "https://console.example.test",
       identityIssuer: "https://identity.example.test/realms/llm-machines",
       internalServiceCredential: "source-characterization-service",
+      nativeLogoutStartUrl: "https://grafana.example.test/logout",
       service,
     },
     service,
