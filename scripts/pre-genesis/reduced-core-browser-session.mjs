@@ -2593,7 +2593,14 @@ async function proveUnifiedNativeSsoAndLogout({
     const errors = []
     const open = async (entry, expected) => {
       const page = await context.newPage()
-      page.on("pageerror", (error) => errors.push(error.message))
+      page.on("pageerror", (error) => {
+        const location = new URL(page.url())
+        errors.push({
+          message: error.message,
+          origin: location.origin,
+          path: location.pathname,
+        })
+      })
       await page.goto(entry, { waitUntil: "domcontentloaded" })
       await eventually(async () => expected(page), 120_000)
       credentialPrompts.push(await page.locator("#username").count())

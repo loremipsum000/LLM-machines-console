@@ -141,6 +141,17 @@ test("integrated browser children cannot collide through a shared IPC directory"
   assert.match(browser, /\[400, 403, 404, 421\]\.includes\(response\.status\)/)
 })
 
+test("native browser errors retain only credential-free route metadata", async () => {
+  const browser = await read(
+    "scripts/pre-genesis/reduced-core-browser-session.mjs",
+  )
+
+  assert.match(browser, /message: error\.message,/)
+  assert.match(browser, /origin: location\.origin,/)
+  assert.match(browser, /path: location\.pathname,/)
+  assert.doesNotMatch(browser, /search: location\.search/)
+})
+
 test("commissioning synchronizes validation time after public identity convergence", async () => {
   const browser = await read(
     "scripts/pre-genesis/reduced-core-browser-session.mjs",
