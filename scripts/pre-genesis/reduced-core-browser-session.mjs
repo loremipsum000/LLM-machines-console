@@ -38,6 +38,7 @@ import { getCACertificates } from "node:tls"
 import { fileURLToPath } from "node:url"
 import { chromium } from "playwright-core"
 import { evaluateSourceBoundary } from "../../infra/ingress/source-no-bypass.mjs"
+import { classifyConsoleNavigationAttempt } from "./console-navigation-recovery.mjs"
 import {
   authorityOrigin,
   loadFounderUatPlacement,
@@ -1607,9 +1608,7 @@ async function assertExpiredSignIn(page, returnTo) {
 
 async function assertConsoleNavigation(page, consoleOrigin) {
   for (const [path, heading] of consolePaths) {
-    const response = await page.goto(`${consoleOrigin}${path}`)
-    assert.ok(response && response.status() < 500, `${path} returned an error.`)
-    await page.getByRole("heading", { name: heading }).first().waitFor()
+    await navigateConsolePath(page, consoleOrigin, path, heading)
   }
   const hrefs = await page
     .locator("a")
@@ -1620,6 +1619,44 @@ async function assertConsoleNavigation(page, consoleOrigin) {
     hrefs.some((href) => /(?:grafana|litellm|keycloak.*admin)/i.test(href)),
     false,
   )
+}
+
+async function navigateConsolePath(page, consoleOrigin, path, heading) {
+  const deadline = performance.now() + 30_000
+  let lastReason = "navigation did not start"
+  while (performance.now() < deadline) {
+    let response = null
+    try {
+      response = await page.goto(`${consoleOrigin}${path}`, {
+        timeout: 5_000,
+        waitUntil: "domcontentloaded",
+      })
+    } catch (error) {
+      lastReason = `navigation error: ${error instanceof Error ? error.message : String(error)}`
+      await page.waitForTimeout(250)
+      continue
+    }
+
+    const headingVisible = await page
+      .getByRole("heading", { name: heading })
+      .first()
+      .isVisible()
+      .catch(() => false)
+    const result = classifyConsoleNavigationAttempt({
+      actualUrl: page.url(),
+      consoleOrigin,
+      expectedPath: path,
+      headingVisible,
+      responseStatus: response?.status() ?? null,
+    })
+    if (result.status === "READY") return
+    if (result.status === "FAIL") {
+      throw new Error(`${path} navigation failed: ${result.reason}.`)
+    }
+    lastReason = result.reason
+    await page.waitForTimeout(250)
+  }
+  throw new Error(`${path} did not recover within 30 seconds: ${lastReason}.`)
 }
 
 async function assertDesktopViewportLayout(page, consoleOrigin) {
