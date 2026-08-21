@@ -50,6 +50,17 @@ test("LiteLLM customer ingress has no password-login surface and accepts only it
   assert.doesNotMatch(edge, /~\*\^return_to=/)
 })
 
+test("Grafana automatic OAuth entry accepts only the observed empty redirect", async () => {
+  const edge = await read("infra/ingress/product-edge.nginx.conf.template")
+  const oauthMap = edge.match(
+    /map \$args \$llmm_query_grafana_oauth \{[\s\S]*?\n {2}\}/,
+  )?.[0]
+
+  assert.ok(oauthMap)
+  assert.match(oauthMap, /"redirectTo=" 1;/)
+  assert.doesNotMatch(oauthMap, /~\^redirectTo=/)
+})
+
 test("Console sign-out uses a fixed credential-free native logout chain", async () => {
   const [edge, fixture, route, runtime, service, shell] = await Promise.all([
     read("infra/ingress/product-edge.nginx.conf.template"),

@@ -53,6 +53,7 @@ http {
   map $args $llmm_query_grafana_oauth {
     default 0;
     "" 1;
+    "redirectTo=" 1;
     ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;
   }
 
