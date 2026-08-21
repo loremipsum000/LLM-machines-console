@@ -6,6 +6,8 @@ events {
 }
 
 http {
+  map_hash_bucket_size 128;
+
   server_tokens off;
   merge_slashes off;
   ignore_invalid_headers on;
