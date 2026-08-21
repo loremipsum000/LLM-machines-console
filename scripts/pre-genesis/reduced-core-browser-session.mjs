@@ -2596,9 +2596,21 @@ async function proveUnifiedNativeSsoAndLogout({
       page.on("pageerror", (error) => {
         const location = new URL(page.url())
         errors.push({
+          kind: "pageerror",
           message: error.message,
           origin: location.origin,
           path: location.pathname,
+        })
+      })
+      page.on("response", (response) => {
+        if (response.status() !== 400) return
+        const location = new URL(response.url())
+        errors.push({
+          kind: "response",
+          origin: location.origin,
+          path: location.pathname,
+          queryKeys: [...new Set(location.searchParams.keys())].sort(),
+          status: response.status(),
         })
       })
       await page.goto(entry, { waitUntil: "domcontentloaded" })

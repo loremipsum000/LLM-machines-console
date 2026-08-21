@@ -147,8 +147,14 @@ test("native browser errors retain only credential-free route metadata", async (
   )
 
   assert.match(browser, /message: error\.message,/)
+  assert.match(browser, /kind: "pageerror",/)
+  assert.match(browser, /kind: "response",/)
   assert.match(browser, /origin: location\.origin,/)
   assert.match(browser, /path: location\.pathname,/)
+  assert.match(
+    browser,
+    /queryKeys: \[\.\.\.new Set\(location\.searchParams\.keys\(\)\)\]\.sort\(\),/,
+  )
   assert.doesNotMatch(browser, /search: location\.search/)
 })
 
