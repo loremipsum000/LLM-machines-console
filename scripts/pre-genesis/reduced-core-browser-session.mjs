@@ -8,7 +8,7 @@ import {
   randomBytes,
   randomUUID,
 } from "node:crypto"
-import { createWriteStream, readFileSync } from "node:fs"
+import { createWriteStream, mkdirSync, readFileSync } from "node:fs"
 import {
   access,
   chmod,
@@ -6542,6 +6542,8 @@ async function buildFounderWebProject(webRoot, environment, stateRoot) {
 }
 
 function startChild(name, command, environment, stateRoot, cwd) {
+  const childTemporaryRoot = join(stateRoot, "process-tmp", name)
+  mkdirSync(childTemporaryRoot, { mode: 0o700, recursive: true })
   const stdout = createWriteStream(join(stateRoot, `${name}.stdout.log`), {
     mode: 0o600,
   })
@@ -6556,7 +6558,7 @@ function startChild(name, command, environment, stateRoot, cwd) {
       HOME: stateRoot,
       LANG: "C",
       LC_ALL: "C",
-      TMPDIR: stateRoot,
+      TMPDIR: childTemporaryRoot,
       ...environment,
     },
     stdio: ["ignore", "pipe", "pipe"],

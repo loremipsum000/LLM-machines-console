@@ -104,6 +104,22 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
   )
 })
 
+test("integrated browser children cannot collide through a shared IPC directory", async () => {
+  const browser = await read(
+    "scripts/pre-genesis/reduced-core-browser-session.mjs",
+  )
+
+  assert.match(
+    browser,
+    /const childTemporaryRoot = join\(stateRoot, "process-tmp", name\)/,
+  )
+  assert.match(
+    browser,
+    /mkdirSync\(childTemporaryRoot, \{ mode: 0o700, recursive: true \}\)/,
+  )
+  assert.match(browser, /TMPDIR: childTemporaryRoot/)
+})
+
 async function read(path) {
   return readFile(resolve(root, path), "utf8")
 }
