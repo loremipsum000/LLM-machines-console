@@ -192,6 +192,9 @@ export function registerConsoleSessionRoutes(
         // Local browser custody ends even when remote revocation is unavailable.
       }
     }
+    if (request.headers.accept === "application/json") {
+      return reply.send({ next: nativeLogoutStartUrl })
+    }
     return reply.redirect(nativeLogoutStartUrl, 303)
   })
 

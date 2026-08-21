@@ -241,6 +241,25 @@ describe("Console session HTTP boundary", () => {
     expect(response.headers["set-cookie"]).toContain("Max-Age=0")
   })
 
+  it("returns the fixed credential-free logout hop to the Console client", async () => {
+    const server = buildServer(serviceStub as unknown as ConsoleSessionService)
+    const response = await server.inject({
+      headers: {
+        accept: "application/json",
+        cookie: `__Host-llm-machines-session=${sessionHandle}`,
+        origin: "https://console.example.test",
+      },
+      method: "POST",
+      url: "/api/console/session/logout",
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({
+      next: "https://grafana.example.test/logout",
+    })
+    expect(response.headers["set-cookie"]).toContain("Max-Age=0")
+  })
+
   it("allows only the shared isolated test port for the native logout hop", () => {
     expect(() =>
       buildServer(serviceStub as unknown as ConsoleSessionService, undefined, {

@@ -225,19 +225,35 @@ describe("ConsoleV2Shell", () => {
     expect(screen.getByText("Operator")).toBeTruthy()
   })
 
-  it("uses a top-level same-origin POST for the coordinated logout chain", () => {
+  it("starts the coordinated logout with a same-origin JSON POST", () => {
+    const request = vi.fn(() => new Promise<Response>(() => undefined))
+    vi.stubGlobal("fetch", request)
     render(
       <ConsoleV2Shell accessRole="admin" activeSection="applications">
         <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
 
-    const form = screen
-      .getByRole("button", { name: "Sign out" })
-      .closest("form")
-    expect(form?.getAttribute("action")).toBe("/api/console/session/logout")
-    expect(form?.getAttribute("method")).toBe("post")
-    expect(form?.getAttribute("target")).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }))
+    expect(request).toHaveBeenCalledWith("/api/console/session/logout", {
+      credentials: "same-origin",
+      headers: { accept: "application/json" },
+      method: "POST",
+    })
+  })
+
+  it("keeps a failed coordinated logout recoverable", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("unavailable")))
+    render(
+      <ConsoleV2Shell accessRole="admin" activeSection="applications">
+        <h1>Applications</h1>
+      </ConsoleV2Shell>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }))
+    expect(
+      await screen.findByText("Sign-out is temporarily unavailable. Retry."),
+    ).toBeTruthy()
   })
 })
 
