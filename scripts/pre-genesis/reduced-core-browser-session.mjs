@@ -4471,6 +4471,52 @@ function createDevelopmentEdge({
     (request, response) => {
       const host = (request.headers.host ?? "").split(":", 1)[0].toLowerCase()
       const url = new URL(request.url ?? "/", `https://${request.headers.host}`)
+      if (host === authorities.grafana && url.pathname === "/logout") {
+        developmentLogoutRedirect(
+          request,
+          response,
+          url,
+          `${publicOrigin("litellm", edgePort)}/__llmm/global-logout`,
+        )
+        return
+      }
+      if (
+        host === authorities.litellm &&
+        url.pathname === "/__llmm/global-logout"
+      ) {
+        developmentLogoutRedirect(
+          request,
+          response,
+          url,
+          `${publicOrigin("identity", edgePort)}/__llmm/global-logout`,
+          [
+            "token=; Path=/; Max-Age=0; Secure; SameSite=Lax",
+            "litellm_cp_return_to=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+            "litellm_oauth_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+            "sso_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+          ],
+        )
+        return
+      }
+      if (
+        host === authorities.identity &&
+        url.pathname === "/__llmm/global-logout"
+      ) {
+        developmentLogoutRedirect(
+          request,
+          response,
+          url,
+          `${publicOrigin("console", edgePort)}/auth/signin`,
+          [
+            "AUTH_SESSION_ID=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+            "KC_AUTH_SESSION_HASH=; Path=/realms/llm-machines/; Max-Age=0; Secure; SameSite=None",
+            "KC_RESTART=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+            "KEYCLOAK_IDENTITY=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+            "KEYCLOAK_SESSION=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+          ],
+        )
+        return
+      }
       if (host === authorities.identity) {
         if (keycloakControl) {
           proxyIdentityRequest(
@@ -4544,6 +4590,26 @@ function createDevelopmentEdge({
   )
   server.on("tlsClientError", (error) => tlsErrors.push(error.message))
   return server
+}
+
+function developmentLogoutRedirect(
+  request,
+  response,
+  url,
+  destination,
+  cookies = [],
+) {
+  if (!["GET", "HEAD"].includes(request.method ?? "") || url.search) {
+    sendJson(response, 400, { error: "invalid_logout_hop" })
+    return
+  }
+  response.writeHead(303, {
+    "cache-control": "no-store",
+    location: destination,
+    "referrer-policy": "no-referrer",
+    ...(cookies.length > 0 ? { "set-cookie": cookies } : {}),
+  })
+  response.end()
 }
 
 async function startFounderProductEdge({

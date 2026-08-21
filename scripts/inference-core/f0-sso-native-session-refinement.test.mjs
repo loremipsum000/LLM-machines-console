@@ -69,6 +69,10 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
     await read("scripts/pre-genesis/reduced-core-browser-session.mjs"),
     /F0_S1_GRAFANA_ORIGIN: publicOrigin\("grafana", edgePort\)/,
   )
+  assert.match(
+    await read("scripts/pre-genesis/reduced-core-browser-session.mjs"),
+    /host === authorities\.grafana && url\.pathname === "\/logout"/,
+  )
   assert.match(shell, /fetch\("\/api\/console\/session\/logout"/)
   assert.match(shell, /headers: \{ accept: "application\/json" \}/)
   assert.match(shell, /action="\/api\/console\/session\/logout"/)
