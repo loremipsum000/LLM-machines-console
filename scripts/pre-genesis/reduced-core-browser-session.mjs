@@ -2448,7 +2448,11 @@ async function proveIntegratedNativeAdministration({
   const adminKey = await requestJsonThroughEdge({
     authority: authorities.litellm,
     bearerToken: adminClaims.key,
-    body: { key_alias: adminKeyAlias, models: ["fixture-model"] },
+    body: {
+      key_alias: adminKeyAlias,
+      models: ["fixture-model"],
+      user_id: credentials.admin.subject,
+    },
     caFile: certificate.ca,
     edgePort,
     method: "POST",
