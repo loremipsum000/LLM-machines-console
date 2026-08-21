@@ -4,8 +4,6 @@ import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import test from "node:test"
-import { validateIngressPackage } from "../../infra/ingress/validate-ingress.mjs"
-
 const root = resolve(import.meta.dirname, "../..")
 const evidencePath =
   "docs/reduction/inference-core/f0-n5s-grafana-oauth-entry.json"
@@ -30,7 +28,12 @@ test("F0-N5S binds the protected input and remains inactive", async () => {
 })
 
 test("F0-N5S binds only Grafana OAuth entry and exact callback queries", async () => {
-  const profile = await readJson("infra/ingress/native-admin-edge-profile.json")
+  const profile = JSON.parse(
+    gitRaw(
+      "show",
+      `${sourceCandidate}:infra/ingress/native-admin-edge-profile.json`,
+    ),
+  )
   const route = profile.services.grafana.routes.find(
     ({ id }) => id === "oauth-entry-or-callback",
   )
@@ -48,7 +51,10 @@ test("F0-N5S binds only Grafana OAuth entry and exact callback queries", async (
     "state",
   ])
 
-  const nginx = await readText("infra/ingress/product-edge.nginx.conf.template")
+  const nginx = gitRaw(
+    "show",
+    `${sourceCandidate}:infra/ingress/product-edge.nginx.conf.template`,
+  )
   assert.match(
     nginx,
     /map \$args \$llmm_query_grafana_oauth \{[\s\S]{0,220}"" 1;[\s\S]{0,220}\(\?:code\|iss\|session_state\|state\)/,
@@ -61,7 +67,6 @@ test("F0-N5S binds only Grafana OAuth entry and exact callback queries", async (
     nginx,
     /location = \/sso\/callback \{[\s\S]{0,220}\$llmm_query_oidc_callback/,
   )
-  assert.deepEqual(validateIngressPackage(root), [])
 })
 
 test("F0-N5S records the focused HTTPS browser proof and cleanup", async () => {

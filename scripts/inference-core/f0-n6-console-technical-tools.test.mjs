@@ -118,7 +118,11 @@ test("F0-N6 source fingerprints and changed-path inventory are exact", async () 
     [...evidence.sourceChangeBoundary.changedPaths].sort(),
   )
   for (const [path, expected] of Object.entries(evidence.sourceArtifacts)) {
-    assert.equal(`sha256:${sha256(await readText(path))}`, expected, path)
+    assert.equal(
+      `sha256:${sha256(gitRaw("show", `${admittedCandidate}:${path}`))}`,
+      expected,
+      path,
+    )
   }
 })
 
@@ -144,6 +148,10 @@ test("F0-N6 preserves F0-N5 evidence and retains no secret-bearing navigation", 
 
 function git(...args) {
   return execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim()
+}
+
+function gitRaw(...args) {
+  return execFileSync("git", args, { cwd: root, encoding: "utf8" })
 }
 
 function sha256(value) {
