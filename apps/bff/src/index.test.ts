@@ -347,6 +347,7 @@ function fakeConsoleSessionRuntime() {
       consoleOrigin: "https://console.example.test",
       identityIssuer: "https://identity.example.test/realms/appliance",
       internalServiceCredential: "internal-service-credential",
+      nativeLogoutStartUrl: "https://grafana.example.test/logout",
       service,
     },
     service,

@@ -415,7 +415,7 @@ function nativeLiteLlmEnvironment(placement, control) {
     "GENERIC_USER_ID_ATTRIBUTE=sub",
     `GENERIC_USERINFO_ENDPOINT=${identityOrigin}/realms/llm-machines/protocol/openid-connect/userinfo`,
     "GENERIC_USER_ROLE_ATTRIBUTE=litellm_role",
-    "AUTO_REDIRECT_UI_LOGIN_TO_SSO=false",
+    "AUTO_REDIRECT_UI_LOGIN_TO_SSO=true",
     "LITELLM_UI_SESSION_DURATION=8h",
     `PROXY_BASE_URL=${liteLlmOrigin}`,
     `PROXY_LOGOUT_URL=${liteLlmOrigin}/ui/login/`,

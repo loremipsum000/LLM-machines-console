@@ -96,18 +96,23 @@ export function ConsoleV2Shell({
     try {
       const response = await fetch("/api/console/session/logout", {
         credentials: "same-origin",
+        headers: { accept: "application/json" },
         method: "POST",
-        redirect: "follow",
       })
-      const destination = new URL(response.url, window.location.origin)
+      const body = (await response.json()) as { next?: unknown }
+      if (!response.ok || typeof body.next !== "string") throw new Error()
+      const next = new URL(body.next)
       if (
-        !response.ok ||
-        destination.origin !== window.location.origin ||
-        destination.pathname !== "/auth/signin"
+        next.protocol !== "https:" ||
+        next.username ||
+        next.password ||
+        next.pathname !== "/logout" ||
+        next.search ||
+        next.hash
       ) {
-        throw new Error("Console logout did not reach the sign-in page.")
+        throw new Error()
       }
-      window.location.assign(destination)
+      window.location.assign(next)
     } catch {
       setSignOutFailed(true)
     }

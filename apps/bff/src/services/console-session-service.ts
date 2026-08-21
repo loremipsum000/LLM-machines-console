@@ -365,6 +365,17 @@ export class ConsoleSessionService {
   }
 
   async logout(sessionHandle: string): Promise<void> {
+    await this.terminateSession(sessionHandle, "revoke")
+  }
+
+  async globalLogout(sessionHandle: string): Promise<void> {
+    await this.terminateSession(sessionHandle, "end-session")
+  }
+
+  private async terminateSession(
+    sessionHandle: string,
+    remoteAction: "end-session" | "revoke",
+  ): Promise<void> {
     const digest = opaqueHandleDigest(sessionHandle)
     let refreshToken: string | null = null
     await this.repository.withLockedSession(digest, async (record) => {
@@ -388,7 +399,11 @@ export class ConsoleSessionService {
       return { record: null, value: undefined }
     })
     if (refreshToken) {
-      await this.oidc.revoke(refreshToken)
+      if (remoteAction === "end-session") {
+        await this.oidc.endSession(refreshToken)
+      } else {
+        await this.oidc.revoke(refreshToken)
+      }
     }
   }
 

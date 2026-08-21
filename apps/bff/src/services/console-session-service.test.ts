@@ -486,6 +486,19 @@ describe("opaque server-side Console sessions", () => {
     })
   })
 
+  it("uses the server-side identity end-session operation for global logout", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+
+    await fixture.service.globalLogout(session.sessionHandle)
+
+    expect(fixture.oidc.endSession).toHaveBeenCalledWith("refresh-1")
+    expect(fixture.oidc.revoke).not.toHaveBeenCalled()
+    await expect(
+      fixture.service.resolve(session.sessionHandle),
+    ).resolves.toMatchObject({ state: "terminal" })
+  })
+
   it("rejects expired back-channel logout without retaining replay state", async () => {
     const fixture = createFixture()
     await fixture.login()
@@ -593,6 +606,7 @@ function createFixture(
       state: "ok",
       tokens: tokens("1"),
     })),
+    endSession: vi.fn<ConsoleOidcClient["endSession"]>(async () => undefined),
     refresh: vi.fn<ConsoleOidcClient["refresh"]>(
       async (): Promise<ConsoleOidcTokenResult> => ({
         state: "ok",

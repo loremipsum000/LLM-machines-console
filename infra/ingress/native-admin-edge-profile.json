@@ -22,7 +22,14 @@
     "metadataOnlyLogging": true,
     "requestOrResponseBodiesLogged": false,
     "queryStringsLogged": false,
-    "webSocketForwarding": false
+    "webSocketForwarding": false,
+    "globalLogout": {
+      "start": "https://@@PRODUCT_GRAFANA_HOST@@/logout",
+      "sequence": ["grafana", "litellm", "identity", "console"],
+      "consoleMaterialForwarded": false,
+      "tokensInUrls": false,
+      "serviceAvailabilityRequired": false
+    }
   },
   "authorityProvisioning": {
     "productionDomainOwner": "customer",
@@ -48,18 +55,32 @@
     "grafana-oauth-entry-or-callback": [
       "code",
       "iss",
+      "redirectTo",
       "session_state",
       "state"
     ],
     "grafana-root": ["from", "orgId", "timezone", "to"],
     "grafana-login": ["redirectTo"],
     "grafana-search": ["limit", "query", "type"],
+    "grafana-static-cache": ["_cache"],
     "litellm-ui": ["_rsc", "login", "page", "redirect_to"],
+    "litellm-rsc": ["_rsc"],
+    "litellm-sso-entry": ["return_to"],
     "litellm-key-list": [
+      "expand",
       "include_created_by_keys",
+      "include_team_keys",
+      "page",
       "return_full_object",
+      "size",
+      "sort_by",
+      "sort_order",
+      "substring_matching",
       "user_id"
     ],
+    "litellm-models": ["include_model_access_groups", "return_wildcard_routes"],
+    "litellm-team-list": ["page", "page_size", "user_id"],
+    "litellm-team-list-v1": ["user_id"],
     "keycloak-console": ["code", "iss", "session_state", "state"],
     "keycloak-whoami": ["currentRealm"],
     "keycloak-users": [
@@ -235,14 +256,16 @@
             "kind": "regex",
             "value": "^/(?:public/(?:build|fonts|img|plugins)/|resources/).+$"
           },
-          "queryPolicy": "forbid"
+          "queryPolicy": "grafana-static-cache"
         }
       ],
       "failureBehavior": {
         "serviceOutage": "CONTROLLED_503_NO_FALLBACK",
         "identityOutage": "NATIVE_LOGIN_UNAVAILABLE_EXISTING_SESSION_REMAINS_SERVICE_BOUND",
-        "logout": "GRAFANA_SESSION_CLEARED_THEN_KEYCLOAK_LOGOUT"
-      }
+        "logout": "GRAFANA_NATIVE_SESSION_ENDED_THEN_FIXED_GLOBAL_CHAIN",
+        "logoutDuringServiceOutage": "EDGE_EXPIRES_GRAFANA_COOKIES_THEN_CONTINUES_FIXED_GLOBAL_CHAIN"
+      },
+      "ssoEntry": "AUTOMATIC_GENERIC_OAUTH_USING_EXISTING_KEYCLOAK_SESSION"
     },
     "litellm": {
       "version": "v1.96.2-llmm.1",
@@ -331,8 +354,15 @@
         {
           "id": "ui",
           "methods": ["GET", "HEAD"],
-          "path": { "kind": "regex", "value": "^/ui/(?:login/?)?$" },
+          "path": { "kind": "exact", "value": "/ui/" },
           "queryPolicy": "litellm-ui"
+        },
+        {
+          "id": "login-redirect",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "regex", "value": "^/ui/login/?$" },
+          "queryPolicy": "litellm-ui",
+          "behavior": "EDGE_303_TO_SAFE_SSO_ENTRY"
         },
         {
           "id": "static-assets",
@@ -341,19 +371,27 @@
             "kind": "regex",
             "value": "^/(?:litellm-asset-prefix/_next/static/|ui/__next\\.|litellm/\\.well-known/litellm-ui-config).*$"
           },
-          "queryPolicy": "forbid"
+          "queryPolicy": "litellm-rsc"
         },
         {
           "id": "login",
           "methods": ["GET", "HEAD"],
           "path": { "kind": "exact", "value": "/sso/key/generate" },
-          "queryPolicy": "forbid"
+          "queryPolicy": "litellm-sso-entry",
+          "allowedReturnTo": "https://@@PRODUCT_LITELLM_HOST@@/ui/"
         },
         {
           "id": "oauth-callback",
           "methods": ["GET", "HEAD"],
           "path": { "kind": "exact", "value": "/sso/callback" },
           "queryPolicy": "oidc-callback"
+        },
+        {
+          "id": "global-logout",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/__llmm/global-logout" },
+          "queryPolicy": "forbid",
+          "behavior": "CLEAR_NATIVE_COOKIES_AND_CONTINUE_FIXED_CHAIN"
         },
         {
           "id": "key-create",
@@ -392,11 +430,29 @@
           "queryPolicy": "forbid"
         },
         {
+          "id": "models",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/models" },
+          "queryPolicy": "litellm-models"
+        },
+        {
+          "id": "team-list",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/v2/team/list" },
+          "queryPolicy": "litellm-team-list"
+        },
+        {
+          "id": "team-list-v1",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/team/list" },
+          "queryPolicy": "litellm-team-list-v1"
+        },
+        {
           "id": "approved-background-reads",
           "methods": ["GET", "HEAD"],
           "path": {
             "kind": "regex",
-            "value": "^/(?:api/plugins|models|organization/list|policies/list|project/list|prompts/list|team/list|user/available_roles|user/available_users|v2/guardrails/list|v2/team/list|v2/user/info)$"
+            "value": "^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$"
           },
           "queryPolicy": "forbid"
         },
@@ -434,7 +490,9 @@
         "serviceOutage": "CONTROLLED_503_NO_FALLBACK",
         "identityOutage": "NATIVE_LOGIN_UNAVAILABLE_EXISTING_SERVICE_HEALTH_SEPARATE",
         "logout": "LITELLM_TOKEN_COOKIE_CLEARED_SERVICE_LOCAL_SESSION_ENDED"
-      }
+      },
+      "ssoEntry": "AUTOMATIC_GENERIC_OIDC_USING_EXISTING_KEYCLOAK_SESSION",
+      "passwordLoginCustomerPath": "ABSENT"
     },
     "keycloakAdmin": {
       "version": "26.7.0",
@@ -469,6 +527,7 @@
         "identityAuthority": [
           "AUTH_SESSION_ID",
           "KC_AUTH_SESSION_HASH",
+          "KC_RESTART",
           "KEYCLOAK_IDENTITY",
           "KEYCLOAK_SESSION"
         ],

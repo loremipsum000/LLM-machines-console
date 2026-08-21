@@ -18,6 +18,7 @@ import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
 import { writeFirecrawlEgressAllowlist } from "./firecrawl-egress-allowlist.mjs"
+import { firecrawlNetworkPlan } from "./firecrawl-network-plan.mjs"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const serviceControl = serviceControlFromEnvironment()
@@ -38,6 +39,7 @@ const apiImage = `llmm-f0-f2/firecrawl-api:${runId}`
 const browserImage = `llmm-f0-f2/firecrawl-browser:${runId}`
 const bridgeContainer = `llmm-f0-f2-bridge-${runId}`
 const bridgeNetwork = `${project}-bridge-access`
+const networkPlan = firecrawlNetworkPlan(runId)
 const packageById = new Map(
   sourcePackage.buildInputs.map((input) => [input.id, input]),
 )
@@ -321,7 +323,10 @@ async function writeRuntimeFiles() {
         networks: Object.fromEntries(
           ["browser", "control", "egress", "proxy", "search"].map((name) => [
             name,
-            { name: networkName(name) },
+            {
+              ipam: { config: [networkPlan[name]] },
+              name: networkName(name),
+            },
           ]),
         ),
       },
@@ -442,6 +447,10 @@ function startApiBridge(apiPort) {
     "com.llm-machines.test-package=F0-F2",
     "--opt",
     "com.docker.network.bridge.enable_ip_masquerade=false",
+    "--subnet",
+    networkPlan["bridge-access"].subnet,
+    "--gateway",
+    networkPlan["bridge-access"].gateway,
     bridgeNetwork,
   ])
   created.bridgeNetwork = true

@@ -8,7 +8,7 @@ import {
   randomBytes,
   randomUUID,
 } from "node:crypto"
-import { createWriteStream, readFileSync } from "node:fs"
+import { createWriteStream, mkdirSync, readFileSync } from "node:fs"
 import {
   access,
   chmod,
@@ -173,6 +173,10 @@ process.stdout.write(`${JSON.stringify(evidence)}\n`)
 async function runBrowserSessionProof() {
   await assertDevelopmentDependenciesReady()
   const stateRoot = await createTemporaryStateRoot()
+  const processTemporaryRoot = await mkdtemp(
+    join(await realpath(tmpdir()), "llmm-f0-browser-process-"),
+  )
+  await chmod(processTemporaryRoot, 0o700)
   const children = []
   const servers = []
   let browser
@@ -423,6 +427,7 @@ async function runBrowserSessionProof() {
       F0_S1_CA_FILE: certificate.ca,
       F0_S1_CLOCK_FILE: clockFile,
       F0_S1_CONSOLE_ORIGIN: consoleOrigin,
+      F0_S1_GRAFANA_ORIGIN: publicOrigin("grafana", edgePort),
       F0_S1_IDENTITY_ISSUER: identityIssuer,
       F0_S1_OIDC_AUDIENCE: audience,
       F0_S1_OIDC_CLIENT_ID: clientId,
@@ -485,6 +490,7 @@ async function runBrowserSessionProof() {
       PRODUCT_API_HOST: authorities.api,
       PRODUCT_CONSOLE_HOST: authorities.console,
       PRODUCT_FIRECRAWL_HOST: authorities.firecrawl,
+      PRODUCT_GRAFANA_HOST: authorities.grafana,
       PRODUCT_IDENTITY_HOST: authorities.identity,
       PUBLIC_BFF_BASE_URL: publicOrigin("api", edgePort),
     }
@@ -502,6 +508,7 @@ async function runBrowserSessionProof() {
       bffEnvironment,
       stateRoot,
       repositoryRoot,
+      processTemporaryRoot,
     )
     children.push(bffChild)
     const restartBff = postgresControl
@@ -518,6 +525,7 @@ async function runBrowserSessionProof() {
             bffEnvironment,
             stateRoot,
             repositoryRoot,
+            processTemporaryRoot,
           )
           children.push(bffChild)
           await waitForHttp(`http://127.0.0.1:${bffPort}/livez`, children)
@@ -564,6 +572,7 @@ async function runBrowserSessionProof() {
         webEnvironment,
         stateRoot,
         webRoot,
+        processTemporaryRoot,
       ),
     )
 
@@ -636,6 +645,7 @@ async function runBrowserSessionProof() {
       keycloakControl,
       waitForPublicMatch: commissioningLoginMode,
     })
+    if (commissioningLoginMode) await synchronizeFixtureClock()
     const executablePath = await chromeExecutable()
     const browserArguments = ["--no-proxy-server"]
     if (!founderUatPlacement) {
@@ -704,6 +714,7 @@ async function runBrowserSessionProof() {
         context,
         edgePort,
       })
+      const identityMutationBaseline = completedIdentityMutationCount()
       const teamFlow = await proveKeycloakTeamConsoleFlow({
         bffPort,
         consoleOrigin,
@@ -713,7 +724,10 @@ async function runBrowserSessionProof() {
         sensitiveValues,
         synchronizeClock: synchronizeFixtureClock,
       })
-      const postgresEvidence = inspectKeycloakTeamPersistence(sensitiveValues)
+      const postgresEvidence = inspectKeycloakTeamPersistence(
+        sensitiveValues,
+        identityMutationBaseline,
+      )
       assert.deepEqual(pageErrors, [])
       assertNoSensitiveValues(
         browserMetadata,
@@ -1015,6 +1029,21 @@ async function runBrowserSessionProof() {
             certificate,
             credentials,
             edgePort,
+            synchronizeClock: synchronizeFixtureClock,
+          })
+        : { status: "DEFERRED_TO_NATIVE_LINUX_FOUNDER_LANE" }
+      const logoutOutages = founderUatControl
+        ? await proveCoordinatedLogoutOutages({
+            browser,
+            credentials,
+            edgePort,
+            grafanaControl: {
+              baseUrl: integratedObservabilityControl.grafanaBaseUrl,
+              container: founderUatControl.outerInventory.containers.grafana,
+              dockerContext: postgresControl.dockerContext,
+            },
+            liteLlmControl,
+            synchronizeClock: synchronizeFixtureClock,
           })
         : { status: "DEFERRED_TO_NATIVE_LINUX_FOUNDER_LANE" }
       const noBypass = await proveIntegratedNoBypass({
@@ -1077,6 +1106,7 @@ async function runBrowserSessionProof() {
         },
         noBypass,
         nativeAdministration,
+        globalLogoutDuringOutage: logoutOutages,
         observability,
         persistence: postgresPersistenceEvidence,
         proved: [
@@ -1476,8 +1506,12 @@ async function runBrowserSessionProof() {
       }
     }
     await rm(stateRoot, { force: true, recursive: true })
+    await rm(processTemporaryRoot, { force: true, recursive: true })
     if (await exists(stateRoot)) {
       failure = new Error("F0-U2 temporary state was not removed.")
+    }
+    if (await exists(processTemporaryRoot)) {
+      failure = new Error("F0-U2 process temporary state was not removed.")
     }
   }
   if (failure) {
@@ -2292,7 +2326,10 @@ async function proveIntegratedNoBypass({ certificate, edgePort }) {
       path,
       servername: authority,
     })
-    assert.ok([400, 403, 404].includes(response.status))
+    assert.ok(
+      [400, 403, 404, 421].includes(response.status),
+      `${authority}${path} forbidden native route returned ${response.status}.`,
+    )
     denied.push(`${authority}${path}`)
   }
   const unsafe = await requestHttpsEdgeWithHeaders({
@@ -2338,7 +2375,14 @@ async function proveIntegratedNativeAdministration({
   certificate,
   credentials,
   edgePort,
+  synchronizeClock,
 }) {
+  const unifiedSso = await proveUnifiedNativeSsoAndLogout({
+    browser,
+    credentials,
+    edgePort,
+    synchronizeClock,
+  })
   const grafanaAdmin = await nativeBrowserLogin({
     browser,
     credentials: credentials.admin,
@@ -2415,11 +2459,29 @@ async function proveIntegratedNativeAdministration({
   assert.equal(adminClaims.user_id, credentials.admin.subject)
   assert.equal(operatorClaims.user_role, "internal_user")
   assert.equal(operatorClaims.user_id, credentials.operator.subject)
+  const adminKeyAlias = `founder-admin-${randomBytes(4).toString("hex")}`
+  const adminKey = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: adminClaims.key,
+    body: {
+      key_alias: adminKeyAlias,
+      models: ["fixture-model"],
+      user_id: credentials.admin.subject,
+    },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/key/generate",
+  })
+  assert.equal(adminKey.status, 200)
+  assert.match(adminKey.body?.key ?? "", /^sk-/)
+  assert.equal(adminKey.body?.user_id, credentials.admin.subject)
+  const operatorKeyAlias = `founder-operator-${randomBytes(4).toString("hex")}`
   const operatorKey = await requestJsonThroughEdge({
     authority: authorities.litellm,
     bearerToken: operatorClaims.key,
     body: {
-      key_alias: `founder-operator-${randomBytes(4).toString("hex")}`,
+      key_alias: operatorKeyAlias,
       models: ["fixture-model"],
     },
     caFile: certificate.ca,
@@ -2430,6 +2492,18 @@ async function proveIntegratedNativeAdministration({
   assert.equal(operatorKey.status, 200)
   assert.match(operatorKey.body?.key ?? "", /^sk-/)
   assert.equal(operatorKey.body?.user_id, credentials.operator.subject)
+  const operatorUiKeyList = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: operatorClaims.key,
+    caFile: certificate.ca,
+    edgePort,
+    method: "GET",
+    path: "/key/list?expand=false&include_created_by_keys=false&include_team_keys=false&page=1&return_full_object=true&size=50&sort_by=created_at&sort_order=desc&substring_matching=false",
+  })
+  assert.equal(operatorUiKeyList.status, 200)
+  const operatorUiKeyListJson = JSON.stringify(operatorUiKeyList.body)
+  assert.match(operatorUiKeyListJson, new RegExp(operatorKeyAlias))
+  assert.doesNotMatch(operatorUiKeyListJson, new RegExp(adminKeyAlias))
   const globalMutation = await requestJsonThroughEdge({
     authority: authorities.litellm,
     bearerToken: operatorClaims.key,
@@ -2462,6 +2536,16 @@ async function proveIntegratedNativeAdministration({
     path: "/key/delete",
   })
   assert.equal(ownKeyDelete.status, 200)
+  const adminKeyDelete = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: adminClaims.key,
+    body: { keys: [adminKey.body.key] },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/key/delete",
+  })
+  assert.equal(adminKeyDelete.status, 200)
   await Promise.all(
     [liteLlmAdmin, liteLlmOperator].map((session) =>
       logoutNativeLiteLlm(session, edgePort),
@@ -2537,11 +2621,333 @@ async function proveIntegratedNativeAdministration({
       admin: "proxy_admin",
       operator: "internal_user",
       operatorGlobalMutation: "DENY",
+      operatorOwnKeyListIsolation: "PASS",
       operatorOwnKeyAndSpend: "PASS",
     },
     nativeSessions: "SERVICE_OWNED",
     status: "PASS",
+    unifiedSso,
   }
+}
+
+async function proveUnifiedNativeSsoAndLogout({
+  browser,
+  credentials,
+  edgePort,
+  synchronizeClock,
+}) {
+  const results = {}
+  for (const [role, identity] of [
+    ["Admin", credentials.admin],
+    ["Operator", credentials.operator],
+  ]) {
+    const context = await browser.newContext({ ignoreHTTPSErrors: false })
+    const consolePage = await context.newPage()
+    await synchronizeClock()
+    await signIn(
+      consolePage,
+      publicOrigin("console", edgePort),
+      identity,
+      "/settings",
+    )
+    const credentialPrompts = []
+    const errors = []
+    const open = async (entry, expected) => {
+      const page = await context.newPage()
+      page.on("pageerror", (error) => {
+        const location = new URL(page.url())
+        errors.push({
+          kind: "pageerror",
+          message: error.message,
+          origin: location.origin,
+          path: location.pathname,
+        })
+      })
+      page.on("response", (response) => {
+        if (response.status() !== 400) return
+        const location = new URL(response.url())
+        errors.push({
+          kind: "response",
+          origin: location.origin,
+          path: location.pathname,
+          queryKeys: [...new Set(location.searchParams.keys())].sort(),
+          status: response.status(),
+        })
+      })
+      await page.goto(entry, { waitUntil: "domcontentloaded" })
+      await eventually(async () => expected(page), 120_000)
+      credentialPrompts.push(await page.locator("#username").count())
+      assert.notEqual(page.url(), "about:blank")
+      assert.notEqual((await page.title()).trim(), "400 Bad Request")
+      return page
+    }
+
+    const liteLlm = await open(
+      `${publicOrigin("litellm", edgePort)}/ui/`,
+      async (page) =>
+        new URL(page.url()).origin === publicOrigin("litellm", edgePort) &&
+        (await context.cookies()).some(({ name }) => name === "token"),
+    )
+    const liteLlmClaims = nativeJwtClaims(
+      decodeURIComponent(
+        (await context.cookies()).find(({ name }) => name === "token")?.value ??
+          "",
+      ),
+    )
+    assert.equal(
+      liteLlmClaims.user_role,
+      role === "Admin" ? "proxy_admin" : "internal_user",
+    )
+
+    const grafana = await open(
+      `${publicOrigin("grafana", edgePort)}/`,
+      async (page) =>
+        role === "Admin"
+          ? new URL(page.url()).origin === publicOrigin("grafana", edgePort) &&
+            (await context.cookies()).some(
+              ({ name }) => name === "grafana_session",
+            )
+          : /access denied|failed to get user info|login failed/i.test(
+              await page
+                .locator("body")
+                .innerText()
+                .catch(() => ""),
+            ),
+    )
+
+    const keycloak = await open(
+      `${publicOrigin("keycloak", edgePort)}/keycloak/admin/llm-machines/console/`,
+      async (page) =>
+        role === "Admin"
+          ? new URL(page.url()).origin === publicOrigin("keycloak", edgePort) &&
+            new URL(page.url()).pathname.startsWith(
+              "/keycloak/admin/llm-machines/console/",
+            ) &&
+            !/login-actions/.test(page.url())
+          : /access denied|do not have permission|forbidden/i.test(
+              await page
+                .locator("body")
+                .innerText()
+                .catch(() => ""),
+            ),
+    )
+
+    assert.deepEqual(credentialPrompts, [0, 0, 0])
+    assert.deepEqual(errors, [])
+    await consolePage.goto(`${publicOrigin("console", edgePort)}/`)
+    await consolePage.getByRole("button", { name: "Sign out" }).click()
+    await consolePage.waitForURL(
+      (url) =>
+        url.origin === publicOrigin("console", edgePort) &&
+        url.pathname === "/auth/signin",
+      { timeout: 120_000 },
+    )
+    const retained = (await context.cookies())
+      .map(({ name }) => name)
+      .filter((name) =>
+        [
+          "__Host-llm-machines-session",
+          "AUTH_SESSION_ID",
+          "KC_AUTH_SESSION_HASH",
+          "KC_RESTART",
+          "KEYCLOAK_IDENTITY",
+          "KEYCLOAK_SESSION",
+          "grafana_session",
+          "grafana_session_expiry",
+          "litellm_cp_return_to",
+          "litellm_oauth_state",
+          "sso_state",
+          "token",
+        ].includes(name),
+      )
+    assert.deepEqual(retained, [])
+
+    const afterLogout = await context.newPage()
+    await afterLogout.goto(`${publicOrigin("litellm", edgePort)}/ui/`, {
+      waitUntil: "domcontentloaded",
+    })
+    await afterLogout.locator("#username").waitFor({
+      state: "visible",
+      timeout: 120_000,
+    })
+    assert.equal(
+      new URL(afterLogout.url()).origin,
+      publicOrigin("identity", edgePort),
+    )
+
+    results[role.toLowerCase()] = {
+      credentialPrompts: 0,
+      globalLogout: "PASS",
+      grafana: role === "Admin" ? "Editor" : "DENY",
+      keycloak: role === "Admin" ? "APPLIANCE_REALM" : "DENY",
+      liteLlm: liteLlmClaims.user_role,
+      secondCredentialPrompts: 1,
+    }
+    await Promise.all([liteLlm.close(), grafana.close(), keycloak.close()])
+    await context.close()
+  }
+  return results
+}
+
+async function proveCoordinatedLogoutOutages({
+  browser,
+  credentials,
+  edgePort,
+  grafanaControl,
+  liteLlmControl,
+  synchronizeClock,
+}) {
+  assert.match(grafanaControl.container ?? "", /^[a-z0-9][a-z0-9_.-]{0,127}$/)
+  const results = {}
+  for (const outage of [
+    {
+      control: grafanaControl,
+      name: "grafana",
+      restart: () => waitForNativeHealth(grafanaControl, "/api/health"),
+    },
+    {
+      control: liteLlmControl,
+      name: "litellm",
+      restart: () => waitForLiteLlm(liteLlmControl),
+    },
+  ]) {
+    const context = await browser.newContext({ ignoreHTTPSErrors: false })
+    const consolePage = await context.newPage()
+    let stopped = false
+    let proofFailure = null
+    try {
+      await synchronizeClock()
+      await signIn(
+        consolePage,
+        publicOrigin("console", edgePort),
+        credentials.admin,
+        "/settings",
+      )
+      const liteLlmPage = await context.newPage()
+      await liteLlmPage.goto(`${publicOrigin("litellm", edgePort)}/ui/`, {
+        waitUntil: "domcontentloaded",
+      })
+      await eventually(
+        async () =>
+          (await context.cookies()).some(({ name }) => name === "token"),
+        120_000,
+      )
+      const grafanaPage = await context.newPage()
+      await grafanaPage.goto(`${publicOrigin("grafana", edgePort)}/`, {
+        waitUntil: "domcontentloaded",
+      })
+      await eventually(
+        async () =>
+          (await context.cookies()).some(
+            ({ name }) => name === "grafana_session",
+          ),
+        120_000,
+      )
+
+      const stop = dockerControl(outage.control, [
+        "stop",
+        "--time",
+        "5",
+        outage.control.container,
+      ])
+      assert.equal(stop.status, 0)
+      stopped = true
+
+      await consolePage.goto(`${publicOrigin("console", edgePort)}/`)
+      await consolePage.getByRole("button", { name: "Sign out" }).click()
+      await consolePage.waitForURL(
+        (url) =>
+          url.origin === publicOrigin("console", edgePort) &&
+          url.pathname === "/auth/signin",
+        { timeout: 120_000 },
+      )
+      const signedOutUrl = consolePage.url()
+      await consolePage.waitForTimeout(1_000)
+      assert.equal(consolePage.url(), signedOutUrl)
+      assert.deepEqual(protectedBrowserCookieNames(await context.cookies()), [])
+    } catch (error) {
+      proofFailure = error
+    }
+
+    if (stopped) {
+      const start = dockerControl(outage.control, [
+        "start",
+        outage.control.container,
+      ])
+      if (start.status !== 0) {
+        const recoveryError = new Error(
+          `F0-C1 could not restart ${outage.name} after logout outage proof.`,
+        )
+        proofFailure = proofFailure
+          ? new AggregateError([proofFailure, recoveryError])
+          : recoveryError
+      } else {
+        try {
+          await outage.restart()
+        } catch (recoveryError) {
+          proofFailure = proofFailure
+            ? new AggregateError([proofFailure, recoveryError])
+            : recoveryError
+        }
+      }
+    }
+    if (!proofFailure) {
+      const reentry = await context.newPage()
+      await reentry.goto(
+        outage.name === "grafana"
+          ? `${publicOrigin("grafana", edgePort)}/`
+          : `${publicOrigin("litellm", edgePort)}/ui/`,
+        { waitUntil: "domcontentloaded" },
+      )
+      await reentry.locator("#username").waitFor({
+        state: "visible",
+        timeout: 120_000,
+      })
+      assert.equal(
+        new URL(reentry.url()).origin,
+        publicOrigin("identity", edgePort),
+      )
+      results[outage.name] = "PASS"
+    }
+    await context.close()
+    if (proofFailure) throw proofFailure
+  }
+  return { ...results, redirectLoopAbsent: true }
+}
+
+function protectedBrowserCookieNames(cookies) {
+  const protectedNames = new Set([
+    "__Host-llm-machines-session",
+    "AUTH_SESSION_ID",
+    "KC_AUTH_SESSION_HASH",
+    "KC_RESTART",
+    "KEYCLOAK_IDENTITY",
+    "KEYCLOAK_SESSION",
+    "grafana_session",
+    "grafana_session_expiry",
+    "litellm_cp_return_to",
+    "litellm_oauth_state",
+    "sso_state",
+    "token",
+  ])
+  return cookies
+    .map(({ name }) => name)
+    .filter((name) => protectedNames.has(name))
+    .sort()
+}
+
+async function waitForNativeHealth(control, path) {
+  const deadline = performance.now() + 120_000
+  while (performance.now() < deadline) {
+    const response = await fetch(`${control.baseUrl}${path}`).catch(() => null)
+    if (response) {
+      const status = response.status
+      await response.body?.cancel()
+      if (status === 200) return
+    }
+    await delay(250)
+  }
+  throw new Error("F0-C1 native service did not recover after logout proof.")
 }
 
 async function nativeBrowserLogin({
@@ -4325,6 +4731,52 @@ function createDevelopmentEdge({
     (request, response) => {
       const host = (request.headers.host ?? "").split(":", 1)[0].toLowerCase()
       const url = new URL(request.url ?? "/", `https://${request.headers.host}`)
+      if (host === authorities.grafana && url.pathname === "/logout") {
+        developmentLogoutRedirect(
+          request,
+          response,
+          url,
+          `${publicOrigin("litellm", edgePort)}/__llmm/global-logout`,
+        )
+        return
+      }
+      if (
+        host === authorities.litellm &&
+        url.pathname === "/__llmm/global-logout"
+      ) {
+        developmentLogoutRedirect(
+          request,
+          response,
+          url,
+          `${publicOrigin("identity", edgePort)}/__llmm/global-logout`,
+          [
+            "token=; Path=/; Max-Age=0; Secure; SameSite=Lax",
+            "litellm_cp_return_to=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+            "litellm_oauth_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+            "sso_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+          ],
+        )
+        return
+      }
+      if (
+        host === authorities.identity &&
+        url.pathname === "/__llmm/global-logout"
+      ) {
+        developmentLogoutRedirect(
+          request,
+          response,
+          url,
+          `${publicOrigin("console", edgePort)}/auth/signin`,
+          [
+            "AUTH_SESSION_ID=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+            "KC_AUTH_SESSION_HASH=; Path=/realms/llm-machines/; Max-Age=0; Secure; SameSite=None",
+            "KC_RESTART=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+            "KEYCLOAK_IDENTITY=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+            "KEYCLOAK_SESSION=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+          ],
+        )
+        return
+      }
       if (host === authorities.identity) {
         if (keycloakControl) {
           proxyIdentityRequest(
@@ -4398,6 +4850,26 @@ function createDevelopmentEdge({
   )
   server.on("tlsClientError", (error) => tlsErrors.push(error.message))
   return server
+}
+
+function developmentLogoutRedirect(
+  request,
+  response,
+  url,
+  destination,
+  cookies = [],
+) {
+  if (!["GET", "HEAD"].includes(request.method ?? "") || url.search) {
+    sendJson(response, 400, { error: "invalid_logout_hop" })
+    return
+  }
+  response.writeHead(303, {
+    "cache-control": "no-store",
+    location: destination,
+    "referrer-policy": "no-referrer",
+    ...(cookies.length > 0 ? { "set-cookie": cookies } : {}),
+  })
+  response.end()
 }
 
 async function startFounderProductEdge({
@@ -5786,7 +6258,18 @@ function inspectPostgresPersistence(sensitiveValues, applicationFlow = null) {
   }
 }
 
-function inspectKeycloakTeamPersistence(sensitiveValues) {
+function completedIdentityMutationCount() {
+  return postgresJson(`
+    SELECT count(*)::integer
+    FROM admin.identity_mutation_journal
+    WHERE state = 'completed';
+  `)
+}
+
+function inspectKeycloakTeamPersistence(
+  sensitiveValues,
+  identityMutationBaseline,
+) {
   const summary = postgresJson(`
     SELECT json_build_object(
       'auditEvents', (
@@ -5835,7 +6318,7 @@ function inspectKeycloakTeamPersistence(sensitiveValues) {
     );
   `)
   assert.ok(summary.auditEvents >= 4)
-  assert.equal(summary.completedIdentityMutations, 4)
+  assert.equal(summary.completedIdentityMutations - identityMutationBaseline, 4)
   assert.equal(summary.auditMetadataOnly, true)
   assert.equal(summary.identityMutationMetadataOnly, true)
   assert.equal(summary.plaintextSessionPayloads, 0)
@@ -5856,6 +6339,7 @@ function inspectKeycloakTeamPersistence(sensitiveValues) {
   assertNoSensitiveValues([dump], sensitiveValues, "PostgreSQL data")
   return {
     ...summary,
+    completedIdentityMutationsThisRun: 4,
     credentialMaterialPersisted: false,
   }
 }
@@ -6313,7 +6797,16 @@ async function buildFounderWebProject(webRoot, environment, stateRoot) {
   }
 }
 
-function startChild(name, command, environment, stateRoot, cwd) {
+function startChild(
+  name,
+  command,
+  environment,
+  stateRoot,
+  cwd,
+  processTemporaryRoot,
+) {
+  const childTemporaryRoot = join(processTemporaryRoot, name)
+  mkdirSync(childTemporaryRoot, { mode: 0o700, recursive: true })
   const stdout = createWriteStream(join(stateRoot, `${name}.stdout.log`), {
     mode: 0o600,
   })
@@ -6328,7 +6821,7 @@ function startChild(name, command, environment, stateRoot, cwd) {
       HOME: stateRoot,
       LANG: "C",
       LC_ALL: "C",
-      TMPDIR: stateRoot,
+      TMPDIR: childTemporaryRoot,
       ...environment,
     },
     stdio: ["ignore", "pipe", "pipe"],

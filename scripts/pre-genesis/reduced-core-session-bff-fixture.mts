@@ -21,6 +21,7 @@ if (
 }
 
 const consoleOrigin = required("F0_S1_CONSOLE_ORIGIN")
+const grafanaOrigin = required("F0_S1_GRAFANA_ORIGIN")
 const issuer = required("F0_S1_IDENTITY_ISSUER")
 const clockFile = required("F0_S1_CLOCK_FILE")
 const clientId = required("F0_S1_OIDC_CLIENT_ID")
@@ -66,6 +67,7 @@ const rawOidc = createConsoleOidcClient(
     authorizationEndpoint: `${oidcBase}/auth`,
     clientId,
     clientSecret,
+    logoutEndpoint: `${oidcBase}/logout`,
     redirectUri: `${consoleOrigin}/api/console/session/callback`,
     revocationEndpoint: `${oidcBase}/revoke`,
     tokenEndpoint: `${oidcBase}/token`,
@@ -84,6 +86,7 @@ const rawValidator = createConsoleTokenValidator(
 )
 const oidc = {
   authorizationUrl: rawOidc.authorizationUrl,
+  endSession: rawOidc.endSession,
   async exchangeCode(code: string, verifier: string) {
     const result = await rawOidc.exchangeCode(code, verifier)
     fixtureEvent("oidc_exchange", result)
@@ -190,6 +193,7 @@ const server = buildServer({
     consoleOrigin,
     identityIssuer: issuer,
     internalServiceCredential,
+    nativeLogoutStartUrl: `${grafanaOrigin}/logout`,
     service,
   },
 })
