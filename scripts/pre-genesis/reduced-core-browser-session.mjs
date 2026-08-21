@@ -706,6 +706,7 @@ async function runBrowserSessionProof() {
         context,
         edgePort,
       })
+      const identityMutationBaseline = completedIdentityMutationCount()
       const teamFlow = await proveKeycloakTeamConsoleFlow({
         bffPort,
         consoleOrigin,
@@ -715,7 +716,10 @@ async function runBrowserSessionProof() {
         sensitiveValues,
         synchronizeClock: synchronizeFixtureClock,
       })
-      const postgresEvidence = inspectKeycloakTeamPersistence(sensitiveValues)
+      const postgresEvidence = inspectKeycloakTeamPersistence(
+        sensitiveValues,
+        identityMutationBaseline,
+      )
       assert.deepEqual(pageErrors, [])
       assertNoSensitiveValues(
         browserMetadata,
@@ -5998,7 +6002,18 @@ function inspectPostgresPersistence(sensitiveValues, applicationFlow = null) {
   }
 }
 
-function inspectKeycloakTeamPersistence(sensitiveValues) {
+function completedIdentityMutationCount() {
+  return postgresJson(`
+    SELECT count(*)::integer
+    FROM admin.identity_mutation_journal
+    WHERE state = 'completed';
+  `)
+}
+
+function inspectKeycloakTeamPersistence(
+  sensitiveValues,
+  identityMutationBaseline,
+) {
   const summary = postgresJson(`
     SELECT json_build_object(
       'auditEvents', (
@@ -6047,7 +6062,7 @@ function inspectKeycloakTeamPersistence(sensitiveValues) {
     );
   `)
   assert.ok(summary.auditEvents >= 4)
-  assert.equal(summary.completedIdentityMutations, 4)
+  assert.equal(summary.completedIdentityMutations - identityMutationBaseline, 4)
   assert.equal(summary.auditMetadataOnly, true)
   assert.equal(summary.identityMutationMetadataOnly, true)
   assert.equal(summary.plaintextSessionPayloads, 0)
@@ -6068,6 +6083,7 @@ function inspectKeycloakTeamPersistence(sensitiveValues) {
   assertNoSensitiveValues([dump], sensitiveValues, "PostgreSQL data")
   return {
     ...summary,
+    completedIdentityMutationsThisRun: 4,
     credentialMaterialPersisted: false,
   }
 }
