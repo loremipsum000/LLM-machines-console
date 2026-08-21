@@ -215,6 +215,22 @@ test("commissioning synchronizes validation time after public identity convergen
   )
 })
 
+test("each unified Console login synchronizes the controlled validation clock", async () => {
+  const browser = await read(
+    "scripts/pre-genesis/reduced-core-browser-session.mjs",
+  )
+  const unified = browser.slice(
+    browser.indexOf("async function proveUnifiedNativeSsoAndLogout"),
+    browser.indexOf("async function nativeBrowserLogin"),
+  )
+
+  assert.match(unified, /await synchronizeClock\(\)\n {4}await signIn\(/)
+  assert.match(
+    browser,
+    /proveIntegratedNativeAdministration\(\{[\s\S]*?synchronizeClock: synchronizeFixtureClock/,
+  )
+})
+
 async function read(path) {
   return readFile(resolve(root, path), "utf8")
 }

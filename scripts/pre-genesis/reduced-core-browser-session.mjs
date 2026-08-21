@@ -1029,6 +1029,7 @@ async function runBrowserSessionProof() {
             certificate,
             credentials,
             edgePort,
+            synchronizeClock: synchronizeFixtureClock,
           })
         : { status: "DEFERRED_TO_NATIVE_LINUX_FOUNDER_LANE" }
       const noBypass = await proveIntegratedNoBypass({
@@ -2359,11 +2360,13 @@ async function proveIntegratedNativeAdministration({
   certificate,
   credentials,
   edgePort,
+  synchronizeClock,
 }) {
   const unifiedSso = await proveUnifiedNativeSsoAndLogout({
     browser,
     credentials,
     edgePort,
+    synchronizeClock,
   })
   const grafanaAdmin = await nativeBrowserLogin({
     browser,
@@ -2612,6 +2615,7 @@ async function proveUnifiedNativeSsoAndLogout({
   browser,
   credentials,
   edgePort,
+  synchronizeClock,
 }) {
   const results = {}
   for (const [role, identity] of [
@@ -2620,6 +2624,7 @@ async function proveUnifiedNativeSsoAndLogout({
   ]) {
     const context = await browser.newContext({ ignoreHTTPSErrors: false })
     const consolePage = await context.newPage()
+    await synchronizeClock()
     await signIn(
       consolePage,
       publicOrigin("console", edgePort),
