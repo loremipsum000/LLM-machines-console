@@ -20,6 +20,7 @@ import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { firecrawlNetworkPlan } from "./firecrawl-network-plan.mjs"
 import {
   authorityOrigin,
   loadFounderUatPlacement,
@@ -76,6 +77,7 @@ const images = Object.fromEntries(
   ].map((id) => [id, exactImage(id)]),
 )
 const runId = randomBytes(8).toString("hex")
+const coreNetwork = firecrawlNetworkPlan(runId).proxy
 const packageId = "F0-C1"
 const firecrawlProfile = `llmm-f0-f2-${runId}`
 const firecrawlDockerContext = nativeAmd64
@@ -557,8 +559,12 @@ async function startProductPostgres() {
   docker([
     "network",
     "create",
+    "--gateway",
+    coreNetwork.gateway,
     "--label",
     `com.llm-machines.test-package=${packageId}`,
+    "--subnet",
+    coreNetwork.subnet,
     network,
   ])
   created.network = true
