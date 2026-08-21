@@ -50,7 +50,7 @@ test("LiteLLM customer ingress has no password-login surface and accepts only it
   assert.doesNotMatch(edge, /~\*\^return_to=/)
 })
 
-test("Grafana automatic OAuth entry accepts only the observed empty redirect", async () => {
+test("Grafana automatic OAuth entry accepts only empty or encoded same-origin paths", async () => {
   const edge = await read("infra/ingress/product-edge.nginx.conf.template")
   const oauthMap = edge.match(
     /map \$args \$llmm_query_grafana_oauth \{[\s\S]*?\n {2}\}/,
@@ -58,7 +58,11 @@ test("Grafana automatic OAuth entry accepts only the observed empty redirect", a
 
   assert.ok(oauthMap)
   assert.match(oauthMap, /"redirectTo=" 1;/)
-  assert.doesNotMatch(oauthMap, /~\^redirectTo=/)
+  assert.match(
+    oauthMap,
+    /redirectTo=%2F\(\?!%2F\)\(\?!\.\*%\(\?:25\|5\[Cc\]\)\)/,
+  )
+  assert.doesNotMatch(oauthMap, /~\^redirectTo=\.\*\$/)
 })
 
 test("native UI background queries remain exact and credential-free", async () => {
@@ -154,6 +158,7 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
     edge,
     /location = \/logout[\s\S]*?proxy_pass http:\/\/grafana_native;/,
   )
+  assert.match(edge, /redirectTo=%2F\(\?!%2F\)\(\?!\.\*%\(\?:25\|5\[Cc\]\)\)/)
   assert.match(
     edge,
     /location @grafana_global_logout_fallback[\s\S]*?return 303 https:\/\/@@PRODUCT_LITELLM_HOST@@\/__llmm\/global-logout;/,
@@ -249,6 +254,14 @@ test("integrated browser proof covers coordinated logout during native outages",
   assert.match(browser, /await proveCoordinatedLogoutOutages\(\{/)
   assert.match(browser, /name: "grafana"[\s\S]*?name: "litellm"/)
   assert.match(browser, /globalLogoutDuringOutage: logoutOutages/)
+  assert.match(
+    browser,
+    /for \(const nativePage of \[grafana, liteLlm, keycloak\]\)/,
+  )
+  assert.match(
+    browser,
+    /assert\.notEqual\(\(await nativePage\.title\(\)\)\.trim\(\), "400 Bad Request"\)/,
+  )
 })
 
 async function read(path) {

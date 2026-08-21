@@ -2761,6 +2761,11 @@ async function proveUnifiedNativeSsoAndLogout({
         ].includes(name),
       )
     assert.deepEqual(retained, [])
+    await consolePage.waitForTimeout(1_000)
+    assert.deepEqual(errors, [])
+    for (const nativePage of [grafana, liteLlm, keycloak]) {
+      assert.notEqual((await nativePage.title()).trim(), "400 Bad Request")
+    }
 
     const afterLogout = await context.newPage()
     await afterLogout.goto(`${publicOrigin("litellm", edgePort)}/ui/`, {
