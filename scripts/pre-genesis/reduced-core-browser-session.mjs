@@ -173,6 +173,10 @@ process.stdout.write(`${JSON.stringify(evidence)}\n`)
 async function runBrowserSessionProof() {
   await assertDevelopmentDependenciesReady()
   const stateRoot = await createTemporaryStateRoot()
+  const processTemporaryRoot = await mkdtemp(
+    join(await realpath(tmpdir()), "llmm-f0-browser-process-"),
+  )
+  await chmod(processTemporaryRoot, 0o700)
   const children = []
   const servers = []
   let browser
@@ -504,6 +508,7 @@ async function runBrowserSessionProof() {
       bffEnvironment,
       stateRoot,
       repositoryRoot,
+      processTemporaryRoot,
     )
     children.push(bffChild)
     const restartBff = postgresControl
@@ -520,6 +525,7 @@ async function runBrowserSessionProof() {
             bffEnvironment,
             stateRoot,
             repositoryRoot,
+            processTemporaryRoot,
           )
           children.push(bffChild)
           await waitForHttp(`http://127.0.0.1:${bffPort}/livez`, children)
@@ -566,6 +572,7 @@ async function runBrowserSessionProof() {
         webEnvironment,
         stateRoot,
         webRoot,
+        processTemporaryRoot,
       ),
     )
 
@@ -1482,8 +1489,12 @@ async function runBrowserSessionProof() {
       }
     }
     await rm(stateRoot, { force: true, recursive: true })
+    await rm(processTemporaryRoot, { force: true, recursive: true })
     if (await exists(stateRoot)) {
       failure = new Error("F0-U2 temporary state was not removed.")
+    }
+    if (await exists(processTemporaryRoot)) {
+      failure = new Error("F0-U2 process temporary state was not removed.")
     }
   }
   if (failure) {
@@ -6541,8 +6552,15 @@ async function buildFounderWebProject(webRoot, environment, stateRoot) {
   }
 }
 
-function startChild(name, command, environment, stateRoot, cwd) {
-  const childTemporaryRoot = join(stateRoot, "process-tmp", name)
+function startChild(
+  name,
+  command,
+  environment,
+  stateRoot,
+  cwd,
+  processTemporaryRoot,
+) {
+  const childTemporaryRoot = join(processTemporaryRoot, name)
   mkdirSync(childTemporaryRoot, { mode: 0o700, recursive: true })
   const stdout = createWriteStream(join(stateRoot, `${name}.stdout.log`), {
     mode: 0o600,

@@ -111,13 +111,21 @@ test("integrated browser children cannot collide through a shared IPC directory"
 
   assert.match(
     browser,
-    /const childTemporaryRoot = join\(stateRoot, "process-tmp", name\)/,
+    /join\(await realpath\(tmpdir\(\)\), "llmm-f0-browser-process-"\)/,
+  )
+  assert.match(
+    browser,
+    /const childTemporaryRoot = join\(processTemporaryRoot, name\)/,
   )
   assert.match(
     browser,
     /mkdirSync\(childTemporaryRoot, \{ mode: 0o700, recursive: true \}\)/,
   )
   assert.match(browser, /TMPDIR: childTemporaryRoot/)
+  assert.match(
+    browser,
+    /await rm\(processTemporaryRoot, \{ force: true, recursive: true \}\)/,
+  )
 })
 
 async function read(path) {
