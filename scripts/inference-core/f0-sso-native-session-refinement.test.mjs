@@ -258,6 +258,7 @@ test("integrated browser proof covers coordinated logout during native outages",
     browser,
     /for \(const nativePage of \[grafana, liteLlm, keycloak\]\)/,
   )
+  assert.match(browser, /errors\.filter\(\(\{ status \}\) => status === 400\)/)
   assert.match(
     browser,
     /assert\.notEqual\(\(await nativePage\.title\(\)\)\.trim\(\), "400 Bad Request"\)/,

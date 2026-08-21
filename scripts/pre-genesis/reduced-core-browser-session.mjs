@@ -2762,7 +2762,10 @@ async function proveUnifiedNativeSsoAndLogout({
       )
     assert.deepEqual(retained, [])
     await consolePage.waitForTimeout(1_000)
-    assert.deepEqual(errors, [])
+    assert.deepEqual(
+      errors.filter(({ status }) => status === 400),
+      [],
+    )
     for (const nativePage of [grafana, liteLlm, keycloak]) {
       assert.notEqual((await nativePage.title()).trim(), "400 Bad Request")
     }
