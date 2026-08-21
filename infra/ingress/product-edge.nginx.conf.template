@@ -81,7 +81,7 @@ http {
   map $args $llmm_query_litellm_rsc {
     default 0;
     "" 1;
-    ~^_rsc=[A-Za-z0-9_-]{1,128}$ 1;
+    "~^_rsc=[A-Za-z0-9_-]{1,128}$" 1;
   }
 
   map $args $llmm_query_litellm_sso_entry {

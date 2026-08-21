@@ -45,7 +45,7 @@ test("LiteLLM customer ingress has no password-login surface and accepts only it
     edge,
     /"return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2Flogin%2F" 1;/,
   )
-  assert.match(edge, /~\^_rsc=\[A-Za-z0-9_-\]\{1,128\}\$ 1;/)
+  assert.match(edge, /"~\^_rsc=\[A-Za-z0-9_-\]\{1,128\}\$" 1;/)
   assert.doesNotMatch(edge, /~\*\^return_to=/)
 })
 
