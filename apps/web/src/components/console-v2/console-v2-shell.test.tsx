@@ -225,25 +225,19 @@ describe("ConsoleV2Shell", () => {
     expect(screen.getByText("Operator")).toBeTruthy()
   })
 
-  it("uses a credentialed same-origin logout request and keeps failure recoverable", async () => {
-    const request = vi.fn().mockRejectedValue(new Error("identity unavailable"))
-    vi.stubGlobal("fetch", request)
+  it("uses a top-level same-origin POST for the coordinated logout chain", () => {
     render(
       <ConsoleV2Shell accessRole="admin" activeSection="applications">
         <h1>Applications</h1>
       </ConsoleV2Shell>,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign out" }))
-
-    expect(
-      await screen.findByText("Sign-out is temporarily unavailable. Retry."),
-    ).toBeTruthy()
-    expect(request).toHaveBeenCalledWith("/api/console/session/logout", {
-      credentials: "same-origin",
-      method: "POST",
-      redirect: "follow",
-    })
+    const form = screen
+      .getByRole("button", { name: "Sign out" })
+      .closest("form")
+    expect(form?.getAttribute("action")).toBe("/api/console/session/logout")
+    expect(form?.getAttribute("method")).toBe("post")
+    expect(form?.getAttribute("target")).toBeNull()
   })
 })
 

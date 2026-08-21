@@ -28,6 +28,7 @@ describe("Console session HTTP boundary", () => {
       sessionHandle,
       state: "active" as const,
     })),
+    globalLogout: vi.fn(async () => undefined),
     logout: vi.fn(async () => undefined),
     resolve: vi.fn(async () => ({
       refreshCount: 0 as const,
@@ -212,14 +213,16 @@ describe("Console session HTTP boundary", () => {
     })
     expect(accepted.statusCode).toBe(303)
     expect(accepted.headers.location).toBe(
-      "https://console.example.test/auth/signin",
+      "https://grafana.example.test/logout",
     )
-    expect(serviceStub.logout).toHaveBeenCalledWith(sessionHandle)
+    expect(serviceStub.globalLogout).toHaveBeenCalledWith(sessionHandle)
     expect(accepted.headers["set-cookie"]).toContain("Max-Age=0")
   })
 
   it("clears local custody when server-side logout is unavailable", async () => {
-    serviceStub.logout.mockRejectedValueOnce(new Error("identity unavailable"))
+    serviceStub.globalLogout.mockRejectedValueOnce(
+      new Error("identity unavailable"),
+    )
     const server = buildServer(serviceStub as unknown as ConsoleSessionService)
 
     const response = await server.inject({
@@ -233,7 +236,7 @@ describe("Console session HTTP boundary", () => {
 
     expect(response.statusCode).toBe(303)
     expect(response.headers.location).toBe(
-      "https://console.example.test/auth/signin",
+      "https://grafana.example.test/logout",
     )
     expect(response.headers["set-cookie"]).toContain("Max-Age=0")
   })
@@ -342,6 +345,7 @@ function buildServer(
     consoleOrigin: "https://console.example.test",
     identityIssuer: "https://identity.example.test/realms/appliance",
     internalServiceCredential: "web-to-bff",
+    nativeLogoutStartUrl: "https://grafana.example.test/logout",
     service: sessionService,
   })
   return server

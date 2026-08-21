@@ -31,6 +31,7 @@ export interface ConsoleOidcClient {
     code: string,
     codeVerifier: string,
   ): Promise<ConsoleOidcTokenResult>
+  endSession(refreshToken: string): Promise<void>
   refresh(refreshToken: string): Promise<ConsoleOidcTokenResult>
   revoke(refreshToken: string): Promise<void>
 }
@@ -40,6 +41,7 @@ export interface ConsoleOidcClientConfig {
   clientId: string
   clientSecret: string
   elevationAcrValues?: string
+  logoutEndpoint: string
   redirectUri: string
   revocationEndpoint: string
   timeoutMs?: number
@@ -131,6 +133,32 @@ export function createConsoleOidcClient(
           redirect_uri: config.redirectUri,
         }),
       )
+    },
+    async endSession(refreshToken) {
+      const controller = new AbortController()
+      const timeout = setTimeout(
+        () => controller.abort(),
+        config.timeoutMs ?? 3000,
+      )
+      try {
+        const response = await request(config.logoutEndpoint, {
+          body: new URLSearchParams({
+            client_id: config.clientId,
+            client_secret: config.clientSecret,
+            refresh_token: refreshToken,
+          }),
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          method: "POST",
+          redirect: "error",
+          signal: controller.signal,
+        })
+        await response.body?.cancel().catch(() => undefined)
+        if (!response.ok) {
+          throw new Error("Identity session logout failed.")
+        }
+      } finally {
+        clearTimeout(timeout)
+      }
     },
     refresh(refreshToken) {
       return tokenRequest(
@@ -246,6 +274,7 @@ async function boundedJson(response: Response): Promise<unknown> {
 function assertConfig(config: ConsoleOidcClientConfig): void {
   for (const value of [
     config.authorizationEndpoint,
+    config.logoutEndpoint,
     config.redirectUri,
     config.revocationEndpoint,
     config.tokenEndpoint,

@@ -22,6 +22,7 @@ export interface ConsoleSessionRouteOptions {
   consoleOrigin: string
   identityIssuer: string
   internalServiceCredential: string
+  nativeLogoutStartUrl: string
   service: ConsoleSessionService
 }
 
@@ -31,6 +32,9 @@ export function registerConsoleSessionRoutes(
 ): void {
   const consoleOrigin = normalizedOrigin(options.consoleOrigin)
   const identityIssuer = normalizedIssuer(options.identityIssuer)
+  const nativeLogoutStartUrl = normalizedNativeLogoutStartUrl(
+    options.nativeLogoutStartUrl,
+  )
   if (!server.hasContentTypeParser("application/x-www-form-urlencoded")) {
     server.addContentTypeParser(
       "application/x-www-form-urlencoded",
@@ -182,12 +186,12 @@ export function registerConsoleSessionRoutes(
     reply.header("set-cookie", clearConsoleCookie(CONSOLE_SESSION_COOKIE))
     if (sessionHandle) {
       try {
-        await options.service.logout(sessionHandle)
+        await options.service.globalLogout(sessionHandle)
       } catch {
         // Local browser custody ends even when remote revocation is unavailable.
       }
     }
-    return reply.redirect(`${consoleOrigin}/auth/signin`, 303)
+    return reply.redirect(nativeLogoutStartUrl, 303)
   })
 
   server.post("/api/console/session/elevate", async (request, reply) => {
@@ -253,6 +257,22 @@ export function registerConsoleSessionRoutes(
       return reply.code(204).send()
     },
   )
+}
+
+function normalizedNativeLogoutStartUrl(value: string): string {
+  const url = new URL(value)
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.port ||
+    url.pathname !== "/logout" ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error("Native logout must use the exact HTTPS edge route.")
+  }
+  return url.href
 }
 
 function internalRequestAuthorized(

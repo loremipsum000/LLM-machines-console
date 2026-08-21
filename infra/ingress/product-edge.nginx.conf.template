@@ -78,6 +78,19 @@ http {
     ~^(?:_rsc|login|page|redirect_to)=[^&]*(?:&(?:_rsc|login|page|redirect_to)=[^&]*)*$ 1;
   }
 
+  map $args $llmm_query_litellm_rsc {
+    default 0;
+    "" 1;
+    ~^_rsc=[A-Za-z0-9_-]{1,128}$ 1;
+  }
+
+  map $args $llmm_query_litellm_sso_entry {
+    default 0;
+    "" 1;
+    "return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2F" 1;
+    "return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2Flogin%2F" 1;
+  }
+
   map $args $llmm_query_litellm_key_list {
     default 0;
     "" 1;
@@ -489,6 +502,19 @@ http {
     if ($http_host != $ssl_server_name) { return 421; }
     if ($http_cookie ~* "(?:^|;\\s*)__Host-llm-machines-(?:session|login)=") { return 400; }
 
+    location = /__llmm/global-logout {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      add_header Set-Cookie "AUTH_SESSION_ID=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None" always;
+      add_header Set-Cookie "KC_AUTH_SESSION_HASH=; Path=/realms/llm-machines/; Max-Age=0; Secure; SameSite=None" always;
+      add_header Set-Cookie "KC_RESTART=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None" always;
+      add_header Set-Cookie "KEYCLOAK_IDENTITY=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None" always;
+      add_header Set-Cookie "KEYCLOAK_SESSION=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None" always;
+      return 303 https://@@PRODUCT_CONSOLE_HOST@@/auth/signin;
+    }
+
     location = /realms/llm-machines/protocol/openid-connect/auth {
       limit_except GET { deny all; }
       if ($llmm_query_keycloak_authorization = 0) { return 400; }
@@ -739,7 +765,15 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 = @grafana_global_logout_fallback;
       proxy_pass http://grafana_native;
+    }
+
+    location @grafana_global_logout_fallback {
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      return 303 https://@@PRODUCT_LITELLM_HOST@@/__llmm/global-logout;
     }
 
     location ~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$ {
@@ -874,7 +908,7 @@ http {
     proxy_intercept_errors on;
     error_page 502 503 504 =503 /__llmm_native_unavailable?;
 
-    location ~ ^/ui/(?:login/?)?$ {
+    location = /ui/ {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_ui = 0) { return 400; }
       include /etc/nginx/llm-machines/proxy-common.inc;
@@ -885,9 +919,17 @@ http {
       proxy_pass http://litellm_native;
     }
 
+    location ~ ^/ui/login/?$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_ui = 0) { return 400; }
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      return 303 https://@@PRODUCT_LITELLM_HOST@@/sso/key/generate?return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2F;
+    }
+
     location ~ ^/(?:litellm-asset-prefix/_next/static/|ui/__next\.|litellm/\.well-known/litellm-ui-config).*$ {
       limit_except GET HEAD { deny all; }
-      if ($llmm_query_none = 0) { return 400; }
+      if ($llmm_query_litellm_rsc = 0) { return 400; }
       proxy_pass_request_body off;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
@@ -897,13 +939,25 @@ http {
 
     location = /sso/key/generate {
       limit_except GET HEAD { deny all; }
-      if ($llmm_query_none = 0) { return 400; }
+      if ($llmm_query_litellm_sso_entry = 0) { return 400; }
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
       proxy_intercept_errors on;
       error_page 502 503 504 =503 /__llmm_native_unavailable?;
       proxy_pass http://litellm_native;
+    }
+
+    location = /__llmm/global-logout {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      add_header Set-Cookie "token=; Path=/; Max-Age=0; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "litellm_cp_return_to=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "litellm_oauth_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "sso_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;
     }
 
     location = /sso/callback {

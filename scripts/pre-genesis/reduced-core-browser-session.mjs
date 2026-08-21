@@ -485,6 +485,7 @@ async function runBrowserSessionProof() {
       PRODUCT_API_HOST: authorities.api,
       PRODUCT_CONSOLE_HOST: authorities.console,
       PRODUCT_FIRECRAWL_HOST: authorities.firecrawl,
+      PRODUCT_GRAFANA_HOST: authorities.grafana,
       PRODUCT_IDENTITY_HOST: authorities.identity,
       PUBLIC_BFF_BASE_URL: publicOrigin("api", edgePort),
     }
@@ -2339,6 +2340,11 @@ async function proveIntegratedNativeAdministration({
   credentials,
   edgePort,
 }) {
+  const unifiedSso = await proveUnifiedNativeSsoAndLogout({
+    browser,
+    credentials,
+    edgePort,
+  })
   const grafanaAdmin = await nativeBrowserLogin({
     browser,
     credentials: credentials.admin,
@@ -2541,7 +2547,146 @@ async function proveIntegratedNativeAdministration({
     },
     nativeSessions: "SERVICE_OWNED",
     status: "PASS",
+    unifiedSso,
   }
+}
+
+async function proveUnifiedNativeSsoAndLogout({
+  browser,
+  credentials,
+  edgePort,
+}) {
+  const results = {}
+  for (const [role, identity] of [
+    ["Admin", credentials.admin],
+    ["Operator", credentials.operator],
+  ]) {
+    const context = await browser.newContext({ ignoreHTTPSErrors: false })
+    const consolePage = await context.newPage()
+    await signIn(
+      consolePage,
+      publicOrigin("console", edgePort),
+      identity,
+      "/settings",
+    )
+    const credentialPrompts = []
+    const errors = []
+    const open = async (entry, expected) => {
+      const page = await context.newPage()
+      page.on("pageerror", (error) => errors.push(error.message))
+      await page.goto(entry, { waitUntil: "domcontentloaded" })
+      await eventually(async () => expected(page), 120_000)
+      credentialPrompts.push(await page.locator("#username").count())
+      assert.notEqual(page.url(), "about:blank")
+      assert.notEqual((await page.title()).trim(), "400 Bad Request")
+      return page
+    }
+
+    const liteLlm = await open(
+      `${publicOrigin("litellm", edgePort)}/ui/`,
+      async (page) =>
+        new URL(page.url()).origin === publicOrigin("litellm", edgePort) &&
+        (await context.cookies()).some(({ name }) => name === "token"),
+    )
+    const liteLlmClaims = nativeJwtClaims(
+      decodeURIComponent(
+        (await context.cookies()).find(({ name }) => name === "token")?.value ??
+          "",
+      ),
+    )
+    assert.equal(
+      liteLlmClaims.user_role,
+      role === "Admin" ? "proxy_admin" : "internal_user",
+    )
+
+    const grafana = await open(
+      `${publicOrigin("grafana", edgePort)}/`,
+      async (page) =>
+        role === "Admin"
+          ? new URL(page.url()).origin === publicOrigin("grafana", edgePort) &&
+            (await context.cookies()).some(
+              ({ name }) => name === "grafana_session",
+            )
+          : /access denied|failed to get user info|login failed/i.test(
+              await page
+                .locator("body")
+                .innerText()
+                .catch(() => ""),
+            ),
+    )
+
+    const keycloak = await open(
+      `${publicOrigin("keycloak", edgePort)}/keycloak/admin/llm-machines/console/`,
+      async (page) =>
+        role === "Admin"
+          ? new URL(page.url()).origin === publicOrigin("keycloak", edgePort) &&
+            new URL(page.url()).pathname.startsWith(
+              "/keycloak/admin/llm-machines/console/",
+            ) &&
+            !/login-actions/.test(page.url())
+          : /access denied|do not have permission|forbidden/i.test(
+              await page
+                .locator("body")
+                .innerText()
+                .catch(() => ""),
+            ),
+    )
+
+    assert.deepEqual(credentialPrompts, [0, 0, 0])
+    assert.deepEqual(errors, [])
+    await consolePage.goto(`${publicOrigin("console", edgePort)}/`)
+    await consolePage.getByRole("button", { name: "Sign out" }).click()
+    await consolePage.waitForURL(
+      (url) =>
+        url.origin === publicOrigin("console", edgePort) &&
+        url.pathname === "/auth/signin",
+      { timeout: 120_000 },
+    )
+    const retained = (await context.cookies())
+      .map(({ name }) => name)
+      .filter((name) =>
+        [
+          "__Host-llm-machines-session",
+          "AUTH_SESSION_ID",
+          "KC_AUTH_SESSION_HASH",
+          "KC_RESTART",
+          "KEYCLOAK_IDENTITY",
+          "KEYCLOAK_SESSION",
+          "grafana_session",
+          "grafana_session_expiry",
+          "litellm_cp_return_to",
+          "litellm_oauth_state",
+          "sso_state",
+          "token",
+        ].includes(name),
+      )
+    assert.deepEqual(retained, [])
+
+    const afterLogout = await context.newPage()
+    await afterLogout.goto(`${publicOrigin("litellm", edgePort)}/ui/`, {
+      waitUntil: "domcontentloaded",
+    })
+    await afterLogout.locator("#username").waitFor({
+      state: "visible",
+      timeout: 120_000,
+    })
+    assert.equal(
+      new URL(afterLogout.url()).origin,
+      publicOrigin("identity", edgePort),
+    )
+
+    results[role.toLowerCase()] = {
+      credentialPrompts: 0,
+      globalLogout: "PASS",
+      grafana: role === "Admin" ? "Editor" : "DENY",
+      keycloak: role === "Admin" ? "APPLIANCE_REALM" : "DENY",
+      liteLlm: liteLlmClaims.user_role,
+      secondCredentialPrompts: 1,
+    }
+    await Promise.all([liteLlm.close(), grafana.close(), keycloak.close()])
+    await context.close()
+  }
+  return results
 }
 
 async function nativeBrowserLogin({

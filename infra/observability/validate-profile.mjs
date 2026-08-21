@@ -654,6 +654,7 @@ export function validateGrafana(
   const roleExpression =
     "contains(realm_access.roles[*], 'admin') && !contains(realm_access.roles[*], 'operator') && 'Editor'"
   const exactIniValues = new Map([
+    ["auto_login", "true"],
     ["client_id", "grafana"],
     ["client_secret", "$__file{/run/secrets/llmm_grafana_oidc_client_secret}"],
     ["scopes", "openid profile email"],
@@ -673,6 +674,7 @@ export function validateGrafana(
     ["cookie_secure", "true"],
     ["cookie_samesite", "lax"],
     ["disable_plugins", "elasticsearch,tempo,zipkin"],
+    ["disable_login_form", "true"],
   ])
   for (const [key, expected] of exactIniValues) {
     if (iniValue(grafana, key) !== expected) {

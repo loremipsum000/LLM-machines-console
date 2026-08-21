@@ -12,6 +12,9 @@ describe("Console session runtime configuration", () => {
       issuer: "https://identity.example.test/realms/appliance",
       jwksUrl:
         "https://identity.example.test/realms/appliance/protocol/openid-connect/certs",
+      logoutEndpoint:
+        "https://identity.example.test/realms/appliance/protocol/openid-connect/logout",
+      nativeLogoutStartUrl: "https://grafana.example.test/logout",
       redirectUri: "https://console.example.test/api/console/session/callback",
       revocationEndpoint:
         "https://identity.example.test/realms/appliance/protocol/openid-connect/revoke",
@@ -25,6 +28,7 @@ describe("Console session runtime configuration", () => {
     "PRODUCT_CONSOLE_HOST",
     "PRODUCT_API_HOST",
     "PRODUCT_FIRECRAWL_HOST",
+    "PRODUCT_GRAFANA_HOST",
     "PRODUCT_IDENTITY_HOST",
     "KEYCLOAK_ISSUER_URL",
     "KEYCLOAK_AUDIENCE",
@@ -70,13 +74,14 @@ describe("Console session runtime configuration", () => {
       "PRODUCT_API_HOST",
       "PRODUCT_IDENTITY_HOST",
       "PRODUCT_FIRECRAWL_HOST",
+      "PRODUCT_GRAFANA_HOST",
     ] as const
     for (let left = 0; left < names.length; left += 1) {
       for (let right = left + 1; right < names.length; right += 1) {
         const environment = runtimeEnvironment()
         environment[names[right]] = environment[names[left]]
         expect(() => readConsoleSessionRuntimeConfig(environment)).toThrow(
-          /four distinct hosts/,
+          /distinct hosts/,
         )
       }
     }
@@ -97,6 +102,7 @@ function runtimeEnvironment(): NodeJS.ProcessEnv {
     PRODUCT_API_HOST: "api.example.test",
     PRODUCT_CONSOLE_HOST: "console.example.test",
     PRODUCT_FIRECRAWL_HOST: "firecrawl.example.test",
+    PRODUCT_GRAFANA_HOST: "grafana.example.test",
     PRODUCT_IDENTITY_HOST: "identity.example.test",
   }
 }

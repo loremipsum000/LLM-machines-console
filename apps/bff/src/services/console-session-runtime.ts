@@ -19,6 +19,8 @@ export interface ConsoleSessionRuntimeConfig {
   internalServiceCredential: string
   issuer: string
   jwksUrl: string
+  logoutEndpoint: string
+  nativeLogoutStartUrl: string
   keyringFile: string
   redirectUri: string
   revocationEndpoint: string
@@ -36,8 +38,14 @@ export function readConsoleSessionRuntimeConfig(
 ): ConsoleSessionRuntimeConfig {
   const consoleHost = publicProductHost(environment, "PRODUCT_CONSOLE_HOST")
   const identityHost = publicProductHost(environment, "PRODUCT_IDENTITY_HOST")
+  const grafanaHost = publicProductHost(environment, "PRODUCT_GRAFANA_HOST")
   if (environment.NODE_ENV === "production") {
-    assertDistinctProductAuthorities(environment, consoleHost, identityHost)
+    assertDistinctProductAuthorities(
+      environment,
+      consoleHost,
+      identityHost,
+      grafanaHost,
+    )
   }
   const consoleOrigin = secureOrigin(
     "CONSOLE_ORIGIN",
@@ -63,6 +71,8 @@ export function readConsoleSessionRuntimeConfig(
     internalServiceCredential: required(environment, "BFF_SERVICE_API_KEY"),
     issuer,
     jwksUrl: `${oidcBase}/certs`,
+    logoutEndpoint: `${oidcBase}/logout`,
+    nativeLogoutStartUrl: `https://${grafanaHost}/logout`,
     keyringFile: required(environment, "CONSOLE_SESSION_KEYRING_FILE"),
     redirectUri: `${consoleOrigin}/api/console/session/callback`,
     revocationEndpoint: `${oidcBase}/revoke`,
@@ -86,6 +96,7 @@ export function createConsoleSessionRuntimeFromEnv(input: {
       clientId: config.clientId,
       clientSecret: config.clientSecret,
       elevationAcrValues: config.elevationAcrValues,
+      logoutEndpoint: config.logoutEndpoint,
       redirectUri: config.redirectUri,
       revocationEndpoint: config.revocationEndpoint,
       tokenEndpoint: config.tokenEndpoint,
@@ -111,6 +122,7 @@ export function createConsoleSessionRuntimeFromEnv(input: {
         consoleOrigin: config.consoleOrigin,
         identityIssuer: config.issuer,
         internalServiceCredential: config.internalServiceCredential,
+        nativeLogoutStartUrl: config.nativeLogoutStartUrl,
         service,
       },
       service,
@@ -156,6 +168,7 @@ function publicProductHost(
     | "PRODUCT_API_HOST"
     | "PRODUCT_CONSOLE_HOST"
     | "PRODUCT_FIRECRAWL_HOST"
+    | "PRODUCT_GRAFANA_HOST"
     | "PRODUCT_IDENTITY_HOST",
 ): string {
   const value = required(environment, name)
@@ -188,15 +201,17 @@ function assertDistinctProductAuthorities(
   environment: NodeJS.ProcessEnv,
   consoleHost: string,
   identityHost: string,
+  grafanaHost: string,
 ): void {
   const authorities = [
     consoleHost,
     publicProductHost(environment, "PRODUCT_API_HOST"),
     identityHost,
     publicProductHost(environment, "PRODUCT_FIRECRAWL_HOST"),
+    grafanaHost,
   ]
   if (new Set(authorities).size !== authorities.length) {
-    throw new Error("Product public authorities must use four distinct hosts.")
+    throw new Error("Product public authorities must use distinct hosts.")
   }
 }
 

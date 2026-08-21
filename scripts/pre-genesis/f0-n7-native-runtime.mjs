@@ -338,7 +338,7 @@ async function writeRuntimeFiles() {
       "GENERIC_USER_ID_ATTRIBUTE=sub",
       "GENERIC_USERINFO_ENDPOINT=http://keycloak:8080/realms/llm-machines/protocol/openid-connect/userinfo",
       "GENERIC_USER_ROLE_ATTRIBUTE=litellm_role",
-      "AUTO_REDIRECT_UI_LOGIN_TO_SSO=false",
+      "AUTO_REDIRECT_UI_LOGIN_TO_SSO=true",
       "LITELLM_UI_SESSION_DURATION=8h",
       `LITELLM_CONFIG_B64=${config}`,
       `LITELLM_MASTER_KEY=${secrets.liteLlmMaster}`,
@@ -517,7 +517,7 @@ function startGrafana() {
     "--env",
     "LLMM_KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/llm-machines/protocol/openid-connect/certs",
     "--env",
-    `LLMM_GRAFANA_SIGNOUT_REDIRECT_URL=${origins.identity}/realms/llm-machines/protocol/openid-connect/logout?client_id=grafana&post_logout_redirect_uri=${encodeURIComponent(`${origins.grafana}/login`)}`,
+    `LLMM_GRAFANA_SIGNOUT_REDIRECT_URL=${origins.litellm}/__llmm/global-logout`,
     images.grafana,
   ])
 }

@@ -24,8 +24,9 @@ export function TechnicalToolsPanel({
         controls.
       </p>
       <p className="mt-2 text-xs leading-5 text-[#8b8b8b]">
-        Each tool opens in a new tab and creates its own Keycloak-backed native
-        session. Console session data and credentials are never forwarded.
+        Each tool opens in a new tab and uses your current Keycloak sign-in to
+        create its own native session. Console session data and credentials are
+        never forwarded.
       </p>
 
       <nav aria-label="Advanced technical tools" className="mt-3 grid gap-2">

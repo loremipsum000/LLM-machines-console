@@ -7,6 +7,8 @@ const config = {
   clientId: "console-web",
   clientSecret: "server-only-client-secret",
   elevationAcrValues: "urn:llm-machines:mfa",
+  logoutEndpoint:
+    "https://identity.example.test/realms/appliance/protocol/openid-connect/logout",
   redirectUri: "https://console.example.test/api/console/session/callback",
   revocationEndpoint:
     "https://keycloak.internal/realms/appliance/protocol/openid-connect/revoke",
@@ -93,5 +95,20 @@ describe("Console OIDC code and refresh client", () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it("ends the Keycloak SSO session server-side without exposing tokens in a URL", async () => {
+    const request = vi.fn<typeof fetch>(
+      async () => new Response(null, { status: 204 }),
+    )
+    const client = createConsoleOidcClient(config, request)
+
+    await client.endSession("server-only-refresh")
+
+    const [url, init] = request.mock.calls[0] ?? []
+    expect(url).toBe(config.logoutEndpoint)
+    expect(init?.method).toBe("POST")
+    expect(String(init?.body)).toContain("refresh_token=server-only-refresh")
+    expect(String(url)).not.toContain("server-only-refresh")
   })
 })

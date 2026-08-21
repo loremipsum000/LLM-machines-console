@@ -820,7 +820,7 @@ async function startObservability(edgePort, currentKeycloakControl) {
     "--env",
     `LLMM_KEYCLOAK_USERINFO_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/userinfo`,
     "--env",
-    `LLMM_GRAFANA_SIGNOUT_REDIRECT_URL=${identityOrigin}/realms/llm-machines/protocol/openid-connect/logout?client_id=grafana&post_logout_redirect_uri=${encodeURIComponent(`${authorityOrigin(founderUatPlacement, "grafana", edgePort)}/login`)}`,
+    `LLMM_GRAFANA_SIGNOUT_REDIRECT_URL=${authorityOrigin(founderUatPlacement, "litellm", edgePort)}/__llmm/global-logout`,
     "--env",
     "LLMM_PROMETHEUS_URL=http://prometheus:9090",
     images["grafana-private"],

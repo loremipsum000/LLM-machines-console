@@ -122,6 +122,7 @@ const expectedNginxLocations = {
   ],
   firecrawl: ["= /v2/search", "= /v2/scrape", "/"],
   identity: [
+    "= /__llmm/global-logout",
     "= /realms/llm-machines/protocol/openid-connect/auth",
     "= /realms/llm-machines/protocol/openid-connect/logout",
     "= /realms/llm-machines/protocol/openid-connect/logout/logout-confirm",
@@ -145,6 +146,7 @@ const expectedNginxLocations = {
     "= /login",
     "= /login/generic_oauth",
     "= /logout",
+    "@grafana_global_logout_fallback",
     "~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",
     "~ ^/api/(?:dashboards/home|login/ping|plugins|user|user/orgs|user/preferences|user/stars)$",
     '~ "^/api/plugins/[a-z0-9_-]{1,128}/settings$"',
@@ -160,9 +162,11 @@ const expectedNginxLocations = {
     "/",
   ],
   litellm: [
-    "~ ^/ui/(?:login/?)?$",
+    "= /ui/",
+    "~ ^/ui/login/?$",
     "~ ^/(?:litellm-asset-prefix/_next/static/|ui/__next\\.|litellm/\\.well-known/litellm-ui-config).*$",
     "= /sso/key/generate",
+    "= /__llmm/global-logout",
     "= /sso/callback",
     "= /key/generate",
     "= /key/list",
@@ -197,9 +201,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "a5b926e972b673b4b908287c5b060c7a1d020d9eb49062a0c76f82b6332ed2c3",
+    "a64cfde1d3583050f86b6b947b5539ddb8f045bba0465270288dff0388b6246e",
   "native-admin-edge-profile.json":
-    "4ef0adb5ad4291b6c86f69e02a78469f80e6c3cfa47d0b95ed5b2132d43c4b6e",
+    "31fab44e1d571791bf65c110554688f543e934865c4d33d20bedde79f46e2993",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -429,7 +433,14 @@ function validateNativeAdmin(profile, errors) {
       profile.edge?.consoleSessionForwarded === false &&
       profile.edge?.consoleTokenForwarded === false &&
       profile.edge?.reverseProxyImpersonation === false &&
-      profile.edge?.webSocketForwarding === false,
+      profile.edge?.webSocketForwarding === false &&
+      sameJson(profile.edge?.globalLogout, {
+        start: "https://@@PRODUCT_GRAFANA_HOST@@/logout",
+        sequence: ["grafana", "litellm", "identity", "console"],
+        consoleMaterialForwarded: false,
+        tokensInUrls: false,
+        serviceAvailabilityRequired: false,
+      }),
     "native-admin edge boundary changed",
   )
   add(
@@ -457,6 +468,34 @@ function validateNativeAdmin(profile, errors) {
       grafanaOauth?.queryPolicy === "grafana-oauth-entry-or-callback" &&
       grafanaOauth?.emptyQueryAllowed === true,
     "Grafana OAuth entry-or-callback policy changed",
+  )
+  const grafanaLogout = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "logout",
+  )
+  const liteLlmSso = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "login",
+  )
+  const liteLlmLoginRedirect = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "login-redirect",
+  )
+  const liteLlmGlobalLogout = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "global-logout",
+  )
+  add(
+    errors,
+    profile.services?.grafana?.ssoEntry ===
+      "AUTOMATIC_GENERIC_OAUTH_USING_EXISTING_KEYCLOAK_SESSION" &&
+      grafanaLogout?.path?.value === "/logout" &&
+      profile.services?.litellm?.ssoEntry ===
+        "AUTOMATIC_GENERIC_OIDC_USING_EXISTING_KEYCLOAK_SESSION" &&
+      profile.services?.litellm?.passwordLoginCustomerPath === "ABSENT" &&
+      liteLlmSso?.queryPolicy === "litellm-sso-entry" &&
+      liteLlmSso?.allowedReturnTo === "https://@@PRODUCT_LITELLM_HOST@@/ui/" &&
+      liteLlmLoginRedirect?.behavior === "EDGE_303_TO_SAFE_SSO_ENTRY" &&
+      liteLlmGlobalLogout?.path?.value === "/__llmm/global-logout" &&
+      sameJson(profile.queryPolicies?.["litellm-rsc"], ["_rsc"]) &&
+      sameJson(profile.queryPolicies?.["litellm-sso-entry"], ["return_to"]),
+    "automatic native SSO or global logout contract changed",
   )
   add(
     errors,
@@ -846,6 +885,11 @@ function validateNginx(sources, errors) {
   add(
     errors,
     grafanaServer.includes("proxy_pass http://grafana_native;") &&
+      grafanaServer.includes("location = /logout") &&
+      grafanaServer.includes("location @grafana_global_logout_fallback") &&
+      grafanaServer.includes(
+        "return 303 https://@@PRODUCT_LITELLM_HOST@@/__llmm/global-logout;",
+      ) &&
       grafanaServer.includes("location = /login/generic_oauth") &&
       grafanaServer.includes("location = /api/dashboards/db") &&
       grafanaServer.includes(
@@ -859,14 +903,33 @@ function validateNginx(sources, errors) {
   add(
     errors,
     litellmServer.includes("proxy_pass http://litellm_native;") &&
+      litellmServer.includes("location ~ ^/ui/login/?$") &&
+      litellmServer.includes(
+        "return 303 https://@@PRODUCT_LITELLM_HOST@@/sso/key/generate?return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2F;",
+      ) &&
+      litellmServer.includes("location = /__llmm/global-logout") &&
+      litellmServer.includes(
+        "return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;",
+      ) &&
       litellmServer.includes("location = /key/generate") &&
       litellmServer.includes("location = /key/delete") &&
       litellmServer.includes("location = /v1/chat/completions") &&
       litellmServer.includes(
         "location ~* ^/(?:public/litellm_blog_posts|v1/agents)(?:/|$)",
       ) &&
-      !/location[^\n]*(?:router|global|budget)/i.test(litellmServer),
+      !/location[^\n]*(?:router|budget)/i.test(litellmServer),
     "LiteLLM native route boundary changed",
+  )
+  add(
+    errors,
+    identityServer.includes("location = /__llmm/global-logout") &&
+      identityServer.includes(
+        'add_header Set-Cookie "KEYCLOAK_IDENTITY=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None" always;',
+      ) &&
+      identityServer.includes(
+        "return 303 https://@@PRODUCT_CONSOLE_HOST@@/auth/signin;",
+      ),
+    "global identity logout boundary changed",
   )
   add(
     errors,
