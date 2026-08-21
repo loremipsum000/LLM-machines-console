@@ -359,7 +359,7 @@
     },
     "edgeTemplate": {
       "path": "infra/ingress/product-edge.nginx.conf.template",
-      "sha256": "sha256:6e4034b64d0f4e5254bab12b20a7de7f93596cf35069b85f35700c15ae9da915"
+      "sha256": "sha256:e9a10fb721d787f3459e42b2a44ddd319d8c683ce060661091d0e37f6916abdc"
     },
     "gatewayUpstream": "VM103_PRIVATE_ADDRESS:18443",
     "gatewayForwardsHost": true,
