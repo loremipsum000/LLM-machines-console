@@ -1032,6 +1032,20 @@ async function runBrowserSessionProof() {
             synchronizeClock: synchronizeFixtureClock,
           })
         : { status: "DEFERRED_TO_NATIVE_LINUX_FOUNDER_LANE" }
+      const logoutOutages = founderUatControl
+        ? await proveCoordinatedLogoutOutages({
+            browser,
+            credentials,
+            edgePort,
+            grafanaControl: {
+              baseUrl: integratedObservabilityControl.grafanaBaseUrl,
+              container: founderUatControl.outerInventory.containers.grafana,
+              dockerContext: postgresControl.dockerContext,
+            },
+            liteLlmControl,
+            synchronizeClock: synchronizeFixtureClock,
+          })
+        : { status: "DEFERRED_TO_NATIVE_LINUX_FOUNDER_LANE" }
       const noBypass = await proveIntegratedNoBypass({
         certificate,
         edgePort,
@@ -1092,6 +1106,7 @@ async function runBrowserSessionProof() {
         },
         noBypass,
         nativeAdministration,
+        globalLogoutDuringOutage: logoutOutages,
         observability,
         persistence: postgresPersistenceEvidence,
         proved: [
@@ -2772,6 +2787,167 @@ async function proveUnifiedNativeSsoAndLogout({
     await context.close()
   }
   return results
+}
+
+async function proveCoordinatedLogoutOutages({
+  browser,
+  credentials,
+  edgePort,
+  grafanaControl,
+  liteLlmControl,
+  synchronizeClock,
+}) {
+  assert.match(grafanaControl.container ?? "", /^[a-z0-9][a-z0-9_.-]{0,127}$/)
+  const results = {}
+  for (const outage of [
+    {
+      control: grafanaControl,
+      name: "grafana",
+      restart: () => waitForNativeHealth(grafanaControl, "/api/health"),
+    },
+    {
+      control: liteLlmControl,
+      name: "litellm",
+      restart: () => waitForLiteLlm(liteLlmControl),
+    },
+  ]) {
+    const context = await browser.newContext({ ignoreHTTPSErrors: false })
+    const consolePage = await context.newPage()
+    let stopped = false
+    let proofFailure = null
+    try {
+      await synchronizeClock()
+      await signIn(
+        consolePage,
+        publicOrigin("console", edgePort),
+        credentials.admin,
+        "/settings",
+      )
+      const liteLlmPage = await context.newPage()
+      await liteLlmPage.goto(`${publicOrigin("litellm", edgePort)}/ui/`, {
+        waitUntil: "domcontentloaded",
+      })
+      await eventually(
+        async () =>
+          (await context.cookies()).some(({ name }) => name === "token"),
+        120_000,
+      )
+      const grafanaPage = await context.newPage()
+      await grafanaPage.goto(`${publicOrigin("grafana", edgePort)}/`, {
+        waitUntil: "domcontentloaded",
+      })
+      await eventually(
+        async () =>
+          (await context.cookies()).some(
+            ({ name }) => name === "grafana_session",
+          ),
+        120_000,
+      )
+
+      const stop = dockerControl(outage.control, [
+        "stop",
+        "--time",
+        "5",
+        outage.control.container,
+      ])
+      assert.equal(stop.status, 0)
+      stopped = true
+
+      await consolePage.goto(`${publicOrigin("console", edgePort)}/`)
+      await consolePage.getByRole("button", { name: "Sign out" }).click()
+      await consolePage.waitForURL(
+        (url) =>
+          url.origin === publicOrigin("console", edgePort) &&
+          url.pathname === "/auth/signin",
+        { timeout: 120_000 },
+      )
+      const signedOutUrl = consolePage.url()
+      await consolePage.waitForTimeout(1_000)
+      assert.equal(consolePage.url(), signedOutUrl)
+      assert.deepEqual(protectedBrowserCookieNames(await context.cookies()), [])
+    } catch (error) {
+      proofFailure = error
+    }
+
+    if (stopped) {
+      const start = dockerControl(outage.control, [
+        "start",
+        outage.control.container,
+      ])
+      if (start.status !== 0) {
+        const recoveryError = new Error(
+          `F0-C1 could not restart ${outage.name} after logout outage proof.`,
+        )
+        proofFailure = proofFailure
+          ? new AggregateError([proofFailure, recoveryError])
+          : recoveryError
+      } else {
+        try {
+          await outage.restart()
+        } catch (recoveryError) {
+          proofFailure = proofFailure
+            ? new AggregateError([proofFailure, recoveryError])
+            : recoveryError
+        }
+      }
+    }
+    if (!proofFailure) {
+      const reentry = await context.newPage()
+      await reentry.goto(
+        outage.name === "grafana"
+          ? `${publicOrigin("grafana", edgePort)}/`
+          : `${publicOrigin("litellm", edgePort)}/ui/`,
+        { waitUntil: "domcontentloaded" },
+      )
+      await reentry.locator("#username").waitFor({
+        state: "visible",
+        timeout: 120_000,
+      })
+      assert.equal(
+        new URL(reentry.url()).origin,
+        publicOrigin("identity", edgePort),
+      )
+      results[outage.name] = "PASS"
+    }
+    await context.close()
+    if (proofFailure) throw proofFailure
+  }
+  return { ...results, redirectLoopAbsent: true }
+}
+
+function protectedBrowserCookieNames(cookies) {
+  const protectedNames = new Set([
+    "__Host-llm-machines-session",
+    "AUTH_SESSION_ID",
+    "KC_AUTH_SESSION_HASH",
+    "KC_RESTART",
+    "KEYCLOAK_IDENTITY",
+    "KEYCLOAK_SESSION",
+    "grafana_session",
+    "grafana_session_expiry",
+    "litellm_cp_return_to",
+    "litellm_oauth_state",
+    "sso_state",
+    "token",
+  ])
+  return cookies
+    .map(({ name }) => name)
+    .filter((name) => protectedNames.has(name))
+    .sort()
+}
+
+async function waitForNativeHealth(control, path) {
+  const deadline = performance.now() + 120_000
+  while (performance.now() < deadline) {
+    const response = await fetch(`${control.baseUrl}${path}`).catch(() => null)
+    if (response) {
+      const status = response.status
+      await response.body?.cancel()
+      if (status === 200) return
+    }
+    await delay(250)
+  }
+  throw new Error("F0-C1 native service did not recover after logout proof.")
 }
 
 async function nativeBrowserLogin({

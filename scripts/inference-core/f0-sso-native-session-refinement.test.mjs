@@ -158,6 +158,12 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
     edge,
     /location @grafana_global_logout_fallback[\s\S]*?return 303 https:\/\/@@PRODUCT_LITELLM_HOST@@\/__llmm\/global-logout;/,
   )
+  const grafanaFallback = edge.match(
+    /location @grafana_global_logout_fallback[\s\S]*?\n {4}}/,
+  )?.[0]
+  assert.ok(grafanaFallback)
+  assert.match(grafanaFallback, /Set-Cookie "grafana_session=;/)
+  assert.match(grafanaFallback, /Set-Cookie "grafana_session_expiry=;/)
   assert.doesNotMatch(
     edge
       .match(/location = \/__llmm\/global-logout[\s\S]*?\n {4}}/g)
@@ -233,6 +239,16 @@ test("each unified Console login synchronizes the controlled validation clock", 
     browser,
     /proveIntegratedNativeAdministration\(\{[\s\S]*?synchronizeClock: synchronizeFixtureClock/,
   )
+})
+
+test("integrated browser proof covers coordinated logout during native outages", async () => {
+  const browser = await read(
+    "scripts/pre-genesis/reduced-core-browser-session.mjs",
+  )
+
+  assert.match(browser, /await proveCoordinatedLogoutOutages\(\{/)
+  assert.match(browser, /name: "grafana"[\s\S]*?name: "litellm"/)
+  assert.match(browser, /globalLogoutDuringOutage: logoutOutages/)
 })
 
 async function read(path) {

@@ -800,6 +800,8 @@ http {
     location @grafana_global_logout_fallback {
       add_header Cache-Control "no-store" always;
       add_header Referrer-Policy "no-referrer" always;
+      add_header Set-Cookie "grafana_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "grafana_session_expiry=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
       return 303 https://@@PRODUCT_LITELLM_HOST@@/__llmm/global-logout;
     }
 

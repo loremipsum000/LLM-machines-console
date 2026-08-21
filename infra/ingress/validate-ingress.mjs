@@ -204,9 +204,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "6f2583305d9ffe47df6557cc29651af04621101934537db422e3481a8e9f205c",
+    "6e4034b64d0f4e5254bab12b20a7de7f93596cf35069b85f35700c15ae9da915",
   "native-admin-edge-profile.json":
-    "29f04746e8ec814e087ee565a9614e4891f2434a2ada9c7435cc92037fd4e9be",
+    "2868d8e0bcc8dab84f1acff75c85c8ccae188316e7a1d61f3d21228e2276e6b0",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -540,6 +540,8 @@ function validateNativeAdmin(profile, errors) {
     profile.services?.grafana?.ssoEntry ===
       "AUTOMATIC_GENERIC_OAUTH_USING_EXISTING_KEYCLOAK_SESSION" &&
       grafanaLogout?.path?.value === "/logout" &&
+      profile.services?.grafana?.failureBehavior?.logoutDuringServiceOutage ===
+        "EDGE_EXPIRES_GRAFANA_COOKIES_THEN_CONTINUES_FIXED_GLOBAL_CHAIN" &&
       profile.services?.litellm?.ssoEntry ===
         "AUTOMATIC_GENERIC_OIDC_USING_EXISTING_KEYCLOAK_SESSION" &&
       profile.services?.litellm?.passwordLoginCustomerPath === "ABSENT" &&
