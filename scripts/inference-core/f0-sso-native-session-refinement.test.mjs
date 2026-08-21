@@ -50,8 +50,9 @@ test("LiteLLM customer ingress has no password-login surface and accepts only it
 })
 
 test("Console sign-out uses a fixed credential-free native logout chain", async () => {
-  const [edge, route, runtime, service, shell] = await Promise.all([
+  const [edge, fixture, route, runtime, service, shell] = await Promise.all([
     read("infra/ingress/product-edge.nginx.conf.template"),
+    read("scripts/pre-genesis/reduced-core-session-bff-fixture.mts"),
     read("apps/bff/src/routes/console-session.ts"),
     read("apps/bff/src/services/console-session-runtime.ts"),
     read("apps/bff/src/services/console-session-service.ts"),
@@ -61,6 +62,8 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
   assert.match(route, /await options\.service\.globalLogout\(sessionHandle\)/)
   assert.match(route, /return reply\.redirect\(nativeLogoutStartUrl, 303\)/)
   assert.match(service, /await this\.oidc\.endSession\(refreshToken\)/)
+  assert.match(fixture, /logoutEndpoint: `\$\{oidcBase}\/logout`/)
+  assert.match(fixture, /endSession: rawOidc\.endSession/)
   assert.doesNotMatch(shell, /fetch\("\/api\/console\/session\/logout"/)
   assert.match(shell, /action="\/api\/console\/session\/logout"/)
 
