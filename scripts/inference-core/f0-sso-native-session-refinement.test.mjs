@@ -85,15 +85,19 @@ test("native UI background queries remain exact and credential-free", async () =
     edge,
     /location = \/v2\/team\/list \{[\s\S]*?\$llmm_query_litellm_team_list/,
   )
+  assert.match(
+    edge,
+    /location = \/team\/list \{[\s\S]*?\$llmm_query_litellm_team_list_v1/,
+  )
   const backgroundReadsStart = edge.indexOf(
-    "location ~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|team/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$",
+    "location ~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$",
   )
   const backgroundReads = edge.slice(
     backgroundReadsStart,
     edge.indexOf("location ~ ^/(?:model/new", backgroundReadsStart),
   )
   assert.notEqual(backgroundReadsStart, -1)
-  assert.doesNotMatch(backgroundReads, /\bmodels\b|v2\/team\/list/)
+  assert.doesNotMatch(backgroundReads, /\bmodels\b|(?:v2\/)?team\/list/)
   const addedMaps = ["grafana_static", "litellm_models", "litellm_team_list"]
     .map(
       (name) =>

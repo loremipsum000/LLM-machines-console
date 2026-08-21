@@ -176,7 +176,8 @@ const expectedNginxLocations = {
     "= /user/info",
     "= /models",
     "= /v2/team/list",
-    "~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|team/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$",
+    "= /team/list",
+    "~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$",
     "~ ^/(?:model/new|team/new|organization/new|user/new|config/update)$",
     "= /v1/models",
     "= /v1/chat/completions",
@@ -203,9 +204,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "edb7ace5fa3510c6ae73ecec307a4d97896f99892d626b210de99e4b968b7eed",
+    "6f2583305d9ffe47df6557cc29651af04621101934537db422e3481a8e9f205c",
   "native-admin-edge-profile.json":
-    "d1d0fff9ef3cc125fc92d908a4c2a418c239ccaa161a5b704c6b137ee19b6384",
+    "29f04746e8ec814e087ee565a9614e4891f2434a2ada9c7435cc92037fd4e9be",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -481,6 +482,9 @@ function validateNativeAdmin(profile, errors) {
   const liteLlmTeamList = profile.services?.litellm?.routes?.find(
     ({ id }) => id === "team-list",
   )
+  const liteLlmTeamListV1 = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "team-list-v1",
+  )
   const liteLlmKeyList = profile.services?.litellm?.routes?.find(
     ({ id }) => id === "key-list",
   )
@@ -497,9 +501,13 @@ function validateNativeAdmin(profile, errors) {
       sameJson(profile.queryPolicies?.["litellm-team-list"], [
         "page",
         "page_size",
+        "user_id",
       ]) &&
       liteLlmTeamList?.path?.value === "/v2/team/list" &&
       liteLlmTeamList?.queryPolicy === "litellm-team-list" &&
+      sameJson(profile.queryPolicies?.["litellm-team-list-v1"], ["user_id"]) &&
+      liteLlmTeamListV1?.path?.value === "/team/list" &&
+      liteLlmTeamListV1?.queryPolicy === "litellm-team-list-v1" &&
       sameJson(profile.queryPolicies?.["litellm-key-list"], [
         "expand",
         "include_created_by_keys",
