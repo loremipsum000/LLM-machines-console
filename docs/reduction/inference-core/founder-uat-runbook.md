@@ -36,6 +36,15 @@ status. Read it over the authenticated SSH session with a pager when founder
 access is required. Do not copy it into chat, shell history, screenshots, or
 test evidence.
 
+For a private founder handover, `F0_UAT0_IDENTITY_CREDENTIAL_FILE` may name an
+absolute, canonical, runner-owned mode-`0600` JSON secret outside Git. It must
+contain schema version 1, exact `admin` and `operator` identities, and
+`rotationRequiredBeforeBroaderAccess: true`. The file path, never its values,
+is passed to the Keycloak commissioner. `status` keeps a visible
+`credentialRotationRequiredBeforeBroaderAccess` warning. These lab-only
+credentials must be rotated before access is broadened or the environment is
+used beyond founder UAT.
+
 ## Private appliance placement
 
 The default remains the loopback-only `.llmm.test` founder lane. A durable

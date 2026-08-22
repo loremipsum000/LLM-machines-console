@@ -141,6 +141,8 @@ test("F0-C1 has one bounded disposable command", () => {
   assert.match(keycloak, /const upstreamPort = await reservePort\(\)/)
   assert.match(keycloak, /`127\.0\.0\.1:\$\{upstreamPort\}:8080`/)
   assert.match(keycloak, /await waitForKeycloak\(upstreamPort\)/)
+  assert.match(keycloak, /performance\.now\(\) \+ 300_000/)
+  assert.match(keycloak, /Keycloak exited before readiness/)
   assert.doesNotMatch(keycloak, /127\.0\.0\.1::8080/)
   assert.match(keycloak, /loginTheme: "llm-machines"/)
   assert.match(keycloak, /ssoSessionIdleTimeout: 28800/)

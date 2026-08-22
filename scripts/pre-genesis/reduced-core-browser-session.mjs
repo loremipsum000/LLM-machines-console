@@ -709,6 +709,83 @@ async function runBrowserSessionProof() {
     await assertConsoleNavigation(page, consoleOrigin)
     await assertDesktopViewportLayout(page, consoleOrigin)
 
+    if (commissioningLoginMode) {
+      const session = await proveCommissioningSessionContinuity({
+        advanceClock,
+        browser,
+        consoleOrigin,
+        context,
+        credentials,
+        page,
+        restartBff,
+      })
+      const identityFlow = await proveKeycloakIdentityConsoleFlow({
+        certificate,
+        consoleOrigin,
+        context,
+        credentials,
+        edgePort,
+        page,
+      })
+      const outageRecovery = await proveKeycloakOutageRecovery({
+        browser,
+        consoleOrigin,
+        edgePort,
+        keycloakControl,
+        synchronizeClock: synchronizeFixtureClock,
+        userCredentials: credentials.admin,
+      })
+      assert.deepEqual(pageErrors, [])
+      assertNoSensitiveValues(
+        browserMetadata,
+        sensitiveValues,
+        "browser metadata",
+      )
+      await context.close()
+      const browserVersion = browser.version()
+      await browser.close()
+      browser = undefined
+      evidence = {
+        architecture: process.arch,
+        browser: { name: "Google Chrome", version: browserVersion },
+        credentialMaterialPrinted: false,
+        evidenceClass: "INCREMENTAL_CONSOLE_LOGIN_ONLY",
+        identity: identityFlow,
+        outageRecovery,
+        proved: [
+          "Admin and Operator complete Authorization Code plus PKCE Console login with the commissioned appliance-realm identities",
+          "parallel requests remain usable after one access-token refresh window",
+          "encrypted opaque Console sessions survive one controlled BFF restart",
+          "logout clears Console custody and protected navigation returns to sign in",
+          "Keycloak restart preserves the commissioned identities and recovers through the controlled unavailable state",
+          "the commissioning gate performs no Team, Application, inference, Firecrawl, or native-administration mutation",
+        ],
+        session,
+        status: "passed",
+        temporaryStateRemoved: true,
+      }
+      const cleanup = await Promise.allSettled([
+        ...servers.map(closeServer),
+        ...children.map(stopChild),
+      ])
+      const cleanupFailures = cleanup
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason)
+      if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+          cleanupFailures,
+          "F0-UAT0 commissioning-login cleanup did not complete.",
+        )
+      }
+      servers.length = 0
+      children.length = 0
+      await rm(sessionKeyringFile, { force: true })
+      await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
+      await rm(stateRoot, { force: true, recursive: true })
+      assert.equal(await exists(stateRoot), false)
+      return evidence
+    }
+
     if (keycloakTeamMode) {
       const identityFlow = await proveKeycloakIdentityCookieBoundary({
         certificate,
@@ -2083,6 +2160,52 @@ async function proveKeycloakIdentityConsoleFlow({
     nativeAdminPathsDenied: deniedNativePaths,
     operatorRole: "Operator",
     productSessionCookie: productSession.name,
+  }
+}
+
+async function proveCommissioningSessionContinuity({
+  advanceClock,
+  browser,
+  consoleOrigin,
+  context,
+  credentials,
+  page,
+  restartBff,
+}) {
+  assert.equal(typeof restartBff, "function")
+  await advanceClock(6 * 60 * 1000)
+  const secondPage = await context.newPage()
+  try {
+    await Promise.all([
+      navigateConsolePath(page, consoleOrigin, "/applications", "Applications"),
+      navigateConsolePath(secondPage, consoleOrigin, "/inference", "Inference"),
+    ])
+    await assertRole(page, "Administrator")
+    await assertRole(secondPage, "Administrator")
+  } finally {
+    await secondPage.close()
+  }
+
+  const operatorContext = await browser.newContext({
+    ignoreHTTPSErrors: !founderUatPlacement,
+  })
+  const operatorPage = await operatorContext.newPage()
+  try {
+    await signIn(operatorPage, consoleOrigin, credentials.operator, "/")
+    await assertRole(operatorPage, "Operator")
+    const restart = await restartBff()
+    await Promise.all([
+      navigateConsolePath(page, consoleOrigin, "/settings", "Settings"),
+      navigateConsolePath(operatorPage, consoleOrigin, "/team", "Team"),
+    ])
+    await assertRole(page, "Administrator")
+    await assertRole(operatorPage, "Operator")
+    return {
+      bffRestart: restart,
+      concurrentRefreshWindow: "PASSED",
+    }
+  } finally {
+    await operatorContext.close()
   }
 }
 

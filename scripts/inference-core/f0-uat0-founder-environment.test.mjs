@@ -1,7 +1,15 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
-import { mkdtemp, rm } from "node:fs/promises"
+import {
+  access,
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
@@ -274,8 +282,24 @@ test("F0-UAT0 separates restricted credentials from normal operator output", () 
   )
   assert.doesNotMatch(operator, /readFile\(paths\.credentials/)
   assert.doesNotMatch(operator, /otpSecret:|password:|bffService|oidcClient/)
+  assert.match(operator, /F0_UAT0_IDENTITY_CREDENTIAL_FILE/)
+  assert.match(
+    operator,
+    /credentialRotationRequiredBeforeBroaderAccess: Boolean/,
+  )
+  assert.match(integrated, /F0_UAT0_IDENTITY_CREDENTIAL_FILE/)
+  const commissioningBranch = browser.slice(
+    browser.indexOf("if (commissioningLoginMode) {"),
+    browser.indexOf("if (keycloakTeamMode) {"),
+  )
+  assert.match(commissioningBranch, /proveCommissioningSessionContinuity/)
+  assert.match(commissioningBranch, /proveKeycloakIdentityConsoleFlow/)
+  assert.match(commissioningBranch, /proveKeycloakOutageRecovery/)
+  assert.doesNotMatch(commissioningBranch, /proveKeycloakTeamConsoleFlow/)
   assert.match(operator, /assertNoOwnedRuntimeRemains/)
-  assert.match(operator, /label=com\.llm-machines\.test-package=F0-C1/)
+  assert.doesNotMatch(operator, /label=com\.llm-machines\.test-package=F0-C1/)
+  assert.match(operator, /inventory\.edgeContainer/)
+  assert.match(operator, /inventoryContainers\(inventory\)/)
 })
 
 test("F0-UAT0 status is safe before the environment exists", async () => {
@@ -295,6 +319,95 @@ test("F0-UAT0 status is safe before the environment exists", async () => {
       controlRoot,
       status: "NOT_STARTED",
     })
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
+})
+
+test("F0-UAT0 preserves failed pre-readiness state without an exact inventory", async () => {
+  const root = await mkdtemp(join(tmpdir(), "llmm-f0-uat0-no-inventory-"))
+  const controlRoot = join(root, "candidate")
+  await mkdir(controlRoot, { recursive: true })
+  await writeFile(
+    join(controlRoot, "supervisor.json"),
+    `${JSON.stringify({ pid: 2_147_483_647 })}\n`,
+  )
+  try {
+    const result = spawnSync(
+      process.execPath,
+      ["scripts/pre-genesis/reduced-core-uat.mjs", "stop"],
+      {
+        encoding: "utf8",
+        env: { ...process.env, F0_UAT0_CONTROL_ROOT: controlRoot },
+      },
+    )
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /exact runtime inventory is unavailable/)
+    await access(join(controlRoot, "supervisor.json"))
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
+})
+
+test("F0-UAT0 cleanup uses only its durable exact inventory", async () => {
+  const root = await mkdtemp(join(tmpdir(), "llmm-f0-uat0-owned-cleanup-"))
+  const controlRoot = join(root, "candidate")
+  const bin = join(root, "bin")
+  const dockerLog = join(root, "docker.log")
+  await mkdir(controlRoot, { recursive: true })
+  await mkdir(bin)
+  await writeFile(
+    join(bin, "docker"),
+    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_DOCKER_LOG"\ncase "$1" in\n  ps) printf '%s\\n' unrelated-f0-c1-container; exit 0 ;;\n  *) exit 1 ;;\nesac\n`,
+  )
+  await chmod(join(bin, "docker"), 0o700)
+  await writeFile(
+    join(controlRoot, "supervisor.json"),
+    `${JSON.stringify({
+      inventory: {
+        edgeContainer: "candidate-edge",
+        firecrawl: {
+          api: "candidate-firecrawl-api",
+          browser: "candidate-firecrawl-browser",
+          egress: "candidate-firecrawl-egress",
+          search: "candidate-firecrawl-search",
+        },
+        identity: "candidate-keycloak",
+        liteLlm: "candidate-litellm",
+        outer: {
+          containers: { postgres: "candidate-postgres" },
+          network: "candidate-network",
+          postgresVolume: "candidate-postgres-volume",
+        },
+      },
+      pid: 2_147_483_647,
+    })}\n`,
+  )
+  try {
+    const result = spawnSync(
+      process.execPath,
+      ["scripts/pre-genesis/reduced-core-uat.mjs", "stop"],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          F0_UAT0_CONTROL_ROOT: controlRoot,
+          FAKE_DOCKER_LOG: dockerLog,
+          PATH: `${bin}:${process.env.PATH}`,
+        },
+      },
+    )
+    assert.equal(result.status, 0, result.stderr)
+    assert.deepEqual(JSON.parse(result.stdout), {
+      cleanupVerified: true,
+      status: "STOPPED",
+    })
+    await assert.rejects(access(controlRoot))
+    const dockerCalls = await readFile(dockerLog, "utf8")
+    assert.match(dockerCalls, /inspect candidate-edge/)
+    assert.match(dockerCalls, /network inspect candidate-network/)
+    assert.match(dockerCalls, /volume inspect candidate-postgres-volume/)
+    assert.doesNotMatch(dockerCalls, /\bps\b/)
   } finally {
     await rm(root, { force: true, recursive: true })
   }
