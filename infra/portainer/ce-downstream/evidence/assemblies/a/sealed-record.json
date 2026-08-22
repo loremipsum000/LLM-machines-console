@@ -1,0 +1,36 @@
+{
+  "assembly": "A",
+  "build": {
+    "buildkitPlatformDigest": "sha256:57269d1784e49b46228c45a1a1b870fbe40e0a639ab60b37b032d83af5bccdfc",
+    "finishedOn": "2026-08-22T22:18:53.134Z",
+    "platform": "linux/amd64",
+    "startedOn": "2026-08-22T22:07:19.245586116Z"
+  },
+  "evidence": [
+    {
+      "id": "build-log",
+      "path": "build-log-receipt.json",
+      "sha256": "8de4497a66642a107b4e0740b7f7ea7c80d2eeaf9a01d525595e25b038e3bdb3"
+    },
+    {
+      "id": "build-environment",
+      "path": "build-environment-receipt.json",
+      "sha256": "430e6ea4ff3e356d83253e0cc27a2cfe58b9a2b5ba33094ae4121d6a7a9e12ce"
+    },
+    {
+      "id": "source-reachability",
+      "path": "reachability-receipt.json",
+      "sha256": "12087e16fdda4ad6cffcd8e3cac34b7ed533dd12bca485301743e5174a4e949c"
+    }
+  ],
+  "schema": "llm-machines.portainer-ce-sealed-assembly.v1",
+  "source": {
+    "archiveSha256": "3b69237c2fdbb5e51ba1019afbd09d528820a82619c0387d2f9040f07d626f96",
+    "dockerfileSha256": "1795a8043151a84d7f71409a2e6a0c2e290e4ed2b2b8339fea680b3882daafd1",
+    "dockerignoreSha256": "d3db906b0a1121cda63aed83f32e68952174495248bbb2bddc9e194606a63391",
+    "patchSha256": "094874794823a27ab422cd9c380345d3e27d3268a2403192894a516b221487cd",
+    "revision": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+    "sourceInventorySha256": "cf12b690711cc07fba9bf25098a5418e3cabd658e698b97cd0ba52a5666194ed",
+    "tree": "9a2418f78d3f2cf4047e86b0878227b5e61d55fa"
+  }
+}

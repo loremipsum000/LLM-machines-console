@@ -1,0 +1,168 @@
+{
+  "assembly": "A",
+  "buildkit": {
+    "configDigest": "sha256:6db049f808b3e0c0694b3522d85b5a9bee4a0248a1dc67559e05f57cc0f68bdd",
+    "platformDigest": "sha256:57269d1784e49b46228c45a1a1b870fbe40e0a639ab60b37b032d83af5bccdfc",
+    "version": "0.30.0"
+  },
+  "containsCredentials": false,
+  "docker": {
+    "buildx": "0.13.1+ds1",
+    "engine": "26.1.5+dfsg1"
+  },
+  "evidence": {
+    "bootstrapLog": null,
+    "buildLog": {
+      "bytes": 68618,
+      "path": "build.log",
+      "sha256": "ee5a56bc07a36b6c9e1a0457f20f1a544d0ba2747a1eac900974586d0c120000"
+    },
+    "builderCleanup": {
+      "bytes": 32,
+      "path": "builder-cleanup.log",
+      "sha256": "000df8700fcd5d6086c0beed6ab23e9da20657e58945a842a8e2153eb2fe8953"
+    },
+    "builderContainerSummary": {
+      "bytes": 186,
+      "path": "builder-container-summary.log",
+      "sha256": "839a90df817129fa9dba5d7e7db12b4e8756150aae935b7480ad9ff0b248d9d0"
+    },
+    "builderDiskUsage": {
+      "bytes": 1831,
+      "path": "builder-du.log",
+      "sha256": "104464290ff9eabe744d8d2dff24fc27ca3bd0d94f381e3bf5914133a2688847"
+    },
+    "builderInspectPostBuild": {
+      "bytes": 1244,
+      "path": "builder-inspect-final.log",
+      "sha256": "f67a0504f4faefb4a1bc51af8b6996e04b15c766211be05a852f7496bf00d6b5"
+    },
+    "builderInspectPreBuild": {
+      "bytes": 1300,
+      "path": "builder-inspect.log",
+      "sha256": "59e930b2dccbef8ee1152cf2f5a52eda381266119e33c6df14550c9b1e8150c8"
+    },
+    "buildxAfterCleanup": {
+      "bytes": 227,
+      "path": "buildx-after-cleanup.log",
+      "sha256": "c1019d2bdaf2369a2084d4adc08c48eacf92ac875a156ca0e371b2680da66b0d"
+    },
+    "evidenceInventory": {
+      "bytes": 2462,
+      "path": "EVIDENCE-SHA256SUMS",
+      "sha256": "4b2da39cca8fce09d342f397ad08d48edc2ac40488a81e4638427805b5b49f25"
+    },
+    "filesystemAfterBuild": {
+      "bytes": 177,
+      "path": "filesystem-after-build.log",
+      "sha256": "fee9ea0e48753ba9c71d9cc1f969383dcf8be9dc97cb8cf61184f9d78ea4fc2d"
+    },
+    "filesystemAfterCleanup": {
+      "bytes": 179,
+      "path": "filesystem-after-cleanup.log",
+      "sha256": "18650aa9005abc765465d6f67d63c67bb0ddc1c2b41ddf22dbbe126e72c2a18a"
+    },
+    "founderInventoryAfter": {
+      "bytes": 1134,
+      "path": "founder-container-inventory-after-cleanup.tsv",
+      "sha256": "a6a74bbe530b8eb9e6dc9c9d3abc63de8b4b46b5197b8ebda589b54e994bf885"
+    },
+    "founderInventoryBefore": {
+      "bytes": 1134,
+      "path": "founder-container-inventory-before-cleanup.tsv",
+      "sha256": "a6a74bbe530b8eb9e6dc9c9d3abc63de8b4b46b5197b8ebda589b54e994bf885"
+    },
+    "memoryAfterBuild": {
+      "bytes": 207,
+      "path": "memory-after-build.log",
+      "sha256": "55a75cb7aba5c50c4d343868009b10dedcce28b30059e318f77b0502bfae8d25"
+    },
+    "memoryAfterCleanup": {
+      "bytes": 207,
+      "path": "memory-after-cleanup.log",
+      "sha256": "f467704b2422356ff829971a865c05cc063a058ff8581c4501a4e46c22bd5a0a"
+    },
+    "ociConfig": {
+      "bytes": 2895,
+      "path": "oci-config.json",
+      "sha256": "bacf618fe22d3a03d25ff306c29fe82923a424fd44798e8f779796867e47f1ec"
+    },
+    "ociIdentities": {
+      "bytes": 316,
+      "path": "oci-identities.txt",
+      "sha256": "5c6d246d38c1f5c8e1621f8cc50f7d4a771b96d32fcca62284836c04eb73e66f"
+    },
+    "ociIndex": {
+      "bytes": 375,
+      "path": "oci-index.json",
+      "sha256": "5e377416cd572652d76bc936482db09744d11cfbff9270d28c496c40da4d8ace"
+    },
+    "ociManifest": {
+      "bytes": 568,
+      "path": "oci-manifest.json",
+      "sha256": "6ca31ffd1fa5bc09e683897d3adb51fc368e5189b7ead52f61d332431e23a44d"
+    },
+    "outputSha256Sums": {
+      "bytes": 263,
+      "path": "output-SHA256SUMS",
+      "sha256": "249fb28d46ab501a87cab0cbfe5e6335ce87ab57460ef15b380046920f9c7d30"
+    },
+    "rawOciFileInventory": {
+      "bytes": 281,
+      "path": "raw-oci-file-inventory.tsv",
+      "sha256": "6d4bee619d97e1dd6fd1df763bcbc4767303e7f243f4221fe07869c94f3fc66a"
+    },
+    "rawOciSha256Sums": {
+      "bytes": 596,
+      "path": "raw-oci-SHA256SUMS",
+      "sha256": "b3f3535e14644024dfd5f9b56b7546a70f2c76d66a21bfa65680c2b467c13768"
+    },
+    "reachabilityRunExit": {
+      "bytes": 2,
+      "path": "reachability-run.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "reachabilityRunStderr": {
+      "bytes": 0,
+      "path": "reachability-run.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reachabilityRunStdout": {
+      "bytes": 1698,
+      "path": "reachability-run.stdout",
+      "sha256": "12087e16fdda4ad6cffcd8e3cac34b7ed533dd12bca485301743e5174a4e949c"
+    },
+    "reachabilityRunTimes": {
+      "bytes": 42,
+      "path": "reachability-run.times",
+      "sha256": "2b0c6028b233e24eda8a54f71d8dd6f71664e0ef90e6f666be1e814c8b5c070b"
+    },
+    "sourceKeySha256Sums": {
+      "bytes": 494,
+      "path": "source-key-SHA256SUMS",
+      "sha256": "72c31547401c6d2bf76c66224615203d03a0878d6afa0e5ed55af5790debfc46"
+    }
+  },
+  "evidenceRoot": "/var/tmp/llmm-portainer-n4r1r2/evidence/assembly-a",
+  "host": {
+    "architecture": "amd64",
+    "hostname": "llmm-uat-core-f0",
+    "kernel": "6.12.90+deb13-amd64",
+    "memoryBytes": 33661460480,
+    "operatingSystem": "Debian GNU/Linux 13 (trixie)",
+    "rootFilesystemBytes": 99804827648,
+    "swapBytes": 4290768896
+  },
+  "independence": {
+    "builder": "llmm-portainer-n4r1r2-a",
+    "cacheShared": false,
+    "outputRoot": "/var/tmp/llmm-portainer-n4r1r2/a/output",
+    "sourceRoot": "/var/tmp/llmm-portainer-n4r1r2/a/source"
+  },
+  "observedResources": {
+    "maximumSwapUsedBytes": 841367552,
+    "minimumAvailableMemoryBytes": 26781396992,
+    "minimumAvailableRootFilesystemBytes": 2608132096
+  },
+  "schema": "llm-machines.portainer-ce-build-environment-receipt.v2"
+}

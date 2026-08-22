@@ -1,0 +1,28 @@
+{
+  "assembly": "B",
+  "bytes": 65913,
+  "command": [
+    "docker",
+    "buildx",
+    "build",
+    "--builder",
+    "llmm-portainer-n4r1r2-b",
+    "--platform",
+    "linux/amd64",
+    "--no-cache",
+    "--provenance=false",
+    "--sbom=false",
+    "--build-arg",
+    "SOURCE_DATE_EPOCH=1786575764",
+    "--output",
+    "type=oci,dest=/var/tmp/llmm-portainer-n4r1r2/b/output/raw-oci,tar=false,rewrite-timestamp=true",
+    "--file",
+    "/var/tmp/llmm-portainer-n4r1r/repo/infra/portainer/ce-downstream/Dockerfile",
+    "/var/tmp/llmm-portainer-n4r1r2/b/source"
+  ],
+  "containsCredentials": false,
+  "exitStatus": 0,
+  "preservedAt": "VM117:/var/tmp/llmm-portainer-n4r1r2/evidence/assembly-b/build.log",
+  "schema": "llm-machines.portainer-ce-build-log-receipt.v1",
+  "sha256": "1a01ab1f8fe9dc7a38988cd82e97c571ac8b46e5db756ed46f565239f3c7171b"
+}

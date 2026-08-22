@@ -1,0 +1,47 @@
+{
+  "schema": "llm-machines.portainer-ce-reachability-receipt.v1",
+  "assembly": "A",
+  "source": {
+    "root": "/var/tmp/llmm-portainer-n4r1r2/a/source",
+    "revision": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+    "tree": "9a2418f78d3f2cf4047e86b0878227b5e61d55fa",
+    "fileCount": 4832,
+    "sourceInventorySha256": "cf12b690711cc07fba9bf25098a5418e3cabd658e698b97cd0ba52a5666194ed"
+  },
+  "validator": {
+    "path": "infra/portainer/ce-downstream/validate-reachability.mjs",
+    "sha256": "d6dd985a1e8447b593082dcabf20b4bf4bfac8ae8e3d19d818eb973a11d30cdb",
+    "nodeVersion": "22.23.2"
+  },
+  "evaluatedAt": "2026-08-22T22:44:30.091Z",
+  "angularJsVex": {
+    "expiresAt": "2026-09-22T23:59:59Z",
+    "advisories": [
+      "CVE-2024-21490",
+      "CVE-2026-11998"
+    ]
+  },
+  "command": [
+    "node",
+    "infra/portainer/ce-downstream/validate-reachability.mjs",
+    "/var/tmp/llmm-portainer-n4r1r2/a/source"
+  ],
+  "exitStatus": 0,
+  "stdoutSha256": "1ee74c6f05286861ac2647dcc733af618cb978baa92838878a09c6b57864bc7f",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "containsCredentials": false,
+  "guardStates": {
+    "GO_ARCHIVE_DIRECT_IMPORT_ABSENT": true,
+    "COMPOSE_COPY_ABSENT": true,
+    "VULNERABLE_ARCHIVE_CALLS_ABSENT": true,
+    "EXPECTED_COMPOSE_METHOD_SET_EXACT": true,
+    "NG_SRCSET_ABSENT": true,
+    "SCE_DELEGATE_CUSTOMIZATION_ABSENT": true,
+    "RESOURCE_URL_LIST_CUSTOMIZATION_ABSENT": true,
+    "TRUST_AS_RESOURCE_URL_ABSENT": true,
+    "DYNAMIC_RESOURCE_URL_SINKS_ABSENT": true,
+    "LODASH_MODULE_REPLACEMENT_PLUGIN_ABSENT": true,
+    "DOCKER_COMPOSE_SCHEMA_SOURCE_CONTROLLED_NO_RUNTIME_FETCH": true
+  },
+  "errors": []
+}
