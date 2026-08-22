@@ -280,6 +280,14 @@ test("F0-UAT0 separates restricted credentials from normal operator output", () 
     /credentialRotationRequiredBeforeBroaderAccess: Boolean/,
   )
   assert.match(integrated, /F0_UAT0_IDENTITY_CREDENTIAL_FILE/)
+  const commissioningBranch = browser.slice(
+    browser.indexOf("if (commissioningLoginMode) {"),
+    browser.indexOf("if (keycloakTeamMode) {"),
+  )
+  assert.match(commissioningBranch, /proveCommissioningSessionContinuity/)
+  assert.match(commissioningBranch, /proveKeycloakIdentityConsoleFlow/)
+  assert.match(commissioningBranch, /proveKeycloakOutageRecovery/)
+  assert.doesNotMatch(commissioningBranch, /proveKeycloakTeamConsoleFlow/)
   assert.match(operator, /assertNoOwnedRuntimeRemains/)
   assert.match(operator, /label=com\.llm-machines\.test-package=F0-C1/)
 })
