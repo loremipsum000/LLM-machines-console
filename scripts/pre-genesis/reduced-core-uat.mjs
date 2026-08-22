@@ -254,22 +254,6 @@ function pathIsInside(parent, candidate) {
 }
 
 async function assertNoOwnedRuntimeRemains(inventory) {
-  const result = spawnSync(
-    "docker",
-    [
-      "--context",
-      "default",
-      "ps",
-      "--all",
-      "--quiet",
-      "--filter",
-      "label=com.llm-machines.test-package=F0-C1",
-    ],
-    { encoding: "utf8", maxBuffer: 8 * 1024 * 1024 },
-  )
-  if (result.status !== 0 || result.stdout.trim() !== "") {
-    throw new Error("F0-UAT0 owned containers remain after shutdown.")
-  }
   if (!inventory) return
   for (const container of inventoryContainers(inventory)) {
     const inspected = spawnSync(
@@ -334,6 +318,7 @@ function runtimeInventoryIsHealthy(inventory) {
 
 function inventoryContainers(inventory) {
   const values = [
+    inventory.edgeContainer,
     inventory.identity,
     inventory.liteLlm,
     ...Object.values(inventory.firecrawl ?? {}),

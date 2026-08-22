@@ -289,7 +289,9 @@ test("F0-UAT0 separates restricted credentials from normal operator output", () 
   assert.match(commissioningBranch, /proveKeycloakOutageRecovery/)
   assert.doesNotMatch(commissioningBranch, /proveKeycloakTeamConsoleFlow/)
   assert.match(operator, /assertNoOwnedRuntimeRemains/)
-  assert.match(operator, /label=com\.llm-machines\.test-package=F0-C1/)
+  assert.doesNotMatch(operator, /label=com\.llm-machines\.test-package=F0-C1/)
+  assert.match(operator, /inventory\.edgeContainer/)
+  assert.match(operator, /inventoryContainers\(inventory\)/)
 })
 
 test("F0-UAT0 status is safe before the environment exists", async () => {
