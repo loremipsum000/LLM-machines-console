@@ -1267,8 +1267,17 @@ function postgresPsql(sql) {
 }
 
 async function waitForKeycloak(expectedPort) {
-  const deadline = performance.now() + 120_000
+  const deadline = performance.now() + 300_000
   while (performance.now() < deadline) {
+    const state = dockerResult([
+      "inspect",
+      "--format",
+      "{{.State.Running}} {{.State.ExitCode}}",
+      containerName,
+    ])
+    if (state.status !== 0 || !state.stdout.trim().startsWith("true ")) {
+      throw new Error(`${packageId} Keycloak exited before readiness.`)
+    }
     const port = mappedPort()
     if (port && port !== expectedPort) {
       throw new Error(`${packageId} Keycloak host port changed unexpectedly.`)
