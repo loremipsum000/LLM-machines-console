@@ -133,6 +133,20 @@ async function start() {
     }
     if (await exists(paths.control)) {
       const report = await statusReport()
+      const metadata = await readJson(paths.metadata)
+      await writeFile(
+        paths.metadata,
+        `${JSON.stringify(
+          {
+            ...metadata,
+            inventory: report.inventory,
+            inventoryRecordedAt: new Date().toISOString(),
+          },
+          null,
+          2,
+        )}\n`,
+        { mode: 0o600 },
+      )
       process.stdout.write(`${JSON.stringify(report)}\n`)
       return
     }
@@ -159,6 +173,12 @@ async function stop() {
   const control = (await exists(paths.control))
     ? await readJson(paths.control)
     : null
+  const inventory = control?.inventory ?? metadata.inventory ?? null
+  if (!inventory) {
+    throw new Error(
+      "F0-UAT0 exact runtime inventory is unavailable; operator state was preserved.",
+    )
+  }
   if (await processIsAlive(metadata.pid)) {
     await writeFile(paths.stop, "stop\n", { mode: 0o600 })
     const deadline = performance.now() + 15 * 60_000
@@ -174,7 +194,7 @@ async function stop() {
       )
     }
   }
-  await assertNoOwnedRuntimeRemains(control?.inventory ?? null)
+  await assertNoOwnedRuntimeRemains(inventory)
   await rm(controlRoot, { force: true, recursive: true })
   process.stdout.write(
     `${JSON.stringify({ cleanupVerified: true, status: "STOPPED" })}\n`,
@@ -254,7 +274,6 @@ function pathIsInside(parent, candidate) {
 }
 
 async function assertNoOwnedRuntimeRemains(inventory) {
-  if (!inventory) return
   for (const container of inventoryContainers(inventory)) {
     const inspected = spawnSync(
       "docker",
