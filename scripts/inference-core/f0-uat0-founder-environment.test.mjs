@@ -274,6 +274,12 @@ test("F0-UAT0 separates restricted credentials from normal operator output", () 
   )
   assert.doesNotMatch(operator, /readFile\(paths\.credentials/)
   assert.doesNotMatch(operator, /otpSecret:|password:|bffService|oidcClient/)
+  assert.match(operator, /F0_UAT0_IDENTITY_CREDENTIAL_FILE/)
+  assert.match(
+    operator,
+    /credentialRotationRequiredBeforeBroaderAccess: Boolean/,
+  )
+  assert.match(integrated, /F0_UAT0_IDENTITY_CREDENTIAL_FILE/)
   assert.match(operator, /assertNoOwnedRuntimeRemains/)
   assert.match(operator, /label=com\.llm-machines\.test-package=F0-C1/)
 })

@@ -14,6 +14,7 @@ import { createServer } from "node:net"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { loadFounderIdentitySecret } from "./founder-identity-secret.mjs"
 import {
   authorityOrigin,
   loadFounderUatPlacement,
@@ -67,7 +68,12 @@ const realmFile = join(importRoot, "llm-machines-realm.json")
 const browserConfigFile = join(stateRoot, "browser-config.json")
 const keycloakEnvironmentFile = join(stateRoot, "keycloak.env")
 const postgresEnvironmentFile = join(stateRoot, "postgres.env")
-const credentials = generatedCredentials()
+const founderIdentitySecretPath =
+  process.env.F0_UAT0_IDENTITY_CREDENTIAL_FILE?.trim()
+const founderIdentitySecret = founderIdentitySecretPath
+  ? await loadFounderIdentitySecret(founderIdentitySecretPath)
+  : null
+const credentials = generatedCredentials(founderIdentitySecret?.identities)
 let containerCreated = false
 let postgresContainerCreated = false
 let postgresVolumeCreated = false
@@ -732,14 +738,14 @@ function userExport(user, role, group, liteLlmRole = null) {
   }
 }
 
-function generatedCredentials() {
+function generatedCredentials(founderIdentities = null) {
   return {
-    admin: generatedUser("admin"),
+    admin: generatedUser("admin", founderIdentities?.admin),
     bootstrap: {
       password: opaqueValue(),
       username: `bootstrap-${randomBytes(6).toString("hex")}`,
     },
-    operator: generatedUser("operator"),
+    operator: generatedUser("operator", founderIdentities?.operator),
     bffService: opaqueValue(),
     humanAdmin: opaqueValue(),
     liteLlm: opaqueValue(),
@@ -761,12 +767,14 @@ function browserCredentials() {
   }
 }
 
-function generatedUser(role) {
+function generatedUser(role, configuredIdentity = null) {
   return {
-    password: opaqueValue(),
+    password: configuredIdentity?.password ?? opaqueValue(),
     role,
     subject: `keycloak-${role}-${randomBytes(8).toString("hex")}`,
-    username: `${role}-${randomBytes(6).toString("hex")}`,
+    username:
+      configuredIdentity?.username ??
+      `${role}-${randomBytes(6).toString("hex")}`,
   }
 }
 

@@ -14,6 +14,7 @@ import {
 import { homedir } from "node:os"
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { loadFounderIdentitySecret } from "./founder-identity-secret.mjs"
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const command = process.argv[2]
@@ -27,6 +28,8 @@ const controlRoot = resolve(
   process.env.F0_UAT0_CONTROL_ROOT?.trim() ||
     join(homedir(), ".local/state/llm-machines/founder-uat"),
 )
+const founderIdentityCredentialPath =
+  process.env.F0_UAT0_IDENTITY_CREDENTIAL_FILE?.trim()
 const paths = {
   control: join(controlRoot, "runtime/uat-control.json"),
   credentials: join(controlRoot, "runtime/credentials.json"),
@@ -56,6 +59,9 @@ async function start() {
   if (requireCommand("git", ["status", "--porcelain"]).trim()) {
     throw new Error("F0-UAT0 requires a clean Product worktree.")
   }
+  if (founderIdentityCredentialPath) {
+    await loadFounderIdentitySecret(founderIdentityCredentialPath)
+  }
 
   const sourceCommit = git(["rev-parse", "HEAD"])
   const sourceTree = git(["rev-parse", "HEAD^{tree}"])
@@ -81,6 +87,11 @@ async function start() {
         F0_UAT0_CONTROL_FILE: paths.control,
         F0_UAT0_CREDENTIAL_FILE: paths.credentials,
         F0_UAT0_KEEP_RUNNING: "true",
+        ...(founderIdentityCredentialPath
+          ? {
+              F0_UAT0_IDENTITY_CREDENTIAL_FILE: founderIdentityCredentialPath,
+            }
+          : {}),
         F0_UAT0_NATIVE_AMD64: "true",
         F0_UAT0_STATE_ROOT: paths.runtime,
         F0_UAT0_STOP_FILE: paths.stop,
@@ -99,6 +110,9 @@ async function start() {
     `${JSON.stringify(
       {
         architecture: "linux/amd64",
+        credentialRotationRequiredBeforeBroaderAccess: Boolean(
+          founderIdentityCredentialPath,
+        ),
         pid: child.pid,
         sourceCommit,
         sourceTree,
@@ -191,6 +205,8 @@ async function statusReport() {
     credentialMode: credentialMode === null ? null : "0600",
     inventory: control?.inventory ?? null,
     keepRunning: control?.keepRunning === true,
+    credentialRotationRequiredBeforeBroaderAccess:
+      metadata.credentialRotationRequiredBeforeBroaderAccess === true,
     pid: metadata.pid,
     privateNativeServices: control?.privateNativeServices ?? [],
     sourceCommit: metadata.sourceCommit,

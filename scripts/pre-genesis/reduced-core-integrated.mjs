@@ -55,6 +55,8 @@ if (incrementalCommissioning && !keepRunning) {
   throw new Error("Incremental commissioning requires keep-running mode.")
 }
 const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
+const founderIdentityCredentialPath =
+  process.env.F0_UAT0_IDENTITY_CREDENTIAL_FILE?.trim()
 if (founderUatPlacementPath && !keepRunning) {
   throw new Error("F0-UAT0 placement is valid only in keep-running mode.")
 }
@@ -450,6 +452,9 @@ async function startKeycloak(edgePort) {
       F0_C1_SERVICE_STOP_FILE: files.keycloakStop,
       ...(founderUatPlacement
         ? { F0_UAT0_PLACEMENT_FILE: founderUatPlacementPath }
+        : {}),
+      ...(founderIdentityCredentialPath
+        ? { F0_UAT0_IDENTITY_CREDENTIAL_FILE: founderIdentityCredentialPath }
         : {}),
       PRE_GENESIS_DOCKER_CONTEXT: dockerContext,
     },
