@@ -164,6 +164,7 @@ const expectedNginxLocations = {
   ],
   litellm: [
     "= /ui/",
+    "~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/?$",
     "~ ^/ui/login/?$",
     "~ ^/(?:litellm-asset-prefix/_next/static/|ui/__next\\.|litellm/\\.well-known/litellm-ui-config).*$",
     "= /sso/key/generate",
@@ -205,9 +206,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "f995e2c7c7cb0577608f14fbf60c45d598b3508501c14bfc31258aa7d55b32ab",
+    "033633047e33af4356edddc2126c2b33fbefe82bceb1d9b5e59c9081befe9e63",
   "native-admin-edge-profile.json":
-    "2868d8e0bcc8dab84f1acff75c85c8ccae188316e7a1d61f3d21228e2276e6b0",
+    "73e6a93e87cd24166c42cf873a581be95e3c4795c7752c1abc03638caf9e3666",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -489,6 +490,9 @@ function validateNativeAdmin(profile, errors) {
   const liteLlmKeyList = profile.services?.litellm?.routes?.find(
     ({ id }) => id === "key-list",
   )
+  const liteLlmUiPages = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "ui-pages",
+  )
   add(
     errors,
     sameJson(profile.queryPolicies?.["grafana-static-cache"], ["_cache"]) &&
@@ -509,6 +513,11 @@ function validateNativeAdmin(profile, errors) {
       sameJson(profile.queryPolicies?.["litellm-team-list-v1"], ["user_id"]) &&
       liteLlmTeamListV1?.path?.value === "/team/list" &&
       liteLlmTeamListV1?.queryPolicy === "litellm-team-list-v1" &&
+      liteLlmUiPages?.path?.kind === "regex" &&
+      liteLlmUiPages?.path?.value ===
+        "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/?$" &&
+      sameJson(liteLlmUiPages?.methods, ["GET", "HEAD"]) &&
+      liteLlmUiPages?.queryPolicy === "litellm-ui" &&
       sameJson(profile.queryPolicies?.["litellm-key-list"], [
         "expand",
         "include_created_by_keys",
@@ -960,6 +969,9 @@ function validateNginx(sources, errors) {
   add(
     errors,
     litellmServer.includes("proxy_pass http://litellm_native;") &&
+      litellmServer.includes(
+        "location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/?$",
+      ) &&
       litellmServer.includes("location ~ ^/ui/login/?$") &&
       litellmServer.includes(
         "return 303 https://@@PRODUCT_LITELLM_HOST@@/sso/key/generate?return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2F;",
@@ -974,7 +986,11 @@ function validateNginx(sources, errors) {
       litellmServer.includes(
         "location ~* ^/(?:public/litellm_blog_posts|v1/agents)(?:/|$)",
       ) &&
-      !/location[^\n]*(?:router|budget)/i.test(litellmServer),
+      !litellmServer.includes("location ~ ^/ui/.*") &&
+      !/location[^\n]*\/ui\/(?:mcp-servers|agents|memory|skills|search-tools|tool-policies|vector-stores|workflows)/.test(
+        litellmServer,
+      ) &&
+      !/location[^\n]*\^?\/(?:router|budget)/i.test(litellmServer),
     "LiteLLM native route boundary changed",
   )
   add(

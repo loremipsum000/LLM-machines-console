@@ -949,6 +949,17 @@ http {
       proxy_pass http://litellm_native;
     }
 
+    location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/?$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_ui = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://litellm_native;
+    }
+
     location ~ ^/ui/login/?$ {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_ui = 0) { return 400; }

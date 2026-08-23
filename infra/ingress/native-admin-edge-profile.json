@@ -358,6 +358,15 @@
           "queryPolicy": "litellm-ui"
         },
         {
+          "id": "ui-pages",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/?$"
+          },
+          "queryPolicy": "litellm-ui"
+        },
+        {
           "id": "login-redirect",
           "methods": ["GET", "HEAD"],
           "path": { "kind": "regex", "value": "^/ui/login/?$" },

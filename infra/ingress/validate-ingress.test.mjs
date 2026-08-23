@@ -704,6 +704,42 @@ test("only the exact Keycloak logout confirmation route is retained", () => {
   )
 })
 
+test("LiteLLM UI shells are explicit and retired surfaces remain absent", () => {
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  const uiPages = profile.services.litellm.routes.find(
+    ({ id }) => id === "ui-pages",
+  )
+  assert.ok(uiPages)
+  const route = new RegExp(uiPages.path.value)
+
+  for (const path of [
+    "/ui/api-keys",
+    "/ui/models-and-endpoints",
+    "/ui/usage",
+    "/ui/users",
+    "/ui/router-settings",
+  ])
+    assert.equal(route.test(path), true, path)
+
+  for (const path of [
+    "/ui/mcp-servers",
+    "/ui/agents",
+    "/ui/memory",
+    "/ui/skills",
+    "/ui/vector-stores",
+    "/ui/unreviewed",
+    "/ui/api-keys/extra",
+  ])
+    assert.equal(route.test(path), false, path)
+
+  assert.equal(uiPages.queryPolicy, "litellm-ui")
+  assert.deepEqual(uiPages.methods, ["GET", "HEAD"])
+  assert.doesNotMatch(
+    sources["product-edge.nginx.conf.template"],
+    /location\s+~\s+\^\/ui\/\.\*/,
+  )
+})
+
 test("native listener inventory cannot omit Core or delivery-profile ports", () => {
   const policy = JSON.parse(sources["no-bypass-policy.json"])
   policy.customerNetwork.deniedNativeTcpPorts =
