@@ -42,9 +42,10 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
       >
         {overview.tiles.map((tile) => (
           <OverviewTileCard
-            href={tile.id === "applications" ? "/keys" : tile.href}
             key={tile.id}
-            tile={tile}
+            tile={
+              tile.id === "applications" ? { ...tile, href: "/keys" } : tile
+            }
           />
         ))}
       </section>
@@ -91,13 +92,7 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
   )
 }
 
-function OverviewTileCard({
-  href,
-  tile,
-}: {
-  href: string
-  tile: AdminOverviewTile
-}) {
+function OverviewTileCard({ tile }: { tile: OverviewTile }) {
   return (
     <article
       aria-labelledby={`overview-tile-${tile.id}`}
@@ -133,7 +128,7 @@ function OverviewTileCard({
         </time>
         <Link
           className="text-sm font-medium leading-5 text-[#73cfff] transition-colors hover:text-[#a6e1ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-          href={href}
+          href={tile.href}
         >
           Open {tile.title}
         </Link>
@@ -141,6 +136,8 @@ function OverviewTileCard({
     </article>
   )
 }
+
+type OverviewTile = Omit<AdminOverviewTile, "href"> & { href: string }
 
 function MetricCard({ item }: { item: AdminOverviewMetric }) {
   return (
