@@ -164,7 +164,8 @@ const expectedNginxLocations = {
   ],
   litellm: [
     "= /ui/",
-    "~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/?$",
+    "~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$",
+    "~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$",
     "~ ^/ui/login/?$",
     "~ ^/(?:litellm-asset-prefix/_next/static/|ui/__next\\.|litellm/\\.well-known/litellm-ui-config).*$",
     "= /sso/key/generate",
@@ -180,6 +181,7 @@ const expectedNginxLocations = {
     "= /v2/team/list",
     "= /team/list",
     "~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$",
+    "~ ^/(?:get/ui_settings|get/ui_theme_settings|get_image|get_favicon|health/license|health/readiness/details|sso/get/ui_settings)$",
     "~ ^/(?:model/new|team/new|organization/new|user/new|config/update)$",
     "= /v1/models",
     "= /v1/chat/completions",
@@ -206,9 +208,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "033633047e33af4356edddc2126c2b33fbefe82bceb1d9b5e59c9081befe9e63",
+    "d6e4aa3ac8f93c2260967f893289caa8924c1534ddefb4c1edb71dc245d4a99b",
   "native-admin-edge-profile.json":
-    "73e6a93e87cd24166c42cf873a581be95e3c4795c7752c1abc03638caf9e3666",
+    "a020711bed3b9fe913ff2cfdb04f5a14ad4552d5fc78e0c3096a6236fbc7df5f",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -493,6 +495,12 @@ function validateNativeAdmin(profile, errors) {
   const liteLlmUiPages = profile.services?.litellm?.routes?.find(
     ({ id }) => id === "ui-pages",
   )
+  const liteLlmUiCanonicalization = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "ui-page-canonicalization",
+  )
+  const liteLlmUiReads = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "ui-settings-and-branding-reads",
+  )
   add(
     errors,
     sameJson(profile.queryPolicies?.["grafana-static-cache"], ["_cache"]) &&
@@ -515,9 +523,17 @@ function validateNativeAdmin(profile, errors) {
       liteLlmTeamListV1?.queryPolicy === "litellm-team-list-v1" &&
       liteLlmUiPages?.path?.kind === "regex" &&
       liteLlmUiPages?.path?.value ===
-        "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/?$" &&
+        "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$" &&
       sameJson(liteLlmUiPages?.methods, ["GET", "HEAD"]) &&
       liteLlmUiPages?.queryPolicy === "litellm-ui" &&
+      liteLlmUiCanonicalization?.path?.kind === "regex" &&
+      liteLlmUiCanonicalization?.path?.value ===
+        "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$" &&
+      liteLlmUiCanonicalization?.behavior ===
+        "EDGE_308_TO_HTTPS_TRAILING_SLASH" &&
+      liteLlmUiReads?.path?.value ===
+        "^/(?:get/ui_settings|get/ui_theme_settings|get_image|get_favicon|health/license|health/readiness/details|sso/get/ui_settings)$" &&
+      liteLlmUiReads?.queryPolicy === "forbid" &&
       sameJson(profile.queryPolicies?.["litellm-key-list"], [
         "expand",
         "include_created_by_keys",
@@ -970,7 +986,16 @@ function validateNginx(sources, errors) {
     errors,
     litellmServer.includes("proxy_pass http://litellm_native;") &&
       litellmServer.includes(
-        "location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/?$",
+        "location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$",
+      ) &&
+      litellmServer.includes(
+        "return 308 https://@@PRODUCT_LITELLM_HOST@@$uri/;",
+      ) &&
+      litellmServer.includes(
+        "location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$",
+      ) &&
+      litellmServer.includes(
+        "location ~ ^/(?:get/ui_settings|get/ui_theme_settings|get_image|get_favicon|health/license|health/readiness/details|sso/get/ui_settings)$",
       ) &&
       litellmServer.includes("location ~ ^/ui/login/?$") &&
       litellmServer.includes(

@@ -1,0 +1,118 @@
+diff --git a/Dockerfile b/Dockerfile
+index 0471793..e1cf54a 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -106,7 +106,7 @@ FROM $LITELLM_RUNTIME_IMAGE AS runtime
+ USER root
+ 
+ LABEL org.opencontainers.image.title="LiteLLM OSS Downstream" \
+-      org.opencontainers.image.version="v1.96.2-llmm.1" \
++      org.opencontainers.image.version="v1.96.2-llmm.2" \
+       org.opencontainers.image.revision="83d6d84bfb7abbbff70d456bc89028d426db8c33" \
+       org.opencontainers.image.source="https://github.com/BerriAI/litellm" \
+       org.opencontainers.image.licenses="MIT"
+diff --git a/ui/litellm-dashboard/next.config.mjs b/ui/litellm-dashboard/next.config.mjs
+index 5161477..e4a8170 100644
+--- a/ui/litellm-dashboard/next.config.mjs
++++ b/ui/litellm-dashboard/next.config.mjs
+@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
+ 
+ const nextConfig = {
+   output: "export",
+-  generateBuildId: async () => "litellm-1-96-2-llmm-1",
++  generateBuildId: async () => "litellm-1-96-2-llmm-2",
+   compiler: {
+     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+   },
+diff --git a/ui/litellm-dashboard/src/components/leftnav.tsx b/ui/litellm-dashboard/src/components/leftnav.tsx
+index af76fcc..9d79147 100644
+--- a/ui/litellm-dashboard/src/components/leftnav.tsx
++++ b/ui/litellm-dashboard/src/components/leftnav.tsx
+@@ -25,8 +25,6 @@ import {
+   Activity,
+   BarChart3,
+   Bell,
+-  Blocks,
+-  Bot,
+   BookOpen,
+   Building2,
+   Boxes,
+@@ -39,7 +37,6 @@ import {
+   Folder,
+   HeartPulse,
+   KeyRound,
+-  LayoutGrid,
+   Network,
+   Palette,
+   PanelLeftClose,
+@@ -48,18 +45,13 @@ import {
+   PlayCircle,
+   Route,
+   ScrollText,
+-  Search,
+-  Server,
+   Settings as SettingsIcon,
+   Shield,
+-  ShieldCheck,
+   Tags,
+   Terminal,
+   User,
+   Users,
+   Wallet,
+-  Wrench,
+-  Workflow,
+ } from "lucide-react";
+ import Link from "next/link";
+ import { useMemo, useState } from "react";
+@@ -132,25 +124,6 @@ const menuGroups: MenuGroup[] = [
+         icon: <Network {...ICON} />,
+         roles: rolesAllowedToViewWriteScopedPages,
+       },
+-      {
+-        key: "agentic",
+-        page: "agentic",
+-        label: "Agentic",
+-        icon: <Bot {...ICON} />,
+-        children: [
+-          {
+-            key: "agents",
+-            page: "agents",
+-            label: "Agents",
+-            icon: <Bot {...ICON} />,
+-            roles: rolesAllowedToViewWriteScopedPages,
+-          },
+-          { key: "workflows", page: "workflows", label: "Workflow Runs", icon: <Workflow {...ICON} /> },
+-          { key: "memory", page: "memory", label: "Memory", icon: <Database {...ICON} /> },
+-        ],
+-      },
+-      { key: "mcp-servers", page: "mcp-servers", label: "MCP Servers", icon: <Server {...ICON} /> },
+-      { key: "skills", page: "skills", label: "Skills", icon: <Blocks {...ICON} />, roles: all_admin_roles },
+       { key: "guardrails", page: "guardrails", label: "Guardrails", icon: <Shield {...ICON} /> },
+       {
+         key: "policies",
+@@ -159,17 +132,6 @@ const menuGroups: MenuGroup[] = [
+         icon: <ScrollText {...ICON} />,
+         roles: all_admin_roles,
+       },
+-      {
+-        key: "tools",
+-        page: "tools",
+-        label: "Tools",
+-        icon: <Wrench {...ICON} />,
+-        children: [
+-          { key: "search-tools", page: "search-tools", label: "Search Tools", icon: <Search {...ICON} /> },
+-          { key: "vector-stores", page: "vector-stores", label: "Vector Stores", icon: <Database {...ICON} /> },
+-          { key: "tool-policies", page: "tool-policies", label: "Tool Policies", icon: <ShieldCheck {...ICON} /> },
+-        ],
+-      },
+     ],
+   },
+   {
+@@ -240,7 +202,6 @@ const menuGroups: MenuGroup[] = [
+     groupLabel: "DEVELOPER TOOLS",
+     items: [
+       { key: "api_ref", page: "api_ref", label: "API Reference", icon: <Code2 {...ICON} /> },
+-      { key: "model-hub-table", page: "model-hub-table", label: "AI Hub", icon: <LayoutGrid {...ICON} /> },
+       {
+         key: "learning-resources",
+         page: "learning-resources",

@@ -358,11 +358,21 @@
           "queryPolicy": "litellm-ui"
         },
         {
+          "id": "ui-page-canonicalization",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$"
+          },
+          "queryPolicy": "litellm-ui",
+          "behavior": "EDGE_308_TO_HTTPS_TRAILING_SLASH"
+        },
+        {
           "id": "ui-pages",
           "methods": ["GET", "HEAD"],
           "path": {
             "kind": "regex",
-            "value": "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/?$"
+            "value": "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$"
           },
           "queryPolicy": "litellm-ui"
         },
@@ -462,6 +472,15 @@
           "path": {
             "kind": "regex",
             "value": "^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "ui-settings-and-branding-reads",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/(?:get/ui_settings|get/ui_theme_settings|get_image|get_favicon|health/license|health/readiness/details|sso/get/ui_settings)$"
           },
           "queryPolicy": "forbid"
         },

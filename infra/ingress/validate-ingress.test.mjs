@@ -709,17 +709,25 @@ test("LiteLLM UI shells are explicit and retired surfaces remain absent", () => 
   const uiPages = profile.services.litellm.routes.find(
     ({ id }) => id === "ui-pages",
   )
+  const canonicalization = profile.services.litellm.routes.find(
+    ({ id }) => id === "ui-page-canonicalization",
+  )
   assert.ok(uiPages)
+  assert.ok(canonicalization)
   const route = new RegExp(uiPages.path.value)
+  const canonicalRoute = new RegExp(canonicalization.path.value)
 
   for (const path of [
-    "/ui/api-keys",
-    "/ui/models-and-endpoints",
-    "/ui/usage",
-    "/ui/users",
-    "/ui/router-settings",
+    "/ui/api-keys/",
+    "/ui/models-and-endpoints/",
+    "/ui/usage/",
+    "/ui/users/",
+    "/ui/router-settings/",
   ])
     assert.equal(route.test(path), true, path)
+
+  for (const path of ["/ui/api-keys", "/ui/usage"])
+    assert.equal(canonicalRoute.test(path), true, path)
 
   for (const path of [
     "/ui/mcp-servers",
@@ -734,6 +742,7 @@ test("LiteLLM UI shells are explicit and retired surfaces remain absent", () => 
 
   assert.equal(uiPages.queryPolicy, "litellm-ui")
   assert.deepEqual(uiPages.methods, ["GET", "HEAD"])
+  assert.equal(canonicalization.behavior, "EDGE_308_TO_HTTPS_TRAILING_SLASH")
   assert.doesNotMatch(
     sources["product-edge.nginx.conf.template"],
     /location\s+~\s+\^\/ui\/\.\*/,

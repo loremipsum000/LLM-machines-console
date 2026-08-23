@@ -441,6 +441,118 @@ export const f0N1ReviewedNegativeFindings = [
     removeBy: "PR-03",
   },
 ]
+export const f0LiteLlmSidebarReviewedNegativeFindings = [
+  {
+    ruleId: "FS101_AGENTIC_RUNTIME",
+    path: "infra/litellm/oss-downstream/patches/sidebar-functional-candidate.patch",
+    count: 3,
+    fingerprints: {
+      "2678d4399ba2a7cc03ad8afaea684c5a2149507279397e83b9c1da9d145e34a6": 1,
+      "2c583101fcaef997b35ff909f8158ef7462ac78abd41b6daf8c24fadcd352810": 1,
+      "34869b56c1b5f8a2be4d84394c42156fec03aa521733d65d4d280d71731dbe96": 1,
+    },
+    removeBy: "PR-04",
+  },
+  {
+    ruleId: "FS101_AGENTIC_RUNTIME",
+    path: "infra/litellm/oss-downstream/validate-sidebar-functional-candidate.mjs",
+    count: 1,
+    fingerprints: {
+      "4b53b022c04449c7a7c45ab86441075bdc84f8034c8a9a1120f22b29e653a55c": 1,
+    },
+    removeBy: "PR-04",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "infra/ingress/validate-ingress.mjs",
+    count: 1,
+    fingerprints: {
+      "10e52edd15f7714cb17ec281fccdb1d325512780d17b3688dc9a24b62902a60a": 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "infra/ingress/validate-ingress.test.mjs",
+    count: 1,
+    fingerprints: {
+      "30aa81caf0287c3e6b82961103d3516820fce889e0249a614627fd56506c1424": 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "infra/litellm/oss-downstream/patches/sidebar-functional-candidate.patch",
+    count: 3,
+    fingerprints: {
+      "19dc2cb62f8d1a58c369cf8c3a6a973a9714d4c4814f4890349c963c96a958b3": 3,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "infra/litellm/oss-downstream/sidebar-functional-candidate.json",
+    count: 1,
+    fingerprints: {
+      c8a2062d6c1b4b061bece01678416fd839d98b325caf5b96153ca36df8d08aed: 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "infra/litellm/oss-downstream/validate-sidebar-functional-candidate.mjs",
+    count: 1,
+    fingerprints: {
+      d7ee5437f9014a7c2964f085211fa6bdd74246299564755d76392f25dc11521b: 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS102_MCP",
+    path: "scripts/inference-core/f0-litellm-sidebar-functional-candidate.test.mjs",
+    count: 1,
+    fingerprints: {
+      "87e890beff5cabc6ff435d32fb0441578dc9b60417c5a3a3c41b951760211c8d": 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/litellm/oss-downstream/patches/sidebar-functional-candidate.patch",
+    count: 3,
+    fingerprints: {
+      "7c4fbfe840e09470e2c0732c04bd3b9637f58612d9a4234844e5b7649be7a1f2": 3,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/litellm/oss-downstream/sidebar-functional-candidate.json",
+    count: 1,
+    fingerprints: {
+      "5f5cbe6ca47f4a89a61eb5ea7d995b9e89819955339ee4df40387bf735387142": 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "infra/litellm/oss-downstream/validate-sidebar-functional-candidate.mjs",
+    count: 1,
+    fingerprints: {
+      "55c0eb866eaa79a72a9b56dd50c7b80191df5690387a57a446f62928fddbb4f3": 1,
+    },
+    removeBy: "PR-03",
+  },
+  {
+    ruleId: "FS105_BUILDER_HUB",
+    path: "scripts/inference-core/f0-litellm-sidebar-functional-candidate.test.mjs",
+    count: 1,
+    fingerprints: {
+      "08c290c793d59bef7c3f1f3ff9cbca1f2ae30f791fc19a2614ce764a779bfb03": 1,
+    },
+    removeBy: "PR-03",
+  },
+]
 export const f0N4R1ReviewedNegativeFindings = [
   {
     ruleId: "FS102_MCP",
@@ -6658,6 +6770,7 @@ export function verifyPr11aR1V1SourceClosurePackage({
     ...expectedAllowlist.entries,
     ...pr11aR1D1ReviewedNegativeFindings,
     ...f0N1ReviewedNegativeFindings,
+    ...f0LiteLlmSidebarReviewedNegativeFindings,
     ...f0N4R1ReviewedNegativeFindings,
   ].sort(compareFindingKeys)
   const actualIntegratedFindings = [...actualAllowlist.entries].sort(
