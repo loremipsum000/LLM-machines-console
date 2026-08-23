@@ -10,7 +10,6 @@ const retainedEntryPaths = [
   "app/api/admin/audit/export/route.ts",
   "app/api/admin/audit/export/verification-keys/route.ts",
   "app/applications/[[...section]]/page.tsx",
-  "app/keys/[[...section]]/page.tsx",
   "app/hardware/page.tsx",
   "app/inference/[[...section]]/page.tsx",
   "app/page.tsx",
@@ -82,7 +81,6 @@ describe("retained Web inference-core boundaries", () => {
     for (const path of [
       "../../app/activity/page.tsx",
       "../../app/applications/[[...section]]/page.tsx",
-      "../../app/keys/[[...section]]/page.tsx",
       "../../app/hardware/page.tsx",
       "../../app/inference/[[...section]]/page.tsx",
       "../../app/settings/page.tsx",
