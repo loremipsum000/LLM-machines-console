@@ -1,0 +1,1812 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicate": {
+    "buildDefinition": {
+      "buildType": "https://llm-machines.invalid/build-types/portainer-ce-downstream/v1",
+      "externalParameters": {
+        "dockerfileSha256": "1795a8043151a84d7f71409a2e6a0c2e290e4ed2b2b8339fea680b3882daafd1",
+        "dockerignoreSha256": "d3db906b0a1121cda63aed83f32e68952174495248bbb2bddc9e194606a63391",
+        "frontendPackageJsonSha256": "3936e9c5529e92fbf110b60964b7ed56a25b8b39a885713c5fa30499499ebb82",
+        "frontendPnpmLockSha256": "99971755c3784ab0930a87018d7ba5fd90db9e5c41c14e198ca81a1152dc6d9a",
+        "frontendPublicInventorySha256": "6f43f103842df302ddb6c694e75dc7f8e620197f8aeaef5bacc4c82fb91da385",
+        "frontendSourceMapInventorySha256": "186a8277f0cf1b5440c9c07f7cf22d2ce98632fa7f7582a869ee45a146a3dc43",
+        "frontendWebpackCommonSha256": "159bd6f9147aa46c16a80c0aa13fbe7105be4b0a95aab6fb98b6a3e4544ef5d3",
+        "frontendWebpackProductionSha256": "e27e426749d2cb5fa4e042ba178090f6d2e8d74762b1338e3815cd14192c5925",
+        "patchSha256": "094874794823a27ab422cd9c380345d3e27d3268a2403192894a516b221487cd",
+        "platform": "linux/amd64",
+        "sourceArchiveSha256": "3b69237c2fdbb5e51ba1019afbd09d528820a82619c0387d2f9040f07d626f96",
+        "sourceInventorySha256": "cf12b690711cc07fba9bf25098a5418e3cabd658e698b97cd0ba52a5666194ed",
+        "sourceRevision": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+        "sourceTree": "9a2418f78d3f2cf4047e86b0878227b5e61d55fa"
+      },
+      "internalParameters": {
+        "noCache": true,
+        "provenanceExporter": false,
+        "rewriteTimestamp": true,
+        "sbomExporter": false,
+        "sourceDateEpoch": 1786575764
+      },
+      "resolvedDependencies": [
+        {
+          "digest": {
+            "sha256": "1795a8043151a84d7f71409a2e6a0c2e290e4ed2b2b8339fea680b3882daafd1"
+          },
+          "uri": "file:infra/portainer/ce-downstream/Dockerfile"
+        },
+        {
+          "digest": {
+            "sha256": "d3db906b0a1121cda63aed83f32e68952174495248bbb2bddc9e194606a63391"
+          },
+          "uri": "file:infra/portainer/ce-downstream/Dockerfile.dockerignore"
+        },
+        {
+          "digest": {
+            "sha256": "651a67313ce85d5d1f3c24e633e2cc0d12d9c964fd0498303b258dca536d6481"
+          },
+          "uri": "file:infra/portainer/ce-downstream/generate-reachability-receipt.mjs"
+        },
+        {
+          "digest": {
+            "sha256": "094874794823a27ab422cd9c380345d3e27d3268a2403192894a516b221487cd"
+          },
+          "uri": "file:infra/portainer/ce-downstream/patches/security-toolchain.patch"
+        },
+        {
+          "digest": {
+            "sha256": "f4ee206baf2081fce6f470508489cd802d93e3f615a77aa077b2188b6ee7e860"
+          },
+          "uri": "file:infra/portainer/ce-downstream/seal-assembly-evidence.mjs"
+        },
+        {
+          "digest": {
+            "sha256": "3b69237c2fdbb5e51ba1019afbd09d528820a82619c0387d2f9040f07d626f96"
+          },
+          "uri": "https://codeload.github.com/portainer/portainer/tar.gz/refs/tags/2.39.6"
+        },
+        {
+          "digest": {
+            "sha256": "98ae36bf1e5d9f177fbf10391dea8b36cd2d881dfe49cdc919a23258af1a33eb"
+          },
+          "uri": "https://codeload.github.com/portainer/progress-bar-4-axios/tar.gz/d424cd29f5b629af9ffc5c3d6db8d92d11d82f0f"
+        },
+        {
+          "digest": {
+            "sha256": "63b50a4ba15cde20006ddba5d9e21fd623e23f094c9f63bb15f686b0e496aed6"
+          },
+          "uri": "https://registry.npmjs.org/pnpm/-/pnpm-10.26.2.tgz"
+        },
+        {
+          "digest": {
+            "sha256": "8407d643fdfda5820fb1e39df8eaca4dda0903ca96f9c1913b25e0f8ce418f32"
+          },
+          "uri": "npm:@aws-crypto+sha256-js@2.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "df43107b06d1b62c7beb0713d05463b8f4b42e99730615668cd62b2e2ab1191f"
+          },
+          "uri": "npm:@aws-crypto+util@2.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "68cd93df6d9f8eedc9a76ff0111eb846a4b57d1eef665a26370b79f1bd066a7e"
+          },
+          "uri": "npm:@aws-sdk+util-utf8-browser@3.37.0"
+        },
+        {
+          "digest": {
+            "sha256": "79f700634d3e5c5654631b73fc2c90fe89d527ae68dc3235f413a055c7c68922"
+          },
+          "uri": "npm:@babel+runtime@7.26.0"
+        },
+        {
+          "digest": {
+            "sha256": "1c74f4382905396355bc01c029cb900d191d73aa802b761361eb7917aef5b8ec"
+          },
+          "uri": "npm:@codemirror+autocomplete@6.18.6"
+        },
+        {
+          "digest": {
+            "sha256": "e8367c2fdcdccba0c0abf6b1527711ea5e77eb535caa0da9ea9a340bd42398a7"
+          },
+          "uri": "npm:@codemirror+commands@6.8.0"
+        },
+        {
+          "digest": {
+            "sha256": "7537ce8d0f9df3b79d14a3561b4cc0129f0a4cf9cd06f1ac784b09c346a59b53"
+          },
+          "uri": "npm:@codemirror+lang-yaml@6.1.2"
+        },
+        {
+          "digest": {
+            "sha256": "c0d5ed286d97d13cb4bf56e7f1a39450c033c0d88cea8d19194c418474872fab"
+          },
+          "uri": "npm:@codemirror+language@6.10.8"
+        },
+        {
+          "digest": {
+            "sha256": "3c2f5dbef0b038cd20e349d69e2d84aced408f5a8fc69792bc576e161cbabd11"
+          },
+          "uri": "npm:@codemirror+legacy-modes@6.4.2"
+        },
+        {
+          "digest": {
+            "sha256": "dbe74f6b5c073bb4d5e5b0e1be3e695e04b37bd5329a2195270a12eb4b578e16"
+          },
+          "uri": "npm:@codemirror+lint@6.8.4"
+        },
+        {
+          "digest": {
+            "sha256": "2e5291666ce49bbfd044f9a7eaab8dc0d83bcbb565f2e2fce51158b450c6370d"
+          },
+          "uri": "npm:@codemirror+merge@6.10.0"
+        },
+        {
+          "digest": {
+            "sha256": "a6a3d578b9eb3f3f49afd2960ed3de97300d4cdbbb300b62875c49be984b7223"
+          },
+          "uri": "npm:@codemirror+search@6.5.8"
+        },
+        {
+          "digest": {
+            "sha256": "3b9798c25eaa0fb330d3e5f21f6f7481e3fcf74acaa01fc369ed746871894a35"
+          },
+          "uri": "npm:@codemirror+state@6.5.1"
+        },
+        {
+          "digest": {
+            "sha256": "d01952923592877e6be4750f028490366f263f16ed9834cc37fba2567127b1a3"
+          },
+          "uri": "npm:@codemirror+theme-one-dark@6.1.2"
+        },
+        {
+          "digest": {
+            "sha256": "f21c630d917d501cba4083b60f60145028f5eb2ada2a26041342b3315d18c645"
+          },
+          "uri": "npm:@codemirror+view@6.36.2"
+        },
+        {
+          "digest": {
+            "sha256": "af42f98a0df3a4df11b55d2b194da94b470855c484e99dc63dc54b6c8945ebf5"
+          },
+          "uri": "npm:@emotion+cache@11.6.0"
+        },
+        {
+          "digest": {
+            "sha256": "7fbf83c41bbfe4cc9725b92881897d587d457e43acbdffab23a4ebf290a52535"
+          },
+          "uri": "npm:@emotion+hash@0.8.0"
+        },
+        {
+          "digest": {
+            "sha256": "12f78a67de0196e35949d0dee2a30e530580246be0207c4736accecc94888abb"
+          },
+          "uri": "npm:@emotion+memoize@0.7.5"
+        },
+        {
+          "digest": {
+            "sha256": "587af1435e53f87fd184525d4a0a73bc231d9bccf6be83ead1f42232af85bb3b"
+          },
+          "uri": "npm:@emotion+react@11.6.0_@babel+core@7.23.6_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "96e6fc150bb3be266b7294490ea9846892bea421102f30cbba552082842f7c42"
+          },
+          "uri": "npm:@emotion+serialize@1.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "e23f0bf90a87db20e1e795f7af99bbcb0e6526cb202e1e317e1e9a04c9585b21"
+          },
+          "uri": "npm:@emotion+sheet@1.1.0"
+        },
+        {
+          "digest": {
+            "sha256": "9e56d94d91666411e8c87e5ad8e85a63a0f93539d45666fe799bddda9c88ca64"
+          },
+          "uri": "npm:@emotion+unitless@0.7.5"
+        },
+        {
+          "digest": {
+            "sha256": "5a6b35b8235755a6be54c7c85655f2805fe0f594df998d02be5e29fe9335c710"
+          },
+          "uri": "npm:@emotion+utils@1.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "e4de66e4d5b566c16715198250368e630a94afae780348dbba41eac89fd0262d"
+          },
+          "uri": "npm:@lezer+common@1.2.3"
+        },
+        {
+          "digest": {
+            "sha256": "1b02bfcf5db467383cc3ea51ecfdc744cdcd0fbda6a15c815d6f0e92235d10b7"
+          },
+          "uri": "npm:@lezer+highlight@1.2.1"
+        },
+        {
+          "digest": {
+            "sha256": "544ca2630e3ebd1bff7e29affa3f61574cfba82361d05ae1bfb9e1751b1c61aa"
+          },
+          "uri": "npm:@lezer+lr@1.4.2"
+        },
+        {
+          "digest": {
+            "sha256": "6021e12de15f68f12c4c3033bea6cafc60d9a51948ff0252d07795986df6988e"
+          },
+          "uri": "npm:@lezer+yaml@1.0.3"
+        },
+        {
+          "digest": {
+            "sha256": "0746249a5ccc048fc69db29216210ca0ac8e4577a37249c06624a8145b2dbf22"
+          },
+          "uri": "npm:@marijn+find-cluster-break@1.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "c97516e108dff6bdbac70a8bacf852121cfdac4220440e28207ccf8f6f357550"
+          },
+          "uri": "npm:@nxmix+tokenize-ansi@3.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "82bbbbb0cff1823f97e95b56c45054b237b64ba907dae5b6a5b418616c4e8e80"
+          },
+          "uri": "npm:@open-amt-cloud-toolkit+ui-toolkit-react@2.0.0_react-dom@17.0.2_react@17.0.2__react-is@17.0.2_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "8bfce0f55d241af893b91c37888fa47e85990a74e4b03393d6af55af5027f3b7"
+          },
+          "uri": "npm:@popperjs+core@2.11.6"
+        },
+        {
+          "digest": {
+            "sha256": "c1a6b36ad1ab880584d1423c73acca4860c0956c6889f07f58ffc761d9a0afa3"
+          },
+          "uri": "npm:@radix-ui+primitive@1.1.2"
+        },
+        {
+          "digest": {
+            "sha256": "a3417c6290a04dd4dc34a8ce6b17be86da6c6a7d7455c5f47e16d7911777169f"
+          },
+          "uri": "npm:@radix-ui+react-compose-refs@1.1.2_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "f1ed108c0bf1896d19f7b695d882e0b9dddb23b1526eca6409e8b48149b8c934"
+          },
+          "uri": "npm:@radix-ui+react-context@1.1.2_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "3bdf8d0936bb046fbdf6237fcd7b5b23d56b982da70ca0a99bacf4ff936d9851"
+          },
+          "uri": "npm:@radix-ui+react-dialog@1.1.11_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "bdfaa4c769b063b5044894c214fe75b6e1106d523af4b9e1030acabae6cfe1b2"
+          },
+          "uri": "npm:@radix-ui+react-dismissable-layer@1.1.7_@types+react-dom@17.0.25_@types+react@17.0.75_r_66a971c3297d8d20ec5e8583841ae853"
+        },
+        {
+          "digest": {
+            "sha256": "28e04fe2137c46cbe508d45a4581145e551130fb9d4725410fa0958896eeadc5"
+          },
+          "uri": "npm:@radix-ui+react-focus-guards@1.1.2_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "c8d59503a59ab4b014e791f86317b4df8e1d40437ff849d2270a52abef667e4c"
+          },
+          "uri": "npm:@radix-ui+react-focus-scope@1.1.4_@types+react-dom@17.0.25_@types+react@17.0.75_react-d_20eb62031e5d6b788dfc9b26c973f002"
+        },
+        {
+          "digest": {
+            "sha256": "a10d67becad6bc10846f9bc0a79e4a15a285eadca6eae4d88d06bea5586bcafb"
+          },
+          "uri": "npm:@radix-ui+react-id@1.1.1_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "dae701812461ee6009aa31113a2acd1e022918ed4ca2559bfe59bfae1426f14a"
+          },
+          "uri": "npm:@radix-ui+react-portal@1.1.6_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "b884877c3166118ba2d29071215d73f00737606702e18f807c78d435cb665d4f"
+          },
+          "uri": "npm:@radix-ui+react-presence@1.1.4_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "317ff4bedc84078245175db495e30b87daa7cb33b16fbe3fdf90800bbf0b6de2"
+          },
+          "uri": "npm:@radix-ui+react-primitive@2.1.0_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom_45f1e7bd7bfdfd4fb3cb89a1ac7bddbd"
+        },
+        {
+          "digest": {
+            "sha256": "ba8e940e5964d4673491a2203da495c50ba8d5271ef09653381c4e0aac74f0e4"
+          },
+          "uri": "npm:@radix-ui+react-slot@1.2.0_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "1c155d182c8a65220235aec52112944128866fb9524f5406203c47cd01c9a74b"
+          },
+          "uri": "npm:@radix-ui+react-use-callback-ref@1.1.1_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "1dce920306510154046f7fd6b92d21dc8847b281c755d7c587bf712d62d8f6c4"
+          },
+          "uri": "npm:@radix-ui+react-use-controllable-state@1.2.2_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "dc1121b1b1793279880daecfa04230de411404c8e9ac849c1d1c8714dd013e33"
+          },
+          "uri": "npm:@radix-ui+react-use-escape-keydown@1.1.1_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "fc152ce4e230913604de541dfa46af95e4c13d60e92640407a973b81272b51a7"
+          },
+          "uri": "npm:@radix-ui+react-use-layout-effect@1.1.1_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "1fa472697db75fe2f7059816662f5666869f22d0b030bd482d7515268f999fdb"
+          },
+          "uri": "npm:@reach+auto-id@0.16.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "5e4dbab312fb5a034cd136b437f9e8bb99a67250371139e53ff25726b1295ba1"
+          },
+          "uri": "npm:@reach+auto-id@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "baa9070a1f9abbcaf99f815adc71818513c76e107ba58cb3c9c5323031d4642b"
+          },
+          "uri": "npm:@reach+combobox@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "3e76afff66ebaa5e16d166875269ee2a4faba19ce6c726431a2dbdf7795ed8e6"
+          },
+          "uri": "npm:@reach+descendants@0.16.1_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "0407b45d22d24ebc75f7e807d18c7dae766095b021b3f53dbe0b669045c963f1"
+          },
+          "uri": "npm:@reach+descendants@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "e8a4fb641566dbcc12e4312363a59ecdb1c72cc7423a7d6a6b1e1c32f6e8fe2e"
+          },
+          "uri": "npm:@reach+dialog@0.17.0_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "349c25bfec4a2625f9dbc38a6db873f7bcc5a31fe2cc5203330a9440bd5232b5"
+          },
+          "uri": "npm:@reach+dropdown@0.16.1_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "d9f96dd5242dc66667f701f46ef329bd5be45cd0fe463c6fa07fc02803c90bc6"
+          },
+          "uri": "npm:@reach+menu-button@0.16.1_react-dom@17.0.2_react@17.0.2__react-is@17.0.2_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "83e9ebc72ee39258664d7e473aabf58ca878de6fc2a6953147100b3ee69a2220"
+          },
+          "uri": "npm:@reach+observe-rect@1.2.0"
+        },
+        {
+          "digest": {
+            "sha256": "ddae6f383ce2e379dfc6fb0fc5524b351ecfe89de8aaa8486aee6dcf155ecf91"
+          },
+          "uri": "npm:@reach+popover@0.16.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "3b4080efa7a8e6304f1e4cdcfc339088da809494bfdbf3973409c5506c84b201"
+          },
+          "uri": "npm:@reach+popover@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "5cb573a2c967bdf2a364f12fa98e6a75708f80fc32a627d7ebab3403b0a1a12a"
+          },
+          "uri": "npm:@reach+portal@0.16.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "54b40b615fe0c9dad64aedb96602f0f00590c43302fc24c87fdab226d2f4faee"
+          },
+          "uri": "npm:@reach+portal@0.17.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "50a61cce726109bccb23357f7603467f267f436d6ee3a20deaf98db709d71369"
+          },
+          "uri": "npm:@reach+portal@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "3f167525fdaa8f5e43b3ff95aafd0556b797e3951ea627ec54acca75e4cc7a20"
+          },
+          "uri": "npm:@reach+rect@0.16.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "7a128edba9c893ce968cf17c170d4b1e0365e31e0adfe710de3290e1394743c9"
+          },
+          "uri": "npm:@reach+rect@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "f7157893218d1625a298134fc042723590a671a2220902400c4f9fb0c20618d3"
+          },
+          "uri": "npm:@reach+utils@0.16.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "ae34859a00574739010849a2cbe14c34a91440a817f88a2eaa0507352818d4c5"
+          },
+          "uri": "npm:@reach+utils@0.17.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "ee106038fc290baa67a4e435754043ae4ee6cc0e6aec8e43b7ce29629faafb28"
+          },
+          "uri": "npm:@reach+utils@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "11df3e91e4ccb37fcec7445fd0f6816ae5948f6c3b7995fa1d9262d11c9864ae"
+          },
+          "uri": "npm:@sagold+json-pointer@5.1.2"
+        },
+        {
+          "digest": {
+            "sha256": "9b8cd02cbba85bb191bbe6534895d516f5839e88976d7d1a5488263ba784e47d"
+          },
+          "uri": "npm:@sagold+json-query@6.2.0"
+        },
+        {
+          "digest": {
+            "sha256": "3cdb2ffac4313637a5ceb8e91a042a505178aed2ab4f30ba4d25076e3c4b6e5f"
+          },
+          "uri": "npm:@seznam+compose-react-refs@1.0.6"
+        },
+        {
+          "digest": {
+            "sha256": "89c1fe26e00eb96d49123e6cf6bddb2f686c1702c1cf5c8cb17b54c5a40a5dde"
+          },
+          "uri": "npm:@shikijs+core@1.29.2"
+        },
+        {
+          "digest": {
+            "sha256": "6dfbb115326a517e4ed1f9cb4c2e71cf6f91537bd13d6067a502050ab170bb5b"
+          },
+          "uri": "npm:@shikijs+engine-oniguruma@1.29.2"
+        },
+        {
+          "digest": {
+            "sha256": "2644db3c47f82a69253763fe9a4a2762d71bccac99c595c42780ee1f2cd87fb4"
+          },
+          "uri": "npm:@shikijs+langs@1.29.2"
+        },
+        {
+          "digest": {
+            "sha256": "f458c1e44ed67ae1f0f62e722f98614666446a6205da5f651c0d411750d89143"
+          },
+          "uri": "npm:@shikijs+markdown-it@1.29.2"
+        },
+        {
+          "digest": {
+            "sha256": "f049e79fc494fd30e04738e7e9559b8f9797d47f930b474a59b2f4e3861933e0"
+          },
+          "uri": "npm:@shikijs+themes@1.29.2"
+        },
+        {
+          "digest": {
+            "sha256": "30eb4436085b286d2b2c0a9da0c8e1f2856536bb5be494e3188c4f5ab4e42289"
+          },
+          "uri": "npm:@shikijs+types@1.29.2"
+        },
+        {
+          "digest": {
+            "sha256": "2164908fc8d7e4b891faa09953cf345f922ab9359d9c4757e97e2620e6207f34"
+          },
+          "uri": "npm:@shikijs+vscode-textmate@10.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "879a0472df708da0f8df38d8df3de02ca88ae89cf90bd61caba4b73adfe9ccb9"
+          },
+          "uri": "npm:@tanstack+query-core@4.36.1"
+        },
+        {
+          "digest": {
+            "sha256": "5c56402b5e78609a6c1b1a9b345603c57e42ecc834437e42a21f223c17818091"
+          },
+          "uri": "npm:@tanstack+react-query-devtools@4.36.1_@tanstack+react-query@4.36.1_react-dom@17.0.2_rea_7a9a9359f46ea58755c154a4791164a3"
+        },
+        {
+          "digest": {
+            "sha256": "3b8d78f397874c3c72730af775f226e11cc598da8deeb3f9847baa7c7e1ae058"
+          },
+          "uri": "npm:@tanstack+react-query@4.36.1_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "0cd5ea74044cbc6d86e9ff4ee070ca189d15daeb04acebd9d9fa5c72fda6bbd9"
+          },
+          "uri": "npm:@tanstack+react-table@8.9.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "147d277c40210c8183b039f875b128148aff7a33466bb1416b7dada800607995"
+          },
+          "uri": "npm:@tanstack+table-core@8.9.0"
+        },
+        {
+          "digest": {
+            "sha256": "009cb46f1e8d3136874d9b90b7c872ac616d4d10ab423fd775958527c4e7faa3"
+          },
+          "uri": "npm:@tippyjs+react@4.2.6_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "2789582f7c35ebfaab56b5cac97607e86ce7e86e3d8915565281598763e0f18c"
+          },
+          "uri": "npm:@uirouter+angularjs@1.0.11_angular@1.8.2"
+        },
+        {
+          "digest": {
+            "sha256": "d1206c197af013374a9c8bbfb441a3b8a72ce1c80566c7ac5d2b3ece8aaf55e3"
+          },
+          "uri": "npm:@uirouter+core@5.0.11"
+        },
+        {
+          "digest": {
+            "sha256": "3c6501e1b5ec358630adda594c1687f93bec245300be3049a71e2fbbb446f40f"
+          },
+          "uri": "npm:@uirouter+core@6.0.7"
+        },
+        {
+          "digest": {
+            "sha256": "364a07381c390daaeb216b5e2df66db2e5fe373f1e9f45d01ff19bdb4c2710b7"
+          },
+          "uri": "npm:@uirouter+react-hybrid@1.0.4_angular@1.8.2_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "66494e2978aafec206d30ebe057535bbaa63958e254e18af0c219413dc62df85"
+          },
+          "uri": "npm:@uirouter+react@1.0.7_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "a8f424e0f3ec914265b447e6ba1a74b8587c106d5254c144fbaa60e2b11cf128"
+          },
+          "uri": "npm:@uiw+codemirror-extensions-basic-setup@4.23.11_@codemirror+autocomplete@6.18.6_@codemir_f2b9440c86bcf7cbad89458529f4fc71"
+        },
+        {
+          "digest": {
+            "sha256": "fa3ed79035d59cc3ea8839fee06ce24a51ff071ea97b61440dd5308015378808"
+          },
+          "uri": "npm:@uiw+codemirror-themes@4.23.7_@codemirror+language@6.10.8_@codemirror+state@6.5.1_@codemirror+view@6.36.2"
+        },
+        {
+          "digest": {
+            "sha256": "e68a98dea5fb3e8dc8b43e6d9b8a87fc7030fc998cf6f600feb2ad5b9bec1793"
+          },
+          "uri": "npm:@uiw+react-codemirror@4.23.11_@babel+runtime@7.26.0_@codemirror+autocomplete@6.18.6_@co_f7597f0d96a2c78fe480889520fa4e30"
+        },
+        {
+          "digest": {
+            "sha256": "5609cb0c0f6dc029d6e339d682d08df47359ba4969e53d4ee594581686ad02c3"
+          },
+          "uri": "npm:@vtaits+use-lazy-ref@0.1.4_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "f3861498c0e63c887c73b9e8f5fd653bd52f4ddd84d9c29c984af7d5f0b5e73d"
+          },
+          "uri": "npm:@wojtekmaj+date-utils@1.5.1"
+        },
+        {
+          "digest": {
+            "sha256": "170f46911514c51b255426e2d07f1e346248e2a3dadeaff702b33355ca587490"
+          },
+          "uri": "npm:@wojtekmaj+react-daterange-picker@5.5.0_@types+react-dom@17.0.25_@types+react@17.0.75_r_f15c5c591fb88c4ffa1c4a32d467ce5f"
+        },
+        {
+          "digest": {
+            "sha256": "a54c795d5a67303d202523fd50dd97bea1f6709adab25566eaa5398238291ba1"
+          },
+          "uri": "npm:angular-clipboard@1.7.0_angular@1.8.2"
+        },
+        {
+          "digest": {
+            "sha256": "bb9ae5e184201fba92e6053878ebc90e72ffaa737bc41b661ea49823e0b46678"
+          },
+          "uri": "npm:angular-file-saver@1.1.3"
+        },
+        {
+          "digest": {
+            "sha256": "e4dc09c31bb455b14ff753053fadce968e17148e29aa5af052d66d704909ac23"
+          },
+          "uri": "npm:angular-loading-bar@0.9.0"
+        },
+        {
+          "digest": {
+            "sha256": "fd678279f4c50b7951c238ea0a1810b1d29fb8b8d19d4310d8a3c7a422e5b24b"
+          },
+          "uri": "npm:angular-local-storage@0.5.2"
+        },
+        {
+          "digest": {
+            "sha256": "a17b3e5fb145de98c1f0956143f86ce3de10011f617fe9fe1829650885fb948c"
+          },
+          "uri": "npm:angular-messages@1.8.2"
+        },
+        {
+          "digest": {
+            "sha256": "8916524d9e930142a41f3871bdd44eab415fd1a942975b001532cda66b452823"
+          },
+          "uri": "npm:angular-moment-picker@0.10.2"
+        },
+        {
+          "digest": {
+            "sha256": "7f830ab9dc3de8970ac3a9a4c3edaf7551e3ce34dc92d8205c5f1c53785f91c0"
+          },
+          "uri": "npm:angular-resource@1.8.2"
+        },
+        {
+          "digest": {
+            "sha256": "ccd07128fef2c9f31a757b3f78b665c9be63aba2abe2468970451e602c346b70"
+          },
+          "uri": "npm:angular-sanitize@1.8.2"
+        },
+        {
+          "digest": {
+            "sha256": "fe4f7174e4d4bc2ba12c774f2509ae46339ccd8ce2ea26be89d747df882b2756"
+          },
+          "uri": "npm:angular-ui-bootstrap@2.5.6"
+        },
+        {
+          "digest": {
+            "sha256": "20e0a4364d808519cbf61395aaf8083d11acfa33f7d1a0dc1e711186ae95f843"
+          },
+          "uri": "npm:angular-utils-pagination@0.11.1"
+        },
+        {
+          "digest": {
+            "sha256": "d05ace72c00214f672b73dba343d20de71b62d119f4e8917d30c1534a99549a1"
+          },
+          "uri": "npm:angular@1.8.2"
+        },
+        {
+          "digest": {
+            "sha256": "3270cefd02beefa09228232b58d7b3d2b1cfcfa3382a7ff30e0ef2b6ed532825"
+          },
+          "uri": "npm:angularjs-scroll-glue@2.2.0"
+        },
+        {
+          "digest": {
+            "sha256": "3a68e6dc3725b628157f7fec54d83f62fbe51f968562c963d46eb17807d69a7b"
+          },
+          "uri": "npm:angularjs-slider@6.7.0_angular@1.8.2"
+        },
+        {
+          "digest": {
+            "sha256": "0e0eadcdaada805db5d85b53ad5cdca0760b996ee199ec9658e7b34aa6c8e0d9"
+          },
+          "uri": "npm:ansi-regex@5.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "96cabcd1d49f1e9e59ea40b40d292f1f688955951f3f59fe82539b4b0d01b38a"
+          },
+          "uri": "npm:aria-hidden@1.2.4"
+        },
+        {
+          "digest": {
+            "sha256": "212bc09995e79efb980fd5eb660ae735c3ada78679b49f2a2cfac7da4f14f673"
+          },
+          "uri": "npm:axios-cache-interceptor@1.11.2_axios@1.18.1"
+        },
+        {
+          "digest": {
+            "sha256": "0c9c4ae1c7d2c65168676039b7d7d80912a4644459b4885036088201b2b3e21a"
+          },
+          "uri": "npm:axios@1.18.1"
+        },
+        {
+          "digest": {
+            "sha256": "b1b7a945b52685269083425216d6597e33d97bf21699d656e92fdb3eb5210a85"
+          },
+          "uri": "npm:base64-js@1.5.1"
+        },
+        {
+          "digest": {
+            "sha256": "b865a8492de3252805aa4b79cd4ae518e71103921f0b0ce1f477db682c05462a"
+          },
+          "uri": "npm:best-effort-json-parser@1.1.3"
+        },
+        {
+          "digest": {
+            "sha256": "990c17dbc1560f3262b6a5404c6ed01ff5a58487b8f553663a284c37fb8ec5cc"
+          },
+          "uri": "npm:bootstrap@3.4.1"
+        },
+        {
+          "digest": {
+            "sha256": "555b6f49224afcf6b2c5a9aea7cd34a7f443f395b10532bc5580022d57aa51f5"
+          },
+          "uri": "npm:buffer@6.0.3"
+        },
+        {
+          "digest": {
+            "sha256": "df65da1a520f5d157054947b1a2d0936b402679174c3eb3aef21329891908283"
+          },
+          "uri": "npm:cache-parser@1.2.6"
+        },
+        {
+          "digest": {
+            "sha256": "073e9ff9dbabedf5c128020a677381e9f92c90188d118830b30a7656a7c37d2c"
+          },
+          "uri": "npm:call-bind-apply-helpers@1.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "32086f492fedf1b9b34811f2ee50ca2cca53da5c783f7cd5f939d3f1e86bbd32"
+          },
+          "uri": "npm:call-bound@1.0.4"
+        },
+        {
+          "digest": {
+            "sha256": "bdda8b4b3c7c3049bb118a9a01e3638033473b90c09f58eee1e9f2dda27984ca"
+          },
+          "uri": "npm:ccount@2.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "a1cdca963945f3fbb4ac4932d4b8e54ceb66aba5a9bfc7254fb87a1f17cd04e6"
+          },
+          "uri": "npm:character-entities-html4@2.1.0"
+        },
+        {
+          "digest": {
+            "sha256": "f36404294f0713ab8e3a08f133195d3085d0367816fc6c74136babcf90fdc988"
+          },
+          "uri": "npm:character-entities-legacy@3.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "71a1bd733e4edcce2fc3e127f6e5634988e1c85d932ad65c3481b8afdba66b6e"
+          },
+          "uri": "npm:chardet@1.4.0"
+        },
+        {
+          "digest": {
+            "sha256": "51c7c03a210370177a4ec50a4f0b5460f240e0e9371c960b37d7ea384776164a"
+          },
+          "uri": "npm:chart.js@2.9.4"
+        },
+        {
+          "digest": {
+            "sha256": "a8bcf3309162b18c914f4f2440d0a5b176e3735e0787108b3be2d4ae7f470611"
+          },
+          "uri": "npm:class-variance-authority@0.7.1"
+        },
+        {
+          "digest": {
+            "sha256": "d75d1fced4d74a1f0358e60512b3a1977cf8c94ee792696eeba98125e8ca2a5e"
+          },
+          "uri": "npm:classnames@2.3.1"
+        },
+        {
+          "digest": {
+            "sha256": "115bbf67f6d4853b2fdfd82e4bacabb46dee3c35fd8f29e70eb950ec7c89012b"
+          },
+          "uri": "npm:clsx@1.1.1"
+        },
+        {
+          "digest": {
+            "sha256": "6320104b491ca645120e8f99589ce663ff1fb337ba80066719a011bd95320303"
+          },
+          "uri": "npm:clsx@2.1.1"
+        },
+        {
+          "digest": {
+            "sha256": "a9f9e1bd1244bbd0b273b78f14c9223781b9028aba69f5b222d08104a6da73d2"
+          },
+          "uri": "npm:codemirror-json-schema@0.8.0_@codemirror+language@6.10.8_@codemirror+lint@6.8.4_@codemi_fd52565ed96d42fe2e8546cb72e6868b"
+        },
+        {
+          "digest": {
+            "sha256": "88123eefbb07a6048efa112653c80f4a0ac2e993bd1388c00273e14de29ec886"
+          },
+          "uri": "npm:comma-separated-tokens@2.0.3"
+        },
+        {
+          "digest": {
+            "sha256": "01b1d49781bf6d2dd3818c82addd7b32b2517c9f00107c4a4224c34db507116c"
+          },
+          "uri": "npm:core-js@3.20.0"
+        },
+        {
+          "digest": {
+            "sha256": "0670072d6217d7e514925a5a55814ee972efca6f1875c4c23b2e4d1caff83ab1"
+          },
+          "uri": "npm:crelt@1.0.6"
+        },
+        {
+          "digest": {
+            "sha256": "0c5e2f999fe2ae7d9274494fdf4a7f3693488218371eeb49daf959db0c551ad9"
+          },
+          "uri": "npm:cross-fetch@4.1.0"
+        },
+        {
+          "digest": {
+            "sha256": "32704d42d5df17f2e43c299b9da4cfd12f703ed7a0d4f215a0cc832955c4e36a"
+          },
+          "uri": "npm:date-fns@2.29.3"
+        },
+        {
+          "digest": {
+            "sha256": "c0350ede25e90c999309e7ebff1ca9e8fdafc12df49c98ce82ae4fc456a50091"
+          },
+          "uri": "npm:deepmerge@2.2.1"
+        },
+        {
+          "digest": {
+            "sha256": "4003a0a348276a95543fa969f561f6b5968629acbbb59d66018dd23e7b8f1d5c"
+          },
+          "uri": "npm:deepmerge@4.3.1"
+        },
+        {
+          "digest": {
+            "sha256": "45cd6b659de103b20f8e2ef719b92d9a1997109427a996eb57e7dd3b98a0dee8"
+          },
+          "uri": "npm:detect-element-overflow@1.4.2"
+        },
+        {
+          "digest": {
+            "sha256": "e34511f144fc6b34ce536bd60fb1ed27dd965f07a7c317407e79dd6be9e8f399"
+          },
+          "uri": "npm:dom-serializer@2.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "c67164b4a994eaeaecbd968c2e5e5415407ae6fb4486bbb470594154e25feb45"
+          },
+          "uri": "npm:domelementtype@2.3.0"
+        },
+        {
+          "digest": {
+            "sha256": "f3952abb7e2635d8e942822d68cfb1fdaba61148d17a1a5692bdd163d6ca4784"
+          },
+          "uri": "npm:domhandler@5.0.3"
+        },
+        {
+          "digest": {
+            "sha256": "3ea1229a26313a1618856ddb6289b79dcd3d383051f4a30c301b5ac2eff2b00f"
+          },
+          "uri": "npm:domutils@3.1.0"
+        },
+        {
+          "digest": {
+            "sha256": "ed1342228c82c10df9921c59d684df516a0cd6ed25b61e5f9d6330895326cfdb"
+          },
+          "uri": "npm:dunder-proto@1.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "8d595dafba63df1cc8860ef7f187892fd79a74b77514362f87ba891c35649b53"
+          },
+          "uri": "npm:ebnf@1.9.1"
+        },
+        {
+          "digest": {
+            "sha256": "6b0c60f7351a0b65bb1fc8dbb9299f09e7ecf6d89103d0651bf369e6f463a632"
+          },
+          "uri": "npm:entities@4.5.0"
+        },
+        {
+          "digest": {
+            "sha256": "5986b8b13121340a8b0d5c7d8f0f961aa80ef3a74515ca9cb7a78d86ed0385f7"
+          },
+          "uri": "npm:es-define-property@1.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "d14dd1c35b4bd3b8aca3219fd3627eb7f3eb49cf6b4c8a7ca58b91fd7a190993"
+          },
+          "uri": "npm:es-errors@1.3.0"
+        },
+        {
+          "digest": {
+            "sha256": "3e18e4d757818aee7bf1921686c6c3e7f9676d17c5c6fec560567c6beee579ce"
+          },
+          "uri": "npm:es-object-atoms@1.1.1"
+        },
+        {
+          "digest": {
+            "sha256": "4b44a14da6987a3c0585c2ff16b3800425732ff35cad710c65e72d7f8e33b11b"
+          },
+          "uri": "npm:escape-string-regexp@4.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "4486339c294e24812e7ac7ace2dbf11063d081b23cff37324469d055ddf97046"
+          },
+          "uri": "npm:fast-copy@3.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "b019a0980f27638dc3f85836b0e478f188e00d7a6e5852c0819fa86f56e47b8f"
+          },
+          "uri": "npm:fast-deep-equal@3.1.3"
+        },
+        {
+          "digest": {
+            "sha256": "7a2e3e149e469b5108ad7a3d343273376f9a5796f038b6934ec22bb481d17bb0"
+          },
+          "uri": "npm:fast-defer@1.1.9"
+        },
+        {
+          "digest": {
+            "sha256": "928a1fc52f0ab766ab8406bf9798afebb5c4d24eb1bc8652c36a6850831e6dee"
+          },
+          "uri": "npm:fast-json-patch@3.1.1"
+        },
+        {
+          "digest": {
+            "sha256": "fe24d9050bb56fad3ba75747f11cc600aa340cfa1c6f07454b6e7b0ba9627cf7"
+          },
+          "uri": "npm:file-saver@2.0.5"
+        },
+        {
+          "digest": {
+            "sha256": "5637c9caf77d67ac550ec489d40052bcd9cdbffa71e0baf812e5b4d832d0fd1b"
+          },
+          "uri": "npm:filesize-parser@1.5.0"
+        },
+        {
+          "digest": {
+            "sha256": "402f056062b0ecaf61341b2f110e49ad5089b6acb0dba69a3c81dec225bc5830"
+          },
+          "uri": "npm:filesize@10.1.6"
+        },
+        {
+          "digest": {
+            "sha256": "33664ac0a86b2eb7bfddf0dbefe067ecef7e2300c49297ee04a11bbe0f61815b"
+          },
+          "uri": "npm:focus-lock@0.11.2"
+        },
+        {
+          "digest": {
+            "sha256": "78ae774052c4feb7010bf17dd2e3a73322b22f899748b731dae5b76d8e0e5994"
+          },
+          "uri": "npm:formik@2.2.9_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "704402651b02a1454f17d445fc7dd716efc282d059407126d58ef30a47e807aa"
+          },
+          "uri": "npm:function-bind@1.1.2"
+        },
+        {
+          "digest": {
+            "sha256": "662e27e54e00fe46fbb08f9f4aacb054e3695dbe72cc14b436613fbcfb780544"
+          },
+          "uri": "npm:get-intrinsic@1.3.0"
+        },
+        {
+          "digest": {
+            "sha256": "943112eb62102f2ef56bad6eb50a3fe12bc0b386da0893614d81c735baa05897"
+          },
+          "uri": "npm:get-nonce@1.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "eb2cc52afb1f1fd82c5fc2a58c2380f0f16fdcdb5631538f3c66887435d70681"
+          },
+          "uri": "npm:get-proto@1.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "7fdeea11af43810927bb3cfa28646cf16b5dcf3f1217348fd62c94a61259e592"
+          },
+          "uri": "npm:get-user-locale@2.3.1"
+        },
+        {
+          "digest": {
+            "sha256": "d536d0de4dd285dc1468fbb7f39334a47ee0eec9c27f9b626a6e71466c9fda82"
+          },
+          "uri": "npm:gopd@1.2.0"
+        },
+        {
+          "digest": {
+            "sha256": "4460c7532f28b8df2ddc9a1ec17816d43c24d4b9591dc6c5936b82f7f86ae7c5"
+          },
+          "uri": "npm:has-symbols@1.1.0"
+        },
+        {
+          "digest": {
+            "sha256": "50cdc4d2cd11ae04b6ee29f328d09022244962e5dfab303c8fc223ff8dfa807d"
+          },
+          "uri": "npm:hasown@2.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "039bc4739cc0cafde07e0246f885a247451e5061ae983908c1019427691eacc0"
+          },
+          "uri": "npm:hast-util-to-html@9.0.5"
+        },
+        {
+          "digest": {
+            "sha256": "673f97f5bba3cac0184726f519a5750273e4434b839a769f4fbf09e4b4da2ceb"
+          },
+          "uri": "npm:hast-util-whitespace@3.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "0f7ae4b52c57171711a2e061ea793ff340f17e0bec3eef2d7d5fdb821462c8ba"
+          },
+          "uri": "npm:hoist-non-react-statics@3.3.2"
+        },
+        {
+          "digest": {
+            "sha256": "301b6ef51a58d296bb3f837c4840211025a7e541f304d4a379e6062e45373530"
+          },
+          "uri": "npm:html-void-elements@3.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "7913fb842d292726d2b1b1fdd0ca8fb86be41c63efe06a15064c728353274966"
+          },
+          "uri": "npm:htmlparser2@8.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "fab6fd7e7f46a37dbaa7a40b88c077bf09561e698208f4f3bc81d1437b69a841"
+          },
+          "uri": "npm:http-vary@1.0.3"
+        },
+        {
+          "digest": {
+            "sha256": "39d2a700f968d68299bbbe219109ddf340fd78105721d9ccf849c5cc35ab8fb2"
+          },
+          "uri": "npm:i18next-browser-languagedetector@6.1.2"
+        },
+        {
+          "digest": {
+            "sha256": "79c593a97d7e276dce6366b62758b0385156d7b9625962646e0b786d740cf9a0"
+          },
+          "uri": "npm:i18next-http-backend@3.0.4"
+        },
+        {
+          "digest": {
+            "sha256": "bf9cb8cae33b8eb6c66286bd7c4c2a1b4b619a87cf3e7176b511aec1cce1129c"
+          },
+          "uri": "npm:i18next@21.10.0"
+        },
+        {
+          "digest": {
+            "sha256": "8ef14b9b397e339db89db97881fb714f49319d8f0eb1275901f45567b28f9dac"
+          },
+          "uri": "npm:ieee754@1.2.1"
+        },
+        {
+          "digest": {
+            "sha256": "405ffdac90b988722906f2c25e627331c8ac952201c5e2eefab1c61f22d25bd3"
+          },
+          "uri": "npm:is-plain-object@5.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "81aba42cff61ab4f21ddf493eb1873dd9702a685eca9a8a182c9d4002846f0f8"
+          },
+          "uri": "npm:jquery@3.6.0"
+        },
+        {
+          "digest": {
+            "sha256": "706bcaf23ef9d3f6da21b85652893ff381b4a6a5a8491a0c350d2ef494a4bac4"
+          },
+          "uri": "npm:js-base64@3.7.2"
+        },
+        {
+          "digest": {
+            "sha256": "df86a37e0f5aa855ae32098dcc1d4c5712e43ea515d69fa3e6d51b8f5901c86e"
+          },
+          "uri": "npm:js-yaml@3.15.1"
+        },
+        {
+          "digest": {
+            "sha256": "bbc23b689bcb814b84400576206890550c19c2ac5a6fb86a65d9d85164671a3d"
+          },
+          "uri": "npm:json-schema-library@9.3.5"
+        },
+        {
+          "digest": {
+            "sha256": "08afb33db600d11fc89b98fac4054f19d5d3e0fe527063116150e1ecc2d2377b"
+          },
+          "uri": "npm:json5@2.2.3"
+        },
+        {
+          "digest": {
+            "sha256": "44155582890e3a90b0b41676b2db0eaeeacd3a570ceffb9dc3a213945449b8d7"
+          },
+          "uri": "npm:krustykrab@1.1.0"
+        },
+        {
+          "digest": {
+            "sha256": "f5169c5e5d837b5229180cb7214102d42f5c963f6932f284b608ef9549e927b4"
+          },
+          "uri": "npm:linkify-it@5.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "bb02b8b3d4372deaaae17caaa0acc5659cb93449c71a067666bf8c6ffa84b6c1"
+          },
+          "uri": "npm:lodash.memoize@4.1.2"
+        },
+        {
+          "digest": {
+            "sha256": "696942c2a488c9d7428e9ca5f12ccf03b52de01dcdbfe4d4751d392f0491ae16"
+          },
+          "uri": "npm:lodash@4.18.1"
+        },
+        {
+          "digest": {
+            "sha256": "9d9aadc0cb581318551ba42f04fe336e3876b42a294cae2d80500e49bdf728ee"
+          },
+          "uri": "npm:loglevel@1.9.2"
+        },
+        {
+          "digest": {
+            "sha256": "dcb0b8082ad13f55ccda7e8ae6b4deb85a67feb58035a572dbc213ab7356863f"
+          },
+          "uri": "npm:lucide-react@0.503.0_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "19a9aa82e85306c2943a1c18196a6ddb94f96c9933adf4c5c1a24cf9bbafaece"
+          },
+          "uri": "npm:make-event-props@1.6.2"
+        },
+        {
+          "digest": {
+            "sha256": "a3da96ea974ae6a512d56e73ce70730612df8631d201caf0d32ecabf4594faf4"
+          },
+          "uri": "npm:markdown-it@12.3.2"
+        },
+        {
+          "digest": {
+            "sha256": "8654967401e1f774a1993a24404f32d8f7630516fd61b1fef279b2ce49ead2ca"
+          },
+          "uri": "npm:markdown-to-jsx@7.7.4_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "b8c2c35575493dc086df88cfc468a9e2651b6617336480ab3f00fcf853f443a7"
+          },
+          "uri": "npm:math-intrinsics@1.1.0"
+        },
+        {
+          "digest": {
+            "sha256": "c116abcf850f97ca9dc5e153c59350e8f89a6c881c99d57adf19680f9d451e9e"
+          },
+          "uri": "npm:mdurl@1.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "2ff208d9302918f17e7f1f46132f5e89cdd78585b0e424ef95f8d55ad861a5e5"
+          },
+          "uri": "npm:memoize-one@5.2.1"
+        },
+        {
+          "digest": {
+            "sha256": "b23d4e159e02ac904e15dd55d6fef71f89d8c5575968fa943da0e1b1a9f1cf43"
+          },
+          "uri": "npm:moment-timezone@0.5.41"
+        },
+        {
+          "digest": {
+            "sha256": "42bc763358b31c962bfd0c2563e6cd66e73b8e952833ed03faf351a3ad871c74"
+          },
+          "uri": "npm:moment@2.29.4"
+        },
+        {
+          "digest": {
+            "sha256": "05ea84bf212d37d84fb201aa77a82b347a6f744a3fcaef750c88e58f889c357c"
+          },
+          "uri": "npm:mustache@4.2.0"
+        },
+        {
+          "digest": {
+            "sha256": "71dcd107ecc4d451ba72a87b5dee7dd1e0f5285ceb15dd1b4272bb1a7a6fa360"
+          },
+          "uri": "npm:nanoclone@0.2.1"
+        },
+        {
+          "digest": {
+            "sha256": "b9dc81cb403ea2510314dd2d1ad8d71934f325db90c1b43805e781b87e3fb009"
+          },
+          "uri": "npm:nanoid@3.3.18"
+        },
+        {
+          "digest": {
+            "sha256": "e81c548b679ef33375709b92be78175139bbebc866c8a9eeb2e34eede953ee9e"
+          },
+          "uri": "npm:nearley@2.20.1"
+        },
+        {
+          "digest": {
+            "sha256": "76942e699a47ef64f2ed64d31c79eca2334c84ce5e0cf84df3d7b2a3fe869fbd"
+          },
+          "uri": "npm:ng-file-upload@12.2.13"
+        },
+        {
+          "digest": {
+            "sha256": "782d726a263ba7b26cced612af97b80035516df4b0cd788524e7b2cebc4e29ed"
+          },
+          "uri": "npm:object-assign@4.1.1"
+        },
+        {
+          "digest": {
+            "sha256": "5d3061ebfec59f9d8e9261dd07f5583586458c60647c8fe01ba3ee3165ce14ab"
+          },
+          "uri": "npm:object-code@2.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "8324967a3afd8a45b0401e3554aebc1843f493bec46a89a7ce8cf072e62e90bf"
+          },
+          "uri": "npm:object-inspect@1.13.4"
+        },
+        {
+          "digest": {
+            "sha256": "511b71171266a6a7ca48a00c6dd78a33bc769dc04f1ef37e00bfc791b13f22f2"
+          },
+          "uri": "npm:parse-duration@2.1.4"
+        },
+        {
+          "digest": {
+            "sha256": "f7fde0ae73692c3b5ff6a204014c8fe4280d8aa3ff0e0849b652e126615f7359"
+          },
+          "uri": "npm:parse-srcset@1.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "d3aedb2807967b7eb37fd11b03b7e3701e725af79c650d0812ff7213f8f882d9"
+          },
+          "uri": "npm:picocolors@1.1.1"
+        },
+        {
+          "digest": {
+            "sha256": "bd09ed88feabda1135a8a6d5a019c2ab4304ccc87b5d40df5bcf5f14bb2c324c"
+          },
+          "uri": "npm:postcss@8.5.25"
+        },
+        {
+          "digest": {
+            "sha256": "1c739eb05d8a462c286a4e9dd02f2ce5485c6fa3529244e9ff9b13a3671aa557"
+          },
+          "uri": "npm:prop-types@15.8.1"
+        },
+        {
+          "digest": {
+            "sha256": "10c6ba7c9a8df4f3ff2381d25c5834266d22116b139c66fd76e10a8656402e2f"
+          },
+          "uri": "npm:property-expr@2.0.4"
+        },
+        {
+          "digest": {
+            "sha256": "e9c9fc56b2d73b742e4a8eacf3a2da8315b139ae27983db6d5ca58c3c00a7043"
+          },
+          "uri": "npm:property-information@7.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "e4ce59f9fbac44349abab87279ab658f6b4614916bec5e088ae3be9323e193bb"
+          },
+          "uri": "npm:punycode@2.3.1"
+        },
+        {
+          "digest": {
+            "sha256": "4712ac8ae3b49dd1c382c5fa4eb5a44fe92156db1bd30039280dedf5cf058e06"
+          },
+          "uri": "npm:qs@6.14.1"
+        },
+        {
+          "digest": {
+            "sha256": "c94cf9cad24a7e9040659332f14338b2c88d4f0f2b67f2df00aa06acd40d57f2"
+          },
+          "uri": "npm:rc-slider@10.1.1_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "fd62a944615918c449a9ace8d18d89d30ff11ccc1aefaf7bbbb57c0af9c1d1a8"
+          },
+          "uri": "npm:rc-util@5.28.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "2a2450b776ca1a33d237cb7c3c32d1bc8a5d73753af2011178e3a64ea031138e"
+          },
+          "uri": "npm:react-calendar@4.8.0_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "2bfb7a318f3650e5163dd43f17bd1790533a22f19b5fea8f1b36997d2b819622"
+          },
+          "uri": "npm:react-clientside-effect@1.2.6_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "274e71730fc265376daa828ac5b11af03fbc7c15de6bda3a7679b1d8237530da"
+          },
+          "uri": "npm:react-clock@4.6.0_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "150c869ed2b16e2c6b9cc1544c190494e724f4a49713a4ff0059bf5b60c603ac"
+          },
+          "uri": "npm:react-codemirror-merge@4.23.11_@babel+runtime@7.26.0_@codemirror+autocomplete@6.18.6_@c_4388f01fc10e67db7813c0b2e7cbfae3"
+        },
+        {
+          "digest": {
+            "sha256": "f275f17c6140b291dce25a19e27b0c8c4802b427faa98ac7605bd0c4b0826665"
+          },
+          "uri": "npm:react-date-picker@10.6.0_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "47bef4cc6fcc0e1e92923d1663c74526c1d2d8f1dadcd84ab0d5fe86f521f425"
+          },
+          "uri": "npm:react-datetime-picker@5.6.0_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "bec64d076c2425e76fbe01235b53fac5a7e58a8487a126b1cb831087e7d6ba98"
+          },
+          "uri": "npm:react-dom@17.0.2_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "3c1957618140feb9e7607cdefc5d4d9a0d51561b3d0edb7470fd83936a7dd4e2"
+          },
+          "uri": "npm:react-fast-compare@2.0.4"
+        },
+        {
+          "digest": {
+            "sha256": "8763444e82e33fba41cf08cb67d3ef2db81ca981050bc5ce14edbe0a8a5401e2"
+          },
+          "uri": "npm:react-fit@1.7.1_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "0e1a83bb45588b62de866e2f0a2c58a1f88be6a0071287f7e5b1edfd96da302f"
+          },
+          "uri": "npm:react-focus-lock@2.9.1_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "f16e586a498b174803f2465fd56be2e324b64c5ae88ce3e207b805a42006e70f"
+          },
+          "uri": "npm:react-i18next@11.15.3_i18next@21.10.0_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "0bdbb5d473ddc13e850987f3937666e261b6a3a8fcaffddd8195953ff0faee8f"
+          },
+          "uri": "npm:react-is@16.13.1"
+        },
+        {
+          "digest": {
+            "sha256": "9b1850c05b4fc08e9b814a201281a103a7651ac46500dce7b6bedd0865963eb1"
+          },
+          "uri": "npm:react-is@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "17896cdcf71222570af9389749cf812148ab9344aa1ecba524642c9e0f19a2ce"
+          },
+          "uri": "npm:react-json-view-lite@1.2.1_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "ccc872d7a2dc007cbf9d755f30d56b8d80eabdbe22c44c95a709129bfdc46f01"
+          },
+          "uri": "npm:react-remove-scroll-bar@2.3.8_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "6470ae7e71ed22a776d34fce550685587bdb85f0eca3d7c2a6733ce94587739a"
+          },
+          "uri": "npm:react-remove-scroll@2.6.3_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "420a219e97de5abe8f5331f76fa5ffed86590fda5775263b9be82da78ff6bee5"
+          },
+          "uri": "npm:react-select-async-paginate@0.7.11_@types+react@17.0.75_react-select@5.2.1_@babel+core@_8341b40270e9049ad9ff421e600774a2"
+        },
+        {
+          "digest": {
+            "sha256": "93c8aac4bce7598ecdfcfb49c7659e49379cd81ef52a2cfaf394ea4d011215fd"
+          },
+          "uri": "npm:react-select@5.2.1_@babel+core@7.23.6_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "8cd3380ee25e0ac80060dcee138c61433862a992fc21d665da823efbfe43ff0f"
+          },
+          "uri": "npm:react-style-singleton@2.2.3_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "7f7687f38d21d45440f8ff85c83b79f6e6f780cda1f920c9eeb9e524d1d267ab"
+          },
+          "uri": "npm:react-time-picker@6.6.0_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "e2901c777fd5a469bef952d1fc7bcafead65a7b66ef4dbb295d2a7116a6dc66d"
+          },
+          "uri": "npm:react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "30b0869e86c87f7735e40dd504a72dc19d19e2da8c4a3747dcec26bf67bd9fa1"
+          },
+          "uri": "npm:sanitize-html@2.17.0"
+        },
+        {
+          "digest": {
+            "sha256": "efdafb0fbd335e41bb209cd8c3256a28d576e6062ca101cb4ba1167c8fc014c6"
+          },
+          "uri": "npm:scheduler@0.20.2"
+        },
+        {
+          "digest": {
+            "sha256": "58074eb0c2ebc8aca9945cdbe405dbed0b43106ae5265879b7049424b27d1ccd"
+          },
+          "uri": "npm:side-channel-list@1.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "3b256b6421300bcc962d891b1588fd4b64e84e339b9c29f78c61b72f2a7116d6"
+          },
+          "uri": "npm:side-channel-map@1.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "3b2a54f0c5e7ad898c8f0ffda2a6805fb2cc5d68f53addf0b4a9ec0db9d0d06e"
+          },
+          "uri": "npm:side-channel-weakmap@1.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "8493e77b990b242efebd824d0912df161bf640fc75071d5bc844ce0d7706a485"
+          },
+          "uri": "npm:side-channel@1.1.0"
+        },
+        {
+          "digest": {
+            "sha256": "f148403b61b6cdc3ea086d99d2fadf6d3d45ea1c407a585fc9d8c6055f93d27f"
+          },
+          "uri": "npm:sleep-promise@9.1.0"
+        },
+        {
+          "digest": {
+            "sha256": "8c0ef4470b9c7b90b36dc0234c40b746b69e693655cdd115e063d776f4488806"
+          },
+          "uri": "npm:smtp-address-parser@1.0.10"
+        },
+        {
+          "digest": {
+            "sha256": "b386cce96593975cebbb054a8e287eb15c2e004cd6ef416f7a26b5c265930b67"
+          },
+          "uri": "npm:space-separated-tokens@2.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "7763bea351182d6acf5aa79f35f9011b332ca9f4c3757eff51d10e68d03df02d"
+          },
+          "uri": "npm:spinkit@2.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "89052f611f0656a0e7d7c312f7b2e75e949678ce4eff37a6fc416fa2be4f4024"
+          },
+          "uri": "npm:stringify-entities@4.0.4"
+        },
+        {
+          "digest": {
+            "sha256": "9bdb75d0bff49f156dd8c3bcb0e06b3fa96c3d88ddd4c342a4345866a40c08ca"
+          },
+          "uri": "npm:strip-ansi@6.0.1"
+        },
+        {
+          "digest": {
+            "sha256": "294c6c5b4a78cb56c40865eff59a82990218263057e66b36083a4f5f7fc8062b"
+          },
+          "uri": "npm:style-mod@4.1.2"
+        },
+        {
+          "digest": {
+            "sha256": "ee0d29af7363f9f960865f144677918ec9042f2eda64ddb0affc9cef4acef5d1"
+          },
+          "uri": "npm:stylis@4.0.10"
+        },
+        {
+          "digest": {
+            "sha256": "61876a3268d39ab4d4ce157af3a2f693be24fd4c0ae83ab7002e1b8f9820e63e"
+          },
+          "uri": "npm:tabbable@4.0.0"
+        },
+        {
+          "digest": {
+            "sha256": "9b78b1b759e11efb671b1b888efeedde50e6453e7aa8bdf80fc2851a433e0f6b"
+          },
+          "uri": "npm:tabbable@5.3.3"
+        },
+        {
+          "digest": {
+            "sha256": "51f193637b8ca30f000431e18c59a50702b64f92b51ceb5a0742b5d665fb69b2"
+          },
+          "uri": "npm:tiny-warning@1.0.3"
+        },
+        {
+          "digest": {
+            "sha256": "bf63cd2e158be2100078053f4c44f02ffec8fde7f30544270785d0f2eae02626"
+          },
+          "uri": "npm:tippy.js@6.3.7"
+        },
+        {
+          "digest": {
+            "sha256": "71095c2d7de8ced0ec046be6a7c1574e2d35f67a1c61e371ef0bdb3eb2cdb570"
+          },
+          "uri": "npm:toastr@2.1.4"
+        },
+        {
+          "digest": {
+            "sha256": "866a794f685b78219e0afe396d339ec5ebf072af6473257d595ba84ca9776eb3"
+          },
+          "uri": "npm:toposort@2.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "733b312e29ef6488eb668db728bcd0dee92f087872001a06c8594999c06d91fb"
+          },
+          "uri": "npm:tslib@1.14.1"
+        },
+        {
+          "digest": {
+            "sha256": "66f635d5eeabae44807534976913a102cf615b9a045368359c9f79ae6ee2119e"
+          },
+          "uri": "npm:tslib@2.8.1"
+        },
+        {
+          "digest": {
+            "sha256": "24d1198bf3e9fe8e1b4398e2536547366d742f12f5ae4a126298973d5e937c90"
+          },
+          "uri": "npm:uc.micro@1.0.6"
+        },
+        {
+          "digest": {
+            "sha256": "a31660c690ddac370fe4b17fe6a3a73b8df094f99194ac90d0668d797dabf69b"
+          },
+          "uri": "npm:uc.micro@2.1.0"
+        },
+        {
+          "digest": {
+            "sha256": "25fbe9bb566bff08070129f9f84e05bd7b8767c5333507911c7d7c78f8299108"
+          },
+          "uri": "npm:update-input-width@1.4.2"
+        },
+        {
+          "digest": {
+            "sha256": "f1c0efff7a48011a8ad317c555fd043ef6e427c78b00ca2d438682958d880600"
+          },
+          "uri": "npm:use-callback-ref@1.3.3_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "97348fa0840c9679aa0a7218d1cafa694fc0f99ec242fc639fc936db0253eee9"
+          },
+          "uri": "npm:use-is-mounted-ref@1.5.0_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "331c0a474c75659a60904212a5e4468e02756689ae38d15e06896d6e6b4050d4"
+          },
+          "uri": "npm:use-isomorphic-layout-effect@1.2.1_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "8d94c40d509de14aea2901616beac444e12d63a39f3e9df54226fa21627f1d00"
+          },
+          "uri": "npm:use-latest@1.3.0_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "06e3040fe38ac958402bbda2cd640b556786048b6bd3d97900eec1d80702c0f8"
+          },
+          "uri": "npm:use-sidecar@1.1.3_@types+react@17.0.75_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "06adb9d5da9c1c2bcef99d18f423460d17fc03906c06f2f2b1610cc35b8300e2"
+          },
+          "uri": "npm:use-sync-external-store@1.2.0_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "ba77c9306dbc34c7ae503e9eb142e284f98ea9ab609f416052c2fbbefb6df4dd"
+          },
+          "uri": "npm:uuid@3.4.0"
+        },
+        {
+          "digest": {
+            "sha256": "b0d52614f9662b04b02f2689f35cb0a66e4efc14be7998d9cfe8211410a15b76"
+          },
+          "uri": "npm:valid-url@1.0.9"
+        },
+        {
+          "digest": {
+            "sha256": "05d21484026d1f2dd842c843181e391e66d60f1d5dff292d562c3f40302dab36"
+          },
+          "uri": "npm:w3c-keyname@2.2.8"
+        },
+        {
+          "digest": {
+            "sha256": "ed6bd46b838a1255dc4e7c191e261a02c8686d16d7049f9fc2ed8fe80982d49a"
+          },
+          "uri": "npm:warning@4.0.3"
+        },
+        {
+          "digest": {
+            "sha256": "c515b6159d5eac3f691701e9afa6d2d53e3aa5126d17132051acaa95c6ee3d6a"
+          },
+          "uri": "npm:xterm@3.14.5"
+        },
+        {
+          "digest": {
+            "sha256": "3dcf035ab6eced0862953bf4c09f5d9a431a1a565cf2bab9166d09183ae4e08d"
+          },
+          "uri": "npm:yaml@1.10.2"
+        },
+        {
+          "digest": {
+            "sha256": "8be868c685838f23ab425b046733b69def708ff3bd1716f806ad1c0eada31650"
+          },
+          "uri": "npm:yaml@2.7.0"
+        },
+        {
+          "digest": {
+            "sha256": "90355b5a9e5aa8e1dc07f823136009066478e17ba4f92c099458b3e0d8ff9481"
+          },
+          "uri": "npm:yup@0.32.11"
+        },
+        {
+          "digest": {
+            "sha256": "c6e16cd979310c4d7e13ed6d4d06ff968a1bdd557c910f9e41fc305124f12c68"
+          },
+          "uri": "npm:zustand@4.1.1_react@17.0.2"
+        },
+        {
+          "digest": {
+            "sha256": "2c162e000f5fb5a816987d6f8ad7aad295203f777a5992d514ae4660778a51a4"
+          },
+          "uri": "npm:zwitch@2.0.4"
+        },
+        {
+          "digest": {
+            "sha256": "b5f3b260a9678e1d83d2fce86eeddf79420b79147eaba2a25986f47133d73720"
+          },
+          "uri": "oci:docker.io/docker/dockerfile@sha256:b5f3b260a9678e1d83d2fce86eeddf79420b79147eaba2a25986f47133d73720"
+        },
+        {
+          "digest": {
+            "sha256": "40dfc169bd5ad8a8617e49c8ead7fe16c6873e79d6937539e9c2e5947b7984ef"
+          },
+          "uri": "oci:docker.io/library/golang@sha256:40dfc169bd5ad8a8617e49c8ead7fe16c6873e79d6937539e9c2e5947b7984ef"
+        },
+        {
+          "digest": {
+            "sha256": "673fce836d5a9185da33352682bfedb17c174d016370d08616748dff76fda862"
+          },
+          "uri": "oci:docker.io/library/node@sha256:673fce836d5a9185da33352682bfedb17c174d016370d08616748dff76fda862"
+        },
+        {
+          "digest": {
+            "sha256": "57269d1784e49b46228c45a1a1b870fbe40e0a639ab60b37b032d83af5bccdfc"
+          },
+          "uri": "oci:docker.io/moby/buildkit@sha256:57269d1784e49b46228c45a1a1b870fbe40e0a639ab60b37b032d83af5bccdfc"
+        }
+      ]
+    },
+    "runDetails": {
+      "builder": {
+        "id": "https://llm-machines.invalid/build-actors/portainer-ce-admission"
+      },
+      "byproducts": [
+        {
+          "digest": {
+            "sha256": "430e6ea4ff3e356d83253e0cc27a2cfe58b9a2b5ba33094ae4121d6a7a9e12ce"
+          },
+          "name": "assembly-a-build-environment"
+        },
+        {
+          "digest": {
+            "sha256": "8de4497a66642a107b4e0740b7f7ea7c80d2eeaf9a01d525595e25b038e3bdb3"
+          },
+          "name": "assembly-a-build-log"
+        },
+        {
+          "digest": {
+            "sha256": "12087e16fdda4ad6cffcd8e3cac34b7ed533dd12bca485301743e5174a4e949c"
+          },
+          "name": "assembly-a-source-reachability"
+        },
+        {
+          "digest": {
+            "sha256": "01424e669cf75bd63b1b1902a1bbfa05f4bec29c74d381e26a9804a6684ece9e"
+          },
+          "name": "assembly-b-build-environment"
+        },
+        {
+          "digest": {
+            "sha256": "9d74be4a1c36800d6f550062b487d9446f248fe6b3ebd4a39ceec34a67949170"
+          },
+          "name": "assembly-b-build-log"
+        },
+        {
+          "digest": {
+            "sha256": "98076b3eb32777196d616282b117ecd09001e98a1176eb4073e26f711245bd9a"
+          },
+          "name": "assembly-b-source-reachability"
+        }
+      ],
+      "metadata": {
+        "completeness": {
+          "environment": true,
+          "materials": true,
+          "parameters": true
+        },
+        "finishedOn": "2026-08-22T22:31:33.614Z",
+        "invocationId": "sha256:b67d067c6980371e07f5208ab221c4154c0f1e6c4b52d517ae879f4f5cb6f50f",
+        "reproducible": true,
+        "startedOn": "2026-08-22T22:07:19.245Z"
+      }
+    }
+  },
+  "predicateType": "https://slsa.dev/provenance/v1",
+  "subject": [
+    {
+      "digest": {
+        "sha256": "f945186dd7943b83b1f39fed23898161b66ccb0d9943e50b272a03edf1797e20"
+      },
+      "name": "core/portainer-ce-downstream"
+    }
+  ]
+}

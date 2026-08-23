@@ -11,7 +11,20 @@
   },
   "formatter": {
     "enabled": true,
-    "indentStyle": "space"
+    "indentStyle": "space",
+    "ignore": [
+      "infra/portainer/ce-downstream/evidence/assemblies/a/reachability-receipt.json",
+      "infra/portainer/ce-downstream/evidence/assemblies/b/reachability-receipt.json",
+      "infra/portainer/ce-downstream/evidence/evidence-input-index.json",
+      "infra/portainer/ce-downstream/evidence/frontend-license-input.json",
+      "infra/portainer/ce-downstream/evidence/frontend-runtime-binding.json",
+      "infra/portainer/ce-downstream/evidence/frontend-sbom.cdx.json",
+      "infra/portainer/ce-downstream/evidence/frontend-trivy.json",
+      "infra/portainer/ce-downstream/evidence/reproducibility.json",
+      "infra/portainer/ce-downstream/evidence/sbom.cdx.json",
+      "infra/portainer/ce-downstream/evidence/trivy-misconfiguration.json",
+      "infra/portainer/ce-downstream/evidence/trivy.json"
+    ]
   },
   "linter": {
     "enabled": true

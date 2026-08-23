@@ -1,0 +1,225 @@
+{
+  "accepted": false,
+  "artifact": {
+    "configDigest": "sha256:45f3a24c1cdf26f9e372d458afd7309f3b270a2aeaeae6ac0eb3d809e742bf7a",
+    "indexDigest": "sha256:e25feb8fd95e9a0ce7cadb3b1d141317b82eefc7a9f91b8deba26ef6508b53b0",
+    "layers": [
+      {
+        "digest": "sha256:08e9494a6bc8d17b4ba4a1b57ffa658cb8f341c76f448b146b2139758469d74c",
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "size": 41562050
+      }
+    ],
+    "manifestDigest": "sha256:f945186dd7943b83b1f39fed23898161b66ccb0d9943e50b272a03edf1797e20",
+    "ociArchiveBytes": 41355218,
+    "ociArchiveSha256": "0dd846c806f74032244edc3e2eaed781717bb9feb590eea247c6ae05d00013eb",
+    "platform": "linux/amd64",
+    "runtimeInventorySha256": "4b391363453d675d743cafe7993adc266c28bdcc6f1fe888f08ed0151ac01181"
+  },
+  "component": {
+    "id": "portainer-ce-downstream",
+    "platform": "linux/amd64",
+    "sourceRevision": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+    "sourceTree": "9a2418f78d3f2cf4047e86b0878227b5e61d55fa",
+    "version": "2.39.6-llmm.1"
+  },
+  "containsCredentials": false,
+  "contractActivation": "INACTIVE",
+  "evidenceTooling": {
+    "assemblySealer": {
+      "path": "infra/portainer/ce-downstream/seal-assembly-evidence.mjs",
+      "sha256": "f4ee206baf2081fce6f470508489cd802d93e3f615a77aa077b2188b6ee7e860"
+    },
+    "reachabilityReceiptGenerator": {
+      "path": "infra/portainer/ce-downstream/generate-reachability-receipt.mjs",
+      "sha256": "651a67313ce85d5d1f3c24e633e2cc0d12d9c964fd0498303b258dca536d6481"
+    }
+  },
+  "frontend": {
+    "license": {
+      "artifactLicenseEvidenceComplete": true,
+      "custody": {
+        "archiveCustodyMode": "EXTERNAL_SEALED_DIGEST_BOUND",
+        "frontend": {
+          "manifestPath": "SHA256SUMS",
+          "manifestSha256": "858e0e299a59de998a1b5373986d16286b9ca600ca7909418175d5653617bb45",
+          "root": "frontend-license-custody"
+        },
+        "runtime": {
+          "manifestPath": "SHA256SUMS",
+          "manifestSha256": "ca1de884611137659b25f46cf87e32831632f9ec329451fd0e72063cb794eea7",
+          "root": "license-custody/runtime"
+        }
+      },
+      "frontendInputSha256": "76039d0b8c83850d3aed9b7694d1dbf5a07400f72bc501451750237cfbc48a4c",
+      "runtimeInputSha256": "8de8a0889bd9412c4ea29c2137622695a243c83c725b7028a9825ba238191b8e"
+    },
+    "runtime": {
+      "bytes": 47612241,
+      "componentCount": 275,
+      "fileCount": 35,
+      "inventorySha256": "6f43f103842df302ddb6c694e75dc7f8e620197f8aeaef5bacc4c82fb91da385",
+      "packageStoreIdentityCount": 275,
+      "path": "/public",
+      "sourceMapCount": 9,
+      "sourceMapInventorySha256": "186a8277f0cf1b5440c9c07f7cf22d2ce98632fa7f7582a869ee45a146a3dc43",
+      "sourcePathCount": 6422
+    },
+    "scan": {
+      "scannedAt": "2026-08-22T22:43:31.000Z",
+      "syft": {
+        "name": "syft",
+        "rawReportSha256": "80ef12346b63f0fb214e5e1388ea12d8cbeeabe40f7dad00e7090125939ac27b",
+        "toolImageDigest": "sha256:5145aaf0384ca6db481c95e093e5c3b31a3b3f3af3dd3aadfb7529df88578019",
+        "version": "1.50.0"
+      },
+      "trivy": {
+        "databaseSha256": "eb94cd71f35e20ce5b572803f65009bb61a13a75f8d7c4f1f111ec732c98d314",
+        "databaseUpdatedAt": "2026-08-22T12:57:22.518Z",
+        "name": "trivy",
+        "rawReportSha256": "c681099aec09d0cdd54fb0bccdeb1e96a3fafc0c5799a84ef7dfe54eb546a1a4",
+        "toolImageDigest": "sha256:4bbf3824d974b70f27631005e2e6194d4d8fbd6e72c4a9e04cf521e25c5cb07f",
+        "version": "0.73.0"
+      }
+    },
+    "source": {
+      "fileCount": 4832,
+      "goModSha256": "70ed650f74a77f7106d91d49e57b5cae46a716321843a6498fb962cc743f07a1",
+      "goSumSha256": "7aca1421455d57bb1f2a4041d7487af1f908d7c26a881b0c9c2fe89df4ed0398",
+      "packageJsonSha256": "3936e9c5529e92fbf110b60964b7ed56a25b8b39a885713c5fa30499499ebb82",
+      "pnpmLockSha256": "99971755c3784ab0930a87018d7ba5fd90db9e5c41c14e198ca81a1152dc6d9a",
+      "revision": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+      "sourceInventorySha256": "cf12b690711cc07fba9bf25098a5418e3cabd658e698b97cd0ba52a5666194ed",
+      "tree": "9a2418f78d3f2cf4047e86b0878227b5e61d55fa",
+      "webpackCommonSha256": "159bd6f9147aa46c16a80c0aa13fbe7105be4b0a95aab6fb98b6a3e4544ef5d3",
+      "webpackProductionSha256": "e27e426749d2cb5fa4e042ba178090f6d2e8d74762b1338e3815cd14192c5925"
+    }
+  },
+  "generatorSha256": "478178b0de84538450b0d31707305fe93d30bca68d24d35e8c6ef0b2034a513c",
+  "inputs": {
+    "assemblyAReachabilityReceiptSha256": "12087e16fdda4ad6cffcd8e3cac34b7ed533dd12bca485301743e5174a4e949c",
+    "assemblyARecordSha256": "06fb14b26c9f102245c1023d0a9b260d1cce4d8d29862be22bcef50123780cbb",
+    "assemblyBReachabilityReceiptSha256": "98076b3eb32777196d616282b117ecd09001e98a1176eb4073e26f711245bd9a",
+    "assemblyBRecordSha256": "d98a60e477bcc1b9bce512fc6c7c47e36f9d5b403dd49963ee1f5e946b6cb0b8",
+    "frontendSourceInventorySha256": "cf12b690711cc07fba9bf25098a5418e3cabd658e698b97cd0ba52a5666194ed",
+    "rawBinaryGovulncheckSha256": "5efc883dcdf064c73ccdb018acdb193f134c9f6e06a814072898b078b2558bf0",
+    "rawFrontendLicenseInputSha256": "76039d0b8c83850d3aed9b7694d1dbf5a07400f72bc501451750237cfbc48a4c",
+    "rawFrontendSbomSha256": "80ef12346b63f0fb214e5e1388ea12d8cbeeabe40f7dad00e7090125939ac27b",
+    "rawFrontendTrivySha256": "c681099aec09d0cdd54fb0bccdeb1e96a3fafc0c5799a84ef7dfe54eb546a1a4",
+    "rawRuntimeLicenseInputSha256": "8de8a0889bd9412c4ea29c2137622695a243c83c725b7028a9825ba238191b8e",
+    "rawSbomSha256": "7307b8918b9ad1d557381cd8efd683db8e30829cd31f49e5394e0a754e442ec1",
+    "rawSourceGovulncheckSha256": "84aa4a5904e98007fa940fae6d9557e3526629ccc864508702e38a5bdcdfc5c2",
+    "rawTrivySha256": "5934e0b03af5171afdabf9a37647bc3046fbe82238796cf8ceea24742b9f7a78",
+    "scanMetadataSha256": "00a5923882dd27425a484c8a1942c9ab763accf522fea45e89f2effee1e383e7",
+    "sourcePackageContractSha256": "b8011758b2b714b11c2a8cfa23d5d56527b85b9ca087554b6777b5a2327da3ce"
+  },
+  "outputs": [
+    {
+      "path": "artifact-license-evidence.json",
+      "sha256": "472a593f26b064f80b582a6079238a0019b2765c8e7392d165637e2f1c6c059c"
+    },
+    {
+      "path": "frontend-runtime-binding.json",
+      "sha256": "e14674235baa8c730be9546b06c7e557d361c8d900c406cb9c0a5543076f9afe"
+    },
+    {
+      "path": "frontend-sbom.cdx.json",
+      "sha256": "87b092fd51b9281fcb3b65bdb7cc8fda1051fc8df52ed808a2366c664066dfe0"
+    },
+    {
+      "path": "frontend-trivy.json",
+      "sha256": "bf685aff659d04bf40ea79f619ebd55660dd97db40a80eb11e918f414056a535"
+    },
+    {
+      "path": "govulncheck-binary.jsonl",
+      "sha256": "aee6ee58edfeab2a5625a7532dcb870d43b3feb13fd2d018b39eeab89aec2765"
+    },
+    {
+      "path": "govulncheck-source.jsonl",
+      "sha256": "6cbe5f6770920396335845af1be1190231b51ed8817e2820067153e7e0da9922"
+    },
+    {
+      "path": "provenance.intoto.json",
+      "sha256": "87fa6449c57e7e7e89f8c3bd8748249032137eaca66c5694504aab9e4d3abbd9"
+    },
+    {
+      "path": "reproducibility.json",
+      "sha256": "4ff901c8290961e57cae1100ec0ae78ebfdcd2fd94a8f6f2f9ddfba0249fad91"
+    },
+    {
+      "path": "sbom.cdx.json",
+      "sha256": "b2ee2af94d2a668267ebef0dadcb205f0490ff2038687b26c950afad1fc88a9a"
+    },
+    {
+      "path": "trivy.json",
+      "sha256": "99e9ac6cad91e584f7c136a131914ab49911ea9215b0838198e877471fe45399"
+    }
+  ],
+  "reachability": {
+    "angularJsVex": {
+      "advisories": [
+        "CVE-2024-21490",
+        "CVE-2026-11998"
+      ],
+      "expiresAt": "2026-09-22T23:59:59Z"
+    },
+    "assemblies": [
+      {
+        "evaluatedAt": "2026-08-22T22:44:30.091Z",
+        "id": "A",
+        "receiptSha256": "12087e16fdda4ad6cffcd8e3cac34b7ed533dd12bca485301743e5174a4e949c"
+      },
+      {
+        "evaluatedAt": "2026-08-22T22:44:46.848Z",
+        "id": "B",
+        "receiptSha256": "98076b3eb32777196d616282b117ecd09001e98a1176eb4073e26f711245bd9a"
+      }
+    ],
+    "validator": {
+      "nodeVersion": "22.23.2",
+      "path": "infra/portainer/ce-downstream/validate-reachability.mjs",
+      "sha256": "d6dd985a1e8447b593082dcabf20b4bf4bfac8ae8e3d19d818eb973a11d30cdb"
+    }
+  },
+  "runtimeQualified": false,
+  "scan": {
+    "frontend": {
+      "sourceInventorySha256": "cf12b690711cc07fba9bf25098a5418e3cabd658e698b97cd0ba52a5666194ed",
+      "syft": {
+        "name": "syft",
+        "toolImageDigest": "sha256:5145aaf0384ca6db481c95e093e5c3b31a3b3f3af3dd3aadfb7529df88578019",
+        "version": "1.50.0"
+      },
+      "trivy": {
+        "databaseSha256": "eb94cd71f35e20ce5b572803f65009bb61a13a75f8d7c4f1f111ec732c98d314",
+        "databaseUpdatedAt": "2026-08-22T12:57:22.518Z",
+        "name": "trivy",
+        "toolImageDigest": "sha256:4bbf3824d974b70f27631005e2e6194d4d8fbd6e72c4a9e04cf521e25c5cb07f",
+        "version": "0.73.0"
+      }
+    },
+    "govulncheck": {
+      "binarySha256": "11a5032327b027281addfe990a54aca2d978a720c9409bd995282a1d653d4894",
+      "name": "govulncheck",
+      "version": "1.7.0"
+    },
+    "scannedAt": "2026-08-22T22:43:31.000Z",
+    "schema": "llm-machines.portainer-ce-scan-input.v1",
+    "syft": {
+      "name": "syft",
+      "targetImageDigest": "sha256:f945186dd7943b83b1f39fed23898161b66ccb0d9943e50b272a03edf1797e20",
+      "toolImageDigest": "sha256:5145aaf0384ca6db481c95e093e5c3b31a3b3f3af3dd3aadfb7529df88578019",
+      "version": "1.50.0"
+    },
+    "trivy": {
+      "databaseSha256": "eb94cd71f35e20ce5b572803f65009bb61a13a75f8d7c4f1f111ec732c98d314",
+      "databaseUpdatedAt": "2026-08-22T12:57:22.518Z",
+      "name": "trivy",
+      "targetImageDigest": "sha256:f945186dd7943b83b1f39fed23898161b66ccb0d9943e50b272a03edf1797e20",
+      "toolImageDigest": "sha256:4bbf3824d974b70f27631005e2e6194d4d8fbd6e72c4a9e04cf521e25c5cb07f",
+      "version": "0.73.0"
+    }
+  },
+  "schema": "llm-machines.portainer-ce-evidence-input-index.v1",
+  "status": "SOURCE_SECURITY_CHARACTERIZED_NOT_CORE_ADMITTED"
+}

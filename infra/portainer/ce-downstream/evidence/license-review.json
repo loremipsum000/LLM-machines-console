@@ -1,0 +1,87 @@
+{
+  "schema": "llm-machines.portainer-ce-license-review.v1",
+  "status": "PASS_SOURCE_ONLY_NOT_CORE_ADMITTED",
+  "reviewDate": "2026-08-22",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "component": {
+    "id": "portainer-ce-downstream",
+    "name": "Portainer Community Edition downstream",
+    "downstreamVersion": "2.39.6-llmm.1",
+    "declaredLicense": "Zlib",
+    "commercialUsePermitted": true,
+    "redistributionPermitted": true,
+    "alteredSourceMarkingRequired": true,
+    "alteredSourceMarked": true
+  },
+  "upstream": {
+    "repository": "https://github.com/portainer/portainer",
+    "version": "2.39.6",
+    "revision": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+    "tree": "9a2418f78d3f2cf4047e86b0878227b5e61d55fa",
+    "sourceArchive": {
+      "url": "https://codeload.github.com/portainer/portainer/tar.gz/refs/tags/2.39.6",
+      "sha256": "3b69237c2fdbb5e51ba1019afbd09d528820a82619c0387d2f9040f07d626f96"
+    }
+  },
+  "licenseEvidence": {
+    "license": {
+      "upstreamPath": "LICENSE",
+      "upstreamSourceSha256": "c83f08165206f8a2831009fa4a469d41e452f6e086945246fe928a94a5420722",
+      "copyPath": "infra/portainer/ce-downstream/LICENSE.upstream",
+      "copySha256": "34ce81cbe1a30cf05ecb8e106dfffaff2c3d4df918caba336026240d0f6194e9",
+      "copyNormalization": "terminal newline added; text otherwise byte-identical"
+    },
+    "attributions": {
+      "upstreamPath": "ATTRIBUTIONS.md",
+      "upstreamSourceSha256": "e3f8444f7222a7f8ebdfc237b2edb29e01443e159267c0cb87e7cb71ae4b41e3",
+      "copyPath": "infra/portainer/ce-downstream/ATTRIBUTIONS.upstream.md",
+      "copySha256": "e3f8444f7222a7f8ebdfc237b2edb29e01443e159267c0cb87e7cb71ae4b41e3"
+    },
+    "noticePath": "infra/portainer/ce-downstream/THIRD_PARTY_NOTICES.md"
+  },
+  "downstreamBoundary": {
+    "sourceBuilt": true,
+    "sourceIdentity": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+    "securityOverlayPath": "infra/portainer/ce-downstream/patches/security-toolchain.patch",
+    "securityOverlaySha256": "094874794823a27ab422cd9c380345d3e27d3268a2403192894a516b221487cd",
+    "officialUpstreamBinaryUsedAsBuildInput": false,
+    "officialUpstreamBinarySubstitutionAllowed": false,
+    "officialImageProvenanceDisposition": "NOT_ADMITTED_SOURCE_LABEL_REVISION_C57526D_UNBOUND_TO_PUBLIC_TAG",
+    "requiresFreshSbomAndArtifactLicenseEvidence": true
+  },
+  "commercialMaterialReview": {
+    "result": "PASS",
+    "businessEditionSourcePresent": false,
+    "businessEditionArtifactPresent": false,
+    "trialMaterialPresent": false,
+    "commercialLicenseMaterialPresent": false,
+    "licenseKeyPresent": false,
+    "paidFeatureDependency": false,
+    "futurePurchaseObligation": false,
+    "prohibitedInputs": [
+      "Portainer Business Edition source or image",
+      "Portainer Business Edition module or feature payload",
+      "trial key, token, image, or feature payload",
+      "commercial license key or licensed feature payload"
+    ]
+  },
+  "distributionConditions": {
+    "preserveLicenseText": true,
+    "preserveAttributions": true,
+    "markAlteredSource": true,
+    "doNotMisrepresentOrigin": true,
+    "includeExactSourceAndOverlayIdentity": true,
+    "admitOnlySourceBuiltArtifact": true
+  },
+  "admissionBoundary": {
+    "licenseReviewPassed": true,
+    "artifactLicenseEvidenceComplete": true,
+    "coreBomChanged": false,
+    "imageLockChanged": false,
+    "packaged": false,
+    "deployed": false,
+    "advertised": false
+  }
+}

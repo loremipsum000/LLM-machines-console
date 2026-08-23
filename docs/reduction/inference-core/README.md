@@ -1324,3 +1324,64 @@ remain false, contract activation remains inactive, Q0 is not started,
 Genesis is unpublished, and Product main is unchanged. VM103 inspection,
 deployment, durable founder qualification, and Genesis publication each
 require a separate approval.
+
+## F0-N4R1 Portainer source-security reassessment
+
+F0-N4R1 is a founder-authorized, prospective re-evaluation of Portainer CE
+2.39.6. No newer suitable CE LTS release was available, so this package starts
+again from exact upstream commit
+`723d1a2268f0fefe70d57f5981ce15d5d1ffc679` and builds the separately marked
+`2.39.6-llmm.1` downstream artifact with a narrow, source-controlled security
+toolchain overlay. It does not reuse or admit the previously rejected image.
+
+The historical F0-N4 deferral record remains byte-for-byte unchanged and
+continues to explain the earlier decision. Its raw Trivy, govulncheck, SBOM,
+and OCI artifacts were not located, so their recorded hashes are historical
+evidence rather than independently reverified current inputs. F0-N4R1 creates
+fresh, separately digest-bound source inventory and two independent builds
+whose OCI archive, manifest, configuration, layer, and runtime-inventory
+digests are byte-identical. The shipped frontend runtime is separately bound
+to its own SBOM and Trivy evidence. CycloneDX, in-toto provenance, license,
+attribution, notice, and custody evidence covers all 581 expected components,
+with no missing, unknown-license, prohibited, Business Edition, trial, or
+commercial-license material. This prospective result does not retroactively
+invalidate F0-N4.
+
+The source-security gate requires zero unresolved reachable Critical or High
+findings. Raw scanner matches are not zero: runtime Trivy reports 0 Critical,
+7 High, 4 Medium, 1 Low, and 1 Unknown; frontend Trivy reports 0 Critical,
+9 High, 23 Medium, 6 Low, and 1 Unknown, with a shipped-runtime projection of
+0 Critical, 2 High, 16 Medium, 4 Low, and 0 Unknown. The 38-current-finding
+matrix, plus 9 historical remediations, distinguishes package matches from
+executable reachability and records zero unresolved reachable Critical or High
+findings under the exact source-only profile. Any retained Medium finding must
+carry an exact compensating control, owner, re-review trigger, and expiry. The
+Docker-only activation profile also requires an admitted Docker Engine at
+29.7.0 or an exact reviewed backport, BuildKit 0.31.1 or later, no Docker
+authorization or Engine plugins, no untrusted BuildKit frontend or context,
+and no Kubernetes or Helm environment. Those are activation preconditions,
+not current deployment claims.
+
+The final static Dockerfile configuration scan is bound separately from the
+Final5 aggregate evidence. It records DS-0002 HIGH because the immutable image
+has no configured `USER` and therefore runs as effective root, plus DS-0026 LOW
+because the image has no `HEALTHCHECK`. Neither finding is hidden or marked
+resolved. F0-N4R2 must qualify the exact least-privilege or explicitly accepted
+root-equivalent Docker-authority boundary and must bind an executable,
+credential-free health and restart contract before activation. No Dockerfile,
+image, startup, or Product behavior changes in F0-N4R1 as a result.
+
+F0-N4R1 deliberately stops before Product integration. Portainer is now a
+required prospective retained OSS component, but it is not yet included in the
+Core BOM or immutable image lock and has no startup, persistent-data, backup,
+recovery-administrator, ingress, Console navigation, packaging, deployment, or
+availability claim. Generic OAuth, Keycloak SSO reuse, Admin mapping, Operator
+denial, recovery administration, native session, and coordinated logout proof
+remain F0-N4R3 and F0-N4R5 gates.
+
+Status remains `SOURCE_SECURITY_CHARACTERIZED_NOT_CORE_ADMITTED`. Product
+acceptance and runtime qualification remain false, contract activation remains
+inactive, Q0 is not started, and Genesis is unpublished. F0-N4R2 is the next
+package and must independently admit the exact image into the Core BOM and
+image lock together with startup, persistence, recovery-administrator, backup,
+restart, health, stop, and clean-restore contracts.

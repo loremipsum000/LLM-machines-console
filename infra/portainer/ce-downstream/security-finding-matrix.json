@@ -1,0 +1,2033 @@
+{
+  "schema": "llm-machines.portainer-ce-security-finding-matrix.v1",
+  "status": "SOURCE_SECURITY_CHARACTERIZED_NOT_CORE_ADMITTED",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "target": {
+    "component": "portainer-ce-downstream",
+    "version": "2.39.6-llmm.1",
+    "platform": "linux/amd64",
+    "upstreamRevision": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679"
+  },
+  "evidence": {
+    "trivy": {
+      "version": "0.73.0",
+      "reportSha256": "5934e0b03af5171afdabf9a37647bc3046fbe82238796cf8ceea24742b9f7a78",
+      "databaseUpdatedAt": "2026-08-22T12:57:22.518Z",
+      "databaseSha256": "eb94cd71f35e20ce5b572803f65009bb61a13a75f8d7c4f1f111ec732c98d314",
+      "rawCounts": {
+        "critical": 0,
+        "high": 7,
+        "medium": 4,
+        "low": 1,
+        "unknown": 1
+      }
+    },
+    "frontendTrivy": {
+      "version": "0.73.0",
+      "reportSha256": "c681099aec09d0cdd54fb0bccdeb1e96a3fafc0c5799a84ef7dfe54eb546a1a4",
+      "databaseUpdatedAt": "2026-08-22T12:57:22.518Z",
+      "databaseSha256": "eb94cd71f35e20ce5b572803f65009bb61a13a75f8d7c4f1f111ec732c98d314",
+      "rawCounts": {
+        "critical": 0,
+        "high": 9,
+        "medium": 23,
+        "low": 6,
+        "unknown": 1
+      },
+      "runtimeCounts": {
+        "critical": 0,
+        "high": 2,
+        "low": 4,
+        "medium": 16,
+        "unknown": 0
+      },
+      "runtimeFindingCount": 22
+    },
+    "misconfiguration": {
+      "version": "0.73.0",
+      "binarySha256": "4fdfaf8259c06c1fd7e17d897146326e536737589e3f28ca55bbb4cf735199ad",
+      "binaryBytes": 200663954,
+      "reportSha256": "90e4e44296b14e4ca651e931c3c687a318042f0120511e4b20fb43a9ba83e073",
+      "checkBundle": {
+        "digest": "sha256:1583562f8b90ed2a071b99f0e5ffff6b57e4ceb6ca3e4796577b4e6a339eb74c",
+        "downloadedAt": "2026-08-22T20:49:04.636302Z",
+        "metadataSha256": "f7f7ad5ce48aebfe99846d15c7f0d60a228244d45ef8dbe2bfe958baee7eb416",
+        "contentInventorySha256": "a8e1445dec25c7f2b7e2f2361576a3297ace2bd25a33220d8c4902d3315594d1",
+        "fileCount": 641,
+        "bytes": 1054940,
+        "rootUserPolicySha256": "b68fe54fa48d251c59a15e2d76f69bf8e43c237cef6a0078605252333df2eb2e",
+        "noHealthcheckPolicySha256": "a04661ae9c0345a9ded57c8843ac7726eeef10848b78629f9e352ac5e8a4e595"
+      },
+      "scannedAt": "2026-08-23T02:10:16.760586+02:00",
+      "command": "trivy config --skip-check-update --skip-version-check --quiet --format json --output <temporary-output> infra/portainer/ce-downstream/Dockerfile",
+      "target": {
+        "path": "infra/portainer/ce-downstream/Dockerfile",
+        "sha256": "1795a8043151a84d7f71409a2e6a0c2e290e4ed2b2b8339fea680b3882daafd1"
+      },
+      "artifact": {
+        "manifestDigest": "sha256:f945186dd7943b83b1f39fed23898161b66ccb0d9943e50b272a03edf1797e20",
+        "configDigest": "sha256:45f3a24c1cdf26f9e372d458afd7309f3b270a2aeaeae6ac0eb3d809e742bf7a",
+        "configuredUser": "",
+        "effectiveUser": "root",
+        "healthcheckPresent": false
+      },
+      "counts": {
+        "critical": 0,
+        "high": 1,
+        "medium": 0,
+        "low": 1,
+        "unknown": 0
+      }
+    },
+    "govulncheck": {
+      "version": "1.7.0",
+      "databaseLastModified": "2026-08-21T20:38:00Z",
+      "sourceReportSha256": "84aa4a5904e98007fa940fae6d9557e3526629ccc864508702e38a5bdcdfc5c2",
+      "downstreamBinaryReportSha256": "5efc883dcdf064c73ccdb018acdb193f134c9f6e06a814072898b078b2558bf0",
+      "sourceAffectedCount": 10,
+      "sourceAffectedModuleCount": 7
+    },
+    "reachability": {
+      "angularJsVex": {
+        "advisories": ["CVE-2024-21490", "CVE-2026-11998"],
+        "expiresAt": "2026-09-22T23:59:59Z"
+      },
+      "assemblies": [
+        {
+          "evaluatedAt": "2026-08-22T22:44:30.091Z",
+          "id": "A",
+          "receiptSha256": "12087e16fdda4ad6cffcd8e3cac34b7ed533dd12bca485301743e5174a4e949c"
+        },
+        {
+          "evaluatedAt": "2026-08-22T22:44:46.848Z",
+          "id": "B",
+          "receiptSha256": "98076b3eb32777196d616282b117ecd09001e98a1176eb4073e26f711245bd9a"
+        }
+      ],
+      "validator": {
+        "nodeVersion": "22.23.2",
+        "path": "infra/portainer/ce-downstream/validate-reachability.mjs",
+        "sha256": "d6dd985a1e8447b593082dcabf20b4bf4bfac8ae8e3d19d818eb973a11d30cdb"
+      }
+    }
+  },
+  "admissionGate": {
+    "reachableUnresolvedCritical": 0,
+    "reachableUnresolvedHigh": 0,
+    "externalRuntimeHighActivationPreconditions": 5,
+    "runtimeConfigurationHighActivationPreconditions": 1,
+    "runtimeConfigurationLowActivationPreconditions": 1,
+    "matrixResult": "PASS_SOURCE_SECURITY_BOUNDARY_WITH_EXTERNAL_ACTIVATION_PRECONDITIONS",
+    "activationAllowed": false,
+    "activationBlockers": [
+      "Exact managed Docker Engine must be 29.7.0 or an exact admitted security backport.",
+      "Exact managed BuildKit must be 0.31.1 or later.",
+      "Docker authorization plugins and Docker Engine plugins must be absent.",
+      "Untrusted BuildKit frontends and untrusted Git subdirectory build contexts must be denied.",
+      "Kubernetes and Helm environments are outside the admitted Docker-only Core profile.",
+      "Every shipped Portainer frontend finding must be remediated or receive exact route and sink non-reachability qualification before activation.",
+      "F0-N4R2 must qualify Portainer's exact effective UID/GID, Docker authority, mounts, capabilities, security options, and root-equivalent appliance boundary before activation.",
+      "F0-N4R2 must bind and prove an exact credential-free Portainer health, restart, unhealthy-state, and recovery contract before activation."
+    ]
+  },
+  "findings": [
+    {
+      "advisory": {
+        "id": "CVE-2025-15558",
+        "aliases": ["GHSA-p436-gjf2-799p", "GO-2026-4610"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "github.com/docker/cli",
+        "installed": "v28.5.1+incompatible",
+        "fixed": "29.2.0"
+      },
+      "evidence": {
+        "class": "NOT_APPLICABLE_PLATFORM",
+        "callPath": "The scanner matches defaultSystemPluginDirs, but the vulnerable search path is implemented only in manager_windows.go; the admitted target compiles manager_unix.go.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NONE",
+        "operator": "NONE",
+        "admin": "NONE_ON_LINUX_AMD64",
+        "exploitPreconditions": "Local Windows plugin placement and Windows Docker CLI execution are required."
+      },
+      "impact": "Local Windows privilege escalation; no appliance impact on linux/amd64.",
+      "disposition": {
+        "status": "NOT_APPLICABLE_LINUX_AMD64",
+        "controls": ["Reject any downstream platform other than linux/amd64."],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": null,
+        "reviewTriggers": [
+          "Downstream platform changes",
+          "Docker CLI dependency changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-41568",
+        "aliases": ["GHSA-vp62-88p7-qqf5", "GO-2026-5668"]
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "github.com/docker/docker",
+        "installed": "v28.5.1+incompatible",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "EXTERNAL_RUNTIME",
+        "callPath": "The affected Daemon.openContainerFS and createIfNotExists execute in the managed Docker daemon, not the Portainer process.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "DENIED",
+        "operator": "DENIED",
+        "admin": "CAN_TRIGGER_CONTAINER_COPY_AFTER_ACTIVATION",
+        "exploitPreconditions": "A malicious running container races an Admin container-copy or archive operation."
+      },
+      "impact": "Creation of arbitrary empty host files or directories and persistent denial of service.",
+      "disposition": {
+        "status": "EXTERNAL_RUNTIME_ACTIVATION_PRECONDITION",
+        "controls": [
+          "Require exact Docker Engine 29.7.0 or an exact admitted security backport before Portainer activation."
+        ],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "Docker Engine identity changes",
+          "Container copy route policy changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-33997",
+        "aliases": ["GHSA-pxq6-2prw-chj9", "GO-2026-4883"]
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "github.com/docker/docker",
+        "installed": "v28.5.1+incompatible",
+        "fixed": "29.3.1"
+      },
+      "evidence": {
+        "class": "EXTERNAL_RUNTIME",
+        "callPath": "Govulncheck reports module-level reachability without a vulnerable symbol. Plugin privilege comparison executes in the managed Docker daemon.",
+        "sourceInference": true
+      },
+      "exposure": {
+        "anonymous": "DENIED",
+        "operator": "DENIED",
+        "admin": "CAN_INSTALL_PLUGINS_ONLY_OUTSIDE_SUPPORTED_CONFIGURATION",
+        "exploitPreconditions": "A malicious legacy Docker plugin is installed and its requested privileges are approved."
+      },
+      "impact": "Unexpected plugin privileges, including broad device or host access.",
+      "disposition": {
+        "status": "EXTERNAL_RUNTIME_ACTIVATION_PRECONDITION",
+        "controls": [
+          "Require exact Docker Engine 29.7.0 or an exact admitted backport.",
+          "Assert Docker Engine plugins are absent in the supported baseline."
+        ],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "Docker Engine identity changes",
+          "Docker plugin policy changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-41567",
+        "aliases": ["GHSA-x86f-5xw2-fm2r", "GO-2026-5746"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "github.com/docker/docker",
+        "installed": "v28.5.1+incompatible",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "EXTERNAL_RUNTIME",
+        "callPath": "The affected Daemon.containerExtractToDir executes in the managed Docker daemon. Source govulncheck does not prove a Portainer-process call to that daemon implementation.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "DENIED",
+        "operator": "DENIED",
+        "admin": "CAN_TRIGGER_ARCHIVE_UPLOAD_AFTER_ACTIVATION",
+        "exploitPreconditions": "A malicious container image provides a trojan decompressor and an Admin uploads a gzip or xz archive through PUT /containers/{id}/archive."
+      },
+      "impact": "Arbitrary code execution as host root.",
+      "disposition": {
+        "status": "EXTERNAL_RUNTIME_ACTIVATION_PRECONDITION",
+        "controls": [
+          "Require exact Docker Engine 29.7.0 or an exact admitted security backport before Portainer activation."
+        ],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "Docker Engine identity changes",
+          "Container archive route policy changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-42306",
+        "aliases": ["GHSA-rg2x-37c3-w2rh", "GO-2026-5617"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "github.com/docker/docker",
+        "installed": "v28.5.1+incompatible",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "EXTERNAL_RUNTIME",
+        "callPath": "The affected Daemon.openContainerFS executes in the managed Docker daemon. Source govulncheck does not prove a Portainer-process call to that daemon implementation.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "DENIED",
+        "operator": "DENIED",
+        "admin": "CAN_TRIGGER_CONTAINER_COPY_AFTER_ACTIVATION",
+        "exploitPreconditions": "A malicious running container with a volume races an Admin container-copy or archive operation."
+      },
+      "impact": "Arbitrary host-path bind redirection, file overwrite, and denial of service.",
+      "disposition": {
+        "status": "EXTERNAL_RUNTIME_ACTIVATION_PRECONDITION",
+        "controls": [
+          "Require exact Docker Engine 29.7.0 or an exact admitted security backport before Portainer activation."
+        ],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "Docker Engine identity changes",
+          "Container copy route policy changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-33748",
+        "aliases": ["GHSA-4vrq-3vrq-g6gg", "GO-2026-4859"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "github.com/moby/buildkit",
+        "installed": "v0.25.1",
+        "fixed": "0.28.1"
+      },
+      "evidence": {
+        "class": "EXTERNAL_RUNTIME",
+        "callPath": "Portainer can initiate an external BuildKit build, but Git source resolution and restricted-file access execute in buildkitd; no vulnerable Portainer-process symbol is proven.",
+        "sourceInference": true
+      },
+      "exposure": {
+        "anonymous": "DENIED",
+        "operator": "DENIED",
+        "admin": "CAN_INITIATE_BUILD_AFTER_ACTIVATION",
+        "exploitPreconditions": "An untrusted Git URL fragment subdirectory reaches an affected external buildkitd."
+      },
+      "impact": "Read access outside a checked-out repository on the same mounted filesystem.",
+      "disposition": {
+        "status": "EXTERNAL_RUNTIME_ACTIVATION_PRECONDITION",
+        "controls": [
+          "Require exact BuildKit 0.31.1 or later.",
+          "Deny untrusted Git subdirectory build contexts."
+        ],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "BuildKit runtime identity changes",
+          "Git build-context policy changes",
+          "Stack build behavior changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-33747",
+        "aliases": ["GHSA-4c29-8rgm-jvjj", "GO-2026-4858"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "github.com/moby/buildkit",
+        "installed": "v0.25.1",
+        "fixed": "0.28.1"
+      },
+      "evidence": {
+        "class": "EXTERNAL_RUNTIME",
+        "callPath": "Portainer ComposeDeployer.Deploy calls composeService.Build and a BuildKit client. The vulnerable file-write implementation executes in buildkitd; no vulnerable Portainer-process symbol or server implementation is proven.",
+        "sourceInference": true
+      },
+      "exposure": {
+        "anonymous": "DENIED",
+        "operator": "DENIED",
+        "admin": "CAN_INITIATE_BUILD_AFTER_ACTIVATION",
+        "exploitPreconditions": "An untrusted custom BuildKit frontend reaches an affected external buildkitd."
+      },
+      "impact": "File escape outside BuildKit state and possible host code execution.",
+      "disposition": {
+        "status": "EXTERNAL_RUNTIME_ACTIVATION_PRECONDITION",
+        "controls": [
+          "Require exact BuildKit 0.31.1 or later.",
+          "Deny untrusted custom frontends."
+        ],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "BuildKit runtime identity changes",
+          "Custom frontend policy changes",
+          "Stack build behavior changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-34040",
+        "aliases": ["GHSA-x744-4wpc-v9h2", "GO-2026-4887"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "github.com/docker/docker",
+        "installed": "v28.5.1+incompatible",
+        "fixed": "29.3.1"
+      },
+      "evidence": {
+        "class": "EXTERNAL_RUNTIME",
+        "callPath": "Govulncheck reports module-level reachability because the advisory declares no vulnerable symbols. Request-body authorization executes in the managed Docker daemon, not Portainer's Docker client.",
+        "sourceInference": true
+      },
+      "exposure": {
+        "anonymous": "DENIED",
+        "operator": "DENIED",
+        "admin": "CAN_SEND_DOCKER_REQUESTS_AFTER_ACTIVATION",
+        "exploitPreconditions": "The managed Docker daemon uses an AuthZ plugin that relies on request-body inspection."
+      },
+      "impact": "Docker authorization-policy bypass with host-level consequences.",
+      "disposition": {
+        "status": "EXTERNAL_RUNTIME_ACTIVATION_PRECONDITION",
+        "controls": [
+          "Require exact Docker Engine 29.7.0 or an exact admitted backport.",
+          "Assert Docker AuthZ plugins are absent."
+        ],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "Docker Engine identity changes",
+          "Docker authorization-plugin configuration changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-61712",
+        "aliases": []
+      },
+      "severity": "LOW",
+      "component": {
+        "name": "github.com/moby/buildkit",
+        "installed": "v0.25.1",
+        "fixed": "0.31.1"
+      },
+      "evidence": {
+        "class": "EXTERNAL_RUNTIME",
+        "callPath": "The affected group parsing executes in buildkitd rather than the Portainer BuildKit client.",
+        "sourceInference": true
+      },
+      "exposure": {
+        "anonymous": "DENIED",
+        "operator": "DENIED",
+        "admin": "CAN_INITIATE_BUILD_AFTER_ACTIVATION",
+        "exploitPreconditions": "A crafted build reaches an affected external buildkitd group parser."
+      },
+      "impact": "BuildKit runtime denial of service.",
+      "disposition": {
+        "status": "EXTERNAL_RUNTIME_ACTIVATION_PRECONDITION",
+        "controls": ["Require exact BuildKit 0.31.1 or later."],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": ["BuildKit runtime identity changes"]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2025-47909",
+        "aliases": ["GO-2025-3884"]
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "github.com/gorilla/csrf",
+        "installed": "v1.7.3",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "PROVEN_SOURCE_CALL_PATH",
+        "callPath": "api/http/csrf.WithProtect at csrf.go:43 calls github.com/gorilla/csrf.TrustedOrigins.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NETWORK_ATTACKER_CAN_INITIATE",
+        "operator": "DENIED_NO_PORTAINER_SESSION",
+        "admin": "VICTIM_ADMIN_SESSION_REQUIRED",
+        "exploitPreconditions": "A nonempty TrustedOrigins entry exists and a network attacker serves HTTP content from a matching trusted host to a signed-in Admin browser."
+      },
+      "impact": "Forged state-changing action with Portainer administrator authority.",
+      "disposition": {
+        "status": "TIME_BOUND_COMPENSATING_CONTROL",
+        "controls": [
+          "Require an empty Portainer TrustedOrigins configuration.",
+          "Use one HTTPS-only dedicated Portainer authority with HSTS.",
+          "Enforce exact Host, Origin, and Referer behavior at the Product edge.",
+          "Require negative cross-origin and cleartext-origin browser tests before activation."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-11-20",
+        "reviewTriggers": [
+          "Portainer upstream release changes",
+          "TrustedOrigins configuration becomes nonempty",
+          "Ingress authority or CSRF behavior changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-61711",
+        "aliases": ["GHSA-7236-3392-c5c6"]
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "github.com/moby/buildkit",
+        "installed": "v0.25.1",
+        "fixed": "0.31.1"
+      },
+      "evidence": {
+        "class": "EXTERNAL_RUNTIME",
+        "callPath": "The affected executor/oci/spec_linux.go implementation is part of buildkitd, not the Portainer BuildKit client.",
+        "sourceInference": true
+      },
+      "exposure": {
+        "anonymous": "DENIED",
+        "operator": "DENIED",
+        "admin": "CAN_INITIATE_BUILD_AFTER_ACTIVATION",
+        "exploitPreconditions": "A custom frontend sends an invalid SecurityMode to an affected external buildkitd."
+      },
+      "impact": "Build container Seccomp and AppArmor bypass.",
+      "disposition": {
+        "status": "EXTERNAL_RUNTIME_ACTIVATION_PRECONDITION",
+        "controls": [
+          "Require exact BuildKit 0.31.1 or later.",
+          "Deny untrusted custom frontends."
+        ],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "BuildKit runtime identity changes",
+          "Custom frontend policy changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-17106",
+        "aliases": ["GHSA-hfg8-hc9c-6c3h"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "github.com/moby/go-archive",
+        "installed": "v0.1.0",
+        "fixed": "0.3.0"
+      },
+      "evidence": {
+        "class": "NOT_REACHABLE_GUARDED",
+        "callPath": "The indirect dependency is imported by Docker Compose. Vulnerable CopyTo to Untar code exists in Compose.Copy, but Portainer production source neither directly imports moby/go-archive nor invokes Compose.Copy or a vulnerable archive extraction function.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NONE",
+        "operator": "NONE",
+        "admin": "NONE_WHILE_GUARD_HOLDS",
+        "exploitPreconditions": "A future Portainer source change must expose Compose.Copy or call a vulnerable archive extraction function with an attacker-controlled archive."
+      },
+      "impact": "If made reachable, arbitrary writes outside the extraction root, including mounted Portainer data.",
+      "disposition": {
+        "status": "NOT_REACHABLE_TIME_BOUND_GUARD",
+        "controls": [
+          "Validate that production source has no direct moby/go-archive import.",
+          "Allow only the exact observed Compose methods and reject Compose.Copy.",
+          "Reject calls to ApplyLayer, CopyTo, Unpack, UnpackLayer, Untar, or UntarUncompressed.",
+          "Fail if the locked Compose, Docker CLI, or go-archive identity changes."
+        ],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": "2026-09-22",
+        "reviewTriggers": [
+          "Any Portainer source change under api or pkg",
+          "Docker Compose dependency changes",
+          "Docker CLI dependency changes",
+          "moby/go-archive dependency changes",
+          "Any container copy or archive feature is added"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "GO-2026-5932",
+        "aliases": []
+      },
+      "severity": "UNKNOWN",
+      "component": {
+        "name": "golang.org/x/crypto",
+        "installed": "v0.54.0",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "PROVEN_SOURCE_CALL_PATH_OUTSIDE_ADMITTED_PROFILE",
+        "callPath": "HelmSDKPackageManager.Show calls Helm LocateChart, VerifyChart, provenance.Verify, and x/crypto/openpgp.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NONE",
+        "operator": "DENIED_NO_PORTAINER_SESSION",
+        "admin": "ONLY_AFTER_ADDING_UNADMITTED_KUBERNETES_OR_HELM_ENVIRONMENT",
+        "exploitPreconditions": "A customer moves outside the supported Docker-only Core profile, adds a Kubernetes or Helm environment, and performs chart provenance verification."
+      },
+      "impact": "Unsafe or unreliable OpenPGP signature handling in an unsupported Helm workflow.",
+      "disposition": {
+        "status": "TIME_BOUND_OUTSIDE_SUPPORTED_PROFILE",
+        "controls": [
+          "Commission only the local Docker environment.",
+          "Do not admit Kubernetes or Helm management in the current Core profile.",
+          "Treat customer-added Kubernetes or Helm environments as outside supported configuration and require fresh qualification."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-11-20",
+        "reviewTriggers": [
+          "Kubernetes or Helm support is proposed",
+          "Portainer upstream release changes",
+          "OpenPGP dependency changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-53492",
+        "aliases": ["GHSA-33vj-92qq-66hc", "GO-2026-5064"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "github.com/containerd/containerd",
+        "installed": "v1.7.33",
+        "fixed": "containerd/v2 v2.1.9, v2.2.5, or v2.3.2; no legacy-v1 fix declared"
+      },
+      "evidence": {
+        "class": "NOT_REACHABLE_SERVER_PATH",
+        "callPath": "Source traces reach generic package initialization through Helm registry support. No containerd CRI checkpoint-restore server or vulnerable CDI restore path executes in Portainer.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NONE",
+        "operator": "NONE",
+        "admin": "NONE_IN_DOCKER_ONLY_PROFILE",
+        "exploitPreconditions": "A containerd CRI server restores an untrusted checkpoint while CDI is enabled and matching host CDI specifications exist."
+      },
+      "impact": "Device and host-mount injection into a restored container.",
+      "disposition": {
+        "status": "NOT_REACHABLE_IN_PORTAINER_PROCESS",
+        "controls": [
+          "Do not admit Kubernetes, CRI checkpoint restore, or CDI in the current Core profile."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "Kubernetes support is proposed",
+          "containerd dependency changes",
+          "CRI or CDI capability is introduced"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-50195",
+        "aliases": ["GHSA-cvxm-645q-p574", "GO-2026-5338"]
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "github.com/containerd/containerd",
+        "installed": "v1.7.33",
+        "fixed": "containerd/v2 v2.1.9, v2.2.5, or v2.3.2; no legacy-v1 fix declared"
+      },
+      "evidence": {
+        "class": "NOT_REACHABLE_SERVER_PATH",
+        "callPath": "Source traces reach generic package initialization through Helm registry support. No containerd CRI checkpoint-import server path executes in Portainer.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NONE",
+        "operator": "NONE",
+        "admin": "NONE_IN_DOCKER_ONLY_PROFILE",
+        "exploitPreconditions": "A containerd CRI server imports an untrusted checkpoint and later resolves a poisoned local image tag."
+      },
+      "impact": "Local image-tag poisoning and cross-workload code execution.",
+      "disposition": {
+        "status": "NOT_REACHABLE_IN_PORTAINER_PROCESS",
+        "controls": [
+          "Do not admit Kubernetes or CRI checkpoint import in the current Core profile."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "Kubernetes support is proposed",
+          "containerd dependency changes",
+          "CRI checkpoint import is introduced"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-53489",
+        "aliases": ["GHSA-rgh6-rfwx-v388", "GO-2026-5622"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "github.com/containerd/containerd",
+        "installed": "v1.7.33",
+        "fixed": "containerd/v2 v2.1.9, v2.2.5, or v2.3.2; no legacy-v1 fix declared"
+      },
+      "evidence": {
+        "class": "NOT_REACHABLE_SERVER_PATH",
+        "callPath": "Source traces reach generic package initialization and unrelated JSON helpers. No containerd CRI log-restore server path executes in Portainer.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NONE",
+        "operator": "NONE",
+        "admin": "NONE_IN_DOCKER_ONLY_PROFILE",
+        "exploitPreconditions": "A containerd CRI server restores an untrusted checkpoint containing a symlinked log path."
+      },
+      "impact": "Arbitrary host-file disclosure through container logs.",
+      "disposition": {
+        "status": "NOT_REACHABLE_IN_PORTAINER_PROCESS",
+        "controls": [
+          "Do not admit Kubernetes or CRI checkpoint restore in the current Core profile."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "Kubernetes support is proposed",
+          "containerd dependency changes",
+          "CRI checkpoint restore is introduced"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-2391",
+        "aliases": []
+      },
+      "severity": "LOW",
+      "component": {
+        "name": "qs",
+        "installed": "6.14.1",
+        "fixed": "6.14.2"
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves qs@6.14.1 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "### Summary\nThe `arrayLimit` option in qs does not enforce limits for comma-separated values when `comma: true` is enabled, allowing attackers to cause denial-of-service via memory exhaustion. This is a bypass of the array limit enforcement, similar to the bracket notation bypass addressed in GHSA-6rw7-vpxm-498p (CVE-2025-15284).\n\n### Details\nWhen the `comma` option is set to `true` (not the default, but configurable in applications), qs allows parsing comma-separated strings as arrays (e.g., `?param=a,b,c` becomes `['a', 'b', 'c']`). However, the limit check for `arrayLimit` (default: 20) and the optional throwOnLimitExceeded occur after the comma-handling logic in `parseArrayValue`, enabling a bypass. This permits creation of arbitrarily large arrays from a single parameter, leading to excessive memory allocation.\n\n**Vulnerable code** (lib/parse.js: lines ~40-50):\n```js\nif (val && typeof val === 'string' && options.comma && val.indexOf(',') > -1) {\n    return val.split(',');\n}\n\nif (options.throwOnLimitExceeded && currentArrayLength >= options.arrayLimit) {\n    throw new RangeError('Array limit exceeded. Only ' + options.arrayLimit + ' element' + (options.arrayLimit === 1 ? '' : 's') + ' allowed in an array.');\n}\n\nreturn val;\n```\nThe `split(',')` returns the array immediately, skipping the subsequent limit check. Downstream merging via `utils.combine` does not prevent allocation, even if it marks overflows for sparse arrays.This discrepancy allows attackers to send a single parameter with millions of commas (e.g., `?param=,,,,,,,,...`), allocating massive arrays in memory without triggering limits. It bypasses the intent of `arrayLimit`, which is enforced correctly for indexed (`a[0]=`) and bracket (`a[]=`) notations (the latter fixed in v6.14.1 per GHSA-6rw7-vpxm-498p).\n\n### PoC\n**Test 1 - Basic bypass:**\n```\nnpm install qs\n```\n\n```js\nconst qs = require('qs');\n\nconst payload = 'a=' + ','.repeat(25);  // 26 elements after split (bypasses arrayLimit: 5)\nconst options = { comma: true, arrayLimit: 5, throwOnLimitExceeded: true };\n\ntry {\n  const result = qs.parse(payload, options);\n  console.log(result.a.length);  // Outputs: 26 (bypass successful)\n} catch (e) {\n  console.log('Limit enforced:', e.message);  // Not thrown\n}\n```\n**Configuration:**\n- `comma: true`\n- `arrayLimit: 5`\n- `throwOnLimitExceeded: true`\n\nExpected: Throws \"Array limit exceeded\" error.\nActual: Parses successfully, creating an array of length 26.\n\n\n### Impact\nDenial of Service (DoS) via memory exhaustion."
+      },
+      "impact": "qs: qs's arrayLimit bypass in comma parsing allows denial of service",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-33532",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "yaml",
+        "installed": "2.7.0",
+        "fixed": "2.8.3, 1.10.3"
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves yaml@2.7.0 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "`yaml` is a YAML parser and serialiser for JavaScript. Parsing a YAML document with a version of `yaml` on the 1.x branch prior to 1.10.3 or on the 2.x branch prior to 2.8.3 may throw a RangeError due to a stack overflow. The node resolution/composition phase uses recursive function calls without a depth bound. An attacker who can supply YAML for parsing can trigger a `RangeError: Maximum call stack size exceeded` with a small payload (~2–10 KB). The `RangeError` is not a `YAMLParseError`, so applications that only catch YAML-specific errors will encounter an unexpected exception type. Depending on the host application's exception handling, this can fail requests or terminate the Node.js process. Flow sequences allow deep nesting with minimal bytes (2 bytes per level: one `[` and one `]`). On the default Node.js stack, approximately 1,000–5,000 levels of nesting (2–10 KB input) exhaust the call stack. The exact threshold is environment-dependent (Node.js version, stack size, call stack depth at invocation). Note: the library's `Parser` (CST phase) uses a stack-based iterative approach and is not affected. Only the compose/resolve phase uses actual call-stack recursion. All three public parsing APIs are affected: `YAML.parse()`, `YAML.parseDocument()`, and `YAML.parseAllDocuments()`. Versions 1.10.3 and 2.8.3 contain a patch."
+      },
+      "impact": "yaml: yaml: Denial of Service via deeply nested YAML document parsing",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-33532",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "yaml",
+        "installed": "1.10.2",
+        "fixed": "2.8.3, 1.10.3"
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves yaml@1.10.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "`yaml` is a YAML parser and serialiser for JavaScript. Parsing a YAML document with a version of `yaml` on the 1.x branch prior to 1.10.3 or on the 2.x branch prior to 2.8.3 may throw a RangeError due to a stack overflow. The node resolution/composition phase uses recursive function calls without a depth bound. An attacker who can supply YAML for parsing can trigger a `RangeError: Maximum call stack size exceeded` with a small payload (~2–10 KB). The `RangeError` is not a `YAMLParseError`, so applications that only catch YAML-specific errors will encounter an unexpected exception type. Depending on the host application's exception handling, this can fail requests or terminate the Node.js process. Flow sequences allow deep nesting with minimal bytes (2 bytes per level: one `[` and one `]`). On the default Node.js stack, approximately 1,000–5,000 levels of nesting (2–10 KB input) exhaust the call stack. The exact threshold is environment-dependent (Node.js version, stack size, call stack depth at invocation). Note: the library's `Parser` (CST phase) uses a stack-based iterative approach and is not affected. Only the compose/resolve phase uses actual call-stack recursion. All three public parsing APIs are affected: `YAML.parse()`, `YAML.parseDocument()`, and `YAML.parseAllDocuments()`. Versions 1.10.3 and 2.8.3 contain a patch."
+      },
+      "impact": "yaml: yaml: Denial of Service via deeply nested YAML document parsing",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2025-0716",
+        "aliases": []
+      },
+      "severity": "LOW",
+      "component": {
+        "name": "angular",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves angular@1.8.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "Improper sanitization of the value of the 'href' and 'xlink:href' attributes in '<image>' SVG elements in AngularJS allows attackers to bypass common image source restrictions. This can lead to a form of  Content Spoofing https://owasp.org/www-community/attacks/Content_Spoofing  and also negatively affect the application's performance and behavior by using too large or slow-to-load images.\n\nThis issue affects all versions of AngularJS.\n\nNote:\nThe AngularJS project is End-of-Life and will not receive any updates to address this issue. For more information see  here https://docs.angularjs.org/misc/version-support-status ."
+      },
+      "impact": "angular: AngularJS improper sanitization in SVG '<image>' element",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2024-8372",
+        "aliases": []
+      },
+      "severity": "LOW",
+      "component": {
+        "name": "angular",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves angular@1.8.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "Improper sanitization of the value of the 'srcset' attribute in AngularJS allows attackers to bypass common image source restrictions, which can also lead to a form of  Content Spoofing https://owasp.org/www-community/attacks/Content_Spoofing .\n\nThis issue affects AngularJS versions 1.3.0-rc.4 and greater.\n\nNote:\nThe AngularJS project is End-of-Life and will not receive any updates to address this issue. For more information see  here https://docs.angularjs.org/misc/version-support-status ."
+      },
+      "impact": "angularjs: From NVD collector",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2024-8373",
+        "aliases": []
+      },
+      "severity": "LOW",
+      "component": {
+        "name": "angular",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves angular@1.8.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "Improper sanitization of the value of the [srcset] attribute in <source> HTML elements in AngularJS allows attackers to bypass common image source restrictions, which can also lead to a form of  Content Spoofing https://owasp.org/www-community/attacks/Content_Spoofing .\n\nThis issue affects all versions of AngularJS.\n\nNote:\nThe AngularJS project is End-of-Life and will not receive any updates to address this issue. For more information see  here https://docs.angularjs.org/misc/version-support-status ."
+      },
+      "impact": "angular: From NVD collector",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2025-2336",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "angular-sanitize",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves angular-sanitize@1.8.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "Improper sanitization of the value of the 'href' and 'xlink:href' attributes in '<image>' SVG elements in AngularJS's 'ngSanitize' module allows attackers to bypass common image source restrictions. This can lead to a form of  Content Spoofing https://owasp.org/www-community/attacks/Content_Spoofing  and also negatively affect the application's performance and behavior by using too large or slow-to-load images.\n\nThis issue affects AngularJS versions greater than or equal to 1.3.1.\n\nNote:\nThe AngularJS project is End-of-Life and will not receive any updates to address this issue. For more information see  here https://docs.angularjs.org/misc/version-support-status ."
+      },
+      "impact": "Improper sanitization of the value of the 'href' and 'xlink:href' attr ...",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-8723",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "qs",
+        "installed": "6.14.1",
+        "fixed": "6.15.2"
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves qs@6.14.1 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "### Summary\n\n\n\n`qs.stringify` throws `TypeError` when called with `arrayFormat: 'comma'` and `encodeValuesOnly: true` on an array containing `null` or `undefined`. The throw is synchronous and not handled by any of qs's null-related options (`skipNulls`, `strictNullHandling`).\n\n\n\n### Details\n\n\n\nIn the comma + `encodeValuesOnly` branch, `lib/stringify.js:145` mapped the array through the raw encoder before joining:\n\n\n\n```js\n\n\n\nobj = utils.maybeMap(obj, encoder);\n\n\n\n```\n\n\n\n`utils.encode` (`lib/utils.js:195`) reads `str.length` with no null guard, so a `null` or `undefined` element throws `TypeError`. `skipNulls` and `strictNullHandling` are both checked in the per-element loop below this line and never get a chance to run.\n\n\n\nSame class of bug as the filter-array path fixed in 0c180a4. The vulnerable shape of the comma + `encodeValuesOnly` branch was introduced in 4c4b23d (\"encode comma values more consistently\", PR #463, 2023-01-19), first released in v6.11.1.\n\n\n\n#### PoC\n\n\n\n```js\n\n\n\nconst qs = require('qs');\n\n\n\nqs.stringify({ a: [null, 'b'] },      { arrayFormat: 'comma', encodeValuesOnly: true });\n\n\n\nqs.stringify({ a: [undefined, 'b'] }, { arrayFormat: 'comma', encodeValuesOnly: true });\n\n\n\nqs.stringify({ a: [null] },           { arrayFormat: 'comma', encodeValuesOnly: true });\n\n\n\n// TypeError: Cannot read properties of null (reading 'length')\n\n\n\n//     at encode (lib/utils.js:195:13)\n\n\n\n//     at Object.maybeMap (lib/utils.js:322:37)\n\n\n\n//     at stringify (lib/stringify.js:145:25)\n\n\n\n```\n\n\n\n#### Fix\n\n\n\n`lib/stringify.js:145`, applied in 21f80b3 on `main` and released as v6.15.2:\n\n\n\n```diff\n\n\n\n- obj = utils.maybeMap(obj, encoder);\n\n\n\n+ obj = utils.maybeMap(obj, function (v) {\n\n\n\n+     return v == null ? v : encoder(v);\n\n\n\n+ });\n\n\n\n```\n\n\n\n`null` and `undefined` now pass through `maybeMap` unchanged and reach the `join(',')` step as-is. For `{ a: [null, 'b'] }` this produces `a=,b`, matching the non-`encodeValuesOnly` comma path (which already joins before encoding and produces `a=%2Cb` for the same input). Single-element `[null]` arrays still collapse via the existing `obj.join(',') || null` and remain subject to `skipNulls` / `strictNullHandling` in the main loop.\n\n\n\n### Affected versions\n\n\n\n`>=6.11.1 <6.15.2` — fixed in v6.15.2.\n\n\n\nThe vulnerable code shape was introduced in 4c4b23d and first shipped in v6.11.1. Earlier versions — including all of 6.7.x, 6.8.x, 6.9.x, 6.10.x, and 6.11.0 — implemented the comma + `encodeValuesOnly` path differently (joining before encoding) and are not affected. Empirically verified across released versions.\n\n\n\n### Impact\n\n\n\nApplication code that calls `qs.stringify` with both `arrayFormat: 'comma'` and `encodeValuesOnly: true` (both non-default) on input that may contain a `null` or `undefined` array element will throw synchronously instead of producing a query string. In a typical Node.js HTTP framework (Express, Fastify, Koa, hapi) the sync throw is caught by the framework's error boundary and the affected request returns a 500; the worker process does not exit and subsequent requests are unaffected. The \"kills the worker process\" framing applies only to call sites outside a request-handler error boundary (background jobs, startup paths, stream pipelines) or to deployments with framework error handling explicitly disabled.\n\n\n\nThe vulnerable input is a `null` or `undefined` entry inside an array; this is reachable from JSON request bodies or from application code constructing arrays from user input, but not from standard HTML form submissions (which produce strings or omitted fields, not literal `null`)."
+      },
+      "impact": "qs: qs: Denial of Service due to improper handling of null/undefined array elements",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2022-25844",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "angular",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves angular@1.8.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "The package angular after 1.7.0 are vulnerable to Regular Expression Denial of Service (ReDoS) by providing a custom locale rule that makes it possible to assign the parameter in posPre: ' '.repeat() of NUMBER_FORMATS.PATTERNS[1].posPre with a very high value. **Note:** 1) This package has been deprecated and is no longer maintained. 2) The vulnerable versions are 1.7.0 and higher."
+      },
+      "impact": "angular: Regular Expression Denial of Service (ReDoS) in angular",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2023-26117",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "angular",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves angular@1.8.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "Versions of the package angular from 1.0.0 are vulnerable to Regular Expression Denial of Service (ReDoS) via the $resource service due to the usage of an insecure regular expression. Exploiting this vulnerability is possible by a large carefully-crafted input, which can result in catastrophic backtracking."
+      },
+      "impact": "angularjs: Regular expression denial of service via the $resource service",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2023-26116",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "angular",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves angular@1.8.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "Versions of the package angular from 1.2.21 are vulnerable to Regular Expression Denial of Service (ReDoS) via the angular.copy() utility function due to the usage of an insecure regular expression. Exploiting this vulnerability is possible by a large carefully-crafted input, which can result in catastrophic backtracking."
+      },
+      "impact": "angularjs: Regular Expression Denial of Service via angular.copy()",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2023-26118",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "angular",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves angular@1.8.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "Versions of the package angular from 1.4.9 are vulnerable to Regular Expression Denial of Service (ReDoS) via the <input type=\"url\"> element due to the usage of an insecure regular expression in the input[url] functionality. Exploiting this vulnerability is possible by a large carefully-crafted input, which can result in catastrophic backtracking."
+      },
+      "impact": "angularjs: Regular Expression Denial of Service via the <input type=\"url\"> element",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-48988",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "markdown-it",
+        "installed": "12.3.2",
+        "fixed": "14.2.0"
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves markdown-it@12.3.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "markdown-it is a Markdown parser. Versions 14.1.1 and below contain a denial-of-service vulnerability when typographer: true is enabled, due to quadratic (O(n^2)) processing in the smartquotes rule. The issue stems from repeatedly modifying strings with replaceAt(), which performs O(n) slicing and concatenation per quote character. This can cause excessive CPU consumption when parsing quote-heavy, user-supplied markdown and may let attackers degrade or disrupt service availability. Although typographer is disabled by default, many production apps enable it for smart typography, making the issue relevant. This issue has been fixed in version 14.2.0."
+      },
+      "impact": "markdown-it is a Markdown parser. Versions 14.1.1 and below contain a  ...",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-53606",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "sanitize-html",
+        "installed": "2.17.0",
+        "fixed": "2.17.5"
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves sanitize-html@2.17.0 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "ApostropheCMS is an open-source Node.js content management system, and sanitize-html provides a simple HTML sanitizer with a clear API. Versions of sanitize-html prior to 2.17.5 use `allowedSchemesAppliedToAttributes` (default: `['href', 'src', 'cite']`) to gate the `naughtyHref()` function that blocks dangerous URI schemes like `javascript:` and `vbscript:`. The HTML specification defines 10+ attributes that accept URIs (`action`, `formaction`, `data`, `poster`, `background`, `ping`, `xlink:href`, `dynsrc`, `lowsrc`), but none of these are included in the default gate list. When a developer allows any of these attributes in their configuration, `javascript:` URIs pass through completely unmodified, enabling XSS. Version 2.17.5 patches the issue."
+      },
+      "impact": "apostrophecms sanitize-html: sanitize-html: Cross-Site Scripting (XSS) via insufficient URI scheme validation",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2025-1647",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "bootstrap",
+        "installed": "3.4.1",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves bootstrap@3.4.1 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "Improper Neutralization of Input During Web Page Generation (XSS or 'Cross-site Scripting') vulnerability in Bootstrap allows Cross-Site Scripting (XSS).This issue affects Bootstrap: from 3.4.1 before 4.0.0."
+      },
+      "impact": "bootstrap: Bootstrap XSS Vulnerability",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2022-25869",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "angular",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves angular@1.8.2 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "All versions of the package angular; all versions of the package angularjs.core; all versions of the package angularjs are vulnerable to Cross-site Scripting (XSS) due to insecure page caching in the Internet Explorer browser, which allows interpolation of <textarea> elements."
+      },
+      "impact": "angularjs: Angular Cross-site Scripting (XSS)",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2025-27789",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "@babel/runtime",
+        "installed": "7.26.0",
+        "fixed": "7.26.10, 8.0.0-alpha.17"
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves @babel/runtime@7.26.0 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "Babel is a compiler for writing next generation JavaScript. When using versions of Babel prior to 7.26.10 and 8.0.0-alpha.17 to compile regular expression named capturing groups, Babel will generate a polyfill for the `.replace` method that has quadratic complexity on some specific replacement pattern strings (i.e. the second argument passed to `.replace`). Generated code is vulnerable if all the following conditions are true: Using Babel to compile regular expression named capturing groups, using the `.replace` method on a regular expression that contains named capturing groups, and the code using untrusted strings as the second argument of `.replace`. This problem has been fixed in `@babel/helpers` and `@babel/runtime` 7.26.10 and 8.0.0-alpha.17. It's likely that individual users do not directly depend on `@babel/helpers`, and instead depend on `@babel/core` (which itself depends on `@babel/helpers`). Upgrading to `@babel/core` 7.26.10 is not required, but it guarantees use of a new enough `@babel/helpers` version. Note that just updating Babel dependencies is not enough; one will also need to re-compile the code. No known workarounds are available."
+      },
+      "impact": "Babel has inefficient RegExp complexity in generated code with .replace when transpiling named capturing groups",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2024-6485",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "bootstrap",
+        "installed": "3.4.1",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves bootstrap@3.4.1 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "A security vulnerability has been discovered in bootstrap that could enable Cross-Site Scripting (XSS) attacks. The vulnerability is associated with the data-loading-text attribute within the button plugin. This vulnerability can be exploited by injecting malicious JavaScript code into the attribute, which would then be executed when the button's loading state is triggered."
+      },
+      "impact": "bootstrap: Cross-Site Scripting via button plugin on bootstrap",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-41691",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "i18next-http-backend",
+        "installed": "3.0.4",
+        "fixed": "3.0.5"
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves i18next-http-backend@3.0.4 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "Copilot said: i18nextify is a JavaScript library that adds\ni18nextify is a JavaScript library that adds website internationalization via a script tag, without source code changes. Versions prior to 3.0.5 interpolate the lng and ns values directly into the configured loadPath / addPath URL template without any encoding, validation, or path sanitisation. When an application exposes the language-code selection to user-controlled input (the default — i18next-browser-languagedetector reads ?lng= query params, cookies, localStorage, and request headers), an attacker can inject characters that change the structure of the outgoing request URL. This is a single URL-injection vulnerability. The attacker-controlled value is neutralised before it is used as part of an output URL string; the attack shape covers both path traversal and broader URL-structure injection — both are closed by the one interpolateUrl sanitisation fix. This issue has been fixed in version 3.0.5. If users cannot upgrade immediately, they can work around the issue by sanitising lng / ns before they reach i18next (strip .., /, \\, ?, #, %, whitespace, and control characters; cap the length)."
+      },
+      "impact": " i18next-http-backend has Path Traversal & URL Injection via Unsanitised lng/ns",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-41907",
+        "aliases": []
+      },
+      "severity": "MEDIUM",
+      "component": {
+        "name": "uuid",
+        "installed": "3.4.0",
+        "fixed": "11.1.1, 12.0.1, 13.0.1"
+      },
+      "evidence": {
+        "class": "SHIPPED_FRONTEND_RUNTIME_REACHABILITY_UNQUALIFIED",
+        "callPath": "Exact A/B-identical /public source-map projection proves uuid@3.4.0 is shipped; route and sink reachability is not qualified in F0-N4R1.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "UNQUALIFIED_UNTIL_EXACT_ROUTE_CHARACTERIZATION",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "POTENTIAL_IN_AUTHENTICATED_ADMIN_UI",
+        "exploitPreconditions": "uuid is for the creation of RFC9562 (formerly RFC4122) UUIDs. Prior to 14.0.0, v3, v5, and v6 accept external output buffers but do not reject out-of-range writes (small buf or large offset). This allows silent partial writes into caller-provided buffers. This vulnerability is fixed in 14.0.0."
+      },
+      "impact": "uuid: uuid: Out-of-bounds write vulnerability impacts data integrity and confidentiality",
+      "disposition": {
+        "status": "TIME_BOUND_FRONTEND_COMPENSATING_CONTROL",
+        "controls": [
+          "Keep Portainer native ingress inactive until F0-N4R3 route and role qualification.",
+          "Expose Portainer to customer Admin only through the Product edge after activation.",
+          "Remediate fixed-version packages or prove exact route and sink non-reachability before the time-bound review expires.",
+          "Repeat the exact frontend bundle scan and browser security characterization when the overlay changes."
+        ],
+        "owner": "PRODUCT_SECURITY",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer frontend dependency changes",
+          "Portainer frontend bundle changes",
+          "Portainer ingress or role boundary changes",
+          "Frontend advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2024-21490",
+        "aliases": []
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "angular",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "NOT_REACHABLE_GUARDED",
+        "callPath": "Exact A/B-identical /public source maps prove angular@1.8.2 is shipped; the sealed reachability receipts prove ng-srcset is absent from both exact source inventories.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NONE_WITH_GUARDED_SINK_ABSENCE",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "NONE_WITH_GUARDED_SINK_ABSENCE",
+        "exploitPreconditions": "This affects versions of the package angular from 1.3.0; versions of the package angularjs from 1.3.0. A regular expression used to split the value of the ng-srcset directive is vulnerable to super-linear runtime due to backtracking. With large carefully-crafted input, this can result in catastrophic backtracking and cause a denial of service. \r\r\r**Note:**\r\rThis package is EOL and will not receive any updates to address this issue. Users should migrate to [@angular/core](https://www.npmjs.com/package/@angular/core)."
+      },
+      "impact": "angular: Inefficient Regular Expression Complexity",
+      "disposition": {
+        "status": "NOT_REACHABLE_TIME_BOUND_GUARD",
+        "controls": [
+          "NG_SRCSET_ABSENT",
+          "SCE_DELEGATE_CUSTOMIZATION_ABSENT",
+          "RESOURCE_URL_LIST_CUSTOMIZATION_ABSENT",
+          "TRUST_AS_RESOURCE_URL_ABSENT",
+          "DYNAMIC_RESOURCE_URL_SINKS_ABSENT"
+        ],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer upstream version changes",
+          "AngularJS dependency changes",
+          "Any guarded AngularJS source pattern appears",
+          "AngularJS advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-11998",
+        "aliases": []
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "angular",
+        "installed": "1.8.2",
+        "fixed": null
+      },
+      "evidence": {
+        "class": "NOT_REACHABLE_GUARDED",
+        "callPath": "Exact A/B-identical /public source maps prove angular@1.8.2 is shipped; the sealed reachability receipts prove SCE delegate customization, resource URL list customization, trustAsResourceUrl, and dynamic resource URL sinks are absent from both exact source inventories.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NONE_WITH_GUARDED_SINK_ABSENCE",
+        "operator": "DENIED_BY_PORTAINER_ADMIN_ONLY_PRODUCT_BOUNDARY",
+        "admin": "NONE_WITH_GUARDED_SINK_ABSENCE",
+        "exploitPreconditions": "A flaw in AngularJS' Strict Contextual Escaping (SCE) logic allows bypassing certain SCE policies for resource URLs and can lead to arbitrary JavaScript execution within the context of the victim's browser session.\n\n\nSCE's purpose is to ensure that only trusted or safe values are used in certain security-sensitive contexts, such as resource URLs, including URLs that define executable JavaScript scripts, '<iframe>' documents, route templates, etc. A flaw in the logic that tries to match entire URLs against regular expression matchers can result in partial matches for certain types of regular expressions, effectively bypassing the policies and allowing the use of unsafe values as resource URLs.\n\n\nThis issue affects AngularJS versions greater than or equal to 1.2.0-rc.3.\n\n\nNote:\nThe AngularJS project was already End-of-Life when this CVE was published and will not receive any updates to address this issue. For more information see the  End-of-Life announcement https://docs.angularjs.org/misc/version-support-status ."
+      },
+      "impact": "angularjs: AngularJS: Arbitrary JavaScript execution due to Strict Contextual Escaping (SCE) bypass",
+      "disposition": {
+        "status": "NOT_REACHABLE_TIME_BOUND_GUARD",
+        "controls": [
+          "NG_SRCSET_ABSENT",
+          "SCE_DELEGATE_CUSTOMIZATION_ABSENT",
+          "RESOURCE_URL_LIST_CUSTOMIZATION_ABSENT",
+          "TRUST_AS_RESOURCE_URL_ABSENT",
+          "DYNAMIC_RESOURCE_URL_SINKS_ABSENT"
+        ],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer upstream version changes",
+          "AngularJS dependency changes",
+          "Any guarded AngularJS source pattern appears",
+          "AngularJS advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    }
+  ],
+  "misconfigurationFindings": [
+    {
+      "id": "DS-0002",
+      "severity": "HIGH",
+      "target": "Dockerfile",
+      "evidence": {
+        "class": "EFFECTIVE_ROOT_RUNTIME_CONFIGURATION",
+        "configuredUser": "",
+        "effectiveUser": "root",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NONE_WHILE_CONTRACT_ACTIVATION_IS_INACTIVE",
+        "operator": "NONE_WHILE_CONTRACT_ACTIVATION_IS_INACTIVE",
+        "admin": "ROOT_EQUIVALENT_DOCKER_AUTHORITY_IF_ACTIVATED",
+        "exploitPreconditions": "Portainer is activated with Docker authority while its effective container user remains root."
+      },
+      "impact": "A Portainer process compromise would execute as container root next to root-equivalent Docker authority.",
+      "disposition": {
+        "status": "R2_LEAST_PRIVILEGE_STARTUP_ACTIVATION_PRECONDITION",
+        "controls": [
+          "Keep Portainer activation and ingress inactive.",
+          "F0-N4R2 must bind the exact runtime UID/GID and required Docker authority.",
+          "Deny privileged mode, host PID and network namespaces, excess capabilities, and unrelated mounts.",
+          "Bind exact writable paths, security options, socket custody, and private networking.",
+          "If effective root remains required, document and qualify that root-equivalent appliance boundary explicitly."
+        ],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "F0-N4R2 startup contract is proposed",
+          "Portainer image or runtime UID/GID changes",
+          "Docker socket custody or runtime privileges change"
+        ]
+      }
+    },
+    {
+      "id": "DS-0026",
+      "severity": "LOW",
+      "target": "Dockerfile",
+      "evidence": {
+        "class": "IMAGE_HEALTHCHECK_ABSENT",
+        "healthcheckPresent": false,
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NONE_WHILE_CONTRACT_ACTIVATION_IS_INACTIVE",
+        "operator": "NONE_WHILE_CONTRACT_ACTIVATION_IS_INACTIVE",
+        "admin": "CONTROLLED_FAILURE_DETECTION_GAP_IF_ACTIVATED",
+        "exploitPreconditions": "Portainer is activated without an exact external or image-native health contract."
+      },
+      "impact": "Startup failure or runtime degradation could remain undetected or receive incorrect restart handling.",
+      "disposition": {
+        "status": "R2_HEALTH_CONTRACT_ACTIVATION_PRECONDITION",
+        "controls": [
+          "Keep Portainer activation and ingress inactive.",
+          "F0-N4R2 must define an exact credential-free readiness probe.",
+          "Bind interval, timeout, retries, start period, restart behavior, and outage semantics.",
+          "Prove startup, restart, unhealthy-state detection, and recovery before activation."
+        ],
+        "owner": "CORE_RUNTIME_SECURITY",
+        "expiry": null,
+        "reviewTriggers": [
+          "F0-N4R2 health contract is proposed",
+          "Portainer image entrypoint or health endpoint changes",
+          "Restart or outage semantics change"
+        ]
+      }
+    }
+  ],
+  "historicalRemediations": [
+    {
+      "advisory": {
+        "id": "CVE-2026-33818",
+        "aliases": ["GO-2026-5972"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "stdlib",
+        "installed": "go1.25.12",
+        "fixed": "go1.25.13"
+      },
+      "evidence": {
+        "class": "PROVEN_BINARY_SYMBOL",
+        "callPath": "encoding/asn1.Unmarshal and UnmarshalWithParams are present in the upstream binary.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "POSSIBLE_THROUGH_CERTIFICATE_OR_IDENTITY_INPUT",
+        "operator": "POSSIBLE_BEFORE_REMEDIATION",
+        "admin": "POSSIBLE_BEFORE_REMEDIATION",
+        "exploitPreconditions": "A deeply nested ASN.1 value reaches a vulnerable decoder."
+      },
+      "impact": "Stack exhaustion and process denial of service.",
+      "disposition": {
+        "status": "REMEDIATED_DOWNSTREAM",
+        "controls": ["Build the downstream binary with exact Go 1.25.13."],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": null,
+        "reviewTriggers": [
+          "Go builder identity changes",
+          "Portainer upstream version changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-39821",
+        "aliases": ["GO-2026-5026"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "stdlib",
+        "installed": "go1.25.12",
+        "fixed": "go1.25.13"
+      },
+      "evidence": {
+        "class": "PROVEN_BINARY_SYMBOL",
+        "callPath": "Affected net/http client and HTTP/2 round-trip symbols are present in the upstream binary.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "INDIRECT_ONLY",
+        "operator": "POSSIBLE_BEFORE_REMEDIATION",
+        "admin": "POSSIBLE_BEFORE_REMEDIATION",
+        "exploitPreconditions": "A crafted ASCII-only Punycode label reaches outbound hostname authorization followed by IDNA conversion."
+      },
+      "impact": "Authority confusion and possible privilege or routing bypass.",
+      "disposition": {
+        "status": "REMEDIATED_DOWNSTREAM",
+        "controls": ["Build the downstream binary with exact Go 1.25.13."],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": null,
+        "reviewTriggers": [
+          "Go builder identity changes",
+          "Portainer upstream version changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-56853",
+        "aliases": ["GO-2026-6089"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "stdlib",
+        "installed": "go1.25.12",
+        "fixed": "go1.25.13"
+      },
+      "evidence": {
+        "class": "PROVEN_BINARY_SYMBOL",
+        "callPath": "net/http Serve and ListenAndServe symbols are present in the upstream binary.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NETWORK_REACHABLE_BEFORE_REMEDIATION",
+        "operator": "NOT_REQUIRED",
+        "admin": "NOT_REQUIRED",
+        "exploitPreconditions": "A vulnerable cleartext HTTP/2 listener accepts a connection that withholds the preface."
+      },
+      "impact": "Connection and process resource exhaustion.",
+      "disposition": {
+        "status": "REMEDIATED_DOWNSTREAM",
+        "controls": ["Build the downstream binary with exact Go 1.25.13."],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": null,
+        "reviewTriggers": [
+          "Go builder identity changes",
+          "Listener topology changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-56858",
+        "aliases": ["GO-2026-6091"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "stdlib",
+        "installed": "go1.25.12",
+        "fixed": "go1.25.13"
+      },
+      "evidence": {
+        "class": "PROVEN_BINARY_SYMBOL",
+        "callPath": "html/template Execute and ExecuteTemplate symbols are present in the upstream binary.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "INPUT_DEPENDENT",
+        "operator": "DENIED_BY_PORTAINER_ADMISSION_ROLE_BOUNDARY",
+        "admin": "POSSIBLE_BEFORE_REMEDIATION",
+        "exploitPreconditions": "Attacker-controlled pathological input reaches a JavaScript regular-expression template context."
+      },
+      "impact": "Cross-site scripting in an authenticated administrator browser.",
+      "disposition": {
+        "status": "REMEDIATED_DOWNSTREAM",
+        "controls": ["Build the downstream binary with exact Go 1.25.13."],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": null,
+        "reviewTriggers": [
+          "Go builder identity changes",
+          "Template surface changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-56859",
+        "aliases": ["GO-2026-6088"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "stdlib",
+        "installed": "go1.25.12",
+        "fixed": "go1.25.13"
+      },
+      "evidence": {
+        "class": "PROVEN_BINARY_SYMBOL",
+        "callPath": "encoding/xml decode symbols are present in the upstream binary.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "INPUT_DEPENDENT",
+        "operator": "DENIED_BY_PORTAINER_ADMISSION_ROLE_BOUNDARY",
+        "admin": "POSSIBLE_BEFORE_REMEDIATION",
+        "exploitPreconditions": "Deeply recursive XML reaches a vulnerable decoder."
+      },
+      "impact": "Stack exhaustion and process denial of service.",
+      "disposition": {
+        "status": "REMEDIATED_DOWNSTREAM",
+        "controls": ["Build the downstream binary with exact Go 1.25.13."],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": null,
+        "reviewTriggers": [
+          "Go builder identity changes",
+          "XML input surface changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-56860",
+        "aliases": ["GO-2026-6218"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "stdlib",
+        "installed": "go1.25.12",
+        "fixed": "go1.25.13"
+      },
+      "evidence": {
+        "class": "PROVEN_BINARY_SYMBOL",
+        "callPath": "net/url Parse and ResolveReference symbols are present in the upstream binary.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "INPUT_DEPENDENT",
+        "operator": "DENIED_BY_PORTAINER_ADMISSION_ROLE_BOUNDARY",
+        "admin": "POSSIBLE_BEFORE_REMEDIATION",
+        "exploitPreconditions": "A path containing a large number of parent-directory segments reaches relative URL resolution."
+      },
+      "impact": "CPU and memory denial of service.",
+      "disposition": {
+        "status": "REMEDIATED_DOWNSTREAM",
+        "controls": ["Build the downstream binary with exact Go 1.25.13."],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": null,
+        "reviewTriggers": [
+          "Go builder identity changes",
+          "URL input surface changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-56862",
+        "aliases": ["GO-2026-6090"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "stdlib",
+        "installed": "go1.25.12",
+        "fixed": "go1.25.13"
+      },
+      "evidence": {
+        "class": "PROVEN_BINARY_SYMBOL",
+        "callPath": "crypto/tls handshake, read, and write symbols are present in the upstream binary.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NETWORK_REACHABLE_BEFORE_REMEDIATION",
+        "operator": "NOT_REQUIRED",
+        "admin": "NOT_REQUIRED",
+        "exploitPreconditions": "A TLS peer repeatedly sends post-handshake KeyUpdate messages."
+      },
+      "impact": "CPU denial of service.",
+      "disposition": {
+        "status": "REMEDIATED_DOWNSTREAM",
+        "controls": ["Build the downstream binary with exact Go 1.25.13."],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": null,
+        "reviewTriggers": [
+          "Go builder identity changes",
+          "TLS topology changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-56864",
+        "aliases": ["GO-2026-6179"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "golang.org/x/mod",
+        "installed": "v0.37.0",
+        "fixed": "v0.40.0"
+      },
+      "evidence": {
+        "class": "PROVEN_BINARY_SYMBOL",
+        "callPath": "golang.org/x/mod/sumdb ReadHashes is present in the upstream binary.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NOT_DIRECT",
+        "operator": "DENIED_BY_PORTAINER_ADMISSION_ROLE_BOUNDARY",
+        "admin": "MODULE_OPERATION_DEPENDENT",
+        "exploitPreconditions": "A malicious GOSUMDB is trusted during a module lookup."
+      },
+      "impact": "Module supply-chain integrity compromise.",
+      "disposition": {
+        "status": "REMEDIATED_DOWNSTREAM",
+        "controls": ["Lock golang.org/x/mod to exact v0.40.0."],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": null,
+        "reviewTriggers": [
+          "Go module lock changes",
+          "Portainer upstream version changes"
+        ]
+      }
+    },
+    {
+      "advisory": {
+        "id": "CVE-2026-56865",
+        "aliases": ["GO-2026-6180"]
+      },
+      "severity": "HIGH",
+      "component": {
+        "name": "golang.org/x/mod",
+        "installed": "v0.37.0",
+        "fixed": "v0.40.0"
+      },
+      "evidence": {
+        "class": "PROVEN_BINARY_SYMBOL",
+        "callPath": "golang.org/x/mod/sumdb Lookup is present in the upstream binary.",
+        "sourceInference": false
+      },
+      "exposure": {
+        "anonymous": "NOT_DIRECT",
+        "operator": "DENIED_BY_PORTAINER_ADMISSION_ROLE_BOUNDARY",
+        "admin": "MODULE_OPERATION_DEPENDENT",
+        "exploitPreconditions": "A malicious GOPROXY is used during module and sumdb lookup."
+      },
+      "impact": "Module supply-chain integrity compromise.",
+      "disposition": {
+        "status": "REMEDIATED_DOWNSTREAM",
+        "controls": ["Lock golang.org/x/mod to exact v0.40.0."],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": null,
+        "reviewTriggers": [
+          "Go module lock changes",
+          "Portainer upstream version changes"
+        ]
+      }
+    }
+  ]
+}
