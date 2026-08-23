@@ -610,8 +610,7 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
 
     expect(revoked.status).toBe("revoked")
     expect(enabled).toEqual({
-      detail:
-        "An active credential is required before enabling the Key.",
+      detail: "An active credential is required before enabling the Key.",
       status: "blocked",
     })
     expect(await storedApplicationState(created.app.id)).toMatchObject({
