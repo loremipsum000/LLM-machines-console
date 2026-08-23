@@ -101,7 +101,7 @@ function overviewFixture() {
     activitySourceStatus: "ok",
     generatedAt,
     tiles: [
-      tileFixture("applications", "Keys", "/keys", [
+      tileFixture("applications", "Keys", "/applications", [
         metricFixture("applications", "Keys", "2"),
         metricFixture("connected", "Connected", "1"),
       ]),

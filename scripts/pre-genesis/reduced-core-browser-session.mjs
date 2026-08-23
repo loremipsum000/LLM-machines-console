@@ -1144,7 +1144,7 @@ async function runBrowserSessionProof() {
       await page.waitForURL((url) => url.pathname === "/auth/signin")
       await context.clearCookies()
       await synchronizeFixtureClock()
-      await signIn(page, consoleOrigin, credentials.operator, "/keys")
+      await signIn(page, consoleOrigin, credentials.operator, "/applications")
       await assertRole(page, "Operator")
       await assertConsoleNavigation(page, consoleOrigin)
       await assertOperatorApplicationReadOnly(page, applicationFlow)

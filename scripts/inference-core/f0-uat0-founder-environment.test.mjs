@@ -77,11 +77,11 @@ test("F0-UAT0 exposes one explicit start, status, and stop contract", () => {
   assert.match(browser, /async function openApplicationCreate\(/)
   assert.match(
     browser,
-    /assert\.equal\(new URL\(page\.url\(\)\)\.pathname, "\/applications\/apps\/new"\)/,
+    /assert\.equal\(new URL\(page\.url\(\)\)\.pathname, "\/keys\/apps\/new"\)/,
   )
   assert.doesNotMatch(
     browser,
-    /assert\.equal\(new URL\(page\.url\(\)\)\.pathname, "\/applications"\)\n\s+await page\.goto\(`\$\{consoleOrigin\}\/applications\/apps\/new`\)/,
+    /assert\.equal\(new URL\(page\.url\(\)\)\.pathname, "\/keys"\)\n\s+await page\.goto\(`\$\{consoleOrigin\}\/keys\/apps\/new`\)/,
   )
   assert.match(browser, /founderUat: Boolean\(founderUatControl\)/)
   assert.match(browser, /WEB_CONSOLE_ORIGIN: consoleOrigin/)

@@ -72,7 +72,7 @@ describe("Inference Core contract boundary", () => {
 
   it("accepts only retained Overview tiles", () => {
     const hrefById = {
-      applications: "/keys",
+      applications: "/applications",
       hardware: "/hardware",
       inference: "/inference",
       system: "/activity",

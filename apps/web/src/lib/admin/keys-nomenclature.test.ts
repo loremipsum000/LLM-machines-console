@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 const customerSurfaces = [
   "../../components/console-v2/applications-v2-experience.tsx",
-  "../../components/console-v2/console-v2-sections.ts",
+  "../../components/console-v2/console-v2-shell.tsx",
   "../../components/console-v2/overview-v2-experience.tsx",
   "../../components/console-v2/settings-v2-experience.tsx",
   "../../components/technical-tools-panel.tsx",

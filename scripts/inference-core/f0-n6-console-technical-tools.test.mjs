@@ -84,7 +84,7 @@ test("F0-N6 derives exact credential-free HTTPS links from host inputs", async (
   assert.equal(evidence.securityBoundary.consoleTokenForwarded, false)
 })
 
-test("F0-N6 keeps Console Application credentials distinct from native LiteLLM keys", async () => {
+test("F0-N6 keeps Console Keys distinct from native LiteLLM keys", async () => {
   const evidence = await readJson(evidencePath)
   const panel = await readText(
     "apps/web/src/components/technical-tools-panel.tsx",
@@ -98,8 +98,8 @@ test("F0-N6 keeps Console Application credentials distinct from native LiteLLM k
     evidence.copyBoundary.litellmVirtualKeys,
     "SEPARATE_ADVANCED_NATIVE_TECHNICAL_PATH",
   )
-  assert.match(panel, /Application credentials remain the default/)
-  assert.match(panel, /not Console Application credentials/)
+  assert.match(panel, /Console Keys remain the default/)
+  assert.match(panel, /not Console Keys/)
 })
 
 test("F0-N6 source fingerprints and changed-path inventory are exact", async () => {

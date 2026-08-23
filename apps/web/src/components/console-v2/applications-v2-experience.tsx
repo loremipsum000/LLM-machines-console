@@ -397,7 +397,7 @@ function AddConnectedAppView({
           </p>
           <ConnectedAppCreateStatus state={createState} />
           <div className="flex justify-end gap-2">
-            <Link className={secondaryButtonClass} href="/keys">
+            <Link className={secondaryButtonClass} href="/applications">
               Cancel
             </Link>
             <button
@@ -1012,7 +1012,7 @@ function ConnectedAppsPanel({
         {accessRole === "admin" ? (
           <Link
             className="flex items-center gap-1 text-sm font-medium text-white"
-            href="/keys/apps/new"
+            href="/applications/apps/new"
           >
             <Plus aria-hidden className="size-5" />
             Create Key
@@ -1035,7 +1035,7 @@ function ConnectedAppsPanel({
                   </div>
                   <Link
                     className={secondaryButtonClass}
-                    href={`/keys/apps/${encodeURIComponent(app.id)}`}
+                    href={`/applications/apps/${encodeURIComponent(app.id)}`}
                   >
                     Settings
                   </Link>
@@ -1221,9 +1221,22 @@ function CreatedKeyDialog({
           multiline
           value={credential.exampleCurl}
         />
-        <button className={primaryButtonClass} onClick={onClose} type="button">
-          Done
-        </button>
+        <div className="flex justify-end gap-2">
+          <Link
+            className={secondaryButtonClass}
+            href={`/applications/apps/${encodeURIComponent(app.id)}`}
+            onClick={onClose}
+          >
+            View Key
+          </Link>
+          <button
+            className={primaryButtonClass}
+            onClick={onClose}
+            type="button"
+          >
+            Done
+          </button>
+        </div>
       </div>
     </dialog>
   )
@@ -2555,7 +2568,7 @@ function SubpageHeader({ title }: { title: string }) {
       <h1 className="text-2xl font-semibold text-white">{title}</h1>
       <Link
         className="mt-3 flex w-fit items-center gap-1 text-sm font-medium text-white"
-        href="/keys"
+        href="/applications"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Go back

@@ -69,7 +69,7 @@ export const adminOverviewTileSchema = z
     id: adminOverviewTileIdSchema,
     title: z.string().min(1),
     summary: z.string().min(1),
-    href: z.enum(["/keys", "/inference", "/hardware", "/activity"]),
+    href: z.enum(["/applications", "/inference", "/hardware", "/activity"]),
     sourceStatus: inferenceCoreSourceStatusSchema,
     metrics: z.array(adminOverviewMetricSchema).min(1),
     updatedAt: z.string().datetime(),

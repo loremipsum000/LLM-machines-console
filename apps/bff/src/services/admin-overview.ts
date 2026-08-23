@@ -66,7 +66,7 @@ function applicationsTile(
   if (!applications.data) {
     return unavailableTile({
       generatedAt,
-      href: "/keys",
+      href: "/applications",
       id: "applications",
       metricLabels: ["Keys", "Connected", "Firecrawl enabled"],
       summary: "Key state is unavailable. Open Keys after the source recovers.",
@@ -88,7 +88,7 @@ function applicationsTile(
   ).length
 
   return {
-    href: "/keys",
+    href: "/applications",
     id: "applications",
     metrics: [
       metric("applications", "Keys", apps.length, "Current registry"),
