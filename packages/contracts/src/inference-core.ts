@@ -69,7 +69,7 @@ export const adminOverviewTileSchema = z
     id: adminOverviewTileIdSchema,
     title: z.string().min(1),
     summary: z.string().min(1),
-    href: z.enum(["/applications", "/inference", "/hardware", "/activity"]),
+    href: z.enum(["/keys", "/inference", "/hardware", "/activity"]),
     sourceStatus: inferenceCoreSourceStatusSchema,
     metrics: z.array(adminOverviewMetricSchema).min(1),
     updatedAt: z.string().datetime(),
@@ -877,7 +877,6 @@ export const adminConnectedAppModelAliasSchema = z
 
 export const adminConnectedAppAllowedModelsSchema = z
   .array(adminConnectedAppModelAliasSchema)
-  .min(1)
   .superRefine((models, ctx) => {
     if (new Set(models).size !== models.length) {
       ctx.addIssue({
@@ -886,6 +885,11 @@ export const adminConnectedAppAllowedModelsSchema = z
       })
     }
   })
+
+export const adminConnectedAppModelModeSchema = z.enum(["auto", "manual"])
+export type AdminConnectedAppModelMode = z.infer<
+  typeof adminConnectedAppModelModeSchema
+>
 
 export const adminConnectedAppUsageSummarySchema = z
   .object({
@@ -1312,7 +1316,7 @@ export const adminConnectedAppSchema = z
     connectionStatus: adminConnectedAppConnectionStatusSchema,
     createdAt: z.string().datetime(),
     credentials: z.array(adminConnectedAppCredentialMetadataSchema).min(1),
-    description: z.string().min(1),
+    description: z.string(),
     detailHref: z.string().min(1),
     firecrawl: adminConnectedAppFirecrawlSchema.default(
       defaultAdminConnectedAppFirecrawl,
@@ -1321,6 +1325,7 @@ export const adminConnectedAppSchema = z
     lastConnectedAt: z.string().datetime().nullable(),
     maxConcurrentRequests: z.number().int().min(1).nullable(),
     maxContextBytes: z.number().int().min(1).nullable(),
+    modelMode: adminConnectedAppModelModeSchema.default("manual"),
     name: z.string().min(1),
     rateLimitRps: z.number().int().min(1).nullable(),
     status: adminConnectedAppStatusSchema,
@@ -1331,6 +1336,19 @@ export const adminConnectedAppSchema = z
   })
   .strict()
   .superRefine((application, ctx) => {
+    if (
+      (application.modelMode === "auto" &&
+        application.allowedModels.length !== 0) ||
+      (application.modelMode === "manual" &&
+        application.allowedModels.length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Auto model access must remain dynamic; Manual model access requires at least one alias.",
+        path: ["allowedModels"],
+      })
+    }
     if (
       application.credentials.some(
         (credential) => credential.authMethod !== application.authMethod,
@@ -1391,9 +1409,9 @@ export type AdminConnectedAppDetail = z.infer<
 
 export const adminConnectedAppCreateRequestSchema = z
   .object({
-    allowedModels: adminConnectedAppAllowedModelsSchema,
+    allowedModels: adminConnectedAppAllowedModelsSchema.default([]),
     authMethod: adminConnectedAppAuthMethodSchema.default("api_key"),
-    description: z.string().trim().min(1).max(500),
+    description: z.string().trim().max(500).default(""),
     maxConcurrentRequests: z
       .number()
       .int()
@@ -1401,6 +1419,7 @@ export const adminConnectedAppCreateRequestSchema = z
       .max(10_000)
       .nullable()
       .default(null),
+    modelMode: adminConnectedAppModelModeSchema.optional(),
     maxContextBytes: z
       .number()
       .int()
@@ -1419,6 +1438,27 @@ export const adminConnectedAppCreateRequestSchema = z
       .default(null),
   })
   .strict()
+  .transform((request) => ({
+    ...request,
+    modelMode:
+      request.modelMode ??
+      (request.allowedModels.length > 0
+        ? ("manual" as const)
+        : ("auto" as const)),
+  }))
+  .superRefine((request, ctx) => {
+    if (
+      (request.modelMode === "auto" && request.allowedModels.length !== 0) ||
+      (request.modelMode === "manual" && request.allowedModels.length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Auto model access must not snapshot aliases; Manual model access requires at least one alias.",
+        path: ["allowedModels"],
+      })
+    }
+  })
 export type AdminConnectedAppCreateRequest = z.infer<
   typeof adminConnectedAppCreateRequestSchema
 >
@@ -1426,7 +1466,7 @@ export type AdminConnectedAppCreateRequest = z.infer<
 export const adminConnectedAppUpdateRequestSchema = z
   .object({
     allowedModels: adminConnectedAppAllowedModelsSchema,
-    description: z.string().trim().min(1).max(500),
+    description: z.string().trim().max(500),
     maxConcurrentRequests: z.number().int().min(1).max(10_000).nullable(),
     maxContextBytes: z
       .number()
@@ -1434,18 +1474,32 @@ export const adminConnectedAppUpdateRequestSchema = z
       .min(1)
       .max(Number.MAX_SAFE_INTEGER)
       .nullable(),
+    modelMode: adminConnectedAppModelModeSchema,
     name: z.string().trim().min(1).max(80),
     rateLimitRps: z.number().int().min(1).max(10_000).nullable(),
     tokenAlertThreshold7d: z.number().int().min(1).max(100_000_000).nullable(),
   })
   .strict()
+  .superRefine((request, ctx) => {
+    if (
+      (request.modelMode === "auto" && request.allowedModels.length !== 0) ||
+      (request.modelMode === "manual" && request.allowedModels.length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Auto model access must not snapshot aliases; Manual model access requires at least one alias.",
+        path: ["allowedModels"],
+      })
+    }
+  })
 export type AdminConnectedAppUpdateRequest = z.infer<
   typeof adminConnectedAppUpdateRequestSchema
 >
 
 export const adminConnectedAppDeleteRequestSchema = z
   .object({
-    confirmation: z.literal("DELETE APPLICATION"),
+    confirmation: z.literal("DELETE KEY"),
   })
   .strict()
 export type AdminConnectedAppDeleteRequest = z.infer<

@@ -1308,7 +1308,7 @@ function ownerLabel(
     return "Team"
   }
   if (section === "applications") {
-    return "Applications"
+    return "Keys"
   }
   if (section === "inference") {
     return "Inference"

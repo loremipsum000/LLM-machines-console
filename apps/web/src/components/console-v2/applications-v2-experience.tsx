@@ -32,9 +32,11 @@ import type {
   AdminConnectedAppFirecrawlCredential,
   AdminConnectedAppFirecrawlCredentialMetadata,
   AdminInferenceModel,
+  InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
-import { ArrowLeft, Copy, Plus } from "lucide-react"
+import { ArrowLeft, ChevronDown, Copy, Plus } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   type FormEvent,
   useActionState,
@@ -43,6 +45,7 @@ import {
   useId,
   useRef,
   useState,
+  useTransition,
 } from "react"
 import { useFormStatus } from "react-dom"
 import { ConsoleActionToasts } from "./action-toasts"
@@ -183,6 +186,7 @@ export function ApplicationsV2Experience({
   connectedAppDetail,
   connectedApps = EMPTY_CONNECTED_APPS,
   modelOptions = EMPTY_MODEL_OPTIONS,
+  modelInventorySourceStatus = "not_configured",
   view,
 }: {
   accessRole: RetainedConsoleRole
@@ -190,6 +194,7 @@ export function ApplicationsV2Experience({
   connectedAppDetail?: AdminConnectedApp | null
   connectedApps?: AdminConnectedApp[]
   modelOptions?: AdminInferenceModel[]
+  modelInventorySourceStatus?: InferenceCoreSourceStatus
   view: ApplicationsView
 }) {
   const visibleAppAction =
@@ -197,7 +202,12 @@ export function ApplicationsV2Experience({
       ? appAction
       : undefined
   if (view === "new-app") {
-    return <AddConnectedAppView modelOptions={modelOptions} />
+    return (
+      <AddConnectedAppView
+        modelInventorySourceStatus={modelInventorySourceStatus}
+        modelOptions={modelOptions}
+      />
+    )
   }
   if (view === "app-detail") {
     return (
@@ -212,7 +222,7 @@ export function ApplicationsV2Experience({
 
   return (
     <div className="w-full min-h-screen min-h-dvh pb-16 pt-8 lg:pt-[73px]">
-      <PageHeader title="Applications" />
+      <PageHeader title="Keys" />
       <AppActionNotice appAction={visibleAppAction} />
       <div className="mt-10 w-full lg:w-[640px]">
         <ConnectedAppsPanel accessRole={accessRole} apps={connectedApps} />
@@ -222,114 +232,183 @@ export function ApplicationsV2Experience({
 }
 
 function AddConnectedAppView({
+  modelInventorySourceStatus,
   modelOptions,
 }: {
+  modelInventorySourceStatus: InferenceCoreSourceStatus
   modelOptions: AdminInferenceModel[]
 }) {
-  const [createResult, createAction, createPending] = useActionState(
-    createAdminConnectedAppAction,
-    initialConnectedAppCreateState,
-  )
-  const [checkResult, checkAction, checkPending] = useActionState(
-    checkAdminConnectedAppConnectionAction,
-    initialConnectedAppTestState,
-  )
-  usePendingConsoleSessionRecovery(
-    createPending || checkPending,
-    createResult == null || checkResult == null,
-  )
-  const createState = createResult ?? interruptedConnectedAppCreateState
-  const checkState = checkResult ?? interruptedConnectedAppTestState
+  const router = useRouter()
+  const [createState, setCreateState] = useState(initialConnectedAppCreateState)
+  const [createPending, startCreateTransition] = useTransition()
+  usePendingConsoleSessionRecovery(createPending, createState == null)
   const [authMethod, setAuthMethod] = useState<
     "api_key" | "oauth_client_credentials"
   >("api_key")
-  const hasModels = modelOptions.length > 0
+  const [modelMode, setModelMode] = useState<"auto" | "manual">("auto")
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const manualInventoryAvailable =
+    modelInventorySourceStatus === "ok" && modelOptions.length > 0
+
+  useEffect(() => {
+    if (createState.status !== "created") return
+    const clearReveal = () => setCreateState(initialConnectedAppCreateState)
+    window.addEventListener("pagehide", clearReveal)
+    return () => window.removeEventListener("pagehide", clearReveal)
+  }, [createState.status])
+
+  const createAction = (formData: FormData) => {
+    startCreateTransition(async () => {
+      const result = await createAdminConnectedAppAction(
+        initialConnectedAppCreateState,
+        formData,
+      )
+      setCreateState(result)
+    })
+  }
+
+  const closeCreatedKey = () => {
+    const appId = createState.app?.id
+    setCreateState(initialConnectedAppCreateState)
+    if (appId) {
+      router.replace(`/keys/apps/${encodeURIComponent(appId)}`)
+    } else {
+      router.replace("/keys")
+    }
+  }
 
   return (
     <div className="w-full min-h-screen min-h-dvh pb-16 pt-8 lg:pt-[73px]">
-      <SubpageHeader title="Applications > Add app" />
+      <SubpageHeader title="Keys > Create Key" />
       <div className="mt-10 flex w-full flex-col gap-3 lg:w-[640px]">
         <form
           action={createAction}
           className="flex flex-col gap-3 rounded-lg border border-[#353535] bg-[#232323] p-4"
         >
           <input name="authMethod" type="hidden" value={authMethod} />
+          <input name="modelMode" type="hidden" value={modelMode} />
           <ApplicationTextField
-            label="Name"
+            label="Key name"
             name="name"
-            placeholder="Customer application"
+            placeholder="Production integration"
             required
           />
           <ApplicationTextField
-            label="Description"
+            label="Description (optional)"
             name="description"
-            placeholder="What workflow will use this credential"
-            required
+            placeholder="What will use this Key"
           />
           <SegmentedControl
-            label="Authentication"
+            label="Model access"
             options={[
               {
-                active: authMethod === "api_key",
-                label: "Static API key",
-                onSelect: () => setAuthMethod("api_key"),
+                active: modelMode === "auto",
+                label: "Auto",
+                onSelect: () => setModelMode("auto"),
               },
               {
-                active: authMethod === "oauth_client_credentials",
-                label: "OAuth client credentials",
-                onSelect: () => setAuthMethod("oauth_client_credentials"),
+                active: modelMode === "manual",
+                label: "Manual",
+                onSelect: () => setModelMode("manual"),
               },
             ]}
           />
           <p className="text-xs leading-5 text-[#8b8b8b]">
-            Authentication mode is permanent for this Application. OAuth is
-            intended for clients that can request short-lived access tokens.
+            Auto follows the active approved model inventory, including models
+            admitted after this Key is created.
           </p>
-          <ModelAliasFields modelOptions={modelOptions} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <OptionalLimitField
-              checkboxName="rateLimitRpsEnabled"
-              inputName="rateLimitRps"
-              label="Requests per second"
-              max={10_000}
+          {modelMode === "manual" ? (
+            <ModelAliasFields modelOptions={modelOptions} />
+          ) : null}
+          {modelMode === "manual" && !manualInventoryAvailable ? (
+            <p className="text-sm text-[#ffdb8a]" role="alert">
+              Manual selection is unavailable until the active approved model
+              inventory can be read.
+            </p>
+          ) : null}
+          <button
+            aria-expanded={advancedOpen}
+            className="flex w-full items-center justify-between rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-left text-sm font-medium text-white"
+            onClick={() => setAdvancedOpen((current) => !current)}
+            type="button"
+          >
+            Advanced features
+            <ChevronDown
+              aria-hidden
+              className={cn(
+                "size-4 transition-transform",
+                advancedOpen && "rotate-180",
+              )}
             />
-            <OptionalLimitField
-              checkboxName="maxConcurrentRequestsEnabled"
-              inputName="maxConcurrentRequests"
-              label="Concurrent requests"
-              max={10_000}
-            />
-            <OptionalLimitField
-              checkboxName="maxContextBytesEnabled"
-              inputName="maxContextBytes"
-              label="Context bytes per request"
-              max={Number.MAX_SAFE_INTEGER}
-            />
-            <OptionalLimitField
-              checkboxName="tokenAlertThreshold7dEnabled"
-              enabledLabel="Visibility threshold enabled"
-              inputName="tokenAlertThreshold7d"
-              label="Seven-day token alert threshold"
-              max={100_000_000}
-            />
-          </div>
-          <ApplicationCapacityPolicyCopy />
+          </button>
+          {advancedOpen ? (
+            <div className="flex flex-col gap-3" data-layout="vertical">
+              <SegmentedControl
+                label="Authentication method"
+                options={[
+                  {
+                    active: authMethod === "api_key",
+                    label: "Static API key",
+                    onSelect: () => setAuthMethod("api_key"),
+                  },
+                  {
+                    active: authMethod === "oauth_client_credentials",
+                    label: "OAuth client credentials",
+                    onSelect: () => setAuthMethod("oauth_client_credentials"),
+                  },
+                ]}
+              />
+              <p className="text-xs leading-5 text-[#8b8b8b]">
+                Authentication is permanent for this Key. OAuth is intended for
+                clients that request short-lived access tokens.
+              </p>
+              <OptionalLimitField
+                checkboxName="rateLimitRpsEnabled"
+                inputName="rateLimitRps"
+                label="Requests per second"
+                max={10_000}
+              />
+              <OptionalLimitField
+                checkboxName="maxConcurrentRequestsEnabled"
+                inputName="maxConcurrentRequests"
+                label="Concurrent requests"
+                max={10_000}
+              />
+              <OptionalLimitField
+                checkboxName="maxContextBytesEnabled"
+                inputName="maxContextBytes"
+                label="Maximum context size"
+                max={Number.MAX_SAFE_INTEGER}
+              />
+              <OptionalLimitField
+                checkboxName="tokenAlertThreshold7dEnabled"
+                enabledLabel="Visibility threshold enabled"
+                inputName="tokenAlertThreshold7d"
+                label="Seven-day usage alert"
+                max={100_000_000}
+              />
+              <ApplicationCapacityPolicyCopy />
+            </div>
+          ) : null}
           <p className="rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-xs leading-5 text-[#b2b2b2]">
-            Firecrawl is installed on the appliance but stays off for every new
-            Application. An Admin can enable its separate web-access credential
-            later from Application settings.
+            Create Key issues inference access only. Firecrawl stays off and
+            must be enabled separately from Key settings with its own credential
+            and disclaimer acceptance.
           </p>
           <ConnectedAppCreateStatus state={createState} />
           <div className="flex justify-end gap-2">
-            <Link className={secondaryButtonClass} href="/applications">
+            <Link className={secondaryButtonClass} href="/keys">
               Cancel
             </Link>
             <button
               className={primaryButtonClass}
-              disabled={createPending || !hasModels}
+              disabled={
+                createPending ||
+                (modelMode === "manual" && !manualInventoryAvailable)
+              }
               type="submit"
             >
-              {createPending ? "Creating app..." : "Create app"}
+              {createPending ? "Creating key..." : "Create Key"}
             </button>
           </div>
         </form>
@@ -337,12 +416,10 @@ function AddConnectedAppView({
         {createState.status === "created" &&
         createState.app &&
         createState.credential ? (
-          <ConnectedAppCredentialPanel
+          <CreatedKeyDialog
             app={createState.app}
-            checkAction={checkAction}
-            checkPending={checkPending}
-            checkState={checkState}
             credential={createState.credential}
+            onClose={closeCreatedKey}
           />
         ) : null}
       </div>
@@ -477,9 +554,9 @@ function ConnectedAppDetailView({
   if (!app) {
     return (
       <div className="w-full min-h-screen min-h-dvh pb-16 pt-8 lg:pt-[73px]">
-        <SubpageHeader title="Applications > App settings" />
+        <SubpageHeader title="Keys > Key settings" />
         <p className="mt-10 rounded-lg border border-[#353535] bg-[#232323] p-4 text-sm text-[#b2b2b2] lg:w-[640px]">
-          This Application is not available.
+          This Key is not available.
         </p>
       </div>
     )
@@ -490,7 +567,7 @@ function ConnectedAppDetailView({
 
   return (
     <div className="w-full min-h-screen min-h-dvh pb-16 pt-8 lg:pt-[73px]">
-      <SubpageHeader title={`Applications > ${currentApp.name}`} />
+      <SubpageHeader title={`Keys > ${currentApp.name}`} />
       <div className="mt-10 flex w-full flex-col gap-3 lg:w-[640px]">
         <AppActionNotice appAction={appAction} />
         <section className="grid gap-3 rounded-lg border border-[#353535] bg-[#232323] p-4">
@@ -520,8 +597,12 @@ function ConnectedAppDetailView({
             Authentication mode cannot be changed after creation.
           </p>
           <DetailRow
-            label="Allowed models"
-            value={currentApp.allowedModels.join(", ")}
+            label="Model access"
+            value={
+              currentApp.modelMode === "auto"
+                ? "Auto (active approved inventory)"
+                : currentApp.allowedModels.join(", ")
+            }
           />
           <DetailRow
             label="Requests per second"
@@ -591,7 +672,7 @@ function ConnectedAppDetailView({
                 onClick={() => setShowRotateConfirm(true)}
                 type="button"
               >
-                Rotate credentials
+                Rotate Key credentials
               </button>
               <button
                 className={secondaryButtonClass}
@@ -608,7 +689,7 @@ function ConnectedAppDetailView({
                   onClick={() => setShowDisableConfirm(true)}
                   type="button"
                 >
-                  Disable app
+                  Disable Key
                 </button>
               ) : (
                 <form
@@ -621,14 +702,14 @@ function ConnectedAppDetailView({
                   <input
                     name="returnTo"
                     type="hidden"
-                    value={`/applications/apps/${currentApp.id}`}
+                    value={`/keys/apps/${currentApp.id}`}
                   />
                   <button
                     className={secondaryButtonClass}
                     disabled={mutationPending}
                     type="submit"
                   >
-                    Re-enable app
+                    Re-enable Key
                   </button>
                 </form>
               )}
@@ -638,12 +719,12 @@ function ConnectedAppDetailView({
                 onClick={() => setShowDeleteConfirm(true)}
                 type="button"
               >
-                Delete app
+                Delete Key
               </button>
             </div>
           ) : (
             <p className="rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-sm text-[#b2b2b2]">
-              Operator access is read-only. An Administrator manages Application
+              Operator access is read-only. An Administrator manages Key
               credentials and lifecycle actions.
             </p>
           )}
@@ -685,7 +766,7 @@ function ConnectedAppDetailView({
           description={rotationDescription(currentApp.authMethod)}
           dismissDisabled={mutationPending}
           onCancel={() => setShowRotateConfirm(false)}
-          title="Rotate Application credential?"
+          title="Rotate Key credential?"
         >
           <form
             action={rotateAction}
@@ -745,10 +826,10 @@ function ConnectedAppDetailView({
 
       {showDisableConfirm ? (
         <ConfirmationDialog
-          description="All Application credentials will stop reaching inference until an Admin re-enables this Application."
+          description="All Key credentials will stop reaching inference until an Admin re-enables this Key."
           dismissDisabled={mutationPending}
           onCancel={() => setShowDisableConfirm(false)}
-          title="Disable this app?"
+          title="Disable this Key?"
         >
           <form
             action={disableAdminConnectedAppAction}
@@ -758,7 +839,7 @@ function ConnectedAppDetailView({
             <input
               name="returnTo"
               type="hidden"
-              value={`/applications/apps/${currentApp.id}`}
+              value={`/keys/apps/${currentApp.id}`}
             />
             <PendingSubmitButton
               className={dangerButtonClass}
@@ -775,10 +856,10 @@ function ConnectedAppDetailView({
 
       {isAdmin && showDeleteConfirm ? (
         <ConfirmationDialog
-          description="Soft deletion revokes every credential immediately. The Application identifier and audit linkage remain retained."
+          description="Soft deletion revokes every credential immediately. The Key identifier and audit linkage remain retained."
           dismissDisabled={mutationPending}
           onCancel={() => setShowDeleteConfirm(false)}
-          title="Delete this app?"
+          title="Delete this Key?"
         >
           <form
             action={softDeleteAdminConnectedAppAction}
@@ -788,18 +869,18 @@ function ConnectedAppDetailView({
             <input
               name="returnTo"
               type="hidden"
-              value={`/applications/apps/${currentApp.id}`}
+              value={`/keys/apps/${currentApp.id}`}
             />
             <ApplicationTextField
-              label="Type DELETE APPLICATION to confirm"
+              label="Type DELETE KEY to confirm"
               name="confirmation"
-              placeholder="DELETE APPLICATION"
+              placeholder="DELETE KEY"
               required
             />
             <PendingSubmitButton
               className={cn(dangerButtonClass, "mt-3")}
               forcePending={activeOperation === "application-delete"}
-              idleLabel="Delete application"
+              idleLabel="Delete Key"
               pendingLabel="Deleting..."
               unavailable={
                 mutationPending && activeOperation !== "application-delete"
@@ -821,6 +902,7 @@ function ConnectedAppPolicyEditor({
   modelOptions: AdminInferenceModel[]
   mutationLock: ApplicationMutationLock
 }) {
+  const [modelMode, setModelMode] = useState<"auto" | "manual">(app.modelMode)
   return (
     <form
       action={updateAdminConnectedAppPolicyAction}
@@ -828,36 +910,49 @@ function ConnectedAppPolicyEditor({
       onSubmit={(event) => mutationLock.begin(event, "application-policy")}
     >
       <div>
-        <h2 className="text-lg font-semibold text-white">Application policy</h2>
+        <h2 className="text-lg font-semibold text-white">Key policy</h2>
         <p className="mt-1 text-sm text-[#b2b2b2]">
           Admin-only configuration. Authentication remains fixed as{" "}
           {authMethodLabel(app.authMethod)}.
         </p>
       </div>
       <input name="appId" type="hidden" value={app.id} />
-      <input
-        name="returnTo"
-        type="hidden"
-        value={`/applications/apps/${app.id}`}
-      />
+      <input name="modelMode" type="hidden" value={modelMode} />
+      <input name="returnTo" type="hidden" value={`/keys/apps/${app.id}`} />
       <ApplicationTextField
         defaultValue={app.name}
-        label="Name"
+        label="Key name"
         name="name"
-        placeholder="Customer application"
+        placeholder="Production integration"
         required
       />
       <ApplicationTextField
         defaultValue={app.description}
-        label="Description"
+        label="Description (optional)"
         name="description"
-        placeholder="Application purpose"
-        required
+        placeholder="What will use this Key"
       />
-      <ModelAliasFields
-        modelOptions={modelOptions}
-        selectedAliases={app.allowedModels}
+      <SegmentedControl
+        label="Model access"
+        options={[
+          {
+            active: modelMode === "auto",
+            label: "Auto",
+            onSelect: () => setModelMode("auto"),
+          },
+          {
+            active: modelMode === "manual",
+            label: "Manual",
+            onSelect: () => setModelMode("manual"),
+          },
+        ]}
       />
+      {modelMode === "manual" ? (
+        <ModelAliasFields
+          modelOptions={modelOptions}
+          selectedAliases={app.allowedModels}
+        />
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <OptionalLimitField
           checkboxName="rateLimitRpsEnabled"
@@ -913,14 +1008,14 @@ function ConnectedAppsPanel({
   return (
     <section className="grid gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Connected apps</h2>
+        <h2 className="text-lg font-semibold text-white">Inference Keys</h2>
         {accessRole === "admin" ? (
           <Link
             className="flex items-center gap-1 text-sm font-medium text-white"
-            href="/applications/apps/new"
+            href="/keys/apps/new"
           >
             <Plus aria-hidden className="size-5" />
-            Add app
+            Create Key
           </Link>
         ) : null}
       </div>
@@ -940,7 +1035,7 @@ function ConnectedAppsPanel({
                   </div>
                   <Link
                     className={secondaryButtonClass}
-                    href={`/applications/apps/${encodeURIComponent(app.id)}`}
+                    href={`/keys/apps/${encodeURIComponent(app.id)}`}
                   >
                     Settings
                   </Link>
@@ -987,7 +1082,7 @@ function ConnectedAppsPanel({
           ))
         ) : (
           <p className="p-4 text-sm text-[#b2b2b2]">
-            Add the first connected app to issue a dedicated credential.
+            Create the first Key to issue a dedicated inference credential.
           </p>
         )}
       </div>
@@ -995,50 +1090,142 @@ function ConnectedAppsPanel({
   )
 }
 
-function ConnectedAppCredentialPanel({
+function CreatedKeyDialog({
   app,
-  checkAction,
-  checkPending,
-  checkState,
   credential,
+  onClose,
 }: {
   app: AdminConnectedApp
-  checkAction: (formData: FormData) => void
-  checkPending: boolean
-  checkState: ConnectedAppTestActionState
   credential: AdminConnectedAppCredential
+  onClose: () => void
 }) {
+  const descriptionId = useId()
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const titleId = useId()
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    if (typeof dialog.showModal === "function") {
+      dialog.showModal()
+    } else {
+      dialog.setAttribute("open", "")
+    }
+    headingRef.current?.focus()
+    return () => {
+      if (dialog.open && typeof dialog.close === "function") dialog.close()
+    }
+  }, [])
+
   return (
-    <ConnectedAppCredentialReveal
-      credential={credential}
-      footer={
-        <>
-          <p className="text-xs leading-5 text-[#b2b2b2]">
-            Configure the third-party client with this credential and call GET
-            /models. Check connection only refreshes recorded gateway evidence.
-          </p>
-          <ConnectedAppTestStatus state={checkState} />
-          <div className="flex justify-end gap-2">
-            <Link
-              className={secondaryButtonClass}
-              href={`/applications/apps/${encodeURIComponent(app.id)}`}
-            >
-              View application
-            </Link>
-            <form action={checkAction}>
-              <input name="appId" type="hidden" value={app.id} />
-              <PendingSubmitButton
-                className={primaryButtonClass}
-                forcePending={checkPending}
-                idleLabel="Check connection"
-                pendingLabel="Checking..."
-              />
-            </form>
-          </div>
-        </>
-      }
-      title="Application credential"
-    />
+    <dialog
+      aria-describedby={descriptionId}
+      aria-labelledby={titleId}
+      className="m-auto max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] max-w-[640px] overflow-y-auto rounded-lg border border-[#7b5d1a] bg-[#232323] p-5 text-white backdrop:bg-black/70"
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
+      ref={dialogRef}
+    >
+      <h2
+        className="text-xl font-semibold"
+        id={titleId}
+        ref={headingRef}
+        tabIndex={-1}
+      >
+        Key created
+      </h2>
+      <p className="mt-2 text-sm font-medium text-[#ffdb8a]" id={descriptionId}>
+        Secret material is displayed only once. Copy it before closing.
+      </p>
+      <dl className="mt-4 grid gap-2 rounded-lg border border-[#353535] bg-[#181818] p-3">
+        <DetailRow label="Key name" value={app.name} />
+        {app.description ? (
+          <DetailRow label="Description" value={app.description} />
+        ) : null}
+        <DetailRow
+          label="Authentication"
+          value={authMethodLabel(app.authMethod)}
+        />
+        <DetailRow
+          label="Model mode"
+          value={app.modelMode === "auto" ? "Auto" : "Manual"}
+        />
+        {app.modelMode === "manual" ? (
+          <DetailRow
+            label="Selected models"
+            value={app.allowedModels.join(", ")}
+          />
+        ) : null}
+        {app.rateLimitRps ? (
+          <DetailRow
+            label="Requests per second"
+            value={String(app.rateLimitRps)}
+          />
+        ) : null}
+        {app.maxConcurrentRequests ? (
+          <DetailRow
+            label="Concurrent requests"
+            value={String(app.maxConcurrentRequests)}
+          />
+        ) : null}
+        {app.maxContextBytes ? (
+          <DetailRow
+            label="Maximum context size"
+            value={String(app.maxContextBytes)}
+          />
+        ) : null}
+        {app.tokenAlertThreshold7d ? (
+          <DetailRow
+            label="Seven-day usage alert"
+            value={String(app.tokenAlertThreshold7d)}
+          />
+        ) : null}
+      </dl>
+      <div className="mt-4 grid gap-3">
+        <CopyableCredentialRow
+          label="Credential ID"
+          value={credential.credentialId}
+        />
+        {credential.authMethod === "api_key" ? (
+          <CopyableCredentialRow
+            label="API key"
+            secret
+            value={credential.apiKey}
+          />
+        ) : (
+          <>
+            <CopyableCredentialRow
+              label="Client ID"
+              value={credential.clientId}
+            />
+            <CopyableCredentialRow
+              label="Client secret"
+              secret
+              value={credential.clientSecret}
+            />
+            <CopyableCredentialRow
+              label="Token URL"
+              value={credential.tokenUrl}
+            />
+          </>
+        )}
+        <CopyableCredentialRow
+          label="API base URL"
+          value={credential.openAiBaseUrl}
+        />
+        <CopyableCredentialRow
+          label="Example request"
+          multiline
+          value={credential.exampleCurl}
+        />
+        <button className={primaryButtonClass} onClick={onClose} type="button">
+          Done
+        </button>
+      </div>
+    </dialog>
   )
 }
 
@@ -1351,9 +1538,9 @@ function FirecrawlAccessPanel({
               Firecrawl web access
             </h2>
             <p className="mt-1 text-sm leading-5 text-[#b2b2b2]">
-              Installed on the appliance and disabled for this Application by
-              default. Firecrawl uses its own API key namespace, separate from
-              inference credentials.
+              Installed on the appliance and disabled for this Key by default.
+              Firecrawl uses its own API key namespace, separate from inference
+              credentials.
             </p>
           </div>
           <StatusPill status={firecrawl.status} />
@@ -1393,7 +1580,7 @@ function FirecrawlAccessPanel({
         />
         <p className="rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-xs leading-5 text-[#b2b2b2]">
           Connected means a third-party client authenticated with this
-          Application&apos;s Firecrawl key and called /v2/search or /v2/scrape.
+          Key&apos;s Firecrawl credential and called /v2/search or /v2/scrape.
           It is passive T2 connection evidence, not proof that the appliance or
           Firecrawl service is ready. Console never probes with the credential.
         </p>
@@ -1529,11 +1716,7 @@ function FirecrawlAccessPanel({
             </p>
           </div>
           <input name="appId" type="hidden" value={app.id} />
-          <input
-            name="returnTo"
-            type="hidden"
-            value={`/applications/apps/${app.id}`}
-          />
+          <input name="returnTo" type="hidden" value={`/keys/apps/${app.id}`} />
           <FirecrawlProtectionFields firecrawl={firecrawl} />
           <div className="flex justify-end">
             <button
@@ -1715,7 +1898,7 @@ function FirecrawlCredentialMetadataList({
       </div>
       {credentials.length === 0 ? (
         <p className="text-sm text-[#b2b2b2]">
-          No Firecrawl credential has been issued for this Application.
+          No Firecrawl credential has been issued for this Key.
         </p>
       ) : (
         credentials.map((credential) => (
@@ -1963,7 +2146,7 @@ function ApplicationCapacityPolicyCopy() {
     <p className="text-xs leading-5 text-[#8b8b8b]">
       The customer owns the hardware and may use available compute. Optional
       request-rate and concurrency controls protect service health. Model access
-      and context-size controls define each Application&apos;s permissions. The
+      and context-size controls define each Key&apos;s permissions. The
       seven-day token threshold is visibility only and never blocks inference.
     </p>
   )
@@ -2071,7 +2254,7 @@ function ConnectedAppCreateStatus({
       )}
     >
       {state.status === "created"
-        ? "Application created. Copy its credential now."
+        ? "Key created. Copy its credential now."
         : state.error}
     </output>
   )
@@ -2372,7 +2555,7 @@ function SubpageHeader({ title }: { title: string }) {
       <h1 className="text-2xl font-semibold text-white">{title}</h1>
       <Link
         className="mt-3 flex w-fit items-center gap-1 text-sm font-medium text-white"
-        href="/applications"
+        href="/keys"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Go back
@@ -2389,9 +2572,9 @@ function AppActionNotice({ appAction }: { appAction?: string }) {
     string,
     { description: string; tone: "danger" | "success" | "warning" }
   > = {
-    deleted: { description: "Application deleted.", tone: "warning" },
-    disabled: { description: "Application disabled.", tone: "warning" },
-    failed: { description: "Application action failed.", tone: "danger" },
+    deleted: { description: "Key deleted.", tone: "warning" },
+    disabled: { description: "Key disabled.", tone: "warning" },
+    failed: { description: "Key action failed.", tone: "danger" },
     firecrawlFailed: {
       description: "Firecrawl policy update failed.",
       tone: "danger",
@@ -2405,11 +2588,11 @@ function AppActionNotice({ appAction }: { appAction?: string }) {
       tone: "success",
     },
     invalid: {
-      description: "Application action needs valid values and confirmation.",
+      description: "Key action needs valid values and confirmation.",
       tone: "danger",
     },
-    reenabled: { description: "Application re-enabled.", tone: "success" },
-    updated: { description: "Application policy updated.", tone: "success" },
+    reenabled: { description: "Key re-enabled.", tone: "success" },
+    updated: { description: "Key policy updated.", tone: "success" },
   }
   const message = messages[appAction] ?? messages.failed
   return (
@@ -2418,7 +2601,7 @@ function AppActionNotice({ appAction }: { appAction?: string }) {
         {
           description: message.description,
           id: `app-action-${appAction}`,
-          title: "Applications",
+          title: "Keys",
           tone: message.tone,
         },
       ]}

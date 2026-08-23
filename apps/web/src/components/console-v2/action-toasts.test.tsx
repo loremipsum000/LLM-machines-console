@@ -8,9 +8,9 @@ describe("ConsoleActionToasts", () => {
       <ConsoleActionToasts
         notifications={[
           {
-            description: "Application disabled.",
+            description: "Key disabled.",
             id: "application-action-disabled",
-            title: "Applications",
+            title: "Keys",
             tone: "danger",
           },
           {
@@ -24,8 +24,8 @@ describe("ConsoleActionToasts", () => {
     )
 
     expect(screen.getByLabelText("Action notifications")).toBeTruthy()
-    expect(screen.getByText("Applications")).toBeTruthy()
-    expect(screen.getByText("Application disabled.")).toBeTruthy()
+    expect(screen.getByText("Keys")).toBeTruthy()
+    expect(screen.getByText("Key disabled.")).toBeTruthy()
     expect(screen.getByText("Connection test")).toBeTruthy()
     expect(screen.getByText("Connection test failed.")).toBeTruthy()
     expect(screen.getAllByRole("alert")).toHaveLength(2)
@@ -56,7 +56,7 @@ describe("ConsoleActionToasts", () => {
     window.history.pushState(
       {},
       "",
-      "/applications?view=overview&appAction=failed&settingsAction=saved&q=status",
+      "/keys?view=overview&appAction=failed&settingsAction=saved&q=status",
     )
 
     render(
@@ -65,7 +65,7 @@ describe("ConsoleActionToasts", () => {
           {
             description: "Action failed.",
             id: "application-action-failed",
-            title: "Applications",
+            title: "Keys",
             tone: "danger",
           },
         ]}

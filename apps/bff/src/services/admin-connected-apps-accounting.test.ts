@@ -25,6 +25,7 @@ const app: ConnectedAppRuntimeIdentity = {
   keycloakSubjectId: null,
   maxConcurrentRequests: null,
   maxContextBytes: null,
+  modelMode: "manual",
   rateLimitRps: 10,
   status: "enabled",
   tokenAlertState: "below",

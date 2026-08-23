@@ -18,10 +18,9 @@ export function TechnicalToolsPanel({
         Technical Tools
       </h2>
       <p className="mt-1 text-sm leading-5 text-[#b2b2b2]">
-        Console is the recommended, simplified way to manage Applications,
-        credentials, inference, hardware, Team, Activity &amp; Audit, and
-        Settings. Open a native tool only when you need its deeper technical
-        controls.
+        Console is the recommended, simplified way to manage Keys, credentials,
+        inference, hardware, Team, Activity &amp; Audit, and Settings. Open a
+        native tool only when you need its deeper technical controls.
       </p>
       <p className="mt-2 text-xs leading-5 text-[#8b8b8b]">
         Each tool opens in a new tab and uses your current Keycloak sign-in to
@@ -71,12 +70,11 @@ export function TechnicalToolsPanel({
 
       <div className="mt-3 rounded-lg border border-[#3d3d3d] bg-[#202020] p-3">
         <p className="text-sm font-medium leading-5 text-white">
-          Application credentials remain the default
+          Console Keys remain the default
         </p>
         <p className="mt-1 text-xs leading-5 text-[#9f9f9f]">
-          Console Application credentials are the customer integration path.
-          LiteLLM virtual keys are a separate advanced native capability and are
-          not Console Application credentials.
+          Console Keys are the customer integration path. LiteLLM virtual keys
+          are a separate advanced native capability and are not Console Keys.
         </p>
       </div>
     </section>

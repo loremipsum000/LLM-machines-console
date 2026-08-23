@@ -457,6 +457,9 @@ function filterModelList(
   body: LiteLlmModelList,
   allowedModels: string[],
 ): LiteLlmModelListResult {
+  if (allowedModels.length === 0) {
+    return { body, ok: true }
+  }
   const allowed = new Set(allowedModels)
   const available = new Set(body.data.map((model) => model.id))
   const missingModels = [...allowed].filter((model) => !available.has(model))

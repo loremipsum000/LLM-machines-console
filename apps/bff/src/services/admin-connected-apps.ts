@@ -15,6 +15,7 @@ import type {
   AdminConnectedAppDetail,
   AdminConnectedAppFirecrawl,
   AdminConnectedAppLifecycleResult,
+  AdminConnectedAppModelMode,
   AdminConnectedAppRotateCredentialResult,
   AdminConnectedAppTestResult,
   AdminConnectedAppUpdateRequest,
@@ -113,6 +114,7 @@ interface ConnectedAppRecord {
   lastConnectedAt: string | null
   maxConcurrentRequests: number | null
   maxContextBytes: number | null
+  modelMode: AdminConnectedAppModelMode
   name: string
   rateLimitRps: number | null
   status: "deleted" | "disabled" | "enabled"
@@ -160,6 +162,7 @@ export interface ConnectedAppRuntimeIdentity {
   keycloakSubjectId: string | null
   maxConcurrentRequests: number | null
   maxContextBytes: number | null
+  modelMode: AdminConnectedAppModelMode
   rateLimitRps: number | null
   status: "disabled" | "enabled"
   tokenAlertState: "below" | "reached" | null
@@ -309,6 +312,9 @@ export async function createAdminConnectedApp(
     lastConnectedAt: null,
     maxConcurrentRequests: request.maxConcurrentRequests,
     maxContextBytes: request.maxContextBytes,
+    modelMode:
+      request.modelMode ??
+      (request.allowedModels.length === 0 ? "auto" : "manual"),
     name: request.name,
     rateLimitRps: request.rateLimitRps,
     status: "enabled",
@@ -417,7 +423,7 @@ export async function createAdminConnectedApp(
       if (await provider.findConfidentialClient(clientId)) {
         throw new KeycloakAdminError(
           "invalid",
-          "The Application OAuth client already exists.",
+          "The Key OAuth client already exists.",
           "rejected",
         )
       }
@@ -471,10 +477,10 @@ export async function testAdminConnectedApp(
     connectionStatus: app.connectionStatus,
     detail:
       status === "passed"
-        ? "A real authenticated client reached the Application models endpoint."
+        ? "A real authenticated client reached the Key models endpoint."
         : status === "degraded"
-          ? "The latest recorded Application connection evidence is degraded."
-          : "No authenticated client has reached the Application models endpoint yet.",
+          ? "The latest recorded Key connection evidence is degraded."
+          : "No authenticated client has reached the Key models endpoint yet.",
     observedAt: app.lastConnectedAt,
     status,
   }
@@ -564,11 +570,11 @@ export async function disableAdminConnectedApp(
   }
   if (saved.status === "blocked") {
     return {
-      detail: "The Application could not be disabled in its current state.",
+      detail: "The Key could not be disabled in its current state.",
       status: "blocked",
     }
   }
-  return lifecycleResult(saved.bundle, "disabled", "Application disabled.")
+  return lifecycleResult(saved.bundle, "disabled", "Key disabled.")
 }
 
 export async function enableAdminConnectedApp(
@@ -581,12 +587,11 @@ export async function enableAdminConnectedApp(
   }
   if (saved.status === "blocked") {
     return {
-      detail:
-        "An active credential is required before enabling the Application.",
+      detail: "An active credential is required before enabling the Key.",
       status: "blocked",
     }
   }
-  return lifecycleResult(saved.bundle, "reenabled", "Application re-enabled.")
+  return lifecycleResult(saved.bundle, "reenabled", "Key re-enabled.")
 }
 
 export async function revokeAdminConnectedAppCredential(
@@ -1593,13 +1598,15 @@ async function saveConnectedAppRecord(
       if (!storedApplication) {
         throw new Error("Created Application could not be persisted.")
       }
-      await executor.insert(applicationModelAllowlists).values(
-        storedRecord.allowedModels.map((modelAlias) => ({
-          appId: storedRecord.id,
-          createdAt: occurredAt,
-          modelAlias,
-        })),
-      )
+      if (storedRecord.allowedModels.length > 0) {
+        await executor.insert(applicationModelAllowlists).values(
+          storedRecord.allowedModels.map((modelAlias) => ({
+            appId: storedRecord.id,
+            createdAt: occurredAt,
+            modelAlias,
+          })),
+        )
+      }
       await executor.insert(applicationLimits).values({
         appId: storedRecord.id,
         maxConcurrentRequests: storedRecord.maxConcurrentRequests,
@@ -1688,13 +1695,15 @@ async function updateConnectedAppPolicy(
       await transaction
         .delete(applicationModelAllowlists)
         .where(eq(applicationModelAllowlists.appId, id))
-      await transaction.insert(applicationModelAllowlists).values(
-        allowedModels.map((modelAlias) => ({
-          appId: id,
-          createdAt: occurredAt,
-          modelAlias,
-        })),
-      )
+      if (allowedModels.length > 0) {
+        await transaction.insert(applicationModelAllowlists).values(
+          allowedModels.map((modelAlias) => ({
+            appId: id,
+            createdAt: occurredAt,
+            modelAlias,
+          })),
+        )
+      }
       await transaction
         .insert(applicationLimits)
         .values({
@@ -1765,6 +1774,7 @@ async function updateConnectedAppPolicy(
   stored.description = request.description
   stored.maxConcurrentRequests = request.maxConcurrentRequests
   stored.maxContextBytes = request.maxContextBytes
+  stored.modelMode = request.modelMode
   stored.name = request.name
   stored.rateLimitRps = request.rateLimitRps
   stored.tokenAlertThreshold7d = request.tokenAlertThreshold7d
@@ -2550,7 +2560,7 @@ async function softDeleteStaticConnectedApp(
   return {
     app: null,
     applicationId: existing.record.id,
-    detail: "Application deleted. Its identifiers and audit history remain.",
+    detail: "Key deleted. Its identifiers and audit history remain.",
     status: "deleted",
   }
 }
@@ -2617,7 +2627,7 @@ async function softDeleteOAuthConnectedApp(
   return {
     app: null,
     applicationId: existing.record.id,
-    detail: "Application deleted. Its identifiers and audit history remain.",
+    detail: "Key deleted. Its identifiers and audit history remain.",
     status: "deleted",
   }
 }
@@ -2801,6 +2811,7 @@ async function loadConnectedAppBundle(
       lastConnectedAt: row.lastConnectedAt?.toISOString() ?? null,
       maxConcurrentRequests: limits.maxConcurrentRequests,
       maxContextBytes: limits.maxContextBytes,
+      modelMode: modelRows.length === 0 ? "auto" : "manual",
       name: row.name,
       rateLimitRps: limits.requestsPerSecond,
       status: applicationStatusFromStorage(row.status),
@@ -2882,12 +2893,13 @@ function toPublicApp(bundle: ConnectedAppBundle): AdminConnectedApp {
     createdAt: record.createdAt,
     credentials: bundle.credentials.map(credentialMetadata),
     description: record.description,
-    detailHref: `/applications/apps/${encodeURIComponent(record.id)}`,
+    detailHref: `/keys/apps/${encodeURIComponent(record.id)}`,
     firecrawl: bundle.firecrawl,
     id: record.id,
     lastConnectedAt: record.lastConnectedAt,
     maxConcurrentRequests: record.maxConcurrentRequests,
     maxContextBytes: record.maxContextBytes,
+    modelMode: record.modelMode,
     name: record.name,
     rateLimitRps: record.rateLimitRps,
     status: record.status,
@@ -2933,6 +2945,7 @@ function runtimeIdentity(
     keycloakSubjectId: null,
     maxConcurrentRequests: bundle.record.maxConcurrentRequests,
     maxContextBytes: bundle.record.maxContextBytes,
+    modelMode: bundle.record.modelMode,
     rateLimitRps: bundle.record.rateLimitRps,
     status: bundle.record.status,
     tokenAlertState: tokenAlertState(bundle.record),

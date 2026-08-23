@@ -213,7 +213,7 @@ export function registerAppGatewayRoutes(
     }
 
     const models = await fetchLiteLlmModels(
-      auth.app.allowedModels,
+      auth.app.modelMode === "auto" ? [] : auth.app.allowedModels,
       isolation.lease.signal,
     )
     if (isolation.lease.signal.aborted) {
@@ -429,11 +429,9 @@ export function registerAppGatewayRoutes(
           "`model` and `messages` are required.",
         )
       }
+      const body = request.body
 
-      const policy = evaluateApplicationGatewayPolicy(
-        auth.app,
-        request.body.model,
-      )
+      const policy = evaluateApplicationGatewayPolicy(auth.app, body.model)
       if (!policy.ok) {
         await safelyAuditGatewayRequest(request, auth.app, {
           inputTokens: 0,
@@ -452,12 +450,54 @@ export function registerAppGatewayRoutes(
         )
       }
 
-      const contextBytes = normalizedChatCompletionsBodyUtf8Bytes(request.body)
+      if (auth.app.modelMode === "auto") {
+        const currentModels = await fetchLiteLlmModels(
+          [],
+          isolation.lease.signal,
+        )
+        if (!currentModels.ok) {
+          await safelyMarkGatewayDegraded(request, auth.app)
+          await safelyAuditGatewayRequest(request, auth.app, {
+            inputTokens: 0,
+            latencyMs: 0,
+            model: body.model,
+            outputTokens: 0,
+            route: "chat_completions",
+            status: currentModels.status,
+            totalTokens: 0,
+          })
+          return sendGatewayProblem(
+            reply,
+            currentModels.status,
+            currentModels.title,
+            currentModels.detail,
+          )
+        }
+        if (!currentModels.body.data.some((model) => model.id === body.model)) {
+          await safelyAuditGatewayRequest(request, auth.app, {
+            inputTokens: 0,
+            latencyMs: 0,
+            model: body.model,
+            outputTokens: 0,
+            route: "chat_completions",
+            status: 403,
+            totalTokens: 0,
+          })
+          return sendGatewayProblem(
+            reply,
+            403,
+            "Model not approved",
+            "The requested model is not in the active approved model inventory.",
+          )
+        }
+      }
+
+      const contextBytes = normalizedChatCompletionsBodyUtf8Bytes(body)
       let admission: Awaited<ReturnType<typeof admitConnectedAppGatewayUsage>>
       try {
         admission = await admitConnectedAppGatewayUsage(auth.app, {
           contextBytes,
-          model: request.body.model,
+          model: body.model,
           route: "chat_completions",
         })
       } catch {
@@ -465,7 +505,7 @@ export function registerAppGatewayRoutes(
         await safelyAuditGatewayRequest(request, auth.app, {
           inputTokens: 0,
           latencyMs: 0,
-          model: request.body.model,
+          model: body.model,
           outputTokens: 0,
           route: "chat_completions",
           status: 503,
@@ -477,7 +517,7 @@ export function registerAppGatewayRoutes(
         await safelyAuditGatewayRequest(request, auth.app, {
           inputTokens: 0,
           latencyMs: 0,
-          model: request.body.model,
+          model: body.model,
           outputTokens: 0,
           route: "chat_completions",
           status: admission.status,
@@ -499,7 +539,7 @@ export function registerAppGatewayRoutes(
           {
             inputTokens: 0,
             latencyMs: 0,
-            model: request.body.model,
+            model: body.model,
             outputTokens: 0,
             route: "chat_completions",
             status,
@@ -514,7 +554,7 @@ export function registerAppGatewayRoutes(
         request,
         reply,
         auth.app,
-        request.body,
+        body,
         admission.context,
         isolation.lease,
       )

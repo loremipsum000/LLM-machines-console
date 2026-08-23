@@ -70,6 +70,98 @@ describe("Application admin lifecycle routes", () => {
     await server.close()
   })
 
+  it("admits Manual aliases only from an available approved inventory", async () => {
+    configureFixtureRuntime()
+    vi.stubEnv("ADMIN_LITELLM_BASE_URL", "http://litellm.test")
+    vi.stubEnv("ADMIN_LITELLM_API_KEY", "admin-read-key")
+    const modelInventory = vi.fn(() =>
+      Response.json({ data: [{ model_name: "local-a" }] }),
+    )
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input) => {
+        const path = new URL(input.toString()).pathname
+        if (path === "/model/info") return Promise.resolve(modelInventory())
+        if (path === "/user/daily/activity/aggregated") {
+          return Promise.resolve(
+            Response.json({
+              metadata: { total_api_requests: 0, total_tokens: 0 },
+              results: [],
+            }),
+          )
+        }
+        if (path === "/key/list") {
+          return Promise.resolve(
+            Response.json({
+              current_page: 1,
+              keys: [],
+              total_count: 0,
+              total_pages: 0,
+            }),
+          )
+        }
+        return Promise.resolve(Response.json({ data: [] }))
+      }),
+    )
+    const server = buildServer()
+
+    const valid = await server.inject({
+      method: "POST",
+      url: "/api/admin/applications/connected-apps",
+      headers: { ...adminHeaders, "idempotency-key": "manual-valid" },
+      payload: {
+        ...applicationPayload(),
+        allowedModels: ["local-a"],
+        modelMode: "manual",
+        name: "Manual Valid",
+      },
+    })
+    expect(valid.statusCode).toBe(201)
+
+    const invalid = await server.inject({
+      method: "POST",
+      url: "/api/admin/applications/connected-apps",
+      headers: { ...adminHeaders, "idempotency-key": "manual-invalid" },
+      payload: {
+        ...applicationPayload(),
+        allowedModels: ["not-approved"],
+        modelMode: "manual",
+        name: "Manual Invalid",
+      },
+    })
+    expect(invalid.statusCode).toBe(400)
+    expect(invalid.json()).toMatchObject({ title: "Invalid Key model access" })
+
+    await server.close()
+  })
+
+  it("fails Manual creation closed when approved model inventory is unavailable", async () => {
+    configureFixtureRuntime()
+    vi.stubEnv("ADMIN_LITELLM_BASE_URL", "http://litellm.test")
+    vi.stubEnv("ADMIN_LITELLM_API_KEY", "admin-read-key")
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("stale projection")),
+    )
+    const server = buildServer()
+    const unavailable = await server.inject({
+      method: "POST",
+      url: "/api/admin/applications/connected-apps",
+      headers: { ...adminHeaders, "idempotency-key": "manual-unavailable" },
+      payload: {
+        ...applicationPayload(),
+        allowedModels: ["local-a"],
+        modelMode: "manual",
+        name: "Manual Unavailable",
+      },
+    })
+    expect(unavailable.json()).toMatchObject({
+      title: "Key model inventory unavailable",
+    })
+    expect(unavailable.statusCode).toBe(503)
+    await server.close()
+  })
+
   it("replays only Console Application metadata for every OAuth credential mutation", async () => {
     configureFixtureRuntime()
     const server = buildServer()
@@ -138,7 +230,7 @@ describe("Application admin lifecycle routes", () => {
         ...adminHeaders,
         "idempotency-key": "oauth-receipt-delete",
       },
-      payload: { confirmation: "DELETE APPLICATION" },
+      payload: { confirmation: "DELETE KEY" },
     }
     const deleted = await server.inject(deleteRequest)
     expect(deleted.statusCode).toBe(200)
@@ -365,7 +457,7 @@ describe("Application admin lifecycle routes", () => {
         ...adminHeaders,
         "idempotency-key": "rotation-replay-delete",
       },
-      payload: { confirmation: "DELETE APPLICATION" },
+      payload: { confirmation: "DELETE KEY" },
     })
     expect(deleted.statusCode).toBe(200)
     vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "ftp://invalid.example.test")
@@ -602,13 +694,13 @@ describe("Application admin lifecycle routes", () => {
         ...adminHeaders,
         "idempotency-key": "delete-confirmed",
       },
-      payload: { confirmation: "DELETE APPLICATION" },
+      payload: { confirmation: "DELETE KEY" },
     })
     expect(deleted.statusCode).toBe(200)
     expect(deleted.json()).toEqual({
       app: null,
       applicationId: id,
-      detail: "Application deleted. Its identifiers and audit history remain.",
+      detail: "Key deleted. Its identifiers and audit history remain.",
       status: "deleted",
     })
 
@@ -643,7 +735,7 @@ describe("Application admin lifecycle routes", () => {
         ...adminHeaders,
         "idempotency-key": "delete-confirmed",
       },
-      payload: { confirmation: "DELETE APPLICATION" },
+      payload: { confirmation: "DELETE KEY" },
     })
     expect(replay.statusCode).toBe(200)
     expect(replay.json()).toMatchObject({
@@ -763,8 +855,9 @@ function expectFailedReplay(
 
 function applicationPayload() {
   return {
-    allowedModels: ["local-a"],
+    allowedModels: [],
     description: "Lifecycle route test.",
+    modelMode: "auto",
     name: "Lifecycle test",
   }
 }

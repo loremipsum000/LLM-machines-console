@@ -871,6 +871,77 @@ describe("Connected app gateway routes", () => {
     await server.close()
   })
 
+  it("authorizes Auto chat from the live inventory and fails closed when it is unavailable", async () => {
+    configureGatewayEnvironment()
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
+          object: "list",
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: [
+            { id: "local-a", object: "model", owned_by: "llm-machines" },
+            {
+              id: "newly-admitted",
+              object: "model",
+              owned_by: "llm-machines",
+            },
+          ],
+          object: "list",
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          choices: [],
+          id: "chatcmpl-auto",
+          object: "chat.completion",
+          usage: { completion_tokens: 0, prompt_tokens: 1, total_tokens: 1 },
+        }),
+      )
+      .mockRejectedValueOnce(new Error("inventory unavailable"))
+    vi.stubGlobal("fetch", fetchMock)
+    const server = buildServer()
+    const created = await createApp(server, [], { modelMode: "auto" })
+    const token = bearerForCredential(created.credential)
+
+    const initialModels = await server.inject({
+      method: "GET",
+      url: "/api/app-gateway/v1/models",
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(initialModels.json().data).toHaveLength(1)
+
+    const newlyAdmitted = await server.inject({
+      method: "POST",
+      url: "/api/app-gateway/v1/chat/completions",
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        messages: [{ content: "hello", role: "user" }],
+        model: "newly-admitted",
+      },
+    })
+    expect(newlyAdmitted.statusCode).toBe(200)
+
+    const unavailable = await server.inject({
+      method: "POST",
+      url: "/api/app-gateway/v1/chat/completions",
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        messages: [{ content: "hello", role: "user" }],
+        model: "local-a",
+      },
+    })
+    expect(unavailable.statusCode).toBe(503)
+    expect(unavailable.json()).toMatchObject({
+      title: "LiteLLM model list unavailable",
+    })
+    await server.close()
+  })
+
   it("PR-07 rejects normalized chat context over the byte limit before LiteLLM and accounts the failure", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
@@ -2177,6 +2248,7 @@ async function createApp(
     authMethod?: "api_key" | "oauth_client_credentials"
     maxConcurrentRequests?: number | null
     maxContextBytes?: number | null
+    modelMode?: "auto" | "manual"
     rateLimitRps?: number | null
     tokenAlertThreshold7d?: number | null
   } = {},
@@ -2185,6 +2257,7 @@ async function createApp(
     authMethod?: "api_key" | "oauth_client_credentials"
     maxConcurrentRequests?: number | null
     maxContextBytes?: number | null
+    modelMode?: "auto" | "manual"
     rateLimitRps?: number | null
     tokenAlertThreshold7d?: number | null
   } = {}
@@ -2196,6 +2269,9 @@ async function createApp(
   }
   if (overrides.maxContextBytes !== undefined) {
     limitPayload.maxContextBytes = overrides.maxContextBytes
+  }
+  if (overrides.modelMode !== undefined) {
+    limitPayload.modelMode = overrides.modelMode
   }
   if (overrides.rateLimitRps !== undefined) {
     limitPayload.rateLimitRps = overrides.rateLimitRps

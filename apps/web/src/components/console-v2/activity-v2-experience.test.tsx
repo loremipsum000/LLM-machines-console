@@ -46,7 +46,7 @@ describe("ActivityV2Experience", () => {
       />,
     )
 
-    expect(screen.getByText("Application identifier: app-1")).toBeTruthy()
+    expect(screen.getByText("Key identifier: app-1")).toBeTruthy()
     expect(screen.getByRole("searchbox").getAttribute("value")).toBe("rotate")
     expect(screen.getByRole("searchbox").getAttribute("placeholder")).toBe(
       "Event, action, subject, application, credential, or reason",

@@ -11,7 +11,7 @@ const navigationMocks = vi.hoisted(() => ({
 
 const expectedNavigation = [
   ["Overview", "/"],
-  ["Applications", "/applications"],
+  ["Keys", "/keys"],
   ["Inference", "/inference"],
   ["Hardware", "/hardware"],
   ["Team", "/team"],
@@ -55,7 +55,7 @@ describe("ConsoleV2Shell", () => {
     mockNavigatorPlatform("MacIntel")
     render(
       <ConsoleV2Shell accessRole="admin" activeSection="applications">
-        <h1>Applications</h1>
+        <h1>Keys</h1>
       </ConsoleV2Shell>,
     )
 
@@ -79,7 +79,7 @@ describe("ConsoleV2Shell", () => {
     mockNavigatorPlatform("MacIntel")
     render(
       <ConsoleV2Shell accessRole="admin" activeSection="applications">
-        <h1>Applications</h1>
+        <h1>Keys</h1>
       </ConsoleV2Shell>,
     )
 
@@ -99,7 +99,7 @@ describe("ConsoleV2Shell", () => {
     mockNavigatorPlatform("MacIntel")
     const { unmount } = render(
       <ConsoleV2Shell accessRole="admin" activeSection="applications">
-        <h1>Applications</h1>
+        <h1>Keys</h1>
       </ConsoleV2Shell>,
     )
 
@@ -124,7 +124,7 @@ describe("ConsoleV2Shell", () => {
     mockNavigatorPlatform("Win32")
     render(
       <ConsoleV2Shell accessRole="admin" activeSection="applications">
-        <h1>Applications</h1>
+        <h1>Keys</h1>
       </ConsoleV2Shell>,
     )
 
@@ -133,7 +133,7 @@ describe("ConsoleV2Shell", () => {
     })
     expect(
       within(navigation)
-        .getByRole("link", { name: "Applications" })
+        .getByRole("link", { name: "Keys" })
         .getAttribute("aria-keyshortcuts"),
     ).toBe("Control+2")
     expect(screen.getByText("Ctrl 2")).toBeTruthy()
@@ -148,7 +148,7 @@ describe("ConsoleV2Shell", () => {
   it("renders only the retained Console navigation", () => {
     render(
       <ConsoleV2Shell accessRole="admin" activeSection="applications">
-        <h1>Applications</h1>
+        <h1>Keys</h1>
       </ConsoleV2Shell>,
     )
 
@@ -230,7 +230,7 @@ describe("ConsoleV2Shell", () => {
     vi.stubGlobal("fetch", request)
     render(
       <ConsoleV2Shell accessRole="admin" activeSection="applications">
-        <h1>Applications</h1>
+        <h1>Keys</h1>
       </ConsoleV2Shell>,
     )
 
@@ -246,7 +246,7 @@ describe("ConsoleV2Shell", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("unavailable")))
     render(
       <ConsoleV2Shell accessRole="admin" activeSection="applications">
-        <h1>Applications</h1>
+        <h1>Keys</h1>
       </ConsoleV2Shell>,
     )
 

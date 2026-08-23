@@ -63,6 +63,34 @@ describe("LiteLLM transport", () => {
     )
   })
 
+  it("resolves Auto against the current approved inventory on every read", async () => {
+    stubLiteLlmConfig()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({ data: [model("local-a")], object: "list" }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: [model("local-a"), model("newly-admitted")],
+          object: "list",
+        }),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(fetchLiteLlmModels([])).resolves.toMatchObject({
+      body: { data: [{ id: "local-a" }] },
+      ok: true,
+    })
+    await expect(fetchLiteLlmModels([])).resolves.toMatchObject({
+      body: {
+        data: [{ id: "local-a" }, { id: "newly-admitted" }],
+      },
+      ok: true,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it("aborts an in-flight model-list request when the caller signal closes", async () => {
     stubLiteLlmConfig()
     const controller = new AbortController()

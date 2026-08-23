@@ -146,6 +146,7 @@ function isProtectedConsolePath(pathname: string): boolean {
     pathname === "/inference" ||
     pathname === "/settings" ||
     PROTECTED_AUDIT_DOWNLOAD_PATHS.has(pathname) ||
+    isPathWithin(pathname, "/keys") ||
     isPathWithin(pathname, "/applications") ||
     isPathWithin(pathname, "/team")
   )

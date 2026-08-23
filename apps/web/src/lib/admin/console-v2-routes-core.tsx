@@ -141,6 +141,7 @@ export async function renderApplicationsConsoleRoute({
       return (
         <ApplicationsV2Experience
           accessRole={role}
+          modelInventorySourceStatus={inference.modelInventorySourceStatus}
           modelOptions={inference.models}
           view="new-app"
         />
@@ -165,6 +166,9 @@ export async function renderApplicationsConsoleRoute({
           resolvedSearchParams?.appAction,
         )}
         connectedAppDetail={connectedAppDetail?.app ?? null}
+        modelInventorySourceStatus={
+          inference?.modelInventorySourceStatus ?? "not_configured"
+        }
         modelOptions={inference?.models ?? []}
         view="app-detail"
       />
@@ -375,7 +379,8 @@ function ConsoleCapabilityDeniedPanel() {
 }
 
 function consoleSectionReturnPath(activeSection: ConsoleV2SectionId): string {
-  return activeSection === "overview" ? "/" : `/${activeSection}`
+  if (activeSection === "overview") return "/"
+  return activeSection === "applications" ? "/keys" : `/${activeSection}`
 }
 
 function getConsoleExpiredSignInUrl(returnTo: string): string {

@@ -29,7 +29,7 @@ export function OverviewIcon(props: IconProps) {
   )
 }
 
-export function ApplicationsIcon(props: IconProps) {
+export function KeysIcon(props: IconProps) {
   return (
     <svg
       aria-hidden="true"
@@ -41,25 +41,7 @@ export function ApplicationsIcon(props: IconProps) {
       {...props}
     >
       <path
-        d="M16.01 2.96L12.47 2.96C11.99 2.96 11.3 3.66 11.3 4.14V7.68C11.3 8.16 11.99 8.85 12.47 8.85L16.01 8.85C16.49 8.85 17.19 8.16 17.19 7.68V4.14C17.19 3.66 16.49 2.96 16.01 2.96Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M16.01 11.37L12.47 11.37C11.99 11.37 11.3 12.07 11.3 12.55V16.08C11.3 16.56 11.99 17.26 12.47 17.26L16.01 17.26C16.49 17.26 17.19 16.56 17.19 16.08V12.55C17.19 12.07 16.49 11.37 16.01 11.37Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7.68 2.96L4.14 2.96C3.66 2.96 2.96 3.66 2.96 4.14V7.68C2.96 8.16 3.66 8.85 4.14 8.85L7.68 8.85C8.16 8.85 8.85 8.16 8.85 7.68V4.14C8.85 3.66 8.16 2.96 7.68 2.96Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7.68 11.37L4.14 11.37C3.66 11.37 2.96 12.07 2.96 12.55V16.08C2.96 16.56 3.66 17.26 4.14 17.26L7.68 17.26C8.16 17.26 8.85 16.56 8.85 16.08V12.55C8.85 12.07 8.16 11.37 7.68 11.37Z"
+        d="M11.67 8.33a4.17 4.17 0 1 0-1.18 2.9L17.5 18.33M14.17 15l1.66-1.67M12.5 13.33l1.67-1.66"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
