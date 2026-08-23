@@ -2,9 +2,9 @@ import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import type { ComponentType, SVGProps } from "react"
 import {
   ActivityIcon,
-  ApplicationsIcon,
   HardwareIcon,
   InferenceIcon,
+  KeysIcon,
   OverviewIcon,
   SettingsIcon,
   TeamIcon,
@@ -36,7 +36,7 @@ export const consoleV2Sections: ConsoleV2Section[] = [
   {
     id: "applications",
     href: "/applications",
-    icon: ApplicationsIcon,
+    icon: KeysIcon,
     label: "Applications",
   },
   {

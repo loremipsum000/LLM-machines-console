@@ -28,8 +28,8 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
           Overview
         </h1>
         <p className="mt-3 max-w-[560px] text-sm leading-5 text-[#b2b2b2]">
-          A reduced preview of application access, inference usage, appliance
-          health, system status, and recent audit activity.
+          A reduced preview of key access, inference usage, appliance health,
+          system status, and recent audit activity.
         </p>
         <p className="mt-2 text-xs leading-5 text-[#8f8f8f]">
           Updated {formatTimestamp(overview.generatedAt)} UTC
@@ -42,10 +42,9 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
       >
         {overview.tiles.map((tile) => (
           <OverviewTileCard
+            href={tile.id === "applications" ? "/keys" : tile.href}
             key={tile.id}
-            tile={
-              tile.id === "applications" ? { ...tile, href: "/keys" } : tile
-            }
+            tile={tile}
           />
         ))}
       </section>
@@ -92,7 +91,13 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
   )
 }
 
-function OverviewTileCard({ tile }: { tile: AdminOverviewTile }) {
+function OverviewTileCard({
+  href,
+  tile,
+}: {
+  href: string
+  tile: AdminOverviewTile
+}) {
   return (
     <article
       aria-labelledby={`overview-tile-${tile.id}`}
@@ -128,7 +133,7 @@ function OverviewTileCard({ tile }: { tile: AdminOverviewTile }) {
         </time>
         <Link
           className="text-sm font-medium leading-5 text-[#73cfff] transition-colors hover:text-[#a6e1ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-          href={tile.href}
+          href={href}
         >
           Open {tile.title}
         </Link>
