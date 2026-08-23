@@ -228,12 +228,7 @@ function overviewFixture() {
     activitySourceStatus: "ok",
     generatedAt,
     tiles: [
-      overviewTile(
-        "applications",
-        "Applications",
-        "/applications",
-        generatedAt,
-      ),
+      overviewTile("applications", "Keys", "/applications", generatedAt),
       overviewTile("inference", "Inference", "/inference", generatedAt),
       overviewTile("hardware", "Hardware", "/hardware", generatedAt),
       overviewTile("system", "System", "/activity", generatedAt),

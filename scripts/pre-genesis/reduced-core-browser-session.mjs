@@ -161,7 +161,7 @@ function publicAuthorityHost(authority, edgePort) {
 
 const consolePaths = [
   ["/", "Overview"],
-  ["/applications", "Applications"],
+  ["/keys", "Keys"],
   ["/inference", "Inference"],
   ["/hardware", "Hardware"],
   ["/team", "Team"],
@@ -627,11 +627,11 @@ async function runBrowserSessionProof() {
             host: publicAuthorityHost(authorities.console, edgePort),
           },
           method: "GET",
-          path: "/applications?q=safe",
+          path: "/keys?q=safe",
           servername: authorities.console,
         })
       : await requestHttpsEdge(
-          `https://${edgeBindAddress}:${edgePort}/applications?q=safe`,
+          `https://${edgeBindAddress}:${edgePort}/keys?q=safe`,
           publicAuthorityHost(authorities.console, edgePort),
           certificate,
           authorities.console,
@@ -702,8 +702,8 @@ async function runBrowserSessionProof() {
       assert.equal(tlsProbe?.status(), 421)
     }
 
-    await signIn(page, consoleOrigin, credentials.admin, "/applications?q=safe")
-    assert.equal(new URL(page.url()).pathname, "/applications")
+    await signIn(page, consoleOrigin, credentials.admin, "/keys?q=safe")
+    assert.equal(new URL(page.url()).pathname, "/keys")
     assert.equal(new URL(page.url()).search, "?q=safe")
     await assertRole(page, "Administrator")
     await assertConsoleNavigation(page, consoleOrigin)
@@ -946,7 +946,7 @@ async function runBrowserSessionProof() {
           "the identity route allowlist carries native login actions and static resources while native Keycloak administration remains denied",
           "logout clears local Console custody and protected navigation returns to the approved sign-in surface",
           "Admin and Operator can use retained Console navigation without Grafana, LiteLLM native UI, or Keycloak Admin UI",
-          "Operator is denied Admin-only Application, Team, and audit-export controls",
+          "Operator is denied Admin-only Key, Team, and audit-export controls",
         ],
         status: "passed",
         temporaryStateRemoved: true,
@@ -1000,7 +1000,7 @@ async function runBrowserSessionProof() {
         persistenceOperatorPage,
         consoleOrigin,
         credentials.operator,
-        "/applications",
+        "/keys",
       )
       await assertRole(persistenceOperatorPage, "Operator")
       await assertConsoleNavigation(persistenceOperatorPage, consoleOrigin)
@@ -1057,7 +1057,7 @@ async function runBrowserSessionProof() {
       persistenceOperatorPage &&
       applicationFlow
     ) {
-      await persistenceOperatorPage.goto(`${consoleOrigin}/applications`)
+      await persistenceOperatorPage.goto(`${consoleOrigin}/keys`)
       await assertRole(persistenceOperatorPage, "Operator")
       await assertOperatorApplicationReadOnly(
         persistenceOperatorPage,
@@ -1076,7 +1076,7 @@ async function runBrowserSessionProof() {
       assert.ok(persistenceOperatorContext)
       assert.ok(persistenceOperatorPage)
       await assertIntegratedTeamProjection(page, consoleOrigin, true)
-      await persistenceOperatorPage.goto(`${consoleOrigin}/applications`)
+      await persistenceOperatorPage.goto(`${consoleOrigin}/keys`)
       await assertRole(persistenceOperatorPage, "Operator")
       await assertConsoleNavigation(persistenceOperatorPage, consoleOrigin)
       await assertOperatorApplicationReadOnly(
@@ -1190,8 +1190,8 @@ async function runBrowserSessionProof() {
         proved: [
           "actual Console Web and BFF authenticate through disposable Keycloak 26.7.0",
           "real Product migrations and encrypted opaque sessions persist across a controlled BFF restart",
-          "Product-issued Application credentials reach actual private LiteLLM and deterministic inference for streaming and non-streaming Chat Completions",
-          "Firecrawl remains Application-disabled by default and actual reduced search and static scrape require its separate credential",
+          "Product-issued Key credentials reach actual private LiteLLM and deterministic inference for streaming and non-streaming Chat Completions",
+          "Firecrawl remains Key-disabled by default and actual reduced search and static scrape require its separate credential",
           "actual Prometheus and Alertmanager remain private while Grafana, LiteLLM, and scoped Keycloak administration use service-owned sessions through the Product edge",
           "the seven approved authorities deny alternate hosts, unsafe paths, spoofed forwarding metadata, and Product credentials on native surfaces",
           "an actual Keycloak stop renders the controlled Console retry state and restart recovers on the same private loopback port",
@@ -1246,9 +1246,13 @@ async function runBrowserSessionProof() {
     await revokerPage.goto(`${consoleOrigin}/`)
     await revokerPage.getByRole("button", { name: "Sign out" }).click()
     try {
-      await revokerPage.waitForURL((url) => url.pathname === "/auth/signin", {
-        timeout: 5_000,
-      })
+      await revokerPage.waitForURL(
+        (url) =>
+          url.pathname === "/auth/signin" ||
+          (url.hostname === authorities.identity &&
+            url.pathname.endsWith("/protocol/openid-connect/auth")),
+        { timeout: 5_000 },
+      )
     } catch {
       throw new Error(
         `Revoking browser did not reach sign-in at ${revokerPage.url()}: ${(await revokerPage.locator("body").innerText()).slice(0, 500)}`,
@@ -1263,7 +1267,7 @@ async function runBrowserSessionProof() {
     const refreshBefore = oidc.refreshCount
     const secondPage = await context.newPage()
     await Promise.all([
-      page.goto(`${consoleOrigin}/applications`),
+      page.goto(`${consoleOrigin}/keys`),
       secondPage.goto(`${consoleOrigin}/inference`),
     ])
     assert.equal(oidc.refreshCount - refreshBefore, 1)
@@ -1314,12 +1318,15 @@ async function runBrowserSessionProof() {
     await page.goto(
       `${consoleOrigin}/auth/signin?returnTo=${encodeURIComponent("https://attacker.invalid/")}`,
     )
-    await page.getByRole("link", { name: /Keycloak/ }).click()
+    const keycloakLink = page.getByRole("link", { name: /Keycloak/ })
+    if ((await keycloakLink.count()) === 1) {
+      await keycloakLink.click()
+    }
     await completeIdentityLogin(page, credentials.operator)
     assert.equal(new URL(page.url()).pathname, "/")
     await assertRole(page, "Operator")
     await assertConsoleNavigation(page, consoleOrigin)
-    await page.goto(`${consoleOrigin}/applications/apps/new`)
+    await page.goto(`${consoleOrigin}/keys/apps/new`)
     await page.getByRole("heading", { name: "Admin access required" }).waitFor()
     await page.goto(`${consoleOrigin}/team/members/new`)
     await page.getByRole("heading", { name: "Admin access required" }).waitFor()
@@ -1340,12 +1347,19 @@ async function runBrowserSessionProof() {
       )
     }
 
+    await page.evaluate(async () => navigator.clipboard.writeText(""))
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), "")
     await page.goto(`${consoleOrigin}/`)
     await page.getByRole("button", { name: "Sign out" }).click()
-    await page.waitForURL((url) => url.pathname === "/auth/signin")
+    await page.waitForURL(
+      (url) =>
+        url.pathname === "/auth/signin" ||
+        (url.hostname === authorities.identity &&
+          url.pathname.endsWith("/protocol/openid-connect/auth")),
+    )
     await page.goto(`${consoleOrigin}/inference`)
-    assert.equal(new URL(page.url()).pathname, "/auth/signin")
-    assert.equal(new URL(page.url()).searchParams.get("returnTo"), "/inference")
+    assert.equal(new URL(page.url()).hostname, authorities.identity)
+    await page.getByLabel("Username").waitFor()
     if (postgresControl) {
       postgresPersistenceEvidence = inspectPostgresPersistence(
         sensitiveValues,
@@ -1358,8 +1372,6 @@ async function runBrowserSessionProof() {
       sensitiveValues,
       "browser metadata",
     )
-    await page.evaluate(async () => navigator.clipboard.writeText(""))
-    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), "")
     await page.screenshot({
       path: join(stateRoot, "credential-free-final.png"),
     })
@@ -1419,12 +1431,12 @@ async function runBrowserSessionProof() {
         "parallel browser requests serialize refresh-token rotation",
         "logout clears local custody and protected navigation requires login",
         "Admin and Operator can use all retained Console navigation without native expert surfaces",
-        "Operator is denied Admin-only Application, Team, and audit-export controls",
+        "Operator is denied Admin-only Key, Team, and audit-export controls",
         ...(postgresPersistenceMode
           ? [
               "real Product migrations initialize an empty disposable PostgreSQL database",
-              "Admin and Operator encrypted opaque sessions plus Application, credential, usage, audit, and Firecrawl metadata survive one controlled BFF restart",
-              "expired and revoked credentials remain denied while active rotated and second-Application credentials remain accepted after restart",
+              "Admin and Operator encrypted opaque sessions plus Key, credential, usage, audit, and Firecrawl metadata survive one controlled BFF restart",
+              "expired and revoked credentials remain denied while active rotated and second-Key credentials remain accepted after restart",
               "PostgreSQL unavailability degrades readiness and recovers without state corruption",
               "workload content and secret canaries remain absent from PostgreSQL and teardown artifacts",
             ]
@@ -1432,25 +1444,25 @@ async function runBrowserSessionProof() {
         ...(applicationFlow
           ? [
               liteLlmIntegrationMode
-                ? "Admin creates an Application and its customer-facing credential reaches private LiteLLM only through the Product API authority"
-                : "Admin creates an Application and receives separate one-time inference and Firecrawl credentials through the actual Console UI",
+                ? "Admin creates a Key and its customer-facing credential reaches private LiteLLM only through the Product API authority"
+                : "Admin creates a Key and receives separate one-time inference and Firecrawl credentials through the actual Console UI",
               liteLlmIntegrationMode
                 ? "non-streaming and streaming Chat Completions traverse actual LiteLLM and update usage and last-use metadata"
                 : "a standard OpenAI-compatible client reaches the Product API authority and updates passive connection, usage, and last-use evidence",
               liteLlmIntegrationMode
                 ? "the Console renders real LiteLLM health, served models, usage, route summary, and safe credential metadata without mutation authority"
-                : "Firecrawl is disabled by default and requires explicit disclaimer acknowledgement for the selected Application",
+                : "Firecrawl is disabled by default and requires explicit disclaimer acknowledgement for the selected Key",
               ...(liteLlmIntegrationMode
                 ? [
                     "LiteLLM outage fails the Product API and Console projection closed, then recovers without exposing a native service route",
-                    "Application credentials cannot authenticate directly to LiteLLM and native LiteLLM paths remain absent from Product ingress",
+                    "Key credentials cannot authenticate directly to LiteLLM and native LiteLLM paths remain absent from Product ingress",
                   ]
                 : []),
               ...(credentialLifecycleMode
                 ? [
-                    "Admin rotates and revokes inference and Firecrawl credentials through the Console while exact Application isolation remains enforced",
+                    "Admin rotates and revokes inference and Firecrawl credentials through the Console while exact Key isolation remains enforced",
                     "one-time secrets leave subsequent DOM, history, copied UI state, browser metadata, screenshots, and teardown artifacts",
-                    "Operator remains read-only across Application and credential lifecycle surfaces",
+                    "Operator remains read-only across Key and credential lifecycle surfaces",
                   ]
                 : []),
             ]
@@ -1601,6 +1613,11 @@ async function runBrowserSessionProof() {
 
 async function signIn(page, consoleOrigin, userCredentials, returnPath) {
   await page.goto(`${consoleOrigin}${returnPath}`)
+  const username = page.getByLabel("Username")
+  if ((await username.count()) === 1 && (await username.isVisible())) {
+    await completeIdentityLogin(page, userCredentials)
+    return
+  }
   const loginLink = page.getByRole("link", { name: /Keycloak/ })
   if ((await loginLink.count()) !== 1) {
     throw new Error(
@@ -1674,13 +1691,20 @@ async function assertRole(page, label) {
 }
 
 async function assertExpiredSignIn(page, returnTo) {
+  const current = new URL(page.url())
+  if (
+    current.hostname === authorities.identity &&
+    current.pathname.endsWith("/protocol/openid-connect/auth")
+  ) {
+    await page.getByLabel("Username").waitFor()
+    return
+  }
   await page
     .getByText("Your Console session expired.", { exact: false })
     .waitFor()
-  const url = new URL(page.url())
-  assert.equal(url.pathname, "/auth/signin")
-  assert.equal(url.searchParams.get("session"), "expired")
-  assert.equal(url.searchParams.get("returnTo"), returnTo)
+  assert.equal(current.pathname, "/auth/signin")
+  assert.equal(current.searchParams.get("session"), "expired")
+  assert.equal(current.searchParams.get("returnTo"), returnTo)
 }
 
 async function assertConsoleNavigation(page, consoleOrigin) {
@@ -1741,7 +1765,7 @@ async function assertDesktopViewportLayout(page, consoleOrigin) {
   try {
     await page.setViewportSize({ height: 768, width: 1024 })
     for (const [path, heading] of [
-      ["/applications", "Applications"],
+      ["/keys", "Keys"],
       ["/inference", "Inference"],
       ["/hardware", "Hardware"],
       ["/settings", "Settings"],
@@ -2137,7 +2161,7 @@ async function proveKeycloakIdentityConsoleFlow({
   await signIn(page, consoleOrigin, credentials.operator, "/")
   await assertRole(page, "Operator")
   await assertConsoleNavigation(page, consoleOrigin)
-  await page.goto(`${consoleOrigin}/applications/apps/new`)
+  await page.goto(`${consoleOrigin}/keys/apps/new`)
   await page.getByRole("heading", { name: "Admin access required" }).waitFor()
   await page.goto(`${consoleOrigin}/team/members/new`)
   await page.getByRole("heading", { name: "Admin access required" }).waitFor()
@@ -2177,7 +2201,7 @@ async function proveCommissioningSessionContinuity({
   const secondPage = await context.newPage()
   try {
     await Promise.all([
-      navigateConsolePath(page, consoleOrigin, "/applications", "Applications"),
+      navigateConsolePath(page, consoleOrigin, "/keys", "Keys"),
       navigateConsolePath(secondPage, consoleOrigin, "/inference", "Inference"),
     ])
     await assertRole(page, "Administrator")
@@ -3392,7 +3416,7 @@ async function proveLiteLlmConsoleFlow({
     userCredentials,
   })
   await submitApplicationCreate(page, applicationName)
-  await page.getByRole("heading", { name: "Application credential" }).waitFor()
+  await page.getByRole("heading", { name: "Key created" }).waitFor()
   const applicationCredential = await revealedCredential(page, "API key")
   sensitiveValues.push(applicationCredential)
   assertCredentialFormat(
@@ -3400,10 +3424,12 @@ async function proveLiteLlmConsoleFlow({
     /^llmm_t4_[0-9a-f]{18}_[A-Za-z0-9_-]{43}$/,
     "inference",
   )
-  const detailPath = await page
-    .getByRole("link", { name: "View application" })
-    .getAttribute("href")
-  assert.match(detailPath ?? "", /^\/applications\/apps\/app-/)
+  await page.getByRole("button", { name: "Done" }).click()
+  await page
+    .getByRole("heading", { exact: true, name: applicationName })
+    .waitFor()
+  const detailPath = new URL(page.url()).pathname
+  assert.match(detailPath ?? "", /^\/keys\/apps\/app-/)
 
   const models = await requestJsonThroughEdge({
     authority: authorities.api,
@@ -3465,7 +3491,7 @@ async function proveLiteLlmConsoleFlow({
   )
   assert.equal(directWithApplicationCredential.status, 401)
 
-  await page.goto(`${consoleOrigin}/applications`)
+  await page.goto(`${consoleOrigin}/keys`)
   const applicationCard = page
     .locator("article")
     .filter({ has: page.getByRole("heading", { name: applicationName }) })
@@ -3791,12 +3817,10 @@ async function proveApplicationConsoleFlow({
   })
   await submitApplicationCreate(page, applicationName)
   try {
-    await page
-      .getByRole("heading", { name: "Application credential" })
-      .waitFor()
+    await page.getByRole("heading", { name: "Key created" }).waitFor()
   } catch {
     throw new Error(
-      `Application create did not reach its one-time reveal: ${safeDiagnosticTail(await page.locator("body").innerText())}`,
+      `Key creation did not reach its one-time reveal: ${safeDiagnosticTail(await page.locator("body").innerText())}`,
     )
   }
 
@@ -3809,12 +3833,19 @@ async function proveApplicationConsoleFlow({
     "inference",
   )
   assert.equal(
-    await revealedCredential(page, "OpenAI base URL"),
+    await revealedCredential(page, "API base URL"),
     `${publicOrigin("api", edgePort)}/v1`,
   )
-  const viewApplication = page.getByRole("link", { name: "View application" })
-  const detailPath = await viewApplication.getAttribute("href")
-  assert.match(detailPath ?? "", /^\/applications\/apps\/app-/)
+  assert.equal(
+    await page.getByRole("button", { name: "Copy Firecrawl API key" }).count(),
+    0,
+  )
+  await page.getByRole("button", { name: "Done" }).click()
+  await page
+    .getByRole("heading", { exact: true, name: applicationName })
+    .waitFor()
+  const detailPath = new URL(page.url()).pathname
+  assert.match(detailPath ?? "", /^\/keys\/apps\/app-/)
   if (postgresControl) {
     assert.deepEqual(
       postgresApplicationFirecrawlStatus(detailPath.split("/").at(-1)),
@@ -3906,14 +3937,9 @@ async function proveApplicationConsoleFlow({
 
   await page.getByRole("button", { name: "Check connection" }).click()
   await page
-    .getByText(
-      "A real authenticated client reached the Application models endpoint.",
-      { exact: false },
-    )
-    .waitFor()
-  await viewApplication.click()
-  await page
-    .getByRole("heading", { exact: true, name: applicationName })
+    .getByText("A real authenticated client reached the Key models endpoint.", {
+      exact: false,
+    })
     .waitFor()
   const firecrawlSection = page
     .getByRole("heading", { name: "Firecrawl web access" })
@@ -4023,12 +4049,12 @@ async function proveApplicationConsoleFlow({
       await page.evaluate(() => navigator.clipboard.readText()),
       firecrawlCredential,
     )
-    await page.goto(`${consoleOrigin}/applications`)
+    await page.goto(`${consoleOrigin}/keys`)
     await page.goBack()
     await assertSecretsAbsentFromPage(page, sensitiveValues)
   }
 
-  await page.goto(`${consoleOrigin}/applications`)
+  await page.goto(`${consoleOrigin}/keys`)
   const applicationCard = page
     .locator("article")
     .filter({ has: page.getByRole("heading", { name: applicationName }) })
@@ -4113,9 +4139,9 @@ async function proveCredentialLifecycle({
 }) {
   await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
 
-  await page.getByRole("button", { name: "Rotate credentials" }).click()
+  await page.getByRole("button", { name: "Rotate Key credentials" }).click()
   const inferenceRotation = page.getByRole("dialog", {
-    name: "Rotate Application credential?",
+    name: "Rotate Key credential?",
   })
   await inferenceRotation.getByRole("button", { name: "Rotate" }).click()
   await page.getByRole("heading", { name: "Rotated credential" }).waitFor()
@@ -4216,18 +4242,17 @@ async function proveCredentialLifecycle({
   })
   const secondName = `Isolated browser client ${randomBytes(4).toString("hex")}`
   await submitApplicationCreate(page, secondName)
-  await page.getByRole("heading", { name: "Application credential" }).waitFor()
+  await page.getByRole("heading", { name: "Key created" }).waitFor()
   const secondInferenceCredential = await revealedCredential(page, "API key")
   const secondInferenceCredentialId = await revealedCredential(
     page,
     "Credential ID",
   )
   sensitiveValues.push(secondInferenceCredential)
-  const secondDetailPath = await page
-    .getByRole("link", { name: "View application" })
-    .getAttribute("href")
-  assert.match(secondDetailPath ?? "", /^\/applications\/apps\/app-/)
-  await page.getByRole("link", { name: "View application" }).click()
+  await page.getByRole("button", { name: "Done" }).click()
+  await page.getByRole("heading", { exact: true, name: secondName }).waitFor()
+  const secondDetailPath = new URL(page.url()).pathname
+  assert.match(secondDetailPath ?? "", /^\/keys\/apps\/app-/)
   await page.getByRole("button", { name: "Enable Firecrawl" }).click()
   await page
     .getByLabel(
@@ -4393,7 +4418,7 @@ async function proveCredentialLifecycle({
     edgePort,
   })
 
-  await page.goto(`${consoleOrigin}/applications`)
+  await page.goto(`${consoleOrigin}/keys`)
   await assertSecretsAbsentFromPage(page, sensitiveValues)
 
   return {
@@ -4575,9 +4600,9 @@ async function assertOperatorApplicationReadOnly(page, applicationFlow) {
       .waitFor()
     for (const name of [
       "Check connection",
-      "Rotate credentials",
+      "Rotate Key credentials",
       "Revoke now",
-      "Disable app",
+      "Disable Key",
       "Check Firecrawl connection",
       "Rotate Firecrawl credential",
       "Revoke Firecrawl key",
@@ -4594,8 +4619,8 @@ async function openApplicationCreate({
   synchronizeClock,
   userCredentials,
 }) {
-  await page.goto(`${consoleOrigin}/applications/apps/new`)
-  const form = page.getByRole("heading", { name: "Applications > Add app" })
+  await page.goto(`${consoleOrigin}/keys/apps/new`)
+  const form = page.getByRole("heading", { name: "Keys > Create Key" })
   const elevation = page.getByRole("heading", { name: "Verify your identity" })
   await Promise.race([form.waitFor(), elevation.waitFor()])
   if ((await elevation.count()) === 0) {
@@ -4630,17 +4655,16 @@ async function openApplicationCreate({
     )
   }
   await completeIdentityLogin(page, userCredentials)
-  assert.equal(new URL(page.url()).pathname, "/applications/apps/new")
+  assert.equal(new URL(page.url()).pathname, "/keys/apps/new")
   await form.waitFor()
 }
 
 async function submitApplicationCreate(page, applicationName) {
-  await page.getByLabel("Name").fill(applicationName)
+  await page.getByLabel("Key name").fill(applicationName)
   await page
-    .getByLabel("Description")
-    .fill("Disposable browser-driven Application proof")
-  await page.getByLabel("fixture-model").check()
-  await page.getByRole("button", { name: "Create app" }).click()
+    .getByLabel("Description (optional)")
+    .fill("Disposable browser-driven Key proof")
+  await page.getByRole("button", { name: "Create Key" }).click()
 }
 
 async function revealedCredential(page, label) {
@@ -6541,8 +6565,8 @@ async function provePostgresOutageRecovery({
   postgresDocker(["unpause", postgresControl.container])
   await waitForPostgresControl()
   await waitForStatus(`http://127.0.0.1:${bffPort}/readyz`, 200, children)
-  await page.goto(`${consoleOrigin}/applications`)
-  await page.getByRole("heading", { name: "Applications" }).waitFor()
+  await page.goto(`${consoleOrigin}/keys`)
+  await page.getByRole("heading", { name: "Keys" }).waitFor()
   await assertRole(page, "Administrator")
   return {
     degradedReadiness: 503,

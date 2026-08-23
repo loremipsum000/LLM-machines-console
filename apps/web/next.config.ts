@@ -5,6 +5,23 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [],
   },
+  async redirects() {
+    return [
+      {
+        source: "/applications/:path*",
+        destination: "/keys/:path*",
+        permanent: false,
+      },
+    ]
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/keys/:path*",
+        destination: "/applications/:path*",
+      },
+    ]
+  },
   async headers() {
     return [
       {

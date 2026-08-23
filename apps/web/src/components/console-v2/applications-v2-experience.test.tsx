@@ -44,6 +44,11 @@ const actionMocks = vi.hoisted(() => ({
   revoke: vi.fn(),
   rotate: vi.fn(),
 }))
+const routerMocks = vi.hoisted(() => ({ replace: vi.fn() }))
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: routerMocks.replace }),
+}))
 
 let dialogShowModal: ReturnType<typeof vi.fn>
 const originalDialogClose = Object.getOwnPropertyDescriptor(
@@ -76,6 +81,7 @@ beforeEach(() => {
   for (const actionMock of Object.values(actionMocks)) {
     actionMock.mockReset()
   }
+  routerMocks.replace.mockReset()
   actionMocks.check.mockImplementation(
     async (state: ConnectedAppTestActionState) => state,
   )
@@ -137,16 +143,28 @@ afterEach(() => {
   )
 })
 
-describe("PR-07 Applications experience", () => {
-  it("submits stable aliases and keeps optional protections disabled by default", () => {
+describe("Keys experience", () => {
+  it("defaults to dynamic Auto and keeps Advanced features collapsed", () => {
     render(
       <ApplicationsV2Experience
         accessRole="admin"
+        modelInventorySourceStatus="ok"
         modelOptions={[model]}
         view="new-app"
       />,
     )
 
+    expect(
+      screen.getByRole("button", { name: "Auto" }).getAttribute("aria-pressed"),
+    ).toBe("true")
+    expect(
+      screen.queryByRole("checkbox", { name: "stable-chat-alias" }),
+    ).toBeNull()
+    const advanced = screen.getByRole("button", { name: "Advanced features" })
+    expect(advanced.getAttribute("aria-expanded")).toBe("false")
+    expect(screen.queryByText("Authentication method")).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: "Manual" }))
     const modelCheckbox = screen.getByRole("checkbox", {
       name: "stable-chat-alias",
     }) as HTMLInputElement
@@ -154,11 +172,20 @@ describe("PR-07 Applications experience", () => {
     expect(modelCheckbox.value).not.toBe(model.id)
     expect(modelCheckbox.checked).toBe(true)
 
+    fireEvent.click(advanced)
+    expect(advanced.getAttribute("aria-expanded")).toBe("true")
+    expect(screen.getByText("Authentication method")).toBeTruthy()
+    expect(
+      screen
+        .getByRole("button", { name: "Static API key" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true")
+
     for (const label of [
       "Requests per second",
       "Concurrent requests",
-      "Context bytes per request",
-      "Seven-day token alert threshold",
+      "Maximum context size",
+      "Seven-day usage alert",
     ]) {
       expect(
         (screen.getByRole("checkbox", { name: label }) as HTMLInputElement)
@@ -184,7 +211,7 @@ describe("PR-07 Applications experience", () => {
     ).toBeTruthy()
     expect(
       screen.getByText(
-        /model access and context-size controls define each Application's permissions/i,
+        /model access and context-size controls define each Key's permissions/i,
       ),
     ).toBeTruthy()
     expect(
@@ -194,7 +221,7 @@ describe("PR-07 Applications experience", () => {
     ).toBeTruthy()
     expect(
       screen.getByText(
-        /Firecrawl is installed on the appliance but stays off/i,
+        /Create Key issues inference access only. Firecrawl stays off/i,
       ),
     ).toBeTruthy()
     expect(screen.queryByText(/alert delivery/i)).toBeNull()
@@ -219,14 +246,14 @@ describe("PR-07 Applications experience", () => {
       />,
     )
 
-    fireEvent.change(screen.getByLabelText("Name"), {
+    fireEvent.change(screen.getByLabelText("Key name"), {
       target: { value: "Desktop client" },
     })
-    fireEvent.change(screen.getByLabelText("Description"), {
+    fireEvent.change(screen.getByLabelText("Description (optional)"), {
       target: { value: "Third-party harness" },
     })
     const createButton = screen.getByRole("button", {
-      name: "Create app",
+      name: "Create Key",
     }) as HTMLButtonElement
     fireEvent.click(createButton)
     fireEvent.click(createButton)
@@ -234,7 +261,7 @@ describe("PR-07 Applications experience", () => {
     await waitFor(() => {
       expect(actionMocks.create).toHaveBeenCalledTimes(1)
       expect(createButton.disabled).toBe(true)
-      expect(createButton.textContent).toBe("Creating app...")
+      expect(createButton.textContent).toBe("Creating key...")
     })
 
     await act(async () => {
@@ -247,7 +274,7 @@ describe("PR-07 Applications experience", () => {
     })
     await waitFor(() => {
       expect(createButton.disabled).toBe(false)
-      expect(createButton.textContent).toBe("Create app")
+      expect(createButton.textContent).toBe("Create Key")
     })
   })
 
@@ -266,18 +293,18 @@ describe("PR-07 Applications experience", () => {
       />,
     )
 
-    fireEvent.change(screen.getByLabelText("Name"), {
+    fireEvent.change(screen.getByLabelText("Key name"), {
       target: { value: "Desktop client" },
     })
-    fireEvent.change(screen.getByLabelText("Description"), {
+    fireEvent.change(screen.getByLabelText("Description (optional)"), {
       target: { value: "Third-party harness" },
     })
     const liveIssuanceStatus = screen.getByRole("status")
     expect(liveIssuanceStatus.textContent).toBe("")
-    fireEvent.click(screen.getByRole("button", { name: "Create app" }))
+    fireEvent.click(screen.getByRole("button", { name: "Create Key" }))
 
     const revealHeading = await screen.findByRole("heading", {
-      name: "Application credential",
+      name: "Key created",
     })
     await waitFor(() => {
       expect(document.activeElement).toBe(revealHeading)
@@ -285,13 +312,23 @@ describe("PR-07 Applications experience", () => {
     const issuanceStatus = screen.getByRole("status")
     expect(issuanceStatus).toBe(liveIssuanceStatus)
     expect(issuanceStatus.textContent).toContain(
-      "Application created. Copy its credential now.",
+      "Key created. Copy its credential now.",
     )
     expect(issuanceStatus.textContent).not.toContain(staticReveal.apiKey)
     expect(issuanceStatus.contains(screen.getByText(staticReveal.apiKey))).toBe(
       false,
     )
     expect((await axe(container)).violations).toEqual([])
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    await waitFor(() => {
+      expect(screen.queryByText(staticReveal.apiKey)).toBeNull()
+      expect(screen.queryByRole("dialog", { name: "Key created" })).toBeNull()
+    })
+    expect(routerMocks.replace).toHaveBeenCalledWith(application.detailHref)
+    expect(JSON.stringify(routerMocks.replace.mock.calls)).not.toContain(
+      staticReveal.apiKey,
+    )
   })
 
   it("shows static and OAuth secrets only in the mutation reveal panel", () => {
@@ -328,6 +365,33 @@ describe("PR-07 Applications experience", () => {
       screen.getByText(/This one-time secret is no longer available/),
     ).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/staging|production/i)
+  })
+
+  it("clears the creation secret before browser-history restoration", async () => {
+    actionMocks.create.mockResolvedValueOnce({
+      app: application,
+      credential: staticReveal,
+      error: null,
+      status: "created",
+    })
+    render(
+      <ApplicationsV2Experience
+        accessRole="admin"
+        modelOptions={[model]}
+        view="new-app"
+      />,
+    )
+    fireEvent.change(screen.getByLabelText("Key name"), {
+      target: { value: "History-safe Key" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Create Key" }))
+    expect(await screen.findByText(staticReveal.apiKey)).toBeTruthy()
+
+    fireEvent(window, new Event("pagehide"))
+    await waitFor(() => {
+      expect(screen.queryByText(staticReveal.apiKey)).toBeNull()
+      expect(screen.queryByRole("dialog", { name: "Key created" })).toBeNull()
+    })
   })
 
   it("keeps Firecrawl off by default and lets an Admin enable bounded web access", async () => {
@@ -424,9 +488,9 @@ describe("PR-07 Applications experience", () => {
     )
     for (const name of [
       "Check connection",
-      "Rotate credentials",
+      "Rotate Key credentials",
       "Revoke now",
-      "Disable app",
+      "Disable Key",
       "Check Firecrawl connection",
       "Rotate Firecrawl credential",
       "Revoke Firecrawl key",
@@ -454,16 +518,14 @@ describe("PR-07 Applications experience", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Edit Firecrawl policy" }),
     )
-    fireEvent.click(screen.getByRole("button", { name: "Delete app" }))
+    fireEvent.click(screen.getByRole("button", { name: "Delete Key" }))
 
-    expect(
-      screen.getByRole("heading", { name: "Application policy" }),
-    ).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Key policy" })).toBeTruthy()
     expect(
       screen.getByRole("heading", { name: "Firecrawl protections" }),
     ).toBeTruthy()
     expect(
-      screen.getByRole("dialog", { name: "Delete this app?" }),
+      screen.getByRole("dialog", { name: "Delete this Key?" }),
     ).toBeTruthy()
 
     rerender(
@@ -475,14 +537,12 @@ describe("PR-07 Applications experience", () => {
       />,
     )
 
-    expect(
-      screen.queryByRole("heading", { name: "Application policy" }),
-    ).toBeNull()
+    expect(screen.queryByRole("heading", { name: "Key policy" })).toBeNull()
     expect(
       screen.queryByRole("heading", { name: "Firecrawl protections" }),
     ).toBeNull()
     expect(
-      screen.queryByRole("dialog", { name: "Delete this app?" }),
+      screen.queryByRole("dialog", { name: "Delete this Key?" }),
     ).toBeNull()
   })
 
@@ -577,7 +637,9 @@ describe("PR-07 Applications experience", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Edit Firecrawl policy" }),
     )
-    fireEvent.click(screen.getByRole("button", { name: "Rotate credentials" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Rotate Key credentials" }),
+    )
     fireEvent.click(
       screen.getByRole("button", { name: "Rotate Firecrawl credential" }),
     )
@@ -615,8 +677,8 @@ describe("PR-07 Applications experience", () => {
     for (const name of [
       "Save policy",
       "Save Firecrawl policy",
-      "Disable app",
-      "Delete app",
+      "Disable Key",
+      "Delete Key",
       "Check Firecrawl connection",
     ]) {
       expect(
@@ -678,13 +740,17 @@ describe("PR-07 Applications experience", () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Rotate credentials" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Rotate Key credentials" }),
+    )
     fireEvent.click(screen.getByRole("button", { name: "Rotate" }))
     expect(await screen.findByText(staticReveal.apiKey)).toBeTruthy()
 
     fireEvent.click(screen.getByRole("button", { name: "Edit policy" }))
-    fireEvent.click(screen.getByRole("button", { name: "Disable app" }))
-    fireEvent.click(screen.getByRole("button", { name: "Rotate credentials" }))
+    fireEvent.click(screen.getByRole("button", { name: "Disable Key" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Rotate Key credentials" }),
+    )
     fireEvent.click(
       screen.getByRole("button", { name: "Rotate Firecrawl credential" }),
     )
@@ -736,14 +802,14 @@ describe("PR-07 Applications experience", () => {
         (
           screen.getByRole("button", {
             hidden: true,
-            name: "Rotate credentials",
+            name: "Rotate Key credentials",
           }) as HTMLButtonElement
         ).disabled,
       ).toBe(false)
     })
   })
 
-  it("shows inference and Firecrawl status together in the Applications overview", () => {
+  it("shows inference and Firecrawl status together in the Keys overview", () => {
     render(
       <ApplicationsV2Experience
         accessRole="admin"
@@ -796,17 +862,17 @@ describe("PR-07 Applications experience", () => {
       screen.getByRole("button", { name: "Check connection" }),
     ).toBeTruthy()
     expect(
-      screen.getByRole("button", { name: "Rotate credentials" }),
+      screen.getByRole("button", { name: "Rotate Key credentials" }),
     ).toBeTruthy()
     expect(screen.getByRole("button", { name: "Edit policy" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Re-enable app" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Delete app" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Re-enable Key" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Delete Key" })).toBeTruthy()
     expect(screen.getAllByRole("button", { name: "Revoke now" })).toHaveLength(
       2,
     )
     expect(screen.getByText("retiring")).toBeTruthy()
     expect(screen.getByText("llmm_old_")).toBeTruthy()
-    expect(screen.queryByRole("button", { name: "Disable app" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Disable Key" })).toBeNull()
   })
 
   it("shows a reached token threshold as non-blocking visibility", () => {
@@ -861,7 +927,7 @@ describe("PR-07 Applications experience", () => {
     expect(
       (
         screen.getByRole("button", {
-          name: "Rotate credentials",
+          name: "Rotate Key credentials",
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(false)
@@ -920,7 +986,9 @@ describe("PR-07 Applications experience", () => {
       ).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole("button", { name: "Rotate credentials" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Rotate Key credentials" }),
+    )
     fireEvent.click(screen.getByRole("button", { name: "Rotate" }))
     await waitFor(() => {
       expect(
@@ -960,11 +1028,15 @@ describe("PR-07 Applications experience", () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Rotate credentials" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Rotate Key credentials" }),
+    )
     fireEvent.click(screen.getByRole("button", { name: "Rotate" }))
     expect(await screen.findByText(staticReveal.apiKey)).toBeTruthy()
 
-    fireEvent.click(screen.getByRole("button", { name: "Rotate credentials" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Rotate Key credentials" }),
+    )
     const rotateSubmit = screen.getByRole("button", { name: "Rotate" })
     fireEvent.click(rotateSubmit)
     fireEvent.click(rotateSubmit)
@@ -977,7 +1049,7 @@ describe("PR-07 Applications experience", () => {
     expect(
       (
         screen.getByRole("button", {
-          name: "Rotate credentials",
+          name: "Rotate Key credentials",
           hidden: true,
         }) as HTMLButtonElement
       ).disabled,
@@ -1011,7 +1083,7 @@ describe("PR-07 Applications experience", () => {
     expect(
       (
         screen.getByRole("button", {
-          name: "Rotate credentials",
+          name: "Rotate Key credentials",
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(false)
@@ -1039,13 +1111,13 @@ describe("PR-07 Applications experience", () => {
       expect(screen.getByRole("button", { name: "Checking..." })).toBeTruthy()
     })
     const rotateTrigger = screen.getByRole("button", {
-      name: "Rotate credentials",
+      name: "Rotate Key credentials",
     }) as HTMLButtonElement
     expect(rotateTrigger.disabled).toBe(true)
     fireEvent.click(rotateTrigger)
     expect(
       screen.queryByRole("dialog", {
-        name: "Rotate Application credential?",
+        name: "Rotate Key credential?",
       }),
     ).toBeNull()
     for (const revokeButton of screen.getAllByRole("button", {
@@ -1070,7 +1142,7 @@ describe("PR-07 Applications experience", () => {
       expect(
         (
           screen.getByRole("button", {
-            name: "Rotate credentials",
+            name: "Rotate Key credentials",
           }) as HTMLButtonElement
         ).disabled,
       ).toBe(false)
@@ -1086,11 +1158,11 @@ describe("PR-07 Applications experience", () => {
         view="app-detail"
       />,
     )
-    const deleteTrigger = screen.getByRole("button", { name: "Delete app" })
+    const deleteTrigger = screen.getByRole("button", { name: "Delete Key" })
     deleteTrigger.focus()
     fireEvent.click(deleteTrigger)
 
-    const dialog = screen.getByRole("dialog", { name: "Delete this app?" })
+    const dialog = screen.getByRole("dialog", { name: "Delete this Key?" })
     expect(dialogShowModal).toHaveBeenCalledTimes(1)
     expect(document.activeElement).toBe(
       screen.getByRole("button", { name: "Cancel" }),
@@ -1109,7 +1181,7 @@ describe("PR-07 Applications experience", () => {
     })
     await waitFor(() => {
       expect(
-        screen.queryByRole("dialog", { name: "Delete this app?" }),
+        screen.queryByRole("dialog", { name: "Delete this Key?" }),
       ).toBeNull()
       expect(document.activeElement).toBe(deleteTrigger)
     })
@@ -1144,7 +1216,9 @@ describe("PR-07 Applications experience", () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Rotate credentials" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Rotate Key credentials" }),
+    )
     fireEvent.click(screen.getByRole("button", { name: "Rotate" }))
     await waitFor(() => {
       expect(
@@ -1245,7 +1319,7 @@ const application: AdminConnectedApp = {
     },
   ],
   description: "Third-party desktop client",
-  detailHref: "/applications/apps/app-1",
+  detailHref: "/keys/apps/app-1",
   firecrawl: {
     connectionStatus: "not_connected",
     credentials: [],
@@ -1261,6 +1335,7 @@ const application: AdminConnectedApp = {
   lastConnectedAt: null,
   maxConcurrentRequests: null,
   maxContextBytes: null,
+  modelMode: "manual",
   name: "Desktop client",
   rateLimitRps: null,
   status: "enabled",

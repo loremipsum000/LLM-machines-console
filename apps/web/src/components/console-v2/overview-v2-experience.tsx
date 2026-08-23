@@ -28,8 +28,8 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
           Overview
         </h1>
         <p className="mt-3 max-w-[560px] text-sm leading-5 text-[#b2b2b2]">
-          A reduced preview of application access, inference usage, appliance
-          health, system status, and recent audit activity.
+          A reduced preview of key access, inference usage, appliance health,
+          system status, and recent audit activity.
         </p>
         <p className="mt-2 text-xs leading-5 text-[#8f8f8f]">
           Updated {formatTimestamp(overview.generatedAt)} UTC
@@ -41,7 +41,12 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
         className="mt-8 grid gap-3 sm:grid-cols-2"
       >
         {overview.tiles.map((tile) => (
-          <OverviewTileCard key={tile.id} tile={tile} />
+          <OverviewTileCard
+            key={tile.id}
+            tile={
+              tile.id === "applications" ? { ...tile, href: "/keys" } : tile
+            }
+          />
         ))}
       </section>
 
@@ -87,7 +92,7 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
   )
 }
 
-function OverviewTileCard({ tile }: { tile: AdminOverviewTile }) {
+function OverviewTileCard({ tile }: { tile: OverviewTile }) {
   return (
     <article
       aria-labelledby={`overview-tile-${tile.id}`}
@@ -131,6 +136,8 @@ function OverviewTileCard({ tile }: { tile: AdminOverviewTile }) {
     </article>
   )
 }
+
+type OverviewTile = Omit<AdminOverviewTile, "href"> & { href: string }
 
 function MetricCard({ item }: { item: AdminOverviewMetric }) {
   return (

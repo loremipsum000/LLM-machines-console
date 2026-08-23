@@ -68,10 +68,9 @@ function applicationsTile(
       generatedAt,
       href: "/applications",
       id: "applications",
-      metricLabels: ["Applications", "Connected", "Firecrawl enabled"],
-      summary:
-        "Application state is unavailable. Open Applications after the source recovers.",
-      title: "Applications",
+      metricLabels: ["Keys", "Connected", "Firecrawl enabled"],
+      summary: "Key state is unavailable. Open Keys after the source recovers.",
+      title: "Keys",
     })
   }
 
@@ -92,7 +91,7 @@ function applicationsTile(
     href: "/applications",
     id: "applications",
     metrics: [
-      metric("applications", "Applications", apps.length, "Current registry"),
+      metric("applications", "Keys", apps.length, "Current registry"),
       metric(
         "connected",
         "Connected",
@@ -104,15 +103,15 @@ function applicationsTile(
         "firecrawl-enabled",
         "Firecrawl enabled",
         firecrawlEnabled,
-        "Per-application access",
+        "Per-Key access",
       ),
     ],
     sourceStatus: applications.data.sourceStatus,
     summary:
       apps.length === 0
-        ? "No third-party applications are registered yet."
-        : `${apps.length} application${apps.length === 1 ? "" : "s"} registered; ${attentionRequired} require${attentionRequired === 1 ? "s" : ""} attention.`,
-    title: "Applications",
+        ? "No inference Keys are registered yet."
+        : `${apps.length} Key${apps.length === 1 ? "" : "s"} registered; ${attentionRequired} require${attentionRequired === 1 ? "s" : ""} attention.`,
+    title: "Keys",
     updatedAt: applications.data.generatedAt,
   }
 }
@@ -369,7 +368,7 @@ function systemSummary(
       ? "One or more operational source previews require attention."
       : "Recent audit is unavailable and one or more source previews require attention."
   }
-  return "Applications, inference, hardware, and recent audit sources are reporting normally."
+  return "Keys, inference, hardware, and recent audit sources are reporting normally."
 }
 
 function sourceMetricValue(

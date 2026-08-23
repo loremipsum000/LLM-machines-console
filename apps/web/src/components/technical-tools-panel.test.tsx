@@ -49,9 +49,7 @@ describe("TechnicalToolsPanel", () => {
   it("keeps the Console and LiteLLM credential boundaries explicit", () => {
     render(<TechnicalToolsPanel tools={[adminTools[1]]} />)
 
-    expect(
-      screen.getByText(/Console Application credentials are the customer/),
-    ).toBeTruthy()
+    expect(screen.getByText(/Console Keys are the customer/)).toBeTruthy()
     expect(screen.getByText(/separate advanced native capability/)).toBeTruthy()
     expect(screen.queryByText("Grafana")).toBeNull()
     expect(screen.queryByText("Keycloak")).toBeNull()

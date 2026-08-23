@@ -304,7 +304,7 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     expect(deleted).toEqual({
       app: null,
       applicationId: created.app.id,
-      detail: "Application deleted. Its identifiers and audit history remain.",
+      detail: "Key deleted. Its identifiers and audit history remain.",
       status: "deleted",
     })
     const stored = await storedDeleteState(created.app.id)
@@ -557,6 +557,7 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
       description: "Concurrent policy update.",
       maxConcurrentRequests: null,
       maxContextBytes: null,
+      modelMode: "manual",
       name: "Concurrent policy",
       rateLimitRps: 10,
       tokenAlertThreshold7d: null,
@@ -610,8 +611,7 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
 
     expect(revoked.status).toBe("revoked")
     expect(enabled).toEqual({
-      detail:
-        "An active credential is required before enabling the Application.",
+      detail: "An active credential is required before enabling the Key.",
       status: "blocked",
     })
     expect(await storedApplicationState(created.app.id)).toMatchObject({
@@ -645,6 +645,7 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
       description: "Concurrent connection policy.",
       maxConcurrentRequests: null,
       maxContextBytes: null,
+      modelMode: "manual",
       name: "Connection policy",
       rateLimitRps: null,
       tokenAlertThreshold7d: null,
@@ -803,6 +804,7 @@ function connectedAppRequest(
     description: "PostgreSQL lifecycle test.",
     maxConcurrentRequests: null,
     maxContextBytes: null,
+    modelMode: "manual" as const,
     name: `Lifecycle ${authMethod}`,
     rateLimitRps: null,
     tokenAlertThreshold7d: null,

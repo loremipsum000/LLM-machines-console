@@ -437,11 +437,12 @@ describe("Inference Core contract boundary", () => {
       createdAt: timestamp,
       credentials: [staticCredential],
       description: "Desktop chat application",
-      detailHref: "/applications/apps/app-1",
+      detailHref: "/keys/apps/app-1",
       id: "app-1",
       lastConnectedAt: null,
       maxConcurrentRequests: null,
       maxContextBytes: null,
+      modelMode: "manual",
       name: "Desktop",
       rateLimitRps: null,
       status: "enabled",
@@ -533,15 +534,42 @@ describe("Inference Core contract boundary", () => {
       adminConnectedAppCreateRequestSchema.parse({
         allowedModels: ["local-chat"],
         description: "Desktop chat application",
+        modelMode: "manual",
         name: "Desktop",
       }),
     ).toMatchObject({
       authMethod: "api_key",
       maxConcurrentRequests: null,
       maxContextBytes: null,
+      modelMode: "manual",
       rateLimitRps: null,
       tokenAlertThreshold7d: null,
     })
+    expect(
+      adminConnectedAppCreateRequestSchema.parse({ name: "Default Key" }),
+    ).toMatchObject({
+      allowedModels: [],
+      authMethod: "api_key",
+      description: "",
+      modelMode: "auto",
+    })
+    expect(
+      adminConnectedAppCreateRequestSchema.safeParse({ name: "" }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppCreateRequestSchema.safeParse({
+        allowedModels: ["local-chat"],
+        modelMode: "auto",
+        name: "Invalid Auto Key",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminConnectedAppCreateRequestSchema.safeParse({
+        allowedModels: [],
+        modelMode: "manual",
+        name: "Invalid Manual Key",
+      }).success,
+    ).toBe(false)
     expect(
       adminConnectedAppUpdateRequestSchema.safeParse({
         allowedModels: ["local-chat"],
@@ -549,6 +577,7 @@ describe("Inference Core contract boundary", () => {
         description: "Changed",
         maxConcurrentRequests: null,
         maxContextBytes: null,
+        modelMode: "manual",
         name: "Desktop",
         rateLimitRps: null,
         tokenAlertThreshold7d: null,
@@ -572,6 +601,7 @@ describe("Inference Core contract boundary", () => {
         description: "Changed",
         maxConcurrentRequests: 10_000,
         maxContextBytes: Number.MAX_SAFE_INTEGER,
+        modelMode: "manual",
         name: "Desktop",
         rateLimitRps: 10_000,
         tokenAlertThreshold7d: 100_000_000,
@@ -583,6 +613,7 @@ describe("Inference Core contract boundary", () => {
         description: "Changed",
         maxConcurrentRequests: 10_001,
         maxContextBytes: Number.MAX_SAFE_INTEGER + 1,
+        modelMode: "manual",
         name: "Desktop",
         rateLimitRps: 10_001,
         tokenAlertThreshold7d: 100_000_001,
@@ -595,6 +626,7 @@ describe("Inference Core contract boundary", () => {
         description: "Changed",
         maxConcurrentRequests: 2,
         maxContextBytes: 65_536,
+        modelMode: "manual",
         name: "Desktop",
         rateLimitRps: 5,
         tokenAlertThreshold7d: 1_000_000,
@@ -606,6 +638,7 @@ describe("Inference Core contract boundary", () => {
         description: "Changed",
         maxConcurrentRequests: 0,
         maxContextBytes: 1.5,
+        modelMode: "manual",
         name: "Desktop",
         rateLimitRps: 0,
         tokenAlertThreshold7d: 0,
@@ -666,7 +699,7 @@ describe("Inference Core contract boundary", () => {
     ).toBe(true)
     expect(
       adminConnectedAppDeleteRequestSchema.safeParse({
-        confirmation: "DELETE APPLICATION",
+        confirmation: "DELETE KEY",
       }).success,
     ).toBe(true)
     expect(

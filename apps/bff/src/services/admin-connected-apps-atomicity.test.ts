@@ -370,6 +370,7 @@ function connectedAppRequest(
     description: "Credential mutation boundary test.",
     maxConcurrentRequests: null,
     maxContextBytes: null,
+    modelMode: "manual" as const,
     name: `Atomicity ${authMethod}`,
     rateLimitRps: null,
     tokenAlertThreshold7d: null,

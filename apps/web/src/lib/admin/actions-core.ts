@@ -619,6 +619,7 @@ export async function createAdminConnectedAppAction(
     maxContextBytes: checkboxFormValue(formData, "maxContextBytesEnabled")
       ? parseOptionalPositiveInt(optionalFormValue(formData, "maxContextBytes"))
       : null,
+    modelMode: optionalFormValue(formData, "modelMode") ?? "auto",
     name: optionalFormValue(formData, "name") ?? "",
     rateLimitRps: checkboxFormValue(formData, "rateLimitRpsEnabled")
       ? parseOptionalPositiveInt(optionalFormValue(formData, "rateLimitRps"))
@@ -637,7 +638,8 @@ export async function createAdminConnectedAppAction(
     return {
       app: null,
       credential: null,
-      error: "Complete the app name, description, and model access.",
+      error:
+        "Enter a Key name. Manual model access also requires at least one approved model.",
       status: "failed",
     }
   }
@@ -647,8 +649,8 @@ export async function createAdminConnectedAppAction(
       "/api/admin/applications/connected-apps",
       parsed.data,
     )
-    revalidatePath("/applications")
-    revalidatePath(`/applications/apps/${result.app.id}`)
+    revalidatePath("/keys")
+    revalidatePath(`/keys/apps/${result.app.id}`)
     return {
       app: result.app,
       credential: result.credential,
@@ -661,7 +663,7 @@ export async function createAdminConnectedAppAction(
       credential: null,
       error: adminMutationErrorDetail(
         error,
-        "Connected app could not be created. Check the identity configuration and retry.",
+        "Key could not be created. Check the identity configuration and retry.",
       ),
       status: "failed",
     }
@@ -679,8 +681,8 @@ export async function checkAdminConnectedAppConnectionAction(
     const result = await postAdminConnectedAppTestMutation(
       `/api/admin/applications/connected-apps/${encodeURIComponent(appId)}/test`,
     )
-    revalidatePath("/applications")
-    revalidatePath(`/applications/apps/${result.app.id}`)
+    revalidatePath("/keys")
+    revalidatePath(`/keys/apps/${result.app.id}`)
     return {
       app: result.app,
       detail: result.detail,
@@ -715,8 +717,8 @@ export async function rotateAdminConnectedAppCredentialsAction(
         appId,
       )}/rotate-credentials`,
     )
-    revalidatePath("/applications")
-    revalidatePath(`/applications/apps/${result.app.id}`)
+    revalidatePath("/keys")
+    revalidatePath(`/keys/apps/${result.app.id}`)
     return {
       app: result.app,
       credential: result.credential,
@@ -749,8 +751,8 @@ export async function revokeAdminConnectedAppCredentialAction(
         appId,
       )}/credentials/${encodeURIComponent(credentialId)}/revoke`,
     )
-    revalidatePath("/applications")
-    revalidatePath(`/applications/apps/${app.id}`)
+    revalidatePath("/keys")
+    revalidatePath(`/keys/apps/${app.id}`)
     return {
       app,
       credential: null,
@@ -1054,6 +1056,7 @@ export async function updateAdminConnectedAppPolicyAction(
     maxContextBytes: checkboxFormValue(formData, "maxContextBytesEnabled")
       ? parseOptionalPositiveInt(optionalFormValue(formData, "maxContextBytes"))
       : null,
+    modelMode: optionalFormValue(formData, "modelMode") ?? "auto",
     name: optionalFormValue(formData, "name") ?? "",
     rateLimitRps: checkboxFormValue(formData, "rateLimitRpsEnabled")
       ? parseOptionalPositiveInt(optionalFormValue(formData, "rateLimitRps"))
@@ -1082,8 +1085,8 @@ export async function updateAdminConnectedAppPolicyAction(
     redirectTo(withActionStatus(fallback, "appAction", "failed"))
   }
 
-  revalidatePath("/applications")
-  revalidatePath(`/applications/apps/${appId}`)
+  revalidatePath("/keys")
+  revalidatePath(`/keys/apps/${appId}`)
   redirectTo(withActionStatus(fallback, "appAction", "updated"))
 }
 
@@ -1105,8 +1108,8 @@ export async function disableAdminConnectedAppAction(
     redirectTo(withActionStatus(fallback, "appAction", "failed"))
   }
 
-  revalidatePath("/applications")
-  revalidatePath(`/applications/apps/${appId}`)
+  revalidatePath("/keys")
+  revalidatePath(`/keys/apps/${appId}`)
   redirectTo(withActionStatus(fallback, "appAction", "disabled"))
 }
 
@@ -1128,8 +1131,8 @@ export async function enableAdminConnectedAppAction(
     redirectTo(withActionStatus(fallback, "appAction", "failed"))
   }
 
-  revalidatePath("/applications")
-  revalidatePath(`/applications/apps/${appId}`)
+  revalidatePath("/keys")
+  revalidatePath(`/keys/apps/${appId}`)
   redirectTo(withActionStatus(fallback, "appAction", "reenabled"))
 }
 
@@ -1138,7 +1141,7 @@ export async function softDeleteAdminConnectedAppAction(
 ): Promise<void> {
   await requireCapability("applications.create_delete")
   const appId = requiredFormValue(formData, "appId")
-  const fallback = "/applications"
+  const fallback = "/keys"
   const parsed = adminConnectedAppDeleteRequestSchema.safeParse({
     confirmation: optionalFormValue(formData, "confirmation"),
   })
@@ -1168,8 +1171,8 @@ export async function softDeleteAdminConnectedAppAction(
     )
   }
 
-  revalidatePath("/applications")
-  revalidatePath(`/applications/apps/${appId}`)
+  revalidatePath("/keys")
+  revalidatePath(`/keys/apps/${appId}`)
   redirectTo(withActionStatus(fallback, "appAction", "deleted"))
 }
 
@@ -1199,7 +1202,7 @@ function consoleElevationReturnPath(
     capability.startsWith("applications.") ||
     capability.startsWith("firecrawl.")
   ) {
-    return "/applications"
+    return "/keys"
   }
   if (capability.startsWith("team.")) {
     return "/team"
@@ -1282,8 +1285,8 @@ async function patchAdminConnectedAppFirecrawlMutation(
 }
 
 function revalidateConnectedApp(appId: string): void {
-  revalidatePath("/applications")
-  revalidatePath(`/applications/apps/${appId}`)
+  revalidatePath("/keys")
+  revalidatePath(`/keys/apps/${appId}`)
 }
 
 async function patchAdminConnectedAppMutation(path: string, body: unknown) {
@@ -1482,7 +1485,7 @@ function consoleUnavailableSessionHref(returnTo: string): string {
 
 function consoleMutationReturnPath(path: string): string {
   if (path.startsWith("/api/admin/applications/")) {
-    return "/applications"
+    return "/keys"
   }
   if (path.startsWith("/api/admin/team/")) {
     return "/team"
@@ -1637,7 +1640,7 @@ function parseOptionalPositiveInt(value: string | null): number | null {
 function connectedAppReturnHref(formData: FormData, appId: string): string {
   return sanitizeApplicationsReturnTo(
     optionalFormValue(formData, "returnTo"),
-    `/applications/apps/${appId}`,
+    `/keys/apps/${appId}`,
   )
 }
 
@@ -1667,14 +1670,12 @@ function sanitizeApplicationsReturnTo(
   value: string | null,
   fallback: string,
 ): string {
-  const safeFallback = fallback.startsWith("/applications")
-    ? fallback
-    : "/applications"
+  const safeFallback = fallback.startsWith("/keys") ? fallback : "/keys"
   if (!value) {
     return safeFallback
   }
   const [path, query = ""] = value.split("?")
-  if (!path.startsWith("/applications")) {
+  if (!path.startsWith("/keys")) {
     return safeFallback
   }
   const allowed = new URLSearchParams()

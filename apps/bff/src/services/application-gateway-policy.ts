@@ -1,5 +1,6 @@
 export interface ApplicationGatewayPolicyIdentity {
   allowedModels: readonly string[]
+  modelMode: "auto" | "manual"
   status: "disabled" | "enabled"
 }
 
@@ -19,7 +20,11 @@ export function evaluateApplicationGatewayPolicy(
       title: "Connected app disabled",
     }
   }
-  if (requestedModel && !application.allowedModels.includes(requestedModel)) {
+  if (
+    application.modelMode === "manual" &&
+    requestedModel &&
+    !application.allowedModels.includes(requestedModel)
+  ) {
     return {
       detail: "The connected app is not allowed to use the requested model.",
       ok: false,

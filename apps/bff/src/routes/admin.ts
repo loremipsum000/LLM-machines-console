@@ -62,6 +62,7 @@ import {
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Actor } from "../auth/authorization"
 import { withAdminOnly, withCapability } from "../auth/authorization"
+import { canUseBffFixtureData } from "../config/fixture-mode"
 import { getInferenceCoreDb } from "../db/inference-core-client"
 import {
   AdminAlertEgressConflictError,
@@ -1101,8 +1102,8 @@ export function registerAdminRoutes(
       if (!body.success) {
         return invalidRequest(
           reply,
-          "Invalid connected app request",
-          "Name, description, allowed models, and optional limits are required.",
+          "Invalid key request",
+          "Key name is required. Manual model access also requires at least one approved model.",
         )
       }
       return withAdminIdempotentMutation(
@@ -1111,6 +1112,13 @@ export function registerAdminRoutes(
         "POST /api/admin/applications/connected-apps",
         body.data,
         async (actor, identityContext) => {
+          const modelPolicyFailure = await validateConnectedAppModelPolicy(
+            actor,
+            body.data,
+          )
+          if (modelPolicyFailure) {
+            return modelPolicyFailure
+          }
           const revealPreflight = preflightConnectedAppCredentialReveal(
             body.data.authMethod,
           )
@@ -1172,8 +1180,8 @@ export function registerAdminRoutes(
       if (!body.success) {
         return invalidRequest(
           reply,
-          "Invalid connected app update",
-          "A valid connected app configuration is required.",
+          "Invalid key update",
+          "A valid Key configuration is required.",
         )
       }
       return withAdminIdempotentMutation(
@@ -1182,6 +1190,13 @@ export function registerAdminRoutes(
         "PATCH /api/admin/applications/connected-apps/:id",
         { id, body: body.data },
         async (actor) => {
+          const modelPolicyFailure = await validateConnectedAppModelPolicy(
+            actor,
+            body.data,
+          )
+          if (modelPolicyFailure) {
+            return modelPolicyFailure
+          }
           const result = await updateAdminConnectedApp(actor, id, body.data)
           return result.status === "not_found"
             ? connectedAppNotFound()
@@ -1649,7 +1664,7 @@ export function registerAdminRoutes(
         return invalidRequest(
           reply,
           "Invalid connected app delete request",
-          "Deleting an Application requires exact DELETE APPLICATION confirmation.",
+          "Deleting a Key requires exact DELETE KEY confirmation.",
         )
       }
       return withAdminIdempotentMutation(
@@ -2345,6 +2360,45 @@ function serviceUnavailable(
     payload: { type: "about:blank", title, status: 503, detail },
     statusCode: 503,
   }
+}
+
+async function validateConnectedAppModelPolicy(
+  actor: Actor,
+  request: {
+    allowedModels: string[]
+    modelMode: "auto" | "manual"
+  },
+): Promise<{ payload: unknown; statusCode: number } | null> {
+  if (request.modelMode === "auto") {
+    return null
+  }
+  if (
+    canUseBffFixtureData() &&
+    (!process.env.ADMIN_LITELLM_BASE_URL || !process.env.ADMIN_LITELLM_API_KEY)
+  ) {
+    return null
+  }
+  const inventory = await getAdminInference(actor, { range: "7d" })
+  if (inventory.modelInventorySourceStatus !== "ok") {
+    return serviceUnavailable(
+      "Key model inventory unavailable",
+      "Manual model access cannot be changed until the active approved LiteLLM inventory is available.",
+    )
+  }
+  const approved = new Set(inventory.models.map((model) => model.name))
+  if (request.allowedModels.some((model) => !approved.has(model))) {
+    return {
+      payload: {
+        type: "about:blank",
+        title: "Invalid Key model access",
+        status: 400,
+        detail:
+          "Manual model access may include only aliases in the active approved LiteLLM inventory.",
+      },
+      statusCode: 400,
+    }
+  }
+  return null
 }
 
 function notFoundPayload(subject: string): Record<string, unknown> {

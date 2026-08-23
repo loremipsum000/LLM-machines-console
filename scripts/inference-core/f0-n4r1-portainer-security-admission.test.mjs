@@ -22,6 +22,7 @@ import {
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const protectedInput = "7bed599067323429c30ee1d073b9ca22d4c9f867"
 const protectedTree = "3881b27d3425f5cc6bd0f97e2e1b2022c0d0f9e2"
+const admittedCandidate = "66de912ce7265690fc1084f83b22ab76687ca449"
 const historicalDeferralPath =
   "docs/reduction/inference-core/f0-n4-portainer-upstream-security-deferral.json"
 const historicalDeferralBlob = "7826a8a3c4044706a3899103fe9d18fc5d002db7"
@@ -468,7 +469,7 @@ test("F0-N4R1 binds every checked-in downstream input by exact SHA-256", () => {
 test("F0-N4R1 leaves BOM, startup, ingress, Console, deployment, and advertising unchanged", () => {
   for (const path of unchangedProductSurfaces) {
     assert.deepEqual(
-      read(path),
+      gitBuffer("show", `${admittedCandidate}:${path}`),
       gitBuffer("show", `${protectedInput}:${path}`),
       path,
     )

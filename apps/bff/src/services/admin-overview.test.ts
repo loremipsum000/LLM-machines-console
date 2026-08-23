@@ -78,7 +78,7 @@ describe("Admin Overview aggregation", () => {
     ])
     expect(overview.tiles[0]).toMatchObject({
       metrics: [
-        { label: "Applications", value: "2" },
+        { label: "Keys", value: "2" },
         { label: "Connected", value: "1" },
         { label: "Firecrawl enabled", value: "1" },
       ],

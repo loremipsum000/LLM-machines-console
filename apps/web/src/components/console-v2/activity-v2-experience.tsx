@@ -174,7 +174,7 @@ function ActivityFiltersPanel({
 
       {filters.applicationId ? (
         <p className="mt-3 rounded-md border border-[#244b5e] bg-[#1d3038] px-3 py-2 text-xs leading-5 text-[#9fdfff]">
-          Application identifier: {filters.applicationId}
+          Key identifier: {filters.applicationId}
         </p>
       ) : null}
 

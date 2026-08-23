@@ -25,10 +25,8 @@ describe("OverviewV2Experience", () => {
     const region = screen.getByRole("region", { name: "Operational overview" })
     expect(within(region).getAllByRole("article")).toHaveLength(4)
     expect(
-      screen
-        .getByRole("link", { name: "Open Applications" })
-        .getAttribute("href"),
-    ).toBe("/applications")
+      screen.getByRole("link", { name: "Open Keys" }).getAttribute("href"),
+    ).toBe("/keys")
     expect(screen.getByText("1,250")).toBeTruthy()
     expect(screen.getByText("qwen-local")).toBeTruthy()
     expect(screen.getByText("7/8")).toBeTruthy()
@@ -103,8 +101,8 @@ function overviewFixture() {
     activitySourceStatus: "ok",
     generatedAt,
     tiles: [
-      tileFixture("applications", "Applications", "/applications", [
-        metricFixture("applications", "Applications", "2"),
+      tileFixture("applications", "Keys", "/applications", [
+        metricFixture("applications", "Keys", "2"),
         metricFixture("connected", "Connected", "1"),
       ]),
       tileFixture("inference", "Inference", "/inference", [

@@ -39,7 +39,7 @@ const connectedApp: AdminConnectedApp = {
     },
   ],
   description: "Retained connected application test fixture.",
-  detailHref: "/applications/apps/app-1",
+  detailHref: "/keys/apps/app-1",
   firecrawl: {
     connectionStatus: "not_connected",
     credentials: [],
@@ -55,6 +55,7 @@ const connectedApp: AdminConnectedApp = {
   lastConnectedAt: null,
   maxConcurrentRequests: null,
   maxContextBytes: null,
+  modelMode: "manual",
   name: "Retained App",
   rateLimitRps: null,
   status: "enabled",
@@ -181,9 +182,7 @@ describe("inference-core Admin actions", () => {
         },
         formData,
       ),
-    ).rejects.toThrow(
-      "redirect:/auth/signin?session=expired&returnTo=%2Fapplications",
-    )
+    ).rejects.toThrow("redirect:/auth/signin?session=expired&returnTo=%2Fkeys")
     expect(mocks.redirect).toHaveBeenCalledTimes(1)
     expect(mocks.getBffRequest).not.toHaveBeenCalled()
     expect(fetchSpy).not.toHaveBeenCalled()
@@ -211,7 +210,7 @@ describe("inference-core Admin actions", () => {
         },
         formData,
       ),
-    ).rejects.toThrow("redirect:/auth/unavailable?returnTo=%2Fapplications")
+    ).rejects.toThrow("redirect:/auth/unavailable?returnTo=%2Fkeys")
     expect(mocks.redirect).toHaveBeenCalledTimes(1)
     expect(mocks.getBffRequest).not.toHaveBeenCalled()
     expect(fetchSpy).not.toHaveBeenCalled()
@@ -238,9 +237,7 @@ describe("inference-core Admin actions", () => {
         },
         formData,
       ),
-    ).rejects.toThrow(
-      "redirect:/auth/signin?session=expired&returnTo=%2Fapplications",
-    )
+    ).rejects.toThrow("redirect:/auth/signin?session=expired&returnTo=%2Fkeys")
     expect(mocks.redirect).toHaveBeenCalledTimes(1)
     expect(fetchSpy).not.toHaveBeenCalled()
   })
@@ -292,9 +289,7 @@ describe("inference-core Admin actions", () => {
         },
         formData,
       ),
-    ).rejects.toThrow(
-      "redirect:/auth/signin?session=expired&returnTo=%2Fapplications",
-    )
+    ).rejects.toThrow("redirect:/auth/signin?session=expired&returnTo=%2Fkeys")
     expect(mocks.redirect).toHaveBeenCalledTimes(1)
     expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
@@ -569,7 +564,7 @@ describe("inference-core Admin actions", () => {
     await expect(
       updateAdminConnectedAppFirecrawlPolicyAction(formData),
     ).rejects.toThrow(
-      `redirect:/applications/apps/${connectedApp.id}?appAction=firecrawlUpdated`,
+      `redirect:/keys/apps/${connectedApp.id}?appAction=firecrawlUpdated`,
     )
     expect(fetchSpy).toHaveBeenCalledWith(
       `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}/firecrawl`,
@@ -652,9 +647,10 @@ describe("inference-core Admin actions", () => {
     formData.set("name", "Updated Application")
     formData.set("description", "Updated policy")
     formData.append("allowedModels", "stable-alias")
+    formData.set("modelMode", "manual")
 
     await expect(updateAdminConnectedAppPolicyAction(formData)).rejects.toThrow(
-      `redirect:/applications/apps/${connectedApp.id}?appAction=updated`,
+      `redirect:/keys/apps/${connectedApp.id}?appAction=updated`,
     )
     expect(fetchSpy).toHaveBeenCalledWith(
       `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}`,
@@ -664,6 +660,7 @@ describe("inference-core Admin actions", () => {
           description: "Updated policy",
           maxConcurrentRequests: null,
           maxContextBytes: null,
+          modelMode: "manual",
           name: "Updated Application",
           rateLimitRps: null,
           tokenAlertThreshold7d: null,
@@ -691,6 +688,7 @@ describe("inference-core Admin actions", () => {
     formData.set("name", "Protected Application")
     formData.set("description", "Explicit service protections")
     formData.append("allowedModels", "stable-alias")
+    formData.set("modelMode", "manual")
     formData.set("rateLimitRpsEnabled", "on")
     formData.set("rateLimitRps", "25")
     formData.set("maxConcurrentRequestsEnabled", "on")
@@ -701,7 +699,7 @@ describe("inference-core Admin actions", () => {
     formData.set("tokenAlertThreshold7d", "1000000")
 
     await expect(updateAdminConnectedAppPolicyAction(formData)).rejects.toThrow(
-      `redirect:/applications/apps/${connectedApp.id}?appAction=updated`,
+      `redirect:/keys/apps/${connectedApp.id}?appAction=updated`,
     )
     expect(fetchSpy).toHaveBeenCalledWith(
       `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}`,
@@ -711,6 +709,7 @@ describe("inference-core Admin actions", () => {
           description: "Explicit service protections",
           maxConcurrentRequests: 8,
           maxContextBytes: 65_536,
+          modelMode: "manual",
           name: "Protected Application",
           rateLimitRps: 25,
           tokenAlertThreshold7d: 1_000_000,
@@ -731,11 +730,12 @@ describe("inference-core Admin actions", () => {
     formData.set("name", "Unsafe context application")
     formData.set("description", "Must fail before the BFF call")
     formData.append("allowedModels", "stable-alias")
+    formData.set("modelMode", "manual")
     formData.set("maxContextBytesEnabled", "on")
     formData.set("maxContextBytes", "9007199254740992")
 
     await expect(updateAdminConnectedAppPolicyAction(formData)).rejects.toThrow(
-      `redirect:/applications/apps/${connectedApp.id}?appAction=invalid`,
+      `redirect:/keys/apps/${connectedApp.id}?appAction=invalid`,
     )
     expect(fetchSpy).not.toHaveBeenCalled()
   })
@@ -748,7 +748,7 @@ describe("inference-core Admin actions", () => {
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const formData = new FormData()
     formData.set("appId", connectedApp.id)
-    formData.set("confirmation", "DELETE APPLICATION")
+    formData.set("confirmation", "DELETE KEY")
 
     await expect(softDeleteAdminConnectedAppAction(formData)).rejects.toThrow(
       "Authorized Console session required.",
@@ -771,12 +771,12 @@ describe("inference-core Admin actions", () => {
     )
 
     await expect(softDeleteAdminConnectedAppAction(formData)).rejects.toThrow(
-      "redirect:/applications?appAction=deleted",
+      "redirect:/keys?appAction=deleted",
     )
     expect(fetchSpy).toHaveBeenLastCalledWith(
       `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}`,
       expect.objectContaining({
-        body: JSON.stringify({ confirmation: "DELETE APPLICATION" }),
+        body: JSON.stringify({ confirmation: "DELETE KEY" }),
         method: "DELETE",
       }),
     )

@@ -67,7 +67,7 @@ describe("role-aware Console presentation", () => {
     )
 
     expect(screen.getByText("Desktop client")).toBeTruthy()
-    expect(screen.queryByRole("link", { name: "Add app" })).toBeNull()
+    expect(screen.queryByRole("link", { name: "Create Key" })).toBeNull()
     expect(screen.queryByText("Application deleted.")).toBeNull()
 
     rerender(
@@ -115,7 +115,7 @@ describe("role-aware Console presentation", () => {
     expect(screen.queryByText("Prompts")).toBeNull()
     expect(screen.getAllByText("7D total")).toHaveLength(2)
     expect(screen.queryByText(/average/i)).toBeNull()
-    expect(screen.getByText(/managed per Application in Console/)).toBeTruthy()
+    expect(screen.getByText(/managed per Key in Console/)).toBeTruthy()
     expect(screen.queryByRole("link", { name: /Open LiteLLM/ })).toBeNull()
     expect(screen.queryByText(/model update/i)).toBeNull()
 
@@ -409,6 +409,7 @@ const connectedApp: AdminConnectedApp = {
   lastConnectedAt: null,
   maxConcurrentRequests: null,
   maxContextBytes: null,
+  modelMode: "manual",
   name: "Desktop client",
   rateLimitRps: null,
   status: "enabled",
