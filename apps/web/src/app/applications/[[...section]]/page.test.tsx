@@ -1,32 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
-const { redirectMock } = vi.hoisted(() => ({ redirectMock: vi.fn() }))
+const { renderMock } = vi.hoisted(() => ({
+  renderMock: vi.fn(() => "keys-page"),
+}))
 
-vi.mock("next/navigation", () => ({ redirect: redirectMock }))
+vi.mock("@/lib/admin/console-v2-routes-core", () => ({
+  renderApplicationsConsoleRoute: renderMock,
+}))
 
 import ApplicationsPage from "./page"
 
-describe("legacy Applications route", () => {
-  beforeEach(() => redirectMock.mockReset())
-
-  it("redirects the root route to canonical Keys", async () => {
-    await ApplicationsPage({})
-    expect(redirectMock).toHaveBeenCalledWith("/keys")
-  })
-
-  it("preserves creation, detail, and safe return parameters", async () => {
-    await ApplicationsPage({
-      params: Promise.resolve({ section: ["apps", "key id"] }),
-      searchParams: Promise.resolve({ appAction: "created", range: "7d" }),
+describe("retained Application domain page", () => {
+  it("renders detail and creation sections through the shared Keys experience", async () => {
+    const searchParams = Promise.resolve({ appAction: "created" })
+    await expect(
+      ApplicationsPage({
+        params: Promise.resolve({ section: ["apps", "key id"] }),
+        searchParams,
+      }),
+    ).resolves.toBe("keys-page")
+    expect(renderMock).toHaveBeenCalledWith({
+      section: ["apps", "key id"],
+      searchParams,
     })
-    expect(redirectMock).toHaveBeenCalledWith(
-      "/keys/apps/key%20id?appAction=created&range=7d",
-    )
-
-    redirectMock.mockReset()
-    await ApplicationsPage({
-      params: Promise.resolve({ section: ["apps", "new"] }),
-    })
-    expect(redirectMock).toHaveBeenCalledWith("/keys/apps/new")
   })
 })
