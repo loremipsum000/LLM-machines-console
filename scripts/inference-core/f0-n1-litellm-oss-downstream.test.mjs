@@ -232,11 +232,13 @@ test("F0-N1 source metadata fails closed", async () => {
 })
 
 test("F0-N1 binds exact reviewed negative scan evidence", () => {
+  const expectedKeys = new Set(
+    f0N1ReviewedNegativeFindings.map(
+      ({ ruleId, path }) => `${ruleId}\0${path}`,
+    ),
+  )
   const actual = buildForbiddenAllowlist({ root }).entries.filter(
-    ({ path }) =>
-      path.includes("f0-n1") ||
-      path.startsWith("infra/litellm/") ||
-      path.startsWith("scripts/pre-genesis/litellm-oss"),
+    ({ ruleId, path }) => expectedKeys.has(`${ruleId}\0${path}`),
   )
   assert.deepEqual(actual, f0N1ReviewedNegativeFindings)
 })

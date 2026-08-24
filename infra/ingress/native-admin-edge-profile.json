@@ -79,6 +79,41 @@
       "user_id"
     ],
     "litellm-models": ["include_model_access_groups", "return_wildcard_routes"],
+    "litellm-model-group-info": ["model_group"],
+    "litellm-model-info-v2": [
+      "exclude_auto_routers",
+      "include_team_models",
+      "modelId",
+      "page",
+      "search",
+      "size",
+      "sortBy",
+      "sortOrder",
+      "teamId"
+    ],
+    "litellm-spend-logs-ui": [
+      "api_key",
+      "end_date",
+      "end_user",
+      "error_code",
+      "error_message",
+      "key_alias",
+      "max_spend",
+      "min_spend",
+      "model",
+      "model_group",
+      "model_id",
+      "page",
+      "page_size",
+      "request_id",
+      "session_id",
+      "sort_by",
+      "sort_order",
+      "start_date",
+      "status_filter",
+      "team_id",
+      "user_id"
+    ],
     "litellm-team-list": ["page", "page_size", "user_id"],
     "litellm-team-list-v1": ["user_id"],
     "keycloak-console": ["code", "iss", "session_state", "state"],
@@ -358,6 +393,25 @@
           "queryPolicy": "litellm-ui"
         },
         {
+          "id": "ui-page-canonicalization",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$"
+          },
+          "queryPolicy": "litellm-ui",
+          "behavior": "EDGE_308_TO_HTTPS_TRAILING_SLASH"
+        },
+        {
+          "id": "ui-pages",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$"
+          },
+          "queryPolicy": "litellm-ui"
+        },
+        {
           "id": "login-redirect",
           "methods": ["GET", "HEAD"],
           "path": { "kind": "regex", "value": "^/ui/login/?$" },
@@ -436,6 +490,27 @@
           "queryPolicy": "litellm-models"
         },
         {
+          "id": "model-group-info",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/model_group/info" },
+          "queryPolicy": "litellm-model-group-info",
+          "authorization": "proxy_admin only; enforced by the admitted downstream"
+        },
+        {
+          "id": "model-info-v2",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/v2/model/info" },
+          "queryPolicy": "litellm-model-info-v2",
+          "authorization": "proxy_admin only; agents excluded by the admitted downstream"
+        },
+        {
+          "id": "spend-logs-ui",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/spend/logs/ui" },
+          "queryPolicy": "litellm-spend-logs-ui",
+          "authorization": "proxy_admin metadata list only; detail route remains denied"
+        },
+        {
           "id": "team-list",
           "methods": ["GET", "HEAD"],
           "path": { "kind": "exact", "value": "/v2/team/list" },
@@ -453,6 +528,15 @@
           "path": {
             "kind": "regex",
             "value": "^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "ui-settings-and-branding-reads",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/(?:get/ui_settings|get/ui_theme_settings|get_image|get_favicon|health/license|health/readiness/details|sso/get/ui_settings)$"
           },
           "queryPolicy": "forbid"
         },

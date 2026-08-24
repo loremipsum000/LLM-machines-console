@@ -704,6 +704,79 @@ test("only the exact Keycloak logout confirmation route is retained", () => {
   )
 })
 
+test("LiteLLM UI shells are explicit and retired surfaces remain absent", () => {
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  const uiPages = profile.services.litellm.routes.find(
+    ({ id }) => id === "ui-pages",
+  )
+  const canonicalization = profile.services.litellm.routes.find(
+    ({ id }) => id === "ui-page-canonicalization",
+  )
+  assert.ok(uiPages)
+  assert.ok(canonicalization)
+  const route = new RegExp(uiPages.path.value)
+  const canonicalRoute = new RegExp(canonicalization.path.value)
+
+  for (const path of [
+    "/ui/api-keys/",
+    "/ui/models-and-endpoints/",
+    "/ui/usage/",
+    "/ui/users/",
+    "/ui/router-settings/",
+  ])
+    assert.equal(route.test(path), true, path)
+
+  for (const path of ["/ui/api-keys", "/ui/usage"])
+    assert.equal(canonicalRoute.test(path), true, path)
+
+  for (const path of [
+    "/ui/mcp-servers",
+    "/ui/agents",
+    "/ui/memory",
+    "/ui/skills",
+    "/ui/vector-stores",
+    "/ui/unreviewed",
+    "/ui/api-keys/extra",
+  ])
+    assert.equal(route.test(path), false, path)
+
+  assert.equal(uiPages.queryPolicy, "litellm-ui")
+  assert.deepEqual(uiPages.methods, ["GET", "HEAD"])
+  assert.equal(canonicalization.behavior, "EDGE_308_TO_HTTPS_TRAILING_SLASH")
+  assert.doesNotMatch(
+    sources["product-edge.nginx.conf.template"],
+    /location\s+~\s+\^\/ui\/\.\*/,
+  )
+})
+
+test("LiteLLM Admin-page reads stay exact, metadata-only, and non-mutating", () => {
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  const routes = profile.services.litellm.routes
+  for (const [id, path] of [
+    ["model-group-info", "/model_group/info"],
+    ["model-info-v2", "/v2/model/info"],
+    ["spend-logs-ui", "/spend/logs/ui"],
+  ]) {
+    const route = routes.find((candidate) => candidate.id === id)
+    assert.equal(route.path.kind, "exact")
+    assert.equal(route.path.value, path)
+    assert.deepEqual(route.methods, ["GET", "HEAD"])
+  }
+
+  const nginx = sources["product-edge.nginx.conf.template"]
+  assert.doesNotMatch(nginx, /location\s*=\s*\/config\/list/)
+  assert.doesNotMatch(nginx, /location[^\n]*\/spend\/logs\/ui\//)
+  assert.doesNotMatch(nginx, /audit-logs-preview\.png/)
+
+  const broadened = changed("product-edge.nginx.conf.template", (source) =>
+    source.replace(
+      "location = /spend/logs/ui {",
+      "location ^~ /spend/logs/ui {",
+    ),
+  )
+  assert.ok(validateIngressSources(broadened).length > 0)
+})
+
 test("native listener inventory cannot omit Core or delivery-profile ports", () => {
   const policy = JSON.parse(sources["no-bypass-policy.json"])
   policy.customerNetwork.deniedNativeTcpPorts =

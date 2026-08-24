@@ -355,11 +355,11 @@
   "gateway": {
     "sourceProfile": {
       "path": "infra/ingress/native-admin-edge-profile.json",
-      "sha256": "sha256:2868d8e0bcc8dab84f1acff75c85c8ccae188316e7a1d61f3d21228e2276e6b0"
+      "sha256": "sha256:51f8b16ddb3b5924baf5fb2a3101ed4ba9257f39a930a4400b47169e2759f84a"
     },
     "edgeTemplate": {
       "path": "infra/ingress/product-edge.nginx.conf.template",
-      "sha256": "sha256:f995e2c7c7cb0577608f14fbf60c45d598b3508501c14bfc31258aa7d55b32ab"
+      "sha256": "sha256:fd546a5a8d26ddb5697ebca56a5a344a4d2336d280704df55697c7394590a3ae"
     },
     "gatewayUpstream": "VM103_PRIVATE_ADDRESS:18443",
     "gatewayForwardsHost": true,

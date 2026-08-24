@@ -113,6 +113,23 @@ http {
     ~^(?:include_model_access_groups|return_wildcard_routes)=[^&]*(?:&(?:include_model_access_groups|return_wildcard_routes)=[^&]*)*$ 1;
   }
 
+  map $args $llmm_query_litellm_model_group_info {
+    default 0;
+    "" 1;
+    ~^model_group=[^&]*$ 1;
+  }
+
+  map $args $llmm_query_litellm_model_info_v2 {
+    default 0;
+    "" 1;
+    ~^(?:exclude_auto_routers|include_team_models|modelId|page|search|size|sortBy|sortOrder|teamId)=[^&]*(?:&(?:exclude_auto_routers|include_team_models|modelId|page|search|size|sortBy|sortOrder|teamId)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_litellm_spend_logs_ui {
+    default 0;
+    ~^(?:api_key|end_date|end_user|error_code|error_message|key_alias|max_spend|min_spend|model|model_group|model_id|page|page_size|request_id|session_id|sort_by|sort_order|start_date|status_filter|team_id|user_id)=[^&]*(?:&(?:api_key|end_date|end_user|error_code|error_message|key_alias|max_spend|min_spend|model|model_group|model_id|page|page_size|request_id|session_id|sort_by|sort_order|start_date|status_filter|team_id|user_id)=[^&]*)*$ 1;
+  }
+
   map $args $llmm_query_litellm_team_list {
     default 0;
     "" 1;
@@ -949,6 +966,23 @@ http {
       proxy_pass http://litellm_native;
     }
 
+    location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_ui = 0) { return 400; }
+      return 308 https://@@PRODUCT_LITELLM_HOST@@$uri/;
+    }
+
+    location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_ui = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://litellm_native;
+    }
+
     location ~ ^/ui/login/?$ {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_ui = 0) { return 400; }
@@ -1067,6 +1101,33 @@ http {
       proxy_pass http://litellm_native;
     }
 
+    location = /model_group/info {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_model_group_info = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /v2/model/info {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_model_info_v2 = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /spend/logs/ui {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_spend_logs_ui = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
     location = /v2/team/list {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_team_list = 0) { return 400; }
@@ -1086,6 +1147,15 @@ http {
     }
 
     location ~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location ~ ^/(?:get/ui_settings|get/ui_theme_settings|get_image|get_favicon|health/license|health/readiness/details|sso/get/ui_settings)$ {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }
       include /etc/nginx/llm-machines/proxy-common.inc;
