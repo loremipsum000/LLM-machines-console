@@ -10,6 +10,7 @@ describe("Console session runtime configuration", () => {
         "https://identity.example.test/realms/appliance/protocol/openid-connect/auth",
       consoleOrigin: "https://console.example.test",
       issuer: "https://identity.example.test/realms/appliance",
+      identityRequestTimeoutMs: 3000,
       jwksUrl:
         "https://identity.example.test/realms/appliance/protocol/openid-connect/certs",
       logoutEndpoint:

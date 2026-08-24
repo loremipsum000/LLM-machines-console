@@ -211,9 +211,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "fd546a5a8d26ddb5697ebca56a5a344a4d2336d280704df55697c7394590a3ae",
+    "575f73869a78e5644bb97e3ffc4ab64f47b766b02060f0679decfeedf6ddfae5",
   "native-admin-edge-profile.json":
-    "51f8b16ddb3b5924baf5fb2a3101ed4ba9257f39a930a4400b47169e2759f84a",
+    "7efbcfd91abf65e18863542ef19846486d0be2cbbc7268b77801510f70f12be8",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -450,6 +450,24 @@ function validateNativeAdmin(profile, errors) {
         consoleMaterialForwarded: false,
         tokensInUrls: false,
         serviceAvailabilityRequired: false,
+        keycloakEndSession: {
+          method: "SERVER_SIDE_CONFIDENTIAL_CLIENT_POST",
+          order: "BEFORE_NATIVE_BROWSER_CHAIN",
+          timeoutMs: 3000,
+          failureSkipsNativeChain: false,
+        },
+        nativeHops: {
+          grafana: {
+            timeoutSeconds: 2,
+            applicationFailureStatuses: [500],
+            outageFallback: "CLEAR_EXACT_NATIVE_COOKIES_AND_CONTINUE",
+          },
+          litellm: {
+            upstreamDependency: false,
+            behavior: "CLEAR_EXACT_NATIVE_COOKIES_AND_CONTINUE",
+          },
+        },
+        recoveredServiceMayReusePreLogoutBrowserSession: false,
       }),
     "native-admin edge boundary changed",
   )
@@ -963,6 +981,11 @@ function validateNginx(sources, errors) {
     nginx,
     "@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
   )
+  const grafanaGlobalLogout = exactLocationSection(grafanaServer, "= /logout")
+  const liteLlmGlobalLogout = exactLocationSection(
+    litellmServer,
+    "= /__llmm/global-logout",
+  )
   for (const [hostId, server] of Object.entries({
     api: apiServer,
     console: consoleServer,
@@ -1039,6 +1062,16 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
+    grafanaGlobalLogout.includes("proxy_connect_timeout 2s;") &&
+      grafanaGlobalLogout.includes("proxy_read_timeout 2s;") &&
+      grafanaGlobalLogout.includes("proxy_send_timeout 2s;") &&
+      grafanaGlobalLogout.includes(
+        "error_page 500 502 503 504 = @grafana_global_logout_fallback;",
+      ),
+    "Grafana global-logout timeout or outage continuation changed",
+  )
+  add(
+    errors,
     litellmServer.includes("proxy_pass http://litellm_native;") &&
       litellmServer.includes(
         "location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$",
@@ -1077,6 +1110,15 @@ function validateNginx(sources, errors) {
       ) &&
       !/location[^\n]*\^?\/(?:router|budget)/i.test(litellmServer),
     "LiteLLM native route boundary changed",
+  )
+  add(
+    errors,
+    liteLlmGlobalLogout.includes(
+      "return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;",
+    ) &&
+      !liteLlmGlobalLogout.includes("proxy_pass") &&
+      !liteLlmGlobalLogout.includes("proxy_intercept_errors"),
+    "LiteLLM global logout must remain independent of native availability",
   )
   add(
     errors,

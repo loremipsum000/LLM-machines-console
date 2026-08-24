@@ -171,6 +171,65 @@ test("identity outage recovery is fixed to the Console sign-in surface", () => {
   }
 })
 
+test("coordinated logout stays bounded and independent of native availability", () => {
+  for (const [before, after] of [
+    ["proxy_connect_timeout 2s;", "proxy_connect_timeout 30s;"],
+    ["proxy_read_timeout 2s;", "proxy_read_timeout 30s;"],
+    ["proxy_send_timeout 2s;", "proxy_send_timeout 30s;"],
+    [
+      "error_page 500 502 503 504 = @grafana_global_logout_fallback;",
+      "error_page 502 503 504 = @grafana_global_logout_fallback;",
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, after),
+      ),
+    )
+    assert.ok(result.some((error) => /global-logout|logout/i.test(error)))
+  }
+
+  const upstreamDependent = validateIngressSources(
+    changed("product-edge.nginx.conf.template", (source) =>
+      source.replace(
+        'location = /__llmm/global-logout {\n      limit_except GET HEAD { deny all; }\n      if ($llmm_query_none = 0) { return 400; }\n      add_header Cache-Control "no-store" always;\n      add_header Referrer-Policy "no-referrer" always;\n      add_header Set-Cookie "token=;',
+        'location = /__llmm/global-logout {\n      proxy_pass http://litellm_native;\n      limit_except GET HEAD { deny all; }\n      if ($llmm_query_none = 0) { return 400; }\n      add_header Cache-Control "no-store" always;\n      add_header Referrer-Policy "no-referrer" always;\n      add_header Set-Cookie "token=;',
+      ),
+    ),
+  )
+  assert.ok(
+    upstreamDependent.some((error) => /LiteLLM global logout/i.test(error)),
+  )
+
+  for (const mutate of [
+    (profile) => {
+      profile.edge.globalLogout.keycloakEndSession.timeoutMs = 30_000
+    },
+    (profile) => {
+      profile.edge.globalLogout.keycloakEndSession.order =
+        "AFTER_NATIVE_BROWSER_CHAIN"
+    },
+    (profile) => {
+      profile.edge.globalLogout.keycloakEndSession.failureSkipsNativeChain = true
+    },
+    (profile) => {
+      profile.edge.globalLogout.nativeHops.grafana.applicationFailureStatuses =
+        []
+    },
+    (profile) => {
+      profile.edge.globalLogout.recoveredServiceMayReusePreLogoutBrowserSession = true
+    },
+  ]) {
+    const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+    mutate(profile)
+    const result = validateIngressSources({
+      ...sources,
+      "native-admin-edge-profile.json": JSON.stringify(profile),
+    })
+    assert.ok(result.some((error) => /edge boundary/i.test(error)))
+  }
+})
+
 test("Console cookies, bearer tokens, and WebSockets stay separated", () => {
   const identityCookie = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>

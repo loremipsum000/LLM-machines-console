@@ -17,6 +17,7 @@ export interface ConsoleSessionRuntimeConfig {
   consoleOrigin: string
   elevationAcrValues?: string
   internalServiceCredential: string
+  identityRequestTimeoutMs: number
   issuer: string
   jwksUrl: string
   logoutEndpoint: string
@@ -69,6 +70,7 @@ export function readConsoleSessionRuntimeConfig(
       "CONSOLE_OIDC_ELEVATION_ACR_VALUES",
     ),
     internalServiceCredential: required(environment, "BFF_SERVICE_API_KEY"),
+    identityRequestTimeoutMs: 3000,
     issuer,
     jwksUrl: `${oidcBase}/certs`,
     logoutEndpoint: `${oidcBase}/logout`,
@@ -99,6 +101,7 @@ export function createConsoleSessionRuntimeFromEnv(input: {
       logoutEndpoint: config.logoutEndpoint,
       redirectUri: config.redirectUri,
       revocationEndpoint: config.revocationEndpoint,
+      timeoutMs: config.identityRequestTimeoutMs,
       tokenEndpoint: config.tokenEndpoint,
     })
     const validator = createConsoleTokenValidator({
