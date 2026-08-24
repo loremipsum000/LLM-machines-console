@@ -92,7 +92,9 @@ export function validateSidebarFunctionalCandidate(
       "SINGLE_VM103_FUNCTIONAL_BUILD_NOT_RELEASE_EVIDENCE" ||
     artifact?.buildCount !== 1 ||
     !ociDigestPattern.test(artifact?.configDigest ?? "") ||
-    artifact?.imageBytes !== 1144537365 ||
+    artifact?.configDigest !==
+      "sha256:ffdcf982db0992bb106d64c2b1b6a7120d7b549a53ca9a02aa640e11163ab145" ||
+    artifact?.imageBytes !== 1144519133 ||
     artifact?.os !== "linux" ||
     artifact?.architecture !== "amd64" ||
     artifact?.enterpriseMaterial !== false ||

@@ -29,8 +29,8 @@
   "labArtifact": {
     "evidenceStatus": "SINGLE_VM103_FUNCTIONAL_BUILD_NOT_RELEASE_EVIDENCE",
     "buildCount": 1,
-    "configDigest": "sha256:016054b38caf2950e3caa58a568242b5e7b14cdfabfa107b7cab7c5afb9f0888",
-    "imageBytes": 1144537365,
+    "configDigest": "sha256:ffdcf982db0992bb106d64c2b1b6a7120d7b549a53ca9a02aa640e11163ab145",
+    "imageBytes": 1144519133,
     "os": "linux",
     "architecture": "amd64",
     "enterpriseMaterial": false,
