@@ -111,4 +111,38 @@ describe("Console OIDC code and refresh client", () => {
     expect(String(init?.body)).toContain("refresh_token=server-only-refresh")
     expect(String(url)).not.toContain("server-only-refresh")
   })
+
+  it("bounds an unavailable Keycloak end-session request", async () => {
+    vi.useFakeTimers()
+    try {
+      const request = vi.fn(
+        async (_input: string | URL | Request, init?: RequestInit) =>
+          await new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              const error = new Error("aborted")
+              error.name = "AbortError"
+              reject(error)
+            })
+          }),
+      )
+      const client = createConsoleOidcClient(
+        { ...config, timeoutMs: 25 },
+        request as typeof fetch,
+      )
+      const ended = client.endSession("server-only-refresh")
+      const rejection = expect(ended).rejects.toMatchObject({
+        name: "AbortError",
+      })
+
+      await vi.advanceTimersByTimeAsync(25)
+
+      await rejection
+      expect(request).toHaveBeenCalledTimes(1)
+      expect(String(request.mock.calls[0]?.[0])).not.toContain(
+        "server-only-refresh",
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

@@ -810,6 +810,9 @@ http {
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
       proxy_set_header Host $llmm_public_host;
+      proxy_connect_timeout 2s;
+      proxy_read_timeout 2s;
+      proxy_send_timeout 2s;
       proxy_intercept_errors on;
       error_page 502 503 504 = @grafana_global_logout_fallback;
       proxy_pass http://grafana_native;

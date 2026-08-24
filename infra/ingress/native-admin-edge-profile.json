@@ -28,7 +28,24 @@
       "sequence": ["grafana", "litellm", "identity", "console"],
       "consoleMaterialForwarded": false,
       "tokensInUrls": false,
-      "serviceAvailabilityRequired": false
+      "serviceAvailabilityRequired": false,
+      "keycloakEndSession": {
+        "method": "SERVER_SIDE_CONFIDENTIAL_CLIENT_POST",
+        "order": "BEFORE_NATIVE_BROWSER_CHAIN",
+        "timeoutMs": 3000,
+        "failureSkipsNativeChain": false
+      },
+      "nativeHops": {
+        "grafana": {
+          "timeoutSeconds": 2,
+          "outageFallback": "CLEAR_EXACT_NATIVE_COOKIES_AND_CONTINUE"
+        },
+        "litellm": {
+          "upstreamDependency": false,
+          "behavior": "CLEAR_EXACT_NATIVE_COOKIES_AND_CONTINUE"
+        }
+      },
+      "recoveredServiceMayReusePreLogoutBrowserSession": false
     }
   },
   "authorityProvisioning": {
