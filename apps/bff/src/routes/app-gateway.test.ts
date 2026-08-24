@@ -1,6 +1,9 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { request as httpRequest } from "node:http"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import Fastify from "fastify"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
 import {
   type ChatCompletionsBody,
@@ -31,8 +34,13 @@ const isolationEngagementContext = {
   transitionId: "20000000-0000-4000-8000-000000000001",
 }
 let createCounter = 0
+let modelAdmissionDirectory: string | null = null
 
 describe("Connected app gateway routes", () => {
+  beforeEach(() => {
+    configureModelAdmissionFixture()
+  })
+
   afterEach(async () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
@@ -41,6 +49,10 @@ describe("Connected app gateway routes", () => {
     resetAuditEventsForTest()
     resetIdempotencyForTest()
     await resetConnectedAppsForTest()
+    if (modelAdmissionDirectory) {
+      await rm(modelAdmissionDirectory, { force: true, recursive: true })
+      modelAdmissionDirectory = null
+    }
   })
 
   it.each(["denied", "rejected"] as const)(
@@ -78,7 +90,7 @@ describe("Connected app gateway routes", () => {
         code: "application_traffic_unavailable",
         request_id: expect.any(String),
         status: 503,
-        title: "Application traffic unavailable",
+        title: "Key traffic unavailable",
       })
       expect(response.body).not.toContain("private isolation")
       expect(fetchMock).not.toHaveBeenCalled()
@@ -125,6 +137,9 @@ describe("Connected app gateway routes", () => {
       vi.stubGlobal("fetch", fetchMock)
       const adminServer = buildServer()
       const created = await createApp(adminServer, ["local-a"])
+      if (route === "models") {
+        configureAuthoritativeModelProjection(["local-a"])
+      }
       const token = bearerForCredential(created.credential)
       const admit = vi.fn<AppGatewayIsolationTrafficGate["admit"]>(
         async () => ({
@@ -382,6 +397,7 @@ describe("Connected app gateway routes", () => {
     vi.stubGlobal("fetch", fetchMock)
     const adminServer = buildServer()
     const created = await createApp(adminServer, ["local-a"])
+    configureAuthoritativeModelProjection(["local-a"])
     const token = bearerForCredential(created.credential)
     const gatewayServer = Fastify({ logger: false })
     registerAppGatewayRoutes(gatewayServer, { isolationGate })
@@ -471,16 +487,7 @@ describe("Connected app gateway routes", () => {
       const privateCanary = "private-final-send-canary"
       const fetchMock = vi.fn<typeof fetch>(async () =>
         route === "models"
-          ? Response.json({
-              data: [
-                {
-                  id: privateCanary,
-                  object: "model",
-                  owned_by: "llm-machines",
-                },
-              ],
-              object: "list",
-            })
+          ? modelInfoResponse([privateCanary])
           : Response.json({
               choices: [
                 {
@@ -497,6 +504,9 @@ describe("Connected app gateway routes", () => {
       vi.stubGlobal("fetch", fetchMock)
       const adminServer = buildServer()
       const created = await createApp(adminServer, [privateCanary])
+      if (route === "models") {
+        configureAuthoritativeModelProjection([privateCanary])
+      }
       const token = bearerForCredential(created.credential)
       const gatewayServer = Fastify({ logger: false })
       registerAppGatewayRoutes(gatewayServer, {
@@ -745,21 +755,11 @@ describe("Connected app gateway routes", () => {
   })
 
   it("routes connected app model and chat calls through policy and records only the model-list connection", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
-    vi.stubEnv("LITELLM_URL", "http://litellm.test")
-    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
+    configureGatewayEnvironment()
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        Response.json({
-          object: "list",
-          data: [
-            { id: "local-a", object: "model", owned_by: "llm-machines" },
-            { id: "local-b", object: "model", owned_by: "llm-machines" },
-          ],
-        }),
-      )
+      .mockResolvedValueOnce(modelInfoResponse(["local-a", "local-b"]))
+      .mockResolvedValueOnce(modelInfoResponse(["local-a", "local-b"]))
       .mockResolvedValueOnce(
         Response.json({
           id: "chatcmpl-app",
@@ -780,6 +780,7 @@ describe("Connected app gateway routes", () => {
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
     const created = await createApp(server, ["local-a"])
+    configureAuthoritativeModelProjection(["local-a", "local-b"])
     const token = bearerForCredential(created.credential)
 
     const modelsResponse = await server.inject({
@@ -810,12 +811,17 @@ describe("Connected app gateway routes", () => {
     expect(chatResponse.statusCode).toBe(200)
     expect(chatResponse.body).toContain("private completion")
     expect(chatResponse.body).not.toContain("internal-litellm-key")
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://litellm.test/v1/models")
-    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+    expect(fetchMock.mock.calls[0]?.[0]?.toString()).toBe(
+      "http://litellm.test/model/info",
+    )
+    expect(fetchMock.mock.calls[1]?.[0]?.toString()).toBe(
+      "http://litellm.test/model/info",
+    )
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(
       "http://litellm.test/v1/chat/completions",
     )
     expect(
-      (fetchMock.mock.calls[1]?.[1]?.headers as Record<string, string>)
+      (fetchMock.mock.calls[2]?.[1]?.headers as Record<string, string>)
         .Authorization,
     ).toBe("Bearer internal-litellm-key")
     expect(detailResponse.json().app.usage).toMatchObject({
@@ -872,37 +878,29 @@ describe("Connected app gateway routes", () => {
   })
 
   it("authorizes Auto chat from the live inventory and fails closed when it is unavailable", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-08-24T08:00:00.000Z"))
     configureGatewayEnvironment()
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        Response.json({
-          data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
-          object: "list",
-        }),
-      )
-      .mockResolvedValueOnce(
-        Response.json({
-          data: [
-            { id: "local-a", object: "model", owned_by: "llm-machines" },
-            {
-              id: "newly-admitted",
-              object: "model",
-              owned_by: "llm-machines",
-            },
-          ],
-          object: "list",
-        }),
-      )
-      .mockResolvedValueOnce(
-        Response.json({
+    await writeModelAdmissions([renderedAdmission("local-a", "profile-a")])
+    configureAuthoritativeModelProjection(["local-a"])
+    let configuredAliases = ["local-a"]
+    let projectionUnavailable = false
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(input.toString())
+      if (url.pathname === "/model/info" || url.pathname === "/v1/model/info") {
+        if (projectionUnavailable) throw new Error("projection unavailable")
+        return modelInfoResponse(configuredAliases)
+      }
+      if (url.pathname === "/v1/chat/completions") {
+        return Response.json({
           choices: [],
           id: "chatcmpl-auto",
           object: "chat.completion",
           usage: { completion_tokens: 0, prompt_tokens: 1, total_tokens: 1 },
-        }),
-      )
-      .mockRejectedValueOnce(new Error("inventory unavailable"))
+        })
+      }
+      throw new Error("unexpected upstream route")
+    })
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
     const created = await createApp(server, [], { modelMode: "auto" })
@@ -915,6 +913,11 @@ describe("Connected app gateway routes", () => {
     })
     expect(initialModels.json().data).toHaveLength(1)
 
+    await writeModelAdmissions([
+      renderedAdmission("local-a", "profile-a"),
+      renderedAdmission("newly-admitted", "profile-b"),
+    ])
+    configuredAliases = ["local-a", "newly-admitted"]
     const newlyAdmitted = await server.inject({
       method: "POST",
       url: "/api/app-gateway/v1/chat/completions",
@@ -926,6 +929,7 @@ describe("Connected app gateway routes", () => {
     })
     expect(newlyAdmitted.statusCode).toBe(200)
 
+    projectionUnavailable = true
     const unavailable = await server.inject({
       method: "POST",
       url: "/api/app-gateway/v1/chat/completions",
@@ -937,8 +941,31 @@ describe("Connected app gateway routes", () => {
     })
     expect(unavailable.statusCode).toBe(503)
     expect(unavailable.json()).toMatchObject({
-      title: "LiteLLM model list unavailable",
+      title: "Key model inventory unavailable",
+      detail:
+        "The active measured model admission projection is temporarily unavailable.",
     })
+
+    const fetchCountBeforeStale = fetchMock.mock.calls.length
+    await writeModelAdmissions([
+      renderedAdmission("local-a", "profile-a", "2026-08-23T00:00:00.000Z"),
+      renderedAdmission(
+        "newly-admitted",
+        "profile-b",
+        "2026-08-23T00:00:00.000Z",
+      ),
+    ])
+    const stale = await server.inject({
+      method: "GET",
+      url: "/api/app-gateway/v1/models",
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(stale.statusCode).toBe(503)
+    expect(stale.json()).toMatchObject({
+      title: "Key model inventory stale",
+      detail: "The active measured model admission evidence has expired.",
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(fetchCountBeforeStale)
     await server.close()
   })
 
@@ -994,8 +1021,7 @@ describe("Connected app gateway routes", () => {
 
     expect(response.statusCode).toBe(413)
     expect(response.json()).toMatchObject({
-      detail:
-        "The request exceeds this connected app's maximum context size in bytes.",
+      detail: "The request exceeds this Key's maximum context size in bytes.",
       title: "Context limit exceeded",
     })
     expect(fetchMock).not.toHaveBeenCalled()
@@ -1018,51 +1044,35 @@ describe("Connected app gateway routes", () => {
     await server.close()
   })
 
-  it("PR-07 fails the model list without partial data when an allowed alias is absent", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
-    vi.stubEnv("LITELLM_URL", "http://litellm.test")
-    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      Response.json({
-        data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
-        object: "list",
-      }),
-    )
+  it("rejects a Manual create when any selected alias is not admitted", async () => {
+    configureGatewayEnvironment()
+    configureAuthoritativeModelProjection(["local-a"])
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(modelInfoResponse(["local-a"]))
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
-    const created = await createApp(server, ["local-a", "local-b"])
-    const token = bearerForCredential(created.credential)
-
     const response = await server.inject({
-      method: "GET",
-      url: "/api/app-gateway/v1/models",
-      headers: { authorization: `Bearer ${token}` },
-    })
-    const detailResponse = await server.inject({
-      method: "GET",
-      url: `/api/admin/applications/connected-apps/${created.app.id}`,
-      headers: adminHeaders,
-    })
-
-    expect(response.statusCode).toBe(503)
-    expect(response.json()).toMatchObject({
-      detail: "One or more allowed LiteLLM model aliases are unavailable.",
-      title: "Allowed model unavailable",
-    })
-    expect(response.json()).not.toHaveProperty("data")
-    expect(response.body).not.toContain("local-a")
-    expect(response.body).not.toContain("local-b")
-    expect(fetchMock).toHaveBeenCalledOnce()
-    expect(detailResponse.json().app).toMatchObject({
-      connectionStatus: "degraded",
-      lastConnectedAt: null,
-      usage: {
-        failures7d: 1,
-        requests7d: 1,
-        tokens7d: 0,
+      method: "POST",
+      url: "/api/admin/applications/connected-apps",
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "manual-invalid-alias",
+      },
+      payload: {
+        allowedModels: ["local-a", "local-b"],
+        modelMode: "manual",
+        name: "Invalid Manual Key",
       },
     })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toMatchObject({
+      detail:
+        "Manual model access may include only aliases in the active approved LiteLLM inventory.",
+      title: "Invalid Key model access",
+    })
+    expect(fetchMock).toHaveBeenCalledOnce()
     await server.close()
   })
 
@@ -1289,6 +1299,12 @@ describe("Connected app gateway routes", () => {
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
     vi.stubEnv("LITELLM_URL", "http://litellm.example.test")
     vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
+    const server = buildServer()
+    const created = await createApp(server, ["local-a"])
+    configureAuthoritativeModelProjection(
+      ["local-a"],
+      "http://litellm.example.test",
+    )
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -1297,8 +1313,6 @@ describe("Connected app gateway routes", () => {
         )
       }),
     )
-    const server = buildServer()
-    const created = await createApp(server, ["local-a"])
     const token = bearerForCredential(created.credential)
 
     const response = await server.inject({
@@ -1314,8 +1328,9 @@ describe("Connected app gateway routes", () => {
 
     expect(response.statusCode).toBe(503)
     expect(response.json()).toMatchObject({
-      title: "LiteLLM model list unavailable",
-      detail: "LiteLLM model list request failed.",
+      title: "Key model inventory unavailable",
+      detail:
+        "The active measured model admission projection is temporarily unavailable.",
     })
     expect(response.body).not.toContain("litellm.example.test")
     expect(response.body).not.toContain("internal-litellm-key")
@@ -1443,10 +1458,10 @@ describe("Connected app gateway routes", () => {
       lastConnectedAt: null,
     })
     expect(disabled.statusCode).toBe(403)
-    expect(disabled.json()).toMatchObject({ title: "Connected app disabled" })
+    expect(disabled.json()).toMatchObject({ title: "Key disabled" })
     expect(unknown.statusCode).toBe(401)
     expect(unknown.json()).toMatchObject({
-      title: "Invalid connected app token",
+      title: "Invalid Key token",
     })
     expect(detailResponse.json().app).toMatchObject({
       connectionStatus: "not_connected",
@@ -1556,7 +1571,7 @@ describe("Connected app gateway routes", () => {
     })
     expect(locked.statusCode).toBe(401)
     expect(locked.json()).toMatchObject({
-      title: "Invalid connected app token",
+      title: "Invalid Key token",
     })
     expect(tested.statusCode).toBe(200)
     expect(tested.json()).toMatchObject({
@@ -1608,7 +1623,7 @@ describe("Connected app gateway routes", () => {
 
     expect(response.statusCode).toBe(401)
     expect(response.json()).toMatchObject({
-      title: "Invalid connected app token",
+      title: "Invalid Key token",
     })
     expect(detailResponse.json().app).toMatchObject({
       connectionStatus: "not_connected",
@@ -1718,15 +1733,11 @@ describe("Connected app gateway routes", () => {
         signalModelRequestStarted?.()
         return pendingModelResponse
       })
-      .mockResolvedValueOnce(
-        Response.json({
-          data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
-          object: "list",
-        }),
-      )
+      .mockResolvedValueOnce(modelInfoResponse(["local-a"]))
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
     const created = await createApp(server, ["local-a"])
+    configureAuthoritativeModelProjection(["local-a"])
     const oldToken = bearerForCredential(created.credential)
     const oldKeyRequest = server.inject({
       method: "GET",
@@ -1751,12 +1762,7 @@ describe("Connected app gateway routes", () => {
         "idempotency-key": "connected-app-stale-key-revoke",
       },
     })
-    releaseModelRequest?.(
-      Response.json({
-        data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
-        object: "list",
-      }),
-    )
+    releaseModelRequest?.(modelInfoResponse(["local-a"]))
     const oldKeyResponse = await oldKeyRequest
     const staleDetail = await server.inject({
       method: "GET",
@@ -2312,6 +2318,95 @@ function configureGatewayEnvironment(): void {
   vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
   vi.stubEnv("LITELLM_URL", "http://litellm.test")
   vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
+}
+
+function configureModelAdmissionFixture(): void {
+  vi.stubEnv("BFF_FIXTURE_MODE", "true")
+  vi.stubEnv(
+    "BFF_FALLBACK_MODELS",
+    [
+      "gemma-4-12B-it-Q4_K_M",
+      "local-a",
+      "local-b",
+      "local-stream",
+      "private-final-send-canary",
+      "private-isolation-winner-canary",
+    ].join(","),
+  )
+}
+
+function configureAuthoritativeModelProjection(
+  aliases: string[],
+  baseUrl = "http://litellm.test",
+): void {
+  vi.stubEnv("BFF_FIXTURE_MODE", "false")
+  vi.stubEnv("BFF_FALLBACK_MODELS", aliases.join(","))
+  vi.stubEnv("ADMIN_LITELLM_BASE_URL", baseUrl)
+  vi.stubEnv("ADMIN_LITELLM_API_KEY", "admin-read-key")
+}
+
+function modelInfoResponse(aliases: string[]): Response {
+  return Response.json({
+    data: aliases.map((modelName) => ({ model_name: modelName })),
+  })
+}
+
+async function writeModelAdmissions(
+  profiles: Record<string, unknown>[],
+): Promise<void> {
+  if (!modelAdmissionDirectory) {
+    modelAdmissionDirectory = await mkdtemp(
+      join(tmpdir(), "llmm-gateway-model-admission."),
+    )
+    vi.stubEnv("INFERENCE_MODEL_ADMISSION_DIR", modelAdmissionDirectory)
+  }
+  for (const [index, profile] of profiles.entries()) {
+    await writeFile(
+      join(modelAdmissionDirectory, `profile-${index + 1}.json`),
+      JSON.stringify(profile),
+    )
+  }
+}
+
+function renderedAdmission(
+  alias: string,
+  profileId: string,
+  validUntil = "2026-09-01T00:00:00.000Z",
+): Record<string, unknown> {
+  return {
+    apiVersion: "inference-core.llm-machines/v1",
+    capabilityAdvertisement: {
+      freshness: {
+        measuredAt: "2026-08-01T00:00:00.000Z",
+        validUntil,
+      },
+      models: [
+        {
+          alias,
+          contextTokens: 8192,
+          maxConcurrentRequests: 1,
+          maxOutputTokens: 2048,
+          p95LatencyMilliseconds: 10,
+          queue: { maxObservedDepth: null, state: "not_configured" },
+          throughputTokensPerSecond: 20,
+        },
+      ],
+      state: "ACTIVE_MEASURED",
+    },
+    coreCompatibilityFingerprint:
+      "sha256:9249bdc91f2dc7ac8471de88aad851644a8b8526d57c5f1501e6c63db246d1d7",
+    engine: {},
+    kind: "RenderedInferenceDeliveryProfile",
+    model: {},
+    network: {},
+    probes: {},
+    qualification: {
+      evidenceDigest: `sha256:${"2".repeat(64)}`,
+      qualifiedProfileDigest: `sha256:${"3".repeat(64)}`,
+    },
+    rollback: {},
+    source: { profileId, revision: 1 },
+  }
 }
 
 async function openIsolationGate(

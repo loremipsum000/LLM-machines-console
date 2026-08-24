@@ -9,6 +9,9 @@ export * from "./inference-core-session.js"
 export * from "./inference-core-signing.js"
 export * from "./inference-core-storage.js"
 
+export const inferenceCoreCompatibilityFingerprint =
+  "sha256:9249bdc91f2dc7ac8471de88aad851644a8b8526d57c5f1501e6c63db246d1d7"
+
 export const healthResponseSchema = z
   .object({
     service: z.string().min(1),
@@ -881,7 +884,7 @@ export const adminConnectedAppAllowedModelsSchema = z
     if (new Set(models).size !== models.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Application model aliases must be unique.",
+        message: "Key model aliases must be unique.",
       })
     }
   })
@@ -1027,7 +1030,7 @@ const adminConnectedAppEndpointUrlSchema = z
     } catch {
       return false
     }
-  }, "Application endpoint URLs must use HTTP or HTTPS without userinfo, query, or fragment.")
+  }, "Key endpoint URLs must use HTTP or HTTPS without userinfo, query, or fragment.")
 
 const adminConnectedAppCredentialRevealBaseSchema = z.object({
   bffBaseUrl: adminConnectedAppEndpointUrlSchema,
@@ -1356,7 +1359,7 @@ export const adminConnectedAppSchema = z
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Application credentials must use the immutable auth method.",
+        message: "Key credentials must use the immutable auth method.",
         path: ["credentials"],
       })
     }
@@ -1366,7 +1369,7 @@ export const adminConnectedAppSchema = z
     if (new Set(credentialIds).size !== credentialIds.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Application credential ids must be unique.",
+        message: "Key credential ids must be unique.",
         path: ["credentials"],
       })
     }
@@ -1380,7 +1383,7 @@ export const adminConnectedAppSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "Enabled Applications require exactly one active credential; disabled Applications allow at most one.",
+          "Enabled Keys require exactly one active credential; disabled Keys allow at most one.",
         path: ["credentials"],
       })
     }
@@ -1539,7 +1542,7 @@ export const adminConnectedAppTestResultSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "Connection evidence status must match the Application connection state.",
+          "Connection evidence status must match the Key connection state.",
         path: ["connectionStatus"],
       })
     }
@@ -1551,7 +1554,7 @@ export const adminConnectedAppTestResultSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "Connection evidence time must match the Application connection evidence.",
+          "Connection evidence time must match the Key connection evidence.",
         path: ["observedAt"],
       })
     }
@@ -1585,8 +1588,7 @@ export const adminConnectedAppLifecycleResultSchema = z
     if (!appStatusMatches) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message:
-          "Application lifecycle results must match the returned Application state.",
+        message: "Key lifecycle results must match the returned Key state.",
         path: ["app"],
       })
     }

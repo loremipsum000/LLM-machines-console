@@ -21,6 +21,7 @@ const expectedFiles = [
   "request-safety.inc",
   "source-no-bypass.mjs",
   "source-no-bypass.test.mjs",
+  "test-product-edge-routing.mjs",
   "validate-ingress.mjs",
   "validate-ingress.test.mjs",
 ]
@@ -109,8 +110,8 @@ const expectedNginxLocations = {
     "= /api/admin/audit/export",
     "= /api/admin/audit/export/verification-keys",
     "= /",
-    '~ "^/(?:activity|hardware|inference|applications|team)$"',
-    '~ "^/(?:applications/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$"',
+    '~ "^/(?:activity|hardware|inference|keys|applications|team)$"',
+    '~ "^/(?:(?:keys|applications)/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$"',
     "= /team/import/template",
     "~ ^/auth/(?:signin|elevate|unavailable)$",
     "^~ /_next/",
@@ -204,7 +205,7 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "e9a10fb721d787f3459e42b2a44ddd319d8c683ce060661091d0e37f6916abdc",
+    "f995e2c7c7cb0577608f14fbf60c45d598b3508501c14bfc31258aa7d55b32ab",
   "native-admin-edge-profile.json":
     "2868d8e0bcc8dab84f1acff75c85c8ccae188316e7a1d61f3d21228e2276e6b0",
   "proxy-common.inc":

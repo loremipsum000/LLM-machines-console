@@ -118,7 +118,7 @@ export class AdminConnectedAppFirecrawlCredentialCommitRaceError extends Error {
     super(
       result.status === "blocked"
         ? result.detail
-        : "Connected app was not found during the Firecrawl credential commit.",
+        : "Key was not found during the Firecrawl credential commit.",
     )
     this.name = "AdminConnectedAppFirecrawlCredentialCommitRaceError"
     this.failure = result

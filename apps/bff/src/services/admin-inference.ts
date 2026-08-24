@@ -14,6 +14,7 @@ import {
   liteLlmConfig,
   liteLlmDateWindow,
 } from "./admin-litellm-client"
+import { getAuthoritativeModelInventory } from "./model-admission-inventory"
 
 interface InferenceQueryOptions {
   range?: string
@@ -74,7 +75,7 @@ export async function getAdminInference(
   const window = liteLlmDateWindow(RANGE_DAYS[range])
   const [activity, models, virtualKeys] = await Promise.all([
     readActivity(client, window),
-    readModels(client),
+    readModels(),
     readVirtualKeys(client),
   ])
   const spendLogs =
@@ -152,24 +153,24 @@ async function readSpendLogs(
   }
 }
 
-async function readModels(
-  client: LiteLlmAdminClient,
-): Promise<LiteLlmReadResult<AdminInferenceModel[]>> {
-  try {
+async function readModels(): Promise<LiteLlmReadResult<AdminInferenceModel[]>> {
+  const inventory = await getAuthoritativeModelInventory()
+  if (!inventory.ok) {
     return {
-      data: parseModels(await client.getJson("/model/info")),
-      status: "ok",
-    }
-  } catch {
-    try {
-      return {
-        data: parseModels(await client.getJson("/v1/model/info")),
-        status: "ok",
-      }
-    } catch {
-      return { data: null, status: "unavailable" }
+      data: null,
+      status:
+        inventory.reason === "not_configured"
+          ? "not_configured"
+          : "unavailable",
     }
   }
+  const admitted = new Set(inventory.aliases)
+  const models = parseModels(inventory.liteLlmModelInfo).filter((model) =>
+    admitted.has(model.name),
+  )
+  return models.length === inventory.aliases.length
+    ? { data: models, status: "ok" }
+    : { data: null, status: "unavailable" }
 }
 
 async function readVirtualKeys(

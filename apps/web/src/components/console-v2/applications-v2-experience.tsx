@@ -35,10 +35,10 @@ import type {
   InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
 import { ArrowLeft, ChevronDown, Copy, Plus } from "lucide-react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   useActionState,
   useCallback,
   useEffect,
@@ -48,6 +48,7 @@ import {
   useTransition,
 } from "react"
 import { useFormStatus } from "react-dom"
+import { CanonicalKeyLink as Link } from "../canonical-key-link"
 import { ConsoleActionToasts } from "./action-toasts"
 
 export type ApplicationsView = "app-detail" | "new-app" | "overview"
@@ -240,6 +241,8 @@ function AddConnectedAppView({
 }) {
   const router = useRouter()
   const [createState, setCreateState] = useState(initialConnectedAppCreateState)
+  const [closeDestination, setCloseDestination] = useState<string | null>(null)
+  const createButtonRef = useRef<HTMLButtonElement>(null)
   const [createPending, startCreateTransition] = useTransition()
   usePendingConsoleSessionRecovery(createPending, createState == null)
   const [authMethod, setAuthMethod] = useState<
@@ -253,9 +256,26 @@ function AddConnectedAppView({
   useEffect(() => {
     if (createState.status !== "created") return
     const clearReveal = () => setCreateState(initialConnectedAppCreateState)
+    const clearRestoredReveal = (event: Event) => {
+      if ("persisted" in event && event.persisted === true) clearReveal()
+    }
     window.addEventListener("pagehide", clearReveal)
-    return () => window.removeEventListener("pagehide", clearReveal)
+    window.addEventListener("pageshow", clearRestoredReveal)
+    window.addEventListener("popstate", clearReveal)
+    return () => {
+      window.removeEventListener("pagehide", clearReveal)
+      window.removeEventListener("pageshow", clearRestoredReveal)
+      window.removeEventListener("popstate", clearReveal)
+    }
   }, [createState.status])
+
+  useEffect(() => {
+    if (!closeDestination || createState.status === "created") return
+    const destination = closeDestination
+    setCloseDestination(null)
+    createButtonRef.current?.focus()
+    router.replace(destination)
+  }, [closeDestination, createState.status, router])
 
   const createAction = (formData: FormData) => {
     startCreateTransition(async () => {
@@ -270,11 +290,9 @@ function AddConnectedAppView({
   const closeCreatedKey = () => {
     const appId = createState.app?.id
     setCreateState(initialConnectedAppCreateState)
-    if (appId) {
-      router.replace(`/keys/apps/${encodeURIComponent(appId)}`)
-    } else {
-      router.replace("/keys")
-    }
+    setCloseDestination(
+      appId ? `/keys/apps/${encodeURIComponent(appId)}` : "/keys",
+    )
   }
 
   return (
@@ -406,6 +424,7 @@ function AddConnectedAppView({
                 createPending ||
                 (modelMode === "manual" && !manualInventoryAvailable)
               }
+              ref={createButtonRef}
               type="submit"
             >
               {createPending ? "Creating key..." : "Create Key"}
@@ -438,6 +457,7 @@ function ConnectedAppDetailView({
   appAction?: string
   modelOptions: AdminInferenceModel[]
 }) {
+  const detailHeadingRef = useRef<HTMLHeadingElement>(null)
   const [showDisableConfirm, setShowDisableConfirm] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showPolicyEditor, setShowPolicyEditor] = useState(false)
@@ -515,6 +535,9 @@ function ConnectedAppDetailView({
     setLatestApp(app)
   }, [app])
   useEffect(() => {
+    detailHeadingRef.current?.focus()
+  }, [])
+  useEffect(() => {
     if (checkState.status === "idle" || !isMutationActive("inference-check")) {
       return
     }
@@ -576,6 +599,7 @@ function ConnectedAppDetailView({
               <h2
                 className="truncate text-lg font-semibold text-white"
                 data-dialog-focus-fallback
+                ref={detailHeadingRef}
                 tabIndex={-1}
               >
                 {currentApp.name}
@@ -1127,6 +1151,7 @@ function CreatedKeyDialog({
         event.preventDefault()
         onClose()
       }}
+      onKeyDown={trapDialogFocus}
       ref={dialogRef}
     >
       <h2
@@ -1225,7 +1250,10 @@ function CreatedKeyDialog({
           <Link
             className={secondaryButtonClass}
             href={`/applications/apps/${encodeURIComponent(app.id)}`}
-            onClick={onClose}
+            onClick={(event) => {
+              event.preventDefault()
+              onClose()
+            }}
           >
             View Key
           </Link>
@@ -1240,6 +1268,34 @@ function CreatedKeyDialog({
       </div>
     </dialog>
   )
+}
+
+function trapDialogFocus(event: ReactKeyboardEvent<HTMLDialogElement>) {
+  if (event.key !== "Tab") return
+  const focusable = [
+    ...event.currentTarget.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ].filter(
+    (element) =>
+      element.getAttribute("aria-hidden") !== "true" &&
+      !element.hasAttribute("hidden"),
+  )
+  if (focusable.length === 0) {
+    event.preventDefault()
+    return
+  }
+  const activeIndex = focusable.indexOf(document.activeElement as HTMLElement)
+  if (event.shiftKey && activeIndex <= 0) {
+    event.preventDefault()
+    focusable.at(-1)?.focus()
+  } else if (!event.shiftKey && activeIndex === focusable.length - 1) {
+    event.preventDefault()
+    focusable[0]?.focus()
+  } else if (!event.shiftKey && activeIndex < 0) {
+    event.preventDefault()
+    focusable[0]?.focus()
+  }
 }
 
 export function ConnectedAppCredentialReveal({

@@ -125,6 +125,8 @@ function firecrawlSearch(
 }
 
 function configureFixtureRuntime(): void {
+  vi.stubEnv("BFF_FIXTURE_MODE", "true")
+  vi.stubEnv("BFF_FALLBACK_MODELS", "local-a")
   vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
   vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
   vi.stubEnv("FIRECRAWL_INSTALLED", "true")

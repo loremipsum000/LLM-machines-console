@@ -31,6 +31,19 @@ const multi = JSON.parse(
   readFileSync(path.join(root, "fixtures/synthetic-multi-node.json"), "utf8"),
 )
 
+test("keeps the BFF compatibility pin aligned with the current core contract", () => {
+  const contractsSource = readFileSync(
+    path.join(repositoryRoot, "packages/contracts/src/inference-core.ts"),
+    "utf8",
+  )
+  assert.match(
+    contractsSource,
+    new RegExp(
+      `inferenceCoreCompatibilityFingerprint\\s*=\\s*["']${coreCompatibilityFingerprint(contracts.core)}["']`,
+    ),
+  )
+})
+
 function mutate(profile, mutation) {
   const changed = structuredClone(profile)
   mutation(changed)
@@ -48,6 +61,8 @@ function activateMeasured(profile = single) {
     modelArtifactDigest: changed.model.artifactDigest,
     evidenceDigest:
       "sha256:6161616161616161616161616161616161616161616161616161616161616161",
+    measuredAt: "2026-08-01T00:00:00.000Z",
+    validUntil: "2027-08-01T00:00:00.000Z",
     effectiveContextTokens: changed.limits.configuredContextTokens,
     maxOutputTokens: changed.limits.maxOutputTokens,
     throughputTokensPerSecond: 1,
@@ -92,6 +107,7 @@ test("synthetic profiles render no performance or model availability claim", () 
   for (const profile of [single, multi]) {
     const rendered = renderDeliveryProfile(profile, contracts)
     assert.deepEqual(rendered.capabilityAdvertisement, {
+      freshness: { measuredAt: null, validUntil: null },
       models: [],
       state: "UNAVAILABLE_UNMEASURED",
     })
@@ -108,6 +124,10 @@ test("only the exact measured and activated revision advertises capacity", () =>
   assert.deepEqual(
     renderDeliveryProfile(active, contracts).capabilityAdvertisement,
     {
+      freshness: {
+        measuredAt: active.capacity.measuredAt,
+        validUntil: active.capacity.validUntil,
+      },
       models: [
         {
           alias: active.model.alias,
@@ -157,6 +177,15 @@ test("unmeasured and inactive profiles fail closed", () => {
   assert.match(
     validateDeliveryProfile(supportClaim, contracts.core).join("\n"),
     /cannot make a production support claim/,
+  )
+
+  const invalidWindow = activateMeasured()
+  invalidWindow.capacity.validUntil = invalidWindow.capacity.measuredAt
+  invalidWindow.activation.qualifiedProfileDigest =
+    profileQualificationDigest(invalidWindow)
+  assert.match(
+    validateDeliveryProfile(invalidWindow, contracts.core).join("\n"),
+    /stale, incomplete/,
   )
 })
 

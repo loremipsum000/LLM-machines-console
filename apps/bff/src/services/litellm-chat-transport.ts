@@ -1,45 +1,12 @@
-import { canUseBffFixtureData } from "../config/fixture-mode"
 import {
   type ChatCompletionsBody,
   normalizeTextOnlyChatCompletionsBody,
 } from "../inference/chat-completions"
 
-const fallbackModels = ["llm-machines-default"]
-const LITELLM_MODEL_LIST_DEADLINE_MS = 5_000
-const LITELLM_MODEL_LIST_MAX_BYTES = 2 * 1024 * 1024
 const LITELLM_CHAT_DEADLINE_DEFAULT_MS = 2 * 60 * 1000
 export const LITELLM_CHAT_DEADLINE_MAX_MS = 5 * 60 * 1000
 export const LITELLM_NON_STREAMING_MAX_BYTES = 8 * 1024 * 1024
 export const LITELLM_STREAM_EVENT_MAX_BYTES = 1024 * 1024
-
-export interface LiteLlmModel {
-  id: string
-  object: "model"
-  owned_by: string
-}
-
-export interface LiteLlmModelList {
-  data: LiteLlmModel[]
-  object: "list"
-}
-
-export type LiteLlmModelListResult =
-  | { body: LiteLlmModelList; ok: true }
-  | {
-      detail: string
-      missingModels: string[]
-      ok: false
-      reason: "alias_unavailable"
-      status: 503
-      title: string
-    }
-  | {
-      detail: string
-      ok: false
-      reason: "not_configured" | "upstream_unavailable"
-      status: 503
-      title: string
-    }
 
 export type LiteLlmTransportFailureReason =
   | "cancelled"
@@ -137,77 +104,6 @@ export function waitForWritableDrainOrAbort(
       onAbort()
     }
   })
-}
-
-export async function fetchLiteLlmModels(
-  allowedModels: string[],
-  callerSignal?: AbortSignal,
-): Promise<LiteLlmModelListResult> {
-  const config = liteLlmConfig()
-
-  if (config) {
-    const boundary = createRequestBoundary(
-      callerSignal,
-      LITELLM_MODEL_LIST_DEADLINE_MS,
-    )
-    try {
-      const response = await fetch(`${config.baseUrl}/v1/models`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${config.apiKey}`,
-        },
-        method: "GET",
-        redirect: "error",
-        signal: boundary.signal,
-      })
-      if (!response.ok) {
-        await cancelResponseBody(response)
-        return modelListUnavailable(
-          `LiteLLM returned HTTP ${response.status} while listing models.`,
-        )
-      }
-      const responseText = await readBoundedResponseText(
-        response,
-        LITELLM_MODEL_LIST_MAX_BYTES,
-      )
-      const modelList = parseModelList(responseText)
-      if (!modelList) {
-        return modelListUnavailable("LiteLLM returned an invalid model list.")
-      }
-      return filterModelList(modelList, allowedModels)
-    } catch {
-      return modelListUnavailable("LiteLLM model list request failed.")
-    } finally {
-      boundary.dispose()
-    }
-  }
-
-  if (!canUseBffFixtureData()) {
-    return {
-      detail: "Set LITELLM_URL and LITELLM_KEY before listing models.",
-      ok: false,
-      reason: "not_configured",
-      status: 503,
-      title: "LiteLLM is not configured",
-    }
-  }
-
-  const configuredModels =
-    process.env.BFF_FALLBACK_MODELS?.split(",")
-      .map((model) => model.trim())
-      .filter(Boolean) ?? fallbackModels
-
-  return filterModelList(
-    {
-      data: configuredModels.map((id) => ({
-        id,
-        object: "model" as const,
-        owned_by: "llm-machines",
-      })),
-      object: "list",
-    },
-    allowedModels,
-  )
 }
 
 export function createLiteLlmChatTransport(): LiteLlmChatTransport | undefined {
@@ -453,46 +349,6 @@ function isLiteLlmNonStreamingReadFailureReason(
   )
 }
 
-function filterModelList(
-  body: LiteLlmModelList,
-  allowedModels: string[],
-): LiteLlmModelListResult {
-  if (allowedModels.length === 0) {
-    return { body, ok: true }
-  }
-  const allowed = new Set(allowedModels)
-  const available = new Set(body.data.map((model) => model.id))
-  const missingModels = [...allowed].filter((model) => !available.has(model))
-  if (missingModels.length > 0) {
-    return {
-      detail: "One or more allowed LiteLLM model aliases are unavailable.",
-      missingModels,
-      ok: false,
-      reason: "alias_unavailable",
-      status: 503,
-      title: "Allowed model unavailable",
-    }
-  }
-
-  return {
-    body: {
-      data: body.data.filter((model) => allowed.has(model.id)),
-      object: "list",
-    },
-    ok: true,
-  }
-}
-
-function modelListUnavailable(detail: string): LiteLlmModelListResult {
-  return {
-    detail,
-    ok: false,
-    reason: "upstream_unavailable",
-    status: 503,
-    title: "LiteLLM model list unavailable",
-  }
-}
-
 function liteLlmConfig(): { apiKey: string; baseUrl: string } | undefined {
   const rawUrl = process.env.LITELLM_URL?.trim()
   const apiKey = process.env.LITELLM_KEY?.trim()
@@ -538,35 +394,6 @@ function liteLlmChatCompletionBody(
         : {}),
       include_usage: true,
     },
-  }
-}
-
-function parseModelList(responseText: string): LiteLlmModelList | null {
-  try {
-    const value = JSON.parse(responseText) as unknown
-    if (
-      !isRecord(value) ||
-      value.object !== "list" ||
-      !Array.isArray(value.data)
-    ) {
-      return null
-    }
-
-    const data: LiteLlmModel[] = []
-    for (const model of value.data) {
-      if (
-        !isRecord(model) ||
-        typeof model.id !== "string" ||
-        model.object !== "model" ||
-        typeof model.owned_by !== "string"
-      ) {
-        return null
-      }
-      data.push({ id: model.id, object: "model", owned_by: model.owned_by })
-    }
-    return { data, object: "list" }
-  } catch {
-    return null
   }
 }
 

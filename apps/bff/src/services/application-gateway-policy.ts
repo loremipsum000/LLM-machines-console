@@ -14,10 +14,10 @@ export function evaluateApplicationGatewayPolicy(
 ): ApplicationGatewayPolicyResult {
   if (application.status !== "enabled") {
     return {
-      detail: "The connected app is disabled.",
+      detail: "The Key is disabled.",
       ok: false,
       status: 403,
-      title: "Connected app disabled",
+      title: "Key disabled",
     }
   }
   if (
@@ -26,7 +26,7 @@ export function evaluateApplicationGatewayPolicy(
     !application.allowedModels.includes(requestedModel)
   ) {
     return {
-      detail: "The connected app is not allowed to use the requested model.",
+      detail: "The Key is not allowed to use the requested model.",
       ok: false,
       status: 403,
       title: "Model not allowed",

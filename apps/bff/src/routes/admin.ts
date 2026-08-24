@@ -62,7 +62,6 @@ import {
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Actor } from "../auth/authorization"
 import { withAdminOnly, withCapability } from "../auth/authorization"
-import { canUseBffFixtureData } from "../config/fixture-mode"
 import { getInferenceCoreDb } from "../db/inference-core-client"
 import {
   AdminAlertEgressConflictError,
@@ -159,6 +158,7 @@ import {
   IdentityMutationExecutionError,
   IdentityMutationReconciliationRequiredError,
 } from "../services/identity-mutation-journal"
+import { getAuthoritativeModelInventory } from "../services/model-admission-inventory"
 
 export const adminOnlyAdminRoutePolicyKeys = [
   "GET /api/admin/recovery/status",
@@ -1124,7 +1124,7 @@ export function registerAdminRoutes(
           )
           if (revealPreflight.status === "blocked") {
             return serviceUnavailable(
-              "Connected app endpoint configuration unavailable",
+              "Key endpoint configuration unavailable",
               revealPreflight.detail,
             )
           }
@@ -1135,10 +1135,7 @@ export function registerAdminRoutes(
             revealPreflight.endpoints,
           )
           if (result.status === "blocked") {
-            return serviceUnavailable(
-              "Connected app identity unavailable",
-              result.detail,
-            )
+            return serviceUnavailable("Key identity unavailable", result.detail)
           }
           return {
             idempotencyResourceId: result.app.id,
@@ -1157,12 +1154,12 @@ export function registerAdminRoutes(
     async (request, reply) => {
       const id = routeId(request)
       if (!id) {
-        return missingId(reply, "Connected app")
+        return missingId(reply, "Key")
       }
       const detail = await getAdminConnectedAppDetail(requireActor(request), id)
       return detail
         ? reply.send(adminConnectedAppDetailSchema.parse(detail))
-        : reply.code(404).send(notFoundPayload("Connected app"))
+        : reply.code(404).send(notFoundPayload("Key"))
     },
   )
 
@@ -1175,7 +1172,7 @@ export function registerAdminRoutes(
         request.body ?? {},
       )
       if (!id) {
-        return missingId(reply, "Connected app")
+        return missingId(reply, "Key")
       }
       if (!body.success) {
         return invalidRequest(
@@ -1236,7 +1233,7 @@ export function registerAdminRoutes(
       reply.header("cache-control", "no-store")
       const id = routeId(request)
       if (!id) {
-        return missingId(reply, "Connected app")
+        return missingId(reply, "Key")
       }
       return withAdminIdempotentMutation(
         request,
@@ -1251,7 +1248,7 @@ export function registerAdminRoutes(
           }
           if (revealPreflight.status === "blocked") {
             return serviceUnavailable(
-              "Connected app endpoint configuration unavailable",
+              "Key endpoint configuration unavailable",
               revealPreflight.detail,
             )
           }
@@ -1333,7 +1330,7 @@ export function registerAdminRoutes(
       const id = routeId(request)
       const credentialId = routeCredentialId(request)
       if (!id || !credentialId) {
-        return missingId(reply, "Connected app credential")
+        return missingId(reply, "Key credential")
       }
       return withAdminIdempotentMutation(
         request,
@@ -1373,7 +1370,7 @@ export function registerAdminRoutes(
         request.body ?? {},
       )
       if (!id) {
-        return missingId(reply, "Connected app")
+        return missingId(reply, "Key")
       }
       if (!body.success) {
         return invalidRequest(
@@ -1403,7 +1400,7 @@ export function registerAdminRoutes(
             async (mutation, transaction) => {
               const app = await getAdminConnectedAppProjection(id, transaction)
               if (!app) {
-                throw new Error("Updated Application could not be read back.")
+                throw new Error("Updated Key could not be read back.")
               }
               return {
                 idempotencyResourceId: app.id,
@@ -1453,7 +1450,7 @@ export function registerAdminRoutes(
         request.body ?? {},
       )
       if (!id) {
-        return missingId(reply, "Connected app")
+        return missingId(reply, "Key")
       }
       if (!body.success) {
         return invalidRequest(
@@ -1526,7 +1523,7 @@ export function registerAdminRoutes(
       reply.header("cache-control", "no-store")
       const id = routeId(request)
       if (!id) {
-        return missingId(reply, "Connected app")
+        return missingId(reply, "Key")
       }
       return withAdminIdempotentMutation(
         request,
@@ -1541,7 +1538,7 @@ export function registerAdminRoutes(
             async (mutation, transaction) => {
               const app = await getAdminConnectedAppProjection(id, transaction)
               if (!app) {
-                throw new Error("Updated Application could not be read back.")
+                throw new Error("Updated Key could not be read back.")
               }
               return {
                 idempotencyResourceId: app.id,
@@ -1655,7 +1652,7 @@ export function registerAdminRoutes(
     async (request, reply) => {
       const id = routeId(request)
       if (!id) {
-        return missingId(reply, "Connected app")
+        return missingId(reply, "Key")
       }
       const body = adminConnectedAppDeleteRequestSchema.safeParse(
         request.body ?? {},
@@ -1663,7 +1660,7 @@ export function registerAdminRoutes(
       if (!body.success) {
         return invalidRequest(
           reply,
-          "Invalid connected app delete request",
+          "Invalid Key delete request",
           "Deleting a Key requires exact DELETE KEY confirmation.",
         )
       }
@@ -2319,14 +2316,14 @@ async function connectedAppActionResult(
         { id },
         async (actor, identityContext) => run(actor, id, identityContext),
       )
-    : missingId(reply, "Connected app")
+    : missingId(reply, "Key")
 }
 
 function connectedAppNotFound(): {
   payload: unknown
   statusCode: number
 } {
-  return { payload: notFoundPayload("Connected app"), statusCode: 404 }
+  return { payload: notFoundPayload("Key"), statusCode: 404 }
 }
 
 function connectedAppBlocked(detail: string): {
@@ -2336,7 +2333,7 @@ function connectedAppBlocked(detail: string): {
   return {
     payload: {
       type: "about:blank",
-      title: "Connected app action blocked",
+      title: "Key action blocked",
       status: 409,
       detail,
     },
@@ -2347,7 +2344,7 @@ function connectedAppBlocked(detail: string): {
 async function connectedAppAfterFirecrawlMutation(actor: Actor, id: string) {
   const detail = await getAdminConnectedAppDetail(actor, id)
   if (!detail) {
-    throw new Error("Updated Application could not be read back.")
+    throw new Error("Updated Key could not be read back.")
   }
   return detail.app
 }
@@ -2363,7 +2360,7 @@ function serviceUnavailable(
 }
 
 async function validateConnectedAppModelPolicy(
-  actor: Actor,
+  _actor: Actor,
   request: {
     allowedModels: string[]
     modelMode: "auto" | "manual"
@@ -2372,20 +2369,16 @@ async function validateConnectedAppModelPolicy(
   if (request.modelMode === "auto") {
     return null
   }
-  if (
-    canUseBffFixtureData() &&
-    (!process.env.ADMIN_LITELLM_BASE_URL || !process.env.ADMIN_LITELLM_API_KEY)
-  ) {
-    return null
-  }
-  const inventory = await getAdminInference(actor, { range: "7d" })
-  if (inventory.modelInventorySourceStatus !== "ok") {
+  const inventory = await getAuthoritativeModelInventory()
+  if (!inventory.ok) {
     return serviceUnavailable(
-      "Key model inventory unavailable",
-      "Manual model access cannot be changed until the active approved LiteLLM inventory is available.",
+      inventory.reason === "stale"
+        ? "Key model inventory stale"
+        : "Key model inventory unavailable",
+      inventory.detail,
     )
   }
-  const approved = new Set(inventory.models.map((model) => model.name))
+  const approved = new Set(inventory.aliases)
   if (request.allowedModels.some((model) => !approved.has(model))) {
     return {
       payload: {
@@ -2662,7 +2655,7 @@ function adminMutationErrorResult(error: unknown): {
   }
   if (error instanceof AdminConnectedAppFirecrawlCredentialCommitRaceError) {
     return error.failure.status === "not_found"
-      ? { payload: notFoundPayload("Connected app"), statusCode: 404 }
+      ? { payload: notFoundPayload("Key"), statusCode: 404 }
       : {
           payload: connectedAppBlocked(error.failure.detail).payload,
           statusCode: 409,

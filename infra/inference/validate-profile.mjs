@@ -585,6 +585,8 @@ export function validateDeliveryProfile(profile, coreContract) {
       "engineImageDigest",
       "modelArtifactDigest",
       "evidenceDigest",
+      "measuredAt",
+      "validUntil",
       "effectiveContextTokens",
       "maxOutputTokens",
       "throughputTokensPerSecond",
@@ -600,6 +602,8 @@ export function validateDeliveryProfile(profile, coreContract) {
     "engineImageDigest",
     "modelArtifactDigest",
     "evidenceDigest",
+    "measuredAt",
+    "validUntil",
     "effectiveContextTokens",
     "maxOutputTokens",
     "throughputTokensPerSecond",
@@ -622,6 +626,10 @@ export function validateDeliveryProfile(profile, coreContract) {
       profile.capacity.engineImageDigest !== profile.engine.image.digest ||
       profile.capacity.modelArtifactDigest !== profile.model.artifactDigest ||
       !sha256Pattern.test(profile.capacity.evidenceDigest ?? "") ||
+      !validMeasurementWindow(
+        profile.capacity.measuredAt,
+        profile.capacity.validUntil,
+      ) ||
       !isPositiveInteger(profile.capacity.effectiveContextTokens) ||
       !isPositiveInteger(profile.capacity.maxOutputTokens) ||
       !(profile.capacity.throughputTokensPerSecond > 0) ||
@@ -711,6 +719,21 @@ export function validateDeliveryProfile(profile, coreContract) {
     if (pattern.test(serialized)) add(errors, message)
   }
   return errors
+}
+
+function validMeasurementWindow(measuredAt, validUntil) {
+  if (typeof measuredAt !== "string" || typeof validUntil !== "string") {
+    return false
+  }
+  const measured = Date.parse(measuredAt)
+  const expires = Date.parse(validUntil)
+  return (
+    Number.isFinite(measured) &&
+    Number.isFinite(expires) &&
+    new Date(measured).toISOString() === measuredAt &&
+    new Date(expires).toISOString() === validUntil &&
+    expires > measured
+  )
 }
 
 export function validateSchema(schema) {

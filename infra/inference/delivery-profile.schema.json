@@ -288,6 +288,8 @@
         "engineImageDigest",
         "modelArtifactDigest",
         "evidenceDigest",
+        "measuredAt",
+        "validUntil",
         "effectiveContextTokens",
         "maxOutputTokens",
         "throughputTokensPerSecond",
@@ -332,6 +334,14 @@
               "type": "null"
             }
           ]
+        },
+        "measuredAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "validUntil": {
+          "type": ["string", "null"],
+          "format": "date-time"
         },
         "effectiveContextTokens": {
           "type": ["integer", "null"],

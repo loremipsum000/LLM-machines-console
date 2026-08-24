@@ -30,12 +30,12 @@ import {
   type OpenAIUsage,
   createLiteLlmChatTransport,
   createOpenAIStreamingUsageParser,
-  fetchLiteLlmModels,
   getLiteLlmTransportErrorReason,
   isStreamingChatCompletionsRequest,
   readLiteLlmNonStreamingResponse,
   waitForWritableDrainOrAbort,
 } from "../services/litellm-chat-transport"
+import { getAuthoritativeModelInventory } from "../services/model-admission-inventory"
 
 export type AppGatewayIsolationRoute = "chat_completions" | "models"
 
@@ -212,10 +212,9 @@ export function registerAppGatewayRoutes(
       return status === 503 ? sendIsolationUnavailable(reply) : undefined
     }
 
-    const models = await fetchLiteLlmModels(
-      auth.app.modelMode === "auto" ? [] : auth.app.allowedModels,
-      isolation.lease.signal,
-    )
+    const inventory = await getAuthoritativeModelInventory({
+      signal: isolation.lease.signal,
+    })
     if (isolation.lease.signal.aborted) {
       const status = gatewayLeaseAbortStatus(isolation.lease.signal)
       await safelyAuditGatewayRequest(
@@ -234,6 +233,32 @@ export function registerAppGatewayRoutes(
       )
       return status === 503 ? sendIsolationUnavailable(reply) : undefined
     }
+    if (!inventory.ok) {
+      await safelyMarkGatewayDegraded(request, auth.app)
+      await safelyAuditGatewayRequest(
+        request,
+        auth.app,
+        {
+          inputTokens: 0,
+          latencyMs: Date.now() - startedAt,
+          model: null,
+          outputTokens: 0,
+          route: "models",
+          status: 503,
+          totalTokens: 0,
+        },
+        admission.context,
+      )
+      return sendGatewayProblem(
+        reply,
+        503,
+        inventory.reason === "stale"
+          ? "Key model inventory stale"
+          : "Key model inventory unavailable",
+        inventory.detail,
+      )
+    }
+    const models = modelsForKey(auth.app, inventory.aliases)
     if (!models.ok) {
       await safelyMarkGatewayDegraded(request, auth.app)
       await safelyAuditGatewayRequest(
@@ -245,17 +270,12 @@ export function registerAppGatewayRoutes(
           model: null,
           outputTokens: 0,
           route: "models",
-          status: models.status,
+          status: 503,
           totalTokens: 0,
         },
         admission.context,
       )
-      return sendGatewayProblem(
-        reply,
-        models.status,
-        models.title,
-        models.detail,
-      )
+      return sendGatewayProblem(reply, 503, models.title, models.detail)
     }
 
     if (isolation.lease.signal.aborted) {
@@ -294,7 +314,14 @@ export function registerAppGatewayRoutes(
           admission.context,
         )
         await safelyRecordSuccessfulModelsRequest(request, auth.app)
-        return reply.send(models.body)
+        return reply.send({
+          data: models.aliases.map((id) => ({
+            id,
+            object: "model",
+            owned_by: "llm-machines",
+          })),
+          object: "list",
+        })
       },
     )
     if (finalized.ok) {
@@ -450,46 +477,45 @@ export function registerAppGatewayRoutes(
         )
       }
 
-      if (auth.app.modelMode === "auto") {
-        const currentModels = await fetchLiteLlmModels(
-          [],
-          isolation.lease.signal,
+      const inventory = await getAuthoritativeModelInventory({
+        signal: isolation.lease.signal,
+      })
+      if (!inventory.ok) {
+        await safelyMarkGatewayDegraded(request, auth.app)
+        await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
+          latencyMs: 0,
+          model: body.model,
+          outputTokens: 0,
+          route: "chat_completions",
+          status: 503,
+          totalTokens: 0,
+        })
+        return sendGatewayProblem(
+          reply,
+          503,
+          inventory.reason === "stale"
+            ? "Key model inventory stale"
+            : "Key model inventory unavailable",
+          inventory.detail,
         )
-        if (!currentModels.ok) {
-          await safelyMarkGatewayDegraded(request, auth.app)
-          await safelyAuditGatewayRequest(request, auth.app, {
-            inputTokens: 0,
-            latencyMs: 0,
-            model: body.model,
-            outputTokens: 0,
-            route: "chat_completions",
-            status: currentModels.status,
-            totalTokens: 0,
-          })
-          return sendGatewayProblem(
-            reply,
-            currentModels.status,
-            currentModels.title,
-            currentModels.detail,
-          )
-        }
-        if (!currentModels.body.data.some((model) => model.id === body.model)) {
-          await safelyAuditGatewayRequest(request, auth.app, {
-            inputTokens: 0,
-            latencyMs: 0,
-            model: body.model,
-            outputTokens: 0,
-            route: "chat_completions",
-            status: 403,
-            totalTokens: 0,
-          })
-          return sendGatewayProblem(
-            reply,
-            403,
-            "Model not approved",
-            "The requested model is not in the active approved model inventory.",
-          )
-        }
+      }
+      if (!inventory.aliases.includes(body.model)) {
+        await safelyAuditGatewayRequest(request, auth.app, {
+          inputTokens: 0,
+          latencyMs: 0,
+          model: body.model,
+          outputTokens: 0,
+          route: "chat_completions",
+          status: 403,
+          totalTokens: 0,
+        })
+        return sendGatewayProblem(
+          reply,
+          403,
+          "Model not approved",
+          "The requested model is not in the active measured model inventory.",
+        )
       }
 
       const contextBytes = normalizedChatCompletionsBodyUtf8Bytes(body)
@@ -566,16 +592,37 @@ type ConnectedAppAuthResult =
   | { app: ConnectedAppRuntimeIdentity; ok: true }
   | { detail: string; ok: false; status: 401 | 403; title: string }
 
+function modelsForKey(
+  app: ConnectedAppRuntimeIdentity,
+  admittedAliases: string[],
+):
+  | { aliases: string[]; ok: true }
+  | { detail: string; ok: false; title: string } {
+  if (app.modelMode === "auto") {
+    return { aliases: admittedAliases, ok: true }
+  }
+  const admitted = new Set(admittedAliases)
+  const missing = app.allowedModels.filter((alias) => !admitted.has(alias))
+  return missing.length === 0
+    ? { aliases: [...app.allowedModels], ok: true }
+    : {
+        detail:
+          "One or more explicitly selected model aliases are no longer active and measured.",
+        ok: false,
+        title: "Key model access unavailable",
+      }
+}
+
 async function authenticateConnectedApp(
   request: FastifyRequest,
 ): Promise<ConnectedAppAuthResult> {
   const token = bearerToken(request)
   if (!token) {
     return {
-      detail: "Pass a connected app bearer token.",
+      detail: "Pass a Key bearer token.",
       ok: false,
       status: 401,
-      title: "Connected app token required",
+      title: "Key token required",
     }
   }
 
@@ -587,20 +634,20 @@ async function authenticateConnectedApp(
   const oauthIdentity = await oauthIdentityFromToken(token)
   if (!oauthIdentity) {
     return {
-      detail: "The connected app bearer token could not be verified.",
+      detail: "The Key bearer token could not be verified.",
       ok: false,
       status: 401,
-      title: "Invalid connected app token",
+      title: "Invalid Key token",
     }
   }
 
   const app = await resolveConnectedAppRuntimeIdentity(oauthIdentity.clientId)
   if (!app) {
     return {
-      detail: "The connected app client is not registered in Console.",
+      detail: "The Key client is not registered in Console.",
       ok: false,
       status: 403,
-      title: "Unknown connected app",
+      title: "Unknown Key",
     }
   }
 
@@ -715,8 +762,8 @@ async function proxyChatCompletions(
               status,
               "LiteLLM chat completion failed",
               upstream.ok
-                ? "LiteLLM returned no completion body for the connected app request."
-                : `LiteLLM returned HTTP ${upstream.status} for the connected app request.`,
+                ? "LiteLLM returned no completion body for the Key request."
+                : `LiteLLM returned HTTP ${upstream.status} for the Key request.`,
             )
         : undefined
     }
@@ -904,7 +951,7 @@ function logGatewayAccountingFailure(
       failureClass,
       requestId: request.id,
     },
-    "Connected app gateway accounting failed",
+    "Key gateway accounting failed",
   )
 }
 
@@ -1180,7 +1227,7 @@ interface AppGatewayCallerAbortBoundary {
 
 class AppGatewayCallerAbortError extends Error {
   constructor() {
-    super("Connected app request closed.")
+    super("Key request closed.")
     this.name = "AppGatewayCallerAbortError"
   }
 }
@@ -1236,7 +1283,7 @@ function bindGatewayAbort(
       reason = nextReason
       controller.abort(
         nextReason === "isolation"
-          ? new Error("Application traffic isolation engaged.")
+          ? new Error("Key traffic isolation engaged.")
           : undefined,
       )
     }
@@ -1310,7 +1357,7 @@ function sendTransportFailureProblem(
       reply,
       status,
       "LiteLLM request deadline exceeded",
-      "LiteLLM did not complete the connected app request before the gateway deadline.",
+      "LiteLLM did not complete the Key request before the gateway deadline.",
     )
   }
   if (reason === "response_too_large" || reason === "stream_event_too_large") {
@@ -1318,18 +1365,18 @@ function sendTransportFailureProblem(
       reply,
       status,
       "LiteLLM response limit exceeded",
-      "LiteLLM returned more data than the connected app gateway can safely transport.",
+      "LiteLLM returned more data than the Key gateway can safely transport.",
     )
   }
   return sendGatewayProblem(
     reply,
     status,
     reason === "cancelled"
-      ? "Connected app request cancelled"
+      ? "Key request cancelled"
       : "LiteLLM chat completion failed",
     reason === "cancelled"
-      ? "The connected app closed the request before completion."
-      : "LiteLLM could not complete the connected app request.",
+      ? "The Key client closed the request before completion."
+      : "LiteLLM could not complete the Key request.",
   )
 }
 
@@ -1405,8 +1452,8 @@ function sendIsolationUnavailable(reply: FastifyReply): FastifyReply {
   return sendGatewayProblem(
     reply,
     503,
-    "Application traffic unavailable",
-    "The appliance is not accepting Application traffic.",
+    "Key traffic unavailable",
+    "The appliance is not accepting Key traffic.",
     "application_traffic_unavailable",
   )
 }
@@ -1415,8 +1462,8 @@ function sendAccountingUnavailable(reply: FastifyReply): FastifyReply {
   return sendGatewayProblem(
     reply,
     503,
-    "Connected app accounting unavailable",
-    "The connected app request could not establish usage accounting. Retry later.",
+    "Key accounting unavailable",
+    "The Key request could not establish usage accounting. Retry later.",
     "accounting_unavailable",
   )
 }

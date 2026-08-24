@@ -1228,29 +1228,25 @@ async function postAdminConnectedAppCreateMutation(
   body: unknown,
 ) {
   return adminConnectedAppCreateResponseSchema.parse(
-    await postAdminMutation(path, body, "connected app"),
+    await postAdminMutation(path, body, "key"),
   )
 }
 
 async function postAdminConnectedAppTestMutation(path: string) {
   return adminConnectedAppTestResultSchema.parse(
-    await postAdminMutation(path, undefined, "connected app test"),
+    await postAdminMutation(path, undefined, "key test"),
   )
 }
 
 async function postAdminConnectedAppRotateMutation(path: string) {
   return adminConnectedAppRotateCredentialResultSchema.parse(
-    await postAdminMutation(
-      path,
-      undefined,
-      "connected app credential rotation",
-    ),
+    await postAdminMutation(path, undefined, "key credential rotation"),
   )
 }
 
 async function postAdminConnectedAppRevokeMutation(path: string) {
   return adminConnectedAppSchema.parse(
-    await postAdminMutation(path, undefined, "connected app credential revoke"),
+    await postAdminMutation(path, undefined, "key credential revoke"),
   )
 }
 
@@ -1259,19 +1255,19 @@ async function postAdminConnectedAppFirecrawlCredentialMutation(
   body?: unknown,
 ) {
   return adminConnectedAppFirecrawlCredentialResultSchema.parse(
-    await postAdminMutation(path, body, "connected app Firecrawl credential"),
+    await postAdminMutation(path, body, "key Firecrawl credential"),
   )
 }
 
 async function postAdminConnectedAppFirecrawlTestMutation(path: string) {
   return adminConnectedAppFirecrawlTestResultSchema.parse(
-    await postAdminMutation(path, undefined, "connected app Firecrawl test"),
+    await postAdminMutation(path, undefined, "key Firecrawl test"),
   )
 }
 
 async function postAdminConnectedAppFirecrawlLifecycleMutation(path: string) {
   return adminConnectedAppFirecrawlLifecycleResultSchema.parse(
-    await postAdminMutation(path, undefined, "connected app Firecrawl"),
+    await postAdminMutation(path, undefined, "key Firecrawl"),
   )
 }
 
@@ -1280,7 +1276,7 @@ async function patchAdminConnectedAppFirecrawlMutation(
   body: unknown,
 ) {
   return adminConnectedAppFirecrawlLifecycleResultSchema.parse(
-    await adminMutation(path, body, "connected app Firecrawl policy", "PATCH"),
+    await adminMutation(path, body, "key Firecrawl policy", "PATCH"),
   )
 }
 
@@ -1291,19 +1287,19 @@ function revalidateConnectedApp(appId: string): void {
 
 async function patchAdminConnectedAppMutation(path: string, body: unknown) {
   return adminConnectedAppSchema.parse(
-    await adminMutation(path, body, "connected app policy update", "PATCH"),
+    await adminMutation(path, body, "key policy update", "PATCH"),
   )
 }
 
 async function postAdminConnectedAppLifecycleMutation(path: string) {
   return adminConnectedAppLifecycleResultSchema.parse(
-    await postAdminMutation(path, undefined, "connected app lifecycle"),
+    await postAdminMutation(path, undefined, "key lifecycle"),
   )
 }
 
 async function deleteAdminConnectedAppMutation(path: string, body: unknown) {
   return adminConnectedAppLifecycleResultSchema.parse(
-    await adminMutation(path, body, "connected app soft delete", "DELETE"),
+    await adminMutation(path, body, "key soft delete", "DELETE"),
   )
 }
 

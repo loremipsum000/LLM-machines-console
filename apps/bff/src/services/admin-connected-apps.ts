@@ -539,24 +539,20 @@ export function assertProductionConnectedAppRevealEndpoints(): void {
   }
   const staticPreflight = preflightConnectedAppCredentialReveal("api_key")
   if (staticPreflight.status === "blocked") {
-    throw new Error("Connected app reveal endpoint configuration is invalid.")
+    throw new Error("Key reveal endpoint configuration is invalid.")
   }
   const oauthPreflight = preflightConnectedAppCredentialReveal(
     "oauth_client_credentials",
   )
   if (oauthPreflight.status === "blocked") {
-    throw new Error(
-      "Connected app OAuth reveal endpoint configuration is invalid.",
-    )
+    throw new Error("Key OAuth reveal endpoint configuration is invalid.")
   }
   const keycloakConfig = keycloakApplicationAdminConfigFromEnv(process.env)
   if (keycloakConfig.status === "not_configured") {
     return
   }
   if (keycloakConfig.status === "invalid") {
-    throw new Error(
-      "Connected app OAuth reveal endpoint configuration is invalid.",
-    )
+    throw new Error("Key OAuth reveal endpoint configuration is invalid.")
   }
 }
 
@@ -768,7 +764,7 @@ export async function recordConnectedAppModelsConnection(
     }
   }
   if (!canUseBffFixtureData()) {
-    throw new Error("PostgreSQL Application connection storage is unavailable.")
+    throw new Error("PostgreSQL Key connection storage is unavailable.")
   }
   const record = memoryConnectedApps.find(
     (candidate) =>
@@ -876,7 +872,7 @@ export async function recordConnectedAppGatewayAccountingDegraded(
     }
   }
   if (!canUseBffFixtureData()) {
-    throw new Error("PostgreSQL Application connection storage is unavailable.")
+    throw new Error("PostgreSQL Key connection storage is unavailable.")
   }
   const record = memoryConnectedApps.find(
     (candidate) =>
@@ -1060,7 +1056,7 @@ export async function admitConnectedAppGatewayUsage(
             )?.active_count,
           )
           if (!Number.isSafeInteger(active) || active < 0) {
-            throw new Error("Invalid connected app concurrency count.")
+            throw new Error("Invalid Key concurrency count.")
           }
           if (active >= maxConcurrentRequests) {
             return concurrencyLimitExceeded()
@@ -1100,7 +1096,7 @@ export async function admitConnectedAppGatewayUsage(
           | { lease_expires_at?: unknown; started_at?: unknown }
           | undefined
         if (!inserted) {
-          throw new Error("Connected app request lease was not persisted.")
+          throw new Error("Key request lease was not persisted.")
         }
         const startedAt = storedTimestamp(inserted.started_at)
         context = {
@@ -1345,7 +1341,7 @@ async function reconcileConnectedAppGatewayUsageInternal(
     (existingRequest.appId !== context.appId ||
       existingRequest.credentialId !== context.credentialId)
   ) {
-    throw new Error("Connected app usage context does not match its lease.")
+    throw new Error("Key usage context does not match its lease.")
   }
   memoryGatewayRequests.set(context.requestId, {
     appId: context.appId,
@@ -1408,7 +1404,7 @@ const memoryOAuthClients = new Map<string, { clientId: string; id: string }>()
 
 class StaleConnectedAppIdentityError extends Error {
   constructor() {
-    super("The Application runtime identity is no longer current.")
+    super("The Key runtime identity is no longer current.")
     this.name = "StaleConnectedAppIdentityError"
   }
 }
@@ -1596,7 +1592,7 @@ async function saveConnectedAppRecord(
         .returning()
       const storedApplication = inserted[0]
       if (!storedApplication) {
-        throw new Error("Created Application could not be persisted.")
+        throw new Error("Created Key could not be persisted.")
       }
       if (storedRecord.allowedModels.length > 0) {
         await executor.insert(applicationModelAllowlists).values(
@@ -1638,7 +1634,7 @@ async function saveConnectedAppRecord(
       ? await persist(transaction)
       : await db.transaction(persist)
     if (!saved) {
-      throw new Error("Created Application could not be read back.")
+      throw new Error("Created Key could not be read back.")
     }
     return saved
   }
@@ -1987,7 +1983,7 @@ async function persistStaticCredentialRotation(
         "api_key",
       )
       if (!locked) {
-        throw new Error("Application could not be updated during rotation.")
+        throw new Error("Key could not be updated during rotation.")
       }
       await executor
         .update(applicationCredentials)
@@ -2016,7 +2012,7 @@ async function persistStaticCredentialRotation(
         )
         .returning({ id: applicationCredentials.id })
       if (retired.length !== 1) {
-        throw new Error("Active Application credential could not be retired.")
+        throw new Error("Active Key credential could not be retired.")
       }
       await executor
         .insert(applicationCredentials)
@@ -2038,7 +2034,7 @@ async function persistStaticCredentialRotation(
         )
         .returning({ id: applications.id })
       if (updated.length !== 1) {
-        throw new Error("Application could not be updated during rotation.")
+        throw new Error("Key could not be updated during rotation.")
       }
       await executor.insert(auditEvents).values(
         auditValues({
@@ -2060,7 +2056,7 @@ async function persistStaticCredentialRotation(
       ? await persist(transaction)
       : await db.transaction(persist)
     if (!saved) {
-      throw new Error("Rotated Application could not be read back.")
+      throw new Error("Rotated Key could not be read back.")
     }
     return saved
   }
@@ -2077,7 +2073,7 @@ async function persistStaticCredentialRotation(
       credential.status === "active",
   )
   if (appIndex < 0 || !activeStored) {
-    throw new Error("Active Application credential could not be retired.")
+    throw new Error("Active Key credential could not be retired.")
   }
   await emitAudit({
     action: "admin.connected_app.credentials_rotated",
@@ -2226,7 +2222,7 @@ async function persistOAuthCredentialRotation(
         "oauth_client_credentials",
       )
       if (!locked) {
-        throw new Error("OAuth Application changed before finalization.")
+        throw new Error("OAuth Key changed before finalization.")
       }
       const rotated = await executor
         .update(applicationCredentials)
@@ -2275,7 +2271,7 @@ async function persistOAuthCredentialRotation(
         )
         .returning({ id: applications.id })
       if (updated.length !== 1) {
-        throw new Error("OAuth Application changed before finalization.")
+        throw new Error("OAuth Key changed before finalization.")
       }
       await executor.insert(auditEvents).values(
         auditValues({
@@ -2297,7 +2293,7 @@ async function persistOAuthCredentialRotation(
       ? await persist(transaction)
       : await db.transaction(persist)
     if (!saved) {
-      throw new Error("Rotated OAuth Application could not be read back.")
+      throw new Error("Rotated OAuth Key could not be read back.")
     }
     return saved
   }
@@ -2316,7 +2312,7 @@ async function persistOAuthCredentialRotation(
       candidate.externalCredentialId === active.externalCredentialId,
   )
   if (!storedApp || !storedCredential) {
-    throw new Error("OAuth Application changed before finalization.")
+    throw new Error("OAuth Key changed before finalization.")
   }
   await emitAudit({
     action: "admin.connected_app.credentials_rotated",
@@ -2407,7 +2403,7 @@ async function revokeOAuthConnectedAppCredential(
   })
   const saved = await getConnectedAppBundle(existing.record.id)
   if (!saved) {
-    throw new Error("Revoked OAuth Application could not be read back.")
+    throw new Error("Revoked OAuth Key could not be read back.")
   }
   return { app: toPublicApp(saved), status: "revoked" }
 }
@@ -2429,7 +2425,7 @@ async function persistCredentialRevocation(
         credential.authMethod,
       )
       if (!locked) {
-        throw new Error("Application changed before credential revocation.")
+        throw new Error("Key changed before credential revocation.")
       }
       const currentCredentials = await transaction
         .select({
@@ -2453,7 +2449,7 @@ async function persistCredentialRevocation(
         (currentCredential.status !== "active" &&
           currentCredential.status !== "retiring")
       ) {
-        throw new Error("Application credential changed before revocation.")
+        throw new Error("Key credential changed before revocation.")
       }
       const disablesApplication = currentCredential.status === "active"
       const revoked = await transaction
@@ -2470,7 +2466,7 @@ async function persistCredentialRevocation(
         )
         .returning({ id: applicationCredentials.id })
       if (revoked.length !== 1) {
-        throw new Error("Application credential changed before revocation.")
+        throw new Error("Key credential changed before revocation.")
       }
       if (disablesApplication) {
         const disabled = await transaction
@@ -2491,7 +2487,7 @@ async function persistCredentialRevocation(
           )
           .returning({ id: applications.id })
         if (disabled.length !== 1) {
-          throw new Error("Application changed before credential revocation.")
+          throw new Error("Key changed before credential revocation.")
         }
         await disableAdminConnectedAppFirecrawlForParent(
           actor,
@@ -2511,7 +2507,7 @@ async function persistCredentialRevocation(
     })
     const saved = await getConnectedAppBundle(existing.record.id)
     if (!saved) {
-      throw new Error("Revoked Application could not be read back.")
+      throw new Error("Revoked Key could not be read back.")
     }
     return saved
   }
@@ -2528,7 +2524,7 @@ async function persistCredentialRevocation(
       candidate.status !== "revoked",
   )
   if (!storedApp || !storedCredential) {
-    throw new Error("Application credential changed before revocation.")
+    throw new Error("Key credential changed before revocation.")
   }
   const disablesApplication = storedCredential.status === "active"
   await emitAudit({
@@ -2650,7 +2646,7 @@ async function persistSoftDelete(
         existing.record.authMethod,
       )
       if (!locked) {
-        throw new Error("Application changed before deletion.")
+        throw new Error("Key changed before deletion.")
       }
       const currentActive = await transaction
         .select({ id: applicationCredentials.id })
@@ -2691,7 +2687,7 @@ async function persistSoftDelete(
         )
         .returning({ id: applications.id })
       if (deleted.length !== 1) {
-        throw new Error("Application changed before deletion.")
+        throw new Error("Key changed before deletion.")
       }
       await deleteAdminConnectedAppFirecrawlForParent(
         actor,
@@ -2717,7 +2713,7 @@ async function persistSoftDelete(
       candidate.id === existing.record.id && candidate.status !== "deleted",
   )
   if (!storedApp) {
-    throw new Error("Application changed before deletion.")
+    throw new Error("Key changed before deletion.")
   }
   await emitAudit({
     action: "admin.connected_app.deleted",
@@ -2749,7 +2745,7 @@ async function loadConnectedAppBundle(
   database: InferenceCoreQueryExecutor | null = getInferenceCoreDb(),
 ): Promise<ConnectedAppBundle> {
   if (!database) {
-    throw new Error("PostgreSQL Application storage is unavailable.")
+    throw new Error("PostgreSQL Key storage is unavailable.")
   }
   const [modelRows, limitRows, credentialRows, usageRows, firecrawl] =
     await Promise.all([
@@ -2781,10 +2777,10 @@ async function loadConnectedAppBundle(
   const credentials = credentialRows.map(credentialRecordFromRow)
   const limits = limitRows[0]
   if (!limits) {
-    throw new Error("Application protection policy storage is incomplete.")
+    throw new Error("Key protection policy storage is incomplete.")
   }
   if (!firecrawl) {
-    throw new Error("Application Firecrawl projection is unavailable.")
+    throw new Error("Key Firecrawl projection is unavailable.")
   }
   const lastUsedAt = latestTimestamp(
     credentials.map((credential) => credential.lastUsedAt),
@@ -2883,7 +2879,7 @@ async function getConnectedAppCredentialRecordsByPrefix(
 function toPublicApp(bundle: ConnectedAppBundle): AdminConnectedApp {
   const { record } = bundle
   if (record.status === "deleted") {
-    throw new Error("Deleted Applications cannot be projected publicly.")
+    throw new Error("Deleted Keys cannot be projected publicly.")
   }
   return {
     allowedModels: [...record.allowedModels],
@@ -2933,7 +2929,7 @@ function runtimeIdentity(
   clientId: string,
 ): ConnectedAppRuntimeIdentity {
   if (bundle.record.status === "deleted") {
-    throw new Error("Deleted Applications cannot resolve runtime identities.")
+    throw new Error("Deleted Keys cannot resolve runtime identities.")
   }
   return {
     allowedModels: [...bundle.record.allowedModels],
@@ -2959,7 +2955,7 @@ function activeCredential(
 ): ConnectedAppCredentialRecord {
   const credential = activeCredentialOrNull(bundle)
   if (!credential) {
-    throw new Error("Application has no active credential.")
+    throw new Error("Key has no active credential.")
   }
   return credential
 }
@@ -3226,7 +3222,7 @@ async function memoryBundle(
 ): Promise<ConnectedAppBundle> {
   const firecrawl = await getAdminConnectedAppFirecrawlProjection(record.id)
   if (!firecrawl) {
-    throw new Error("Application Firecrawl projection is unavailable.")
+    throw new Error("Key Firecrawl projection is unavailable.")
   }
   return {
     credentials: memoryConnectedAppCredentials
@@ -3240,7 +3236,7 @@ async function memoryBundle(
 
 function assertFixtureApplicationStorage(): void {
   if (!canUseBffFixtureData()) {
-    throw new Error("PostgreSQL Application storage is unavailable.")
+    throw new Error("PostgreSQL Key storage is unavailable.")
   }
 }
 
@@ -3248,7 +3244,7 @@ function authMethodFromStorage(value: string): AdminConnectedAppAuthMethod {
   if (value === "api_key" || value === "oauth_client_credentials") {
     return value
   }
-  throw new Error("Application storage contains an invalid auth method.")
+  throw new Error("Key storage contains an invalid auth method.")
 }
 
 function applicationStatusFromStorage(
@@ -3257,7 +3253,7 @@ function applicationStatusFromStorage(
   if (value === "enabled" || value === "disabled" || value === "deleted") {
     return value
   }
-  throw new Error("Application storage contains an invalid lifecycle status.")
+  throw new Error("Key storage contains an invalid lifecycle status.")
 }
 
 function connectionStatusFromStorage(
@@ -3270,7 +3266,7 @@ function connectionStatusFromStorage(
   ) {
     return value
   }
-  throw new Error("Application storage contains an invalid connection status.")
+  throw new Error("Key storage contains an invalid connection status.")
 }
 
 function credentialStatusFromStorage(
@@ -3279,7 +3275,7 @@ function credentialStatusFromStorage(
   if (value === "active" || value === "retiring" || value === "revoked") {
     return value
   }
-  throw new Error("Application storage contains an invalid credential status.")
+  throw new Error("Key storage contains an invalid credential status.")
 }
 
 function latestTimestamp(values: Array<string | null>): string | null {
@@ -3358,8 +3354,7 @@ function connectedAppRevealConfigurationBlocked(): {
   status: "blocked"
 } {
   return {
-    detail:
-      "Application credential reveal endpoints are unavailable or invalid.",
+    detail: "Key credential reveal endpoints are unavailable or invalid.",
     status: "blocked",
   }
 }
@@ -3381,7 +3376,7 @@ function normalizedConnectedAppCredentialRevealEndpoints(
       !isPublicProductHostname(apiHost) ||
       new URL(bffBaseUrl).hostname !== apiHost
     ) {
-      throw new Error("Application API authority is unavailable or invalid.")
+      throw new Error("Key API authority is unavailable or invalid.")
     }
   }
   const openAiBaseUrl = normalizeConnectedAppEndpointUrl(`${bffBaseUrl}/v1`)
@@ -3389,15 +3384,11 @@ function normalizedConnectedAppCredentialRevealEndpoints(
     supplied &&
     normalizeConnectedAppEndpointUrl(supplied.openAiBaseUrl) !== openAiBaseUrl
   ) {
-    throw new Error(
-      "The supplied Application gateway endpoint is inconsistent.",
-    )
+    throw new Error("The supplied Key gateway endpoint is inconsistent.")
   }
   if (authMethod === "api_key") {
     if (supplied && supplied.tokenUrl !== null) {
-      throw new Error(
-        "Static Application credentials cannot reveal a token URL.",
-      )
+      throw new Error("Static Key credentials cannot reveal a token URL.")
     }
     return { bffBaseUrl, openAiBaseUrl, tokenUrl: null }
   }
@@ -3415,7 +3406,7 @@ function normalizeConnectedAppEndpointUrl(
 ): string {
   const candidate = value.trim()
   if (!candidate || candidate.includes("?") || candidate.includes("#")) {
-    throw new Error("Application endpoint URL is invalid.")
+    throw new Error("Key endpoint URL is invalid.")
   }
   const endpoint = new URL(candidate)
   if (
@@ -3430,7 +3421,7 @@ function normalizeConnectedAppEndpointUrl(
     endpoint.search !== "" ||
     endpoint.hash !== ""
   ) {
-    throw new Error("Application endpoint URL is invalid.")
+    throw new Error("Key endpoint URL is invalid.")
   }
   const normalized = endpoint.toString()
   return removeTrailingSlash ? normalized.replace(/\/+$/, "") : normalized
@@ -3442,7 +3433,7 @@ function connectedAppBffBaseUrl(): string {
     return configured
   }
   if (isProductionRuntime()) {
-    throw new Error("Application BFF base URL is required in production.")
+    throw new Error("Key BFF base URL is required in production.")
   }
   return "http://localhost:4001"
 }
@@ -3484,7 +3475,7 @@ function connectedAppOAuthTokenUrl(): string {
   }
   const configuredIssuer = process.env.KEYCLOAK_APPLICATION_ISSUER_URL?.trim()
   if (!configuredIssuer) {
-    throw new Error("Application OAuth identity configuration is unavailable.")
+    throw new Error("Key OAuth identity configuration is unavailable.")
   }
   const issuer = normalizeConnectedAppEndpointUrl(
     configuredIssuer,
@@ -3499,7 +3490,7 @@ function connectedAppOAuthTokenUrl(): string {
     !isPublicProductHostname(identityHost) ||
     issuerUrl.hostname !== identityHost
   ) {
-    throw new Error("Application OAuth identity configuration is unavailable.")
+    throw new Error("Key OAuth identity configuration is unavailable.")
   }
   return `${issuer}/protocol/openid-connect/token`
 }
@@ -3555,7 +3546,7 @@ function assertGatewayAdmissionInput(
   input: ConnectedAppGatewayAdmissionInput,
 ): void {
   if (!isNonNegativeSafeInteger(input.contextBytes)) {
-    throw new Error("Connected app context bytes must be an exact integer.")
+    throw new Error("Key context bytes must be an exact integer.")
   }
   assertGatewayRouteModel(input.route, input.model, false)
 }
@@ -3575,7 +3566,7 @@ function assertGatewayUsageInput(
     ) ||
     !isNonNegativeSafeInteger(context.contextBytes)
   ) {
-    throw new Error("Connected app usage context is invalid.")
+    throw new Error("Key usage context is invalid.")
   }
   const allowRejectedChatWithoutModel = input.status >= 400
   assertGatewayRouteModel(
@@ -3589,7 +3580,7 @@ function assertGatewayUsageInput(
     allowRejectedChatWithoutModel,
   )
   if (input.route !== context.route || input.model !== context.model) {
-    throw new Error("Connected app usage metadata changed after admission.")
+    throw new Error("Key usage metadata changed after admission.")
   }
   const startedAt = new Date(context.startedAt)
   const leaseExpiresAt = new Date(context.leaseExpiresAt)
@@ -3600,7 +3591,7 @@ function assertGatewayUsageInput(
     leaseExpiresAt <= startedAt ||
     context.bucketDate !== startedAt.toISOString().slice(0, 10)
   ) {
-    throw new Error("Connected app usage timestamps are invalid.")
+    throw new Error("Key usage timestamps are invalid.")
   }
   if (
     !Number.isInteger(input.status) ||
@@ -3613,7 +3604,7 @@ function assertGatewayUsageInput(
     !Number.isSafeInteger(componentTokens) ||
     input.totalTokens < componentTokens
   ) {
-    throw new Error("Connected app usage counters are invalid.")
+    throw new Error("Key usage counters are invalid.")
   }
 }
 
@@ -3632,7 +3623,7 @@ function assertGatewayRouteModel(
   ) {
     return
   }
-  throw new Error("Connected app route metadata is invalid.")
+  throw new Error("Key route metadata is invalid.")
 }
 
 function isNonNegativeSafeInteger(value: number): boolean {
@@ -3649,7 +3640,7 @@ function storedOptionalPositiveInteger(value: unknown): number | null {
     !Number.isSafeInteger(parsed) ||
     parsed <= 0
   ) {
-    throw new Error("Connected app limits storage returned an invalid value.")
+    throw new Error("Key limits storage returned an invalid value.")
   }
   return parsed
 }
@@ -3657,7 +3648,7 @@ function storedOptionalPositiveInteger(value: unknown): number | null {
 function storedTimestamp(value: unknown): string {
   const date = value instanceof Date ? value : new Date(String(value))
   if (!Number.isFinite(date.getTime())) {
-    throw new Error("Connected app request storage returned an invalid clock.")
+    throw new Error("Key request storage returned an invalid clock.")
   }
   return date.toISOString()
 }
@@ -3704,7 +3695,7 @@ function rateLimitExceeded(): {
   title: string
 } {
   return {
-    detail: "The connected app has reached its requests-per-second limit.",
+    detail: "The Key has reached its requests-per-second limit.",
     ok: false,
     status: 429,
     title: "Rate limit exceeded",
@@ -3719,7 +3710,7 @@ function rateLimitUnavailable(): {
 } {
   return {
     detail:
-      "PostgreSQL coordination is required before enforcing Application rate limits.",
+      "PostgreSQL coordination is required before enforcing Key rate limits.",
     ok: false,
     status: 503,
     title: "Rate limit backend unavailable",
@@ -3733,8 +3724,7 @@ function contextLimitExceeded(): {
   title: string
 } {
   return {
-    detail:
-      "The request exceeds this connected app's maximum context size in bytes.",
+    detail: "The request exceeds this Key's maximum context size in bytes.",
     ok: false,
     status: 413,
     title: "Context limit exceeded",
@@ -3749,7 +3739,7 @@ function concurrencyLimitExceeded(): {
 } {
   return {
     detail:
-      "The connected app has reached its concurrent request limit. Retry after an active request completes.",
+      "The Key has reached its concurrent request limit. Retry after an active request completes.",
     ok: false,
     status: 429,
     title: "Concurrency limit exceeded",
@@ -3764,7 +3754,7 @@ function gatewayAdmissionUnavailable(): {
 } {
   return {
     detail:
-      "PostgreSQL coordination is required before enforcing connected app request protection.",
+      "PostgreSQL coordination is required before enforcing Key request protection.",
     ok: false,
     status: 503,
     title: "Request protection backend unavailable",
@@ -3779,10 +3769,10 @@ function gatewayAdmissionStateChanged(): {
 } {
   return {
     detail:
-      "The connected app or credential changed during request admission. Authenticate again.",
+      "The Key or credential changed during request admission. Authenticate again.",
     ok: false,
     status: 503,
-    title: "Connected app state changed",
+    title: "Key state changed",
   }
 }
 

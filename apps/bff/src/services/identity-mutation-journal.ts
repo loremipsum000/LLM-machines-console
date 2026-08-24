@@ -1113,7 +1113,7 @@ function executionErrorFromReservation(
       : reservation.status === "already_finalized"
         ? "Identity mutation already has a durable final state."
         : reservation.status === "blocked_by_active_reconciliation"
-          ? "Another unresolved identity or Application mutation blocks all identity and Application writes until reconciliation."
+          ? "Another unresolved identity or Key mutation blocks all identity and Key writes until reconciliation."
           : "Identity mutation requires reconciliation before retrying.",
   )
 }

@@ -177,7 +177,7 @@
       "methods": ["GET", "HEAD"],
       "path": {
         "kind": "regex",
-        "value": "^/(?:activity|hardware|inference|applications|team)$"
+        "value": "^/(?:activity|hardware|inference|keys|applications|team)$"
       },
       "queryPolicy": "console-navigation",
       "headerProfile": "console-browser",
@@ -191,7 +191,7 @@
       "methods": ["GET", "HEAD", "POST"],
       "path": {
         "kind": "regex",
-        "value": "^/(?:applications/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$"
+        "value": "^/(?:(?:keys|applications)/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$"
       },
       "queryPolicy": "console-navigation",
       "headerProfile": "console-browser",

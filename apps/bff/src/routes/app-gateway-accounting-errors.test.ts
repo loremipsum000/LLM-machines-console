@@ -87,9 +87,9 @@ describe("connected app gateway accounting failures", () => {
     expect(response.json()).toMatchObject({
       code: "accounting_unavailable",
       detail:
-        "The connected app request could not establish usage accounting. Retry later.",
+        "The Key request could not establish usage accounting. Retry later.",
       request_id: expect.any(String),
-      title: "Connected app accounting unavailable",
+      title: "Key accounting unavailable",
     })
     expect(response.headers["x-llm-machines-request-id"]).toBe(
       response.json().request_id,
@@ -231,7 +231,7 @@ describe("connected app gateway accounting failures", () => {
         failureClass: "accounting_reconciliation_failed",
         requestId: response.headers["x-llm-machines-request-id"],
       },
-      "Connected app gateway accounting failed",
+      "Key gateway accounting failed",
     ])
     const serializedErrors = JSON.stringify(loggedErrors)
     expect(serializedErrors).not.toContain("usage.internal")
@@ -303,14 +303,14 @@ describe("connected app gateway accounting failures", () => {
         failureClass: "connection_recording_failed",
         requestId: response.headers["x-llm-machines-request-id"],
       },
-      "Connected app gateway accounting failed",
+      "Key gateway accounting failed",
     ])
     expect(serializedErrors).not.toContain("recorder-key")
     expect(serializedErrors).not.toContain("audit.internal")
     expect(serializedErrors).not.toContain("admin.audit_events")
     expect(serializedErrors).not.toContain("environment")
     expect(response.body).not.toContain("recorder-key")
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).not.toHaveBeenCalled()
     await server.close()
   })
 
@@ -343,7 +343,7 @@ describe("connected app gateway accounting failures", () => {
         failureClass: "connection_recording_failed",
         requestId: response.headers["x-llm-machines-request-id"],
       },
-      "Connected app gateway accounting failed",
+      "Key gateway accounting failed",
     ])
     const serializedErrors = JSON.stringify(loggedErrors)
     expect(serializedErrors).not.toContain(created.apiKey)
@@ -395,6 +395,8 @@ describe("connected app gateway accounting failures", () => {
 
 function configureGateway(): void {
   vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+  vi.stubEnv("BFF_FALLBACK_MODELS", "local-a")
+  vi.stubEnv("BFF_FIXTURE_MODE", "true")
   vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
   vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
   vi.stubEnv("LITELLM_URL", "http://litellm.test")
