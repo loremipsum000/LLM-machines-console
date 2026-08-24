@@ -11,7 +11,7 @@
   "sourceRevision": "83d6d84bfb7abbbff70d456bc89028d426db8c33",
   "overlay": {
     "path": "infra/litellm/oss-downstream/patches/sidebar-functional-candidate.patch",
-    "sha256": "c0f56d4eda0f2ecdffd639146c06a4bd1fcc0b6cca4b9fbd8b923ac3ab21f844",
+    "sha256": "5194144889771f26b0f0e2a5b801c332f53ad6de071a9c12ce73eba760f38ce7",
     "scope": [
       "hide retired native sidebar entries",
       "bump downstream UI build identity",
@@ -21,7 +21,7 @@
   "sourceInventory": {
     "fileCount": 9019,
     "sha256SumsSha256": "f1cf7c6ad38d3c02db2d81ac9c2a5333b019f5c7dd6a406b7913f60013fbdd77",
-    "inventoryDocumentSha256": "af2e37bb1ae19a12db318d397025ea4715c527dbfb60d4e2dd8d4c5930ddae7f"
+    "inventoryDocumentSha256": "4bfa49baf3072b569d2996900139b4aeadf58e7e28c30fb2bf9c326640db8963"
   },
   "labArtifact": {
     "evidenceStatus": "SINGLE_VM103_FUNCTIONAL_BUILD_NOT_RELEASE_EVIDENCE",

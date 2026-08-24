@@ -75,7 +75,7 @@ export function validateSidebarFunctionalCandidate(
     candidate?.sourceInventory?.sha256SumsSha256 !==
       "f1cf7c6ad38d3c02db2d81ac9c2a5333b019f5c7dd6a406b7913f60013fbdd77" ||
     candidate?.sourceInventory?.inventoryDocumentSha256 !==
-      "af2e37bb1ae19a12db318d397025ea4715c527dbfb60d4e2dd8d4c5930ddae7f"
+      "4bfa49baf3072b569d2996900139b4aeadf58e7e28c30fb2bf9c326640db8963"
   ) {
     errors.push("LiteLLM sidebar candidate source inventory differs")
   }
