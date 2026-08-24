@@ -19,6 +19,12 @@ measurement window, renders an `ACTIVE_MEASURED` capability advertisement. The
 BFF intersects those advertisements with LiteLLM's read-only `/model/info`
 projection before any Key can use an alias.
 
+An `INTERNAL_TEST_ONLY` profile may use the separate
+`ACTIVE_MEASURED_INTERNAL_TEST` lifecycle without making a production-capacity
+claim. The BFF rejects that scope unless the lab-only
+`INFERENCE_ALLOW_INTERNAL_TEST_PROFILES=true` switch is set explicitly. This
+switch is forbidden in a production delivery and does not qualify the hardware.
+
 The rendered advertisements are credential-free runtime inputs. Commissioning
 places one canonical JSON file per admitted alias in a bounded directory,
 replaces that directory atomically, and mounts it read-only at the BFF path

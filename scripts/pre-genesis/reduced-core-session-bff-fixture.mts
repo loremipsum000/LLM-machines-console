@@ -23,7 +23,8 @@ if (
 const consoleOrigin = required("F0_S1_CONSOLE_ORIGIN")
 const grafanaOrigin = required("F0_S1_GRAFANA_ORIGIN")
 const issuer = required("F0_S1_IDENTITY_ISSUER")
-const clockFile = required("F0_S1_CLOCK_FILE")
+const realClock = process.env.F0_S1_REAL_CLOCK === "true"
+const clockFile = realClock ? "" : required("F0_S1_CLOCK_FILE")
 const clientId = required("F0_S1_OIDC_CLIENT_ID")
 const clientSecret = required("F0_S1_OIDC_CLIENT_SECRET")
 const audience = required("F0_S1_OIDC_AUDIENCE")
@@ -61,7 +62,8 @@ const cipher = postgresPersistence
       activeKid: "f0-s1-throwaway",
       keys: { "f0-s1-throwaway": randomBytes(32) },
     })
-const now = () => new Date(readFileSync(clockFile, "utf8").trim())
+const now = () =>
+  realClock ? new Date() : new Date(readFileSync(clockFile, "utf8").trim())
 const rawOidc = createConsoleOidcClient(
   {
     authorizationEndpoint: `${oidcBase}/auth`,

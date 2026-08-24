@@ -47,7 +47,7 @@ export function renderDeliveryProfile(profile, contracts = loadContracts()) {
   }
 
   const capabilityAdvertisement =
-    profile.activation.state === "ACTIVE" &&
+    ["ACTIVE", "ACTIVE_INTERNAL_TEST"].includes(profile.activation.state) &&
     profile.capacity.state === "MEASURED"
       ? {
           state: "ACTIVE_MEASURED",
@@ -102,6 +102,9 @@ export function renderDeliveryProfile(profile, contracts = loadContracts()) {
     capabilityAdvertisement,
     qualification: {
       evidenceDigest: profile.capacity.evidenceDigest,
+      scope: profile.metadata.admissionScope,
+      productionCapacityClaim:
+        profile.accelerator.productionSupportClaim === true,
       qualifiedProfileDigest: profile.activation.qualifiedProfileDigest,
     },
     rollback: profile.rollback,

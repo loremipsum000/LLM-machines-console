@@ -13,6 +13,8 @@ const expectedFiles = [
   "delivery-profile.schema.json",
   "fixtures/synthetic-multi-node.json",
   "fixtures/synthetic-single-node.json",
+  "qualify-internal-profile.mjs",
+  "qualify-internal-profile.test.mjs",
   "render-profile.mjs",
   "sglang-engine-contract.json",
   "validate-profile.mjs",
@@ -21,7 +23,7 @@ const expectedFiles = [
 
 const sha256Pattern = /^sha256:[a-f0-9]{64}$/
 const sourceRevisionPattern = /^[a-f0-9]{40,64}$/
-const profileIdPattern = /^[a-z0-9][a-z0-9-]{2,62}$/
+const profileIdPattern = /^[a-z0-9][a-z0-9.-]{2,62}$/
 const reservedLaunchArguments = new Set([
   "--admin-api-key",
   "--api-key",
@@ -109,7 +111,12 @@ function isPositiveInteger(value) {
   return Number.isInteger(value) && value > 0
 }
 
-function validateOciArtifact(value, label, errors) {
+function validateOciArtifact(
+  value,
+  label,
+  errors,
+  { allowIncompleteReleaseEvidence = false } = {},
+) {
   if (
     !exactKeys(
       value,
@@ -132,7 +139,14 @@ function validateOciArtifact(value, label, errors) {
   }
 
   for (const key of ["digest", "sbomDigest", "provenanceDigest"]) {
-    if (!sha256Pattern.test(value[key]))
+    if (
+      !sha256Pattern.test(value[key]) &&
+      !(
+        allowIncompleteReleaseEvidence &&
+        ["sbomDigest", "provenanceDigest"].includes(key) &&
+        value[key] === null
+      )
+    )
       add(errors, `${label}.${key} must use sha256`)
   }
   if (!sourceRevisionPattern.test(value.sourceRevision)) {
@@ -382,17 +396,27 @@ export function validateDeliveryProfile(profile, coreContract) {
 
   exactKeys(
     profile.metadata,
-    ["profileId", "revision", "lifecycleState", "containsCredentials"],
+    [
+      "profileId",
+      "revision",
+      "admissionScope",
+      "lifecycleState",
+      "containsCredentials",
+    ],
     "metadata",
     errors,
   )
   if (
     !profileIdPattern.test(profile.metadata?.profileId ?? "") ||
     !isPositiveInteger(profile.metadata?.revision) ||
+    !["PRODUCTION_DELIVERY", "INTERNAL_TEST_ONLY", "SYNTHETIC_ONLY"].includes(
+      profile.metadata?.admissionScope,
+    ) ||
     ![
       "SYNTHETIC_UNMEASURED",
       "CANDIDATE_UNQUALIFIED",
       "ACTIVE_QUALIFIED",
+      "ACTIVE_MEASURED_INTERNAL_TEST",
       "RETIRED",
     ].includes(profile.metadata?.lifecycleState) ||
     profile.metadata?.containsCredentials !== false
@@ -415,7 +439,10 @@ export function validateDeliveryProfile(profile, coreContract) {
       "delivery profile must bind the selected SGLang source contract",
     )
   }
-  validateOciArtifact(profile.engine?.image, "engine.image", errors)
+  validateOciArtifact(profile.engine?.image, "engine.image", errors, {
+    allowIncompleteReleaseEvidence:
+      profile.metadata?.admissionScope === "INTERNAL_TEST_ONLY",
+  })
   if (profile.engine?.image?.sourceRevision !== profile.engine?.sourceCommit) {
     add(
       errors,
@@ -664,6 +691,7 @@ export function validateDeliveryProfile(profile, coreContract) {
 
   if (profile.activation?.state === "ACTIVE") {
     if (
+      profile.metadata.admissionScope !== "PRODUCTION_DELIVERY" ||
       profile.metadata.lifecycleState !== "ACTIVE_QUALIFIED" ||
       profile.capacity.state !== "MEASURED" ||
       profile.accelerator.productionSupportClaim !== true ||
@@ -672,10 +700,26 @@ export function validateDeliveryProfile(profile, coreContract) {
     ) {
       add(errors, "only the exact measured and qualified profile may activate")
     }
+  } else if (profile.activation?.state === "ACTIVE_INTERNAL_TEST") {
+    if (
+      profile.metadata.admissionScope !== "INTERNAL_TEST_ONLY" ||
+      profile.metadata.lifecycleState !== "ACTIVE_MEASURED_INTERNAL_TEST" ||
+      profile.capacity.state !== "MEASURED" ||
+      profile.accelerator.productionSupportClaim !== false ||
+      profile.activation.qualifiedProfileDigest !==
+        profileQualificationDigest(profile)
+    ) {
+      add(
+        errors,
+        "only an exact measured internal-test profile without a production claim may activate",
+      )
+    }
   } else if (
     profile.activation?.state !== "INACTIVE" ||
     profile.activation?.qualifiedProfileDigest !== null ||
-    profile.metadata.lifecycleState === "ACTIVE_QUALIFIED" ||
+    ["ACTIVE_QUALIFIED", "ACTIVE_MEASURED_INTERNAL_TEST"].includes(
+      profile.metadata.lifecycleState,
+    ) ||
     profile.accelerator.productionSupportClaim !== false
   ) {
     add(errors, "inactive profiles cannot make a production support claim")
@@ -697,6 +741,9 @@ export function validateDeliveryProfile(profile, coreContract) {
   }
 
   const serialized = canonicalJson(profile)
+  const internalTestOnly =
+    profile.metadata?.admissionScope === "INTERNAL_TEST_ONLY" &&
+    profile.accelerator?.productionSupportClaim === false
   for (const [pattern, message] of [
     [
       /\bintel[ -]?arc[ -]?b50\b|\bb50\b/i,
@@ -716,7 +763,17 @@ export function validateDeliveryProfile(profile, coreContract) {
       "demo or internal hostname is forbidden",
     ],
   ]) {
-    if (pattern.test(serialized)) add(errors, message)
+    if (
+      pattern.test(serialized) &&
+      !(
+        internalTestOnly &&
+        [
+          "demo accelerator identity is forbidden",
+          "historical XPU image alias is forbidden",
+        ].includes(message)
+      )
+    )
+      add(errors, message)
   }
   return errors
 }
