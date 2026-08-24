@@ -212,10 +212,10 @@ export function assembleSource({ archive, output, packet, candidate }) {
         repositoryRoot,
         functionalCandidate.overlay.path,
       )
-      run("git", ["apply", "--check", "--whitespace=nowarn", overlay], {
+      run("git", ["apply", "--check", "--unidiff-zero", "--whitespace=nowarn", overlay], {
         cwd: source,
       })
-      run("git", ["apply", "--whitespace=nowarn", overlay], { cwd: source })
+      run("git", ["apply", "--unidiff-zero", "--whitespace=nowarn", overlay], { cwd: source })
     }
 
     const sourceName = "litellm-oss-1.96.2"

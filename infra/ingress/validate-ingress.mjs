@@ -178,6 +178,9 @@ const expectedNginxLocations = {
     "= /v2/key/info",
     "= /user/info",
     "= /models",
+    "= /model_group/info",
+    "= /v2/model/info",
+    "= /spend/logs/ui",
     "= /v2/team/list",
     "= /team/list",
     "~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$",
@@ -208,9 +211,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "d6e4aa3ac8f93c2260967f893289caa8924c1534ddefb4c1edb71dc245d4a99b",
+    "fd546a5a8d26ddb5697ebca56a5a344a4d2336d280704df55697c7394590a3ae",
   "native-admin-edge-profile.json":
-    "a020711bed3b9fe913ff2cfdb04f5a14ad4552d5fc78e0c3096a6236fbc7df5f",
+    "51f8b16ddb3b5924baf5fb2a3101ed4ba9257f39a930a4400b47169e2759f84a",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -483,6 +486,15 @@ function validateNativeAdmin(profile, errors) {
   const liteLlmModels = profile.services?.litellm?.routes?.find(
     ({ id }) => id === "models",
   )
+  const liteLlmModelGroupInfo = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "model-group-info",
+  )
+  const liteLlmModelInfoV2 = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "model-info-v2",
+  )
+  const liteLlmSpendLogsUi = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "spend-logs-ui",
+  )
   const liteLlmTeamList = profile.services?.litellm?.routes?.find(
     ({ id }) => id === "team-list",
   )
@@ -511,6 +523,49 @@ function validateNativeAdmin(profile, errors) {
       ]) &&
       liteLlmModels?.path?.value === "/models" &&
       liteLlmModels?.queryPolicy === "litellm-models" &&
+      sameJson(profile.queryPolicies?.["litellm-model-group-info"], [
+        "model_group",
+      ]) &&
+      liteLlmModelGroupInfo?.path?.value === "/model_group/info" &&
+      liteLlmModelGroupInfo?.queryPolicy === "litellm-model-group-info" &&
+      sameJson(profile.queryPolicies?.["litellm-model-info-v2"], [
+        "exclude_auto_routers",
+        "include_team_models",
+        "modelId",
+        "page",
+        "search",
+        "size",
+        "sortBy",
+        "sortOrder",
+        "teamId",
+      ]) &&
+      liteLlmModelInfoV2?.path?.value === "/v2/model/info" &&
+      liteLlmModelInfoV2?.queryPolicy === "litellm-model-info-v2" &&
+      sameJson(profile.queryPolicies?.["litellm-spend-logs-ui"], [
+        "api_key",
+        "end_date",
+        "end_user",
+        "error_code",
+        "error_message",
+        "key_alias",
+        "max_spend",
+        "min_spend",
+        "model",
+        "model_group",
+        "model_id",
+        "page",
+        "page_size",
+        "request_id",
+        "session_id",
+        "sort_by",
+        "sort_order",
+        "start_date",
+        "status_filter",
+        "team_id",
+        "user_id",
+      ]) &&
+      liteLlmSpendLogsUi?.path?.value === "/spend/logs/ui" &&
+      liteLlmSpendLogsUi?.queryPolicy === "litellm-spend-logs-ui" &&
       sameJson(profile.queryPolicies?.["litellm-team-list"], [
         "page",
         "page_size",
@@ -1007,6 +1062,11 @@ function validateNginx(sources, errors) {
       ) &&
       litellmServer.includes("location = /key/generate") &&
       litellmServer.includes("location = /key/delete") &&
+      litellmServer.includes("location = /model_group/info") &&
+      litellmServer.includes("location = /v2/model/info") &&
+      litellmServer.includes("location = /spend/logs/ui") &&
+      !litellmServer.includes("location = /config/list") &&
+      !litellmServer.includes("location ~ ^/spend/logs/ui/") &&
       litellmServer.includes("location = /v1/chat/completions") &&
       litellmServer.includes(
         "location ~* ^/(?:public/litellm_blog_posts|v1/agents)(?:/|$)",

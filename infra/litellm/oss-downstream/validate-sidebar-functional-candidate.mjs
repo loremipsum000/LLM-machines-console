@@ -64,6 +64,12 @@ export function validateSidebarFunctionalCandidate(
     '-      { key: "model-hub-table",',
     '-        label: "Agentic",',
     '-        label: "Tools",',
+    '+def _require_llmm_proxy_admin(user_api_key_dict: UserAPIKeyAuth) -> None:',
+    '+        raise HTTPException(status_code=403, detail="Proxy admin access required")',
+    '-    # Append A2A agents to models list',
+    '-    # Append A2A agents to model groups',
+    '-import ModelSettingsModal from "@/components/model_dashboard/ModelSettingsModal/ModelSettingsModal";',
+    '-import AuditLogsPanel from "./AuditLogsPanel";',
   ]) {
     if (!patch.includes(required)) {
       errors.push(`LiteLLM sidebar overlay is missing ${required}`)
@@ -73,9 +79,9 @@ export function validateSidebarFunctionalCandidate(
   if (
     candidate?.sourceInventory?.fileCount !== 9019 ||
     candidate?.sourceInventory?.sha256SumsSha256 !==
-      "f1cf7c6ad38d3c02db2d81ac9c2a5333b019f5c7dd6a406b7913f60013fbdd77" ||
+      "996127beb403a87cf89f9695cad7dd104cfbfb287f62f3028c5bfad00449dc04" ||
     candidate?.sourceInventory?.inventoryDocumentSha256 !==
-      "4bfa49baf3072b569d2996900139b4aeadf58e7e28c30fb2bf9c326640db8963"
+      "7bfd37be1892a7c5cd599ed09d6e63b7395aa7594019c32cbcd131d17a19b302"
   ) {
     errors.push("LiteLLM sidebar candidate source inventory differs")
   }
@@ -101,7 +107,11 @@ export function validateSidebarFunctionalCandidate(
       JSON.stringify(["api-keys", "new_usage"]) ||
     candidate?.productBoundary?.consoleSessionForwarding !== false ||
     candidate?.productBoundary?.nativeOidcPreserved !== true ||
-    candidate?.productBoundary?.removedNavigation?.length !== 9
+    candidate?.productBoundary?.removedNavigation?.length !== 9 ||
+    JSON.stringify(candidate?.productBoundary?.adminMetadataReads) !==
+      JSON.stringify(["model_group_info", "model_info_v2", "spend_logs_ui"]) ||
+    JSON.stringify(candidate?.productBoundary?.deniedDependencies) !==
+      JSON.stringify(["config_list", "spend_log_detail", "enterprise_audit_preview"])
   ) {
     errors.push("LiteLLM sidebar Product boundary differs")
   }

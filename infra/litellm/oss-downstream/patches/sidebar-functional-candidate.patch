@@ -2,72 +2,135 @@ diff --git a/Dockerfile b/Dockerfile
 index 0471793..e1cf54a 100644
 --- a/Dockerfile
 +++ b/Dockerfile
-@@ -106,7 +106,7 @@ FROM $LITELLM_RUNTIME_IMAGE AS runtime
- USER root
-
- LABEL org.opencontainers.image.title="LiteLLM OSS Downstream" \
+@@ -109 +109 @@ LABEL org.opencontainers.image.title="LiteLLM OSS Downstream" \
 -      org.opencontainers.image.version="v1.96.2-llmm.1" \
 +      org.opencontainers.image.version="v1.96.2-llmm.2" \
-       org.opencontainers.image.revision="83d6d84bfb7abbbff70d456bc89028d426db8c33" \
-       org.opencontainers.image.source="https://github.com/BerriAI/litellm" \
-       org.opencontainers.image.licenses="MIT"
+diff --git a/litellm/proxy/proxy_server.py b/litellm/proxy/proxy_server.py
+index b12b38a..3b7cd13 100644
+--- a/litellm/proxy/proxy_server.py
++++ b/litellm/proxy/proxy_server.py
+@@ -12188,0 +12189,2 @@ async def model_info_v2(
++    _require_llmm_proxy_admin(user_api_key_dict)
++
+@@ -12298,10 +12299,0 @@ async def model_info_v2(
+-    # Append A2A agents to models list
+-    from litellm.proxy.agent_endpoints.model_list_helpers import (
+-        append_agents_to_model_info,
+-    )
+-
+-    all_models = await append_agents_to_model_info(
+-        models=all_models,
+-        user_api_key_dict=user_api_key_dict,
+-    )
+-
+@@ -12313 +12305 @@ async def model_info_v2(
+-    # Update total count to include agents
++    # Update total count after Product-boundary filtering.
+@@ -13104,0 +13097,9 @@ def _get_model_group_info(
++def _require_llmm_proxy_admin(user_api_key_dict: UserAPIKeyAuth) -> None:
++    """Restrict LLM Machines native Admin metadata reads to proxy admins."""
++    if user_api_key_dict.user_role not in (
++        LitellmUserRoles.PROXY_ADMIN,
++        LitellmUserRoles.PROXY_ADMIN.value,
++    ):
++        raise HTTPException(status_code=403, detail="Proxy admin access required")
++
++
+@@ -13265,0 +13267,2 @@ async def model_group_info(
++    _require_llmm_proxy_admin(user_api_key_dict)
++
+@@ -13290,10 +13292,0 @@ async def model_group_info(
+-    # Append A2A agents to model groups
+-    from litellm.proxy.agent_endpoints.model_list_helpers import (
+-        append_agents_to_model_group,
+-    )
+-
+-    model_groups = await append_agents_to_model_group(
+-        model_groups=model_groups,
+-        user_api_key_dict=user_api_key_dict,
+-    )
+-
+diff --git a/litellm/proxy/spend_tracking/spend_management_endpoints.py b/litellm/proxy/spend_tracking/spend_management_endpoints.py
+index d2c3b0d..b23aab0 100644
+--- a/litellm/proxy/spend_tracking/spend_management_endpoints.py
++++ b/litellm/proxy/spend_tracking/spend_management_endpoints.py
+@@ -1918,0 +1919,6 @@ async def ui_view_spend_logs(
++    if not is_v2 and user_api_key_dict.user_role not in (
++        LitellmUserRoles.PROXY_ADMIN,
++        LitellmUserRoles.PROXY_ADMIN.value,
++    ):
++        raise HTTPException(status_code=403, detail="Proxy admin access required")
++
 diff --git a/ui/litellm-dashboard/next.config.mjs b/ui/litellm-dashboard/next.config.mjs
 index 5161477..e4a8170 100644
 --- a/ui/litellm-dashboard/next.config.mjs
 +++ b/ui/litellm-dashboard/next.config.mjs
-@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
-
- const nextConfig = {
-   output: "export",
+@@ -10 +10 @@ const nextConfig = {
 -  generateBuildId: async () => "litellm-1-96-2-llmm-1",
 +  generateBuildId: async () => "litellm-1-96-2-llmm-2",
-   compiler: {
-     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
-   },
+diff --git a/ui/litellm-dashboard/src/app/(dashboard)/models-and-endpoints/components/AllModelsTab.tsx b/ui/litellm-dashboard/src/app/(dashboard)/models-and-endpoints/components/AllModelsTab.tsx
+index 1d206f8..2711eb3 100644
+--- a/ui/litellm-dashboard/src/app/(dashboard)/models-and-endpoints/components/AllModelsTab.tsx
++++ b/ui/litellm-dashboard/src/app/(dashboard)/models-and-endpoints/components/AllModelsTab.tsx
+@@ -7 +6,0 @@ import DeleteResourceModal from "@/components/common_components/DeleteResourceMo
+-import ModelSettingsModal from "@/components/model_dashboard/ModelSettingsModal/ModelSettingsModal";
+@@ -61 +59,0 @@ const AllModelsTab = ({
+-  const [isModelSettingsModalVisible, setIsModelSettingsModalVisible] = useState(false);
+@@ -256,4 +253,0 @@ const AllModelsTab = ({
+-  const handleOpenModelSettings = useCallback(() => {
+-    setIsModelSettingsModalVisible(true);
+-  }, []);
+-
+@@ -286 +279,0 @@ const AllModelsTab = ({
+-          onOpenModelSettings={handleOpenModelSettings}
+@@ -354,5 +346,0 @@ const AllModelsTab = ({
+-      <ModelSettingsModal
+-        isVisible={isModelSettingsModalVisible}
+-        onCancel={() => setIsModelSettingsModalVisible(false)}
+-        onSuccess={() => setIsModelSettingsModalVisible(false)}
+-      />
+diff --git a/ui/litellm-dashboard/src/app/(dashboard)/models-and-endpoints/components/AllModelsTable.tsx b/ui/litellm-dashboard/src/app/(dashboard)/models-and-endpoints/components/AllModelsTable.tsx
+index 8af24b9..c90f881 100644
+--- a/ui/litellm-dashboard/src/app/(dashboard)/models-and-endpoints/components/AllModelsTable.tsx
++++ b/ui/litellm-dashboard/src/app/(dashboard)/models-and-endpoints/components/AllModelsTable.tsx
+@@ -4 +4 @@ import { ColumnFiltersState, OnChangeFn, PaginationState, SortingState } from "@
+-import { Search, Settings } from "lucide-react";
++import { Search } from "lucide-react";
+@@ -71 +70,0 @@ interface AllModelsTableProps {
+-  onOpenModelSettings: () => void;
+@@ -118 +116,0 @@ export function AllModelsTable({
+-  onOpenModelSettings,
+@@ -252,12 +249,0 @@ export function AllModelsTable({
+-            <ToolbarSeparator className="mx-0.5" />
+-
+-            <Button
+-              variant="outline"
+-              size="icon-sm"
+-              aria-label="Model Settings"
+-              title="Model Settings"
+-              data-testid="models-settings-trigger"
+-              onClick={onOpenModelSettings}
+-            >
+-              <Settings />
+-            </Button>
 diff --git a/ui/litellm-dashboard/src/components/leftnav.tsx b/ui/litellm-dashboard/src/components/leftnav.tsx
 index af76fcc..9d79147 100644
 --- a/ui/litellm-dashboard/src/components/leftnav.tsx
 +++ b/ui/litellm-dashboard/src/components/leftnav.tsx
-@@ -25,8 +25,6 @@ import {
-   Activity,
-   BarChart3,
-   Bell,
+@@ -28,2 +27,0 @@ import {
 -  Blocks,
 -  Bot,
-   BookOpen,
-   Building2,
-   Boxes,
-@@ -39,7 +37,6 @@ import {
-   Folder,
-   HeartPulse,
-   KeyRound,
+@@ -42 +39,0 @@ import {
 -  LayoutGrid,
-   Network,
-   Palette,
-   PanelLeftClose,
-@@ -48,18 +45,13 @@ import {
-   PlayCircle,
-   Route,
-   ScrollText,
+@@ -51,2 +47,0 @@ import {
 -  Search,
 -  Server,
-   Settings as SettingsIcon,
-   Shield,
+@@ -55 +49,0 @@ import {
 -  ShieldCheck,
-   Tags,
-   Terminal,
-   User,
-   Users,
-   Wallet,
+@@ -61,2 +54,0 @@ import {
 -  Wrench,
 -  Workflow,
- } from "lucide-react";
- import Link from "next/link";
- import { useMemo, useState } from "react";
-@@ -132,25 +124,6 @@ const menuGroups: MenuGroup[] = [
-         icon: <Network {...ICON} />,
-         roles: rolesAllowedToViewWriteScopedPages,
-       },
+@@ -135,19 +126,0 @@ const menuGroups: MenuGroup[] = [
 -      {
 -        key: "agentic",
 -        page: "agentic",
@@ -87,13 +150,7 @@ index af76fcc..9d79147 100644
 -      },
 -      { key: "mcp-servers", page: "mcp-servers", label: "MCP Servers", icon: <Server {...ICON} /> },
 -      { key: "skills", page: "skills", label: "Skills", icon: <Blocks {...ICON} />, roles: all_admin_roles },
-       { key: "guardrails", page: "guardrails", label: "Guardrails", icon: <Shield {...ICON} /> },
-       {
-         key: "policies",
-@@ -159,17 +132,6 @@ const menuGroups: MenuGroup[] = [
-         icon: <ScrollText {...ICON} />,
-         roles: all_admin_roles,
-       },
+@@ -162,11 +134,0 @@ const menuGroups: MenuGroup[] = [
 -      {
 -        key: "tools",
 -        page: "tools",
@@ -105,14 +162,30 @@ index af76fcc..9d79147 100644
 -          { key: "tool-policies", page: "tool-policies", label: "Tool Policies", icon: <ShieldCheck {...ICON} /> },
 -        ],
 -      },
-     ],
-   },
-   {
-@@ -240,7 +202,6 @@ const menuGroups: MenuGroup[] = [
-     groupLabel: "DEVELOPER TOOLS",
-     items: [
-       { key: "api_ref", page: "api_ref", label: "API Reference", icon: <Code2 {...ICON} /> },
+@@ -243 +204,0 @@ const menuGroups: MenuGroup[] = [
 -      { key: "model-hub-table", page: "model-hub-table", label: "AI Hub", icon: <LayoutGrid {...ICON} /> },
-       {
-         key: "learning-resources",
-         page: "learning-resources",
+diff --git a/ui/litellm-dashboard/src/components/view_logs/index.tsx b/ui/litellm-dashboard/src/components/view_logs/index.tsx
+index 8e7423e..6403539 100644
+--- a/ui/litellm-dashboard/src/components/view_logs/index.tsx
++++ b/ui/litellm-dashboard/src/components/view_logs/index.tsx
+@@ -5 +4,0 @@ import DeletedTeamsPage from "../DeletedTeamsPage/DeletedTeamsPage";
+-import AuditLogsPanel from "./AuditLogsPanel";
+@@ -17 +16 @@ interface SpendLogsTableProps {
+-export default function SpendLogsTable({ accessToken, token, userRole, userID, premiumUser }: SpendLogsTableProps) {
++export default function SpendLogsTable({ accessToken, token, userRole, userID }: SpendLogsTableProps) {
+@@ -30 +29 @@ export default function SpendLogsTable({ accessToken, token, userRole, userID, p
+-      <TabGroup defaultIndex={0} onIndexChange={(index) => setActiveTab(index === 0 ? "request logs" : "audit logs")}>
++      <TabGroup defaultIndex={0} onIndexChange={(index) => setActiveTab(index === 0 ? "request logs" : "other")}>
+@@ -33 +31,0 @@ export default function SpendLogsTable({ accessToken, token, userRole, userID, p
+-          <Tab>Audit Logs</Tab>
+@@ -47,10 +44,0 @@ export default function SpendLogsTable({ accessToken, token, userRole, userID, p
+-          <TabPanel>
+-            <AuditLogsPanel
+-              userID={userID}
+-              userRole={userRole}
+-              token={token}
+-              accessToken={accessToken}
+-              isActive={activeTab === "audit logs"}
+-              premiumUser={premiumUser}
+-            />
+-          </TabPanel>

@@ -5,6 +5,7 @@ import test from "node:test"
 import { validateSidebarFunctionalCandidate } from "./validate-sidebar-functional-candidate.mjs"
 
 const directory = import.meta.dirname
+const repositoryRoot = path.resolve(directory, "../../..")
 const candidate = JSON.parse(
   readFileSync(path.resolve(directory, "sidebar-functional-candidate.json")),
 )
@@ -44,4 +45,19 @@ test("release or Product-boundary overclaims fail", () => {
       [],
     )
   }
+})
+
+test("Admin page dependencies remain proxy-admin-only and content-safe", () => {
+  const patchPath = path.resolve(
+    repositoryRoot,
+    candidate.overlay.path,
+  )
+  const overlay = readFileSync(patchPath, "utf8")
+  assert.match(overlay, /_require_llmm_proxy_admin/)
+  assert.match(overlay, /not is_v2 and user_api_key_dict\.user_role not in/)
+  assert.doesNotMatch(overlay, /^\+.*\/spend\/logs\/ui\/\{request_id\}/m)
+  assert.match(overlay, /^-import AuditLogsPanel/m)
+  assert.match(overlay, /^-import ModelSettingsModal/m)
+  assert.match(overlay, /^-    # Append A2A agents to models list/m)
+  assert.match(overlay, /^-    # Append A2A agents to model groups/m)
 })
