@@ -211,9 +211,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "a307959c1e9afa4a7b9de6803b956642e2108da84b1ea3a7345f37231756c4f6",
+    "575f73869a78e5644bb97e3ffc4ab64f47b766b02060f0679decfeedf6ddfae5",
   "native-admin-edge-profile.json":
-    "d919202e53de6b694953ff1a2dd8cbc7f6ff59f12c79a8c2c21a7915c7ed91ec",
+    "7efbcfd91abf65e18863542ef19846486d0be2cbbc7268b77801510f70f12be8",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -459,6 +459,7 @@ function validateNativeAdmin(profile, errors) {
         nativeHops: {
           grafana: {
             timeoutSeconds: 2,
+            applicationFailureStatuses: [500],
             outageFallback: "CLEAR_EXACT_NATIVE_COOKIES_AND_CONTINUE",
           },
           litellm: {
@@ -1065,7 +1066,7 @@ function validateNginx(sources, errors) {
       grafanaGlobalLogout.includes("proxy_read_timeout 2s;") &&
       grafanaGlobalLogout.includes("proxy_send_timeout 2s;") &&
       grafanaGlobalLogout.includes(
-        "error_page 502 503 504 = @grafana_global_logout_fallback;",
+        "error_page 500 502 503 504 = @grafana_global_logout_fallback;",
       ),
     "Grafana global-logout timeout or outage continuation changed",
   )

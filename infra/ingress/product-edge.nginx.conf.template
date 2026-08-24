@@ -814,7 +814,7 @@ http {
       proxy_read_timeout 2s;
       proxy_send_timeout 2s;
       proxy_intercept_errors on;
-      error_page 502 503 504 = @grafana_global_logout_fallback;
+      error_page 500 502 503 504 = @grafana_global_logout_fallback;
       proxy_pass http://grafana_native;
     }
 

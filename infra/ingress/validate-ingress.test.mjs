@@ -177,8 +177,8 @@ test("coordinated logout stays bounded and independent of native availability", 
     ["proxy_read_timeout 2s;", "proxy_read_timeout 30s;"],
     ["proxy_send_timeout 2s;", "proxy_send_timeout 30s;"],
     [
+      "error_page 500 502 503 504 = @grafana_global_logout_fallback;",
       "error_page 502 503 504 = @grafana_global_logout_fallback;",
-      "error_page 502 503 504 =503 /__llmm_native_unavailable?;",
     ],
   ]) {
     const result = validateIngressSources(
@@ -211,6 +211,10 @@ test("coordinated logout stays bounded and independent of native availability", 
     },
     (profile) => {
       profile.edge.globalLogout.keycloakEndSession.failureSkipsNativeChain = true
+    },
+    (profile) => {
+      profile.edge.globalLogout.nativeHops.grafana.applicationFailureStatuses =
+        []
     },
     (profile) => {
       profile.edge.globalLogout.recoveredServiceMayReusePreLogoutBrowserSession = true

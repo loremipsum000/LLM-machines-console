@@ -38,6 +38,7 @@
       "nativeHops": {
         "grafana": {
           "timeoutSeconds": 2,
+          "applicationFailureStatuses": [500],
           "outageFallback": "CLEAR_EXACT_NATIVE_COOKIES_AND_CONTINUE"
         },
         "litellm": {
