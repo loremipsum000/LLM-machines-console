@@ -64,10 +64,10 @@ export function validateSidebarFunctionalCandidate(
     '-      { key: "model-hub-table",',
     '-        label: "Agentic",',
     '-        label: "Tools",',
-    '+def _require_llmm_proxy_admin(user_api_key_dict: UserAPIKeyAuth) -> None:',
+    "+def _require_llmm_proxy_admin(user_api_key_dict: UserAPIKeyAuth) -> None:",
     '+        raise HTTPException(status_code=403, detail="Proxy admin access required")',
-    '-    # Append A2A agents to models list',
-    '-    # Append A2A agents to model groups',
+    "-    # Append A2A agents to models list",
+    "-    # Append A2A agents to model groups",
     '-import ModelSettingsModal from "@/components/model_dashboard/ModelSettingsModal/ModelSettingsModal";',
     '-import AuditLogsPanel from "./AuditLogsPanel";',
   ]) {
@@ -113,7 +113,11 @@ export function validateSidebarFunctionalCandidate(
     JSON.stringify(candidate?.productBoundary?.adminMetadataReads) !==
       JSON.stringify(["model_group_info", "model_info_v2", "spend_logs_ui"]) ||
     JSON.stringify(candidate?.productBoundary?.deniedDependencies) !==
-      JSON.stringify(["config_list", "spend_log_detail", "enterprise_audit_preview"])
+      JSON.stringify([
+        "config_list",
+        "spend_log_detail",
+        "enterprise_audit_preview",
+      ])
   ) {
     errors.push("LiteLLM sidebar Product boundary differs")
   }

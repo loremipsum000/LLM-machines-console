@@ -769,7 +769,10 @@ test("LiteLLM Admin-page reads stay exact, metadata-only, and non-mutating", () 
   assert.doesNotMatch(nginx, /audit-logs-preview\.png/)
 
   const broadened = changed("product-edge.nginx.conf.template", (source) =>
-    source.replace("location = /spend/logs/ui {", "location ^~ /spend/logs/ui {"),
+    source.replace(
+      "location = /spend/logs/ui {",
+      "location ^~ /spend/logs/ui {",
+    ),
   )
   assert.ok(validateIngressSources(broadened).length > 0)
 })

@@ -52,7 +52,15 @@
     "consoleSessionForwarding": false,
     "nativeOidcPreserved": true,
     "operatorPages": ["api-keys", "new_usage"],
-    "adminMetadataReads": ["model_group_info", "model_info_v2", "spend_logs_ui"],
-    "deniedDependencies": ["config_list", "spend_log_detail", "enterprise_audit_preview"]
+    "adminMetadataReads": [
+      "model_group_info",
+      "model_info_v2",
+      "spend_logs_ui"
+    ],
+    "deniedDependencies": [
+      "config_list",
+      "spend_log_detail",
+      "enterprise_audit_preview"
+    ]
   }
 }
