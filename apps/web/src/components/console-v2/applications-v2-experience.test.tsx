@@ -144,6 +144,38 @@ afterEach(() => {
 })
 
 describe("Keys experience", () => {
+  it("renders canonical Key links without a compatibility redirect", () => {
+    const { rerender } = render(
+      <ApplicationsV2Experience
+        accessRole="admin"
+        connectedApps={[application]}
+        modelOptions={[model]}
+        view="overview"
+      />,
+    )
+
+    expect(
+      screen.getByRole("link", { name: "Create Key" }).getAttribute("href"),
+    ).toBe("/keys/apps/new")
+    expect(
+      screen.getByRole("link", { name: "Settings" }).getAttribute("href"),
+    ).toBe(`/keys/apps/${application.id}`)
+
+    rerender(
+      <ApplicationsV2Experience
+        accessRole="admin"
+        modelOptions={[model]}
+        view="new-app"
+      />,
+    )
+    expect(
+      screen.getByRole("link", { name: "Cancel" }).getAttribute("href"),
+    ).toBe("/keys")
+    expect(
+      screen.getByRole("link", { name: "Go back" }).getAttribute("href"),
+    ).toBe("/keys")
+  })
+
   it("defaults to dynamic Auto and keeps Advanced features collapsed", () => {
     render(
       <ApplicationsV2Experience
@@ -299,9 +331,10 @@ describe("Keys experience", () => {
     fireEvent.change(screen.getByLabelText("Description (optional)"), {
       target: { value: "Third-party harness" },
     })
+    const createButton = screen.getByRole("button", { name: "Create Key" })
     const liveIssuanceStatus = screen.getByRole("status")
     expect(liveIssuanceStatus.textContent).toBe("")
-    fireEvent.click(screen.getByRole("button", { name: "Create Key" }))
+    fireEvent.click(createButton)
 
     const revealHeading = await screen.findByRole("heading", {
       name: "Key created",
@@ -320,7 +353,31 @@ describe("Keys experience", () => {
     )
     expect((await axe(container)).violations).toEqual([])
 
-    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    const dialog = screen.getByRole("dialog", { name: "Key created" })
+    expect(
+      screen.getByRole("link", { name: "View Key" }).getAttribute("href"),
+    ).toBe(`/keys/apps/${application.id}`)
+    const firstDialogControl = screen.getByRole("button", {
+      name: "Copy Credential ID",
+    })
+    const lastDialogControl = screen.getByRole("button", { name: "Done" })
+    lastDialogControl.focus()
+    fireEvent.keyDown(dialog, { key: "Tab" })
+    expect(document.activeElement).toBe(firstDialogControl)
+    fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true })
+    expect(document.activeElement).toBe(lastDialogControl)
+
+    routerMocks.replace.mockImplementationOnce((destination) => {
+      expect(screen.queryByText(staticReveal.apiKey)).toBeNull()
+      expect(document.activeElement).toBe(createButton)
+      expect(String(destination)).not.toContain(staticReveal.apiKey)
+    })
+    await act(async () => {
+      fireEvent(
+        dialog,
+        new Event("cancel", { bubbles: false, cancelable: true }),
+      )
+    })
     await waitFor(() => {
       expect(screen.queryByText(staticReveal.apiKey)).toBeNull()
       expect(screen.queryByRole("dialog", { name: "Key created" })).toBeNull()
@@ -329,6 +386,47 @@ describe("Keys experience", () => {
     expect(JSON.stringify(routerMocks.replace.mock.calls)).not.toContain(
       staticReveal.apiKey,
     )
+  })
+
+  it("creates OAuth inference material from Advanced features without a description or Firecrawl secret", async () => {
+    actionMocks.create.mockImplementationOnce(async (_state, formData) => {
+      expect(formData.get("authMethod")).toBe("oauth_client_credentials")
+      expect(formData.get("description")).toBe("")
+      expect(formData.get("modelMode")).toBe("auto")
+      return {
+        app: oauthApplication,
+        credential: oauthReveal,
+        error: null,
+        status: "created",
+      }
+    })
+    render(
+      <ApplicationsV2Experience
+        accessRole="admin"
+        modelInventorySourceStatus="ok"
+        modelOptions={[model]}
+        view="new-app"
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText("Key name"), {
+      target: { value: "OAuth client" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Advanced features" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "OAuth client credentials" }),
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Create Key" }))
+
+    expect(await screen.findByText(oauthReveal.clientSecret)).toBeTruthy()
+    expect(screen.getByText(oauthReveal.clientId)).toBeTruthy()
+    expect(
+      screen.queryByRole("button", { name: "Copy Firecrawl API key" }),
+    ).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    await waitFor(() => {
+      expect(screen.queryByText(oauthReveal.clientSecret)).toBeNull()
+    })
   })
 
   it("shows static and OAuth secrets only in the mutation reveal panel", () => {
@@ -367,7 +465,14 @@ describe("Keys experience", () => {
     expect(document.body.textContent).not.toMatch(/staging|production/i)
   })
 
-  it("clears the creation secret before browser-history restoration", async () => {
+  it.each([
+    ["history navigation", () => new Event("popstate")],
+    ["reload or navigation", () => new Event("pagehide")],
+    [
+      "back-forward cache restoration",
+      () => Object.assign(new Event("pageshow"), { persisted: true }),
+    ],
+  ])("clears the creation secret before %s", async (_label, event) => {
     actionMocks.create.mockResolvedValueOnce({
       app: application,
       credential: staticReveal,
@@ -387,7 +492,7 @@ describe("Keys experience", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create Key" }))
     expect(await screen.findByText(staticReveal.apiKey)).toBeTruthy()
 
-    fireEvent(window, new Event("pagehide"))
+    fireEvent(window, event())
     await waitFor(() => {
       expect(screen.queryByText(staticReveal.apiKey)).toBeNull()
       expect(screen.queryByRole("dialog", { name: "Key created" })).toBeNull()
@@ -1349,6 +1454,27 @@ const application: AdminConnectedApp = {
     tokens7d: 0,
   },
 }
+
+const oauthApplication = {
+  ...application,
+  authMethod: "oauth_client_credentials",
+  credentials: [
+    {
+      authMethod: "oauth_client_credentials",
+      clientId: "application-client",
+      id: "credential-oauth",
+      issuedAt: "2026-07-31T08:00:00.000Z",
+      keyPrefix: null,
+      lastUsedAt: null,
+      overlapExpiresAt: null,
+      revokedAt: null,
+      rotatedAt: null,
+      status: "active",
+    },
+  ],
+  description: "",
+  name: "OAuth client",
+} satisfies AdminConnectedApp
 
 const firecrawlEnabledApplication = {
   ...application,

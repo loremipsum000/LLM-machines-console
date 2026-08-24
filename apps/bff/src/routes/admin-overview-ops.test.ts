@@ -21,6 +21,7 @@ describe("Admin overview LiteLLM ops federation", () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_LITELLM_BASE_URL", "http://litellm.test")
     vi.stubEnv("ADMIN_LITELLM_API_KEY", "litellm-key")
+    vi.stubEnv("BFF_FALLBACK_MODELS", "qwen3-35b-local,gemma4")
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = new URL(input.toString())
       if (url.pathname === "/user/daily/activity/aggregated") {
@@ -130,6 +131,7 @@ describe("Admin overview LiteLLM ops federation", () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_LITELLM_BASE_URL", "http://litellm.test")
     vi.stubEnv("ADMIN_LITELLM_API_KEY", "litellm-key")
+    vi.stubEnv("BFF_FALLBACK_MODELS", "qwen3-35b-local,gemma4")
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"))
     const server = buildServer()
 

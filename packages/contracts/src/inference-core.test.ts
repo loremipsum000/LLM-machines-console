@@ -22,6 +22,7 @@ import {
   adminTeamMemberDetailSchema,
   adminTeamMemberSchema,
   adminTeamOverviewResponseSchema,
+  inferenceCoreCompatibilityFingerprint,
   inferenceCoreNativeAuditCapabilitySchema,
   inferenceCoreSeveritySchema,
   inferenceCoreSourceStatusSchema,
@@ -29,6 +30,12 @@ import {
 } from "./inference-core"
 
 const timestamp = "2026-07-31T08:00:00.000Z"
+
+it("pins the rendered inference profile compatibility fingerprint", () => {
+  expect(inferenceCoreCompatibilityFingerprint).toBe(
+    "sha256:9249bdc91f2dc7ac8471de88aad851644a8b8526d57c5f1501e6c63db246d1d7",
+  )
+})
 
 const member = {
   createdAt: timestamp,

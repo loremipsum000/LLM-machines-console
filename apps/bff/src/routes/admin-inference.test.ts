@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
 
 const adminHeaders = {
@@ -24,6 +24,10 @@ const unclassifiedHeaders = {
 }
 
 describe("Admin Inference routes", () => {
+  beforeEach(() => {
+    vi.stubEnv("BFF_FALLBACK_MODELS", "qwen3-35b-local,gemma4")
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()

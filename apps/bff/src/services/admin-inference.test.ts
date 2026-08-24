@@ -142,6 +142,7 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
 
   it("does not substitute page-one spend logs when aggregate usage is unavailable", async () => {
     configureAdminLiteLlm()
+    vi.stubEnv("BFF_FALLBACK_MODELS", "served-now")
     let spendLogReads = 0
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = new URL(input.toString())
@@ -197,6 +198,7 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
 
   it("does not infer current served models from aggregate usage history", async () => {
     configureAdminLiteLlm()
+    vi.stubEnv("BFF_FALLBACK_MODELS", "served-now")
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = new URL(input.toString())
       if (url.pathname === "/user/daily/activity/aggregated") {
@@ -285,6 +287,7 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
 
   it("treats malformed aggregate totals and model inventory as unavailable, not empty", async () => {
     configureAdminLiteLlm()
+    vi.stubEnv("BFF_FALLBACK_MODELS", "local-a")
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = new URL(input.toString())
       if (url.pathname === "/user/daily/activity/aggregated") {
@@ -650,6 +653,7 @@ describe("Admin Inference LiteLLM virtual-key projection", () => {
 function configureAdminLiteLlm(): void {
   vi.stubEnv("ADMIN_LITELLM_BASE_URL", "http://litellm.test")
   vi.stubEnv("ADMIN_LITELLM_API_KEY", "admin-read-key")
+  vi.stubEnv("BFF_FALLBACK_MODELS", "")
 }
 
 function baseLiteLlmResponse(pathname: string): Response {

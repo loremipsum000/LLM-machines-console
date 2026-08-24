@@ -337,7 +337,7 @@ http {
       proxy_pass http://console_web;
     }
 
-    location ~ "^/(?:activity|hardware|inference|applications|team)$" {
+    location ~ "^/(?:activity|hardware|inference|keys|applications|team)$" {
       set $llmm_surface console;
       limit_except GET { deny all; }
       include /etc/nginx/llm-machines/proxy-common.inc;
@@ -346,7 +346,7 @@ http {
       proxy_pass http://console_web;
     }
 
-    location ~ "^/(?:applications/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$" {
+    location ~ "^/(?:(?:keys|applications)/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$" {
       set $llmm_surface console;
       limit_except GET HEAD POST { deny all; }
       if ($llmm_console_page_method_allowed = 0) { return 405; }

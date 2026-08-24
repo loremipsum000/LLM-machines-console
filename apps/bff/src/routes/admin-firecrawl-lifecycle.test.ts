@@ -183,7 +183,7 @@ describe("Application Firecrawl admin routes", () => {
         idempotencyKey: "firecrawl-commit-race-not-found",
         operation: "enable",
         statusCode: 404,
-        title: "Connected app not found",
+        title: "Key not found",
       },
       {
         error:
@@ -196,7 +196,7 @@ describe("Application Firecrawl admin routes", () => {
         idempotencyKey: "firecrawl-commit-race-blocked",
         operation: "rotate",
         statusCode: 409,
-        title: "Connected app action blocked",
+        title: "Key action blocked",
       },
     ] as const
 
@@ -296,6 +296,8 @@ describe("Application Firecrawl admin routes", () => {
 })
 
 function configureFixtureRuntime(): void {
+  vi.stubEnv("BFF_FIXTURE_MODE", "true")
+  vi.stubEnv("BFF_FALLBACK_MODELS", "local-a")
   vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
   vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
   vi.stubEnv("FIRECRAWL_INSTALLED", "true")

@@ -241,7 +241,7 @@ async function startReducedCoreDevelopmentRuntime() {
         ],
         {
           BFF_FIXTURE_MODE: "true",
-          BFF_FALLBACK_MODELS: "fixture-model",
+          BFF_FALLBACK_MODELS: "fixture-model,isolated-fixture-model",
           BFF_SERVICE_API_KEY: credentials.bffServiceApiKey,
           CONNECTED_APPS_BFF_BASE_URL: `http://api.localhost:${edgePort}`,
           CONNECTED_APPS_KEYCLOAK_FIXTURE: "true",

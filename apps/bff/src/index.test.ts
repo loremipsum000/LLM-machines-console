@@ -57,7 +57,7 @@ describe("Console BFF persistence preflight", () => {
     vi.stubEnv("PUBLIC_BFF_BASE_URL", "")
 
     expect(() => buildServer()).toThrow(
-      "Connected app reveal endpoint configuration is invalid.",
+      "Key reveal endpoint configuration is invalid.",
     )
   })
 
@@ -74,7 +74,7 @@ describe("Console BFF persistence preflight", () => {
     vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", baseUrl)
 
     expect(() => buildServer()).toThrow(
-      "Connected app reveal endpoint configuration is invalid.",
+      "Key reveal endpoint configuration is invalid.",
     )
   })
 
@@ -96,7 +96,7 @@ describe("Console BFF persistence preflight", () => {
     vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://other-api.example.test")
 
     expect(() => buildServer()).toThrow(
-      "Connected app reveal endpoint configuration is invalid.",
+      "Key reveal endpoint configuration is invalid.",
     )
   })
 
@@ -105,7 +105,7 @@ describe("Console BFF persistence preflight", () => {
     vi.stubEnv("PRODUCT_API_HOST", "")
 
     expect(() => buildServer()).toThrow(
-      "Connected app reveal endpoint configuration is invalid.",
+      "Key reveal endpoint configuration is invalid.",
     )
   })
 
@@ -114,7 +114,7 @@ describe("Console BFF persistence preflight", () => {
     vi.stubEnv("PRODUCT_IDENTITY_HOST", "")
 
     expect(() => buildServer()).toThrow(
-      "Connected app OAuth reveal endpoint configuration is invalid.",
+      "Key OAuth reveal endpoint configuration is invalid.",
     )
   })
 
@@ -135,7 +135,7 @@ describe("Console BFF persistence preflight", () => {
     )
 
     expect(() => buildServer()).toThrow(
-      "Connected app OAuth reveal endpoint configuration is invalid.",
+      "Key OAuth reveal endpoint configuration is invalid.",
     )
   })
 
@@ -156,7 +156,7 @@ describe("Console BFF persistence preflight", () => {
     )
 
     expect(() => buildServer()).toThrow(
-      "Connected app OAuth reveal endpoint configuration is invalid.",
+      "Key OAuth reveal endpoint configuration is invalid.",
     )
   })
 
@@ -177,7 +177,7 @@ describe("Console BFF persistence preflight", () => {
     )
 
     expect(() => buildServer()).toThrow(
-      "Connected app OAuth reveal endpoint configuration is invalid.",
+      "Key OAuth reveal endpoint configuration is invalid.",
     )
   })
 
@@ -195,7 +195,7 @@ describe("Console BFF persistence preflight", () => {
       vi.stubEnv("KEYCLOAK_AUDIENCE", "console-bff")
 
       expect(() => buildServer()).toThrow(
-        "Connected app OAuth reveal endpoint configuration is invalid.",
+        "Key OAuth reveal endpoint configuration is invalid.",
       )
     },
   )

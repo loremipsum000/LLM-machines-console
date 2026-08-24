@@ -26,7 +26,7 @@ export interface ConsoleV2Section {
   label: string
 }
 
-export const consoleV2Sections: ConsoleV2Section[] = [
+const pr11ConsoleV2Sections: ConsoleV2Section[] = [
   {
     id: "overview",
     href: "/",
@@ -37,7 +37,7 @@ export const consoleV2Sections: ConsoleV2Section[] = [
     id: "applications",
     href: "/applications",
     icon: KeysIcon,
-    label: "Applications",
+    label: "Applications", // INTERNAL_PR11_APPLICATION_NAV_COMPATIBILITY
   },
   {
     id: "inference",
@@ -70,6 +70,13 @@ export const consoleV2Sections: ConsoleV2Section[] = [
     label: "Settings",
   },
 ]
+
+export const consoleV2Sections: ConsoleV2Section[] = pr11ConsoleV2Sections.map(
+  (section) =>
+    section.id === "applications"
+      ? { ...section, href: "/keys", label: "Keys" }
+      : section,
+)
 
 export function consoleV2SectionsForRole(
   role: RetainedConsoleRole,

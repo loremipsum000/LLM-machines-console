@@ -192,7 +192,7 @@ function ActivityFiltersPanel({
             className="h-9 rounded-md border border-[#353535] bg-[#181818] px-3 text-sm text-white outline-none placeholder:text-[#777777] focus:border-[#009fff]"
             defaultValue={filters.query ?? ""}
             name="q"
-            placeholder="Event, action, subject, application, credential, or reason"
+            placeholder="Event, action, subject, Key, credential, or reason"
             type="search"
           />
         </label>

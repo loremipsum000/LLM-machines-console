@@ -155,6 +155,7 @@ test("Console pages support only read or exact Next-action mutation paths", () =
     "/applications",
     "/hardware?range=24h",
     "/inference?range=24h",
+    "/keys",
     "/team",
     "/auth/signin?session=expired&returnTo=%2Finference%3Frange%3D24h",
     "/_next/static/chunk.js?v=1",
@@ -167,6 +168,8 @@ test("Console pages support only read or exact Next-action mutation paths", () =
   for (const rawTarget of [
     "/applications/apps/new",
     "/applications/apps/app-1",
+    "/keys/apps/new",
+    "/keys/apps/app-1",
     "/settings",
     "/team/import",
     "/team/groups/new",
@@ -190,6 +193,23 @@ test("Console pages support only read or exact Next-action mutation paths", () =
     request({ method: "POST", rawTarget: "/activity" }).allowed,
     false,
   )
+  for (const [method, rawTarget] of [
+    ["DELETE", "/keys/apps/app-1"],
+    ["PATCH", "/keys/apps/app-1"],
+    ["POST", "/keys"],
+    ["GET", "/keys/unrelated"],
+    ["POST", "/keys/apps/app-1/unrelated"],
+  ]) {
+    assert.equal(
+      request({
+        headers: { "next-action": "action-id" },
+        method,
+        rawTarget,
+      }).allowed,
+      false,
+      `${method} ${rawTarget}`,
+    )
+  }
 })
 
 test("Console session and OIDC query shapes cannot select another route", () => {

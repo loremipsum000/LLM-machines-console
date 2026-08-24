@@ -749,7 +749,7 @@ describe("identity mutation journal", () => {
         }),
       ).rejects.toMatchObject({
         message:
-          "Another unresolved identity or Application mutation blocks all identity and Application writes until reconciliation.",
+          "Another unresolved identity or Key mutation blocks all identity and Key writes until reconciliation.",
         status: "blocked_by_active_reconciliation",
       })
       expect(preflight).not.toHaveBeenCalled()

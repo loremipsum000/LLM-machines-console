@@ -47,6 +47,8 @@ describe("Application-realm OAuth gateway authentication", () => {
   it("accepts a signed Application token, rejects a human token, and retains metadata only", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
+    vi.stubEnv("BFF_FIXTURE_MODE", "true")
+    vi.stubEnv("BFF_FALLBACK_MODELS", "local-a")
     vi.stubEnv("PRODUCT_IDENTITY_HOST", "keycloak.example.test")
     vi.stubEnv("KEYCLOAK_APPLICATION_ISSUER_URL", APPLICATION_ISSUER)
     vi.stubEnv("KEYCLOAK_ISSUER_URL", HUMAN_ISSUER)
@@ -63,12 +65,6 @@ describe("Application-realm OAuth gateway authentication", () => {
         url === `${HUMAN_ISSUER}/protocol/openid-connect/certs`
       ) {
         return Response.json({ keys: [signingJwk] })
-      }
-      if (url === "http://litellm.test/v1/models") {
-        return Response.json({
-          data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
-          object: "list",
-        })
       }
       throw new Error(`Unexpected fetch URL: ${url}`)
     })
@@ -125,11 +121,10 @@ describe("Application-realm OAuth gateway authentication", () => {
     })
     expect(rejected.statusCode).toBe(401)
     expect(rejected.json()).toMatchObject({
-      title: "Invalid connected app token",
+      title: "Invalid Key token",
     })
     expect(requestedUrls).toEqual([
       `${APPLICATION_ISSUER}/protocol/openid-connect/certs`,
-      "http://litellm.test/v1/models",
     ])
 
     const gatewayEvents = getAuditEventsForTest().filter(

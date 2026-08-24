@@ -688,7 +688,7 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
 
     expect(deleted.status).toBe("deleted")
     await expect(rotating).rejects.toThrow(
-      "Application could not be updated during rotation.",
+      "Key could not be updated during rotation.",
     )
     const stored = await storedDeleteState(created.app.id)
     expect(stored.applicationStatus).toBe("deleted")

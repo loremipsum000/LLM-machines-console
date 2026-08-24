@@ -7,7 +7,6 @@ import {
   configuredLiteLlmChatDeadlineMs,
   createLiteLlmChatTransport,
   createOpenAIStreamingUsageParser,
-  fetchLiteLlmModels,
   getLiteLlmTransportErrorReason,
   parseOpenAIUsage,
   readLiteLlmNonStreamingResponse,
@@ -19,110 +18,6 @@ describe("LiteLLM transport", () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
-  })
-
-  it("does not return synthetic models in production fixture mode", async () => {
-    vi.stubEnv("NODE_ENV", "production")
-    vi.stubEnv("BFF_FIXTURE_MODE", "true")
-    vi.stubEnv("BFF_FALLBACK_MODELS", "synthetic-production-model")
-    vi.stubEnv("LITELLM_URL", "")
-    vi.stubEnv("LITELLM_KEY", "")
-
-    await expect(
-      fetchLiteLlmModels(["synthetic-production-model"]),
-    ).resolves.toEqual({
-      detail: "Set LITELLM_URL and LITELLM_KEY before listing models.",
-      ok: false,
-      reason: "not_configured",
-      status: 503,
-      title: "LiteLLM is not configured",
-    })
-  })
-
-  it("fails the model list when any allowed alias is unavailable", async () => {
-    stubLiteLlmConfig()
-    const fetchMock = vi.fn().mockResolvedValue(
-      Response.json({
-        data: [model("local-a")],
-        object: "list",
-      }),
-    )
-    vi.stubGlobal("fetch", fetchMock)
-
-    await expect(fetchLiteLlmModels(["local-a", "local-b"])).resolves.toEqual({
-      detail: "One or more allowed LiteLLM model aliases are unavailable.",
-      missingModels: ["local-b"],
-      ok: false,
-      reason: "alias_unavailable",
-      status: 503,
-      title: "Allowed model unavailable",
-    })
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://litellm.test/v1/models",
-      expect.objectContaining({ method: "GET", redirect: "error" }),
-    )
-  })
-
-  it("resolves Auto against the current approved inventory on every read", async () => {
-    stubLiteLlmConfig()
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        Response.json({ data: [model("local-a")], object: "list" }),
-      )
-      .mockResolvedValueOnce(
-        Response.json({
-          data: [model("local-a"), model("newly-admitted")],
-          object: "list",
-        }),
-      )
-    vi.stubGlobal("fetch", fetchMock)
-
-    await expect(fetchLiteLlmModels([])).resolves.toMatchObject({
-      body: { data: [{ id: "local-a" }] },
-      ok: true,
-    })
-    await expect(fetchLiteLlmModels([])).resolves.toMatchObject({
-      body: {
-        data: [{ id: "local-a" }, { id: "newly-admitted" }],
-      },
-      ok: true,
-    })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-  })
-
-  it("aborts an in-flight model-list request when the caller signal closes", async () => {
-    stubLiteLlmConfig()
-    const controller = new AbortController()
-    let markStarted: (() => void) | undefined
-    const started = new Promise<void>((resolve) => {
-      markStarted = resolve
-    })
-    let upstreamSignal: AbortSignal | undefined
-    const fetchMock = vi.fn<typeof fetch>(
-      async (_url, init) =>
-        new Promise<Response>((_resolve, reject) => {
-          upstreamSignal = init?.signal as AbortSignal
-          markStarted?.()
-          upstreamSignal.addEventListener(
-            "abort",
-            () => reject(upstreamSignal?.reason),
-            { once: true },
-          )
-        }),
-    )
-    vi.stubGlobal("fetch", fetchMock)
-
-    const result = fetchLiteLlmModels(["local-a"], controller.signal)
-    await started
-    controller.abort(new Error("isolation engaged"))
-
-    await expect(result).resolves.toMatchObject({
-      ok: false,
-      reason: "upstream_unavailable",
-      status: 503,
-    })
-    expect(upstreamSignal?.aborted).toBe(true)
   })
 
   it("uses only the fixed chat POST and preserves OpenAI tool transport", async () => {
@@ -425,14 +320,6 @@ describe("LiteLLM transport", () => {
 function stubLiteLlmConfig(): void {
   vi.stubEnv("LITELLM_URL", "http://litellm.test")
   vi.stubEnv("LITELLM_KEY", "private-key")
-}
-
-function model(id: string): {
-  id: string
-  object: "model"
-  owned_by: string
-} {
-  return { id, object: "model", owned_by: "llm-machines" }
 }
 
 function basicRequest(): ChatCompletionsBody {

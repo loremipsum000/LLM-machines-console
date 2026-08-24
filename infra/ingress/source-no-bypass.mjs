@@ -4,7 +4,8 @@ const nativeConsolePathPattern =
   /^\/(?:api\/(?:app-gateway|internal|expert-ingress|live)|realms|admin|ui|public|key|model|router|metrics|graph|-|v0|v2\/(?:crawl|map|batch|extract))(?:\/|$)/i
 const nativeIdentityPathPattern =
   /^\/(?:admin|realms\/(?:master|[^/]+)\/admin|metrics|health)(?:\/|$)/i
-const appDetailPattern = /^\/applications\/apps\/[A-Za-z0-9._-]{1,128}$/
+const appDetailPattern =
+  /^\/(?:keys|applications)\/apps\/[A-Za-z0-9._-]{1,128}$/
 const teamActionPattern =
   /^\/team\/(?:import|groups\/new|groups\/[A-Za-z0-9._-]{1,128}|members|members\/new|members\/[A-Za-z0-9._-]{1,128})$/
 const authPagePattern = /^\/auth\/(?:signin|elevate|unavailable)$/
@@ -17,9 +18,14 @@ const consoleReadOnlyPages = new Set([
   "/applications",
   "/hardware",
   "/inference",
+  "/keys",
   "/team",
 ])
-const consoleActionPages = new Set(["/applications/apps/new", "/settings"])
+const consoleActionPages = new Set([
+  "/applications/apps/new",
+  "/keys/apps/new",
+  "/settings",
+])
 const querylessPaths = new Set([
   "/v1/models",
   "/v1/chat/completions",

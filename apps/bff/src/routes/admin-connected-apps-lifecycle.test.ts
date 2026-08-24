@@ -117,6 +117,29 @@ describe("Application admin lifecycle routes", () => {
       },
     })
     expect(valid.statusCode).toBe(201)
+    const applicationId = valid.json().app.id as string
+
+    const approvedUpdate = await server.inject({
+      method: "PATCH",
+      url: `/api/admin/applications/connected-apps/${applicationId}`,
+      headers: { ...adminHeaders, "idempotency-key": "manual-update-valid" },
+      payload: manualUpdatePayload(["local-a"]),
+    })
+    expect(approvedUpdate.statusCode).toBe(200)
+
+    const invalidUpdate = await server.inject({
+      method: "PATCH",
+      url: `/api/admin/applications/connected-apps/${applicationId}`,
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "manual-update-invalid",
+      },
+      payload: manualUpdatePayload(["not-approved"]),
+    })
+    expect(invalidUpdate.statusCode).toBe(400)
+    expect(invalidUpdate.json()).toMatchObject({
+      title: "Invalid Key model access",
+    })
 
     const invalid = await server.inject({
       method: "POST",
@@ -254,7 +277,7 @@ describe("Application admin lifecycle routes", () => {
 
     expect(rejected.response.statusCode).toBe(503)
     expect(rejected.body).toMatchObject({
-      title: "Connected app endpoint configuration unavailable",
+      title: "Key endpoint configuration unavailable",
     })
     expect(list.json().apps).toEqual([])
     expect(
@@ -748,6 +771,7 @@ describe("Application admin lifecycle routes", () => {
 
 function configureFixtureRuntime(): void {
   vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+  vi.stubEnv("BFF_FALLBACK_MODELS", "local-a")
   vi.stubEnv("CONNECTED_APPS_KEYCLOAK_FIXTURE", "true")
 }
 
@@ -859,6 +883,19 @@ function applicationPayload() {
     description: "Lifecycle route test.",
     modelMode: "auto",
     name: "Lifecycle test",
+  }
+}
+
+function manualUpdatePayload(allowedModels: string[]) {
+  return {
+    allowedModels,
+    description: "Manual lifecycle route test.",
+    maxConcurrentRequests: null,
+    maxContextBytes: null,
+    modelMode: "manual",
+    name: "Manual Valid",
+    rateLimitRps: null,
+    tokenAlertThreshold7d: null,
   }
 }
 

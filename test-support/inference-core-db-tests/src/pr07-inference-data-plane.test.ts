@@ -303,7 +303,7 @@ describe("PR-07 PostgreSQL inference data plane", () => {
     await expect(admitChat(app, 10)).resolves.toMatchObject({
       ok: false,
       status: 503,
-      title: "Connected app state changed",
+      title: "Key state changed",
     })
     const rows = await database.query<{ count: number }>(`
       SELECT count(*)::integer AS count
@@ -356,12 +356,12 @@ describe("PR-07 PostgreSQL inference data plane", () => {
     `)
 
     await expect(getAdminConnectedAppDetail(actor, app.appId)).rejects.toThrow(
-      "Application protection policy storage is incomplete.",
+      "Key protection policy storage is incomplete.",
     )
     await expect(admitChat(app, 10)).resolves.toMatchObject({
       ok: false,
       status: 503,
-      title: "Connected app state changed",
+      title: "Key state changed",
     })
     await expect(
       consumeConnectedAppGatewayRateLimit({ ...app, rateLimitRps: null }),

@@ -89,6 +89,8 @@
     "engineImageDigest": null,
     "modelArtifactDigest": null,
     "evidenceDigest": null,
+    "measuredAt": null,
+    "validUntil": null,
     "effectiveContextTokens": null,
     "maxOutputTokens": null,
     "throughputTokensPerSecond": null,

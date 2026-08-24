@@ -7,7 +7,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { ComponentType, FormEvent, ReactNode, SVGProps } from "react"
 import { useEffect, useMemo, useState } from "react"
-import { KeysIcon } from "./console-v2-icons"
 import {
   type ConsoleV2SectionId,
   consoleV2SectionsForRole,
@@ -33,12 +32,7 @@ export function ConsoleV2Shell({
 }: ConsoleV2ShellProps) {
   const router = useRouter()
   const visibleSections = useMemo(
-    () =>
-      consoleV2SectionsForRole(accessRole).map((section) =>
-        section.id === "applications"
-          ? { ...section, href: "/keys", icon: KeysIcon, label: "Keys" }
-          : section,
-      ),
+    () => consoleV2SectionsForRole(accessRole),
     [accessRole],
   )
   const [modifierVisible, setModifierVisible] = useState(

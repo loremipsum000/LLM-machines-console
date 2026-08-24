@@ -47,6 +47,19 @@ The Admin Inference projection reads LiteLLM with the separate
 `ADMIN_LITELLM_BASE_URL` and `ADMIN_LITELLM_API_KEY` configuration. It does not
 reuse or fall back to the `LITELLM_KEY` data-plane credential.
 
+Key model authorization intersects that read-only `/model/info` projection
+with the canonically rendered delivery profiles in
+`INFERENCE_MODEL_ADMISSION_DIR`. Only unexpired `ACTIVE_MEASURED` profiles with
+qualification evidence admit aliases. The same intersection supplies the
+Manual selector, validates Manual mutations, and authorizes Auto model lists
+and Chat Completions. Auto is resolved on every request and stores no alias
+snapshot. Missing, stale, malformed, or inconsistent inputs fail closed.
+
+Commissioning must render profiles with `infra/inference/render-profile.mjs`,
+replace the admission directory atomically, and mount it read-only into the
+BFF. `BFF_FALLBACK_MODELS` is fixture-only and cannot supply production model
+authorization.
+
 ## Retention boundary
 
 The BFF does not retain prompts, responses, chat history, or tool arguments.

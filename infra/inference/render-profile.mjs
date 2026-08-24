@@ -51,6 +51,10 @@ export function renderDeliveryProfile(profile, contracts = loadContracts()) {
     profile.capacity.state === "MEASURED"
       ? {
           state: "ACTIVE_MEASURED",
+          freshness: {
+            measuredAt: profile.capacity.measuredAt,
+            validUntil: profile.capacity.validUntil,
+          },
           models: [
             {
               alias: profile.model.alias,
@@ -64,7 +68,11 @@ export function renderDeliveryProfile(profile, contracts = loadContracts()) {
             },
           ],
         }
-      : { models: [], state: "UNAVAILABLE_UNMEASURED" }
+      : {
+          freshness: { measuredAt: null, validUntil: null },
+          models: [],
+          state: "UNAVAILABLE_UNMEASURED",
+        }
 
   return {
     apiVersion: "inference-core.llm-machines/v1",
@@ -92,6 +100,10 @@ export function renderDeliveryProfile(profile, contracts = loadContracts()) {
     },
     probes: profile.probes,
     capabilityAdvertisement,
+    qualification: {
+      evidenceDigest: profile.capacity.evidenceDigest,
+      qualifiedProfileDigest: profile.activation.qualifiedProfileDigest,
+    },
     rollback: profile.rollback,
   }
 }

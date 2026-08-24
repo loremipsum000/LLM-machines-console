@@ -13,8 +13,17 @@ profile revision without changing Product source.
 
 The checked-in fixtures are synthetic parser and renderer controls. They are
 inactive, unmeasured, and not supported hardware declarations. Only an exact
-profile in the `ACTIVE_QUALIFIED` state with matching measurement evidence can
-advertise model and capacity metadata.
+profile in the `ACTIVE_QUALIFIED` lifecycle state, with active delivery,
+matching qualification evidence, measured capacity, and an unexpired
+measurement window, renders an `ACTIVE_MEASURED` capability advertisement. The
+BFF intersects those advertisements with LiteLLM's read-only `/model/info`
+projection before any Key can use an alias.
+
+The rendered advertisements are credential-free runtime inputs. Commissioning
+places one canonical JSON file per admitted alias in a bounded directory,
+replaces that directory atomically, and mounts it read-only at the BFF path
+configured by `INFERENCE_MODEL_ADMISSION_DIR`. Inactive, unmeasured, expired,
+malformed, duplicate, or LiteLLM-inconsistent inputs fail closed.
 
 ## Fixed boundaries
 

@@ -3840,10 +3840,21 @@ async function proveApplicationConsoleFlow({
     await page.getByRole("button", { name: "Copy Firecrawl API key" }).count(),
     0,
   )
-  await page.getByRole("button", { name: "Done" }).click()
-  await page
-    .getByRole("heading", { exact: true, name: applicationName })
-    .waitFor()
+  await assertCreatedKeyDialogKeyboardBoundary(page)
+  assert.equal(page.url().includes(inferenceCredential), false)
+  await page.keyboard.press("Escape")
+  const applicationHeading = page.getByRole("heading", {
+    exact: true,
+    name: applicationName,
+  })
+  await applicationHeading.waitFor()
+  assert.equal(
+    await applicationHeading.evaluate(
+      (heading) => document.activeElement === heading,
+    ),
+    true,
+  )
+  await assertSecretsAbsentFromPage(page, [inferenceCredential])
   const detailPath = new URL(page.url()).pathname
   assert.match(detailPath ?? "", /^\/keys\/apps\/app-/)
   if (postgresControl) {
@@ -4671,6 +4682,32 @@ async function revealedCredential(page, label) {
   const copyButton = page.getByRole("button", { name: `Copy ${label}` })
   await copyButton.waitFor()
   return copyButton.locator("xpath=../div/*[last()]").innerText()
+}
+
+async function assertCreatedKeyDialogKeyboardBoundary(page) {
+  const dialog = page.getByRole("dialog", { name: "Key created" })
+  const heading = dialog.getByRole("heading", { name: "Key created" })
+  const firstControl = dialog.getByRole("button", {
+    name: "Copy Credential ID",
+  })
+  const lastControl = dialog.getByRole("button", { name: "Done" })
+  assert.equal(
+    await heading.evaluate((element) => document.activeElement === element),
+    true,
+  )
+  await lastControl.focus()
+  await page.keyboard.press("Tab")
+  assert.equal(
+    await firstControl.evaluate(
+      (element) => document.activeElement === element,
+    ),
+    true,
+  )
+  await page.keyboard.press("Shift+Tab")
+  assert.equal(
+    await lastControl.evaluate((element) => document.activeElement === element),
+    true,
+  )
 }
 
 function assertCredentialFormat(value, pattern, label) {
