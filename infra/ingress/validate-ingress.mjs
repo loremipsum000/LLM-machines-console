@@ -147,6 +147,8 @@ const expectedNginxLocations = {
     "= /",
     "= /login",
     "= /login/generic_oauth",
+    "= /user/auth-tokens/rotate",
+    "= /api/user/auth-tokens/rotate",
     "= /logout",
     "@grafana_global_logout_fallback",
     "~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",
@@ -212,9 +214,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "5ad5b5b582ac37c37c088ca758ec0e2102c741a53c6ce2f37537885c35a18731",
+    "4116818851fa6d6de06bdedf403c14df4ff972d4419b4d039efc575b80b07a92",
   "native-admin-edge-profile.json":
-    "7efbcfd91abf65e18863542ef19846486d0be2cbbc7268b77801510f70f12be8",
+    "3706a7ff7a2f416ef54cf52f633ee9ce2016bbaab73919167a6188584ed0e8ef",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -501,6 +503,32 @@ function validateNativeAdmin(profile, errors) {
   )
   const grafanaStatic = profile.services?.grafana?.routes?.find(
     ({ id }) => id === "static-assets",
+  )
+  const grafanaSessionRotationRedirect =
+    profile.services?.grafana?.routes?.find(
+      ({ id }) => id === "session-rotation-redirect",
+    )
+  const grafanaSessionRotationApi = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "session-rotation-api",
+  )
+  add(
+    errors,
+    sameJson(profile.queryPolicies?.["grafana-session-rotation"], [
+      "redirectTo",
+    ]) &&
+      grafanaSessionRotationRedirect?.path?.kind === "exact" &&
+      grafanaSessionRotationRedirect?.path?.value ===
+        "/user/auth-tokens/rotate" &&
+      sameJson(grafanaSessionRotationRedirect?.methods, ["GET", "HEAD"]) &&
+      grafanaSessionRotationRedirect?.queryPolicy ===
+        "grafana-session-rotation" &&
+      grafanaSessionRotationRedirect?.emptyQueryAllowed === true &&
+      grafanaSessionRotationApi?.path?.kind === "exact" &&
+      grafanaSessionRotationApi?.path?.value ===
+        "/api/user/auth-tokens/rotate" &&
+      sameJson(grafanaSessionRotationApi?.methods, ["POST"]) &&
+      grafanaSessionRotationApi?.queryPolicy === "forbid",
+    "Grafana native session-rotation policy changed",
   )
   const liteLlmModels = profile.services?.litellm?.routes?.find(
     ({ id }) => id === "models",
@@ -1052,6 +1080,8 @@ function validateNginx(sources, errors) {
         "return 303 https://@@PRODUCT_LITELLM_HOST@@/__llmm/global-logout;",
       ) &&
       grafanaServer.includes("location = /login/generic_oauth") &&
+      grafanaServer.includes("location = /user/auth-tokens/rotate") &&
+      grafanaServer.includes("location = /api/user/auth-tokens/rotate") &&
       grafanaServer.includes("location = /api/dashboards/db") &&
       grafanaServer.includes(
         "location ~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",

@@ -418,6 +418,10 @@ test("native query-key allowlists cannot be broadened or removed", () => {
       "if ($args = blocked) { return 400; }",
     ],
     [
+      "if ($llmm_query_grafana_session_rotation = 0) { return 400; }",
+      "if ($args = blocked) { return 400; }",
+    ],
+    [
       "if ($llmm_query_litellm_key_list = 0) { return 400; }",
       "if ($args = blocked) { return 400; }",
     ],
@@ -479,6 +483,47 @@ test("Grafana OAuth admits only empty initiation or exact callback keys", () => 
       ),
     )
     assert.ok(result.some((error) => /fingerprint|query|Grafana/i.test(error)))
+  }
+})
+
+test("Grafana session rotation admits only its exact native routes", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  const map = nginx.match(
+    /map \$args \$llmm_query_grafana_session_rotation \{[\s\S]*?\n {2}\}/,
+  )?.[0]
+  assert.equal(
+    map,
+    [
+      "map $args $llmm_query_grafana_session_rotation {",
+      "    default 0;",
+      '    "" 1;',
+      '    "redirectTo=" 1;',
+      '    "~^redirectTo=%2F(?!%2F)(?!.*%(?:25|5[Cc]))(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})*$" 1;',
+      "  }",
+    ].join("\n"),
+  )
+  assert.match(
+    nginx,
+    /location = \/user\/auth-tokens\/rotate \{[\s\S]{0,220}if \(\$llmm_query_grafana_session_rotation = 0\) \{ return 400; \}/,
+  )
+  assert.match(
+    nginx,
+    /location = \/api\/user\/auth-tokens\/rotate \{[\s\S]{0,160}limit_except POST/,
+  )
+
+  for (const changedMap of [
+    map.replace('    "redirectTo=" 1;', "    ~^redirectTo=.*$ 1;"),
+    map.replace(
+      '    "~^redirectTo=%2F(?!%2F)(?!.*%(?:25|5[Cc]))(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})*$" 1;',
+      '    "~^redirectTo=.*$" 1;',
+    ),
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(map, changedMap),
+      ),
+    )
+    assert.ok(result.some((error) => /fingerprint|route|query/i.test(error)))
   }
 })
 

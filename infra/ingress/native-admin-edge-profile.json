@@ -79,6 +79,7 @@
     ],
     "grafana-root": ["from", "orgId", "timezone", "to"],
     "grafana-login": ["redirectTo"],
+    "grafana-session-rotation": ["redirectTo"],
     "grafana-search": ["limit", "query", "type"],
     "grafana-static-cache": ["_cache"],
     "litellm-ui": ["_rsc", "login", "page", "redirect_to"],
@@ -222,6 +223,22 @@
           "path": { "kind": "exact", "value": "/login/generic_oauth" },
           "queryPolicy": "grafana-oauth-entry-or-callback",
           "emptyQueryAllowed": true
+        },
+        {
+          "id": "session-rotation-redirect",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/user/auth-tokens/rotate" },
+          "queryPolicy": "grafana-session-rotation",
+          "emptyQueryAllowed": true
+        },
+        {
+          "id": "session-rotation-api",
+          "methods": ["POST"],
+          "path": {
+            "kind": "exact",
+            "value": "/api/user/auth-tokens/rotate"
+          },
+          "queryPolicy": "forbid"
         },
         {
           "id": "logout",

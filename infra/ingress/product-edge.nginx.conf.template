@@ -70,6 +70,13 @@ http {
     ~^redirectTo=[^&]*$ 1;
   }
 
+  map $args $llmm_query_grafana_session_rotation {
+    default 0;
+    "" 1;
+    "redirectTo=" 1;
+    "~^redirectTo=%2F(?!%2F)(?!.*%(?:25|5[Cc]))(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})*$" 1;
+  }
+
   map $args $llmm_query_grafana_search {
     default 0;
     "" 1;
@@ -809,6 +816,27 @@ http {
       proxy_set_header Host $llmm_public_host;
       proxy_intercept_errors on;
       error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /user/auth-tokens/rotate {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_grafana_session_rotation = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/user/auth-tokens/rotate {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 1k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
       proxy_pass http://grafana_native;
     }
 
