@@ -16,7 +16,6 @@ const secretMappings = {
   DATABASE_URL: "database-url",
   F0_S1_OIDC_CLIENT_SECRET: "console-oidc-client-secret",
   KEYCLOAK_ADMIN_CLIENT_SECRET: "keycloak-admin-client-secret",
-  LITELLM_KEY: "litellm-key",
 }
 
 const nonSecretNames = [
@@ -86,17 +85,43 @@ export function parseRuntimeSecretMaterial(buffer) {
   return { edgeCa, nonSecrets, secrets, sessionKeyring }
 }
 
+export function parseLiteLlmSecretMaterial(buffer) {
+  const environment = Object.fromEntries(
+    buffer
+      .toString("utf8")
+      .split("\0")
+      .filter(Boolean)
+      .map((entry) => {
+        const separator = entry.indexOf("=")
+        return [entry.slice(0, separator), entry.slice(separator + 1)]
+      }),
+  )
+  const masterKey = environment.LITELLM_MASTER_KEY?.trim()
+  if (!masterKey) {
+    throw new Error(
+      "The founder LiteLLM custody source is missing LITELLM_MASTER_KEY.",
+    )
+  }
+  return { "litellm-key": masterKey }
+}
+
 export async function captureVm103FounderCustody(options) {
   if (process.getuid?.() !== 0)
     throw new Error("Founder custody capture requires root.")
   const source = parseRuntimeSecretMaterial(
     await readFile(`/proc/${options.sourcePid}/environ`),
   )
+  const liteLlmSecrets = parseLiteLlmSecretMaterial(
+    await readFile(`/proc/${options.liteLlmSourcePid}/environ`),
+  )
   await mkdir(options.configurationRoot, { mode: 0o700, recursive: true })
   await mkdir(options.secretRoot, { mode: 0o700, recursive: true })
   await chmod(options.configurationRoot, 0o700)
   await chmod(options.secretRoot, 0o700)
-  for (const [name, value] of Object.entries(source.secrets)) {
+  for (const [name, value] of Object.entries({
+    ...source.secrets,
+    ...liteLlmSecrets,
+  })) {
     const target = resolve(options.secretRoot, name)
     await writeFile(target, `${value}\n`, { flag: "wx", mode: 0o600 })
     await chmod(target, 0o600)
@@ -129,6 +154,7 @@ export async function captureVm103FounderCustody(options) {
     credentialValuesPrinted: false,
     generatedFiles: [
       ...Object.values(secretMappings),
+      ...Object.keys(liteLlmSecrets),
       "edge-ca.crt",
       "edge.crt",
       "edge.key",
@@ -147,6 +173,7 @@ async function copyRestricted(source, target) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [
     sourcePid,
+    liteLlmSourcePid,
     configurationRoot,
     secretRoot,
     edgeCertificate,
@@ -154,17 +181,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   ] = process.argv.slice(2)
   if (
     !/^\d+$/.test(sourcePid ?? "") ||
+    !/^\d+$/.test(liteLlmSourcePid ?? "") ||
     !configurationRoot ||
     !secretRoot ||
     !edgeCertificate ||
     !edgePrivateKey
   ) {
     throw new Error(
-      "Usage: capture-vm103-founder-custody.mjs PID CONFIG_ROOT SECRET_ROOT EDGE_CERT EDGE_KEY",
+      "Usage: capture-vm103-founder-custody.mjs BFF_PID LITELLM_PID CONFIG_ROOT SECRET_ROOT EDGE_CERT EDGE_KEY",
     )
   }
   const result = await captureVm103FounderCustody({
     sourcePid: Number(sourcePid),
+    liteLlmSourcePid: Number(liteLlmSourcePid),
     configurationRoot: resolve(configurationRoot),
     secretRoot: resolve(secretRoot),
     edgeCertificate: resolve(edgeCertificate),

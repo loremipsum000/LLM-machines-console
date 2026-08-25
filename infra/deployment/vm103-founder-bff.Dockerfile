@@ -12,14 +12,11 @@ RUN corepack pnpm install --frozen-lockfile --filter @llm-machines/bff...
 
 COPY apps/bff apps/bff
 COPY packages/contracts packages/contracts
-COPY scripts/pre-genesis/reduced-core-session-bff-fixture.mts scripts/pre-genesis/reduced-core-session-bff-fixture.mts
-COPY scripts/pre-genesis/identity-backchannel-target.mjs scripts/pre-genesis/identity-backchannel-target.mjs
 COPY scripts/pre-genesis/runtime-secret-entrypoint.mjs scripts/pre-genesis/runtime-secret-entrypoint.mjs
 RUN corepack pnpm --filter @llm-machines/contracts build
 
 ENV HOST=127.0.0.1
-ENV NODE_ENV=test
+ENV NODE_ENV=production
 ENV PORT=44294
 
-CMD ["node", "scripts/pre-genesis/runtime-secret-entrypoint.mjs", "node", "apps/bff/node_modules/tsx/dist/cli.mjs", "scripts/pre-genesis/reduced-core-session-bff-fixture.mts"]
-
+CMD ["node", "scripts/pre-genesis/runtime-secret-entrypoint.mjs", "node", "apps/bff/node_modules/tsx/dist/cli.mjs", "apps/bff/src/index.ts"]

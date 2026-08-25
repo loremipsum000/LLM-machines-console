@@ -4,7 +4,10 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 
-import { parseRuntimeSecretMaterial } from "../pre-genesis/capture-vm103-founder-custody.mjs"
+import {
+  parseLiteLlmSecretMaterial,
+  parseRuntimeSecretMaterial,
+} from "../pre-genesis/capture-vm103-founder-custody.mjs"
 import { inspectFounderFirewall } from "../pre-genesis/manage-vm103-founder-firewall.mjs"
 import { renderVm103FounderCandidate } from "../pre-genesis/render-vm103-founder-candidate.mjs"
 
@@ -69,6 +72,7 @@ test("founder placement renders exact edge, supervision, and private inference c
       "utf8",
     )
     const bffEnvironment = await readFile(join(root, "bff.env"), "utf8")
+    const webEnvironment = await readFile(join(root, "web.env"), "utf8")
     const vm103 = await readFile(
       join(root, "llmm-founder-candidate.service"),
       "utf8",
@@ -88,18 +92,28 @@ test("founder placement renders exact edge, supervision, and private inference c
     assert.match(firewall, /ip saddr 10\.30\.0\.3 tcp dport 30005 accept/)
     assert.match(firewall, /tcp dport 30005 drop/)
     assert.match(gateway, /--comment llmm-vm103-sglang/)
-    assert.match(bffEnvironment, /F0_S1_IDENTITY_TARGET_HOST=10\.30\.0\.3/)
     assert.match(
       bffEnvironment,
-      /F0_S1_IDENTITY_ISSUER=https:\/\/identity\.lab\.example\/realms\/llm-machines/,
+      /KEYCLOAK_ISSUER_URL=https:\/\/identity\.lab\.example\/realms\/llm-machines/,
+    )
+    assert.match(
+      bffEnvironment,
+      /ADMIN_LITELLM_BASE_URL=http:\/\/127\.0\.0\.1:39218/,
+    )
+    assert.match(bffEnvironment, /NODE_ENV=production/)
+    assert.doesNotMatch(
+      bffEnvironment,
+      /BFF_FALLBACK_MODELS|BFF_FIXTURE_MODE|CONNECTED_APPS_KEYCLOAK_FIXTURE|fixture-model/,
     )
     assert.doesNotMatch(
       bffEnvironment,
       /identity\.lab\.example\/keycloak\/realms/,
     )
-    assert.doesNotMatch(
-      bffEnvironment,
-      /F0_S1_IDENTITY_TARGET_HOST=127\.0\.0\.1/,
+    assert.match(webEnvironment, /PRODUCT_GRAFANA_HOST=grafana\.lab\.example/)
+    assert.match(webEnvironment, /PRODUCT_LITELLM_HOST=litellm\.lab\.example/)
+    assert.match(
+      webEnvironment,
+      /PRODUCT_KEYCLOAK_ADMIN_HOST=keycloak\.lab\.example/,
     )
     assert.match(vm103, /docker compose .* up --detach --wait/)
     assert.match(
@@ -183,7 +197,6 @@ test("custody capture extracts only exact secret classes without logging values"
         "DATABASE_URL=postgres-value",
         "F0_S1_OIDC_CLIENT_SECRET=oidc-value",
         "KEYCLOAK_ADMIN_CLIENT_SECRET=keycloak-value",
-        "LITELLM_KEY=litellm-value",
         "F0_P1_SESSION_KEYRING_FILE=/run/source/session.json",
         "F0_S1_CA_FILE=/run/source/ca.crt",
         "ADMIN_PROMETHEUS_BASE_URL=http://127.0.0.1:9090",
@@ -196,7 +209,6 @@ test("custody capture extracts only exact secret classes without logging values"
     "console-oidc-client-secret",
     "database-url",
     "keycloak-admin-client-secret",
-    "litellm-key",
   ])
   assert.doesNotMatch(
     JSON.stringify(Object.keys(material.secrets)),
@@ -205,9 +217,21 @@ test("custody capture extracts only exact secret classes without logging values"
   assert.deepEqual(material.nonSecrets, {
     ADMIN_PROMETHEUS_BASE_URL: "http://127.0.0.1:9090",
   })
+  assert.deepEqual(
+    parseLiteLlmSecretMaterial(
+      Buffer.from(
+        "LITELLM_MASTER_KEY=litellm-value\0UNRELATED_SECRET=must-not-copy",
+      ),
+    ),
+    { "litellm-key": "litellm-value" },
+  )
+  assert.throws(
+    () => parseLiteLlmSecretMaterial(Buffer.from("OTHER=value\0")),
+    /missing LITELLM_MASTER_KEY/,
+  )
 })
 
-test("founder containers use file custody and the BFF uses a real clock", async () => {
+test("founder containers use file custody and production BFF authority", async () => {
   const custody = await readFile(
     "scripts/pre-genesis/capture-vm103-founder-custody.mjs",
     "utf8",
@@ -216,8 +240,8 @@ test("founder containers use file custody and the BFF uses a real clock", async 
     "infra/deployment/vm103-founder-candidate.compose.yaml",
     "utf8",
   )
-  const fixture = await readFile(
-    "scripts/pre-genesis/reduced-core-session-bff-fixture.mts",
+  const dockerfile = await readFile(
+    "infra/deployment/vm103-founder-bff.Dockerfile",
     "utf8",
   )
   const entrypoint = await readFile(
@@ -226,8 +250,22 @@ test("founder containers use file custody and the BFF uses a real clock", async 
   )
   assert.match(compose, /\/run\/secrets\/llmm_bff_service_api_key/)
   assert.doesNotMatch(compose, /password|maliper|proxy_admin/i)
-  assert.match(fixture, /F0_S1_REAL_CLOCK/)
+  assert.match(compose, /CONSOLE_OIDC_CLIENT_SECRET=/)
+  assert.doesNotMatch(compose, /F0_S1_OIDC_CLIENT_SECRET=/)
+  assert.match(dockerfile, /ENV NODE_ENV=production/)
+  assert.match(dockerfile, /apps\/bff\/src\/index\.ts/)
+  assert.doesNotMatch(dockerfile, /reduced-core-session-bff-fixture/)
   assert.match(entrypoint, /environment\.LLMM_RUNTIME_SECRET_FILES = undefined/)
   assert.doesNotMatch(entrypoint, /console\.log|JSON\.stringify\(environment/)
   assert.match(custody, /await chown\(target, 0, 0\)/)
+})
+
+test("founder Compose gives rendered candidate settings precedence", async () => {
+  const compose = await readFile(
+    "infra/deployment/vm103-founder-candidate.compose.yaml",
+    "utf8",
+  )
+  const imported = compose.indexOf("runtime-import.env")
+  const rendered = compose.indexOf("bff.env")
+  assert.ok(imported >= 0 && rendered > imported)
 })
