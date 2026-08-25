@@ -23,6 +23,12 @@ comes separately from the exact active LiteLLM process, so an older BFF cannot
 silently supply a stale master key. The script prints only generated filenames
 and never their values.
 
+The BFF's `non-restorable-isolation/` directory is a root-owned mode `0700`
+configuration-root child outside PostgreSQL and every Console component
+restore set. VM rollback and host backup preserve it, but a Console restore
+must never overwrite it. Missing, malformed, or unavailable marker authority
+keeps inference and Firecrawl admissions sealed.
+
 The deployment remains side by side until all three candidate containers are
 healthy. The gateway continues using the previous protected edge until an
 explicit health-gated upstream change. Rollback restores that previous

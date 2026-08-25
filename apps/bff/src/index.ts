@@ -61,6 +61,7 @@ import {
   emergencyIsolationServiceFromRuntime,
 } from "./services/emergency-isolation"
 import { emergencyRecoveryServiceFromRuntime } from "./services/emergency-recovery"
+import { fileEmergencyIsolationAuthorityFromRuntime } from "./services/file-emergency-isolation-marker"
 import { firecrawlGatewayOptionsFromRuntime } from "./services/firecrawl-gateway-runtime"
 import { IsolationTrafficGate } from "./services/isolation-traffic-gate"
 import {
@@ -222,7 +223,7 @@ function createRuntimeIsolation(useFixtureStore: boolean): {
   let service: EmergencyIsolationService | null = null
   const nonRestorableAuthority = useFixtureStore
     ? new InMemoryEmergencyIsolationNonRestorableAuthority()
-    : null
+    : fileEmergencyIsolationAuthorityFromRuntime()
   const lifecycleRestoreIsolationRecoveryAuthority = useFixtureStore
     ? emptyLifecycleRestoreIsolationRecoveryAuthority()
     : createDrizzleLifecycleRestoreIsolationRecoveryAuthority()

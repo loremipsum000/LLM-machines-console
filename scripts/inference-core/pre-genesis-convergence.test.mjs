@@ -260,6 +260,14 @@ test("founder containers use file custody and production BFF authority", async (
   assert.match(compose, /\/run\/secrets\/llmm_bff_service_api_key/)
   assert.doesNotMatch(compose, /password|maliper|proxy_admin/i)
   assert.match(compose, /CONSOLE_OIDC_CLIENT_SECRET=/)
+  assert.match(
+    compose,
+    /EMERGENCY_ISOLATION_MARKER_DIRECTORY: \/run\/llm-machines\/non-restorable-isolation/,
+  )
+  assert.match(
+    compose,
+    /\$\{LLMM_CONFIGURATION_ROOT\}\/non-restorable-isolation:\/run\/llm-machines\/non-restorable-isolation/,
+  )
   assert.doesNotMatch(compose, /F0_S1_OIDC_CLIENT_SECRET=/)
   assert.match(dockerfile, /ENV NODE_ENV=production/)
   assert.match(dockerfile, /apps\/bff\/src\/index\.ts/)
