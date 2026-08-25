@@ -143,6 +143,7 @@
       "exact",
       "first",
       "max",
+      "q",
       "search",
       "username"
     ],

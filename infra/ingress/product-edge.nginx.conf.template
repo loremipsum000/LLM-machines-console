@@ -185,7 +185,7 @@ http {
   map $args $llmm_query_keycloak_users {
     default 0;
     "" 1;
-    ~^(?:briefRepresentation|email|exact|first|max|search|username)=[^&]*(?:&(?:briefRepresentation|email|exact|first|max|search|username)=[^&]*)*$ 1;
+    ~^(?:briefRepresentation|email|exact|first|max|q|search|username)=[^&]*(?:&(?:briefRepresentation|email|exact|first|max|q|search|username)=[^&]*)*$ 1;
   }
 
   map $args $llmm_query_keycloak_groups {

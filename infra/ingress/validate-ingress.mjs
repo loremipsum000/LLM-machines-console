@@ -216,9 +216,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "a891f4a7b98d2eeb63eb14a9d9515dedb40e1e4f72cb621bcf09b75dd9b36cee",
+    "258ef3468d01d00ce13532904c608fe677348c64f223a4dbff5fee341b5bec7a",
   "native-admin-edge-profile.json":
-    "e61610060f5e6b41d616433c1368336c5cf93b3d6e9204543079abedc51c8007",
+    "bb84d79f1fc873a5de03a2ab0004ae3ccec75033d0ea35ed8eee7686ec6e6389",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":

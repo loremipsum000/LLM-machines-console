@@ -394,6 +394,16 @@ test("Keycloak Users page dependencies stay exact and read-only", () => {
   }
 })
 
+test("Keycloak user search admits only the exact 26.7.0 query keys", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  assert.match(
+    nginx,
+    /briefRepresentation\|email\|exact\|first\|max\|q\|search\|username/,
+  )
+  assert.doesNotMatch(nginx, /keycloak_users[^}]*\|role\|/s)
+  assert.doesNotMatch(nginx, /keycloak_users[^}]*\|client\|/s)
+})
+
 test("native profiles remain source-only and preserve admitted roles", () => {
   const profile = JSON.parse(sources["native-admin-edge-profile.json"])
   profile.activation = "ACTIVE"
