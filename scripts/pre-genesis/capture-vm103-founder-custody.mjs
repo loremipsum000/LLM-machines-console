@@ -105,6 +105,13 @@ export function parseLiteLlmSecretMaterial(buffer) {
   return { "litellm-key": masterKey }
 }
 
+export function processNamespacePath(pid, path) {
+  if (!Number.isSafeInteger(pid) || pid < 1 || !path.startsWith("/")) {
+    throw new Error("The founder custody process path is invalid.")
+  }
+  return `/proc/${pid}/root${path}`
+}
+
 export async function captureVm103FounderCustody(options) {
   if (process.getuid?.() !== 0)
     throw new Error("Founder custody capture requires root.")
@@ -135,11 +142,11 @@ export async function captureVm103FounderCustody(options) {
     { flag: "wx", mode: 0o600 },
   )
   await copyRestricted(
-    source.sessionKeyring,
+    processNamespacePath(options.sourcePid, source.sessionKeyring),
     resolve(options.configurationRoot, "session-keyring.json"),
   )
   await copyRestricted(
-    source.edgeCa,
+    processNamespacePath(options.sourcePid, source.edgeCa),
     resolve(options.configurationRoot, "edge-ca.crt"),
   )
   await copyRestricted(

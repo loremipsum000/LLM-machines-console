@@ -7,6 +7,7 @@ import test from "node:test"
 import {
   parseLiteLlmSecretMaterial,
   parseRuntimeSecretMaterial,
+  processNamespacePath,
 } from "../pre-genesis/capture-vm103-founder-custody.mjs"
 import { inspectFounderFirewall } from "../pre-genesis/manage-vm103-founder-firewall.mjs"
 import { renderVm103FounderCandidate } from "../pre-genesis/render-vm103-founder-candidate.mjs"
@@ -228,6 +229,14 @@ test("custody capture extracts only exact secret classes without logging values"
   assert.throws(
     () => parseLiteLlmSecretMaterial(Buffer.from("OTHER=value\0")),
     /missing LITELLM_MASTER_KEY/,
+  )
+  assert.equal(
+    processNamespacePath(42, "/run/llm-machines/session-keyring.json"),
+    "/proc/42/root/run/llm-machines/session-keyring.json",
+  )
+  assert.throws(
+    () => processNamespacePath(42, "run/llm-machines/session-keyring.json"),
+    /process path is invalid/,
   )
 })
 
