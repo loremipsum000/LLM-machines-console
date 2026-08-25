@@ -741,6 +741,24 @@
           "queryPolicy": "forbid"
         },
         {
+          "id": "admin-ui-realm-info",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "exact",
+            "value": "/keycloak/admin/realms/llm-machines/ui-ext/info"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "user-profile-schema",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "exact",
+            "value": "/keycloak/admin/realms/llm-machines/users/profile"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
           "id": "users",
           "methods": ["GET", "HEAD", "POST"],
           "path": {

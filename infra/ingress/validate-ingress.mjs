@@ -200,6 +200,8 @@ const expectedNginxLocations = {
     "^~ /keycloak/admin/llm-machines/console/",
     "= /keycloak/admin/realms/llm-machines",
     "= /keycloak/admin/serverinfo",
+    "= /keycloak/admin/realms/llm-machines/ui-ext/info",
+    "= /keycloak/admin/realms/llm-machines/users/profile",
     "= /keycloak/admin/realms/llm-machines/users",
     '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}$"',
     '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/reset-password$"',
@@ -214,9 +216,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "4116818851fa6d6de06bdedf403c14df4ff972d4419b4d039efc575b80b07a92",
+    "a891f4a7b98d2eeb63eb14a9d9515dedb40e1e4f72cb621bcf09b75dd9b36cee",
   "native-admin-edge-profile.json":
-    "3706a7ff7a2f416ef54cf52f633ee9ce2016bbaab73919167a6188584ed0e8ef",
+    "e61610060f5e6b41d616433c1368336c5cf93b3d6e9204543079abedc51c8007",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -1203,12 +1205,27 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    count(keycloakAdminServer, "rewrite ^/keycloak/(.*)$ /$1 break;") === 11 &&
+    count(keycloakAdminServer, "rewrite ^/keycloak/(.*)$ /$1 break;") === 13 &&
       keycloakAdminServer.includes(
         "include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;",
       ),
     "Keycloak external admin prefix normalization changed",
   )
+  for (const dependency of [
+    "= /keycloak/admin/realms/llm-machines/ui-ext/info",
+    "= /keycloak/admin/realms/llm-machines/users/profile",
+  ]) {
+    const section = exactLocationSection(keycloakAdminServer, dependency)
+    add(
+      errors,
+      section.includes("limit_except GET HEAD { deny all; }") &&
+        section.includes("if ($llmm_query_none = 0) { return 400; }") &&
+        section.includes(
+          "include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;",
+        ),
+      `Keycloak Admin Users dependency is not exact read-only: ${dependency}`,
+    )
+  }
   const keycloakUser = exactLocationSection(
     keycloakAdminServer,
     '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}$"',

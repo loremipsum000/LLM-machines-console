@@ -369,6 +369,31 @@ test("every public Nginx location is exact-allowlisted", () => {
   }
 })
 
+test("Keycloak Users page dependencies stay exact and read-only", () => {
+  for (const path of [
+    "/keycloak/admin/realms/llm-machines/ui-ext/info",
+    "/keycloak/admin/realms/llm-machines/users/profile",
+  ]) {
+    const location = `location = ${path}`
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(
+          `${location} {\n      limit_except GET HEAD { deny all; }`,
+          `${location} {\n      limit_except GET HEAD POST { deny all; }`,
+        ),
+      ),
+    )
+    assert.ok(
+      result.some((error) =>
+        error.includes(
+          "Keycloak Admin Users dependency is not exact read-only",
+        ),
+      ),
+      path,
+    )
+  }
+})
+
 test("native profiles remain source-only and preserve admitted roles", () => {
   const profile = JSON.parse(sources["native-admin-edge-profile.json"])
   profile.activation = "ACTIVE"

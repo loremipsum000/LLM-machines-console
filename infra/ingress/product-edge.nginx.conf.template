@@ -1311,6 +1311,26 @@ http {
       proxy_pass http://keycloak_identity;
     }
 
+    location = /keycloak/admin/realms/llm-machines/ui-ext/info {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /keycloak/admin/realms/llm-machines/users/profile {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
     location = /keycloak/admin/realms/llm-machines/users {
       limit_except GET HEAD POST { deny all; }
       if ($llmm_query_keycloak_users = 0) { return 400; }
