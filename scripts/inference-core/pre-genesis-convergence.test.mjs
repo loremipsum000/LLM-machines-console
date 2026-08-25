@@ -277,6 +277,7 @@ test("founder Compose gives rendered candidate settings precedence", async () =>
   const imported = compose.indexOf("runtime-import.env")
   const rendered = compose.indexOf("bff.env")
   assert.ok(imported >= 0 && rendered > imported)
+  assert.match(compose, /extra_hosts:\n\s+- "firecrawl-api:127\.0\.0\.1"/)
 })
 
 test("Keycloak errors provide a bounded fresh-login recovery action", async () => {

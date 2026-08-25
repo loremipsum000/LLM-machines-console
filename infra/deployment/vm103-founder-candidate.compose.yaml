@@ -21,6 +21,8 @@ services:
     container_name: llmm-founder-candidate-bff
     network_mode: host
     restart: unless-stopped
+    extra_hosts:
+      - "firecrawl-api:127.0.0.1"
     env_file:
       - ${LLMM_CONFIGURATION_ROOT}/runtime-import.env
       - ${LLMM_CONFIGURATION_ROOT:?configuration root required}/bff.env

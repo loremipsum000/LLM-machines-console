@@ -29,6 +29,12 @@ explicit health-gated upstream change. Rollback restores that previous
 upstream, stops the exact `llmm-founder-candidate` Compose project without
 deleting state, and removes only the source-restricted inference route units.
 
+The retained Firecrawl package owns its native containers and private Docker
+networks. Before starting the founder BFF, commissioning must provide an exact
+retained bridge on `127.0.0.1:3002` to the private `firecrawl-api:3002`
+listener. The BFF resolves only that service name to loopback. No Firecrawl
+native port or UI becomes customer-accessible.
+
 Operator sequence:
 
 1. Render and validate placement from the exact candidate commit.
