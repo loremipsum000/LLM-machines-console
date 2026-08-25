@@ -19,7 +19,7 @@ const connectPort = approvedPort(config.connectPort)
 if (!/^llmm_t4_[0-9a-f]{18}_[A-Za-z0-9_-]{43}$/.test(config.apiKey)) {
   throw new Error("The external client credential format was invalid.")
 }
-assert.equal(config.model, "fixture-model")
+const model = approvedModel(config.model)
 assert.equal(typeof config.caFile, "string")
 assert.equal(typeof config.prompt, "string")
 assert.ok(config.prompt.length > 0 && config.prompt.length <= 1_024)
@@ -57,19 +57,19 @@ try {
   })
 
   const models = await client.models.list()
-  assert.ok(models.data.some((model) => model.id === config.model))
+  assert.ok(models.data.some((entry) => entry.id === model))
 
   const completion = await client.chat.completions.create({
     messages: [{ content: config.prompt, role: "user" }],
-    model: config.model,
+    model,
   })
-  assert.equal(completion.model, config.model)
+  assert.equal(completion.model, model)
   assert.ok((completion.choices[0]?.message?.content ?? "").length > 0)
   assert.ok((completion.usage?.total_tokens ?? 0) > 0)
 
   const stream = await client.chat.completions.create({
     messages: [{ content: config.prompt, role: "user" }],
-    model: config.model,
+    model,
     stream: true,
     stream_options: { include_usage: true },
   })
@@ -157,6 +157,16 @@ function approvedPrivateAddress(value) {
 function approvedPort(value) {
   if (!Number.isSafeInteger(value) || value < 1 || value > 65_535) {
     throw new Error("The external client edge port was invalid.")
+  }
+  return value
+}
+
+function approvedModel(value) {
+  if (
+    typeof value !== "string" ||
+    !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value)
+  ) {
+    throw new Error("The external client model alias was invalid.")
   }
   return value
 }
