@@ -278,3 +278,24 @@ test("founder Compose gives rendered candidate settings precedence", async () =>
   const rendered = compose.indexOf("bff.env")
   assert.ok(imported >= 0 && rendered > imported)
 })
+
+test("Keycloak errors provide a bounded fresh-login recovery action", async () => {
+  const errorTemplate = await readFile(
+    "infra/keycloak/themes/llm-machines/login/error.ftl",
+    "utf8",
+  )
+  const edge = await readFile(
+    "infra/ingress/product-edge.nginx.conf.template",
+    "utf8",
+  )
+  assert.match(errorTemplate, /id="backToLogin"/)
+  assert.match(errorTemplate, /href="\/__llmm\/console-login"/)
+  assert.doesNotMatch(
+    errorTemplate,
+    /session_code|redirect_uri|client\.baseUrl/,
+  )
+  assert.match(
+    edge,
+    /location = \/__llmm\/console-login[\s\S]*?return 303 https:\/\/@@PRODUCT_CONSOLE_HOST@@\/;/,
+  )
+})

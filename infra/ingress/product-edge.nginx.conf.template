@@ -547,6 +547,14 @@ http {
     if ($http_host != $ssl_server_name) { return 421; }
     if ($http_cookie ~* "(?:^|;\\s*)__Host-llm-machines-(?:session|login)=") { return 400; }
 
+    location = /__llmm/console-login {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      return 303 https://@@PRODUCT_CONSOLE_HOST@@/;
+    }
+
     location = /__llmm/global-logout {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }

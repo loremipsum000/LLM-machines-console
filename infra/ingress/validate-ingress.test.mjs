@@ -171,6 +171,24 @@ test("identity outage recovery is fixed to the Console sign-in surface", () => {
   }
 })
 
+test("identity errors recover through one fresh Console login entry", () => {
+  for (const replacement of [
+    "return 303 https://attacker.invalid/;",
+    "return 303 https://@@PRODUCT_CONSOLE_HOST@@$request_uri;",
+    "return 200;",
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(
+          "return 303 https://@@PRODUCT_CONSOLE_HOST@@/;",
+          replacement,
+        ),
+      ),
+    )
+    assert.ok(result.some((error) => /identity error recovery/i.test(error)))
+  }
+})
+
 test("coordinated logout stays bounded and independent of native availability", () => {
   for (const [before, after] of [
     ["proxy_connect_timeout 2s;", "proxy_connect_timeout 30s;"],

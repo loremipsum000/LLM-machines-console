@@ -123,6 +123,7 @@ const expectedNginxLocations = {
   ],
   firecrawl: ["= /v2/search", "= /v2/scrape", "/"],
   identity: [
+    "= /__llmm/console-login",
     "= /__llmm/global-logout",
     "= /realms/llm-machines/protocol/openid-connect/auth",
     "= /realms/llm-machines/protocol/openid-connect/logout",
@@ -211,7 +212,7 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "575f73869a78e5644bb97e3ffc4ab64f47b766b02060f0679decfeedf6ddfae5",
+    "5ad5b5b582ac37c37c088ca758ec0e2102c741a53c6ce2f37537885c35a18731",
   "native-admin-edge-profile.json":
     "7efbcfd91abf65e18863542ef19846486d0be2cbbc7268b77801510f70f12be8",
   "proxy-common.inc":
@@ -1119,6 +1120,20 @@ function validateNginx(sources, errors) {
       !liteLlmGlobalLogout.includes("proxy_pass") &&
       !liteLlmGlobalLogout.includes("proxy_intercept_errors"),
     "LiteLLM global logout must remain independent of native availability",
+  )
+  add(
+    errors,
+    identityServer.includes("location = /__llmm/console-login") &&
+      exactLocationSection(identityServer, "= /__llmm/console-login").includes(
+        "if ($llmm_query_none = 0) { return 400; }",
+      ) &&
+      exactLocationSection(identityServer, "= /__llmm/console-login").includes(
+        "return 303 https://@@PRODUCT_CONSOLE_HOST@@/;",
+      ) &&
+      !/\$(?:args|http_|request_uri|uri)\b/.test(
+        exactLocationSection(identityServer, "= /__llmm/console-login"),
+      ),
+    "identity error recovery must start a fresh Console login",
   )
   add(
     errors,
