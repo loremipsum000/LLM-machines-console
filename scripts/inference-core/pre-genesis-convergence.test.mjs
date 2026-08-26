@@ -412,7 +412,6 @@ test("custody capture extracts only exact secret classes without logging values"
     Buffer.from(
       [
         "BFF_SERVICE_API_KEY=bff-value",
-        "CONSOLE_OIDC_CLIENT_SECRET=oidc-value",
         "CONSOLE_SESSION_KEYRING_FILE=/run/source/session.json",
         "DATABASE_URL=postgres-value",
         "KEYCLOAK_ADMIN_CLIENT_SECRET=keycloak-value",
@@ -424,7 +423,6 @@ test("custody capture extracts only exact secret classes without logging values"
   )
   assert.deepEqual(Object.keys(material.secrets).sort(), [
     "bff-service-api-key",
-    "console-oidc-client-secret",
     "database-url",
     "keycloak-admin-client-secret",
   ])
@@ -450,17 +448,29 @@ test("custody capture extracts only exact secret classes without logging values"
   assert.deepEqual(
     parseKeycloakControlSecretMaterial(
       Buffer.from(
-        JSON.stringify({ credentials: { applicationAdmin: "app-value" } }),
+        JSON.stringify({
+          credentials: {
+            applicationAdmin: "app-value",
+            oidcClient: "oidc-value",
+          },
+        }),
       ),
     ),
-    { "keycloak-application-admin-client-secret": "app-value" },
+    {
+      "console-oidc-client-secret": "oidc-value",
+      "keycloak-application-admin-client-secret": "app-value",
+    },
   )
   assert.throws(
     () =>
       parseKeycloakControlSecretMaterial(
-        Buffer.from(JSON.stringify({ credentials: { humanAdmin: "wrong" } })),
+        Buffer.from(
+          JSON.stringify({
+            credentials: { applicationAdmin: "app-value" },
+          }),
+        ),
       ),
-    /missing credentials\.applicationAdmin/,
+    /missing credentials\.oidcClient/,
   )
   assert.equal(
     processNamespacePath(42, "/run/llm-machines/session-keyring.json"),
@@ -472,19 +482,10 @@ test("custody capture extracts only exact secret classes without logging values"
   )
   assert.throws(
     () =>
-      parseRuntimeSecretMaterial(
-        Buffer.from(
-          [
-            "BFF_SERVICE_API_KEY=bff-value",
-            "DATABASE_URL=postgres-value",
-            "F0_S1_OIDC_CLIENT_SECRET=legacy-oidc-value",
-            "KEYCLOAK_ADMIN_CLIENT_SECRET=keycloak-value",
-            "F0_P1_SESSION_KEYRING_FILE=/run/source/session.json",
-            "F0_S1_CA_FILE=/run/source/ca.crt",
-          ].join("\0"),
-        ),
+      parseKeycloakControlSecretMaterial(
+        Buffer.from(JSON.stringify({ credentials: { oidcClient: "value" } })),
       ),
-    /missing CONSOLE_OIDC_CLIENT_SECRET/,
+    /missing credentials\.applicationAdmin/,
   )
 })
 
@@ -519,7 +520,7 @@ test("founder containers use file custody and production BFF authority", async (
     /\$\{LLMM_CONFIGURATION_ROOT\}\/non-restorable-isolation:\/run\/llm-machines\/non-restorable-isolation/,
   )
   assert.doesNotMatch(compose, /F0_S1_OIDC_CLIENT_SECRET=/)
-  assert.match(custody, /CONSOLE_OIDC_CLIENT_SECRET/)
+  assert.match(custody, /oidcClient: "console-oidc-client-secret"/)
   assert.match(custody, /CONSOLE_SESSION_KEYRING_FILE/)
   assert.match(custody, /NODE_EXTRA_CA_CERTS/)
   assert.match(custody, /parseKeycloakControlSecretMaterial/)
