@@ -224,7 +224,6 @@ function AddConnectedAppView({
     modelInventorySourceStatus === "ok" && modelOptions.length > 0
 
   useEffect(() => {
-    if (createState.status !== "created") return
     const clearReveal = () => setCreateState(initialConnectedAppCreateState)
     const clearRestoredReveal = (event: Event) => {
       if ("persisted" in event && event.persisted === true) clearReveal()
@@ -237,7 +236,7 @@ function AddConnectedAppView({
       window.removeEventListener("pageshow", clearRestoredReveal)
       window.removeEventListener("popstate", clearReveal)
     }
-  }, [createState.status])
+  }, [])
 
   useEffect(() => {
     if (!closeDestination || createState.status === "created") return
