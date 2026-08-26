@@ -150,6 +150,7 @@ const expectedNginxLocations = {
     "= /user/auth-tokens/rotate",
     "= /api/user/auth-tokens/rotate",
     "= /logout",
+    "~ ^/profile(?:/notifications)?$",
     "@grafana_global_logout_fallback",
     "~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",
     "~ ^/api/(?:dashboards/home|login/ping|plugins|user|user/orgs|user/preferences|user/stars)$",
@@ -220,9 +221,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "8ac258c1b504135514e7896ca4463a88617f4d986cf0661c156726adb9d85c5e",
+    "4d86a92226e17543c1e79a8446c68b95e6deb2ab45e2a24c4f0877e9ca6912b8",
   "native-admin-edge-profile.json":
-    "a6d9f5539c9da818f38890f94db1316c28a702ff68d07e7ddfb553a19192b6de",
+    "da14a3955cb049cae563aaacb309246a3f3a121552d9f2a107a472947d1ccdb5",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -510,12 +511,23 @@ function validateNativeAdmin(profile, errors) {
   const grafanaStatic = profile.services?.grafana?.routes?.find(
     ({ id }) => id === "static-assets",
   )
+  const grafanaProfilePages = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "profile-pages",
+  )
   const grafanaSessionRotationRedirect =
     profile.services?.grafana?.routes?.find(
       ({ id }) => id === "session-rotation-redirect",
     )
   const grafanaSessionRotationApi = profile.services?.grafana?.routes?.find(
     ({ id }) => id === "session-rotation-api",
+  )
+  add(
+    errors,
+    grafanaProfilePages?.path?.kind === "regex" &&
+      grafanaProfilePages?.path?.value === "^/profile(?:/notifications)?$" &&
+      sameJson(grafanaProfilePages?.methods, ["GET", "HEAD"]) &&
+      grafanaProfilePages?.queryPolicy === "forbid",
+    "Grafana profile-page policy changed",
   )
   add(
     errors,
@@ -1107,6 +1119,7 @@ function validateNginx(sources, errors) {
         "return 303 https://@@PRODUCT_LITELLM_HOST@@/__llmm/global-logout;",
       ) &&
       grafanaServer.includes("location = /login/generic_oauth") &&
+      grafanaServer.includes("location ~ ^/profile(?:/notifications)?$") &&
       grafanaServer.includes("location = /user/auth-tokens/rotate") &&
       grafanaServer.includes("location = /api/user/auth-tokens/rotate") &&
       grafanaServer.includes("location = /api/dashboards/db") &&

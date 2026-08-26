@@ -562,6 +562,44 @@ test("Grafana session rotation admits only its exact native routes", () => {
   }
 })
 
+test("Grafana profile pages admit only exact read-only destinations", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  const location = nginx.match(
+    /location ~ \^\/profile\(\?:\/notifications\)\?\$ \{[\s\S]*?\n {4}\}/,
+  )?.[0]
+  assert.ok(location)
+  assert.match(location, /limit_except GET HEAD \{ deny all; \}/)
+  assert.match(location, /if \(\$llmm_query_none = 0\) \{ return 400; \}/)
+
+  for (const changedLocation of [
+    location.replace("limit_except GET HEAD", "limit_except GET HEAD POST"),
+    location.replace("$llmm_query_none = 0", "$llmm_query_none = 1"),
+    location.replace("^/profile(?:/notifications)?$", "^/profile(?:/.*)?$"),
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(location, changedLocation),
+      ),
+    )
+    assert.ok(
+      result.some((error) => /fingerprint|Grafana|location/i.test(error)),
+    )
+  }
+
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  const route = profile.services.grafana.routes.find(
+    ({ id }) => id === "profile-pages",
+  )
+  route.methods.push("POST")
+  const result = validateIngressSources({
+    ...sources,
+    "native-admin-edge-profile.json": JSON.stringify(profile),
+  })
+  assert.ok(
+    result.some((error) => /fingerprint|Grafana profile-page/i.test(error)),
+  )
+})
+
 test("Keycloak native user deletion remains denied before upstream", () => {
   const result = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>

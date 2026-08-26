@@ -248,6 +248,15 @@
           "queryPolicy": "forbid"
         },
         {
+          "id": "profile-pages",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/profile(?:/notifications)?$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
           "id": "approved-read-api",
           "methods": ["GET", "HEAD"],
           "path": {

@@ -854,6 +854,15 @@ http {
       proxy_pass http://grafana_native;
     }
 
+    location ~ ^/profile(?:/notifications)?$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
     location @grafana_global_logout_fallback {
       add_header Cache-Control "no-store" always;
       add_header Referrer-Policy "no-referrer" always;
