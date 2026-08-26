@@ -32,7 +32,9 @@ Keycloak administration material comes from the protected BFF process. The
 dedicated Application-realm administration secret comes from the commissioned
 Keycloak control file and is verified before candidate startup. The LiteLLM key
 comes separately from the exact active LiteLLM process, so an older BFF cannot
-silently supply a stale master key. The script prints only generated filenames
+silently supply a stale master key. Custody capture also requires the exact
+`litellm-native` client ID and rejects a LiteLLM OIDC secret that differs from
+the commissioned Keycloak client. The script prints only generated filenames
 and never their values.
 
 The BFF's `non-restorable-isolation/` directory is a root-owned mode `0700`

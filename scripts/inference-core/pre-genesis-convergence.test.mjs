@@ -9,6 +9,7 @@ import {
   parseLiteLlmSecretMaterial,
   parseRuntimeSecretMaterial,
   processNamespacePath,
+  validateLiteLlmOidcBinding,
 } from "../pre-genesis/capture-vm103-founder-custody.mjs"
 import {
   inspectFounderFirewall,
@@ -434,10 +435,14 @@ test("custody capture extracts only exact secret classes without logging values"
   assert.deepEqual(
     parseLiteLlmSecretMaterial(
       Buffer.from(
-        "LITELLM_MASTER_KEY=litellm-value\0UNRELATED_SECRET=must-not-copy",
+        "LITELLM_MASTER_KEY=litellm-value\0GENERIC_CLIENT_ID=litellm-native\0GENERIC_CLIENT_SECRET=oidc-value\0UNRELATED_SECRET=must-not-copy",
       ),
     ),
-    { "litellm-key": "litellm-value" },
+    {
+      oidcClientId: "litellm-native",
+      oidcClientSecret: "oidc-value",
+      secrets: { "litellm-key": "litellm-value" },
+    },
   )
   assert.throws(
     () => parseLiteLlmSecretMaterial(Buffer.from("OTHER=value\0")),
@@ -450,6 +455,7 @@ test("custody capture extracts only exact secret classes without logging values"
           credentials: {
             applicationAdmin: "app-value",
             humanAdmin: "human-value",
+            liteLlm: "litellm-oidc-value",
             oidcClient: "oidc-value",
           },
         }),
@@ -459,7 +465,31 @@ test("custody capture extracts only exact secret classes without logging values"
       "console-oidc-client-secret": "oidc-value",
       "keycloak-application-admin-client-secret": "app-value",
       "keycloak-admin-client-secret": "human-value",
+      "litellm-oidc-client-secret": "litellm-oidc-value",
     },
+  )
+  validateLiteLlmOidcBinding(
+    {
+      oidcClientId: "litellm-native",
+      oidcClientSecret: "litellm-oidc-value",
+    },
+    { "litellm-oidc-client-secret": "litellm-oidc-value" },
+  )
+  assert.throws(
+    () =>
+      validateLiteLlmOidcBinding(
+        { oidcClientId: "litellm-native", oidcClientSecret: "stale-value" },
+        { "litellm-oidc-client-secret": "current-value" },
+      ),
+    /does not match commissioned Keycloak custody/,
+  )
+  assert.throws(
+    () =>
+      validateLiteLlmOidcBinding(
+        { oidcClientId: "other-client", oidcClientSecret: "current-value" },
+        { "litellm-oidc-client-secret": "current-value" },
+      ),
+    /does not match commissioned Keycloak custody/,
   )
   assert.throws(
     () =>
@@ -469,6 +499,7 @@ test("custody capture extracts only exact secret classes without logging values"
             credentials: {
               applicationAdmin: "app-value",
               humanAdmin: "human-value",
+              liteLlm: "litellm-oidc-value",
             },
           }),
         ),
@@ -488,7 +519,11 @@ test("custody capture extracts only exact secret classes without logging values"
       parseKeycloakControlSecretMaterial(
         Buffer.from(
           JSON.stringify({
-            credentials: { humanAdmin: "human-value", oidcClient: "value" },
+            credentials: {
+              humanAdmin: "human-value",
+              liteLlm: "litellm-oidc-value",
+              oidcClient: "value",
+            },
           }),
         ),
       ),
@@ -501,6 +536,7 @@ test("custody capture extracts only exact secret classes without logging values"
           JSON.stringify({
             credentials: {
               applicationAdmin: "app-value",
+              liteLlm: "litellm-oidc-value",
               oidcClient: "oidc-value",
             },
           }),
@@ -543,6 +579,7 @@ test("founder containers use file custody and production BFF authority", async (
   assert.doesNotMatch(compose, /F0_S1_OIDC_CLIENT_SECRET=/)
   assert.match(custody, /oidcClient: "console-oidc-client-secret"/)
   assert.match(custody, /humanAdmin: "keycloak-admin-client-secret"/)
+  assert.match(custody, /liteLlm: "litellm-oidc-client-secret"/)
   assert.match(custody, /CONSOLE_SESSION_KEYRING_FILE/)
   assert.match(custody, /NODE_EXTRA_CA_CERTS/)
   assert.match(custody, /parseKeycloakControlSecretMaterial/)
