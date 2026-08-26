@@ -11,7 +11,12 @@ const chain = "input"
 const interfaceName = "ens18"
 const allowComment = "llmm-founder-candidate-edge-allow"
 
-export function inspectFounderFirewall(document, gateway, port) {
+export function inspectFounderFirewall(
+  document,
+  gateway,
+  port,
+  { permitForeignPortRules = false } = {},
+) {
   const entries = document?.nftables
   if (!Array.isArray(entries))
     throw new Error("Founder firewall inspection is invalid.")
@@ -54,7 +59,7 @@ export function inspectFounderFirewall(document, gateway, port) {
         )
       }
       owned = rule.handle
-    } else if (mentionsPort) {
+    } else if (mentionsPort && !permitForeignPortRules) {
       throw new Error("Founder firewall port collides with another rule.")
     }
   }
@@ -73,10 +78,23 @@ export function manageFounderFirewall(action, gateway, portValue) {
   if (port < 1024 || port > 65_535)
     throw new Error("Founder firewall arguments are invalid.")
 
-  let state = current(gateway, port)
+  return reconcileFounderFirewall(action, gateway, port, {
+    execute: run,
+    inspectOwned: ownedCurrent,
+    inspectStrict: current,
+  })
+}
+
+export function reconcileFounderFirewall(
+  action,
+  gateway,
+  port,
+  { execute, inspectOwned, inspectStrict },
+) {
   if (action === "apply") {
+    let state = inspectStrict(gateway, port)
     if (state.state === "absent") {
-      run([
+      execute([
         "add",
         "rule",
         family,
@@ -94,15 +112,21 @@ export function manageFounderFirewall(action, gateway, portValue) {
         "comment",
         allowComment,
       ])
-      state = current(gateway, port)
+      try {
+        state = inspectStrict(gateway, port)
+      } catch (error) {
+        cleanupOwnedRule(gateway, port, { execute, inspectOwned })
+        throw error
+      }
     }
     if (state.state !== "exact")
       throw new Error("Founder firewall did not apply.")
     return state
   }
   if (action === "remove") {
+    const state = inspectOwned(gateway, port)
     if (state.state === "exact") {
-      run([
+      execute([
         "delete",
         "rule",
         family,
@@ -112,15 +136,26 @@ export function manageFounderFirewall(action, gateway, portValue) {
         String(state.handle),
       ])
     }
-    if (current(gateway, port).state !== "absent")
+    if (
+      inspectStrict(gateway, port, { permitForeignPortRules: true }).state !==
+      "absent"
+    )
       throw new Error("Founder firewall did not clean up.")
     return { state: "absent" }
   }
-  if (action === "status") return state
+  if (action === "status") return inspectStrict(gateway, port)
   throw new Error("Founder firewall action is invalid.")
 }
 
-function current(gateway, port) {
+function current(gateway, port, options) {
+  return inspectFounderFirewall(readCurrentDocument(), gateway, port, options)
+}
+
+function ownedCurrent(gateway, port) {
+  return inspectOwnedRule(readCurrentDocument(), gateway, port)
+}
+
+function readCurrentDocument() {
   const result = spawnSync(
     nft,
     ["-j", "-a", "list", "chain", family, table, chain],
@@ -132,12 +167,57 @@ function current(gateway, port) {
   if (result.status !== 0)
     throw new Error("Founder firewall inspection failed.")
   try {
-    return inspectFounderFirewall(JSON.parse(result.stdout), gateway, port)
+    return JSON.parse(result.stdout)
   } catch (error) {
     if (error instanceof SyntaxError)
       throw new Error("Founder firewall inspection failed.")
     throw error
   }
+}
+
+function inspectOwnedRule(document, gateway, port) {
+  const entries = document?.nftables
+  if (!Array.isArray(entries))
+    throw new Error("Founder firewall inspection is invalid.")
+  let owned
+  for (const entry of entries) {
+    const rule = entry.rule
+    if (
+      !rule ||
+      rule.family !== family ||
+      rule.table !== table ||
+      rule.chain !== chain ||
+      rule.comment !== allowComment
+    )
+      continue
+    if (
+      owned !== undefined ||
+      !Number.isInteger(rule.handle) ||
+      !isExactOwnedRule(rule.expr, gateway, port)
+    )
+      throw new Error("Founder firewall ownership collides with another rule.")
+    owned = rule.handle
+  }
+  return owned === undefined
+    ? { state: "absent" }
+    : { handle: owned, state: "exact" }
+}
+
+function cleanupOwnedRule(gateway, port, { execute, inspectOwned }) {
+  const state = inspectOwned(gateway, port)
+  if (state.state === "exact") {
+    execute([
+      "delete",
+      "rule",
+      family,
+      table,
+      chain,
+      "handle",
+      String(state.handle),
+    ])
+  }
+  if (inspectOwned(gateway, port).state !== "absent")
+    throw new Error("Founder firewall failed-apply cleanup failed.")
 }
 
 function expressionMentionsPort(expressions, port) {
@@ -148,8 +228,23 @@ function expressionMentionsPort(expressions, port) {
       match.left.payload.field !== "dport"
     )
       return false
-    return match.right === port || match.right?.set?.includes(port)
+    return valueMayContainPort(match.right, port)
   })
+}
+
+function valueMayContainPort(value, port) {
+  if (typeof value === "number") return value === port
+  if (typeof value === "string") return true
+  if (Array.isArray(value))
+    return value.some((item) => valueMayContainPort(item, port))
+  if (!value || typeof value !== "object") return false
+  if (
+    Array.isArray(value.range) &&
+    value.range.length === 2 &&
+    value.range.every(Number.isInteger)
+  )
+    return value.range[0] <= port && port <= value.range[1]
+  return Object.values(value).some((item) => valueMayContainPort(item, port))
 }
 
 function isExactOwnedRule(expressions, gateway, port) {

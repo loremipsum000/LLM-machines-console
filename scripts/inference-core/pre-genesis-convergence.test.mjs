@@ -9,7 +9,10 @@ import {
   parseRuntimeSecretMaterial,
   processNamespacePath,
 } from "../pre-genesis/capture-vm103-founder-custody.mjs"
-import { inspectFounderFirewall } from "../pre-genesis/manage-vm103-founder-firewall.mjs"
+import {
+  inspectFounderFirewall,
+  reconcileFounderFirewall,
+} from "../pre-genesis/manage-vm103-founder-firewall.mjs"
 import { renderVm103FounderCandidate } from "../pre-genesis/render-vm103-founder-candidate.mjs"
 import { validateFounderImageInspections } from "../pre-genesis/verify-vm103-founder-images.mjs"
 
@@ -163,6 +166,24 @@ test("founder firewall integrates one owned allow into the admitted default-drop
   assert.throws(
     () =>
       inspectFounderFirewall(
+        founderFirewallDocument({ foreignPort: { range: [22_000, 23_000] } }),
+        "10.30.0.1",
+        22443,
+      ),
+    /collides/,
+  )
+  assert.throws(
+    () =>
+      inspectFounderFirewall(
+        founderFirewallDocument({ foreignPort: "@candidate_ports" }),
+        "10.30.0.1",
+        22443,
+      ),
+    /collides/,
+  )
+  assert.throws(
+    () =>
+      inspectFounderFirewall(
         founderFirewallDocument({ foreignPort: 22443 }),
         "10.30.0.1",
         22443,
@@ -187,6 +208,43 @@ test("founder firewall integrates one owned allow into the admitted default-drop
       ),
     /base-chain contract/,
   )
+})
+
+test("founder firewall removes its exact rule when post-apply inspection fails", () => {
+  const commands = []
+  const ownedStates = [{ handle: 42, state: "exact" }, { state: "absent" }]
+  let strictCalls = 0
+  assert.throws(
+    () =>
+      reconcileFounderFirewall("apply", "10.30.0.1", 22443, {
+        execute: (command) => commands.push(command),
+        inspectOwned: () => ownedStates.shift(),
+        inspectStrict: () => {
+          strictCalls += 1
+          if (strictCalls === 1) return { state: "absent" }
+          throw new Error("Founder firewall port collides with another rule.")
+        },
+      }),
+    /collides/,
+  )
+  assert.equal(commands.length, 2)
+  assert.equal(commands[0][0], "add")
+  assert.deepEqual(commands[1].slice(-2), ["handle", "42"])
+  assert.equal(ownedStates.length, 0)
+})
+
+test("founder firewall removes its exact rule while preserving a later foreign collision", () => {
+  const commands = []
+  const result = reconcileFounderFirewall("remove", "10.30.0.1", 22443, {
+    execute: (command) => commands.push(command),
+    inspectOwned: () => ({ handle: 42, state: "exact" }),
+    inspectStrict: (_gateway, _port, options) => {
+      assert.deepEqual(options, { permitForeignPortRules: true })
+      return { state: "absent" }
+    },
+  })
+  assert.deepEqual(result, { state: "absent" })
+  assert.deepEqual(commands[0].slice(-2), ["handle", "42"])
 })
 
 function founderFirewallDocument({
