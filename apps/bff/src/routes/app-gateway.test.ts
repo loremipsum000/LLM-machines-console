@@ -2240,6 +2240,7 @@ function configureAuthoritativeModelProjection(
 ): void {
   vi.stubEnv("BFF_FIXTURE_MODE", "false")
   vi.stubEnv("BFF_FALLBACK_MODELS", aliases.join(","))
+  vi.stubEnv("INFERENCE_ALLOW_INTERNAL_TEST_PROFILES", "true")
   vi.stubEnv("ADMIN_LITELLM_BASE_URL", baseUrl)
   vi.stubEnv("ADMIN_LITELLM_API_KEY", "admin-read-key")
 }
@@ -2301,7 +2302,9 @@ function renderedAdmission(
     probes: {},
     qualification: {
       evidenceDigest: `sha256:${"2".repeat(64)}`,
+      productionCapacityClaim: false,
       qualifiedProfileDigest: `sha256:${"3".repeat(64)}`,
+      scope: "INTERNAL_TEST_ONLY",
     },
     rollback: {},
     source: { profileId, revision: 1 },
