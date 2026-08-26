@@ -22,13 +22,14 @@ export function validateApplicationTokenClaims(claims, issuer, clientId) {
 }
 
 export async function verifyVm103ApplicationIdentity({
+  baseUrl,
   clientId,
-  issuer,
+  realm,
   secretFile,
 }) {
   if (
-    issuer !==
-      "https://identity.lab.llm-machines.com/realms/llm-machines-applications" ||
+    !/^http:\/\/127\.0\.0\.1:\d{4,5}$/.test(baseUrl) ||
+    realm !== "llm-machines-applications" ||
     clientId !== "console-application-admin"
   ) {
     throw new Error("The founder Application identity contract is invalid.")
@@ -40,24 +41,22 @@ export async function verifyVm103ApplicationIdentity({
   const secret = (await readFile(secretFile, "utf8")).trim()
   if (!secret) throw new Error("The founder Application identity secret is empty.")
 
+  const issuer = `${baseUrl}/realms/${realm}`
   const jwksResponse = await fetch(`${issuer}/protocol/openid-connect/certs`)
   if (!jwksResponse.ok)
     throw new Error("The founder Application realm keys are unavailable.")
   validateApplicationJwks(await jwksResponse.json())
-  const tokenResponse = await fetch(
-    `${issuer}/protocol/openid-connect/token`,
-    {
+  const tokenResponse = await fetch(`${issuer}/protocol/openid-connect/token`, {
     body: new URLSearchParams({
       client_id: clientId,
+      client_secret: secret,
       grant_type: "client_credentials",
     }),
     headers: {
-      authorization: `Basic ${Buffer.from(`${clientId}:${secret}`).toString("base64")}`,
       "content-type": "application/x-www-form-urlencoded",
     },
     method: "POST",
-    },
-  )
+  })
   if (!tokenResponse.ok)
     throw new Error("The founder Application identity client is unavailable.")
   const payload = await tokenResponse.json()
@@ -69,18 +68,24 @@ export async function verifyVm103ApplicationIdentity({
     issuer,
     clientId,
   )
-  return { clientId, credentialValuesPrinted: false, issuer, status: "READY" }
+  return {
+    clientId,
+    credentialValuesPrinted: false,
+    realm,
+    status: "READY",
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [issuer, clientId, secretFile] = process.argv.slice(2)
-  if (!issuer || !clientId || !secretFile)
+  const [baseUrl, realm, clientId, secretFile] = process.argv.slice(2)
+  if (!baseUrl || !realm || !clientId || !secretFile)
     throw new Error(
-      "Usage: verify-vm103-application-identity.mjs ISSUER CLIENT_ID SECRET_FILE",
+      "Usage: verify-vm103-application-identity.mjs PRIVATE_BASE_URL REALM CLIENT_ID SECRET_FILE",
     )
   const result = await verifyVm103ApplicationIdentity({
+    baseUrl,
     clientId,
-    issuer,
+    realm,
     secretFile: resolve(secretFile),
   })
   process.stdout.write(`${JSON.stringify(result)}\n`)

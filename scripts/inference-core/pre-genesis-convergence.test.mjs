@@ -113,6 +113,10 @@ test("founder placement renders exact edge, supervision, and private inference c
       bffEnvironment,
       /ADMIN_LITELLM_BASE_URL=http:\/\/127\.0\.0\.1:39218/,
     )
+    assert.match(
+      bffEnvironment,
+      /KEYCLOAK_ADMIN_BASE_URL=http:\/\/127\.0\.0\.1:40239/,
+    )
     assert.match(bffEnvironment, /NODE_ENV=production/)
     assert.doesNotMatch(
       bffEnvironment,
@@ -131,7 +135,10 @@ test("founder placement renders exact edge, supervision, and private inference c
     assert.match(vm103, /docker compose .* up --detach --wait/)
     assert.match(vm103, /verify-vm103-founder-images\.mjs/)
     assert.match(vm103, /verify-vm103-application-identity\.mjs/)
-    assert.match(vm103, /llm-machines-applications console-application-admin/)
+    assert.match(
+      vm103,
+      /http:\/\/127\.0\.0\.1:40239 llm-machines-applications console-application-admin/,
+    )
     assert.deepEqual(imageBindings, {
       images: { bff: digest, web: digest },
       schema: "llm-machines.vm103-founder-images.v1",
