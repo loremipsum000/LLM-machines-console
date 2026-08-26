@@ -640,7 +640,10 @@ function applicationRealmExport(applicationAdminSecret) {
     },
     clients: [
       {
-        accessTokenLifespan: 60,
+        attributes: {
+          "access.token.lifespan": "60",
+          "client_credentials.use_refresh_token": "false",
+        },
         authorizationServicesEnabled: false,
         clientId: "console-application-admin",
         defaultClientScopes: ["roles"],
