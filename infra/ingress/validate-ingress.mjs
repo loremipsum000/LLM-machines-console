@@ -217,7 +217,7 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "b2f5b6de222fff4f59bbbe69c8099bcbdd18317b8a382cef542a845e1fd6d244",
+    "8ad5605619ecec31a2d386f61c20527acd6dfc817e310dd475f4d3b6e631a46c",
   "native-admin-edge-profile.json":
     "a6d9f5539c9da818f38890f94db1316c28a702ff68d07e7ddfb553a19192b6de",
   "proxy-common.inc":
@@ -1168,10 +1168,10 @@ function validateNginx(sources, errors) {
         'location.replace("/__llmm/global-logout/continue")',
       ) &&
       liteLlmGlobalLogout.includes(
-        "script-src 'sha256-JuAohNhacHfbTAU6sQx9CXVPpaWpoaIMSmMrO4IV8j4='",
+        "script-src 'sha256-VbNiVsNvQhuaeXk4CCsEPOAaq+kGFm93zDY/X81uCqY='",
       ) &&
       liteLlmGlobalLogoutContinue.includes(
-      "return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;",
+        "return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;",
       ) &&
       !liteLlmGlobalLogout.includes("proxy_pass") &&
       !liteLlmGlobalLogout.includes("proxy_intercept_errors") &&

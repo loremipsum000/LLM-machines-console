@@ -202,7 +202,7 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
   )
   assert.match(
     globalLogoutLocations,
-    /script-src 'sha256-JuAohNhacHfbTAU6sQx9CXVPpaWpoaIMSmMrO4IV8j4='/,
+    /script-src 'sha256-VbNiVsNvQhuaeXk4CCsEPOAaq\+kGFm93zDY\/X81uCqY='/,
   )
   const inlineScript = globalLogoutLocations.match(
     /<script>([\s\S]*?)<\/script>/,
@@ -210,7 +210,7 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
   assert.ok(inlineScript)
   assert.equal(
     createHash("sha256").update(inlineScript).digest("base64"),
-    "JuAohNhacHfbTAU6sQx9CXVPpaWpoaIMSmMrO4IV8j4=",
+    "VbNiVsNvQhuaeXk4CCsEPOAaq+kGFm93zDY/X81uCqY=",
   )
   assert.doesNotMatch(
     globalLogoutLocations,
