@@ -53,6 +53,24 @@ export interface ConsoleSessionRepository {
   }): Promise<number>
   insertLogin(record: ConsoleLoginRecord): Promise<void>
   insertSession(record: ConsoleSessionRecord): Promise<void>
+  latestNativeGlobalLogoutAt(): Promise<Date | null>
+  latestNativeLogoutAt(subjectId: string): Promise<Date | null>
+  readSession(handleDigest: string): Promise<ConsoleSessionRecord | null>
+  recordNativeLogoutAndDelete(input: {
+    correlationId: string
+    eventId: string
+    handleDigest: string
+    now: Date
+    subjectDigest: string
+    subjectId: string
+  }): Promise<boolean>
+  recordNativeGlobalLogoutAndDelete(input: {
+    correlationId: string
+    eventId: string
+    handleDigest: string
+    now: Date
+    subjectDigest: string
+  }): Promise<boolean>
   withLockedSession<T>(
     handleDigest: string,
     work: (
@@ -66,6 +84,8 @@ export class TestOnlyInMemoryConsoleSessionRepository
 {
   readonly loginRecords = new Map<string, ConsoleLoginRecord>()
   readonly logoutTokenReplays = new Map<string, Date>()
+  nativeGlobalLogoutFence: Date | null = null
+  readonly nativeLogoutFences = new Map<string, Date>()
   readonly sessionRecords = new Map<string, ConsoleSessionRecord>()
   private readonly locks = new Map<string, Promise<void>>()
 
@@ -137,6 +157,57 @@ export class TestOnlyInMemoryConsoleSessionRepository
       throw new Error("Duplicate Console session handle.")
     }
     this.sessionRecords.set(record.handleDigest, cloneSession(record))
+  }
+
+  async latestNativeLogoutAt(subjectId: string): Promise<Date | null> {
+    const value = this.nativeLogoutFences.get(subjectId)
+    return value ? new Date(value) : null
+  }
+
+  async latestNativeGlobalLogoutAt(): Promise<Date | null> {
+    return this.nativeGlobalLogoutFence
+      ? new Date(this.nativeGlobalLogoutFence)
+      : null
+  }
+
+  async readSession(
+    handleDigest: string,
+  ): Promise<ConsoleSessionRecord | null> {
+    const record = this.sessionRecords.get(handleDigest)
+    return record ? cloneSession(record) : null
+  }
+
+  async recordNativeLogoutAndDelete(input: {
+    correlationId: string
+    eventId: string
+    handleDigest: string
+    now: Date
+    subjectDigest: string
+    subjectId: string
+  }): Promise<boolean> {
+    return this.withLock(`session:${input.handleDigest}`, async () => {
+      const record = this.sessionRecords.get(input.handleDigest)
+      if (!record || record.subjectDigest !== input.subjectDigest) return false
+      this.nativeLogoutFences.set(input.subjectId, new Date(input.now))
+      this.sessionRecords.delete(input.handleDigest)
+      return true
+    })
+  }
+
+  async recordNativeGlobalLogoutAndDelete(input: {
+    correlationId: string
+    eventId: string
+    handleDigest: string
+    now: Date
+    subjectDigest: string
+  }): Promise<boolean> {
+    return this.withLock(`session:${input.handleDigest}`, async () => {
+      const record = this.sessionRecords.get(input.handleDigest)
+      if (!record || record.subjectDigest !== input.subjectDigest) return false
+      this.nativeGlobalLogoutFence = new Date(input.now)
+      this.sessionRecords.delete(input.handleDigest)
+      return true
+    })
   }
 
   async withLockedSession<T>(

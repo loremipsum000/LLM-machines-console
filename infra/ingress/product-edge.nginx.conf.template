@@ -994,9 +994,37 @@ http {
     proxy_intercept_errors on;
     error_page 502 503 504 =503 /__llmm_native_unavailable?;
 
+    location = /__llmm_litellm_browser_authorize {
+      internal;
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header Authorization "";
+      proxy_set_header Cookie $http_cookie;
+      proxy_set_header X-LLM-Machines-Native-Auth-Mode browser;
+      proxy_pass http://console_bff/api/internal/native-session/litellm/authorize;
+    }
+
+    location = /__llmm_litellm_key_authorize {
+      internal;
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header Authorization $http_authorization;
+      proxy_set_header Cookie "";
+      proxy_set_header X-LLM-Machines-Native-Auth-Mode key;
+      proxy_pass http://console_bff/api/internal/native-session/litellm/authorize;
+    }
+
+    location @litellm_reauthenticate {
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      return 303 https://@@PRODUCT_LITELLM_HOST@@/ui/login/;
+    }
+
     location = /ui/ {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_ui = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      error_page 401 = @litellm_reauthenticate;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1014,6 +1042,8 @@ http {
     location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$ {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_ui = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      error_page 401 = @litellm_reauthenticate;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1090,6 +1120,7 @@ http {
       limit_except POST { deny all; }
       if ($llmm_query_none = 0) { return 400; }
       client_max_body_size 64k;
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1099,6 +1130,7 @@ http {
     location = /key/list {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_key_list = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1108,6 +1140,7 @@ http {
     location = /key/info {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1118,6 +1151,7 @@ http {
       limit_except POST { deny all; }
       if ($llmm_query_none = 0) { return 400; }
       client_max_body_size 64k;
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1128,6 +1162,7 @@ http {
       limit_except POST { deny all; }
       if ($llmm_query_none = 0) { return 400; }
       client_max_body_size 64k;
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1137,6 +1172,7 @@ http {
     location = /user/info {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1146,6 +1182,7 @@ http {
     location = /models {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_models = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1155,6 +1192,7 @@ http {
     location = /model_group/info {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_model_group_info = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1164,6 +1202,7 @@ http {
     location = /v2/model/info {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_model_info_v2 = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1173,6 +1212,7 @@ http {
     location = /spend/logs/ui {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_spend_logs_ui = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1182,6 +1222,7 @@ http {
     location = /v2/team/list {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_team_list = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1191,6 +1232,7 @@ http {
     location = /team/list {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_litellm_team_list_v1 = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1200,6 +1242,7 @@ http {
     location ~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$ {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1219,6 +1262,7 @@ http {
       limit_except POST { deny all; }
       if ($llmm_query_none = 0) { return 400; }
       client_max_body_size 256k;
+      auth_request /__llmm_litellm_browser_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1228,6 +1272,7 @@ http {
     location = /v1/models {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }
+      auth_request /__llmm_litellm_key_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;
@@ -1238,6 +1283,7 @@ http {
       limit_except POST { deny all; }
       if ($llmm_query_none = 0) { return 400; }
       client_max_body_size 72m;
+      auth_request /__llmm_litellm_key_authorize;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
       proxy_set_header Host $llmm_public_host;

@@ -4,6 +4,7 @@ import type {
   ConsoleBackchannelVerifier,
   ConsoleSessionService,
 } from "../services/console-session-service"
+import type { NativeSessionAuthorizationService } from "../services/native-session-authorization"
 import { registerConsoleSessionRoutes } from "./console-session"
 
 const sessionHandle = "S".repeat(43)
@@ -43,6 +44,10 @@ describe("Console session HTTP boundary", () => {
       state: "active" as const,
     })),
   }
+  const nativeAuthorizationStub = {
+    authorizeLiteLlmBrowser: vi.fn(async () => ({ state: "allowed" as const })),
+    authorizeLiteLlmKey: vi.fn(async () => ({ state: "allowed" as const })),
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -62,6 +67,12 @@ describe("Console session HTTP boundary", () => {
         subject: "operator-1",
       },
       state: "active",
+    })
+    nativeAuthorizationStub.authorizeLiteLlmBrowser.mockResolvedValue({
+      state: "allowed",
+    })
+    nativeAuthorizationStub.authorizeLiteLlmKey.mockResolvedValue({
+      state: "allowed",
     })
   })
 
@@ -219,7 +230,7 @@ describe("Console session HTTP boundary", () => {
     expect(accepted.headers["set-cookie"]).toContain("Max-Age=0")
   })
 
-  it("clears local custody when server-side logout is unavailable", async () => {
+  it("fails closed without clearing local custody when the logout fence is unavailable", async () => {
     serviceStub.globalLogout.mockRejectedValueOnce(
       new Error("identity unavailable"),
     )
@@ -234,11 +245,54 @@ describe("Console session HTTP boundary", () => {
       url: "/api/console/session/logout",
     })
 
-    expect(response.statusCode).toBe(303)
-    expect(response.headers.location).toBe(
-      "https://grafana.example.test/logout",
+    expect(response.statusCode).toBe(503)
+    expect(response.json()).toEqual({
+      reason: "logout_fence_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+    expect(response.headers["set-cookie"]).toBeUndefined()
+  })
+
+  it("authorizes LiteLLM browser and key sessions only over loopback", async () => {
+    const server = buildServer(
+      serviceStub as unknown as ConsoleSessionService,
+      undefined,
+      {},
+      nativeAuthorizationStub as unknown as NativeSessionAuthorizationService,
     )
-    expect(response.headers["set-cookie"]).toContain("Max-Age=0")
+    const browser = await server.inject({
+      headers: {
+        cookie: "token=signed-native-session",
+        "x-llm-machines-native-auth-mode": "browser",
+      },
+      method: "GET",
+      url: "/api/internal/native-session/litellm/authorize",
+    })
+    const key = await server.inject({
+      headers: {
+        authorization: "Bearer sk-dashboard-session",
+        "x-llm-machines-native-auth-mode": "key",
+      },
+      method: "GET",
+      url: "/api/internal/native-session/litellm/authorize",
+    })
+    const remote = await server.inject({
+      headers: { "x-llm-machines-native-auth-mode": "browser" },
+      method: "GET",
+      remoteAddress: "192.0.2.23",
+      url: "/api/internal/native-session/litellm/authorize",
+    })
+
+    expect(browser.statusCode).toBe(204)
+    expect(key.statusCode).toBe(204)
+    expect(remote.statusCode).toBe(403)
+    expect(
+      nativeAuthorizationStub.authorizeLiteLlmBrowser,
+    ).toHaveBeenCalledWith("token=signed-native-session")
+    expect(nativeAuthorizationStub.authorizeLiteLlmKey).toHaveBeenCalledWith(
+      "Bearer sk-dashboard-session",
+    )
   })
 
   it("returns the fixed credential-free logout hop to the Console client", async () => {
@@ -376,6 +430,10 @@ function buildServer(
     consoleOrigin: string
     nativeLogoutStartUrl: string
   }> = {},
+  nativeSessionAuthorization: NativeSessionAuthorizationService = {
+    authorizeLiteLlmBrowser: async () => ({ state: "allowed" }),
+    authorizeLiteLlmKey: async () => ({ state: "allowed" }),
+  } as unknown as NativeSessionAuthorizationService,
 ) {
   const server = Fastify()
   registerConsoleSessionRoutes(server, {
@@ -383,6 +441,7 @@ function buildServer(
     consoleOrigin: overrides.consoleOrigin ?? "https://console.example.test",
     identityIssuer: "https://identity.example.test/realms/appliance",
     internalServiceCredential: "web-to-bff",
+    nativeSessionAuthorization,
     nativeLogoutStartUrl:
       overrides.nativeLogoutStartUrl ?? "https://grafana.example.test/logout",
     service: sessionService,

@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto"
-import { sql } from "drizzle-orm"
+import { and, desc, eq, sql } from "drizzle-orm"
 import type { InferenceCoreDatabase } from "../db/inference-core-client"
+import { auditEvents } from "../db/inference-core-schema"
 import type {
   ConsoleLoginRecord,
   ConsoleSessionRecord,
@@ -138,6 +139,132 @@ export class DrizzleConsoleSessionRepository
         ${timestamp(record.updatedAt)}
       )
     `)
+  }
+
+  async latestNativeLogoutAt(subjectId: string): Promise<Date | null> {
+    const rows = await this.database
+      .select({ occurredAt: auditEvents.occurredAt })
+      .from(auditEvents)
+      .where(
+        and(
+          eq(auditEvents.action, "console.native_session.logout"),
+          eq(auditEvents.sourceSystem, "console"),
+          eq(auditEvents.keycloakSubjectId, subjectId),
+        ),
+      )
+      .orderBy(desc(auditEvents.occurredAt), desc(auditEvents.id))
+      .limit(1)
+    return rows[0]?.occurredAt ? new Date(rows[0].occurredAt) : null
+  }
+
+  async latestNativeGlobalLogoutAt(): Promise<Date | null> {
+    const rows = await this.database
+      .select({ occurredAt: auditEvents.occurredAt })
+      .from(auditEvents)
+      .where(
+        and(
+          eq(auditEvents.action, "console.native_session.logout_all"),
+          eq(auditEvents.sourceSystem, "console"),
+        ),
+      )
+      .orderBy(desc(auditEvents.occurredAt), desc(auditEvents.id))
+      .limit(1)
+    return rows[0]?.occurredAt ? new Date(rows[0].occurredAt) : null
+  }
+
+  async readSession(
+    handleDigest: string,
+  ): Promise<ConsoleSessionRecord | null> {
+    const result = await this.database.execute(sql<SessionRow>`
+      SELECT *
+      FROM common.console_sessions
+      WHERE handle_digest = ${handleDigest}
+      LIMIT 1
+    `)
+    const row = resultRows<SessionRow>(result)[0]
+    return row ? parseSessionRow(row) : null
+  }
+
+  async recordNativeLogoutAndDelete(input: {
+    correlationId: string
+    eventId: string
+    handleDigest: string
+    now: Date
+    subjectDigest: string
+    subjectId: string
+  }): Promise<boolean> {
+    const result = await this.database.execute(sql<{
+      fenced_count: number | string
+    }>`
+      WITH deleted AS (
+        DELETE FROM common.console_sessions
+        WHERE handle_digest = ${input.handleDigest}
+          AND subject_digest = ${input.subjectDigest}
+        RETURNING handle_digest
+      ), fenced AS (
+        INSERT INTO common.audit_events (
+          id, occurred_at, ingested_at, action, outcome, source_system,
+          correlation_id, keycloak_subject_id
+        )
+        SELECT
+          ${input.eventId}::uuid,
+          ${timestamp(input.now)}::timestamptz,
+          ${timestamp(input.now)}::timestamptz,
+          'console.native_session.logout',
+          'succeeded',
+          'console',
+          ${input.correlationId},
+          ${input.subjectId}
+        WHERE EXISTS (SELECT 1 FROM deleted)
+        RETURNING id
+      )
+      SELECT count(*)::integer AS fenced_count FROM fenced
+    `)
+    return (
+      count(
+        resultRows<{ fenced_count: number | string }>(result)[0]?.fenced_count,
+      ) === 1
+    )
+  }
+
+  async recordNativeGlobalLogoutAndDelete(input: {
+    correlationId: string
+    eventId: string
+    handleDigest: string
+    now: Date
+    subjectDigest: string
+  }): Promise<boolean> {
+    const result = await this.database.execute(sql<{
+      fenced_count: number | string
+    }>`
+      WITH deleted AS (
+        DELETE FROM common.console_sessions
+        WHERE handle_digest = ${input.handleDigest}
+          AND subject_digest = ${input.subjectDigest}
+        RETURNING handle_digest
+      ), fenced AS (
+        INSERT INTO common.audit_events (
+          id, occurred_at, ingested_at, action, outcome, source_system,
+          correlation_id
+        )
+        SELECT
+          ${input.eventId}::uuid,
+          ${timestamp(input.now)}::timestamptz,
+          ${timestamp(input.now)}::timestamptz,
+          'console.native_session.logout_all',
+          'succeeded',
+          'console',
+          ${input.correlationId}
+        WHERE EXISTS (SELECT 1 FROM deleted)
+        RETURNING id
+      )
+      SELECT count(*)::integer AS fenced_count FROM fenced
+    `)
+    return (
+      count(
+        resultRows<{ fenced_count: number | string }>(result)[0]?.fenced_count,
+      ) === 1
+    )
   }
 
   async withLockedSession<T>(

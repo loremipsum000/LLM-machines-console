@@ -693,6 +693,35 @@ test("native sessions stay service-owned without proxy impersonation", () => {
   assert.ok(impersonation.some((error) => /impersonation/i.test(error)))
 })
 
+test("LiteLLM logout fences remain exact and fail closed", () => {
+  for (const [before, after] of [
+    [
+      "auth_request /__llmm_litellm_browser_authorize;",
+      "auth_request /console-session;",
+    ],
+    [
+      'proxy_set_header Authorization "";',
+      "proxy_set_header Authorization $http_authorization;",
+    ],
+    ['proxy_set_header Cookie "";', "proxy_set_header Cookie $http_cookie;"],
+    [
+      "      internal;\n      proxy_pass_request_body off;",
+      "      proxy_pass_request_body off;",
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, after),
+      ),
+    )
+    assert.ok(
+      result.some((error) =>
+        /logout-fence|fingerprint|impersonation/i.test(error),
+      ),
+    )
+  }
+})
+
 test("LiteLLM native cookies retain exact transport and UI-readability flags", () => {
   for (const [before, after] of [
     [

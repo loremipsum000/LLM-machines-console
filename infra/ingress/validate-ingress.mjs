@@ -166,6 +166,9 @@ const expectedNginxLocations = {
     "/",
   ],
   litellm: [
+    "= /__llmm_litellm_browser_authorize",
+    "= /__llmm_litellm_key_authorize",
+    "@litellm_reauthenticate",
     "= /ui/",
     "~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$",
     "~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$",
@@ -217,7 +220,7 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "8ad5605619ecec31a2d386f61c20527acd6dfc817e310dd475f4d3b6e631a46c",
+    "8ac258c1b504135514e7896ca4463a88617f4d986cf0661c156726adb9d85c5e",
   "native-admin-edge-profile.json":
     "a6d9f5539c9da818f38890f94db1316c28a702ff68d07e7ddfb553a19192b6de",
   "proxy-common.inc":
@@ -1031,6 +1034,14 @@ function validateNginx(sources, errors) {
     litellmServer,
     "= /__llmm/global-logout/continue",
   )
+  const liteLlmBrowserAuthorize = exactLocationSection(
+    litellmServer,
+    "= /__llmm_litellm_browser_authorize",
+  )
+  const liteLlmKeyAuthorize = exactLocationSection(
+    litellmServer,
+    "= /__llmm_litellm_key_authorize",
+  )
   for (const [hostId, server] of Object.entries({
     api: apiServer,
     console: consoleServer,
@@ -1424,10 +1435,51 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    !/auth_request\s|proxy_set_header\s+Upgrade\s+\$|proxy_set_header\s+Connection\s+\$http_connection/i.test(
+    !/proxy_set_header\s+Upgrade\s+\$|proxy_set_header\s+Connection\s+\$http_connection/i.test(
       nginx,
     ),
     "native impersonation or WebSocket forwarding added",
+  )
+  const authRequests = [...nginx.matchAll(/auth_request\s+([^;]+);/g)].map(
+    (match) => match[1],
+  )
+  add(
+    errors,
+    authRequests.length === 18 &&
+      authRequests.filter(
+        (value) => value === "/__llmm_litellm_browser_authorize",
+      ).length === 16 &&
+      authRequests.filter((value) => value === "/__llmm_litellm_key_authorize")
+        .length === 2,
+    "native impersonation or LiteLLM logout-fence authorization changed",
+  )
+  add(
+    errors,
+    liteLlmBrowserAuthorize.includes("internal;") &&
+      liteLlmBrowserAuthorize.includes("proxy_pass_request_body off;") &&
+      liteLlmBrowserAuthorize.includes('proxy_set_header Authorization "";') &&
+      liteLlmBrowserAuthorize.includes(
+        "proxy_set_header Cookie $http_cookie;",
+      ) &&
+      liteLlmBrowserAuthorize.includes(
+        "proxy_set_header X-LLM-Machines-Native-Auth-Mode browser;",
+      ) &&
+      liteLlmBrowserAuthorize.includes(
+        "proxy_pass http://console_bff/api/internal/native-session/litellm/authorize;",
+      ) &&
+      liteLlmKeyAuthorize.includes("internal;") &&
+      liteLlmKeyAuthorize.includes("proxy_pass_request_body off;") &&
+      liteLlmKeyAuthorize.includes(
+        "proxy_set_header Authorization $http_authorization;",
+      ) &&
+      liteLlmKeyAuthorize.includes('proxy_set_header Cookie "";') &&
+      liteLlmKeyAuthorize.includes(
+        "proxy_set_header X-LLM-Machines-Native-Auth-Mode key;",
+      ) &&
+      liteLlmKeyAuthorize.includes(
+        "proxy_pass http://console_bff/api/internal/native-session/litellm/authorize;",
+      ),
+    "LiteLLM logout-fence subrequest boundary changed",
   )
   add(
     errors,

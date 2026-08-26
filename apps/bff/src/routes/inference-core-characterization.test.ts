@@ -288,6 +288,10 @@ function reviewedBffRoutes(): RuntimeRoute[] {
     { method: "GET", url: "/api/console/session/callback" },
     { method: "GET", url: "/api/console/session/login" },
     { method: "GET", url: "/api/internal/console-session/resolve" },
+    {
+      method: "GET",
+      url: "/api/internal/native-session/litellm/authorize",
+    },
     { method: "GET", url: "/api/admin/audit" },
     { method: "GET", url: "/api/admin/audit/export" },
     {
