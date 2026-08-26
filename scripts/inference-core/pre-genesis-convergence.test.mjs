@@ -249,11 +249,11 @@ test("custody capture extracts only exact secret classes without logging values"
     Buffer.from(
       [
         "BFF_SERVICE_API_KEY=bff-value",
+        "CONSOLE_OIDC_CLIENT_SECRET=oidc-value",
+        "CONSOLE_SESSION_KEYRING_FILE=/run/source/session.json",
         "DATABASE_URL=postgres-value",
-        "F0_S1_OIDC_CLIENT_SECRET=oidc-value",
         "KEYCLOAK_ADMIN_CLIENT_SECRET=keycloak-value",
-        "F0_P1_SESSION_KEYRING_FILE=/run/source/session.json",
-        "F0_S1_CA_FILE=/run/source/ca.crt",
+        "NODE_EXTRA_CA_CERTS=/run/source/ca.crt",
         "ADMIN_PROMETHEUS_BASE_URL=http://127.0.0.1:9090",
         "UNRELATED_SECRET=must-not-copy",
       ].join("\0"),
@@ -292,6 +292,22 @@ test("custody capture extracts only exact secret classes without logging values"
     () => processNamespacePath(42, "run/llm-machines/session-keyring.json"),
     /process path is invalid/,
   )
+  assert.throws(
+    () =>
+      parseRuntimeSecretMaterial(
+        Buffer.from(
+          [
+            "BFF_SERVICE_API_KEY=bff-value",
+            "DATABASE_URL=postgres-value",
+            "F0_S1_OIDC_CLIENT_SECRET=legacy-oidc-value",
+            "KEYCLOAK_ADMIN_CLIENT_SECRET=keycloak-value",
+            "F0_P1_SESSION_KEYRING_FILE=/run/source/session.json",
+            "F0_S1_CA_FILE=/run/source/ca.crt",
+          ].join("\0"),
+        ),
+      ),
+    /missing CONSOLE_OIDC_CLIENT_SECRET/,
+  )
 })
 
 test("founder containers use file custody and production BFF authority", async () => {
@@ -323,6 +339,13 @@ test("founder containers use file custody and production BFF authority", async (
     /\$\{LLMM_CONFIGURATION_ROOT\}\/non-restorable-isolation:\/run\/llm-machines\/non-restorable-isolation/,
   )
   assert.doesNotMatch(compose, /F0_S1_OIDC_CLIENT_SECRET=/)
+  assert.match(custody, /CONSOLE_OIDC_CLIENT_SECRET/)
+  assert.match(custody, /CONSOLE_SESSION_KEYRING_FILE/)
+  assert.match(custody, /NODE_EXTRA_CA_CERTS/)
+  assert.doesNotMatch(
+    custody,
+    /F0_S1_OIDC_CLIENT_SECRET|F0_P1_SESSION_KEYRING_FILE|F0_S1_CA_FILE/,
+  )
   assert.match(dockerfile, /ENV NODE_ENV=production/)
   assert.match(dockerfile, /org\.opencontainers\.image\.revision/)
   assert.match(dockerfile, /com\.llm-machines\.source\.tree/)
