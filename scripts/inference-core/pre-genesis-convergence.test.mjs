@@ -11,6 +11,7 @@ import {
 } from "../pre-genesis/capture-vm103-founder-custody.mjs"
 import { inspectFounderFirewall } from "../pre-genesis/manage-vm103-founder-firewall.mjs"
 import { renderVm103FounderCandidate } from "../pre-genesis/render-vm103-founder-candidate.mjs"
+import { validateFounderImageInspections } from "../pre-genesis/verify-vm103-founder-images.mjs"
 
 const digest = `sha256:${"a".repeat(64)}`
 
@@ -78,6 +79,9 @@ test("founder placement renders exact edge, supervision, and private inference c
       join(root, "llmm-founder-candidate.service"),
       "utf8",
     )
+    const imageBindings = JSON.parse(
+      await readFile(join(root, "image-bindings.json"), "utf8"),
+    )
     const vm103Firewall = await readFile(
       join(root, "llmm-founder-edge-firewall.service"),
       "utf8",
@@ -117,6 +121,12 @@ test("founder placement renders exact edge, supervision, and private inference c
       /PRODUCT_KEYCLOAK_ADMIN_HOST=keycloak\.lab\.example/,
     )
     assert.match(vm103, /docker compose .* up --detach --wait/)
+    assert.match(vm103, /verify-vm103-founder-images\.mjs/)
+    assert.deepEqual(imageBindings, {
+      images: { bff: digest, web: digest },
+      schema: "llm-machines.vm103-founder-images.v1",
+      source: { commit: "b".repeat(40), tree: "c".repeat(40) },
+    })
     assert.match(
       vm103,
       /Requires=docker\.service llmm-founder-edge-firewall\.service/,
@@ -129,11 +139,15 @@ test("founder placement renders exact edge, supervision, and private inference c
   }
 })
 
-test("founder firewall accepts one exact owned rule and rejects collisions", () => {
-  const exact =
-    'iifname "ens18" ip saddr 10.30.0.1 tcp dport 22443 accept comment "llmm-founder-candidate-edge" # handle 17'
+test("founder firewall requires one owned hooked chain with allow then terminal denial", () => {
+  const exact = `table inet llmm_founder_edge {
+    chain input {
+      type filter hook input priority -5; policy accept;
+      iifname "ens18" ip saddr 10.30.0.1 tcp dport 22443 accept comment "llmm-founder-candidate-edge-allow"
+      tcp dport 22443 drop comment "llmm-founder-candidate-edge-deny"
+    }
+  }`
   assert.deepEqual(inspectFounderFirewall(exact, "10.30.0.1", 22443), {
-    handle: "17",
     state: "exact",
   })
   assert.deepEqual(inspectFounderFirewall("", "10.30.0.1", 22443), {
@@ -149,8 +163,48 @@ test("founder firewall accepts one exact owned rule and rejects collisions", () 
     /collides/,
   )
   assert.throws(
-    () => inspectFounderFirewall(`${exact}\n${exact}`, "10.30.0.1", 22443),
-    /ambiguous/,
+    () =>
+      inspectFounderFirewall(
+        exact.replace(
+          'tcp dport 22443 drop comment "llmm-founder-candidate-edge-deny"',
+          "",
+        ),
+        "10.30.0.1",
+        22443,
+      ),
+    /collides/,
+  )
+})
+
+test("founder Web and BFF image IDs must carry the exact source labels", () => {
+  const binding = {
+    images: { bff: digest, web: digest },
+    schema: "llm-machines.vm103-founder-images.v1",
+    source: { commit: "b".repeat(40), tree: "c".repeat(40) },
+  }
+  const inspected = Object.fromEntries(
+    ["bff", "web"].map((name) => [
+      name,
+      {
+        Config: {
+          Labels: {
+            "com.llm-machines.source.tree": "c".repeat(40),
+            "org.opencontainers.image.revision": "b".repeat(40),
+          },
+        },
+        Id: digest,
+      },
+    ]),
+  )
+  assert.deepEqual(validateFounderImageInspections(binding, inspected), {
+    state: "exact",
+  })
+  inspected.web.Config.Labels["org.opencontainers.image.revision"] = "d".repeat(
+    40,
+  )
+  assert.throws(
+    () => validateFounderImageInspections(binding, inspected),
+    /source binding is invalid/,
   )
 })
 
@@ -270,6 +324,8 @@ test("founder containers use file custody and production BFF authority", async (
   )
   assert.doesNotMatch(compose, /F0_S1_OIDC_CLIENT_SECRET=/)
   assert.match(dockerfile, /ENV NODE_ENV=production/)
+  assert.match(dockerfile, /org\.opencontainers\.image\.revision/)
+  assert.match(dockerfile, /com\.llm-machines\.source\.tree/)
   assert.match(dockerfile, /apps\/bff\/src\/index\.ts/)
   assert.doesNotMatch(dockerfile, /reduced-core-session-bff-fixture/)
   assert.match(entrypoint, /environment\.LLMM_RUNTIME_SECRET_FILES = undefined/)

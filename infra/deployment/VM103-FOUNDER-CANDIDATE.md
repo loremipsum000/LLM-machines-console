@@ -13,7 +13,10 @@ The renderer rejects mutable images, public network inputs, duplicate ports,
 unsafe paths, incomplete authorities, and missing commit or tree bindings.
 
 The founder Web and BFF images are built from their dedicated Dockerfiles with
-the exact protected commit and tree as OCI labels. The BFF runs the production
+`--build-arg LLMM_SOURCE_COMMIT=<commit>` and
+`--build-arg LLMM_SOURCE_TREE=<tree>`. Their OCI labels and local image IDs are
+verified against the rendered `image-bindings.json` before Compose can start.
+The BFF runs the production
 session and PostgreSQL authority while still consuming only an explicitly
 admitted internal-test inference profile; it is not a substitute for the later
 release image. Runtime secrets are copied into root-owned mode `0600` files by

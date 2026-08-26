@@ -1,30 +1,40 @@
 #!/usr/bin/env node
 
-import { execFileSync } from "node:child_process"
+import { execFileSync, spawnSync } from "node:child_process"
 import { isIP } from "node:net"
 import { fileURLToPath } from "node:url"
 
 const nft = "/usr/sbin/nft"
-const table = "llmm_filter"
+const table = "llmm_founder_edge"
 const chain = "input"
 const interfaceName = "ens18"
-const comment = "llmm-founder-candidate-edge"
+const allowComment = "llmm-founder-candidate-edge-allow"
+const denyComment = "llmm-founder-candidate-edge-deny"
 
 export function inspectFounderFirewall(listing, gateway, port) {
-  const owned = listing
+  if (!listing.trim()) return { state: "absent" }
+  const lines = listing
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.includes(`comment \"${comment}\"`))
-  if (owned.length === 0) return { state: "absent" }
-  if (owned.length !== 1)
-    throw new Error("Founder firewall ownership is ambiguous.")
-  const line = owned[0]
-  const handle = line.match(/# handle ([1-9][0-9]*)$/)?.[1]
-  const expected = `iifname \"${interfaceName}\" ip saddr ${gateway} tcp dport ${port} accept comment \"${comment}\"`
-  if (!handle || !line.startsWith(expected)) {
+    .filter(Boolean)
+    .map((line) => line.replace(/\s+/g, " "))
+  const expectedAllow = `iifname \"${interfaceName}\" ip saddr ${gateway} tcp dport ${port} accept comment \"${allowComment}\"`
+  const expectedDeny = `tcp dport ${port} drop comment \"${denyComment}\"`
+  if (
+    lines.length !== 7 ||
+    lines[0] !== `table inet ${table} {` ||
+    lines[1] !== `chain ${chain} {` ||
+    !/^type filter hook input priority (?:-5|filter - 5); policy accept;$/.test(
+      lines[2],
+    ) ||
+    lines[3] !== expectedAllow ||
+    lines[4] !== expectedDeny ||
+    lines[5] !== "}" ||
+    lines[6] !== "}"
+  ) {
     throw new Error("Founder firewall ownership collides with another rule.")
   }
-  return { handle, state: "exact" }
+  return { state: "exact" }
 }
 
 export function manageFounderFirewall(action, gateway, portValue) {
@@ -40,24 +50,7 @@ export function manageFounderFirewall(action, gateway, portValue) {
   let state = current(gateway, port)
   if (action === "apply") {
     if (state.state === "absent") {
-      run([
-        "insert",
-        "rule",
-        "inet",
-        table,
-        chain,
-        "iifname",
-        interfaceName,
-        "ip",
-        "saddr",
-        gateway,
-        "tcp",
-        "dport",
-        String(port),
-        "accept",
-        "comment",
-        comment,
-      ])
+      run(["-f", "-"], renderFirewall(gateway, port))
       state = current(gateway, port)
     }
     if (state.state !== "exact")
@@ -66,7 +59,7 @@ export function manageFounderFirewall(action, gateway, portValue) {
   }
   if (action === "remove") {
     if (state.state === "exact") {
-      run(["delete", "rule", "inet", table, chain, "handle", state.handle])
+      run(["delete", "table", "inet", table])
     }
     if (current(gateway, port).state !== "absent") {
       throw new Error("Founder firewall did not clean up.")
@@ -78,18 +71,34 @@ export function manageFounderFirewall(action, gateway, portValue) {
 }
 
 function current(gateway, port) {
-  return inspectFounderFirewall(
-    run(["-a", "list", "chain", "inet", table, chain]),
-    gateway,
-    port,
-  )
-}
-
-function run(arguments_) {
-  return execFileSync(nft, arguments_, {
+  const result = spawnSync(nft, ["list", "table", "inet", table], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   })
+  if (result.status === 0)
+    return inspectFounderFirewall(result.stdout, gateway, port)
+  if (/No such file or directory/i.test(result.stderr))
+    return { state: "absent" }
+  throw new Error("Founder firewall inspection failed.")
+}
+
+function run(arguments_, input) {
+  return execFileSync(nft, arguments_, {
+    encoding: "utf8",
+    input,
+    stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+  })
+}
+
+function renderFirewall(gateway, port) {
+  return `table inet ${table} {
+  chain ${chain} {
+    type filter hook input priority -5; policy accept;
+    iifname "${interfaceName}" ip saddr ${gateway} tcp dport ${port} accept comment "${allowComment}"
+    tcp dport ${port} drop comment "${denyComment}"
+  }
+}
+`
 }
 
 function privateIpv4(value) {

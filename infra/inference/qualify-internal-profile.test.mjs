@@ -1,10 +1,20 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import {
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
+import { tmpdir } from "node:os"
 import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 
-import { qualifyInternalProfile } from "./qualify-internal-profile.mjs"
+import {
+  qualifyInternalProfile,
+  scanHostTemporaryState,
+} from "./qualify-internal-profile.mjs"
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const profile = JSON.parse(
@@ -61,6 +71,18 @@ test("rejects non-loopback measurement and missing retention evidence", async ()
     }),
     /exact loopback/,
   )
+})
+
+test("host temporary-state evidence is produced by an actual bounded scan", () => {
+  const temporaryRoot = mkdtempSync(path.join(tmpdir(), "llmm-retention-"))
+  const canonicalRoot = realpathSync(temporaryRoot)
+  try {
+    assert.equal(scanHostTemporaryState([canonicalRoot], "workload-canary"), 0)
+    writeFileSync(path.join(temporaryRoot, "residue"), "workload-canary")
+    assert.equal(scanHostTemporaryState([canonicalRoot], "workload-canary"), 1)
+  } finally {
+    rmSync(temporaryRoot, { force: true, recursive: true })
+  }
 })
 
 function fixtureFetch() {

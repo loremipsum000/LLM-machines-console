@@ -31,6 +31,11 @@ replaces that directory atomically, and mounts it read-only at the BFF path
 configured by `INFERENCE_MODEL_ADMISSION_DIR`. Inactive, unmeasured, expired,
 malformed, duplicate, or LiteLLM-inconsistent inputs fail closed.
 
+Internal qualification also requires `--host-temporary-roots` with a
+comma-separated list of exact runner-owned absolute temporary directories.
+The qualifier scans those host paths for its workload canary and fails when a
+path is missing, unreadable, or retains the canary.
+
 ## Fixed boundaries
 
 - SGLang is the only v1 inference engine. vLLM is excluded.

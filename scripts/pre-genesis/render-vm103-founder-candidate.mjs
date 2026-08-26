@@ -20,6 +20,15 @@ export async function renderVm103FounderCandidate(placement, outputRoot) {
     "gateway-inference-route.service": renderGatewayUnit(placement),
     "inference-firewall.nft": renderInferenceFirewall(placement),
     "inference-private-route.service": renderInferenceUnit(placement),
+    "image-bindings.json": `${JSON.stringify(
+      {
+        images: { bff: placement.images.bff, web: placement.images.web },
+        schema: "llm-machines.vm103-founder-images.v1",
+        source: placement.source,
+      },
+      null,
+      2,
+    )}\n`,
     "product-edge.nginx.conf": edge,
     "llmm-founder-candidate.service": renderVm103Unit(placement),
     "llmm-founder-edge-firewall.service": renderVm103FirewallUnit(placement),
@@ -197,7 +206,7 @@ function renderBffEnvironment(p) {
 }
 
 function renderVm103Unit(p) {
-  return `[Unit]\nDescription=LLM Machines pre-Genesis founder candidate\nAfter=docker.service llmm-founder-edge-firewall.service network-online.target\nRequires=docker.service llmm-founder-edge-firewall.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} up --detach --wait\nExecReload=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} restart\nExecStop=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} stop\nTimeoutStartSec=900\nTimeoutStopSec=180\n\n[Install]\nWantedBy=multi-user.target\n`
+  return `[Unit]\nDescription=LLM Machines pre-Genesis founder candidate\nAfter=docker.service llmm-founder-edge-firewall.service network-online.target\nRequires=docker.service llmm-founder-edge-firewall.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStartPre=/opt/node-v22.23.2/bin/node ${p.paths.source}/scripts/pre-genesis/verify-vm103-founder-images.mjs ${p.paths.configuration}/image-bindings.json\nExecStart=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} up --detach --wait\nExecReload=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} restart\nExecStop=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} stop\nTimeoutStartSec=900\nTimeoutStopSec=180\n\n[Install]\nWantedBy=multi-user.target\n`
 }
 
 function renderVm103FirewallUnit(p) {

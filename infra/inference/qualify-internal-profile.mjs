@@ -2,7 +2,7 @@
 
 import { execFileSync, spawnSync } from "node:child_process"
 import { createHash, randomBytes } from "node:crypto"
-import { readFileSync, writeFileSync } from "node:fs"
+import { lstatSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -113,6 +113,7 @@ export async function qualifyInternalProfile(options) {
   const retention = await (options.runtimeInspector ?? inspectRuntimeRetention)(
     options.container,
     workloadCanary,
+    options.hostTemporaryRoots,
   )
   validateRetentionEvidence(retention)
   const retentionEvidenceDigest = digest(canonicalJson(retention))
@@ -223,6 +224,12 @@ function validateInputs(profile, endpoint, options, contracts) {
     options.validDays > 30
   ) {
     throw new Error("measurement bounds are invalid")
+  }
+  if (
+    !options.runtimeInspector &&
+    !validHostTemporaryRoots(options.hostTemporaryRoots)
+  ) {
+    throw new Error("host temporary roots are invalid")
   }
 }
 
@@ -354,7 +361,11 @@ function validateRetentionEvidence(value) {
   }
 }
 
-function inspectRuntimeRetention(container, workloadCanary) {
+function inspectRuntimeRetention(
+  container,
+  workloadCanary,
+  hostTemporaryRoots,
+) {
   if (!container) throw new Error("runtime container is required")
   const logResult = spawnSync("docker", ["logs", container], {
     encoding: "utf8",
@@ -377,13 +388,53 @@ function inspectRuntimeRetention(container, workloadCanary) {
   )
   if (writableStateStatus !== "")
     throw new Error("unexpected retention scan output")
+  const hostMatches = scanHostTemporaryState(hostTemporaryRoots, workloadCanary)
   return {
     containerLogs: "scanned",
     containerWritableState: "scanned",
     hostTemporaryState: "scanned",
     requestLoggingDisabled: true,
-    workloadCanaryMatches: logs.includes(workloadCanary) ? 1 : 0,
+    workloadCanaryMatches:
+      (logs.includes(workloadCanary) ? 1 : 0) + hostMatches,
   }
+}
+
+export function scanHostTemporaryState(roots, workloadCanary) {
+  if (!validHostTemporaryRoots(roots))
+    throw new Error("host temporary roots are invalid")
+  const result = spawnSync(
+    "grep",
+    ["-r", "-F", "-q", "--", workloadCanary, ...roots],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  )
+  if (result.status === 0) return 1
+  if (result.status === 1) return 0
+  throw new Error("host temporary-state scan failed")
+}
+
+function validHostTemporaryRoots(roots) {
+  return (
+    Array.isArray(roots) &&
+    roots.length > 0 &&
+    new Set(roots).size === roots.length &&
+    roots.every((root) => {
+      try {
+        return (
+          typeof root === "string" &&
+          path.isAbsolute(root) &&
+          path.resolve(root) === root &&
+          root !== "/" &&
+          !root.includes("\n") &&
+          !root.includes(",") &&
+          realpathSync(root) === root &&
+          lstatSync(root).isDirectory() &&
+          !lstatSync(root).isSymbolicLink()
+        )
+      } catch {
+        return false
+      }
+    })
+  )
 }
 
 function digest(value) {
@@ -410,6 +461,7 @@ function parseArguments(argv) {
     "--evidence",
     "--activated-profile",
     "--rendered-profile",
+    "--host-temporary-roots",
   ]
   if (required.some((name) => !values.has(name)))
     throw new Error("required qualification argument is missing")
@@ -422,6 +474,10 @@ function parseArguments(argv) {
     evidencePath: path.resolve(values.get("--evidence")),
     activatedProfilePath: path.resolve(values.get("--activated-profile")),
     renderedProfilePath: path.resolve(values.get("--rendered-profile")),
+    hostTemporaryRoots: values
+      .get("--host-temporary-roots")
+      .split(",")
+      .map((value) => realpathSync(path.resolve(value))),
     samples: Number(values.get("--samples") ?? 5),
     concurrency: Number(values.get("--concurrency") ?? 2),
     maxOutputTokens: Number(values.get("--max-output-tokens") ?? 32),

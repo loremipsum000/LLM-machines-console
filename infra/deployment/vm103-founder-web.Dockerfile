@@ -1,5 +1,12 @@
 FROM node:22.23.2-bookworm-slim@sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46
 
+ARG LLMM_SOURCE_COMMIT
+ARG LLMM_SOURCE_TREE
+RUN printf '%s\n' "$LLMM_SOURCE_COMMIT" | grep -Eq '^[0-9a-f]{40}$' \
+    && printf '%s\n' "$LLMM_SOURCE_TREE" | grep -Eq '^[0-9a-f]{40}$'
+LABEL org.opencontainers.image.revision="$LLMM_SOURCE_COMMIT"
+LABEL com.llm-machines.source.tree="$LLMM_SOURCE_TREE"
+
 WORKDIR /workspace
 RUN corepack enable
 
