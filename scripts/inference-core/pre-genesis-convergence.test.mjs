@@ -11,7 +11,7 @@ import {
   processNamespacePath,
 } from "../pre-genesis/capture-vm103-founder-custody.mjs"
 import {
-  validateApplicationDiscovery,
+  validateApplicationJwks,
   validateApplicationTokenClaims,
 } from "../pre-genesis/verify-vm103-application-identity.mjs"
 import {
@@ -533,17 +533,10 @@ test("founder containers use file custody and production BFF authority", async (
 test("founder Application identity readiness is exact and short-lived", () => {
   const issuer =
     "https://identity.lab.llm-machines.com/realms/llm-machines-applications"
-  assert.equal(
-    validateApplicationDiscovery(
-      {
-        issuer,
-        jwks_uri: `${issuer}/protocol/openid-connect/certs`,
-        token_endpoint: `${issuer}/protocol/openid-connect/token`,
-      },
-      issuer,
-    ),
-    `${issuer}/protocol/openid-connect/token`,
-  )
+  validateApplicationJwks({
+    keys: [{ kid: "fixture_key_id", kty: "RSA" }],
+  })
+  assert.throws(() => validateApplicationJwks({ keys: [] }))
   validateApplicationTokenClaims(
     {
       azp: "console-application-admin",

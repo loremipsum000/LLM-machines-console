@@ -3,14 +3,13 @@ import { readFile, stat } from "node:fs/promises"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-export function validateApplicationDiscovery(discovery, issuer) {
-  assert.equal(discovery?.issuer, issuer)
-  assert.equal(
-    discovery?.token_endpoint,
-    `${issuer}/protocol/openid-connect/token`,
-  )
-  assert.equal(discovery?.jwks_uri, `${issuer}/protocol/openid-connect/certs`)
-  return discovery.token_endpoint
+export function validateApplicationJwks(jwks) {
+  assert.ok(Array.isArray(jwks?.keys))
+  assert.ok(jwks.keys.length > 0)
+  for (const key of jwks.keys) {
+    assert.match(key?.kid ?? "", /^[A-Za-z0-9_-]{8,}$/)
+    assert.match(key?.kty ?? "", /^[A-Za-z0-9_-]{2,}$/)
+  }
 }
 
 export function validateApplicationTokenClaims(claims, issuer, clientId) {
@@ -41,22 +40,24 @@ export async function verifyVm103ApplicationIdentity({
   const secret = (await readFile(secretFile, "utf8")).trim()
   if (!secret) throw new Error("The founder Application identity secret is empty.")
 
-  const discoveryResponse = await fetch(`${issuer}/.well-known/openid-configuration`)
-  if (!discoveryResponse.ok)
-    throw new Error("The founder Application realm is unavailable.")
-  const tokenEndpoint = validateApplicationDiscovery(
-    await discoveryResponse.json(),
-    issuer,
-  )
-  const tokenResponse = await fetch(tokenEndpoint, {
+  const jwksResponse = await fetch(`${issuer}/protocol/openid-connect/certs`)
+  if (!jwksResponse.ok)
+    throw new Error("The founder Application realm keys are unavailable.")
+  validateApplicationJwks(await jwksResponse.json())
+  const tokenResponse = await fetch(
+    `${issuer}/protocol/openid-connect/token`,
+    {
     body: new URLSearchParams({
       client_id: clientId,
-      client_secret: secret,
       grant_type: "client_credentials",
     }),
-    headers: { "content-type": "application/x-www-form-urlencoded" },
+    headers: {
+      authorization: `Basic ${Buffer.from(`${clientId}:${secret}`).toString("base64")}`,
+      "content-type": "application/x-www-form-urlencoded",
+    },
     method: "POST",
-  })
+    },
+  )
   if (!tokenResponse.ok)
     throw new Error("The founder Application identity client is unavailable.")
   const payload = await tokenResponse.json()
