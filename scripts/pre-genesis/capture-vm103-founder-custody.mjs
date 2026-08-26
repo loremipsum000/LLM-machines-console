@@ -13,8 +13,8 @@ import { fileURLToPath } from "node:url"
 
 const secretMappings = {
   BFF_SERVICE_API_KEY: "bff-service-api-key",
+  CONSOLE_OIDC_CLIENT_SECRET: "console-oidc-client-secret",
   DATABASE_URL: "database-url",
-  F0_S1_OIDC_CLIENT_SECRET: "console-oidc-client-secret",
   KEYCLOAK_ADMIN_CLIENT_SECRET: "keycloak-admin-client-secret",
 }
 
@@ -62,8 +62,8 @@ export function parseRuntimeSecretMaterial(buffer) {
       throw new Error(`The founder custody source is missing ${name}.`)
     secrets[file] = value
   }
-  const sessionKeyring = environment.F0_P1_SESSION_KEYRING_FILE?.trim()
-  const edgeCa = environment.F0_S1_CA_FILE?.trim()
+  const sessionKeyring = environment.CONSOLE_SESSION_KEYRING_FILE?.trim()
+  const edgeCa = environment.NODE_EXTRA_CA_CERTS?.trim()
   if (!sessionKeyring?.startsWith("/") || !edgeCa?.startsWith("/")) {
     throw new Error("The founder custody source is missing exact file paths.")
   }
