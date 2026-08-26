@@ -66,7 +66,7 @@ test("F0-N5R checked-in edge validates and keeps deletion before rewrite", async
   )
   assert.equal(
     nginx.split("rewrite ^/keycloak/(.*)$ /$1 break;").length - 1,
-    11,
+    13,
   )
   assert.match(
     nginx,

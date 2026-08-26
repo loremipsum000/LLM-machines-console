@@ -171,6 +171,24 @@ test("identity outage recovery is fixed to the Console sign-in surface", () => {
   }
 })
 
+test("identity errors recover through one fresh Console login entry", () => {
+  for (const replacement of [
+    "return 303 https://attacker.invalid/;",
+    "return 303 https://@@PRODUCT_CONSOLE_HOST@@$request_uri;",
+    "return 200;",
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(
+          "return 303 https://@@PRODUCT_CONSOLE_HOST@@/;",
+          replacement,
+        ),
+      ),
+    )
+    assert.ok(result.some((error) => /identity error recovery/i.test(error)))
+  }
+})
+
 test("coordinated logout stays bounded and independent of native availability", () => {
   for (const [before, after] of [
     ["proxy_connect_timeout 2s;", "proxy_connect_timeout 30s;"],
@@ -351,6 +369,41 @@ test("every public Nginx location is exact-allowlisted", () => {
   }
 })
 
+test("Keycloak Users page dependencies stay exact and read-only", () => {
+  for (const path of [
+    "/keycloak/admin/realms/llm-machines/ui-ext/info",
+    "/keycloak/admin/realms/llm-machines/users/profile",
+  ]) {
+    const location = `location = ${path}`
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(
+          `${location} {\n      limit_except GET HEAD { deny all; }`,
+          `${location} {\n      limit_except GET HEAD POST { deny all; }`,
+        ),
+      ),
+    )
+    assert.ok(
+      result.some((error) =>
+        error.includes(
+          "Keycloak Admin Users dependency is not exact read-only",
+        ),
+      ),
+      path,
+    )
+  }
+})
+
+test("Keycloak user search admits only the exact 26.7.0 query keys", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  assert.match(
+    nginx,
+    /briefRepresentation\|email\|exact\|first\|max\|q\|search\|username/,
+  )
+  assert.doesNotMatch(nginx, /keycloak_users[^}]*\|role\|/s)
+  assert.doesNotMatch(nginx, /keycloak_users[^}]*\|client\|/s)
+})
+
 test("native profiles remain source-only and preserve admitted roles", () => {
   const profile = JSON.parse(sources["native-admin-edge-profile.json"])
   profile.activation = "ACTIVE"
@@ -397,6 +450,10 @@ test("native query-key allowlists cannot be broadened or removed", () => {
     ],
     [
       "if ($llmm_query_grafana_login = 0) { return 400; }",
+      "if ($args = blocked) { return 400; }",
+    ],
+    [
+      "if ($llmm_query_grafana_session_rotation = 0) { return 400; }",
       "if ($args = blocked) { return 400; }",
     ],
     [
@@ -461,6 +518,47 @@ test("Grafana OAuth admits only empty initiation or exact callback keys", () => 
       ),
     )
     assert.ok(result.some((error) => /fingerprint|query|Grafana/i.test(error)))
+  }
+})
+
+test("Grafana session rotation admits only its exact native routes", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  const map = nginx.match(
+    /map \$args \$llmm_query_grafana_session_rotation \{[\s\S]*?\n {2}\}/,
+  )?.[0]
+  assert.equal(
+    map,
+    [
+      "map $args $llmm_query_grafana_session_rotation {",
+      "    default 0;",
+      '    "" 1;',
+      '    "redirectTo=" 1;',
+      '    "~^redirectTo=%2F(?!%2F)(?!.*%(?:25|5[Cc]))(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})*$" 1;',
+      "  }",
+    ].join("\n"),
+  )
+  assert.match(
+    nginx,
+    /location = \/user\/auth-tokens\/rotate \{[\s\S]{0,220}if \(\$llmm_query_grafana_session_rotation = 0\) \{ return 400; \}/,
+  )
+  assert.match(
+    nginx,
+    /location = \/api\/user\/auth-tokens\/rotate \{[\s\S]{0,160}limit_except POST/,
+  )
+
+  for (const changedMap of [
+    map.replace('    "redirectTo=" 1;', "    ~^redirectTo=.*$ 1;"),
+    map.replace(
+      '    "~^redirectTo=%2F(?!%2F)(?!.*%(?:25|5[Cc]))(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})*$" 1;',
+      '    "~^redirectTo=.*$" 1;',
+    ),
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(map, changedMap),
+      ),
+    )
+    assert.ok(result.some((error) => /fingerprint|route|query/i.test(error)))
   }
 })
 

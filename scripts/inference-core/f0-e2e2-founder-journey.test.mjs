@@ -28,6 +28,8 @@ test("F0-E2E2 pins a standard OpenAI SDK client and its transport", () => {
     /import \{ Agent, buildConnector, fetch as undiciFetch \} from "undici"/,
   )
   assert.match(client, /await client\.models\.list\(\)/)
+  assert.match(client, /const model = approvedModel\(config\.model\)/)
+  assert.doesNotMatch(client, /assert\.equal\(config\.model, "fixture-model"\)/)
   assert.equal(client.match(/client\.chat\.completions\.create\(/g)?.length, 2)
   assert.match(client, /stream: true/)
   assert.match(client, /stream_options: \{ include_usage: true \}/)

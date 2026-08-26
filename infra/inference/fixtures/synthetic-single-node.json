@@ -4,6 +4,7 @@
   "metadata": {
     "profileId": "synthetic-single-node",
     "revision": 1,
+    "admissionScope": "SYNTHETIC_ONLY",
     "lifecycleState": "SYNTHETIC_UNMEASURED",
     "containsCredentials": false
   },

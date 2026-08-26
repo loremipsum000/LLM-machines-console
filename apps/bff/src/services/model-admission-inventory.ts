@@ -9,7 +9,7 @@ const PROFILE_FILE_MAX_BYTES = 1024 * 1024
 const PROFILE_DIRECTORY_MAX_FILES = 64
 const PROFILE_DIRECTORY_MAX_BYTES = 4 * 1024 * 1024
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/
-const PROFILE_ID_PATTERN = /^[a-z0-9][a-z0-9-]{2,62}$/
+const PROFILE_ID_PATTERN = /^[a-z0-9][a-z0-9.-]{2,62}$/
 const MODEL_ALIAS_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/
 
 export interface AuthoritativeModelInventory {
@@ -197,7 +197,9 @@ function admittedCapability(
   ])
   const qualification = recordWithExactKeys(profile.qualification, [
     "evidenceDigest",
+    "productionCapacityClaim",
     "qualifiedProfileDigest",
+    "scope",
   ])
   if (
     profile.apiVersion !== "inference-core.llm-machines/v1" ||
@@ -212,7 +214,8 @@ function admittedCapability(
     advertisement.state !== "ACTIVE_MEASURED" ||
     !qualification ||
     !SHA256_PATTERN.test(stringValue(qualification.evidenceDigest)) ||
-    !SHA256_PATTERN.test(stringValue(qualification.qualifiedProfileDigest))
+    !SHA256_PATTERN.test(stringValue(qualification.qualifiedProfileDigest)) ||
+    !admissionScopeAllowed(qualification)
   ) {
     return inventoryFailure("inconsistent")
   }
@@ -269,6 +272,20 @@ function admittedCapability(
     ok: true,
     profileId: stringValue(source.profileId),
   }
+}
+
+function admissionScopeAllowed(qualification: Record<string, unknown>) {
+  if (
+    qualification.scope === "PRODUCTION_DELIVERY" &&
+    qualification.productionCapacityClaim === true
+  ) {
+    return true
+  }
+  return (
+    qualification.scope === "INTERNAL_TEST_ONLY" &&
+    qualification.productionCapacityClaim === false &&
+    process.env.INFERENCE_ALLOW_INTERNAL_TEST_PROFILES === "true"
+  )
 }
 
 async function readModelInfo(

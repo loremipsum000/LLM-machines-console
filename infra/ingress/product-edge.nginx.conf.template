@@ -70,6 +70,13 @@ http {
     ~^redirectTo=[^&]*$ 1;
   }
 
+  map $args $llmm_query_grafana_session_rotation {
+    default 0;
+    "" 1;
+    "redirectTo=" 1;
+    "~^redirectTo=%2F(?!%2F)(?!.*%(?:25|5[Cc]))(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})*$" 1;
+  }
+
   map $args $llmm_query_grafana_search {
     default 0;
     "" 1;
@@ -178,7 +185,7 @@ http {
   map $args $llmm_query_keycloak_users {
     default 0;
     "" 1;
-    ~^(?:briefRepresentation|email|exact|first|max|search|username)=[^&]*(?:&(?:briefRepresentation|email|exact|first|max|search|username)=[^&]*)*$ 1;
+    ~^(?:briefRepresentation|email|exact|first|max|q|search|username)=[^&]*(?:&(?:briefRepresentation|email|exact|first|max|q|search|username)=[^&]*)*$ 1;
   }
 
   map $args $llmm_query_keycloak_groups {
@@ -547,6 +554,14 @@ http {
     if ($http_host != $ssl_server_name) { return 421; }
     if ($http_cookie ~* "(?:^|;\\s*)__Host-llm-machines-(?:session|login)=") { return 400; }
 
+    location = /__llmm/console-login {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      return 303 https://@@PRODUCT_CONSOLE_HOST@@/;
+    }
+
     location = /__llmm/global-logout {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }
@@ -801,6 +816,27 @@ http {
       proxy_set_header Host $llmm_public_host;
       proxy_intercept_errors on;
       error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /user/auth-tokens/rotate {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_grafana_session_rotation = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/user/auth-tokens/rotate {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 1k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
       proxy_pass http://grafana_native;
     }
 
@@ -1266,6 +1302,26 @@ http {
     }
 
     location = /keycloak/admin/serverinfo {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /keycloak/admin/realms/llm-machines/ui-ext/info {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /keycloak/admin/realms/llm-machines/users/profile {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }
       include /etc/nginx/llm-machines/proxy-common.inc;

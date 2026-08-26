@@ -52,6 +52,7 @@ function mutate(profile, mutation) {
 
 function activateMeasured(profile = single) {
   const changed = structuredClone(profile)
+  changed.metadata.admissionScope = "PRODUCTION_DELIVERY"
   changed.metadata.lifecycleState = "ACTIVE_QUALIFIED"
   changed.accelerator.productionSupportClaim = true
   changed.capacity = {
@@ -74,6 +75,17 @@ function activateMeasured(profile = single) {
     },
   }
   changed.activation.state = "ACTIVE"
+  changed.activation.qualifiedProfileDigest =
+    profileQualificationDigest(changed)
+  return changed
+}
+
+function activateInternalMeasured(profile = single) {
+  const changed = activateMeasured(profile)
+  changed.metadata.admissionScope = "INTERNAL_TEST_ONLY"
+  changed.metadata.lifecycleState = "ACTIVE_MEASURED_INTERNAL_TEST"
+  changed.accelerator.productionSupportClaim = false
+  changed.activation.state = "ACTIVE_INTERNAL_TEST"
   changed.activation.qualifiedProfileDigest =
     profileQualificationDigest(changed)
   return changed
@@ -159,6 +171,42 @@ test("only the exact measured and activated revision advertises capacity", () =>
   assert.match(
     validateDeliveryProfile(staleActivation, contracts.core).join("\n"),
     /exact measured and qualified/,
+  )
+})
+
+test("an internal-test measurement activates without making a production claim", () => {
+  const active = activateInternalMeasured()
+  active.engine.image.sbomDigest = null
+  active.engine.image.provenanceDigest = null
+  active.activation.qualifiedProfileDigest = profileQualificationDigest(active)
+  assert.deepEqual(validateDeliveryProfile(active, contracts.core), [])
+  const rendered = renderDeliveryProfile(active, contracts)
+  assert.equal(rendered.capabilityAdvertisement.state, "ACTIVE_MEASURED")
+  assert.deepEqual(rendered.qualification, {
+    evidenceDigest: active.capacity.evidenceDigest,
+    productionCapacityClaim: false,
+    qualifiedProfileDigest: active.activation.qualifiedProfileDigest,
+    scope: "INTERNAL_TEST_ONLY",
+  })
+
+  const falseProduction = mutate(active, (profile) => {
+    profile.accelerator.productionSupportClaim = true
+    profile.activation.qualifiedProfileDigest =
+      profileQualificationDigest(profile)
+  })
+  assert.match(
+    validateDeliveryProfile(falseProduction, contracts.core).join("\n"),
+    /without a production claim/,
+  )
+})
+
+test("missing release evidence remains forbidden for production delivery", () => {
+  const active = activateMeasured()
+  active.engine.image.sbomDigest = null
+  active.activation.qualifiedProfileDigest = profileQualificationDigest(active)
+  assert.match(
+    validateDeliveryProfile(active, contracts.core).join("\n"),
+    /sbomDigest must use sha256/,
   )
 })
 

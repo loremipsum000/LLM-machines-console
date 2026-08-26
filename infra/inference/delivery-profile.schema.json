@@ -34,23 +34,32 @@
       "required": [
         "profileId",
         "revision",
+        "admissionScope",
         "lifecycleState",
         "containsCredentials"
       ],
       "properties": {
         "profileId": {
           "type": "string",
-          "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+          "pattern": "^[a-z0-9][a-z0-9.-]{2,62}$"
         },
         "revision": {
           "type": "integer",
           "minimum": 1
+        },
+        "admissionScope": {
+          "enum": [
+            "PRODUCTION_DELIVERY",
+            "INTERNAL_TEST_ONLY",
+            "SYNTHETIC_ONLY"
+          ]
         },
         "lifecycleState": {
           "enum": [
             "SYNTHETIC_UNMEASURED",
             "CANDIDATE_UNQUALIFIED",
             "ACTIVE_QUALIFIED",
+            "ACTIVE_MEASURED_INTERNAL_TEST",
             "RETIRED"
           ]
         },
@@ -385,7 +394,7 @@
       "required": ["state", "qualifiedProfileDigest"],
       "properties": {
         "state": {
-          "enum": ["INACTIVE", "ACTIVE"]
+          "enum": ["INACTIVE", "ACTIVE", "ACTIVE_INTERNAL_TEST"]
         },
         "qualifiedProfileDigest": {
           "anyOf": [
@@ -411,7 +420,7 @@
       "properties": {
         "profileId": {
           "type": "string",
-          "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+          "pattern": "^[a-z0-9][a-z0-9.-]{2,62}$"
         },
         "revision": {
           "type": "integer",
@@ -486,10 +495,10 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9.+-]{1,63}$"
         },
         "sbomDigest": {
-          "$ref": "#/$defs/sha256"
+          "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
         },
         "provenanceDigest": {
-          "$ref": "#/$defs/sha256"
+          "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
         },
         "privateRegistryMirror": {
           "type": "string",

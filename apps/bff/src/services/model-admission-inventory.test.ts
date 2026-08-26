@@ -40,6 +40,27 @@ describe("authoritative model admission inventory", () => {
     })
   })
 
+  it("requires an explicit lab opt-in for internal-test measured profiles", async () => {
+    await writeAdmissions([
+      profile("local-a", "profile-a", {
+        productionCapacityClaim: false,
+        scope: "INTERNAL_TEST_ONLY",
+      }),
+    ])
+    stubLiteLlm([{ model_name: "local-a" }])
+
+    await expect(getAuthoritativeModelInventory()).resolves.toMatchObject({
+      ok: false,
+      reason: "inconsistent",
+    })
+
+    vi.stubEnv("INFERENCE_ALLOW_INTERNAL_TEST_PROFILES", "true")
+    await expect(getAuthoritativeModelInventory()).resolves.toMatchObject({
+      aliases: ["local-a"],
+      ok: true,
+    })
+  })
+
   it("dynamically includes a newly admitted profile without a Key snapshot", async () => {
     await writeAdmissions([profile("local-a", "profile-a")])
     const fetchMock = stubLiteLlm([{ model_name: "local-a" }])
@@ -172,6 +193,8 @@ function profile(
   overrides: {
     coreCompatibilityFingerprint?: string
     evidenceDigest?: string | null
+    productionCapacityClaim?: boolean
+    scope?: string
     state?: string
   } = {},
 ): Record<string, unknown> {
@@ -210,6 +233,8 @@ function profile(
           ? `sha256:${"2".repeat(64)}`
           : overrides.evidenceDigest,
       qualifiedProfileDigest: `sha256:${"3".repeat(64)}`,
+      productionCapacityClaim: overrides.productionCapacityClaim ?? true,
+      scope: overrides.scope ?? "PRODUCTION_DELIVERY",
     },
     rollback: {},
   }

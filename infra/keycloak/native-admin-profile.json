@@ -36,8 +36,8 @@
   "theme": {
     "name": "llm-machines",
     "sourcePath": "infra/keycloak/themes/llm-machines",
-    "fileCount": 25,
-    "inventorySha256": "ec32ce8b4f5f6d1de830ba2285bf51f90721d9cce386f5ebbd351108beb4ae45",
+    "fileCount": 26,
+    "inventorySha256": "f883805154c75083121bbce8e56a023b16428c42cdc5192c050629118286bee8",
     "credentialMaterial": false
   },
   "customerRoles": {

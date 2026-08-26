@@ -123,6 +123,7 @@ const expectedNginxLocations = {
   ],
   firecrawl: ["= /v2/search", "= /v2/scrape", "/"],
   identity: [
+    "= /__llmm/console-login",
     "= /__llmm/global-logout",
     "= /realms/llm-machines/protocol/openid-connect/auth",
     "= /realms/llm-machines/protocol/openid-connect/logout",
@@ -146,6 +147,8 @@ const expectedNginxLocations = {
     "= /",
     "= /login",
     "= /login/generic_oauth",
+    "= /user/auth-tokens/rotate",
+    "= /api/user/auth-tokens/rotate",
     "= /logout",
     "@grafana_global_logout_fallback",
     "~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",
@@ -197,6 +200,8 @@ const expectedNginxLocations = {
     "^~ /keycloak/admin/llm-machines/console/",
     "= /keycloak/admin/realms/llm-machines",
     "= /keycloak/admin/serverinfo",
+    "= /keycloak/admin/realms/llm-machines/ui-ext/info",
+    "= /keycloak/admin/realms/llm-machines/users/profile",
     "= /keycloak/admin/realms/llm-machines/users",
     '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}$"',
     '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/reset-password$"',
@@ -211,9 +216,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "575f73869a78e5644bb97e3ffc4ab64f47b766b02060f0679decfeedf6ddfae5",
+    "258ef3468d01d00ce13532904c608fe677348c64f223a4dbff5fee341b5bec7a",
   "native-admin-edge-profile.json":
-    "7efbcfd91abf65e18863542ef19846486d0be2cbbc7268b77801510f70f12be8",
+    "bb84d79f1fc873a5de03a2ab0004ae3ccec75033d0ea35ed8eee7686ec6e6389",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -500,6 +505,32 @@ function validateNativeAdmin(profile, errors) {
   )
   const grafanaStatic = profile.services?.grafana?.routes?.find(
     ({ id }) => id === "static-assets",
+  )
+  const grafanaSessionRotationRedirect =
+    profile.services?.grafana?.routes?.find(
+      ({ id }) => id === "session-rotation-redirect",
+    )
+  const grafanaSessionRotationApi = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "session-rotation-api",
+  )
+  add(
+    errors,
+    sameJson(profile.queryPolicies?.["grafana-session-rotation"], [
+      "redirectTo",
+    ]) &&
+      grafanaSessionRotationRedirect?.path?.kind === "exact" &&
+      grafanaSessionRotationRedirect?.path?.value ===
+        "/user/auth-tokens/rotate" &&
+      sameJson(grafanaSessionRotationRedirect?.methods, ["GET", "HEAD"]) &&
+      grafanaSessionRotationRedirect?.queryPolicy ===
+        "grafana-session-rotation" &&
+      grafanaSessionRotationRedirect?.emptyQueryAllowed === true &&
+      grafanaSessionRotationApi?.path?.kind === "exact" &&
+      grafanaSessionRotationApi?.path?.value ===
+        "/api/user/auth-tokens/rotate" &&
+      sameJson(grafanaSessionRotationApi?.methods, ["POST"]) &&
+      grafanaSessionRotationApi?.queryPolicy === "forbid",
+    "Grafana native session-rotation policy changed",
   )
   const liteLlmModels = profile.services?.litellm?.routes?.find(
     ({ id }) => id === "models",
@@ -1051,6 +1082,8 @@ function validateNginx(sources, errors) {
         "return 303 https://@@PRODUCT_LITELLM_HOST@@/__llmm/global-logout;",
       ) &&
       grafanaServer.includes("location = /login/generic_oauth") &&
+      grafanaServer.includes("location = /user/auth-tokens/rotate") &&
+      grafanaServer.includes("location = /api/user/auth-tokens/rotate") &&
       grafanaServer.includes("location = /api/dashboards/db") &&
       grafanaServer.includes(
         "location ~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",
@@ -1122,6 +1155,20 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
+    identityServer.includes("location = /__llmm/console-login") &&
+      exactLocationSection(identityServer, "= /__llmm/console-login").includes(
+        "if ($llmm_query_none = 0) { return 400; }",
+      ) &&
+      exactLocationSection(identityServer, "= /__llmm/console-login").includes(
+        "return 303 https://@@PRODUCT_CONSOLE_HOST@@/;",
+      ) &&
+      !/\$(?:args|http_|request_uri|uri)\b/.test(
+        exactLocationSection(identityServer, "= /__llmm/console-login"),
+      ),
+    "identity error recovery must start a fresh Console login",
+  )
+  add(
+    errors,
     identityServer.includes("location = /__llmm/global-logout") &&
       identityServer.includes(
         'add_header Set-Cookie "KEYCLOAK_IDENTITY=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None" always;',
@@ -1158,12 +1205,27 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    count(keycloakAdminServer, "rewrite ^/keycloak/(.*)$ /$1 break;") === 11 &&
+    count(keycloakAdminServer, "rewrite ^/keycloak/(.*)$ /$1 break;") === 13 &&
       keycloakAdminServer.includes(
         "include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;",
       ),
     "Keycloak external admin prefix normalization changed",
   )
+  for (const dependency of [
+    "= /keycloak/admin/realms/llm-machines/ui-ext/info",
+    "= /keycloak/admin/realms/llm-machines/users/profile",
+  ]) {
+    const section = exactLocationSection(keycloakAdminServer, dependency)
+    add(
+      errors,
+      section.includes("limit_except GET HEAD { deny all; }") &&
+        section.includes("if ($llmm_query_none = 0) { return 400; }") &&
+        section.includes(
+          "include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;",
+        ),
+      `Keycloak Admin Users dependency is not exact read-only: ${dependency}`,
+    )
+  }
   const keycloakUser = exactLocationSection(
     keycloakAdminServer,
     '~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}$"',
