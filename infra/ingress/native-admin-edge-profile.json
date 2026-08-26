@@ -481,7 +481,17 @@
           "methods": ["GET", "HEAD"],
           "path": { "kind": "exact", "value": "/__llmm/global-logout" },
           "queryPolicy": "forbid",
-          "behavior": "CLEAR_NATIVE_COOKIES_AND_CONTINUE_FIXED_CHAIN"
+          "behavior": "CLEAR_NATIVE_COOKIES_AND_BROWSER_STORAGE"
+        },
+        {
+          "id": "global-logout-continue",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "exact",
+            "value": "/__llmm/global-logout/continue"
+          },
+          "queryPolicy": "forbid",
+          "behavior": "CONTINUE_FIXED_IDENTITY_LOGOUT_CHAIN"
         },
         {
           "id": "key-create",

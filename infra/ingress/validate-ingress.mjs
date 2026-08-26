@@ -173,6 +173,7 @@ const expectedNginxLocations = {
     "~ ^/(?:litellm-asset-prefix/_next/static/|ui/__next\\.|litellm/\\.well-known/litellm-ui-config).*$",
     "= /sso/key/generate",
     "= /__llmm/global-logout",
+    "= /__llmm/global-logout/continue",
     "= /sso/callback",
     "= /key/generate",
     "= /key/list",
@@ -216,9 +217,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "258ef3468d01d00ce13532904c608fe677348c64f223a4dbff5fee341b5bec7a",
+    "b2f5b6de222fff4f59bbbe69c8099bcbdd18317b8a382cef542a845e1fd6d244",
   "native-admin-edge-profile.json":
-    "bb84d79f1fc873a5de03a2ab0004ae3ccec75033d0ea35ed8eee7686ec6e6389",
+    "a6d9f5539c9da818f38890f94db1316c28a702ff68d07e7ddfb553a19192b6de",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -665,6 +666,9 @@ function validateNativeAdmin(profile, errors) {
   const liteLlmGlobalLogout = profile.services?.litellm?.routes?.find(
     ({ id }) => id === "global-logout",
   )
+  const liteLlmGlobalLogoutContinue = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "global-logout-continue",
+  )
   add(
     errors,
     profile.services?.grafana?.ssoEntry ===
@@ -679,6 +683,12 @@ function validateNativeAdmin(profile, errors) {
       liteLlmSso?.allowedReturnTo === "https://@@PRODUCT_LITELLM_HOST@@/ui/" &&
       liteLlmLoginRedirect?.behavior === "EDGE_303_TO_SAFE_SSO_ENTRY" &&
       liteLlmGlobalLogout?.path?.value === "/__llmm/global-logout" &&
+      liteLlmGlobalLogout?.behavior ===
+        "CLEAR_NATIVE_COOKIES_AND_BROWSER_STORAGE" &&
+      liteLlmGlobalLogoutContinue?.path?.value ===
+        "/__llmm/global-logout/continue" &&
+      liteLlmGlobalLogoutContinue?.behavior ===
+        "CONTINUE_FIXED_IDENTITY_LOGOUT_CHAIN" &&
       sameJson(profile.queryPolicies?.["litellm-rsc"], ["_rsc"]) &&
       sameJson(profile.queryPolicies?.["litellm-sso-entry"], ["return_to"]),
     "automatic native SSO or global logout contract changed",
@@ -1017,6 +1027,10 @@ function validateNginx(sources, errors) {
     litellmServer,
     "= /__llmm/global-logout",
   )
+  const liteLlmGlobalLogoutContinue = exactLocationSection(
+    litellmServer,
+    "= /__llmm/global-logout/continue",
+  )
   for (const [hostId, server] of Object.entries({
     api: apiServer,
     console: consoleServer,
@@ -1123,6 +1137,7 @@ function validateNginx(sources, errors) {
         "return 303 https://@@PRODUCT_LITELLM_HOST@@/sso/key/generate?return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2F;",
       ) &&
       litellmServer.includes("location = /__llmm/global-logout") &&
+      litellmServer.includes("location = /__llmm/global-logout/continue") &&
       litellmServer.includes(
         "return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;",
       ) &&
@@ -1146,11 +1161,22 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    liteLlmGlobalLogout.includes(
+    liteLlmGlobalLogout.includes('Set-Cookie "token=; Path=/;') &&
+      liteLlmGlobalLogout.includes('Set-Cookie "token=; Path=/ui;') &&
+      liteLlmGlobalLogout.includes('sessionStorage.removeItem("token")') &&
+      liteLlmGlobalLogout.includes(
+        'location.replace("/__llmm/global-logout/continue")',
+      ) &&
+      liteLlmGlobalLogout.includes(
+        "script-src 'sha256-JuAohNhacHfbTAU6sQx9CXVPpaWpoaIMSmMrO4IV8j4='",
+      ) &&
+      liteLlmGlobalLogoutContinue.includes(
       "return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;",
-    ) &&
+      ) &&
       !liteLlmGlobalLogout.includes("proxy_pass") &&
-      !liteLlmGlobalLogout.includes("proxy_intercept_errors"),
+      !liteLlmGlobalLogout.includes("proxy_intercept_errors") &&
+      !liteLlmGlobalLogoutContinue.includes("proxy_pass") &&
+      !liteLlmGlobalLogoutContinue.includes("proxy_intercept_errors"),
     "LiteLLM global logout must remain independent of native availability",
   )
   add(

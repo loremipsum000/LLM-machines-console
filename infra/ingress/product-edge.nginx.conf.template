@@ -1054,12 +1054,24 @@ http {
     location = /__llmm/global-logout {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }
+      default_type text/html;
       add_header Cache-Control "no-store" always;
+      add_header Content-Security-Policy "default-src 'none'; script-src 'sha256-JuAohNhacHfbTAU6sQx9CXVPpaWpoaIMSmMrO4IV8j4='; base-uri 'none'; frame-ancestors 'none'; form-action 'none'" always;
       add_header Referrer-Policy "no-referrer" always;
       add_header Set-Cookie "token=; Path=/; Max-Age=0; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "token=; Path=/ui; Max-Age=0; Secure; SameSite=Lax" always;
       add_header Set-Cookie "litellm_cp_return_to=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
       add_header Set-Cookie "litellm_oauth_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "litellm_return_url=; Path=/; Max-Age=0; Secure; SameSite=Lax" always;
       add_header Set-Cookie "sso_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      return 200 '<!doctype html><meta charset="utf-8"><title>Signing out</title><script>(()=>{for(const p of["/","/ui"])document.cookie="token=; Max-Age=0; Path="+p+"; Secure; SameSite=Lax";try{sessionStorage.removeItem("token");for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith("mcp-session-"+"to"+"ken:"))sessionStorage.removeItem(k)}}catch{}try{localStorage.removeItem("litellm_selected_worker_id");localStorage.removeItem("litellm_worker_url")}catch{}location.replace("/__llmm/global-logout/continue")})()</script>';
+    }
+
+    location = /__llmm/global-logout/continue {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
       return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;
     }
 
