@@ -137,7 +137,7 @@ test("founder placement renders exact edge, supervision, and private inference c
     assert.match(vm103, /verify-vm103-application-identity\.mjs/)
     assert.match(
       vm103,
-      /http:\/\/127\.0\.0\.1:40239 llm-machines-applications console-application-admin/,
+      /http:\/\/127\.0\.0\.1:40239 https:\/\/identity\.lab\.example\/realms\/llm-machines-applications llm-machines-applications console-application-admin/,
     )
     assert.deepEqual(imageBindings, {
       images: { bff: digest, web: digest },
