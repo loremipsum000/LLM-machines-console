@@ -18,6 +18,10 @@ const secretMappings = {
   KEYCLOAK_ADMIN_CLIENT_SECRET: "keycloak-admin-client-secret",
 }
 
+const keycloakControlSecretMappings = {
+  applicationAdmin: "keycloak-application-admin-client-secret",
+}
+
 const nonSecretNames = [
   "ADMIN_ALERTMANAGER_BASE_URL",
   "ADMIN_ALERTMANAGER_TIMEOUT_MS",
@@ -38,6 +42,8 @@ const nonSecretNames = [
   "KEYCLOAK_ADMIN_BASE_URL",
   "KEYCLOAK_ADMIN_CLIENT_ID",
   "KEYCLOAK_ADMIN_REALM",
+  "KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID",
+  "KEYCLOAK_APPLICATION_ADMIN_REALM",
   "PRE_GENESIS_FIRECRAWL_ACTUAL",
   "PRE_GENESIS_FIRECRAWL_ALLOWED_HOSTS",
   "PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL",
@@ -105,6 +111,26 @@ export function parseLiteLlmSecretMaterial(buffer) {
   return { "litellm-key": masterKey }
 }
 
+export function parseKeycloakControlSecretMaterial(buffer) {
+  let control
+  try {
+    control = JSON.parse(buffer.toString("utf8"))
+  } catch {
+    throw new Error("The founder Keycloak control file is invalid.")
+  }
+  const secrets = {}
+  for (const [name, file] of Object.entries(keycloakControlSecretMappings)) {
+    const value = control?.credentials?.[name]?.trim()
+    if (!value) {
+      throw new Error(
+        `The founder Keycloak control file is missing credentials.${name}.`,
+      )
+    }
+    secrets[file] = value
+  }
+  return secrets
+}
+
 export function processNamespacePath(pid, path) {
   if (!Number.isSafeInteger(pid) || pid < 1 || !path.startsWith("/")) {
     throw new Error("The founder custody process path is invalid.")
@@ -121,6 +147,9 @@ export async function captureVm103FounderCustody(options) {
   const liteLlmSecrets = parseLiteLlmSecretMaterial(
     await readFile(`/proc/${options.liteLlmSourcePid}/environ`),
   )
+  const keycloakSecrets = parseKeycloakControlSecretMaterial(
+    await readFile(options.keycloakControlFile),
+  )
   await mkdir(options.configurationRoot, { mode: 0o700, recursive: true })
   await mkdir(options.secretRoot, { mode: 0o700, recursive: true })
   await chmod(options.configurationRoot, 0o700)
@@ -128,6 +157,7 @@ export async function captureVm103FounderCustody(options) {
   for (const [name, value] of Object.entries({
     ...source.secrets,
     ...liteLlmSecrets,
+    ...keycloakSecrets,
   })) {
     const target = resolve(options.secretRoot, name)
     await writeFile(target, `${value}\n`, { flag: "wx", mode: 0o600 })
@@ -162,6 +192,7 @@ export async function captureVm103FounderCustody(options) {
     generatedFiles: [
       ...Object.values(secretMappings),
       ...Object.keys(liteLlmSecrets),
+      ...Object.keys(keycloakSecrets),
       "edge-ca.crt",
       "edge.crt",
       "edge.key",
@@ -181,6 +212,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [
     sourcePid,
     liteLlmSourcePid,
+    keycloakControlFile,
     configurationRoot,
     secretRoot,
     edgeCertificate,
@@ -189,18 +221,20 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (
     !/^\d+$/.test(sourcePid ?? "") ||
     !/^\d+$/.test(liteLlmSourcePid ?? "") ||
+    !keycloakControlFile ||
     !configurationRoot ||
     !secretRoot ||
     !edgeCertificate ||
     !edgePrivateKey
   ) {
     throw new Error(
-      "Usage: capture-vm103-founder-custody.mjs BFF_PID LITELLM_PID CONFIG_ROOT SECRET_ROOT EDGE_CERT EDGE_KEY",
+      "Usage: capture-vm103-founder-custody.mjs BFF_PID LITELLM_PID KEYCLOAK_CONTROL_FILE CONFIG_ROOT SECRET_ROOT EDGE_CERT EDGE_KEY",
     )
   }
   const result = await captureVm103FounderCustody({
     sourcePid: Number(sourcePid),
     liteLlmSourcePid: Number(liteLlmSourcePid),
+    keycloakControlFile: resolve(keycloakControlFile),
     configurationRoot: resolve(configurationRoot),
     secretRoot: resolve(secretRoot),
     edgeCertificate: resolve(edgeCertificate),

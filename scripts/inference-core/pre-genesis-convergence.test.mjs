@@ -5,10 +5,15 @@ import { join } from "node:path"
 import test from "node:test"
 
 import {
+  parseKeycloakControlSecretMaterial,
   parseLiteLlmSecretMaterial,
   parseRuntimeSecretMaterial,
   processNamespacePath,
 } from "../pre-genesis/capture-vm103-founder-custody.mjs"
+import {
+  validateApplicationDiscovery,
+  validateApplicationTokenClaims,
+} from "../pre-genesis/verify-vm103-application-identity.mjs"
 import {
   inspectFounderFirewall,
   reconcileFounderFirewall,
@@ -125,6 +130,8 @@ test("founder placement renders exact edge, supervision, and private inference c
     )
     assert.match(vm103, /docker compose .* up --detach --wait/)
     assert.match(vm103, /verify-vm103-founder-images\.mjs/)
+    assert.match(vm103, /verify-vm103-application-identity\.mjs/)
+    assert.match(vm103, /llm-machines-applications console-application-admin/)
     assert.deepEqual(imageBindings, {
       images: { bff: digest, web: digest },
       schema: "llm-machines.vm103-founder-images.v1",
@@ -433,6 +440,21 @@ test("custody capture extracts only exact secret classes without logging values"
     () => parseLiteLlmSecretMaterial(Buffer.from("OTHER=value\0")),
     /missing LITELLM_MASTER_KEY/,
   )
+  assert.deepEqual(
+    parseKeycloakControlSecretMaterial(
+      Buffer.from(
+        JSON.stringify({ credentials: { applicationAdmin: "app-value" } }),
+      ),
+    ),
+    { "keycloak-application-admin-client-secret": "app-value" },
+  )
+  assert.throws(
+    () =>
+      parseKeycloakControlSecretMaterial(
+        Buffer.from(JSON.stringify({ credentials: { humanAdmin: "wrong" } })),
+      ),
+    /missing credentials\.applicationAdmin/,
+  )
   assert.equal(
     processNamespacePath(42, "/run/llm-machines/session-keyring.json"),
     "/proc/42/root/run/llm-machines/session-keyring.json",
@@ -479,6 +501,8 @@ test("founder containers use file custody and production BFF authority", async (
   assert.match(compose, /\/run\/secrets\/llmm_bff_service_api_key/)
   assert.doesNotMatch(compose, /password|maliper|proxy_admin/i)
   assert.match(compose, /CONSOLE_OIDC_CLIENT_SECRET=/)
+  assert.match(compose, /KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET=/)
+  assert.match(compose, /llmm_keycloak_application_admin_client_secret/)
   assert.match(
     compose,
     /EMERGENCY_ISOLATION_MARKER_DIRECTORY: \/run\/llm-machines\/non-restorable-isolation/,
@@ -491,6 +515,7 @@ test("founder containers use file custody and production BFF authority", async (
   assert.match(custody, /CONSOLE_OIDC_CLIENT_SECRET/)
   assert.match(custody, /CONSOLE_SESSION_KEYRING_FILE/)
   assert.match(custody, /NODE_EXTRA_CA_CERTS/)
+  assert.match(custody, /parseKeycloakControlSecretMaterial/)
   assert.doesNotMatch(
     custody,
     /F0_S1_OIDC_CLIENT_SECRET|F0_P1_SESSION_KEYRING_FILE|F0_S1_CA_FILE/,
@@ -503,6 +528,46 @@ test("founder containers use file custody and production BFF authority", async (
   assert.match(entrypoint, /environment\.LLMM_RUNTIME_SECRET_FILES = undefined/)
   assert.doesNotMatch(entrypoint, /console\.log|JSON\.stringify\(environment/)
   assert.match(custody, /await chown\(target, 0, 0\)/)
+})
+
+test("founder Application identity readiness is exact and short-lived", () => {
+  const issuer =
+    "https://identity.lab.llm-machines.com/realms/llm-machines-applications"
+  assert.equal(
+    validateApplicationDiscovery(
+      {
+        issuer,
+        jwks_uri: `${issuer}/protocol/openid-connect/certs`,
+        token_endpoint: `${issuer}/protocol/openid-connect/token`,
+      },
+      issuer,
+    ),
+    `${issuer}/protocol/openid-connect/token`,
+  )
+  validateApplicationTokenClaims(
+    {
+      azp: "console-application-admin",
+      exp: 1_060,
+      iat: 1_000,
+      iss: issuer,
+    },
+    issuer,
+    "console-application-admin",
+  )
+  assert.throws(
+    () =>
+      validateApplicationTokenClaims(
+        {
+          azp: "console-application-admin",
+          exp: 1_061,
+          iat: 1_000,
+          iss: issuer,
+        },
+        issuer,
+        "console-application-admin",
+      ),
+    /claims\.exp - claims\.iat <= 60/,
+  )
 })
 
 test("founder Compose gives rendered candidate settings precedence", async () => {

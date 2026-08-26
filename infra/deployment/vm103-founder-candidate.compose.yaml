@@ -28,13 +28,14 @@ services:
       - ${LLMM_CONFIGURATION_ROOT:?configuration root required}/bff.env
     environment:
       EMERGENCY_ISOLATION_MARKER_DIRECTORY: /run/llm-machines/non-restorable-isolation
-      LLMM_RUNTIME_SECRET_FILES: BFF_SERVICE_API_KEY=/run/secrets/llmm_bff_service_api_key,CONSOLE_OIDC_CLIENT_SECRET=/run/secrets/llmm_console_oidc_client_secret,DATABASE_URL=/run/secrets/llmm_database_url,LITELLM_KEY=/run/secrets/llmm_litellm_key,ADMIN_LITELLM_API_KEY=/run/secrets/llmm_litellm_key,KEYCLOAK_ADMIN_CLIENT_SECRET=/run/secrets/llmm_keycloak_admin_client_secret
+      LLMM_RUNTIME_SECRET_FILES: BFF_SERVICE_API_KEY=/run/secrets/llmm_bff_service_api_key,CONSOLE_OIDC_CLIENT_SECRET=/run/secrets/llmm_console_oidc_client_secret,DATABASE_URL=/run/secrets/llmm_database_url,LITELLM_KEY=/run/secrets/llmm_litellm_key,ADMIN_LITELLM_API_KEY=/run/secrets/llmm_litellm_key,KEYCLOAK_ADMIN_CLIENT_SECRET=/run/secrets/llmm_keycloak_admin_client_secret,KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET=/run/secrets/llmm_keycloak_application_admin_client_secret
     volumes:
       - ${LLMM_SECRET_ROOT}/bff-service-api-key:/run/secrets/llmm_bff_service_api_key:ro
       - ${LLMM_SECRET_ROOT}/console-oidc-client-secret:/run/secrets/llmm_console_oidc_client_secret:ro
       - ${LLMM_SECRET_ROOT}/database-url:/run/secrets/llmm_database_url:ro
       - ${LLMM_SECRET_ROOT}/litellm-key:/run/secrets/llmm_litellm_key:ro
       - ${LLMM_SECRET_ROOT}/keycloak-admin-client-secret:/run/secrets/llmm_keycloak_admin_client_secret:ro
+      - ${LLMM_SECRET_ROOT}/keycloak-application-admin-client-secret:/run/secrets/llmm_keycloak_application_admin_client_secret:ro
       - ${LLMM_CONFIGURATION_ROOT}/session-keyring.json:/run/llm-machines/session-keyring.json:ro
       - ${LLMM_CONFIGURATION_ROOT}/edge-ca.crt:/run/llm-machines/edge-ca.crt:ro
       - ${LLMM_CONFIGURATION_ROOT}/non-restorable-isolation:/run/llm-machines/non-restorable-isolation

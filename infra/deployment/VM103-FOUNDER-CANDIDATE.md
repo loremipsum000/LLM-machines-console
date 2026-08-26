@@ -27,8 +27,10 @@ The BFF runs the production
 session and PostgreSQL authority while still consuming only an explicitly
 admitted internal-test inference profile; it is not a substitute for the later
 release image. Runtime secrets are copied into root-owned mode `0600` files by
-`capture-vm103-founder-custody.mjs`. BFF, database, Console OIDC, and Keycloak
-administration material comes from the protected BFF process. The LiteLLM key
+`capture-vm103-founder-custody.mjs`. BFF, database, Console OIDC, and human
+Keycloak administration material comes from the protected BFF process. The
+dedicated Application-realm administration secret comes from the commissioned
+Keycloak control file and is verified before candidate startup. The LiteLLM key
 comes separately from the exact active LiteLLM process, so an older BFF cannot
 silently supply a stale master key. The script prints only generated filenames
 and never their values.
@@ -55,8 +57,9 @@ Operator sequence:
 
 1. Render and validate placement from the exact candidate commit.
 2. Build Web and BFF with exact source labels and record local image digests.
-3. Capture custody from the current protected BFF and exact active LiteLLM
-   processes into a new root-only path.
+3. Capture custody from the current protected BFF, exact active LiteLLM
+   process, and exact commissioned Keycloak control file into a new root-only
+   path.
 4. Install and start the gateway and inference route units before SGLang.
 5. Start the side-by-side VM103 candidate with `docker compose up --wait`.
 6. Prove model admission, identity, native-session, no-bypass, and retention
