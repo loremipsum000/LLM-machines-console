@@ -414,7 +414,6 @@ test("custody capture extracts only exact secret classes without logging values"
         "BFF_SERVICE_API_KEY=bff-value",
         "CONSOLE_SESSION_KEYRING_FILE=/run/source/session.json",
         "DATABASE_URL=postgres-value",
-        "KEYCLOAK_ADMIN_CLIENT_SECRET=keycloak-value",
         "NODE_EXTRA_CA_CERTS=/run/source/ca.crt",
         "ADMIN_PROMETHEUS_BASE_URL=http://127.0.0.1:9090",
         "UNRELATED_SECRET=must-not-copy",
@@ -424,7 +423,6 @@ test("custody capture extracts only exact secret classes without logging values"
   assert.deepEqual(Object.keys(material.secrets).sort(), [
     "bff-service-api-key",
     "database-url",
-    "keycloak-admin-client-secret",
   ])
   assert.doesNotMatch(
     JSON.stringify(Object.keys(material.secrets)),
@@ -451,6 +449,7 @@ test("custody capture extracts only exact secret classes without logging values"
         JSON.stringify({
           credentials: {
             applicationAdmin: "app-value",
+            humanAdmin: "human-value",
             oidcClient: "oidc-value",
           },
         }),
@@ -459,6 +458,7 @@ test("custody capture extracts only exact secret classes without logging values"
     {
       "console-oidc-client-secret": "oidc-value",
       "keycloak-application-admin-client-secret": "app-value",
+      "keycloak-admin-client-secret": "human-value",
     },
   )
   assert.throws(
@@ -466,7 +466,10 @@ test("custody capture extracts only exact secret classes without logging values"
       parseKeycloakControlSecretMaterial(
         Buffer.from(
           JSON.stringify({
-            credentials: { applicationAdmin: "app-value" },
+            credentials: {
+              applicationAdmin: "app-value",
+              humanAdmin: "human-value",
+            },
           }),
         ),
       ),
@@ -483,9 +486,27 @@ test("custody capture extracts only exact secret classes without logging values"
   assert.throws(
     () =>
       parseKeycloakControlSecretMaterial(
-        Buffer.from(JSON.stringify({ credentials: { oidcClient: "value" } })),
+        Buffer.from(
+          JSON.stringify({
+            credentials: { humanAdmin: "human-value", oidcClient: "value" },
+          }),
+        ),
       ),
     /missing credentials\.applicationAdmin/,
+  )
+  assert.throws(
+    () =>
+      parseKeycloakControlSecretMaterial(
+        Buffer.from(
+          JSON.stringify({
+            credentials: {
+              applicationAdmin: "app-value",
+              oidcClient: "oidc-value",
+            },
+          }),
+        ),
+      ),
+    /missing credentials\.humanAdmin/,
   )
 })
 
@@ -521,6 +542,7 @@ test("founder containers use file custody and production BFF authority", async (
   )
   assert.doesNotMatch(compose, /F0_S1_OIDC_CLIENT_SECRET=/)
   assert.match(custody, /oidcClient: "console-oidc-client-secret"/)
+  assert.match(custody, /humanAdmin: "keycloak-admin-client-secret"/)
   assert.match(custody, /CONSOLE_SESSION_KEYRING_FILE/)
   assert.match(custody, /NODE_EXTRA_CA_CERTS/)
   assert.match(custody, /parseKeycloakControlSecretMaterial/)

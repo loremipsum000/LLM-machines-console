@@ -14,11 +14,11 @@ import { fileURLToPath } from "node:url"
 const secretMappings = {
   BFF_SERVICE_API_KEY: "bff-service-api-key",
   DATABASE_URL: "database-url",
-  KEYCLOAK_ADMIN_CLIENT_SECRET: "keycloak-admin-client-secret",
 }
 
 const keycloakControlSecretMappings = {
   applicationAdmin: "keycloak-application-admin-client-secret",
+  humanAdmin: "keycloak-admin-client-secret",
   oidcClient: "console-oidc-client-secret",
 }
 
