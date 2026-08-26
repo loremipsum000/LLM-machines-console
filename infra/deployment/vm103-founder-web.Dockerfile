@@ -19,4 +19,3 @@ ENV PORT=34954
 RUN corepack pnpm --filter @llm-machines/web build
 
 CMD ["node", "scripts/pre-genesis/runtime-secret-entrypoint.mjs", "corepack", "pnpm", "--dir", "apps/web", "exec", "next", "start", "-H", "127.0.0.1", "-p", "34954"]
-
