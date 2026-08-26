@@ -140,6 +140,23 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
     await read("scripts/pre-genesis/reduced-core-browser-session.mjs"),
     /host === authorities\.grafana && url\.pathname === "\/logout"/,
   )
+  const browserFixture = await read(
+    "scripts/pre-genesis/reduced-core-browser-session.mjs",
+  )
+  assert.match(
+    browserFixture,
+    /developmentLiteLlmGlobalLogout\(request, response, url\)/,
+  )
+  assert.match(browserFixture, /"token=; Path=\/ui; Max-Age=0;/)
+  assert.match(browserFixture, /sessionStorage\.removeItem\("token"\)/)
+  assert.match(
+    browserFixture,
+    /location\.replace\("\/__llmm\/global-logout\/continue"\)/,
+  )
+  assert.match(
+    browserFixture,
+    /url\.pathname === "\/__llmm\/global-logout\/continue"/,
+  )
   assert.match(shell, /fetch\("\/api\/console\/session\/logout"/)
   assert.match(shell, /headers: \{ accept: "application\/json" \}/)
   assert.match(shell, /action="\/api\/console\/session\/logout"/)
@@ -172,7 +189,9 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
   assert.match(grafanaFallback, /Set-Cookie "grafana_session_expiry=;/)
   const globalLogoutLocations =
     edge
-      .match(/location = \/__llmm\/global-logout(?:\/continue)?[\s\S]*?\n {4}}/g)
+      .match(
+        /location = \/__llmm\/global-logout(?:\/continue)?[\s\S]*?\n {4}}/g,
+      )
       ?.join("\n") ?? ""
   assert.match(globalLogoutLocations, /Set-Cookie "token=; Path=\/;/)
   assert.match(globalLogoutLocations, /Set-Cookie "token=; Path=\/ui;/)

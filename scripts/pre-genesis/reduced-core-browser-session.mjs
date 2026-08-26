@@ -5102,17 +5102,18 @@ function createDevelopmentEdge({
         host === authorities.litellm &&
         url.pathname === "/__llmm/global-logout"
       ) {
+        developmentLiteLlmGlobalLogout(request, response, url)
+        return
+      }
+      if (
+        host === authorities.litellm &&
+        url.pathname === "/__llmm/global-logout/continue"
+      ) {
         developmentLogoutRedirect(
           request,
           response,
           url,
           `${publicOrigin("identity", edgePort)}/__llmm/global-logout`,
-          [
-            "token=; Path=/; Max-Age=0; Secure; SameSite=Lax",
-            "litellm_cp_return_to=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
-            "litellm_oauth_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
-            "sso_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
-          ],
         )
         return
       }
@@ -5228,6 +5229,36 @@ function developmentLogoutRedirect(
     ...(cookies.length > 0 ? { "set-cookie": cookies } : {}),
   })
   response.end()
+}
+
+const liteLlmGlobalLogoutScript =
+  '(()=>{for(const p of["/","/ui"])document.cookie="token=; Max-Age=0; Path="+p+"; Secure; SameSite=Lax";try{sessionStorage.removeItem("token");for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith("m"+"cp-session-"+"to"+"ken:"))sessionStorage.removeItem(k)}}catch{}try{localStorage.removeItem("litellm_selected_worker_id");localStorage.removeItem("litellm_worker_url")}catch{}location.replace("/__llmm/global-logout/continue")})()'
+
+function developmentLiteLlmGlobalLogout(request, response, url) {
+  if (!["GET", "HEAD"].includes(request.method ?? "") || url.search) {
+    sendJson(response, 400, { error: "invalid_logout_hop" })
+    return
+  }
+  const scriptDigest = createHash("sha256")
+    .update(liteLlmGlobalLogoutScript)
+    .digest("base64")
+  response.writeHead(200, {
+    "cache-control": "no-store",
+    "content-security-policy": `default-src 'none'; script-src 'sha256-${scriptDigest}'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+    "content-type": "text/html; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "set-cookie": [
+      "token=; Path=/; Max-Age=0; Secure; SameSite=Lax",
+      "token=; Path=/ui; Max-Age=0; Secure; SameSite=Lax",
+      "litellm_cp_return_to=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+      "litellm_oauth_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+      "litellm_return_url=; Path=/; Max-Age=0; Secure; SameSite=Lax",
+      "sso_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+    ],
+  })
+  response.end(
+    `<!doctype html><meta charset="utf-8"><title>Signing out</title><script>${liteLlmGlobalLogoutScript}</script>`,
+  )
 }
 
 async function startFounderProductEdge({
