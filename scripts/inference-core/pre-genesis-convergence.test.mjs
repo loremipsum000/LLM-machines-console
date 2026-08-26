@@ -9,7 +9,10 @@ import {
   parseRuntimeSecretMaterial,
   processNamespacePath,
 } from "../pre-genesis/capture-vm103-founder-custody.mjs"
-import { inspectFounderFirewall } from "../pre-genesis/manage-vm103-founder-firewall.mjs"
+import {
+  inspectFounderFirewall,
+  reconcileFounderFirewall,
+} from "../pre-genesis/manage-vm103-founder-firewall.mjs"
 import { renderVm103FounderCandidate } from "../pre-genesis/render-vm103-founder-candidate.mjs"
 import { validateFounderImageInspections } from "../pre-genesis/verify-vm103-founder-images.mjs"
 
@@ -139,24 +142,22 @@ test("founder placement renders exact edge, supervision, and private inference c
   }
 })
 
-test("founder firewall requires one owned hooked chain with allow then terminal denial", () => {
-  const exact = `table inet llmm_founder_edge {
-    chain input {
-      type filter hook input priority -5; policy accept;
-      iifname "ens18" ip saddr 10.30.0.1 tcp dport 22443 accept comment "llmm-founder-candidate-edge-allow"
-      tcp dport 22443 drop comment "llmm-founder-candidate-edge-deny"
-    }
-  }`
+test("founder firewall integrates one owned allow into the admitted default-drop chain", () => {
+  const exact = founderFirewallDocument({ owned: true })
   assert.deepEqual(inspectFounderFirewall(exact, "10.30.0.1", 22443), {
+    handle: 42,
     state: "exact",
   })
-  assert.deepEqual(inspectFounderFirewall("", "10.30.0.1", 22443), {
-    state: "absent",
-  })
+  assert.deepEqual(
+    inspectFounderFirewall(founderFirewallDocument(), "10.30.0.1", 22443),
+    {
+      state: "absent",
+    },
+  )
   assert.throws(
     () =>
       inspectFounderFirewall(
-        exact.replace("10.30.0.1", "10.30.0.2"),
+        founderFirewallDocument({ gateway: "10.30.0.2", owned: true }),
         "10.30.0.1",
         22443,
       ),
@@ -165,16 +166,164 @@ test("founder firewall requires one owned hooked chain with allow then terminal 
   assert.throws(
     () =>
       inspectFounderFirewall(
-        exact.replace(
-          'tcp dport 22443 drop comment "llmm-founder-candidate-edge-deny"',
-          "",
-        ),
+        founderFirewallDocument({ foreignPort: { range: [22_000, 23_000] } }),
         "10.30.0.1",
         22443,
       ),
     /collides/,
+  )
+  assert.throws(
+    () =>
+      inspectFounderFirewall(
+        founderFirewallDocument({ foreignPort: "@candidate_ports" }),
+        "10.30.0.1",
+        22443,
+      ),
+    /collides/,
+  )
+  assert.throws(
+    () =>
+      inspectFounderFirewall(
+        founderFirewallDocument({ foreignPort: 22443 }),
+        "10.30.0.1",
+        22443,
+      ),
+    /collides/,
+  )
+  assert.throws(
+    () =>
+      inspectFounderFirewall(
+        founderFirewallDocument({ foreignPort: { set: [22, 22443] } }),
+        "10.30.0.1",
+        22443,
+      ),
+    /collides/,
+  )
+  assert.throws(
+    () =>
+      inspectFounderFirewall(
+        founderFirewallDocument({ policy: "accept" }),
+        "10.30.0.1",
+        22443,
+      ),
+    /base-chain contract/,
   )
 })
+
+test("founder firewall removes its exact rule when post-apply inspection fails", () => {
+  const commands = []
+  const ownedStates = [{ handle: 42, state: "exact" }, { state: "absent" }]
+  let strictCalls = 0
+  assert.throws(
+    () =>
+      reconcileFounderFirewall("apply", "10.30.0.1", 22443, {
+        execute: (command) => commands.push(command),
+        inspectOwned: () => ownedStates.shift(),
+        inspectStrict: () => {
+          strictCalls += 1
+          if (strictCalls === 1) return { state: "absent" }
+          throw new Error("Founder firewall port collides with another rule.")
+        },
+      }),
+    /collides/,
+  )
+  assert.equal(commands.length, 2)
+  assert.equal(commands[0][0], "add")
+  assert.deepEqual(commands[1].slice(-2), ["handle", "42"])
+  assert.equal(ownedStates.length, 0)
+})
+
+test("founder firewall removes its exact rule while preserving a later foreign collision", () => {
+  const commands = []
+  const result = reconcileFounderFirewall("remove", "10.30.0.1", 22443, {
+    execute: (command) => commands.push(command),
+    inspectOwned: () => ({ handle: 42, state: "exact" }),
+    inspectStrict: (_gateway, _port, options) => {
+      assert.deepEqual(options, { permitForeignPortRules: true })
+      return { state: "absent" }
+    },
+  })
+  assert.deepEqual(result, { state: "absent" })
+  assert.deepEqual(commands[0].slice(-2), ["handle", "42"])
+})
+
+function founderFirewallDocument({
+  foreignPort,
+  gateway = "10.30.0.1",
+  owned = false,
+  policy = "drop",
+} = {}) {
+  const nftables = [
+    { metainfo: { json_schema_version: 1 } },
+    {
+      chain: {
+        family: "inet",
+        hook: "input",
+        name: "input",
+        policy,
+        prio: -10,
+        table: "llmm_filter",
+        type: "filter",
+      },
+    },
+  ]
+  if (owned) {
+    nftables.push({
+      rule: {
+        chain: "input",
+        comment: "llmm-founder-candidate-edge-allow",
+        expr: [
+          {
+            match: {
+              left: { meta: { key: "iifname" } },
+              op: "==",
+              right: "ens18",
+            },
+          },
+          {
+            match: {
+              left: { payload: { field: "saddr", protocol: "ip" } },
+              op: "==",
+              right: gateway,
+            },
+          },
+          {
+            match: {
+              left: { payload: { field: "dport", protocol: "tcp" } },
+              op: "==",
+              right: 22443,
+            },
+          },
+          { accept: null },
+        ],
+        family: "inet",
+        handle: 42,
+        table: "llmm_filter",
+      },
+    })
+  }
+  if (foreignPort) {
+    nftables.push({
+      rule: {
+        chain: "input",
+        expr: [
+          {
+            match: {
+              left: { payload: { field: "dport", protocol: "tcp" } },
+              op: "==",
+              right: foreignPort,
+            },
+          },
+          { accept: null },
+        ],
+        family: "inet",
+        handle: 55,
+        table: "llmm_filter",
+      },
+    })
+  }
+  return { nftables }
+}
 
 test("founder Web and BFF image IDs must carry the exact source labels", () => {
   const binding = {

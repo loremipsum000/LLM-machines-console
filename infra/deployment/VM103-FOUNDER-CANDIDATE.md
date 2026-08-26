@@ -12,6 +12,13 @@ source-restricted VM103-to-SGLang route units.
 The renderer rejects mutable images, public network inputs, duplicate ports,
 unsafe paths, incomplete authorities, and missing commit or tree bindings.
 
+The edge firewall manager verifies the existing `inet llmm_filter/input` base
+chain has the admitted input hook, priority `-10`, and default-drop policy. It
+rejects any pre-existing rule that mentions the candidate port, then inserts
+one comment-owned allow for the exact gateway source and removes only that
+exact rule handle during rollback. It never flushes or rewrites unrelated
+firewall state.
+
 The founder Web and BFF images are built from their dedicated Dockerfiles with
 `--build-arg LLMM_SOURCE_COMMIT=<commit>` and
 `--build-arg LLMM_SOURCE_TREE=<tree>`. Their OCI labels and local image IDs are
