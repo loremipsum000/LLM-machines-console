@@ -745,7 +745,7 @@ describe("inference-core Keycloak Admin boundary", () => {
     })
   })
 
-  it("creates and rotates an application client in the configured realm", async () => {
+  it("creates an application client in the configured realm", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -768,12 +768,6 @@ describe("inference-core Keycloak Admin boundary", () => {
       .mockResolvedValueOnce(
         jsonResponse({ value: "unit-test-created-credential" }),
       )
-      .mockResolvedValueOnce(
-        jsonResponse([{ clientId: APPLICATION_CLIENT_ID, id: "client-uuid" }]),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({ value: "unit-test-rotated-credential" }),
-      )
 
     const client = new KeycloakApplicationAdminClient(
       applicationConfig(),
@@ -784,22 +778,12 @@ describe("inference-core Keycloak Admin boundary", () => {
       description: "Finance integration.",
       name: "Finance Portal",
     })
-    const rotated = await client.rotateConfidentialClientSecret(
-      created.id,
-      created.clientId,
-    )
-
     expect(created).toEqual({
       clientId: APPLICATION_CLIENT_ID,
       clientSecret: "unit-test-created-credential",
       id: "client-uuid",
       tokenUrl:
         "https://keycloak.example/keycloak/realms/llm-machines-applications/protocol/openid-connect/token",
-    })
-    expect(rotated).toMatchObject({
-      clientId: APPLICATION_CLIENT_ID,
-      clientSecret: "unit-test-rotated-credential",
-      id: "client-uuid",
     })
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       "https://keycloak.example/keycloak/realms/llm-machines-applications/protocol/openid-connect/token",
@@ -814,10 +798,6 @@ describe("inference-core Keycloak Admin boundary", () => {
       protocolMapper: "oidc-audience-mapper",
     })
     expect(audienceMapper.config).not.toHaveProperty("included.client.audience")
-    expect(fetchMock.mock.calls[7]?.[0]).toBe(
-      "https://keycloak.example/keycloak/admin/realms/llm-machines-applications/clients/client-uuid/client-secret",
-    )
-    expect(fetchMock.mock.calls[7]?.[1]?.method).toBe("POST")
     expect(fetchMock.mock.calls[1]?.[0]).toContain(
       `/clients?clientId=${APPLICATION_CLIENT_ID}&exact=true&max=2`,
     )
@@ -1068,34 +1048,6 @@ describe("inference-core Keycloak Admin boundary", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
-  it("rejects rotation before POST when exact client and internal IDs differ", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        jsonResponse({ access_token: "unit-test-token", expires_in: 60 }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse([
-          { clientId: APPLICATION_CLIENT_ID, id: "different-client-uuid" },
-        ]),
-      )
-    const client = new KeycloakApplicationAdminClient(
-      applicationConfig(),
-      fetchMock,
-    )
-
-    await expect(
-      client.rotateConfidentialClientSecret(
-        "expected-client-uuid",
-        APPLICATION_CLIENT_ID,
-      ),
-    ).rejects.toMatchObject({
-      mutationOutcome: "rejected",
-      status: "invalid",
-    })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-  })
-
   it("preserves confirmed rejection for a rejected create POST", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -1118,32 +1070,6 @@ describe("inference-core Keycloak Admin boundary", () => {
     ).rejects.toMatchObject({
       mutationOutcome: "rejected",
       status: "unauthorized",
-    })
-  })
-
-  it("classifies a malformed rotation response as an unknown outcome", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        jsonResponse({ access_token: "unit-test-token", expires_in: 60 }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse([{ clientId: APPLICATION_CLIENT_ID, id: "client-uuid" }]),
-      )
-      .mockResolvedValueOnce(jsonResponse({}))
-    const client = new KeycloakApplicationAdminClient(
-      applicationConfig(),
-      fetchMock,
-    )
-
-    await expect(
-      client.rotateConfidentialClientSecret(
-        "client-uuid",
-        APPLICATION_CLIENT_ID,
-      ),
-    ).rejects.toMatchObject({
-      mutationOutcome: "unknown",
-      status: "unavailable",
     })
   })
 })

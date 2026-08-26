@@ -689,27 +689,6 @@ export class KeycloakApplicationAdminClient extends KeycloakAdminApiClient {
     })
   }
 
-  async rotateConfidentialClientSecret(
-    id: string,
-    clientId: string,
-  ): Promise<KeycloakConfidentialClientCredential> {
-    await this.preflightClientMutation(id, clientId, "secret rotation")
-    const payload = await this.requestJson<Record<string, unknown>>(
-      `/clients/${encodeURIComponent(id)}/client-secret`,
-      { method: "POST" },
-    )
-    const clientSecret = stringField(payload, "value")
-    if (!clientSecret) {
-      throw unknownClientMutation("secret rotation", clientId)
-    }
-    return {
-      clientId,
-      clientSecret,
-      id,
-      tokenUrl: tokenUrl(this.config),
-    }
-  }
-
   private async preflightClientMutation(
     expectedId: string | null,
     clientId: string,

@@ -5,10 +5,6 @@ import {
   type ConnectedAppCredentialActionState,
   type ConnectedAppFirecrawlCredentialActionState,
   type ConnectedAppFirecrawlLifecycleActionState,
-  type ConnectedAppFirecrawlTestActionState,
-  type ConnectedAppTestActionState,
-  checkAdminConnectedAppConnectionAction,
-  checkAdminConnectedAppFirecrawlConnectionAction,
   createAdminConnectedAppAction,
   disableAdminConnectedAppAction,
   disableAdminConnectedAppFirecrawlAction,
@@ -16,11 +12,7 @@ import {
   enableAdminConnectedAppFirecrawlAction,
   revokeAdminConnectedAppCredentialAction,
   revokeAdminConnectedAppFirecrawlCredentialAction,
-  rotateAdminConnectedAppCredentialsAction,
-  rotateAdminConnectedAppFirecrawlCredentialAction,
   softDeleteAdminConnectedAppAction,
-  updateAdminConnectedAppFirecrawlPolicyAction,
-  updateAdminConnectedAppPolicyAction,
 } from "@/lib/admin/actions-core"
 import { usePendingConsoleSessionRecovery } from "@/lib/auth/pending-session-recovery"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
@@ -34,7 +26,15 @@ import type {
   AdminInferenceModel,
   InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
-import { ArrowLeft, ChevronDown, Copy, Plus } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Plus,
+  RefreshCw,
+  Settings,
+  Trash2,
+} from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
   type FormEvent,
@@ -43,6 +43,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -57,14 +58,6 @@ const initialConnectedAppCreateState: ConnectedAppCreateActionState = {
   app: null,
   credential: null,
   error: null,
-  status: "idle",
-}
-
-const initialConnectedAppTestState: ConnectedAppTestActionState = {
-  app: null,
-  detail: null,
-  error: null,
-  observedAt: null,
   status: "idle",
 }
 
@@ -93,25 +86,11 @@ const initialFirecrawlLifecycleState: ConnectedAppFirecrawlLifecycleActionState 
     status: "idle",
   }
 
-const initialFirecrawlTestState: ConnectedAppFirecrawlTestActionState = {
-  app: null,
-  detail: null,
-  error: null,
-  observedAt: null,
-  status: "idle",
-}
-
 const interruptedActionError =
   "The action did not complete. Sign in again or retry."
 
 const interruptedConnectedAppCreateState: ConnectedAppCreateActionState = {
   ...initialConnectedAppCreateState,
-  error: interruptedActionError,
-  status: "failed",
-}
-
-const interruptedConnectedAppTestState: ConnectedAppTestActionState = {
-  ...initialConnectedAppTestState,
   error: interruptedActionError,
   status: "failed",
 }
@@ -137,26 +116,14 @@ const interruptedFirecrawlLifecycleState: ConnectedAppFirecrawlLifecycleActionSt
     status: "failed",
   }
 
-const interruptedFirecrawlTestState: ConnectedAppFirecrawlTestActionState = {
-  ...initialFirecrawlTestState,
-  error: interruptedActionError,
-  status: "failed",
-}
-
 type ApplicationMutationOperation =
   | "application-delete"
   | "application-disable"
   | "application-enable"
-  | "application-policy"
-  | "firecrawl-check"
   | "firecrawl-disable"
   | "firecrawl-enable"
-  | "firecrawl-policy"
   | "firecrawl-revoke"
-  | "firecrawl-rotate"
-  | "inference-check"
   | "inference-revoke"
-  | "inference-rotate"
 
 interface ApplicationMutationLock {
   activeOperation: ApplicationMutationOperation | null
@@ -174,6 +141,10 @@ const EMPTY_MODEL_OPTIONS: AdminInferenceModel[] = []
 const applicationsDateTimeFormatter = new Intl.DateTimeFormat("en", {
   dateStyle: "medium",
   timeStyle: "short",
+  timeZone: "UTC",
+})
+const applicationsDateFormatter = new Intl.DateTimeFormat("en", {
+  dateStyle: "medium",
   timeZone: "UTC",
 })
 const applicationsCompactNumberFormatter = new Intl.NumberFormat("en", {
@@ -216,7 +187,6 @@ export function ApplicationsV2Experience({
         accessRole={accessRole}
         app={connectedAppDetail ?? null}
         appAction={visibleAppAction}
-        modelOptions={modelOptions}
       />
     )
   }
@@ -225,7 +195,7 @@ export function ApplicationsV2Experience({
     <div className="w-full min-h-screen min-h-dvh pb-16 pt-8 lg:pt-[73px]">
       <PageHeader title="Keys" />
       <AppActionNotice appAction={visibleAppAction} />
-      <div className="mt-10 w-full lg:w-[640px]">
+      <div className="mt-8 w-full max-w-5xl">
         <ConnectedAppsPanel accessRole={accessRole} apps={connectedApps} />
       </div>
     </div>
@@ -297,7 +267,7 @@ function AddConnectedAppView({
 
   return (
     <div className="w-full min-h-screen min-h-dvh pb-16 pt-8 lg:pt-[73px]">
-      <SubpageHeader title="Keys > Create Key" />
+      <SubpageHeader title="Create Key" />
       <div className="mt-10 flex w-full flex-col gap-3 lg:w-[640px]">
         <form
           action={createAction}
@@ -415,7 +385,7 @@ function AddConnectedAppView({
           </p>
           <ConnectedAppCreateStatus state={createState} />
           <div className="flex justify-end gap-2">
-            <Link className={secondaryButtonClass} href="/applications">
+            <Link className={secondaryButtonClass} href="/keys">
               Cancel
             </Link>
             <button
@@ -450,47 +420,29 @@ function ConnectedAppDetailView({
   accessRole,
   app,
   appAction,
-  modelOptions,
 }: {
   accessRole: RetainedConsoleRole
   app: AdminConnectedApp | null
   appAction?: string
-  modelOptions: AdminInferenceModel[]
 }) {
   const detailHeadingRef = useRef<HTMLHeadingElement>(null)
   const [showDisableConfirm, setShowDisableConfirm] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [showPolicyEditor, setShowPolicyEditor] = useState(false)
-  const [showRotateConfirm, setShowRotateConfirm] = useState(false)
   const [credentialToRevoke, setCredentialToRevoke] =
     useState<AdminConnectedAppCredentialMetadata | null>(null)
-  const [checkResult, checkAction, checkPending] = useActionState(
-    checkAdminConnectedAppConnectionAction,
-    initialConnectedAppTestState,
-  )
-  const [rotateResult, rotateAction, rotatePending] = useActionState(
-    rotateAdminConnectedAppCredentialsAction,
-    initialConnectedAppCredentialState,
-  )
   const [revokeResult, revokeAction, revokePending] = useActionState(
     revokeAdminConnectedAppCredentialAction,
     initialConnectedAppCredentialState,
   )
-  const checkState = checkResult ?? interruptedConnectedAppTestState
-  const rotateState = rotateResult ?? interruptedConnectedAppCredentialState
   const revokeState = revokeResult ?? interruptedConnectedAppCredentialState
   const [latestApp, setLatestApp] = useState(app)
   const [activeOperation, setActiveOperation] =
     useState<ApplicationMutationOperation | null>(null)
-  const [rotationReveal, setRotationReveal] =
-    useState<AdminConnectedAppCredential | null>(null)
+  const router = useRouter()
+  const [statusRefreshPending, startStatusRefresh] = useTransition()
   const operationLockRef = useRef<ApplicationMutationOperation | null>(null)
-  const mutationPending =
-    activeOperation !== null || checkPending || rotatePending || revokePending
-  usePendingConsoleSessionRecovery(
-    mutationPending,
-    checkResult == null || rotateResult == null || revokeResult == null,
-  )
+  const mutationPending = activeOperation !== null || revokePending
+  usePendingConsoleSessionRecovery(mutationPending, revokeResult == null)
 
   const beginMutation = useCallback(
     (
@@ -538,29 +490,6 @@ function ConnectedAppDetailView({
     detailHeadingRef.current?.focus()
   }, [])
   useEffect(() => {
-    if (checkState.status === "idle" || !isMutationActive("inference-check")) {
-      return
-    }
-    if (checkState.app) {
-      setLatestApp(checkState.app)
-    }
-    releaseMutation("inference-check")
-  }, [checkState, isMutationActive, releaseMutation])
-  useEffect(() => {
-    if (
-      rotateState.status === "idle" ||
-      !isMutationActive("inference-rotate")
-    ) {
-      return
-    }
-    if (rotateState.app) {
-      setLatestApp(rotateState.app)
-    }
-    setShowRotateConfirm(false)
-    setRotationReveal(rotateState.credential)
-    releaseMutation("inference-rotate")
-  }, [isMutationActive, releaseMutation, rotateState])
-  useEffect(() => {
     if (
       revokeState.status === "idle" ||
       !isMutationActive("inference-revoke")
@@ -577,190 +506,150 @@ function ConnectedAppDetailView({
   if (!app) {
     return (
       <div className="w-full min-h-screen min-h-dvh pb-16 pt-8 lg:pt-[73px]">
-        <SubpageHeader title="Keys > Key settings" />
-        <p className="mt-10 rounded-lg border border-[#353535] bg-[#232323] p-4 text-sm text-[#b2b2b2] lg:w-[640px]">
-          This Key is not available.
-        </p>
+        <SubpageHeader title="Key settings" />
+        <div className="mt-8 grid max-w-4xl gap-3 rounded-xl border border-[#353535] bg-[#232323] p-4 text-sm text-[#b2b2b2]">
+          <p>This Key is unavailable or has been deleted.</p>
+          <Link
+            className="w-fit font-medium text-[#73cfff] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff]"
+            href="/keys"
+          >
+            Back to Keys
+          </Link>
+        </div>
       </div>
     )
   }
 
   const currentApp = latestApp ?? app
   const isAdmin = accessRole === "admin"
+  const hasActiveInferenceCredential = currentApp.credentials.some(
+    (credential) =>
+      credential.status === "active" && credential.revokedAt === null,
+  )
 
   return (
     <div className="w-full min-h-screen min-h-dvh pb-16 pt-8 lg:pt-[73px]">
-      <SubpageHeader title={`Keys > ${currentApp.name}`} />
-      <div className="mt-10 flex w-full flex-col gap-3 lg:w-[640px]">
+      <SubpageHeader
+        breadcrumbLabel={currentApp.name}
+        description={currentApp.description || undefined}
+        focusFallback
+        headingRef={detailHeadingRef}
+        title="Key settings"
+      />
+      <div className="mt-8 flex w-full max-w-4xl flex-col gap-4">
         <AppActionNotice appAction={appAction} />
-        <section className="grid gap-3 rounded-lg border border-[#353535] bg-[#232323] p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
+        {!isAdmin ? (
+          <p className="rounded-lg border border-[#353535] bg-[#232323] px-4 py-3 text-sm text-[#b2b2b2]">
+            Operator access is read-only. Key lifecycle changes require an
+            Administrator.
+          </p>
+        ) : null}
+
+        <section
+          aria-labelledby="key-status-heading"
+          className="grid gap-4 rounded-xl border border-[#353535] bg-[#232323] p-4 sm:p-5"
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
               <h2
-                className="truncate text-lg font-semibold text-white"
-                data-dialog-focus-fallback
-                ref={detailHeadingRef}
-                tabIndex={-1}
+                className="text-base font-semibold text-white"
+                id="key-status-heading"
               >
-                {currentApp.name}
+                Inference access
               </h2>
               <p className="mt-1 text-sm text-[#b2b2b2]">
-                {currentApp.description}
-              </p>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[#8b8b8b]">
-                Inference API
+                Primary API access and recent inference usage.
               </p>
             </div>
-            <StatusPill status={currentApp.status} />
+            {isAdmin ? (
+              <button
+                aria-label="Refresh access status"
+                className={quietActionClass}
+                disabled={mutationPending || statusRefreshPending}
+                onClick={() =>
+                  startStatusRefresh(() => {
+                    router.refresh()
+                  })
+                }
+                type="button"
+              >
+                <RefreshCw
+                  aria-hidden
+                  className={cn(
+                    "size-4 motion-reduce:animate-none",
+                    statusRefreshPending && "animate-spin",
+                  )}
+                />
+                {statusRefreshPending ? "Refreshing..." : "Refresh status"}
+              </button>
+            ) : null}
           </div>
-          <DetailRow
-            label="Authentication"
-            value={authMethodLabel(currentApp.authMethod)}
-          />
-          <p className="text-xs leading-5 text-[#8b8b8b]">
-            Authentication mode cannot be changed after creation.
-          </p>
-          <DetailRow
-            label="Model access"
-            value={
-              currentApp.modelMode === "auto"
-                ? "Auto (active approved inventory)"
-                : currentApp.allowedModels.join(", ")
-            }
-          />
-          <DetailRow
-            label="Requests per second"
-            value={formatNullableLimit(currentApp.rateLimitRps, " rps")}
-          />
-          <DetailRow
-            label="Concurrent requests"
-            value={formatNullableLimit(currentApp.maxConcurrentRequests, "")}
-          />
-          <DetailRow
-            label="Context per request"
-            value={formatNullableLimit(currentApp.maxContextBytes, " bytes")}
-          />
-          <DetailRow
-            label="Token alert threshold"
-            value={formatNullableLimit(
-              currentApp.tokenAlertThreshold7d,
-              " / 7 days",
-            )}
-          />
-          <DetailRow
-            label="Token alert status"
-            value={tokenAlertStateLabel(
-              currentApp.tokenAlertState,
-              currentApp.tokenAlertThreshold7d,
-            )}
-          />
-          <ApplicationCapacityPolicyCopy />
-          <DetailRow
-            label="Connection"
-            value={connectionStatusLabel(currentApp.connectionStatus)}
-          />
-          <DetailRow
-            label="Last connected"
-            value={dateTimeLabel(currentApp.lastConnectedAt)}
-          />
-          <p className="rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-xs leading-5 text-[#b2b2b2]">
-            Connection passes only after a real third-party client authenticates
-            and calls GET /models. Console only refreshes that recorded evidence
-            and never probes with the credential.
-          </p>
-          <ConnectedAppTestStatus state={checkState} />
-          <CredentialActionStatus state={rotateState} />
+
+          <div className="divide-y divide-[#353535] rounded-lg bg-[#1d1d1d] px-3">
+            <AccessSummaryRow
+              connectionStatus={currentApp.connectionStatus}
+              lastConnectedAt={currentApp.lastConnectedAt}
+              status={currentApp.status === "enabled" ? "Active" : "Disabled"}
+              title="Inference API"
+              tone={currentApp.status === "enabled" ? "positive" : "neutral"}
+            />
+            {currentApp.firecrawl.status === "enabled" ? (
+              <AccessSummaryRow
+                connectionStatus={currentApp.firecrawl.connectionStatus}
+                lastConnectedAt={currentApp.firecrawl.lastConnectedAt}
+                status={
+                  currentApp.status === "enabled" ? "Enabled" : "Suspended"
+                }
+                title="Firecrawl"
+                tone={currentApp.status === "enabled" ? "info" : "neutral"}
+              />
+            ) : null}
+          </div>
           <CredentialActionStatus state={revokeState} />
-          {isAdmin ? (
-            <div className="flex flex-wrap justify-end gap-2">
+
+          <dl
+            aria-label="Inference usage, last 7 days"
+            className="grid grid-cols-2 gap-4 border-t border-[#353535] pt-4 sm:grid-cols-3"
+          >
+            <Metric
+              label="Last used"
+              value={lastUsedLabel(currentApp.usage.lastUsedAt)}
+            />
+            <Metric
+              label="Requests, 7 days"
+              value={currentApp.usage.requests7d.toLocaleString()}
+            />
+            <Metric
+              label="Tokens, 7 days"
+              value={compactNumber(currentApp.usage.tokens7d)}
+            />
+          </dl>
+
+          {isAdmin &&
+          currentApp.status === "disabled" &&
+          hasActiveInferenceCredential ? (
+            <div className="flex justify-end">
               <form
-                action={checkAction}
-                onSubmit={(event) => beginMutation(event, "inference-check")}
+                action={enableAdminConnectedAppAction}
+                onSubmit={(event) => beginMutation(event, "application-enable")}
               >
                 <input name="appId" type="hidden" value={currentApp.id} />
-                <PendingSubmitButton
-                  className={primaryButtonClass}
-                  forcePending={
-                    activeOperation === "inference-check" || checkPending
-                  }
-                  idleLabel="Check connection"
-                  pendingLabel="Checking..."
-                  unavailable={
-                    mutationPending && activeOperation !== "inference-check"
-                  }
+                <input
+                  name="returnTo"
+                  type="hidden"
+                  value={`/keys/apps/${currentApp.id}`}
                 />
-              </form>
-              <button
-                className={secondaryButtonClass}
-                disabled={mutationPending}
-                onClick={() => setShowRotateConfirm(true)}
-                type="button"
-              >
-                Rotate Key credentials
-              </button>
-              <button
-                className={secondaryButtonClass}
-                disabled={mutationPending}
-                onClick={() => setShowPolicyEditor((current) => !current)}
-                type="button"
-              >
-                {showPolicyEditor ? "Close policy editor" : "Edit policy"}
-              </button>
-              {currentApp.status === "enabled" ? (
                 <button
-                  className={dangerButtonClass}
+                  className={quietActionClass}
                   disabled={mutationPending}
-                  onClick={() => setShowDisableConfirm(true)}
-                  type="button"
+                  type="submit"
                 >
-                  Disable Key
+                  Re-enable Key
                 </button>
-              ) : (
-                <form
-                  action={enableAdminConnectedAppAction}
-                  onSubmit={(event) =>
-                    beginMutation(event, "application-enable")
-                  }
-                >
-                  <input name="appId" type="hidden" value={currentApp.id} />
-                  <input
-                    name="returnTo"
-                    type="hidden"
-                    value={`/keys/apps/${currentApp.id}`}
-                  />
-                  <button
-                    className={secondaryButtonClass}
-                    disabled={mutationPending}
-                    type="submit"
-                  >
-                    Re-enable Key
-                  </button>
-                </form>
-              )}
-              <button
-                className={dangerButtonClass}
-                disabled={mutationPending}
-                onClick={() => setShowDeleteConfirm(true)}
-                type="button"
-              >
-                Delete Key
-              </button>
+              </form>
             </div>
-          ) : (
-            <p className="rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-sm text-[#b2b2b2]">
-              Operator access is read-only. An Administrator manages Key
-              credentials and lifecycle actions.
-            </p>
-          )}
+          ) : null}
         </section>
-
-        {isAdmin && showPolicyEditor ? (
-          <ConnectedAppPolicyEditor
-            app={currentApp}
-            modelOptions={modelOptions}
-            mutationLock={mutationLock}
-          />
-        ) : null}
 
         <CredentialMetadataList
           app={currentApp}
@@ -769,54 +658,56 @@ function ConnectedAppDetailView({
           onRevoke={setCredentialToRevoke}
         />
 
-        {rotationReveal ? (
-          <ConnectedAppCredentialReveal
-            credential={rotationReveal}
-            key={rotationReveal.credentialId}
-            title="Rotated credential"
-          />
-        ) : null}
-
         <FirecrawlAccessPanel
           accessRole={accessRole}
           app={currentApp}
           mutationLock={mutationLock}
           onAppChange={setLatestApp}
         />
+
+        {isAdmin ? (
+          <section
+            aria-labelledby="key-lifecycle-heading"
+            className="rounded-xl border border-[#4a2426] bg-[#21191a] p-4 sm:p-5"
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2
+                  className="text-base font-semibold text-white"
+                  id="key-lifecycle-heading"
+                >
+                  Key lifecycle
+                </h2>
+                <p className="mt-1 text-sm text-[#b2b2b2]">
+                  Disable access temporarily or permanently delete this Key.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {currentApp.status === "enabled" ? (
+                  <button
+                    className={disableButtonClass}
+                    disabled={mutationPending}
+                    onClick={() => setShowDisableConfirm(true)}
+                    type="button"
+                  >
+                    Disable Key
+                  </button>
+                ) : null}
+                <button
+                  className={deleteButtonClass}
+                  disabled={mutationPending}
+                  onClick={() => setShowDeleteConfirm(true)}
+                  type="button"
+                >
+                  Delete Key
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : null}
       </div>
 
-      {showRotateConfirm ? (
-        <ConfirmationDialog
-          description={rotationDescription(currentApp.authMethod)}
-          dismissDisabled={mutationPending}
-          onCancel={() => setShowRotateConfirm(false)}
-          title="Rotate Key credential?"
-        >
-          <form
-            action={rotateAction}
-            onSubmit={(event) => {
-              if (beginMutation(event, "inference-rotate")) {
-                setRotationReveal(null)
-              }
-            }}
-          >
-            <input name="appId" type="hidden" value={currentApp.id} />
-            <PendingSubmitButton
-              className={primaryButtonClass}
-              forcePending={
-                activeOperation === "inference-rotate" || rotatePending
-              }
-              idleLabel="Rotate"
-              pendingLabel="Rotating..."
-              unavailable={
-                mutationPending && activeOperation !== "inference-rotate"
-              }
-            />
-          </form>
-        </ConfirmationDialog>
-      ) : null}
-
-      {credentialToRevoke ? (
+      {isAdmin && credentialToRevoke ? (
         <ConfirmationDialog
           description="This exact credential will stop working immediately. This action cannot be undone."
           dismissDisabled={mutationPending}
@@ -848,7 +739,7 @@ function ConnectedAppDetailView({
         </ConfirmationDialog>
       ) : null}
 
-      {showDisableConfirm ? (
+      {isAdmin && showDisableConfirm ? (
         <ConfirmationDialog
           description="All Key credentials will stop reaching inference until an Admin re-enables this Key."
           dismissDisabled={mutationPending}
@@ -917,111 +808,6 @@ function ConnectedAppDetailView({
   )
 }
 
-function ConnectedAppPolicyEditor({
-  app,
-  modelOptions,
-  mutationLock,
-}: {
-  app: AdminConnectedApp
-  modelOptions: AdminInferenceModel[]
-  mutationLock: ApplicationMutationLock
-}) {
-  const [modelMode, setModelMode] = useState<"auto" | "manual">(app.modelMode)
-  return (
-    <form
-      action={updateAdminConnectedAppPolicyAction}
-      className="grid gap-3 rounded-lg border border-[#353535] bg-[#232323] p-4"
-      onSubmit={(event) => mutationLock.begin(event, "application-policy")}
-    >
-      <div>
-        <h2 className="text-lg font-semibold text-white">Key policy</h2>
-        <p className="mt-1 text-sm text-[#b2b2b2]">
-          Admin-only configuration. Authentication remains fixed as{" "}
-          {authMethodLabel(app.authMethod)}.
-        </p>
-      </div>
-      <input name="appId" type="hidden" value={app.id} />
-      <input name="modelMode" type="hidden" value={modelMode} />
-      <input name="returnTo" type="hidden" value={`/keys/apps/${app.id}`} />
-      <ApplicationTextField
-        defaultValue={app.name}
-        label="Key name"
-        name="name"
-        placeholder="Production integration"
-        required
-      />
-      <ApplicationTextField
-        defaultValue={app.description}
-        label="Description (optional)"
-        name="description"
-        placeholder="What will use this Key"
-      />
-      <SegmentedControl
-        label="Model access"
-        options={[
-          {
-            active: modelMode === "auto",
-            label: "Auto",
-            onSelect: () => setModelMode("auto"),
-          },
-          {
-            active: modelMode === "manual",
-            label: "Manual",
-            onSelect: () => setModelMode("manual"),
-          },
-        ]}
-      />
-      {modelMode === "manual" ? (
-        <ModelAliasFields
-          modelOptions={modelOptions}
-          selectedAliases={app.allowedModels}
-        />
-      ) : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <OptionalLimitField
-          checkboxName="rateLimitRpsEnabled"
-          initialValue={app.rateLimitRps}
-          inputName="rateLimitRps"
-          label="Requests per second"
-          max={10_000}
-        />
-        <OptionalLimitField
-          checkboxName="maxConcurrentRequestsEnabled"
-          initialValue={app.maxConcurrentRequests}
-          inputName="maxConcurrentRequests"
-          label="Concurrent requests"
-          max={10_000}
-        />
-        <OptionalLimitField
-          checkboxName="maxContextBytesEnabled"
-          initialValue={app.maxContextBytes}
-          inputName="maxContextBytes"
-          label="Context bytes per request"
-          max={Number.MAX_SAFE_INTEGER}
-        />
-        <OptionalLimitField
-          checkboxName="tokenAlertThreshold7dEnabled"
-          enabledLabel="Visibility threshold enabled"
-          initialValue={app.tokenAlertThreshold7d}
-          inputName="tokenAlertThreshold7d"
-          label="Seven-day token alert threshold"
-          max={100_000_000}
-        />
-      </div>
-      <ApplicationCapacityPolicyCopy />
-      <div className="flex justify-end">
-        <button
-          className={primaryButtonClass}
-          disabled={mutationLock.pending}
-          type="submit"
-        >
-          Save policy
-        </button>
-      </div>
-    </form>
-  )
-}
-
 function ConnectedAppsPanel({
   accessRole,
   apps,
@@ -1029,87 +815,223 @@ function ConnectedAppsPanel({
   accessRole: RetainedConsoleRole
   apps: AdminConnectedApp[]
 }) {
+  const [deleteTarget, setDeleteTarget] = useState<AdminConnectedApp | null>(
+    null,
+  )
+  const [sort, setSort] = useState<KeySort>({
+    direction: "desc",
+    key: "created",
+  })
+  const sortedApps = useMemo(
+    () => [...apps].sort((left, right) => compareKeys(left, right, sort)),
+    [apps, sort],
+  )
+
+  const changeSort = (key: KeySortKey) => {
+    setSort((current) => ({
+      direction:
+        current.key === key
+          ? current.direction === "asc"
+            ? "desc"
+            : "asc"
+          : key === "name"
+            ? "asc"
+            : "desc",
+      key,
+    }))
+  }
+
   return (
-    <section className="grid gap-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Inference Keys</h2>
+    <section className="grid gap-4" aria-labelledby="keys-table-heading">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="sr-only" id="keys-table-heading">
+            Key management
+          </h2>
+          <p className="text-sm text-[#b2b2b2]">
+            Manage inference access and its separately enabled Firecrawl access.
+          </p>
+        </div>
         {accessRole === "admin" ? (
           <Link
-            className="flex items-center gap-1 text-sm font-medium text-white"
-            href="/applications/apps/new"
+            className={cn(primaryButtonClass, "h-10 px-4")}
+            href="/keys/apps/new"
           >
-            <Plus aria-hidden className="size-5" />
+            <Plus aria-hidden className="size-4" />
             Create Key
           </Link>
         ) : null}
       </div>
-      <div className="overflow-hidden rounded-lg border border-[#353535] bg-[#232323]">
-        {apps.length > 0 ? (
-          apps.map((app, index) => (
-            <div className="contents" key={app.id}>
-              <article className="grid gap-3 p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <h3 className="truncate font-medium text-white">
-                      {app.name}
-                    </h3>
-                    <p className="mt-1 text-sm text-[#b2b2b2]">
-                      {app.description}
-                    </p>
-                  </div>
-                  <Link
-                    className={secondaryButtonClass}
-                    href={`/applications/apps/${encodeURIComponent(app.id)}`}
+      {sortedApps.length > 0 ? (
+        <>
+          <div className="hidden overflow-visible rounded-xl border border-[#353535] bg-[#232323] md:block">
+            <table className="w-full table-fixed border-collapse text-left text-sm">
+              <thead className="border-b border-[#454545] text-xs font-semibold uppercase tracking-[0.08em] text-[#9b9b9b]">
+                <tr>
+                  <SortableKeyHeader
+                    activeSort={sort}
+                    className="w-[36%]"
+                    label="Key Name"
+                    onSort={changeSort}
+                    sortKey="name"
+                  />
+                  <SortableKeyHeader
+                    activeSort={sort}
+                    className="w-[20%] whitespace-nowrap"
+                    label="Date Created"
+                    onSort={changeSort}
+                    sortKey="created"
+                  />
+                  <SortableKeyHeader
+                    activeSort={sort}
+                    className="w-[14%]"
+                    label="Status"
+                    onSort={changeSort}
+                    sortKey="status"
+                  />
+                  <th className="w-[14%] px-4 py-3" scope="col">
+                    Firecrawl
+                  </th>
+                  <th className="w-[16%] px-4 py-3 text-right" scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#353535]">
+                {sortedApps.map((app) => (
+                  <tr
+                    className="group h-16 transition-colors hover:bg-[#282828]"
+                    key={app.id}
                   >
-                    Settings
-                  </Link>
+                    <td className="px-4 py-3 align-middle">
+                      <Link
+                        className="block w-fit max-w-full truncate font-semibold text-white transition-colors hover:text-[#73cfff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#009fff]"
+                        href={`/keys/apps/${encodeURIComponent(app.id)}`}
+                      >
+                        {app.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-[#d7d7d7]">
+                      {dateOnlyLabel(app.createdAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <KeyLifecyclePill status={app.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-white">
+                        {firecrawlStatusLabel(app.firecrawl.status)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        <TooltipIconLink
+                          href={`/keys/apps/${encodeURIComponent(app.id)}`}
+                          label={`Settings for ${app.name}`}
+                        >
+                          <Settings aria-hidden className="size-[18px]" />
+                        </TooltipIconLink>
+                        {accessRole === "admin" ? (
+                          <TooltipIconButton
+                            destructive
+                            label={`Delete ${app.name}`}
+                            onClick={() => setDeleteTarget(app)}
+                          >
+                            <Trash2 aria-hidden className="size-[18px]" />
+                          </TooltipIconButton>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <ul className="grid gap-2 md:hidden">
+            {sortedApps.map((app) => (
+              <li
+                className="rounded-xl border border-[#353535] bg-[#232323] p-4"
+                key={app.id}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link
+                      className="block truncate font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#009fff]"
+                      href={`/keys/apps/${encodeURIComponent(app.id)}`}
+                    >
+                      {app.name}
+                    </Link>
+                  </div>
+                  <KeyLifecyclePill status={app.status} />
                 </div>
-                <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                   <Metric
-                    label="Authentication"
-                    value={authMethodLabel(app.authMethod)}
-                  />
-                  <Metric
-                    label="Connection"
-                    value={connectionStatusLabel(app.connectionStatus)}
-                  />
-                  <Metric
-                    label="Last used"
-                    value={dateTimeLabel(app.usage.lastUsedAt)}
-                  />
-                  <Metric
-                    label="Requests"
-                    value={app.usage.requests7d.toLocaleString()}
-                  />
-                  <Metric
-                    label="Tokens"
-                    value={compactNumber(app.usage.tokens7d)}
-                  />
-                  <Metric
-                    label="Inference"
-                    value={app.status === "enabled" ? "Enabled" : "Disabled"}
+                    label="Date created"
+                    value={dateOnlyLabel(app.createdAt)}
                   />
                   <Metric
                     label="Firecrawl"
-                    value={
-                      app.firecrawl.status === "enabled"
-                        ? "Enabled"
-                        : "Disabled"
-                    }
+                    value={firecrawlStatusLabel(app.firecrawl.status)}
                   />
                 </dl>
-              </article>
-              {index < apps.length - 1 ? (
-                <span aria-hidden className="block h-px bg-[#353535]" />
-              ) : null}
-            </div>
-          ))
-        ) : (
-          <p className="p-4 text-sm text-[#b2b2b2]">
-            Create the first Key to issue a dedicated inference credential.
+                <div className="mt-4 flex justify-end gap-2 border-t border-[#353535] pt-3">
+                  <Link
+                    aria-label={`Settings for ${app.name}`}
+                    className={quietActionClass}
+                    href={`/keys/apps/${encodeURIComponent(app.id)}`}
+                  >
+                    <Settings aria-hidden className="size-4" />
+                    Settings
+                  </Link>
+                  {accessRole === "admin" ? (
+                    <button
+                      aria-label={`Delete ${app.name}`}
+                      className={cn(quietActionClass, "text-[#ff7377]")}
+                      onClick={() => setDeleteTarget(app)}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <div className="rounded-xl border border-dashed border-[#454545] bg-[#232323] px-5 py-10 text-center">
+          <p className="font-semibold text-white">No Keys yet</p>
+          <p className="mt-1 text-sm text-[#b2b2b2]">
+            {accessRole === "admin"
+              ? "Create a Key to issue dedicated inference access."
+              : "An Administrator has not created any Keys yet."}
           </p>
-        )}
-      </div>
+        </div>
+      )}
+
+      {accessRole === "admin" && deleteTarget ? (
+        <ConfirmationDialog
+          description={`Soft deletion revokes every credential for ${deleteTarget.name} immediately. The Key identifier and audit linkage remain retained.`}
+          onCancel={() => setDeleteTarget(null)}
+          title={`Delete ${deleteTarget.name}?`}
+        >
+          <form action={softDeleteAdminConnectedAppAction}>
+            <input name="appId" type="hidden" value={deleteTarget.id} />
+            <input name="returnTo" type="hidden" value="/keys" />
+            <ApplicationTextField
+              label="Type DELETE KEY to confirm"
+              name="confirmation"
+              placeholder="DELETE KEY"
+              required
+            />
+            <PendingSubmitButton
+              className={cn(deleteButtonClass, "mt-3 w-full")}
+              idleLabel="Delete Key"
+              pendingLabel="Deleting..."
+            />
+          </form>
+        </ConfirmationDialog>
+      ) : null}
     </section>
   )
 }
@@ -1249,7 +1171,7 @@ function CreatedKeyDialog({
         <div className="flex justify-end gap-2">
           <Link
             className={secondaryButtonClass}
-            href={`/applications/apps/${encodeURIComponent(app.id)}`}
+            href={`/keys/apps/${encodeURIComponent(app.id)}`}
             onClick={(event) => {
               event.preventDefault()
               onClose()
@@ -1298,89 +1220,6 @@ function trapDialogFocus(event: ReactKeyboardEvent<HTMLDialogElement>) {
   }
 }
 
-export function ConnectedAppCredentialReveal({
-  credential,
-  footer,
-  title,
-}: {
-  credential: AdminConnectedAppCredential
-  footer?: React.ReactNode
-  title: string
-}) {
-  const headingRef = useRef<HTMLHeadingElement>(null)
-  const visible = useOneTimeRevealVisibility()
-
-  useEffect(() => {
-    headingRef.current?.focus()
-  }, [])
-
-  if (!visible) {
-    return <ExpiredCredentialRevealNotice title={title} />
-  }
-
-  return (
-    <section className="grid gap-3 rounded-lg border border-[#7b5d1a] bg-[#2b2414] p-4">
-      <div>
-        <h2
-          className="text-lg font-semibold text-white"
-          ref={headingRef}
-          tabIndex={-1}
-        >
-          {title}
-        </h2>
-        <p className="mt-1 text-sm text-[#ffdb8a]">
-          This secret is shown once. Store it before leaving this page.
-        </p>
-        <p className="mt-1 text-xs leading-5 text-[#b2b2b2]">
-          {credential.authMethod === "api_key"
-            ? "During rotation, the previous static key remains valid for an exact 24-hour overlap unless it is revoked immediately."
-            : "During rotation, the previous OAuth client secret is invalidated immediately. Already-issued access tokens only last until their short expiry."}
-        </p>
-      </div>
-      <CopyableCredentialRow
-        label="Credential ID"
-        value={credential.credentialId}
-      />
-      {credential.authMethod === "api_key" ? (
-        <CopyableCredentialRow
-          label="API key"
-          secret
-          value={credential.apiKey}
-        />
-      ) : (
-        <>
-          <CopyableCredentialRow
-            label="Client ID"
-            value={credential.clientId}
-          />
-          <CopyableCredentialRow
-            label="Client secret"
-            secret
-            value={credential.clientSecret}
-          />
-          <CopyableCredentialRow
-            label="Token URL"
-            value={credential.tokenUrl}
-          />
-        </>
-      )}
-      <CopyableCredentialRow
-        label="OpenAI base URL"
-        value={credential.openAiBaseUrl}
-      />
-      {credential.model ? (
-        <CopyableCredentialRow label="Model" value={credential.model} />
-      ) : null}
-      <CopyableCredentialRow
-        label="Example request"
-        multiline
-        value={credential.exampleCurl}
-      />
-      {footer}
-    </section>
-  )
-}
-
 function CredentialMetadataList({
   app,
   canMutate,
@@ -1392,74 +1231,167 @@ function CredentialMetadataList({
   disabled: boolean
   onRevoke: (credential: AdminConnectedAppCredentialMetadata) => void
 }) {
+  const currentCredentials = app.credentials.filter(
+    (credential) => credential.status !== "revoked",
+  )
+  const revokedCredentials = app.credentials.filter(
+    (credential) => credential.status === "revoked",
+  )
+
   return (
-    <section className="grid gap-3 rounded-lg border border-[#353535] bg-[#232323] p-4">
+    <section
+      aria-labelledby="inference-credentials-heading"
+      className="grid gap-4 rounded-xl border border-[#353535] bg-[#232323] p-4 sm:p-5"
+    >
       <div>
-        <h2 className="text-lg font-semibold text-white">
-          Inference credentials
+        <h2
+          className="text-base font-semibold text-white"
+          id="inference-credentials-heading"
+        >
+          Inference credential
         </h2>
         <p className="mt-1 text-sm text-[#b2b2b2]">
-          Secret-free lifecycle metadata. Raw keys and client secrets are never
-          available again after issuance.
+          Primary credential for inference API access. Secret values are
+          available only when issued.
         </p>
       </div>
-      {app.credentials.map((credential) => (
-        <article
-          className="grid gap-2 rounded-lg border border-[#353535] bg-[#181818] p-3"
-          key={credential.id}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white">
-                {credential.keyPrefix ?? credential.clientId ?? credential.id}
-              </p>
-              <p className="mt-1 break-all font-mono text-xs text-[#8b8b8b]">
-                {credential.id}
-              </p>
-            </div>
-            <CredentialStatusPill status={credential.status} />
-          </div>
-          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-            <Metric
-              label="Type"
-              value={authMethodLabel(credential.authMethod)}
+
+      <div className="divide-y divide-[#353535] rounded-lg bg-[#1d1d1d] px-3">
+        {currentCredentials.length > 0 ? (
+          currentCredentials.map((credential) => (
+            <CredentialMetadataRow
+              canMutate={canMutate}
+              credential={credential}
+              disabled={disabled}
+              key={credential.id}
+              onRevoke={onRevoke}
             />
-            <Metric
-              label="Age"
-              value={formatCredentialAge(credential.issuedAt)}
-            />
-            <Metric
-              label="Last use"
-              value={dateTimeLabel(credential.lastUsedAt)}
-            />
-            <Metric
-              label="Rotated"
-              value={dateTimeLabel(credential.rotatedAt)}
-            />
-            <Metric
-              label="Overlap ends"
-              value={dateTimeLabel(credential.overlapExpiresAt)}
-            />
-            <Metric
-              label="Revoked"
-              value={dateTimeLabel(credential.revokedAt)}
-            />
-          </dl>
-          {canMutate && credential.status !== "revoked" ? (
-            <div className="flex justify-end">
-              <button
-                className={dangerButtonClass}
-                disabled={disabled}
-                onClick={() => onRevoke(credential)}
-                type="button"
+          ))
+        ) : (
+          <div className="grid gap-2 py-4 text-sm text-[#b2b2b2]">
+            <p>No active inference credential remains for this Key.</p>
+            {canMutate ? (
+              <Link
+                className="w-fit font-medium text-[#73cfff] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff]"
+                href="/keys/apps/new"
               >
-                Revoke now
-              </button>
-            </div>
-          ) : null}
-        </article>
-      ))}
+                Create a new Key
+              </Link>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      {revokedCredentials.length > 0 ? (
+        <details className="group rounded-lg border border-[#353535]">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium text-[#d7d7d7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]">
+            Credential history ({revokedCredentials.length})
+            <ChevronDown
+              aria-hidden
+              className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+            />
+          </summary>
+          <div className="divide-y divide-[#353535] border-t border-[#353535] px-3">
+            {revokedCredentials.map((credential) => (
+              <CredentialMetadataRow
+                canMutate={false}
+                credential={credential}
+                disabled
+                key={credential.id}
+                onRevoke={onRevoke}
+              />
+            ))}
+          </div>
+        </details>
+      ) : null}
+
+      <dl className="grid gap-0">
+        <ConfigurationRow
+          label="Authentication"
+          value={authMethodLabel(app.authMethod)}
+        />
+        <ConfigurationRow label="Model access" value={modelAccessLabel(app)} />
+        {app.rateLimitRps !== null ? (
+          <ConfigurationRow
+            label="Requests per second"
+            value={`${compactNumber(app.rateLimitRps)} rps`}
+          />
+        ) : null}
+        {app.maxConcurrentRequests !== null ? (
+          <ConfigurationRow
+            label="Concurrent requests"
+            value={compactNumber(app.maxConcurrentRequests)}
+          />
+        ) : null}
+        {app.maxContextBytes !== null ? (
+          <ConfigurationRow
+            label="Maximum context"
+            value={formatBytes(app.maxContextBytes)}
+          />
+        ) : null}
+        {app.tokenAlertThreshold7d !== null ? (
+          <ConfigurationRow
+            label="Seven-day usage alert"
+            value={`${compactNumber(app.tokenAlertThreshold7d)} tokens · ${tokenAlertStateLabel(
+              app.tokenAlertState,
+              app.tokenAlertThreshold7d,
+            )}`}
+          />
+        ) : null}
+      </dl>
     </section>
+  )
+}
+
+function CredentialMetadataRow({
+  canMutate,
+  credential,
+  disabled,
+  onRevoke,
+}: {
+  canMutate: boolean
+  credential: AdminConnectedAppCredentialMetadata
+  disabled: boolean
+  onRevoke: (credential: AdminConnectedAppCredentialMetadata) => void
+}) {
+  return (
+    <article className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-mono text-sm font-medium text-white">
+            {maskedCredentialMetadataIdentifier(credential)}
+          </p>
+          <CredentialStatusPill status={credential.status} />
+        </div>
+        <p className="mt-1 text-xs leading-5 text-[#9b9b9b]">
+          {authMethodLabel(credential.authMethod)} ·{" "}
+          <span aria-label={`Issued ${dateOnlyLabel(credential.issuedAt)}`}>
+            {formatCredentialAge(credential.issuedAt)}
+          </span>{" "}
+          · Last used {lastUsedLabel(credential.lastUsedAt)}
+        </p>
+        {credential.status === "retiring" && credential.overlapExpiresAt ? (
+          <p className="mt-1 text-xs font-medium text-[#ffdb8a]">
+            Overlap ends {dateTimeLabel(credential.overlapExpiresAt)}
+          </p>
+        ) : null}
+        {credential.status === "revoked" && credential.revokedAt ? (
+          <p className="mt-1 text-xs text-[#9b9b9b]">
+            Revoked {dateTimeLabel(credential.revokedAt)}
+          </p>
+        ) : null}
+      </div>
+      {canMutate && credential.status !== "revoked" ? (
+        <button
+          className={quietDestructiveActionClass}
+          disabled={disabled}
+          onClick={() => onRevoke(credential)}
+          type="button"
+        >
+          Revoke now
+        </button>
+      ) : null}
+    </article>
   )
 }
 
@@ -1474,21 +1406,13 @@ function FirecrawlAccessPanel({
   mutationLock: ApplicationMutationLock
   onAppChange: (app: AdminConnectedApp) => void
 }) {
+  const [showEnableForm, setShowEnableForm] = useState(false)
+  const [showReenableConfirm, setShowReenableConfirm] = useState(false)
   const [showDisableConfirm, setShowDisableConfirm] = useState(false)
-  const [showPolicyEditor, setShowPolicyEditor] = useState(false)
-  const [showRotateConfirm, setShowRotateConfirm] = useState(false)
   const [credentialToRevoke, setCredentialToRevoke] =
     useState<AdminConnectedAppFirecrawlCredentialMetadata | null>(null)
   const [enableResult, enableAction, enablePending] = useActionState(
     enableAdminConnectedAppFirecrawlAction,
-    initialFirecrawlCredentialState,
-  )
-  const [checkResult, checkAction, checkPending] = useActionState(
-    checkAdminConnectedAppFirecrawlConnectionAction,
-    initialFirecrawlTestState,
-  )
-  const [rotateResult, rotateAction, rotatePending] = useActionState(
-    rotateAdminConnectedAppFirecrawlCredentialAction,
     initialFirecrawlCredentialState,
   )
   const [revokeResult, revokeAction, revokePending] = useActionState(
@@ -1500,8 +1424,6 @@ function FirecrawlAccessPanel({
     initialFirecrawlLifecycleState,
   )
   const enableState = enableResult ?? interruptedFirecrawlCredentialState
-  const checkState = checkResult ?? interruptedFirecrawlTestState
-  const rotateState = rotateResult ?? interruptedFirecrawlCredentialState
   const revokeState = revokeResult ?? interruptedFirecrawlLifecycleState
   const disableState = disableResult ?? interruptedFirecrawlLifecycleState
   const [credentialReveal, setCredentialReveal] =
@@ -1514,19 +1436,10 @@ function FirecrawlAccessPanel({
     release: releaseMutation,
   } = mutationLock
   const operationPending =
-    pageMutationPending ||
-    enablePending ||
-    checkPending ||
-    rotatePending ||
-    revokePending ||
-    disablePending
+    pageMutationPending || enablePending || revokePending || disablePending
   usePendingConsoleSessionRecovery(
     operationPending,
-    enableResult == null ||
-      checkResult == null ||
-      rotateResult == null ||
-      revokeResult == null ||
-      disableResult == null,
+    enableResult == null || revokeResult == null || disableResult == null,
   )
   const isAdmin = accessRole === "admin"
   const firecrawl = app.firecrawl
@@ -1544,33 +1457,12 @@ function FirecrawlAccessPanel({
     if (enableState.credential) {
       setCredentialReveal(enableState.credential)
     }
+    if (enableState.status === "enabled") {
+      setShowEnableForm(false)
+      setShowReenableConfirm(false)
+    }
     releaseMutation("firecrawl-enable")
   }, [enableState, isMutationActive, onAppChange, releaseMutation])
-  useEffect(() => {
-    if (checkState.status === "idle" || !isMutationActive("firecrawl-check")) {
-      return
-    }
-    if (checkState.app) {
-      onAppChange(checkState.app)
-    }
-    releaseMutation("firecrawl-check")
-  }, [checkState, isMutationActive, onAppChange, releaseMutation])
-  useEffect(() => {
-    if (
-      rotateState.status === "idle" ||
-      !isMutationActive("firecrawl-rotate")
-    ) {
-      return
-    }
-    if (rotateState.app) {
-      onAppChange(rotateState.app)
-    }
-    if (rotateState.credential) {
-      setCredentialReveal(rotateState.credential)
-    }
-    setShowRotateConfirm(false)
-    releaseMutation("firecrawl-rotate")
-  }, [isMutationActive, onAppChange, releaseMutation, rotateState])
   useEffect(() => {
     if (
       revokeState.status === "idle" ||
@@ -1594,262 +1486,280 @@ function FirecrawlAccessPanel({
     if (disableState.app) {
       onAppChange(disableState.app)
     }
+    setCredentialReveal(null)
     setShowDisableConfirm(false)
     releaseMutation("firecrawl-disable")
   }, [disableState, isMutationActive, onAppChange, releaseMutation])
 
-  return (
-    <>
-      <section className="grid gap-3 rounded-lg border border-[#353535] bg-[#232323] p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold text-white">
-              Firecrawl web access
-            </h2>
-            <p className="mt-1 text-sm leading-5 text-[#b2b2b2]">
-              Installed on the appliance and disabled for this Key by default.
-              Firecrawl uses its own API key namespace, separate from inference
-              credentials.
-            </p>
-          </div>
-          <StatusPill status={firecrawl.status} />
-        </div>
+  if (firecrawl.status !== "enabled") {
+    const wasEnabled = firecrawl.disclaimerAcceptedAt !== null
+    const hasActiveCredential = firecrawl.credentials.some(
+      (credential) => credential.status === "active",
+    )
+    const canConfigureInitialEnable = !wasEnabled
+    const canReenable = wasEnabled && hasActiveCredential
+    const credentialWasRevoked = wasEnabled && !hasActiveCredential
+    const parentDisabled = app.status === "disabled"
 
-        <div className="grid gap-2 rounded-lg border border-[#353535] bg-[#181818] p-3 text-sm">
-          <p className="font-medium text-white">Available capabilities</p>
-          <p className="text-[#b2b2b2]">
-            Web search and static single-page scrape only.
-          </p>
-          <p className="font-medium text-white">Unavailable capabilities</p>
-          <p className="text-[#b2b2b2]">
-            Crawl, map, batch scrape, structured extract, agent, and browser
-            session APIs are not exposed.
-          </p>
-        </div>
-
-        <DetailRow
-          label="Search protection"
-          value={formatNullableLimit(firecrawl.searchRateLimitRps, " rps")}
-        />
-        <DetailRow
-          label="Static scrape protection"
-          value={formatNullableLimit(firecrawl.scrapeRateLimitRps, " rps")}
-        />
-        <DetailRow
-          label="Concurrent static scrapes"
-          value={formatNullableLimit(firecrawl.maxConcurrentScrapes, "")}
-        />
-        <DetailRow
-          label="T2 client connection"
-          value={connectionStatusLabel(firecrawl.connectionStatus)}
-        />
-        <DetailRow
-          label="Last T2 client use"
-          value={dateTimeLabel(firecrawl.lastConnectedAt)}
-        />
-        <p className="rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-xs leading-5 text-[#b2b2b2]">
-          Connected means a third-party client authenticated with this
-          Key&apos;s Firecrawl credential and called /v2/search or /v2/scrape.
-          It is passive T2 connection evidence, not proof that the appliance or
-          Firecrawl service is ready. Console never probes with the credential.
-        </p>
-
-        <ConnectedAppTestStatus state={checkState} />
-        <FirecrawlActionStatus state={enableState} />
-        <FirecrawlActionStatus state={rotateState} />
-        <FirecrawlActionStatus state={revokeState} />
-        <FirecrawlActionStatus state={disableState} />
-
-        {firecrawl.status === "disabled" ? (
-          isAdmin ? (
-            <form
-              action={enableAction}
-              className="grid gap-3 rounded-lg border border-[#51431c] bg-[#2b2414] p-3"
-              onSubmit={(event) => {
-                if (beginMutation(event, "firecrawl-enable")) {
-                  setCredentialReveal(null)
+    return (
+      <>
+        <section
+          aria-labelledby="firecrawl-access-heading"
+          className="overflow-hidden rounded-xl border border-[#353535] bg-[#232323] p-4 sm:p-5"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2
+                className="text-base font-semibold text-white"
+                id="firecrawl-access-heading"
+              >
+                Firecrawl
+              </h2>
+              <p className="mt-1 text-sm leading-5 text-[#b2b2b2]">
+                Optional web search and static scrape access.
+              </p>
+            </div>
+            <AccessSwitch
+              checked={false}
+              controls={
+                canConfigureInitialEnable ? "firecrawl-enable-panel" : undefined
+              }
+              disabled={
+                !isAdmin ||
+                operationPending ||
+                parentDisabled ||
+                credentialWasRevoked
+              }
+              expanded={canConfigureInitialEnable ? showEnableForm : undefined}
+              label="Firecrawl"
+              onToggle={() => {
+                if (canConfigureInitialEnable) {
+                  setShowEnableForm((current) => !current)
+                } else if (canReenable) {
+                  setShowReenableConfirm(true)
                 }
               }}
-            >
-              <input name="appId" type="hidden" value={app.id} />
-              <p className="text-sm font-medium text-white">
-                {firecrawl.disclaimerAcceptedAt
-                  ? "Re-enable Firecrawl"
-                  : "Enable Firecrawl"}
-              </p>
-              <label className="flex items-start gap-3 text-sm leading-5 text-[#ffdb8a]">
-                <input
-                  className="mt-1"
-                  name="disclaimerAccepted"
-                  required
-                  type="checkbox"
-                />
-                <span>
-                  I understand that enabling Firecrawl permits outbound web
-                  requests. Remote websites may log those requests. Retrieved
-                  content is processed transiently with zero content retention
-                  in LLM Machines-managed components.
-                </span>
-              </label>
-              <FirecrawlProtectionFields firecrawl={firecrawl} />
-              <div className="flex justify-end">
-                <PendingSubmitButton
-                  className={primaryButtonClass}
-                  forcePending={
-                    activeOperation === "firecrawl-enable" || enablePending
-                  }
-                  idleLabel={
-                    firecrawl.disclaimerAcceptedAt
-                      ? "Re-enable Firecrawl"
-                      : "Enable Firecrawl"
-                  }
-                  pendingLabel="Enabling..."
-                  unavailable={
-                    operationPending && activeOperation !== "firecrawl-enable"
-                  }
-                />
-              </div>
-            </form>
-          ) : (
-            <p className="rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-sm text-[#b2b2b2]">
-              Only an Admin can enable or re-enable outbound Firecrawl access.
+            />
+          </div>
+
+          {parentDisabled ? (
+            <p className="mt-4 border-t border-[#353535] pt-4 text-sm text-[#9b9b9b]">
+              Firecrawl controls are unavailable while this Key is disabled.
             </p>
-          )
-        ) : isAdmin ? (
-          <div className="flex flex-wrap justify-end gap-2">
+          ) : credentialWasRevoked ? (
+            <div className="mt-4 grid gap-2 border-t border-[#353535] pt-4 text-sm text-[#b2b2b2]">
+              <p>
+                The Firecrawl credential was revoked. This Key cannot issue a
+                replacement.
+              </p>
+              {isAdmin ? (
+                <Link
+                  className="w-fit font-medium text-[#73cfff] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff]"
+                  href="/keys/apps/new"
+                >
+                  Create a new Key
+                </Link>
+              ) : null}
+            </div>
+          ) : canReenable ? (
+            <div className="mt-4 border-t border-[#353535] pt-4">
+              <p className="text-sm text-[#b2b2b2]">
+                Re-enable Firecrawl with its original credential and fixed
+                access limits.
+              </p>
+              <FirecrawlActionStatus state={enableState} />
+            </div>
+          ) : null}
+
+          {canConfigureInitialEnable ? (
+            <div
+              aria-hidden={!showEnableForm}
+              className={cn(
+                "grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none",
+                showEnableForm
+                  ? "grid-rows-[1fr] opacity-100"
+                  : "grid-rows-[0fr] opacity-0",
+              )}
+              id="firecrawl-enable-panel"
+            >
+              <div className="min-h-0 overflow-hidden">
+                <div className="mt-4 grid gap-4 border-t border-[#353535] pt-4">
+                  <p className="text-sm text-[#b2b2b2]">
+                    Firecrawl remains off until enablement completes. Its
+                    credential and access limits are then fixed for this Key.
+                  </p>
+                  <FirecrawlActionStatus state={enableState} />
+                  <form
+                    action={enableAction}
+                    onSubmit={(event) => {
+                      if (beginMutation(event, "firecrawl-enable")) {
+                        setCredentialReveal(null)
+                      }
+                    }}
+                  >
+                    <fieldset
+                      className="grid gap-4"
+                      disabled={!showEnableForm || operationPending}
+                    >
+                      <input name="appId" type="hidden" value={app.id} />
+                      <label className="flex items-start gap-3 text-sm leading-5 text-[#ffdb8a]">
+                        <input
+                          className="mt-1"
+                          name="disclaimerAccepted"
+                          required
+                          type="checkbox"
+                        />
+                        <span>
+                          I understand that enabling Firecrawl permits outbound
+                          web requests. Remote websites may log those requests.
+                          Retrieved content is processed transiently with zero
+                          content retention in LLM Machines-managed components.
+                        </span>
+                      </label>
+                      <FirecrawlProtectionFields firecrawl={firecrawl} />
+                      <div className="flex justify-end">
+                        <PendingSubmitButton
+                          className={primaryButtonClass}
+                          forcePending={
+                            activeOperation === "firecrawl-enable" ||
+                            enablePending
+                          }
+                          idleLabel="Enable Firecrawl"
+                          pendingLabel="Enabling..."
+                          unavailable={
+                            operationPending &&
+                            activeOperation !== "firecrawl-enable"
+                          }
+                        />
+                      </div>
+                    </fieldset>
+                  </form>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        {isAdmin && showReenableConfirm ? (
+          <ConfirmationDialog
+            description="Firecrawl will use the original credential and fixed access limits created for this Key."
+            dismissDisabled={operationPending}
+            onCancel={() => setShowReenableConfirm(false)}
+            title="Re-enable Firecrawl?"
+          >
             <form
-              action={checkAction}
-              onSubmit={(event) => beginMutation(event, "firecrawl-check")}
+              action={enableAction}
+              onSubmit={(event) => beginMutation(event, "firecrawl-enable")}
             >
               <input name="appId" type="hidden" value={app.id} />
+              <input name="disclaimerAccepted" type="hidden" value="on" />
               <PendingSubmitButton
                 className={primaryButtonClass}
                 forcePending={
-                  activeOperation === "firecrawl-check" || checkPending
+                  activeOperation === "firecrawl-enable" || enablePending
                 }
-                idleLabel="Check Firecrawl connection"
-                pendingLabel="Checking..."
+                idleLabel="Re-enable Firecrawl"
+                pendingLabel="Re-enabling..."
                 unavailable={
-                  operationPending && activeOperation !== "firecrawl-check"
+                  operationPending && activeOperation !== "firecrawl-enable"
                 }
               />
             </form>
-            <button
-              className={secondaryButtonClass}
-              disabled={operationPending}
-              onClick={() => setShowRotateConfirm(true)}
-              type="button"
-            >
-              Rotate Firecrawl credential
-            </button>
-            <button
-              className={secondaryButtonClass}
-              disabled={operationPending}
-              onClick={() => setShowPolicyEditor((current) => !current)}
-              type="button"
-            >
-              {showPolicyEditor
-                ? "Close Firecrawl policy"
-                : "Edit Firecrawl policy"}
-            </button>
-            <button
-              className={dangerButtonClass}
-              disabled={operationPending}
-              onClick={() => setShowDisableConfirm(true)}
-              type="button"
-            >
-              Disable Firecrawl
-            </button>
-          </div>
-        ) : (
-          <p className="rounded-lg border border-[#353535] bg-[#181818] px-3 py-2 text-sm text-[#b2b2b2]">
-            Operator access is read-only. An Administrator manages Firecrawl
-            credentials and lifecycle actions.
-          </p>
-        )}
-      </section>
+          </ConfirmationDialog>
+        ) : null}
+      </>
+    )
+  }
 
-      {isAdmin && showPolicyEditor && firecrawl.status === "enabled" ? (
-        <form
-          action={updateAdminConnectedAppFirecrawlPolicyAction}
-          className="grid gap-3 rounded-lg border border-[#353535] bg-[#232323] p-4"
-          onSubmit={(event) => beginMutation(event, "firecrawl-policy")}
-        >
+  return (
+    <>
+      <section
+        aria-labelledby="firecrawl-access-heading"
+        className="grid gap-4 rounded-xl border border-[#353535] bg-[#232323] p-4 sm:p-5"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">
-              Firecrawl protections
+            <h2
+              className="text-base font-semibold text-white"
+              id="firecrawl-access-heading"
+            >
+              Firecrawl
             </h2>
-            <p className="mt-1 text-sm text-[#b2b2b2]">
-              Optional appliance-protection limits. Disabled values do not cap
-              legitimate customer use.
+            <p className="mt-1 text-sm leading-5 text-[#b2b2b2]">
+              Optional web search and static scrape access.
             </p>
           </div>
-          <input name="appId" type="hidden" value={app.id} />
-          <input name="returnTo" type="hidden" value={`/keys/apps/${app.id}`} />
-          <FirecrawlProtectionFields firecrawl={firecrawl} />
-          <div className="flex justify-end">
-            <button
-              className={primaryButtonClass}
-              disabled={operationPending}
-              type="submit"
-            >
-              Save Firecrawl policy
-            </button>
-          </div>
-        </form>
-      ) : null}
+          <AccessSwitch
+            checked
+            disabled={!isAdmin || operationPending || app.status === "disabled"}
+            label="Firecrawl"
+            onToggle={() => setShowDisableConfirm(true)}
+          />
+        </div>
 
-      <FirecrawlCredentialMetadataList
-        canMutate={isAdmin}
-        credentials={firecrawl.credentials}
-        disabled={operationPending}
-        onRevoke={setCredentialToRevoke}
-      />
+        {app.status === "disabled" ? (
+          <p className="border-t border-[#353535] pt-4 text-sm text-[#9b9b9b]">
+            Firecrawl is suspended while this Key is disabled.
+          </p>
+        ) : null}
 
-      {credentialReveal ? (
+        <FirecrawlActionStatus state={enableState} />
+        <FirecrawlActionStatus state={revokeState} />
+        <FirecrawlActionStatus state={disableState} />
+
+        <div className="border-t border-[#353535] pt-4">
+          <h3 className="text-sm font-semibold text-white">
+            Firecrawl configuration
+          </h3>
+          <p className="mt-1 text-sm text-[#9b9b9b]">
+            Fixed when Firecrawl was enabled for this Key.
+          </p>
+        </div>
+
+        <dl className="grid gap-0">
+          <ConfigurationRow
+            label="Capabilities"
+            value="Web search and static single-page scrape"
+          />
+          {firecrawl.searchRateLimitRps !== null ? (
+            <ConfigurationRow
+              label="Search protection"
+              value={`${compactNumber(firecrawl.searchRateLimitRps)} rps`}
+            />
+          ) : null}
+          {firecrawl.scrapeRateLimitRps !== null ? (
+            <ConfigurationRow
+              label="Static scrape protection"
+              value={`${compactNumber(firecrawl.scrapeRateLimitRps)} rps`}
+            />
+          ) : null}
+          {firecrawl.maxConcurrentScrapes !== null ? (
+            <ConfigurationRow
+              label="Concurrent static scrapes"
+              value={compactNumber(firecrawl.maxConcurrentScrapes)}
+            />
+          ) : null}
+        </dl>
+
+        {firecrawl.credentials.length > 0 ? (
+          <FirecrawlCredentialMetadataList
+            canMutate={isAdmin}
+            credentials={firecrawl.credentials}
+            disabled={operationPending}
+            onRevoke={setCredentialToRevoke}
+          />
+        ) : null}
+      </section>
+
+      {isAdmin && credentialReveal ? (
         <ConnectedAppFirecrawlCredentialReveal
           credential={credentialReveal}
           key={credentialReveal.credentialId}
-          title={
-            rotateState.status === "rotated"
-              ? "Rotated Firecrawl credential"
-              : "Firecrawl credential"
-          }
+          title="Firecrawl credential"
         />
       ) : null}
 
-      {showRotateConfirm ? (
-        <ConfirmationDialog
-          description="A new Firecrawl key will be shown once. The current key enters an exact 24-hour overlap and can be revoked sooner. Inference credentials are unchanged."
-          dismissDisabled={operationPending}
-          onCancel={() => setShowRotateConfirm(false)}
-          title="Rotate Firecrawl credential?"
-        >
-          <form
-            action={rotateAction}
-            onSubmit={(event) => {
-              if (beginMutation(event, "firecrawl-rotate")) {
-                setCredentialReveal(null)
-              }
-            }}
-          >
-            <input name="appId" type="hidden" value={app.id} />
-            <PendingSubmitButton
-              className={primaryButtonClass}
-              forcePending={
-                activeOperation === "firecrawl-rotate" || rotatePending
-              }
-              idleLabel="Rotate Firecrawl key"
-              pendingLabel="Rotating..."
-              unavailable={
-                operationPending && activeOperation !== "firecrawl-rotate"
-              }
-            />
-          </form>
-        </ConfirmationDialog>
-      ) : null}
-
-      {credentialToRevoke ? (
+      {isAdmin && credentialToRevoke ? (
         <ConfirmationDialog
           description="This exact Firecrawl key stops working immediately. Inference credentials are unchanged."
           dismissDisabled={operationPending}
@@ -1881,7 +1791,7 @@ function FirecrawlAccessPanel({
         </ConfirmationDialog>
       ) : null}
 
-      {showDisableConfirm ? (
+      {isAdmin && showDisableConfirm ? (
         <ConfirmationDialog
           description="Firecrawl keys stop reaching web search and static scrape until an Admin re-enables access. Inference access remains unchanged."
           dismissDisabled={operationPending}
@@ -1954,76 +1864,108 @@ function FirecrawlCredentialMetadataList({
   disabled: boolean
   onRevoke: (credential: AdminConnectedAppFirecrawlCredentialMetadata) => void
 }) {
+  const currentCredentials = credentials.filter(
+    (credential) => credential.status !== "revoked",
+  )
+  const revokedCredentials = credentials.filter(
+    (credential) => credential.status === "revoked",
+  )
+
   return (
-    <section className="grid gap-3 rounded-lg border border-[#353535] bg-[#232323] p-4">
+    <div className="grid gap-3 border-t border-[#353535] pt-4">
       <div>
-        <h2 className="text-lg font-semibold text-white">
+        <h3 className="text-sm font-semibold text-white">
           Firecrawl credentials
-        </h2>
+        </h3>
         <p className="mt-1 text-sm text-[#b2b2b2]">
-          Separate secret-free metadata for the Firecrawl key namespace. Raw
-          keys are never available again after issuance.
+          Separate from inference. Secret values are available only when issued.
         </p>
       </div>
-      {credentials.length === 0 ? (
-        <p className="text-sm text-[#b2b2b2]">
-          No Firecrawl credential has been issued for this Key.
-        </p>
-      ) : (
-        credentials.map((credential) => (
-          <article
-            className="grid gap-2 rounded-lg border border-[#353535] bg-[#181818] p-3"
+      <div className="divide-y divide-[#353535] rounded-lg bg-[#1d1d1d] px-3">
+        {currentCredentials.map((credential) => (
+          <FirecrawlCredentialMetadataRow
+            canMutate={canMutate}
+            credential={credential}
+            disabled={disabled}
             key={credential.id}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-white">
-                  {credential.keyPrefix}
-                </p>
-                <p className="mt-1 break-all font-mono text-xs text-[#8b8b8b]">
-                  {credential.id}
-                </p>
-              </div>
-              <CredentialStatusPill status={credential.status} />
-            </div>
-            <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-              <Metric
-                label="Age"
-                value={formatCredentialAge(credential.issuedAt)}
+            onRevoke={onRevoke}
+          />
+        ))}
+      </div>
+      {revokedCredentials.length > 0 ? (
+        <details className="group rounded-lg border border-[#353535]">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium text-[#d7d7d7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]">
+            Firecrawl credential history ({revokedCredentials.length})
+            <ChevronDown
+              aria-hidden
+              className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+            />
+          </summary>
+          <div className="divide-y divide-[#353535] border-t border-[#353535] px-3">
+            {revokedCredentials.map((credential) => (
+              <FirecrawlCredentialMetadataRow
+                canMutate={false}
+                credential={credential}
+                disabled
+                key={credential.id}
+                onRevoke={onRevoke}
               />
-              <Metric
-                label="Last use"
-                value={dateTimeLabel(credential.lastUsedAt)}
-              />
-              <Metric
-                label="Rotated"
-                value={dateTimeLabel(credential.rotatedAt)}
-              />
-              <Metric
-                label="Overlap ends"
-                value={dateTimeLabel(credential.overlapExpiresAt)}
-              />
-              <Metric
-                label="Revoked"
-                value={dateTimeLabel(credential.revokedAt)}
-              />
-            </dl>
-            {canMutate && credential.status !== "revoked" ? (
-              <div className="flex justify-end">
-                <button
-                  className={dangerButtonClass}
-                  disabled={disabled}
-                  onClick={() => onRevoke(credential)}
-                  type="button"
-                >
-                  Revoke Firecrawl key
-                </button>
-              </div>
-            ) : null}
-          </article>
-        ))
-      )}
-    </section>
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </div>
+  )
+}
+
+function FirecrawlCredentialMetadataRow({
+  canMutate,
+  credential,
+  disabled,
+  onRevoke,
+}: {
+  canMutate: boolean
+  credential: AdminConnectedAppFirecrawlCredentialMetadata
+  disabled: boolean
+  onRevoke: (credential: AdminConnectedAppFirecrawlCredentialMetadata) => void
+}) {
+  return (
+    <article className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-mono text-sm font-medium text-white">
+            {maskedIdentifier(credential.keyPrefix)}
+          </p>
+          <CredentialStatusPill status={credential.status} />
+        </div>
+        <p className="mt-1 text-xs leading-5 text-[#9b9b9b]">
+          <span aria-label={`Issued ${dateOnlyLabel(credential.issuedAt)}`}>
+            {formatCredentialAge(credential.issuedAt)}
+          </span>{" "}
+          · Last used {lastUsedLabel(credential.lastUsedAt)}
+        </p>
+        {credential.status === "retiring" && credential.overlapExpiresAt ? (
+          <p className="mt-1 text-xs font-medium text-[#ffdb8a]">
+            Overlap ends {dateTimeLabel(credential.overlapExpiresAt)}
+          </p>
+        ) : null}
+        {credential.status === "revoked" && credential.revokedAt ? (
+          <p className="mt-1 text-xs text-[#9b9b9b]">
+            Revoked {dateTimeLabel(credential.revokedAt)}
+          </p>
+        ) : null}
+      </div>
+      {canMutate && credential.status !== "revoked" ? (
+        <button
+          className={quietDestructiveActionClass}
+          disabled={disabled}
+          onClick={() => onRevoke(credential)}
+          type="button"
+        >
+          Revoke Firecrawl key
+        </button>
+      ) : null}
+    </article>
   )
 }
 
@@ -2329,35 +2271,6 @@ function ConnectedAppCreateStatus({
   )
 }
 
-function ConnectedAppTestStatus({
-  state,
-}: {
-  state: ConnectedAppTestActionState
-}) {
-  if (state.status === "idle") {
-    return null
-  }
-  const positive = state.status === "passed"
-  const waiting = state.status === "waiting"
-  return (
-    <output
-      aria-atomic="true"
-      aria-live="polite"
-      className={cn(
-        "block rounded-lg border px-3 py-2 text-sm",
-        positive
-          ? "border-[#174f31] bg-[#14231a] text-[#36c66f]"
-          : waiting
-            ? "border-[#51431c] bg-[#2b2414] text-[#ffdb8a]"
-            : "border-[#371d1f] bg-[#261719] text-[#ff6262]",
-      )}
-    >
-      {state.error ?? state.detail ?? "Connection evidence is unavailable."}
-      {state.observedAt ? ` Observed ${dateTimeLabel(state.observedAt)}.` : ""}
-    </output>
-  )
-}
-
 function CredentialActionStatus({
   state,
 }: {
@@ -2565,6 +2478,132 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   )
 }
 
+function ConfigurationRow({
+  label,
+  value,
+}: {
+  label: React.ReactNode
+  value: string
+}) {
+  return (
+    <div className="grid gap-1 border-t border-[#353535] py-3 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[minmax(160px,0.8fr)_minmax(0,1.2fr)] sm:items-start sm:gap-5">
+      <dt className="text-sm font-medium text-white">{label}</dt>
+      <dd className="break-words text-sm leading-5 text-[#b2b2b2] sm:text-right">
+        {value}
+      </dd>
+    </div>
+  )
+}
+
+type KeySortKey = "created" | "name" | "status"
+type KeySort = { direction: "asc" | "desc"; key: KeySortKey }
+
+function SortableKeyHeader({
+  activeSort,
+  className,
+  label,
+  onSort,
+  sortKey,
+}: {
+  activeSort: KeySort
+  className?: string
+  label: string
+  onSort: (key: KeySortKey) => void
+  sortKey: KeySortKey
+}) {
+  const active = activeSort.key === sortKey
+  return (
+    <th
+      aria-sort={
+        active
+          ? activeSort.direction === "asc"
+            ? "ascending"
+            : "descending"
+          : "none"
+      }
+      className={cn("px-4 py-3", className)}
+      scope="col"
+    >
+      <button
+        className="inline-flex items-center gap-1 rounded-sm text-left transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#009fff]"
+        onClick={() => onSort(sortKey)}
+        type="button"
+      >
+        {label}
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            "size-3.5 transition-all motion-reduce:transition-none",
+            active ? "opacity-100" : "opacity-0",
+            active && activeSort.direction === "asc" && "rotate-180",
+          )}
+        />
+      </button>
+    </th>
+  )
+}
+
+function TooltipIconLink({
+  children,
+  href,
+  label,
+}: {
+  children: React.ReactNode
+  href: string
+  label: string
+}) {
+  const tooltipId = useId()
+  return (
+    <span className="group relative inline-flex">
+      <Link
+        aria-describedby={tooltipId}
+        aria-label={label}
+        className={iconActionClass}
+        href={href}
+      >
+        {children}
+      </Link>
+      <span className={tooltipClass} id={tooltipId} role="tooltip">
+        {label}
+      </span>
+    </span>
+  )
+}
+
+function TooltipIconButton({
+  children,
+  destructive = false,
+  label,
+  onClick,
+}: {
+  children: React.ReactNode
+  destructive?: boolean
+  label: string
+  onClick: () => void
+}) {
+  const tooltipId = useId()
+  return (
+    <span className="group relative inline-flex">
+      <button
+        aria-describedby={tooltipId}
+        aria-label={label}
+        className={cn(
+          iconActionClass,
+          destructive &&
+            "text-[#ff7377] hover:bg-[#321f20] hover:text-[#ff8a8d]",
+        )}
+        onClick={onClick}
+        type="button"
+      >
+        {children}
+      </button>
+      <span className={tooltipClass} id={tooltipId} role="tooltip">
+        {label}
+      </span>
+    </span>
+  )
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -2576,18 +2615,128 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-function StatusPill({ status }: { status: AdminConnectedApp["status"] }) {
+type AccessStateTone = "info" | "neutral" | "positive" | "warning"
+
+function AccessSwitch({
+  checked,
+  controls,
+  disabled,
+  expanded,
+  label,
+  onToggle,
+}: {
+  checked: boolean
+  controls?: string
+  disabled: boolean
+  expanded?: boolean
+  label: string
+  onToggle: () => void
+}) {
+  return (
+    <button
+      aria-checked={checked}
+      aria-controls={controls}
+      aria-expanded={controls ? expanded : undefined}
+      aria-label={`${checked ? "Disable" : "Enable"} ${label}`}
+      className="inline-flex shrink-0 items-center gap-2 rounded-md px-1 py-1 text-xs font-medium text-[#b2b2b2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff] disabled:cursor-not-allowed disabled:opacity-50"
+      disabled={disabled}
+      onClick={onToggle}
+      role="switch"
+      type="button"
+    >
+      <span>{checked ? "On" : "Off"}</span>
+      <span
+        aria-hidden
+        className={cn(
+          "relative h-6 w-11 rounded-full border transition-colors duration-200 motion-reduce:transition-none",
+          checked
+            ? "border-[#2988b8] bg-[#1677a8]"
+            : "border-[#505050] bg-[#303030]",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-0.5 left-0.5 size-[18px] rounded-full bg-white shadow-sm transition-transform duration-200 motion-reduce:transition-none",
+            checked && "translate-x-5",
+          )}
+        />
+      </span>
+    </button>
+  )
+}
+
+function AccessStateLabel({
+  label,
+  tone,
+}: {
+  label: string
+  tone: AccessStateTone
+}) {
   return (
     <span
       className={cn(
-        "rounded-full border px-2 py-1 text-xs font-semibold",
-        status === "enabled"
-          ? "border-[#174f31] text-[#36c66f]"
-          : "border-[#353535] text-[#b2b2b2]",
+        "inline-flex items-center gap-1.5 text-xs font-semibold",
+        tone === "positive" && "text-[#56d888]",
+        tone === "info" && "text-[#73cfff]",
+        tone === "warning" && "text-[#ffdb8a]",
+        tone === "neutral" && "text-[#b2b2b2]",
       )}
     >
-      {status === "enabled" ? "Enabled" : "Disabled"}
+      <span
+        aria-hidden
+        className={cn(
+          "size-1.5 rounded-full",
+          tone === "positive" && "bg-[#56d888]",
+          tone === "info" && "bg-[#73cfff]",
+          tone === "warning" && "bg-[#ffdb8a]",
+          tone === "neutral" && "bg-[#777]",
+        )}
+      />
+      {label}
     </span>
+  )
+}
+
+function AccessSummaryRow({
+  connectionStatus,
+  lastConnectedAt,
+  status,
+  title,
+  tone,
+}: {
+  connectionStatus: AdminConnectedApp["connectionStatus"]
+  lastConnectedAt: string | null
+  status: string
+  title: string
+  tone: AccessStateTone
+}) {
+  return (
+    <div className="grid gap-1 py-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] sm:items-center sm:gap-6">
+      <div className="flex min-w-0 items-center justify-between gap-3 sm:justify-start">
+        <p className="text-sm font-medium text-white">{title}</p>
+        <AccessStateLabel label={status} tone={tone} />
+      </div>
+      <p className="text-sm text-[#b2b2b2] sm:text-right">
+        <span className="text-[#8b8b8b]">Client activity:</span>{" "}
+        {connectionStatusLabel(connectionStatus)}
+        {lastConnectedAt
+          ? ` · Last observed ${dateTimeLabel(lastConnectedAt)}`
+          : " · No authenticated client observed yet"}
+      </p>
+    </div>
+  )
+}
+
+function KeyLifecyclePill({
+  status,
+}: {
+  status: AdminConnectedApp["status"]
+}) {
+  return (
+    <AccessStateLabel
+      label={status === "enabled" ? "Active" : "Disabled"}
+      tone={status === "enabled" ? "positive" : "neutral"}
+    />
   )
 }
 
@@ -2597,16 +2746,16 @@ function CredentialStatusPill({
   status: AdminConnectedAppCredentialMetadata["status"]
 }) {
   return (
-    <span
-      className={cn(
-        "rounded-full border px-2 py-1 text-xs font-semibold capitalize",
-        status === "active" && "border-[#174f31] text-[#36c66f]",
-        status === "retiring" && "border-[#51431c] text-[#ffdb8a]",
-        status === "revoked" && "border-[#353535] text-[#8b8b8b]",
-      )}
-    >
-      {status}
-    </span>
+    <AccessStateLabel
+      label={status.charAt(0).toUpperCase() + status.slice(1)}
+      tone={
+        status === "active"
+          ? "positive"
+          : status === "retiring"
+            ? "warning"
+            : "neutral"
+      }
+    />
   )
 }
 
@@ -2618,17 +2767,52 @@ function PageHeader({ title }: { title: string }) {
   )
 }
 
-function SubpageHeader({ title }: { title: string }) {
+function SubpageHeader({
+  breadcrumbLabel,
+  description,
+  focusFallback = false,
+  headingRef,
+  title,
+}: {
+  breadcrumbLabel?: string
+  description?: string
+  focusFallback?: boolean
+  headingRef?: React.Ref<HTMLHeadingElement>
+  title: string
+}) {
   return (
     <header>
-      <h1 className="text-2xl font-semibold text-white">{title}</h1>
-      <Link
-        className="mt-3 flex w-fit items-center gap-1 text-sm font-medium text-white"
-        href="/applications"
+      <nav aria-label="Breadcrumb">
+        <ol className="flex items-center gap-1 text-sm text-[#9b9b9b]">
+          <li>
+            <Link
+              className="rounded-sm transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+              href="/keys"
+            >
+              Keys
+            </Link>
+          </li>
+          <li aria-hidden>
+            <ChevronRight className="size-4" />
+          </li>
+          <li aria-current="page" className="min-w-0 truncate text-[#d7d7d7]">
+            {breadcrumbLabel ?? title}
+          </li>
+        </ol>
+      </nav>
+      <h1
+        className="mt-3 text-2xl font-semibold text-white"
+        data-dialog-focus-fallback={focusFallback || undefined}
+        ref={headingRef}
+        tabIndex={focusFallback ? -1 : undefined}
       >
-        <ArrowLeft aria-hidden className="size-4" />
-        Go back
-      </Link>
+        {title}
+      </h1>
+      {description ? (
+        <p className="mt-2 max-w-2xl text-sm leading-5 text-[#b2b2b2]">
+          {description}
+        </p>
+      ) : null}
     </header>
   )
 }
@@ -2644,24 +2828,11 @@ function AppActionNotice({ appAction }: { appAction?: string }) {
     deleted: { description: "Key deleted.", tone: "warning" },
     disabled: { description: "Key disabled.", tone: "warning" },
     failed: { description: "Key action failed.", tone: "danger" },
-    firecrawlFailed: {
-      description: "Firecrawl policy update failed.",
-      tone: "danger",
-    },
-    firecrawlInvalid: {
-      description: "Firecrawl protections need valid values.",
-      tone: "danger",
-    },
-    firecrawlUpdated: {
-      description: "Firecrawl protections updated.",
-      tone: "success",
-    },
     invalid: {
       description: "Key action needs valid values and confirmation.",
       tone: "danger",
     },
     reenabled: { description: "Key re-enabled.", tone: "success" },
-    updated: { description: "Key policy updated.", tone: "success" },
   }
   const message = messages[appAction] ?? messages.failed
   return (
@@ -2701,10 +2872,52 @@ function dateTimeLabel(value: string | null | undefined): string {
   return value ? applicationsDateTimeFormatter.format(new Date(value)) : "Never"
 }
 
+function dateOnlyLabel(value: string): string {
+  return applicationsDateFormatter.format(new Date(value))
+}
+
+function lastUsedLabel(value: string | null | undefined): string {
+  return value ? dateOnlyLabel(value) : "Never used"
+}
+
 function formatCredentialAge(value: string): string {
-  const ageMs = Math.max(0, Date.now() - new Date(value).getTime())
-  const days = Math.floor(ageMs / 86_400_000)
+  const days = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000),
+  )
   return days === 0 ? "Issued today" : `${days} day${days === 1 ? "" : "s"}`
+}
+
+function maskedIdentifier(value: string): string {
+  return `Credential •••• ${value.slice(-4)}`
+}
+
+function maskedCredentialMetadataIdentifier(
+  credential: AdminConnectedAppCredentialMetadata,
+): string {
+  return maskedIdentifier(
+    credential.keyPrefix ?? credential.clientId ?? credential.id,
+  )
+}
+
+function compareKeys(
+  left: AdminConnectedApp,
+  right: AdminConnectedApp,
+  sort: KeySort,
+): number {
+  let comparison = 0
+  if (sort.key === "name") {
+    comparison = left.name.localeCompare(right.name)
+  } else if (sort.key === "status") {
+    comparison =
+      Number(left.status === "enabled") - Number(right.status === "enabled")
+  } else {
+    comparison = Date.parse(left.createdAt) - Date.parse(right.createdAt)
+  }
+  if (comparison !== 0) {
+    return sort.direction === "asc" ? comparison : -comparison
+  }
+  return Date.parse(right.createdAt) - Date.parse(left.createdAt)
 }
 
 function authMethodLabel(authMethod: AdminConnectedApp["authMethod"]): string {
@@ -2722,7 +2935,29 @@ function connectionStatusLabel(
   if (status === "degraded") {
     return "Degraded"
   }
-  return "Not connected"
+  return "Not observed"
+}
+
+function firecrawlStatusLabel(
+  status: AdminConnectedApp["firecrawl"]["status"],
+): string {
+  return status === "enabled" ? "Enabled" : "Not enabled"
+}
+
+function modelAccessLabel(app: AdminConnectedApp): string {
+  return app.modelMode === "auto"
+    ? "Auto"
+    : `Manual · ${app.allowedModels.join(", ")}`
+}
+
+function formatBytes(value: number): string {
+  if (value >= 1024 * 1024) {
+    return `${applicationsCompactNumberFormatter.format(value / (1024 * 1024))} MiB`
+  }
+  if (value >= 1024) {
+    return `${applicationsCompactNumberFormatter.format(value / 1024)} KiB`
+  }
+  return `${value.toLocaleString()} bytes`
 }
 
 function tokenAlertStateLabel(
@@ -2741,25 +2976,25 @@ function tokenAlertStateLabel(
   return "Awaiting usage data"
 }
 
-function rotationDescription(
-  authMethod: AdminConnectedApp["authMethod"],
-): string {
-  return authMethod === "api_key"
-    ? "A new static key will be shown once. The current key enters a fixed 24-hour overlap and can be revoked sooner."
-    : "A new OAuth client secret will be shown once. The old client secret becomes invalid immediately."
-}
-
 function compactNumber(value: number): string {
   return applicationsCompactNumberFormatter.format(value)
 }
 
-function formatNullableLimit(value: number | null, suffix: string): string {
-  return value === null ? "Disabled" : `${compactNumber(value)}${suffix}`
-}
-
 const primaryButtonClass =
-  "inline-flex h-9 items-center justify-center gap-1 rounded-md bg-[#2e2e2e] px-3 text-sm font-medium text-white transition-colors hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-50"
+  "inline-flex h-9 items-center justify-center gap-1 rounded-md bg-[#2e2e2e] px-3 text-sm font-medium text-white transition-colors hover:bg-[#383838] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff] disabled:cursor-not-allowed disabled:opacity-50"
 const secondaryButtonClass =
-  "inline-flex h-9 items-center justify-center gap-1 rounded-md border border-[#353535] px-3 text-sm font-medium text-white transition-colors hover:bg-[#2e2e2e] disabled:cursor-not-allowed disabled:opacity-50"
+  "inline-flex h-9 items-center justify-center gap-1 rounded-md border border-[#454545] px-3 text-sm font-medium text-white transition-colors hover:bg-[#2e2e2e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff] disabled:cursor-not-allowed disabled:opacity-50"
 const dangerButtonClass =
-  "inline-flex h-9 items-center justify-center rounded-md border border-[#4a2426] px-3 text-sm font-medium text-[#ff595d] transition-colors hover:bg-[#321f20] disabled:cursor-not-allowed disabled:opacity-50"
+  "inline-flex h-9 items-center justify-center rounded-md border border-[#6b3033] px-3 text-sm font-medium text-[#ff7377] transition-colors hover:bg-[#321f20] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff] disabled:cursor-not-allowed disabled:opacity-50"
+const quietActionClass =
+  "inline-flex h-10 items-center justify-center gap-2 rounded-md px-2.5 text-sm font-medium text-[#d7d7d7] transition-colors hover:bg-[#2e2e2e] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff] disabled:cursor-not-allowed disabled:opacity-50"
+const quietDestructiveActionClass =
+  "inline-flex h-10 shrink-0 items-center justify-center rounded-md px-2.5 text-sm font-medium text-[#ff7377] transition-colors hover:bg-[#321f20] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff] disabled:cursor-not-allowed disabled:opacity-50"
+const disableButtonClass =
+  "inline-flex h-10 items-center justify-center rounded-md border border-[#6b3033] px-3 text-sm font-medium text-[#ff8a8d] transition-colors hover:bg-[#2b2021] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff] disabled:cursor-not-allowed disabled:opacity-50"
+const deleteButtonClass =
+  "inline-flex h-10 items-center justify-center rounded-md bg-[#3a2022] px-3 text-sm font-semibold text-[#ff7377] transition-colors hover:bg-[#4a2528] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff] disabled:cursor-not-allowed disabled:opacity-50"
+const iconActionClass =
+  "inline-flex size-[26px] items-center justify-center rounded-md text-[#b2b2b2] transition-colors hover:bg-[#303030] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff] disabled:cursor-not-allowed disabled:opacity-50"
+const tooltipClass =
+  "pointer-events-none absolute bottom-full right-0 z-30 mb-2 whitespace-nowrap rounded-md border border-[#454545] bg-[#121212] px-2 py-1.5 text-xs font-medium normal-case tracking-normal text-[#d7d7d7] opacity-0 shadow-xl transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"

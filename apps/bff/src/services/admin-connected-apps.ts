@@ -16,15 +16,12 @@ import type {
   AdminConnectedAppFirecrawl,
   AdminConnectedAppLifecycleResult,
   AdminConnectedAppModelMode,
-  AdminConnectedAppRotateCredentialResult,
   AdminConnectedAppTestResult,
-  AdminConnectedAppUpdateRequest,
   AdminConnectedAppUsageSummary,
   AdminConnectedAppsResponse,
 } from "@llm-machines/contracts/inference-core"
 import {
   adminConnectedAppCreateResponseSchema,
-  adminConnectedAppRotateCredentialResultSchema,
   adminConnectedAppUsageSummarySchema,
 } from "@llm-machines/contracts/inference-core"
 import {
@@ -83,15 +80,6 @@ import { upsertActorUser } from "./users"
 export type ConnectedAppCreateResult =
   | AdminConnectedAppCreateResponse
   | { detail: string; status: "blocked" }
-
-export type ConnectedAppMutationResult =
-  | { app: AdminConnectedApp; status: "updated" }
-  | { status: "not_found" }
-
-export type ConnectedAppCredentialMutationResult =
-  | AdminConnectedAppRotateCredentialResult
-  | { detail: string; status: "blocked" }
-  | { status: "not_found" }
 
 export type ConnectedAppLifecycleMutationResult =
   | AdminConnectedAppLifecycleResult
@@ -213,11 +201,6 @@ export type ConnectedAppCredentialRevealPreflight =
     }
   | { detail: string; status: "blocked" }
 
-export type ConnectedAppCredentialRotationPreflight =
-  | ConnectedAppCredentialRevealPreflight
-  | { status: "not_found" }
-
-const STATIC_KEY_OVERLAP_SECONDS = 86_400
 const GATEWAY_REQUEST_LEASE_SECONDS = 15 * 60
 
 const memoryConnectedApps: ConnectedAppRecord[] = []
@@ -436,18 +419,6 @@ export async function createAdminConnectedApp(
   return response
 }
 
-export async function updateAdminConnectedApp(
-  actor: Actor,
-  id: string,
-  request: AdminConnectedAppUpdateRequest,
-): Promise<ConnectedAppMutationResult> {
-  const saved = await updateConnectedAppPolicy(actor, id, request)
-  if (!saved) {
-    return { status: "not_found" }
-  }
-  return { app: toPublicApp(saved), status: "updated" }
-}
-
 export async function testAdminConnectedApp(
   actor: Actor,
   id: string,
@@ -486,51 +457,10 @@ export async function testAdminConnectedApp(
   }
 }
 
-export async function rotateAdminConnectedAppCredentials(
-  actor: Actor,
-  id: string,
-  identityContext?: IdentityMutationRouteContext,
-  revealEndpoints?: ConnectedAppCredentialRevealEndpoints,
-): Promise<ConnectedAppCredentialMutationResult> {
-  const existing = await getConnectedAppBundle(id)
-  if (!existing) {
-    return { status: "not_found" }
-  }
-  const revealPreflight = resolveConnectedAppCredentialRevealPreflight(
-    existing.record.authMethod,
-    revealEndpoints,
-  )
-  if (revealPreflight.status === "blocked") {
-    return revealPreflight
-  }
-  return existing.record.authMethod === "api_key"
-    ? rotateStaticConnectedAppCredential(
-        actor,
-        existing,
-        identityContext,
-        revealPreflight.endpoints,
-      )
-    : rotateOAuthConnectedAppCredential(
-        actor,
-        existing,
-        identityContext,
-        revealPreflight.endpoints,
-      )
-}
-
 export function preflightConnectedAppCredentialReveal(
   authMethod: AdminConnectedAppAuthMethod,
 ): ConnectedAppCredentialRevealPreflight {
   return resolveConnectedAppCredentialRevealPreflight(authMethod)
-}
-
-export async function preflightAdminConnectedAppCredentialRotation(
-  id: string,
-): Promise<ConnectedAppCredentialRotationPreflight> {
-  const existing = await getConnectedAppBundle(id)
-  return existing
-    ? resolveConnectedAppCredentialRevealPreflight(existing.record.authMethod)
-    : { status: "not_found" }
 }
 
 export function assertProductionConnectedAppRevealEndpoints(): void {
@@ -1397,7 +1327,6 @@ type ApplicationIdentityProvider = Pick<
   | "createConfidentialClient"
   | "deleteConfidentialClient"
   | "findConfidentialClient"
-  | "rotateConfidentialClientSecret"
 >
 
 const memoryOAuthClients = new Map<string, { clientId: string; id: string }>()
@@ -1654,131 +1583,6 @@ async function saveConnectedAppRecord(
   return memoryBundle(record)
 }
 
-async function updateConnectedAppPolicy(
-  actor: Actor,
-  id: string,
-  request: AdminConnectedAppUpdateRequest,
-): Promise<ConnectedAppBundle | null> {
-  const allowedModels = normalizeList(request.allowedModels)
-  const occurredAt = new Date()
-  const db = getInferenceCoreDb()
-  if (db) {
-    const storageActor = await upsertActorUser(actor)
-    const updated = await db.transaction(async (transaction) => {
-      const locked = await lockConnectedAppForMutation(transaction, id)
-      if (!locked) {
-        return false
-      }
-      const updated = await transaction
-        .update(applications)
-        .set({
-          description: request.description,
-          name: request.name,
-          updatedAt: occurredAt,
-          updatedBy: storageActor.subject,
-        })
-        .where(
-          and(
-            eq(applications.id, id),
-            eq(applications.authMode, locked.authMode),
-            ne(applications.status, "deleted"),
-          ),
-        )
-        .returning({ id: applications.id })
-      if (updated.length === 0) {
-        return false
-      }
-      await transaction
-        .delete(applicationModelAllowlists)
-        .where(eq(applicationModelAllowlists.appId, id))
-      if (allowedModels.length > 0) {
-        await transaction.insert(applicationModelAllowlists).values(
-          allowedModels.map((modelAlias) => ({
-            appId: id,
-            createdAt: occurredAt,
-            modelAlias,
-          })),
-        )
-      }
-      await transaction
-        .insert(applicationLimits)
-        .values({
-          appId: id,
-          maxConcurrentRequests: request.maxConcurrentRequests,
-          maxContextBytes: request.maxContextBytes,
-          requestsPerSecond: request.rateLimitRps,
-          tokenAlertThreshold7d: request.tokenAlertThreshold7d,
-          updatedAt: occurredAt,
-        })
-        .onConflictDoUpdate({
-          target: applicationLimits.appId,
-          set: {
-            maxConcurrentRequests: request.maxConcurrentRequests,
-            maxContextBytes: request.maxContextBytes,
-            requestsPerSecond: request.rateLimitRps,
-            tokenAlertThreshold7d: request.tokenAlertThreshold7d,
-            updatedAt: occurredAt,
-          },
-        })
-      const active = await transaction
-        .select({ id: applicationCredentials.id })
-        .from(applicationCredentials)
-        .where(
-          and(
-            eq(applicationCredentials.appId, id),
-            eq(applicationCredentials.status, "active"),
-          ),
-        )
-        .limit(1)
-      await transaction.insert(auditEvents).values(
-        auditValues({
-          action: "admin.connected_app.updated",
-          applicationId: id,
-          credentialRecordId: active[0]?.id,
-          keycloakSubjectId: storageActor.subject,
-          occurredAt,
-        }),
-      )
-      return true
-    })
-    return updated ? getConnectedAppBundle(id) : null
-  }
-
-  assertFixtureApplicationStorage()
-  const index = memoryConnectedApps.findIndex(
-    (candidate) => candidate.id === id && candidate.status !== "deleted",
-  )
-  if (index < 0) {
-    return null
-  }
-  const active = memoryConnectedAppCredentials.find(
-    (credential) => credential.appId === id && credential.status === "active",
-  )
-  await emitAudit({
-    action: "admin.connected_app.updated",
-    applicationId: id,
-    credentialRecordId: active?.id,
-    keycloakSubjectId: actor.subject,
-    outcome: "succeeded",
-    sourceSystem: "console",
-  })
-  const stored = memoryConnectedApps[index]
-  if (!stored || stored.status === "deleted") {
-    return null
-  }
-  stored.allowedModels = allowedModels
-  stored.description = request.description
-  stored.maxConcurrentRequests = request.maxConcurrentRequests
-  stored.maxContextBytes = request.maxContextBytes
-  stored.modelMode = request.modelMode
-  stored.name = request.name
-  stored.rateLimitRps = request.rateLimitRps
-  stored.tokenAlertThreshold7d = request.tokenAlertThreshold7d
-  stored.updatedAt = occurredAt.toISOString()
-  stored.updatedBy = actor.subject
-  return memoryBundle(stored)
-}
-
 type ConnectedAppLifecycleStorageResult =
   | { bundle: ConnectedAppBundle; status: "updated" }
   | { status: "blocked" }
@@ -1906,430 +1710,6 @@ async function setConnectedAppLifecycleStatus(
     await markAdminConnectedAppFirecrawlParentEnabled(id)
   }
   return { bundle: await memoryBundle(current), status: "updated" }
-}
-
-async function rotateStaticConnectedAppCredential(
-  actor: Actor,
-  existing: ConnectedAppBundle,
-  identityContext: IdentityMutationRouteContext | undefined,
-  revealEndpoints: ConnectedAppCredentialRevealEndpoints,
-): Promise<ConnectedAppCredentialMutationResult> {
-  const active = activeCredentialOrNull(existing)
-  if (!active || active.authMethod !== "api_key") {
-    return {
-      detail: "An active static credential is required before rotation.",
-      status: "blocked",
-    }
-  }
-  const now = new Date()
-  const issuedAt = now.toISOString()
-  const overlapExpiresAt = new Date(
-    now.getTime() + STATIC_KEY_OVERLAP_SECONDS * 1000,
-  ).toISOString()
-  const generated = createStaticApiKeyRecord(
-    existing.record.id,
-    issuedAt,
-    existing.record.allowedModels[0] ?? null,
-    revealEndpoints,
-  )
-  const updatedRecord: ConnectedAppRecord = {
-    ...existing.record,
-    connectionStatus: "not_connected",
-    lastConnectedAt: null,
-    updatedAt: issuedAt,
-    updatedBy: actor.subject,
-  }
-  return commitConnectedAppCredentialReveal(
-    identityContext,
-    existing.record.id,
-    async (transaction) => {
-      const saved = await persistStaticCredentialRotation(
-        actor,
-        updatedRecord,
-        active,
-        generated.record,
-        issuedAt,
-        overlapExpiresAt,
-        transaction,
-      )
-      return adminConnectedAppRotateCredentialResultSchema.parse({
-        app: toPublicApp(saved),
-        credential: generated.credential,
-        detail:
-          "Credential rotated. The previous key remains valid for exactly 86400 seconds unless revoked sooner.",
-        status: "rotated",
-      })
-    },
-  )
-}
-
-async function persistStaticCredentialRotation(
-  actor: Actor,
-  record: ConnectedAppRecord,
-  active: ConnectedAppCredentialRecord,
-  replacement: ConnectedAppCredentialRecord,
-  rotatedAt: string,
-  overlapExpiresAt: string,
-  transaction?: InferenceCoreTransaction | null,
-): Promise<ConnectedAppBundle> {
-  const db = transaction ?? getInferenceCoreDb()
-  if (db) {
-    const occurredAt = new Date(rotatedAt)
-    const persist = async (executor: InferenceCoreTransaction) => {
-      const storageActor = await upsertActorUser(actor, executor)
-      const locked = await lockConnectedAppForMutation(
-        executor,
-        record.id,
-        "api_key",
-      )
-      if (!locked) {
-        throw new Error("Key could not be updated during rotation.")
-      }
-      await executor
-        .update(applicationCredentials)
-        .set({ revokedAt: occurredAt, status: "revoked" })
-        .where(
-          and(
-            eq(applicationCredentials.appId, record.id),
-            eq(applicationCredentials.kind, "api_key"),
-            eq(applicationCredentials.status, "retiring"),
-          ),
-        )
-      const retired = await executor
-        .update(applicationCredentials)
-        .set({
-          overlapExpiresAt: new Date(overlapExpiresAt),
-          rotatedAt: occurredAt,
-          status: "retiring",
-        })
-        .where(
-          and(
-            eq(applicationCredentials.id, active.id),
-            eq(applicationCredentials.appId, record.id),
-            eq(applicationCredentials.kind, "api_key"),
-            eq(applicationCredentials.status, "active"),
-          ),
-        )
-        .returning({ id: applicationCredentials.id })
-      if (retired.length !== 1) {
-        throw new Error("Active Key credential could not be retired.")
-      }
-      await executor
-        .insert(applicationCredentials)
-        .values(credentialInsertValues(replacement))
-      const updated = await executor
-        .update(applications)
-        .set({
-          connectionStatus: "not_connected",
-          lastConnectedAt: null,
-          updatedAt: occurredAt,
-          updatedBy: storageActor.subject,
-        })
-        .where(
-          and(
-            eq(applications.id, record.id),
-            eq(applications.authMode, "api_key"),
-            ne(applications.status, "deleted"),
-          ),
-        )
-        .returning({ id: applications.id })
-      if (updated.length !== 1) {
-        throw new Error("Key could not be updated during rotation.")
-      }
-      await executor.insert(auditEvents).values(
-        auditValues({
-          action: "admin.connected_app.credentials_rotated",
-          applicationId: record.id,
-          credentialRecordId: replacement.id,
-          keycloakSubjectId: storageActor.subject,
-          occurredAt,
-        }),
-      )
-      const rows = await executor
-        .select()
-        .from(applications)
-        .where(eq(applications.id, record.id))
-        .limit(1)
-      return rows[0] ? loadConnectedAppBundle(rows[0], executor) : null
-    }
-    const saved = transaction
-      ? await persist(transaction)
-      : await db.transaction(persist)
-    if (!saved) {
-      throw new Error("Rotated Key could not be read back.")
-    }
-    return saved
-  }
-
-  assertFixtureApplicationStorage()
-  const appIndex = memoryConnectedApps.findIndex(
-    (candidate) => candidate.id === record.id && candidate.status !== "deleted",
-  )
-  const activeStored = memoryConnectedAppCredentials.find(
-    (credential) =>
-      credential.id === active.id &&
-      credential.appId === record.id &&
-      credential.authMethod === "api_key" &&
-      credential.status === "active",
-  )
-  if (appIndex < 0 || !activeStored) {
-    throw new Error("Active Key credential could not be retired.")
-  }
-  await emitAudit({
-    action: "admin.connected_app.credentials_rotated",
-    applicationId: record.id,
-    credentialRecordId: replacement.id,
-    keycloakSubjectId: actor.subject,
-    outcome: "succeeded",
-    sourceSystem: "console",
-  })
-  for (const credential of memoryConnectedAppCredentials) {
-    if (
-      credential.appId === record.id &&
-      credential.authMethod === "api_key" &&
-      credential.status === "retiring"
-    ) {
-      credential.revokedAt = rotatedAt
-      credential.status = "revoked"
-    }
-  }
-  activeStored.overlapExpiresAt = overlapExpiresAt
-  activeStored.rotatedAt = rotatedAt
-  activeStored.status = "retiring"
-  memoryConnectedAppCredentials.unshift(cloneCredentialRecord(replacement))
-  memoryConnectedApps[appIndex] = cloneRecord(record)
-  return memoryBundle(record)
-}
-
-async function rotateOAuthConnectedAppCredential(
-  actor: Actor,
-  existing: ConnectedAppBundle,
-  identityContext?: IdentityMutationRouteContext,
-  revealEndpoints?: ConnectedAppCredentialRevealEndpoints,
-): Promise<ConnectedAppCredentialMutationResult> {
-  const active = activeCredentialOrNull(existing)
-  if (
-    !active ||
-    active.authMethod !== "oauth_client_credentials" ||
-    !active.clientId ||
-    !active.externalCredentialId
-  ) {
-    return {
-      detail: "An active OAuth client is required before rotation.",
-      status: "blocked",
-    }
-  }
-  if (!identityContext) {
-    return {
-      detail: "Durable OAuth identity mutation state is unavailable.",
-      status: "blocked",
-    }
-  }
-  const endpoints = revealEndpoints
-  if (!endpoints || endpoints.tokenUrl === null) {
-    return connectedAppRevealConfigurationBlocked()
-  }
-  const tokenUrl = endpoints.tokenUrl
-  if (!applicationIdentityProvider()) {
-    return {
-      detail:
-        "The dedicated Keycloak Application administration client is unavailable.",
-      status: "blocked",
-    }
-  }
-
-  const clientId = active.clientId
-  const externalCredentialId = active.externalCredentialId
-  const rotatedAt = new Date().toISOString()
-  let response!: AdminConnectedAppRotateCredentialResult
-  await executeJournaledIdentityMutation({
-    apply: async (
-      preflight: { provider: ApplicationIdentityProvider },
-      keycloak,
-    ) => {
-      const rotated = await keycloak.firstWrite(
-        () =>
-          preflight.provider.rotateConfidentialClientSecret(
-            externalCredentialId,
-            clientId,
-          ),
-        externalCredentialId,
-      )
-      if (
-        rotated.id !== externalCredentialId ||
-        rotated.clientId !== clientId
-      ) {
-        throw new Error("Keycloak returned a different OAuth client identity.")
-      }
-      return rotated
-    },
-    atomicFinalization: true,
-    context: identityContext,
-    finalize: async (credential, transaction) => {
-      const saved = await persistOAuthCredentialRotation(
-        actor,
-        existing,
-        active,
-        rotatedAt,
-        transaction,
-      )
-      response = adminConnectedAppRotateCredentialResultSchema.parse({
-        app: toPublicApp(saved),
-        credential: oauthCredentialPayload({
-          clientId: credential.clientId,
-          clientSecret: credential.clientSecret,
-          credentialId: active.id,
-          issuedAt: rotatedAt,
-          model: existing.record.allowedModels[0] ?? null,
-          tokenUrl,
-          endpoints,
-        }),
-        detail:
-          "OAuth client secret rotated. The previous secret is invalid immediately.",
-        status: "rotated",
-      })
-    },
-    keycloakSubjectId: actor.subject,
-    preflight: async (signal) =>
-      preflightExactOAuthClient(
-        requireApplicationIdentityProvider(signal),
-        clientId,
-        externalCredentialId,
-        "rotation",
-      ),
-    receiptResourceId: existing.record.id,
-    targetIdentifier: clientId,
-    targetType: "oauth_client",
-  })
-  return response
-}
-
-async function persistOAuthCredentialRotation(
-  actor: Actor,
-  existing: ConnectedAppBundle,
-  active: ConnectedAppCredentialRecord,
-  rotatedAt: string,
-  transaction?: InferenceCoreTransaction | null,
-): Promise<ConnectedAppBundle> {
-  const db = transaction ?? getInferenceCoreDb()
-  if (db) {
-    const occurredAt = new Date(rotatedAt)
-    const persist = async (executor: InferenceCoreTransaction) => {
-      const storageActor = await upsertActorUser(actor, executor)
-      const locked = await lockConnectedAppForMutation(
-        executor,
-        existing.record.id,
-        "oauth_client_credentials",
-      )
-      if (!locked) {
-        throw new Error("OAuth Key changed before finalization.")
-      }
-      const rotated = await executor
-        .update(applicationCredentials)
-        .set({
-          issuedAt: occurredAt,
-          lastUsedAt: null,
-          overlapExpiresAt: null,
-          revokedAt: null,
-          rotatedAt: occurredAt,
-          status: "active",
-        })
-        .where(
-          and(
-            eq(applicationCredentials.id, active.id),
-            eq(applicationCredentials.appId, existing.record.id),
-            eq(applicationCredentials.kind, "oauth_client_credentials"),
-            eq(applicationCredentials.status, "active"),
-            eq(
-              applicationCredentials.clientIdentifier,
-              active.clientId as string,
-            ),
-            eq(
-              applicationCredentials.externalCredentialId,
-              active.externalCredentialId as string,
-            ),
-          ),
-        )
-        .returning({ id: applicationCredentials.id })
-      if (rotated.length !== 1) {
-        throw new Error("Active OAuth credential changed before finalization.")
-      }
-      const updated = await executor
-        .update(applications)
-        .set({
-          connectionStatus: "not_connected",
-          lastConnectedAt: null,
-          updatedAt: occurredAt,
-          updatedBy: storageActor.subject,
-        })
-        .where(
-          and(
-            eq(applications.id, existing.record.id),
-            eq(applications.authMode, "oauth_client_credentials"),
-            ne(applications.status, "deleted"),
-          ),
-        )
-        .returning({ id: applications.id })
-      if (updated.length !== 1) {
-        throw new Error("OAuth Key changed before finalization.")
-      }
-      await executor.insert(auditEvents).values(
-        auditValues({
-          action: "admin.connected_app.credentials_rotated",
-          applicationId: existing.record.id,
-          credentialRecordId: active.id,
-          keycloakSubjectId: storageActor.subject,
-          occurredAt,
-        }),
-      )
-      const rows = await executor
-        .select()
-        .from(applications)
-        .where(eq(applications.id, existing.record.id))
-        .limit(1)
-      return rows[0] ? loadConnectedAppBundle(rows[0], executor) : null
-    }
-    const saved = transaction
-      ? await persist(transaction)
-      : await db.transaction(persist)
-    if (!saved) {
-      throw new Error("Rotated OAuth Key could not be read back.")
-    }
-    return saved
-  }
-
-  assertFixtureApplicationStorage()
-  const storedApp = memoryConnectedApps.find(
-    (candidate) =>
-      candidate.id === existing.record.id && candidate.status !== "deleted",
-  )
-  const storedCredential = memoryConnectedAppCredentials.find(
-    (candidate) =>
-      candidate.id === active.id &&
-      candidate.appId === existing.record.id &&
-      candidate.status === "active" &&
-      candidate.clientId === active.clientId &&
-      candidate.externalCredentialId === active.externalCredentialId,
-  )
-  if (!storedApp || !storedCredential) {
-    throw new Error("OAuth Key changed before finalization.")
-  }
-  await emitAudit({
-    action: "admin.connected_app.credentials_rotated",
-    applicationId: existing.record.id,
-    credentialRecordId: active.id,
-    keycloakSubjectId: actor.subject,
-    outcome: "succeeded",
-    sourceSystem: "console",
-  })
-  storedCredential.issuedAt = rotatedAt
-  storedCredential.lastUsedAt = null
-  storedCredential.rotatedAt = rotatedAt
-  storedApp.connectionStatus = "not_connected"
-  storedApp.lastConnectedAt = null
-  storedApp.updatedAt = rotatedAt
-  storedApp.updatedBy = actor.subject
-  return memoryBundle(storedApp)
 }
 
 async function revokeStaticConnectedAppCredential(
@@ -3037,17 +2417,6 @@ const fixtureApplicationIdentityProvider: ApplicationIdentityProvider = {
   },
   async findConfidentialClient(clientId) {
     return memoryOAuthClients.get(clientId) ?? null
-  },
-  async rotateConfidentialClientSecret(id, clientId) {
-    const current = memoryOAuthClients.get(clientId)
-    if (!current || current.id !== id) {
-      throw fixtureIdentityMismatch(clientId, "secret rotation")
-    }
-    return {
-      ...current,
-      clientSecret: fixtureSecret(),
-      tokenUrl: fixtureTokenUrl(),
-    }
   },
 }
 

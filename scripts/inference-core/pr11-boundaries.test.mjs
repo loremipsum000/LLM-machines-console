@@ -14,6 +14,7 @@ import {
   pr11DecisionPath,
   pr11GeneratedDestinationPaths,
   pr11GovernancePaths,
+  pr11KeysConsoleHrefManifest,
   pr11LaneAnchor,
   pr11LogicalSurfaceContract,
   pr11Pr09HistoricalNativeEvidenceBindings,
@@ -233,6 +234,28 @@ test("PR-11 rejects literal, aliased, and BFF-supplied external hrefs", () => {
   aliasedManifest.sort(compareHrefEntries)
   assert.match(
     verifyPr11ConsoleHrefManifest(aliasedManifest).join("\n"),
+    /Console href manifest changed/,
+  )
+
+  assert.deepEqual(
+    verifyPr11ConsoleHrefManifest(pr11KeysConsoleHrefManifest),
+    [],
+  )
+
+  const mixedManifest = structuredClone(pr11KeysConsoleHrefManifest)
+  const keysIndex = mixedManifest.findIndex(
+    ({ path, expression }) =>
+      path ===
+        "apps/web/src/components/console-v2/applications-v2-experience.tsx" &&
+      expression === "literal:/keys",
+  )
+  mixedManifest[keysIndex] = {
+    path: "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+    expression: "literal:/applications",
+  }
+  mixedManifest.sort(compareHrefEntries)
+  assert.match(
+    verifyPr11ConsoleHrefManifest(mixedManifest).join("\n"),
     /Console href manifest changed/,
   )
 

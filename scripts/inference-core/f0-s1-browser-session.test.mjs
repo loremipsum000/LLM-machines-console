@@ -37,7 +37,10 @@ test("F0-S1 remains a bounded local browser-session proof", async () => {
   assert.match(identityFixture, /refresh token revoked or reused/)
   assert.match(bffFixture, /TestOnlyInMemoryConsoleSessionRepository/)
   assert.match(bffFixture, /createConsoleTokenValidator/)
-  assert.doesNotMatch(harness, /(?:ssh|kubectl|harbor|gitea|vmid\s*115)/i)
+  assert.doesNotMatch(
+    harness,
+    /(?:\b(?:ssh|kubectl|harbor|gitea)\b|\bvmid\s*115\b)/i,
+  )
   assert.doesNotMatch(harness, /\.\.\.process\.env/)
   assert.ok(
     decision.notEvidenceFor.includes("Keycloak 26.7.0 runtime qualification"),

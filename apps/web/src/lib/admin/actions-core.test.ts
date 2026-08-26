@@ -12,10 +12,7 @@ import {
   generateAdminTeamPasswordAction,
   revokeAdminConnectedAppCredentialAction,
   revokeAdminConnectedAppFirecrawlCredentialAction,
-  rotateAdminConnectedAppFirecrawlCredentialAction,
   softDeleteAdminConnectedAppAction,
-  updateAdminConnectedAppFirecrawlPolicyAction,
-  updateAdminConnectedAppPolicyAction,
 } from "./actions-core"
 
 const connectedApp: AdminConnectedApp = {
@@ -487,7 +484,7 @@ describe("inference-core Admin actions", () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it("denies Operator Firecrawl rotation, revocation, and disablement", async () => {
+  it("denies Operator Firecrawl revocation and disablement", async () => {
     mocks.getCurrentConsoleSession.mockResolvedValue(
       activeConsoleSession("operator"),
     )
@@ -495,19 +492,6 @@ describe("inference-core Admin actions", () => {
     vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
     const appFormData = new FormData()
     appFormData.set("appId", connectedApp.id)
-
-    await expect(
-      rotateAdminConnectedAppFirecrawlCredentialAction(
-        {
-          app: null,
-          credential: null,
-          detail: null,
-          error: null,
-          status: "idle",
-        },
-        appFormData,
-      ),
-    ).rejects.toThrow("Authorized Console session required.")
 
     const revokeFormData = new FormData()
     revokeFormData.set("appId", connectedApp.id)
@@ -535,48 +519,6 @@ describe("inference-core Admin actions", () => {
       ),
     ).rejects.toThrow("Authorized Console session required.")
     expect(fetchSpy).not.toHaveBeenCalled()
-  })
-
-  it("submits Firecrawl policy limits only from an Admin surface", async () => {
-    mocks.getCurrentConsoleSession.mockResolvedValue(
-      activeConsoleSession("admin"),
-    )
-    const fetchSpy = vi.fn(async () =>
-      Promise.resolve(
-        new Response(
-          JSON.stringify({
-            app: firecrawlEnabledApp,
-            detail: "Firecrawl policy updated.",
-            status: "updated",
-          }),
-          { headers: { "Content-Type": "application/json" }, status: 200 },
-        ),
-      ),
-    )
-    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
-    const formData = new FormData()
-    formData.set("appId", connectedApp.id)
-    formData.set("firecrawlSearchRateLimitRpsEnabled", "on")
-    formData.set("firecrawlSearchRateLimitRps", "20")
-    formData.set("firecrawlScrapeRateLimitRpsEnabled", "on")
-    formData.set("firecrawlScrapeRateLimitRps", "7")
-
-    await expect(
-      updateAdminConnectedAppFirecrawlPolicyAction(formData),
-    ).rejects.toThrow(
-      `redirect:/keys/apps/${connectedApp.id}?appAction=firecrawlUpdated`,
-    )
-    expect(fetchSpy).toHaveBeenCalledWith(
-      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}/firecrawl`,
-      expect.objectContaining({
-        body: JSON.stringify({
-          maxConcurrentScrapes: null,
-          scrapeRateLimitRps: 7,
-          searchRateLimitRps: 20,
-        }),
-        method: "PATCH",
-      }),
-    )
   })
 
   it("denies application creation to an operator before any BFF call", async () => {
@@ -626,117 +568,6 @@ describe("inference-core Admin actions", () => {
         formData,
       ),
     ).rejects.toThrow("Authorized Console session required.")
-    expect(fetchSpy).not.toHaveBeenCalled()
-  })
-
-  it("submits stable aliases and null disabled limits in an Admin policy update", async () => {
-    mocks.getCurrentConsoleSession.mockResolvedValue(
-      activeConsoleSession("admin"),
-    )
-    const fetchSpy = vi.fn(async () =>
-      Promise.resolve(
-        new Response(JSON.stringify(connectedApp), {
-          headers: { "Content-Type": "application/json" },
-          status: 200,
-        }),
-      ),
-    )
-    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
-    const formData = new FormData()
-    formData.set("appId", connectedApp.id)
-    formData.set("name", "Updated Application")
-    formData.set("description", "Updated policy")
-    formData.append("allowedModels", "stable-alias")
-    formData.set("modelMode", "manual")
-
-    await expect(updateAdminConnectedAppPolicyAction(formData)).rejects.toThrow(
-      `redirect:/keys/apps/${connectedApp.id}?appAction=updated`,
-    )
-    expect(fetchSpy).toHaveBeenCalledWith(
-      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}`,
-      expect.objectContaining({
-        body: JSON.stringify({
-          allowedModels: ["stable-alias"],
-          description: "Updated policy",
-          maxConcurrentRequests: null,
-          maxContextBytes: null,
-          modelMode: "manual",
-          name: "Updated Application",
-          rateLimitRps: null,
-          tokenAlertThreshold7d: null,
-        }),
-        method: "PATCH",
-      }),
-    )
-  })
-
-  it("submits enabled service protections and the non-blocking token threshold", async () => {
-    mocks.getCurrentConsoleSession.mockResolvedValue(
-      activeConsoleSession("admin"),
-    )
-    const fetchSpy = vi.fn(async () =>
-      Promise.resolve(
-        new Response(JSON.stringify(connectedApp), {
-          headers: { "Content-Type": "application/json" },
-          status: 200,
-        }),
-      ),
-    )
-    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
-    const formData = new FormData()
-    formData.set("appId", connectedApp.id)
-    formData.set("name", "Protected Application")
-    formData.set("description", "Explicit service protections")
-    formData.append("allowedModels", "stable-alias")
-    formData.set("modelMode", "manual")
-    formData.set("rateLimitRpsEnabled", "on")
-    formData.set("rateLimitRps", "25")
-    formData.set("maxConcurrentRequestsEnabled", "on")
-    formData.set("maxConcurrentRequests", "8")
-    formData.set("maxContextBytesEnabled", "on")
-    formData.set("maxContextBytes", "65536")
-    formData.set("tokenAlertThreshold7dEnabled", "on")
-    formData.set("tokenAlertThreshold7d", "1000000")
-
-    await expect(updateAdminConnectedAppPolicyAction(formData)).rejects.toThrow(
-      `redirect:/keys/apps/${connectedApp.id}?appAction=updated`,
-    )
-    expect(fetchSpy).toHaveBeenCalledWith(
-      `http://bff.test/api/admin/applications/connected-apps/${connectedApp.id}`,
-      expect.objectContaining({
-        body: JSON.stringify({
-          allowedModels: ["stable-alias"],
-          description: "Explicit service protections",
-          maxConcurrentRequests: 8,
-          maxContextBytes: 65_536,
-          modelMode: "manual",
-          name: "Protected Application",
-          rateLimitRps: 25,
-          tokenAlertThreshold7d: 1_000_000,
-        }),
-        method: "PATCH",
-      }),
-    )
-  })
-
-  it("rejects a context byte maximum outside JavaScript's safe integer range", async () => {
-    mocks.getCurrentConsoleSession.mockResolvedValue(
-      activeConsoleSession("admin"),
-    )
-    const fetchSpy = vi.fn()
-    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
-    const formData = new FormData()
-    formData.set("appId", connectedApp.id)
-    formData.set("name", "Unsafe context application")
-    formData.set("description", "Must fail before the BFF call")
-    formData.append("allowedModels", "stable-alias")
-    formData.set("modelMode", "manual")
-    formData.set("maxContextBytesEnabled", "on")
-    formData.set("maxContextBytes", "9007199254740992")
-
-    await expect(updateAdminConnectedAppPolicyAction(formData)).rejects.toThrow(
-      `redirect:/keys/apps/${connectedApp.id}?appAction=invalid`,
-    )
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 

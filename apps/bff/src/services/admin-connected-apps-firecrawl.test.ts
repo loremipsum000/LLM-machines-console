@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto"
+import type { AdminConnectedAppFirecrawlEnableRequest } from "@llm-machines/contracts/inference-core"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Actor } from "../auth/authorization"
 import {
   AdminConnectedAppFirecrawlCredentialCommitRaceError,
   FIRECRAWL_DISCLAIMER_VERSION,
-  FIRECRAWL_KEY_OVERLAP_SECONDS,
   admitAdminConnectedAppFirecrawlRequest,
   deleteAdminConnectedAppFirecrawlForParent,
   disableAdminConnectedAppFirecrawl,
@@ -18,10 +18,8 @@ import {
   resetAdminConnectedAppFirecrawlForTest,
   resolveAdminConnectedAppFirecrawlCredential,
   revokeAdminConnectedAppFirecrawlCredential,
-  rotateAdminConnectedAppFirecrawlCredential,
   settleAdminConnectedAppFirecrawlRequest,
   testAdminConnectedAppFirecrawl,
-  updateAdminConnectedAppFirecrawlPolicy,
 } from "./admin-connected-apps-firecrawl"
 import { getAuditEventsForTest, resetAuditEventsForTest } from "./audit"
 import type { IdentityMutationRouteContext } from "./identity-mutation-journal"
@@ -133,7 +131,7 @@ describe("per-Application Firecrawl lifecycle", () => {
       order.push("commit:complete")
       return result
     }
-    const finalizeReveal = async <T extends { status: "enabled" | "rotated" }>(
+    const finalizeReveal = async <T extends { status: "enabled" }>(
       result: T,
     ): Promise<T> => {
       order.push(`${result.status}:response`)
@@ -147,19 +145,9 @@ describe("per-Application Firecrawl lifecycle", () => {
       identityContext("firecrawl.enable", commitWithReceipt),
       finalizeReveal,
     )
-    await rotateAdminConnectedAppFirecrawlCredential(
-      actor,
-      "app-1",
-      identityContext("firecrawl.rotate", commitWithReceipt),
-      finalizeReveal,
-    )
-
     expect(order).toEqual([
       "commit:start",
       "enabled:response",
-      "commit:complete",
-      "commit:start",
-      "rotated:response",
       "commit:complete",
     ])
   })
@@ -188,29 +176,6 @@ describe("per-Application Firecrawl lifecycle", () => {
       name: AdminConnectedAppFirecrawlCredentialCommitRaceError.name,
     })
     expect(enableReceiptCompleted).toBe(false)
-
-    await createEnabled("rotate-race")
-    let rotateReceiptCompleted = false
-    const rotateCommit: NonNullable<
-      IdentityMutationRouteContext["commitWithReceipt"]
-    > = async ({ run }) => {
-      await deleteAdminConnectedAppFirecrawlForParent(actor, "rotate-race")
-      const result = await run(null)
-      rotateReceiptCompleted = true
-      return result
-    }
-
-    await expect(
-      rotateAdminConnectedAppFirecrawlCredential(
-        actor,
-        "rotate-race",
-        identityContext("firecrawl.rotate", rotateCommit),
-      ),
-    ).rejects.toMatchObject({
-      failure: { status: "not_found" },
-      name: AdminConnectedAppFirecrawlCredentialCommitRaceError.name,
-    })
-    expect(rotateReceiptCompleted).toBe(false)
   })
 
   it("resolves only the dedicated Firecrawl key namespace and disables immediately", async () => {
@@ -242,7 +207,14 @@ describe("per-Application Firecrawl lifecycle", () => {
   })
 
   it("re-enables with an existing key without revealing or rotating it", async () => {
-    const enabled = await createEnabled("app-1")
+    const enabled = await createEnabled(
+      "app-1",
+      enableRequest({
+        maxConcurrentScrapes: 2,
+        scrapeRateLimitRps: 3,
+        searchRateLimitRps: 4,
+      }),
+    )
     if (!enabled.credential) {
       throw new Error("Expected a Firecrawl key.")
     }
@@ -251,7 +223,11 @@ describe("per-Application Firecrawl lifecycle", () => {
     const reenabled = await enableAdminConnectedAppFirecrawl(
       actor,
       "app-1",
-      enableRequest(),
+      enableRequest({
+        maxConcurrentScrapes: 20,
+        scrapeRateLimitRps: 30,
+        searchRateLimitRps: 40,
+      }),
     )
 
     expect(reenabled).toMatchObject({
@@ -260,59 +236,12 @@ describe("per-Application Firecrawl lifecycle", () => {
         credentials: [
           expect.objectContaining({ id: enabled.credential.credentialId }),
         ],
+        maxConcurrentScrapes: 2,
+        scrapeRateLimitRps: 3,
+        searchRateLimitRps: 4,
         status: "enabled",
       },
       status: "enabled",
-    })
-  })
-
-  it("rotates with exactly 86400 seconds of overlap and reveals only the replacement", async () => {
-    const enabled = await createEnabled("app-1")
-    if (!enabled.credential) {
-      throw new Error("Expected a Firecrawl key.")
-    }
-    const rotated = await rotateAdminConnectedAppFirecrawlCredential(
-      actor,
-      "app-1",
-      identityContext("firecrawl.rotate"),
-    )
-
-    expect(rotated.status).toBe("rotated")
-    if (rotated.status !== "rotated" || !rotated.credential) {
-      throw new Error("Expected a rotated Firecrawl key.")
-    }
-    expect(rotated.credential.apiKey).not.toBe(enabled.credential.apiKey)
-    const retiring = rotated.firecrawl.credentials.find(
-      (credential) => credential.id === enabled.credential?.credentialId,
-    )
-    expect(retiring?.status).toBe("retiring")
-    expect(
-      (Date.parse(retiring?.overlapExpiresAt ?? "") -
-        Date.parse(retiring?.rotatedAt ?? "")) /
-        1000,
-    ).toBe(FIRECRAWL_KEY_OVERLAP_SECONDS)
-  })
-
-  it("allows key rotation while global Firecrawl runtime readiness is unavailable", async () => {
-    await createEnabled("app-1")
-    vi.stubEnv("FIRECRAWL_APPLIANCE_KILL_SWITCH", "true")
-    vi.stubEnv("FIRECRAWL_RESOURCE_PROFILE_QUALIFIED", "false")
-    vi.stubEnv("FIRECRAWL_EGRESS_POLICY_READY", "false")
-    vi.stubEnv("FIRECRAWL_UPSTREAM_BASE_URL", "")
-    vi.stubEnv("FIRECRAWL_EGRESS_ALLOWED_HOSTS", "")
-    vi.stubEnv("FIRECRAWL_EGRESS_ALLOWLIST_DIR", "")
-
-    await expect(
-      rotateAdminConnectedAppFirecrawlCredential(
-        actor,
-        "app-1",
-        identityContext("firecrawl.rotate"),
-      ),
-    ).resolves.toMatchObject({
-      credential: {
-        firecrawlBaseUrl: "https://bff.example.test",
-      },
-      status: "rotated",
     })
   })
 
@@ -344,15 +273,16 @@ describe("per-Application Firecrawl lifecycle", () => {
   })
 
   it("enforces optional rate and scrape concurrency controls through metadata-only admissions", async () => {
-    const enabled = await createEnabled("app-1")
+    const enabled = await createEnabled(
+      "app-1",
+      enableRequest({
+        maxConcurrentScrapes: 1,
+        searchRateLimitRps: 1,
+      }),
+    )
     if (!enabled.credential) {
       throw new Error("Expected a Firecrawl key.")
     }
-    await updateAdminConnectedAppFirecrawlPolicy(actor, "app-1", {
-      maxConcurrentScrapes: 1,
-      scrapeRateLimitRps: null,
-      searchRateLimitRps: 1,
-    })
     const resolution = await resolveAdminConnectedAppFirecrawlCredential(
       enabled.credential.apiKey,
     )
@@ -441,15 +371,13 @@ describe("per-Application Firecrawl lifecycle", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-08-01T00:00:00.000Z"))
     try {
-      const enabled = await createEnabled("app-lease")
+      const enabled = await createEnabled(
+        "app-lease",
+        enableRequest({ maxConcurrentScrapes: 1 }),
+      )
       if (!enabled.credential) {
         throw new Error("Expected a Firecrawl key.")
       }
-      await updateAdminConnectedAppFirecrawlPolicy(actor, "app-lease", {
-        maxConcurrentScrapes: 1,
-        scrapeRateLimitRps: null,
-        searchRateLimitRps: null,
-      })
       const resolution = await resolveAdminConnectedAppFirecrawlCredential(
         enabled.credential.apiKey,
       )
@@ -507,27 +435,11 @@ describe("per-Application Firecrawl lifecycle", () => {
     ).resolves.toEqual({ ok: false, reason: "invalid" })
   })
 
-  it("audits every credential revoked by parent deletion", async () => {
-    await createEnabled("app-1")
-    const rotated = await rotateAdminConnectedAppFirecrawlCredential(
-      actor,
-      "app-1",
-      identityContext("firecrawl.rotate"),
-    )
-    if (rotated.status !== "rotated" || !rotated.credential) {
-      throw new Error("Expected a rotated Firecrawl key.")
+  it("audits the active credential revoked by parent deletion", async () => {
+    const enabled = await createEnabled("app-1")
+    if (!enabled.credential) {
+      throw new Error("Expected a Firecrawl key.")
     }
-    const retiringCredentialId = rotated.firecrawl.credentials.find(
-      (credential) => credential.status === "retiring",
-    )?.id
-    if (!retiringCredentialId) {
-      throw new Error("Expected a retiring Firecrawl key.")
-    }
-    await revokeAdminConnectedAppFirecrawlCredential(
-      actor,
-      "app-1",
-      rotated.credential.credentialId,
-    )
 
     await deleteAdminConnectedAppFirecrawlForParent(actor, "app-1")
 
@@ -535,7 +447,7 @@ describe("per-Application Firecrawl lifecycle", () => {
       expect.objectContaining({
         action: "lifecycle.application.firecrawl_revoked",
         applicationId: "app-1",
-        credentialRecordId: retiringCredentialId,
+        credentialRecordId: enabled.credential.credentialId,
         keycloakSubjectId: actor.subject,
       }),
     )
@@ -554,6 +466,29 @@ describe("per-Application Firecrawl lifecycle", () => {
     expect(result).toMatchObject({
       firecrawl: { status: "disabled" },
       status: "revoked",
+    })
+    await expect(
+      enableAdminConnectedAppFirecrawl(
+        actor,
+        "app-1",
+        enableRequest(),
+        identityContext("firecrawl.enable-again"),
+      ),
+    ).resolves.toEqual({
+      detail:
+        "This Key's Firecrawl credential is no longer active. Create a new Key to use Firecrawl again.",
+      status: "blocked",
+    })
+    await expect(
+      getAdminConnectedAppFirecrawlProjection("app-1"),
+    ).resolves.toMatchObject({
+      credentials: [
+        expect.objectContaining({
+          id: enabled.credential.credentialId,
+          status: "revoked",
+        }),
+      ],
+      status: "disabled",
     })
   })
 })
@@ -672,12 +607,15 @@ function configureReadyFirecrawl(): void {
   )
 }
 
-function enableRequest() {
+function enableRequest(
+  overrides: Partial<AdminConnectedAppFirecrawlEnableRequest> = {},
+): AdminConnectedAppFirecrawlEnableRequest {
   return {
     disclaimerAccepted: true as const,
     maxConcurrentScrapes: null,
     scrapeRateLimitRps: null,
     searchRateLimitRps: null,
+    ...overrides,
   }
 }
 
@@ -699,12 +637,15 @@ function identityContext(
   }
 }
 
-async function createEnabled(applicationId: string) {
+async function createEnabled(
+  applicationId: string,
+  request: AdminConnectedAppFirecrawlEnableRequest = enableRequest(),
+) {
   await initializeAdminConnectedAppFirecrawlForParent(actor, applicationId)
   const result = await enableAdminConnectedAppFirecrawl(
     actor,
     applicationId,
-    enableRequest(),
+    request,
     identityContext("firecrawl.enable"),
   )
   if (result.status !== "enabled") {

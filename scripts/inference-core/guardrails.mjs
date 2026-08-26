@@ -3677,6 +3677,31 @@ export const pr11ConsoleHrefManifest = [
   },
 ]
 
+export const pr11KeysConsoleHrefManifest = [
+  ...pr11ConsoleHrefManifest.filter(
+    ({ path }) =>
+      path !==
+      "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+  ),
+  ...[
+    "expression:`/keys/apps/${encodeURIComponent(app.id)}`",
+    "expression:`/keys/apps/${encodeURIComponent(app.id)}`",
+    "expression:`/keys/apps/${encodeURIComponent(app.id)}`",
+    "expression:`/keys/apps/${encodeURIComponent(app.id)}`",
+    "expression:`/keys/apps/${encodeURIComponent(app.id)}`",
+    "expression:href",
+    "literal:/keys",
+    "literal:/keys",
+    "literal:/keys",
+    "literal:/keys/apps/new",
+    "literal:/keys/apps/new",
+    "literal:/keys/apps/new",
+  ].map((expression) => ({
+    path: "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+    expression,
+  })),
+].sort(comparePr11HrefEntries)
+
 export const pr11RetiredEnvExampleBlock = [
   "",
   "# Signed model-update metadata",
@@ -13649,7 +13674,9 @@ export function buildPr11ConsoleHrefManifest(
 }
 
 export function verifyPr11ConsoleHrefManifest(manifest) {
-  return JSON.stringify(manifest) === JSON.stringify(pr11ConsoleHrefManifest)
+  const serialized = JSON.stringify(manifest)
+  return serialized === JSON.stringify(pr11ConsoleHrefManifest) ||
+    serialized === JSON.stringify(pr11KeysConsoleHrefManifest)
     ? []
     : ["PR-11 Console href manifest changed"]
 }

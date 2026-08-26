@@ -72,18 +72,23 @@ describe("Application Firecrawl admin routes", () => {
     expect(enableReplay.json()).toMatchObject({ status: "already_completed" })
     expect(enableReplay.body).not.toContain(revealedKey)
 
-    const operatorPolicy = await mutate(server, {
-      headers: operatorHeaders,
-      idempotencyKey: "operator-policy-denied",
-      method: "PATCH",
-      payload: {
-        maxConcurrentScrapes: 2,
-        scrapeRateLimitRps: null,
-        searchRateLimitRps: null,
-      },
-      url: `${applicationUrl(applicationId)}/firecrawl`,
-    })
-    expect(operatorPolicy.statusCode).toBe(403)
+    for (const [headers, expectedStatus] of [
+      [operatorHeaders, 403],
+      [adminHeaders, 404],
+    ] as const) {
+      const retiredPolicy = await mutate(server, {
+        headers,
+        idempotencyKey: `retired-firecrawl-policy-${headers["x-llm-machines-user-roles"]}`,
+        method: "PATCH",
+        payload: {
+          maxConcurrentScrapes: 2,
+          scrapeRateLimitRps: null,
+          searchRateLimitRps: null,
+        },
+        url: `${applicationUrl(applicationId)}/firecrawl`,
+      })
+      expect(retiredPolicy.statusCode).toBe(expectedStatus)
+    }
 
     const passiveTest = await mutate(server, {
       headers: operatorHeaders,
@@ -106,29 +111,18 @@ describe("Application Firecrawl admin routes", () => {
       status: "waiting",
     })
 
-    vi.stubEnv("FIRECRAWL_APPLIANCE_KILL_SWITCH", "true")
-    vi.stubEnv("FIRECRAWL_RESOURCE_PROFILE_QUALIFIED", "false")
-    vi.stubEnv("FIRECRAWL_EGRESS_POLICY_READY", "false")
-    const operatorRotated = await mutate(server, {
-      headers: operatorHeaders,
-      idempotencyKey: "operator-rotate-firecrawl",
-      method: "POST",
-      url: `${applicationUrl(applicationId)}/firecrawl/rotate-credentials`,
-    })
-    expect(operatorRotated.statusCode).toBe(403)
-
-    const rotated = await mutate(server, {
-      headers: adminHeaders,
-      idempotencyKey: "admin-rotate-firecrawl",
-      method: "POST",
-      url: `${applicationUrl(applicationId)}/firecrawl/rotate-credentials`,
-    })
-    expect(rotated.statusCode).toBe(200)
-    expect(rotated.headers["cache-control"]).toBe("no-store")
-    expect(rotated.json()).toMatchObject({
-      credential: { apiKey: expect.stringMatching(/^llmm_fc_/) },
-      status: "rotated",
-    })
+    for (const [headers, expectedStatus] of [
+      [operatorHeaders, 403],
+      [adminHeaders, 404],
+    ] as const) {
+      const retiredRotation = await mutate(server, {
+        headers,
+        idempotencyKey: `retired-firecrawl-rotation-${headers["x-llm-machines-user-roles"]}`,
+        method: "POST",
+        url: `${applicationUrl(applicationId)}/firecrawl/rotate-credentials`,
+      })
+      expect(retiredRotation.statusCode).toBe(expectedStatus)
+    }
 
     const detail = await server.inject({
       headers: adminHeaders,
@@ -161,7 +155,7 @@ describe("Application Firecrawl admin routes", () => {
     await server.close()
   })
 
-  it("durably replays transaction-time credential races as failed 404 or 409 receipts", async () => {
+  it("durably replays a first-enable credential race as a failed receipt", async () => {
     configureFixtureRuntime()
     const server = buildServer()
     const created = await createApplication(server, "firecrawl-race-app-create")
@@ -170,74 +164,37 @@ describe("Application Firecrawl admin routes", () => {
       firecrawlService,
       "enableAdminConnectedAppFirecrawl",
     )
-    const rotateSpy = vi.spyOn(
-      firecrawlService,
-      "rotateAdminConnectedAppFirecrawlCredential",
+    enableSpy.mockRejectedValueOnce(
+      new firecrawlService.AdminConnectedAppFirecrawlCredentialCommitRaceError({
+        status: "not_found",
+      }),
     )
-    const cases = [
-      {
-        error:
-          new firecrawlService.AdminConnectedAppFirecrawlCredentialCommitRaceError(
-            { status: "not_found" },
-          ),
-        idempotencyKey: "firecrawl-commit-race-not-found",
-        operation: "enable",
-        statusCode: 404,
-        title: "Key not found",
-      },
-      {
-        error:
-          new firecrawlService.AdminConnectedAppFirecrawlCredentialCommitRaceError(
-            {
-              detail: "An active Firecrawl key is required before rotation.",
-              status: "blocked",
-            },
-          ),
-        idempotencyKey: "firecrawl-commit-race-blocked",
-        operation: "rotate",
-        statusCode: 409,
-        title: "Key action blocked",
-      },
-    ] as const
-
-    for (const scenario of cases) {
-      if (scenario.operation === "enable") {
-        enableSpy.mockRejectedValueOnce(scenario.error)
-      } else {
-        rotateSpy.mockRejectedValueOnce(scenario.error)
-      }
-      const request = {
-        headers: adminHeaders,
-        idempotencyKey: scenario.idempotencyKey,
-        method: "POST" as const,
-        ...(scenario.operation === "enable"
-          ? { payload: { disclaimerAccepted: true } }
-          : {}),
-        url: `${applicationUrl(applicationId)}/firecrawl/${
-          scenario.operation === "enable" ? "enable" : "rotate-credentials"
-        }`,
-      }
-      const first = await mutate(server, request)
-      expect(first.statusCode).toBe(scenario.statusCode)
-      expect(first.json()).toMatchObject({
-        status: scenario.statusCode,
-        title: scenario.title,
-      })
-
-      const replay = await mutate(server, request)
-      expect(replay.statusCode).toBe(scenario.statusCode)
-      expect(replay.json()).toEqual({
-        correlationId: expect.any(String),
-        outcome: "failed",
-        resourceId: null,
-        status: "already_completed",
-      })
-      expect(replay.body).not.toContain("apiKey")
-      expect(replay.body).not.toContain("llmm_fc_")
+    const request = {
+      headers: adminHeaders,
+      idempotencyKey: "firecrawl-commit-race-not-found",
+      method: "POST" as const,
+      payload: { disclaimerAccepted: true },
+      url: `${applicationUrl(applicationId)}/firecrawl/enable`,
     }
 
+    const first = await mutate(server, request)
+    expect(first.statusCode).toBe(404)
+    expect(first.json()).toMatchObject({
+      status: 404,
+      title: "Key not found",
+    })
+
+    const replay = await mutate(server, request)
+    expect(replay.statusCode).toBe(404)
+    expect(replay.json()).toEqual({
+      correlationId: expect.any(String),
+      outcome: "failed",
+      resourceId: null,
+      status: "already_completed",
+    })
+    expect(replay.body).not.toContain("apiKey")
+    expect(replay.body).not.toContain("llmm_fc_")
     expect(enableSpy).toHaveBeenCalledOnce()
-    expect(rotateSpy).toHaveBeenCalledOnce()
     await server.close()
   })
 

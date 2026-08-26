@@ -18,8 +18,6 @@ import {
   resetConnectedAppsForTest,
   resolveConnectedAppRuntimeIdentityByApiKey,
   revokeAdminConnectedAppCredential,
-  rotateAdminConnectedAppCredentials,
-  updateAdminConnectedApp,
 } from "../../../apps/bff/src/services/admin-connected-apps"
 import {
   IdempotencyCompletionError,
@@ -102,144 +100,6 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     await database.close()
   })
 
-  it("retires a static key for 24 hours without mutating storage during auth resolution", async () => {
-    const created = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("api_key"),
-    )
-    expect(created.status).toBe("created")
-    if (
-      created.status !== "created" ||
-      created.credential.authMethod !== "api_key"
-    ) {
-      throw new Error("Expected a static connected-app credential.")
-    }
-    const oldKey = created.credential.apiKey
-
-    databaseQueries.length = 0
-    const rotated = await rotateAdminConnectedAppCredentials(
-      actor,
-      created.app.id,
-    )
-    expect(rotated.status).toBe("rotated")
-    if (
-      rotated.status !== "rotated" ||
-      rotated.credential.authMethod !== "api_key"
-    ) {
-      throw new Error("Expected a rotated static credential.")
-    }
-    expectApplicationLockBeforeCredentialWrite(databaseQueries)
-
-    const lifecycle = await credentialLifecycle(created.app.id)
-    expect(lifecycle).toEqual([
-      {
-        overlap_expires_at: null,
-        revoked_at: null,
-        rotated_at: null,
-        status: "active",
-      },
-      {
-        overlap_expires_at: new Date("2026-08-01T12:00:00.000Z"),
-        revoked_at: null,
-        rotated_at: new Date("2026-07-31T12:00:00.000Z"),
-        status: "retiring",
-      },
-    ])
-    await expect(
-      resolveConnectedAppRuntimeIdentityByApiKey(oldKey),
-    ).resolves.toMatchObject({ appId: created.app.id })
-    await expect(
-      resolveConnectedAppRuntimeIdentityByApiKey(rotated.credential.apiKey),
-    ).resolves.toMatchObject({ appId: created.app.id })
-
-    vi.setSystemTime(new Date("2026-08-01T12:00:00.001Z"))
-    await expect(
-      resolveConnectedAppRuntimeIdentityByApiKey(oldKey),
-    ).resolves.toBeNull()
-    const expired = await credentialLifecycle(created.app.id)
-    expect(expired.find((row) => row.status === "retiring")).toMatchObject({
-      overlap_expires_at: new Date("2026-08-01T12:00:00.000Z"),
-      revoked_at: null,
-      rotated_at: new Date("2026-07-31T12:00:00.000Z"),
-    })
-  })
-
-  it("keeps at most one retiring key across rapid static rotations", async () => {
-    const created = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("api_key"),
-    )
-    expect(created.status).toBe("created")
-    if (
-      created.status !== "created" ||
-      created.credential.authMethod !== "api_key"
-    ) {
-      throw new Error("Expected the initial static credential.")
-    }
-    const firstKey = created.credential.apiKey
-
-    vi.setSystemTime(new Date("2026-07-31T12:10:00.000Z"))
-    const firstRotation = await rotateAdminConnectedAppCredentials(
-      actor,
-      created.app.id,
-    )
-    expect(firstRotation.status).toBe("rotated")
-    if (
-      firstRotation.status !== "rotated" ||
-      firstRotation.credential.authMethod !== "api_key"
-    ) {
-      throw new Error("Expected the first rotated static credential.")
-    }
-
-    vi.setSystemTime(new Date("2026-07-31T12:20:00.000Z"))
-    const secondRotation = await rotateAdminConnectedAppCredentials(
-      actor,
-      created.app.id,
-    )
-    expect(secondRotation.status).toBe("rotated")
-    if (
-      secondRotation.status !== "rotated" ||
-      secondRotation.credential.authMethod !== "api_key"
-    ) {
-      throw new Error("Expected the second rotated static credential.")
-    }
-
-    await expect(
-      resolveConnectedAppRuntimeIdentityByApiKey(firstKey),
-    ).resolves.toBeNull()
-    await expect(
-      resolveConnectedAppRuntimeIdentityByApiKey(
-        firstRotation.credential.apiKey,
-      ),
-    ).resolves.toMatchObject({ appId: created.app.id })
-    await expect(
-      resolveConnectedAppRuntimeIdentityByApiKey(
-        secondRotation.credential.apiKey,
-      ),
-    ).resolves.toMatchObject({ appId: created.app.id })
-
-    expect(await credentialLifecycleByIssueTime(created.app.id)).toEqual([
-      {
-        overlap_expires_at: new Date("2026-08-01T12:10:00.000Z"),
-        revoked_at: new Date("2026-07-31T12:20:00.000Z"),
-        rotated_at: new Date("2026-07-31T12:10:00.000Z"),
-        status: "revoked",
-      },
-      {
-        overlap_expires_at: new Date("2026-08-01T12:20:00.000Z"),
-        revoked_at: null,
-        rotated_at: new Date("2026-07-31T12:20:00.000Z"),
-        status: "retiring",
-      },
-      {
-        overlap_expires_at: null,
-        revoked_at: null,
-        rotated_at: null,
-        status: "active",
-      },
-    ])
-  })
-
   it("rolls soft delete back on audit failure, then atomically revokes every credential and removes stale auth", async () => {
     const created = await createAdminConnectedApp(
       actor,
@@ -251,21 +111,8 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     ) {
       throw new Error("Expected the initial static credential.")
     }
-    const initialKey = created.credential.apiKey
-
-    vi.setSystemTime(new Date("2026-07-31T12:10:00.000Z"))
-    const rotated = await rotateAdminConnectedAppCredentials(
-      actor,
-      created.app.id,
-    )
-    if (
-      rotated.status !== "rotated" ||
-      rotated.credential.authMethod !== "api_key"
-    ) {
-      throw new Error("Expected a rotated static credential.")
-    }
-    const activeKey = rotated.credential.apiKey
-    const activeCredentialId = rotated.credential.credentialId
+    const activeKey = created.credential.apiKey
+    const activeCredentialId = created.credential.credentialId
 
     await database.exec(`
       ALTER TABLE common.audit_events
@@ -289,13 +136,9 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
       applicationStatus: "enabled",
       audit: [],
       credentials: [
-        { id: expect.any(String), revoked_at: null, status: "retiring" },
         { id: activeCredentialId, revoked_at: null, status: "active" },
       ],
     })
-    await expect(
-      resolveConnectedAppRuntimeIdentityByApiKey(initialKey),
-    ).resolves.toMatchObject({ appId: created.app.id })
     await expect(
       resolveConnectedAppRuntimeIdentityByApiKey(activeKey),
     ).resolves.toMatchObject({ appId: created.app.id })
@@ -309,7 +152,7 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     })
     const stored = await storedDeleteState(created.app.id)
     expect(stored.applicationStatus).toBe("deleted")
-    expect(stored.credentials).toHaveLength(2)
+    expect(stored.credentials).toHaveLength(1)
     expect(
       stored.credentials.every(
         (credential) =>
@@ -324,9 +167,6 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
         keycloak_subject_id: actor.subject,
       },
     ])
-    await expect(
-      resolveConnectedAppRuntimeIdentityByApiKey(initialKey),
-    ).resolves.toBeNull()
     await expect(
       resolveConnectedAppRuntimeIdentityByApiKey(activeKey),
     ).resolves.toBeNull()
@@ -370,48 +210,6 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
       credentials: 0,
       humanIdentities: 0,
       receipt: { resource_id: null, state: "pending" },
-    })
-  })
-
-  it("rolls back static rotation metadata and audit when PostgreSQL receipt completion fails", async () => {
-    const created = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("api_key"),
-      undefined,
-      staticRevealEndpoints,
-    )
-    if (
-      created.status !== "created" ||
-      created.credential.authMethod !== "api_key"
-    ) {
-      throw new Error("Expected an initial static credential.")
-    }
-    const initialSecret = created.credential.apiKey
-    const before = await localApplicationSnapshot(created.app.id)
-    vi.setSystemTime(new Date("2026-07-31T12:10:00.000Z"))
-    const receipt = await atomicReceiptContext({
-      failCompletion: true,
-      operationCode: "application.static.rotate",
-      statusCode: 200,
-    })
-
-    await expect(
-      rotateAdminConnectedAppCredentials(
-        actor,
-        created.app.id,
-        receipt.context,
-        staticRevealEndpoints,
-      ),
-    ).rejects.toThrow()
-
-    expect(receipt.resourceIds).toEqual([created.app.id])
-    expect(await localApplicationSnapshot(created.app.id)).toEqual(before)
-    await expect(
-      resolveConnectedAppRuntimeIdentityByApiKey(initialSecret),
-    ).resolves.toMatchObject({ appId: created.app.id })
-    expect(await receiptState(receipt.ledgerId)).toEqual({
-      resource_id: null,
-      state: "pending",
     })
   })
 
@@ -479,105 +277,6 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     expect(await applicationCount()).toBe(0)
   })
 
-  it("rolls back OAuth rotation while preserving its Keycloak reconciliation fence", async () => {
-    const createReceipt = await atomicReceiptContext({
-      failCompletion: false,
-      operationCode: "application.oauth.create",
-      statusCode: 201,
-    })
-    const created = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("oauth_client_credentials"),
-      createReceipt.context,
-      oauthRevealEndpoints,
-    )
-    if (
-      created.status !== "created" ||
-      created.credential.authMethod !== "oauth_client_credentials"
-    ) {
-      throw new Error("Expected an initial OAuth credential.")
-    }
-    expect(await receiptState(createReceipt.ledgerId)).toEqual({
-      resource_id: created.app.id,
-      state: "completed",
-    })
-    const before = await localApplicationSnapshot(created.app.id)
-    expect(JSON.stringify(before)).not.toContain(
-      created.credential.clientSecret,
-    )
-    const externalCredentialId = before.credentials[0]?.external_credential_id
-    expect(externalCredentialId).toMatch(/^fixture-[0-9a-f-]+$/)
-    vi.setSystemTime(new Date("2026-07-31T12:10:00.000Z"))
-    const rotateReceipt = await atomicReceiptContext({
-      failCompletion: true,
-      operationCode: "application.oauth.rotate",
-      statusCode: 200,
-    })
-
-    databaseQueries.length = 0
-    const error = await captureRejectedError(
-      rotateAdminConnectedAppCredentials(
-        actor,
-        created.app.id,
-        rotateReceipt.context,
-        oauthRevealEndpoints,
-      ),
-    )
-
-    expect(error).toBeInstanceOf(IdentityMutationReconciliationRequiredError)
-    expectApplicationLockBeforeCredentialWrite(databaseQueries)
-    expect(rotateReceipt.resourceIds).toEqual([created.app.id])
-    expect(await localApplicationSnapshot(created.app.id)).toEqual(before)
-    expect(await receiptState(rotateReceipt.ledgerId)).toEqual({
-      resource_id: null,
-      state: "pending",
-    })
-    expect(await identityReconciliationState(rotateReceipt.ledgerId)).toEqual({
-      reconciliation_reason: "completion_persistence_failed",
-      resource_id: externalCredentialId,
-      state: "reconciliation_required",
-      target_identifier: created.credential.clientId,
-    })
-    expect(JSON.stringify(error)).not.toContain(created.credential.clientSecret)
-    expect(error.message).not.toContain(externalCredentialId ?? "fixture-")
-  })
-
-  it("does not let a paused policy update resurrect a concurrently deleted Application", async () => {
-    const created = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("api_key"),
-    )
-    if (created.status !== "created") {
-      throw new Error("Expected an Application.")
-    }
-    const paused = pauseNextTransaction(inferenceDb)
-    vi.mocked(getInferenceCoreDb).mockReturnValue(paused.db)
-    const updating = updateAdminConnectedApp(actor, created.app.id, {
-      allowedModels: ["local-b"],
-      description: "Concurrent policy update.",
-      maxConcurrentRequests: null,
-      maxContextBytes: null,
-      modelMode: "manual",
-      name: "Concurrent policy",
-      rateLimitRps: 10,
-      tokenAlertThreshold7d: null,
-    })
-
-    await paused.started
-    vi.mocked(getInferenceCoreDb).mockReturnValue(inferenceDb)
-    const deleted = await deleteAdminConnectedApp(actor, created.app.id)
-    paused.release()
-    const updated = await updating
-
-    expect(deleted.status).toBe("deleted")
-    expect(updated).toEqual({ status: "not_found" })
-    expect(await storedApplicationState(created.app.id)).toMatchObject({
-      activeCredentials: 0,
-      status: "deleted",
-      updateAudits: 0,
-    })
-  })
-
   it("does not re-enable after the active credential is concurrently revoked", async () => {
     const created = await createAdminConnectedApp(
       actor,
@@ -621,7 +320,7 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     })
   })
 
-  it("does not let a paused policy update erase newer models connection evidence", async () => {
+  it("atomically records active-key connection evidence", async () => {
     const created = await createAdminConnectedApp(
       actor,
       connectedAppRequest("api_key"),
@@ -632,142 +331,16 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     ) {
       throw new Error("Expected a static Application credential.")
     }
-    const identity = await resolveConnectedAppRuntimeIdentityByApiKey(
+    const activeIdentity = await resolveConnectedAppRuntimeIdentityByApiKey(
       created.credential.apiKey,
     )
-    if (!identity) {
-      throw new Error("Expected a runtime identity.")
-    }
-    const paused = pauseNextTransaction(inferenceDb)
-    vi.mocked(getInferenceCoreDb).mockReturnValue(paused.db)
-    const updating = updateAdminConnectedApp(actor, created.app.id, {
-      allowedModels: ["local-b"],
-      description: "Concurrent connection policy.",
-      maxConcurrentRequests: null,
-      maxContextBytes: null,
-      modelMode: "manual",
-      name: "Connection policy",
-      rateLimitRps: null,
-      tokenAlertThreshold7d: null,
-    })
-
-    await paused.started
-    vi.mocked(getInferenceCoreDb).mockReturnValue(inferenceDb)
-    await expect(
-      recordConnectedAppModelsConnection(identity, "models-policy-race"),
-    ).resolves.toBe(true)
-    paused.release()
-    await expect(updating).resolves.toMatchObject({ status: "updated" })
-
-    expect(await storedApplicationState(created.app.id)).toMatchObject({
-      connectionStatus: "connected",
-      lastConnectedAt: expect.any(Date),
-      status: "enabled",
-    })
-  })
-
-  it("does not leave live credentials when soft delete wins a stale static rotation race", async () => {
-    const created = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("api_key"),
-    )
-    if (
-      created.status !== "created" ||
-      created.credential.authMethod !== "api_key"
-    ) {
-      throw new Error("Expected a static Application credential.")
-    }
-    const paused = pauseTransaction(inferenceDb, 2)
-    vi.mocked(getInferenceCoreDb).mockReturnValue(paused.db)
-    const rotating = rotateAdminConnectedAppCredentials(actor, created.app.id)
-
-    await paused.started
-    vi.mocked(getInferenceCoreDb).mockReturnValue(inferenceDb)
-    const deleted = await deleteAdminConnectedApp(actor, created.app.id)
-    paused.release()
-
-    expect(deleted.status).toBe("deleted")
-    await expect(rotating).rejects.toThrow(
-      "Key could not be updated during rotation.",
-    )
-    const stored = await storedDeleteState(created.app.id)
-    expect(stored.applicationStatus).toBe("deleted")
-    expect(stored.credentials).toHaveLength(1)
-    expect(
-      stored.credentials.every(
-        (credential) =>
-          credential.status === "revoked" &&
-          credential.revoked_at instanceof Date,
-      ),
-    ).toBe(true)
-  })
-
-  it("serializes a mid-transaction static rotation before soft delete", async () => {
-    const created = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("api_key"),
-    )
-    if (
-      created.status !== "created" ||
-      created.credential.authMethod !== "api_key"
-    ) {
-      throw new Error("Expected a static Application credential.")
-    }
-    const paused = pauseAfterNextApplicationLock(database)
-    vi.mocked(getInferenceCoreDb).mockReturnValue(paused.db)
-    const rotating = rotateAdminConnectedAppCredentials(actor, created.app.id)
-
-    await paused.locked
-    vi.mocked(getInferenceCoreDb).mockReturnValue(inferenceDb)
-    let deletionSettled = false
-    const deleting = deleteAdminConnectedApp(actor, created.app.id).finally(
-      () => {
-        deletionSettled = true
-      },
-    )
-    await Promise.resolve()
-    expect(deletionSettled).toBe(false)
-    paused.release()
-
-    await expect(rotating).resolves.toMatchObject({ status: "rotated" })
-    await expect(deleting).resolves.toMatchObject({ status: "deleted" })
-    const stored = await storedDeleteState(created.app.id)
-    expect(stored.applicationStatus).toBe("deleted")
-    expect(stored.credentials).toHaveLength(2)
-    expect(
-      stored.credentials.every(
-        (credential) =>
-          credential.status === "revoked" &&
-          credential.revoked_at instanceof Date,
-      ),
-    ).toBe(true)
-  })
-
-  it("atomically records retiring-key connection evidence during overlap", async () => {
-    const created = await createAdminConnectedApp(
-      actor,
-      connectedAppRequest("api_key"),
-    )
-    if (
-      created.status !== "created" ||
-      created.credential.authMethod !== "api_key"
-    ) {
-      throw new Error("Expected a static Application credential.")
-    }
-    await rotateAdminConnectedAppCredentials(actor, created.app.id)
-    const retiringIdentity = await resolveConnectedAppRuntimeIdentityByApiKey(
-      created.credential.apiKey,
-    )
-    if (!retiringIdentity) {
-      throw new Error("Expected the retiring key to remain usable.")
+    if (!activeIdentity) {
+      throw new Error("Expected the active key to be usable.")
     }
 
     databaseQueries.length = 0
     await expect(
-      recordConnectedAppModelsConnection(
-        retiringIdentity,
-        "retiring-key-models",
-      ),
+      recordConnectedAppModelsConnection(activeIdentity, "active-key-models"),
     ).resolves.toBe(true)
     expectApplicationLockBeforeCredentialWrite(databaseQueries)
 
@@ -789,7 +362,7 @@ describe("connected app credential lifecycle in PostgreSQL", () => {
     expect(credential.rows).toEqual([
       {
         last_used_at: new Date("2026-07-31T12:00:00.000Z"),
-        status: "retiring",
+        status: "active",
       },
     ])
   })
@@ -809,38 +382,6 @@ function connectedAppRequest(
     rateLimitRps: null,
     tokenAlertThreshold7d: null,
   }
-}
-
-async function credentialLifecycle(appId: string) {
-  const result = await database.query<{
-    overlap_expires_at: Date | null
-    revoked_at: Date | null
-    rotated_at: Date | null
-    status: string
-  }>(
-    `SELECT overlap_expires_at, revoked_at, rotated_at, status
-     FROM admin.application_credentials
-     WHERE app_id = $1
-     ORDER BY status`,
-    [appId],
-  )
-  return result.rows
-}
-
-async function credentialLifecycleByIssueTime(appId: string) {
-  const result = await database.query<{
-    overlap_expires_at: Date | null
-    revoked_at: Date | null
-    rotated_at: Date | null
-    status: string
-  }>(
-    `SELECT overlap_expires_at, revoked_at, rotated_at, status
-     FROM admin.application_credentials
-     WHERE app_id = $1
-     ORDER BY issued_at`,
-    [appId],
-  )
-  return result.rows
 }
 
 async function applicationCount(): Promise<number> {
@@ -1040,70 +581,6 @@ async function localMutationState(ledgerId: string) {
   }
 }
 
-async function localApplicationSnapshot(appId: string) {
-  const [application, credentials, auditEvents] = await Promise.all([
-    database.query<{
-      connection_status: string
-      last_connected_at: Date | null
-      status: string
-      updated_at: Date
-      updated_by: string
-    }>(
-      `SELECT connection_status, last_connected_at, status, updated_at, updated_by
-       FROM admin.applications
-       WHERE id = $1`,
-      [appId],
-    ),
-    database.query<{
-      external_credential_id: string | null
-      id: string
-      issued_at: Date
-      overlap_expires_at: Date | null
-      revoked_at: Date | null
-      rotated_at: Date | null
-      status: string
-    }>(
-      `SELECT
-         external_credential_id,
-         id,
-         issued_at,
-         overlap_expires_at,
-         revoked_at,
-         rotated_at,
-         status
-       FROM admin.application_credentials
-       WHERE app_id = $1
-       ORDER BY issued_at, id`,
-      [appId],
-    ),
-    database.query<{ action: string }>(
-      `SELECT action
-       FROM common.audit_events
-       WHERE application_id = $1
-       ORDER BY occurred_at, id`,
-      [appId],
-    ),
-  ])
-  return {
-    application: application.rows,
-    auditEvents: auditEvents.rows,
-    credentials: credentials.rows,
-  }
-}
-
-async function receiptState(ledgerId: string) {
-  const result = await database.query<{
-    resource_id: string | null
-    state: string
-  }>(
-    `SELECT resource_id, state
-     FROM admin.idempotency_ledger
-     WHERE id = $1`,
-    [ledgerId],
-  )
-  return result.rows[0] ?? null
-}
-
 async function identityReconciliationState(ledgerId: string) {
   const result = await database.query<{
     reconciliation_reason: string | null
@@ -1162,67 +639,6 @@ function pauseTransaction(
     },
   })
   return { db: proxy, release, started }
-}
-
-function pauseAfterNextApplicationLock(client: PGlite) {
-  let release: () => void = () => {}
-  let signalLocked: () => void = () => {}
-  const released = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  const locked = new Promise<void>((resolve) => {
-    signalLocked = resolve
-  })
-  let paused = false
-  const wrapTransaction = <Transaction extends object>(
-    transaction: Transaction,
-  ): Transaction =>
-    new Proxy(transaction, {
-      get(target, property) {
-        const value = Reflect.get(target, property, target)
-        if (property === "query" && typeof value === "function") {
-          return async (...args: unknown[]) => {
-            const result = await Reflect.apply(value, target, args)
-            const query = typeof args[0] === "string" ? args[0] : ""
-            if (
-              !paused &&
-              query.includes('from "admin"."applications"') &&
-              query.toLowerCase().includes("for update")
-            ) {
-              paused = true
-              signalLocked()
-              await released
-            }
-            return result
-          }
-        }
-        return typeof value === "function" ? value.bind(target) : value
-      },
-    })
-  const clientProxy = new Proxy(client, {
-    get(target, property) {
-      const value = Reflect.get(target, property, target)
-      if (property === "transaction" && typeof value === "function") {
-        return (...args: unknown[]) => {
-          const callback = args[0]
-          if (typeof callback !== "function") {
-            return Reflect.apply(value, target, args)
-          }
-          const wrappedCallback = (transaction: object) =>
-            Reflect.apply(callback, undefined, [wrapTransaction(transaction)])
-          return Reflect.apply(value, target, [
-            wrappedCallback,
-            ...args.slice(1),
-          ])
-        }
-      }
-      return typeof value === "function" ? value.bind(target) : value
-    },
-  })
-  const db = drizzle(clientProxy, { schema }) as unknown as NonNullable<
-    ReturnType<typeof getInferenceCoreDb>
-  >
-  return { db, locked, release }
 }
 
 function expectApplicationLockBeforeCredentialWrite(queries: string[]): void {

@@ -31,8 +31,8 @@ describe("F0-L1 disposable Application-to-inference lane", () => {
       flow: {
         accounting: {
           lastUseRecorded: true,
-          requests7d: 7,
-          tokens7d: 30,
+          requests7d: 4,
+          tokens7d: 15,
         },
         applicationCreation: "passed",
         connectionTest: "passed",
@@ -43,15 +43,9 @@ describe("F0-L1 disposable Application-to-inference lane", () => {
           crossApplicationModelUseDenied: true,
         },
         nonStreamingChatCompletions: "passed",
+        immutableCredentialPolicy: "passed",
         revocation: {
           activeCredentialDenied: true,
-          retiringCredentialDenied: true,
-        },
-        rotation: {
-          automaticOverlapExpiryDenied: true,
-          boundedOverlapRecorded: true,
-          retiringCredentialAcceptedDuringOverlap: true,
-          rotatedCredentialAccepted: true,
         },
         separateApplicationCredentials: true,
         streamingChatCompletions: "passed",

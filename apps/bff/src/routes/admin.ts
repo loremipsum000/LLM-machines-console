@@ -16,13 +16,10 @@ import {
   adminConnectedAppFirecrawlCredentialResultSchema,
   adminConnectedAppFirecrawlEnableRequestSchema,
   adminConnectedAppFirecrawlLifecycleResultSchema,
-  adminConnectedAppFirecrawlPolicyRequestSchema,
   adminConnectedAppFirecrawlTestResultSchema,
   adminConnectedAppLifecycleResultSchema,
-  adminConnectedAppRotateCredentialResultSchema,
   adminConnectedAppSchema,
   adminConnectedAppTestResultSchema,
-  adminConnectedAppUpdateRequestSchema,
   adminConnectedAppsResponseSchema,
   adminHardwareResponseSchema,
   adminInferenceDashboardSchema,
@@ -82,12 +79,9 @@ import {
   getAdminConnectedAppDetail,
   getAdminConnectedAppProjection,
   getAdminConnectedApps,
-  preflightAdminConnectedAppCredentialRotation,
   preflightConnectedAppCredentialReveal,
   revokeAdminConnectedAppCredential,
-  rotateAdminConnectedAppCredentials,
   testAdminConnectedApp,
-  updateAdminConnectedApp,
 } from "../services/admin-connected-apps"
 import {
   AdminConnectedAppFirecrawlCredentialCommitRaceError,
@@ -95,9 +89,7 @@ import {
   enableAdminConnectedAppFirecrawl,
   preflightAdminConnectedAppFirecrawlReadiness,
   revokeAdminConnectedAppFirecrawlCredential,
-  rotateAdminConnectedAppFirecrawlCredential,
   testAdminConnectedAppFirecrawl,
-  updateAdminConnectedAppFirecrawlPolicy,
 } from "../services/admin-connected-apps-firecrawl"
 import { getAdminHardware } from "../services/admin-hardware"
 import { getAdminInference } from "../services/admin-inference"
@@ -1166,44 +1158,7 @@ export function registerAdminRoutes(
   server.patch(
     "/api/admin/applications/connected-apps/:id",
     withCapability("applications.policy.change"),
-    async (request, reply) => {
-      const id = routeId(request)
-      const body = adminConnectedAppUpdateRequestSchema.safeParse(
-        request.body ?? {},
-      )
-      if (!id) {
-        return missingId(reply, "Key")
-      }
-      if (!body.success) {
-        return invalidRequest(
-          reply,
-          "Invalid key update",
-          "A valid Key configuration is required.",
-        )
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "PATCH /api/admin/applications/connected-apps/:id",
-        { id, body: body.data },
-        async (actor) => {
-          const modelPolicyFailure = await validateConnectedAppModelPolicy(
-            actor,
-            body.data,
-          )
-          if (modelPolicyFailure) {
-            return modelPolicyFailure
-          }
-          const result = await updateAdminConnectedApp(actor, id, body.data)
-          return result.status === "not_found"
-            ? connectedAppNotFound()
-            : {
-                payload: adminConnectedAppSchema.parse(result.app),
-                statusCode: 200,
-              }
-        },
-      )
-    },
+    async (_request, reply) => retiredKeyMutation(reply),
   )
 
   server.post(
@@ -1229,50 +1184,7 @@ export function registerAdminRoutes(
   server.post(
     "/api/admin/applications/connected-apps/:id/rotate-credentials",
     withCapability("applications.credentials.test_rotate_revoke"),
-    async (request, reply) => {
-      reply.header("cache-control", "no-store")
-      const id = routeId(request)
-      if (!id) {
-        return missingId(reply, "Key")
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "POST /api/admin/applications/connected-apps/:id/rotate-credentials",
-        { id },
-        async (actor, identityContext) => {
-          const revealPreflight =
-            await preflightAdminConnectedAppCredentialRotation(id)
-          if (revealPreflight.status === "not_found") {
-            return connectedAppNotFound()
-          }
-          if (revealPreflight.status === "blocked") {
-            return serviceUnavailable(
-              "Key endpoint configuration unavailable",
-              revealPreflight.detail,
-            )
-          }
-          const result = await rotateAdminConnectedAppCredentials(
-            actor,
-            id,
-            identityContext,
-            revealPreflight.endpoints,
-          )
-          if (result.status === "not_found") {
-            return connectedAppNotFound()
-          }
-          if (result.status === "blocked") {
-            return connectedAppBlocked(result.detail)
-          }
-          return {
-            idempotencyResourceId: result.app.id,
-            payload:
-              adminConnectedAppRotateCredentialResultSchema.parse(result),
-            statusCode: 200,
-          }
-        },
-      )
-    },
+    async (_request, reply) => retiredKeyMutation(reply),
   )
 
   server.post(
@@ -1444,49 +1356,7 @@ export function registerAdminRoutes(
   server.patch(
     "/api/admin/applications/connected-apps/:id/firecrawl",
     withCapability("applications.policy.change"),
-    async (request, reply) => {
-      const id = routeId(request)
-      const body = adminConnectedAppFirecrawlPolicyRequestSchema.safeParse(
-        request.body ?? {},
-      )
-      if (!id) {
-        return missingId(reply, "Key")
-      }
-      if (!body.success) {
-        return invalidRequest(
-          reply,
-          "Invalid Firecrawl policy",
-          "Optional Firecrawl protection limits must be positive values or null.",
-        )
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "PATCH /api/admin/applications/connected-apps/:id/firecrawl",
-        { body: body.data, id },
-        async (actor) => {
-          const result = await updateAdminConnectedAppFirecrawlPolicy(
-            actor,
-            id,
-            body.data,
-          )
-          if (result.status === "not_found") {
-            return connectedAppNotFound()
-          }
-          if (result.status === "blocked") {
-            return connectedAppBlocked(result.detail)
-          }
-          return {
-            payload: adminConnectedAppFirecrawlLifecycleResultSchema.parse({
-              app: await connectedAppAfterFirecrawlMutation(actor, id),
-              detail: result.detail,
-              status: result.status,
-            }),
-            statusCode: 200,
-          }
-        },
-      )
-    },
+    async (_request, reply) => retiredKeyMutation(reply),
   )
 
   server.post(
@@ -1519,64 +1389,7 @@ export function registerAdminRoutes(
   server.post(
     "/api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials",
     withCapability("applications.credentials.test_rotate_revoke"),
-    async (request, reply) => {
-      reply.header("cache-control", "no-store")
-      const id = routeId(request)
-      if (!id) {
-        return missingId(reply, "Key")
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "POST /api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials",
-        { id },
-        async (actor, identityContext) => {
-          const result = await rotateAdminConnectedAppFirecrawlCredential(
-            actor,
-            id,
-            identityContext,
-            async (mutation, transaction) => {
-              const app = await getAdminConnectedAppProjection(id, transaction)
-              if (!app) {
-                throw new Error("Updated Key could not be read back.")
-              }
-              return {
-                idempotencyResourceId: app.id,
-                payload: adminConnectedAppFirecrawlCredentialResultSchema.parse(
-                  {
-                    app,
-                    credential: mutation.credential,
-                    detail: mutation.detail,
-                    status: mutation.status,
-                  },
-                ),
-                statusCode: 200,
-              }
-            },
-          )
-          if ("statusCode" in result) {
-            return result
-          }
-          if (result.status === "not_found") {
-            return connectedAppNotFound()
-          }
-          if (result.status === "blocked") {
-            return connectedAppBlocked(result.detail)
-          }
-          const app = await connectedAppAfterFirecrawlMutation(actor, id)
-          return {
-            idempotencyResourceId: app.id,
-            payload: adminConnectedAppFirecrawlCredentialResultSchema.parse({
-              app,
-              credential: result.credential,
-              detail: result.detail,
-              status: result.status,
-            }),
-            statusCode: 200,
-          }
-        },
-      )
-    },
+    async (_request, reply) => retiredKeyMutation(reply),
   )
 
   server.post(
@@ -2400,6 +2213,10 @@ function notFoundPayload(subject: string): Record<string, unknown> {
     title: `${subject} not found`,
     status: 404,
   }
+}
+
+function retiredKeyMutation(reply: FastifyReply) {
+  return reply.code(404).send(notFoundPayload("Key action"))
 }
 
 function invalidRequest(reply: FastifyReply, title: string, detail?: string) {

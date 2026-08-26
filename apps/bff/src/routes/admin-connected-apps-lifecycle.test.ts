@@ -117,29 +117,6 @@ describe("Application admin lifecycle routes", () => {
       },
     })
     expect(valid.statusCode).toBe(201)
-    const applicationId = valid.json().app.id as string
-
-    const approvedUpdate = await server.inject({
-      method: "PATCH",
-      url: `/api/admin/applications/connected-apps/${applicationId}`,
-      headers: { ...adminHeaders, "idempotency-key": "manual-update-valid" },
-      payload: manualUpdatePayload(["local-a"]),
-    })
-    expect(approvedUpdate.statusCode).toBe(200)
-
-    const invalidUpdate = await server.inject({
-      method: "PATCH",
-      url: `/api/admin/applications/connected-apps/${applicationId}`,
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "manual-update-invalid",
-      },
-      payload: manualUpdatePayload(["not-approved"]),
-    })
-    expect(invalidUpdate.statusCode).toBe(400)
-    expect(invalidUpdate.json()).toMatchObject({
-      title: "Invalid Key model access",
-    })
 
     const invalid = await server.inject({
       method: "POST",
@@ -185,7 +162,7 @@ describe("Application admin lifecycle routes", () => {
     await server.close()
   })
 
-  it("replays only Console Application metadata for every OAuth credential mutation", async () => {
+  it("replays only Console Application metadata for OAuth create, revoke, and delete", async () => {
     configureFixtureRuntime()
     const server = buildServer()
     const created = await createApplication(
@@ -205,23 +182,6 @@ describe("Application admin lifecycle routes", () => {
     )
     expectSafeReplay(createReplay.response, applicationId, [createdSecret])
 
-    const rotated = await rotateApplication(
-      server,
-      applicationId,
-      "oauth-receipt-rotate",
-    )
-    expect(rotated.statusCode).toBe(200)
-    const rotatedSecret = rotated.json().credential.clientSecret as string
-    const rotateReplay = await rotateApplication(
-      server,
-      applicationId,
-      "oauth-receipt-rotate",
-    )
-    expectSafeReplay(rotateReplay, applicationId, [
-      createdSecret,
-      rotatedSecret,
-    ])
-
     const revokeRequest = {
       method: "POST" as const,
       url: `/api/admin/applications/connected-apps/${applicationId}/credentials/${credentialId}/revoke`,
@@ -233,10 +193,7 @@ describe("Application admin lifecycle routes", () => {
     const revoked = await server.inject(revokeRequest)
     expect(revoked.statusCode).toBe(200)
     const revokeReplay = await server.inject(revokeRequest)
-    expectSafeReplay(revokeReplay, applicationId, [
-      createdSecret,
-      rotatedSecret,
-    ])
+    expectSafeReplay(revokeReplay, applicationId, [createdSecret])
 
     const deleteCandidate = await createApplication(
       server,
@@ -305,215 +262,32 @@ describe("Application admin lifecycle routes", () => {
     await server.close()
   })
 
-  it.each(["CONNECTED_APPS_BFF_BASE_URL", "CONNECTED_APPS_TOKEN_URL"] as const)(
-    "rejects invalid OAuth %s before Keycloak, journal, storage, or audit",
-    async (variable) => {
-      configureFixtureRuntime()
-      vi.stubEnv(variable, "ftp://invalid.example.test")
-      const server = buildServer()
-      const idempotencyKey = `invalid-oauth-create-${variable}`
-
-      const rejected = await createApplication(
-        server,
-        idempotencyKey,
-        "oauth_client_credentials",
-      )
-      const list = await server.inject({
-        method: "GET",
-        url: "/api/admin/applications/connected-apps",
-        headers: adminHeaders,
-      })
-
-      expect(rejected.response.statusCode).toBe(503)
-      expect(list.json().apps).toEqual([])
-      expect(
-        getAuditEventsForTest().filter(
-          (event) => event.action === "admin.connected_app.created",
-        ),
-      ).toHaveLength(0)
-
-      vi.stubEnv(
-        variable,
-        variable === "CONNECTED_APPS_BFF_BASE_URL"
-          ? "https://api.example.test"
-          : "https://keycloak.example.test/realms/apps/protocol/openid-connect/token",
-      )
-      const failedReplay = await createApplication(
-        server,
-        idempotencyKey,
-        "oauth_client_credentials",
-      )
-      expectFailedReplay(failedReplay.response, 503)
-      const retried = await createApplication(
-        server,
-        `${idempotencyKey}-retry`,
-        "oauth_client_credentials",
-      )
-      expect(retried.response.statusCode).toBe(201)
-      expect(retried.body).toMatchObject({
-        credential: { authMethod: "oauth_client_credentials" },
-        status: "created",
-      })
-      await server.close()
-    },
-  )
-
-  it("rejects invalid static rotation configuration without changing the active key", async () => {
-    configureFixtureRuntime()
-    const server = buildServer()
-    const created = await createApplication(server, "static-rotation-preflight")
-    const id = created.body.app.id as string
-    const originalCredential = created.body.app.credentials[0] as {
-      id: string
-      issuedAt: string
-      status: string
-    }
-    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "not a URL")
-
-    const rejected = await rotateApplication(
-      server,
-      id,
-      "static-rotation-invalid-endpoint",
-    )
-    const unchanged = await connectedAppDetail(server, id)
-
-    expect(rejected.statusCode).toBe(503)
-    expect(unchanged.app.credentials).toEqual([
-      expect.objectContaining(originalCredential),
-    ])
-    expect(
-      getAuditEventsForTest().filter(
-        (event) => event.action === "admin.connected_app.credentials_rotated",
-      ),
-    ).toHaveLength(0)
-
-    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "https://api.example.test")
-    const failedReplay = await rotateApplication(
-      server,
-      id,
-      "static-rotation-invalid-endpoint",
-    )
-    expectFailedReplay(failedReplay, 503)
-    const retried = await rotateApplication(
-      server,
-      id,
-      "static-rotation-invalid-endpoint-retry",
-    )
-    expect(retried.statusCode).toBe(200)
-    expect(retried.json().status).toBe("rotated")
-    await server.close()
-  })
-
-  it.each(["CONNECTED_APPS_BFF_BASE_URL", "CONNECTED_APPS_TOKEN_URL"] as const)(
-    "rejects invalid OAuth rotation %s without changing the old credential",
-    async (variable) => {
-      configureFixtureRuntime()
-      const server = buildServer()
-      const created = await createApplication(
-        server,
-        `oauth-rotation-preflight-${variable}`,
-        "oauth_client_credentials",
-      )
-      const id = created.body.app.id as string
-      const originalCredential = created.body.app.credentials[0] as {
-        id: string
-        issuedAt: string
-        status: string
-      }
-      vi.stubEnv(variable, "ftp://invalid.example.test")
-      const idempotencyKey = `oauth-rotation-invalid-${variable}`
-
-      const rejected = await rotateApplication(server, id, idempotencyKey)
-      const unchanged = await connectedAppDetail(server, id)
-
-      expect(rejected.statusCode).toBe(503)
-      expect(unchanged.app.credentials).toEqual([
-        expect.objectContaining(originalCredential),
-      ])
-      expect(
-        getAuditEventsForTest().filter(
-          (event) => event.action === "admin.connected_app.credentials_rotated",
-        ),
-      ).toHaveLength(0)
-
-      vi.stubEnv(
-        variable,
-        variable === "CONNECTED_APPS_BFF_BASE_URL"
-          ? "https://api.example.test"
-          : "https://keycloak.example.test/realms/apps/protocol/openid-connect/token",
-      )
-      const failedReplay = await rotateApplication(server, id, idempotencyKey)
-      expectFailedReplay(failedReplay, 503)
-      const retried = await rotateApplication(
-        server,
-        id,
-        `${idempotencyKey}-retry`,
-      )
-      expect(retried.statusCode).toBe(200)
-      expect(retried.json()).toMatchObject({
-        credential: {
-          authMethod: "oauth_client_credentials",
-          credentialId: originalCredential.id,
-        },
-        status: "rotated",
-      })
-      await server.close()
-    },
-  )
-
-  it("replays a completed rotation after endpoint drift and Application deletion", async () => {
-    configureFixtureRuntime()
-    const server = buildServer()
-    const created = await createApplication(server, "rotation-replay-create")
-    const applicationId = created.body.app.id as string
-    const rotated = await rotateApplication(
-      server,
-      applicationId,
-      "rotation-replay-after-delete",
-    )
-    expect(rotated.statusCode).toBe(200)
-    const rotatedSecret = rotated.json().credential.apiKey as string
-    const deleted = await server.inject({
-      method: "DELETE",
-      url: `/api/admin/applications/connected-apps/${applicationId}`,
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "rotation-replay-delete",
-      },
-      payload: { confirmation: "DELETE KEY" },
-    })
-    expect(deleted.statusCode).toBe(200)
-    vi.stubEnv("CONNECTED_APPS_BFF_BASE_URL", "ftp://invalid.example.test")
-
-    const replay = await rotateApplication(
-      server,
-      applicationId,
-      "rotation-replay-after-delete",
-    )
-    expectSafeReplay(replay, applicationId, [rotatedSecret])
-    await server.close()
-  })
-
-  it("keeps policy PATCH strict and makes the connection test a passive evidence read", async () => {
+  it("keeps immutable mutation routes absent and makes the connection test a passive evidence read", async () => {
     configureFixtureRuntime()
     const server = buildServer()
     const created = await createApplication(server, "strict-policy")
     const id = created.body.app.id as string
 
-    const invalidPolicy = await server.inject({
+    const retiredPolicy = await server.inject({
       method: "PATCH",
       url: `/api/admin/applications/connected-apps/${id}`,
       headers: {
         ...adminHeaders,
         "idempotency-key": "invalid-policy",
       },
-      payload: {
-        ...applicationPayload(),
-        authMethod: "oauth_client_credentials",
-        status: "disabled",
+      payload: applicationPayload(),
+    })
+    expect(retiredPolicy.statusCode).toBe(404)
+
+    const retiredRotation = await server.inject({
+      method: "POST",
+      url: `/api/admin/applications/connected-apps/${id}/rotate-credentials`,
+      headers: {
+        ...adminHeaders,
+        "idempotency-key": "retired-rotation",
       },
     })
-    expect(invalidPolicy.statusCode).toBe(400)
+    expect(retiredRotation.statusCode).toBe(404)
 
     const operatorChecked = await server.inject({
       method: "POST",
@@ -609,75 +383,48 @@ describe("Application admin lifecycle routes", () => {
     await server.close()
   })
 
-  it("keeps exact credential rotation and revocation Admin-only", async () => {
+  it("keeps exact credential revocation Admin-only and rotation absent", async () => {
     configureFixtureRuntime()
     const server = buildServer()
     const created = await createApplication(server, "credential-lifecycle")
     const id = created.body.app.id as string
-    const initialCredentialId = created.body.credential.credentialId as string
+    const credentialId = created.body.credential.credentialId as string
 
-    const operatorRotation = await server.inject({
+    for (const [headers, expectedStatus] of [
+      [operatorHeaders, 403],
+      [adminHeaders, 404],
+    ] as const) {
+      const retiredRotation = await server.inject({
+        method: "POST",
+        url: `/api/admin/applications/connected-apps/${id}/rotate-credentials`,
+        headers: {
+          ...headers,
+          "idempotency-key": `retired-rotation-${headers["x-llm-machines-user-roles"]}`,
+        },
+      })
+      expect(retiredRotation.statusCode).toBe(expectedStatus)
+    }
+
+    const operatorRevoked = await server.inject({
       method: "POST",
-      url: `/api/admin/applications/connected-apps/${id}/rotate-credentials`,
+      url: `/api/admin/applications/connected-apps/${id}/credentials/${credentialId}/revoke`,
       headers: {
         ...operatorHeaders,
-        "idempotency-key": "operator-rotate-denied",
+        "idempotency-key": "operator-revoke-denied",
       },
     })
-    expect(operatorRotation.statusCode).toBe(403)
+    expect(operatorRevoked.statusCode).toBe(403)
 
-    const rotated = await server.inject({
+    const revoked = await server.inject({
       method: "POST",
-      url: `/api/admin/applications/connected-apps/${id}/rotate-credentials`,
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "admin-rotate-credential",
-      },
-    })
-    expect(rotated.statusCode).toBe(200)
-    expect(rotated.headers["cache-control"]).toBe("no-store")
-    expect(rotated.json()).toMatchObject({
-      app: {
-        credentials: expect.arrayContaining([
-          expect.objectContaining({
-            id: initialCredentialId,
-            status: "retiring",
-          }),
-        ]),
-      },
-      status: "rotated",
-    })
-    const retiring = rotated
-      .json()
-      .app.credentials.find(
-        (credential: { id: string }) => credential.id === initialCredentialId,
-      ) as { overlapExpiresAt: string; rotatedAt: string }
-    expect(
-      Date.parse(retiring.overlapExpiresAt) - Date.parse(retiring.rotatedAt),
-    ).toBe(86_400_000)
-    const activeCredentialId = rotated.json().credential.credentialId as string
-
-    const revokedRetiring = await server.inject({
-      method: "POST",
-      url: `/api/admin/applications/connected-apps/${id}/credentials/${initialCredentialId}/revoke`,
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "admin-revoke-retiring",
-      },
-    })
-    expect(revokedRetiring.statusCode).toBe(200)
-    expect(revokedRetiring.json()).toMatchObject({ status: "enabled" })
-
-    const revokedActive = await server.inject({
-      method: "POST",
-      url: `/api/admin/applications/connected-apps/${id}/credentials/${activeCredentialId}/revoke`,
+      url: `/api/admin/applications/connected-apps/${id}/credentials/${credentialId}/revoke`,
       headers: {
         ...adminHeaders,
         "idempotency-key": "admin-revoke-active",
       },
     })
-    expect(revokedActive.statusCode).toBe(200)
-    expect(revokedActive.json()).toMatchObject({
+    expect(revoked.statusCode).toBe(200)
+    expect(revoked.json()).toMatchObject({
       id,
       status: "disabled",
     })
@@ -688,7 +435,7 @@ describe("Application admin lifecycle routes", () => {
           event.applicationId === id &&
           event.keycloakSubjectId === "admin-1",
       ),
-    ).toHaveLength(2)
+    ).toHaveLength(1)
     await server.close()
   })
 
@@ -795,31 +542,6 @@ async function createApplication(
   return { body: response.json(), response }
 }
 
-async function rotateApplication(
-  server: ReturnType<typeof buildServer>,
-  id: string,
-  idempotencyKey: string,
-) {
-  return server.inject({
-    method: "POST",
-    url: `/api/admin/applications/connected-apps/${id}/rotate-credentials`,
-    headers: { ...adminHeaders, "idempotency-key": idempotencyKey },
-  })
-}
-
-async function connectedAppDetail(
-  server: ReturnType<typeof buildServer>,
-  id: string,
-) {
-  const response = await server.inject({
-    method: "GET",
-    url: `/api/admin/applications/connected-apps/${id}`,
-    headers: adminHeaders,
-  })
-  expect(response.statusCode).toBe(200)
-  return response.json() as { app: { credentials: unknown[] } }
-}
-
 function expectSafeReplay(
   response: {
     body: string
@@ -883,19 +605,6 @@ function applicationPayload() {
     description: "Lifecycle route test.",
     modelMode: "auto",
     name: "Lifecycle test",
-  }
-}
-
-function manualUpdatePayload(allowedModels: string[]) {
-  return {
-    allowedModels,
-    description: "Manual lifecycle route test.",
-    maxConcurrentRequests: null,
-    maxContextBytes: null,
-    modelMode: "manual",
-    name: "Manual Valid",
-    rateLimitRps: null,
-    tokenAlertThreshold7d: null,
   }
 }
 

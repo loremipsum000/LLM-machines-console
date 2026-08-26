@@ -1466,40 +1466,6 @@ export type AdminConnectedAppCreateRequest = z.infer<
   typeof adminConnectedAppCreateRequestSchema
 >
 
-export const adminConnectedAppUpdateRequestSchema = z
-  .object({
-    allowedModels: adminConnectedAppAllowedModelsSchema,
-    description: z.string().trim().max(500),
-    maxConcurrentRequests: z.number().int().min(1).max(10_000).nullable(),
-    maxContextBytes: z
-      .number()
-      .int()
-      .min(1)
-      .max(Number.MAX_SAFE_INTEGER)
-      .nullable(),
-    modelMode: adminConnectedAppModelModeSchema,
-    name: z.string().trim().min(1).max(80),
-    rateLimitRps: z.number().int().min(1).max(10_000).nullable(),
-    tokenAlertThreshold7d: z.number().int().min(1).max(100_000_000).nullable(),
-  })
-  .strict()
-  .superRefine((request, ctx) => {
-    if (
-      (request.modelMode === "auto" && request.allowedModels.length !== 0) ||
-      (request.modelMode === "manual" && request.allowedModels.length === 0)
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "Auto model access must not snapshot aliases; Manual model access requires at least one alias.",
-        path: ["allowedModels"],
-      })
-    }
-  })
-export type AdminConnectedAppUpdateRequest = z.infer<
-  typeof adminConnectedAppUpdateRequestSchema
->
-
 export const adminConnectedAppDeleteRequestSchema = z
   .object({
     confirmation: z.literal("DELETE KEY"),
@@ -1597,18 +1563,6 @@ export type AdminConnectedAppLifecycleResult = z.infer<
   typeof adminConnectedAppLifecycleResultSchema
 >
 
-export const adminConnectedAppRotateCredentialResultSchema = z
-  .object({
-    app: adminConnectedAppSchema,
-    credential: adminConnectedAppCredentialSchema,
-    detail: z.string().min(1),
-    status: z.literal("rotated"),
-  })
-  .strict()
-export type AdminConnectedAppRotateCredentialResult = z.infer<
-  typeof adminConnectedAppRotateCredentialResultSchema
->
-
 export const adminConnectedAppFirecrawlEnableRequestSchema = z
   .object({
     disclaimerAccepted: z.literal(true),
@@ -1639,17 +1593,6 @@ export type AdminConnectedAppFirecrawlEnableRequest = z.infer<
   typeof adminConnectedAppFirecrawlEnableRequestSchema
 >
 
-export const adminConnectedAppFirecrawlPolicyRequestSchema = z
-  .object({
-    maxConcurrentScrapes: z.number().int().min(1).max(100).nullable(),
-    scrapeRateLimitRps: z.number().int().min(1).max(1000).nullable(),
-    searchRateLimitRps: z.number().int().min(1).max(1000).nullable(),
-  })
-  .strict()
-export type AdminConnectedAppFirecrawlPolicyRequest = z.infer<
-  typeof adminConnectedAppFirecrawlPolicyRequestSchema
->
-
 export const adminConnectedAppFirecrawlCredentialSchema = z
   .object({
     apiKey: z.string().regex(/^llmm_fc_[0-9a-f]{16}_[A-Za-z0-9_-]{43}$/),
@@ -1669,7 +1612,7 @@ export const adminConnectedAppFirecrawlCredentialResultSchema = z
     app: adminConnectedAppSchema,
     credential: adminConnectedAppFirecrawlCredentialSchema.nullable(),
     detail: z.string().min(1),
-    status: z.enum(["enabled", "rotated"]),
+    status: z.literal("enabled"),
   })
   .strict()
 export type AdminConnectedAppFirecrawlCredentialResult = z.infer<

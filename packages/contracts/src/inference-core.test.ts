@@ -11,7 +11,6 @@ import {
   adminConnectedAppLifecycleResultSchema,
   adminConnectedAppSchema,
   adminConnectedAppTestResultSchema,
-  adminConnectedAppUpdateRequestSchema,
   adminHardwareResponseSchema,
   adminInferenceDashboardSchema,
   adminOverviewResponseSchema,
@@ -75,6 +74,15 @@ describe("Inference Core contract boundary", () => {
       /(BreakGlass|Builder|Hub|Knowledge|Mcp|UrlPolicy)/.test(name),
     )
     expect(retiredExport).toBeUndefined()
+    expect(inferenceCoreContracts).not.toHaveProperty(
+      "adminConnectedAppUpdateRequestSchema",
+    )
+    expect(inferenceCoreContracts).not.toHaveProperty(
+      "adminConnectedAppRotateCredentialResultSchema",
+    )
+    expect(inferenceCoreContracts).not.toHaveProperty(
+      "adminConnectedAppFirecrawlPolicyRequestSchema",
+    )
   })
 
   it("accepts only retained Overview tiles", () => {
@@ -577,81 +585,6 @@ describe("Inference Core contract boundary", () => {
         name: "Invalid Manual Key",
       }).success,
     ).toBe(false)
-    expect(
-      adminConnectedAppUpdateRequestSchema.safeParse({
-        allowedModels: ["local-chat"],
-        authMethod: "oauth_client_credentials",
-        description: "Changed",
-        maxConcurrentRequests: null,
-        maxContextBytes: null,
-        modelMode: "manual",
-        name: "Desktop",
-        rateLimitRps: null,
-        tokenAlertThreshold7d: null,
-      }).success,
-    ).toBe(false)
-    expect(
-      adminConnectedAppUpdateRequestSchema.safeParse({
-        allowedModels: ["local-chat"],
-        description: "Changed",
-        maxConcurrentRequests: null,
-        maxContextBytes: null,
-        name: "Desktop",
-        rateLimitRps: null,
-        status: "disabled",
-        tokenAlertThreshold7d: null,
-      }).success,
-    ).toBe(false)
-    expect(
-      adminConnectedAppUpdateRequestSchema.safeParse({
-        allowedModels: ["local-chat"],
-        description: "Changed",
-        maxConcurrentRequests: 10_000,
-        maxContextBytes: Number.MAX_SAFE_INTEGER,
-        modelMode: "manual",
-        name: "Desktop",
-        rateLimitRps: 10_000,
-        tokenAlertThreshold7d: 100_000_000,
-      }).success,
-    ).toBe(true)
-    expect(
-      adminConnectedAppUpdateRequestSchema.safeParse({
-        allowedModels: ["local-chat"],
-        description: "Changed",
-        maxConcurrentRequests: 10_001,
-        maxContextBytes: Number.MAX_SAFE_INTEGER + 1,
-        modelMode: "manual",
-        name: "Desktop",
-        rateLimitRps: 10_001,
-        tokenAlertThreshold7d: 100_000_001,
-      }).success,
-    ).toBe(false)
-
-    expect(
-      adminConnectedAppUpdateRequestSchema.safeParse({
-        allowedModels: ["local-chat"],
-        description: "Changed",
-        maxConcurrentRequests: 2,
-        maxContextBytes: 65_536,
-        modelMode: "manual",
-        name: "Desktop",
-        rateLimitRps: 5,
-        tokenAlertThreshold7d: 1_000_000,
-      }).success,
-    ).toBe(true)
-    expect(
-      adminConnectedAppUpdateRequestSchema.safeParse({
-        allowedModels: ["local-chat"],
-        description: "Changed",
-        maxConcurrentRequests: 0,
-        maxContextBytes: 1.5,
-        modelMode: "manual",
-        name: "Desktop",
-        rateLimitRps: 0,
-        tokenAlertThreshold7d: 0,
-      }).success,
-    ).toBe(false)
-
     expect(
       adminConnectedAppCredentialSchema.safeParse({
         apiKey: "llmm_t4_once_only",

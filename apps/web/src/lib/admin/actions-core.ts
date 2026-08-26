@@ -21,13 +21,10 @@ import {
   adminConnectedAppFirecrawlCredentialResultSchema,
   adminConnectedAppFirecrawlEnableRequestSchema,
   adminConnectedAppFirecrawlLifecycleResultSchema,
-  adminConnectedAppFirecrawlPolicyRequestSchema,
   adminConnectedAppFirecrawlTestResultSchema,
   adminConnectedAppLifecycleResultSchema,
-  adminConnectedAppRotateCredentialResultSchema,
   adminConnectedAppSchema,
   adminConnectedAppTestResultSchema,
-  adminConnectedAppUpdateRequestSchema,
   adminSettingsResponseSchema,
   adminTeamActionResponseSchema,
   adminTeamBulkGroupAssignmentRequestSchema,
@@ -573,7 +570,7 @@ export interface ConnectedAppCredentialActionState {
   credential: AdminConnectedAppCredential | null
   detail: string | null
   error: string | null
-  status: "blocked" | "failed" | "idle" | "revoked" | "rotated"
+  status: "blocked" | "failed" | "idle" | "revoked"
 }
 
 export interface ConnectedAppFirecrawlCredentialActionState {
@@ -581,7 +578,7 @@ export interface ConnectedAppFirecrawlCredentialActionState {
   credential: AdminConnectedAppFirecrawlCredential | null
   detail: string | null
   error: string | null
-  status: "blocked" | "enabled" | "failed" | "idle" | "rotated"
+  status: "blocked" | "enabled" | "failed" | "idle"
 }
 
 export interface ConnectedAppFirecrawlLifecycleActionState {
@@ -704,39 +701,6 @@ export async function checkAdminConnectedAppConnectionAction(
   }
 }
 
-export async function rotateAdminConnectedAppCredentialsAction(
-  _previousState: ConnectedAppCredentialActionState,
-  formData: FormData,
-): Promise<ConnectedAppCredentialActionState> {
-  await requireCapability("applications.credentials.test_rotate_revoke")
-  const appId = requiredFormValue(formData, "appId")
-
-  try {
-    const result = await postAdminConnectedAppRotateMutation(
-      `/api/admin/applications/connected-apps/${encodeURIComponent(
-        appId,
-      )}/rotate-credentials`,
-    )
-    revalidatePath("/keys")
-    revalidatePath(`/keys/apps/${result.app.id}`)
-    return {
-      app: result.app,
-      credential: result.credential,
-      detail: result.detail,
-      error: null,
-      status: result.status,
-    }
-  } catch (error) {
-    return {
-      app: null,
-      credential: null,
-      detail: null,
-      error: adminMutationErrorDetail(error, "Credential rotation failed."),
-      status: error instanceof AdminMutationError ? "blocked" : "failed",
-    }
-  }
-}
-
 export async function revokeAdminConnectedAppCredentialAction(
   _previousState: ConnectedAppCredentialActionState,
   formData: FormData,
@@ -828,7 +792,7 @@ export async function enableAdminConnectedAppFirecrawlAction(
       credential: result.credential,
       detail: result.detail,
       error: null,
-      status: result.status,
+      status: "enabled",
     }
   } catch (error) {
     return {
@@ -872,41 +836,6 @@ export async function checkAdminConnectedAppFirecrawlConnectionAction(
       ),
       observedAt: null,
       status: "failed",
-    }
-  }
-}
-
-export async function rotateAdminConnectedAppFirecrawlCredentialAction(
-  _previousState: ConnectedAppFirecrawlCredentialActionState,
-  formData: FormData,
-): Promise<ConnectedAppFirecrawlCredentialActionState> {
-  await requireCapability("applications.credentials.test_rotate_revoke")
-  const appId = requiredFormValue(formData, "appId")
-
-  try {
-    const result = await postAdminConnectedAppFirecrawlCredentialMutation(
-      `/api/admin/applications/connected-apps/${encodeURIComponent(
-        appId,
-      )}/firecrawl/rotate-credentials`,
-    )
-    revalidateConnectedApp(appId)
-    return {
-      app: result.app,
-      credential: result.credential,
-      detail: result.detail,
-      error: null,
-      status: result.status,
-    }
-  } catch (error) {
-    return {
-      app: null,
-      credential: null,
-      detail: null,
-      error: adminMutationErrorDetail(
-        error,
-        "Firecrawl credential rotation failed.",
-      ),
-      status: error instanceof AdminMutationError ? "blocked" : "failed",
     }
   }
 }
@@ -976,118 +905,6 @@ export async function disableAdminConnectedAppFirecrawlAction(
       status: error instanceof AdminMutationError ? "blocked" : "failed",
     }
   }
-}
-
-export async function updateAdminConnectedAppFirecrawlPolicyAction(
-  formData: FormData,
-): Promise<void> {
-  await requireCapability("applications.policy.change")
-  const appId = requiredFormValue(formData, "appId")
-  const fallback = connectedAppReturnHref(formData, appId)
-  const parsed = adminConnectedAppFirecrawlPolicyRequestSchema.safeParse({
-    maxConcurrentScrapes: checkboxFormValue(
-      formData,
-      "firecrawlMaxConcurrentScrapesEnabled",
-    )
-      ? parseOptionalPositiveInt(
-          optionalFormValue(formData, "firecrawlMaxConcurrentScrapes"),
-        )
-      : null,
-    scrapeRateLimitRps: checkboxFormValue(
-      formData,
-      "firecrawlScrapeRateLimitRpsEnabled",
-    )
-      ? parseOptionalPositiveInt(
-          optionalFormValue(formData, "firecrawlScrapeRateLimitRps"),
-        )
-      : null,
-    searchRateLimitRps: checkboxFormValue(
-      formData,
-      "firecrawlSearchRateLimitRpsEnabled",
-    )
-      ? parseOptionalPositiveInt(
-          optionalFormValue(formData, "firecrawlSearchRateLimitRps"),
-        )
-      : null,
-  })
-  if (!parsed.success) {
-    redirectTo(withActionStatus(fallback, "appAction", "firecrawlInvalid"))
-  }
-
-  try {
-    await patchAdminConnectedAppFirecrawlMutation(
-      `/api/admin/applications/connected-apps/${encodeURIComponent(
-        appId,
-      )}/firecrawl`,
-      parsed.data,
-    )
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    redirectTo(withActionStatus(fallback, "appAction", "firecrawlFailed"))
-  }
-
-  revalidateConnectedApp(appId)
-  redirectTo(withActionStatus(fallback, "appAction", "firecrawlUpdated"))
-}
-
-export async function updateAdminConnectedAppPolicyAction(
-  formData: FormData,
-): Promise<void> {
-  await requireCapability("applications.policy.change")
-  const appId = requiredFormValue(formData, "appId")
-  const fallback = connectedAppReturnHref(formData, appId)
-  const parsed = adminConnectedAppUpdateRequestSchema.safeParse({
-    allowedModels: formData.getAll("allowedModels").flatMap((value) => {
-      if (typeof value !== "string") {
-        return []
-      }
-      const model = value.trim()
-      return model ? [model] : []
-    }),
-    description: optionalFormValue(formData, "description") ?? "",
-    maxConcurrentRequests: checkboxFormValue(
-      formData,
-      "maxConcurrentRequestsEnabled",
-    )
-      ? parseOptionalPositiveInt(
-          optionalFormValue(formData, "maxConcurrentRequests"),
-        )
-      : null,
-    maxContextBytes: checkboxFormValue(formData, "maxContextBytesEnabled")
-      ? parseOptionalPositiveInt(optionalFormValue(formData, "maxContextBytes"))
-      : null,
-    modelMode: optionalFormValue(formData, "modelMode") ?? "auto",
-    name: optionalFormValue(formData, "name") ?? "",
-    rateLimitRps: checkboxFormValue(formData, "rateLimitRpsEnabled")
-      ? parseOptionalPositiveInt(optionalFormValue(formData, "rateLimitRps"))
-      : null,
-    tokenAlertThreshold7d: checkboxFormValue(
-      formData,
-      "tokenAlertThreshold7dEnabled",
-    )
-      ? parseOptionalPositiveInt(
-          optionalFormValue(formData, "tokenAlertThreshold7d"),
-        )
-      : null,
-  })
-
-  if (!parsed.success) {
-    redirectTo(withActionStatus(fallback, "appAction", "invalid"))
-  }
-
-  try {
-    await patchAdminConnectedAppMutation(
-      `/api/admin/applications/connected-apps/${encodeURIComponent(appId)}`,
-      parsed.data,
-    )
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    redirectTo(withActionStatus(fallback, "appAction", "failed"))
-  }
-
-  revalidatePath("/keys")
-  revalidatePath(`/keys/apps/${appId}`)
-  redirectTo(withActionStatus(fallback, "appAction", "updated"))
 }
 
 export async function disableAdminConnectedAppAction(
@@ -1238,12 +1055,6 @@ async function postAdminConnectedAppTestMutation(path: string) {
   )
 }
 
-async function postAdminConnectedAppRotateMutation(path: string) {
-  return adminConnectedAppRotateCredentialResultSchema.parse(
-    await postAdminMutation(path, undefined, "key credential rotation"),
-  )
-}
-
 async function postAdminConnectedAppRevokeMutation(path: string) {
   return adminConnectedAppSchema.parse(
     await postAdminMutation(path, undefined, "key credential revoke"),
@@ -1271,24 +1082,9 @@ async function postAdminConnectedAppFirecrawlLifecycleMutation(path: string) {
   )
 }
 
-async function patchAdminConnectedAppFirecrawlMutation(
-  path: string,
-  body: unknown,
-) {
-  return adminConnectedAppFirecrawlLifecycleResultSchema.parse(
-    await adminMutation(path, body, "key Firecrawl policy", "PATCH"),
-  )
-}
-
 function revalidateConnectedApp(appId: string): void {
   revalidatePath("/keys")
   revalidatePath(`/keys/apps/${appId}`)
-}
-
-async function patchAdminConnectedAppMutation(path: string, body: unknown) {
-  return adminConnectedAppSchema.parse(
-    await adminMutation(path, body, "key policy update", "PATCH"),
-  )
 }
 
 async function postAdminConnectedAppLifecycleMutation(path: string) {
