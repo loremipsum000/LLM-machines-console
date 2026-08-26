@@ -843,58 +843,10 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     throw new Error("F0-L1 Application connection evidence did not pass.")
   }
 
-  const rotated = await adminJson(runtime, {
-    credentialReveal: true,
-    idempotencyKey: "f0-l1-rotate-primary",
-    method: "POST",
-    path: `/api/admin/applications/connected-apps/${primary.app.id}/rotate-credentials`,
-  })
-  if (rotated.status !== 200 || rotated.body.status !== "rotated") {
-    throw new Error("F0-L1 Application credential rotation failed.")
-  }
-  const rotatedKey = requiredApiKey(rotated.body)
-  const retiringMetadata = rotated.body.app.credentials.find(
-    (credential) => credential.id === primary.credential.credentialId,
-  )
-  if (
-    retiringMetadata?.status !== "retiring" ||
-    !retiringMetadata.overlapExpiresAt ||
-    !retiringMetadata.rotatedAt ||
-    Date.parse(retiringMetadata.overlapExpiresAt) -
-      Date.parse(retiringMetadata.rotatedAt) !==
-      86_400_000
-  ) {
-    throw new Error("F0-L1 rotation did not create a bounded overlap.")
-  }
-
-  await runtime.fixtureClock.set(
-    Date.parse(retiringMetadata.overlapExpiresAt) - 1,
-  )
-  await requireSuccessfulCompletion(
-    runtime,
-    primaryKey,
-    "retiring credential during overlap",
-  )
-  await requireSuccessfulCompletion(runtime, rotatedKey, "rotated credential")
-  const rotatedDetail = await applicationDetail(runtime, primary.app.id)
-  assertUsage(rotatedDetail, { requests7d: 5, tokens7d: 20 })
-  const activeMetadata = rotatedDetail.app.credentials.find(
-    (credential) => credential.id === rotated.body.credential.credentialId,
-  )
-  if (!activeMetadata?.lastUsedAt || activeMetadata.status !== "active") {
-    throw new Error("F0-L1 did not bind last use to the rotated credential.")
-  }
-  await runtime.fixtureClock.set(Date.parse(retiringMetadata.overlapExpiresAt))
-  await requireCredentialDenied(
-    runtime,
-    primaryKey,
-    "expired retiring credential",
-  )
-
   const crossApplicationRevoke = await adminJson(runtime, {
     idempotencyKey: "f0-l1-cross-app-revoke",
     method: "POST",
-    path: `/api/admin/applications/connected-apps/${isolated.app.id}/credentials/${rotated.body.credential.credentialId}/revoke`,
+    path: `/api/admin/applications/connected-apps/${isolated.app.id}/credentials/${primary.credential.credentialId}/revoke`,
   })
   if (crossApplicationRevoke.status !== 404) {
     throw new Error("F0-L1 accepted a cross-Application credential mutation.")
@@ -911,7 +863,7 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
   const isolatedDetail = await applicationDetail(runtime, isolated.app.id)
   const primaryAfterIsolation = await applicationDetail(runtime, primary.app.id)
   assertUsage(isolatedDetail, { requests7d: 1, tokens7d: 0 })
-  assertUsage(primaryAfterIsolation, { requests7d: 5, tokens7d: 20 })
+  assertUsage(primaryAfterIsolation, { requests7d: 3, tokens7d: 10 })
   if (
     isolatedDetail.app.usage.failures7d !== 1 ||
     !isolatedDetail.app.usage.lastUsedAt ||
@@ -920,45 +872,29 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     throw new Error("F0-L1 did not isolate Application usage attribution.")
   }
 
-  await runtime.fixtureClock.set(
-    Date.parse(retiringMetadata.overlapExpiresAt) - 1,
-  )
   await requireSuccessfulCompletion(
     runtime,
     primaryKey,
-    "still-usable retiring credential immediately before revocation",
+    "immutable credential before revocation",
   )
   await revokeFixtureCredential(
     runtime,
     primary.app.id,
     primary.credential.credentialId,
-    "f0-l1-revoke-retiring",
+    "f0-l1-revoke-primary",
   )
-  await requireCredentialDenied(
-    runtime,
-    primaryKey,
-    "revoked retiring credential",
-  )
-  await requireSuccessfulCompletion(
-    runtime,
-    rotatedKey,
-    "remaining active credential",
-  )
-
-  await revokeFixtureCredential(
-    runtime,
-    primary.app.id,
-    rotated.body.credential.credentialId,
-    "f0-l1-revoke-active",
-  )
-  await requireCredentialDenied(
-    runtime,
-    rotatedKey,
-    "revoked active credential",
-  )
+  await requireCredentialDenied(runtime, primaryKey, "revoked credential")
+  const isolatedModelsAfterRevocation = await openAiModels(runtime, isolatedKey)
+  if (
+    isolatedModelsAfterRevocation.status !== 200 ||
+    isolatedModelsAfterRevocation.body.data?.[0]?.id !==
+      "isolated-fixture-model"
+  ) {
+    throw new Error("F0-L1 revocation crossed the second-Key boundary.")
+  }
 
   const finalDetail = await applicationDetail(runtime, primary.app.id)
-  assertUsage(finalDetail, { requests7d: 7, tokens7d: 30 })
+  assertUsage(finalDetail, { requests7d: 4, tokens7d: 15 })
   if (
     finalDetail.app.status !== "disabled" ||
     !finalDetail.app.credentials.every(
@@ -972,7 +908,6 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
     assertVerticalSliceLeavesNoSensitiveOutput(runtime, [
       primaryKey,
       isolatedKey,
-      rotatedKey,
     ]),
   )
 
@@ -991,16 +926,8 @@ async function verifyApplicationInferenceVerticalSlice(runtime) {
       crossApplicationModelUseDenied: true,
     },
     nonStreamingChatCompletions: "passed",
-    revocation: {
-      activeCredentialDenied: true,
-      retiringCredentialDenied: true,
-    },
-    rotation: {
-      automaticOverlapExpiryDenied: true,
-      boundedOverlapRecorded: true,
-      retiringCredentialAcceptedDuringOverlap: true,
-      rotatedCredentialAccepted: true,
-    },
+    immutableCredentialPolicy: "passed",
+    revocation: { activeCredentialDenied: true },
     separateApplicationCredentials: true,
     streamingChatCompletions: "passed",
   }
@@ -1195,90 +1122,24 @@ async function verifyApplicationFirecrawlVerticalSlice(runtime) {
     throw new Error("F0-W1 accepted a cross-Application Firecrawl mutation.")
   }
 
-  const rotated = await adminJson(runtime, {
-    credentialReveal: true,
-    idempotencyKey: "f0-w1-rotate-primary",
-    method: "POST",
-    path: `/api/admin/applications/connected-apps/${primary.app.id}/firecrawl/rotate-credentials`,
-  })
-  if (rotated.status !== 200 || rotated.body.status !== "rotated") {
-    throw new Error("F0-W1 Firecrawl credential rotation failed.")
-  }
-  const rotatedFirecrawlKey = requiredFirecrawlApiKey(rotated.body)
-  const retiringMetadata = rotated.body.app.firecrawl.credentials.find(
-    (credential) => credential.id === primaryEnabled.credential.credentialId,
-  )
-  if (
-    retiringMetadata?.status !== "retiring" ||
-    !retiringMetadata.overlapExpiresAt ||
-    !retiringMetadata.rotatedAt ||
-    Date.parse(retiringMetadata.overlapExpiresAt) -
-      Date.parse(retiringMetadata.rotatedAt) !==
-      86_400_000
-  ) {
-    throw new Error("F0-W1 rotation did not create a bounded overlap.")
-  }
-  await runtime.fixtureClock.set(
-    Date.parse(retiringMetadata.overlapExpiresAt) - 1,
-  )
-  await requireFirecrawlAccepted(
-    runtime,
-    primaryFirecrawlKey,
-    "retiring credential during overlap",
-  )
-  await requireFirecrawlAccepted(
-    runtime,
-    rotatedFirecrawlKey,
-    "rotated credential",
-  )
-  await runtime.fixtureClock.set(Date.parse(retiringMetadata.overlapExpiresAt))
-  await requireFirecrawlDenied(
-    runtime,
-    primaryFirecrawlKey,
-    "/v2/search",
-    { limit: 1, query: "expired retiring query" },
-    401,
-    "expired retiring credential",
-  )
-  await requireFirecrawlAccepted(
-    runtime,
-    rotatedFirecrawlKey,
-    "active credential after overlap expiry",
-  )
-
   await revokeFixtureFirecrawlCredential(
     runtime,
     primary.app.id,
     primaryEnabled.credential.credentialId,
-    "f0-w1-revoke-retiring",
+    "f0-w1-revoke-primary",
   )
   await requireFirecrawlDenied(
     runtime,
     primaryFirecrawlKey,
     "/v2/search",
-    { limit: 1, query: "revoked retiring query" },
+    { limit: 1, query: "revoked credential query" },
     401,
-    "revoked retiring credential",
+    "revoked credential",
   )
   await requireFirecrawlAccepted(
     runtime,
-    rotatedFirecrawlKey,
-    "active credential after retiring-key revocation",
-  )
-
-  await revokeFixtureFirecrawlCredential(
-    runtime,
-    primary.app.id,
-    rotated.body.credential.credentialId,
-    "f0-w1-revoke-active",
-  )
-  await requireFirecrawlDenied(
-    runtime,
-    rotatedFirecrawlKey,
-    "/v2/search",
-    { limit: 1, query: "revoked active query" },
-    401,
-    "revoked active credential",
+    isolatedFirecrawlKey,
+    "second-Key credential after primary revocation",
   )
   const finalDetail = await applicationDetail(runtime, primary.app.id)
   if (
@@ -1296,7 +1157,6 @@ async function verifyApplicationFirecrawlVerticalSlice(runtime) {
     isolatedInferenceKey,
     primaryFirecrawlKey,
     isolatedFirecrawlKey,
-    rotatedFirecrawlKey,
   ]
   runtime.registerBeforeRemoveCheck(() =>
     assertFirecrawlSliceLeavesNoSensitiveOutput(runtime, allKeys),
@@ -1308,9 +1168,9 @@ async function verifyApplicationFirecrawlVerticalSlice(runtime) {
     defaultOff: "passed",
     disclaimerBoundEnablement: "passed",
     egressAllowlist: "passed",
+    immutableCredentialPolicy: "passed",
     lastUseMetadata: "passed",
     revocation: "passed",
-    rotation: "passed",
     search: "passed",
     staticScrape: "passed",
     unsupportedRoutesDenied: true,

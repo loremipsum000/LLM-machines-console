@@ -41,7 +41,10 @@ test("F0-O1 remains a bounded read-only Console projection proof", async () => {
       "Grafana remains absent and inactive",
     ),
   )
-  assert.doesNotMatch(browser, /(?:ssh|kubectl|harbor|gitea|vmid\s*115)/i)
+  assert.doesNotMatch(
+    browser,
+    /(?:\b(?:ssh|kubectl|harbor|gitea)\b|\bvmid\s*115\b)/i,
+  )
 })
 
 async function readSource(path) {

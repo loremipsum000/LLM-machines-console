@@ -1637,83 +1637,7 @@ describe("Connected app gateway routes", () => {
     await server.close()
   })
 
-  it("records passive connection evidence for an unexpired retiring key", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] })
-    vi.setSystemTime(new Date("2026-07-31T12:00:00.000Z"))
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("LITELLM_URL", "http://litellm.test")
-    vi.stubEnv("LITELLM_KEY", "internal-litellm-key")
-    vi.stubGlobal(
-      "fetch",
-      vi.fn<typeof fetch>().mockResolvedValue(
-        Response.json({
-          data: [{ id: "local-a", object: "model", owned_by: "llm-machines" }],
-          object: "list",
-        }),
-      ),
-    )
-    const server = buildServer()
-    const created = await createApp(server, ["local-a"])
-    const rotated = await server.inject({
-      method: "POST",
-      url: `/api/admin/applications/connected-apps/${created.app.id}/rotate-credentials`,
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "retiring-key-evidence-rotation",
-      },
-    })
-
-    const models = await server.inject({
-      method: "GET",
-      url: "/api/app-gateway/v1/models",
-      headers: {
-        authorization: `Bearer ${bearerForCredential(created.credential)}`,
-      },
-    })
-    const detail = await server.inject({
-      method: "GET",
-      url: `/api/admin/applications/connected-apps/${created.app.id}`,
-      headers: adminHeaders,
-    })
-
-    expect(rotated.statusCode).toBe(200)
-    expect(models.statusCode).toBe(200)
-    expect(detail.json().app).toMatchObject({
-      connectionStatus: "connected",
-      lastConnectedAt: "2026-07-31T12:00:00.000Z",
-    })
-    expect(
-      detail
-        .json()
-        .app.credentials.find(
-          (credential: { id: string }) =>
-            credential.id === created.credential.credentialId,
-        ),
-    ).toMatchObject({
-      lastUsedAt: "2026-07-31T12:00:00.000Z",
-      status: "retiring",
-    })
-    expect(
-      getAuditEventsForTest().filter(
-        (event) =>
-          event.action === "connected_app.gateway.models" &&
-          event.metadata.outcome === "succeeded",
-      ),
-    ).toEqual([
-      expect.objectContaining({
-        metadata: expect.objectContaining({
-          applicationId: created.app.id,
-          credentialRecordId: created.credential.credentialId,
-        }),
-      }),
-    ])
-    expect(JSON.stringify(getAuditEventsForTest())).not.toContain(
-      created.credential.apiKey,
-    )
-    await server.close()
-  })
-
-  it("does not connect a credential revoked while its model request is in flight", async () => {
+  it("does not connect a revoked in-flight Key and keeps a separately created Key isolated", async () => {
     vi.useFakeTimers({ toFake: ["Date"] })
     vi.setSystemTime(new Date("2026-07-31T12:00:00.000Z"))
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
@@ -1736,111 +1660,86 @@ describe("Connected app gateway routes", () => {
       .mockResolvedValueOnce(modelInfoResponse(["local-a"]))
     vi.stubGlobal("fetch", fetchMock)
     const server = buildServer()
-    const created = await createApp(server, ["local-a"])
+    const revokedCandidate = await createApp(server, ["local-a"])
+    const independentKey = await createApp(server, ["local-a"])
     configureAuthoritativeModelProjection(["local-a"])
-    const oldToken = bearerForCredential(created.credential)
-    const oldKeyRequest = server.inject({
+    const revokedToken = bearerForCredential(revokedCandidate.credential)
+    const inFlightRequest = server.inject({
       method: "GET",
       url: "/api/app-gateway/v1/models",
-      headers: { authorization: `Bearer ${oldToken}` },
+      headers: { authorization: `Bearer ${revokedToken}` },
     })
 
     await modelRequestStarted
-    const rotated = await server.inject({
-      method: "POST",
-      url: `/api/admin/applications/connected-apps/${created.app.id}/rotate-credentials`,
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "connected-app-static-key-rotate",
-      },
-    })
     const revoked = await server.inject({
       method: "POST",
-      url: `/api/admin/applications/connected-apps/${created.app.id}/credentials/${created.credential.credentialId}/revoke`,
+      url: `/api/admin/applications/connected-apps/${revokedCandidate.app.id}/credentials/${revokedCandidate.credential.credentialId}/revoke`,
       headers: {
         ...adminHeaders,
         "idempotency-key": "connected-app-stale-key-revoke",
       },
     })
     releaseModelRequest?.(modelInfoResponse(["local-a"]))
-    const oldKeyResponse = await oldKeyRequest
-    const staleDetail = await server.inject({
+    const inFlightResponse = await inFlightRequest
+    const revokedDetail = await server.inject({
       method: "GET",
-      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      url: `/api/admin/applications/connected-apps/${revokedCandidate.app.id}`,
       headers: adminHeaders,
     })
-    const staleSucceededModelsEvents = getAuditEventsForTest().filter(
+    const revokedKeySucceededEvents = getAuditEventsForTest().filter(
       (event) =>
         event.action === "connected_app.gateway.models" &&
-        event.metadata.outcome === "succeeded",
+        event.metadata.outcome === "succeeded" &&
+        event.metadata.applicationId === revokedCandidate.app.id,
     )
-    const newKeyResponse = await server.inject({
+
+    const independentResponse = await server.inject({
       method: "GET",
       url: "/api/app-gateway/v1/models",
       headers: {
-        authorization: `Bearer ${bearerForCredential(rotated.json().credential)}`,
+        authorization: `Bearer ${bearerForCredential(independentKey.credential)}`,
       },
     })
-    const connectedDetail = await server.inject({
+    const independentDetail = await server.inject({
       method: "GET",
-      url: `/api/admin/applications/connected-apps/${created.app.id}`,
+      url: `/api/admin/applications/connected-apps/${independentKey.app.id}`,
       headers: adminHeaders,
     })
 
-    expect(rotated.statusCode).toBe(200)
     expect(revoked.statusCode).toBe(200)
-    expect(rotated.json()).toMatchObject({
-      credential: expect.objectContaining({ authMethod: "api_key" }),
-      status: "rotated",
-    })
-    expect(oldKeyResponse.statusCode).toBe(200)
-    expect(staleDetail.json().app).toMatchObject({
+    expect(inFlightResponse.statusCode).toBe(200)
+    expect(revokedDetail.json().app).toMatchObject({
       connectionStatus: "not_connected",
       lastConnectedAt: null,
+      status: "disabled",
     })
-    expect(staleSucceededModelsEvents).toHaveLength(0)
-    expect(newKeyResponse.statusCode).toBe(200)
-    expect(connectedDetail.json().app).toMatchObject({
+    expect(revokedKeySucceededEvents).toHaveLength(0)
+    expect(independentResponse.statusCode).toBe(200)
+    expect(independentDetail.json().app).toMatchObject({
       connectionStatus: "connected",
       lastConnectedAt: expect.any(String),
     })
-    const activeCredential = rotated
-      .json()
-      .app.credentials.find(
-        (credential: { status: string }) => credential.status === "active",
-      )
     const successfulModelsEvents = getAuditEventsForTest().filter(
       (event) =>
         event.action === "connected_app.gateway.models" &&
         event.metadata.outcome === "succeeded",
     )
-    expect(activeCredential).toBeDefined()
     expect(successfulModelsEvents).toHaveLength(1)
-    expect(successfulModelsEvents[0]?.metadata.credentialRecordId).toBe(
-      activeCredential?.id,
-    )
-    expect(
-      getAuditEventsForTest().find(
-        (event) => event.action === "admin.connected_app.credentials_rotated",
-      ),
-    ).toMatchObject({
-      actorId: "admin-1",
-      metadata: {
-        applicationId: created.app.id,
-        credentialRecordId: expect.stringMatching(/^cak-/),
-        keycloakSubjectId: "admin-1",
-      },
+    expect(successfulModelsEvents[0]?.metadata).toMatchObject({
+      applicationId: independentKey.app.id,
+      credentialRecordId: independentKey.credential.credentialId,
     })
-    expect(JSON.stringify(getAuditEventsForTest())).not.toContain(oldToken)
+    expect(JSON.stringify(getAuditEventsForTest())).not.toContain(revokedToken)
     expect(JSON.stringify(getAuditEventsForTest())).not.toContain(
-      rotated.json().credential.apiKey,
+      independentKey.credential.apiKey,
     )
-    const revokedOldKeyResponse = await server.inject({
+
+    const revokedKeyResponse = await server.inject({
       method: "GET",
       url: "/api/app-gateway/v1/models",
-      headers: { authorization: `Bearer ${oldToken}` },
+      headers: { authorization: `Bearer ${revokedToken}` },
     })
-    expect(revokedOldKeyResponse.statusCode).toBe(401)
+    expect(revokedKeyResponse.statusCode).toBe(401)
     expect(
       getAuditEventsForTest().filter(
         (event) =>

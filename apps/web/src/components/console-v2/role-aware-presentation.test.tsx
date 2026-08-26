@@ -12,12 +12,12 @@ import { InferenceV2Experience } from "./inference-v2-experience"
 import { SettingsV2Experience } from "./settings-v2-experience"
 import { TeamV2Experience } from "./team-v2-experience"
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }),
+}))
+
 vi.mock("@/lib/admin/actions-core", () => ({
   bulkAssignAdminTeamGroupMembersAction: vi.fn(),
-  checkAdminConnectedAppConnectionAction: vi.fn(async (state) => state),
-  checkAdminConnectedAppFirecrawlConnectionAction: vi.fn(
-    async (state) => state,
-  ),
   commitAdminTeamCsvImportAction: vi.fn(),
   createAdminConnectedAppAction: vi.fn(async (state) => state),
   createAdminTeamGroupAction: vi.fn(),
@@ -37,15 +37,9 @@ vi.mock("@/lib/admin/actions-core", () => ({
   revokeAdminConnectedAppFirecrawlCredentialAction: vi.fn(
     async (state) => state,
   ),
-  rotateAdminConnectedAppFirecrawlCredentialAction: vi.fn(
-    async (state) => state,
-  ),
-  rotateAdminConnectedAppCredentialsAction: vi.fn(async (state) => state),
   sendAdminTeamInviteAction: vi.fn(),
   sendAdminTeamPasswordResetAction: vi.fn(),
   softDeleteAdminConnectedAppAction: vi.fn(),
-  updateAdminConnectedAppPolicyAction: vi.fn(),
-  updateAdminConnectedAppFirecrawlPolicyAction: vi.fn(),
   updateAdminSettingsOrganizationAction: vi.fn(),
   updateAdminSettingsTelemetryAction: vi.fn(),
   updateAdminTeamGroupAction: vi.fn(),
@@ -66,7 +60,9 @@ describe("role-aware Console presentation", () => {
       />,
     )
 
-    expect(screen.getByText("Desktop client")).toBeTruthy()
+    expect(
+      screen.getAllByRole("link", { name: "Desktop client" }),
+    ).toHaveLength(2)
     expect(screen.queryByRole("link", { name: "Create Key" })).toBeNull()
     expect(screen.queryByText("Application deleted.")).toBeNull()
 

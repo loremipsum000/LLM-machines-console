@@ -14,7 +14,6 @@ import {
   reconcileConnectedAppGatewayUsage,
   recordConnectedAppGatewayAccountingDegraded,
   recordConnectedAppGatewayUsage,
-  updateAdminConnectedApp,
 } from "../../../apps/bff/src/services/admin-connected-apps"
 
 vi.mock(
@@ -312,43 +311,6 @@ describe("PR-07 PostgreSQL inference data plane", () => {
     expect(rows.rows).toEqual([{ count: 0 }])
   })
 
-  it("reads policy after a waiting application lock observes the committed update", async () => {
-    const paused = pauseAfterNextApplicationLock(database)
-    vi.mocked(getInferenceCoreDb).mockReturnValue(paused.db)
-    const updating = updateAdminConnectedApp(actor, app.appId, {
-      allowedModels: ["local-a"],
-      description: "Policy changed while admission waits.",
-      maxConcurrentRequests: 1,
-      maxContextBytes: 5,
-      modelMode: "manual",
-      name: "PR-07 app",
-      rateLimitRps: 1,
-      tokenAlertThreshold7d: 1,
-    })
-
-    await paused.locked
-    vi.mocked(getInferenceCoreDb).mockReturnValue(inferenceDb)
-    let admissionSettled = false
-    const admission = admitChat(app, 10).finally(() => {
-      admissionSettled = true
-    })
-    await Promise.resolve()
-    expect(admissionSettled).toBe(false)
-    paused.release()
-
-    await expect(updating).resolves.toMatchObject({ status: "updated" })
-    await expect(admission).resolves.toMatchObject({
-      ok: false,
-      status: 413,
-      title: "Context limit exceeded",
-    })
-    const rows = await database.query<{ count: number }>(`
-      SELECT count(*)::integer AS count
-      FROM admin.application_request_ledger
-    `)
-    expect(rows.rows).toEqual([{ count: 0 }])
-  })
-
   it("fails runtime projection and admission closed when the required policy row is missing", async () => {
     await database.exec(`
       DELETE FROM admin.application_limits
@@ -490,65 +452,4 @@ function admitChat(
     model: "local-a",
     route: "chat_completions",
   })
-}
-
-function pauseAfterNextApplicationLock(client: PGlite) {
-  let release: () => void = () => {}
-  let signalLocked: () => void = () => {}
-  const released = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  const locked = new Promise<void>((resolve) => {
-    signalLocked = resolve
-  })
-  let paused = false
-  const wrapTransaction = <Transaction extends object>(
-    transaction: Transaction,
-  ): Transaction =>
-    new Proxy(transaction, {
-      get(target, property) {
-        const value = Reflect.get(target, property, target)
-        if (property === "query" && typeof value === "function") {
-          return async (...args: unknown[]) => {
-            const result = await Reflect.apply(value, target, args)
-            const query = typeof args[0] === "string" ? args[0] : ""
-            if (
-              !paused &&
-              query.includes('from "admin"."applications"') &&
-              query.toLowerCase().includes("for update")
-            ) {
-              paused = true
-              signalLocked()
-              await released
-            }
-            return result
-          }
-        }
-        return typeof value === "function" ? value.bind(target) : value
-      },
-    })
-  const clientProxy = new Proxy(client, {
-    get(target, property) {
-      const value = Reflect.get(target, property, target)
-      if (property === "transaction" && typeof value === "function") {
-        return (...args: unknown[]) => {
-          const callback = args[0]
-          if (typeof callback !== "function") {
-            return Reflect.apply(value, target, args)
-          }
-          const wrappedCallback = (transaction: object) =>
-            Reflect.apply(callback, undefined, [wrapTransaction(transaction)])
-          return Reflect.apply(value, target, [
-            wrappedCallback,
-            ...args.slice(1),
-          ])
-        }
-      }
-      return typeof value === "function" ? value.bind(target) : value
-    },
-  })
-  const db = drizzle(clientProxy, { schema }) as unknown as NonNullable<
-    ReturnType<typeof getInferenceCoreDb>
-  >
-  return { db, locked, release }
 }

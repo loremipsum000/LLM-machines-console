@@ -196,7 +196,19 @@ test("R1-S1 mutation actions cannot swallow terminal Console sessions", () => {
     /rethrowTerminalConsoleSession\(error\)/g,
   )
 
-  assert.equal(terminalRethrows?.length, 21)
+  assert.equal(terminalRethrows?.length, 19)
+  assert.doesNotMatch(
+    source,
+    /export async function rotateAdminConnectedAppCredentialsAction/,
+  )
+  assert.doesNotMatch(
+    source,
+    /export async function rotateAdminConnectedAppFirecrawlCredentialAction/,
+  )
+  assert.doesNotMatch(
+    source,
+    /export async function updateAdminConnectedApp(?:Firecrawl)?PolicyAction/,
+  )
   assert.match(
     source,
     /if \(bffRequest\.state === "terminal"\) \{\s+throw new ConsoleSessionTerminalMutationError/,

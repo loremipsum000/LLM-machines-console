@@ -166,6 +166,14 @@ describe("ConsoleV2Shell", () => {
           .getAttribute("href"),
       ).toBe(href)
     }
+    const keysIcon = within(navigation)
+      .getByRole("link", { name: "Keys" })
+      .querySelector("svg")
+    expect(keysIcon?.getAttribute("viewBox")).toBe("0 0 20 20")
+    expect(keysIcon?.getAttribute("fill")).toBe("none")
+    expect(keysIcon?.querySelector("path")?.getAttribute("stroke")).toBe(
+      "currentColor",
+    )
     expect(screen.getByText("Administrator")).toBeTruthy()
     const signOutForm = screen
       .getByRole("button", { name: "Sign out" })

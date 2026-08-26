@@ -97,6 +97,7 @@ if (
 }
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
+const keysShowcaseDirectory = process.env.KEYS_SHOWCASE_DIR?.trim() || null
 const keycloakControl = keycloakIdentityMode
   ? keycloakControlFromEnvironment()
   : null
@@ -1436,7 +1437,7 @@ async function runBrowserSessionProof() {
           ? [
               "real Product migrations initialize an empty disposable PostgreSQL database",
               "Admin and Operator encrypted opaque sessions plus Key, credential, usage, audit, and Firecrawl metadata survive one controlled BFF restart",
-              "expired and revoked credentials remain denied while active rotated and second-Key credentials remain accepted after restart",
+              "revoked credentials remain denied while an independently created second Key remains accepted after restart",
               "PostgreSQL unavailability degrades readiness and recovers without state corruption",
               "workload content and secret canaries remain absent from PostgreSQL and teardown artifacts",
             ]
@@ -1460,7 +1461,7 @@ async function runBrowserSessionProof() {
                 : []),
               ...(credentialLifecycleMode
                 ? [
-                    "Admin rotates and revokes inference and Firecrawl credentials through the Console while exact Key isolation remains enforced",
+                    "Admin revokes immutable inference and Firecrawl credentials through the Console while exact second-Key isolation remains enforced",
                     "one-time secrets leave subsequent DOM, history, copied UI state, browser metadata, screenshots, and teardown artifacts",
                     "Operator remains read-only across Key and credential lifecycle surfaces",
                   ]
@@ -3426,8 +3427,9 @@ async function proveLiteLlmConsoleFlow({
   )
   await page.getByRole("button", { name: "Done" }).click()
   await page
-    .getByRole("heading", { exact: true, name: applicationName })
+    .getByRole("heading", { exact: true, name: "Key settings" })
     .waitFor()
+  await page.getByText(applicationName, { exact: true }).waitFor()
   const detailPath = new URL(page.url()).pathname
   assert.match(detailPath ?? "", /^\/keys\/apps\/app-/)
 
@@ -3492,16 +3494,27 @@ async function proveLiteLlmConsoleFlow({
   assert.equal(directWithApplicationCredential.status, 401)
 
   await page.goto(`${consoleOrigin}/keys`)
-  const applicationCard = page
-    .locator("article")
-    .filter({ has: page.getByRole("heading", { name: applicationName }) })
-  await applicationCard.waitFor()
-  assert.notEqual(await metricValue(applicationCard, "Last used"), "Never")
+  const applicationRow = page.getByRole("row").filter({
+    has: page.getByRole("link", { exact: true, name: applicationName }),
+  })
+  await applicationRow.waitFor()
+  assert.match(
+    (await applicationRow.getByRole("cell").nth(1).innerText()).trim(),
+    /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/u,
+  )
+
+  await page.goto(`${consoleOrigin}${detailPath}`)
+  const usageSummary = page.locator(
+    'dl[aria-label="Inference usage, last 7 days"]',
+  )
+  await usageSummary.waitFor()
   assert.ok(
-    Number.parseInt(await metricValue(applicationCard, "Requests"), 10) >= 2,
+    Number.parseInt(await metricValue(usageSummary, "Requests, 7 days"), 10) >=
+      2,
   )
   assert.ok(
-    Number.parseInt(await metricValue(applicationCard, "Tokens"), 10) >= 10,
+    Number.parseInt(await metricValue(usageSummary, "Tokens, 7 days"), 10) >=
+      10,
   )
 
   await assertActualLiteLlmProjection(page, consoleOrigin)
@@ -3826,6 +3839,8 @@ async function proveApplicationConsoleFlow({
 
   const inferenceCredential = await revealedCredential(page, "API key")
   const inferenceCredentialId = await revealedCredential(page, "Credential ID")
+  const inferenceCredentialLabel =
+    maskedCredentialIdentifierFromSecret(inferenceCredential)
   sensitiveValues.push(inferenceCredential)
   assertCredentialFormat(
     inferenceCredential,
@@ -3845,9 +3860,10 @@ async function proveApplicationConsoleFlow({
   await page.keyboard.press("Escape")
   const applicationHeading = page.getByRole("heading", {
     exact: true,
-    name: applicationName,
+    name: "Key settings",
   })
   await applicationHeading.waitFor()
+  await page.getByText(applicationName, { exact: true }).waitFor()
   assert.equal(
     await applicationHeading.evaluate(
       (heading) => document.activeElement === heading,
@@ -3855,6 +3871,11 @@ async function proveApplicationConsoleFlow({
     true,
   )
   await assertSecretsAbsentFromPage(page, [inferenceCredential])
+  await captureKeysShowcase(
+    page,
+    "key-detail-firecrawl-off.png",
+    sensitiveValues,
+  )
   const detailPath = new URL(page.url()).pathname
   assert.match(detailPath ?? "", /^\/keys\/apps\/app-/)
   if (postgresControl) {
@@ -3946,16 +3967,15 @@ async function proveApplicationConsoleFlow({
       })
     : null
 
-  await page.getByRole("button", { name: "Check connection" }).click()
-  await page
-    .getByText("A real authenticated client reached the Key models endpoint.", {
-      exact: false,
-    })
-    .waitFor()
-  const firecrawlSection = page
-    .getByRole("heading", { name: "Firecrawl web access" })
+  await page.getByRole("button", { name: "Refresh access status" }).click()
+  const inferenceAccessRow = page
+    .getByText("Inference API", { exact: true })
     .locator("xpath=../..")
-  await firecrawlSection.getByText("Disabled", { exact: true }).waitFor()
+  await inferenceAccessRow.getByText(/Client activity:\s*Connected/u).waitFor()
+  assert.equal(
+    await page.getByRole("heading", { exact: true, name: "Firecrawl" }).count(),
+    1,
+  )
   assert.equal(
     await page
       .getByRole("heading", { exact: true, name: "Firecrawl credential" })
@@ -3963,7 +3983,18 @@ async function proveApplicationConsoleFlow({
     0,
   )
 
-  await page.getByRole("button", { name: "Enable Firecrawl" }).click()
+  const firecrawlSwitch = page.getByRole("switch", {
+    name: "Enable Firecrawl",
+  })
+  assert.equal(await firecrawlSwitch.getAttribute("aria-checked"), "false")
+  assert.equal(await firecrawlSwitch.getAttribute("aria-expanded"), "false")
+  await firecrawlSwitch.click()
+  assert.equal(await firecrawlSwitch.getAttribute("aria-expanded"), "true")
+  await captureKeysShowcase(
+    page,
+    "key-detail-firecrawl-setup-expanded.png",
+    sensitiveValues,
+  )
   assert.equal(
     await page
       .getByRole("heading", { exact: true, name: "Firecrawl credential" })
@@ -3979,7 +4010,17 @@ async function proveApplicationConsoleFlow({
   await page
     .getByRole("heading", { exact: true, name: "Firecrawl credential" })
     .waitFor()
-  await firecrawlSection.getByText("Enabled", { exact: true }).waitFor()
+  const firecrawlAccessRow = page
+    .locator('section[aria-labelledby="key-status-heading"]')
+    .getByText("Firecrawl", { exact: true })
+    .locator("xpath=../..")
+  await firecrawlAccessRow.getByText("Enabled", { exact: true }).waitFor()
+  assert.equal(
+    await page
+      .getByRole("switch", { name: "Disable Firecrawl" })
+      .getAttribute("aria-checked"),
+    "true",
+  )
 
   const firecrawlCredential = await revealedCredential(
     page,
@@ -3989,6 +4030,8 @@ async function proveApplicationConsoleFlow({
     page,
     "Firecrawl credential ID",
   )
+  const firecrawlCredentialLabel =
+    maskedCredentialIdentifierFromSecret(firecrawlCredential)
   sensitiveValues.push(firecrawlCredential)
   assertCredentialFormat(
     firecrawlCredential,
@@ -4066,16 +4109,52 @@ async function proveApplicationConsoleFlow({
   }
 
   await page.goto(`${consoleOrigin}/keys`)
-  const applicationCard = page
-    .locator("article")
-    .filter({ has: page.getByRole("heading", { name: applicationName }) })
-  await applicationCard.waitFor()
+  const applicationRow = page.getByRole("row").filter({
+    has: page.getByRole("link", { exact: true, name: applicationName }),
+  })
+  await applicationRow.waitFor()
+  const applicationCells = applicationRow.getByRole("cell")
+  assert.equal(
+    await page
+      .getByRole("columnheader", { name: "Date Created" })
+      .evaluate((header) => getComputedStyle(header).whiteSpace),
+    "nowrap",
+  )
+  assert.match(
+    (await applicationCells.nth(1).innerText()).trim(),
+    /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/u,
+  )
+  assert.equal((await applicationCells.nth(3).innerText()).trim(), "Enabled")
+  assert.equal(
+    await applicationCells.nth(3).locator(".rounded-full").count(),
+    0,
+  )
+  await assertSecretsAbsentFromPage(page, sensitiveValues)
+  await captureKeysShowcase(page, "keys-list-desktop.png", sensitiveValues)
+  await captureKeysShowcaseAtViewport(
+    page,
+    "keys-list-mobile.png",
+    sensitiveValues,
+    { height: 844, width: 390 },
+  )
+
+  await page.goto(`${consoleOrigin}${detailPath}`)
+  const usageSummary = page.locator(
+    'dl[aria-label="Inference usage, last 7 days"]',
+  )
+  await usageSummary.waitFor()
+  await assertSecretsAbsentFromPage(page, sensitiveValues)
+  await captureKeysShowcase(
+    page,
+    "key-detail-firecrawl-enabled.png",
+    sensitiveValues,
+  )
   const visibleRequests = Number.parseInt(
-    await metricValue(applicationCard, "Requests"),
+    await metricValue(usageSummary, "Requests, 7 days"),
     10,
   )
   const visibleTokens = Number.parseInt(
-    await metricValue(applicationCard, "Tokens"),
+    await metricValue(usageSummary, "Tokens, 7 days"),
     10,
   )
   if (streamingRequired) {
@@ -4085,8 +4164,7 @@ async function proveApplicationConsoleFlow({
     assert.equal(visibleRequests, 2)
     assert.equal(visibleTokens, 5)
   }
-  assert.notEqual(await metricValue(applicationCard, "Last used"), "Never")
-  assert.equal(await metricValue(applicationCard, "Firecrawl"), "Enabled")
+  assert.notEqual(await metricValue(usageSummary, "Last used"), "Never used")
 
   const lifecycle = credentialLifecycleMode
     ? await proveCredentialLifecycle({
@@ -4097,8 +4175,10 @@ async function proveApplicationConsoleFlow({
           detailPath,
           firecrawlCredential,
           firecrawlCredentialId,
+          firecrawlCredentialLabel,
           inferenceCredential,
           inferenceCredentialId,
+          inferenceCredentialLabel,
           name: applicationName,
         },
         page,
@@ -4150,100 +4230,91 @@ async function proveCredentialLifecycle({
 }) {
   await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
 
-  await page.getByRole("button", { name: "Rotate Key credentials" }).click()
-  const inferenceRotation = page.getByRole("dialog", {
-    name: "Rotate Key credential?",
-  })
-  await inferenceRotation.getByRole("button", { name: "Rotate" }).click()
-  await page.getByRole("heading", { name: "Rotated credential" }).waitFor()
-  await page.getByText("exact 24-hour overlap", { exact: false }).waitFor()
-  const rotatedInferenceCredential = await revealedCredential(page, "API key")
-  const rotatedInferenceCredentialId = await revealedCredential(
-    page,
-    "Credential ID",
-  )
-  assertCredentialFormat(
-    rotatedInferenceCredential,
-    /^llmm_t4_[0-9a-f]{18}_[A-Za-z0-9_-]{43}$/,
-    "rotated inference",
-  )
-  sensitiveValues.push(rotatedInferenceCredential)
+  for (const name of [
+    "Rotate credentials",
+    "Edit policy",
+    "Rotate Firecrawl credential",
+    "Edit Firecrawl policy",
+  ]) {
+    assert.equal(await page.getByRole("button", { name }).count(), 0)
+  }
   await assertInferenceCredentialAccepted({
     certificate,
     credential: firstApplication.inferenceCredential,
     edgePort,
   })
-  await assertInferenceCredentialAccepted({
-    certificate,
-    credential: rotatedInferenceCredential,
-    edgePort,
-  })
-  await page.getByRole("button", { name: "Check connection" }).click()
-  await page
-    .getByText("A real authenticated client reached", { exact: false })
-    .waitFor()
-  await assertCredentialCard(page, firstApplication.inferenceCredentialId, {
+  await page.getByRole("button", { name: "Refresh access status" }).click()
+  const inferenceAccessRow = page
+    .getByText("Inference API", { exact: true })
+    .locator("xpath=../..")
+  await inferenceAccessRow.getByText(/Client activity:\s*Connected/u).waitFor()
+  await assertCredentialCard(page, firstApplication.inferenceCredentialLabel, {
     lastUse: "used",
-    status: "Retiring",
-  })
-  await assertCredentialCard(page, rotatedInferenceCredentialId, {
-    age: "Issued today",
     status: "Active",
   })
-
-  await page
-    .getByRole("button", { name: "Rotate Firecrawl credential" })
-    .click()
-  const firecrawlRotation = page.getByRole("dialog", {
-    name: "Rotate Firecrawl credential?",
-  })
-  await firecrawlRotation
-    .getByRole("button", { name: "Rotate Firecrawl key" })
-    .click()
-  await page
-    .getByRole("heading", { name: "Rotated Firecrawl credential" })
-    .waitFor()
-  const rotatedFirecrawlCredential = await revealedCredential(
-    page,
-    "Firecrawl API key",
-  )
-  const rotatedFirecrawlCredentialId = await revealedCredential(
-    page,
-    "Firecrawl credential ID",
-  )
-  assertCredentialFormat(
-    rotatedFirecrawlCredential,
-    /^llmm_fc_[0-9a-f]{16}_[A-Za-z0-9_-]{43}$/,
-    "rotated Firecrawl",
-  )
-  sensitiveValues.push(rotatedFirecrawlCredential)
   await assertFirecrawlCredentialAccepted({
     certificate,
     credential: firstApplication.firecrawlCredential,
     edgePort,
   })
-  await assertFirecrawlCredentialAccepted({
-    certificate,
-    credential: rotatedFirecrawlCredential,
-    edgePort,
-  })
-  await page.getByRole("button", { name: "Check Firecrawl connection" }).click()
-  await page
-    .getByText(
-      "A real authenticated Firecrawl gateway connection was observed",
-      {
-        exact: false,
-      },
-    )
-    .waitFor()
-  await assertCredentialCard(page, firstApplication.firecrawlCredentialId, {
+  await page.getByRole("button", { name: "Refresh access status" }).click()
+  const firecrawlAccessRow = page
+    .locator('section[aria-labelledby="key-status-heading"]')
+    .getByText("Firecrawl", { exact: true })
+    .locator("xpath=../..")
+  await firecrawlAccessRow.getByText(/Client activity:\s*Connected/u).waitFor()
+  await assertCredentialCard(page, firstApplication.firecrawlCredentialLabel, {
     lastUse: "used",
-    status: "Retiring",
-  })
-  await assertCredentialCard(page, rotatedFirecrawlCredentialId, {
-    age: "Issued today",
     status: "Active",
   })
+
+  await page.getByRole("switch", { name: "Disable Firecrawl" }).click()
+  const disableFirecrawlDialog = page.getByRole("dialog", {
+    name: "Disable Firecrawl?",
+  })
+  await disableFirecrawlDialog.waitFor()
+  await disableFirecrawlDialog
+    .getByRole("button", { name: "Disable Firecrawl" })
+    .click()
+  await page.getByRole("switch", { name: "Enable Firecrawl" }).waitFor()
+  await captureKeysShowcase(
+    page,
+    "key-detail-firecrawl-disabled-reenable.png",
+    sensitiveValues,
+  )
+  await page.getByRole("switch", { name: "Enable Firecrawl" }).click()
+  const reenableFirecrawlDialog = page.getByRole("dialog", {
+    name: "Re-enable Firecrawl?",
+  })
+  await reenableFirecrawlDialog.waitFor()
+  await reenableFirecrawlDialog
+    .getByRole("button", { name: "Re-enable Firecrawl" })
+    .click()
+  await page.getByRole("switch", { name: "Disable Firecrawl" }).waitFor()
+
+  await page.getByRole("button", { name: "Disable Key" }).click()
+  const disableKeyDialog = page.getByRole("dialog", {
+    name: "Disable this Key?",
+  })
+  await disableKeyDialog.waitFor()
+  await disableKeyDialog.getByRole("button", { name: "Disable" }).click()
+  await page.getByRole("button", { name: "Re-enable Key" }).waitFor()
+  await captureKeysShowcase(
+    page,
+    "key-detail-key-disabled-reenable.png",
+    sensitiveValues,
+  )
+  await page.getByRole("button", { name: "Re-enable Key" }).click()
+  await page.getByRole("button", { name: "Disable Key" }).waitFor()
+  await page.getByRole("switch", { name: "Enable Firecrawl" }).click()
+  const restoreFirecrawlDialog = page.getByRole("dialog", {
+    name: "Re-enable Firecrawl?",
+  })
+  await restoreFirecrawlDialog.waitFor()
+  await restoreFirecrawlDialog
+    .getByRole("button", { name: "Re-enable Firecrawl" })
+    .click()
+  await page.getByRole("switch", { name: "Disable Firecrawl" }).waitFor()
 
   await openApplicationCreate({
     consoleOrigin,
@@ -4255,30 +4326,33 @@ async function proveCredentialLifecycle({
   await submitApplicationCreate(page, secondName)
   await page.getByRole("heading", { name: "Key created" }).waitFor()
   const secondInferenceCredential = await revealedCredential(page, "API key")
-  const secondInferenceCredentialId = await revealedCredential(
-    page,
-    "Credential ID",
+  const secondInferenceCredentialLabel = maskedCredentialIdentifierFromSecret(
+    secondInferenceCredential,
   )
   sensitiveValues.push(secondInferenceCredential)
   await page.getByRole("button", { name: "Done" }).click()
-  await page.getByRole("heading", { exact: true, name: secondName }).waitFor()
+  await page
+    .getByRole("heading", { exact: true, name: "Key settings" })
+    .waitFor()
+  await page.getByText(secondName, { exact: true }).waitFor()
   const secondDetailPath = new URL(page.url()).pathname
   assert.match(secondDetailPath ?? "", /^\/keys\/apps\/app-/)
-  await page.getByRole("button", { name: "Enable Firecrawl" }).click()
+  await page.getByRole("switch", { name: "Enable Firecrawl" }).click()
   await page
     .getByLabel(
       /I understand that enabling Firecrawl permits outbound web requests/,
     )
     .check()
   await page.getByRole("button", { name: "Enable Firecrawl" }).click()
-  await page.getByRole("heading", { name: "Firecrawl credential" }).waitFor()
+  await page
+    .getByRole("heading", { exact: true, name: "Firecrawl credential" })
+    .waitFor()
   const secondFirecrawlCredential = await revealedCredential(
     page,
     "Firecrawl API key",
   )
-  const secondFirecrawlCredentialId = await revealedCredential(
-    page,
-    "Firecrawl credential ID",
+  const secondFirecrawlCredentialLabel = maskedCredentialIdentifierFromSecret(
+    secondFirecrawlCredential,
   )
   sensitiveValues.push(secondFirecrawlCredential)
 
@@ -4294,13 +4368,13 @@ async function proveCredentialLifecycle({
   })
   await assertCrossApplicationMutationDenied({
     foreignCredentialId: firstApplication.inferenceCredentialId,
-    ownCredentialId: secondInferenceCredentialId,
+    ownCredentialLabel: secondInferenceCredentialLabel,
     page,
     type: "inference",
   })
   await assertCrossApplicationMutationDenied({
     foreignCredentialId: firstApplication.firecrawlCredentialId,
-    ownCredentialId: secondFirecrawlCredentialId,
+    ownCredentialLabel: secondFirecrawlCredentialLabel,
     page,
     type: "firecrawl",
   })
@@ -4316,23 +4390,25 @@ async function proveCredentialLifecycle({
   })
 
   let restartEvidence = null
+  let firstInferenceRevoked = false
   await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
   if (postgresControl) {
     assert.ok(restartBff)
     await revokeCredentialThroughUi(
       page,
-      firstApplication.firecrawlCredentialId,
+      firstApplication.firecrawlCredentialLabel,
       "Revoke Firecrawl key",
     )
-    expireInferenceCredential(firstApplication.inferenceCredentialId)
+    await revokeCredentialThroughUi(
+      page,
+      firstApplication.inferenceCredentialLabel,
+      "Revoke now",
+    )
+    firstInferenceRevoked = true
     restartEvidence = await restartBff()
     await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
     await assertRole(page, "Administrator")
-    await page
-      .getByRole("heading", { name: "Firecrawl web access" })
-      .locator("xpath=../..")
-      .getByText("Enabled", { exact: true })
-      .waitFor()
+    await page.getByRole("switch", { name: "Enable Firecrawl" }).waitFor()
     await assertCredentialDenied({
       authority: authorities.api,
       body: undefined,
@@ -4341,11 +4417,6 @@ async function proveCredentialLifecycle({
       edgePort,
       path: "/v1/models",
     })
-    await assertInferenceCredentialAccepted({
-      certificate,
-      credential: rotatedInferenceCredential,
-      edgePort,
-    })
     await assertCredentialDenied({
       authority: authorities.firecrawl,
       body: { limit: 1, query: "post-restart revoked credential" },
@@ -4353,11 +4424,6 @@ async function proveCredentialLifecycle({
       credential: firstApplication.firecrawlCredential,
       edgePort,
       path: "/v2/search",
-    })
-    await assertFirecrawlCredentialAccepted({
-      certificate,
-      credential: rotatedFirecrawlCredential,
-      edgePort,
     })
     await assertInferenceCredentialAccepted({
       certificate,
@@ -4372,52 +4438,39 @@ async function proveCredentialLifecycle({
   } else {
     await revokeCredentialThroughUi(
       page,
-      firstApplication.firecrawlCredentialId,
+      firstApplication.firecrawlCredentialLabel,
       "Revoke Firecrawl key",
     )
+    await captureKeysShowcase(
+      page,
+      "key-detail-firecrawl-revoked.png",
+      sensitiveValues,
+    )
   }
-  await revokeCredentialThroughUi(
-    page,
-    rotatedFirecrawlCredentialId,
-    "Revoke Firecrawl key",
-  )
-  await revokeCredentialThroughUi(
-    page,
-    firstApplication.inferenceCredentialId,
-    "Revoke now",
-  )
-  await revokeCredentialThroughUi(
-    page,
-    rotatedInferenceCredentialId,
-    "Revoke now",
-  )
+  if (!firstInferenceRevoked) {
+    await revokeCredentialThroughUi(
+      page,
+      firstApplication.inferenceCredentialLabel,
+      "Revoke now",
+    )
+  }
 
-  for (const credential of [
-    firstApplication.inferenceCredential,
-    rotatedInferenceCredential,
-  ]) {
-    await assertCredentialDenied({
-      authority: authorities.api,
-      body: undefined,
-      certificate,
-      credential,
-      edgePort,
-      path: "/v1/models",
-    })
-  }
-  for (const credential of [
-    firstApplication.firecrawlCredential,
-    rotatedFirecrawlCredential,
-  ]) {
-    await assertCredentialDenied({
-      authority: authorities.firecrawl,
-      body: { limit: 1, query: "post-revocation fixture query" },
-      certificate,
-      credential,
-      edgePort,
-      path: "/v2/search",
-    })
-  }
+  await assertCredentialDenied({
+    authority: authorities.api,
+    body: undefined,
+    certificate,
+    credential: firstApplication.inferenceCredential,
+    edgePort,
+    path: "/v1/models",
+  })
+  await assertCredentialDenied({
+    authority: authorities.firecrawl,
+    body: { limit: 1, query: "post-revocation fixture query" },
+    certificate,
+    credential: firstApplication.firecrawlCredential,
+    edgePort,
+    path: "/v2/search",
+  })
   await assertInferenceCredentialAccepted({
     certificate,
     credential: secondInferenceCredential,
@@ -4429,15 +4482,32 @@ async function proveCredentialLifecycle({
     edgePort,
   })
 
+  assert.equal(
+    await page.getByRole("button", { name: "Re-enable Key" }).count(),
+    0,
+  )
+
+  await captureKeysShowcase(
+    page,
+    "key-detail-disabled-no-credentials.png",
+    sensitiveValues,
+  )
+  await captureKeysShowcaseAtViewport(
+    page,
+    "key-detail-disabled-no-credentials-mobile.png",
+    sensitiveValues,
+    { height: 844, width: 390 },
+  )
+
   await page.goto(`${consoleOrigin}/keys`)
   await assertSecretsAbsentFromPage(page, sensitiveValues)
 
   return {
     ageAndLastUse: "passed",
     crossApplicationMutationDenial: "passed",
-    exactStaticOverlapSeconds: 86_400,
-    firecrawlRotationAndRevocation: "passed",
-    inferenceRotationAndRevocation: "passed",
+    firecrawlRevocation: "passed",
+    immutableCredentialPolicy: "passed",
+    inferenceRevocation: "passed",
     operatorPaths: [firstApplication.detailPath, secondDetailPath],
     ...(restartEvidence ? { restart: restartEvidence } : {}),
     secondApplicationIsolation: "passed",
@@ -4498,27 +4568,27 @@ async function assertCredentialDenied({
   assert.equal(response.status, 401, "A revoked credential was accepted.")
 }
 
-async function assertCredentialCard(page, credentialId, expected) {
-  const card = page.locator("article").filter({ hasText: credentialId })
-  await card.waitFor()
+async function assertCredentialCard(page, credentialLabel, expected) {
+  const card = page.locator("article").filter({ hasText: credentialLabel })
+  await card.waitFor({ state: "attached" })
   let text = ""
   for (let attempt = 0; attempt < 50; attempt += 1) {
-    text = await card.innerText()
-    if (text.split("\n").includes(expected.status)) {
+    text = (await card.textContent()) ?? ""
+    if (text.toLowerCase().includes(expected.status.toLowerCase())) {
       break
     }
     await page.waitForTimeout(100)
   }
-  if (!text.split("\n").includes(expected.status)) {
+  if (!text.toLowerCase().includes(expected.status.toLowerCase())) {
     throw new Error(
       `Credential metadata did not reach ${expected.status}: ${safeDiagnosticTail(text)}`,
     )
   }
   if (expected.age) {
-    assert.equal(await metricValue(card, "Age"), expected.age)
+    assert.match(text, new RegExp(expected.age))
   }
   if (expected.lastUse === "used") {
-    if ((await metricValue(card, "Last use")) === "Never") {
+    if (text.includes("Last used Never used")) {
       throw new Error(
         `Credential last-use metadata remained empty: ${safeDiagnosticTail(text)}`,
       )
@@ -4528,13 +4598,15 @@ async function assertCredentialCard(page, credentialId, expected) {
 
 async function assertCrossApplicationMutationDenied({
   foreignCredentialId,
-  ownCredentialId,
+  ownCredentialLabel,
   page,
   type,
 }) {
   const buttonName =
     type === "firecrawl" ? "Revoke Firecrawl key" : "Revoke now"
-  const ownCard = page.locator("article").filter({ hasText: ownCredentialId })
+  const ownCard = page
+    .locator("article")
+    .filter({ hasText: ownCredentialLabel })
   await ownCard.getByRole("button", { name: buttonName }).click()
   const dialog = page.getByRole("dialog", {
     name:
@@ -4553,11 +4625,11 @@ async function assertCrossApplicationMutationDenied({
     .filter({ hasText: /not found|revocation failed/i })
     .last()
     .waitFor()
-  await assertCredentialCard(page, ownCredentialId, { status: "Active" })
+  await assertCredentialCard(page, ownCredentialLabel, { status: "Active" })
 }
 
-async function revokeCredentialThroughUi(page, credentialId, buttonName) {
-  const card = page.locator("article").filter({ hasText: credentialId })
+async function revokeCredentialThroughUi(page, credentialLabel, buttonName) {
+  const card = page.locator("article").filter({ hasText: credentialLabel })
   await card.getByRole("button", { name: buttonName }).click()
   const dialog = page.getByRole("dialog", {
     name:
@@ -4566,17 +4638,29 @@ async function revokeCredentialThroughUi(page, credentialId, buttonName) {
         : "Revoke credential now?",
   })
   await dialog.getByRole("button", { name: buttonName }).click()
+  if (buttonName === "Revoke Firecrawl key") {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if (
+        (await page
+          .getByRole("switch", { name: "Enable Firecrawl" })
+          .count()) === 0
+      ) {
+        await page.waitForTimeout(100)
+        continue
+      }
+      assert.equal(await card.count(), 0)
+      return
+    }
+    throw new Error(
+      "Revoked Firecrawl metadata neither appeared nor collapsed after Firecrawl was disabled.",
+    )
+  }
   await page
     .locator("output")
-    .filter({
-      hasText:
-        buttonName === "Revoke Firecrawl key"
-          ? "Firecrawl key revoked."
-          : "Credential revoked immediately.",
-    })
+    .filter({ hasText: "Credential revoked immediately." })
     .last()
     .waitFor()
-  await assertCredentialCard(page, credentialId, { status: "Revoked" })
+  await assertCredentialCard(page, credentialLabel, { status: "Revoked" })
 }
 
 async function assertSecretsAbsentFromPage(page, sensitiveValues) {
@@ -4602,6 +4686,39 @@ async function assertSecretsAbsentFromPage(page, sensitiveValues) {
   }
 }
 
+async function captureKeysShowcase(page, filename, sensitiveValues) {
+  if (!keysShowcaseDirectory) return
+  await assertSecretsAbsentFromPage(page, sensitiveValues)
+  await mkdir(keysShowcaseDirectory, { recursive: true })
+  await page.waitForTimeout(250)
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+  })
+  await page.waitForTimeout(50)
+  await page.screenshot({
+    fullPage: true,
+    path: join(keysShowcaseDirectory, filename),
+  })
+}
+
+async function captureKeysShowcaseAtViewport(
+  page,
+  filename,
+  sensitiveValues,
+  viewport,
+) {
+  if (!keysShowcaseDirectory) return
+  const previousViewport = page.viewportSize()
+  try {
+    await page.setViewportSize(viewport)
+    await captureKeysShowcase(page, filename, sensitiveValues)
+  } finally {
+    if (previousViewport) await page.setViewportSize(previousViewport)
+  }
+}
+
 async function assertOperatorApplicationReadOnly(page, applicationFlow) {
   for (const path of applicationFlow.lifecycle.operatorPaths) {
     await page.goto(new URL(path, page.url()).toString())
@@ -4610,17 +4727,21 @@ async function assertOperatorApplicationReadOnly(page, applicationFlow) {
       .first()
       .waitFor()
     for (const name of [
-      "Check connection",
-      "Rotate Key credentials",
+      "Refresh access status",
+      "Rotate credentials",
       "Revoke now",
       "Disable Key",
-      "Check Firecrawl connection",
-      "Rotate Firecrawl credential",
       "Revoke Firecrawl key",
-      "Disable Firecrawl",
+      "Edit policy",
+      "Edit Firecrawl policy",
     ]) {
       assert.equal(await page.getByRole("button", { name }).count(), 0)
     }
+    const firecrawlSwitch = page.getByRole("switch", {
+      name: /^(?:Enable|Disable) Firecrawl$/u,
+    })
+    assert.equal(await firecrawlSwitch.count(), 1)
+    assert.equal(await firecrawlSwitch.isDisabled(), true)
   }
 }
 
@@ -4631,7 +4752,7 @@ async function openApplicationCreate({
   userCredentials,
 }) {
   await page.goto(`${consoleOrigin}/keys/apps/new`)
-  const form = page.getByRole("heading", { name: "Keys > Create Key" })
+  const form = page.getByRole("heading", { name: "Create Key" })
   const elevation = page.getByRole("heading", { name: "Verify your identity" })
   await Promise.race([form.waitFor(), elevation.waitFor()])
   if ((await elevation.count()) === 0) {
@@ -4714,6 +4835,14 @@ function assertCredentialFormat(value, pattern, label) {
   if (!pattern.test(value)) {
     throw new Error(`The ${label} credential did not use its approved format.`)
   }
+}
+
+function maskedCredentialIdentifierFromSecret(value) {
+  const match = /^(llmm_(?:t4|fc)_[0-9a-f]+)_/u.exec(value)
+  if (!match?.[1]) {
+    throw new Error("The credential did not contain a supported safe prefix.")
+  }
+  return `Credential •••• ${match[1].slice(-4)}`
 }
 
 async function metricValue(container, label) {
@@ -6365,30 +6494,6 @@ function postgresApplicationFirecrawlStatus(applicationId) {
     `,
     { application_id: applicationId },
   )
-}
-
-function expireInferenceCredential(credentialId) {
-  assert.match(credentialId, /^cak-[0-9a-f-]{36}$/)
-  const updated = Number.parseInt(
-    postgresPsql(
-      `
-        WITH expired AS (
-          UPDATE admin.application_credentials
-          SET issued_at = CURRENT_TIMESTAMP - interval '2 days',
-              rotated_at = CURRENT_TIMESTAMP - interval '86401 seconds',
-              overlap_expires_at = CURRENT_TIMESTAMP - interval '1 second'
-          WHERE id = :'credential_id'
-            AND kind = 'api_key'
-            AND status = 'retiring'
-          RETURNING id
-        )
-        SELECT count(*) FROM expired;
-      `,
-      { credential_id: credentialId },
-    ),
-    10,
-  )
-  assert.equal(updated, 1, "F0-P1 could not expire the retiring credential.")
 }
 
 function inspectPostgresPersistence(sensitiveValues, applicationFlow = null) {

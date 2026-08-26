@@ -9,12 +9,10 @@ import type {
   AdminConnectedAppFirecrawl,
   AdminConnectedAppFirecrawlCredential,
   AdminConnectedAppFirecrawlEnableRequest,
-  AdminConnectedAppFirecrawlPolicyRequest,
   FirecrawlScope,
 } from "@llm-machines/contracts/inference-core"
 import {
   adminConnectedAppFirecrawlEnableRequestSchema,
-  adminConnectedAppFirecrawlPolicyRequestSchema,
   adminConnectedAppFirecrawlSchema,
 } from "@llm-machines/contracts/inference-core"
 import { and, desc, eq, gt, inArray, sql } from "drizzle-orm"
@@ -43,7 +41,6 @@ import type { IdentityMutationRouteContext } from "./identity-mutation-journal"
 import { upsertActorUser } from "./users"
 
 export const FIRECRAWL_DISCLAIMER_VERSION = "firecrawl-outbound-v1"
-export const FIRECRAWL_KEY_OVERLAP_SECONDS = 86_400
 
 // The longest gateway route is 50 seconds; ten seconds bounds cleanup drift.
 const FIRECRAWL_REQUEST_LEASE_SECONDS = 60
@@ -96,14 +93,14 @@ export type AdminConnectedAppFirecrawlCredentialMutationResult =
       credential: AdminConnectedAppFirecrawlCredential | null
       detail: string
       firecrawl: AdminConnectedAppFirecrawl
-      status: "enabled" | "rotated"
+      status: "enabled"
     }
   | { detail: string; status: "blocked" }
   | { status: "not_found" }
 
 type AdminConnectedAppFirecrawlCredentialMutationSuccess = Extract<
   AdminConnectedAppFirecrawlCredentialMutationResult,
-  { status: "enabled" | "rotated" }
+  { status: "enabled" }
 >
 
 type AdminConnectedAppFirecrawlCredentialCommitRace = Extract<
@@ -415,9 +412,15 @@ export async function preflightEnableAdminConnectedAppFirecrawl(
   if (!projection) {
     return { status: "not_found" }
   }
-  const createsCredential = !projection.credentials.some(
+  const hasActiveCredential = projection.credentials.some(
     (credential) => credential.status === "active",
   )
+  if (projection.disclaimerAcceptedAt !== null && !hasActiveCredential) {
+    return blocked(
+      "This Key's Firecrawl credential is no longer active. Create a new Key to use Firecrawl again.",
+    )
+  }
+  const createsCredential = !hasActiveCredential
   if (createsCredential && !identityContext?.commitWithReceipt) {
     return blocked(
       "Durable identity mutation finalization is required before revealing a Firecrawl key.",
@@ -471,90 +474,6 @@ export async function enableAdminConnectedAppFirecrawl<T = never>(
       const committed = requireCredentialMutationSuccess(result)
       return finalizeReveal ? finalizeReveal(committed, transaction) : committed
     },
-  })
-}
-
-export async function preflightRotateAdminConnectedAppFirecrawlCredential(
-  applicationId: string,
-  identityContext?: IdentityMutationRouteContext,
-): Promise<AdminConnectedAppFirecrawlCredentialPreflight> {
-  const publicBaseUrl = normalizeFirecrawlBaseUrl(
-    process.env.FIRECRAWL_PUBLIC_BASE_URL,
-    isProductionRuntime(),
-    true,
-  )
-  if (!publicBaseUrl) {
-    return blocked("The Firecrawl public base URL is missing or invalid.")
-  }
-  const projection =
-    await getAdminConnectedAppFirecrawlProjection(applicationId)
-  if (!projection) {
-    return { status: "not_found" }
-  }
-  if (
-    projection.status !== "enabled" ||
-    !projection.credentials.some((credential) => credential.status === "active")
-  ) {
-    return blocked("Enabled Firecrawl access with an active key is required.")
-  }
-  if (!identityContext?.commitWithReceipt) {
-    return blocked(
-      "Durable identity mutation finalization is required before revealing a Firecrawl key.",
-    )
-  }
-  return {
-    createsCredential: true,
-    publicBaseUrl,
-    status: "ready",
-  }
-}
-
-export async function rotateAdminConnectedAppFirecrawlCredential<T = never>(
-  actor: Actor,
-  applicationId: string,
-  identityContext?: IdentityMutationRouteContext,
-  finalizeReveal?: AdminConnectedAppFirecrawlCredentialRevealFinalizer<T>,
-): Promise<AdminConnectedAppFirecrawlCredentialMutationResult | T> {
-  const preflight = await preflightRotateAdminConnectedAppFirecrawlCredential(
-    applicationId,
-    identityContext,
-  )
-  if (preflight.status !== "ready") {
-    return preflight
-  }
-  const commitWithReceipt = identityContext?.commitWithReceipt
-  if (!commitWithReceipt) {
-    return blocked(
-      "Durable identity mutation finalization is required before revealing a Firecrawl key.",
-    )
-  }
-  return commitWithReceipt({
-    resourceId: applicationId,
-    run: async (transaction) => {
-      assertAtomicRevealTransaction(transaction)
-      const result = await persistRotateFirecrawlCredential(
-        actor,
-        applicationId,
-        createFirecrawlCredential(applicationId),
-        preflight.publicBaseUrl,
-        transaction,
-      )
-      const committed = requireCredentialMutationSuccess(result)
-      return finalizeReveal ? finalizeReveal(committed, transaction) : committed
-    },
-  })
-}
-
-export async function updateAdminConnectedAppFirecrawlPolicy(
-  actor: Actor,
-  applicationId: string,
-  request: AdminConnectedAppFirecrawlPolicyRequest,
-): Promise<AdminConnectedAppFirecrawlLifecycleMutationResult> {
-  const parsed = adminConnectedAppFirecrawlPolicyRequestSchema.parse(request)
-  return mutateAccess(actor, applicationId, "admin.firecrawl.policy.updated", {
-    maxConcurrentScrapes: parsed.maxConcurrentScrapes,
-    scrapeRateLimitRps: parsed.scrapeRateLimitRps,
-    searchRateLimitRps: parsed.searchRateLimitRps,
   })
 }
 
@@ -925,6 +844,12 @@ async function persistEnableFirecrawl(
         )
         .limit(1)
       const active = activeRows[0]
+      const firstEnable = access.disclaimerAcceptedAt === null
+      if (!firstEnable && !active) {
+        return blocked(
+          "This Key's Firecrawl credential is no longer active. Create a new Key to use Firecrawl again.",
+        )
+      }
       if (!active && !generated) {
         return blocked("An atomic Firecrawl key reveal is required.")
       }
@@ -937,12 +862,16 @@ async function persistEnableFirecrawl(
       await executor
         .update(applicationFirecrawlAccess)
         .set({
-          disclaimerAcceptedAt: now,
-          disclaimerAcceptedBy: storageActor.subject,
-          disclaimerVersion: FIRECRAWL_DISCLAIMER_VERSION,
-          maxConcurrentScrapes: request.maxConcurrentScrapes,
-          scrapeRateLimitRps: request.scrapeRateLimitRps,
-          searchRateLimitRps: request.searchRateLimitRps,
+          ...(firstEnable
+            ? {
+                disclaimerAcceptedAt: now,
+                disclaimerAcceptedBy: storageActor.subject,
+                disclaimerVersion: FIRECRAWL_DISCLAIMER_VERSION,
+                maxConcurrentScrapes: request.maxConcurrentScrapes,
+                scrapeRateLimitRps: request.scrapeRateLimitRps,
+                searchRateLimitRps: request.searchRateLimitRps,
+              }
+            : {}),
           status: "enabled",
           updatedAt: now,
           updatedBy: storageActor.subject,
@@ -991,6 +920,12 @@ async function persistEnableFirecrawl(
     (candidate) =>
       candidate.appId === applicationId && candidate.status === "active",
   )
+  const firstEnable = access.disclaimerAcceptedAt === null
+  if (!firstEnable && !active) {
+    return blocked(
+      "This Key's Firecrawl credential is no longer active. Create a new Key to use Firecrawl again.",
+    )
+  }
   if (!active && !generated) {
     return blocked("An atomic Firecrawl key reveal is required.")
   }
@@ -998,12 +933,14 @@ async function persistEnableFirecrawl(
   if (!active && generated) {
     memoryCredentials.unshift(cloneCredential(generated.record))
   }
-  access.disclaimerAcceptedAt = now
-  access.disclaimerAcceptedBy = actor.subject
-  access.disclaimerVersion = FIRECRAWL_DISCLAIMER_VERSION
-  access.maxConcurrentScrapes = request.maxConcurrentScrapes
-  access.scrapeRateLimitRps = request.scrapeRateLimitRps
-  access.searchRateLimitRps = request.searchRateLimitRps
+  if (firstEnable) {
+    access.disclaimerAcceptedAt = now
+    access.disclaimerAcceptedBy = actor.subject
+    access.disclaimerVersion = FIRECRAWL_DISCLAIMER_VERSION
+    access.maxConcurrentScrapes = request.maxConcurrentScrapes
+    access.scrapeRateLimitRps = request.scrapeRateLimitRps
+    access.searchRateLimitRps = request.searchRateLimitRps
+  }
   access.status = "enabled"
   access.updatedAt = now
   access.updatedBy = actor.subject
@@ -1025,129 +962,6 @@ async function persistEnableFirecrawl(
     firecrawl: projectFirecrawl(access, credentialsForApp(applicationId)),
     status: "enabled",
   }
-}
-
-async function persistRotateFirecrawlCredential(
-  actor: Actor,
-  applicationId: string,
-  generated: ReturnType<typeof createFirecrawlCredential>,
-  publicBaseUrl: string,
-  transaction?: InferenceCoreTransaction | null,
-): Promise<AdminConnectedAppFirecrawlCredentialMutationResult> {
-  const database = getInferenceCoreDb()
-  const now = new Date()
-  const overlapExpiresAt = new Date(
-    now.getTime() + FIRECRAWL_KEY_OVERLAP_SECONDS * 1000,
-  )
-  if (transaction || database) {
-    if (!transaction) {
-      throw new Error("Atomic Firecrawl credential storage is unavailable.")
-    }
-    const storageActor = await upsertActorUser(actor, transaction)
-    const access = await ensureAndLockAccess(
-      transaction,
-      applicationId,
-      storageActor.subject,
-      true,
-    )
-    if (!access || access.status !== "enabled") {
-      return { status: "not_found" }
-    }
-    await transaction
-      .update(applicationFirecrawlCredentials)
-      .set({ revokedAt: now, status: "revoked" })
-      .where(
-        and(
-          eq(applicationFirecrawlCredentials.appId, applicationId),
-          eq(applicationFirecrawlCredentials.status, "retiring"),
-        ),
-      )
-    const retired = await transaction
-      .update(applicationFirecrawlCredentials)
-      .set({ overlapExpiresAt, rotatedAt: now, status: "retiring" })
-      .where(
-        and(
-          eq(applicationFirecrawlCredentials.appId, applicationId),
-          eq(applicationFirecrawlCredentials.status, "active"),
-        ),
-      )
-      .returning({ id: applicationFirecrawlCredentials.id })
-    if (retired.length !== 1) {
-      return blocked("An active Firecrawl key is required before rotation.")
-    }
-    await transaction
-      .insert(applicationFirecrawlCredentials)
-      .values(credentialInsertValues(generated.record))
-    await transaction
-      .update(applicationFirecrawlAccess)
-      .set({
-        connectionStatus: "not_connected",
-        lastConnectedAt: null,
-        updatedAt: now,
-        updatedBy: storageActor.subject,
-      })
-      .where(eq(applicationFirecrawlAccess.appId, applicationId))
-    await transaction.insert(auditEvents).values(
-      auditValues({
-        action: "admin.firecrawl.credentials_rotated",
-        applicationId,
-        credentialRecordId: generated.record.id,
-        keycloakSubjectId: storageActor.subject,
-        occurredAt: now,
-      }),
-    )
-    const firecrawl = await getAdminConnectedAppFirecrawlProjection(
-      applicationId,
-      transaction,
-    )
-    if (!firecrawl) {
-      throw new Error("Rotated Firecrawl projection could not be read back.")
-    }
-    return rotatedResult(firecrawl, generated, publicBaseUrl)
-  }
-
-  assertFixtureStorage()
-  const access = memoryAccess.get(applicationId)
-  const active = memoryCredentials.find(
-    (candidate) =>
-      candidate.appId === applicationId && candidate.status === "active",
-  )
-  if (
-    !access ||
-    access.status !== "enabled" ||
-    memoryParentStatuses.get(applicationId) !== "enabled" ||
-    !active
-  ) {
-    return { status: "not_found" }
-  }
-  for (const credential of memoryCredentials) {
-    if (
-      credential.appId === applicationId &&
-      credential.status === "retiring"
-    ) {
-      credential.status = "revoked"
-      credential.revokedAt = now.toISOString()
-    }
-  }
-  active.status = "retiring"
-  active.rotatedAt = now.toISOString()
-  active.overlapExpiresAt = overlapExpiresAt.toISOString()
-  memoryCredentials.unshift(cloneCredential(generated.record))
-  access.connectionStatus = "not_connected"
-  access.lastConnectedAt = null
-  access.updatedAt = now.toISOString()
-  access.updatedBy = actor.subject
-  await mutationAudit(
-    actor,
-    "admin.firecrawl.credentials_rotated",
-    applicationId,
-    generated.record.id,
-  )
-  return rotatedResult(
-    projectFirecrawl(access, credentialsForApp(applicationId)),
-    generated,
-    publicBaseUrl,
-  )
 }
 
 async function mutateAccess(
@@ -1848,20 +1662,6 @@ function credentialReveal(
   }
 }
 
-function rotatedResult(
-  firecrawl: AdminConnectedAppFirecrawl,
-  generated: ReturnType<typeof createFirecrawlCredential>,
-  publicBaseUrl: string,
-): AdminConnectedAppFirecrawlCredentialMutationResult {
-  return {
-    credential: credentialReveal(generated, publicBaseUrl),
-    detail:
-      "Firecrawl key rotated. The previous key remains valid for exactly 86400 seconds unless revoked sooner.",
-    firecrawl,
-    status: "rotated",
-  }
-}
-
 function projectFirecrawl(
   access: FirecrawlAccessRecord,
   credentials: FirecrawlCredentialRecord[],
@@ -2159,7 +1959,7 @@ function blocked(detail: string): { detail: string; status: "blocked" } {
 function isCredentialMutationSuccess(
   result: AdminConnectedAppFirecrawlCredentialMutationResult,
 ): result is AdminConnectedAppFirecrawlCredentialMutationSuccess {
-  return result.status === "enabled" || result.status === "rotated"
+  return result.status === "enabled"
 }
 
 function requireCredentialMutationSuccess(

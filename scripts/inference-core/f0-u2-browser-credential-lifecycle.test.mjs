@@ -36,7 +36,7 @@ test("F0-U2 remains a bounded local browser credential lifecycle proof", async (
   )
   assert.match(harness, /LOCAL_BROWSER_CREDENTIAL_LIFECYCLE_ONLY/)
   assert.match(harness, /crossApplicationMutationDenial: "passed"/)
-  assert.match(harness, /exactStaticOverlapSeconds: 86_400/)
+  assert.match(harness, /immutableCredentialPolicy: "passed"/)
   assert.match(harness, /secretDomAndHistoryRetention: "none"/)
   assert.match(harness, /navigator\.clipboard\.writeText\(""\)/)
   assert.match(harness, /F0-U2 secret-retention verification failed/)
@@ -56,7 +56,10 @@ test("F0-U2 remains a bounded local browser credential lifecycle proof", async (
     authorization,
     /"applications\.disable": \{\s*admin: true,\s*operator: false\s*[,}]/,
   )
-  assert.doesNotMatch(harness, /(?:ssh|kubectl|harbor|gitea|vmid\s*115)/i)
+  assert.doesNotMatch(
+    harness,
+    /(?:\b(?:ssh|kubectl|harbor|gitea)\b|\bvmid\s*115\b)/i,
+  )
   assert.doesNotMatch(harness, /\.\.\.process\.env/)
   assert.equal(
     decision.nextPackage,
