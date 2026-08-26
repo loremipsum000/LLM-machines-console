@@ -11,14 +11,14 @@ import {
   processNamespacePath,
 } from "../pre-genesis/capture-vm103-founder-custody.mjs"
 import {
-  validateApplicationJwks,
-  validateApplicationTokenClaims,
-} from "../pre-genesis/verify-vm103-application-identity.mjs"
-import {
   inspectFounderFirewall,
   reconcileFounderFirewall,
 } from "../pre-genesis/manage-vm103-founder-firewall.mjs"
 import { renderVm103FounderCandidate } from "../pre-genesis/render-vm103-founder-candidate.mjs"
+import {
+  validateApplicationJwks,
+  validateApplicationTokenClaims,
+} from "../pre-genesis/verify-vm103-application-identity.mjs"
 import { validateFounderImageInspections } from "../pre-genesis/verify-vm103-founder-images.mjs"
 
 const digest = `sha256:${"a".repeat(64)}`

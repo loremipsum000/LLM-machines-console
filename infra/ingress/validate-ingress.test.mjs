@@ -210,8 +210,8 @@ test("coordinated logout stays bounded and independent of native availability", 
   const upstreamDependent = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>
       source.replace(
-        'location = /__llmm/global-logout {\n      limit_except GET HEAD { deny all; }\n      if ($llmm_query_none = 0) { return 400; }\n      default_type text/html;',
-        'location = /__llmm/global-logout {\n      proxy_pass http://litellm_native;\n      limit_except GET HEAD { deny all; }\n      if ($llmm_query_none = 0) { return 400; }\n      default_type text/html;',
+        "location = /__llmm/global-logout {\n      limit_except GET HEAD { deny all; }\n      if ($llmm_query_none = 0) { return 400; }\n      default_type text/html;",
+        "location = /__llmm/global-logout {\n      proxy_pass http://litellm_native;\n      limit_except GET HEAD { deny all; }\n      if ($llmm_query_none = 0) { return 400; }\n      default_type text/html;",
       ),
     ),
   )

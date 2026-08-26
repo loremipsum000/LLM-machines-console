@@ -66,7 +66,10 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   assert.doesNotMatch(wrapper, /["']realm-admin["']/)
   assert.doesNotMatch(wrapper, /["']manage-users["']/)
   assert.match(wrapper, /llm-machines-applications-realm\.json/)
-  assert.match(wrapper, /applicationRealmExport\(credentials\.applicationAdmin\)/)
+  assert.match(
+    wrapper,
+    /applicationRealmExport\(credentials\.applicationAdmin\)/,
+  )
   assert.match(wrapper, /"access\.token\.lifespan": "60"/)
   assert.match(wrapper, /"client_credentials\.use_refresh_token": "false"/)
   assert.match(wrapper, /await configureApplicationAuthority\(upstreamPort\)/)

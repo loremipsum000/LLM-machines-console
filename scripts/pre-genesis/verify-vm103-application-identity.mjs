@@ -42,7 +42,8 @@ export async function verifyVm103ApplicationIdentity({
     throw new Error("The founder Application identity secret is not private.")
   }
   const secret = (await readFile(secretFile, "utf8")).trim()
-  if (!secret) throw new Error("The founder Application identity secret is empty.")
+  if (!secret)
+    throw new Error("The founder Application identity secret is empty.")
 
   const privateRealm = `${baseUrl}/realms/${realm}`
   const jwksResponse = await fetch(
@@ -54,15 +55,15 @@ export async function verifyVm103ApplicationIdentity({
   const tokenResponse = await fetch(
     `${privateRealm}/protocol/openid-connect/token`,
     {
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: secret,
-      grant_type: "client_credentials",
-    }),
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-    },
-    method: "POST",
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: secret,
+        grant_type: "client_credentials",
+      }),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      method: "POST",
     },
   )
   if (!tokenResponse.ok)
