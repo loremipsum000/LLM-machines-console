@@ -125,8 +125,20 @@ test("R1-S1 makes only the reviewed opaque-session route transition", () => {
     baseCommit: sourceHead,
     root: repositoryRoot,
   })
+  const nativeSessionSuccessor = candidate.routes.filter(
+    ({ method, path, source, surface }) =>
+      method === "GET" &&
+      path === "/api/internal/native-session/litellm/authorize" &&
+      source === "apps/bff/src/routes/console-session.ts" &&
+      surface === "bff",
+  )
+  const historicalCandidateRoutes = candidate.routes.filter(
+    (route) => !nativeSessionSuccessor.includes(route),
+  )
   const acceptedSignatures = new Set(routeSignatures(accepted.routes))
-  const candidateSignatures = new Set(routeSignatures(candidate.routes))
+  const candidateSignatures = new Set(
+    routeSignatures(historicalCandidateRoutes),
+  )
   const added = [...candidateSignatures]
     .filter((signature) => !acceptedSignatures.has(signature))
     .sort()
@@ -136,7 +148,16 @@ test("R1-S1 makes only the reviewed opaque-session route transition", () => {
   const decision = readJson(decisionPath)
 
   assert.equal(accepted.routes.length, 104)
-  assert.equal(candidate.routes.length, 109)
+  assert.deepEqual(nativeSessionSuccessor, [
+    {
+      surface: "bff",
+      method: "GET",
+      path: "/api/internal/native-session/litellm/authorize",
+      source: "apps/bff/src/routes/console-session.ts",
+      classification: "operational-auth",
+    },
+  ])
+  assert.equal(historicalCandidateRoutes.length, 109)
   assert.deepEqual(added, decision.routeTransition.added)
   assert.deepEqual(removed, decision.routeTransition.removed)
 })

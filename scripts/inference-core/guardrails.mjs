@@ -6829,8 +6829,8 @@ export function verifyPr11aR1V1SourceClosurePackage({
     JSON.stringify(classifications) !==
       JSON.stringify({
         "current-console-seam": 92,
-        "legacy-retired": 9,
-        "operational-auth": 1,
+        "legacy-retired": 8,
+        "operational-auth": 2,
         "private-operational": 4,
         "public-t2": 2,
         "required-now": 2,
@@ -22628,6 +22628,12 @@ function extractFunctionBlock(source, symbol) {
 }
 
 function classifyBffRoute(source, path) {
+  if (
+    source === "apps/bff/src/routes/console-session.ts" &&
+    path === "/api/internal/native-session/litellm/authorize"
+  ) {
+    return "operational-auth"
+  }
   if (
     source === "apps/bff/src/index.ts" &&
     ["/livez", "/healthz", "/readyz"].includes(path)
