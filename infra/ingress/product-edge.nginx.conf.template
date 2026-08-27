@@ -83,6 +83,18 @@ http {
     ~^(?:limit|query|type)=[^&]*(?:&(?:limit|query|type)=[^&]*)*$ 1;
   }
 
+  map $args $llmm_query_grafana_prometheus_query {
+    default 0;
+    "" 1;
+    "~^(?:ds_type=prometheus&requestId=[A-Za-z0-9_-]{1,64}|requestId=[A-Za-z0-9_-]{1,64}&ds_type=prometheus)$" 1;
+  }
+
+  map $args $llmm_query_grafana_dashboard {
+    default 0;
+    "" 1;
+    "~^(?:orgId|from|to|timezone|refresh|viewPanel|kiosk|theme|inspect|editPanel|fullscreen)=[A-Za-z0-9._~%:+-]{0,128}(?:&(?:orgId|from|to|timezone|refresh|viewPanel|kiosk|theme|inspect|editPanel|fullscreen)=[A-Za-z0-9._~%:+-]{0,128})*$" 1;
+  }
+
   map $args $llmm_query_grafana_static {
     default 0;
     "" 1;
@@ -923,6 +935,34 @@ http {
       proxy_pass http://grafana_native;
     }
 
+    location ~ "^/d/(?:llmm-inference-core-overview/inference-core-overview|llmm-infra-overview/llm-machines-infrastructure-overview)$" {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_grafana_dashboard = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location ~ "^/api/dashboards/uid/(?:llmm-inference-core-overview|llmm-infra-overview)$" {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/ds/query {
+      limit_except POST { deny all; }
+      if ($llmm_query_grafana_prometheus_query = 0) { return 400; }
+      client_max_body_size 256k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
     location ~ "^/api/dashboards/uid/[A-Za-z0-9_-]{1,128}$" {
       limit_except DELETE { deny all; }
       if ($llmm_query_none = 0) { return 400; }
@@ -954,6 +994,15 @@ http {
     location = /apis/dashboard.grafana.app/v0alpha1/namespaces/default/search {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_grafana_search = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location ~ "^/apis/dashboard\.grafana\.app/(?:v0alpha1|v1alpha1|v1beta1|v1|v2alpha1|v2beta1|v2)/namespaces/default/dashboards/(?:llmm-inference-core-overview|llmm-infra-overview)(?:/dto)?$" {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
       proxy_set_header Host $llmm_public_host;

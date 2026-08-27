@@ -81,6 +81,20 @@
     "grafana-login": ["redirectTo"],
     "grafana-session-rotation": ["redirectTo"],
     "grafana-search": ["limit", "query", "type"],
+    "grafana-prometheus-query": ["ds_type", "requestId"],
+    "grafana-dashboard": [
+      "editPanel",
+      "from",
+      "fullscreen",
+      "inspect",
+      "kiosk",
+      "orgId",
+      "refresh",
+      "theme",
+      "timezone",
+      "to",
+      "viewPanel"
+    ],
     "grafana-static-cache": ["_cache"],
     "litellm-ui": ["_rsc", "login", "page", "redirect_to"],
     "litellm-rsc": ["_rsc"],
@@ -300,6 +314,34 @@
           "queryPolicy": "forbid"
         },
         {
+          "id": "admitted-dashboard-pages",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/d/(?:llmm-inference-core-overview/inference-core-overview|llmm-infra-overview/llm-machines-infrastructure-overview)$"
+          },
+          "queryPolicy": "grafana-dashboard",
+          "authority": "ADMIN_EDITOR_READ_ONLY_DASHBOARD_RUNTIME"
+        },
+        {
+          "id": "admitted-dashboard-metadata",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/api/dashboards/uid/(?:llmm-inference-core-overview|llmm-infra-overview)$"
+          },
+          "queryPolicy": "forbid",
+          "authority": "ADMIN_EDITOR_READ_ONLY_DASHBOARD_RUNTIME"
+        },
+        {
+          "id": "admitted-dashboard-query",
+          "methods": ["POST"],
+          "path": { "kind": "exact", "value": "/api/ds/query" },
+          "queryPolicy": "grafana-prometheus-query",
+          "bodyLimit": "256k",
+          "authority": "ADMIN_EDITOR_READ_ONLY_DATASOURCE_QUERY"
+        },
+        {
           "id": "dashboard-delete",
           "methods": ["DELETE"],
           "path": {
@@ -328,6 +370,16 @@
             "value": "/apis/dashboard.grafana.app/v0alpha1/namespaces/default/search"
           },
           "queryPolicy": "grafana-search"
+        },
+        {
+          "id": "admitted-dashboard-resource",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/apis/dashboard\\.grafana\\.app/(?:v0alpha1|v1alpha1|v1beta1|v1|v2alpha1|v2beta1|v2)/namespaces/default/dashboards/(?:llmm-inference-core-overview|llmm-infra-overview)(?:/dto)?$"
+          },
+          "queryPolicy": "forbid",
+          "authority": "ADMIN_EDITOR_READ_ONLY_DASHBOARD_RUNTIME"
         },
         {
           "id": "feature-flags",

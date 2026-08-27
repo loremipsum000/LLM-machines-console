@@ -158,10 +158,14 @@ const expectedNginxLocations = {
     "= /api/user/revoke-auth-token",
     '~ "^/api/plugins/[a-z0-9_-]{1,128}/settings$"',
     "= /api/dashboards/db",
+    '~ "^/d/(?:llmm-inference-core-overview/inference-core-overview|llmm-infra-overview/llm-machines-infrastructure-overview)$"',
+    '~ "^/api/dashboards/uid/(?:llmm-inference-core-overview|llmm-infra-overview)$"',
+    "= /api/ds/query",
     '~ "^/api/dashboards/uid/[A-Za-z0-9_-]{1,128}$"',
     "= /api/frontend-metrics",
     "= /apis/dashboard.grafana.app/",
     "= /apis/dashboard.grafana.app/v0alpha1/namespaces/default/search",
+    '~ "^/apis/dashboard\\.grafana\\.app/(?:v0alpha1|v1alpha1|v1beta1|v1|v2alpha1|v2beta1|v2)/namespaces/default/dashboards/(?:llmm-inference-core-overview|llmm-infra-overview)(?:/dto)?$"',
     "= /apis/features.grafana.app/v0alpha1/namespaces/default/ofrep/v1/evaluate/flags",
     '~ "^/avatar/[A-Za-z0-9_-]{1,256}$"',
     "~ ^/(?:public/(?:build|fonts|img|plugins)/|resources/).+$",
@@ -223,9 +227,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "e6ed684e1f9750e9ee993ab3395da25bfd188b7ae0ee42e63b0baaa118309192",
+    "04a01969e4f4b17cf875fabe62465115053a816451eebcbacd1ea683906a16b3",
   "native-admin-edge-profile.json":
-    "db272718f5606853842df7a3558d675fb87ac0f7b949d06b19f88f9f1aec4083",
+    "264c5f251e08401b562dd357753d5b7efb06ff0786b0b899d9b93c94e040ffc7",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -525,6 +529,18 @@ function validateNativeAdmin(profile, errors) {
   const grafanaRevokeOwnSession = profile.services?.grafana?.routes?.find(
     ({ id }) => id === "revoke-own-session",
   )
+  const grafanaDashboardPages = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "admitted-dashboard-pages",
+  )
+  const grafanaDashboardMetadata = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "admitted-dashboard-metadata",
+  )
+  const grafanaDashboardQuery = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "admitted-dashboard-query",
+  )
+  const grafanaDashboardResource = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "admitted-dashboard-resource",
+  )
   const grafanaSessionRotationRedirect =
     profile.services?.grafana?.routes?.find(
       ({ id }) => id === "session-rotation-redirect",
@@ -564,6 +580,55 @@ function validateNativeAdmin(profile, errors) {
       grafanaRevokeOwnSession?.bodyLimit === "1k" &&
       grafanaRevokeOwnSession?.authority === "AUTHENTICATED_USER_SESSION_ONLY",
     "Grafana self-service profile API policy changed",
+  )
+  add(
+    errors,
+    sameJson(profile.queryPolicies?.["grafana-prometheus-query"], [
+      "ds_type",
+      "requestId",
+    ]) &&
+      sameJson(profile.queryPolicies?.["grafana-dashboard"], [
+        "editPanel",
+        "from",
+        "fullscreen",
+        "inspect",
+        "kiosk",
+        "orgId",
+        "refresh",
+        "theme",
+        "timezone",
+        "to",
+        "viewPanel",
+      ]) &&
+      grafanaDashboardPages?.path?.kind === "regex" &&
+      grafanaDashboardPages?.path?.value ===
+        "^/d/(?:llmm-inference-core-overview/inference-core-overview|llmm-infra-overview/llm-machines-infrastructure-overview)$" &&
+      sameJson(grafanaDashboardPages?.methods, ["GET", "HEAD"]) &&
+      grafanaDashboardPages?.queryPolicy === "grafana-dashboard" &&
+      grafanaDashboardPages?.authority ===
+        "ADMIN_EDITOR_READ_ONLY_DASHBOARD_RUNTIME" &&
+      grafanaDashboardMetadata?.path?.kind === "regex" &&
+      grafanaDashboardMetadata?.path?.value ===
+        "^/api/dashboards/uid/(?:llmm-inference-core-overview|llmm-infra-overview)$" &&
+      sameJson(grafanaDashboardMetadata?.methods, ["GET", "HEAD"]) &&
+      grafanaDashboardMetadata?.queryPolicy === "forbid" &&
+      grafanaDashboardMetadata?.authority ===
+        "ADMIN_EDITOR_READ_ONLY_DASHBOARD_RUNTIME" &&
+      grafanaDashboardQuery?.path?.kind === "exact" &&
+      grafanaDashboardQuery?.path?.value === "/api/ds/query" &&
+      sameJson(grafanaDashboardQuery?.methods, ["POST"]) &&
+      grafanaDashboardQuery?.queryPolicy === "grafana-prometheus-query" &&
+      grafanaDashboardQuery?.bodyLimit === "256k" &&
+      grafanaDashboardQuery?.authority ===
+        "ADMIN_EDITOR_READ_ONLY_DATASOURCE_QUERY" &&
+      grafanaDashboardResource?.path?.kind === "regex" &&
+      grafanaDashboardResource?.path?.value ===
+        "^/apis/dashboard\\.grafana\\.app/(?:v0alpha1|v1alpha1|v1beta1|v1|v2alpha1|v2beta1|v2)/namespaces/default/dashboards/(?:llmm-inference-core-overview|llmm-infra-overview)(?:/dto)?$" &&
+      sameJson(grafanaDashboardResource?.methods, ["GET", "HEAD"]) &&
+      grafanaDashboardResource?.queryPolicy === "forbid" &&
+      grafanaDashboardResource?.authority ===
+        "ADMIN_EDITOR_READ_ONLY_DASHBOARD_RUNTIME",
+    "Grafana admitted dashboard read/query policy changed",
   )
   add(
     errors,
@@ -1161,6 +1226,19 @@ function validateNginx(sources, errors) {
       grafanaServer.includes("location = /user/auth-tokens/rotate") &&
       grafanaServer.includes("location = /api/user/auth-tokens/rotate") &&
       grafanaServer.includes("location = /api/dashboards/db") &&
+      grafanaServer.includes(
+        'location ~ "^/d/(?:llmm-inference-core-overview/inference-core-overview|llmm-infra-overview/llm-machines-infrastructure-overview)$"',
+      ) &&
+      grafanaServer.includes(
+        'location ~ "^/api/dashboards/uid/(?:llmm-inference-core-overview|llmm-infra-overview)$"',
+      ) &&
+      grafanaServer.includes("location = /api/ds/query") &&
+      grafanaServer.includes(
+        'location ~ "^/apis/dashboard\\.grafana\\.app/(?:v0alpha1|v1alpha1|v1beta1|v1|v2alpha1|v2beta1|v2)/namespaces/default/dashboards/(?:llmm-inference-core-overview|llmm-infra-overview)(?:/dto)?$"',
+      ) &&
+      grafanaServer.includes("client_max_body_size 256k;") &&
+      nginx.includes("map $args $llmm_query_grafana_prometheus_query") &&
+      nginx.includes("map $args $llmm_query_grafana_dashboard") &&
       grafanaServer.includes(
         "location ~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",
       ) &&
