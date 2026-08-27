@@ -10,8 +10,11 @@ const repositoryRoot = path.resolve(root, "../..")
 const profileFiles = {
   alertmanager: "alertmanager/alertmanager.yml",
   dashboard: "grafana/dashboards/baseline/inference-core-overview.json",
+  hardwareDashboard: "grafana/dashboards/baseline/infra-overview.json",
   dashboardProvider: "grafana/provisioning/dashboards/baseline.yml",
   datasource: "grafana/provisioning/datasources/prometheus.yml",
+  hardwareDatasource:
+    "grafana/provisioning/datasources/hardware-prometheus.yml",
   folderBoundary: "grafana/customer-folder-contract.json",
   grafana: "grafana/grafana.ini",
   prometheus: "prometheus/prometheus.yml",
@@ -26,9 +29,11 @@ const expectedFiles = new Set([
   "alertmanager/alertmanager.yml",
   "grafana/customer-folder-contract.json",
   "grafana/dashboards/baseline/inference-core-overview.json",
+  "grafana/dashboards/baseline/infra-overview.json",
   "grafana/grafana.ini",
   "grafana/provisioning/dashboards/baseline.yml",
   "grafana/provisioning/datasources/prometheus.yml",
+  "grafana/provisioning/datasources/hardware-prometheus.yml",
   "prometheus/file-sd/inference-core.json",
   "prometheus/prometheus.yml",
   "prometheus/rules/alert-rules.yml",
@@ -93,8 +98,34 @@ const allowedDashboardExpressions = new Set([
   "llm_machines:inference_retained_total_tokens:max",
 ])
 
+const allowedHardwareDashboardExpressions = new Set([
+  '1 - avg by (host) (rate(node_cpu_seconds_total{job="node",mode="idle"}[5m]))',
+  'hw_temperature_celsius{job="xpu",hw_sensor_location=~"gpu|memory",statistic="max"}',
+  '100 * hw_memory_utilization_ratio{job="xpu",hw_memory_location="device"}',
+  'node_memory_MemTotal_bytes{job="node"} - node_memory_MemAvailable_bytes{job="node"}',
+  'node_memory_MemTotal_bytes{job="node"}',
+  '100 * (1 - (node_filesystem_avail_bytes{job="node",fstype!~"tmpfs|devtmpfs|overlay|squashfs|fuse.*",device!~"/dev/fuse",mountpoint!~"/run.*|/var/lib/docker/.+"} / node_filesystem_size_bytes{job="node",fstype!~"tmpfs|devtmpfs|overlay|squashfs|fuse.*",device!~"/dev/fuse",mountpoint!~"/run.*|/var/lib/docker/.+"}))',
+  '100 * hw_gpu_utilization_ratio{job="xpu",hw_gpu_task="all"}',
+  'rate(node_network_receive_bytes_total{job="node",device!~"lo|veth.*|br-.*|docker.*"}[5m])',
+  'rate(node_network_transmit_bytes_total{job="node",device!~"lo|veth.*|br-.*|docker.*"}[5m])',
+  'rate(node_network_receive_errs_total{job="node",device!~"lo|veth.*|br-.*|docker.*"}[5m]) + rate(node_network_transmit_errs_total{job="node",device!~"lo|veth.*|br-.*|docker.*"}[5m]) + rate(node_network_receive_drop_total{job="node",device!~"lo|veth.*|br-.*|docker.*"}[5m]) + rate(node_network_transmit_drop_total{job="node",device!~"lo|veth.*|br-.*|docker.*"}[5m])',
+  '1 - hw_status{job="xpu",hw_type="gpu",hw_state="reset_needed"}',
+  'hw_status{job="xpu",hw_type="frequency",hw_state=~"ok|throttled"}',
+  'hw_power_watts{job="xpu",hw_sensor_location=~"card|package"}',
+  'ipmi_temperature_celsius{job="ipmi"}',
+  'ipmi_fan_speed_rpm{job="ipmi"}',
+  '{__name__=~"ipmi_(temperature|fan_speed|voltage|current|power|sensor)_state",job="ipmi"}',
+  'ALERTS{alertstate="firing"}',
+  'ipmi_power_watts{job="ipmi",name="PW consumption"}',
+  'avg_over_time(ipmi_power_watts{job="ipmi",name="PW consumption"}[30d]) * 24 * 30 / 1000',
+  'ipmi_chassis_power_state{job="ipmi"}',
+  'rate(node_disk_reads_completed_total{job="node",device!~"loop.*|ram.*"}[5m])',
+  'rate(node_disk_writes_completed_total{job="node",device!~"loop.*|ram.*"}[5m])',
+])
+
 const allowedBindings = new Set([
   "$LLMM_PROMETHEUS_URL",
+  "$LLMM_HARDWARE_PROMETHEUS_URL",
   "$__env{LLMM_KEYCLOAK_AUTH_URL}",
   "$__env{LLMM_KEYCLOAK_JWKS_URL}",
   "$__env{LLMM_KEYCLOAK_TOKEN_URL}",
@@ -373,6 +404,17 @@ export function validateRuntimeContract(source) {
     contract?.grafana?.customerFolder?.provisioned !== false
   ) {
     add(errors, "Grafana baseline and customer folder boundary changed")
+  }
+  if (
+    contract?.grafana?.hardwareDatasource?.managementTargetsInVm103 !== false ||
+    contract?.grafana?.hardwareDatasource?.operatorAccess !== "DENY" ||
+    contract?.grafana?.hardwareDatasource?.publicAccess !== false ||
+    contract?.grafana?.hardwareDatasource?.queryOnly !== true ||
+    contract?.grafana?.hardwareDatasource?.runtimeBinding !==
+      "$LLMM_HARDWARE_PROMETHEUS_URL" ||
+    contract?.grafana?.hardwareDatasource?.uid !== "llmm-hardware-prometheus"
+  ) {
+    add(errors, "Grafana hardware datasource boundary changed")
   }
   if (
     contract?.grafana?.oidc?.adminRole !== "Editor" ||
@@ -765,6 +807,79 @@ export function validateGrafana(
   return errors
 }
 
+export function validateHardwareGrafana(datasourceSource, dashboardSource) {
+  const errors = []
+  for (const required of [
+    "url: $LLMM_HARDWARE_PROMETHEUS_URL",
+    "isDefault: false",
+    "editable: false",
+    "uid: llmm-hardware-prometheus",
+  ]) {
+    if (!datasourceSource.includes(required)) {
+      add(errors, `Grafana hardware datasource is missing ${required}`)
+    }
+  }
+
+  const dashboard = parseJson(
+    dashboardSource,
+    "Grafana hardware dashboard",
+    errors,
+  )
+  if (!dashboard) return errors
+
+  if (
+    dashboard.uid !== "llmm-infra-overview" ||
+    dashboard.title !== "LLM Machines Infrastructure Overview" ||
+    dashboard.editable !== false ||
+    !sameJson(dashboard.annotations, { list: [] }) ||
+    !sameJson(dashboard.templating, { list: [] }) ||
+    !sameJson(dashboard.links, [])
+  ) {
+    add(
+      errors,
+      "Grafana hardware dashboard identity and locked provisioning must remain exact",
+    )
+  }
+
+  const expressions = []
+  for (const panel of dashboard.panels ?? []) {
+    if (panel.type === "text") {
+      if (
+        panel.title !== "PDM telemetry" ||
+        !panel.options?.content?.includes("stopped and unavailable")
+      ) {
+        add(errors, "PDM must remain explicitly stopped and unavailable")
+      }
+      continue
+    }
+    if (panel?.datasource?.uid !== "llmm-hardware-prometheus") {
+      add(errors, "Grafana hardware panel uses an unreviewed datasource")
+    }
+    for (const target of panel.targets ?? []) {
+      expressions.push(target.expr)
+      if (target?.datasource?.uid !== "llmm-hardware-prometheus") {
+        add(errors, "Grafana hardware query uses an unreviewed datasource")
+      }
+      if (!allowedHardwareDashboardExpressions.has(target.expr)) {
+        add(
+          errors,
+          `Grafana hardware panel uses an unreviewed expression ${target.expr}`,
+        )
+      }
+    }
+  }
+  if (
+    expressions.length !== allowedHardwareDashboardExpressions.size ||
+    new Set(expressions).size !== allowedHardwareDashboardExpressions.size
+  ) {
+    add(errors, "Grafana hardware expression set is incomplete or duplicated")
+  }
+  if (/DCGM_|llmm_nvidia/i.test(dashboardSource)) {
+    add(errors, "historical NVIDIA or DCGM expressions are forbidden")
+  }
+  return errors
+}
+
 export function validateKeycloak(seedSource, commissioningSource) {
   const errors = []
   const seed = parseJson(seedSource, "Keycloak human-realm seed", errors)
@@ -844,6 +959,12 @@ export function validateProfile(overrides = {}) {
   errors.push(...validatePrometheus(sources.prometheus, sources.targets))
   errors.push(...validateRules(sources.recordingRules, sources.alertRules))
   errors.push(...validateAlertmanager(sources.alertmanager))
+  errors.push(
+    ...validateHardwareGrafana(
+      sources.hardwareDatasource,
+      sources.hardwareDashboard,
+    ),
+  )
   errors.push(
     ...validateGrafana(
       sources.grafana,

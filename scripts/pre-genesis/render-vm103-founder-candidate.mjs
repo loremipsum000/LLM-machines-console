@@ -102,6 +102,7 @@ function validatePlacement(value) {
   if (Object.values(value.network).some((address) => !privateIpv4(address)))
     fail("network")
   exactKeys(value.ports, [
+    "alertmanager",
     "bff",
     "edge",
     "grafana",
@@ -118,6 +119,7 @@ function validatePlacement(value) {
     fail("port")
   if (new Set(ports).size !== ports.length) fail("port collision")
   if (
+    value.ports.alertmanager !== 19093 ||
     value.ports.bff !== 44294 ||
     value.ports.edge !== 22443 ||
     value.ports.prometheus !== 19090 ||
@@ -187,6 +189,7 @@ function renderWebEnvironment(p) {
 
 function renderBffEnvironment(p) {
   return lines({
+    ADMIN_ALERTMANAGER_BASE_URL: `http://${p.network.prometheus}:${p.ports.alertmanager}`,
     ADMIN_LITELLM_BASE_URL: `http://127.0.0.1:${p.ports.litellm}`,
     ADMIN_PROMETHEUS_BASE_URL: `http://${p.network.prometheus}:${p.ports.prometheus}`,
     CONSOLE_OIDC_CLIENT_ID: "console-web",

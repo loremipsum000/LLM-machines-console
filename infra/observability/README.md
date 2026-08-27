@@ -12,6 +12,10 @@ placement, credentials, secret-file mounts, and release qualification.
 - The product-owned Grafana datasource, dashboard, and Prometheus rule files
   are locked. Customer Admin can view the baseline; Operator has no native
   Grafana session.
+- The separately provisioned hardware datasource is query-only and resolves
+  through the private management-side collector binding. The hardware
+  dashboard contains no management target, credential, public route, or
+  direct infrastructure authority.
 - Admin maps to Grafana Editor. Operator, mixed retained roles, and unknown
   roles are denied by strict role mapping. Grafana Editor can edit all
   non-provisioned Grafana content in the single-customer appliance, not only
@@ -45,6 +49,16 @@ The operational alerts are:
   for 10 minutes.
 - `LLMMInferenceQueueDepthSignalMissing`: the genuine queue signal is absent
   for 10 minutes.
+
+The infrastructure dashboard consumes genuine node_exporter, IPMI exporter,
+and Intel XPUM series. It retains explicit unavailable state for PDM and uses
+the BMC's genuine `ipmi_power_watts{name="PW consumption"}` samples as the
+canonical appliance/platform power source for current draw and a clearly
+labeled monthly projection. This power source satisfies the product telemetry
+contract without a secondary DCMI, individual-PSU, or external-PDU acceptance
+dependency. External PDU comparison is optional future calibration. The
+dashboard does not restore historical NVIDIA/DCGM expressions or fabricate
+missing hardware series.
 
 ## Source validation
 

@@ -1,0 +1,14 @@
+apiVersion: 1
+
+datasources:
+  - name: LLM Machines Hardware Prometheus
+    uid: llmm-hardware-prometheus
+    type: prometheus
+    access: proxy
+    url: $LLMM_HARDWARE_PROMETHEUS_URL
+    isDefault: false
+    editable: false
+    version: 1
+    jsonData:
+      httpMethod: POST
+      timeInterval: 30s

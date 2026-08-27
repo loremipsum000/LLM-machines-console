@@ -56,6 +56,7 @@ function placement() {
       source: "/opt/llmm/source",
     },
     ports: {
+      alertmanager: 19093,
       bff: 44294,
       edge: 22443,
       grafana: 36257,
@@ -115,6 +116,10 @@ test("founder placement renders exact edge, supervision, and private inference c
     assert.match(
       bffEnvironment,
       /ADMIN_LITELLM_BASE_URL=http:\/\/127\.0\.0\.1:39218/,
+    )
+    assert.match(
+      bffEnvironment,
+      /ADMIN_ALERTMANAGER_BASE_URL=http:\/\/10\.30\.0\.1:19093/,
     )
     assert.match(
       bffEnvironment,
@@ -412,6 +417,9 @@ test("founder placement rejects ports that disagree with fixed container listene
     },
     (value) => {
       value.ports.prometheus = 19091
+    },
+    (value) => {
+      value.ports.alertmanager = 19094
     },
   ]) {
     const value = placement()

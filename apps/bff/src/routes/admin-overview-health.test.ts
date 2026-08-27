@@ -45,11 +45,11 @@ describe("Admin overview health federation", () => {
           prometheusSample({ host: "control-node", job: "node" }, "0"),
         ])
       }
-      if (query === "max(DCGM_FI_DEV_GPU_UTIL)") {
+      if (
+        query ===
+        'max(100 * hw_gpu_utilization_ratio{job="xpu",hw_gpu_task="all"})'
+      ) {
         return prometheusResponse([prometheusSample({}, "72")])
-      }
-      if (query === "max(llmm_nvidia_gpu_utilization_percent)") {
-        return prometheusResponse([])
       }
       if (query.includes("node_filesystem_avail_bytes")) {
         return prometheusResponse([prometheusSample({}, "63")])
