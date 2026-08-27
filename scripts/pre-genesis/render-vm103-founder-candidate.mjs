@@ -101,6 +101,7 @@ function validatePlacement(value) {
     "grafana",
     "keycloak",
     "litellm",
+    "prometheus",
     "sglang",
     "web",
   ])
@@ -113,6 +114,7 @@ function validatePlacement(value) {
   if (
     value.ports.bff !== 44294 ||
     value.ports.edge !== 22443 ||
+    value.ports.prometheus !== 19090 ||
     value.ports.web !== 34954
   )
     fail("founder candidate port contract")
@@ -180,6 +182,7 @@ function renderWebEnvironment(p) {
 function renderBffEnvironment(p) {
   return lines({
     ADMIN_LITELLM_BASE_URL: `http://127.0.0.1:${p.ports.litellm}`,
+    ADMIN_PROMETHEUS_BASE_URL: `http://${p.network.gateway}:${p.ports.prometheus}`,
     CONSOLE_OIDC_CLIENT_ID: "console-web",
     CONSOLE_ORIGIN: `https://${p.authorities.console}`,
     CONSOLE_SESSION_KEYRING_FILE: "/run/llm-machines/session-keyring.json",

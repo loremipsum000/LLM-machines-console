@@ -55,6 +55,12 @@ retained bridge on `127.0.0.1:3002` to the private `firecrawl-api:3002`
 listener. The BFF resolves only that service name to loopback. No Firecrawl
 native port or UI becomes customer-accessible.
 
+Hardware projections query the retained Prometheus service through the
+credential-free private VM102 placement endpoint declared by the founder
+placement input. The renderer requires its exact port and emits
+`ADMIN_PROMETHEUS_BASE_URL`; no public Prometheus authority or customer route
+is created.
+
 Operator sequence:
 
 1. Render and validate placement from the exact candidate commit.

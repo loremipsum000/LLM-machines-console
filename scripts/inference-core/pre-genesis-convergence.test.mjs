@@ -60,6 +60,7 @@ function placement() {
       grafana: 36257,
       keycloak: 40239,
       litellm: 39218,
+      prometheus: 19090,
       sglang: 30005,
       web: 34954,
     },
@@ -113,6 +114,10 @@ test("founder placement renders exact edge, supervision, and private inference c
     assert.match(
       bffEnvironment,
       /ADMIN_LITELLM_BASE_URL=http:\/\/127\.0\.0\.1:39218/,
+    )
+    assert.match(
+      bffEnvironment,
+      /ADMIN_PROMETHEUS_BASE_URL=http:\/\/10\.10\.0\.1:19090/,
     )
     assert.match(
       bffEnvironment,
@@ -397,15 +402,24 @@ test("founder placement rejects mutable images, duplicate ports, and public netw
 })
 
 test("founder placement rejects ports that disagree with fixed container listeners", async () => {
-  const value = placement()
-  value.ports.web = 34955
-  await assert.rejects(
-    renderVm103FounderCandidate(
-      value,
-      join(tmpdir(), `llmm-invalid-fixed-port-${Date.now()}`),
-    ),
-    /founder candidate port contract/,
-  )
+  for (const mutate of [
+    (value) => {
+      value.ports.web = 34955
+    },
+    (value) => {
+      value.ports.prometheus = 19091
+    },
+  ]) {
+    const value = placement()
+    mutate(value)
+    await assert.rejects(
+      renderVm103FounderCandidate(
+        value,
+        join(tmpdir(), `llmm-invalid-fixed-port-${Date.now()}`),
+      ),
+      /founder candidate port contract/,
+    )
+  }
 })
 
 test("custody capture extracts only exact secret classes without logging values", () => {

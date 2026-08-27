@@ -1046,6 +1046,50 @@ test("LiteLLM Admin-page reads stay exact, metadata-only, and non-mutating", () 
   assert.ok(validateIngressSources(broadened).length > 0)
 })
 
+test("Grafana dashboard access is exact, read-scoped, and query-bounded", () => {
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  const routes = profile.services.grafana.routes
+  const pages = routes.find(({ id }) => id === "admitted-dashboard-pages")
+  const metadata = routes.find(({ id }) => id === "admitted-dashboard-metadata")
+  const query = routes.find(({ id }) => id === "admitted-dashboard-query")
+  const resource = routes.find(({ id }) => id === "admitted-dashboard-resource")
+
+  assert.deepEqual(pages.methods, ["GET", "HEAD"])
+  assert.deepEqual(metadata.methods, ["GET", "HEAD"])
+  assert.deepEqual(query.methods, ["POST"])
+  assert.equal(query.bodyLimit, "256k")
+  assert.deepEqual(resource.methods, ["GET", "HEAD"])
+
+  const pagePattern = new RegExp(pages.path.value)
+  assert.equal(
+    pagePattern.test("/d/llmm-inference-core-overview/inference-core-overview"),
+    true,
+  )
+  assert.equal(
+    pagePattern.test(
+      "/d/llmm-infra-overview/llm-machines-infrastructure-overview",
+    ),
+    true,
+  )
+  assert.equal(pagePattern.test("/d/unapproved/unapproved"), false)
+
+  for (const mutation of [
+    (source) =>
+      source.replace("client_max_body_size 256k;", "client_max_body_size 2m;"),
+    (source) =>
+      source.replace(
+        "llmm-inference-core-overview|llmm-infra-overview",
+        "llmm-inference-core-overview|llmm-infra-overview|unapproved",
+      ),
+  ]) {
+    assert.ok(
+      validateIngressSources(
+        changed("product-edge.nginx.conf.template", mutation),
+      ).length > 0,
+    )
+  }
+})
+
 test("native listener inventory cannot omit Core or delivery-profile ports", () => {
   const policy = JSON.parse(sources["no-bypass-policy.json"])
   policy.customerNetwork.deniedNativeTcpPorts =
