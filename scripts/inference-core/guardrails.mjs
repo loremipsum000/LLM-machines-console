@@ -6829,13 +6829,13 @@ export function verifyPr11aR1V1SourceClosurePackage({
     JSON.stringify(classifications) !==
       JSON.stringify({
         "current-console-seam": 92,
-        "legacy-retired": 8,
+        "legacy-retired": 9,
         "operational-auth": 1,
         "private-operational": 4,
         "public-t2": 2,
         "required-now": 2,
       }) ||
-    actualRoutes.routes.length !== 109 ||
+    actualRoutes.routes.length !== 110 ||
     actualRoutes.fastifyRegistrars.length !== 6 ||
     actualRoutes.webInferenceConsumers.length !== 0 ||
     actualRoutes.escapeHatches.length !== 0
