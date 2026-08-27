@@ -6,6 +6,7 @@ import type {
   AdminHardwareResponse,
   InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
+import { ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { HardwareChartPrimitive } from "./hardware-chart-primitives"
 
@@ -18,33 +19,33 @@ const rangeOptions: Array<{ label: string; value: AdminHardwareRange }> = [
 
 interface HardwareV2ExperienceProps {
   basePath?: string
+  grafanaHref?: string | null
   hardware: AdminHardwareResponse
 }
 
 export function HardwareV2Experience({
   basePath = "/hardware",
+  grafanaHref = null,
   hardware,
 }: HardwareV2ExperienceProps) {
   return (
     <div className="w-full min-h-screen pb-16 pt-8 lg:pt-[73px]">
       <header>
-        <nav
-          aria-label="Breadcrumb"
-          className="text-sm font-medium leading-5 text-[#b2b2b2]"
-        >
-          Hardware
-        </nav>
-        <h1 className="mt-3 text-2xl font-semibold leading-none text-[#fdfdfd]">
+        <h1 className="text-2xl font-semibold leading-none text-[#fdfdfd]">
           Hardware
         </h1>
         <p className="mt-3 max-w-[560px] text-sm leading-5 text-[#b2b2b2]">
-          Seven operational signals pulled through the Console BFF from the same
-          Prometheus metrics used by Grafana.
+          Monitor the hardware signals that matter most, from system health to
+          capacity and utilization.
         </p>
       </header>
 
       <section className="mt-8 flex flex-col gap-4 lg:w-[640px]">
-        <HardwareToolbar basePath={basePath} hardware={hardware} />
+        <HardwareToolbar
+          basePath={basePath}
+          grafanaHref={grafanaHref}
+          hardware={hardware}
+        />
         <HardwareSummary hardware={hardware} />
         <HardwareAlertsPanel hardware={hardware} />
         <div className="flex flex-col gap-3">
@@ -59,9 +60,11 @@ export function HardwareV2Experience({
 
 function HardwareToolbar({
   basePath,
+  grafanaHref,
   hardware,
 }: {
   basePath: string
+  grafanaHref: string | null
   hardware: AdminHardwareResponse
 }) {
   return (
@@ -87,12 +90,17 @@ function HardwareToolbar({
         </div>
       </div>
 
-      <span
-        aria-disabled="true"
-        className="rounded-md border border-[#353535] px-3 py-2 text-sm font-medium leading-[18px] text-[#777]"
-      >
-        Hardware metrics remain available in Console
-      </span>
+      {grafanaHref ? (
+        <a
+          className="inline-flex h-8 items-center gap-1.5 rounded px-2 text-sm font-medium text-[#73cfff] transition-colors hover:bg-[#2e2e2e] hover:text-[#a6e1ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff]"
+          href={grafanaHref}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Go to Grafana
+          <ExternalLink aria-hidden className="size-4" />
+        </a>
+      ) : null}
     </div>
   )
 }

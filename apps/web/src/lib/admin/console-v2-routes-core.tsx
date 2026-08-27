@@ -205,14 +205,23 @@ export async function renderInferenceConsoleRoute({
 export async function renderHardwareConsoleRoute(
   searchParams?: Promise<ConsoleV2SearchParams>,
 ) {
-  return withConsoleAccess("hardware", async () => {
+  return withConsoleAccess("hardware", async (role) => {
     const resolvedSearchParams = searchParams ? await searchParams : undefined
     const hardware = await getAdminHardware({
       range: resolvedSearchParams?.range,
       step: resolvedSearchParams?.step,
     })
+    const grafanaHref =
+      technicalToolsForRole(role).find(({ id }) => id === "grafana")?.href ??
+      null
 
-    return <HardwareV2Experience basePath="/hardware" hardware={hardware} />
+    return (
+      <HardwareV2Experience
+        basePath="/hardware"
+        grafanaHref={grafanaHref}
+        hardware={hardware}
+      />
+    )
   })
 }
 

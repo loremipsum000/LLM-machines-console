@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   renderApplicationsConsoleRoute,
+  renderHardwareConsoleRoute,
   renderInferenceConsoleRoute,
   renderOverviewConsoleRoute,
   renderSettingsConsoleRoute,
@@ -37,6 +38,8 @@ function technicalToolLink(id: TechnicalToolLink["id"]): TechnicalToolLink {
 
 const mocks = vi.hoisted(() => ({
   applicationsV2Experience: vi.fn(() => null),
+  hardwareV2Experience: vi.fn(() => null),
+  getAdminHardware: vi.fn(),
   getAdminOverview: vi.fn(),
   getAdminInference: vi.fn(),
   getAdminSettings: vi.fn(),
@@ -67,7 +70,7 @@ vi.mock("@/lib/admin/server-data-core", () => ({
   getAdminAudit: vi.fn(),
   getAdminConnectedAppDetail: vi.fn(),
   getAdminConnectedApps: vi.fn(),
-  getAdminHardware: vi.fn(),
+  getAdminHardware: mocks.getAdminHardware,
   getAdminInference: mocks.getAdminInference,
   getAdminOverview: mocks.getAdminOverview,
   getAdminSettings: mocks.getAdminSettings,
@@ -99,7 +102,7 @@ vi.mock("@/components/console-v2/console-v2-sections", () => ({
 }))
 
 vi.mock("@/components/console-v2/hardware-v2-experience", () => ({
-  HardwareV2Experience: vi.fn(),
+  HardwareV2Experience: mocks.hardwareV2Experience,
 }))
 
 vi.mock("@/components/console-v2/inference-v2-experience", () => ({
@@ -256,6 +259,35 @@ describe("Overview Console route", () => {
 })
 
 describe("retained route boundaries", () => {
+  it("passes the role-qualified Grafana destination into Hardware", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("admin"),
+    )
+    const hardware = { generatedAt: "2026-08-02T09:30:00.000Z" }
+    mocks.getAdminHardware.mockResolvedValue(hardware)
+    mocks.technicalToolsForRole.mockReturnValue([technicalToolLink("grafana")])
+
+    render(
+      await renderHardwareConsoleRoute(
+        Promise.resolve({ range: "6h", step: "60s" }),
+      ),
+    )
+
+    expect(mocks.getAdminHardware).toHaveBeenCalledWith({
+      range: "6h",
+      step: "60s",
+    })
+    expect(mocks.technicalToolsForRole).toHaveBeenCalledWith("admin")
+    expect(mocks.hardwareV2Experience).toHaveBeenCalledWith(
+      expect.objectContaining({
+        basePath: "/hardware",
+        grafanaHref: "https://grafana.example.test/",
+        hardware,
+      }),
+      undefined,
+    )
+  })
+
   it("renders the Application creation form for an Admin without MFA", async () => {
     mocks.getCurrentConsoleSession.mockResolvedValue(
       activeConsoleSession("admin"),

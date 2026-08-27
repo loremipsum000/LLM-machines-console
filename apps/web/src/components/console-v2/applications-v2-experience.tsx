@@ -888,7 +888,10 @@ function ConnectedAppsPanel({
                     onSort={changeSort}
                     sortKey="status"
                   />
-                  <th className="w-[14%] px-4 py-3" scope="col">
+                  <th
+                    className="w-[14%] whitespace-nowrap px-4 py-3"
+                    scope="col"
+                  >
                     Firecrawl
                   </th>
                   <th className="w-[16%] px-4 py-3 text-right" scope="col">
@@ -916,7 +919,7 @@ function ConnectedAppsPanel({
                     <td className="px-4 py-3">
                       <KeyLifecyclePill status={app.status} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap px-4 py-3">
                       <span className="text-sm text-white">
                         {firecrawlStatusLabel(app.firecrawl.status)}
                       </span>

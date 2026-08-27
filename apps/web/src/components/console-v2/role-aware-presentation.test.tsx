@@ -106,6 +106,7 @@ describe("role-aware Console presentation", () => {
       />,
     )
 
+    expect(screen.getByText(/Review model availability/i)).toBeTruthy()
     expect(screen.getByText("LiteLLM signal")).toBeTruthy()
     expect(screen.getByText("Requests")).toBeTruthy()
     expect(screen.queryByText("Prompts")).toBeNull()
@@ -184,6 +185,10 @@ describe("role-aware Console presentation", () => {
     )
 
     expect(screen.getByText("Ada Lovelace")).toBeTruthy()
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Team" }).closest("header")
+        ?.className,
+    ).toContain("pt-8")
     expect(screen.getByRole("link", { name: "View members" })).toBeTruthy()
     expect(screen.queryByRole("link", { name: "Create user" })).toBeNull()
     expect(screen.queryByRole("link", { name: "Import CSV" })).toBeNull()
@@ -315,6 +320,10 @@ describe("role-aware Console presentation", () => {
     expect(
       screen.getByText("Operator access is read-only.", { exact: false }),
     ).toBeTruthy()
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Settings" }),
+    ).toBeTruthy()
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull()
     expect(screen.getByText("Example Organization")).toBeTruthy()
     expect(screen.getByText("Telemetry payload preview")).toBeTruthy()
     expect(

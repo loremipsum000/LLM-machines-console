@@ -86,8 +86,8 @@ function InferenceHeader() {
             Inference
           </h1>
           <p className="mt-3 max-w-[560px] text-sm leading-5 text-[#b2b2b2]">
-            Read-only Console projection of LiteLLM health, usage, served
-            models, route summary, and safe credential metadata.
+            Review model availability, usage, service health, and safe
+            credential details for inference.
           </p>
         </div>
       </div>

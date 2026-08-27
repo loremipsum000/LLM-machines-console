@@ -56,8 +56,8 @@ export function ActivityV2Experience({
           Activity &amp; Audit
         </h1>
         <p className="mt-3 max-w-[600px] text-sm leading-5 text-[#b2b2b2]">
-          Metadata-only appliance control-plane events. Workload prompts,
-          responses, search terms, URLs, and retrieved content are not included.
+          Review appliance activity without exposing prompts, responses, search
+          terms, URLs, or retrieved content.
         </p>
       </header>
 

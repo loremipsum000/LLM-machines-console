@@ -186,6 +186,9 @@ describe("Keys experience", () => {
     expect(
       screen.getByRole("columnheader", { name: "Date Created" }).className,
     ).toContain("whitespace-nowrap")
+    expect(
+      screen.getByRole("columnheader", { name: "Firecrawl" }).className,
+    ).toContain("whitespace-nowrap")
     expect(screen.getByRole("columnheader", { name: "Key Name" })).toBeTruthy()
     expect(screen.queryByText(/Credential ••••/)).toBeNull()
     expect(screen.queryByText(/Created Jul/i)).toBeNull()
@@ -207,6 +210,9 @@ describe("Keys experience", () => {
     let rows = screen.getAllByRole("row").slice(1)
     expect(rows[0]?.textContent).toContain(recentlyUsed.name)
     expect(rows[0]?.textContent).toContain("Not enabled")
+    expect(rows[0]?.querySelector("td:nth-child(4)")?.className).toContain(
+      "whitespace-nowrap",
+    )
     expect(rows[0]?.querySelector("td:nth-child(4) .rounded-full")).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: "Key Name" }))
     rows = screen.getAllByRole("row").slice(1)

@@ -54,13 +54,7 @@ export function SettingsV2Experience({
   return (
     <div className="w-full min-h-screen pb-16 pt-8 lg:pt-[73px]">
       <header>
-        <nav
-          aria-label="Breadcrumb"
-          className="text-sm font-medium leading-5 text-[#b2b2b2]"
-        >
-          Settings
-        </nav>
-        <h1 className="mt-3 text-2xl font-semibold leading-none text-[#fdfdfd]">
+        <h1 className="text-2xl font-semibold leading-none text-[#fdfdfd]">
           Settings
         </h1>
         <p className="mt-3 max-w-[600px] text-sm leading-5 text-[#b2b2b2]">
