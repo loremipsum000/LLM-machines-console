@@ -5,15 +5,21 @@ import { join } from "node:path"
 import test from "node:test"
 
 import {
+  parseKeycloakControlSecretMaterial,
   parseLiteLlmSecretMaterial,
   parseRuntimeSecretMaterial,
   processNamespacePath,
+  validateLiteLlmOidcBinding,
 } from "../pre-genesis/capture-vm103-founder-custody.mjs"
 import {
   inspectFounderFirewall,
   reconcileFounderFirewall,
 } from "../pre-genesis/manage-vm103-founder-firewall.mjs"
 import { renderVm103FounderCandidate } from "../pre-genesis/render-vm103-founder-candidate.mjs"
+import {
+  validateApplicationJwks,
+  validateApplicationTokenClaims,
+} from "../pre-genesis/verify-vm103-application-identity.mjs"
 import { validateFounderImageInspections } from "../pre-genesis/verify-vm103-founder-images.mjs"
 
 const digest = `sha256:${"a".repeat(64)}`
@@ -108,6 +114,10 @@ test("founder placement renders exact edge, supervision, and private inference c
       bffEnvironment,
       /ADMIN_LITELLM_BASE_URL=http:\/\/127\.0\.0\.1:39218/,
     )
+    assert.match(
+      bffEnvironment,
+      /KEYCLOAK_ADMIN_BASE_URL=http:\/\/127\.0\.0\.1:40239/,
+    )
     assert.match(bffEnvironment, /NODE_ENV=production/)
     assert.doesNotMatch(
       bffEnvironment,
@@ -125,6 +135,11 @@ test("founder placement renders exact edge, supervision, and private inference c
     )
     assert.match(vm103, /docker compose .* up --detach --wait/)
     assert.match(vm103, /verify-vm103-founder-images\.mjs/)
+    assert.match(vm103, /verify-vm103-application-identity\.mjs/)
+    assert.match(
+      vm103,
+      /http:\/\/127\.0\.0\.1:40239 https:\/\/identity\.lab\.example\/realms\/llm-machines-applications llm-machines-applications console-application-admin/,
+    )
     assert.deepEqual(imageBindings, {
       images: { bff: digest, web: digest },
       schema: "llm-machines.vm103-founder-images.v1",
@@ -398,10 +413,8 @@ test("custody capture extracts only exact secret classes without logging values"
     Buffer.from(
       [
         "BFF_SERVICE_API_KEY=bff-value",
-        "CONSOLE_OIDC_CLIENT_SECRET=oidc-value",
         "CONSOLE_SESSION_KEYRING_FILE=/run/source/session.json",
         "DATABASE_URL=postgres-value",
-        "KEYCLOAK_ADMIN_CLIENT_SECRET=keycloak-value",
         "NODE_EXTRA_CA_CERTS=/run/source/ca.crt",
         "ADMIN_PROMETHEUS_BASE_URL=http://127.0.0.1:9090",
         "UNRELATED_SECRET=must-not-copy",
@@ -410,9 +423,7 @@ test("custody capture extracts only exact secret classes without logging values"
   )
   assert.deepEqual(Object.keys(material.secrets).sort(), [
     "bff-service-api-key",
-    "console-oidc-client-secret",
     "database-url",
-    "keycloak-admin-client-secret",
   ])
   assert.doesNotMatch(
     JSON.stringify(Object.keys(material.secrets)),
@@ -424,14 +435,76 @@ test("custody capture extracts only exact secret classes without logging values"
   assert.deepEqual(
     parseLiteLlmSecretMaterial(
       Buffer.from(
-        "LITELLM_MASTER_KEY=litellm-value\0UNRELATED_SECRET=must-not-copy",
+        "LITELLM_MASTER_KEY=litellm-value\0GENERIC_CLIENT_ID=litellm-native\0GENERIC_CLIENT_SECRET=oidc-value\0UNRELATED_SECRET=must-not-copy",
       ),
     ),
-    { "litellm-key": "litellm-value" },
+    {
+      oidcClientId: "litellm-native",
+      oidcClientSecret: "oidc-value",
+      secrets: { "litellm-key": "litellm-value" },
+    },
   )
   assert.throws(
     () => parseLiteLlmSecretMaterial(Buffer.from("OTHER=value\0")),
     /missing LITELLM_MASTER_KEY/,
+  )
+  assert.deepEqual(
+    parseKeycloakControlSecretMaterial(
+      Buffer.from(
+        JSON.stringify({
+          credentials: {
+            applicationAdmin: "app-value",
+            humanAdmin: "human-value",
+            liteLlm: "litellm-oidc-value",
+            oidcClient: "oidc-value",
+          },
+        }),
+      ),
+    ),
+    {
+      "console-oidc-client-secret": "oidc-value",
+      "keycloak-application-admin-client-secret": "app-value",
+      "keycloak-admin-client-secret": "human-value",
+      "litellm-oidc-client-secret": "litellm-oidc-value",
+    },
+  )
+  validateLiteLlmOidcBinding(
+    {
+      oidcClientId: "litellm-native",
+      oidcClientSecret: "litellm-oidc-value",
+    },
+    { "litellm-oidc-client-secret": "litellm-oidc-value" },
+  )
+  assert.throws(
+    () =>
+      validateLiteLlmOidcBinding(
+        { oidcClientId: "litellm-native", oidcClientSecret: "stale-value" },
+        { "litellm-oidc-client-secret": "current-value" },
+      ),
+    /does not match commissioned Keycloak custody/,
+  )
+  assert.throws(
+    () =>
+      validateLiteLlmOidcBinding(
+        { oidcClientId: "other-client", oidcClientSecret: "current-value" },
+        { "litellm-oidc-client-secret": "current-value" },
+      ),
+    /does not match commissioned Keycloak custody/,
+  )
+  assert.throws(
+    () =>
+      parseKeycloakControlSecretMaterial(
+        Buffer.from(
+          JSON.stringify({
+            credentials: {
+              applicationAdmin: "app-value",
+              humanAdmin: "human-value",
+              liteLlm: "litellm-oidc-value",
+            },
+          }),
+        ),
+      ),
+    /missing credentials\.oidcClient/,
   )
   assert.equal(
     processNamespacePath(42, "/run/llm-machines/session-keyring.json"),
@@ -443,19 +516,33 @@ test("custody capture extracts only exact secret classes without logging values"
   )
   assert.throws(
     () =>
-      parseRuntimeSecretMaterial(
+      parseKeycloakControlSecretMaterial(
         Buffer.from(
-          [
-            "BFF_SERVICE_API_KEY=bff-value",
-            "DATABASE_URL=postgres-value",
-            "F0_S1_OIDC_CLIENT_SECRET=legacy-oidc-value",
-            "KEYCLOAK_ADMIN_CLIENT_SECRET=keycloak-value",
-            "F0_P1_SESSION_KEYRING_FILE=/run/source/session.json",
-            "F0_S1_CA_FILE=/run/source/ca.crt",
-          ].join("\0"),
+          JSON.stringify({
+            credentials: {
+              humanAdmin: "human-value",
+              liteLlm: "litellm-oidc-value",
+              oidcClient: "value",
+            },
+          }),
         ),
       ),
-    /missing CONSOLE_OIDC_CLIENT_SECRET/,
+    /missing credentials\.applicationAdmin/,
+  )
+  assert.throws(
+    () =>
+      parseKeycloakControlSecretMaterial(
+        Buffer.from(
+          JSON.stringify({
+            credentials: {
+              applicationAdmin: "app-value",
+              liteLlm: "litellm-oidc-value",
+              oidcClient: "oidc-value",
+            },
+          }),
+        ),
+      ),
+    /missing credentials\.humanAdmin/,
   )
 })
 
@@ -479,6 +566,8 @@ test("founder containers use file custody and production BFF authority", async (
   assert.match(compose, /\/run\/secrets\/llmm_bff_service_api_key/)
   assert.doesNotMatch(compose, /password|maliper|proxy_admin/i)
   assert.match(compose, /CONSOLE_OIDC_CLIENT_SECRET=/)
+  assert.match(compose, /KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET=/)
+  assert.match(compose, /llmm_keycloak_application_admin_client_secret/)
   assert.match(
     compose,
     /EMERGENCY_ISOLATION_MARKER_DIRECTORY: \/run\/llm-machines\/non-restorable-isolation/,
@@ -488,9 +577,12 @@ test("founder containers use file custody and production BFF authority", async (
     /\$\{LLMM_CONFIGURATION_ROOT\}\/non-restorable-isolation:\/run\/llm-machines\/non-restorable-isolation/,
   )
   assert.doesNotMatch(compose, /F0_S1_OIDC_CLIENT_SECRET=/)
-  assert.match(custody, /CONSOLE_OIDC_CLIENT_SECRET/)
+  assert.match(custody, /oidcClient: "console-oidc-client-secret"/)
+  assert.match(custody, /humanAdmin: "keycloak-admin-client-secret"/)
+  assert.match(custody, /liteLlm: "litellm-oidc-client-secret"/)
   assert.match(custody, /CONSOLE_SESSION_KEYRING_FILE/)
   assert.match(custody, /NODE_EXTRA_CA_CERTS/)
+  assert.match(custody, /parseKeycloakControlSecretMaterial/)
   assert.doesNotMatch(
     custody,
     /F0_S1_OIDC_CLIENT_SECRET|F0_P1_SESSION_KEYRING_FILE|F0_S1_CA_FILE/,
@@ -503,6 +595,39 @@ test("founder containers use file custody and production BFF authority", async (
   assert.match(entrypoint, /environment\.LLMM_RUNTIME_SECRET_FILES = undefined/)
   assert.doesNotMatch(entrypoint, /console\.log|JSON\.stringify\(environment/)
   assert.match(custody, /await chown\(target, 0, 0\)/)
+})
+
+test("founder Application identity readiness is exact and short-lived", () => {
+  const issuer =
+    "https://identity.lab.llm-machines.com/realms/llm-machines-applications"
+  validateApplicationJwks({
+    keys: [{ kid: "fixture_key_id", kty: "RSA" }],
+  })
+  assert.throws(() => validateApplicationJwks({ keys: [] }))
+  validateApplicationTokenClaims(
+    {
+      azp: "console-application-admin",
+      exp: 1_060,
+      iat: 1_000,
+      iss: issuer,
+    },
+    issuer,
+    "console-application-admin",
+  )
+  assert.throws(
+    () =>
+      validateApplicationTokenClaims(
+        {
+          azp: "console-application-admin",
+          exp: 1_061,
+          iat: 1_000,
+          iss: issuer,
+        },
+        issuer,
+        "console-application-admin",
+      ),
+    /claims\.exp - claims\.iat <= 60/,
+  )
 })
 
 test("founder Compose gives rendered candidate settings precedence", async () => {

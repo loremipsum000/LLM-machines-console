@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { timingSafeEqual } from "node:crypto"
 import {
   chmod,
   chown,
@@ -13,9 +14,14 @@ import { fileURLToPath } from "node:url"
 
 const secretMappings = {
   BFF_SERVICE_API_KEY: "bff-service-api-key",
-  CONSOLE_OIDC_CLIENT_SECRET: "console-oidc-client-secret",
   DATABASE_URL: "database-url",
-  KEYCLOAK_ADMIN_CLIENT_SECRET: "keycloak-admin-client-secret",
+}
+
+const keycloakControlSecretMappings = {
+  applicationAdmin: "keycloak-application-admin-client-secret",
+  humanAdmin: "keycloak-admin-client-secret",
+  liteLlm: "litellm-oidc-client-secret",
+  oidcClient: "console-oidc-client-secret",
 }
 
 const nonSecretNames = [
@@ -38,6 +44,8 @@ const nonSecretNames = [
   "KEYCLOAK_ADMIN_BASE_URL",
   "KEYCLOAK_ADMIN_CLIENT_ID",
   "KEYCLOAK_ADMIN_REALM",
+  "KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID",
+  "KEYCLOAK_APPLICATION_ADMIN_REALM",
   "PRE_GENESIS_FIRECRAWL_ACTUAL",
   "PRE_GENESIS_FIRECRAWL_ALLOWED_HOSTS",
   "PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL",
@@ -97,12 +105,60 @@ export function parseLiteLlmSecretMaterial(buffer) {
       }),
   )
   const masterKey = environment.LITELLM_MASTER_KEY?.trim()
+  const oidcClientId = environment.GENERIC_CLIENT_ID?.trim()
+  const oidcClientSecret = environment.GENERIC_CLIENT_SECRET?.trim()
   if (!masterKey) {
     throw new Error(
       "The founder LiteLLM custody source is missing LITELLM_MASTER_KEY.",
     )
   }
-  return { "litellm-key": masterKey }
+  if (oidcClientId !== "litellm-native" || !oidcClientSecret) {
+    throw new Error(
+      "The founder LiteLLM custody source is missing the exact native OIDC identity.",
+    )
+  }
+  return {
+    oidcClientId,
+    oidcClientSecret,
+    secrets: { "litellm-key": masterKey },
+  }
+}
+
+export function parseKeycloakControlSecretMaterial(buffer) {
+  let control
+  try {
+    control = JSON.parse(buffer.toString("utf8"))
+  } catch {
+    throw new Error("The founder Keycloak control file is invalid.")
+  }
+  const secrets = {}
+  for (const [name, file] of Object.entries(keycloakControlSecretMappings)) {
+    const value = control?.credentials?.[name]?.trim()
+    if (!value) {
+      throw new Error(
+        `The founder Keycloak control file is missing credentials.${name}.`,
+      )
+    }
+    secrets[file] = value
+  }
+  return secrets
+}
+
+export function validateLiteLlmOidcBinding(liteLlm, keycloakSecrets) {
+  const expected = keycloakSecrets["litellm-oidc-client-secret"]
+  const actual = liteLlm.oidcClientSecret
+  const expectedBuffer = Buffer.from(expected ?? "", "utf8")
+  const actualBuffer = Buffer.from(actual ?? "", "utf8")
+  if (
+    liteLlm.oidcClientId !== "litellm-native" ||
+    expectedBuffer.length === 0 ||
+    actualBuffer.length !== expectedBuffer.length ||
+    !timingSafeEqual(actualBuffer, expectedBuffer)
+  ) {
+    throw new Error(
+      "The founder LiteLLM native OIDC binding does not match commissioned Keycloak custody.",
+    )
+  }
 }
 
 export function processNamespacePath(pid, path) {
@@ -121,13 +177,18 @@ export async function captureVm103FounderCustody(options) {
   const liteLlmSecrets = parseLiteLlmSecretMaterial(
     await readFile(`/proc/${options.liteLlmSourcePid}/environ`),
   )
+  const keycloakSecrets = parseKeycloakControlSecretMaterial(
+    await readFile(options.keycloakControlFile),
+  )
+  validateLiteLlmOidcBinding(liteLlmSecrets, keycloakSecrets)
   await mkdir(options.configurationRoot, { mode: 0o700, recursive: true })
   await mkdir(options.secretRoot, { mode: 0o700, recursive: true })
   await chmod(options.configurationRoot, 0o700)
   await chmod(options.secretRoot, 0o700)
   for (const [name, value] of Object.entries({
     ...source.secrets,
-    ...liteLlmSecrets,
+    ...liteLlmSecrets.secrets,
+    ...keycloakSecrets,
   })) {
     const target = resolve(options.secretRoot, name)
     await writeFile(target, `${value}\n`, { flag: "wx", mode: 0o600 })
@@ -161,7 +222,8 @@ export async function captureVm103FounderCustody(options) {
     credentialValuesPrinted: false,
     generatedFiles: [
       ...Object.values(secretMappings),
-      ...Object.keys(liteLlmSecrets),
+      ...Object.keys(liteLlmSecrets.secrets),
+      ...Object.keys(keycloakSecrets),
       "edge-ca.crt",
       "edge.crt",
       "edge.key",
@@ -181,6 +243,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [
     sourcePid,
     liteLlmSourcePid,
+    keycloakControlFile,
     configurationRoot,
     secretRoot,
     edgeCertificate,
@@ -189,18 +252,20 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (
     !/^\d+$/.test(sourcePid ?? "") ||
     !/^\d+$/.test(liteLlmSourcePid ?? "") ||
+    !keycloakControlFile ||
     !configurationRoot ||
     !secretRoot ||
     !edgeCertificate ||
     !edgePrivateKey
   ) {
     throw new Error(
-      "Usage: capture-vm103-founder-custody.mjs BFF_PID LITELLM_PID CONFIG_ROOT SECRET_ROOT EDGE_CERT EDGE_KEY",
+      "Usage: capture-vm103-founder-custody.mjs BFF_PID LITELLM_PID KEYCLOAK_CONTROL_FILE CONFIG_ROOT SECRET_ROOT EDGE_CERT EDGE_KEY",
     )
   }
   const result = await captureVm103FounderCustody({
     sourcePid: Number(sourcePid),
     liteLlmSourcePid: Number(liteLlmSourcePid),
+    keycloakControlFile: resolve(keycloakControlFile),
     configurationRoot: resolve(configurationRoot),
     secretRoot: resolve(secretRoot),
     edgeCertificate: resolve(edgeCertificate),

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { randomBytes } from "node:crypto"
+import { randomBytes, randomUUID } from "node:crypto"
 import {
   access,
   chmod,
@@ -65,6 +65,10 @@ const stateRoot = await mkdtemp(
 )
 const importRoot = join(stateRoot, "import")
 const realmFile = join(importRoot, "llm-machines-realm.json")
+const applicationRealmFile = join(
+  importRoot,
+  "llm-machines-applications-realm.json",
+)
 const browserConfigFile = join(stateRoot, "browser-config.json")
 const keycloakEnvironmentFile = join(stateRoot, "keycloak.env")
 const postgresEnvironmentFile = join(stateRoot, "postgres.env")
@@ -130,6 +134,12 @@ try {
     )}\n`,
   )
   if (teamMode) {
+    await writeKeycloakRealmImport(
+      applicationRealmFile,
+      `${JSON.stringify(applicationRealmExport(credentials.applicationAdmin))}\n`,
+    )
+  }
+  if (teamMode) {
     await writeFile(
       keycloakEnvironmentFile,
       [
@@ -176,10 +186,12 @@ try {
   startupStage = "COMMISSIONING_IDENTITIES"
   let databaseUrl = null
   let commissioning = null
+  let applicationCommissioning = null
   if (teamMode) {
     commissioning = validateKeycloakCommissioning(
       await configureTeamAuthority(upstreamPort),
     )
+    applicationCommissioning = await configureApplicationAuthority(upstreamPort)
     databaseUrl = serviceControl ? null : await startPostgres()
   }
   startupStage = "PUBLISHING_COMMISSIONED_CONTROL"
@@ -188,6 +200,7 @@ try {
     `${JSON.stringify({
       container: containerName,
       ...(commissioning ? { commissioning } : {}),
+      ...(applicationCommissioning ? { applicationCommissioning } : {}),
       credentials: browserCredentials(),
       dockerContext,
       edgePort,
@@ -201,6 +214,7 @@ try {
       `${JSON.stringify({
         container: containerName,
         ...(commissioning ? { commissioning } : {}),
+        ...(applicationCommissioning ? { applicationCommissioning } : {}),
         credentials: browserCredentials(),
         dockerContext,
         edgePort,
@@ -598,6 +612,58 @@ function realmExport({
   }
 }
 
+function applicationRealmExport(applicationAdminSecret) {
+  return {
+    realm: "llm-machines-applications",
+    enabled: true,
+    accessTokenLifespan: 300,
+    revokeRefreshToken: true,
+    refreshTokenMaxReuse: 0,
+    registrationAllowed: false,
+    resetPasswordAllowed: false,
+    editUsernameAllowed: false,
+    loginWithEmailAllowed: false,
+    duplicateEmailsAllowed: false,
+    bruteForceProtected: true,
+    sslRequired: "external",
+    defaultRole: {
+      description: "Empty Application realm default role",
+      name: "default-roles-llm-machines-applications",
+    },
+    roles: {
+      realm: [
+        {
+          description: "OpenID Connect offline access",
+          name: "offline_access",
+        },
+      ],
+    },
+    clients: [
+      {
+        attributes: {
+          "access.token.lifespan": "60",
+          "client_credentials.use_refresh_token": "false",
+        },
+        authorizationServicesEnabled: false,
+        clientId: "console-application-admin",
+        defaultClientScopes: ["roles"],
+        directAccessGrantsEnabled: false,
+        enabled: true,
+        fullScopeAllowed: false,
+        implicitFlowEnabled: false,
+        optionalClientScopes: [],
+        protocol: "openid-connect",
+        publicClient: false,
+        secret: applicationAdminSecret,
+        serviceAccountsEnabled: true,
+        standardFlowEnabled: false,
+      },
+    ],
+    groups: [],
+    users: [],
+  }
+}
+
 function nativeOidcClient({
   claimName,
   clientId,
@@ -741,6 +807,7 @@ function userExport(user, role, group, liteLlmRole = null) {
 function generatedCredentials(founderIdentities = null) {
   return {
     admin: generatedUser("admin", founderIdentities?.admin),
+    applicationAdmin: opaqueValue(),
     bootstrap: {
       password: opaqueValue(),
       username: `bootstrap-${randomBytes(6).toString("hex")}`,
@@ -760,6 +827,7 @@ function browserCredentials() {
     admin: credentials.admin,
     bffService: credentials.bffService,
     ...(teamMode ? { humanAdmin: credentials.humanAdmin } : {}),
+    ...(teamMode ? { applicationAdmin: credentials.applicationAdmin } : {}),
     liteLlm: credentials.liteLlm,
     observability: credentials.observability,
     oidcClient: credentials.oidcClient,
@@ -964,6 +1032,145 @@ async function configureTeamAuthority(upstreamPort) {
   }
 }
 
+async function configureApplicationAuthority(upstreamPort) {
+  const root = `http://127.0.0.1:${upstreamPort}`
+  const bootstrapToken = await token(root, "master", {
+    client_id: "admin-cli",
+    grant_type: "password",
+    password: credentials.bootstrap.password,
+    username: credentials.bootstrap.username,
+  })
+  const realmPath = "/admin/realms/llm-machines-applications"
+  await adminRequest(root, bootstrapToken, realmPath, {
+    body: { adminPermissionsEnabled: true },
+    method: "PUT",
+  })
+
+  const serviceClient = await exactClient(
+    root,
+    bootstrapToken,
+    "console-application-admin",
+    realmPath,
+  )
+  const serviceUser = await adminJson(
+    root,
+    bootstrapToken,
+    `${realmPath}/clients/${encodeURIComponent(serviceClient.id)}/service-account-user`,
+  )
+  assert.match(serviceUser.id ?? "", /^[0-9a-f-]{36}$/)
+
+  const realmManagement = await exactClient(
+    root,
+    bootstrapToken,
+    "realm-management",
+    realmPath,
+  )
+  const queryClients = await adminJson(
+    root,
+    bootstrapToken,
+    `${realmPath}/clients/${encodeURIComponent(realmManagement.id)}/roles/query-clients`,
+  )
+  await adminRequest(
+    root,
+    bootstrapToken,
+    `${realmPath}/users/${encodeURIComponent(serviceUser.id)}/role-mappings/clients/${encodeURIComponent(realmManagement.id)}`,
+    { body: [queryClients], method: "POST" },
+  )
+
+  const permissionClient = await waitForClient(
+    root,
+    bootstrapToken,
+    "admin-permissions",
+    realmPath,
+  )
+  await adminRequest(
+    root,
+    bootstrapToken,
+    `${realmPath}/clients/${encodeURIComponent(permissionClient.id)}/authz/resource-server/policy/user`,
+    {
+      body: {
+        logic: "POSITIVE",
+        name: "console-application-admin-service-account",
+        users: [serviceUser.id],
+      },
+      method: "POST",
+    },
+  )
+  const servicePolicy = await exactAuthorizationPolicy(
+    root,
+    bootstrapToken,
+    permissionClient.id,
+    "console-application-admin-service-account",
+    realmPath,
+  )
+  await adminRequest(
+    root,
+    bootstrapToken,
+    `${realmPath}/clients/${encodeURIComponent(permissionClient.id)}/authz/resource-server/permission/scope`,
+    {
+      body: {
+        name: "console-application-admin-manage-application-realm-clients",
+        policies: [servicePolicy.id],
+        resourceType: "Clients",
+        scopes: ["manage", "view"],
+      },
+      method: "POST",
+    },
+  )
+
+  const serviceToken = await token(root, "llm-machines-applications", {
+    client_id: "console-application-admin",
+    client_secret: credentials.applicationAdmin,
+    grant_type: "client_credentials",
+  })
+  await expectAdminStatus(root, serviceToken, `${realmPath}/clients?max=1`, 200)
+  await expectAdminStatus(root, serviceToken, `${realmPath}/users?max=1`, 403)
+  await expectAdminStatus(root, serviceToken, `${realmPath}/groups?max=1`, 403)
+  await expectAdminStatus(root, serviceToken, realmPath, 403)
+
+  const canaryClientId = `llmm-app-${randomUUID()}`
+  await adminRequest(root, serviceToken, `${realmPath}/clients`, {
+    body: {
+      clientId: canaryClientId,
+      defaultClientScopes: [],
+      directAccessGrantsEnabled: false,
+      enabled: true,
+      fullScopeAllowed: false,
+      implicitFlowEnabled: false,
+      optionalClientScopes: [],
+      protocol: "openid-connect",
+      publicClient: false,
+      serviceAccountsEnabled: true,
+      standardFlowEnabled: false,
+    },
+    method: "POST",
+  })
+  const canary = await exactClient(
+    root,
+    serviceToken,
+    canaryClientId,
+    realmPath,
+  )
+  await adminRequest(
+    root,
+    serviceToken,
+    `${realmPath}/clients/${encodeURIComponent(canary.id)}`,
+    { method: "DELETE" },
+  )
+  await expectAdminStatus(
+    root,
+    serviceToken,
+    `${realmPath}/clients/${encodeURIComponent(canary.id)}`,
+    404,
+  )
+  return {
+    clientId: "console-application-admin",
+    managedClientCreateDelete: "passed",
+    realm: "llm-machines-applications",
+    status: "COMMISSIONED",
+  }
+}
+
 function applianceUserAdministrationPermissions({
   adminsGroupId,
   operatorsGroupId,
@@ -1036,11 +1243,12 @@ async function exactAuthorizationPolicy(
   bearer,
   permissionClientId,
   name,
+  realmPath = "/admin/realms/llm-machines",
 ) {
   const policies = await adminJson(
     root,
     bearer,
-    `/admin/realms/llm-machines/clients/${encodeURIComponent(permissionClientId)}/authz/resource-server/policy`,
+    `${realmPath}/clients/${encodeURIComponent(permissionClientId)}/authz/resource-server/policy`,
   )
   const matches = policies.filter((policy) => policy.name === name)
   assert.equal(matches.length, 1)
@@ -1048,21 +1256,31 @@ async function exactAuthorizationPolicy(
   return matches[0]
 }
 
-async function exactClient(root, bearer, clientId) {
+async function exactClient(
+  root,
+  bearer,
+  clientId,
+  realmPath = "/admin/realms/llm-machines",
+) {
   const clients = await adminJson(
     root,
     bearer,
-    `/admin/realms/llm-machines/clients?clientId=${encodeURIComponent(clientId)}&exact=true&max=2`,
+    `${realmPath}/clients?clientId=${encodeURIComponent(clientId)}&exact=true&max=2`,
   )
   assert.equal(clients.length, 1, `Keycloak client ${clientId} was not exact.`)
   return clients[0]
 }
 
-async function waitForClient(root, bearer, clientId) {
+async function waitForClient(
+  root,
+  bearer,
+  clientId,
+  realmPath = "/admin/realms/llm-machines",
+) {
   const deadline = performance.now() + 30_000
   while (performance.now() < deadline) {
     try {
-      return await exactClient(root, bearer, clientId)
+      return await exactClient(root, bearer, clientId, realmPath)
     } catch {
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 250))
     }

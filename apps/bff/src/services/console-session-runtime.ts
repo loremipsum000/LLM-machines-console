@@ -8,6 +8,7 @@ import {
   type RefreshFailureTelemetry,
 } from "./console-session-service"
 import { DrizzleConsoleSessionRepository } from "./console-session-store-drizzle"
+import { nativeSessionAuthorizationFromRuntime } from "./native-session-authorization"
 
 export interface ConsoleSessionRuntimeConfig {
   accessAudience: string
@@ -110,8 +111,9 @@ export function createConsoleSessionRuntimeFromEnv(input: {
       issuer: config.issuer,
       jwksUrl: config.jwksUrl,
     })
+    const repository = new DrizzleConsoleSessionRepository(input.database)
     const service = new ConsoleSessionService(
-      new DrizzleConsoleSessionRepository(input.database),
+      repository,
       cipher,
       oidc,
       validator,
@@ -125,6 +127,10 @@ export function createConsoleSessionRuntimeFromEnv(input: {
         consoleOrigin: config.consoleOrigin,
         identityIssuer: config.issuer,
         internalServiceCredential: config.internalServiceCredential,
+        nativeSessionAuthorization: nativeSessionAuthorizationFromRuntime(
+          repository,
+          input.environment,
+        ),
         nativeLogoutStartUrl: config.nativeLogoutStartUrl,
         service,
       },

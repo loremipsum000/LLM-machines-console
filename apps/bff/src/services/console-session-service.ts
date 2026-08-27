@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto"
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto"
 import {
   type ConsoleHighRiskAction,
   consoleHighRiskActions,
@@ -369,7 +369,59 @@ export class ConsoleSessionService {
   }
 
   async globalLogout(sessionHandle: string): Promise<void> {
-    await this.terminateSession(sessionHandle, "end-session")
+    const digest = opaqueHandleDigest(sessionHandle)
+    const record = await this.repository.readSession(digest)
+    if (!record) return
+    let secret: SecretPayload
+    try {
+      secret = parseSecretPayload(
+        this.cipher.open(
+          encryptionContext(
+            this.identityContext,
+            "session",
+            digest,
+            record.subjectDigest,
+          ),
+          record.encryptedPayload,
+        ),
+      )
+    } catch {
+      await this.repository.recordNativeGlobalLogoutAndDelete({
+        correlationId: randomUUID(),
+        eventId: randomUUID(),
+        handleDigest: digest,
+        now: this.now(),
+        subjectDigest: record.subjectDigest,
+      })
+      return
+    }
+    if (
+      identitySelectorDigest("subject", secret.subject) !== record.subjectDigest
+    ) {
+      await this.repository.recordNativeGlobalLogoutAndDelete({
+        correlationId: randomUUID(),
+        eventId: randomUUID(),
+        handleDigest: digest,
+        now: this.now(),
+        subjectDigest: record.subjectDigest,
+      })
+      return
+    }
+    const fenced = await this.repository.recordNativeLogoutAndDelete({
+      correlationId: randomUUID(),
+      eventId: randomUUID(),
+      handleDigest: digest,
+      now: this.now(),
+      subjectDigest: record.subjectDigest,
+      subjectId: secret.subject,
+    })
+    if (!fenced) return
+    try {
+      await this.oidc.endSession(secret.refreshToken)
+    } catch {
+      // The persisted native-session fence is authoritative even when the
+      // identity provider is temporarily unavailable during remote logout.
+    }
   }
 
   private async terminateSession(

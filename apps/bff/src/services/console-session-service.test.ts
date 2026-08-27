@@ -494,9 +494,49 @@ describe("opaque server-side Console sessions", () => {
 
     expect(fixture.oidc.endSession).toHaveBeenCalledWith("refresh-1")
     expect(fixture.oidc.revoke).not.toHaveBeenCalled()
+    expect(await fixture.repository.latestNativeLogoutAt("operator-1")).toEqual(
+      fixture.now(),
+    )
     await expect(
       fixture.service.resolve(session.sessionHandle),
     ).resolves.toMatchObject({ state: "terminal" })
+  })
+
+  it("keeps the native logout fence authoritative when Keycloak is unavailable", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    fixture.oidc.endSession.mockRejectedValueOnce(
+      new Error("identity unavailable"),
+    )
+
+    await expect(
+      fixture.service.globalLogout(session.sessionHandle),
+    ).resolves.toBeUndefined()
+    expect(await fixture.repository.latestNativeLogoutAt("operator-1")).toEqual(
+      fixture.now(),
+    )
+    expect(fixture.repository.sessionRecords.size).toBe(0)
+  })
+
+  it("uses a global native fence when the opaque session payload is corrupt", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    const [digest, record] = fixture.repository.sessionRecords.entries().next()
+      .value ?? [null, null]
+    if (!digest || !record)
+      throw new Error("Expected a durable session record.")
+    fixture.repository.sessionRecords.set(digest, {
+      ...record,
+      encryptedPayload: "invalid-encrypted-payload",
+    })
+
+    await fixture.service.globalLogout(session.sessionHandle)
+
+    expect(await fixture.repository.latestNativeGlobalLogoutAt()).toEqual(
+      fixture.now(),
+    )
+    expect(fixture.repository.sessionRecords.size).toBe(0)
+    expect(fixture.oidc.endSession).not.toHaveBeenCalled()
   })
 
   it("rejects expired back-channel logout without retaining replay state", async () => {

@@ -65,6 +65,24 @@ test("F0-I2 binds the existing scoped Console identity authority", async () => {
   )
   assert.doesNotMatch(wrapper, /["']realm-admin["']/)
   assert.doesNotMatch(wrapper, /["']manage-users["']/)
+  assert.match(wrapper, /llm-machines-applications-realm\.json/)
+  assert.match(
+    wrapper,
+    /applicationRealmExport\(credentials\.applicationAdmin\)/,
+  )
+  assert.match(wrapper, /"access\.token\.lifespan": "60"/)
+  assert.match(wrapper, /"client_credentials\.use_refresh_token": "false"/)
+  assert.match(wrapper, /await configureApplicationAuthority\(upstreamPort\)/)
+  assert.match(wrapper, /name: "console-application-admin-service-account"/)
+  assert.match(
+    wrapper,
+    /name: "console-application-admin-manage-application-realm-clients"/,
+  )
+  assert.match(wrapper, /scopes: \["manage", "view"\]/)
+  assert.match(wrapper, /clients\?max=1`, 200/)
+  assert.match(wrapper, /users\?max=1`, 403/)
+  assert.match(wrapper, /groups\?max=1`, 403/)
+  assert.match(wrapper, /managedClientCreateDelete: "passed"/)
 
   assert.match(browser, /--keycloak-team/)
   assert.match(browser, /LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY/)

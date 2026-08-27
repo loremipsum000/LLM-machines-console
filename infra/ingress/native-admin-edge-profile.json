@@ -248,13 +248,40 @@
           "queryPolicy": "forbid"
         },
         {
+          "id": "profile-pages",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/profile(?:/notifications)?$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
           "id": "approved-read-api",
           "methods": ["GET", "HEAD"],
           "path": {
             "kind": "regex",
-            "value": "^/api/(?:dashboards/home|login/ping|plugins|user|user/orgs|user/preferences|user/stars)$"
+            "value": "^/api/(?:dashboards/home|login/ping|plugins|user|user/auth-tokens|user/orgs|user/stars|user/teams)$"
           },
           "queryPolicy": "forbid"
+        },
+        {
+          "id": "user-preferences",
+          "methods": ["GET", "HEAD", "PATCH", "PUT"],
+          "path": { "kind": "exact", "value": "/api/user/preferences" },
+          "queryPolicy": "forbid",
+          "bodyLimit": "16k"
+        },
+        {
+          "id": "revoke-own-session",
+          "methods": ["POST"],
+          "path": {
+            "kind": "exact",
+            "value": "/api/user/revoke-auth-token"
+          },
+          "queryPolicy": "forbid",
+          "bodyLimit": "1k",
+          "authority": "AUTHENTICATED_USER_SESSION_ONLY"
         },
         {
           "id": "plugin-settings",
@@ -481,7 +508,17 @@
           "methods": ["GET", "HEAD"],
           "path": { "kind": "exact", "value": "/__llmm/global-logout" },
           "queryPolicy": "forbid",
-          "behavior": "CLEAR_NATIVE_COOKIES_AND_CONTINUE_FIXED_CHAIN"
+          "behavior": "CLEAR_NATIVE_COOKIES_AND_BROWSER_STORAGE"
+        },
+        {
+          "id": "global-logout-continue",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "exact",
+            "value": "/__llmm/global-logout/continue"
+          },
+          "queryPolicy": "forbid",
+          "behavior": "CONTINUE_FIXED_IDENTITY_LOGOUT_CHAIN"
         },
         {
           "id": "key-create",

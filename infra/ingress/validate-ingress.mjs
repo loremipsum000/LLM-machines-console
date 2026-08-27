@@ -150,9 +150,12 @@ const expectedNginxLocations = {
     "= /user/auth-tokens/rotate",
     "= /api/user/auth-tokens/rotate",
     "= /logout",
+    "~ ^/profile(?:/notifications)?$",
     "@grafana_global_logout_fallback",
     "~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",
-    "~ ^/api/(?:dashboards/home|login/ping|plugins|user|user/orgs|user/preferences|user/stars)$",
+    "~ ^/api/(?:dashboards/home|login/ping|plugins|user|user/auth-tokens|user/orgs|user/stars|user/teams)$",
+    "= /api/user/preferences",
+    "= /api/user/revoke-auth-token",
     '~ "^/api/plugins/[a-z0-9_-]{1,128}/settings$"',
     "= /api/dashboards/db",
     '~ "^/api/dashboards/uid/[A-Za-z0-9_-]{1,128}$"',
@@ -166,6 +169,9 @@ const expectedNginxLocations = {
     "/",
   ],
   litellm: [
+    "= /__llmm_litellm_browser_authorize",
+    "= /__llmm_litellm_key_authorize",
+    "@litellm_reauthenticate",
     "= /ui/",
     "~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$",
     "~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$",
@@ -173,6 +179,7 @@ const expectedNginxLocations = {
     "~ ^/(?:litellm-asset-prefix/_next/static/|ui/__next\\.|litellm/\\.well-known/litellm-ui-config).*$",
     "= /sso/key/generate",
     "= /__llmm/global-logout",
+    "= /__llmm/global-logout/continue",
     "= /sso/callback",
     "= /key/generate",
     "= /key/list",
@@ -216,9 +223,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "258ef3468d01d00ce13532904c608fe677348c64f223a4dbff5fee341b5bec7a",
+    "e6ed684e1f9750e9ee993ab3395da25bfd188b7ae0ee42e63b0baaa118309192",
   "native-admin-edge-profile.json":
-    "bb84d79f1fc873a5de03a2ab0004ae3ccec75033d0ea35ed8eee7686ec6e6389",
+    "db272718f5606853842df7a3558d675fb87ac0f7b949d06b19f88f9f1aec4083",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -506,12 +513,57 @@ function validateNativeAdmin(profile, errors) {
   const grafanaStatic = profile.services?.grafana?.routes?.find(
     ({ id }) => id === "static-assets",
   )
+  const grafanaProfilePages = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "profile-pages",
+  )
+  const grafanaApprovedReadApi = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "approved-read-api",
+  )
+  const grafanaUserPreferences = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "user-preferences",
+  )
+  const grafanaRevokeOwnSession = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "revoke-own-session",
+  )
   const grafanaSessionRotationRedirect =
     profile.services?.grafana?.routes?.find(
       ({ id }) => id === "session-rotation-redirect",
     )
   const grafanaSessionRotationApi = profile.services?.grafana?.routes?.find(
     ({ id }) => id === "session-rotation-api",
+  )
+  add(
+    errors,
+    grafanaProfilePages?.path?.kind === "regex" &&
+      grafanaProfilePages?.path?.value === "^/profile(?:/notifications)?$" &&
+      sameJson(grafanaProfilePages?.methods, ["GET", "HEAD"]) &&
+      grafanaProfilePages?.queryPolicy === "forbid",
+    "Grafana profile-page policy changed",
+  )
+  add(
+    errors,
+    grafanaApprovedReadApi?.path?.kind === "regex" &&
+      grafanaApprovedReadApi?.path?.value ===
+        "^/api/(?:dashboards/home|login/ping|plugins|user|user/auth-tokens|user/orgs|user/stars|user/teams)$" &&
+      sameJson(grafanaApprovedReadApi?.methods, ["GET", "HEAD"]) &&
+      grafanaApprovedReadApi?.queryPolicy === "forbid" &&
+      grafanaUserPreferences?.path?.kind === "exact" &&
+      grafanaUserPreferences?.path?.value === "/api/user/preferences" &&
+      sameJson(grafanaUserPreferences?.methods, [
+        "GET",
+        "HEAD",
+        "PATCH",
+        "PUT",
+      ]) &&
+      grafanaUserPreferences?.queryPolicy === "forbid" &&
+      grafanaUserPreferences?.bodyLimit === "16k" &&
+      grafanaRevokeOwnSession?.path?.kind === "exact" &&
+      grafanaRevokeOwnSession?.path?.value === "/api/user/revoke-auth-token" &&
+      sameJson(grafanaRevokeOwnSession?.methods, ["POST"]) &&
+      grafanaRevokeOwnSession?.queryPolicy === "forbid" &&
+      grafanaRevokeOwnSession?.bodyLimit === "1k" &&
+      grafanaRevokeOwnSession?.authority === "AUTHENTICATED_USER_SESSION_ONLY",
+    "Grafana self-service profile API policy changed",
   )
   add(
     errors,
@@ -665,6 +717,9 @@ function validateNativeAdmin(profile, errors) {
   const liteLlmGlobalLogout = profile.services?.litellm?.routes?.find(
     ({ id }) => id === "global-logout",
   )
+  const liteLlmGlobalLogoutContinue = profile.services?.litellm?.routes?.find(
+    ({ id }) => id === "global-logout-continue",
+  )
   add(
     errors,
     profile.services?.grafana?.ssoEntry ===
@@ -679,6 +734,12 @@ function validateNativeAdmin(profile, errors) {
       liteLlmSso?.allowedReturnTo === "https://@@PRODUCT_LITELLM_HOST@@/ui/" &&
       liteLlmLoginRedirect?.behavior === "EDGE_303_TO_SAFE_SSO_ENTRY" &&
       liteLlmGlobalLogout?.path?.value === "/__llmm/global-logout" &&
+      liteLlmGlobalLogout?.behavior ===
+        "CLEAR_NATIVE_COOKIES_AND_BROWSER_STORAGE" &&
+      liteLlmGlobalLogoutContinue?.path?.value ===
+        "/__llmm/global-logout/continue" &&
+      liteLlmGlobalLogoutContinue?.behavior ===
+        "CONTINUE_FIXED_IDENTITY_LOGOUT_CHAIN" &&
       sameJson(profile.queryPolicies?.["litellm-rsc"], ["_rsc"]) &&
       sameJson(profile.queryPolicies?.["litellm-sso-entry"], ["return_to"]),
     "automatic native SSO or global logout contract changed",
@@ -1017,6 +1078,18 @@ function validateNginx(sources, errors) {
     litellmServer,
     "= /__llmm/global-logout",
   )
+  const liteLlmGlobalLogoutContinue = exactLocationSection(
+    litellmServer,
+    "= /__llmm/global-logout/continue",
+  )
+  const liteLlmBrowserAuthorize = exactLocationSection(
+    litellmServer,
+    "= /__llmm_litellm_browser_authorize",
+  )
+  const liteLlmKeyAuthorize = exactLocationSection(
+    litellmServer,
+    "= /__llmm_litellm_key_authorize",
+  )
   for (const [hostId, server] of Object.entries({
     api: apiServer,
     console: consoleServer,
@@ -1082,6 +1155,9 @@ function validateNginx(sources, errors) {
         "return 303 https://@@PRODUCT_LITELLM_HOST@@/__llmm/global-logout;",
       ) &&
       grafanaServer.includes("location = /login/generic_oauth") &&
+      grafanaServer.includes("location ~ ^/profile(?:/notifications)?$") &&
+      grafanaServer.includes("location = /api/user/preferences") &&
+      grafanaServer.includes("location = /api/user/revoke-auth-token") &&
       grafanaServer.includes("location = /user/auth-tokens/rotate") &&
       grafanaServer.includes("location = /api/user/auth-tokens/rotate") &&
       grafanaServer.includes("location = /api/dashboards/db") &&
@@ -1123,6 +1199,7 @@ function validateNginx(sources, errors) {
         "return 303 https://@@PRODUCT_LITELLM_HOST@@/sso/key/generate?return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2F;",
       ) &&
       litellmServer.includes("location = /__llmm/global-logout") &&
+      litellmServer.includes("location = /__llmm/global-logout/continue") &&
       litellmServer.includes(
         "return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;",
       ) &&
@@ -1146,11 +1223,22 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    liteLlmGlobalLogout.includes(
-      "return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;",
-    ) &&
+    liteLlmGlobalLogout.includes('Set-Cookie "token=; Path=/;') &&
+      liteLlmGlobalLogout.includes('Set-Cookie "token=; Path=/ui;') &&
+      liteLlmGlobalLogout.includes('sessionStorage.removeItem("token")') &&
+      liteLlmGlobalLogout.includes(
+        'location.replace("/__llmm/global-logout/continue")',
+      ) &&
+      liteLlmGlobalLogout.includes(
+        "script-src 'sha256-VbNiVsNvQhuaeXk4CCsEPOAaq+kGFm93zDY/X81uCqY='",
+      ) &&
+      liteLlmGlobalLogoutContinue.includes(
+        "return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;",
+      ) &&
       !liteLlmGlobalLogout.includes("proxy_pass") &&
-      !liteLlmGlobalLogout.includes("proxy_intercept_errors"),
+      !liteLlmGlobalLogout.includes("proxy_intercept_errors") &&
+      !liteLlmGlobalLogoutContinue.includes("proxy_pass") &&
+      !liteLlmGlobalLogoutContinue.includes("proxy_intercept_errors"),
     "LiteLLM global logout must remain independent of native availability",
   )
   add(
@@ -1398,10 +1486,51 @@ function validateNginx(sources, errors) {
   )
   add(
     errors,
-    !/auth_request\s|proxy_set_header\s+Upgrade\s+\$|proxy_set_header\s+Connection\s+\$http_connection/i.test(
+    !/proxy_set_header\s+Upgrade\s+\$|proxy_set_header\s+Connection\s+\$http_connection/i.test(
       nginx,
     ),
     "native impersonation or WebSocket forwarding added",
+  )
+  const authRequests = [...nginx.matchAll(/auth_request\s+([^;]+);/g)].map(
+    (match) => match[1],
+  )
+  add(
+    errors,
+    authRequests.length === 18 &&
+      authRequests.filter(
+        (value) => value === "/__llmm_litellm_browser_authorize",
+      ).length === 16 &&
+      authRequests.filter((value) => value === "/__llmm_litellm_key_authorize")
+        .length === 2,
+    "native impersonation or LiteLLM logout-fence authorization changed",
+  )
+  add(
+    errors,
+    liteLlmBrowserAuthorize.includes("internal;") &&
+      liteLlmBrowserAuthorize.includes("proxy_pass_request_body off;") &&
+      liteLlmBrowserAuthorize.includes('proxy_set_header Authorization "";') &&
+      liteLlmBrowserAuthorize.includes(
+        "proxy_set_header Cookie $http_cookie;",
+      ) &&
+      liteLlmBrowserAuthorize.includes(
+        "proxy_set_header X-LLM-Machines-Native-Auth-Mode browser;",
+      ) &&
+      liteLlmBrowserAuthorize.includes(
+        "proxy_pass http://console_bff/api/internal/native-session/litellm/authorize;",
+      ) &&
+      liteLlmKeyAuthorize.includes("internal;") &&
+      liteLlmKeyAuthorize.includes("proxy_pass_request_body off;") &&
+      liteLlmKeyAuthorize.includes(
+        "proxy_set_header Authorization $http_authorization;",
+      ) &&
+      liteLlmKeyAuthorize.includes('proxy_set_header Cookie "";') &&
+      liteLlmKeyAuthorize.includes(
+        "proxy_set_header X-LLM-Machines-Native-Auth-Mode key;",
+      ) &&
+      liteLlmKeyAuthorize.includes(
+        "proxy_pass http://console_bff/api/internal/native-session/litellm/authorize;",
+      ),
+    "LiteLLM logout-fence subrequest boundary changed",
   )
   add(
     errors,

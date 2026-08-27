@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import test from "node:test"
@@ -139,6 +140,23 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
     await read("scripts/pre-genesis/reduced-core-browser-session.mjs"),
     /host === authorities\.grafana && url\.pathname === "\/logout"/,
   )
+  const browserFixture = await read(
+    "scripts/pre-genesis/reduced-core-browser-session.mjs",
+  )
+  assert.match(
+    browserFixture,
+    /developmentLiteLlmGlobalLogout\(request, response, url\)/,
+  )
+  assert.match(browserFixture, /"token=; Path=\/ui; Max-Age=0;/)
+  assert.match(browserFixture, /sessionStorage\.removeItem\("token"\)/)
+  assert.match(
+    browserFixture,
+    /location\.replace\("\/__llmm\/global-logout\/continue"\)/,
+  )
+  assert.match(
+    browserFixture,
+    /url\.pathname === "\/__llmm\/global-logout\/continue"/,
+  )
   assert.match(shell, /fetch\("\/api\/console\/session\/logout"/)
   assert.match(shell, /headers: \{ accept: "application\/json" \}/)
   assert.match(shell, /action="\/api\/console\/session\/logout"/)
@@ -169,10 +187,33 @@ test("Console sign-out uses a fixed credential-free native logout chain", async 
   assert.ok(grafanaFallback)
   assert.match(grafanaFallback, /Set-Cookie "grafana_session=;/)
   assert.match(grafanaFallback, /Set-Cookie "grafana_session_expiry=;/)
-  assert.doesNotMatch(
+  const globalLogoutLocations =
     edge
-      .match(/location = \/__llmm\/global-logout[\s\S]*?\n {4}}/g)
-      ?.join("\n") ?? "",
+      .match(
+        /location = \/__llmm\/global-logout(?:\/continue)?[\s\S]*?\n {4}}/g,
+      )
+      ?.join("\n") ?? ""
+  assert.match(globalLogoutLocations, /Set-Cookie "token=; Path=\/;/)
+  assert.match(globalLogoutLocations, /Set-Cookie "token=; Path=\/ui;/)
+  assert.match(globalLogoutLocations, /sessionStorage\.removeItem\("token"\)/)
+  assert.match(
+    globalLogoutLocations,
+    /location\.replace\("\/__llmm\/global-logout\/continue"\)/,
+  )
+  assert.match(
+    globalLogoutLocations,
+    /script-src 'sha256-VbNiVsNvQhuaeXk4CCsEPOAaq\+kGFm93zDY\/X81uCqY='/,
+  )
+  const inlineScript = globalLogoutLocations.match(
+    /<script>([\s\S]*?)<\/script>/,
+  )?.[1]
+  assert.ok(inlineScript)
+  assert.equal(
+    createHash("sha256").update(inlineScript).digest("base64"),
+    "VbNiVsNvQhuaeXk4CCsEPOAaq+kGFm93zDY/X81uCqY=",
+  )
+  assert.doesNotMatch(
+    globalLogoutLocations,
     /\$(?:http_authorization|http_cookie)|id_token_hint|access_token|refresh_token/,
   )
 })

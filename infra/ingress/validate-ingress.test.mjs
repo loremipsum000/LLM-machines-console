@@ -210,8 +210,8 @@ test("coordinated logout stays bounded and independent of native availability", 
   const upstreamDependent = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>
       source.replace(
-        'location = /__llmm/global-logout {\n      limit_except GET HEAD { deny all; }\n      if ($llmm_query_none = 0) { return 400; }\n      add_header Cache-Control "no-store" always;\n      add_header Referrer-Policy "no-referrer" always;\n      add_header Set-Cookie "token=;',
-        'location = /__llmm/global-logout {\n      proxy_pass http://litellm_native;\n      limit_except GET HEAD { deny all; }\n      if ($llmm_query_none = 0) { return 400; }\n      add_header Cache-Control "no-store" always;\n      add_header Referrer-Policy "no-referrer" always;\n      add_header Set-Cookie "token=;',
+        "location = /__llmm/global-logout {\n      limit_except GET HEAD { deny all; }\n      if ($llmm_query_none = 0) { return 400; }\n      default_type text/html;",
+        "location = /__llmm/global-logout {\n      proxy_pass http://litellm_native;\n      limit_except GET HEAD { deny all; }\n      if ($llmm_query_none = 0) { return 400; }\n      default_type text/html;",
       ),
     ),
   )
@@ -562,6 +562,89 @@ test("Grafana session rotation admits only its exact native routes", () => {
   }
 })
 
+test("Grafana profile pages admit only exact read-only destinations", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  const location = nginx.match(
+    /location ~ \^\/profile\(\?:\/notifications\)\?\$ \{[\s\S]*?\n {4}\}/,
+  )?.[0]
+  assert.ok(location)
+  assert.match(location, /limit_except GET HEAD \{ deny all; \}/)
+  assert.match(location, /if \(\$llmm_query_none = 0\) \{ return 400; \}/)
+
+  for (const changedLocation of [
+    location.replace("limit_except GET HEAD", "limit_except GET HEAD POST"),
+    location.replace("$llmm_query_none = 0", "$llmm_query_none = 1"),
+    location.replace("^/profile(?:/notifications)?$", "^/profile(?:/.*)?$"),
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(location, changedLocation),
+      ),
+    )
+    assert.ok(
+      result.some((error) => /fingerprint|Grafana|location/i.test(error)),
+    )
+  }
+
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  const route = profile.services.grafana.routes.find(
+    ({ id }) => id === "profile-pages",
+  )
+  route.methods.push("POST")
+  const result = validateIngressSources({
+    ...sources,
+    "native-admin-edge-profile.json": JSON.stringify(profile),
+  })
+  assert.ok(
+    result.some((error) => /fingerprint|Grafana profile-page/i.test(error)),
+  )
+})
+
+test("Grafana profile dependencies stay self-scoped and exact", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  assert.match(
+    nginx,
+    /location ~ \^\/api\/\(\?:dashboards\/home\|login\/ping\|plugins\|user\|user\/auth-tokens\|user\/orgs\|user\/stars\|user\/teams\)\$ \{[\s\S]{0,180}limit_except GET HEAD/,
+  )
+  assert.match(
+    nginx,
+    /location = \/api\/user\/preferences \{[\s\S]{0,180}limit_except GET HEAD PATCH PUT[\s\S]{0,180}client_max_body_size 16k;/,
+  )
+  assert.match(
+    nginx,
+    /location = \/api\/user\/revoke-auth-token \{[\s\S]{0,160}limit_except POST[\s\S]{0,160}client_max_body_size 1k;/,
+  )
+
+  for (const [before, after] of [
+    ["user/auth-tokens|user/orgs", "admin/users|user/orgs"],
+    ["limit_except GET HEAD PATCH PUT", "limit_except GET HEAD PATCH PUT POST"],
+    ["client_max_body_size 16k;", "client_max_body_size 2m;"],
+    ["limit_except POST", "limit_except GET POST"],
+    ["client_max_body_size 1k;", "client_max_body_size 1m;"],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, after),
+      ),
+    )
+    assert.ok(
+      result.some((error) => /fingerprint|Grafana|location/i.test(error)),
+    )
+  }
+
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  profile.services.grafana.routes.find(
+    ({ id }) => id === "revoke-own-session",
+  ).authority = "ANY_USER_SESSION"
+  const result = validateIngressSources({
+    ...sources,
+    "native-admin-edge-profile.json": JSON.stringify(profile),
+  })
+  assert.ok(
+    result.some((error) => /fingerprint|Grafana self-service/i.test(error)),
+  )
+})
+
 test("Keycloak native user deletion remains denied before upstream", () => {
   const result = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>
@@ -691,6 +774,35 @@ test("native sessions stay service-owned without proxy impersonation", () => {
     ),
   )
   assert.ok(impersonation.some((error) => /impersonation/i.test(error)))
+})
+
+test("LiteLLM logout fences remain exact and fail closed", () => {
+  for (const [before, after] of [
+    [
+      "auth_request /__llmm_litellm_browser_authorize;",
+      "auth_request /console-session;",
+    ],
+    [
+      'proxy_set_header Authorization "";',
+      "proxy_set_header Authorization $http_authorization;",
+    ],
+    ['proxy_set_header Cookie "";', "proxy_set_header Cookie $http_cookie;"],
+    [
+      "      internal;\n      proxy_pass_request_body off;",
+      "      proxy_pass_request_body off;",
+    ],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, after),
+      ),
+    )
+    assert.ok(
+      result.some((error) =>
+        /logout-fence|fingerprint|impersonation/i.test(error),
+      ),
+    )
+  }
 })
 
 test("LiteLLM native cookies retain exact transport and UI-readability flags", () => {

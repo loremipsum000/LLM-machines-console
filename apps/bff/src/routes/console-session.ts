@@ -13,6 +13,7 @@ import type {
   ConsoleSessionService,
 } from "../services/console-session-service"
 import { normalizeConsoleReturnPath } from "../services/console-session-service"
+import type { NativeSessionAuthorizationService } from "../services/native-session-authorization"
 
 const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60
 const LOGIN_MAX_AGE_SECONDS = 2 * 60
@@ -22,6 +23,7 @@ export interface ConsoleSessionRouteOptions {
   consoleOrigin: string
   identityIssuer: string
   internalServiceCredential: string
+  nativeSessionAuthorization: NativeSessionAuthorizationService
   nativeLogoutStartUrl: string
   service: ConsoleSessionService
 }
@@ -184,19 +186,45 @@ export function registerConsoleSessionRoutes(
       request.headers.cookie,
       CONSOLE_SESSION_COOKIE,
     )
-    reply.header("set-cookie", clearConsoleCookie(CONSOLE_SESSION_COOKIE))
     if (sessionHandle) {
       try {
         await options.service.globalLogout(sessionHandle)
       } catch {
-        // Local browser custody ends even when remote revocation is unavailable.
+        return reply.code(503).send({
+          reason: "logout_fence_unavailable",
+          retryable: true,
+          state: "unavailable",
+        })
       }
     }
+    reply.header("set-cookie", clearConsoleCookie(CONSOLE_SESSION_COOKIE))
     if (request.headers.accept === "application/json") {
       return reply.send({ next: nativeLogoutStartUrl })
     }
     return reply.redirect(nativeLogoutStartUrl, 303)
   })
+
+  server.get(
+    "/api/internal/native-session/litellm/authorize",
+    async (request, reply) => {
+      noStore(reply)
+      if (!loopbackRequest(request)) return reply.code(403).send()
+      const mode = request.headers["x-llm-machines-native-auth-mode"]
+      const result =
+        mode === "browser"
+          ? await options.nativeSessionAuthorization.authorizeLiteLlmBrowser(
+              request.headers.cookie,
+            )
+          : mode === "key"
+            ? await options.nativeSessionAuthorization.authorizeLiteLlmKey(
+                request.headers.authorization,
+              )
+            : { reason: "native_auth_mode_invalid", state: "denied" as const }
+      if (result.state === "allowed") return reply.code(204).send()
+      if (result.state === "unavailable") return reply.code(503).send()
+      return reply.code(401).send()
+    },
+  )
 
   server.post("/api/console/session/elevate", async (request, reply) => {
     noStore(reply)
@@ -295,6 +323,12 @@ function internalRequestAuthorized(
   return Boolean(
     credential &&
       validServiceCredential(request.headers.authorization, credential),
+  )
+}
+
+function loopbackRequest(request: FastifyRequest): boolean {
+  return ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(
+    request.raw.socket.remoteAddress ?? "",
   )
 }
 

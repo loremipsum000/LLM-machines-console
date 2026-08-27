@@ -347,6 +347,10 @@ function fakeConsoleSessionRuntime() {
       consoleOrigin: "https://console.example.test",
       identityIssuer: "https://identity.example.test/realms/appliance",
       internalServiceCredential: "internal-service-credential",
+      nativeSessionAuthorization: {
+        authorizeLiteLlmBrowser: vi.fn(async () => ({ state: "allowed" })),
+        authorizeLiteLlmKey: vi.fn(async () => ({ state: "allowed" })),
+      } as never,
       nativeLogoutStartUrl: "https://grafana.example.test/logout",
       service,
     },
