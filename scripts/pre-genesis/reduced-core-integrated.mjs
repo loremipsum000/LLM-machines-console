@@ -834,6 +834,7 @@ async function startObservability(edgePort, currentKeycloakControl) {
     `LLMM_GRAFANA_SIGNOUT_REDIRECT_URL=${authorityOrigin(founderUatPlacement, "litellm", edgePort)}/__llmm/global-logout`,
     "--env",
     "LLMM_PROMETHEUS_URL=http://prometheus:9090",
+    "LLMM_HARDWARE_PROMETHEUS_URL=http://prometheus:9090",
     images["grafana-private"],
   ])
   created.containers.add(containers.grafana)

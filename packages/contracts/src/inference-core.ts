@@ -1667,11 +1667,20 @@ export type AdminHardwareRange = z.infer<typeof adminHardwareRangeSchema>
 
 export const adminHardwareChartIdSchema = z.enum([
   "cpu_utilization",
-  "gpu_temperature",
-  "gpu_utilization",
+  "xpu_temperature",
+  "xpu_utilization",
+  "xpu_memory_utilization",
+  "xpu_device_health",
+  "xpu_frequency_status",
   "ram_usage",
   "filesystem_usage",
+  "bmc_sensor_health",
+  "chassis_power_state",
+  "chassis_temperature",
+  "fan_speed",
+  "psu_health",
   "power_draw",
+  "monthly_energy_projection",
   "network_throughput",
 ])
 export type AdminHardwareChartId = z.infer<typeof adminHardwareChartIdSchema>
@@ -1686,6 +1695,9 @@ export const adminHardwareUnitSchema = z.enum([
   "celsius",
   "bytes_per_second",
   "watt",
+  "state",
+  "rpm",
+  "kilowatt_hour",
 ])
 export type AdminHardwareUnit = z.infer<typeof adminHardwareUnitSchema>
 
@@ -1768,7 +1780,7 @@ export const adminHardwareResponseSchema = z
     summary: z.string().min(1),
     grafanaUrl: z.null(),
     alertmanagerUrl: z.null(),
-    charts: z.array(adminHardwareChartSchema).length(7),
+    charts: z.array(adminHardwareChartSchema).length(16),
     activeAlerts: z.array(adminHardwareAlertSchema),
   })
   .strict()

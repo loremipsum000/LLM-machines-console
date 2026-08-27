@@ -26,9 +26,9 @@ interface PrometheusHealthRead {
   targets: { down: number; total: number; up: number } | null
 }
 
-const TARGET_UP_QUERY = 'up{job=~"node|dcgm|ipmi|infra_https_endpoint"}'
-const DCGM_GPU_QUERY = "max(DCGM_FI_DEV_GPU_UTIL)"
-const TEXTFILE_GPU_QUERY = "max(llmm_nvidia_gpu_utilization_percent)"
+const TARGET_UP_QUERY = 'up{job=~"node|ipmi|xpu|infra_https_endpoint"}'
+const XPU_UTILIZATION_QUERY =
+  'max(100 * hw_gpu_utilization_ratio{job="xpu",hw_gpu_task="all"})'
 const STORAGE_QUERY =
   'max(100 * (1 - (node_filesystem_avail_bytes{job="node",fstype!~"tmpfs|devtmpfs|overlay|squashfs",mountpoint!~"/run.*|/var/lib/docker/.+"} / node_filesystem_size_bytes{job="node",fstype!~"tmpfs|devtmpfs|overlay|squashfs",mountpoint!~"/run.*|/var/lib/docker/.+"})))'
 
@@ -55,12 +55,12 @@ export async function getAdminHealthSummary(): Promise<AdminHealthSummary> {
     metrics: [
       metric(
         "gpu",
-        "GPU utilization",
+        "XPU utilization",
         prometheus.sourceStatus === "ok" ||
           prometheus.sourceStatus === "degraded"
           ? formatPercent(prometheus.gpuValue)
           : sourceValue(prometheus.sourceStatus),
-        "Peak observed GPU",
+        "Peak observed Intel XPU",
         prometheus.gpuValue === null ? "neutral" : "good",
       ),
       metric(
@@ -107,14 +107,13 @@ async function readPrometheusHealth(): Promise<PrometheusHealthRead> {
 
   try {
     const client = new PrometheusClient(baseUrl)
-    const [targets, dcgmGpu, textfileGpu, storage] = await Promise.all([
+    const [targets, xpuUtilization, storage] = await Promise.all([
       client.query(TARGET_UP_QUERY),
-      client.query(DCGM_GPU_QUERY),
-      client.query(TEXTFILE_GPU_QUERY),
+      client.query(XPU_UTILIZATION_QUERY),
       client.query(STORAGE_QUERY),
     ])
     const targetSummary = summarizeTargets(targets)
-    const gpuValue = firstFiniteValue(dcgmGpu) ?? firstFiniteValue(textfileGpu)
+    const gpuValue = firstFiniteValue(xpuUtilization)
     const storageValue = firstFiniteValue(storage)
     return {
       gpuValue,

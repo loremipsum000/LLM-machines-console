@@ -9,6 +9,7 @@ import {
   mapGrafanaRole,
   validateAlertmanager,
   validateGrafana,
+  validateHardwareGrafana,
   validateKeycloak,
   validateProfile,
   validatePrometheus,
@@ -28,8 +29,12 @@ const sources = {
   alertmanager: read("alertmanager/alertmanager.yml"),
   alertRules: read("prometheus/rules/alert-rules.yml"),
   dashboard: read("grafana/dashboards/baseline/inference-core-overview.json"),
+  hardwareDashboard: read("grafana/dashboards/baseline/infra-overview.json"),
   dashboardProvider: read("grafana/provisioning/dashboards/baseline.yml"),
   datasource: read("grafana/provisioning/datasources/prometheus.yml"),
+  hardwareDatasource: read(
+    "grafana/provisioning/datasources/hardware-prometheus.yml",
+  ),
   folderBoundary: read("grafana/customer-folder-contract.json"),
   grafana: read("grafana/grafana.ini"),
   prometheus: read("prometheus/prometheus.yml"),
@@ -232,6 +237,24 @@ test("Grafana role mapping requires exactly one retained role", () => {
       sources.dashboard,
     ),
     [],
+  )
+})
+
+test("the hardware dashboard uses only the private hardware datasource and genuine Intel XPU/IPMI metrics", () => {
+  assert.deepEqual(
+    validateHardwareGrafana(
+      sources.hardwareDatasource,
+      sources.hardwareDashboard,
+    ),
+    [],
+  )
+  const changed = sources.hardwareDashboard.replace(
+    'hw_gpu_utilization_ratio{job=\\"xpu\\",hw_gpu_task=\\"all\\"}',
+    "DCGM_FI_DEV_GPU_UTIL",
+  )
+  assert.match(
+    validateHardwareGrafana(sources.hardwareDatasource, changed).join("\n"),
+    /NVIDIA|DCGM|unreviewed expression/,
   )
 })
 

@@ -26,7 +26,7 @@ const technicalToolDefinitions = [
     environmentKey: "PRODUCT_GRAFANA_HOST",
     id: "grafana",
     label: "Grafana",
-    path: "/",
+    path: "/d/llmm-infra-overview/llm-machines-infrastructure-overview",
     roles: ["admin"],
   },
   {

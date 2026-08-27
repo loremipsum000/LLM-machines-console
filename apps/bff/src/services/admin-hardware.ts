@@ -66,30 +66,89 @@ const chartDefinitions: HardwareChartDefinition[] = [
       )}}[5m])))`,
   },
   {
-    id: "gpu_temperature",
-    title: "GPU temperature",
-    description: "GPU package temperature from DCGM or nvidia-smi fallback.",
+    id: "xpu_temperature",
+    title: "XPU temperature",
+    description: "Intel XPU GPU and device-memory temperatures from XPUM.",
     chartType: "line",
     unit: "celsius",
-    emptyMessage: "No GPU temperature metrics are available.",
+    emptyMessage: "No Intel XPU temperature metrics are available.",
     thresholds: [threshold("Warning", "warning", 85, "celsius")],
     promql: (host) =>
-      `DCGM_FI_DEV_GPU_TEMP${hostSelector(host)} or llmm_nvidia_gpu_temperature_celsius${hostSelector(
+      metricSelector(
+        "hw_temperature_celsius",
         host,
+        'job="xpu"',
+        'hw_sensor_location=~"gpu|memory"',
+        'statistic="max"',
+      ),
+  },
+  {
+    id: "xpu_utilization",
+    title: "XPU utilization",
+    description: "Intel XPU all-engine utilization reported by XPUM.",
+    chartType: "area",
+    unit: "percent",
+    emptyMessage: "No Intel XPU utilization metrics are available.",
+    thresholds: [threshold("Sustained high", "warning", 90, "percent")],
+    promql: (host) =>
+      `100 * ${metricSelector(
+        "hw_gpu_utilization_ratio",
+        host,
+        'job="xpu"',
+        'hw_gpu_task="all"',
       )}`,
   },
   {
-    id: "gpu_utilization",
-    title: "GPU utilization",
-    description: "GPU core utilization from DCGM or nvidia-smi fallback.",
+    id: "xpu_memory_utilization",
+    title: "XPU memory utilization",
+    description: "Intel XPU device-memory utilization reported by XPUM.",
     chartType: "area",
     unit: "percent",
-    emptyMessage: "No GPU utilization metrics are available.",
-    thresholds: [threshold("Sustained high", "warning", 90, "percent")],
+    emptyMessage: "No Intel XPU memory metrics are available.",
+    thresholds: [threshold("High", "warning", 90, "percent")],
     promql: (host) =>
-      `DCGM_FI_DEV_GPU_UTIL${hostSelector(host)} or llmm_nvidia_gpu_utilization_percent${hostSelector(
+      `100 * ${metricSelector(
+        "hw_memory_utilization_ratio",
         host,
+        'job="xpu"',
+        'hw_memory_location="device"',
       )}`,
+  },
+  {
+    id: "xpu_device_health",
+    title: "XPU device health",
+    description:
+      "Derived directly from XPUM reset-needed state: 1 is healthy and 0 requires reset.",
+    chartType: "line",
+    unit: "state",
+    emptyMessage: "No Intel XPU device-health state is available.",
+    thresholds: [],
+    promql: (host) =>
+      `1 - ${metricSelector(
+        "hw_status",
+        host,
+        'job="xpu"',
+        'hw_type="gpu"',
+        'hw_state="reset_needed"',
+      )}`,
+  },
+  {
+    id: "xpu_frequency_status",
+    title: "XPU frequency status",
+    description:
+      "XPUM frequency-domain state. Throttle-reason series appear only after the driver reports a real throttle event.",
+    chartType: "line",
+    unit: "state",
+    emptyMessage: "No Intel XPU frequency-status metrics are available.",
+    thresholds: [],
+    promql: (host) =>
+      metricSelector(
+        "hw_status",
+        host,
+        'job="xpu"',
+        'hw_type="frequency"',
+        'hw_state=~"ok|throttled"',
+      ),
   },
   {
     id: "ram_usage",
@@ -133,14 +192,116 @@ const chartDefinitions: HardwareChartDefinition[] = [
       )}}))`,
   },
   {
+    id: "bmc_sensor_health",
+    title: "BMC sensor health",
+    description:
+      "Maximum genuine IPMI sensor severity by host: 0 nominal, 1 warning, 2 critical.",
+    chartType: "line",
+    unit: "state",
+    emptyMessage: "No BMC sensor-health metrics are available.",
+    thresholds: [
+      threshold("Warning", "warning", 1, "state"),
+      threshold("Critical", "critical", 2, "state"),
+    ],
+    promql: (host) =>
+      `max by (host) (${[
+        "ipmi_temperature_state",
+        "ipmi_fan_speed_state",
+        "ipmi_voltage_state",
+        "ipmi_current_state",
+        "ipmi_power_state",
+        "ipmi_sensor_state",
+      ]
+        .map((metric) => metricSelector(metric, host, 'job="ipmi"'))
+        .join(" or ")})`,
+  },
+  {
+    id: "chassis_power_state",
+    title: "Chassis power state",
+    description: "BMC chassis power state: 1 on, 0 otherwise.",
+    chartType: "line",
+    unit: "state",
+    emptyMessage: "No BMC chassis power-state metric is available.",
+    thresholds: [],
+    promql: (host) =>
+      metricSelector("ipmi_chassis_power_state", host, 'job="ipmi"'),
+  },
+  {
+    id: "chassis_temperature",
+    title: "Chassis temperatures",
+    description: "Genuine temperature sensor readings reported by the BMC.",
+    chartType: "line",
+    unit: "celsius",
+    emptyMessage: "No BMC temperature readings are available.",
+    thresholds: [threshold("Warning", "warning", 70, "celsius")],
+    promql: (host) =>
+      metricSelector("ipmi_temperature_celsius", host, 'job="ipmi"'),
+  },
+  {
+    id: "fan_speed",
+    title: "Chassis fan speed",
+    description: "Genuine fan speed readings reported by the BMC.",
+    chartType: "line",
+    unit: "rpm",
+    emptyMessage: "No BMC fan-speed readings are available.",
+    thresholds: [],
+    promql: (host) => metricSelector("ipmi_fan_speed_rpm", host, 'job="ipmi"'),
+  },
+  {
+    id: "psu_health",
+    title: "PSU health",
+    description:
+      "Maximum genuine IPMI power-supply sensor severity: 0 nominal, 1 warning, 2 critical.",
+    chartType: "line",
+    unit: "state",
+    emptyMessage: "No BMC power-supply state metrics are available.",
+    thresholds: [
+      threshold("Warning", "warning", 1, "state"),
+      threshold("Critical", "critical", 2, "state"),
+    ],
+    promql: (host) =>
+      `max by (host) (${metricSelector(
+        "ipmi_sensor_state",
+        host,
+        'job="ipmi"',
+        'type=~"Power Supply|Power Unit"',
+      )} or ${metricSelector(
+        "ipmi_power_state",
+        host,
+        'job="ipmi"',
+        'name=~"(?i).*psu.*|.*power supply.*"',
+      )})`,
+  },
+  {
     id: "power_draw",
-    title: "Power draw",
-    description: "Live chassis power draw for compute-node-a from IPMI DCMI.",
+    title: "Appliance power draw",
+    description: "Live chassis power draw from the IPMI DCMI collector.",
     chartType: "area",
     unit: "watt",
     emptyMessage: "No IPMI DCMI power draw metrics are available.",
     thresholds: [],
-    promql: () => 'ipmi_dcmi_power_consumption_watts{host="compute-node-a"}',
+    promql: (host) =>
+      metricSelector(
+        "ipmi_dcmi_power_consumption_current_watts",
+        host,
+        'job="ipmi"',
+      ),
+  },
+  {
+    id: "monthly_energy_projection",
+    title: "Projected monthly energy",
+    description:
+      "Projected 30-day kWh from the genuine DCMI samples currently retained; this is not historical 30-day consumption until a full window exists.",
+    chartType: "area",
+    unit: "kilowatt_hour",
+    emptyMessage: "No retained IPMI DCMI power samples are available.",
+    thresholds: [],
+    promql: (host) =>
+      `avg_over_time(${metricSelector(
+        "ipmi_dcmi_power_consumption_current_watts",
+        host,
+        'job="ipmi"',
+      )}[30d]) * 24 * 30 / 1000`,
   },
   {
     id: "network_throughput",
@@ -284,6 +445,9 @@ function toHardwareSeries(
   const device =
     sample.metric.gpu ??
     sample.metric.device ??
+    sample.metric.pci_bdf ??
+    sample.metric.hw_sensor_location ??
+    sample.metric.hw_name ??
     sample.metric.mountpoint ??
     sample.metric.name ??
     null
@@ -420,9 +584,12 @@ function nodeSelector(host: string, ...extra: string[]): string {
   return ['job="node"', ...hostMatcher(host), ...extra].join(",")
 }
 
-function hostSelector(host: string): string {
-  const matcher = hostMatcher(host)
-  return matcher.length > 0 ? `{${matcher.join(",")}}` : ""
+function metricSelector(
+  metric: string,
+  host: string,
+  ...extra: string[]
+): string {
+  return `${metric}{${[...hostMatcher(host), ...extra].join(",")}}`
 }
 
 function hostMatcher(host: string): string[] {
@@ -567,11 +734,15 @@ function seriesLabel(
       index,
     )
   }
-  if (chartId === "gpu_temperature" || chartId === "gpu_utilization") {
+  if (chartId.startsWith("xpu_")) {
     return joinedSeriesLabel(
       [
         metric.host ?? metric.instance,
-        metric.gpu ? `GPU ${metric.gpu}` : metric.device,
+        metric.pci_bdf,
+        metric.hw_sensor_location,
+        metric.hw_gpu_task,
+        metric.hw_memory_location,
+        metric.hw_state,
       ],
       index,
     )
@@ -619,16 +790,13 @@ function joinedSeriesLabel(
 
 function metricSource(metric: Record<string, string>): string | null {
   const metricName = metric.__name__ ?? ""
-  if (metricName.startsWith("DCGM_")) {
-    return "DCGM"
-  }
-  if (metricName.startsWith("llmm_nvidia")) {
-    return "nvidia-smi"
+  if (metricName.startsWith("hw_") || metric.job === "xpu") {
+    return "Intel XPUM"
   }
   if (metricName.startsWith("node_")) {
     return "node_exporter"
   }
-  if (metricName.startsWith("ipmi_")) {
+  if (metricName.startsWith("ipmi_") || metric.job === "ipmi") {
     return "ipmi_exporter"
   }
   return null

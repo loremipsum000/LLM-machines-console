@@ -732,11 +732,20 @@ describe("Inference Core contract boundary", () => {
   it("parses retained Hardware and Inference projections", () => {
     const chartIds = [
       "cpu_utilization",
-      "gpu_temperature",
-      "gpu_utilization",
+      "xpu_temperature",
+      "xpu_utilization",
+      "xpu_memory_utilization",
+      "xpu_device_health",
+      "xpu_frequency_status",
       "ram_usage",
       "filesystem_usage",
+      "bmc_sensor_health",
+      "chassis_power_state",
+      "chassis_temperature",
+      "fan_speed",
+      "psu_health",
       "power_draw",
+      "monthly_energy_projection",
       "network_throughput",
     ] as const
     const charts = chartIds.map((id) => ({
@@ -751,14 +760,26 @@ describe("Inference Core contract boundary", () => {
       sourceStatus: "ok" as const,
       thresholds: [],
       title: id,
-      unit:
-        id === "gpu_temperature"
-          ? ("celsius" as const)
-          : id === "network_throughput"
-            ? ("bytes_per_second" as const)
-            : id === "power_draw"
-              ? ("watt" as const)
-              : ("percent" as const),
+      unit: (
+        {
+          bmc_sensor_health: "state",
+          chassis_power_state: "state",
+          chassis_temperature: "celsius",
+          cpu_utilization: "percent",
+          fan_speed: "rpm",
+          filesystem_usage: "percent",
+          monthly_energy_projection: "kilowatt_hour",
+          network_throughput: "bytes_per_second",
+          power_draw: "watt",
+          psu_health: "state",
+          ram_usage: "percent",
+          xpu_device_health: "state",
+          xpu_frequency_status: "state",
+          xpu_memory_utilization: "percent",
+          xpu_temperature: "celsius",
+          xpu_utilization: "percent",
+        } as const
+      )[id],
     }))
 
     expect(

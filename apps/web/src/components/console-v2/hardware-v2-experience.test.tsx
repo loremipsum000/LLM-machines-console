@@ -156,11 +156,25 @@ function hardwareFixture(overrides: Record<string, unknown> = {}) {
 function chartFixtures() {
   return [
     ["cpu_utilization", "CPU utilization", "area", "percent"],
-    ["gpu_temperature", "GPU temperature", "line", "celsius"],
-    ["gpu_utilization", "GPU utilization", "area", "percent"],
+    ["xpu_temperature", "XPU temperature", "line", "celsius"],
+    ["xpu_utilization", "XPU utilization", "area", "percent"],
+    ["xpu_memory_utilization", "XPU memory utilization", "area", "percent"],
+    ["xpu_device_health", "XPU device health", "line", "state"],
+    ["xpu_frequency_status", "XPU frequency status", "line", "state"],
     ["ram_usage", "RAM usage", "area", "percent"],
     ["filesystem_usage", "Filesystem usage", "bar", "percent"],
-    ["power_draw", "Power draw", "area", "watt"],
+    ["bmc_sensor_health", "BMC sensor health", "line", "state"],
+    ["chassis_power_state", "Chassis power state", "line", "state"],
+    ["chassis_temperature", "Chassis temperatures", "line", "celsius"],
+    ["fan_speed", "Chassis fan speed", "line", "rpm"],
+    ["psu_health", "PSU health", "line", "state"],
+    ["power_draw", "Appliance power draw", "area", "watt"],
+    [
+      "monthly_energy_projection",
+      "Projected monthly energy",
+      "area",
+      "kilowatt_hour",
+    ],
     ["network_throughput", "Network throughput", "line", "bytes_per_second"],
   ].map(([id, title, chartType, unit]) => ({
     chartType,

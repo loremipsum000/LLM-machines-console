@@ -11,7 +11,7 @@ describe("Console Technical Tools configuration", () => {
   it("gives Admin only the three retained native authorities", () => {
     expect(technicalToolsForRole("admin", environment)).toEqual([
       expect.objectContaining({
-        href: "https://grafana.example.test/",
+        href: "https://grafana.example.test/d/llmm-infra-overview/llm-machines-infrastructure-overview",
         id: "grafana",
       }),
       expect.objectContaining({

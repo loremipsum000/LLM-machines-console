@@ -150,6 +150,14 @@
       "disableDeletion": true,
       "provisioned": true
     },
+    "hardwareDatasource": {
+      "managementTargetsInVm103": false,
+      "operatorAccess": "DENY",
+      "publicAccess": false,
+      "queryOnly": true,
+      "runtimeBinding": "$LLMM_HARDWARE_PROMETHEUS_URL",
+      "uid": "llmm-hardware-prometheus"
+    },
     "customerFolder": {
       "adminPermission": "Edit",
       "operatorPermission": "DENY",

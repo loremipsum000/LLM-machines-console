@@ -367,6 +367,15 @@ function formatChartValue(value: number, chart: AdminHardwareChart): string {
   if (chart.unit === "watt") {
     return `${Math.round(value)} W`
   }
+  if (chart.unit === "rpm") {
+    return `${Math.round(value).toLocaleString("en-US")} RPM`
+  }
+  if (chart.unit === "kilowatt_hour") {
+    return `${value.toFixed(1)} kWh`
+  }
+  if (chart.unit === "state") {
+    return String(Math.round(value))
+  }
   return `${Math.round(value)}%`
 }
 
