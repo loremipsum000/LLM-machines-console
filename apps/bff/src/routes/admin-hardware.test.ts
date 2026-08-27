@@ -96,7 +96,8 @@ describe("Admin hardware", () => {
     expect(
       body.charts.find((chart: { id: string }) => chart.id === "power_draw"),
     ).toMatchObject({
-      description: "Live chassis power draw from the IPMI DCMI collector.",
+      description:
+        "Live chassis input power from the BMC's genuine PW consumption sensor.",
       unit: "watt",
       series: [
         expect.objectContaining({
@@ -387,12 +388,13 @@ function matrixSamplesForQuery(query: string): unknown[] {
       ),
     ]
   }
-  if (query.includes("ipmi_dcmi_power_consumption_current_watts")) {
+  if (query.includes("ipmi_power_watts")) {
     return [
       prometheusMatrixSample(
         {
-          __name__: "ipmi_dcmi_power_consumption_current_watts",
+          __name__: "ipmi_power_watts",
           host: "nihal01",
+          name: "PW consumption",
         },
         ["101", "105"],
       ),

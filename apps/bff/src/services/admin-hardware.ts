@@ -275,32 +275,35 @@ const chartDefinitions: HardwareChartDefinition[] = [
   {
     id: "power_draw",
     title: "Appliance power draw",
-    description: "Live chassis power draw from the IPMI DCMI collector.",
+    description:
+      "Live chassis input power from the BMC's genuine PW consumption sensor.",
     chartType: "area",
     unit: "watt",
-    emptyMessage: "No IPMI DCMI power draw metrics are available.",
+    emptyMessage: "No BMC input-power sensor metric is available.",
     thresholds: [],
     promql: (host) =>
       metricSelector(
-        "ipmi_dcmi_power_consumption_current_watts",
+        "ipmi_power_watts",
         host,
         'job="ipmi"',
+        'name="PW consumption"',
       ),
   },
   {
     id: "monthly_energy_projection",
     title: "Projected monthly energy",
     description:
-      "Projected 30-day kWh from the genuine DCMI samples currently retained; this is not historical 30-day consumption until a full window exists.",
+      "Projected 30-day kWh from the genuine BMC input-power samples currently retained; this is not historical 30-day consumption until a full window exists.",
     chartType: "area",
     unit: "kilowatt_hour",
-    emptyMessage: "No retained IPMI DCMI power samples are available.",
+    emptyMessage: "No retained BMC input-power samples are available.",
     thresholds: [],
     promql: (host) =>
       `avg_over_time(${metricSelector(
-        "ipmi_dcmi_power_consumption_current_watts",
+        "ipmi_power_watts",
         host,
         'job="ipmi"',
+        'name="PW consumption"',
       )}[30d]) * 24 * 30 / 1000`,
   },
   {

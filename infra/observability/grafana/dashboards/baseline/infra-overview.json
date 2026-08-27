@@ -814,14 +814,14 @@
             "type": "prometheus",
             "uid": "llmm-hardware-prometheus"
           },
-          "expr": "ipmi_dcmi_power_consumption_current_watts{job=\"ipmi\"}",
+          "expr": "ipmi_power_watts{job=\"ipmi\",name=\"PW consumption\"}",
           "legendFormat": "{{host}} chassis",
           "refId": "A"
         }
       ],
       "title": "Appliance power draw",
       "type": "stat",
-      "description": "Genuine current chassis power draw from IPMI DCMI."
+      "description": "Genuine current chassis input power from the BMC PW consumption sensor."
     },
     {
       "datasource": {
@@ -862,7 +862,7 @@
             "type": "prometheus",
             "uid": "llmm-hardware-prometheus"
           },
-          "expr": "avg_over_time(ipmi_dcmi_power_consumption_current_watts{job=\"ipmi\"}[30d]) * 24 * 30 / 1000",
+          "expr": "avg_over_time(ipmi_power_watts{job=\"ipmi\",name=\"PW consumption\"}[30d]) * 24 * 30 / 1000",
           "legendFormat": "{{host}} projected",
           "refId": "A"
         }

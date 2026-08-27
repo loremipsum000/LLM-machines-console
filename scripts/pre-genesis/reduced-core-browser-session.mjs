@@ -5992,7 +5992,7 @@ function metricNameForQuery(query) {
   if (query.includes("GPU_UTIL")) return "DCGM_FI_DEV_GPU_UTIL"
   if (query.includes("memory")) return "node_memory_MemAvailable_bytes"
   if (query.includes("filesystem")) return "node_filesystem_avail_bytes"
-  if (query.includes("power")) return "ipmi_dcmi_power_consumption_watts"
+  if (query.includes("power")) return "ipmi_power_watts"
   if (query.includes("network")) return "node_network_receive_bytes_total"
   return "node_cpu_seconds_total"
 }

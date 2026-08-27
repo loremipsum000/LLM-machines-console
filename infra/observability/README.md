@@ -52,9 +52,9 @@ The operational alerts are:
 
 The infrastructure dashboard consumes genuine node_exporter, IPMI exporter,
 and Intel XPUM series. It retains explicit unavailable state for PDM and uses
-the DCMI samples currently retained for a clearly labeled monthly projection;
-it does not restore historical NVIDIA/DCGM expressions or fabricate missing
-hardware series.
+the BMC's genuine `PW consumption` input-power samples for a clearly labeled
+monthly projection; it does not restore historical NVIDIA/DCGM expressions or
+fabricate missing hardware series.
 
 ## Source validation
 
