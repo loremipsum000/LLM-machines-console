@@ -56,8 +56,9 @@ listener. The BFF resolves only that service name to loopback. No Firecrawl
 native port or UI becomes customer-accessible.
 
 Hardware projections query the retained Prometheus service through the
-credential-free private VM102 placement endpoint declared by the founder
-placement input. The renderer requires its exact port and emits
+credential-free private VM102 NAT-side placement endpoint declared separately
+from the lab-side inference gateway in the founder placement input. The
+renderer requires its exact address and port and emits
 `ADMIN_PROMETHEUS_BASE_URL`; no public Prometheus authority or customer route
 is created.
 

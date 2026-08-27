@@ -92,7 +92,13 @@ function validatePlacement(value) {
     !localImageId(value.images.web)
   )
     fail("image")
-  exactKeys(value.network, ["edgeGateway", "gateway", "inference", "vm103"])
+  exactKeys(value.network, [
+    "edgeGateway",
+    "gateway",
+    "inference",
+    "prometheus",
+    "vm103",
+  ])
   if (Object.values(value.network).some((address) => !privateIpv4(address)))
     fail("network")
   exactKeys(value.ports, [
@@ -182,7 +188,7 @@ function renderWebEnvironment(p) {
 function renderBffEnvironment(p) {
   return lines({
     ADMIN_LITELLM_BASE_URL: `http://127.0.0.1:${p.ports.litellm}`,
-    ADMIN_PROMETHEUS_BASE_URL: `http://${p.network.gateway}:${p.ports.prometheus}`,
+    ADMIN_PROMETHEUS_BASE_URL: `http://${p.network.prometheus}:${p.ports.prometheus}`,
     CONSOLE_OIDC_CLIENT_ID: "console-web",
     CONSOLE_ORIGIN: `https://${p.authorities.console}`,
     CONSOLE_SESSION_KEYRING_FILE: "/run/llm-machines/session-keyring.json",

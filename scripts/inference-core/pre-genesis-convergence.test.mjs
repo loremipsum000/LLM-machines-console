@@ -45,6 +45,7 @@ function placement() {
       edgeGateway: "10.30.0.1",
       gateway: "10.10.0.1",
       inference: "10.20.0.2",
+      prometheus: "10.30.0.1",
       vm103: "10.30.0.3",
     },
     paths: {
@@ -117,7 +118,7 @@ test("founder placement renders exact edge, supervision, and private inference c
     )
     assert.match(
       bffEnvironment,
-      /ADMIN_PROMETHEUS_BASE_URL=http:\/\/10\.10\.0\.1:19090/,
+      /ADMIN_PROMETHEUS_BASE_URL=http:\/\/10\.30\.0\.1:19090/,
     )
     assert.match(
       bffEnvironment,
@@ -387,6 +388,9 @@ test("founder placement rejects mutable images, duplicate ports, and public netw
     },
     (value) => {
       value.network.inference = "203.0.113.8"
+    },
+    (value) => {
+      value.network.prometheus = "203.0.113.9"
     },
   ]) {
     const value = placement()
