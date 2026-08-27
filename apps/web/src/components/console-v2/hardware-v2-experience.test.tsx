@@ -167,7 +167,6 @@ function chartFixtures() {
     ["chassis_power_state", "Chassis power state", "line", "state"],
     ["chassis_temperature", "Chassis temperatures", "line", "celsius"],
     ["fan_speed", "Chassis fan speed", "line", "rpm"],
-    ["psu_health", "PSU health", "line", "state"],
     ["power_draw", "Appliance power draw", "area", "watt"],
     [
       "monthly_energy_projection",

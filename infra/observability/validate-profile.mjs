@@ -114,7 +114,6 @@ const allowedHardwareDashboardExpressions = new Set([
   'hw_power_watts{job="xpu",hw_sensor_location=~"card|package"}',
   'ipmi_temperature_celsius{job="ipmi"}',
   'ipmi_fan_speed_rpm{job="ipmi"}',
-  'max by (host) (ipmi_sensor_state{job="ipmi",type=~"Power Supply|Power Unit"} or ipmi_power_state{job="ipmi",name=~"(?i).*psu.*|.*power supply.*"})',
   '{__name__=~"ipmi_(temperature|fan_speed|voltage|current|power|sensor)_state",job="ipmi"}',
   'ALERTS{alertstate="firing"}',
   'ipmi_power_watts{job="ipmi",name="PW consumption"}',

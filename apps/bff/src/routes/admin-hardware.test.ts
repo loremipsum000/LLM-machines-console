@@ -69,7 +69,7 @@ describe("Admin hardware", () => {
       grafanaUrl: null,
       availableHosts: ["core-appliance", "inference-nat", "nihal01", "xpu-b50"],
     })
-    expect(body.charts).toHaveLength(16)
+    expect(body.charts).toHaveLength(15)
     expect(
       body.charts.every(
         (chart: { grafanaUrl: string | null }) => chart.grafanaUrl === null,
@@ -88,7 +88,6 @@ describe("Admin hardware", () => {
       "chassis_power_state",
       "chassis_temperature",
       "fan_speed",
-      "psu_health",
       "power_draw",
       "monthly_energy_projection",
       "network_throughput",
@@ -425,19 +424,6 @@ function matrixSamplesForQuery(query: string): unknown[] {
           name: "Inlet Temp",
         },
         ["24", "25"],
-      ),
-    ]
-  }
-  if (query.includes("Power Supply|Power Unit")) {
-    return [
-      prometheusMatrixSample(
-        {
-          __name__: "ipmi_sensor_state",
-          host: "nihal01",
-          name: "PSU1",
-          type: "Power Supply",
-        },
-        ["0", "0"],
       ),
     ]
   }

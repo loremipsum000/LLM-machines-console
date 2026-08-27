@@ -248,31 +248,6 @@ const chartDefinitions: HardwareChartDefinition[] = [
     promql: (host) => metricSelector("ipmi_fan_speed_rpm", host, 'job="ipmi"'),
   },
   {
-    id: "psu_health",
-    title: "PSU health",
-    description:
-      "Maximum genuine IPMI power-supply sensor severity: 0 nominal, 1 warning, 2 critical.",
-    chartType: "line",
-    unit: "state",
-    emptyMessage: "No BMC power-supply state metrics are available.",
-    thresholds: [
-      threshold("Warning", "warning", 1, "state"),
-      threshold("Critical", "critical", 2, "state"),
-    ],
-    promql: (host) =>
-      `max by (host) (${metricSelector(
-        "ipmi_sensor_state",
-        host,
-        'job="ipmi"',
-        'type=~"Power Supply|Power Unit"',
-      )} or ${metricSelector(
-        "ipmi_power_state",
-        host,
-        'job="ipmi"',
-        'name=~"(?i).*psu.*|.*power supply.*"',
-      )})`,
-  },
-  {
     id: "power_draw",
     title: "Appliance power draw",
     description:

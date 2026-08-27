@@ -52,9 +52,13 @@ The operational alerts are:
 
 The infrastructure dashboard consumes genuine node_exporter, IPMI exporter,
 and Intel XPUM series. It retains explicit unavailable state for PDM and uses
-the BMC's genuine `PW consumption` input-power samples for a clearly labeled
-monthly projection; it does not restore historical NVIDIA/DCGM expressions or
-fabricate missing hardware series.
+the BMC's genuine `ipmi_power_watts{name="PW consumption"}` samples as the
+canonical appliance/platform power source for current draw and a clearly
+labeled monthly projection. This power source satisfies the product telemetry
+contract without a secondary DCMI, individual-PSU, or external-PDU acceptance
+dependency. External PDU comparison is optional future calibration. The
+dashboard does not restore historical NVIDIA/DCGM expressions or fabricate
+missing hardware series.
 
 ## Source validation
 

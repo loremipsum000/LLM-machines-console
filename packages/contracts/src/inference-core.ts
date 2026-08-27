@@ -1678,7 +1678,6 @@ export const adminHardwareChartIdSchema = z.enum([
   "chassis_power_state",
   "chassis_temperature",
   "fan_speed",
-  "psu_health",
   "power_draw",
   "monthly_energy_projection",
   "network_throughput",
@@ -1780,7 +1779,7 @@ export const adminHardwareResponseSchema = z
     summary: z.string().min(1),
     grafanaUrl: z.null(),
     alertmanagerUrl: z.null(),
-    charts: z.array(adminHardwareChartSchema).length(16),
+    charts: z.array(adminHardwareChartSchema).length(15),
     activeAlerts: z.array(adminHardwareAlertSchema),
   })
   .strict()
