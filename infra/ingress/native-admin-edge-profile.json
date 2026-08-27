@@ -261,9 +261,27 @@
           "methods": ["GET", "HEAD"],
           "path": {
             "kind": "regex",
-            "value": "^/api/(?:dashboards/home|login/ping|plugins|user|user/orgs|user/preferences|user/stars)$"
+            "value": "^/api/(?:dashboards/home|login/ping|plugins|user|user/auth-tokens|user/orgs|user/stars|user/teams)$"
           },
           "queryPolicy": "forbid"
+        },
+        {
+          "id": "user-preferences",
+          "methods": ["GET", "HEAD", "PATCH", "PUT"],
+          "path": { "kind": "exact", "value": "/api/user/preferences" },
+          "queryPolicy": "forbid",
+          "bodyLimit": "16k"
+        },
+        {
+          "id": "revoke-own-session",
+          "methods": ["POST"],
+          "path": {
+            "kind": "exact",
+            "value": "/api/user/revoke-auth-token"
+          },
+          "queryPolicy": "forbid",
+          "bodyLimit": "1k",
+          "authority": "AUTHENTICATED_USER_SESSION_ONLY"
         },
         {
           "id": "plugin-settings",

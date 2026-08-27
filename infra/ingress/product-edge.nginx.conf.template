@@ -875,9 +875,29 @@ http {
       return 404;
     }
 
-    location ~ ^/api/(?:dashboards/home|login/ping|plugins|user|user/orgs|user/preferences|user/stars)$ {
+    location ~ ^/api/(?:dashboards/home|login/ping|plugins|user|user/auth-tokens|user/orgs|user/stars|user/teams)$ {
       limit_except GET HEAD { deny all; }
       if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/user/preferences {
+      limit_except GET HEAD PATCH PUT { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 16k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/user/revoke-auth-token {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 1k;
       include /etc/nginx/llm-machines/proxy-common.inc;
       include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
       proxy_set_header Host $llmm_public_host;

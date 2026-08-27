@@ -600,6 +600,51 @@ test("Grafana profile pages admit only exact read-only destinations", () => {
   )
 })
 
+test("Grafana profile dependencies stay self-scoped and exact", () => {
+  const nginx = sources["product-edge.nginx.conf.template"]
+  assert.match(
+    nginx,
+    /location ~ \^\/api\/\(\?:dashboards\/home\|login\/ping\|plugins\|user\|user\/auth-tokens\|user\/orgs\|user\/stars\|user\/teams\)\$ \{[\s\S]{0,180}limit_except GET HEAD/,
+  )
+  assert.match(
+    nginx,
+    /location = \/api\/user\/preferences \{[\s\S]{0,180}limit_except GET HEAD PATCH PUT[\s\S]{0,180}client_max_body_size 16k;/,
+  )
+  assert.match(
+    nginx,
+    /location = \/api\/user\/revoke-auth-token \{[\s\S]{0,160}limit_except POST[\s\S]{0,160}client_max_body_size 1k;/,
+  )
+
+  for (const [before, after] of [
+    ["user/auth-tokens|user/orgs", "admin/users|user/orgs"],
+    ["limit_except GET HEAD PATCH PUT", "limit_except GET HEAD PATCH PUT POST"],
+    ["client_max_body_size 16k;", "client_max_body_size 2m;"],
+    ["limit_except POST", "limit_except GET POST"],
+    ["client_max_body_size 1k;", "client_max_body_size 1m;"],
+  ]) {
+    const result = validateIngressSources(
+      changed("product-edge.nginx.conf.template", (source) =>
+        source.replace(before, after),
+      ),
+    )
+    assert.ok(
+      result.some((error) => /fingerprint|Grafana|location/i.test(error)),
+    )
+  }
+
+  const profile = JSON.parse(sources["native-admin-edge-profile.json"])
+  profile.services.grafana.routes.find(
+    ({ id }) => id === "revoke-own-session",
+  ).authority = "ANY_USER_SESSION"
+  const result = validateIngressSources({
+    ...sources,
+    "native-admin-edge-profile.json": JSON.stringify(profile),
+  })
+  assert.ok(
+    result.some((error) => /fingerprint|Grafana self-service/i.test(error)),
+  )
+})
+
 test("Keycloak native user deletion remains denied before upstream", () => {
   const result = validateIngressSources(
     changed("product-edge.nginx.conf.template", (source) =>

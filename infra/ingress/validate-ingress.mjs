@@ -153,7 +153,9 @@ const expectedNginxLocations = {
     "~ ^/profile(?:/notifications)?$",
     "@grafana_global_logout_fallback",
     "~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$",
-    "~ ^/api/(?:dashboards/home|login/ping|plugins|user|user/orgs|user/preferences|user/stars)$",
+    "~ ^/api/(?:dashboards/home|login/ping|plugins|user|user/auth-tokens|user/orgs|user/stars|user/teams)$",
+    "= /api/user/preferences",
+    "= /api/user/revoke-auth-token",
     '~ "^/api/plugins/[a-z0-9_-]{1,128}/settings$"',
     "= /api/dashboards/db",
     '~ "^/api/dashboards/uid/[A-Za-z0-9_-]{1,128}$"',
@@ -221,9 +223,9 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "4d86a92226e17543c1e79a8446c68b95e6deb2ab45e2a24c4f0877e9ca6912b8",
+    "e6ed684e1f9750e9ee993ab3395da25bfd188b7ae0ee42e63b0baaa118309192",
   "native-admin-edge-profile.json":
-    "da14a3955cb049cae563aaacb309246a3f3a121552d9f2a107a472947d1ccdb5",
+    "db272718f5606853842df7a3558d675fb87ac0f7b949d06b19f88f9f1aec4083",
   "proxy-common.inc":
     "cf8199a159a6ff4e5842d26b00277d7b7ddab8ab5169258c8b4d14f1cce7d3f2",
   "request-headers-console-browser.inc":
@@ -514,6 +516,15 @@ function validateNativeAdmin(profile, errors) {
   const grafanaProfilePages = profile.services?.grafana?.routes?.find(
     ({ id }) => id === "profile-pages",
   )
+  const grafanaApprovedReadApi = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "approved-read-api",
+  )
+  const grafanaUserPreferences = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "user-preferences",
+  )
+  const grafanaRevokeOwnSession = profile.services?.grafana?.routes?.find(
+    ({ id }) => id === "revoke-own-session",
+  )
   const grafanaSessionRotationRedirect =
     profile.services?.grafana?.routes?.find(
       ({ id }) => id === "session-rotation-redirect",
@@ -528,6 +539,31 @@ function validateNativeAdmin(profile, errors) {
       sameJson(grafanaProfilePages?.methods, ["GET", "HEAD"]) &&
       grafanaProfilePages?.queryPolicy === "forbid",
     "Grafana profile-page policy changed",
+  )
+  add(
+    errors,
+    grafanaApprovedReadApi?.path?.kind === "regex" &&
+      grafanaApprovedReadApi?.path?.value ===
+        "^/api/(?:dashboards/home|login/ping|plugins|user|user/auth-tokens|user/orgs|user/stars|user/teams)$" &&
+      sameJson(grafanaApprovedReadApi?.methods, ["GET", "HEAD"]) &&
+      grafanaApprovedReadApi?.queryPolicy === "forbid" &&
+      grafanaUserPreferences?.path?.kind === "exact" &&
+      grafanaUserPreferences?.path?.value === "/api/user/preferences" &&
+      sameJson(grafanaUserPreferences?.methods, [
+        "GET",
+        "HEAD",
+        "PATCH",
+        "PUT",
+      ]) &&
+      grafanaUserPreferences?.queryPolicy === "forbid" &&
+      grafanaUserPreferences?.bodyLimit === "16k" &&
+      grafanaRevokeOwnSession?.path?.kind === "exact" &&
+      grafanaRevokeOwnSession?.path?.value === "/api/user/revoke-auth-token" &&
+      sameJson(grafanaRevokeOwnSession?.methods, ["POST"]) &&
+      grafanaRevokeOwnSession?.queryPolicy === "forbid" &&
+      grafanaRevokeOwnSession?.bodyLimit === "1k" &&
+      grafanaRevokeOwnSession?.authority === "AUTHENTICATED_USER_SESSION_ONLY",
+    "Grafana self-service profile API policy changed",
   )
   add(
     errors,
@@ -1120,6 +1156,8 @@ function validateNginx(sources, errors) {
       ) &&
       grafanaServer.includes("location = /login/generic_oauth") &&
       grafanaServer.includes("location ~ ^/profile(?:/notifications)?$") &&
+      grafanaServer.includes("location = /api/user/preferences") &&
+      grafanaServer.includes("location = /api/user/revoke-auth-token") &&
       grafanaServer.includes("location = /user/auth-tokens/rotate") &&
       grafanaServer.includes("location = /api/user/auth-tokens/rotate") &&
       grafanaServer.includes("location = /api/dashboards/db") &&
