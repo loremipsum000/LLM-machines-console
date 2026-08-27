@@ -494,9 +494,9 @@ describe("opaque server-side Console sessions", () => {
 
     expect(fixture.oidc.endSession).toHaveBeenCalledWith("refresh-1")
     expect(fixture.oidc.revoke).not.toHaveBeenCalled()
-    expect(
-      await fixture.repository.latestNativeLogoutAt("operator-1"),
-    ).toEqual(fixture.now())
+    expect(await fixture.repository.latestNativeLogoutAt("operator-1")).toEqual(
+      fixture.now(),
+    )
     await expect(
       fixture.service.resolve(session.sessionHandle),
     ).resolves.toMatchObject({ state: "terminal" })
@@ -512,9 +512,9 @@ describe("opaque server-side Console sessions", () => {
     await expect(
       fixture.service.globalLogout(session.sessionHandle),
     ).resolves.toBeUndefined()
-    expect(
-      await fixture.repository.latestNativeLogoutAt("operator-1"),
-    ).toEqual(fixture.now())
+    expect(await fixture.repository.latestNativeLogoutAt("operator-1")).toEqual(
+      fixture.now(),
+    )
     expect(fixture.repository.sessionRecords.size).toBe(0)
   })
 
@@ -523,7 +523,8 @@ describe("opaque server-side Console sessions", () => {
     const session = await fixture.login()
     const [digest, record] = fixture.repository.sessionRecords.entries().next()
       .value ?? [null, null]
-    if (!digest || !record) throw new Error("Expected a durable session record.")
+    if (!digest || !record)
+      throw new Error("Expected a durable session record.")
     fixture.repository.sessionRecords.set(digest, {
       ...record,
       encryptedPayload: "invalid-encrypted-payload",
