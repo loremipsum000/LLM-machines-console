@@ -182,6 +182,10 @@ describe("ConsoleV2Shell", () => {
       "/api/console/session/logout",
     )
     expect(signOutForm?.getAttribute("method")).toBe("post")
+    const sidebar = screen.getByRole("complementary")
+    expect(sidebar.className).toContain("lg:inset-y-2")
+    expect(sidebar.className).toContain("lg:left-2")
+    expect(sidebar.className).not.toContain("lg:left-0")
     expect(screen.getByRole("main").className).toContain(
       "lg:ml-[clamp(320px,calc(100vw-690px),534px)]",
     )

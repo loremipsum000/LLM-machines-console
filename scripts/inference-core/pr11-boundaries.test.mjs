@@ -15,6 +15,7 @@ import {
   pr11GeneratedDestinationPaths,
   pr11GovernancePaths,
   pr11KeysConsoleHrefManifest,
+  pr11KeysGrafanaConsoleHrefManifest,
   pr11LaneAnchor,
   pr11LogicalSurfaceContract,
   pr11Pr09HistoricalNativeEvidenceBindings,
@@ -240,6 +241,30 @@ test("PR-11 rejects literal, aliased, and BFF-supplied external hrefs", () => {
   assert.deepEqual(
     verifyPr11ConsoleHrefManifest(pr11KeysConsoleHrefManifest),
     [],
+  )
+
+  assert.deepEqual(
+    verifyPr11ConsoleHrefManifest(pr11KeysGrafanaConsoleHrefManifest),
+    [],
+  )
+
+  const aliasedGrafanaManifest = structuredClone(
+    pr11KeysGrafanaConsoleHrefManifest,
+  )
+  const grafanaIndex = aliasedGrafanaManifest.findIndex(
+    ({ path, expression }) =>
+      path ===
+        "apps/web/src/components/console-v2/hardware-v2-experience.tsx" &&
+      expression === "expression:grafanaHref",
+  )
+  aliasedGrafanaManifest[grafanaIndex] = {
+    path: "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+    expression: "expression:nativeTarget",
+  }
+  aliasedGrafanaManifest.sort(compareHrefEntries)
+  assert.match(
+    verifyPr11ConsoleHrefManifest(aliasedGrafanaManifest).join("\n"),
+    /Console href manifest changed/,
   )
 
   const mixedManifest = structuredClone(pr11KeysConsoleHrefManifest)

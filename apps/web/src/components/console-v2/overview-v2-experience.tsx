@@ -28,8 +28,8 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
           Overview
         </h1>
         <p className="mt-3 max-w-[560px] text-sm leading-5 text-[#b2b2b2]">
-          A reduced preview of key access, inference usage, appliance health,
-          system status, and recent audit activity.
+          See key access, inference usage, appliance health, system status, and
+          recent activity at a glance.
         </p>
         <p className="mt-2 text-xs leading-5 text-[#8f8f8f]">
           Updated {formatTimestamp(overview.generatedAt)} UTC

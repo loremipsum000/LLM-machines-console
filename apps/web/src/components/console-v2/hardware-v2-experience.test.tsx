@@ -26,6 +26,11 @@ describe("HardwareV2Experience alerts", () => {
   it("shows an explicit not-configured state without deep links", () => {
     render(<HardwareV2Experience hardware={hardwareFixture()} />)
 
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Hardware" }),
+    ).toBeTruthy()
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull()
+    expect(screen.getByText(/hardware signals that matter most/i)).toBeTruthy()
     const alerts = screen.getByRole("region", { name: "Active alerts" })
     expect(within(alerts).getByText("Not configured")).toBeTruthy()
     expect(
@@ -110,9 +115,23 @@ describe("HardwareV2Experience alerts", () => {
         .getAllByRole("link")
         .every((link) => link.getAttribute("href")?.startsWith("/hardware")),
     ).toBe(true)
-    expect(
-      screen.getByText("Hardware metrics remain available in Console"),
-    ).toBeTruthy()
+    expect(screen.queryByText(/Hardware metrics remain/)).toBeNull()
+    expect(screen.queryByRole("link", { name: "Go to Grafana" })).toBeNull()
+  })
+
+  it("offers the validated Grafana destination as a visible tertiary action", () => {
+    render(
+      <HardwareV2Experience
+        grafanaHref="https://grafana.example.test/"
+        hardware={hardwareFixture()}
+      />,
+    )
+
+    const link = screen.getByRole("link", { name: "Go to Grafana" })
+    expect(link.getAttribute("href")).toBe("https://grafana.example.test/")
+    expect(link.getAttribute("target")).toBe("_blank")
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer")
+    expect(link.className).toContain("text-[#73cfff]")
   })
 })
 

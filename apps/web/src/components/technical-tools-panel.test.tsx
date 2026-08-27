@@ -42,6 +42,8 @@ describe("TechnicalToolsPanel", () => {
       expect(link.getAttribute("target")).toBe("_blank")
       expect(link.getAttribute("rel")).toBe("noopener noreferrer")
       expect(link.getAttribute("href")).not.toMatch(/[?#]|@/)
+      expect(link.className).toContain("bg-transparent")
+      expect(link.className).toContain("text-[#fdfdfd]")
     }
     expect(screen.queryByText(/Portainer/i)).toBeNull()
   })

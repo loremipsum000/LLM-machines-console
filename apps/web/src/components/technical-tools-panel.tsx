@@ -49,7 +49,7 @@ export function TechnicalToolsPanel({
               </div>
               {tool.href ? (
                 <a
-                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded bg-[#fdfdfd] px-3 text-sm font-semibold text-[#181818] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff]"
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-[#454545] bg-transparent px-3 text-sm font-semibold text-[#fdfdfd] transition-colors hover:bg-[#2e2e2e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009fff]"
                   href={tool.href}
                   rel="noopener noreferrer"
                   target="_blank"

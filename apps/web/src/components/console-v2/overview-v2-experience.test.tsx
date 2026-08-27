@@ -22,6 +22,7 @@ describe("OverviewV2Experience", () => {
   it("renders the four source-backed previews and metadata-only activity", () => {
     render(<OverviewV2Experience overview={overviewFixture()} />)
 
+    expect(screen.getByText(/recent activity at a glance/i)).toBeTruthy()
     const region = screen.getByRole("region", { name: "Operational overview" })
     expect(within(region).getAllByRole("article")).toHaveLength(4)
     expect(

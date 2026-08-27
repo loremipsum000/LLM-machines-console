@@ -3702,6 +3702,14 @@ export const pr11KeysConsoleHrefManifest = [
   })),
 ].sort(comparePr11HrefEntries)
 
+export const pr11KeysGrafanaConsoleHrefManifest = [
+  ...pr11KeysConsoleHrefManifest,
+  {
+    path: "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+    expression: "expression:grafanaHref",
+  },
+].sort(comparePr11HrefEntries)
+
 export const pr11RetiredEnvExampleBlock = [
   "",
   "# Signed model-update metadata",
@@ -13676,7 +13684,8 @@ export function buildPr11ConsoleHrefManifest(
 export function verifyPr11ConsoleHrefManifest(manifest) {
   const serialized = JSON.stringify(manifest)
   return serialized === JSON.stringify(pr11ConsoleHrefManifest) ||
-    serialized === JSON.stringify(pr11KeysConsoleHrefManifest)
+    serialized === JSON.stringify(pr11KeysConsoleHrefManifest) ||
+    serialized === JSON.stringify(pr11KeysGrafanaConsoleHrefManifest)
     ? []
     : ["PR-11 Console href manifest changed"]
 }

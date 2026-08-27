@@ -1328,7 +1328,7 @@ function TeamMutationResult({ state }: { state: TeamMemberActionState }) {
 
 function PageHeader({ title }: { title: string }) {
   return (
-    <header className="lg:absolute lg:top-[73px]">
+    <header className="pt-8 lg:absolute lg:top-[73px] lg:pt-0">
       <h1 className="text-2xl font-semibold leading-none text-[#fdfdfd]">
         {title}
       </h1>
@@ -1339,7 +1339,7 @@ function PageHeader({ title }: { title: string }) {
 function SubpageHeader({ title }: { title: string }) {
   const trail = title.replace(/^Team\s*>\s*/, "")
   return (
-    <header className="lg:absolute lg:top-[73px]">
+    <header className="pt-8 lg:absolute lg:top-[73px] lg:pt-0">
       <h1 className="flex items-center gap-2 text-2xl font-semibold leading-none text-[#fdfdfd]">
         <Link
           className="rounded-sm text-left transition-colors hover:text-[#d9d9d9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"

@@ -121,7 +121,7 @@ export function ConsoleV2Shell({
   return (
     <div className="min-h-screen min-h-dvh bg-[#181818] font-sans text-[#fdfdfd]">
       <div className="relative min-h-screen min-h-dvh bg-[#181818]">
-        <aside className="m-2 flex min-h-[720px] w-[260px] flex-col justify-between overflow-hidden rounded-[12px] bg-[#2e2c2e] p-2 max-lg:w-[calc(100%-16px)] lg:fixed lg:inset-y-2 lg:left-0 lg:m-0 lg:h-[calc(100vh-16px)]">
+        <aside className="m-2 flex min-h-[720px] w-[260px] flex-col justify-between overflow-hidden rounded-[12px] bg-[#2e2c2e] p-2 max-lg:w-[calc(100%-16px)] lg:fixed lg:inset-y-2 lg:left-2 lg:m-0 lg:h-[calc(100vh-16px)]">
           <div className="flex w-full flex-col gap-8">
             <div className="flex h-12 w-full items-center gap-2.5 p-2">
               <Image
