@@ -21,14 +21,53 @@ import {
   adminTeamMemberDetailSchema,
   adminTeamMemberSchema,
   adminTeamOverviewResponseSchema,
+  aggregateInferenceCoreSourceStatus,
   inferenceCoreCompatibilityFingerprint,
   inferenceCoreNativeAuditCapabilitySchema,
+  inferenceCoreSeverityOrder,
+  inferenceCoreSeverityRank,
   inferenceCoreSeveritySchema,
   inferenceCoreSourceStatusSchema,
   updateAdminAlertEgressRequestSchema,
 } from "./inference-core"
 
 const timestamp = "2026-07-31T08:00:00.000Z"
+
+describe("inference-core status ownership", () => {
+  it.each([
+    [[], "not_configured"],
+    [["not_configured", "not_configured"], "not_configured"],
+    [["ok", "ok"], "ok"],
+    [["ok", "degraded"], "degraded"],
+    [["ok", "unavailable"], "degraded"],
+    [["unavailable", "unavailable"], "unavailable"],
+  ] as const)("aggregates %j as %s", (statuses, expected) => {
+    expect(aggregateInferenceCoreSourceStatus(statuses)).toBe(expected)
+  })
+
+  it("supports explicit required-source and audit availability semantics", () => {
+    expect(
+      aggregateInferenceCoreSourceStatus([
+        { required: true, status: "unavailable" },
+        { required: false, status: "ok" },
+      ]),
+    ).toBe("unavailable")
+    expect(
+      aggregateInferenceCoreSourceStatus(["unavailable", "unavailable"], {
+        allUnavailable: "degraded",
+      }),
+    ).toBe("degraded")
+  })
+
+  it("owns the exact severity order and rank", () => {
+    expect(inferenceCoreSeverityOrder).toEqual(["critical", "warning", "info"])
+    expect(inferenceCoreSeverityRank).toEqual({
+      critical: 0,
+      warning: 1,
+      info: 2,
+    })
+  })
+})
 
 it("pins the rendered inference profile compatibility fingerprint", () => {
   expect(inferenceCoreCompatibilityFingerprint).toBe(

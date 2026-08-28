@@ -12,6 +12,7 @@ import type {
 } from "@llm-machines/contracts/inference-core"
 import { Download, X } from "lucide-react"
 import Link from "next/link"
+import { sourceStatusLabel } from "./source-status"
 
 export interface ActivityFilters {
   applicationId: string | null
@@ -721,19 +722,6 @@ function StatusDot({ status }: { status: InferenceCoreSourceStatus }) {
       />
     </>
   )
-}
-
-function sourceStatusLabel(status: InferenceCoreSourceStatus): string {
-  if (status === "not_configured") {
-    return "Not configured"
-  }
-  if (status === "unavailable") {
-    return "Unavailable"
-  }
-  if (status === "degraded") {
-    return "Degraded"
-  }
-  return "Healthy"
 }
 
 function activeFilterCount(filters: ActivityFilters): number {

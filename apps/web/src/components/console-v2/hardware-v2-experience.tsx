@@ -9,6 +9,7 @@ import type {
 import { ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { HardwareChartPrimitive } from "./hardware-chart-primitives"
+import { sourceStatusLabel } from "./source-status"
 
 const rangeOptions: Array<{ label: string; value: AdminHardwareRange }> = [
   { label: "1h", value: "1h" },
@@ -244,19 +245,6 @@ function emptyAlertMessage(status: InferenceCoreSourceStatus): string {
     return "No active alerts were returned, but some alert payload items were rejected."
   }
   return "No active firing alerts were reported."
-}
-
-function sourceStatusLabel(status: InferenceCoreSourceStatus): string {
-  if (status === "not_configured") {
-    return "Not configured"
-  }
-  if (status === "unavailable") {
-    return "Unavailable"
-  }
-  if (status === "degraded") {
-    return "Degraded"
-  }
-  return "Healthy"
 }
 
 function formatTimestamp(value: string): string {

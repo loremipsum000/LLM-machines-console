@@ -240,7 +240,7 @@ describe("ActivityV2Experience", () => {
       />,
     )
     expect(screen.queryByRole("status")).toBeNull()
-    expect(screen.getAllByText("Healthy").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Available").length).toBeGreaterThan(0)
   })
 })
 

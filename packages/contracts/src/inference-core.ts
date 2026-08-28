@@ -36,6 +36,43 @@ export type InferenceCoreSourceStatus = z.infer<
   typeof inferenceCoreSourceStatusSchema
 >
 
+export interface InferenceCoreSourceStatusInput {
+  required: boolean
+  status: InferenceCoreSourceStatus
+}
+
+export function aggregateInferenceCoreSourceStatus(
+  inputs: readonly (
+    | InferenceCoreSourceStatus
+    | InferenceCoreSourceStatusInput
+  )[],
+  options: { allUnavailable?: "degraded" | "unavailable" } = {},
+): InferenceCoreSourceStatus {
+  const normalized = inputs.map((input) =>
+    typeof input === "string" ? { required: false, status: input } : input,
+  )
+  if (
+    normalized.length === 0 ||
+    normalized.every(({ status }) => status === "not_configured")
+  ) {
+    return "not_configured"
+  }
+  if (
+    normalized.some(
+      ({ required, status }) => required && status === "unavailable",
+    )
+  ) {
+    return "unavailable"
+  }
+  if (normalized.every(({ status }) => status === "unavailable")) {
+    return options.allUnavailable ?? "unavailable"
+  }
+  if (normalized.every(({ status }) => status === "ok")) {
+    return "ok"
+  }
+  return "degraded"
+}
+
 export const inferenceCoreCustomerVocabulary = {
   primaryIntegration: {
     href: "/keys",
@@ -51,6 +88,20 @@ export const inferenceCoreSeveritySchema = z.enum([
   "critical",
 ])
 export type InferenceCoreSeverity = z.infer<typeof inferenceCoreSeveritySchema>
+
+export const inferenceCoreSeverityOrder = [
+  "critical",
+  "warning",
+  "info",
+] as const satisfies readonly InferenceCoreSeverity[]
+
+export const inferenceCoreSeverityRank: Readonly<
+  Record<InferenceCoreSeverity, number>
+> = Object.freeze(
+  Object.fromEntries(
+    inferenceCoreSeverityOrder.map((severity, index) => [severity, index]),
+  ) as Record<InferenceCoreSeverity, number>,
+)
 
 export const adminOverviewTileIdSchema = z.enum([
   "applications",

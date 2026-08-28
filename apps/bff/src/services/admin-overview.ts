@@ -6,6 +6,7 @@ import {
   type AdminOverviewResponse,
   type AdminOverviewTile,
   type InferenceCoreSourceStatus,
+  aggregateInferenceCoreSourceStatus,
   inferenceCoreCustomerVocabulary,
 } from "@llm-machines/contracts/inference-core"
 import type { Actor } from "../auth/authorization"
@@ -226,7 +227,7 @@ function systemTile(
   auditEvents: AuditEventRecord[],
   generatedAt: string,
 ): AdminOverviewTile {
-  const sourceStatus = aggregateSourceStatus(sourceStatuses)
+  const sourceStatus = aggregateInferenceCoreSourceStatus(sourceStatuses)
   const latestEvent = auditEvents[0]
   const auditAvailable = sourceStatuses[3] !== "unavailable"
 
@@ -337,21 +338,6 @@ function sourceStatusFromData(
     status === "not_configured"
     ? status
     : null
-}
-
-function aggregateSourceStatus(
-  statuses: InferenceCoreSourceStatus[],
-): InferenceCoreSourceStatus {
-  if (statuses.every((status) => status === "unavailable")) {
-    return "unavailable"
-  }
-  if (statuses.every((status) => status === "not_configured")) {
-    return "not_configured"
-  }
-  if (statuses.every((status) => status === "ok")) {
-    return "ok"
-  }
-  return "degraded"
 }
 
 function systemSummary(

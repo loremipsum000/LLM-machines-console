@@ -7,6 +7,7 @@ import {
   type InferenceCoreSeverity,
   type InferenceCoreSourceStatus,
   inferenceCoreAlertNames,
+  inferenceCoreSeverityRank,
 } from "@llm-machines/contracts/inference-core"
 import {
   fetchBoundedJson,
@@ -101,9 +102,9 @@ function parseActiveAlerts(payload: unknown): {
     }
   }
   alerts.sort((first, second) => {
-    const severityOrder = { critical: 0, warning: 1, info: 2 } as const
     return (
-      severityOrder[first.severity] - severityOrder[second.severity] ||
+      inferenceCoreSeverityRank[first.severity] -
+        inferenceCoreSeverityRank[second.severity] ||
       first.alertName.localeCompare(second.alertName) ||
       first.id.localeCompare(second.id)
     )

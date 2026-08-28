@@ -1,15 +1,16 @@
-import type {
-  AdminHardwareAlert,
-  AdminHardwareChart,
-  AdminHardwareChartId,
-  AdminHardwareChartType,
-  AdminHardwareRange,
-  AdminHardwareResponse,
-  AdminHardwareSeries,
-  AdminHardwareThreshold,
-  AdminHardwareUnit,
-  InferenceCoreSeverity,
-  InferenceCoreSourceStatus,
+import {
+  type AdminHardwareAlert,
+  type AdminHardwareChart,
+  type AdminHardwareChartId,
+  type AdminHardwareChartType,
+  type AdminHardwareRange,
+  type AdminHardwareResponse,
+  type AdminHardwareSeries,
+  type AdminHardwareThreshold,
+  type AdminHardwareUnit,
+  type InferenceCoreSeverity,
+  type InferenceCoreSourceStatus,
+  aggregateInferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
 import {
   type AdminAlertmanagerSummary,
@@ -503,16 +504,10 @@ function combinedHardwareSourceStatus(
   metricsStatus: InferenceCoreSourceStatus,
   alertStatus: InferenceCoreSourceStatus,
 ): InferenceCoreSourceStatus {
-  if (metricsStatus === "not_configured" && alertStatus === "not_configured") {
-    return "not_configured"
-  }
-  if (metricsStatus === "unavailable") {
-    return "unavailable"
-  }
-  if (metricsStatus === "ok" && alertStatus === "ok") {
-    return "ok"
-  }
-  return "degraded"
+  return aggregateInferenceCoreSourceStatus([
+    { required: true, status: metricsStatus },
+    { required: false, status: alertStatus },
+  ])
 }
 
 function collectAvailableHosts(

@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto"
-import type {
-  AdminInferenceDashboard,
-  AdminInferenceModel,
-  AdminInferenceModelUsage,
-  AdminInferenceRange,
-  AdminInferenceUsagePoint,
-  AdminInferenceVirtualKey,
-  InferenceCoreSourceStatus,
+import {
+  type AdminInferenceDashboard,
+  type AdminInferenceModel,
+  type AdminInferenceModelUsage,
+  type AdminInferenceRange,
+  type AdminInferenceUsagePoint,
+  type AdminInferenceVirtualKey,
+  type InferenceCoreSourceStatus,
+  aggregateInferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
 import type { Actor } from "../auth/authorization"
 import {
@@ -86,7 +87,7 @@ export async function getAdminInference(
     activity.data?.modelUsage ?? [],
     spendLogs?.data ?? [],
   )
-  const sourceStatus = aggregateSourceStatus([
+  const sourceStatus = aggregateInferenceCoreSourceStatus([
     activity.status,
     models.status,
     virtualKeys.status,
@@ -633,21 +634,6 @@ function sortModelsByUsage(
       (scores.get(b.name) ?? 0) - (scores.get(a.name) ?? 0) ||
       a.name.localeCompare(b.name),
   )
-}
-
-function aggregateSourceStatus(
-  statuses: InferenceCoreSourceStatus[],
-): InferenceCoreSourceStatus {
-  if (statuses.every((status) => status === "unavailable")) {
-    return "unavailable"
-  }
-  if (statuses.every((status) => status === "not_configured")) {
-    return "not_configured"
-  }
-  if (statuses.some((status) => status !== "ok")) {
-    return "degraded"
-  }
-  return "ok"
 }
 
 function emptyInferenceDashboard({

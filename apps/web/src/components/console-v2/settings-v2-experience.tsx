@@ -19,6 +19,7 @@ import Image from "next/image"
 import { useRef, useState } from "react"
 import type { ChangeEvent, ReactNode } from "react"
 import { ConsoleActionToasts } from "./action-toasts"
+import { sourceStatusLabel } from "./source-status"
 
 const returnTo = "/settings"
 const maxLogoBytes = 1024 * 1024
@@ -1314,19 +1315,6 @@ function ownerLabel(
     return "Team"
   }
   return "Settings"
-}
-
-function sourceStatusLabel(status: InferenceCoreSourceStatus): string {
-  if (status === "ok") {
-    return "Reachable"
-  }
-  if (status === "degraded") {
-    return "Degraded"
-  }
-  if (status === "unavailable") {
-    return "Unavailable"
-  }
-  return "Not configured"
 }
 
 function licenseStateLabel(
