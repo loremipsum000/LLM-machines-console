@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 1,
+  "closureId": "FABLE_AUDIT_REMEDIATION_2026_08_28",
+  "audit": {
+    "candidateCommit": "0f0399c6a091d4ec0ea78f4379362add38c87b22",
+    "candidateTree": "ced785bf0d7f63efab780443e1207b0e3ece73d8",
+    "protectedMerge": "005ab894e2ef6826879738eac99030fc97b9fb70",
+    "pullRequest": 147,
+    "externalEvidence": {
+      "location": "fable-audits/2026-08-28-005ab894",
+      "ephemeralClonePreserved": true,
+      "cleanupAuthorized": false
+    }
+  },
+  "remediations": [
+    {
+      "package": "authentication-hardening",
+      "candidateCommit": "f6243e518a520e748775ab33943f98584cca138b",
+      "candidateTree": "0766056f4a0695873b69a837e212c7944f72cc7c",
+      "protectedMerge": "65b3a21e67b648f3e4c4c83b01b66a36568bd3e8",
+      "pullRequest": 148,
+      "reviewer": "Aquinas",
+      "reviewVerdict": "PASS_NO_MATERIAL_FINDINGS",
+      "findings": ["SEC-001", "SEC-003"],
+      "validationEvidence": [
+        {
+          "command": "pnpm test",
+          "log": "fable-auth-final-root-test.log",
+          "sha256": "e6ff03de420cc2d8af1a9ab4be9e92bb10fb48078c0794452f7d70d2da082c01"
+        },
+        {
+          "command": "pnpm test:release",
+          "log": "fable-auth-test-release.log",
+          "sha256": "a9ecdfebba78795cd6481cd78745d8e9016ba33283cf5522437b14d91c58ebde"
+        },
+        {
+          "command": "biome check",
+          "log": "fable-auth-final-biome.log",
+          "sha256": "054af1ffbda527c082dcc1bc92705d5896a64b1c3509e65be3e13ae4c9c99588"
+        },
+        {
+          "command": "pnpm typecheck",
+          "log": "fable-auth-final-typecheck.log",
+          "sha256": "783586f68fb4ff99cf6444385256073f7d9fd75c44f7f824224dda3073aac0a8"
+        },
+        {
+          "command": "pnpm build",
+          "log": "fable-auth-final-build.log",
+          "sha256": "13ee19a07550256eb5f098330923b61225976224617a82b3881835d8aca20baa"
+        },
+        {
+          "command": "detached frozen install",
+          "log": "fable-auth-detached-install.log",
+          "sha256": "a39ba018a81ec7188dc76a68c3acdaf97bfd886881e4af942d7825eb98f4daf3"
+        },
+        {
+          "command": "detached pnpm test",
+          "log": "fable-auth-detached-test.log",
+          "sha256": "7958be2e512324bb0d74ff9ff4a09ec0b8b1b1468b48a09d656db8bbb970e764"
+        },
+        {
+          "command": "detached biome check",
+          "log": "fable-auth-detached-biome.log",
+          "sha256": "9bbd61ba9067168791ef8012ce8e67cfb8bb4ca512e4a2957e5fed47f7ec1d70"
+        },
+        {
+          "command": "detached pnpm typecheck",
+          "log": "fable-auth-detached-typecheck.log",
+          "sha256": "ea0f591e30a4b4ccb3ef172f88eb6a9fb34da3860f5cecc2dc4a0145f9395e2f"
+        },
+        {
+          "command": "detached pnpm build",
+          "log": "fable-auth-detached-build.log",
+          "sha256": "ec7278ad12ebcf4a85524b0140d1a649532ffb5cfe88347f0b644598afaafa81"
+        },
+        {
+          "command": "detached security guardrails",
+          "log": "fable-auth-detached-guardrails.log",
+          "sha256": "1b1c4e82d994bb7c75b94fb6c8b9ff94eb19f787b3ab67fa05170ddb03e25369"
+        }
+      ]
+    },
+    {
+      "package": "alert-and-grafana-contract-correctness",
+      "candidateCommit": "6302999015f6433438a1bf5bea7f805937953961",
+      "candidateTree": "ac30240d45bf2d297f91f1b361bf76585e93cc79",
+      "protectedMerge": "4b3c174f83f198cd3108ee54f38663cb73e2bde8",
+      "pullRequest": 149,
+      "reviewer": "Kepler",
+      "reviewVerdict": "PASS_NO_MATERIAL_FINDINGS",
+      "findings": ["BUG-001", "BUG-002", "ARCH-001", "MAINT-002", "MAINT-003"],
+      "validationEvidence": [
+        {
+          "command": "pnpm test",
+          "log": "fable-alerts-root-test-final.log",
+          "sha256": "89efb4423789608f727187b39f296f948dc1a1c77727114a71cdb09c34c57164"
+        },
+        {
+          "command": "pnpm test:release",
+          "log": "fable-alerts-release-test.log",
+          "sha256": "85f0fc54755cf576247f174a1b3706a63a9c888550557a28dbb2c04d131b37da"
+        },
+        {
+          "command": "biome check",
+          "log": "fable-alerts-biome-final.log",
+          "sha256": "4068106bed467055725ff9fab8545a9297fe9bb83b011b35e7229f2549e421f4"
+        },
+        {
+          "command": "pnpm typecheck",
+          "log": "fable-alerts-typecheck.log",
+          "sha256": "c7609199d0c840db8518cda76fc26c3a126383e904f94cd1c4a4634a81f9f98c"
+        },
+        {
+          "command": "pnpm build",
+          "log": "fable-alerts-build.log",
+          "sha256": "5083c04b4256ec5bca8c85bf51e50f848125f372697671a9c2c7d17673a994b3"
+        },
+        {
+          "command": "detached frozen install",
+          "log": "fable-alerts-detached-install.log",
+          "sha256": "685544f4246c7e18ffd261c89b23d4250b6e7c9698af8606d80c874c7764b3e7"
+        },
+        {
+          "command": "detached pnpm test",
+          "log": "fable-alerts-detached-test.log",
+          "sha256": "154b2a2473193d46efe61157dbb51c1db157530a69fc0543f49c833dddc3891e"
+        },
+        {
+          "command": "detached biome check",
+          "log": "fable-alerts-detached-biome.log",
+          "sha256": "866278615f127e2246361555d4ba739e204c0395ab51ae7d160cad6bb0378c42"
+        },
+        {
+          "command": "detached pnpm typecheck",
+          "log": "fable-alerts-detached-typecheck.log",
+          "sha256": "2351d3c676357e6facd6a982d883a4ff2d0e03ad3f8d1f0e1cfd224e3efe2a61"
+        },
+        {
+          "command": "detached pnpm build",
+          "log": "fable-alerts-detached-build.log",
+          "sha256": "dcd29818505b5c3f1d95d4533928be883d2a8285c5a9981ec74f693fe327c1fd"
+        }
+      ]
+    },
+    {
+      "package": "activity-semantics",
+      "candidateCommit": "c8947596f659c4afd3872d0af2c1b281df3722d0",
+      "candidateTree": "a5305314055236858f5e56cf3187d5e74b687c1e",
+      "protectedMerge": "003e703e5360f28c4ff332ad904faa383fed557d",
+      "pullRequest": 150,
+      "reviewer": "Mencius",
+      "reviewVerdict": "PASS_NO_MATERIAL_FINDINGS",
+      "findings": ["BUG-003"],
+      "validationEvidence": [
+        {
+          "command": "pnpm test",
+          "log": "fable-activity-root-test-final.log",
+          "sha256": "753545247a143a42e96dbc48d17deb2736f3b190b391e70dc1bd5006fd50892e"
+        },
+        {
+          "command": "biome check",
+          "log": "fable-activity-biome.log",
+          "sha256": "cc88c6e8a51d1d16dc285ca2a6c62682da3e5818a956d9af3bef2607f439b445"
+        },
+        {
+          "command": "pnpm typecheck",
+          "log": "fable-activity-typecheck-final.log",
+          "sha256": "a13cb7ae627bc76349debe3915edd407cd97b0909d6d08a17b31e76accd2124e"
+        },
+        {
+          "command": "pnpm build",
+          "log": "fable-activity-build-final.log",
+          "sha256": "e6ecaf9c6550689a8ffb21e07741bc47f44651176a48a0f408ff8385afc6c650"
+        },
+        {
+          "command": "detached frozen install",
+          "log": "fable-activity-detached-install.log",
+          "sha256": "8c9a06b3a495c0aef2012d36a985206f9c3222f1834e9e77714f5df1dfd86e63"
+        },
+        {
+          "command": "detached pnpm test",
+          "log": "fable-activity-detached-test.log",
+          "sha256": "f343ac8033475bc8376469a32f25b344274d3036c0759d364b3addd11ff3e6d4"
+        },
+        {
+          "command": "detached biome check",
+          "log": "fable-activity-detached-biome.log",
+          "sha256": "3b81ef596a897b85e25e860974ed2848ce0d0c3ba3372f5dbd6a745f67ab3cb8"
+        },
+        {
+          "command": "detached pnpm typecheck",
+          "log": "fable-activity-detached-typecheck.log",
+          "sha256": "7cb50d0f5f94ab25953806b1fef3693695466e7e1c02f35fe6ee5ccc381b257b"
+        },
+        {
+          "command": "detached pnpm build",
+          "log": "fable-activity-detached-build.log",
+          "sha256": "81659707797b5aae44aac5fc26959fd21e2fe714c3cee0686cd3d7ac25028383"
+        }
+      ]
+    }
+  ],
+  "findingDispositions": {
+    "fixed": [
+      "SEC-001",
+      "SEC-003",
+      "BUG-001",
+      "BUG-002",
+      "BUG-003",
+      "ARCH-001",
+      "MAINT-002",
+      "MAINT-003"
+    ],
+    "acceptedRisk": ["SEC-002"],
+    "deferredMeasurement": ["PERF-001", "OPT-2", "OPT-3"],
+    "deferredQualification": [
+      "ARCH-002",
+      "MAINT-001",
+      "H-1",
+      "H-2",
+      "H-3",
+      "H-4"
+    ]
+  },
+  "deferredBoundaries": {
+    "SEC-002": "Retain CSP style-src unsafe-inline until a nonce-compatible framework spike and full visual regression test exist.",
+    "ARCH-002": "Add a credential-free Grafana commissioning and runtime-drift signal without creating a persistent privileged credential.",
+    "MAINT-001": "Migrate high-churn regex guardrails only when their owning source next changes.",
+    "H-1": "Retain denied-role UX as a live browser qualification check.",
+    "H-2": "Repeat CVE and license diffs when vendored LiteLLM or deferred Portainer source is rebased.",
+    "H-3": "Run Keycloak and JWKS flapping soak qualification.",
+    "H-4": "Keep local-null alert egress as a pending runtime-qualification boundary.",
+    "performance": "Measure VM103 latency and request volume before adding caches."
+  },
+  "status": {
+    "productAccepted": false,
+    "runtimeQualified": false,
+    "contractActivation": "INACTIVE",
+    "genesisPublished": false
+  },
+  "governancePaths": [
+    "docs/reduction/inference-core/fable-audit-remediation-closure.json",
+    "docs/reduction/inference-core/validation-register.md",
+    "scripts/inference-core/fable-audit-remediation-closure.test.mjs"
+  ]
+}
