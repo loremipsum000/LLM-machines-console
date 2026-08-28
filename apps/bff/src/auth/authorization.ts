@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto"
 import {
   type EmergencyRecoveryResolution,
   type InferenceCoreCapability,
@@ -369,7 +370,10 @@ async function authenticateRequest(
   }
 
   const config = getAuthConfig()
-  if (config.serviceApiKey && token === config.serviceApiKey) {
+  if (
+    config.serviceApiKey &&
+    constantTimeSecretEqual(token, config.serviceApiKey)
+  ) {
     if (
       !config.allowHeaderOnlyServiceAuth &&
       hasLegacyForwardingHeader(request)
@@ -436,6 +440,12 @@ async function authenticateRequest(
   return actor
     ? { ok: true, actor }
     : { ok: false, reason: "invalid_token", status: 401 }
+}
+
+function constantTimeSecretEqual(candidate: string, expected: string): boolean {
+  const candidateDigest = createHash("sha256").update(candidate).digest()
+  const expectedDigest = createHash("sha256").update(expected).digest()
+  return timingSafeEqual(candidateDigest, expectedDigest)
 }
 
 function getAuthConfig(): AuthConfig {

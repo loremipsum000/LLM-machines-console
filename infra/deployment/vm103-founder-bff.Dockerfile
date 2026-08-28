@@ -26,4 +26,4 @@ ENV HOST=127.0.0.1
 ENV NODE_ENV=production
 ENV PORT=44294
 
-CMD ["node", "scripts/pre-genesis/runtime-secret-entrypoint.mjs", "node", "apps/bff/node_modules/tsx/dist/cli.mjs", "apps/bff/src/index.ts"]
+CMD ["node", "scripts/pre-genesis/runtime-secret-entrypoint.mjs", "node", "apps/bff/node_modules/tsx/dist/cli.mjs", "apps/bff/src/production-entrypoint.ts"]

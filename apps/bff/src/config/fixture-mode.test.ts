@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   assertProductionFixturesDisabled,
+  assertShippedProductionRuntime,
   canUseBffFixtureData,
   isBffFixtureMode,
 } from "./fixture-mode"
@@ -31,5 +32,22 @@ describe("BFF production fixture exclusion", () => {
 
   it("keeps fixture data available to tests", () => {
     expect(canUseBffFixtureData({ NODE_ENV: "test" })).toBe(true)
+  })
+
+  it.each([undefined, "development", "test"])(
+    "rejects shipped startup with NODE_ENV=%s",
+    (nodeEnv) => {
+      expect(() =>
+        assertShippedProductionRuntime(
+          nodeEnv === undefined ? {} : { NODE_ENV: nodeEnv },
+        ),
+      ).toThrow("The shipped Console BFF requires NODE_ENV=production.")
+    },
+  )
+
+  it("accepts the exact production runtime without fixture flags", () => {
+    expect(() =>
+      assertShippedProductionRuntime({ NODE_ENV: "production" }),
+    ).not.toThrow()
   })
 })
