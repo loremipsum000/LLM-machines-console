@@ -1,6 +1,7 @@
-import type {
-  AdminOverviewMetric,
-  InferenceCoreSourceStatus,
+import {
+  type AdminOverviewMetric,
+  type InferenceCoreSourceStatus,
+  aggregateInferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
 import {
   type AdminAlertmanagerSummary,
@@ -161,17 +162,10 @@ function combinedHealthStatus(
   prometheus: PrometheusHealthRead,
   alertmanager: AdminAlertmanagerSummary,
 ): InferenceCoreSourceStatus {
-  const statuses = [prometheus.sourceStatus, alertmanager.sourceStatus]
-  if (statuses.every((status) => status === "not_configured")) {
-    return "not_configured"
-  }
-  if (prometheus.sourceStatus === "unavailable") {
-    return "unavailable"
-  }
-  if (statuses.every((status) => status === "ok")) {
-    return "ok"
-  }
-  return "degraded"
+  return aggregateInferenceCoreSourceStatus([
+    { required: true, status: prometheus.sourceStatus },
+    { required: false, status: alertmanager.sourceStatus },
+  ])
 }
 
 function metric(

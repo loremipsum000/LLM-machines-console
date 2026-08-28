@@ -1,10 +1,11 @@
-import type {
-  AdminAuditEvent,
-  AdminAuditResponse,
-  AdminAuditSource,
-  InferenceCoreAuditOutcome,
-  InferenceCoreAuditSourceSystem,
-  InferenceCoreSeverity,
+import {
+  type AdminAuditEvent,
+  type AdminAuditResponse,
+  type AdminAuditSource,
+  type InferenceCoreAuditOutcome,
+  type InferenceCoreAuditSourceSystem,
+  type InferenceCoreSeverity,
+  aggregateInferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
 import type { Actor } from "../auth/authorization"
 import {
@@ -99,24 +100,15 @@ export async function getAdminAuditTimeline(
 export function aggregateAuditSourceStatus(
   sources: AdminAuditSource[],
 ): AdminAuditResponse["sourceStatus"] {
-  const nativeSources = sources.filter(
-    (source) =>
-      source.ingressReadiness === "implemented_pending_runtime_qualification",
-  )
-  if (
-    nativeSources.some(
+  const nativeStatuses = sources
+    .filter(
       (source) =>
-        source.sourceStatus === "degraded" ||
-        source.sourceStatus === "unavailable",
+        source.ingressReadiness === "implemented_pending_runtime_qualification",
     )
-  ) {
-    return "degraded"
-  }
-  return nativeSources.some(
-    (source) => source.sourceStatus === "not_configured",
-  )
-    ? "not_configured"
-    : "ok"
+    .map((source) => source.sourceStatus)
+  return aggregateInferenceCoreSourceStatus(nativeStatuses, {
+    allUnavailable: "degraded",
+  })
 }
 
 export function normalizeAdminAuditFilters(

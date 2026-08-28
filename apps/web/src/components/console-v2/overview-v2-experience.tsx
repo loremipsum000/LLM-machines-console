@@ -7,6 +7,7 @@ import type {
   InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
 import Link from "next/link"
+import { sourceStatusLabel } from "./source-status"
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
@@ -226,15 +227,6 @@ function ActivityEventRow({ event }: { event: AdminActivityEvent }) {
       </div>
     </article>
   )
-}
-
-function sourceStatusLabel(status: InferenceCoreSourceStatus): string {
-  return {
-    degraded: "Degraded",
-    not_configured: "Not configured",
-    ok: "Available",
-    unavailable: "Unavailable",
-  }[status]
 }
 
 function formatTimestamp(value: string): string {
