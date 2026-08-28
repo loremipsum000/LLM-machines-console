@@ -178,3 +178,25 @@ per-package JSON file and contract revision.
 - This is pre-Genesis functional evidence, not Product acceptance or Q0
   runtime qualification. Native activation remains inactive pending F0-N8,
   deployment approval, and the later durable environment replay.
+
+## Business-architecture vocabulary and Operator authority reconciliation
+
+- The protected Keys series (PR 133, PR 134, PR 137, and PR 138) is the
+  prospective customer vocabulary decision. The customer surface and entity
+  are named `Keys`; `/keys` is canonical and `/applications` remains only a
+  compatibility redirect. Internal database, route, capability, and audit
+  wire identifiers may retain `application` and `applicationId` so this
+  source correction does not break integrations or historical evidence.
+- Customer vocabulary is owned by the shared contracts and copy packages.
+  BFF projections emit the canonical customer href and Web renders it
+  without presentation-layer remapping.
+- Console Operators remain read-only for Key creation, policy, testing,
+  rotation, revocation, disablement, re-enablement, and Firecrawl enablement.
+  This is the later F0-U2 and Keys decision, and prospectively supersedes the
+  older planning table that granted Operator credential mutation.
+- Operator `internal_user` authority over the Operator's own native LiteLLM
+  virtual keys and spend is a separate advanced native-service boundary. It
+  does not grant mutation of Console-issued Keys or credentials.
+- This prospective reconciliation changes no wire identifier, stored data,
+  credential authority, public API, native role, or runtime qualification
+  status. Historical PR-11 and earlier records remain unchanged.

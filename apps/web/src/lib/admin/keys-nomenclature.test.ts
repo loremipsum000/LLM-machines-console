@@ -65,10 +65,7 @@ function isInternalApplicationIdentifier(
   term: string,
 ): boolean {
   return (
-    (term === '"applications' &&
-      (/"applications"/.test(line) || /"applications\.[a-z_.]*"/.test(line))) ||
-    (path.endsWith("/components/console-v2/console-v2-sections.ts") &&
-      term === "Applications" &&
-      line.includes("INTERNAL_PR11_APPLICATION_NAV_COMPATIBILITY"))
+    term === '"applications' &&
+    (/"applications"/.test(line) || /"applications\.[a-z_.]*"/.test(line))
   )
 }

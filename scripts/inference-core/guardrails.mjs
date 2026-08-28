@@ -3523,6 +3523,133 @@ export const pr11LogicalSurfaceContract = [
   { id: "settings", label: "Settings", href: "/settings" },
 ]
 
+export const currentKeysLogicalSurfaceContract = pr11LogicalSurfaceContract.map(
+  (surface) =>
+    surface.id === "applications"
+      ? { ...surface, label: "Keys", href: "/keys" }
+      : surface,
+)
+
+export const businessArchitectureCurrentBoundaryPath =
+  "docs/reduction/inference-core/business-architecture-current-boundary.json"
+
+export function verifyBusinessArchitectureCurrentBoundaryDocument(document) {
+  const errors = []
+  const expectedKeys = [
+    "auditedBaseline",
+    "consoleOperatorAuthority",
+    "contractActivation",
+    "customerVocabulary",
+    "genesis",
+    "internalCompatibilityVocabulary",
+    "nativeLiteLlmOperatorAuthority",
+    "precedence",
+    "productAccepted",
+    "runtimeQualified",
+    "schemaVersion",
+    "status",
+    "supersedingProtectedDecisions",
+  ]
+  if (
+    !document ||
+    typeof document !== "object" ||
+    Array.isArray(document) ||
+    JSON.stringify(Object.keys(document).sort()) !==
+      JSON.stringify(expectedKeys)
+  ) {
+    return ["invalid business architecture current-boundary shape"]
+  }
+  if (
+    document.schemaVersion !== 1 ||
+    document.status !== "CURRENT_PROTECTED_BOUNDARY" ||
+    document.productAccepted !== false ||
+    document.runtimeQualified !== false ||
+    document.contractActivation !== "INACTIVE" ||
+    document.genesis !== "UNPUBLISHED"
+  ) {
+    errors.push("invalid business architecture current-boundary state")
+  }
+  if (
+    JSON.stringify(document.precedence) !==
+    JSON.stringify({
+      basis:
+        "Later explicit founder steering and protected Product decisions supersede stale current-facing planning rows until the planning repository receives an isolated reconciliation. Historical planning and PR evidence remains unchanged.",
+      stalePlanningDocuments: [
+        "docs/console/Console-Inference-Core-Target-State-Canon.md",
+        "docs/console/Console-Inference-Core-Stack-Reduction-Strategy.md",
+        "docs/console/Console-Inference-Core-Stack-Reduction-Implementation-Plan.md",
+      ],
+    })
+  ) {
+    errors.push("invalid business architecture precedence")
+  }
+  if (
+    JSON.stringify(document.auditedBaseline) !==
+    JSON.stringify({
+      candidateCommit: "0f0399c6a091d4ec0ea78f4379362add38c87b22",
+      protectedMerge: "005ab894e2ef6826879738eac99030fc97b9fb70",
+      tree: "ced785bf0d7f63efab780443e1207b0e3ece73d8",
+    })
+  ) {
+    errors.push("invalid business architecture audited baseline")
+  }
+  if (
+    JSON.stringify(document.customerVocabulary) !==
+    JSON.stringify({
+      canonicalHref: "/keys",
+      canonicalPlural: "Keys",
+      canonicalSingular: "Key",
+      legacyRedirect: "/applications",
+    })
+  ) {
+    errors.push("invalid business architecture customer vocabulary")
+  }
+  if (
+    JSON.stringify(document.internalCompatibilityVocabulary) !==
+    JSON.stringify(["application", "applicationId", "/api/admin/applications"])
+  ) {
+    errors.push("invalid business architecture compatibility vocabulary")
+  }
+  if (
+    JSON.stringify(document.consoleOperatorAuthority) !==
+      JSON.stringify({
+        createKey: false,
+        revokeCredential: false,
+        rotateCredential: false,
+        testConnection: false,
+        updateKey: false,
+      }) ||
+    document.nativeLiteLlmOperatorAuthority !==
+      "OWN_VIRTUAL_KEYS_AND_SPEND_ONLY"
+  ) {
+    errors.push("invalid business architecture Operator authority")
+  }
+  if (
+    JSON.stringify(document.supersedingProtectedDecisions) !==
+    JSON.stringify([
+      {
+        pullRequest: 133,
+        mergeCommit: "5371b88433015db577a95dd6678811c69b3237ce",
+      },
+      {
+        pullRequest: 134,
+        mergeCommit: "8c8868bfd7787cb6c2ef22101701398fd8d106d4",
+      },
+      {
+        pullRequest: 137,
+        mergeCommit: "ccc64a551286aa32309e272e6f93c3051f0577bf",
+      },
+      {
+        pullRequest: 138,
+        mergeCommit: "f389eff2af5cda17b64dab7c8a7babdd1805e04e",
+      },
+    ])
+  ) {
+    errors.push("invalid business architecture protected-decision ancestry")
+  }
+  return errors.sort()
+}
+
 export const pr11RemovedRouteContract = [
   {
     surface: "bff",
@@ -9526,6 +9653,11 @@ function verifyReviewedPr11SuccessorTarget({
   currentRoutes,
   paths,
 }) {
+  const successorPaths = new Set(paths)
+  const boundaryPath = resolve(root, businessArchitectureCurrentBoundaryPath)
+  if (isRegularFile(boundaryPath)) {
+    successorPaths.add(businessArchitectureCurrentBoundaryPath)
+  }
   return [
     ...new Set([
       ...verifyReviewedPr11SuccessorContext(root),
@@ -9533,7 +9665,7 @@ function verifyReviewedPr11SuccessorTarget({
         root,
         currentAllowlist,
         currentRoutes,
-        paths,
+        paths: [...successorPaths],
       }),
     ]),
   ].sort()
@@ -13726,7 +13858,10 @@ export function verifyPr11ExpertPayloadSourceBoundary(path, source) {
     )
 }
 
-export function verifyPr11OverviewHrefContractSource(source) {
+export function verifyPr11OverviewHrefContractSource(
+  source,
+  expectedHrefs = ["/applications", "/inference", "/hardware", "/activity"],
+) {
   const sourceFile = ts.createSourceFile(
     "packages/contracts/src/inference-core.ts",
     source,
@@ -13740,10 +13875,8 @@ export function verifyPr11OverviewHrefContractSource(source) {
     "adminOverviewTileSchema",
     "href",
   )
-  if (
-    JSON.stringify(pr11ZodStringEnumValues(tileHref)) !==
-    JSON.stringify(["/applications", "/inference", "/hardware", "/activity"])
-  ) {
+  const actualHrefs = pr11ZodStringEnumValues(tileHref)
+  if (JSON.stringify(actualHrefs) !== JSON.stringify(expectedHrefs)) {
     errors.push("PR-11 Overview tile href contract is not internal-only")
   }
   const eventHref = pr11SchemaPropertyInitializer(
@@ -13929,14 +14062,42 @@ export function verifyPr11SourceBoundary(
   const sectionsPath =
     "apps/web/src/components/console-v2/console-v2-sections.ts"
   const sectionsSource = read(sectionsPath)
+  let usesCurrentKeysBoundary = false
+  if (candidatePaths.has(businessArchitectureCurrentBoundaryPath)) {
+    try {
+      const boundary = JSON.parse(
+        readFileSync(
+          resolve(root, businessArchitectureCurrentBoundaryPath),
+          "utf8",
+        ),
+      )
+      const boundaryErrors =
+        verifyBusinessArchitectureCurrentBoundaryDocument(boundary)
+      errors.push(...boundaryErrors)
+      usesCurrentKeysBoundary = boundaryErrors.length === 0
+    } catch {
+      errors.push("invalid business architecture current-boundary document")
+    }
+  }
+  const expectedLogicalSurfaces = usesCurrentKeysBoundary
+    ? currentKeysLogicalSurfaceContract
+    : pr11LogicalSurfaceContract
   const navigationEntries = [
     ...sectionsSource.matchAll(/\{\s*id:\s*"([^"]+)"[\s\S]*?\n\s*\},/g),
   ].map((match) => ({
     id: match[1],
-    href: match[0].match(/\bhref:\s*"([^"]+)"/)?.[1],
-    label: match[0].match(/\blabel:\s*"([^"]+)"/)?.[1],
+    href:
+      match[0].match(/\bhref:\s*"([^"]+)"/)?.[1] ??
+      (match[0].includes("productCopy.vocabulary.primaryIntegration.href")
+        ? "/keys"
+        : undefined),
+    label:
+      match[0].match(/\blabel:\s*"([^"]+)"/)?.[1] ??
+      (match[0].includes("productCopy.vocabulary.primaryIntegration.plural")
+        ? "Keys"
+        : undefined),
   }))
-  const expectedNavigationEntries = pr11LogicalSurfaceContract.map(
+  const expectedNavigationEntries = expectedLogicalSurfaces.map(
     ({ id, href, label }) => ({
       id: id === "activity-audit" ? "activity" : id,
       href,
@@ -13986,7 +14147,22 @@ export function verifyPr11SourceBoundary(
   }
 
   const contractsSource = read("packages/contracts/src/inference-core.ts")
-  errors.push(...verifyPr11OverviewHrefContractSource(contractsSource))
+  errors.push(
+    ...verifyPr11OverviewHrefContractSource(
+      contractsSource,
+      expectedLogicalSurfaces
+        .filter(({ href }) =>
+          [
+            "/applications",
+            "/keys",
+            "/inference",
+            "/hardware",
+            "/activity",
+          ].includes(href),
+        )
+        .map(({ href }) => href),
+    ),
+  )
   const adminRouteSource = read("apps/bff/src/routes/admin.ts")
   errors.push(...verifyPr11OverviewRouteParseBoundary(adminRouteSource))
   errors.push(

@@ -1,11 +1,12 @@
-import type {
-  AdminActivityEvent,
-  AdminConnectedAppsResponse,
-  AdminInferenceDashboard,
-  AdminOverviewMetric,
-  AdminOverviewResponse,
-  AdminOverviewTile,
-  InferenceCoreSourceStatus,
+import {
+  type AdminActivityEvent,
+  type AdminConnectedAppsResponse,
+  type AdminInferenceDashboard,
+  type AdminOverviewMetric,
+  type AdminOverviewResponse,
+  type AdminOverviewTile,
+  type InferenceCoreSourceStatus,
+  inferenceCoreCustomerVocabulary,
 } from "@llm-machines/contracts/inference-core"
 import type { Actor } from "../auth/authorization"
 import { getAdminConnectedAppsProjection } from "./admin-connected-apps"
@@ -66,7 +67,7 @@ function applicationsTile(
   if (!applications.data) {
     return unavailableTile({
       generatedAt,
-      href: "/applications",
+      href: inferenceCoreCustomerVocabulary.primaryIntegration.href,
       id: "applications",
       metricLabels: ["Keys", "Connected", "Firecrawl enabled"],
       summary: "Key state is unavailable. Open Keys after the source recovers.",
@@ -88,7 +89,7 @@ function applicationsTile(
   ).length
 
   return {
-    href: "/applications",
+    href: inferenceCoreCustomerVocabulary.primaryIntegration.href,
     id: "applications",
     metrics: [
       metric("applications", "Keys", apps.length, "Current registry"),
