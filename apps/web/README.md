@@ -3,7 +3,6 @@
 The customer Console is a focused control-plane UI with these retained surfaces:
 
 - `/` (Overview)
-- `/activity`
 - `/applications`
 - `/inference`
 - `/hardware`

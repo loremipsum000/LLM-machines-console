@@ -44,7 +44,6 @@ describe("Console middleware", () => {
   it("protects every retained Console route with a path-only return target", async () => {
     const protectedPaths = [
       "/",
-      "/activity",
       "/applications",
       "/applications/add",
       "/api/admin/audit/export",
@@ -62,6 +61,14 @@ describe("Console middleware", () => {
         "/auth/signin?returnTo=",
       )
     }
+    expect(mocks.resolveConsoleSession).not.toHaveBeenCalled()
+  })
+
+  it("does not turn the retired Activity route into an authenticated ghost page", async () => {
+    const response = await runMiddleware("/activity")
+
+    expect(response.headers.get("x-middleware-next")).toBe("1")
+    expect(response.headers.get("location")).toBeNull()
     expect(mocks.resolveConsoleSession).not.toHaveBeenCalled()
   })
 

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "CONSOLE-ACTIVITY-AUDIT-SURFACE-RETIREMENT",
+  "status": "SOURCE_SUCCESSOR_CANDIDATE",
+  "base": {
+    "commit": "1546448712fb6863538153c3aa97f227f735715a",
+    "tree": "53c6483060dc49b5be5d78443200964eabf560ff"
+  },
+  "customerBoundary": {
+    "logicalSurfaces": [
+      "Overview",
+      "Keys",
+      "Inference",
+      "Hardware",
+      "Team",
+      "Settings"
+    ],
+    "removedRoute": "/activity",
+    "removedRouteBehavior": "ABSENT_404",
+    "overviewRecentActivity": "METADATA_ONLY_NON_INTERACTIVE",
+    "auditEvidenceLocation": "/settings",
+    "coreCompatibilityFingerprint": "sha256:8ef12de33f7d900f2c6b9a1f8117f8635088d655b52bd7fa5c481c32117b293e"
+  },
+  "retainedControls": {
+    "auditReadApi": "/api/admin/audit",
+    "signedExportApis": [
+      "/api/admin/audit/export",
+      "/api/admin/audit/export/verification-keys"
+    ],
+    "adminExportOnly": true,
+    "operatorExportDenied": true,
+    "auditLedger": "RETAINED",
+    "nativeIngestion": "RETAINED",
+    "metadataOnlyRetention": "RETAINED",
+    "authorizationAndSigning": "RETAINED"
+  },
+  "historicalEvidence": "PRESERVED_UNCHANGED",
+  "productAccepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "genesis": "UNPUBLISHED"
+}

@@ -232,7 +232,7 @@ function systemTile(
   const auditAvailable = sourceStatuses[3] !== "unavailable"
 
   return {
-    href: "/activity",
+    href: "/settings",
     id: "system",
     metrics: [
       metric(
@@ -430,7 +430,6 @@ function toAdminActivityEvent(event: AuditEventRecord): AdminActivityEvent {
     action: event.action,
     actorId: event.actorId,
     createdAt: event.createdAt,
-    href: `/activity?eventId=${encodeURIComponent(event.id)}`,
     id: event.id,
     severity:
       event.outcome === "failed" || event.outcome === "denied"

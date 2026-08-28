@@ -75,7 +75,6 @@ describe("PR-08 Application Firecrawl contracts", () => {
   it("defaults existing Applications to installed but disabled Firecrawl", () => {
     const parsed = adminConnectedAppSchema.parse({
       allowedModels: ["model-a"],
-      auditHref: "/admin/activity?application=app-1",
       authMethod: "api_key",
       connectionStatus: "not_connected",
       createdAt: issuedAt,

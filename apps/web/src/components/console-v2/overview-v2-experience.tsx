@@ -50,24 +50,16 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
         aria-labelledby="overview-recent-activity-title"
         className="mt-8 rounded-lg border border-[#353535] bg-[#232323] p-4"
       >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2
-              className="text-base font-semibold leading-5 text-white"
-              id="overview-recent-activity-title"
-            >
-              Recent activity
-            </h2>
-            <p className="mt-1 text-sm leading-5 text-[#b2b2b2]">
-              Metadata-only events from the Console audit source.
-            </p>
-          </div>
-          <Link
-            className="rounded-md border border-[#454545] px-3 py-2 text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#2e2e2e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-            href="/activity"
+        <div>
+          <h2
+            className="text-base font-semibold leading-5 text-white"
+            id="overview-recent-activity-title"
           >
-            View Activity &amp; Audit
-          </Link>
+            Recent activity
+          </h2>
+          <p className="mt-1 text-sm leading-5 text-[#b2b2b2]">
+            Metadata-only events from the Console audit source.
+          </p>
         </div>
 
         {overview.activityEvents.length > 0 ? (
@@ -133,7 +125,7 @@ function OverviewTileCard({ tile }: { tile: OverviewTile }) {
   )
 }
 
-type OverviewTile = Omit<AdminOverviewTile, "href"> & { href: string }
+type OverviewTile = AdminOverviewTile
 
 function MetricCard({ item }: { item: AdminOverviewMetric }) {
   return (
@@ -190,12 +182,9 @@ function ActivityEventRow({ event }: { event: AdminActivityEvent }) {
     <article className="rounded-md border border-[#353535] bg-[#1d1d1d] p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link
-            className="break-words text-sm font-semibold leading-5 text-white hover:text-[#73cfff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-            href={event.href}
-          >
+          <p className="break-words text-sm font-semibold leading-5 text-white">
             {event.action}
-          </Link>
+          </p>
           <p className="mt-1 break-words text-xs leading-5 text-[#b2b2b2]">
             {event.targetType} {event.targetId}
           </p>

@@ -42,11 +42,7 @@ describe("OverviewV2Experience", () => {
       within(activity).getByText("console.application.credential.rotated"),
     ).toBeTruthy()
     expect(within(activity).getByText("Subject admin-1")).toBeTruthy()
-    expect(
-      within(activity)
-        .getByRole("link", { name: "View Activity & Audit" })
-        .getAttribute("href"),
-    ).toBe("/activity")
+    expect(within(activity).queryByRole("link")).toBeNull()
   })
 
   it("shows unavailable source and audit states without fabricated values", () => {
@@ -92,7 +88,6 @@ function overviewFixture() {
         action: "console.application.credential.rotated",
         actorId: "admin-1",
         createdAt: "2026-08-02T09:20:00.000Z",
-        href: "/activity?eventId=event-1",
         id: "event-1",
         severity: "info",
         targetId: "credential-1",
@@ -114,7 +109,7 @@ function overviewFixture() {
         metricFixture("targets", "Targets up", "7/8"),
         metricFixture("alerts", "Alerts", "1", "warning"),
       ]),
-      tileFixture("system", "System", "/activity", [
+      tileFixture("system", "System", "/settings", [
         metricFixture(
           "system-status",
           "System status",

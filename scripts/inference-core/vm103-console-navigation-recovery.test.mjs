@@ -3,9 +3,9 @@ import { test } from "node:test"
 import { classifyConsoleNavigationAttempt } from "../pre-genesis/console-navigation-recovery.mjs"
 
 const baseline = {
-  actualUrl: "https://console.lab.llm-machines.com/activity",
+  actualUrl: "https://console.lab.llm-machines.com/settings",
   consoleOrigin: "https://console.lab.llm-machines.com",
-  expectedPath: "/activity",
+  expectedPath: "/settings",
   headingVisible: true,
   responseStatus: 200,
 }
@@ -41,7 +41,7 @@ test("fails closed on session loss, cross-origin redirects, and other server err
       ...baseline,
       actualUrl: "https://console.lab.llm-machines.com/auth/signin",
     },
-    { ...baseline, actualUrl: "https://attacker.invalid/activity" },
+    { ...baseline, actualUrl: "https://attacker.invalid/settings" },
   ]) {
     assert.equal(classifyConsoleNavigationAttempt(attempt).status, "FAIL")
   }

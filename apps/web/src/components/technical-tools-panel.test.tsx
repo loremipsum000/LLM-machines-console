@@ -46,6 +46,7 @@ describe("TechnicalToolsPanel", () => {
       expect(link.className).toContain("text-[#fdfdfd]")
     }
     expect(screen.queryByText(/Portainer/i)).toBeNull()
+    expect(screen.queryByText(/Activity & Audit/i)).toBeNull()
   })
 
   it("keeps the Console and LiteLLM credential boundaries explicit", () => {

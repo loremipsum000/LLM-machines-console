@@ -200,3 +200,17 @@ per-package JSON file and contract revision.
 - This prospective reconciliation changes no wire identifier, stored data,
   credential authority, public API, native role, or runtime qualification
   status. Historical PR-11 and earlier records remain unchanged.
+
+## Prospective Console Activity & Audit surface retirement
+
+- Remove the customer-facing `/activity` page and navigation entry. The
+  current primary Console order is Overview, Keys, Inference, Hardware, Team,
+  and Settings; `/activity` is absent rather than redirected.
+- Keep Overview recent activity as non-interactive metadata-only context.
+- Keep Admin signed JSON/CSV audit export and verification keys in Settings.
+  Operator export remains denied.
+- Preserve the BFF audit read/export routes, audit ledger, native ingestion,
+  authorization, signing, retention, and zero-content-retention boundaries.
+- Preserve all historical seven-surface PR-11 and later evidence unchanged.
+  This prospective decision does not claim Product acceptance, runtime
+  qualification, contract activation, Q0 completion, or Genesis publication.

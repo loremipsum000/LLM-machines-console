@@ -1385,3 +1385,18 @@ inactive, Q0 is not started, and Genesis is unpublished. F0-N4R2 is the next
 package and must independently admit the exact image into the Core BOM and
 image lock together with startup, persistence, recovery-administrator, backup,
 restart, health, stop, and clean-restore contracts.
+
+## Console Activity & Audit surface retirement
+
+The prospective current Console has six primary customer surfaces: Overview,
+Keys, Inference, Hardware, Team, and Settings. The dedicated `/activity` page
+is absent and fails closed; Overview retains a non-interactive metadata-only
+recent-activity summary. Admin signed audit export and verification-key access
+remain available in Settings, while Operator export remains denied.
+
+This is presentation consolidation only. Audit generation, ledger storage,
+native ingestion, metadata-only retention, authorization, signing, read APIs,
+and signed export APIs remain retained controls. Historical PR-09, PR-11,
+PR-11A, F0, and audit evidence remains unchanged. Product acceptance and
+runtime qualification remain false, contract activation remains inactive, and
+Genesis remains unpublished.

@@ -14,7 +14,6 @@ const iconPattern =
 
 const consoleReadOnlyPages = new Set([
   "/",
-  "/activity",
   "/applications",
   "/hardware",
   "/inference",

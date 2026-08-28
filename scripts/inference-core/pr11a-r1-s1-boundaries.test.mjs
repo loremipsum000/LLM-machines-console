@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import {
+  activityAuditSurfaceRetirementPath,
   buildRouteBaseline,
   pr11aR1S1Pr09NativeIdentifierSuccessorEvidence,
   verifyReviewedPr09NativeIdentifierEvidence,
@@ -125,14 +126,24 @@ test("R1-S1 makes only the reviewed opaque-session route transition", () => {
     baseCommit: sourceHead,
     root: repositoryRoot,
   })
-  const nativeSessionSuccessor = candidate.routes.filter(
+  const successorAwareRoutes = [...candidate.routes]
+  if (existsSync(resolve(repositoryRoot, activityAuditSurfaceRetirementPath))) {
+    successorAwareRoutes.push({
+      surface: "web-page",
+      method: "PAGE",
+      path: "/activity",
+      source: "apps/web/src/app/activity/page.tsx",
+      classification: "current-console-seam",
+    })
+  }
+  const nativeSessionSuccessor = successorAwareRoutes.filter(
     ({ method, path, source, surface }) =>
       method === "GET" &&
       path === "/api/internal/native-session/litellm/authorize" &&
       source === "apps/bff/src/routes/console-session.ts" &&
       surface === "bff",
   )
-  const historicalCandidateRoutes = candidate.routes.filter(
+  const historicalCandidateRoutes = successorAwareRoutes.filter(
     (route) => !nativeSessionSuccessor.includes(route),
   )
   const acceptedSignatures = new Set(routeSignatures(accepted.routes))

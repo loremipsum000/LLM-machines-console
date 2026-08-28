@@ -151,7 +151,6 @@ test("native administration paths remain denied on both hosts", () => {
 test("Console pages support only read or exact Next-action mutation paths", () => {
   for (const rawTarget of [
     "/",
-    "/activity?eventId=event-1",
     "/applications",
     "/hardware?range=24h",
     "/inference?range=24h",
@@ -190,7 +189,7 @@ test("Console pages support only read or exact Next-action mutation paths", () =
     assert.equal(request({ method: "POST", rawTarget }).allowed, false)
   }
   assert.equal(
-    request({ method: "POST", rawTarget: "/activity" }).allowed,
+    request({ method: "GET", rawTarget: "/activity" }).allowed,
     false,
   )
   for (const [method, rawTarget] of [

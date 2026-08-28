@@ -67,7 +67,6 @@ vi.mock("@/lib/auth/session", () => ({
 }))
 
 vi.mock("@/lib/admin/server-data-core", () => ({
-  getAdminAudit: vi.fn(),
   getAdminConnectedAppDetail: vi.fn(),
   getAdminConnectedApps: vi.fn(),
   getAdminHardware: mocks.getAdminHardware,
@@ -83,10 +82,6 @@ vi.mock("@/lib/admin/server-data-core", () => ({
 
 vi.mock("@/lib/admin/technical-tools", () => ({
   technicalToolsForRole: mocks.technicalToolsForRole,
-}))
-
-vi.mock("@/components/console-v2/activity-v2-experience", () => ({
-  ActivityV2Experience: vi.fn(),
 }))
 
 vi.mock("@/components/console-v2/applications-v2-experience", () => ({

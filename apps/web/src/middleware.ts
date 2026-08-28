@@ -141,7 +141,6 @@ function createContentSecurityPolicy(request: NextRequest): {
 function isProtectedConsolePath(pathname: string): boolean {
   return (
     pathname === "/" ||
-    pathname === "/activity" ||
     pathname === "/hardware" ||
     pathname === "/inference" ||
     pathname === "/settings" ||

@@ -112,7 +112,6 @@ describe("Admin Overview aggregation", () => {
       expect.objectContaining({
         action: "console.application.credential.rotated",
         actorId: "admin-1",
-        href: "/activity?eventId=event-1",
         severity: "info",
       }),
     ])
