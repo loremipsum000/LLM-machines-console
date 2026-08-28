@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react"
 import { axe } from "jest-axe"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -534,12 +535,15 @@ describe("Keys experience", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: "Create Key" }))
 
-    expect(await screen.findByText(oauthReveal.clientSecret)).toBeTruthy()
-    expect(screen.getByText(oauthReveal.clientId)).toBeTruthy()
+    const revealDialog = await screen.findByRole("dialog", {
+      name: "Key created",
+    })
+    expect(within(revealDialog).getByText(oauthReveal.clientSecret)).toBeTruthy()
+    expect(within(revealDialog).getByText(oauthReveal.clientId)).toBeTruthy()
     expect(
       screen.queryByRole("button", { name: "Copy Firecrawl API key" }),
     ).toBeNull()
-    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    fireEvent.click(within(revealDialog).getByRole("button", { name: "Done" }))
     await waitFor(() => {
       expect(screen.queryByText(oauthReveal.clientSecret)).toBeNull()
     })
