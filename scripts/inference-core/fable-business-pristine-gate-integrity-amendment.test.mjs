@@ -1,0 +1,188 @@
+import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
+import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+import { test } from "node:test"
+
+const root = resolve(import.meta.dirname, "../..")
+const amendment = JSON.parse(
+  readFileSync(
+    resolve(
+      root,
+      "docs/reduction/inference-core/fable-business-pristine-gate-integrity-amendment.json",
+    ),
+    "utf8",
+  ),
+)
+
+function git(...args) {
+  return execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim()
+}
+
+function sha256(path) {
+  return createHash("sha256")
+    .update(readFileSync(resolve(root, path)))
+    .digest("hex")
+}
+
+test("amendment preserves the admitted closure and binds its masked failure", () => {
+  assert.deepEqual(amendment.historicalClosure, {
+    candidateCommit: "a632baff14a87231354eb45b221b9cc2fbc6ad93",
+    candidateTree: "ae078bef513f94497c73900148987ebff0ff45c2",
+    protectedMerge: "496d2c33ff635abf09bfbe8b3abd541f2dc3072f",
+    pullRequest: 154,
+    preservedFiles: amendment.historicalClosure.preservedFiles,
+  })
+  assert.equal(
+    git("rev-parse", `${amendment.historicalClosure.candidateCommit}^{tree}`),
+    amendment.historicalClosure.candidateTree,
+  )
+  assert.equal(
+    git("rev-parse", `${amendment.historicalClosure.protectedMerge}^{tree}`),
+    amendment.historicalClosure.candidateTree,
+  )
+  for (const file of amendment.historicalClosure.preservedFiles) {
+    assert.equal(sha256(file.path), file.sha256)
+  }
+  assert.equal(amendment.observation.pipefailEnabled, false)
+  assert.equal(amendment.observation.pipelineExitSource, "tee")
+  assert.equal(
+    amendment.observation.actualResult,
+    "FAILED_WEB_TEST_MASKED_BY_PIPELINE_EXIT_ZERO",
+  )
+  assert.equal(
+    amendment.observation.failedTest,
+    "Keys experience > creates OAuth inference material from Advanced features without a description or Firecrawl secret",
+  )
+  assert.equal(
+    amendment.observation.failedLocation,
+    "apps/web/src/components/console-v2/applications-v2-experience.test.tsx:542",
+  )
+  assert.equal(amendment.observation.historicalDetachedReplayResult, "PASS")
+  assert.equal(
+    amendment.observation.failureLogSha256,
+    "35e2550040eeea9cde2bcc1e2014004e00989c33be237de7bd68f06d91cef840",
+  )
+  assert.equal(
+    amendment.observation.historicalDetachedReplayLogSha256,
+    "1b5d5fbcc1ac84ce2f4d1f986d9dfb7f1105578dc872a103a94d45ea92a8f516",
+  )
+  assert.equal(
+    amendment.rootCause.detail,
+    "The test found secret text before the native dialog showModal effect made dialog controls accessible to role queries.",
+  )
+})
+
+test("synchronization successor is an exact tree-identical protected merge", () => {
+  const successor = amendment.successor
+  assert.equal(
+    git("rev-parse", `${successor.candidateCommit}^{tree}`),
+    successor.candidateTree,
+  )
+  assert.equal(
+    git("rev-parse", `${successor.protectedMerge}^{tree}`),
+    successor.candidateTree,
+  )
+  assert.equal(
+    git("rev-parse", `${successor.protectedMerge}^1`),
+    amendment.historicalClosure.protectedMerge,
+  )
+  assert.equal(
+    git("rev-parse", `${successor.protectedMerge}^2`),
+    successor.candidateCommit,
+  )
+  assert.equal(successor.pullRequest, 156)
+  assert.equal(successor.focusedRepetitions, 50)
+  assert.equal(
+    successor.focusedInventorySha256,
+    "4eaa436d620a0e2deab0875c7d1d62a3864cc95a97530a1ace3750a8263c59e0",
+  )
+  assert.equal(successor.reviewVerdict, "PASS_NO_MATERIAL_FINDINGS")
+  assert.equal(
+    successor.validationCommandPolicy,
+    "FAIL_FAST_WITHOUT_PIPELINE_OR_WITH_PIPEFAIL",
+  )
+})
+
+test("all corrected validation evidence is digest-bound and status stays inactive", () => {
+  assert.deepEqual(amendment.validationEvidence, {
+    local: [
+      [
+        "root-test",
+        "c827769c472ad2ec1957f44df3c2b88239e5ab3b91d399248fe91290fe459897",
+      ],
+      [
+        "release-test",
+        "0160177758a409d12c6ed2f059e0108642c4de15bfdeb39b6fca2be6b4ae07e4",
+      ],
+      [
+        "lint",
+        "67d75e1d524ceee322c4b02b4a8ccde609fe38745d5ea5fc5987922111eee9f6",
+      ],
+      [
+        "typecheck",
+        "01fa9d34deee63c3ff446d039b53e217aeb44fee39f35c21ff8fcab8771baabd",
+      ],
+      [
+        "build",
+        "8e983dafa29f03de63c3babd7350436d97746f39586fce5f123222d5144333d7",
+      ],
+      [
+        "security",
+        "7e261757f87b0fbba8f26dc26acee84f4e77e1d6def61566c6a1b18e50e8b9c6",
+      ],
+      [
+        "fsck",
+        "2d5616b56cec0b98ed90bd342dada25dbfa995e89c90351573e56a7d8e8a6a09",
+      ],
+    ],
+    detached: [
+      [
+        "install",
+        "7fea9e3d969bbb314d2ce235288b53cac9de7b78bf5ac34c8619fa559f6aeba9",
+      ],
+      [
+        "root-test",
+        "a2eed592b0ec6fdf44fe7af63b050a5b0a4ba9311a4bf0a245e9d0813848e1ec",
+      ],
+      [
+        "release-test",
+        "95bc713d6125c8c67e85ae15708e28b2a03aa74aa644cee95d026db106f48d1e",
+      ],
+      [
+        "lint",
+        "46b3c0b157cb948d706c9ac594e13f54cffbbb69a380301148a1fbee07b65ae1",
+      ],
+      [
+        "typecheck",
+        "f508f4c2ba7cd1f78f4a7aaca088639aa0bfa200b197847c49649da14921b2f1",
+      ],
+      [
+        "build",
+        "1db725be8146974b04a910a5f7f5cd1befe3f62389a98c7a19da9b9c6de01323",
+      ],
+      [
+        "security",
+        "8d5605b3ce754723ac00b8240516fe2cfb3b426387fd49926a35969ccda6599f",
+      ],
+      [
+        "fsck",
+        "5d5346cbc426fd1b40b21cb60fb7d8879ef9bca7d3b3259f3881df67d93c9d58",
+      ],
+    ],
+  })
+  assert.equal(
+    amendment.rootCause.classification,
+    "TEST_SYNCHRONIZATION_DEFECT",
+  )
+  assert.equal(amendment.rootCause.productBehaviorChanged, false)
+  assert.equal(amendment.rootCause.credentialAssertionsWeakened, false)
+  assert.deepEqual(amendment.status, {
+    productAccepted: false,
+    runtimeQualified: false,
+    contractActivation: "INACTIVE",
+    genesisPublished: false,
+    productMainAdmission: "PENDING_RETENTION_RULESET_AUTHORIZATION",
+  })
+})
