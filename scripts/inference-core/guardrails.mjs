@@ -18,6 +18,12 @@ import {
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = resolve(scriptDirectory, "../..")
+const inferenceCoreAlertVocabulary = JSON.parse(
+  readFileSync(
+    join(repositoryRoot, "packages/contracts/src/inference-core-alerts.json"),
+    "utf8",
+  ),
+)
 export const pr12ReleaseTestGateBindingPath =
   "docs/reduction/inference-core/pr-12-release-test-gate-binding.json"
 
@@ -2935,12 +2941,7 @@ export const pr09ReviewedDispositions = {
       concurrencyOrInFlightIsSubstitute: false,
       genuineSignalOwner: "PR-12",
     },
-    alerts: [
-      "LLMMGpuSaturation",
-      "LLMMInferenceFailureRatioHigh",
-      "LLMMInferenceQueueDepthPersisting",
-      "LLMMInferenceQueueDepthSignalMissing",
-    ],
+    alerts: inferenceCoreAlertVocabulary.alertNames,
     localDefaultReceiver: "local-null",
     llmMachinesCloudRelay: false,
   },
@@ -18344,14 +18345,31 @@ export function verifyPr09SourceBoundary(root = repositoryRoot) {
     errors.push("PR-09 queue-depth emitter boundary changed")
   }
 
-  const alertmanagerSource = read("apps/bff/src/services/admin-alertmanager.ts")
   const expectedAlerts = pr09ReviewedDispositions.observability.alerts
-  const actualAlertNames = [
-    ...new Set(alertmanagerSource.match(/LLMM[A-Za-z]+/g) ?? []),
-  ].sort()
+  let actualAlertNames = []
+  const alertContractPath = "packages/contracts/src/inference-core-alerts.json"
+  if (isRegularFile(resolve(root, alertContractPath))) {
+    try {
+      const alertContract = JSON.parse(read(alertContractPath))
+      actualAlertNames = alertContract.alertNames ?? []
+    } catch {
+      errors.push("PR-09 Alertmanager alert-name contract is invalid JSON")
+    }
+  } else {
+    const alertmanagerSource = read(
+      "apps/bff/src/services/admin-alertmanager.ts",
+    )
+    actualAlertNames = [
+      ...new Set(alertmanagerSource.match(/LLMM[A-Za-z]+/g) ?? []),
+    ].sort()
+  }
   if (
     JSON.stringify(actualAlertNames) !==
-    JSON.stringify([...expectedAlerts].sort())
+    JSON.stringify(
+      isRegularFile(resolve(root, alertContractPath))
+        ? expectedAlerts
+        : [...expectedAlerts].sort(),
+    )
   ) {
     errors.push("PR-09 Alertmanager alert-name allowlist changed")
   }

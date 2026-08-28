@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url"
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = path.resolve(root, "../..")
+const alertVocabularyPath = path.join(
+  repositoryRoot,
+  "packages/contracts/src/inference-core-alerts.json",
+)
 
 const profileFiles = {
   alertmanager: "alertmanager/alertmanager.yml",
@@ -42,6 +46,21 @@ const expectedFiles = new Set([
   "validate-profile.mjs",
   "validate-profile.test.mjs",
 ])
+
+const expectedDashboardProvider = `apiVersion: 1
+
+providers:
+  - name: llmm-baseline
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/baseline
+      foldersFromFilesStructure: false
+`
 
 const expectedGrafanaClient = {
   accessTokenClaims: ["amr", "auth_time", "realm_access.roles", "sub"],
@@ -80,13 +99,6 @@ const expectedGrafanaClient = {
   },
   serviceAccountsEnabled: false,
 }
-
-const expectedAlertNames = [
-  "LLMMGpuSaturation",
-  "LLMMInferenceFailureRatioHigh",
-  "LLMMInferenceQueueDepthPersisting",
-  "LLMMInferenceQueueDepthSignalMissing",
-]
 
 const allowedDashboardExpressions = new Set([
   "llm_machines:gpu_utilization_ratio:max",
@@ -474,8 +486,17 @@ export function validatePrometheus(prometheus, targets) {
   return errors
 }
 
-export function validateRules(recordingRules, alertRules) {
+export function validateRules(
+  recordingRules,
+  alertRules,
+  alertVocabularySource = readFileSync(alertVocabularyPath, "utf8"),
+) {
   const errors = []
+  const expectedAlertNames = validateAlertVocabulary(
+    alertVocabularySource,
+    alertRules,
+    errors,
+  )
   const expectedRecordExpressions = {
     "llm_machines:gpu_utilization_ratio:max":
       "max(clamp_max(clamp_min(llm_machines_gpu_utilization_ratio, 0), 1))",
@@ -536,6 +557,9 @@ export function validateRules(recordingRules, alertRules) {
       for: "10m",
       labels: { severity: "info", component: "inference" },
     },
+  }
+  if (!sameJson(Object.keys(expectedAlerts), expectedAlertNames)) {
+    add(errors, "canonical alert vocabulary lacks an exact rule contract")
   }
   for (const required of [
     "expr: max(llm_machines_inference_queue_depth)",
@@ -659,6 +683,38 @@ export function validateRules(recordingRules, alertRules) {
   return errors
 }
 
+function validateAlertVocabulary(source, alertRules, errors) {
+  const contract = parseJson(source, "alert vocabulary contract", errors)
+  if (
+    !contract ||
+    !sameJson(Object.keys(contract), ["schemaVersion", "alertNames"]) ||
+    contract.schemaVersion !== 1 ||
+    !Array.isArray(contract.alertNames) ||
+    contract.alertNames.length === 0
+  ) {
+    add(errors, "alert vocabulary contract shape changed")
+    return []
+  }
+  if (
+    contract.alertNames.some(
+      (name) =>
+        typeof name !== "string" || !/^[A-Za-z][A-Za-z0-9]{0,127}$/.test(name),
+    )
+  ) {
+    add(errors, "alert vocabulary contains an unsafe name")
+  }
+  if (new Set(contract.alertNames).size !== contract.alertNames.length) {
+    add(errors, "alert vocabulary names must be unique")
+  }
+  const ruleNames = [
+    ...alertRules.matchAll(/^\s*- alert: ([A-Za-z0-9]+)$/gm),
+  ].map((match) => match[1])
+  if (!sameJson(ruleNames, contract.alertNames)) {
+    add(errors, "alert rule names or order differ from the canonical contract")
+  }
+  return contract.alertNames
+}
+
 export function validateAlertmanager(source) {
   const errors = []
   const required = [
@@ -761,6 +817,7 @@ export function validateGrafana(
       add(errors, `Grafana datasource is missing ${required}`)
   }
   for (const required of [
+    "name: llmm-baseline",
     "folder: ''",
     "disableDeletion: true",
     "allowUiUpdates: false",
@@ -769,6 +826,12 @@ export function validateGrafana(
     if (!dashboardProvider.includes(required)) {
       add(errors, `Grafana baseline provider is missing ${required}`)
     }
+  }
+  if (dashboardProvider !== expectedDashboardProvider) {
+    add(
+      errors,
+      "Grafana baseline provider must match the exact source contract",
+    )
   }
   const folder = parseJson(folderSource, "Grafana folder boundary", errors)
   if (
@@ -970,7 +1033,13 @@ export function validateProfile(overrides = {}) {
   errors.push(...validatePublicSafety(sources))
   errors.push(...validateRuntimeContract(sources.runtimeContract))
   errors.push(...validatePrometheus(sources.prometheus, sources.targets))
-  errors.push(...validateRules(sources.recordingRules, sources.alertRules))
+  errors.push(
+    ...validateRules(
+      sources.recordingRules,
+      sources.alertRules,
+      overrides.alertVocabulary ?? readFileSync(alertVocabularyPath, "utf8"),
+    ),
+  )
   errors.push(...validateAlertmanager(sources.alertmanager))
   errors.push(
     ...validateHardwareGrafana(

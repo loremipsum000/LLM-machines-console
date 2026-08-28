@@ -42,6 +42,13 @@ const sources = {
   runtimeContract: read("runtime-contract.json"),
   targets: read("prometheus/file-sd/inference-core.json"),
 }
+const alertVocabulary = readFileSync(
+  path.join(
+    repositoryRoot,
+    "packages/contracts/src/inference-core-alerts.json",
+  ),
+  "utf8",
+)
 
 const keycloakSeed = readFileSync(
   path.join(repositoryRoot, "infra/keycloak/inference-core-realm-seed.json"),
@@ -210,6 +217,54 @@ test("alert annotations cannot interpolate source labels", () => {
   )
 })
 
+test("the canonical alert vocabulary is unique, safe, ordered, and rule-bound", () => {
+  assert.deepEqual(
+    validateRules(sources.recordingRules, sources.alertRules, alertVocabulary),
+    [],
+  )
+  const duplicate = alertVocabulary.replace(
+    '"LLMMInferenceFailureRatioHigh",',
+    '"LLMMGpuSaturation",',
+  )
+  assert.match(
+    validateRules(sources.recordingRules, sources.alertRules, duplicate).join(
+      "\n",
+    ),
+    /unique|canonical contract/,
+  )
+  const unsafe = alertVocabulary.replace(
+    "LLMMGpuSaturation",
+    "unsafe alert name",
+  )
+  assert.match(
+    validateRules(sources.recordingRules, sources.alertRules, unsafe).join(
+      "\n",
+    ),
+    /unsafe name/,
+  )
+  const reordered = JSON.stringify({
+    schemaVersion: 1,
+    alertNames: JSON.parse(alertVocabulary).alertNames.toReversed(),
+  })
+  assert.match(
+    validateRules(sources.recordingRules, sources.alertRules, reordered).join(
+      "\n",
+    ),
+    /canonical contract/,
+  )
+  const extra = JSON.stringify({
+    schemaVersion: 1,
+    alertNames: [
+      ...JSON.parse(alertVocabulary).alertNames,
+      "LLMMUnexpectedAlert",
+    ],
+  })
+  assert.match(
+    validateRules(sources.recordingRules, sources.alertRules, extra).join("\n"),
+    /exact rule contract/,
+  )
+})
+
 test("content-bearing alert labels are rejected", () => {
   const changed = sources.alertRules.replace(
     "          component: inference",
@@ -254,6 +309,52 @@ test("Grafana baseline remains root-provisioned for the Admin Editor role", () =
       sources.dashboard,
     ).join("\n"),
     /folder: ''/,
+  )
+})
+
+test("Grafana baseline provider identity is exact", () => {
+  const changed = sources.dashboardProvider.replace(
+    "name: llmm-baseline",
+    "name: renamed-baseline",
+  )
+  assert.match(
+    validateGrafana(
+      sources.grafana,
+      sources.datasource,
+      changed,
+      sources.folderBoundary,
+      sources.dashboard,
+    ).join("\n"),
+    /name: llmm-baseline|exact source contract/,
+  )
+
+  const quotedExtra = `${sources.dashboardProvider}\n  - name: "shadow-provider"\n    orgId: 1\n    folder: ''\n    type: file\n    options:\n      path: /tmp/shadow\n`
+  assert.match(
+    validateGrafana(
+      sources.grafana,
+      sources.datasource,
+      quotedExtra,
+      sources.folderBoundary,
+      sources.dashboard,
+    ).join("\n"),
+    /exact source contract/,
+  )
+
+  const flowStyleDecoy = `apiVersion: 1
+metadata: |
+  providers:
+    - name: llmm-baseline
+providers: [{ name: shadow-provider, type: file }]
+`
+  assert.match(
+    validateGrafana(
+      sources.grafana,
+      sources.datasource,
+      flowStyleDecoy,
+      sources.folderBoundary,
+      sources.dashboard,
+    ).join("\n"),
+    /exact source contract/,
   )
 })
 

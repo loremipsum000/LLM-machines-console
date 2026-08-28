@@ -1,4 +1,5 @@
 import { z } from "zod"
+import alertVocabulary from "./inference-core-alerts.json" with { type: "json" }
 import { inferenceCoreHumanRoleSchema } from "./inference-core-authorization.js"
 
 export * from "./inference-core-authorization.js"
@@ -8,6 +9,10 @@ export * from "./inference-core-recovery.js"
 export * from "./inference-core-session.js"
 export * from "./inference-core-signing.js"
 export * from "./inference-core-storage.js"
+
+export const inferenceCoreAlertNames: readonly string[] = Object.freeze([
+  ...alertVocabulary.alertNames,
+])
 
 export const inferenceCoreCompatibilityFingerprint =
   "sha256:9249bdc91f2dc7ac8471de88aad851644a8b8526d57c5f1501e6c63db246d1d7"

@@ -2,9 +2,11 @@ import { createHash } from "node:crypto"
 import { constants } from "node:fs"
 import { open } from "node:fs/promises"
 import { isAbsolute } from "node:path"
-import type {
-  AdminHardwareAlert,
-  InferenceCoreSourceStatus,
+import {
+  type AdminHardwareAlert,
+  type InferenceCoreSeverity,
+  type InferenceCoreSourceStatus,
+  inferenceCoreAlertNames,
 } from "@llm-machines/contracts/inference-core"
 import {
   fetchBoundedJson,
@@ -18,14 +20,7 @@ export interface AdminAlertmanagerSummary {
   summary: string
 }
 
-const ALLOWED_LABELS = ["alertname", "severity", "component"] as const
-const ALLOWED_LABEL_SET = new Set<string>(ALLOWED_LABELS)
-const ALLOWED_ALERT_NAMES = new Set([
-  "LLMMGpuSaturation",
-  "LLMMInferenceFailureRatioHigh",
-  "LLMMInferenceQueueDepthPersisting",
-  "LLMMInferenceQueueDepthSignalMissing",
-])
+const ALLOWED_ALERT_NAMES = new Set(inferenceCoreAlertNames)
 const DEFAULT_TIMEOUT_MS = 2000
 const DEFAULT_MAX_RESPONSE_BYTES = 512 * 1024
 const MAX_ALERTS = 200
@@ -48,6 +43,7 @@ export async function getAdminAlertmanagerSummary(): Promise<AdminAlertmanagerSu
     url.searchParams.set("active", "true")
     url.searchParams.set("silenced", "false")
     url.searchParams.set("inhibited", "false")
+    url.searchParams.append("filter", 'component="inference"')
     const payload = await fetchBoundedJson(url, {
       bearerToken: await alertmanagerBearerToken(),
       maxResponseBytes: boundedEnvInteger(
@@ -64,12 +60,13 @@ export async function getAdminAlertmanagerSummary(): Promise<AdminAlertmanagerSu
       ),
     })
     const parsed = parseActiveAlerts(payload)
+    const omitted = parsed.malformed + parsed.unsupported + parsed.truncated
     const sourceStatus: InferenceCoreSourceStatus =
-      parsed.rejected > 0 ? "degraded" : "ok"
+      omitted > 0 ? "degraded" : "ok"
     return {
       alerts: parsed.alerts,
       sourceStatus,
-      summary: alertmanagerSummary(parsed.alerts.length, parsed.rejected),
+      summary: alertmanagerSummary(parsed),
     }
   } catch {
     return {
@@ -83,19 +80,24 @@ export async function getAdminAlertmanagerSummary(): Promise<AdminAlertmanagerSu
 
 function parseActiveAlerts(payload: unknown): {
   alerts: AdminHardwareAlert[]
-  rejected: number
+  malformed: number
+  unsupported: number
+  truncated: number
 } {
-  if (!Array.isArray(payload) || payload.length > MAX_ALERTS) {
+  if (!Array.isArray(payload)) {
     throw new Error("Invalid Alertmanager active-alert response.")
   }
   const alerts: AdminHardwareAlert[] = []
-  let rejected = 0
+  let malformed = 0
+  let unsupported = 0
   for (const value of payload) {
-    const alert = parseActiveAlert(value)
-    if (alert) {
-      alerts.push(alert)
+    const result = parseActiveAlert(value)
+    if (result.kind === "accepted") {
+      alerts.push(result.alert)
+    } else if (result.kind === "unsupported") {
+      unsupported += 1
     } else {
-      rejected += 1
+      malformed += 1
     }
   }
   alerts.sort((first, second) => {
@@ -106,50 +108,58 @@ function parseActiveAlerts(payload: unknown): {
       first.id.localeCompare(second.id)
     )
   })
-  return { alerts, rejected }
+  const truncated = Math.max(0, alerts.length - MAX_ALERTS)
+  return {
+    alerts: alerts.slice(0, MAX_ALERTS),
+    malformed,
+    unsupported,
+    truncated,
+  }
 }
 
-function parseActiveAlert(value: unknown): AdminHardwareAlert | null {
+type ParsedActiveAlert =
+  | { alert: AdminHardwareAlert; kind: "accepted" }
+  | { kind: "malformed" }
+  | { kind: "unsupported" }
+
+function parseActiveAlert(value: unknown): ParsedActiveAlert {
   if (!isRecord(value) || !isRecord(value.labels)) {
-    return null
+    return { kind: "malformed" }
   }
   if (!isRecord(value.status) || value.status.state !== "active") {
-    return null
+    return { kind: "malformed" }
   }
-  const labels = projectLabels(value.labels)
-  const alertName = labels.alertname
-  if (!alertName || !labels.severity || labels.component !== "inference") {
-    return null
+  const alertName = requiredSafeLabelValue(value.labels.alertname)
+  const component = requiredSafeLabelValue(value.labels.component)
+  const severity = parsedSeverity(value.labels.severity)
+  if (!alertName || !component || !severity) {
+    return { kind: "malformed" }
+  }
+  if (!/^[A-Za-z][A-Za-z0-9]{0,127}$/.test(alertName)) {
+    return { kind: "malformed" }
+  }
+  if (component !== "inference" || !ALLOWED_ALERT_NAMES.has(alertName)) {
+    return { kind: "unsupported" }
   }
   const startedAt = normalizedDate(value.startsAt)
+  const labels = { alertname: alertName, component, severity }
 
   return {
-    id: stableAlertId(labels, startedAt),
-    alertName,
-    severity: normalizedSeverity(labels.severity),
-    host: null,
-    device: null,
-    summary: `Alert ${alertName} is firing.`,
-    description: null,
-    startedAt,
-    grafanaUrl: null,
-    alertmanagerUrl: null,
-    labels,
+    kind: "accepted",
+    alert: {
+      id: stableAlertId(labels, startedAt),
+      alertName,
+      severity,
+      host: null,
+      device: null,
+      summary: `Alert ${alertName} is firing.`,
+      description: null,
+      startedAt,
+      grafanaUrl: null,
+      alertmanagerUrl: null,
+      labels,
+    },
   }
-}
-
-function projectLabels(value: Record<string, unknown>): Record<string, string> {
-  const projected: Record<string, string> = {}
-  for (const [key, labelValue] of Object.entries(value)) {
-    if (!ALLOWED_LABEL_SET.has(key)) {
-      continue
-    }
-    if (!isSafeLabelValue(key, labelValue)) {
-      continue
-    }
-    projected[key] = labelValue
-  }
-  return projected
 }
 
 function stableAlertId(
@@ -165,13 +175,10 @@ function stableAlertId(
     .slice(0, 24)}`
 }
 
-function normalizedSeverity(
-  value: string | undefined,
-): AdminHardwareAlert["severity"] {
-  if (value === "critical" || value === "warning") {
-    return value
-  }
-  return "info"
+function parsedSeverity(value: unknown): InferenceCoreSeverity | null {
+  return value === "critical" || value === "warning" || value === "info"
+    ? value
+    : null
 }
 
 function normalizedDate(value: unknown): string | null {
@@ -182,12 +189,33 @@ function normalizedDate(value: unknown): string | null {
   return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null
 }
 
-function alertmanagerSummary(alertCount: number, rejected: number): string {
+function alertmanagerSummary(parsed: {
+  alerts: AdminHardwareAlert[]
+  malformed: number
+  unsupported: number
+  truncated: number
+}): string {
+  const alertCount = parsed.alerts.length
   const alertLabel = `${alertCount} active alert${alertCount === 1 ? "" : "s"}`
-  if (rejected > 0) {
-    return `Alertmanager reports ${alertLabel}; ${rejected} malformed alert${rejected === 1 ? " was" : "s were"} omitted.`
+  const omissions = [
+    omissionSummary(parsed.malformed, "malformed or unsafe"),
+    omissionSummary(parsed.unsupported, "unsupported-contract"),
+    omissionSummary(parsed.truncated, "additional admitted", "truncated"),
+  ].filter((value): value is string => value !== null)
+  if (omissions.length > 0) {
+    return `Alertmanager reports ${alertLabel}; ${omissions.join("; ")}.`
   }
   return `Alertmanager reports ${alertLabel}.`
+}
+
+function omissionSummary(
+  count: number,
+  classification: string,
+  action = "omitted",
+): string | null {
+  return count > 0
+    ? `${count} ${classification} alert${count === 1 ? " was" : "s were"} ${action}`
+    : null
 }
 
 function boundedEnvInteger(
@@ -241,21 +269,15 @@ async function alertmanagerBearerToken(): Promise<string | undefined> {
   }
 }
 
-function isSafeLabelValue(key: string, value: unknown): value is string {
+function requiredSafeLabelValue(value: unknown): string | null {
   if (
     typeof value !== "string" ||
     value.length === 0 ||
     value.length > MAX_LABEL_VALUE_LENGTH
   ) {
-    return false
+    return null
   }
-  if (key === "severity") {
-    return value === "critical" || value === "warning" || value === "info"
-  }
-  if (key === "alertname") {
-    return ALLOWED_ALERT_NAMES.has(value)
-  }
-  return key === "component" && value === "inference"
+  return value
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
