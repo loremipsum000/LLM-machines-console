@@ -288,6 +288,26 @@ describe("retained route boundaries", () => {
     )
   })
 
+  it("never passes a Grafana destination into Operator Hardware", async () => {
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
+    const hardware = { generatedAt: "2026-08-02T09:30:00.000Z" }
+    mocks.getAdminHardware.mockResolvedValue(hardware)
+    mocks.technicalToolsForRole.mockReturnValue([technicalToolLink("litellm")])
+
+    render(await renderHardwareConsoleRoute())
+
+    expect(mocks.technicalToolsForRole).toHaveBeenCalledWith("operator")
+    expect(mocks.hardwareV2Experience).toHaveBeenCalledWith(
+      expect.objectContaining({
+        grafanaHref: null,
+        hardware,
+      }),
+      undefined,
+    )
+  })
+
   it("renders the Application creation form for an Admin without MFA", async () => {
     mocks.getCurrentConsoleSession.mockResolvedValue(
       activeConsoleSession("admin"),

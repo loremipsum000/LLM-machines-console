@@ -144,6 +144,12 @@
     "requiredRuntimeArguments": ["--data.retention=720h"]
   },
   "grafana": {
+    "alertAuthority": {
+      "backend": "standalone-alertmanager",
+      "grafanaUnifiedAlerting": "disabled",
+      "prometheusAlertsPanel": "retained",
+      "unavailableMeansZeroActive": false
+    },
     "baseline": {
       "allowUiUpdates": false,
       "datasourceEditable": false,

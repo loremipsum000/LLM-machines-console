@@ -20,6 +20,15 @@ placement, credentials, secret-file mounts, and release qualification.
   roles are denied by strict role mapping. Grafana Editor can edit all
   non-provisioned Grafana content in the single-customer appliance, not only
   the designated customer folder, and never receives Grafana server-admin.
+- The immutable baseline dashboards are file-provisioned at Grafana's root.
+  Grafana OSS as-code folders grant access to the organization Admin role by
+  default, so a separate provisioned folder would be incompatible with the
+  approved Admin-to-Editor mapping. Strict OAuth remains the Admin-only access
+  boundary; `allowUiUpdates: false` keeps the baseline read-only.
+- Grafana Unified Alerting is disabled. The standalone private Alertmanager is
+  the only alert authority, while Grafana retains the Prometheus `ALERTS`
+  panel. Console treats an unavailable Alertmanager as unavailable, never as
+  zero active alerts.
 - `Customer Editable` is an unprovisioned folder created during PR-12
   commissioning. Admin can edit its dashboards; Operator has no native
   Grafana access.

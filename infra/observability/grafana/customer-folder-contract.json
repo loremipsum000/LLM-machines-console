@@ -11,9 +11,9 @@
     "allowUiUpdates": false,
     "disableDeletion": true,
     "operatorPermission": "DENY",
+    "placement": "grafana-root",
     "provisioned": true,
-    "title": "LLM Machines Baseline",
-    "uid": "llmm-baseline"
+    "provider": "llmm-baseline"
   },
   "customerEditable": {
     "adminPermission": "Edit",
