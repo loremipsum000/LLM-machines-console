@@ -228,6 +228,52 @@ describe("authorization security hardening", () => {
     await server.close()
   })
 
+  it.each([
+    ["wrong service key", "wrong-service-key"],
+    ["wrong-length service key", "short"],
+  ])("rejects a %s", async (_label, token) => {
+    useProductionServiceAuth()
+    const resolveConsoleSession = vi.fn(async () =>
+      activeConsoleSession(new Date()),
+    )
+    const server = authorizationServer({ resolveConsoleSession })
+
+    const response = await server.inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+        "x-llm-machines-console-session": "a".repeat(43),
+      },
+      method: "GET",
+      url: "/api/admin/read",
+    })
+
+    expect(response.statusCode).toBe(401)
+    expect(resolveConsoleSession).not.toHaveBeenCalled()
+    await server.close()
+  })
+
+  it("rejects service authentication when the configured key is empty", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("BFF_SERVICE_API_KEY", "")
+    const resolveConsoleSession = vi.fn(async () =>
+      activeConsoleSession(new Date()),
+    )
+    const server = authorizationServer({ resolveConsoleSession })
+
+    const response = await server.inject({
+      headers: {
+        authorization: "Bearer test-service-key",
+        "x-llm-machines-console-session": "a".repeat(43),
+      },
+      method: "GET",
+      url: "/api/admin/read",
+    })
+
+    expect(response.statusCode).toBe(401)
+    expect(resolveConsoleSession).not.toHaveBeenCalled()
+    await server.close()
+  })
+
   it("maps terminal Console sessions to 401 and authority outages to 503", async () => {
     useProductionServiceAuth()
     const cases = [

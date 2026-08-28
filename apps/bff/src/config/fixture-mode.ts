@@ -40,3 +40,12 @@ export function assertProductionFixturesDisabled(
     )
   }
 }
+
+export function assertShippedProductionRuntime(
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  if (!isProductionRuntime(env)) {
+    throw new Error("The shipped Console BFF requires NODE_ENV=production.")
+  }
+  assertProductionFixturesDisabled(env)
+}

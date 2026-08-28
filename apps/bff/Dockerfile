@@ -23,4 +23,4 @@ ENV PORT=4001
 
 EXPOSE 4001
 
-CMD ["corepack", "pnpm", "--filter", "@llm-machines/bff", "exec", "tsx", "src/index.ts"]
+CMD ["corepack", "pnpm", "--filter", "@llm-machines/bff", "exec", "tsx", "src/production-entrypoint.ts"]
