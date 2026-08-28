@@ -70,6 +70,7 @@ describe("Alertmanager active-alert projection", () => {
     const url = new URL(input?.toString() ?? "")
     expect(url.pathname).toBe("/private/api/v2/alerts")
     expect(url.searchParams.get("active")).toBe("true")
+    expect(url.searchParams.getAll("filter")).toEqual(['component="inference"'])
     expect(init?.redirect).toBe("error")
   })
 
@@ -81,7 +82,8 @@ describe("Alertmanager active-alert projection", () => {
         Response.json([
           {
             labels: {
-              alertname: "InternalHost192.0.2.129",
+              alertname: "InternalHost",
+              host: "192.0.2.129",
               component: "inference",
               severity: "warning",
             },
@@ -96,6 +98,7 @@ describe("Alertmanager active-alert projection", () => {
 
     expect(result.sourceStatus).toBe("degraded")
     expect(result.alerts).toEqual([])
+    expect(result.summary).toContain("1 unsupported-contract alert was omitted")
     expect(JSON.stringify(result)).not.toContain("InternalHost")
     expect(JSON.stringify(result)).not.toContain("192.0.2.129")
   })
@@ -114,8 +117,52 @@ describe("Alertmanager active-alert projection", () => {
     await expect(getAdminAlertmanagerSummary()).resolves.toMatchObject({
       alerts: [],
       sourceStatus: "degraded",
-      summary: expect.stringContaining("1 malformed alert was omitted"),
+      summary: expect.stringContaining(
+        "1 malformed or unsafe alert was omitted",
+      ),
     })
+  })
+
+  it("sorts admitted alerts before truncating and reports each omission class separately", async () => {
+    vi.stubEnv("ADMIN_ALERTMANAGER_BASE_URL", "https://alerts.example")
+    const admitted = Array.from({ length: 202 }, (_, index) =>
+      activeAlert({
+        alertname:
+          index % 2 === 0
+            ? "LLMMInferenceQueueDepthSignalMissing"
+            : "LLMMGpuSaturation",
+        severity: index % 2 === 0 ? "info" : "warning",
+        startsAt: new Date(Date.UTC(2026, 7, 1, 8, 0, index)).toISOString(),
+      }),
+    )
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          Response.json([
+            ...admitted,
+            { labels: { severity: "warning" } },
+            activeAlert({ alertname: "UnreviewedAlert" }),
+          ]),
+        ),
+    )
+
+    const result = await getAdminAlertmanagerSummary()
+
+    expect(result.sourceStatus).toBe("degraded")
+    expect(result.alerts).toHaveLength(200)
+    expect(
+      result.alerts
+        .slice(0, 101)
+        .every(({ severity }) => severity === "warning"),
+    ).toBe(true)
+    expect(result.summary).toContain("1 malformed or unsafe alert was omitted")
+    expect(result.summary).toContain("1 unsupported-contract alert was omitted")
+    expect(result.summary).toContain(
+      "2 additional admitted alerts were truncated",
+    )
+    expect(JSON.stringify(result)).not.toContain("UnreviewedAlert")
   })
 
   it("loads optional bearer auth from a private non-symlink token file", async () => {
@@ -175,6 +222,19 @@ describe("Alertmanager active-alert projection", () => {
     })
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it("reserves unavailable for an invalid top-level response", async () => {
+    vi.stubEnv("ADMIN_ALERTMANAGER_BASE_URL", "https://alerts.example")
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(Response.json({ alerts: [] })),
+    )
+
+    await expect(getAdminAlertmanagerSummary()).resolves.toMatchObject({
+      alerts: [],
+      sourceStatus: "unavailable",
+    })
+  })
 })
 
 async function privateTokenFile(token: string): Promise<string> {
@@ -183,6 +243,22 @@ async function privateTokenFile(token: string): Promise<string> {
   await writeFile(path, `${token}\n`, { mode: 0o600 })
   await chmod(path, 0o600)
   return path
+}
+
+function activeAlert({
+  alertname = "LLMMGpuSaturation",
+  severity = "warning",
+  startsAt = "2026-08-01T08:00:00.000Z",
+}: {
+  alertname?: string
+  severity?: string
+  startsAt?: string
+} = {}) {
+  return {
+    labels: { alertname, component: "inference", severity },
+    startsAt,
+    status: { state: "active" },
+  }
 }
 
 async function temporaryDirectory(): Promise<string> {
