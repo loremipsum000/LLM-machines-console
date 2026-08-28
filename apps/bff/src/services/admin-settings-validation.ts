@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto"
 import {
-  adminSettingsLogoAssetSchema,
   type AdminSettingsLogoAsset,
-} from "@llm-machines/contracts"
+  adminSettingsLogoAssetSchema,
+} from "@llm-machines/contracts/inference-core"
 
 const maxLogoBytes = 1024 * 1024
 const maxLogoPixels = 4_000_000
@@ -100,16 +100,19 @@ function dimensionsFromLogoBytes(
   bytes: Buffer,
   mimeType: AdminSettingsLogoAsset["mimeType"],
 ): LogoDimensionsResult {
-  return mimeType === "image/png"
-    ? pngDimensions(bytes)
-    : jpegDimensions(bytes)
+  return mimeType === "image/png" ? pngDimensions(bytes) : jpegDimensions(bytes)
 }
 
 function pngDimensions(bytes: Buffer): LogoDimensionsResult {
   if (
     bytes.length < 33 ||
-    bytes.compare(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), 0, 8, 0, 8) !==
-      0 ||
+    bytes.compare(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      0,
+      8,
+      0,
+      8,
+    ) !== 0 ||
     bytes.readUInt32BE(8) !== 13 ||
     bytes.toString("ascii", 12, 16) !== "IHDR"
   ) {

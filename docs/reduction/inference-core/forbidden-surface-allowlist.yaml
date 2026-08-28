@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
+  "policyDigest": "515f94d04807ada0c0baa724029a80fca935d04268fa7b4bc9b4cd2ff7e0112d",
+  "protectedFiles": [
+    {
+      "path": "apps/bff/tsconfig.json",
+      "sha256": "2a173ebc32f14d33afd62404ea107c295ae5cdc4e0168b0c520ad5675e87f41c"
+    },
+    {
+      "path": "apps/bff/vitest.config.ts",
+      "sha256": "76b565f16bb75867fda00201ea1a6fb157103dec0489b4cdf90fd4569e4264a2"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-schema.test.ts",
+      "sha256": "3c97aa0801b14b4ec4b8d29a11912914999728dd2a95d70164c8d0e54348dc72"
+    },
+    {
+      "path": "apps/bff/src/routes/app-gateway-boundary.test.ts",
+      "sha256": "5b40b8a68cdcb4821c989aa61cd7f8abed4437ad89d2f3c27cc4e798e84d319d"
+    },
+    {
+      "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "sha256": "36617e5c6c7c781c7943b433a8df06ba5e9a6a301f81dc49637f083731f0ec09"
+    },
+    {
+      "path": "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
+      "sha256": "c14f58f14d5651f1abe7fcc04b58c1c590c954a6299eddde9c8bfa3d581e1f18"
+    },
+    {
+      "path": "apps/web/tsconfig.json",
+      "sha256": "d8752c4eda57fcec04ddebb548dc8f635bdd421d107cd9b432f2bf6d5f055da8"
+    },
+    {
+      "path": "apps/web/vitest.config.ts",
+      "sha256": "4d91e2698170d4af92360dec5e08bc115d16ca72cad7a12009821836708d79af"
+    },
+    {
+      "path": "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+      "sha256": "19d9291b7264d1fd96ecd1b783843d9669092b47120e626864abe45da0db329e"
+    },
+    {
+      "path": "apps/web/src/middleware.test.ts",
+      "sha256": "ffd0e7936e0d3cbd17349ae315e66b94af4336236b2f9c394239061ed9c52e6a"
+    },
+    {
+      "path": "apps/web/src/middleware.ts",
+      "sha256": "711de75880cdcdbd86ce05fa953c749e8f9e4f90c85cc48dad47e86dd226d586"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+      "sha256": "17be77fe6e9c755eb3228ecd3eefd2820282f73ef9514f5f6cc849369a24f743"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-03-removal-decisions.json",
+      "sha256": "140ab4cf11e7e4d285a0fa39ec447ce804cc3370f63b893a734f3c41a0af4987"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-04-data-decisions.json",
+      "sha256": "901d7136b9cc5c98b36ba30cc3b2ac00b001ebc4c22de92920167d38191951b1"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-05-identity-decisions.json",
+      "sha256": "bb39a6a8587df43c5aad0fb28b3bd17be5e4782893cb004f3582b84234bca84c"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-06-application-decisions.json",
+      "sha256": "4333d02896bd1af9700d4f1d95da79ae932bf72735213783b8cfe5c4f4488afc"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-07-data-plane-decisions.json",
+      "sha256": "6330008bb11b0d095ea6ce3c80b35c2aca9939f0cca61927988b91dcb1f99a26"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
+      "sha256": "5775ccce2f1b15b46004c3fc1ec1cefbb9e9a9caeae12a3909f13b616c831a45"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
+      "sha256": "68b3c404616c2c6e8a56e5ef184dc6409b0375990d393d34db6792ed19bf7817"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
+      "sha256": "b60cbfaf47ebccfcc94d54c903ac5f2a4d07a2ef5c8cb0c54701317291361727"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-10-lifecycle-foundation-decisions.json",
+      "sha256": "ddce640668e8e982fc54ba310bb485cf767a731dc0e40526f4bf3c68c81ef140"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-10c-emergency-isolation-decisions.json",
+      "sha256": "bad8597536719d1da9955e15efab384075028d0558517d5c03e884c9df26fca3"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-11-console-information-architecture-decisions.json",
+      "sha256": "1e81ec871c9a389182adc1786640f40a439f13c4f9ab8833050a1a8702f2facf"
+    },
+    {
+      "path": "docs/reduction/inference-core/decision-register.md",
+      "sha256": "5befe40e939f110b861173dbbb906a8563af06f1b2bdd03625966473668cb2e9"
+    },
+    {
+      "path": "docs/reduction/inference-core/source-map.jsonl",
+      "sha256": "d303f49d9238bd305da4f3addcda2efddee7752d9c511ba4fa471e03e958ee58"
+    },
+    {
+      "path": "docs/reduction/inference-core/validation-register.md",
+      "sha256": "921421e1cfd46658e561e5bdb65db3008d016d7bbea19f260092f02d363ff684"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-authorization.test.ts",
+      "sha256": "e1145f3b1ad0504876e90b57ee81df2e15cdbdb14bfdf1fa98b83f0c4c49e684"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-authorization.ts",
+      "sha256": "0210fa56d27cbea5eac7dd7fcf77ea525bbbc8e7690f3d034139ebbf6f139214"
+    },
+    {
+      "path": "packages/contracts/src/inference-core.test.ts",
+      "sha256": "a1790a554261cce4829eea0fd5537845b3a677059d8066794016a9ba69c932a0"
+    },
+    {
+      "path": "packages/contracts/tsconfig.build.json",
+      "sha256": "d613699cb729fd7bbcb5cccd74db4e2dbe6c8fae8646e2a61a2cd5d3d622a13a"
+    },
+    {
+      "path": "packages/contracts/tsconfig.json",
+      "sha256": "93050f8683ea1fcd496593382a4e9208fa01de238c28b0a434399e2190ec35be"
+    },
+    {
+      "path": "packages/copy/tsconfig.build.json",
+      "sha256": "d613699cb729fd7bbcb5cccd74db4e2dbe6c8fae8646e2a61a2cd5d3d622a13a"
+    },
+    {
+      "path": "packages/copy/tsconfig.json",
+      "sha256": "93050f8683ea1fcd496593382a4e9208fa01de238c28b0a434399e2190ec35be"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "sha256": "253208fa7c1b64372c219b9e19cef15ed70ca93b66a4d5c4c4d2297a5aff8880"
+    },
+    {
+      "path": "scripts/inference-core/guardrails.mjs",
+      "sha256": "903cc7ffa5e50bcf7a5d47773a81370ff55853aa35ff3375a76ecb9e97223102"
+    },
+    {
+      "path": "scripts/inference-core/guardrails.test.mjs",
+      "sha256": "06db7133627519fda42658a422d120b5ae2253c9314f14b9160b0e83d062b25d"
+    },
+    {
+      "path": "scripts/inference-core/pr02-boundaries.test.mjs",
+      "sha256": "a11731bdc487d9e73107a2bc5c92b58564ccd9b81fb793e6cdd8d18ae71483c3"
+    },
+    {
+      "path": "scripts/inference-core/pr02-contract-revision.mjs",
+      "sha256": "ca3f06a4b734c95d8789d0712ee726a0456b24039a650eab14034baed48abab9"
+    },
+    {
+      "path": "scripts/inference-core/pr03-boundaries.test.mjs",
+      "sha256": "2a94b4cc975863a628c4c3778ba14ed8cbf2eea0eb7da1ef20657b5d98728ba0"
+    },
+    {
+      "path": "scripts/inference-core/pr03-contract-revision.mjs",
+      "sha256": "a5a0767a56830e2c8c68b3470248a929352c05e2135e7083c4486a9ae8323374"
+    },
+    {
+      "path": "scripts/inference-core/pr04-boundaries.test.mjs",
+      "sha256": "a14f089d80553916ebed522825e33701d877ce2e27332aa497e104c706047f8c"
+    },
+    {
+      "path": "scripts/inference-core/pr04-contract-revision.mjs",
+      "sha256": "47b29dc51398eb3eb4c5f9486cfea6ee6c54fd8d03cb4913b22346af7ec5e47f"
+    },
+    {
+      "path": "scripts/inference-core/pr05-boundaries.test.mjs",
+      "sha256": "bdc49afadf15f86600c0b29032f2e22c6206d0780374ceb4a3c2b1578e679cf3"
+    },
+    {
+      "path": "scripts/inference-core/pr05-contract-revision.mjs",
+      "sha256": "69b815982ceaa4791d8a026bb5281a74a86a2ebcb70137f2a9ae7eeffeb4f565"
+    },
+    {
+      "path": "scripts/inference-core/pr06-boundaries.test.mjs",
+      "sha256": "f8a7a6685c5af5d00e6080b17ed9056fa6b3ab83751adf44014721ed65fba171"
+    },
+    {
+      "path": "scripts/inference-core/pr06-contract-revision.mjs",
+      "sha256": "bbb1e75e720b4bb7ed421f8c30e48f8e8b3743a56e93f7666f071679a662e107"
+    },
+    {
+      "path": "scripts/inference-core/pr07-boundaries.test.mjs",
+      "sha256": "e9a1ed8060623ea73273f5a794c0a4c121f242e130d038b63fd54552dd3998bd"
+    },
+    {
+      "path": "scripts/inference-core/pr07-contract-revision.mjs",
+      "sha256": "8501c249af53d1e106f1fe2bff65d710bbb7ffee882061da4abd0418509b6ba6"
+    },
+    {
+      "path": "scripts/inference-core/pr08-boundaries.test.mjs",
+      "sha256": "9624d3b279b022b0277e3bfd7eaab037e6bb6f773b4c5c9dfbcaf82990d6f6a2"
+    },
+    {
+      "path": "scripts/inference-core/pr08-contract-revision.mjs",
+      "sha256": "6cf4fbaf95e1e47d8169ebe2b826cd20a305051ccfe32ce76d732e4ee3d0e418"
+    },
+    {
+      "path": "scripts/inference-core/pr09-boundaries.test.mjs",
+      "sha256": "8de6fcf860aa3de1704a14294d45d1431f67f8abeaba63bbacd628cb7880828c"
+    },
+    {
+      "path": "scripts/inference-core/pr09-contract-revision.mjs",
+      "sha256": "62783799dee67dd6ad15f1b0ed6c930754c6a0fb3d49fcc9662a11f1dad92ad5"
+    },
+    {
+      "path": "scripts/inference-core/pr10-boundaries.test.mjs",
+      "sha256": "c56b9cf25da50b1e8879b2f1b1bbfede246a6f5aa0ac93951ad81f06b1da5d14"
+    },
+    {
+      "path": "scripts/inference-core/pr10-contract-revision.mjs",
+      "sha256": "1225bfd9951815c30b7d5c0de4130928fc1d990a07e360c78e7263d242f77139"
+    },
+    {
+      "path": "scripts/inference-core/pr10c-boundaries.test.mjs",
+      "sha256": "02fa93b360d150e3de729bcc616c936b747beb68aabd4d469a1848f331e2a650"
+    },
+    {
+      "path": "scripts/inference-core/pr10c-contract-revision.mjs",
+      "sha256": "4c8ce68a911d61362407ceffd8895065cf8f161b076e8fc0ed48b34d929785c4"
+    },
+    {
+      "path": "scripts/inference-core/pr11-boundaries.test.mjs",
+      "sha256": "4e5dd44be59b93e6bb7f769f75769c8fb2d71237dadca9c9b7eabddf3941e2ac"
+    },
+    {
+      "path": "scripts/inference-core/pr11-contract-revision.mjs",
+      "sha256": "0dbe82f97fc7b962370ad5af276198245085e7ebe8ed5f0bf9175cbce2606145"
+    },
+    {
+      "path": "scripts/inference-core/retention-canary.mjs",
+      "sha256": "223dbb3a1544fd7c82f370f1bb9c2c647adbad25403ddbb1f2108d3d471fd52a"
+    },
+    {
+      "path": "scripts/inference-core/retention-canary.test.mjs",
+      "sha256": "e622a43d762cc3d1a99648168d657dbc1edc6fc1ca32844f9bb187660f01a1c8"
+    },
+    {
+      "path": "scripts/inference-core/run-core-command.mjs",
+      "sha256": "62774f994863812554a3c7f40ad2c351722fba5b981e4d2efe33f0034e5f1e62"
+    },
+    {
+      "path": "scripts/inference-core/run-core-command.test.mjs",
+      "sha256": "2c96bbe78719b2fd8dc30abfa943fc6a9fac9ecf5a4abaf59265270ce3c1f0fd"
+    },
+    {
+      "path": "tsconfig.base.json",
+      "sha256": "06ec8a4deeba0a6505e476568ea33025f9e1959119e845d2b7c7d7afa7d714c0"
+    }
+  ],
+  "entries": [
+    {
+      "ruleId": "FS105_BUILDER_HUB",
+      "path": "apps/web/src/middleware.test.ts",
+      "count": 1,
+      "fingerprints": {
+        "9c44a0853099d038b8ee6b801fc303a2f61257830666d6a0e5b51413562a58cd": 1
+      },
+      "removeBy": "PR-12"
+    }
+  ]
+}

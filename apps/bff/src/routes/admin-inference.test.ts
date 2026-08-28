@@ -1,9 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
-import {
-  getAuditEventsForTest,
-  resetAuditEventsForTest,
-} from "../services/audit"
 
 const adminHeaders = {
   authorization: "Bearer test-service-key",
@@ -13,22 +9,32 @@ const adminHeaders = {
   "x-llm-machines-user-roles": "admin",
 }
 
-const builderHeaders = {
+const operatorHeaders = {
   ...adminHeaders,
-  "x-llm-machines-user-sub": "builder-1",
-  "x-llm-machines-user-email": "builder@example.test",
-  "x-llm-machines-user-roles": "builder",
+  "x-llm-machines-user-sub": "operator-1",
+  "x-llm-machines-user-email": "operator@example.test",
+  "x-llm-machines-user-roles": "operator",
+}
+
+const unclassifiedHeaders = {
+  ...adminHeaders,
+  "x-llm-machines-user-sub": "unclassified-1",
+  "x-llm-machines-user-email": "unclassified@example.test",
+  "x-llm-machines-user-roles": "unclassified",
 }
 
 describe("Admin Inference routes", () => {
+  beforeEach(() => {
+    vi.stubEnv("BFF_FALLBACK_MODELS", "qwen3-35b-local,gemma4")
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     vi.useRealTimers()
-    resetAuditEventsForTest()
   })
 
-  it("returns LiteLLM-backed dashboard data without leaking secrets or raw prompts", async () => {
+  it("returns LiteLLM-backed data without exposing a native admin link", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_LITELLM_BASE_URL", "http://litellm.test")
     vi.stubEnv("ADMIN_LITELLM_API_KEY", "litellm-key")
@@ -45,8 +51,7 @@ describe("Admin Inference routes", () => {
     expect(response.statusCode).toBe(200)
     const body = response.json()
     expect(body).toMatchObject({
-      liteLlmUrl: "https://litellm.example/ui/",
-      modelUpdate: null,
+      liteLlmUrl: null,
       modelUsage: [
         expect.objectContaining({
           model: "qwen3-35b-local",
@@ -76,8 +81,8 @@ describe("Admin Inference routes", () => {
       },
       virtualKeys: [
         expect.objectContaining({
-          alias: "agentic-openclaw",
-          id: "hash-openclaw",
+          alias: "design-workstation",
+          id: expect.stringMatching(/^litellm-vk-[0-9a-f]{64}$/),
           status: "active",
         }),
       ],
@@ -95,7 +100,7 @@ describe("Admin Inference routes", () => {
     await server.close()
   })
 
-  it("enforces Admin-only access for Inference dashboard reads", async () => {
+  it("allows classified dashboard readers and hides native access from Operators", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     const server = buildServer()
 
@@ -103,14 +108,21 @@ describe("Admin Inference routes", () => {
       method: "GET",
       url: "/api/admin/inference",
     })
-    const builder = await server.inject({
-      headers: builderHeaders,
+    const unclassified = await server.inject({
+      headers: unclassifiedHeaders,
+      method: "GET",
+      url: "/api/admin/inference",
+    })
+    const operator = await server.inject({
+      headers: operatorHeaders,
       method: "GET",
       url: "/api/admin/inference",
     })
 
     expect(unauthenticated.statusCode).toBe(401)
-    expect(builder.statusCode).toBe(403)
+    expect(unclassified.statusCode).toBe(401)
+    expect(operator.statusCode).toBe(200)
+    expect(operator.json()).toMatchObject({ liteLlmUrl: null })
     await server.close()
   })
 
@@ -155,18 +167,18 @@ describe("Admin Inference routes", () => {
       if (url.pathname === "/key/list") {
         expect(url.searchParams.get("include_team_keys")).toBe("true")
         expect(url.searchParams.get("return_full_object")).toBe("true")
-        requestedKeyPages.push(url.searchParams.get("page") ?? "")
+        const page = Number(url.searchParams.get("page") ?? "1")
+        requestedKeyPages.push(String(page))
+        const rowCount = page === 1 ? 100 : 1
         return jsonResponse({
-          current_page: Number(url.searchParams.get("page") ?? "1"),
-          keys: [
-            {
-              key_alias: `runtime-${url.searchParams.get("page")}`,
-              key_hash: `hash-${url.searchParams.get("page")}`,
-              models: ["qwen3-35b-local"],
-              status: "active",
-              user_id: `owner-${url.searchParams.get("page")}`,
-            },
-          ],
+          current_page: page,
+          keys: Array.from({ length: rowCount }, (_, index) => ({
+            blocked: false,
+            key_alias: `runtime-${page}-${index + 1}`,
+            models: ["qwen3-35b-local"],
+            token: `upstream-token-${page}-${index + 1}`,
+          })),
+          total_count: 101,
           total_pages: 2,
         })
       }
@@ -181,12 +193,17 @@ describe("Admin Inference routes", () => {
     })
 
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      virtualKeys: [
-        expect.objectContaining({ alias: "runtime-1", id: "hash-1" }),
-        expect.objectContaining({ alias: "runtime-2", id: "hash-2" }),
-      ],
+    const virtualKeys = response.json().virtualKeys
+    expect(virtualKeys).toHaveLength(101)
+    expect(virtualKeys[0]).toMatchObject({
+      alias: "runtime-1-1",
+      id: expect.stringMatching(/^litellm-vk-[0-9a-f]{64}$/),
     })
+    expect(virtualKeys[100]).toMatchObject({
+      alias: "runtime-2-1",
+      id: expect.stringMatching(/^litellm-vk-[0-9a-f]{64}$/),
+    })
+    expect(response.body).not.toContain("upstream-token-")
     expect(requestedKeyPages).toEqual(["1", "2"])
     await server.close()
   })
@@ -204,47 +221,18 @@ describe("Admin Inference routes", () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
-      modelUpdate: null,
+      aggregateUsageSourceStatus: "not_configured",
+      modelInventorySourceStatus: "not_configured",
       modelUsage: [],
       models: [],
       range: "90d",
       sourceStatus: "not_configured",
-      totals: {
-        requests: 0,
-        tokens: 0,
-      },
+      totals: null,
       usagePoints: [],
       virtualKeys: [],
+      virtualKeysSourceStatus: "not_configured",
     })
     expect(fetchSpy).not.toHaveBeenCalled()
-    await server.close()
-  })
-
-  it("surfaces an available model update in the dashboard", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_STATUS", "available")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_ACTION_ENABLED", "true")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_CURRENT_VERSION", "2026.05.01")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_AVAILABLE_VERSION", "2026.05.30")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_AFFECTED_MODELS", "qwen3-35b-local")
-    const server = buildServer()
-
-    const response = await server.inject({
-      headers: adminHeaders,
-      method: "GET",
-      url: "/api/admin/inference",
-    })
-
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      modelUpdate: {
-        affectedModels: ["qwen3-35b-local"],
-        availableVersion: "2026.05.30",
-        currentVersion: "2026.05.01",
-        status: "available",
-        updateActionEnabled: true,
-      },
-    })
     await server.close()
   })
 
@@ -269,193 +257,44 @@ describe("Admin Inference routes", () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
+      aggregateUsageSourceStatus: "ok",
+      modelInventorySourceStatus: "unavailable",
       modelUsage: expect.arrayContaining([
         expect.objectContaining({
           model: "qwen3-35b-local",
           requests: 10,
         }),
       ]),
-      models: expect.arrayContaining([
-        expect.objectContaining({
-          name: "qwen3-35b-local",
-          sourceStatus: "degraded",
-        }),
-      ]),
+      models: [],
       sourceStatus: "degraded",
       virtualKeys: [],
+      virtualKeysSourceStatus: "unavailable",
     })
     await server.close()
   })
 
-  it("rejects model update apply without exact confirmation", async () => {
+  it("does not expose the simulated model-update mutation", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     const server = buildServer()
 
     const response = await server.inject({
-      body: {
-        confirmation: "UPDATE",
-      },
+      body: { confirmation: "UPDATE MODEL" },
       headers: {
         ...adminHeaders,
-        "idempotency-key": "bad-confirmation",
+        "idempotency-key": "removed-model-update",
       },
       method: "POST",
       url: "/api/admin/inference/model-updates/apply",
     })
 
-    expect(response.statusCode).toBe(400)
-    expect(response.json()).toMatchObject({
-      title: "Invalid model update request",
-    })
-    await server.close()
-  })
-
-  it("enforces Admin-only access for model update apply", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    const server = buildServer()
-
-    const unauthenticated = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        "idempotency-key": "unauthenticated-update",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-    const builder = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        ...builderHeaders,
-        "idempotency-key": "builder-update",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-
-    expect(unauthenticated.statusCode).toBe(401)
-    expect(builder.statusCode).toBe(403)
-    await server.close()
-  })
-
-  it("applies a configured model update and emits started/completed audit events", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_STATUS", "available")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_ACTION_ENABLED", "true")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_CURRENT_VERSION", "2026.05.01")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_AVAILABLE_VERSION", "2026.05.30")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_AFFECTED_MODELS", "qwen3-35b-local")
-    const server = buildServer()
-
-    const response = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "model-update-success",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      modelUpdate: null,
-      status: "completed",
-    })
-    expect(getAuditEventsForTest()).toEqual([
-      expect.objectContaining({
-        action: "admin.inference.model_update.started",
-        actorId: "admin-1",
-      }),
-      expect.objectContaining({
-        action: "admin.inference.model_update.completed",
-        actorId: "admin-1",
-      }),
-    ])
-    await server.close()
-  })
-
-  it("returns controlled failure and audit evidence when adapter fails", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_STATUS", "available")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_ACTION_ENABLED", "true")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_APPLY_RESULT", "failed")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_CURRENT_VERSION", "2026.05.01")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_AVAILABLE_VERSION", "2026.05.30")
-    const server = buildServer()
-
-    const response = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "model-update-failed",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      modelUpdate: {
-        status: "failed",
-        updateActionEnabled: false,
-      },
-      status: "failed",
-    })
-    expect(response.body.toLowerCase()).not.toContain("command")
-    expect(response.body.toLowerCase()).not.toContain("secret")
-    expect(getAuditEventsForTest().map((event) => event.action)).toEqual([
-      "admin.inference.model_update.started",
-      "admin.inference.model_update.failed",
-    ])
-    await server.close()
-  })
-
-  it("blocks unconfigured model update apply without backend details", async () => {
-    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_STATUS", "available")
-    vi.stubEnv("INFERENCE_MODEL_UPDATE_ACTION_ENABLED", "false")
-    const server = buildServer()
-
-    const response = await server.inject({
-      body: {
-        confirmation: "UPDATE MODEL",
-      },
-      headers: {
-        ...adminHeaders,
-        "idempotency-key": "model-update-blocked",
-      },
-      method: "POST",
-      url: "/api/admin/inference/model-updates/apply",
-    })
-
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      modelUpdate: {
-        status: "available",
-        updateActionEnabled: false,
-      },
-      status: "blocked",
-    })
-    expect(response.body.toLowerCase()).not.toContain("command")
-    expect(response.body.toLowerCase()).not.toContain("secret")
-    expect(getAuditEventsForTest()).toEqual([
-      expect.objectContaining({
-        action: "admin.inference.model_update.blocked",
-      }),
-    ])
+    expect(response.statusCode).toBe(404)
     await server.close()
   })
 })
 
-async function mockLiteLlmFetch(input: string | URL | Request): Promise<Response> {
+async function mockLiteLlmFetch(
+  input: string | URL | Request,
+): Promise<Response> {
   const url = new URL(input.toString())
   if (url.pathname === "/user/daily/activity/aggregated") {
     return jsonResponse(activityPayload())
@@ -477,7 +316,7 @@ async function mockLiteLlmFetch(input: string | URL | Request): Promise<Response
           response_cost: 0.02,
           startTime: "2026-05-30T11:58:00.000Z",
           total_tokens: 500,
-          user: "demo-builder",
+          user: "app-user",
         },
         {
           model: "openai/gemma4",
@@ -523,18 +362,20 @@ async function mockLiteLlmFetch(input: string | URL | Request): Promise<Response
   }
   if (url.pathname === "/key/list") {
     return jsonResponse({
+      current_page: 1,
       keys: [
         {
-          key_alias: "agentic-openclaw",
-          key_hash: "hash-openclaw",
+          blocked: false,
+          key_alias: "design-workstation",
           max_budget: 100,
           models: ["qwen3-35b-local"],
           spend: 4.25,
-          status: "active",
           token: "sk-virtual-secret",
-          user_id: "openclaw",
+          user_id: "design-workstation",
         },
       ],
+      total_count: 1,
+      total_pages: 1,
     })
   }
   return jsonResponse({ error: "unexpected" }, 500)

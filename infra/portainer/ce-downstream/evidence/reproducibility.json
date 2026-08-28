@@ -1,0 +1,144 @@
+{
+  "artifact": {
+    "configDigest": "sha256:45f3a24c1cdf26f9e372d458afd7309f3b270a2aeaeae6ac0eb3d809e742bf7a",
+    "indexDigest": "sha256:e25feb8fd95e9a0ce7cadb3b1d141317b82eefc7a9f91b8deba26ef6508b53b0",
+    "layers": [
+      {
+        "digest": "sha256:08e9494a6bc8d17b4ba4a1b57ffa658cb8f341c76f448b146b2139758469d74c",
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "size": 41562050
+      }
+    ],
+    "manifestDigest": "sha256:f945186dd7943b83b1f39fed23898161b66ccb0d9943e50b272a03edf1797e20",
+    "ociArchiveBytes": 41355218,
+    "ociArchiveSha256": "0dd846c806f74032244edc3e2eaed781717bb9feb590eea247c6ae05d00013eb",
+    "platform": "linux/amd64",
+    "runtimeInventorySha256": "4b391363453d675d743cafe7993adc266c28bdcc6f1fe888f08ed0151ac01181"
+  },
+  "assemblies": [
+    {
+      "configDigest": "sha256:45f3a24c1cdf26f9e372d458afd7309f3b270a2aeaeae6ac0eb3d809e742bf7a",
+      "evidence": [
+        {
+          "id": "build-environment",
+          "path": "build-environment-receipt.json",
+          "sha256": "430e6ea4ff3e356d83253e0cc27a2cfe58b9a2b5ba33094ae4121d6a7a9e12ce"
+        },
+        {
+          "id": "build-log",
+          "path": "build-log-receipt.json",
+          "sha256": "8de4497a66642a107b4e0740b7f7ea7c80d2eeaf9a01d525595e25b038e3bdb3"
+        },
+        {
+          "id": "source-reachability",
+          "path": "reachability-receipt.json",
+          "sha256": "12087e16fdda4ad6cffcd8e3cac34b7ed533dd12bca485301743e5174a4e949c"
+        }
+      ],
+      "frontendPublicInventorySha256": "6f43f103842df302ddb6c694e75dc7f8e620197f8aeaef5bacc4c82fb91da385",
+      "frontendSourceMapInventorySha256": "186a8277f0cf1b5440c9c07f7cf22d2ce98632fa7f7582a869ee45a146a3dc43",
+      "id": "A",
+      "indexDigest": "sha256:e25feb8fd95e9a0ce7cadb3b1d141317b82eefc7a9f91b8deba26ef6508b53b0",
+      "layers": [
+        {
+          "digest": "sha256:08e9494a6bc8d17b4ba4a1b57ffa658cb8f341c76f448b146b2139758469d74c",
+          "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+          "size": 41562050
+        }
+      ],
+      "manifestDigest": "sha256:f945186dd7943b83b1f39fed23898161b66ccb0d9943e50b272a03edf1797e20",
+      "ociArchiveBytes": 41355218,
+      "ociArchiveSha256": "0dd846c806f74032244edc3e2eaed781717bb9feb590eea247c6ae05d00013eb",
+      "platform": "linux/amd64",
+      "runtimeInventorySha256": "4b391363453d675d743cafe7993adc266c28bdcc6f1fe888f08ed0151ac01181",
+      "sealedRecordSha256": "06fb14b26c9f102245c1023d0a9b260d1cce4d8d29862be22bcef50123780cbb"
+    },
+    {
+      "configDigest": "sha256:45f3a24c1cdf26f9e372d458afd7309f3b270a2aeaeae6ac0eb3d809e742bf7a",
+      "evidence": [
+        {
+          "id": "build-environment",
+          "path": "build-environment-receipt.json",
+          "sha256": "01424e669cf75bd63b1b1902a1bbfa05f4bec29c74d381e26a9804a6684ece9e"
+        },
+        {
+          "id": "build-log",
+          "path": "build-log-receipt.json",
+          "sha256": "9d74be4a1c36800d6f550062b487d9446f248fe6b3ebd4a39ceec34a67949170"
+        },
+        {
+          "id": "source-reachability",
+          "path": "reachability-receipt.json",
+          "sha256": "98076b3eb32777196d616282b117ecd09001e98a1176eb4073e26f711245bd9a"
+        }
+      ],
+      "frontendPublicInventorySha256": "6f43f103842df302ddb6c694e75dc7f8e620197f8aeaef5bacc4c82fb91da385",
+      "frontendSourceMapInventorySha256": "186a8277f0cf1b5440c9c07f7cf22d2ce98632fa7f7582a869ee45a146a3dc43",
+      "id": "B",
+      "indexDigest": "sha256:e25feb8fd95e9a0ce7cadb3b1d141317b82eefc7a9f91b8deba26ef6508b53b0",
+      "layers": [
+        {
+          "digest": "sha256:08e9494a6bc8d17b4ba4a1b57ffa658cb8f341c76f448b146b2139758469d74c",
+          "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+          "size": 41562050
+        }
+      ],
+      "manifestDigest": "sha256:f945186dd7943b83b1f39fed23898161b66ccb0d9943e50b272a03edf1797e20",
+      "ociArchiveBytes": 41355218,
+      "ociArchiveSha256": "0dd846c806f74032244edc3e2eaed781717bb9feb590eea247c6ae05d00013eb",
+      "platform": "linux/amd64",
+      "runtimeInventorySha256": "4b391363453d675d743cafe7993adc266c28bdcc6f1fe888f08ed0151ac01181",
+      "sealedRecordSha256": "d98a60e477bcc1b9bce512fc6c7c47e36f9d5b403dd49963ee1f5e946b6cb0b8"
+    }
+  ],
+  "byteIdentical": true,
+  "frontend": {
+    "componentCount": 275,
+    "publicBytes": 47612241,
+    "publicFileCount": 35,
+    "publicInventorySha256": "6f43f103842df302ddb6c694e75dc7f8e620197f8aeaef5bacc4c82fb91da385",
+    "source": {
+      "fileCount": 4832,
+      "goModSha256": "70ed650f74a77f7106d91d49e57b5cae46a716321843a6498fb962cc743f07a1",
+      "goSumSha256": "7aca1421455d57bb1f2a4041d7487af1f908d7c26a881b0c9c2fe89df4ed0398",
+      "packageJsonSha256": "3936e9c5529e92fbf110b60964b7ed56a25b8b39a885713c5fa30499499ebb82",
+      "pnpmLockSha256": "99971755c3784ab0930a87018d7ba5fd90db9e5c41c14e198ca81a1152dc6d9a",
+      "revision": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+      "sourceInventorySha256": "cf12b690711cc07fba9bf25098a5418e3cabd658e698b97cd0ba52a5666194ed",
+      "tree": "9a2418f78d3f2cf4047e86b0878227b5e61d55fa",
+      "webpackCommonSha256": "159bd6f9147aa46c16a80c0aa13fbe7105be4b0a95aab6fb98b6a3e4544ef5d3",
+      "webpackProductionSha256": "e27e426749d2cb5fa4e042ba178090f6d2e8d74762b1338e3815cd14192c5925"
+    },
+    "sourceMapCount": 9,
+    "sourceMapInventorySha256": "186a8277f0cf1b5440c9c07f7cf22d2ce98632fa7f7582a869ee45a146a3dc43",
+    "sourcePathCount": 6422
+  },
+  "reachability": {
+    "angularJsVex": {
+      "advisories": [
+        "CVE-2024-21490",
+        "CVE-2026-11998"
+      ],
+      "expiresAt": "2026-09-22T23:59:59Z"
+    },
+    "assemblies": [
+      {
+        "evaluatedAt": "2026-08-22T22:44:30.091Z",
+        "id": "A",
+        "receiptSha256": "12087e16fdda4ad6cffcd8e3cac34b7ed533dd12bca485301743e5174a4e949c"
+      },
+      {
+        "evaluatedAt": "2026-08-22T22:44:46.848Z",
+        "id": "B",
+        "receiptSha256": "98076b3eb32777196d616282b117ecd09001e98a1176eb4073e26f711245bd9a"
+      }
+    ],
+    "validator": {
+      "nodeVersion": "22.23.2",
+      "path": "infra/portainer/ce-downstream/validate-reachability.mjs",
+      "sha256": "d6dd985a1e8447b593082dcabf20b4bf4bfac8ae8e3d19d818eb973a11d30cdb"
+    }
+  },
+  "schema": "llm-machines.portainer-ce-reproducibility.v1",
+  "status": "BYTE_IDENTICAL_TWO_ASSEMBLY_PROOF"
+}

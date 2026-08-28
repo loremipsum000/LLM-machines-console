@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
 import { resetAuditEventsForTest } from "../services/audit"
-import { resetHubStateForTest } from "../services/hub"
 
 const adminHeaders = {
   authorization: "Bearer test-service-key",
@@ -11,11 +10,11 @@ const adminHeaders = {
   "x-llm-machines-user-roles": "admin",
 }
 
-const builderHeaders = {
+const unclassifiedHeaders = {
   ...adminHeaders,
-  "x-llm-machines-user-sub": "builder-1",
-  "x-llm-machines-user-email": "builder@example.test",
-  "x-llm-machines-user-roles": "builder",
+  "x-llm-machines-user-sub": "unclassified-1",
+  "x-llm-machines-user-email": "unclassified@example.test",
+  "x-llm-machines-user-roles": "unclassified",
 }
 
 describe("Admin hardware", () => {
@@ -23,27 +22,29 @@ describe("Admin hardware", () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     resetAuditEventsForTest()
-    resetHubStateForTest()
   })
 
-  it("returns seven curated hardware charts from Prometheus range queries", async () => {
+  it("returns genuine BMC and Intel XPU charts while native links remain disabled", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_PROMETHEUS_BASE_URL", "http://prometheus.test")
+    vi.stubEnv("ADMIN_ALERTMANAGER_BASE_URL", "http://alertmanager.test")
     vi.stubEnv("GRAFANA_PUBLIC_URL", "https://grafana.example")
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = new URL(input.toString())
       const query = url.searchParams.get("query") ?? ""
-      if (url.pathname.endsWith("/query")) {
-        return prometheusVectorResponse([
-          prometheusVectorSample(
-            {
-              alertname: "InfraGpuTemperatureHigh",
-              gpu: "0",
-              host: "compute-node-b",
+      if (url.hostname === "alertmanager.test") {
+        return Response.json([
+          {
+            labels: {
+              alertname: "LLMMGpuSaturation",
+              component: "inference",
+              host_role: "inference",
+              rule_id: "gpu-temperature-high",
               severity: "warning",
             },
-            "1",
-          ),
+            startsAt: "2026-08-01T08:00:00.000Z",
+            status: { state: "active" },
+          },
         ])
       }
       return prometheusMatrixResponse(matrixSamplesForQuery(query))
@@ -63,34 +64,44 @@ describe("Admin hardware", () => {
       step: "180s",
       selectedHost: "all",
       sourceStatus: "ok",
-      grafanaUrl:
-        "https://grafana.example/d/llmm-infra-overview/llm-machines-infrastructure-overview",
-      availableHosts: [
-        "compute-node-a",
-        "compute-node-b",
-        "core-appliance",
-        "inference-nat",
-      ],
+      alertSourceStatus: "ok",
+      alertmanagerUrl: null,
+      grafanaUrl: null,
+      availableHosts: ["core-appliance", "inference-nat", "nihal01", "xpu-b50"],
     })
-    expect(body.charts).toHaveLength(7)
+    expect(body.charts).toHaveLength(15)
+    expect(
+      body.charts.every(
+        (chart: { grafanaUrl: string | null }) => chart.grafanaUrl === null,
+      ),
+    ).toBe(true)
     expect(body.charts.map((chart: { id: string }) => chart.id)).toEqual([
       "cpu_utilization",
-      "gpu_temperature",
-      "gpu_utilization",
+      "xpu_temperature",
+      "xpu_utilization",
+      "xpu_memory_utilization",
+      "xpu_device_health",
+      "xpu_frequency_status",
       "ram_usage",
       "filesystem_usage",
+      "bmc_sensor_health",
+      "chassis_power_state",
+      "chassis_temperature",
+      "fan_speed",
       "power_draw",
+      "monthly_energy_projection",
       "network_throughput",
     ])
     expect(
       body.charts.find((chart: { id: string }) => chart.id === "power_draw"),
     ).toMatchObject({
-      description: "Live chassis power draw for compute-node-a from IPMI DCMI.",
+      description:
+        "Live chassis input power from the BMC's genuine PW consumption sensor.",
       unit: "watt",
       series: [
         expect.objectContaining({
-          host: "compute-node-a",
-          label: "compute-node-a",
+          host: "nihal01",
+          label: "nihal01",
           metricSource: "ipmi_exporter",
         }),
       ],
@@ -116,11 +127,21 @@ describe("Admin hardware", () => {
       "inference-nat · root (/dev/sda1)",
       "core-appliance · root (/dev/sda1)",
     ])
-    expect(body.activeAlerts).toEqual([])
+    expect(body.activeAlerts).toEqual([
+      expect.objectContaining({
+        alertName: "LLMMGpuSaturation",
+        alertmanagerUrl: null,
+        description: null,
+        device: null,
+        grafanaUrl: null,
+        host: null,
+        severity: "warning",
+      }),
+    ])
     await server.close()
   })
 
-  it("blocks non-admin personas from hardware metrics", async () => {
+  it("rejects unclassified identities from hardware metrics", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     const fetchSpy = vi.spyOn(globalThis, "fetch")
     const server = buildServer()
@@ -128,10 +149,10 @@ describe("Admin hardware", () => {
     const response = await server.inject({
       method: "GET",
       url: "/api/admin/hardware",
-      headers: builderHeaders,
+      headers: unclassifiedHeaders,
     })
 
-    expect(response.statusCode).toBe(403)
+    expect(response.statusCode).toBe(401)
     expect(fetchSpy).not.toHaveBeenCalled()
     await server.close()
   })
@@ -231,27 +252,68 @@ function matrixSamplesForQuery(query: string): unknown[] {
       ),
     ]
   }
-  if (query.includes("GPU_TEMP")) {
+  if (query.includes("hw_temperature_celsius")) {
     return [
       prometheusMatrixSample(
         {
-          __name__: "llmm_nvidia_gpu_temperature_celsius",
-          gpu: "0",
-          host: "compute-node-b",
+          __name__: "hw_temperature_celsius",
+          host: "xpu-b50",
+          hw_sensor_location: "gpu",
+          pci_bdf: "0000:83:00.0",
         },
         ["62", "64"],
       ),
     ]
   }
-  if (query.includes("GPU_UTIL")) {
+  if (query.includes("hw_gpu_utilization_ratio")) {
     return [
       prometheusMatrixSample(
         {
-          __name__: "llmm_nvidia_gpu_utilization_percent",
-          gpu: "0",
-          host: "compute-node-b",
+          __name__: "hw_gpu_utilization_ratio",
+          host: "xpu-b50",
+          hw_gpu_task: "all",
+          pci_bdf: "0000:83:00.0",
         },
         ["52", "59"],
+      ),
+    ]
+  }
+  if (query.includes("hw_memory_utilization_ratio")) {
+    return [
+      prometheusMatrixSample(
+        {
+          __name__: "hw_memory_utilization_ratio",
+          host: "xpu-b50",
+          hw_memory_location: "device",
+          pci_bdf: "0000:83:00.0",
+        },
+        ["68", "69"],
+      ),
+    ]
+  }
+  if (query.includes('hw_type="gpu"')) {
+    return [
+      prometheusMatrixSample(
+        {
+          __name__: "hw_status",
+          host: "xpu-b50",
+          hw_state: "reset_needed",
+          pci_bdf: "0000:83:00.0",
+        },
+        ["1", "1"],
+      ),
+    ]
+  }
+  if (query.includes('hw_type="frequency"')) {
+    return [
+      prometheusMatrixSample(
+        {
+          __name__: "hw_status",
+          host: "xpu-b50",
+          hw_state: "ok",
+          pci_bdf: "0000:83:00.0",
+        },
+        ["1", "1"],
       ),
     ]
   }
@@ -325,15 +387,51 @@ function matrixSamplesForQuery(query: string): unknown[] {
       ),
     ]
   }
-  if (query.includes("ipmi_dcmi_power_consumption_watts")) {
+  if (query.includes("ipmi_power_watts")) {
     return [
       prometheusMatrixSample(
         {
-          __name__: "ipmi_dcmi_power_consumption_watts",
-          bmc: "compute-node-a-bmc",
-          host: "compute-node-a",
+          __name__: "ipmi_power_watts",
+          host: "nihal01",
+          name: "PW consumption",
         },
         ["101", "105"],
+      ),
+    ]
+  }
+  if (query.includes("ipmi_fan_speed_rpm")) {
+    return [
+      prometheusMatrixSample(
+        { __name__: "ipmi_fan_speed_rpm", host: "nihal01", name: "FAN1" },
+        ["4200", "4300"],
+      ),
+    ]
+  }
+  if (query.includes("ipmi_chassis_power_state")) {
+    return [
+      prometheusMatrixSample(
+        { __name__: "ipmi_chassis_power_state", host: "nihal01" },
+        ["1", "1"],
+      ),
+    ]
+  }
+  if (query.includes("ipmi_temperature_celsius")) {
+    return [
+      prometheusMatrixSample(
+        {
+          __name__: "ipmi_temperature_celsius",
+          host: "nihal01",
+          name: "Inlet Temp",
+        },
+        ["24", "25"],
+      ),
+    ]
+  }
+  if (query.includes("ipmi_temperature_state")) {
+    return [
+      prometheusMatrixSample(
+        { __name__: "ipmi_temperature_state", host: "nihal01" },
+        ["0", "0"],
       ),
     ]
   }

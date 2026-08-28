@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://llm-machines.invalid/schemas/initial-install-descriptor.v1.json",
+  "title": "LLM Machines first-release no-rollback descriptor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "mode",
+    "predecessor",
+    "action",
+    "runtimeQualified",
+    "contractActivation",
+    "q0",
+    "recoveryRequirement"
+  ],
+  "properties": {
+    "schema": { "const": "llm-machines.initial-install-descriptor.v1" },
+    "status": { "const": "PACKAGED_UNQUALIFIED" },
+    "mode": { "const": "INITIAL_INSTALL_NO_PREDECESSOR" },
+    "predecessor": { "type": "null" },
+    "action": { "const": "NO_RELEASE_ROLLBACK" },
+    "runtimeQualified": { "const": false },
+    "contractActivation": { "const": "INACTIVE" },
+    "q0": { "const": "NOT_STARTED" },
+    "recoveryRequirement": {
+      "const": "Q0_PREINSTALL_BACKUP_AND_CLEAN_RESTORE"
+    }
+  }
+}

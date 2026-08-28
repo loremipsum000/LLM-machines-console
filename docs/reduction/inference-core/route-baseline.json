@@ -1,0 +1,3318 @@
+{
+  "schemaVersion": 3,
+  "baseCommit": "0faf8a7da0a77ffb6bf45cb6c01dbc17c51f855a",
+  "policyDigest": "7c85415c2632985465739e55b9868300842dc89ceff230ff4bb71e90d82a9b27",
+  "target": {
+    "requiredPublicInference": [
+      {
+        "method": "GET",
+        "path": "/api/app-gateway/v1/models"
+      },
+      {
+        "method": "POST",
+        "path": "/api/app-gateway/v1/chat/completions"
+      }
+    ],
+    "requiredPrivateOperational": [
+      {
+        "method": "GET",
+        "path": "/livez"
+      },
+      {
+        "method": "GET",
+        "path": "/healthz"
+      },
+      {
+        "method": "GET",
+        "path": "/readyz"
+      },
+      {
+        "method": "GET",
+        "path": "/internal/observability/metrics"
+      }
+    ],
+    "futureFirecrawl": [
+      {
+        "method": "POST",
+        "path": "/v2/search"
+      },
+      {
+        "method": "POST",
+        "path": "/v2/scrape"
+      }
+    ],
+    "consoleLogicalSurfaces": [
+      "overview",
+      "applications",
+      "inference",
+      "hardware",
+      "team",
+      "activity-audit",
+      "settings"
+    ],
+    "activityAuditPath": "/activity"
+  },
+  "routes": [
+    {
+      "surface": "bff",
+      "method": "DELETE",
+      "path": "/api/admin/applications/connected-apps/:id",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/applications/connected-apps/:id",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/applications/connected-apps",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/audit/export/verification-keys",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/audit/export",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/audit",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/hardware",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/inference",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/isolation",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/observability/alert-egress",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/overview",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/recovery/status",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/settings",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/team/csv-template",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/team/groups/:id",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/team/members/:id",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/team/scim",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/admin/team",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/api/app-gateway/v1/models",
+      "source": "apps/bff/src/routes/app-gateway.ts",
+      "classification": "required-now"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/healthz",
+      "source": "apps/bff/src/index.ts",
+      "classification": "private-operational"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/internal/observability/metrics",
+      "source": "apps/bff/src/routes/observability-metrics.ts",
+      "classification": "private-operational"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/livez",
+      "source": "apps/bff/src/index.ts",
+      "classification": "private-operational"
+    },
+    {
+      "surface": "bff",
+      "method": "GET",
+      "path": "/readyz",
+      "source": "apps/bff/src/index.ts",
+      "classification": "private-operational"
+    },
+    {
+      "surface": "bff",
+      "method": "PATCH",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "PATCH",
+      "path": "/api/admin/applications/connected-apps/:id",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/credentials/:credentialId/revoke",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/disable",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/enable",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl/credentials/:credentialId/revoke",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl/disable",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl/enable",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/firecrawl/test",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/rotate-credentials",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps/:id/test",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/applications/connected-apps",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/isolation/activate",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/isolation/deactivate",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/observability/alert-egress",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/recovery/factor/commission",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/recovery/sessions/:id/revoke",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/recovery/sessions",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/settings/organization",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/settings/telemetry",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/groups/:id/delete",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/groups/:id/members/:memberId/remove",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/groups/:id/members/bulk-assign",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/groups/:id/update",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/groups",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/import/commit",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/import/preview",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/members/:id/delete",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/members/:id/disable",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/members/:id/generate-password",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/members/:id/invite",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/members/:id/reactivate",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/members/:id/reset-password-email",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/admin/team/members",
+      "source": "apps/bff/src/routes/admin.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/api/app-gateway/v1/chat/completions",
+      "source": "apps/bff/src/routes/app-gateway.ts",
+      "classification": "required-now"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/v2/scrape",
+      "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+      "classification": "public-t2"
+    },
+    {
+      "surface": "bff",
+      "method": "POST",
+      "path": "/v2/search",
+      "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+      "classification": "public-t2"
+    },
+    {
+      "surface": "web-handler",
+      "method": "GET",
+      "path": "/api/admin/audit/export/verification-keys",
+      "source": "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-handler",
+      "method": "GET",
+      "path": "/api/admin/audit/export",
+      "source": "apps/web/src/app/api/admin/audit/export/route.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-handler",
+      "method": "GET",
+      "path": "/api/auth/[...nextauth]",
+      "source": "apps/web/src/app/api/auth/[...nextauth]/route.ts",
+      "classification": "operational-auth"
+    },
+    {
+      "surface": "web-handler",
+      "method": "GET",
+      "path": "/auth/keycloak",
+      "source": "apps/web/src/app/auth/keycloak/route.ts",
+      "classification": "operational-auth"
+    },
+    {
+      "surface": "web-handler",
+      "method": "GET",
+      "path": "/team/import/template",
+      "source": "apps/web/src/app/team/import/template/route.ts",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-handler",
+      "method": "POST",
+      "path": "/api/auth/[...nextauth]",
+      "source": "apps/web/src/app/api/auth/[...nextauth]/route.ts",
+      "classification": "operational-auth"
+    },
+    {
+      "surface": "web-metadata",
+      "method": "METADATA",
+      "path": "/icon.svg",
+      "source": "apps/web/src/app/icon.svg",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-page",
+      "method": "PAGE",
+      "path": "/activity",
+      "source": "apps/web/src/app/activity/page.tsx",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-page",
+      "method": "PAGE",
+      "path": "/applications/[[...section]]",
+      "source": "apps/web/src/app/applications/[[...section]]/page.tsx",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-page",
+      "method": "PAGE",
+      "path": "/",
+      "source": "apps/web/src/app/page.tsx",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-page",
+      "method": "PAGE",
+      "path": "/auth/signin",
+      "source": "apps/web/src/app/auth/signin/page.tsx",
+      "classification": "operational-auth"
+    },
+    {
+      "surface": "web-page",
+      "method": "PAGE",
+      "path": "/hardware",
+      "source": "apps/web/src/app/hardware/page.tsx",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-page",
+      "method": "PAGE",
+      "path": "/inference/[[...section]]",
+      "source": "apps/web/src/app/inference/[[...section]]/page.tsx",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-page",
+      "method": "PAGE",
+      "path": "/settings",
+      "source": "apps/web/src/app/settings/page.tsx",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-page",
+      "method": "PAGE",
+      "path": "/team/[[...section]]",
+      "source": "apps/web/src/app/team/[[...section]]/page.tsx",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/apple-touch-icon.png",
+      "source": "apps/web/public/apple-touch-icon.png",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/console-v2/llm-mark.svg",
+      "source": "apps/web/public/console-v2/llm-mark.svg",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/console-v2/llm-wordmark.svg",
+      "source": "apps/web/public/console-v2/llm-wordmark.svg",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/console-v2/status/failed.svg",
+      "source": "apps/web/public/console-v2/status/failed.svg",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/console-v2/status/success.svg",
+      "source": "apps/web/public/console-v2/status/success.svg",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/console-v2/status/warning.svg",
+      "source": "apps/web/public/console-v2/status/warning.svg",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/favicon-16x16.png",
+      "source": "apps/web/public/favicon-16x16.png",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/favicon-32x32.png",
+      "source": "apps/web/public/favicon-32x32.png",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/favicon-48x48.png",
+      "source": "apps/web/public/favicon-48x48.png",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/favicon.ico",
+      "source": "apps/web/public/favicon.ico",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-Black.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-Black.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-BlackItalic.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-BlackItalic.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-Bold.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-Bold.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-BoldItalic.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-BoldItalic.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-ExtraBold.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-ExtraBold.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-ExtraBoldItalic.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-ExtraBoldItalic.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-ExtraLight.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-ExtraLight.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-ExtraLightItalic.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-ExtraLightItalic.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-Italic.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-Italic.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-Light.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-Light.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-LightItalic.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-LightItalic.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-Medium.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-Medium.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-MediumItalic.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-MediumItalic.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-Regular.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-Regular.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-SemiBold.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-SemiBold.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-SemiBoldItalic.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-SemiBoldItalic.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-Thin.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-Thin.ttf",
+      "classification": "current-console-seam"
+    },
+    {
+      "surface": "web-static",
+      "method": "STATIC",
+      "path": "/fonts/urbanist/Urbanist-ThinItalic.ttf",
+      "source": "apps/web/public/fonts/urbanist/Urbanist-ThinItalic.ttf",
+      "classification": "current-console-seam"
+    }
+  ],
+  "fastifyRegistrars": [
+    {
+      "exportName": "registerAdminRoutes",
+      "importSource": "./routes/admin",
+      "sourcePath": "apps/bff/src/routes/admin.ts"
+    },
+    {
+      "exportName": "registerAppGatewayRoutes",
+      "importSource": "./routes/app-gateway",
+      "sourcePath": "apps/bff/src/routes/app-gateway.ts"
+    },
+    {
+      "exportName": "registerAuthorization",
+      "importSource": "./auth/authorization",
+      "sourcePath": "apps/bff/src/auth/authorization.ts"
+    },
+    {
+      "exportName": "registerFirecrawlGatewayRoutes",
+      "importSource": "./routes/firecrawl-gateway",
+      "sourcePath": "apps/bff/src/routes/firecrawl-gateway.ts"
+    },
+    {
+      "exportName": "registerObservabilityMetricsRoutes",
+      "importSource": "./routes/observability-metrics",
+      "sourcePath": "apps/bff/src/routes/observability-metrics.ts"
+    }
+  ],
+  "webInferenceConsumers": [],
+  "sourceClosure": [
+    {
+      "path": ".dockerignore",
+      "sha256": "e9d46edeafe8bc29e274811e6c0abcea75bbbdde37bc4cd846fbc0438bae741d"
+    },
+    {
+      "path": "apps/bff/Dockerfile",
+      "sha256": "5b211db8674a272aaedf77a54d22297f45cf6895a0a12764643c7ff3b1cba1a7"
+    },
+    {
+      "path": "apps/bff/package.json",
+      "sha256": "c278910cc1e187b034989a33dc19dad2b08f97a0945c3181b9394c259e0f849b"
+    },
+    {
+      "path": "apps/bff/README.md",
+      "sha256": "23150f117cbd2073d6f70c9aeb250672d567036c992739d0c95cb2be88d773b7"
+    },
+    {
+      "path": "apps/bff/src/auth/application-access-token.ts",
+      "sha256": "5c79613734dc97b8d60e819506f995e23a34be2e9024923c6eec41f6158cfb25"
+    },
+    {
+      "path": "apps/bff/src/auth/authorization.ts",
+      "sha256": "4133358a6e1b78363107dd86f4b5c2926125c6a405bdff53ea9f8f85c024dbad"
+    },
+    {
+      "path": "apps/bff/src/auth/keycloak-jwt.ts",
+      "sha256": "9c93c4be90cd3162197f2ac1340bb674e57382816ebbe761ab08dedb5d1f29a9"
+    },
+    {
+      "path": "apps/bff/src/auth/runtime-live-authority.ts",
+      "sha256": "abafb5dfb3186f9fa088d3b8d49fc1d3faa4072a515e8f17abcc53ac2d2782d7"
+    },
+    {
+      "path": "apps/bff/src/commands/audit-ingestion.ts",
+      "sha256": "081eb2fa073af44fbbe8384d8bbdd96a3462ad901bcd79cb0edb2a5f5db7938b"
+    },
+    {
+      "path": "apps/bff/src/commands/inference-core-retention.ts",
+      "sha256": "4abc21fb75b9c1631f12510665b858459f3dc85013a6253a43e283cc0623466d"
+    },
+    {
+      "path": "apps/bff/src/config/fixture-mode.ts",
+      "sha256": "05f0c501902347beb7d7528bcd8692cae6beb996e36f19b66becb175b052b8c5"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-client.ts",
+      "sha256": "1d216929dd2e5cff3a57d34d24eb4ac0a251426d7385b6af9feca7896c32431d"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-schema.ts",
+      "sha256": "a08b8e04559c765093782b4b1b75cf98294643d4dff5186c70e628ce670e6e19"
+    },
+    {
+      "path": "apps/bff/src/index.ts",
+      "sha256": "c6bacb7e6e62f117185e60a568b7218630bdd32b07021fcca65437d6786059f5"
+    },
+    {
+      "path": "apps/bff/src/inference/chat-completions.ts",
+      "sha256": "8b72d2a0a45f4ba4a57fa6b67f12d96e012721b6db51f417761ae84f1a4fd075"
+    },
+    {
+      "path": "apps/bff/src/routes/admin.ts",
+      "sha256": "0688697598c93700e3336906d798abba773039c610795eef85a381cf2f8bf0a9"
+    },
+    {
+      "path": "apps/bff/src/routes/app-gateway.ts",
+      "sha256": "1e4ade271c8e7218189a6c97a63342a9a60d3e556965ba8c3451e5616e891411"
+    },
+    {
+      "path": "apps/bff/src/routes/firecrawl-gateway.ts",
+      "sha256": "b9b8dbb6ba9ed308b6676d68c3bc18e0379dce6a03ba2a6415a604275f371953"
+    },
+    {
+      "path": "apps/bff/src/routes/observability-metrics.ts",
+      "sha256": "54cc4f18beb82db339f905209e8e979e6f71ca430555d2f5699a5b4256644979"
+    },
+    {
+      "path": "apps/bff/src/services/admin-alert-egress.ts",
+      "sha256": "32950b6f6350ca6cceedcdbee352feb7e5bec4826bda6131f14b75fa18e5caec"
+    },
+    {
+      "path": "apps/bff/src/services/admin-alertmanager.ts",
+      "sha256": "f2179d9e7a835b553fbd000ee5aa5d9bbdfba8d5a00803dbc4c873cf74e10021"
+    },
+    {
+      "path": "apps/bff/src/services/admin-audit.ts",
+      "sha256": "16fc3cf58c5be10bf8cd907bccf60a88d2c7dba7c7cb676a65e8e9d633cfe011"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "sha256": "d2c99d9643e4992757a32248506577cb3a0f5525813aa82d29014d68d94972e9"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps.ts",
+      "sha256": "b2e1c4666a4927cc26db0e2d5e7da17b946784ba2af14a2d9d110c917c5fd7df"
+    },
+    {
+      "path": "apps/bff/src/services/admin-hardware.ts",
+      "sha256": "4cdf24196405ded964cb862e9f93bf4f93b2714bc7a1fa526efaca485000f20a"
+    },
+    {
+      "path": "apps/bff/src/services/admin-health.ts",
+      "sha256": "f77b10daed27f6f889dabf7f86c2835c1a21b1f03180c6305b426237686ee348"
+    },
+    {
+      "path": "apps/bff/src/services/admin-inference.ts",
+      "sha256": "24874aae69703353bd1989a5908c7845e91ec67282baec717769ca1ca77fd48e"
+    },
+    {
+      "path": "apps/bff/src/services/admin-litellm-client.ts",
+      "sha256": "5ff6aee0986318c0739facc5cd646ff3be76caca7c3f2c3aa3a41a401b9581ab"
+    },
+    {
+      "path": "apps/bff/src/services/admin-observability-metrics.ts",
+      "sha256": "600da4cbdc5280df7f1b3182d6443d322ce61ce04bbb275969e01209318a44e9"
+    },
+    {
+      "path": "apps/bff/src/services/admin-ops-parsers.ts",
+      "sha256": "2e46c3919bdb21165e19bc166311e8a12a3492ce2a9143aa098b0dbaba16587e"
+    },
+    {
+      "path": "apps/bff/src/services/admin-ops.ts",
+      "sha256": "953d730bc327d71e0d7dd2707a8f14593ab6a2224e3d7aea16c9fe6f0aae4eb1"
+    },
+    {
+      "path": "apps/bff/src/services/admin-overview.ts",
+      "sha256": "96c3397c419961ebd07a2a7388aa3c6447dd9056626782fe2c234aae3df58496"
+    },
+    {
+      "path": "apps/bff/src/services/admin-prometheus.ts",
+      "sha256": "6fd5f6bc01e47c6e69193cd4cf62bf83d93ed6141714ef7d322668ebeb3e60e4"
+    },
+    {
+      "path": "apps/bff/src/services/admin-settings-core.ts",
+      "sha256": "c7bada016dc34889d9f59ce567bd6b842bcbd002fbd67bd74be4daf62beddb4d"
+    },
+    {
+      "path": "apps/bff/src/services/admin-settings-validation.ts",
+      "sha256": "fc3630d47b7bf5bfbe605a9924e44e9dcab70bb7ae2a9cdc74de4823de73968c"
+    },
+    {
+      "path": "apps/bff/src/services/admin-team.ts",
+      "sha256": "0812154d954fa66ab1ac4fe4753146a7487fb655094d76b392fe0f56095bbff8"
+    },
+    {
+      "path": "apps/bff/src/services/application-gateway-policy.ts",
+      "sha256": "6ece111dae4c4d003c0f701ff7236060454f4699e1cda32bb31d872dfefe2e84"
+    },
+    {
+      "path": "apps/bff/src/services/audit-export-signing.ts",
+      "sha256": "7180a2f08398e02d7ff2b7936021cc597434404bb8336f3e69543acd69ef7fb4"
+    },
+    {
+      "path": "apps/bff/src/services/audit-export.ts",
+      "sha256": "4ea3a87c6063bc1eea3833e3b8f50226cecb0f23cb60f58935d7ab653592d74b"
+    },
+    {
+      "path": "apps/bff/src/services/audit-ingestion.ts",
+      "sha256": "04cc8f58ff4dacfa7b53ebb20b7a3d32418c64126ab185c4aad9ffac066810a9"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "sha256": "8a7a7c79bed0181f8f51f32013e23e7e2effc9b85c0a8415fbbc58a65ec04aa6"
+    },
+    {
+      "path": "apps/bff/src/services/emergency-isolation.ts",
+      "sha256": "17593fc417d24243dd5c02406e8993c9267ac5f306e34d5ed457385d26155226"
+    },
+    {
+      "path": "apps/bff/src/services/emergency-recovery.ts",
+      "sha256": "f3cdede46367dc547c16c855f3f42d1a2a99dac6c8bc4e9604446f5d0dc966c2"
+    },
+    {
+      "path": "apps/bff/src/services/expert-capabilities.ts",
+      "sha256": "2245e17c822d5b78273f7bce4b58a348ca3d488da59ef0c97016a7302619b321"
+    },
+    {
+      "path": "apps/bff/src/services/firecrawl-gateway-runtime.ts",
+      "sha256": "7bf20250349cf3640f13e30356d05f6556173cc88baacbbdb1106e51dfd336fa"
+    },
+    {
+      "path": "apps/bff/src/services/firecrawl-url-safety.ts",
+      "sha256": "5ade1a95c360d02caffc3738e76a473fed371b7e3f95349d363d2afba1689bac"
+    },
+    {
+      "path": "apps/bff/src/services/idempotency.ts",
+      "sha256": "90e6e1cfed575f4e03eb36d60ba39effe370142459e39bac10545e20709001eb"
+    },
+    {
+      "path": "apps/bff/src/services/identity-mutation-journal.ts",
+      "sha256": "01142036ce2e09d1b857cadf3a0d4340651e6d1540db59502a2285d45ac37fcf"
+    },
+    {
+      "path": "apps/bff/src/services/inference-core-keycloak-admin.ts",
+      "sha256": "63edd3bcd993824432b075516ba68ded850c7e17c9442131a1295c84b6dc56ee"
+    },
+    {
+      "path": "apps/bff/src/services/inference-core-retention.ts",
+      "sha256": "c5a5658864b0bda1024cc34a60c02b08427e5f1e10cfdea23fd7e2c8572b767f"
+    },
+    {
+      "path": "apps/bff/src/services/isolation-traffic-gate.ts",
+      "sha256": "0db62ff716d74390173cb513254ac7f1e9c1659570da83fa3e20f2500de0f83f"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-component-adapters.ts",
+      "sha256": "f0f570ae840557624a63387cedb8e60d65b21cdaad3cda1d5f065e19ee2f77af"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-operation-journal.ts",
+      "sha256": "de4f5d38dfe75357561660b261fd5387f68116501fe2a565da5976e8db02c0b4"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-orchestration.ts",
+      "sha256": "725eaa0e6f0f771235b9450b756eb43cd650901e160ad71b9e57fdf713cd7fdd"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-snapshot-manifest.ts",
+      "sha256": "67256d4700819f9305c30dc42d18923f24d86b7ba5ff27198cf9cf11d590127a"
+    },
+    {
+      "path": "apps/bff/src/services/litellm-chat-transport.ts",
+      "sha256": "e021b6c833881ebec53341607085d97d89ae2c7a569133ef47f3fd1ef547aa14"
+    },
+    {
+      "path": "apps/bff/src/services/users.ts",
+      "sha256": "85ca4d1c72ad8e7f139e8250b62612d4af910bc33738a4d749b89ea93aa8e08d"
+    },
+    {
+      "path": "apps/bff/tsconfig.json",
+      "sha256": "2a173ebc32f14d33afd62404ea107c295ae5cdc4e0168b0c520ad5675e87f41c"
+    },
+    {
+      "path": "apps/bff/vitest.config.ts",
+      "sha256": "76b565f16bb75867fda00201ea1a6fb157103dec0489b4cdf90fd4569e4264a2"
+    },
+    {
+      "path": "apps/web/Dockerfile",
+      "sha256": "31b84bb22e841fec4fc450f17fa95d9c93337bb56b41ff3264d5cda4f81e5a6d"
+    },
+    {
+      "path": "apps/web/next.config.ts",
+      "sha256": "46b16cba11db63928e9f354bb2dc73fb6d4c7763d6da74b546d70fa288b162f5"
+    },
+    {
+      "path": "apps/web/package.json",
+      "sha256": "b57c1b08920d020603ae351f481ee273cef7206153fc69ee92eae8501152c6ac"
+    },
+    {
+      "path": "apps/web/postcss.config.mjs",
+      "sha256": "7c013693fe1a211c61c8825d2f24a55435a81f48f03dd5affdbdad5679fd17cd"
+    },
+    {
+      "path": "apps/web/public/apple-touch-icon.png",
+      "sha256": "e09a7c1a5d6bb8e4e402f8ed9870325fc05e3d01df4c92459acf45173b285a18"
+    },
+    {
+      "path": "apps/web/public/console-v2/llm-mark.svg",
+      "sha256": "f3ae3593ce45c0ec82fca7d588691e7d3d2714f9adbf2ac916c7dd9619ce4b3a"
+    },
+    {
+      "path": "apps/web/public/console-v2/llm-wordmark.svg",
+      "sha256": "dac339e299d60040433856b7c92883f4229fd94f04840325114de4ae8225fd00"
+    },
+    {
+      "path": "apps/web/public/console-v2/status/failed.svg",
+      "sha256": "61825857a0de90b0d536e18105b21322bcf90388ffb7826b40bd92dbd7e60a0d"
+    },
+    {
+      "path": "apps/web/public/console-v2/status/success.svg",
+      "sha256": "be5feff7db77d5e03353a19efb5c6b1eb327d5be3f3875f8e70c77824f760fdf"
+    },
+    {
+      "path": "apps/web/public/console-v2/status/warning.svg",
+      "sha256": "c03e28a991f9ddff908266e1a26130630a1f78a9c75149e156bac18fab188784"
+    },
+    {
+      "path": "apps/web/public/favicon-16x16.png",
+      "sha256": "062bacc86ef43ffef54ecde1ccc10b3625f291834a7e2c651270cd1ff5f632c7"
+    },
+    {
+      "path": "apps/web/public/favicon-32x32.png",
+      "sha256": "1d3f2402499bb80e8f9ca45570f896eb2aab13d75fe9e0521c5a291ddf085f1a"
+    },
+    {
+      "path": "apps/web/public/favicon-48x48.png",
+      "sha256": "85dbc0bd4e9a893f17c012608a4db3ea82faeaf14df26f99f9f375a5a32b0a11"
+    },
+    {
+      "path": "apps/web/public/favicon.ico",
+      "sha256": "d78b46e9b40bdc11b6c9312b3e64ad11b1950ab6e8842a5bab1184c19bee2e5b"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Black.ttf",
+      "sha256": "7175baeb10db3ac18fe52fe4faf647d5f3f199a08fdd83039cf0ed83d0a7fd79"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-BlackItalic.ttf",
+      "sha256": "f862f32788a775dbfed3a25ff0751ee8015b10548a609093e739c54d38750005"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Bold.ttf",
+      "sha256": "404e511789cc7d0934d96255488b3ad3178e3c1b8560189465064c8d0d698e75"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-BoldItalic.ttf",
+      "sha256": "7bdb2d545fdd1dc0d960693262b3d35770d5149482ee665debaeb5d01bd88212"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-ExtraBold.ttf",
+      "sha256": "453743b81c8325a26dbc375677e1a1c55edb9347b65f4887f2b62eb2c963fce3"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-ExtraBoldItalic.ttf",
+      "sha256": "fc3bbf224311f1806fe18b5e2fb840c97e7e169c2b8c9576157844ebb59d7068"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-ExtraLight.ttf",
+      "sha256": "e1761ae0315900ee37b3223786fde68e0646002214cc4392532e879d87dca644"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-ExtraLightItalic.ttf",
+      "sha256": "1b2e4d9f0c9ed9bb5bafbf1925f5c8453c84041c264c4eb1d103349db20d75a3"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Italic.ttf",
+      "sha256": "9c2d89d394279b6fffa6e5acb87013caffb5204e7547dc1027b4c6963709a877"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Light.ttf",
+      "sha256": "7f4d3cc6bd175d2bc173dcaf3d3573fdfc1a22c97a6bddd935c01489e12ed672"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-LightItalic.ttf",
+      "sha256": "7bb3335c3994f13a36361e756256035244de830e4e521a14c93955ae3da4a1f3"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Medium.ttf",
+      "sha256": "6aefc0594cbe554d6bf1b600e9b04832cf78d3657decedfd9b8bbd4be3548ae9"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-MediumItalic.ttf",
+      "sha256": "5bebfac45d8805e99cdec316fed4e3310b5f43afe9a2baea7e78bae116e79f8b"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Regular.ttf",
+      "sha256": "e5085e0a37a96e59a3c2f2698b7176dee533bcf45fa62e432eb82b1c5e065a42"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-SemiBold.ttf",
+      "sha256": "e36b4e1e450a42b686b3b62e694fca2e759e15688f638cae0b26f988c0ba4c9f"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-SemiBoldItalic.ttf",
+      "sha256": "a1a2025a8825131711e4559d109052aad9b167a169354dbb778617596ad2843e"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Thin.ttf",
+      "sha256": "bbee648e10e47c25f5d7a3e80eaebc28253bf8b4e6a7b278885ec84b46e7cf2c"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-ThinItalic.ttf",
+      "sha256": "dff4e1c48bbcaa1d5d3011c1e6b5ad60cdd41151f08e146fffb7a86956c20fb2"
+    },
+    {
+      "path": "apps/web/README.md",
+      "sha256": "5fd5015fa0b892658367bcaf5bbb1dbf32e18132c1874c09e08cdad9fa5b80d6"
+    },
+    {
+      "path": "apps/web/src/app/activity/page.tsx",
+      "sha256": "7a0dd5b8222660bfdc41c273c986fc70ff0b1975255b389a1c0ed3f45e10ec1f"
+    },
+    {
+      "path": "apps/web/src/app/api/admin/audit/export/route.ts",
+      "sha256": "31404b1a7461a5f14c419b9a3aea117ac970cded4f49ec4982904fb260618b96"
+    },
+    {
+      "path": "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+      "sha256": "2a9c117285dc6a3f9452042893e16c5998cf2ad67740f4d20520f4042ca92958"
+    },
+    {
+      "path": "apps/web/src/app/api/auth/[...nextauth]/route.ts",
+      "sha256": "99f247e5de7318586c530afa65493936520325f5d3a43f58a9474d8af9328912"
+    },
+    {
+      "path": "apps/web/src/app/applications/[[...section]]/page.tsx",
+      "sha256": "f29cdf8b5b22c40427294eed92ce290a279e96e15af4c121a39cc4d13575fc63"
+    },
+    {
+      "path": "apps/web/src/app/auth/keycloak/route.ts",
+      "sha256": "a4584ae20493d15b654bbac45df1d3af1682e4d12d2987d0cd1bb5dec45ed244"
+    },
+    {
+      "path": "apps/web/src/app/auth/signin/page.tsx",
+      "sha256": "749753ea62c67d1ed80c9bb7bfb0ac0a1ff361876d32770453256a9c0676dd8a"
+    },
+    {
+      "path": "apps/web/src/app/fonts.ts",
+      "sha256": "2511213390186bc805fe867af12aad4a9e7ccd9a922683619b712692b7962ffb"
+    },
+    {
+      "path": "apps/web/src/app/globals.css",
+      "sha256": "d4dff5e323521d73174c812f230e49e9494b15b18e395d90acee3e847ada55e2"
+    },
+    {
+      "path": "apps/web/src/app/hardware/page.tsx",
+      "sha256": "d7ed99f3b5a71676a78eb32da37c1d713fcf0b9b4b333e408340affcf9a83f1a"
+    },
+    {
+      "path": "apps/web/src/app/icon.svg",
+      "sha256": "96277c9baf2524f2c3fd0b82331ff571e2b74a1a2d2d923aa1539b605bd3f0db"
+    },
+    {
+      "path": "apps/web/src/app/inference/[[...section]]/page.tsx",
+      "sha256": "9c10b17ad9664edb82088d2280063e79bba3dca3394549cf358ae280f03814d3"
+    },
+    {
+      "path": "apps/web/src/app/layout.tsx",
+      "sha256": "7abb3c2dd390928cc132005516d350e153e5dc698816801df35ac218a8a0930e"
+    },
+    {
+      "path": "apps/web/src/app/page.tsx",
+      "sha256": "859ab8e24b76f25808c3bc15d68a068281bd4b5c48db8c0c2a17cc62ff46a7c9"
+    },
+    {
+      "path": "apps/web/src/app/settings/page.tsx",
+      "sha256": "0049ecc810ae9a12ee583fa4a71f952d3572cca4366a94a34f10dbbc03b0afea"
+    },
+    {
+      "path": "apps/web/src/app/team/[[...section]]/page.tsx",
+      "sha256": "f9b0d84ef78feb1eeaae48d43d870215b012052990b179db857bbe24bcb2b43e"
+    },
+    {
+      "path": "apps/web/src/app/team/import/template/route.ts",
+      "sha256": "58d08cca8979ebb277158d03769b97cd53fc0a39487f27f4a51d3442a7ebe4d2"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/action-toasts.tsx",
+      "sha256": "a05683979c38d59120b2a9231d091c516f12ae05250e89b27aeff866205c1ddd"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/activity-v2-experience.tsx",
+      "sha256": "32362221972879eecde3d72bd525ce92a94a85db3db837d6899497ec62f27077"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+      "sha256": "8a7ca745f830bc8dfa79b895528e2e7eb36bfe26eda5351cc1b1c93dfafc1737"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-unavailable-panel.tsx",
+      "sha256": "168fed67fb61c5de7e6f1a9f8e32678579b83a9b76cc222a06b95db4fefdec59"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-icons.tsx",
+      "sha256": "bfaa4ceb78fe09155037c50f77f392897a1f2e18e6c6816f2440e48ad9d355f4"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-sections.ts",
+      "sha256": "79f9fa6acc85142b85742bb752bb4593f3420149116cdd1abf7232eee15a2520"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-shell.tsx",
+      "sha256": "a8ba097784a794a9ae6e2949efc8354e357238e59127c8f75ebbe2a34833ecdd"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/hardware-chart-primitives.tsx",
+      "sha256": "1a8307dea532122b1ecd84d1fbb2524ef35864a78df14bba40b0c791add1db3b"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+      "sha256": "f80f72cb3c96884d8db34304f13f7372890e8a9cd05650daa4ca383105f62e89"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/inference-chart-primitives.tsx",
+      "sha256": "c6eb410e81e603a5eb10f1914dd2fd771fdcefc2380055a228d96f63c1005edd"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "sha256": "5eada7352411f7ea033d378a1b41d8f988e25635993f031e9fa4284ed7c18f46"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+      "sha256": "529a3f898b2c0be7991615001ea6bae10b8a6a718c800b47516850db38d885a1"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/settings-v2-experience.tsx",
+      "sha256": "fe50af81c0d5fb6363c00363ba1e75776d4d1594a108ea68e8b387466a09854f"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
+      "sha256": "35cd88cfe94cb56d75b7082037235fa7987f1314a4ecd2d0145131e7bc0f53b8"
+    },
+    {
+      "path": "apps/web/src/components/ui/button.tsx",
+      "sha256": "7dd2c882706459662ff3ba6af6949143b95a13f2b192ca05b5e085841bf1b360"
+    },
+    {
+      "path": "apps/web/src/components/ui/card.tsx",
+      "sha256": "36ac19f46d898e4c509068167712c145425d980081025b7502cf72ef9e33b823"
+    },
+    {
+      "path": "apps/web/src/lib/admin/actions-core.ts",
+      "sha256": "f74a542a3b1ec3feec8939d056d1f9a55eb3801d30d900abaee19c05923ef8c9"
+    },
+    {
+      "path": "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "sha256": "87485699105ec92b363720d42a9328503dbfead48c48589185f177322c70f2f8"
+    },
+    {
+      "path": "apps/web/src/lib/admin/server-data-core.ts",
+      "sha256": "9a58a8808a1abd958ad42f6fa9ab23168a31c91cecdf9c9454f696921621742f"
+    },
+    {
+      "path": "apps/web/src/lib/auth/auth.ts",
+      "sha256": "a46477cffaf73e32af736ba0ac969a39fa0a1618f4d15f856d2ef1364f1dd3f2"
+    },
+    {
+      "path": "apps/web/src/lib/auth/env.ts",
+      "sha256": "d89dd7881b92c8fb92e6abe782ac0fc009b5ed13c8c9a40e508dcc1b50cccba9"
+    },
+    {
+      "path": "apps/web/src/lib/auth/role-claims.ts",
+      "sha256": "23bedab29a982c3e40b35839934958a15a686c0c6c953292e63978d0db6eacd4"
+    },
+    {
+      "path": "apps/web/src/lib/auth/session.ts",
+      "sha256": "fc08589c2e254e05a8a6e2b794f4c1231e5c821a26287cc57ab8cd672f710de7"
+    },
+    {
+      "path": "apps/web/src/lib/auth/token-refresh.ts",
+      "sha256": "332ee59dd6540741cee6769f33fa33c1e95750318f3f548d47b56f455bb3d563"
+    },
+    {
+      "path": "apps/web/src/lib/bff/server-request.ts",
+      "sha256": "677a0d43f1afb14e6875d883d781c544a8585fe8f14b0f11c6969a72f2945e35"
+    },
+    {
+      "path": "apps/web/src/lib/security/content-security-policy.ts",
+      "sha256": "88c878b60be8be7c4fffcdd775f21c3cccf512cfcd13d02fcfc70dd5ee52f859"
+    },
+    {
+      "path": "apps/web/src/lib/utils.ts",
+      "sha256": "7c8c3dfc0cdd370d44932828eb067ef771c8fe7996693221d5d4b90af6d54f2d"
+    },
+    {
+      "path": "apps/web/src/middleware.ts",
+      "sha256": "711de75880cdcdbd86ce05fa953c749e8f9e4f90c85cc48dad47e86dd226d586"
+    },
+    {
+      "path": "apps/web/src/test/server-only.ts",
+      "sha256": "7992a39d6cde5e050eb78461a8bf9ad986175a94826e835c110b3967290bd249"
+    },
+    {
+      "path": "apps/web/tsconfig.json",
+      "sha256": "d8752c4eda57fcec04ddebb548dc8f635bdd421d107cd9b432f2bf6d5f055da8"
+    },
+    {
+      "path": "apps/web/vitest.config.ts",
+      "sha256": "4d91e2698170d4af92360dec5e08bc115d16ca72cad7a12009821836708d79af"
+    },
+    {
+      "path": "package.json",
+      "sha256": "18116d218fa4d2eea5d52bffa835e800cd67b8b4baaae7ca9ba7924bfb095849"
+    },
+    {
+      "path": "packages/contracts/package.json",
+      "sha256": "5ac65fa284417a832f6e6bacd1ddfba9d4baf82d8c610a698b3f37863a9dbc78"
+    },
+    {
+      "path": "packages/contracts/README.md",
+      "sha256": "f46075e9b81da04d1e7fe3b34af440dbfd8f849b71c21ce7b9dd645f3e920cde"
+    },
+    {
+      "path": "packages/contracts/src/common.ts",
+      "sha256": "7992a39d6cde5e050eb78461a8bf9ad986175a94826e835c110b3967290bd249"
+    },
+    {
+      "path": "packages/contracts/src/index.ts",
+      "sha256": "8756001830e8067c18a431eb2a21cda30761d0ca452dd1586aa88e5e0106b29a"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-authorization.ts",
+      "sha256": "0210fa56d27cbea5eac7dd7fcf77ea525bbbc8e7690f3d034139ebbf6f139214"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-isolation.ts",
+      "sha256": "760037bc3652c95482b1db533a83d83a595f647219e4cc01d35a8fa0e4c9e03b"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-lifecycle.ts",
+      "sha256": "fc4ebe297e72269a52b82e02e5391d46e084c294b324df3b63e32f5b96a348b2"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-recovery.ts",
+      "sha256": "c4e43a876fdfe3844d4056148395de1231dc91d8a08b922f557dae4c06f20dce"
+    },
+    {
+      "path": "packages/contracts/src/inference-core.ts",
+      "sha256": "5fb81aa206055208d7797794b74c70bc417134486af752eaeb6feac305282c2d"
+    },
+    {
+      "path": "packages/contracts/tsconfig.build.json",
+      "sha256": "d613699cb729fd7bbcb5cccd74db4e2dbe6c8fae8646e2a61a2cd5d3d622a13a"
+    },
+    {
+      "path": "packages/contracts/tsconfig.json",
+      "sha256": "93050f8683ea1fcd496593382a4e9208fa01de238c28b0a434399e2190ec35be"
+    },
+    {
+      "path": "packages/copy/package.json",
+      "sha256": "cdf736c053da95bb7e931dffe8aba9043cec788c3ab856fddf6d2ea290bef62f"
+    },
+    {
+      "path": "packages/copy/README.md",
+      "sha256": "3ab7cda57d2d0abc035a2517bd96ba0bc48968b0a2185f3ca640850b0eed5b0a"
+    },
+    {
+      "path": "packages/copy/src/index.ts",
+      "sha256": "e20a7d2ab5427f47ce0ff49f83cd266a3b83e787db153ed324058551313ed530"
+    },
+    {
+      "path": "packages/copy/tsconfig.build.json",
+      "sha256": "d613699cb729fd7bbcb5cccd74db4e2dbe6c8fae8646e2a61a2cd5d3d622a13a"
+    },
+    {
+      "path": "packages/copy/tsconfig.json",
+      "sha256": "93050f8683ea1fcd496593382a4e9208fa01de238c28b0a434399e2190ec35be"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "318122e3f47f0fa371ea303501cde465ec5d97cbeb123b6fc97a358670170583"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "sha256": "253208fa7c1b64372c219b9e19cef15ed70ca93b66a4d5c4c4d2297a5aff8880"
+    }
+  ],
+  "repositoryClosure": [
+    {
+      "path": ".dockerignore",
+      "mode": "100644",
+      "objectId": "dc63a3546bdf2f51cb1882ec82da45727d4b416e"
+    },
+    {
+      "path": ".env.example",
+      "mode": "100644",
+      "objectId": "b060023ff35b869b84d8b964d6ebcb65fc9e3851"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "objectId": "90957351a0b40660a6b64cfc78daca46e2f36e5b"
+    },
+    {
+      "path": "apps/bff/Dockerfile",
+      "mode": "100644",
+      "objectId": "d38a4727c8920f3a4734214c7ac711c371948ff7"
+    },
+    {
+      "path": "apps/bff/package.json",
+      "mode": "100644",
+      "objectId": "1e21b05a047aabc074306f8359c8f37d1acf5825"
+    },
+    {
+      "path": "apps/bff/README.md",
+      "mode": "100644",
+      "objectId": "7b3657d6fa4787e94b26c2a472b6e374a64046ac"
+    },
+    {
+      "path": "apps/bff/src/auth/application-access-token.test.ts",
+      "mode": "100644",
+      "objectId": "1c8cb6c46afef8bb5a1fdfa27cab2f918066c07a"
+    },
+    {
+      "path": "apps/bff/src/auth/application-access-token.ts",
+      "mode": "100644",
+      "objectId": "23ddd85ef56f76e1315ddd7bda37803013d370d8"
+    },
+    {
+      "path": "apps/bff/src/auth/authorization-security.test.ts",
+      "mode": "100644",
+      "objectId": "78d1d8bf48d749bbd24c8fc537b8ac44d0ebe6b9"
+    },
+    {
+      "path": "apps/bff/src/auth/authorization.ts",
+      "mode": "100644",
+      "objectId": "5b827ccd4146b6ccd31c823bd14a53faeb4a8a3e"
+    },
+    {
+      "path": "apps/bff/src/auth/keycloak-jwt-token-type.test.ts",
+      "mode": "100644",
+      "objectId": "199893208dab6d539f05d2751782ef23164af9d2"
+    },
+    {
+      "path": "apps/bff/src/auth/keycloak-jwt.ts",
+      "mode": "100644",
+      "objectId": "d5404b3075dfba4ca099df203bfee94567123252"
+    },
+    {
+      "path": "apps/bff/src/auth/runtime-live-authority.test.ts",
+      "mode": "100644",
+      "objectId": "4654132ed01323ccf2cb925c89f220dbeb5d3bad"
+    },
+    {
+      "path": "apps/bff/src/auth/runtime-live-authority.ts",
+      "mode": "100644",
+      "objectId": "dfc9d371c7902b61756189fdc3a485541a23c8e5"
+    },
+    {
+      "path": "apps/bff/src/commands/audit-ingestion.test.ts",
+      "mode": "100644",
+      "objectId": "713a132d553579ba06eab7ec11109e3b40277409"
+    },
+    {
+      "path": "apps/bff/src/commands/audit-ingestion.ts",
+      "mode": "100644",
+      "objectId": "35e3fd641827c86d06fddc962b066d94c815fc1e"
+    },
+    {
+      "path": "apps/bff/src/commands/inference-core-retention.test.ts",
+      "mode": "100644",
+      "objectId": "9e9c64ae2f4385664fcdfe38dcc660230cd482b4"
+    },
+    {
+      "path": "apps/bff/src/commands/inference-core-retention.ts",
+      "mode": "100644",
+      "objectId": "bbf4e11b6e4bec8339aca1905442602872fd58c9"
+    },
+    {
+      "path": "apps/bff/src/config/fixture-mode.test.ts",
+      "mode": "100644",
+      "objectId": "9ccc0ca067d6c8f6dfdb9ff72105a8f2a7fc7a2e"
+    },
+    {
+      "path": "apps/bff/src/config/fixture-mode.ts",
+      "mode": "100644",
+      "objectId": "04cdeea81c139844df5742f8a45cfb252afc46a8"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-client.test.ts",
+      "mode": "100644",
+      "objectId": "deaffd0142347584afd6b4d16337133bb77b20d0"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-client.ts",
+      "mode": "100644",
+      "objectId": "4c29e3eeca3f2a04b0b7768ef86747aa204924be"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-schema.test.ts",
+      "mode": "100644",
+      "objectId": "dd7a9559b881c6dadb3b1d03d6e6ef3155ce30c6"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-schema.ts",
+      "mode": "100644",
+      "objectId": "24bf610dc9204c024af14a551dd484230838d5b6"
+    },
+    {
+      "path": "apps/bff/src/index-firecrawl-credential-isolation.test.ts",
+      "mode": "100644",
+      "objectId": "0502c0bb23b92f019f7524af8901c2ef641a96bb"
+    },
+    {
+      "path": "apps/bff/src/index-firecrawl-logging.test.ts",
+      "mode": "100644",
+      "objectId": "685270fd7837dc7933ff6b1176e024fc6d803427"
+    },
+    {
+      "path": "apps/bff/src/index.test.ts",
+      "mode": "100644",
+      "objectId": "5c892f04484734e1bbfbf85b6b7371d5cd1661ff"
+    },
+    {
+      "path": "apps/bff/src/index.ts",
+      "mode": "100644",
+      "objectId": "5f9cbba77ef166982ffed3c2d0a12db49f431755"
+    },
+    {
+      "path": "apps/bff/src/inference/chat-completions.test.ts",
+      "mode": "100644",
+      "objectId": "479f3e081ebd1345f31b82374c8e92422e52132b"
+    },
+    {
+      "path": "apps/bff/src/inference/chat-completions.ts",
+      "mode": "100644",
+      "objectId": "b428c31f3194a39b2c8fd5bc818cff1c207f3c91"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-alert-egress.test.ts",
+      "mode": "100644",
+      "objectId": "1ffda33ea24f465914d2931f10848ca480125259"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-audit-export.test.ts",
+      "mode": "100644",
+      "objectId": "28a19c42ad4c386de62c18f54db9e4691c3d15e5"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-authorization.test.ts",
+      "mode": "100644",
+      "objectId": "06684eed7a545410c5140a2a2d48424ad58e6a81"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-connected-apps-lifecycle.test.ts",
+      "mode": "100644",
+      "objectId": "8063635c952ed15694419c915286afad860d0f26"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-csv-body-limit.test.ts",
+      "mode": "100644",
+      "objectId": "66d4103b560cb8caacafa327c3785e1521bd9f26"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-firecrawl-lifecycle.test.ts",
+      "mode": "100644",
+      "objectId": "ad7abd1e34f077549bc74400c97822aa4f9ba8b3"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-hardware.test.ts",
+      "mode": "100644",
+      "objectId": "7305c3fca481cc81de25924dd21640cdb00e074e"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-inference.test.ts",
+      "mode": "100644",
+      "objectId": "0e8cfcde12ba99a9d7921d0012a7cc3a3382d2ef"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-isolation.test.ts",
+      "mode": "100644",
+      "objectId": "42c0adcc2b448ae97350e37f727cdc24282d6307"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-overview-health.test.ts",
+      "mode": "100644",
+      "objectId": "8d4b04d256066deb7203d93d1c6006e8c1ba9cbb"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-overview-ops.test.ts",
+      "mode": "100644",
+      "objectId": "3367c74bf9b896812d52761e7737fd1cde1f073b"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-recovery.test.ts",
+      "mode": "100644",
+      "objectId": "da18c60eb01e6488c4b5bae76917762b4d1bc9cc"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-settings-persistence.test.ts",
+      "mode": "100644",
+      "objectId": "a9a936d9cf750f17b8ef1bf019f597035641b66c"
+    },
+    {
+      "path": "apps/bff/src/routes/admin.test.ts",
+      "mode": "100644",
+      "objectId": "c9773a416301ecfd37f5cdf5b000a988b6f1374e"
+    },
+    {
+      "path": "apps/bff/src/routes/admin.ts",
+      "mode": "100644",
+      "objectId": "f3a6326dd0d293c88f84bdef1a5bf4bdeaf32026"
+    },
+    {
+      "path": "apps/bff/src/routes/app-gateway-accounting-errors.test.ts",
+      "mode": "100644",
+      "objectId": "c72da813094c9f4c5469620b8e90829137a115c0"
+    },
+    {
+      "path": "apps/bff/src/routes/app-gateway-boundary.test.ts",
+      "mode": "100644",
+      "objectId": "66dd5b1ae1001b6ba88d4cb1a28aa8b5b45df375"
+    },
+    {
+      "path": "apps/bff/src/routes/app-gateway-oauth-access-token.test.ts",
+      "mode": "100644",
+      "objectId": "25888625248cbc0c4d824740d7cd4519d003e52b"
+    },
+    {
+      "path": "apps/bff/src/routes/app-gateway.test.ts",
+      "mode": "100644",
+      "objectId": "4c80079cc81731c47451f38dc9a33972b54d0c8a"
+    },
+    {
+      "path": "apps/bff/src/routes/app-gateway.ts",
+      "mode": "100644",
+      "objectId": "8f9c5bcd442d63eef59b40dbb3228ea6ebfe05fb"
+    },
+    {
+      "path": "apps/bff/src/routes/firecrawl-gateway.test.ts",
+      "mode": "100644",
+      "objectId": "76c2c7c2b75e2efe2de4790ccb823faa88939252"
+    },
+    {
+      "path": "apps/bff/src/routes/firecrawl-gateway.ts",
+      "mode": "100644",
+      "objectId": "d0fb9557c0f75055fda5241adf6870c3c82bf97f"
+    },
+    {
+      "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "mode": "100644",
+      "objectId": "b508e71c131c058d50dc35d49465976326998aef"
+    },
+    {
+      "path": "apps/bff/src/routes/observability-metrics.test.ts",
+      "mode": "100644",
+      "objectId": "9453fd53325aaa203c24be4c1dc09699ced43191"
+    },
+    {
+      "path": "apps/bff/src/routes/observability-metrics.ts",
+      "mode": "100644",
+      "objectId": "1adcd131729a723540e9f457ccdac3e8929d4c7a"
+    },
+    {
+      "path": "apps/bff/src/services/admin-alert-egress.test.ts",
+      "mode": "100644",
+      "objectId": "4c62d8924af5798a450b010af2a4f3c21c17a374"
+    },
+    {
+      "path": "apps/bff/src/services/admin-alert-egress.ts",
+      "mode": "100644",
+      "objectId": "415c1c7eac9e2f2e89b92b8775597f0d1e25cd66"
+    },
+    {
+      "path": "apps/bff/src/services/admin-alertmanager.test.ts",
+      "mode": "100644",
+      "objectId": "c588065018f074493d48e7fa25a137836b582498"
+    },
+    {
+      "path": "apps/bff/src/services/admin-alertmanager.ts",
+      "mode": "100644",
+      "objectId": "deb086efdaf439977d4b5824a2f139f969d148c2"
+    },
+    {
+      "path": "apps/bff/src/services/admin-audit.test.ts",
+      "mode": "100644",
+      "objectId": "6ea1c732f2f2ee7fdb359616de5dd5da368c00a2"
+    },
+    {
+      "path": "apps/bff/src/services/admin-audit.ts",
+      "mode": "100644",
+      "objectId": "5b8ffd7061db21f727304f38dfa31ff8da425ed5"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-accounting.test.ts",
+      "mode": "100644",
+      "objectId": "af036383c931c0578032e000779bc956575d4630"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-atomicity.test.ts",
+      "mode": "100644",
+      "objectId": "b36d448ba7cfe905b6d3b85cb6a118207c953d38"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl-settlement.test.ts",
+      "mode": "100644",
+      "objectId": "2e758fc5db56d1b0b7421e633fc25d2168a37868"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl.test.ts",
+      "mode": "100644",
+      "objectId": "342654e1dde2a29b89f0585b203bc3af38875e53"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "mode": "100644",
+      "objectId": "f238f6283e38461c0a29f96c3233afe953ae960c"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps.ts",
+      "mode": "100644",
+      "objectId": "14ea9c06ae7a6227d2ec49f2a5d6250128521207"
+    },
+    {
+      "path": "apps/bff/src/services/admin-hardware.ts",
+      "mode": "100644",
+      "objectId": "ab80ee28c367b5fb867765530fbe1399e60ea826"
+    },
+    {
+      "path": "apps/bff/src/services/admin-health.ts",
+      "mode": "100644",
+      "objectId": "5589d81920e4acc86e794987bc32b505bff9ab4e"
+    },
+    {
+      "path": "apps/bff/src/services/admin-inference.test.ts",
+      "mode": "100644",
+      "objectId": "dd8a2d62850610baa3dcd8fabb74639276898d8c"
+    },
+    {
+      "path": "apps/bff/src/services/admin-inference.ts",
+      "mode": "100644",
+      "objectId": "e7c2334c6797fcd1147f9c916dd135537315be27"
+    },
+    {
+      "path": "apps/bff/src/services/admin-litellm-client.test.ts",
+      "mode": "100644",
+      "objectId": "63c747bc639062a25955c305f115fb85807d083d"
+    },
+    {
+      "path": "apps/bff/src/services/admin-litellm-client.ts",
+      "mode": "100644",
+      "objectId": "70959b204ab9c220744e35119677345bc0f9afb1"
+    },
+    {
+      "path": "apps/bff/src/services/admin-observability-metrics.test.ts",
+      "mode": "100644",
+      "objectId": "c7c3d254f694920ce61bccf306bbf626d61f992c"
+    },
+    {
+      "path": "apps/bff/src/services/admin-observability-metrics.ts",
+      "mode": "100644",
+      "objectId": "33c383451e441ef27080b9407fb99a241303444a"
+    },
+    {
+      "path": "apps/bff/src/services/admin-ops-parsers.ts",
+      "mode": "100644",
+      "objectId": "a0e958a2fa2baf002f88ace2099fff99395e0494"
+    },
+    {
+      "path": "apps/bff/src/services/admin-ops.ts",
+      "mode": "100644",
+      "objectId": "e2bd6bcea999d15db9d61f89224a4aa0e6e0453a"
+    },
+    {
+      "path": "apps/bff/src/services/admin-overview.test.ts",
+      "mode": "100644",
+      "objectId": "da23ea7094ffbefbea80f390e9930e0c4ff0d611"
+    },
+    {
+      "path": "apps/bff/src/services/admin-overview.ts",
+      "mode": "100644",
+      "objectId": "ff661797f83b36aecd6f0e333c63a373cf249821"
+    },
+    {
+      "path": "apps/bff/src/services/admin-prometheus.test.ts",
+      "mode": "100644",
+      "objectId": "eb54c1694abd77159572a04f27e6ababf9fd6fec"
+    },
+    {
+      "path": "apps/bff/src/services/admin-prometheus.ts",
+      "mode": "100644",
+      "objectId": "ad6b09fc752d567b816e24103fb41d2a094b6ace"
+    },
+    {
+      "path": "apps/bff/src/services/admin-settings-core.test.ts",
+      "mode": "100644",
+      "objectId": "035f6ccb9f693d75ae4d4f7ffaa5510d00dd0e86"
+    },
+    {
+      "path": "apps/bff/src/services/admin-settings-core.ts",
+      "mode": "100644",
+      "objectId": "07f8b1759cf4a5d1a66a9d8cba53a1e6cda387d7"
+    },
+    {
+      "path": "apps/bff/src/services/admin-settings-firecrawl-readiness.test.ts",
+      "mode": "100644",
+      "objectId": "d25c69cab31b4747c9d7ad41de60149ffca04433"
+    },
+    {
+      "path": "apps/bff/src/services/admin-settings-validation.test.ts",
+      "mode": "100644",
+      "objectId": "b0113b28302087ce52ce10fa79171113cbebb551"
+    },
+    {
+      "path": "apps/bff/src/services/admin-settings-validation.ts",
+      "mode": "100644",
+      "objectId": "7c88cdca7967020a436e0cb863b571e9b4bef101"
+    },
+    {
+      "path": "apps/bff/src/services/admin-team-live-authority.test.ts",
+      "mode": "100644",
+      "objectId": "823758335b3c6ca5dc193ba7df7b9087f7dcfc7c"
+    },
+    {
+      "path": "apps/bff/src/services/admin-team.ts",
+      "mode": "100644",
+      "objectId": "8b1a25cafe65c44b46fceb1491026a1c47fe7bd3"
+    },
+    {
+      "path": "apps/bff/src/services/application-gateway-policy.ts",
+      "mode": "100644",
+      "objectId": "7c14dcd7e871e96b1fc366ca3b1ae3af7fdd6471"
+    },
+    {
+      "path": "apps/bff/src/services/audit-export-signing.test.ts",
+      "mode": "100644",
+      "objectId": "e510b0d5dc7fdc6bf5826fcc42fe7fbd5d74c780"
+    },
+    {
+      "path": "apps/bff/src/services/audit-export-signing.ts",
+      "mode": "100644",
+      "objectId": "2bcedf9c5b20c5a123fa67f98660f1860a35bb89"
+    },
+    {
+      "path": "apps/bff/src/services/audit-export.test.ts",
+      "mode": "100644",
+      "objectId": "22122c5fa6b66426f7f04fee7acace2087d5c726"
+    },
+    {
+      "path": "apps/bff/src/services/audit-export.ts",
+      "mode": "100644",
+      "objectId": "3266dbe80fe217dea38c2fef80986d7db18ddfbf"
+    },
+    {
+      "path": "apps/bff/src/services/audit-ingestion.test.ts",
+      "mode": "100644",
+      "objectId": "4022d49738b087bdb6f31a7985b172c085978740"
+    },
+    {
+      "path": "apps/bff/src/services/audit-ingestion.ts",
+      "mode": "100644",
+      "objectId": "d88b76f4a58d650aa97cf86da19adc8f3e1b932d"
+    },
+    {
+      "path": "apps/bff/src/services/audit.test.ts",
+      "mode": "100644",
+      "objectId": "d29048caa2cb2a53f2c4c19b4410f986c23afd07"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "mode": "100644",
+      "objectId": "e39c6a025bf34c2a1748b678aa89d1bdf52c5faa"
+    },
+    {
+      "path": "apps/bff/src/services/emergency-isolation.test.ts",
+      "mode": "100644",
+      "objectId": "217135fa9b5260d64140d5d3a1722466965b1ab4"
+    },
+    {
+      "path": "apps/bff/src/services/emergency-isolation.ts",
+      "mode": "100644",
+      "objectId": "b20f707b0cfed13fc12340b40c73c8858d5ff724"
+    },
+    {
+      "path": "apps/bff/src/services/emergency-recovery.test.ts",
+      "mode": "100644",
+      "objectId": "e44b5efa423b63da92c4d4049402e216e4bb1133"
+    },
+    {
+      "path": "apps/bff/src/services/emergency-recovery.ts",
+      "mode": "100644",
+      "objectId": "f4b5d0e3b91500dd589bcc0099bcc97e9bac5960"
+    },
+    {
+      "path": "apps/bff/src/services/expert-capabilities.test.ts",
+      "mode": "100644",
+      "objectId": "dacec610234d5fa402ef36a7fd9a6b0c75ec3999"
+    },
+    {
+      "path": "apps/bff/src/services/expert-capabilities.ts",
+      "mode": "100644",
+      "objectId": "ab38e614e3bacd35f8310c09232b68dbe44146b3"
+    },
+    {
+      "path": "apps/bff/src/services/firecrawl-gateway-runtime.test.ts",
+      "mode": "100644",
+      "objectId": "4f0ca24b7f7636870c65f3b6631d480add7a00e8"
+    },
+    {
+      "path": "apps/bff/src/services/firecrawl-gateway-runtime.ts",
+      "mode": "100644",
+      "objectId": "5853aa097874da2c43172d19daffc3a751cb767d"
+    },
+    {
+      "path": "apps/bff/src/services/firecrawl-url-safety.test.ts",
+      "mode": "100644",
+      "objectId": "acd040a75077d62341412411b8bf02eee5c4c43e"
+    },
+    {
+      "path": "apps/bff/src/services/firecrawl-url-safety.ts",
+      "mode": "100644",
+      "objectId": "041ea1b250d691f3bc0c223d576e8c84c20da9cf"
+    },
+    {
+      "path": "apps/bff/src/services/idempotency.ts",
+      "mode": "100644",
+      "objectId": "7390e8eaa2f9e0ce5bedc9e9ea83a001270b5c85"
+    },
+    {
+      "path": "apps/bff/src/services/identity-mutation-journal.test.ts",
+      "mode": "100644",
+      "objectId": "493819fccb5e2ceac9d3518163928c9883f6a3f4"
+    },
+    {
+      "path": "apps/bff/src/services/identity-mutation-journal.ts",
+      "mode": "100644",
+      "objectId": "4eed159397080873a770b0f3a0a12b30d5069f6d"
+    },
+    {
+      "path": "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
+      "mode": "100644",
+      "objectId": "31a52acdb6f9df7ba87266c083720567d95fece7"
+    },
+    {
+      "path": "apps/bff/src/services/inference-core-keycloak-admin.ts",
+      "mode": "100644",
+      "objectId": "0c3f4acbc4bacef78be67d070d2e388644299bb1"
+    },
+    {
+      "path": "apps/bff/src/services/inference-core-retention.test.ts",
+      "mode": "100644",
+      "objectId": "0454052317b43c0d2ee01b834d3877b786b47bb2"
+    },
+    {
+      "path": "apps/bff/src/services/inference-core-retention.ts",
+      "mode": "100644",
+      "objectId": "8ca84e957f368c55350a3661fc745eea3dddb9e7"
+    },
+    {
+      "path": "apps/bff/src/services/isolation-traffic-gate.test.ts",
+      "mode": "100644",
+      "objectId": "016868ed24606694e086b7deac809d4d65c4f6f4"
+    },
+    {
+      "path": "apps/bff/src/services/isolation-traffic-gate.ts",
+      "mode": "100644",
+      "objectId": "2e8e0957719267f148a3459bc5a0fa7bfbb460e1"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-component-adapters.test.ts",
+      "mode": "100644",
+      "objectId": "5d3e12864a38ced40d0f937bcba4fad9c93ba520"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-component-adapters.ts",
+      "mode": "100644",
+      "objectId": "d5b85f2ef75c854643ab67901ef3e519dc7960f3"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-operation-journal.test.ts",
+      "mode": "100644",
+      "objectId": "15a8722f6bba77146e7d94b897dc9bac73c6039b"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-operation-journal.ts",
+      "mode": "100644",
+      "objectId": "78b9b084726f411169770dd41f548d5a1953590b"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-orchestration.test.ts",
+      "mode": "100644",
+      "objectId": "de01cdc670574893e196bce54058589fbdef4a4c"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-orchestration.ts",
+      "mode": "100644",
+      "objectId": "fe3439d60a414536e3827d3e830cf0c72378b573"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-snapshot-manifest.test.ts",
+      "mode": "100644",
+      "objectId": "a87f2e45e492fd0a9a48a4feaf885168566cf166"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-snapshot-manifest.ts",
+      "mode": "100644",
+      "objectId": "d84416f605ba60fb44e2201e2d101243dc64605b"
+    },
+    {
+      "path": "apps/bff/src/services/litellm-chat-transport.test.ts",
+      "mode": "100644",
+      "objectId": "7a55b80db528de9ae57936bf8046711f0639a849"
+    },
+    {
+      "path": "apps/bff/src/services/litellm-chat-transport.ts",
+      "mode": "100644",
+      "objectId": "1802564fa7627f3ab4cd7b2cb960fc5dab6e6ac8"
+    },
+    {
+      "path": "apps/bff/src/services/users.test.ts",
+      "mode": "100644",
+      "objectId": "5f421804170681cba7ab37c8ac38cb6afc670110"
+    },
+    {
+      "path": "apps/bff/src/services/users.ts",
+      "mode": "100644",
+      "objectId": "62f483421fc172008a97e4fe7f8487670e807042"
+    },
+    {
+      "path": "apps/bff/tsconfig.json",
+      "mode": "100644",
+      "objectId": "7959233d2e7a210cc64d217ef20092b301a8a76f"
+    },
+    {
+      "path": "apps/bff/vitest.config.ts",
+      "mode": "100644",
+      "objectId": "f46def830fb60f94c14a933c972819b256a5732c"
+    },
+    {
+      "path": "apps/web/Dockerfile",
+      "mode": "100644",
+      "objectId": "2786bb19a384f3ee7ef571b9c0ed9dfcd7051bcc"
+    },
+    {
+      "path": "apps/web/next-config-security.test.ts",
+      "mode": "100644",
+      "objectId": "e9044a9e3eb3f4b88600e302775dbe618b63a5ba"
+    },
+    {
+      "path": "apps/web/next-env.d.ts",
+      "mode": "100644",
+      "objectId": "1b3be0840f3f6a2bc663b53f4b17d05d2d924df6"
+    },
+    {
+      "path": "apps/web/next.config.ts",
+      "mode": "100644",
+      "objectId": "6921ab73488138c977838b1a8464948ca956ef32"
+    },
+    {
+      "path": "apps/web/package.json",
+      "mode": "100644",
+      "objectId": "7bc224e00a63de8a40ed1e3e4de5a733173d1a7f"
+    },
+    {
+      "path": "apps/web/postcss.config.mjs",
+      "mode": "100644",
+      "objectId": "2f8795a936c6fbca951780dd7da3eec156b43084"
+    },
+    {
+      "path": "apps/web/public/apple-touch-icon.png",
+      "mode": "100644",
+      "objectId": "2400d26ba6216759b73109126111cdd8494de6d3"
+    },
+    {
+      "path": "apps/web/public/console-v2/llm-mark.svg",
+      "mode": "100644",
+      "objectId": "52ca4743adc0484bb67732397397bb2cc6f23cbf"
+    },
+    {
+      "path": "apps/web/public/console-v2/llm-wordmark.svg",
+      "mode": "100644",
+      "objectId": "252c374472bc375300c550b5a6bf61ea159a19ee"
+    },
+    {
+      "path": "apps/web/public/console-v2/status/failed.svg",
+      "mode": "100644",
+      "objectId": "ddc6b2bebebae95cf2bb32e9e5f53d7ea1901fd4"
+    },
+    {
+      "path": "apps/web/public/console-v2/status/success.svg",
+      "mode": "100644",
+      "objectId": "6e19520a364bbdcfe13b614d56afe4a8ea757ad1"
+    },
+    {
+      "path": "apps/web/public/console-v2/status/warning.svg",
+      "mode": "100644",
+      "objectId": "e5c6c32b6ca3465e0946ba384ed2e065bf62a5fa"
+    },
+    {
+      "path": "apps/web/public/favicon-16x16.png",
+      "mode": "100644",
+      "objectId": "55dfc6f953896b565d0148be72718f93592b5d23"
+    },
+    {
+      "path": "apps/web/public/favicon-32x32.png",
+      "mode": "100644",
+      "objectId": "df999d32dc6e96518aba690cd44d936961a78cc3"
+    },
+    {
+      "path": "apps/web/public/favicon-48x48.png",
+      "mode": "100644",
+      "objectId": "c43a67105fa524e50c6cf0df0a6f2508b93d5ea8"
+    },
+    {
+      "path": "apps/web/public/favicon.ico",
+      "mode": "100644",
+      "objectId": "f0cbb62c74e23442a983b42afdc305965956f011"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Black.ttf",
+      "mode": "100644",
+      "objectId": "e1ec32b3d944930e92ab30cf381bac2da4b49ec0"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-BlackItalic.ttf",
+      "mode": "100644",
+      "objectId": "85323c9789e944236f10454895836d1134d28db7"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Bold.ttf",
+      "mode": "100644",
+      "objectId": "330e84f9548499cd9ad7c32ba563cc9bc637d8b3"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-BoldItalic.ttf",
+      "mode": "100644",
+      "objectId": "08d47a8a1fed5419820405fc9e745aaebe14b3b9"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-ExtraBold.ttf",
+      "mode": "100644",
+      "objectId": "7971b6db0fd2c756a5aac3217eafcb8a0ff9dacb"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-ExtraBoldItalic.ttf",
+      "mode": "100644",
+      "objectId": "050297e2f0a1f0bff61416612b7dd041aa934cd4"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-ExtraLight.ttf",
+      "mode": "100644",
+      "objectId": "a20a0bf9511571e842804cc8e62bc9a0e0fca3e1"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-ExtraLightItalic.ttf",
+      "mode": "100644",
+      "objectId": "6896847257a54aa452161c9002eca03d85987c1e"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Italic.ttf",
+      "mode": "100644",
+      "objectId": "79688a6c8fb3118493e5de440e89618e7c5575ed"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Light.ttf",
+      "mode": "100644",
+      "objectId": "5903400040c5a25fb4fc3061e3568e5c3f19ef2b"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-LightItalic.ttf",
+      "mode": "100644",
+      "objectId": "1a455ce2cf097b9cb1827084b28880f6c0ef51c8"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Medium.ttf",
+      "mode": "100644",
+      "objectId": "e9a6dbb06b82939449307e9aab304628b3c46525"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-MediumItalic.ttf",
+      "mode": "100644",
+      "objectId": "44a9c897acf8d6cff5b3ba9c04689608f58cf16b"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Regular.ttf",
+      "mode": "100644",
+      "objectId": "2a794b2701f4a3d07b70fa77ab94ca5e4b2b503e"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-SemiBold.ttf",
+      "mode": "100644",
+      "objectId": "6d393d1cd23bb3d06676bc0194cfb69d77a2af78"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-SemiBoldItalic.ttf",
+      "mode": "100644",
+      "objectId": "327aa0449a936cb5cb039423df66f14a9d7e095e"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-Thin.ttf",
+      "mode": "100644",
+      "objectId": "9e272162bc66149e508ce875aa93004c507b43d8"
+    },
+    {
+      "path": "apps/web/public/fonts/urbanist/Urbanist-ThinItalic.ttf",
+      "mode": "100644",
+      "objectId": "5cf054f109cb475b7ffd4de7e8a4427fea604896"
+    },
+    {
+      "path": "apps/web/README.md",
+      "mode": "100644",
+      "objectId": "2d3bb75affdb7a73e83a2fb3575c707b40a00c1b"
+    },
+    {
+      "path": "apps/web/src/app/activity/page.tsx",
+      "mode": "100644",
+      "objectId": "a704a33bddbc129902901373b1848cd7bf03f1f4"
+    },
+    {
+      "path": "apps/web/src/app/api/admin/audit/export/route.test.ts",
+      "mode": "100644",
+      "objectId": "8958d5bfb49421441f7785e01a0a78ce63cf4004"
+    },
+    {
+      "path": "apps/web/src/app/api/admin/audit/export/route.ts",
+      "mode": "100644",
+      "objectId": "33b4747ebcc55c7cc4efb0110d7baddb55742fb1"
+    },
+    {
+      "path": "apps/web/src/app/api/admin/audit/export/verification-keys/route.test.ts",
+      "mode": "100644",
+      "objectId": "5f61add130644b7c5e260ad28a77110cba9d08a5"
+    },
+    {
+      "path": "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+      "mode": "100644",
+      "objectId": "bbf6e385a7b461ac477ad7001742c6eec56016a0"
+    },
+    {
+      "path": "apps/web/src/app/api/auth/[...nextauth]/route.ts",
+      "mode": "100644",
+      "objectId": "c9ebf8e49feef1f184976cb66788aaa48e20123e"
+    },
+    {
+      "path": "apps/web/src/app/applications/[[...section]]/page.tsx",
+      "mode": "100644",
+      "objectId": "c837f01d2b55ac43dd212823d75e7d9ef1fb1b41"
+    },
+    {
+      "path": "apps/web/src/app/auth/keycloak/route.ts",
+      "mode": "100644",
+      "objectId": "22295fed460e0caf1ae615fa062ae9e60465886a"
+    },
+    {
+      "path": "apps/web/src/app/auth/signin/page.tsx",
+      "mode": "100644",
+      "objectId": "b2da6c64e3b38013495d711521aa5e1dfe0b164e"
+    },
+    {
+      "path": "apps/web/src/app/fonts.ts",
+      "mode": "100644",
+      "objectId": "605eae4892c4c6352c23987654fb47190a686fb3"
+    },
+    {
+      "path": "apps/web/src/app/globals.css",
+      "mode": "100644",
+      "objectId": "0d117a9e4b7c6af497eab4b6dd4650a812b59414"
+    },
+    {
+      "path": "apps/web/src/app/hardware/page.tsx",
+      "mode": "100644",
+      "objectId": "1ee5c2c6fe6f1873951085db38d65de3b5b05598"
+    },
+    {
+      "path": "apps/web/src/app/icon.svg",
+      "mode": "100644",
+      "objectId": "907575aa6b7960eea7d3d654d91d1c96cfddc8e9"
+    },
+    {
+      "path": "apps/web/src/app/inference/[[...section]]/page.tsx",
+      "mode": "100644",
+      "objectId": "14f2b5da7f9aee30ed293fe401ef3de4000aa5dd"
+    },
+    {
+      "path": "apps/web/src/app/layout.tsx",
+      "mode": "100644",
+      "objectId": "a3af6581f0e033ab49db3b7c7897ad2d98f5c658"
+    },
+    {
+      "path": "apps/web/src/app/page.test.tsx",
+      "mode": "100644",
+      "objectId": "2a7ffc8014882534fd2ab6a75e6839f6cb4a8683"
+    },
+    {
+      "path": "apps/web/src/app/page.tsx",
+      "mode": "100644",
+      "objectId": "4061b79ca9a36776de35f38a787e47618bdb738f"
+    },
+    {
+      "path": "apps/web/src/app/settings/page.tsx",
+      "mode": "100644",
+      "objectId": "a8a436aaafb115551bbf05a50503edc992bd5d80"
+    },
+    {
+      "path": "apps/web/src/app/team/[[...section]]/page.tsx",
+      "mode": "100644",
+      "objectId": "2b4d003f7628e59e6657cb1c5d12382cd26b1b43"
+    },
+    {
+      "path": "apps/web/src/app/team/import/template/route.ts",
+      "mode": "100644",
+      "objectId": "18ba8e57cb8717c4dae786188e5dbe4d643255b7"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/action-toasts.test.tsx",
+      "mode": "100644",
+      "objectId": "fd8c543decf32a273b91e8bb570bfc418bdff873"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/action-toasts.tsx",
+      "mode": "100644",
+      "objectId": "09af67fec286052913fd15d19b86f5d99a69f64b"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/activity-v2-experience.test.tsx",
+      "mode": "100644",
+      "objectId": "3745202eaa07a34d1fd2627c707e40e7f95b2dae"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/activity-v2-experience.tsx",
+      "mode": "100644",
+      "objectId": "3162b69d07db207ad54278b35189bbf1aa919776"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/applications-v2-experience.test.tsx",
+      "mode": "100644",
+      "objectId": "f5e60273d93ad0503271ff18dfb5fb463de463f5"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+      "mode": "100644",
+      "objectId": "7ff1d25d3b54e3bb5973f133673bc6119a413532"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-unavailable-panel.tsx",
+      "mode": "100644",
+      "objectId": "8721f4136ed1fb87776f8eda9e7b8c681646c17b"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-icons.tsx",
+      "mode": "100644",
+      "objectId": "f87250092bbf61fd931be8f0aba26de96f2a5b85"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-sections.ts",
+      "mode": "100644",
+      "objectId": "448fae003f647130d5e54b82be0275fec5fcd760"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-shell.test.tsx",
+      "mode": "100644",
+      "objectId": "65b0745fa3869a47c862ca54ac522d36e405e0f0"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-shell.tsx",
+      "mode": "100644",
+      "objectId": "20fcb86911a8924a316ffc53d4c41469b420d611"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/hardware-chart-primitives.tsx",
+      "mode": "100644",
+      "objectId": "8523ac5c36172e368e6c50a2ce91b28c4689e7af"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/hardware-v2-experience.test.tsx",
+      "mode": "100644",
+      "objectId": "732741baa6fec96e1aa3a2dc3d9a5ddb2e8f957f"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+      "mode": "100644",
+      "objectId": "e8522ac089ff33a46fab9de8499c2d2f8ca05c32"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/inference-chart-primitives.tsx",
+      "mode": "100644",
+      "objectId": "a60bbcd9941090cc6509e5fb67952c3f7281cc22"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "mode": "100644",
+      "objectId": "512ff2fcc50e2b9fe74d83717c1fb49e855f4927"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/overview-v2-experience.test.tsx",
+      "mode": "100644",
+      "objectId": "7445b8f6b422b035357724f8da7b809463b16f93"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+      "mode": "100644",
+      "objectId": "f575cb831e7bd22559e0c085170e71050678580d"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+      "mode": "100644",
+      "objectId": "4144528822a7ae90b86a2626d33f80e3aa0a11ff"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/settings-v2-experience.tsx",
+      "mode": "100644",
+      "objectId": "199f635a6a30b1714992a981c3ba35318f6cbae1"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
+      "mode": "100644",
+      "objectId": "50443183ff74410ae101ac6cc05711a7968e9e34"
+    },
+    {
+      "path": "apps/web/src/components/ui/button.tsx",
+      "mode": "100644",
+      "objectId": "0f77a634b267b15b9006929aacfe1e1057883666"
+    },
+    {
+      "path": "apps/web/src/components/ui/card.tsx",
+      "mode": "100644",
+      "objectId": "9fe72f52a2aaefeebc0dc5ec9ca86364264cc885"
+    },
+    {
+      "path": "apps/web/src/lib/admin/actions-core.test.ts",
+      "mode": "100644",
+      "objectId": "9833ca6c30bd5464ce4d4387b846344dc5240278"
+    },
+    {
+      "path": "apps/web/src/lib/admin/actions-core.ts",
+      "mode": "100644",
+      "objectId": "30e6acd0b5da3c6e8c0ae894e6b1a6ec66ae4b06"
+    },
+    {
+      "path": "apps/web/src/lib/admin/console-v2-routes-core.test.tsx",
+      "mode": "100644",
+      "objectId": "4891ca9c8c83b7a47fa4f5483fa82c7ca98b5c51"
+    },
+    {
+      "path": "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "mode": "100644",
+      "objectId": "c0a621abed2a22def619f9a0cf01ef02a36638ed"
+    },
+    {
+      "path": "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+      "mode": "100644",
+      "objectId": "640da40f74f3876b658b86dfceeb7b0c465d83f9"
+    },
+    {
+      "path": "apps/web/src/lib/admin/server-data-core.test.ts",
+      "mode": "100644",
+      "objectId": "dda91c95b3ddbbef8b2066da670f4d58a2e43fe3"
+    },
+    {
+      "path": "apps/web/src/lib/admin/server-data-core.ts",
+      "mode": "100644",
+      "objectId": "cd802fe5ea517390d68b8fe6d552ee428c385f01"
+    },
+    {
+      "path": "apps/web/src/lib/auth/auth.ts",
+      "mode": "100644",
+      "objectId": "63f089ad96c7b384ded39a43727a78575f6fdd3d"
+    },
+    {
+      "path": "apps/web/src/lib/auth/env.test.ts",
+      "mode": "100644",
+      "objectId": "ab3bb7800b05fcb5d4164a9663a1f06717dea701"
+    },
+    {
+      "path": "apps/web/src/lib/auth/env.ts",
+      "mode": "100644",
+      "objectId": "379f9fe62b1732220448eb9deb1b9b0ec065c0d2"
+    },
+    {
+      "path": "apps/web/src/lib/auth/role-claims.test.ts",
+      "mode": "100644",
+      "objectId": "7f780b666439e5f55e316e20f0ab87ed078e2565"
+    },
+    {
+      "path": "apps/web/src/lib/auth/role-claims.ts",
+      "mode": "100644",
+      "objectId": "9b64db313ef22ff91d26db432e51791dbdd55da7"
+    },
+    {
+      "path": "apps/web/src/lib/auth/session.test.ts",
+      "mode": "100644",
+      "objectId": "e428eca883fe4c07387b8052022f6563f5f17cb5"
+    },
+    {
+      "path": "apps/web/src/lib/auth/session.ts",
+      "mode": "100644",
+      "objectId": "d9d299c3a05c18260c758b8c4238bd7f69aeff2b"
+    },
+    {
+      "path": "apps/web/src/lib/auth/token-refresh.test.ts",
+      "mode": "100644",
+      "objectId": "5fd15339cff6489e8cb9f64b64d3250fc8dbba4b"
+    },
+    {
+      "path": "apps/web/src/lib/auth/token-refresh.ts",
+      "mode": "100644",
+      "objectId": "3ff0b02a6f967de4644576c04c9ae74de20bd567"
+    },
+    {
+      "path": "apps/web/src/lib/bff/server-request.ts",
+      "mode": "100644",
+      "objectId": "f0fb07ffdd46209753748909526a02e0c9c059dc"
+    },
+    {
+      "path": "apps/web/src/lib/security/content-security-policy.ts",
+      "mode": "100644",
+      "objectId": "11cc0525a1b29210e5609cb964c10c8d54fb0cfb"
+    },
+    {
+      "path": "apps/web/src/lib/utils.ts",
+      "mode": "100644",
+      "objectId": "bd0c391ddd1088e9067844c48835bf4abcd61783"
+    },
+    {
+      "path": "apps/web/src/middleware.test.ts",
+      "mode": "100644",
+      "objectId": "4dcc68fb0127d8061369768285d401ccc4a3f50f"
+    },
+    {
+      "path": "apps/web/src/middleware.ts",
+      "mode": "100644",
+      "objectId": "eb874880e0c9ad2a5ecfbcc874de0ad1fc8d6862"
+    },
+    {
+      "path": "apps/web/src/test/server-only.ts",
+      "mode": "100644",
+      "objectId": "336ce12bb9106afdf843063ee67c0c1970f70d37"
+    },
+    {
+      "path": "apps/web/src/types/next-auth.d.ts",
+      "mode": "100644",
+      "objectId": "cc42238ce25e1592965f8418b9f60c729d907e81"
+    },
+    {
+      "path": "apps/web/tsconfig.json",
+      "mode": "100644",
+      "objectId": "eaf9eafad0157693c126c7d78b50e50a72d7334b"
+    },
+    {
+      "path": "apps/web/vitest.config.ts",
+      "mode": "100644",
+      "objectId": "fabcb6925223bf86733f873db464b8951de853dc"
+    },
+    {
+      "path": "biome.json",
+      "mode": "100644",
+      "objectId": "604a88ec5ba46c85a6557b7b25eaa19f6fec299e"
+    },
+    {
+      "path": "docs/reduction/inference-core/decision-register.md",
+      "mode": "100644",
+      "objectId": "3c76d227ab628420f8547ef2077b0892be113da8"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-02-boundary-decisions.json",
+      "mode": "100644",
+      "objectId": "848c9fad9c79e1e9b8ae585292d7c41ef471898e"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-03-removal-decisions.json",
+      "mode": "100644",
+      "objectId": "1c187cb89b10d2f062c273ee3b457eb7aca94d97"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-04-data-decisions.json",
+      "mode": "100644",
+      "objectId": "b86f7362ebbec5387950efbe1f42ae469a54b676"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-05-identity-decisions.json",
+      "mode": "100644",
+      "objectId": "aa516a2d0404711b02e2e25a85ba5436e0a432e1"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-06-application-decisions.json",
+      "mode": "100644",
+      "objectId": "e81972ce528ee6084a98c08fefdd6fda70d05857"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-07-data-plane-decisions.json",
+      "mode": "100644",
+      "objectId": "949b221ad24c5086a5219bbfa8423602a3877925"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-08-firecrawl-decisions.json",
+      "mode": "100644",
+      "objectId": "fd85fc30835b858ab15fcea6742b5b05fafea5ac"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-08-firecrawl-source-manifest.json",
+      "mode": "100644",
+      "objectId": "cacff1eb65c2feb5ed9425d121b02bf98b843fc2"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
+      "mode": "100644",
+      "objectId": "a4c944433e7ace9f214bef8c369464b4bc07f912"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-10-lifecycle-foundation-decisions.json",
+      "mode": "100644",
+      "objectId": "5856886fb0f9ddfe016c1d2d04ed8ac946dc6c4b"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-10c-emergency-isolation-decisions.json",
+      "mode": "100644",
+      "objectId": "23e5b30822ce4b3cf9dbc2d5247644b60b694a0f"
+    },
+    {
+      "path": "docs/reduction/inference-core/pr-11-console-information-architecture-decisions.json",
+      "mode": "100644",
+      "objectId": "68144af780dc9001a00afd6105412db70b907cff"
+    },
+    {
+      "path": "docs/reduction/inference-core/README.md",
+      "mode": "100644",
+      "objectId": "f8c018257c9ddd394e8178dc4c34d88127d14785"
+    },
+    {
+      "path": "docs/reduction/inference-core/retention-characterization.json",
+      "mode": "100644",
+      "objectId": "0dd0bffdbf3244a2803b9dce98e2b28d6af72c15"
+    },
+    {
+      "path": "docs/reduction/inference-core/source-map.jsonl",
+      "mode": "100644",
+      "objectId": "e716e2a2b777eea05d48eaa0c0f2a8b628ba135d"
+    },
+    {
+      "path": "docs/reduction/inference-core/validation-register.md",
+      "mode": "100644",
+      "objectId": "8fef6efeb927102fafd3a4ff6b182cfa17d8bc11"
+    },
+    {
+      "path": "infra/firecrawl/compose.yaml",
+      "mode": "100644",
+      "objectId": "3d97c9c8c2f8ee53df8e3cd053fb520edc4c3a46"
+    },
+    {
+      "path": "infra/firecrawl/egress/allowlists/default/allowed-hosts.txt",
+      "mode": "100644",
+      "objectId": "855b2c43f592229ba416139e01876b30941bd5d8"
+    },
+    {
+      "path": "infra/firecrawl/egress/squid.conf",
+      "mode": "100644",
+      "objectId": "f3f54284d43fe2e4f4ee16c4eca78e0080c30925"
+    },
+    {
+      "path": "infra/firecrawl/provenance/source-lock.json",
+      "mode": "100644",
+      "objectId": "c884d50a1cb3916b2e777ff94e3a523c8eb1932a"
+    },
+    {
+      "path": "infra/firecrawl/README.md",
+      "mode": "100644",
+      "objectId": "1b3572557d47379c8bd01e15dae80e03a8af9ce1"
+    },
+    {
+      "path": "infra/firecrawl/searxng/settings.yml",
+      "mode": "100644",
+      "objectId": "b784086a7d6c996f1a2948d56d623fca3fc28f46"
+    },
+    {
+      "path": "infra/firecrawl/THIRD_PARTY_NOTICES.md",
+      "mode": "100644",
+      "objectId": "be73c7edc0880112e9add050e85ed10e906da8a8"
+    },
+    {
+      "path": "infra/firecrawl/validate-profile.mjs",
+      "mode": "100644",
+      "objectId": "cbc6674dd7f9be17dea3c1fa5574ad6edb83aa12"
+    },
+    {
+      "path": "infra/firecrawl/validate-profile.test.mjs",
+      "mode": "100644",
+      "objectId": "89e59aa8a2d0732022fb77c50480fd0ca0d75788"
+    },
+    {
+      "path": "infra/keycloak/inference-core-application-realm-commissioning.json",
+      "mode": "100644",
+      "objectId": "48fe246639464bd802622eeee16d2cce863c0690"
+    },
+    {
+      "path": "infra/keycloak/inference-core-application-realm-seed.json",
+      "mode": "100644",
+      "objectId": "849d3daca2c6b580680a5522df1b0aeeff8e0f84"
+    },
+    {
+      "path": "infra/keycloak/inference-core-commissioning.json",
+      "mode": "100644",
+      "objectId": "c63fddef2911f47b775872cd1f4da4fcb4159c45"
+    },
+    {
+      "path": "infra/keycloak/inference-core-realm-seed.json",
+      "mode": "100644",
+      "objectId": "d0d556cbad7387027e04101311c98392cad356ee"
+    },
+    {
+      "path": "infra/keycloak/README.md",
+      "mode": "100644",
+      "objectId": "466b4a9a60c6899354193e9d2e5d4bef5bc465be"
+    },
+    {
+      "path": "infra/migrations/0000_inference_core.sql",
+      "mode": "100644",
+      "objectId": "6eb7f5de66678af5964cdcd1b739e13b481b8c3a"
+    },
+    {
+      "path": "infra/observability/alertmanager/alertmanager.yml",
+      "mode": "100644",
+      "objectId": "6d44f7e4fec70e493077a6f69c8e315b26754b1d"
+    },
+    {
+      "path": "infra/observability/grafana/customer-folder-contract.json",
+      "mode": "100644",
+      "objectId": "347a77b5aa0a3b73520f8b3f1fcc4383eba6c57d"
+    },
+    {
+      "path": "infra/observability/grafana/dashboards/baseline/inference-core-overview.json",
+      "mode": "100644",
+      "objectId": "d33be5ac6f4680c54215e1736a9acebe4cc44281"
+    },
+    {
+      "path": "infra/observability/grafana/grafana.ini",
+      "mode": "100644",
+      "objectId": "35f9f11732efc848eae4d4dd751bdbb977d4d05e"
+    },
+    {
+      "path": "infra/observability/grafana/provisioning/dashboards/baseline.yml",
+      "mode": "100644",
+      "objectId": "b6f53763d78d02fd65113ebf8e00df8e9d2732b7"
+    },
+    {
+      "path": "infra/observability/grafana/provisioning/datasources/prometheus.yml",
+      "mode": "100644",
+      "objectId": "5ee6f8a21da9fb4af0428c4599cf1316ba877bd8"
+    },
+    {
+      "path": "infra/observability/prometheus/file-sd/inference-core.json",
+      "mode": "100644",
+      "objectId": "fe51488c7066f6687ef680d6bfaa4f7768ef205c"
+    },
+    {
+      "path": "infra/observability/prometheus/prometheus.yml",
+      "mode": "100644",
+      "objectId": "5a4943e43c212a0c23514cdecc2f8082599fdb79"
+    },
+    {
+      "path": "infra/observability/prometheus/rules/alert-rules.yml",
+      "mode": "100644",
+      "objectId": "286143507a6914aa2de70466e35f791f975806c5"
+    },
+    {
+      "path": "infra/observability/prometheus/rules/recording-rules.yml",
+      "mode": "100644",
+      "objectId": "5ce6f11a78e2619f107c24b73866df3d29c98759"
+    },
+    {
+      "path": "infra/observability/README.md",
+      "mode": "100644",
+      "objectId": "19dc689ee8d09940516de949a2d0ce96eb99e886"
+    },
+    {
+      "path": "infra/observability/runtime-contract.json",
+      "mode": "100644",
+      "objectId": "65a5470e165b9a0ccecc8c5e9177dfaa88c75a3b"
+    },
+    {
+      "path": "infra/observability/validate-profile.mjs",
+      "mode": "100644",
+      "objectId": "6b4477c93976df41dbfb0d58b5aabf7b1d697ab3"
+    },
+    {
+      "path": "infra/observability/validate-profile.test.mjs",
+      "mode": "100644",
+      "objectId": "9fa867ac357d9b00cc4d8eb2bbcfc9fa3c5dc4e3"
+    },
+    {
+      "path": "package.json",
+      "mode": "100644",
+      "objectId": "05e4fd17571e41a165f2da139b9a6fdf85e8824a"
+    },
+    {
+      "path": "packages/contracts/package.json",
+      "mode": "100644",
+      "objectId": "7ff72f62e64db894c335edcc0eb896e525e8ec06"
+    },
+    {
+      "path": "packages/contracts/README.md",
+      "mode": "100644",
+      "objectId": "f812d5ed9f100415c3de02ea42e6364991bb3b0c"
+    },
+    {
+      "path": "packages/contracts/src/common.ts",
+      "mode": "100644",
+      "objectId": "336ce12bb9106afdf843063ee67c0c1970f70d37"
+    },
+    {
+      "path": "packages/contracts/src/index.ts",
+      "mode": "100644",
+      "objectId": "5a65ff757f911394559a6362539a1884fa7c7822"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-authorization.test.ts",
+      "mode": "100644",
+      "objectId": "47afcf0d891aaea6503dde5cffe5c8c290faf827"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-authorization.ts",
+      "mode": "100644",
+      "objectId": "5f0fab213b2e444fe6bae3ab68f7b228d305ef05"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-firecrawl.test.ts",
+      "mode": "100644",
+      "objectId": "6c45a3867e6c66fcb5524e2648f27fde6241e6a2"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-isolation.test.ts",
+      "mode": "100644",
+      "objectId": "c01ac4b64cc9739be95a9af1fec4a341e6cf2c62"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-isolation.ts",
+      "mode": "100644",
+      "objectId": "ada6808d061b8346fa48c2599194d89e85df7277"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-lifecycle.test.ts",
+      "mode": "100644",
+      "objectId": "d65799c9d6d2d9f73db505596583b488e2ee24a8"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-lifecycle.ts",
+      "mode": "100644",
+      "objectId": "e6a3dd1e15feca993c6a2d1c289b96ffad14672b"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-recovery.test.ts",
+      "mode": "100644",
+      "objectId": "b0855d1c1264d7c74c86ac3e921446092fbfa698"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-recovery.ts",
+      "mode": "100644",
+      "objectId": "83f905c3a9f0a86e44cdc880b2e1239f1d5f36ad"
+    },
+    {
+      "path": "packages/contracts/src/inference-core.test.ts",
+      "mode": "100644",
+      "objectId": "053a4916eb3e79a368f9646031f494a132004486"
+    },
+    {
+      "path": "packages/contracts/src/inference-core.ts",
+      "mode": "100644",
+      "objectId": "20e7caab0d52fc62baebee423ff28fca7fd5f878"
+    },
+    {
+      "path": "packages/contracts/tsconfig.build.json",
+      "mode": "100644",
+      "objectId": "1a6a7bbec4e38ae7133625e238936aea8aa475cf"
+    },
+    {
+      "path": "packages/contracts/tsconfig.json",
+      "mode": "100644",
+      "objectId": "3f08bc31d7a200a857f950ea33a59115a6da459b"
+    },
+    {
+      "path": "packages/copy/package.json",
+      "mode": "100644",
+      "objectId": "34e782a34171d505837406ce95851f1a3ac54504"
+    },
+    {
+      "path": "packages/copy/README.md",
+      "mode": "100644",
+      "objectId": "0bdc57f53fa19f51a46cf01f9c8485b93cc5e302"
+    },
+    {
+      "path": "packages/copy/src/index.ts",
+      "mode": "100644",
+      "objectId": "f918ffcfefa482b4e322fdeaa79e4ff4e8b3e4ac"
+    },
+    {
+      "path": "packages/copy/tsconfig.build.json",
+      "mode": "100644",
+      "objectId": "1a6a7bbec4e38ae7133625e238936aea8aa475cf"
+    },
+    {
+      "path": "packages/copy/tsconfig.json",
+      "mode": "100644",
+      "objectId": "3f08bc31d7a200a857f950ea33a59115a6da459b"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "mode": "100644",
+      "objectId": "4b76cba79b8e4465e7e640556a6e2c3dc78be358"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "mode": "100644",
+      "objectId": "286cf7f5643db97142c425abe7c8e5d5663f5d65"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "objectId": "9d743d771553149a828d9a631a28d918aff3aefd"
+    },
+    {
+      "path": "scripts/inference-core/guardrails.mjs",
+      "mode": "100644",
+      "objectId": "2e24b82117507ff1654e851809bad5dfa2c1508a"
+    },
+    {
+      "path": "scripts/inference-core/guardrails.test.mjs",
+      "mode": "100644",
+      "objectId": "55f3727f492cc7d171a9b1ff3ab75b934cc0f86c"
+    },
+    {
+      "path": "scripts/inference-core/pr02-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "b4f2ba4f3c470c98fd4ed20f88d94ee9cf8b22b1"
+    },
+    {
+      "path": "scripts/inference-core/pr02-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "90665fc7d59476582147b8e8e9e7c11ae95214e4"
+    },
+    {
+      "path": "scripts/inference-core/pr03-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "0590a1b0373efab1387f441c32d8106f2b0f72ae"
+    },
+    {
+      "path": "scripts/inference-core/pr03-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "b42570daf2ef74fb641dbbd2a946d1ea77a455e6"
+    },
+    {
+      "path": "scripts/inference-core/pr04-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "c0609e796ac08e1ad708453a6c1126d1b478e695"
+    },
+    {
+      "path": "scripts/inference-core/pr04-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "dd62a9b947536505e97a50ace3d3a2384c9fa249"
+    },
+    {
+      "path": "scripts/inference-core/pr05-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "9b058042b4d116093c722a75c08266510c299711"
+    },
+    {
+      "path": "scripts/inference-core/pr05-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "7da19cc2b00e9e72bd1d1ef208e597d978e26986"
+    },
+    {
+      "path": "scripts/inference-core/pr05-keycloak-seed.mjs",
+      "mode": "100644",
+      "objectId": "c1892264b7ae7cb9e111d8cd65445c70db0cc648"
+    },
+    {
+      "path": "scripts/inference-core/pr05-keycloak-seed.test.mjs",
+      "mode": "100644",
+      "objectId": "6fc22a7cf259308e3ff370a7aa7ed5f6cedf3914"
+    },
+    {
+      "path": "scripts/inference-core/pr06-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "0b0dfe63dcbc02451dd1361c7d9b73af21d9cfd3"
+    },
+    {
+      "path": "scripts/inference-core/pr06-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "abf11693951f4c8d7ce75577a64adcce868d26a9"
+    },
+    {
+      "path": "scripts/inference-core/pr07-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "58d4fde0d3a40b078290efe8f4613e702594d8ad"
+    },
+    {
+      "path": "scripts/inference-core/pr07-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "16e49d463f6afb3287acb4751b422d15c94cbf5f"
+    },
+    {
+      "path": "scripts/inference-core/pr08-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "38740f7ee10afcf11f21b8cb4707f1d07b60e882"
+    },
+    {
+      "path": "scripts/inference-core/pr08-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "190aed94235c353d1b88593c15b9ef3924474d7f"
+    },
+    {
+      "path": "scripts/inference-core/pr09-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "e3c5f5a27d92dfdf087308b44577171a9f4f407e"
+    },
+    {
+      "path": "scripts/inference-core/pr09-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "2a3e17354bd6a7796d31335aa13a8b12fd045127"
+    },
+    {
+      "path": "scripts/inference-core/pr10-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "5407e2c529316ab0e262523270ae651837038a80"
+    },
+    {
+      "path": "scripts/inference-core/pr10-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "f9ff4e9c1671d94b1ff64e4f475105aa0962de10"
+    },
+    {
+      "path": "scripts/inference-core/pr10c-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "70041fa8307afb256a8d6868df5d6d7ac33cde70"
+    },
+    {
+      "path": "scripts/inference-core/pr10c-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "75305b0133014170631fccb73aa53e1c1adddd49"
+    },
+    {
+      "path": "scripts/inference-core/pr11-boundaries.test.mjs",
+      "mode": "100644",
+      "objectId": "415464f7653acee05c43c3c1357d5fdb446d544c"
+    },
+    {
+      "path": "scripts/inference-core/pr11-contract-revision.mjs",
+      "mode": "100644",
+      "objectId": "9214944e23f536cd2ef777d046e76b43da4381c3"
+    },
+    {
+      "path": "scripts/inference-core/retention-canary.mjs",
+      "mode": "100644",
+      "objectId": "0458fa576e9c1775de9651262342648260b970e7"
+    },
+    {
+      "path": "scripts/inference-core/retention-canary.test.mjs",
+      "mode": "100644",
+      "objectId": "681ecfe6a46fd5a3607914420ea041e3d5fb4b9f"
+    },
+    {
+      "path": "scripts/inference-core/run-core-command.mjs",
+      "mode": "100644",
+      "objectId": "af615711a2659f437fa39e69e0d289cc946b745c"
+    },
+    {
+      "path": "scripts/inference-core/run-core-command.test.mjs",
+      "mode": "100644",
+      "objectId": "e623d236adcea1788abac9caa25619a0c68f1d6a"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/package.json",
+      "mode": "100644",
+      "objectId": "cf80ed15195526ad7e0433309ef7c30d9ddb381f"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "mode": "100644",
+      "objectId": "8416c63f5b15e7813de5741182bbe21b2ffc5edd"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "mode": "100644",
+      "objectId": "d05a7e7dc84aba3dc59ec807282d9cf49b5e795f"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "mode": "100644",
+      "objectId": "83e4a2145753e925736896722d39483d528bec1e"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/idempotency.test.ts",
+      "mode": "100644",
+      "objectId": "41f7ed4a3e19c87a10e99ae4ef4fa6642fc48667"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "mode": "100644",
+      "objectId": "56ecfd7d2f540e91264c1b99b81aef106d4dd456"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+      "mode": "100644",
+      "objectId": "1b80ae6e1b9d0ce488de2035feb160b04764fee1"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr05-emergency-recovery.test.ts",
+      "mode": "100644",
+      "objectId": "81d833cdae79cfa22a8526b84f21aec9d6df079e"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr05-identity-mutation-journal.test.ts",
+      "mode": "100644",
+      "objectId": "29bdb24c20428c10fb67e64d5efc62be5040d4c0"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr06-application-credential-reconciliation.test.ts",
+      "mode": "100644",
+      "objectId": "d78372fc3daf851eb3ae7fd3f75d8d8222386e5c"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr07-inference-data-plane.test.ts",
+      "mode": "100644",
+      "objectId": "4c26ffeca85f37b503f97c702ebe9bddc12827e9"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr08-firecrawl-schema.test.ts",
+      "mode": "100644",
+      "objectId": "862142a1d42d23e1b71a5b27788d1108d7d7315d"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr09-alert-egress.test.ts",
+      "mode": "100644",
+      "objectId": "7115c02e1336be7ee58f26ee4b5632574e20e6f6"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
+      "mode": "100644",
+      "objectId": "4e53993f6357f63193f18e7ef189ff94af89dd34"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr10-lifecycle-foundation.test.ts",
+      "mode": "100644",
+      "objectId": "ceb4cf963a7ba18440857656e2cd1195347d5877"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr10-lifecycle-journal.test.ts",
+      "mode": "100644",
+      "objectId": "70f33343ff6dc0829bc38cea20f47ed25518f034"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr10c-emergency-isolation.test.ts",
+      "mode": "100644",
+      "objectId": "28918739f977bc400146fc6d82fc656e529c9887"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr11-settings-atomicity.test.ts",
+      "mode": "100644",
+      "objectId": "ab43731dc44c98f6053425b47012477b132d13d6"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/tsconfig.json",
+      "mode": "100644",
+      "objectId": "824d57c3c4f2fc16761dbcf744d50fc9e0b60a46"
+    },
+    {
+      "path": "tsconfig.base.json",
+      "mode": "100644",
+      "objectId": "d589b28f61af8901270b166eb1988ed19be56838"
+    }
+  ],
+  "fingerprints": [
+    {
+      "path": "apps/bff/src/auth/authorization.ts",
+      "symbol": "<file>",
+      "sha256": "003776367928a1bebcc77b2f181393eb63eb6651dcaa4085135a3da11b557470"
+    },
+    {
+      "path": "apps/bff/src/auth/runtime-live-authority.ts",
+      "symbol": "<file>",
+      "sha256": "0ca02d54900a9f645b0abad5269164fbdf97affd2d3f67126d7c5fa158169799"
+    },
+    {
+      "path": "apps/bff/src/index.ts",
+      "symbol": "<file>",
+      "sha256": "32509b161073d225b6aef9e3993c778d997773073a14be5318b6d33e78ed093d"
+    },
+    {
+      "path": "apps/web/next.config.ts",
+      "symbol": "<file>",
+      "sha256": "79a28582d628e566baa4231d4a718173cf4e9dde14242bc40e214d502262dbb3"
+    },
+    {
+      "path": "apps/web/src/lib/auth/auth.ts",
+      "symbol": "<file>",
+      "sha256": "142c783a7ab90c05a56bad8c2283f8cb4b900cc9eb7b32624697bc71f4ff8b66"
+    }
+  ],
+  "escapeHatches": [],
+  "reviewedRevisions": [
+    {
+      "id": "PR-02",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-02.json",
+      "sha256": "dd5d388e55bbc2881e3d312e24bd696091fe406e547c1ed4c17e5f7356f54370"
+    },
+    {
+      "id": "PR-03",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-03.json",
+      "sha256": "1d6a3f93644001c46dd60d1ead41051181d27013292188787f5f80274d0eb66c"
+    },
+    {
+      "id": "PR-04",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-04.json",
+      "sha256": "564116ab0d262989e09a9b1eb3daa74cfd200bf59bf35420925d8f8327a7e429"
+    },
+    {
+      "id": "PR-05",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-05.json",
+      "sha256": "42e8197abdc83be2e3076729dc679a4b2fa7fd30d3692bc8061fe8cf3126114d"
+    },
+    {
+      "id": "PR-06",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-06.json",
+      "sha256": "ca634dd7fec94e17db52eae7feecf8552e574c6c2dfa408aece07f49f09079dd"
+    },
+    {
+      "id": "PR-07",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-07.json",
+      "sha256": "ab0a98d8cd748e4fb1da88a83d5cf36d4c04ab19621ee16af4a16ce1dd5a1745"
+    },
+    {
+      "id": "PR-08",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-08.json",
+      "sha256": "be13bd68d6b47d10c48fefacc980b8b7c6e2f5e6de48a31ba6e6026287e6651d"
+    },
+    {
+      "id": "PR-09",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-09.json",
+      "sha256": "e6de57dbfb6dcba90d903f500f069a3f7eccdb1a471e86715c26838f6e588dfc"
+    },
+    {
+      "id": "PR-10",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-10.json",
+      "sha256": "91948b3af170626b9d987a84848d31afb41462b6b747c7fdafa8b3cf7ad28a96"
+    },
+    {
+      "id": "PR-10C",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-10C.json",
+      "sha256": "eb27ac731b1bdb9d15fb762b44bfba93c1d566a0b9986365d0cdddef073de6b3"
+    },
+    {
+      "id": "PR-11",
+      "path": "docs/reduction/inference-core/contract-revisions/PR-11.json",
+      "sha256": "755dc6e55e20439ee6ac306d3e6fae491571514d10b004182c4746bc0f7dd159"
+    }
+  ]
+}

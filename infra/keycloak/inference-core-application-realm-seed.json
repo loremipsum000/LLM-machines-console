@@ -1,0 +1,159 @@
+{
+  "apiVersion": "inference-core.llm-machines/v1",
+  "kind": "LogicalKeycloakApplicationRealmSeed",
+  "metadata": {
+    "changePackage": "PR-06",
+    "containsCredentials": false,
+    "packagingTarget": "PR-12"
+  },
+  "keycloakRuntime": {
+    "customProviderPlugins": [],
+    "minimumVersion": "26.6.0",
+    "requiredFeatures": ["admin-fine-grained-authz:v2"]
+  },
+  "realm": {
+    "accessTokenSeconds": 300,
+    "adminPermissionsEnabled": true,
+    "bruteForceProtected": true,
+    "duplicateEmailsAllowed": false,
+    "editUsernameAllowed": false,
+    "enabled": true,
+    "loginWithEmailAllowed": false,
+    "masterRealm": false,
+    "name": "llm-machines-applications",
+    "refreshTokenMaxReuse": 0,
+    "registrationAllowed": false,
+    "rememberMe": false,
+    "resetPasswordAllowed": false,
+    "revokeRefreshToken": true,
+    "sslRequired": "external"
+  },
+  "authentication": null,
+  "clientScopes": [],
+  "roles": [],
+  "groups": [],
+  "users": [],
+  "offlineAccessPolicy": {
+    "managedClientDefaultScopes": [],
+    "managedClientOptionalScopes": [],
+    "realmDefaultRole": {
+      "name": "default-roles-llm-machines-applications",
+      "realmRoleComposites": []
+    },
+    "realmRoleName": "offline_access",
+    "retainedClientOptionalScopes": {
+      "console-application-admin": []
+    }
+  },
+  "managedClientContract": {
+    "accessTokenPolicy": "inherit-realm-default",
+    "audience": "console-bff",
+    "audienceMapperField": "included.custom.audience",
+    "authorizationServicesEnabled": false,
+    "clientAuthentication": "client-secret-generated-by-keycloak",
+    "clientCredentialsUseRefreshToken": false,
+    "clientIdPattern": "^llmm-app-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    "credentialIncluded": false,
+    "defaultClientScopes": [],
+    "directAccessGrantsEnabled": false,
+    "fullScopeAllowed": false,
+    "implicitFlowEnabled": false,
+    "optionalClientScopes": [],
+    "protocol": "openid-connect",
+    "serviceAccountsEnabled": true,
+    "standardFlowEnabled": false
+  },
+  "clients": [
+    {
+      "accessTokenSeconds": 60,
+      "authorizationServicesEnabled": false,
+      "clientAuthentication": "client-secret-generated-outside-seed",
+      "clientCredentialsUseRefreshToken": false,
+      "clientId": "console-application-admin",
+      "credentialIncluded": false,
+      "defaultClientScopes": ["roles"],
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": false,
+      "implicitFlowEnabled": false,
+      "optionalClientScopes": [],
+      "permissionClass": "application-oauth-client-admin",
+      "protocol": "openid-connect",
+      "serviceAccountClientRoleMappings": {
+        "realm-management": ["query-clients"]
+      },
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false
+    }
+  ],
+  "servicePermissionClasses": [
+    {
+      "allowedFgapResourceTypes": ["Clients"],
+      "assignedClientId": "console-application-admin",
+      "fgapPolicy": "console-application-admin-service-account",
+      "id": "application-oauth-client-admin",
+      "status": "active-console-only"
+    }
+  ],
+  "serviceNegativeAuthorityConstraints": {
+    "console-application-admin": {
+      "forbiddenFgapResourceTypes": [
+        "Groups",
+        "Organizations",
+        "Roles",
+        "Users"
+      ],
+      "forbiddenFgapScopes": [
+        "map-role",
+        "map-roles",
+        "map-roles-client-scope",
+        "map-roles-composite"
+      ],
+      "forbiddenRealmManagementRoles": [
+        "create-client",
+        "manage-clients",
+        "manage-realm",
+        "realm-admin"
+      ],
+      "requiredRealmManagementRoles": ["query-clients"]
+    }
+  },
+  "adminFineGrainedAuthorization": {
+    "enabled": true,
+    "feature": "admin-fine-grained-authz:v2",
+    "permissions": [
+      {
+        "name": "console-application-admin-manage-application-realm-clients",
+        "policies": ["console-application-admin-service-account"],
+        "resourceType": "Clients",
+        "scopes": ["manage", "view"]
+      }
+    ],
+    "policies": [
+      {
+        "logic": "POSITIVE",
+        "name": "console-application-admin-service-account",
+        "type": "user",
+        "users": ["service-account:console-application-admin"]
+      }
+    ],
+    "resourceServerClientId": "admin-permissions",
+    "selectorResolution": {
+      "service-account:console-application-admin": "resolve-service-account-user-uuid"
+    },
+    "version": "v2"
+  },
+  "knownResiduals": [
+    {
+      "accepted": true,
+      "appliesToPermission": "console-application-admin-manage-application-realm-clients",
+      "compensatingControls": [
+        "dedicated-application-realm-contains-no-human-authority",
+        "managed-client-id-namespace-is-enforced-by-console",
+        "console-identity-mutation-journal-required",
+        "no-coarse-client-or-realm-management-role"
+      ],
+      "id": "fgap-clients-manage-application-realm-breadth",
+      "reason": "Keycloak FGAP v2 grants Clients manage across the isolated Application realm"
+    }
+  ]
+}

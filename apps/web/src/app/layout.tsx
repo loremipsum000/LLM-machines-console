@@ -1,8 +1,7 @@
+import { productCopy } from "@llm-machines/copy"
 import type { Metadata } from "next"
 import type { ReactNode } from "react"
-import { productCopy } from "@llm-machines/copy"
 import { urbanist } from "./fonts"
-import { Providers } from "./providers"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -23,9 +22,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html className={urbanist.variable} lang="en">
-      <body>
-        <Providers>{children}</Providers>
-      </body>
+      <body>{children}</body>
     </html>
   )
 }

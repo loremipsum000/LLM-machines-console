@@ -1,0 +1,992 @@
+{
+  "schema": "llm-machines.f0-n5s-native-admin-edge.v1",
+  "workPackage": "F0-N5S",
+  "status": "SOURCE_PROFILE_CORRECTED_NOT_DEPLOYED_F0_N7_PENDING",
+  "accepted": false,
+  "runtimeQualified": false,
+  "activation": "INACTIVE_PENDING_F0_N7",
+  "protectedInput": {
+    "commit": "dbdc1005711ea2cbfb3658a268181dbd2deef6e0",
+    "tree": "ca9ea9debf1d78f9bd95d75f4c34d1f1cfecfd1e"
+  },
+  "edge": {
+    "customerFacingTcpPorts": [443],
+    "dedicatedHostnamesOnly": true,
+    "clientSniMustEqualHost": true,
+    "directNativePortsRemainPrivate": true,
+    "consoleSessionForwarded": false,
+    "consoleTokenForwarded": false,
+    "sharedHumanAccounts": false,
+    "anonymousAdministration": false,
+    "reverseProxyImpersonation": false,
+    "metadataOnlyLogging": true,
+    "requestOrResponseBodiesLogged": false,
+    "queryStringsLogged": false,
+    "webSocketForwarding": false,
+    "globalLogout": {
+      "start": "https://@@PRODUCT_GRAFANA_HOST@@/logout",
+      "sequence": ["grafana", "litellm", "identity", "console"],
+      "consoleMaterialForwarded": false,
+      "tokensInUrls": false,
+      "serviceAvailabilityRequired": false,
+      "keycloakEndSession": {
+        "method": "SERVER_SIDE_CONFIDENTIAL_CLIENT_POST",
+        "order": "BEFORE_NATIVE_BROWSER_CHAIN",
+        "timeoutMs": 3000,
+        "failureSkipsNativeChain": false
+      },
+      "nativeHops": {
+        "grafana": {
+          "timeoutSeconds": 2,
+          "applicationFailureStatuses": [500],
+          "outageFallback": "CLEAR_EXACT_NATIVE_COOKIES_AND_CONTINUE"
+        },
+        "litellm": {
+          "upstreamDependency": false,
+          "behavior": "CLEAR_EXACT_NATIVE_COOKIES_AND_CONTINUE"
+        }
+      },
+      "recoveredServiceMayReusePreLogoutBrowserSession": false
+    }
+  },
+  "authorityProvisioning": {
+    "productionDomainOwner": "customer",
+    "customerSpecificAuthoritiesAreCommissioningInputs": true,
+    "connectedTls": "PROVIDER_NEUTRAL_SCOPED_DNS_01_OR_DELEGATED_CHALLENGE_ZONE",
+    "porkbunDependency": false,
+    "disconnectedTls": "CUSTOMER_OWNED_PRIVATE_CA",
+    "registryOrDnsCredentialInProductSource": false,
+    "labEvidence": {
+      "authorities": [
+        "https://grafana.lab.llm-machines.com",
+        "https://litellm.lab.llm-machines.com",
+        "https://keycloak.lab.llm-machines.com"
+      ],
+      "wildcardCertificateExpiryUtc": "2026-11-12T08:25:59Z",
+      "wildcardCertificateSha256": "EA:D3:7B:FB:0B:5F:08:64:6A:8A:D9:1A:FE:EF:6D:BC:73:C8:4C:5F:23:60:17:B6:C2:14:6C:7E:E3:CC:66:41",
+      "source": "operator-verified F0-N3 carry-forward; no F0-N5 live mutation"
+    }
+  },
+  "queryPolicies": {
+    "forbid": [],
+    "oidc-callback": ["code", "iss", "session_state", "state"],
+    "grafana-oauth-entry-or-callback": [
+      "code",
+      "iss",
+      "redirectTo",
+      "session_state",
+      "state"
+    ],
+    "grafana-root": ["from", "orgId", "timezone", "to"],
+    "grafana-login": ["redirectTo"],
+    "grafana-session-rotation": ["redirectTo"],
+    "grafana-search": ["limit", "query", "type"],
+    "grafana-prometheus-query": ["ds_type", "requestId"],
+    "grafana-dashboard": [
+      "editPanel",
+      "from",
+      "fullscreen",
+      "inspect",
+      "kiosk",
+      "orgId",
+      "refresh",
+      "theme",
+      "timezone",
+      "to",
+      "viewPanel"
+    ],
+    "grafana-static-cache": ["_cache"],
+    "litellm-ui": ["_rsc", "login", "page", "redirect_to"],
+    "litellm-rsc": ["_rsc"],
+    "litellm-sso-entry": ["return_to"],
+    "litellm-key-list": [
+      "expand",
+      "include_created_by_keys",
+      "include_team_keys",
+      "page",
+      "return_full_object",
+      "size",
+      "sort_by",
+      "sort_order",
+      "substring_matching",
+      "user_id"
+    ],
+    "litellm-models": ["include_model_access_groups", "return_wildcard_routes"],
+    "litellm-model-group-info": ["model_group"],
+    "litellm-model-info-v2": [
+      "exclude_auto_routers",
+      "include_team_models",
+      "modelId",
+      "page",
+      "search",
+      "size",
+      "sortBy",
+      "sortOrder",
+      "teamId"
+    ],
+    "litellm-spend-logs-ui": [
+      "api_key",
+      "end_date",
+      "end_user",
+      "error_code",
+      "error_message",
+      "key_alias",
+      "max_spend",
+      "min_spend",
+      "model",
+      "model_group",
+      "model_id",
+      "page",
+      "page_size",
+      "request_id",
+      "session_id",
+      "sort_by",
+      "sort_order",
+      "start_date",
+      "status_filter",
+      "team_id",
+      "user_id"
+    ],
+    "litellm-team-list": ["page", "page_size", "user_id"],
+    "litellm-team-list-v1": ["user_id"],
+    "keycloak-console": ["code", "iss", "session_state", "state"],
+    "keycloak-whoami": ["currentRealm"],
+    "keycloak-users": [
+      "briefRepresentation",
+      "email",
+      "exact",
+      "first",
+      "max",
+      "q",
+      "search",
+      "username"
+    ],
+    "keycloak-groups": [
+      "briefRepresentation",
+      "exact",
+      "first",
+      "max",
+      "search"
+    ]
+  },
+  "services": {
+    "grafana": {
+      "version": "13.1.3",
+      "labAuthority": "https://grafana.lab.llm-machines.com",
+      "hostTemplate": "@@PRODUCT_GRAFANA_HOST@@",
+      "upstream": "grafana:3000",
+      "identityIssuer": "Keycloak llm-machines realm",
+      "authentication": "Generic OAuth Authorization Code with PKCE S256",
+      "roles": {
+        "Admin": "Editor",
+        "Operator": "DENY",
+        "other": "DENY",
+        "serverAdministrator": false
+      },
+      "nativeCookies": ["grafana_session", "grafana_session_expiry"],
+      "requestHeaders": [
+        "Accept",
+        "Accept-Encoding",
+        "Accept-Language",
+        "Content-Length",
+        "Content-Type",
+        "Cookie",
+        "Origin",
+        "Referer",
+        "X-Grafana-Device-Id",
+        "X-Grafana-Org-Id"
+      ],
+      "browserAuthorizationHeader": false,
+      "responseHeaders": [
+        "Cache-Control",
+        "Content-Encoding",
+        "Content-Type",
+        "Location",
+        "Set-Cookie",
+        "Vary",
+        "X-Content-Type-Options",
+        "X-Frame-Options"
+      ],
+      "redirectOrigins": [
+        "https://grafana.lab.llm-machines.com",
+        "https://identity.lab.llm-machines.com"
+      ],
+      "csrf": {
+        "preserveOrigin": true,
+        "preserveReferer": true,
+        "explicitForeignOriginDeniedByGrafana": true,
+        "sameOriginRequestMayOmitOrigin": true
+      },
+      "webSocketRequired": false,
+      "sseRequired": false,
+      "routes": [
+        {
+          "id": "root",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/" },
+          "queryPolicy": "grafana-root"
+        },
+        {
+          "id": "login",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/login" },
+          "queryPolicy": "grafana-login"
+        },
+        {
+          "id": "oauth-entry-or-callback",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/login/generic_oauth" },
+          "queryPolicy": "grafana-oauth-entry-or-callback",
+          "emptyQueryAllowed": true
+        },
+        {
+          "id": "session-rotation-redirect",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/user/auth-tokens/rotate" },
+          "queryPolicy": "grafana-session-rotation",
+          "emptyQueryAllowed": true
+        },
+        {
+          "id": "session-rotation-api",
+          "methods": ["POST"],
+          "path": {
+            "kind": "exact",
+            "value": "/api/user/auth-tokens/rotate"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "logout",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/logout" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "profile-pages",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/profile(?:/notifications)?$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "approved-read-api",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/api/(?:dashboards/home|login/ping|plugins|user|user/auth-tokens|user/orgs|user/stars|user/teams)$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "user-preferences",
+          "methods": ["GET", "HEAD", "PATCH", "PUT"],
+          "path": { "kind": "exact", "value": "/api/user/preferences" },
+          "queryPolicy": "forbid",
+          "bodyLimit": "16k"
+        },
+        {
+          "id": "revoke-own-session",
+          "methods": ["POST"],
+          "path": {
+            "kind": "exact",
+            "value": "/api/user/revoke-auth-token"
+          },
+          "queryPolicy": "forbid",
+          "bodyLimit": "1k",
+          "authority": "AUTHENTICATED_USER_SESSION_ONLY"
+        },
+        {
+          "id": "plugin-settings",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/api/plugins/[a-z0-9_-]{1,128}/settings$"
+          },
+          "queryPolicy": "forbid",
+          "explicitlyDeniedPluginIds": ["elasticsearch", "tempo", "zipkin"]
+        },
+        {
+          "id": "dashboard-create",
+          "methods": ["POST"],
+          "path": { "kind": "exact", "value": "/api/dashboards/db" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "admitted-dashboard-pages",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/d/(?:llmm-inference-core-overview/inference-core-overview|llmm-infra-overview/llm-machines-infrastructure-overview)$"
+          },
+          "queryPolicy": "grafana-dashboard",
+          "authority": "ADMIN_EDITOR_READ_ONLY_DASHBOARD_RUNTIME"
+        },
+        {
+          "id": "admitted-dashboard-metadata",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/api/dashboards/uid/(?:llmm-inference-core-overview|llmm-infra-overview)$"
+          },
+          "queryPolicy": "forbid",
+          "authority": "ADMIN_EDITOR_READ_ONLY_DASHBOARD_RUNTIME"
+        },
+        {
+          "id": "admitted-dashboard-query",
+          "methods": ["POST"],
+          "path": { "kind": "exact", "value": "/api/ds/query" },
+          "queryPolicy": "grafana-prometheus-query",
+          "bodyLimit": "256k",
+          "authority": "ADMIN_EDITOR_READ_ONLY_DATASOURCE_QUERY"
+        },
+        {
+          "id": "dashboard-delete",
+          "methods": ["DELETE"],
+          "path": {
+            "kind": "regex",
+            "value": "^/api/dashboards/uid/[A-Za-z0-9_-]{1,128}$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "frontend-metrics",
+          "methods": ["POST"],
+          "path": { "kind": "exact", "value": "/api/frontend-metrics" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "dashboard-api-root",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/apis/dashboard.grafana.app/" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "dashboard-search",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "exact",
+            "value": "/apis/dashboard.grafana.app/v0alpha1/namespaces/default/search"
+          },
+          "queryPolicy": "grafana-search"
+        },
+        {
+          "id": "admitted-dashboard-resource",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/apis/dashboard\\.grafana\\.app/(?:v0alpha1|v1alpha1|v1beta1|v1|v2alpha1|v2beta1|v2)/namespaces/default/dashboards/(?:llmm-inference-core-overview|llmm-infra-overview)(?:/dto)?$"
+          },
+          "queryPolicy": "forbid",
+          "authority": "ADMIN_EDITOR_READ_ONLY_DASHBOARD_RUNTIME"
+        },
+        {
+          "id": "feature-flags",
+          "methods": ["POST"],
+          "path": {
+            "kind": "exact",
+            "value": "/apis/features.grafana.app/v0alpha1/namespaces/default/ofrep/v1/evaluate/flags"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "avatar",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/avatar/[A-Za-z0-9_-]{1,256}$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "static-assets",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/(?:public/(?:build|fonts|img|plugins)/|resources/).+$"
+          },
+          "queryPolicy": "grafana-static-cache"
+        }
+      ],
+      "failureBehavior": {
+        "serviceOutage": "CONTROLLED_503_NO_FALLBACK",
+        "identityOutage": "NATIVE_LOGIN_UNAVAILABLE_EXISTING_SESSION_REMAINS_SERVICE_BOUND",
+        "logout": "GRAFANA_NATIVE_SESSION_ENDED_THEN_FIXED_GLOBAL_CHAIN",
+        "logoutDuringServiceOutage": "EDGE_EXPIRES_GRAFANA_COOKIES_THEN_CONTINUES_FIXED_GLOBAL_CHAIN"
+      },
+      "ssoEntry": "AUTOMATIC_GENERIC_OAUTH_USING_EXISTING_KEYCLOAK_SESSION"
+    },
+    "litellm": {
+      "version": "v1.96.2-llmm.1",
+      "labAuthority": "https://litellm.lab.llm-machines.com",
+      "hostTemplate": "@@PRODUCT_LITELLM_HOST@@",
+      "upstream": "litellm:4000",
+      "identityIssuer": "Keycloak llm-machines realm",
+      "authentication": "Generic OIDC Authorization Code with PKCE S256",
+      "billableUserLimit": 5,
+      "roles": {
+        "Admin": "proxy_admin",
+        "Operator": "internal_user"
+      },
+      "operatorAuthority": {
+        "allow": ["own virtual keys", "own spend"],
+        "deny": [
+          "routes",
+          "models",
+          "teams",
+          "organizations",
+          "other users",
+          "shared keys",
+          "global budgets",
+          "system configuration"
+        ]
+      },
+      "nativeCookies": [
+        "litellm_cp_return_to",
+        "litellm_oauth_state",
+        "sso_state",
+        "token"
+      ],
+      "cookieSecurity": {
+        "edgeEnforcement": "NGINX_PROXY_COOKIE_FLAGS",
+        "stateCookies": {
+          "names": ["litellm_cp_return_to", "litellm_oauth_state", "sso_state"],
+          "secure": true,
+          "httpOnly": true,
+          "sameSite": "Lax"
+        },
+        "nativeUiToken": {
+          "name": "token",
+          "secure": true,
+          "httpOnly": false,
+          "sameSite": "Lax",
+          "javascriptReadableRequiredByPinnedUi": true,
+          "dedicatedAuthorityOnly": true,
+          "consoleMaterialForwarded": false
+        },
+        "unexpectedCookie": "FAIL_F0_N7_BROWSER_VALIDATION"
+      },
+      "requestHeaders": [
+        "Accept",
+        "Accept-Encoding",
+        "Accept-Language",
+        "Authorization",
+        "Content-Length",
+        "Content-Type",
+        "Cookie",
+        "Origin",
+        "Referer"
+      ],
+      "responseHeaders": [
+        "Cache-Control",
+        "Content-Encoding",
+        "Content-Type",
+        "Location",
+        "Set-Cookie",
+        "Vary",
+        "X-Content-Type-Options",
+        "X-Frame-Options"
+      ],
+      "redirectOrigins": [
+        "https://litellm.lab.llm-machines.com",
+        "https://identity.lab.llm-machines.com"
+      ],
+      "csrf": {
+        "preserveOrigin": true,
+        "preserveReferer": true,
+        "nativeAuthorizationRequiredForMutation": true
+      },
+      "webSocketRequired": false,
+      "sseRequiredForAdministration": false,
+      "sseSupportedForNativeInference": true,
+      "routes": [
+        {
+          "id": "ui",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/ui/" },
+          "queryPolicy": "litellm-ui"
+        },
+        {
+          "id": "ui-page-canonicalization",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$"
+          },
+          "queryPolicy": "litellm-ui",
+          "behavior": "EDGE_308_TO_HTTPS_TRAILING_SLASH"
+        },
+        {
+          "id": "ui-pages",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$"
+          },
+          "queryPolicy": "litellm-ui"
+        },
+        {
+          "id": "login-redirect",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "regex", "value": "^/ui/login/?$" },
+          "queryPolicy": "litellm-ui",
+          "behavior": "EDGE_303_TO_SAFE_SSO_ENTRY"
+        },
+        {
+          "id": "static-assets",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/(?:litellm-asset-prefix/_next/static/|ui/__next\\.|litellm/\\.well-known/litellm-ui-config).*$"
+          },
+          "queryPolicy": "litellm-rsc"
+        },
+        {
+          "id": "login",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/sso/key/generate" },
+          "queryPolicy": "litellm-sso-entry",
+          "allowedReturnTo": "https://@@PRODUCT_LITELLM_HOST@@/ui/"
+        },
+        {
+          "id": "oauth-callback",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/sso/callback" },
+          "queryPolicy": "oidc-callback"
+        },
+        {
+          "id": "global-logout",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/__llmm/global-logout" },
+          "queryPolicy": "forbid",
+          "behavior": "CLEAR_NATIVE_COOKIES_AND_BROWSER_STORAGE"
+        },
+        {
+          "id": "global-logout-continue",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "exact",
+            "value": "/__llmm/global-logout/continue"
+          },
+          "queryPolicy": "forbid",
+          "behavior": "CONTINUE_FIXED_IDENTITY_LOGOUT_CHAIN"
+        },
+        {
+          "id": "key-create",
+          "methods": ["POST"],
+          "path": { "kind": "exact", "value": "/key/generate" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "key-list",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/key/list" },
+          "queryPolicy": "litellm-key-list"
+        },
+        {
+          "id": "key-info",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/key/info" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "key-delete",
+          "methods": ["POST"],
+          "path": { "kind": "exact", "value": "/key/delete" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "key-info-batch",
+          "methods": ["POST"],
+          "path": { "kind": "exact", "value": "/v2/key/info" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "own-spend",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/user/info" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "models",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/models" },
+          "queryPolicy": "litellm-models"
+        },
+        {
+          "id": "model-group-info",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/model_group/info" },
+          "queryPolicy": "litellm-model-group-info",
+          "authorization": "proxy_admin only; enforced by the admitted downstream"
+        },
+        {
+          "id": "model-info-v2",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/v2/model/info" },
+          "queryPolicy": "litellm-model-info-v2",
+          "authorization": "proxy_admin only; agents excluded by the admitted downstream"
+        },
+        {
+          "id": "spend-logs-ui",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/spend/logs/ui" },
+          "queryPolicy": "litellm-spend-logs-ui",
+          "authorization": "proxy_admin metadata list only; detail route remains denied"
+        },
+        {
+          "id": "team-list",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/v2/team/list" },
+          "queryPolicy": "litellm-team-list"
+        },
+        {
+          "id": "team-list-v1",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/team/list" },
+          "queryPolicy": "litellm-team-list-v1"
+        },
+        {
+          "id": "approved-background-reads",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "ui-settings-and-branding-reads",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/(?:get/ui_settings|get/ui_theme_settings|get_image|get_favicon|health/license|health/readiness/details|sso/get/ui_settings)$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "admin-mutations",
+          "methods": ["POST"],
+          "path": {
+            "kind": "regex",
+            "value": "^/(?:model/new|team/new|organization/new|user/new|config/update)$"
+          },
+          "queryPolicy": "forbid",
+          "operatorDeniedByNativeAuthorization": true
+        },
+        {
+          "id": "native-models",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/v1/models" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "native-chat-completions",
+          "methods": ["POST"],
+          "path": { "kind": "exact", "value": "/v1/chat/completions" },
+          "queryPolicy": "forbid"
+        }
+      ],
+      "explicitDenials": [
+        "/public/litellm_blog_posts",
+        "/v1/agents",
+        "all other retired or unlisted protocol routes",
+        "unlisted routes",
+        "Console Application credentials on the LiteLLM authority"
+      ],
+      "failureBehavior": {
+        "serviceOutage": "CONTROLLED_503_NO_FALLBACK",
+        "identityOutage": "NATIVE_LOGIN_UNAVAILABLE_EXISTING_SERVICE_HEALTH_SEPARATE",
+        "logout": "LITELLM_TOKEN_COOKIE_CLEARED_SERVICE_LOCAL_SESSION_ENDED"
+      },
+      "ssoEntry": "AUTOMATIC_GENERIC_OIDC_USING_EXISTING_KEYCLOAK_SESSION",
+      "passwordLoginCustomerPath": "ABSENT"
+    },
+    "keycloakAdmin": {
+      "version": "26.7.0",
+      "labAuthority": "https://keycloak.lab.llm-machines.com",
+      "hostTemplate": "@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
+      "upstream": "keycloak:8080",
+      "frontendHostTemplate": "@@PRODUCT_IDENTITY_HOST@@",
+      "frontendContextPath": "/",
+      "adminContextPath": "/keycloak",
+      "upstreamContextPath": "/",
+      "hostnameContract": {
+        "hostname": "https://@@PRODUCT_IDENTITY_HOST@@",
+        "hostnameAdmin": "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@/keycloak",
+        "proxyHeaders": "xforwarded",
+        "hostnameStrict": true
+      },
+      "pathNormalization": {
+        "scope": "ALLOWLISTED_KEYCLOAK_ADMIN_LOCATIONS_ONLY",
+        "externalPrefix": "/keycloak/",
+        "upstreamPrefix": "/",
+        "traversalRejectedBeforeRewrite": true,
+        "unlistedPathCannotReachRewrite": true
+      },
+      "realm": "llm-machines",
+      "authentication": "Keycloak native Authorization Code with PKCE S256",
+      "roles": {
+        "Admin": "SCOPED_APPLIANCE_REALM_ADMIN",
+        "Operator": "DENY",
+        "other": "DENY"
+      },
+      "nativeCookies": {
+        "identityAuthority": [
+          "AUTH_SESSION_ID",
+          "KC_AUTH_SESSION_HASH",
+          "KC_RESTART",
+          "KEYCLOAK_IDENTITY",
+          "KEYCLOAK_SESSION"
+        ],
+        "adminAuthority": []
+      },
+      "requestHeaders": [
+        "Accept",
+        "Accept-Encoding",
+        "Accept-Language",
+        "Authorization",
+        "Content-Length",
+        "Content-Type",
+        "Cookie",
+        "Origin",
+        "Referer"
+      ],
+      "responseHeaders": [
+        "Cache-Control",
+        "Content-Encoding",
+        "Content-Type",
+        "Location",
+        "Set-Cookie",
+        "Vary",
+        "X-Content-Type-Options",
+        "X-Frame-Options"
+      ],
+      "redirectOrigins": [
+        "https://identity.lab.llm-machines.com",
+        "https://keycloak.lab.llm-machines.com"
+      ],
+      "csrf": {
+        "preserveOrigin": true,
+        "preserveReferer": true,
+        "bearerSubjectBindingRequired": true,
+        "crossOriginMutationDeniedByKeycloak": true
+      },
+      "tokenEndpointOriginPolicy": {
+        "noOrigin": "ALLOW_SERVER_SIDE_EXCHANGE",
+        "allowedBrowserOrigin": "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
+        "otherBrowserOrigins": "DENY_403_BEFORE_UPSTREAM",
+        "forwardedValue": "EXACT_ALLOWED_BROWSER_ORIGIN_ONLY"
+      },
+      "sessionIdentifierContract": {
+        "upstreamVersion": "26.7.0",
+        "upstreamSourceCommit": "6c73e3027811d9c7b22683edd825e839272e9547",
+        "generator": "SecretGenerator.SECURE_ID_GENERATOR",
+        "entropyBytes": 18,
+        "encoding": "BASE64URL_PADDED_ENCODER_WITH_NO_PADDING_FOR_18_BYTE_INPUT",
+        "length": 24,
+        "alphabet": "A-Za-z0-9_-",
+        "edgePathPattern": "^/keycloak/admin/realms/llm-machines/sessions/[A-Za-z0-9_-]{24}$",
+        "sourceSha256": {
+          "common/src/main/java/org/keycloak/common/util/SecretGenerator.java": "03ff7216edd3bf3f7bd896b8d59155dcfcbdea536352f73483a232e8e0aec892",
+          "model/infinispan/src/main/java/org/keycloak/models/sessions/infinispan/InfinispanUserSessionProvider.java": "ff82c2db4e18bc50168670147626b0bbb483210f88407def5a2c7338595f50b3",
+          "model/infinispan/src/main/java/org/keycloak/models/sessions/infinispan/InfinispanUserSessionProviderFactory.java": "ceee33bd59432dc9002b3a5bd201eaecaa5c2cbc37a6584994c3fc0818c88bd7"
+        }
+      },
+      "webSocketRequired": false,
+      "sseRequired": false,
+      "routes": [
+        {
+          "id": "admin-console",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "prefix",
+            "value": "/keycloak/admin/llm-machines/console/"
+          },
+          "queryPolicy": "keycloak-console"
+        },
+        {
+          "id": "admin-console-whoami",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "exact",
+            "value": "/keycloak/admin/llm-machines/console/whoami"
+          },
+          "queryPolicy": "keycloak-whoami"
+        },
+        {
+          "id": "realm-metadata",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "exact",
+            "value": "/keycloak/admin/realms/llm-machines"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "server-info",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "exact", "value": "/keycloak/admin/serverinfo" },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "admin-ui-realm-info",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "exact",
+            "value": "/keycloak/admin/realms/llm-machines/ui-ext/info"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "user-profile-schema",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "exact",
+            "value": "/keycloak/admin/realms/llm-machines/users/profile"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "users",
+          "methods": ["GET", "HEAD", "POST"],
+          "path": {
+            "kind": "exact",
+            "value": "/keycloak/admin/realms/llm-machines/users"
+          },
+          "queryPolicy": "keycloak-users"
+        },
+        {
+          "id": "user",
+          "methods": ["GET", "HEAD", "PUT"],
+          "path": {
+            "kind": "regex",
+            "value": "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}$"
+          },
+          "queryPolicy": "forbid",
+          "delete": "DENY_403_BEFORE_UPSTREAM"
+        },
+        {
+          "id": "password-reset",
+          "methods": ["PUT"],
+          "path": {
+            "kind": "regex",
+            "value": "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/reset-password$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "user-sessions",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/sessions$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "session-invalidate",
+          "methods": ["DELETE"],
+          "path": {
+            "kind": "regex",
+            "value": "^/keycloak/admin/realms/llm-machines/sessions/[A-Za-z0-9_-]{24}$"
+          },
+          "queryPolicy": "forbid"
+        },
+        {
+          "id": "groups",
+          "methods": ["GET", "HEAD"],
+          "path": {
+            "kind": "regex",
+            "value": "^/keycloak/admin/realms/llm-machines/groups(?:/[0-9a-f-]{36}(?:/members)?)?$"
+          },
+          "queryPolicy": "keycloak-groups"
+        },
+        {
+          "id": "static-assets",
+          "methods": ["GET", "HEAD"],
+          "path": { "kind": "prefix", "value": "/keycloak/resources/" },
+          "queryPolicy": "forbid"
+        }
+      ],
+      "identityBrowserDependencies": [
+        {
+          "id": "authorization",
+          "path": "/realms/llm-machines/protocol/openid-connect/auth"
+        },
+        {
+          "id": "token",
+          "path": "/realms/llm-machines/protocol/openid-connect/token"
+        },
+        {
+          "id": "userinfo",
+          "path": "/realms/llm-machines/protocol/openid-connect/userinfo"
+        },
+        {
+          "id": "logout",
+          "path": "/realms/llm-machines/protocol/openid-connect/logout"
+        },
+        {
+          "id": "third-party-cookie-check",
+          "path": "/realms/llm-machines/protocol/openid-connect/3p-cookies/step[12].html"
+        },
+        {
+          "id": "login-status",
+          "path": "/realms/llm-machines/protocol/openid-connect/login-status-iframe.html"
+        },
+        {
+          "id": "login-status-init",
+          "path": "/realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init"
+        },
+        {
+          "id": "login-actions",
+          "path": "/realms/llm-machines/login-actions/"
+        },
+        { "id": "static-assets", "path": "/resources/" }
+      ],
+      "explicitDenials": [
+        "/keycloak/admin/master",
+        "/keycloak/admin/realms/master",
+        "/keycloak/admin/realms/{unrelated-realm}",
+        "POST /keycloak/admin/realms",
+        "DELETE /keycloak/admin/realms/llm-machines/users/{uuid}",
+        "/keycloak/realms/*",
+        "client mutation",
+        "identity-provider mutation",
+        "impersonation",
+        "role mapping",
+        "realm mutation",
+        "unlisted routes"
+      ],
+      "failureBehavior": {
+        "serviceOutage": "CONTROLLED_503_NO_FALLBACK",
+        "identityOutage": "CONTROLLED_NATIVE_UNAVAILABLE_NO_REDIRECT_LOOP",
+        "restart": "SESSION_REVALIDATED_OR_LOGIN_REQUIRED",
+        "logout": "KEYCLOAK_NATIVE_SESSION_CLEARED"
+      }
+    }
+  },
+  "globalDenials": {
+    "alternateHost": 421,
+    "missingOrMismatchedSni": 421,
+    "consoleSessionCookieOnNativeHost": 400,
+    "productApplicationCredentialOnNativeHost": 400,
+    "unsafePath": 400,
+    "unlistedPath": 404,
+    "unlistedMethod": 403,
+    "keycloakUserDelete": 403,
+    "portainerAuthority": "ABSENT",
+    "portainerUpstream": "ABSENT",
+    "portainerRoute": "ABSENT"
+  },
+  "runtimeGates": {
+    "httpsBrowserReplay": "NOT_STARTED",
+    "roleReplay": "NOT_STARTED",
+    "directPortNoBypass": "NOT_STARTED",
+    "alternateHostAndSni": "NOT_STARTED",
+    "outageAndRestart": "NOT_STARTED",
+    "zeroRetention": "NOT_STARTED",
+    "f0N7RequiredBeforeActivation": true
+  }
+}

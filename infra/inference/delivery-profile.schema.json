@@ -1,0 +1,524 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:llm-machines:schema:inference-delivery-profile:v1",
+  "title": "LLM Machines inference delivery profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "engine",
+    "accelerator",
+    "model",
+    "limits",
+    "parallelism",
+    "launch",
+    "network",
+    "probes",
+    "capacity",
+    "activation",
+    "rollback",
+    "coreCompatibilityFingerprint"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "inference-core.llm-machines/v1"
+    },
+    "kind": {
+      "const": "InferenceDeliveryProfile"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "revision",
+        "admissionScope",
+        "lifecycleState",
+        "containsCredentials"
+      ],
+      "properties": {
+        "profileId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]{2,62}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "admissionScope": {
+          "enum": [
+            "PRODUCTION_DELIVERY",
+            "INTERNAL_TEST_ONLY",
+            "SYNTHETIC_ONLY"
+          ]
+        },
+        "lifecycleState": {
+          "enum": [
+            "SYNTHETIC_UNMEASURED",
+            "CANDIDATE_UNQUALIFIED",
+            "ACTIVE_QUALIFIED",
+            "ACTIVE_MEASURED_INTERNAL_TEST",
+            "RETIRED"
+          ]
+        },
+        "containsCredentials": {
+          "const": false
+        }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "sourceCommit", "image"],
+      "properties": {
+        "contractVersion": {
+          "const": "0.5.13"
+        },
+        "sourceCommit": {
+          "const": "28b095c01005d4a3a2a5b637b7d028b07fba31b2"
+        },
+        "image": {
+          "$ref": "#/$defs/ociArtifact"
+        }
+      }
+    },
+    "accelerator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backend",
+        "vendor",
+        "architecture",
+        "nodes",
+        "devicesPerNode",
+        "productionSupportClaim"
+      ],
+      "properties": {
+        "backend": {
+          "enum": ["cuda", "rocm", "xpu", "cpu"]
+        },
+        "vendor": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,31}$"
+        },
+        "architecture": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,63}$"
+        },
+        "nodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "devicesPerNode": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "productionSupportClaim": {
+          "type": "boolean"
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "sourceKind",
+        "source",
+        "revision",
+        "artifactDigest",
+        "manifestDigest",
+        "licenseSpdx",
+        "precision",
+        "quantization",
+        "mountPath"
+      ],
+      "properties": {
+        "alias": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,63}$"
+        },
+        "sourceKind": {
+          "enum": ["huggingface", "signed-release-media"]
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{2,127}$"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{6,127}$"
+        },
+        "artifactDigest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "manifestDigest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "licenseSpdx": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9.+-]{1,63}$"
+        },
+        "precision": {
+          "enum": ["fp32", "fp16", "bf16", "fp8", "int8", "int4", "mixed"]
+        },
+        "quantization": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$"
+        },
+        "mountPath": {
+          "type": "string",
+          "pattern": "^/srv/llm-machines/inference-models/[a-z0-9][a-z0-9._/-]{1,127}$"
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuredContextTokens", "maxOutputTokens"],
+      "properties": {
+        "configuredContextTokens": {
+          "type": "integer",
+          "minimum": 1024
+        },
+        "maxOutputTokens": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "parallelism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tensor", "pipeline", "data", "replicas"],
+      "properties": {
+        "tensor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pipeline": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "data": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "launch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["additionalArguments"],
+      "properties": {
+        "additionalArguments": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "value"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^--[a-z0-9][a-z0-9-]{1,63}$"
+              },
+              "value": {
+                "type": ["string", "number", "boolean", "null"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["serviceName", "port", "visibility", "allowedCallers"],
+      "properties": {
+        "serviceName": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535
+        },
+        "visibility": {
+          "const": "private-inference-plane"
+        },
+        "allowedCallers": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": "litellm-private"
+            },
+            {
+              "const": "prometheus-private-metrics-only"
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "probes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["liveness", "readiness", "metrics"],
+      "properties": {
+        "liveness": {
+          "$ref": "#/$defs/getRoute"
+        },
+        "readiness": {
+          "$ref": "#/$defs/getRoute"
+        },
+        "metrics": {
+          "$ref": "#/$defs/getRoute"
+        }
+      }
+    },
+    "capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "profileRevision",
+        "engineImageDigest",
+        "modelArtifactDigest",
+        "evidenceDigest",
+        "measuredAt",
+        "validUntil",
+        "effectiveContextTokens",
+        "maxOutputTokens",
+        "throughputTokensPerSecond",
+        "maxConcurrentRequests",
+        "p95LatencyMilliseconds",
+        "queue"
+      ],
+      "properties": {
+        "state": {
+          "enum": ["UNMEASURED", "MEASURED"]
+        },
+        "profileRevision": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "engineImageDigest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "modelArtifactDigest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidenceDigest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "measuredAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "validUntil": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "effectiveContextTokens": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "maxOutputTokens": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "throughputTokensPerSecond": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        },
+        "maxConcurrentRequests": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "p95LatencyMilliseconds": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        },
+        "queue": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "maxObservedDepth"],
+          "properties": {
+            "state": {
+              "enum": ["not_configured", "measured"]
+            },
+            "maxObservedDepth": {
+              "type": ["integer", "null"],
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "qualifiedProfileDigest"],
+      "properties": {
+        "state": {
+          "enum": ["INACTIVE", "ACTIVE", "ACTIVE_INTERNAL_TEST"]
+        },
+        "qualifiedProfileDigest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "revision",
+        "engineImageDigest",
+        "modelArtifactDigest"
+      ],
+      "properties": {
+        "profileId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]{2,62}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "engineImageDigest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "modelArtifactDigest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "coreCompatibilityFingerprint": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "ociArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "version",
+        "digest",
+        "platform",
+        "sourceRevision",
+        "licenseSpdx",
+        "sbomDigest",
+        "provenanceDigest",
+        "privateRegistryMirror"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._/-]{2,255}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$"
+        },
+        "digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "platform": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["os", "architecture"],
+          "properties": {
+            "os": {
+              "const": "linux"
+            },
+            "architecture": {
+              "enum": ["amd64", "arm64"]
+            },
+            "variant": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,31}$"
+            }
+          }
+        },
+        "sourceRevision": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{40,64}$"
+        },
+        "licenseSpdx": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9.+-]{1,63}$"
+        },
+        "sbomDigest": {
+          "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "provenanceDigest": {
+          "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "privateRegistryMirror": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._/-]{2,255}$"
+        }
+      }
+    },
+    "getRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "path"],
+      "properties": {
+        "method": {
+          "const": "GET"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/[a-z0-9_/-]+$"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "F0-L1",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "command": "node scripts/pre-genesis/reduced-core-dev.mjs --vertical-slice",
+  "prerequisites": [
+    "corepack pnpm install --frozen-lockfile",
+    "corepack pnpm build"
+  ],
+  "evidenceClass": "LOCAL_DETERMINISTIC_APPLICATION_FLOW_ONLY",
+  "controlPlane": {
+    "applicationCreation": "actual Console BFF admin route with a generated local Admin fixture identity",
+    "credentialReveal": "one-time static Application credential response",
+    "credentialMaterialPrinted": false
+  },
+  "dataPlane": {
+    "publicAuthority": "api.localhost",
+    "protocol": "OpenAI-compatible HTTP",
+    "routes": ["POST /v1/chat/completions"],
+    "modes": ["non-streaming", "SSE streaming with usage"]
+  },
+  "proved": [
+    "Application creation",
+    "separate generated Application credentials",
+    "non-streaming Chat Completions through the API authority",
+    "streaming Chat Completions through the API authority",
+    "usage and last-use accounting",
+    "static credential rotation with exact 24-hour overlap, old-key acceptance during overlap, and automatic denial after controlled expiry",
+    "explicit revocation of a still-usable retiring credential and of the active credential",
+    "cross-Application model-policy isolation",
+    "cross-Application credential-record mutation denial",
+    "automatic disablement after the last credential is revoked",
+    "temporary-state cleanup"
+  ],
+  "services": [
+    "console-web",
+    "console-bff",
+    "local-authority-router-double",
+    "openai-compatible-inference-double"
+  ],
+  "state": "in-memory fixture data removed with the disposable runtime",
+  "notEvidenceFor": [
+    "browser-driven Console administration",
+    "Keycloak login or session runtime",
+    "Product Nginx or TLS",
+    "PostgreSQL persistence",
+    "exact Core images",
+    "SGLang runtime or capacity",
+    "runtime no-bypass",
+    "production qualification"
+  ],
+  "forbiddenOutcomes": [
+    "real credential use",
+    "live infrastructure access",
+    "runtime qualification claim",
+    "Product main merge",
+    "Gitea Genesis"
+  ]
+}

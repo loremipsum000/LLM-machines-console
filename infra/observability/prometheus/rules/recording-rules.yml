@@ -1,0 +1,22 @@
+groups:
+  - name: llmm.inference.recording
+    interval: 30s
+    rules:
+      - record: llm_machines:gpu_utilization_ratio:max
+        expr: max(clamp_max(clamp_min(llm_machines_gpu_utilization_ratio, 0), 1))
+      - record: llm_machines:inference_requests:5m
+        expr: max(llm_machines_inference_requests_5m)
+      - record: llm_machines:inference_failures:5m
+        expr: max(llm_machines_inference_failures_5m)
+      - record: llm_machines:inference_server_failures:5m
+        expr: max(llm_machines_inference_server_failures_5m)
+      - record: llm_machines:inference_failure_ratio:5m
+        expr: max(llm_machines_inference_failures_5m) / clamp_min(max(llm_machines_inference_requests_5m), 1)
+      - record: llm_machines:inference_in_flight_requests:max
+        expr: max(llm_machines_inference_in_flight_requests)
+      - record: llm_machines:inference_queue_depth:max
+        expr: max(llm_machines_inference_queue_depth)
+      - record: llm_machines:inference_retained_total_tokens:max
+        expr: max(llm_machines_inference_retained_total_tokens)
+      - record: llm_machines:inference_retained_latency_milliseconds:max
+        expr: max(llm_machines_inference_retained_latency_milliseconds_max)

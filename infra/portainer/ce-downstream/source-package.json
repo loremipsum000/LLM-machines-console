@@ -1,0 +1,246 @@
+{
+  "schema": "llm-machines.portainer-ce-downstream-source.v1",
+  "status": "SOURCE_SECURITY_CHARACTERIZED_NOT_CORE_ADMITTED",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "containsCredentials": false,
+  "productIntegrated": false,
+  "upstream": {
+    "repository": "https://github.com/portainer/portainer",
+    "version": "2.39.6",
+    "revision": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+    "tree": "9a2418f78d3f2cf4047e86b0878227b5e61d55fa",
+    "sourceDateEpoch": 1786575764,
+    "archiveFile": "portainer-2.39.6.tar.gz",
+    "archiveRoot": "portainer-2.39.6",
+    "archiveUrl": "https://codeload.github.com/portainer/portainer/tar.gz/refs/tags/2.39.6",
+    "archiveSha256": "3b69237c2fdbb5e51ba1019afbd09d528820a82619c0387d2f9040f07d626f96",
+    "license": "Zlib",
+    "licenseSourceSha256": "c83f08165206f8a2831009fa4a469d41e452f6e086945246fe928a94a5420722",
+    "attributionsSourceSha256": "e3f8444f7222a7f8ebdfc237b2edb29e01443e159267c0cb87e7cb71ae4b41e3",
+    "officialImage": {
+      "repository": "docker.io/portainer/portainer-ce",
+      "version": "2.39.6",
+      "indexDigest": "sha256:3fa8750ac2b98ce56784ca292df1adc3ec38f0062fd572811ea4b2221beee310",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:663641360fb1cab6ace4fe0f0855e97506c222ae52f129676673d52108d8b59e",
+      "configDigest": "sha256:eea0d46628f9b7b223a43d0ccf2266649dd1211dfc0075749ae9c709808720a6",
+      "provenanceDisposition": "NOT_ADMITTED_SOURCE_LABEL_REVISION_C57526D_UNBOUND_TO_PUBLIC_TAG"
+    }
+  },
+  "downstream": {
+    "version": "2.39.6-llmm.1",
+    "platform": "linux/amd64",
+    "mirrorRepository": "core/portainer-ce-downstream",
+    "alteredSourceMarked": true,
+    "patch": {
+      "path": "infra/portainer/ce-downstream/patches/security-toolchain.patch",
+      "sha256": "094874794823a27ab422cd9c380345d3e27d3268a2403192894a516b221487cd"
+    },
+    "dockerfile": {
+      "path": "infra/portainer/ce-downstream/Dockerfile",
+      "sha256": "1795a8043151a84d7f71409a2e6a0c2e290e4ed2b2b8339fea680b3882daafd1"
+    },
+    "dockerignore": {
+      "path": "infra/portainer/ce-downstream/Dockerfile.dockerignore",
+      "sha256": "d3db906b0a1121cda63aed83f32e68952174495248bbb2bddc9e194606a63391"
+    },
+    "licenseCopy": {
+      "path": "infra/portainer/ce-downstream/LICENSE.upstream",
+      "sha256": "34ce81cbe1a30cf05ecb8e106dfffaff2c3d4df918caba336026240d0f6194e9",
+      "normalization": "terminal newline added; text otherwise byte-identical"
+    },
+    "attributionsCopy": {
+      "path": "infra/portainer/ce-downstream/ATTRIBUTIONS.upstream.md",
+      "sha256": "e3f8444f7222a7f8ebdfc237b2edb29e01443e159267c0cb87e7cb71ae4b41e3"
+    },
+    "notice": {
+      "path": "infra/portainer/ce-downstream/THIRD_PARTY_NOTICES.md",
+      "sha256": "9c6ac230927ab0aac42761a517bbe8b32d1b3d8e22b22e84f17d5b5b8cf69006"
+    },
+    "licenseReview": {
+      "path": "infra/portainer/ce-downstream/evidence/license-review.json",
+      "sha256": "be75bea6f2c035768e4ccc218a9fcf3ae14e376619b90e06fe255645bae7f313"
+    },
+    "licenseCustody": {
+      "frontendInputPath": "infra/portainer/ce-downstream/evidence/frontend-license-input.json",
+      "runtimeInputPath": "infra/portainer/ce-downstream/evidence/runtime-license-input.json",
+      "frontendRootPath": "infra/portainer/ce-downstream/evidence/frontend-license-custody",
+      "runtimeRootPath": "infra/portainer/ce-downstream/evidence/license-custody/runtime",
+      "manifestPath": "SHA256SUMS",
+      "externalArchiveCustody": "VM117_EVIDENCE_ROOT_BOUND_AT_GENERATION_NOT_REOPENED_BY_SOURCE_VALIDATOR"
+    },
+    "sourceInventory": {
+      "fileCount": 4832,
+      "sha256SumsSha256": "cf12b690711cc07fba9bf25098a5418e3cabd658e698b97cd0ba52a5666194ed",
+      "goModSha256": "70ed650f74a77f7106d91d49e57b5cae46a716321843a6498fb962cc743f07a1",
+      "goSumSha256": "7aca1421455d57bb1f2a4041d7487af1f908d7c26a881b0c9c2fe89df4ed0398",
+      "packageJsonSha256": "3936e9c5529e92fbf110b60964b7ed56a25b8b39a885713c5fa30499499ebb82",
+      "pnpmLockSha256": "99971755c3784ab0930a87018d7ba5fd90db9e5c41c14e198ca81a1152dc6d9a",
+      "webpackProductionSha256": "e27e426749d2cb5fa4e042ba178090f6d2e8d74762b1338e3815cd14192c5925",
+      "webpackCommonSha256": "159bd6f9147aa46c16a80c0aa13fbe7105be4b0a95aab6fb98b6a3e4544ef5d3"
+    },
+    "securityOverlay": {
+      "go": "1.25.13",
+      "golang.org/x/mod": "0.40.0",
+      "moby/go-archive": "0.1.0",
+      "goArchiveDisposition": "NOT_EXECUTABLE_NO_PORTAINER_DIRECT_IMPORT_OR_COMPOSE_COPY_CALL",
+      "goArchiveUpgradeExperiment": "REJECTED_BUILD_INCOMPATIBLE_WITH_DOCKER_CLI_28_5_1_ARCHIVE_GZIP_API"
+    },
+    "frontendSecurityOverlay": {
+      "directDependencies": {
+        "axios": "1.18.1",
+        "js-yaml": "3.15.1",
+        "lodash": "4.18.1",
+        "lodash-es": "npm:lodash@4.18.1",
+        "postcss": "8.5.25"
+      },
+      "overrides": {
+        "lodash": "4.18.1",
+        "lodash-es": "4.18.1",
+        "js-yaml": "3.15.1",
+        "linkify-it": "5.0.2",
+        "nanoid": "3.3.18",
+        "postcss": "8.5.25",
+        "brace-expansion@>=1 <2": "1.1.18",
+        "form-data@>=4 <5": "4.0.6",
+        "immutable@>=4 <5": "4.3.9",
+        "minimatch@>=3 <4": "3.1.4",
+        "picomatch@>=2 <3": "2.3.2",
+        "ws@>=7 <8": "7.5.11",
+        "ws@>=8 <9": "8.21.0",
+        "@open-amt-cloud-toolkit/ui-toolkit>ws": "7.5.11"
+      },
+      "webpack": {
+        "lodashModuleReplacementPlugin": "ABSENT",
+        "dockerComposeSchema": "SOURCE_CONTROLLED_NO_RUNTIME_FETCH"
+      },
+      "angularJsVex": {
+        "package": "angular",
+        "version": "1.8.2",
+        "lifecycle": "EOL_NO_UPSTREAM_FIX",
+        "advisories": ["CVE-2024-21490", "CVE-2026-11998"],
+        "disposition": "NOT_REACHABLE_TIME_BOUND_GUARD",
+        "guards": [
+          "NG_SRCSET_ABSENT",
+          "SCE_DELEGATE_CUSTOMIZATION_ABSENT",
+          "RESOURCE_URL_LIST_CUSTOMIZATION_ABSENT",
+          "TRUST_AS_RESOURCE_URL_ABSENT",
+          "DYNAMIC_RESOURCE_URL_SINKS_ABSENT"
+        ],
+        "owner": "PORTAINER_DOWNSTREAM_MAINTAINER",
+        "expiry": "2026-09-22T23:59:59Z",
+        "reviewTriggers": [
+          "Portainer upstream version changes",
+          "AngularJS dependency changes",
+          "Any guarded AngularJS source pattern appears",
+          "AngularJS advisory guidance changes",
+          "Time-bound review expires"
+        ]
+      }
+    },
+    "buildInputs": [
+      {
+        "id": "dockerfile-frontend",
+        "repository": "docker.io/docker/dockerfile",
+        "version": "1.7",
+        "indexDigest": "sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e",
+        "platform": "linux/amd64",
+        "platformDigest": "sha256:b5f3b260a9678e1d83d2fce86eeddf79420b79147eaba2a25986f47133d73720"
+      },
+      {
+        "id": "node-builder",
+        "repository": "docker.io/library/node",
+        "version": "22.23.2-bookworm",
+        "indexDigest": "sha256:0557ac14e0d45d02ed563067b82856ca5e7aa3437fa28d98d4350ea9c3d9494a",
+        "platform": "linux/amd64",
+        "platformDigest": "sha256:673fce836d5a9185da33352682bfedb17c174d016370d08616748dff76fda862",
+        "sourceRevision": "bc0a422bce0f729dd85790639d9f1918143f1235"
+      },
+      {
+        "id": "go-builder",
+        "repository": "docker.io/library/golang",
+        "version": "1.25.13-bookworm",
+        "indexDigest": "sha256:e401dae1bf814e29204a8cb7915682e1780951e609ca0dd8865ee1937f510c48",
+        "platform": "linux/amd64",
+        "platformDigest": "sha256:40dfc169bd5ad8a8617e49c8ead7fe16c6873e79d6937539e9c2e5947b7984ef",
+        "sourceRevision": "9c4b43a608d38ad80e176140485165f52eb8b8b5"
+      }
+    ],
+    "pnpm": {
+      "version": "10.26.2",
+      "tarballUrl": "https://registry.npmjs.org/pnpm/-/pnpm-10.26.2.tgz",
+      "tarballSha256": "63b50a4ba15cde20006ddba5d9e21fd623e23f094c9f63bb15f686b0e496aed6",
+      "integrity": "sha512-DjCP8gBfx0EDZvFU9iX2YxqysWsdLnAjhETdaunWMKhILZKkURRN68SSQWiW7Rb3sRSobsaLhASyRDhp5o/9pg=="
+    },
+    "buildToolchain": {
+      "dockerEngine": "26.1.5+dfsg1",
+      "dockerBuildx": "0.13.1+ds1",
+      "buildkit": {
+        "repository": "docker.io/moby/buildkit",
+        "version": "0.30.0",
+        "indexDigest": "sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+        "platform": "linux/amd64",
+        "platformDigest": "sha256:57269d1784e49b46228c45a1a1b870fbe40e0a639ab60b37b032d83af5bccdfc",
+        "configDigest": "sha256:6db049f808b3e0c0694b3522d85b5a9bee4a0248a1dc67559e05f57cc0f68bdd"
+      },
+      "nodeExecutor": "22.23.2",
+      "zstd": "1.5.7"
+    },
+    "evidenceTooling": {
+      "assemblySealer": {
+        "path": "infra/portainer/ce-downstream/seal-assembly-evidence.mjs",
+        "sha256": "f4ee206baf2081fce6f470508489cd802d93e3f615a77aa077b2188b6ee7e860"
+      },
+      "reachabilityReceiptGenerator": {
+        "path": "infra/portainer/ce-downstream/generate-reachability-receipt.mjs",
+        "sha256": "651a67313ce85d5d1f3c24e633e2cc0d12d9c964fd0498303b258dca536d6481"
+      }
+    },
+    "artifactEvidence": {
+      "ociArchiveSha256": "0dd846c806f74032244edc3e2eaed781717bb9feb590eea247c6ae05d00013eb",
+      "ociArchiveBytes": 41355218,
+      "indexDigest": "sha256:e25feb8fd95e9a0ce7cadb3b1d141317b82eefc7a9f91b8deba26ef6508b53b0",
+      "manifestDigest": "sha256:f945186dd7943b83b1f39fed23898161b66ccb0d9943e50b272a03edf1797e20",
+      "configDigest": "sha256:45f3a24c1cdf26f9e372d458afd7309f3b270a2aeaeae6ac0eb3d809e742bf7a",
+      "layerDigests": [
+        "sha256:08e9494a6bc8d17b4ba4a1b57ffa658cb8f341c76f448b146b2139758469d74c"
+      ],
+      "runtimeInventorySha256": "4b391363453d675d743cafe7993adc266c28bdcc6f1fe888f08ed0151ac01181",
+      "independentBuilds": 2,
+      "byteIdentical": true,
+      "artifactLicenseEvidenceSha256": "472a593f26b064f80b582a6079238a0019b2765c8e7392d165637e2f1c6c059c",
+      "frontendRuntimeBindingSha256": "e14674235baa8c730be9546b06c7e557d361c8d900c406cb9c0a5543076f9afe",
+      "frontendSbomSha256": "87b092fd51b9281fcb3b65bdb7cc8fda1051fc8df52ed808a2366c664066dfe0",
+      "frontendVulnerabilityReportSha256": "bf685aff659d04bf40ea79f619ebd55660dd97db40a80eb11e918f414056a535",
+      "sbomSha256": "b2ee2af94d2a668267ebef0dadcb205f0490ff2038687b26c950afad1fc88a9a",
+      "provenanceSha256": "87fa6449c57e7e7e89f8c3bd8748249032137eaca66c5694504aab9e4d3abbd9",
+      "vulnerabilityReportSha256": "99e9ac6cad91e584f7c136a131914ab49911ea9215b0838198e877471fe45399",
+      "misconfigurationReportSha256": "90e4e44296b14e4ca651e931c3c687a318042f0120511e4b20fb43a9ba83e073",
+      "reproducibilitySha256": "4ff901c8290961e57cae1100ec0ae78ebfdcd2fd94a8f6f2f9ddfba0249fad91",
+      "evidenceInputIndexSha256": "a0fbe1e3c34a760257ff5599e5aa0ccaf37249b0686221904c3fff193272d6b5",
+      "sourceGovulncheckSha256": "6cbe5f6770920396335845af1be1190231b51ed8817e2820067153e7e0da9922",
+      "binaryGovulncheckSha256": "aee6ee58edfeab2a5625a7532dcb870d43b3feb13fd2d018b39eeab89aec2765",
+      "securityFindingMatrixSha256": "6e6d149c11e5bd0b2b3ecf47709f70d5a6adeec30f176caffe5025df07709b2e"
+    }
+  },
+  "admissionBoundary": {
+    "coreBomChanged": false,
+    "imageLockChanged": false,
+    "startupChanged": false,
+    "ingressChanged": false,
+    "consoleChanged": false,
+    "packaged": false,
+    "deployed": false,
+    "advertised": false
+  },
+  "activationPreconditions": {
+    "dockerEngine": ">=29.7.0 or exact security backport",
+    "buildkit": ">=0.31.1",
+    "dockerAuthorizationPlugins": "ABSENT",
+    "dockerEnginePlugins": "ABSENT",
+    "untrustedBuildkitFrontends": "DENIED",
+    "kubernetesAndHelmEnvironments": "NOT_ADMITTED"
+  }
+}

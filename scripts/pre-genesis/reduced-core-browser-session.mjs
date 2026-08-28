@@ -1,0 +1,7535 @@
+import assert from "node:assert/strict"
+import { spawn, spawnSync } from "node:child_process"
+import {
+  X509Certificate,
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  randomBytes,
+  randomUUID,
+} from "node:crypto"
+import { createWriteStream, mkdirSync, readFileSync } from "node:fs"
+import {
+  access,
+  chmod,
+  copyFile,
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  realpath,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises"
+import {
+  createServer as createHttpServer,
+  request as httpRequest,
+} from "node:http"
+import {
+  createServer as createHttpsServer,
+  request as httpsRequest,
+} from "node:https"
+import { tmpdir } from "node:os"
+import { basename, isAbsolute, join, relative, resolve, sep } from "node:path"
+import { getCACertificates } from "node:tls"
+import { fileURLToPath } from "node:url"
+import { chromium } from "playwright-core"
+import { evaluateSourceBoundary } from "../../infra/ingress/source-no-bypass.mjs"
+import { classifyConsoleNavigationAttempt } from "./console-navigation-recovery.mjs"
+import {
+  authorityOrigin,
+  loadFounderUatPlacement,
+} from "./founder-uat-placement.mjs"
+import {
+  assertIdentityAuthorityBinding,
+  sanitizedIdentityUrl,
+  validateKeycloakCommissioning,
+} from "./keycloak-commissioning-readiness.mjs"
+import { createOidcFixture } from "./reduced-core-oidc-fixture.mjs"
+
+const integratedCoreMode = process.argv.includes("--integrated-core")
+const commissioningLoginMode = process.argv.includes("--commissioning-login")
+const keycloakTeamMode =
+  process.argv.includes("--keycloak-team") || commissioningLoginMode
+const keycloakIdentityMode =
+  process.argv.includes("--keycloak-identity") ||
+  keycloakTeamMode ||
+  integratedCoreMode
+const postgresPersistenceMode = process.argv.includes("--postgres-persistence")
+const postgresBackedMode =
+  postgresPersistenceMode || keycloakTeamMode || integratedCoreMode
+const observabilityMode =
+  process.argv.includes("--observability") || integratedCoreMode
+const liteLlmIntegrationMode =
+  process.argv.includes("--litellm") || integratedCoreMode
+const credentialLifecycleMode =
+  process.argv.includes("--credential-lifecycle") ||
+  postgresPersistenceMode ||
+  integratedCoreMode
+const applicationsMode =
+  process.argv.includes("--applications") ||
+  credentialLifecycleMode ||
+  liteLlmIntegrationMode
+const supportedModes = new Set([
+  "--applications",
+  "--credential-lifecycle",
+  "--observability",
+  "--postgres-persistence",
+  "--keycloak-identity",
+  "--keycloak-team",
+  "--commissioning-login",
+  "--litellm",
+  "--integrated-core",
+])
+const selectedModes = process.argv.slice(2)
+
+if (
+  selectedModes.some((argument) => !supportedModes.has(argument)) ||
+  new Set(selectedModes).size !== selectedModes.length ||
+  selectedModes.length > 1
+) {
+  throw new Error(
+    "Usage: reduced-core-browser-session.mjs [--applications|--credential-lifecycle|--observability|--postgres-persistence|--keycloak-identity|--keycloak-team|--commissioning-login|--litellm|--integrated-core]",
+  )
+}
+
+const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)))
+const keysShowcaseDirectory = process.env.KEYS_SHOWCASE_DIR?.trim() || null
+const keycloakControl = keycloakIdentityMode
+  ? keycloakControlFromEnvironment()
+  : null
+const postgresControl = postgresBackedMode
+  ? postgresControlFromEnvironment()
+  : null
+const liteLlmControl = liteLlmIntegrationMode
+  ? liteLlmControlFromEnvironment()
+  : null
+const firecrawlControl = integratedCoreMode
+  ? integratedFirecrawlControlFromEnvironment()
+  : null
+const integratedObservabilityControl = integratedCoreMode
+  ? integratedObservabilityControlFromEnvironment()
+  : null
+const founderUatControl = integratedCoreMode
+  ? founderUatControlFromEnvironment()
+  : null
+const founderUatPlacementPath = process.env.F0_UAT0_PLACEMENT_FILE?.trim()
+if (founderUatPlacementPath && !founderUatControl && !commissioningLoginMode) {
+  throw new Error("F0-UAT0 placement requires founder operator control.")
+}
+const founderUatPlacement =
+  founderUatControl || commissioningLoginMode
+    ? loadFounderUatPlacement(founderUatPlacementPath)
+    : null
+const initialTime = integratedCoreMode
+  ? new Date()
+  : applicationsMode
+    ? new Date(Date.now() - 10 * 60 * 1000)
+    : keycloakIdentityMode
+      ? new Date()
+      : new Date("2026-08-05T10:00:00.000Z")
+const authorities = founderUatPlacement
+  ? Object.fromEntries(
+      Object.entries(founderUatPlacement.authorities).map(([name, origin]) => [
+        name,
+        new URL(origin).hostname,
+      ]),
+    )
+  : {
+      api: "api.llmm.test",
+      console: "console.llmm.test",
+      firecrawl: "firecrawl.llmm.test",
+      grafana: "grafana.llmm.test",
+      identity: "identity.llmm.test",
+      keycloak: "keycloak.llmm.test",
+      litellm: "litellm.llmm.test",
+    }
+
+function publicOrigin(name, edgePort) {
+  return authorityOrigin(founderUatPlacement, name, edgePort)
+}
+
+function publicAuthorityHost(authority, edgePort) {
+  const name = Object.entries(authorities).find(
+    ([, hostname]) => hostname === authority,
+  )?.[0]
+  if (!name) throw new Error(`Unknown Product authority: ${authority}.`)
+  return new URL(publicOrigin(name, edgePort)).host
+}
+
+const consolePaths = [
+  ["/", "Overview"],
+  ["/keys", "Keys"],
+  ["/inference", "Inference"],
+  ["/hardware", "Hardware"],
+  ["/team", "Team"],
+  ["/activity", "Activity & Audit"],
+  ["/settings", "Settings"],
+]
+const evidence = await runBrowserSessionProof()
+process.stdout.write(`${JSON.stringify(evidence)}\n`)
+
+async function runBrowserSessionProof() {
+  await assertDevelopmentDependenciesReady()
+  const stateRoot = await createTemporaryStateRoot()
+  const processTemporaryRoot = await mkdtemp(
+    join(await realpath(tmpdir()), "llmm-f0-browser-process-"),
+  )
+  await chmod(processTemporaryRoot, 0o700)
+  const children = []
+  const servers = []
+  let browser
+  let page
+  let currentTime = new Date(initialTime)
+  let evidence
+  let failure
+  let founderEdgeContainer = null
+  let oidc
+  let postgresOutageEvidence = null
+  let postgresPersistenceEvidence = null
+  const sensitiveValues = []
+  const browserResponses = []
+  const identityFixtureFailures = []
+  const observedOrigins = []
+  const tlsErrors = []
+  try {
+    await chmod(stateRoot, 0o700)
+    const [
+      bffPort,
+      webPort,
+      inferencePort,
+      firecrawlPort,
+      prometheusPort,
+      alertmanagerPort,
+    ] = await reservePorts(observabilityMode ? 6 : 4)
+    const edgePort = keycloakControl?.edgePort ?? (await browserSafePort())
+    if (founderUatPlacement && founderUatPlacement.edgePort !== edgePort) {
+      throw new Error(
+        "F0-UAT0 placement edge port does not match browser control.",
+      )
+    }
+    const edgeBindAddress = founderUatPlacement?.edgeBindAddress ?? "127.0.0.1"
+    const clockFile = join(stateRoot, "clock.txt")
+    await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
+      mode: 0o600,
+    })
+    const certificate = await createCertificate(stateRoot)
+    const webRoot = await prepareTemporaryWebProject(stateRoot)
+    const observabilityTokenFile = join(stateRoot, "f0-o1-observability-token")
+    const consoleOrigin = publicOrigin("console", edgePort)
+    const identityIssuer = `${publicOrigin("identity", edgePort)}/realms/llm-machines`
+    const credentials = keycloakControl
+      ? {
+          ...keycloakControl.credentials,
+          liteLlm: liteLlmControl?.routingKey ?? opaqueValue(),
+          observability: opaqueValue(),
+        }
+      : {
+          admin: user("admin"),
+          operator: user("operator"),
+          bffService: opaqueValue(),
+          liteLlm: liteLlmControl?.routingKey ?? opaqueValue(),
+          oidcClient: opaqueValue(),
+          observability: opaqueValue(),
+        }
+    if (observabilityMode && !integratedCoreMode) {
+      await writeFile(
+        observabilityTokenFile,
+        `${credentials.observability}\n`,
+        { mode: 0o600 },
+      )
+    }
+    const observabilityCanaries = observabilityMode
+      ? {
+          alertLabel: `f0o1-alert-${opaqueValue()}`,
+          liteLlmCredential: `sk-f0o1-${opaqueValue()}`,
+          workload: `f0o1-workload-${opaqueValue()}`,
+        }
+      : null
+    const retentionCanaries =
+      liteLlmControl?.canaries ??
+      (postgresBackedMode
+        ? {
+            prompt: `f0p1-prompt-${opaqueValue()}`,
+            request: `f0p1-request-${opaqueValue()}`,
+            response: `f0p1-response-${opaqueValue()}`,
+            secret: `f0p1-secret-${opaqueValue()}`,
+          }
+        : null)
+    const sessionKeyMaterial = postgresBackedMode
+      ? randomBytes(32).toString("base64")
+      : null
+    const sessionKeyringFile = join(stateRoot, "f0-p1-session-keyring.json")
+    if (sessionKeyMaterial) {
+      await writeFile(
+        sessionKeyringFile,
+        `${JSON.stringify({
+          activeKid: "f0-p1-throwaway",
+          keys: [
+            {
+              kid: "f0-p1-throwaway",
+              material: sessionKeyMaterial,
+              status: "active",
+            },
+          ],
+          version: 1,
+        })}\n`,
+        { mode: 0o600 },
+      )
+      sensitiveValues.push(
+        credentials.admin.password,
+        credentials.operator.password,
+        credentials.bffService,
+        credentials.liteLlm,
+        credentials.oidcClient,
+        sessionKeyMaterial,
+        decodeURIComponent(new URL(postgresControl.databaseUrl).password),
+        ...Object.values(retentionCanaries),
+      )
+    }
+    if (observabilityCanaries) {
+      sensitiveValues.push(
+        credentials.liteLlm,
+        credentials.observability,
+        ...Object.values(observabilityCanaries),
+      )
+    }
+    if (liteLlmControl) {
+      sensitiveValues.push(
+        liteLlmControl.adminKey,
+        liteLlmControl.routingKey,
+        ...Object.values(liteLlmControl.canaries),
+      )
+    }
+    if (firecrawlControl) {
+      sensitiveValues.push(...Object.values(firecrawlControl.canaries))
+    }
+    const clientId = "console-web"
+    const audience = "console-bff"
+    oidc = keycloakControl
+      ? keycloakControl
+      : createOidcFixture({
+          audience,
+          clientId,
+          clientSecret: credentials.oidcClient,
+          issuer: identityIssuer,
+          now: () => new Date(currentTime),
+          redirectUri: `${consoleOrigin}/api/console/session/callback`,
+          users: { admin: credentials.admin, operator: credentials.operator },
+        })
+    if (keycloakIdentityMode && !integratedCoreMode) {
+      sensitiveValues.push(
+        credentials.admin.password,
+        credentials.operator.password,
+        credentials.bffService,
+        ...(keycloakTeamMode ? [credentials.humanAdmin] : []),
+        credentials.liteLlm,
+        credentials.oidcClient,
+      )
+    }
+
+    const inferenceControl = liteLlmControl
+      ? null
+      : { available: true, requests: [] }
+    if (inferenceControl) {
+      const inference = createInferenceDouble(
+        credentials.liteLlm,
+        retentionCanaries?.response ?? "fixture-response",
+        inferenceControl,
+        observabilityCanaries,
+      )
+      servers.push(inference)
+      await listen(inference, inferencePort)
+    }
+    if (!integratedCoreMode) {
+      const firecrawl = createFirecrawlDouble()
+      servers.push(firecrawl)
+      await listen(firecrawl, firecrawlPort)
+    }
+    const prometheusControl = observabilityMode
+      ? { available: true, requests: [] }
+      : null
+    const alertmanagerControl = observabilityMode
+      ? { available: true, requests: [] }
+      : null
+    if (
+      observabilityMode &&
+      !integratedCoreMode &&
+      prometheusControl &&
+      alertmanagerControl &&
+      prometheusPort &&
+      alertmanagerPort
+    ) {
+      const prometheus = createPrometheusDouble(
+        credentials.observability,
+        prometheusControl,
+      )
+      const alertmanager = createAlertmanagerDouble(
+        credentials.observability,
+        alertmanagerControl,
+        observabilityCanaries,
+      )
+      servers.push(prometheus, alertmanager)
+      await Promise.all([
+        listen(prometheus, prometheusPort),
+        listen(alertmanager, alertmanagerPort),
+      ])
+    }
+
+    const bffEnvironment = {
+      BFF_FALLBACK_MODELS: "fixture-model",
+      BFF_FIXTURE_MODE: "true",
+      BFF_SERVICE_API_KEY: credentials.bffService,
+      ...(observabilityMode && prometheusPort && alertmanagerPort
+        ? {
+            ADMIN_ALERTMANAGER_BASE_URL:
+              integratedObservabilityControl?.alertmanagerBaseUrl ??
+              `http://127.0.0.1:${alertmanagerPort}`,
+            ...(integratedCoreMode
+              ? {}
+              : {
+                  ADMIN_ALERTMANAGER_BEARER_TOKEN_FILE: observabilityTokenFile,
+                }),
+            ADMIN_ALERTMANAGER_TIMEOUT_MS: "500",
+            ...(integratedCoreMode
+              ? {
+                  ADMIN_GRAFANA_BASE_URL:
+                    integratedObservabilityControl.grafanaBaseUrl,
+                  ADMIN_GRAFANA_TIMEOUT_MS: "500",
+                }
+              : {}),
+            ADMIN_LITELLM_API_KEY: credentials.liteLlm,
+            ADMIN_LITELLM_BASE_URL:
+              liteLlmControl?.baseUrl ?? `http://127.0.0.1:${inferencePort}`,
+            ADMIN_LITELLM_TIMEOUT_MS: "500",
+            ADMIN_PROMETHEUS_BASE_URL:
+              integratedObservabilityControl?.prometheusBaseUrl ??
+              `http://127.0.0.1:${prometheusPort}`,
+            ...(integratedCoreMode
+              ? {}
+              : {
+                  ADMIN_PROMETHEUS_BEARER_TOKEN_FILE: observabilityTokenFile,
+                }),
+            ADMIN_PROMETHEUS_TIMEOUT_MS: "500",
+          }
+        : {}),
+      ...(applicationsMode
+        ? {
+            ADMIN_LITELLM_API_KEY:
+              liteLlmControl?.adminKey ?? credentials.liteLlm,
+            ADMIN_LITELLM_BASE_URL:
+              liteLlmControl?.baseUrl ?? `http://127.0.0.1:${inferencePort}`,
+          }
+        : {}),
+      CONNECTED_APPS_BFF_BASE_URL: publicOrigin("api", edgePort),
+      CONNECTED_APPS_KEYCLOAK_FIXTURE: "true",
+      F0_S1_CA_FILE: certificate.ca,
+      F0_S1_CLOCK_FILE: clockFile,
+      F0_S1_CONSOLE_ORIGIN: consoleOrigin,
+      F0_S1_GRAFANA_ORIGIN: publicOrigin("grafana", edgePort),
+      F0_S1_IDENTITY_ISSUER: identityIssuer,
+      F0_S1_OIDC_AUDIENCE: audience,
+      F0_S1_OIDC_CLIENT_ID: clientId,
+      F0_S1_OIDC_CLIENT_SECRET: credentials.oidcClient,
+      ...(founderUatPlacement
+        ? {
+            F0_S1_IDENTITY_TARGET_HOST: founderUatPlacement.edgeBindAddress,
+            F0_S1_IDENTITY_TARGET_PORT: String(founderUatPlacement.edgePort),
+          }
+        : {}),
+      ...(applicationsMode
+        ? {
+            FIRECRAWL_APPLIANCE_KILL_SWITCH: "false",
+            FIRECRAWL_EGRESS_ALLOWED_HOSTS:
+              firecrawlControl?.allowedHosts.join(",") ??
+              "allowed.example.test",
+            FIRECRAWL_EGRESS_ALLOWLIST_DIR:
+              "/run/llm-machines/firecrawl/local-fixture",
+            FIRECRAWL_EGRESS_POLICY_READY: "true",
+            FIRECRAWL_INSTALLED: "true",
+            FIRECRAWL_RESOURCE_PROFILE_QUALIFIED: "true",
+            FIRECRAWL_UPSTREAM_BASE_URL: "http://firecrawl-api:3002",
+            PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL: `http://127.0.0.1:${firecrawlPort}`,
+            ...(firecrawlControl
+              ? {
+                  PRE_GENESIS_FIRECRAWL_ACTUAL: "true",
+                  PRE_GENESIS_FIRECRAWL_ALLOWED_HOSTS:
+                    firecrawlControl.allowedHosts.join(","),
+                  PRE_GENESIS_FIRECRAWL_UPSTREAM_BASE_URL:
+                    firecrawlControl.baseUrl,
+                }
+              : {}),
+          }
+        : {}),
+      FIRECRAWL_PUBLIC_BASE_URL: publicOrigin("firecrawl", edgePort),
+      HOST: "127.0.0.1",
+      LITELLM_KEY: credentials.liteLlm,
+      LITELLM_URL:
+        liteLlmControl?.baseUrl ?? `http://127.0.0.1:${inferencePort}`,
+      NODE_ENV: "test",
+      NODE_EXTRA_CA_CERTS: certificate.ca,
+      ...(postgresControl
+        ? {
+            DATABASE_URL: postgresControl.databaseUrl,
+            F0_P1_POSTGRES_PERSISTENCE: "true",
+            F0_P1_SESSION_KEYRING_FILE: sessionKeyringFile,
+          }
+        : {}),
+      ...(keycloakTeamMode || integratedCoreMode
+        ? {
+            KEYCLOAK_ADMIN_BASE_URL: keycloakControl.adminBaseUrl,
+            KEYCLOAK_ADMIN_CLIENT_ID: "console-human-admin",
+            KEYCLOAK_ADMIN_CLIENT_SECRET:
+              keycloakControl.credentials.humanAdmin,
+            KEYCLOAK_ADMIN_REALM: "llm-machines",
+            TEAM_ALLOWED_EMAIL_DOMAINS: "fixture.invalid",
+          }
+        : {}),
+      PORT: String(bffPort),
+      PRODUCT_API_HOST: authorities.api,
+      PRODUCT_CONSOLE_HOST: authorities.console,
+      PRODUCT_FIRECRAWL_HOST: authorities.firecrawl,
+      PRODUCT_GRAFANA_HOST: authorities.grafana,
+      PRODUCT_IDENTITY_HOST: authorities.identity,
+      PUBLIC_BFF_BASE_URL: publicOrigin("api", edgePort),
+    }
+    const bffCommand = [
+      process.execPath,
+      resolve(repositoryRoot, "apps/bff/node_modules/tsx/dist/cli.mjs"),
+      resolve(
+        repositoryRoot,
+        "scripts/pre-genesis/reduced-core-session-bff-fixture.mts",
+      ),
+    ]
+    let bffChild = startChild(
+      postgresBackedMode ? "bff-before-restart" : "bff",
+      bffCommand,
+      bffEnvironment,
+      stateRoot,
+      repositoryRoot,
+      processTemporaryRoot,
+    )
+    children.push(bffChild)
+    const restartBff = postgresControl
+      ? async () => {
+          const before = postgresSessionSnapshot()
+          assert.ok(
+            before.count >= 2,
+            "F0-P1 requires both Admin and Operator session records before restart.",
+          )
+          await stopChild(bffChild)
+          bffChild = startChild(
+            "bff-after-restart",
+            bffCommand,
+            bffEnvironment,
+            stateRoot,
+            repositoryRoot,
+            processTemporaryRoot,
+          )
+          children.push(bffChild)
+          await waitForHttp(`http://127.0.0.1:${bffPort}/livez`, children)
+          await waitForStatus(
+            `http://127.0.0.1:${bffPort}/readyz`,
+            200,
+            children,
+          )
+          const after = postgresSessionSnapshot()
+          assert.deepEqual(after.handles, before.handles)
+          assert.equal(after.count, before.count)
+          assert.equal(after.encryptedOnly, true)
+          return {
+            encryptedOpaqueSessions: true,
+            identities: ["admin", "operator"],
+            sessionCount: after.count,
+            sessionHandlesStable: true,
+          }
+        }
+      : null
+    const webEnvironment = {
+      CONSOLE_BFF_SERVICE_API_KEY: credentials.bffService,
+      CONSOLE_BFF_URL: `http://127.0.0.1:${bffPort}`,
+      NEXT_TELEMETRY_DISABLED: "1",
+      NODE_ENV: founderUatControl ? "production" : "development",
+      WEB_CONSOLE_ORIGIN: consoleOrigin,
+      WEB_IDENTITY_ORIGIN: publicOrigin("identity", edgePort),
+    }
+    if (founderUatControl) {
+      await buildFounderWebProject(webRoot, webEnvironment, stateRoot)
+    }
+    children.push(
+      startChild(
+        "web",
+        [
+          process.execPath,
+          resolve(repositoryRoot, "apps/web/node_modules/next/dist/bin/next"),
+          founderUatControl ? "start" : "dev",
+          "--hostname",
+          "127.0.0.1",
+          "--port",
+          String(webPort),
+        ],
+        webEnvironment,
+        stateRoot,
+        webRoot,
+        processTemporaryRoot,
+      ),
+    )
+
+    await waitForHttp(`http://127.0.0.1:${bffPort}/livez`, children)
+    await waitForHttp(`http://127.0.0.1:${webPort}/auth/signin`, children)
+    const edgeInput = {
+      applicationsMode,
+      bffPort,
+      certificate,
+      edgePort,
+      identityFixtureFailures,
+      keycloakControl,
+      observedOrigins,
+      oidc,
+      tlsErrors,
+      webPort,
+    }
+    if (founderUatControl) {
+      const founderEdge = await startFounderProductEdge({
+        bffPort,
+        certificate,
+        edgePort,
+        grafanaPort: new URL(integratedObservabilityControl.grafanaBaseUrl)
+          .port,
+        keycloakPort: keycloakControl.upstreamPort,
+        liteLlmPort: new URL(liteLlmControl.baseUrl).port,
+        stateRoot,
+        webPort,
+      })
+      founderEdgeContainer = founderEdge.container
+      servers.push(founderEdge)
+    } else {
+      const edge = createDevelopmentEdge(edgeInput)
+      servers.push(edge)
+      await listen(edge, edgePort, edgeBindAddress)
+      if (founderUatPlacement) {
+        const loopbackEdge = createDevelopmentEdge(edgeInput)
+        servers.push(loopbackEdge)
+        await listen(loopbackEdge, edgePort)
+      }
+      const ipv6Edge = createDevelopmentEdge(edgeInput)
+      if (await listenLoopbackIpv6(ipv6Edge, edgePort)) {
+        servers.push(ipv6Edge)
+      }
+    }
+    const edgeProbe = founderUatPlacement
+      ? await requestHttpsEdgeWithHeaders({
+          certificate,
+          edgePort,
+          headers: {
+            host: publicAuthorityHost(authorities.console, edgePort),
+          },
+          method: "GET",
+          path: "/keys?q=safe",
+          servername: authorities.console,
+        })
+      : await requestHttpsEdge(
+          `https://${edgeBindAddress}:${edgePort}/keys?q=safe`,
+          publicAuthorityHost(authorities.console, edgePort),
+          certificate,
+          authorities.console,
+        )
+    assert.ok(edgeProbe.status >= 300 && edgeProbe.status < 400)
+    assert.equal(
+      new URL(edgeProbe.location ?? "", consoleOrigin).origin,
+      consoleOrigin,
+    )
+
+    const identityAuthorityBinding = await proveIdentityAuthorityBinding({
+      keycloakControl,
+      waitForPublicMatch: commissioningLoginMode,
+    })
+    if (commissioningLoginMode) await synchronizeFixtureClock()
+    const executablePath = await chromeExecutable()
+    const browserArguments = ["--no-proxy-server"]
+    if (!founderUatPlacement) {
+      browserArguments.unshift(
+        "--allow-insecure-localhost",
+        `--host-resolver-rules=${Object.values(authorities)
+          .map((host) => `MAP ${host} 127.0.0.1`)
+          .join(",")}`,
+        "--ignore-certificate-errors",
+        `--ignore-certificate-errors-spki-list=${certificate.spki}`,
+      )
+    }
+    browser = await chromium.launch({
+      args: browserArguments,
+      executablePath,
+      headless: true,
+    })
+    const context = await browser.newContext({
+      ignoreHTTPSErrors: !founderUatPlacement,
+    })
+    await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+      origin: consoleOrigin,
+    })
+    page = await context.newPage()
+    const pageErrors = []
+    const browserMetadata = []
+    page.on("console", (message) => browserMetadata.push(message.text()))
+    page.on("pageerror", (error) => pageErrors.push(error.message))
+    page.on("request", (request) => browserMetadata.push(request.url()))
+    page.on("response", (response) => {
+      const url = new URL(response.url())
+      if (Object.values(authorities).includes(url.hostname)) {
+        browserResponses.push({
+          host: url.hostname,
+          path: url.pathname,
+          queryKeys: [...new Set(url.searchParams.keys())].sort(),
+          status: response.status(),
+        })
+      }
+    })
+    if (founderUatPlacement) {
+      const tlsProbe = await requestHttpsEdgeWithHeaders({
+        certificate,
+        edgePort,
+        headers: { host: founderUatPlacement.edgeBindAddress },
+        method: "GET",
+        path: "/",
+        servername: authorities.console,
+      })
+      assert.equal(tlsProbe.status, 421)
+    } else {
+      const tlsProbe = await page.goto(`https://127.0.0.1:${edgePort}/`)
+      assert.equal(tlsProbe?.status(), 421)
+    }
+
+    await signIn(page, consoleOrigin, credentials.admin, "/keys?q=safe")
+    assert.equal(new URL(page.url()).pathname, "/keys")
+    assert.equal(new URL(page.url()).search, "?q=safe")
+    await assertRole(page, "Administrator")
+    await assertConsoleNavigation(page, consoleOrigin)
+    await assertDesktopViewportLayout(page, consoleOrigin)
+
+    if (commissioningLoginMode) {
+      const session = await proveCommissioningSessionContinuity({
+        advanceClock,
+        browser,
+        consoleOrigin,
+        context,
+        credentials,
+        page,
+        restartBff,
+      })
+      const identityFlow = await proveKeycloakIdentityConsoleFlow({
+        certificate,
+        consoleOrigin,
+        context,
+        credentials,
+        edgePort,
+        page,
+      })
+      const outageRecovery = await proveKeycloakOutageRecovery({
+        browser,
+        consoleOrigin,
+        edgePort,
+        keycloakControl,
+        synchronizeClock: synchronizeFixtureClock,
+        userCredentials: credentials.admin,
+      })
+      assert.deepEqual(pageErrors, [])
+      assertNoSensitiveValues(
+        browserMetadata,
+        sensitiveValues,
+        "browser metadata",
+      )
+      await context.close()
+      const browserVersion = browser.version()
+      await browser.close()
+      browser = undefined
+      evidence = {
+        architecture: process.arch,
+        browser: { name: "Google Chrome", version: browserVersion },
+        credentialMaterialPrinted: false,
+        evidenceClass: "INCREMENTAL_CONSOLE_LOGIN_ONLY",
+        identity: identityFlow,
+        outageRecovery,
+        proved: [
+          "Admin and Operator complete Authorization Code plus PKCE Console login with the commissioned appliance-realm identities",
+          "parallel requests remain usable after one access-token refresh window",
+          "encrypted opaque Console sessions survive one controlled BFF restart",
+          "logout clears Console custody and protected navigation returns to sign in",
+          "Keycloak restart preserves the commissioned identities and recovers through the controlled unavailable state",
+          "the commissioning gate performs no Team, Application, inference, Firecrawl, or native-administration mutation",
+        ],
+        session,
+        status: "passed",
+        temporaryStateRemoved: true,
+      }
+      const cleanup = await Promise.allSettled([
+        ...servers.map(closeServer),
+        ...children.map(stopChild),
+      ])
+      const cleanupFailures = cleanup
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason)
+      if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+          cleanupFailures,
+          "F0-UAT0 commissioning-login cleanup did not complete.",
+        )
+      }
+      servers.length = 0
+      children.length = 0
+      await rm(sessionKeyringFile, { force: true })
+      await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
+      await rm(stateRoot, { force: true, recursive: true })
+      assert.equal(await exists(stateRoot), false)
+      return evidence
+    }
+
+    if (keycloakTeamMode) {
+      const identityFlow = await proveKeycloakIdentityCookieBoundary({
+        certificate,
+        context,
+        edgePort,
+      })
+      const identityMutationBaseline = completedIdentityMutationCount()
+      const teamFlow = await proveKeycloakTeamConsoleFlow({
+        bffPort,
+        consoleOrigin,
+        context,
+        credentials,
+        page,
+        sensitiveValues,
+        synchronizeClock: synchronizeFixtureClock,
+      })
+      const postgresEvidence = inspectKeycloakTeamPersistence(
+        sensitiveValues,
+        identityMutationBaseline,
+      )
+      assert.deepEqual(pageErrors, [])
+      assertNoSensitiveValues(
+        browserMetadata,
+        sensitiveValues,
+        "browser metadata",
+      )
+      await page.evaluate(async () => navigator.clipboard.writeText(""))
+      assert.equal(
+        await page.evaluate(() => navigator.clipboard.readText()),
+        "",
+      )
+      assertNoSensitiveValues(
+        [await page.locator("body").innerText()],
+        sensitiveValues,
+        "final DOM",
+      )
+      await page.screenshot({
+        path: join(stateRoot, "credential-free-final.png"),
+      })
+      await context.close()
+
+      const browserVersion = browser.version()
+      await browser.close()
+      browser = undefined
+      evidence = {
+        architecture: process.arch,
+        browser: { name: "Google Chrome", version: browserVersion },
+        credentialMaterialPrinted: false,
+        evidenceClass: commissioningLoginMode
+          ? "INCREMENTAL_CONSOLE_LOGIN_ONLY"
+          : "LOCAL_KEYCLOAK_TEAM_MUTATION_ONLY",
+        identity: identityFlow,
+        persistence: postgresEvidence,
+        team: teamFlow,
+        limitations: [
+          "Disposable Keycloak 26.7.0 and PostgreSQL prove a local functional lane, not production commissioning, exact-Core, or Q0 qualification.",
+          "The local Keycloak server uses generated throwaway identities and the native platform selected by the pinned multi-platform image.",
+          "The proof translates only the already approved console-human-admin FGAP contract and does not qualify customer-native Keycloak administration.",
+          "Email delivery, CSV import, arbitrary group CRUD, backup, restore, and production MFA enrollment remain outside this package.",
+          "No result is release, capacity, runtime-qualification, or Product acceptance evidence.",
+        ],
+        proved: [
+          "Admin creates an Operator through the actual Console Team UI using the canonical Operators group",
+          "the isolated console-human-admin service account performs user, group-membership, and password operations through Keycloak FGAP v2 without realm or client administration authority",
+          "generated passwords use the approved one-time reveal and leave subsequent DOM, browser metadata, PostgreSQL, logs, and teardown state",
+          "disable and reactivation preserve the retained role and canonical group authority",
+          "Operator can view Team identities but cannot reach Team mutation views or submit a mutation through its authenticated Console session",
+          "the durable identity mutation journal and audit store retain approved metadata only",
+          "native Keycloak administration remains denied through Product ingress",
+        ],
+        status: "passed",
+        temporaryStateRemoved: true,
+      }
+      if (founderUatControl) {
+        await holdFounderUat({
+          caFile: certificate.ca,
+          children,
+          credentials,
+          edgePort,
+          firecrawlControl,
+          founderEdgeContainer,
+          identityAuthorityBinding,
+          keycloakControl,
+          liteLlmControl,
+          synchronizeClock: synchronizeFixtureClock,
+        })
+      }
+      const cleanup = await Promise.allSettled([
+        ...servers.map(closeServer),
+        ...children.map(stopChild),
+      ])
+      const cleanupFailures = cleanup
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason)
+      if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+          cleanupFailures,
+          "F0-I2 cleanup did not complete.",
+        )
+      }
+      servers.length = 0
+      children.length = 0
+      await rm(sessionKeyringFile, { force: true })
+      await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
+      await rm(stateRoot, { force: true, recursive: true })
+      assert.equal(await exists(stateRoot), false)
+      return evidence
+    }
+
+    if (keycloakIdentityMode && !integratedCoreMode) {
+      const identityFlow = await proveKeycloakIdentityConsoleFlow({
+        certificate,
+        consoleOrigin,
+        context,
+        credentials,
+        edgePort,
+        page,
+      })
+      assert.deepEqual(pageErrors, [])
+      assertNoSensitiveValues(
+        browserMetadata,
+        sensitiveValues,
+        "browser metadata",
+      )
+      await page.evaluate(async () => navigator.clipboard.writeText(""))
+      assert.equal(
+        await page.evaluate(() => navigator.clipboard.readText()),
+        "",
+      )
+      await page.screenshot({
+        path: join(stateRoot, "credential-free-final.png"),
+      })
+      await context.close()
+
+      const browserVersion = browser.version()
+      await browser.close()
+      browser = undefined
+      evidence = {
+        architecture: process.arch,
+        browser: { name: "Google Chrome", version: browserVersion },
+        credentialMaterialPrinted: false,
+        evidenceClass: "LOCAL_KEYCLOAK_IDENTITY_INTEGRATION_ONLY",
+        identity: identityFlow,
+        limitations: [
+          "Disposable Keycloak 26.7.0 is functional identity evidence, not production commissioning, exact-Core, or Q0 qualification.",
+          "The local Keycloak server uses ephemeral H2 development storage, generated throwaway identities, and the native arm64 platform selected by the pinned multi-platform image.",
+          "A generated local CA with browser-only trust bypass is not appliance TLS evidence.",
+          "Reserved *.llmm.test aliases are loopback-only browser fixture authorities, not Product DNS constants.",
+          "Refresh expiry, reuse detection, concurrency, clock skew, and identity outage remain deterministic F0-S1 evidence until synchronized-clock runtime qualification.",
+          "Console identity mutations, Keycloak FGAP, commissioning, backup, and restore are not exercised.",
+          "No result is Q0, release, capacity, or runtime-qualification evidence.",
+        ],
+        proved: [
+          "actual Console Web and BFF complete Authorization Code plus PKCE login through the approved identity authority",
+          "Admin and Operator authenticate with password and TOTP through the exact pinned Keycloak 26.7.0 image",
+          "the Product token validator accepts the exact issuer, audience, subject, auth_time, amr, nonce, and realm-role claims",
+          "Keycloak browser cookies remain identity-authority scoped while the Console receives only its opaque Product session cookie",
+          "the identity route allowlist carries native login actions and static resources while native Keycloak administration remains denied",
+          "logout clears local Console custody and protected navigation returns to the approved sign-in surface",
+          "Admin and Operator can use retained Console navigation without Grafana, LiteLLM native UI, or Keycloak Admin UI",
+          "Operator is denied Admin-only Key, Team, and audit-export controls",
+        ],
+        status: "passed",
+        temporaryStateRemoved: true,
+      }
+      const cleanup = await Promise.allSettled([
+        ...servers.map(closeServer),
+        ...children.map(stopChild),
+      ])
+      const cleanupFailures = cleanup
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason)
+      if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+          cleanupFailures,
+          "F0-I1 cleanup did not complete.",
+        )
+      }
+      servers.length = 0
+      children.length = 0
+      await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
+      await rm(stateRoot, { force: true, recursive: true })
+      assert.equal(await exists(stateRoot), false)
+      return evidence
+    }
+
+    const observabilityFlow =
+      observabilityMode &&
+      !integratedCoreMode &&
+      observabilityCanaries &&
+      prometheusControl &&
+      alertmanagerControl
+        ? await proveObservabilityConsoleFlow({
+            alertmanagerControl,
+            consoleOrigin,
+            inferenceControl,
+            observabilityCanaries,
+            page,
+            prometheusControl,
+          })
+        : null
+
+    let persistenceOperatorContext
+    let persistenceOperatorPage
+    if (postgresBackedMode) {
+      persistenceOperatorContext = await browser.newContext({
+        ignoreHTTPSErrors: !founderUatPlacement,
+      })
+      persistenceOperatorPage = await persistenceOperatorContext.newPage()
+      await synchronizeFixtureClock()
+      await signIn(
+        persistenceOperatorPage,
+        consoleOrigin,
+        credentials.operator,
+        "/keys",
+      )
+      await assertRole(persistenceOperatorPage, "Operator")
+      await assertConsoleNavigation(persistenceOperatorPage, consoleOrigin)
+    }
+
+    const applicationFlow = integratedCoreMode
+      ? await proveApplicationConsoleFlow({
+          actualFirecrawl: firecrawlControl,
+          certificate,
+          consoleOrigin,
+          edgeBindAddress,
+          edgePort,
+          page,
+          postgresControl,
+          restartBff,
+          retentionCanaries,
+          sensitiveValues,
+          streamingRequired: true,
+          synchronizeClock: synchronizeFixtureClock,
+          userCredentials: credentials.admin,
+          credentialLifecycleMode,
+        })
+      : liteLlmIntegrationMode
+        ? await proveLiteLlmConsoleFlow({
+            certificate,
+            consoleOrigin,
+            edgePort,
+            liteLlmControl,
+            page,
+            sensitiveValues,
+            synchronizeClock: synchronizeFixtureClock,
+            userCredentials: credentials.admin,
+          })
+        : applicationsMode
+          ? await proveApplicationConsoleFlow({
+              certificate,
+              consoleOrigin,
+              edgeBindAddress,
+              edgePort,
+              page,
+              postgresControl,
+              restartBff,
+              retentionCanaries,
+              sensitiveValues,
+              synchronizeClock: synchronizeFixtureClock,
+              userCredentials: credentials.admin,
+              credentialLifecycleMode,
+            })
+          : null
+
+    if (
+      postgresPersistenceMode &&
+      persistenceOperatorContext &&
+      persistenceOperatorPage &&
+      applicationFlow
+    ) {
+      await persistenceOperatorPage.goto(`${consoleOrigin}/keys`)
+      await assertRole(persistenceOperatorPage, "Operator")
+      await assertOperatorApplicationReadOnly(
+        persistenceOperatorPage,
+        applicationFlow,
+      )
+      await persistenceOperatorContext.close()
+      postgresOutageEvidence = await provePostgresOutageRecovery({
+        bffPort,
+        children,
+        consoleOrigin,
+        page,
+      })
+    }
+
+    if (integratedCoreMode) {
+      assert.ok(persistenceOperatorContext)
+      assert.ok(persistenceOperatorPage)
+      await assertIntegratedTeamProjection(page, consoleOrigin, true)
+      await persistenceOperatorPage.goto(`${consoleOrigin}/keys`)
+      await assertRole(persistenceOperatorPage, "Operator")
+      await assertConsoleNavigation(persistenceOperatorPage, consoleOrigin)
+      await assertOperatorApplicationReadOnly(
+        persistenceOperatorPage,
+        applicationFlow,
+      )
+      await assertIntegratedTeamProjection(
+        persistenceOperatorPage,
+        consoleOrigin,
+        false,
+      )
+      await persistenceOperatorContext.close()
+      persistenceOperatorContext = undefined
+      persistenceOperatorPage = undefined
+      const identityFlow = await proveKeycloakIdentityCookieBoundary({
+        certificate,
+        context,
+        edgePort,
+      })
+      const observability = await proveIntegratedObservabilityConsoleFlow({
+        consoleOrigin,
+        founderUat: Boolean(founderUatControl),
+        page,
+      })
+      const nativeAdministration = founderUatControl
+        ? await proveIntegratedNativeAdministration({
+            browser,
+            certificate,
+            credentials,
+            edgePort,
+            synchronizeClock: synchronizeFixtureClock,
+          })
+        : { status: "DEFERRED_TO_NATIVE_LINUX_FOUNDER_LANE" }
+      const logoutOutages = founderUatControl
+        ? await proveCoordinatedLogoutOutages({
+            browser,
+            credentials,
+            edgePort,
+            grafanaControl: {
+              baseUrl: integratedObservabilityControl.grafanaBaseUrl,
+              container: founderUatControl.outerInventory.containers.grafana,
+              dockerContext: postgresControl.dockerContext,
+            },
+            liteLlmControl,
+            synchronizeClock: synchronizeFixtureClock,
+          })
+        : { status: "DEFERRED_TO_NATIVE_LINUX_FOUNDER_LANE" }
+      const noBypass = await proveIntegratedNoBypass({
+        certificate,
+        edgePort,
+      })
+      const identityOutage = await proveKeycloakOutageRecovery({
+        browser,
+        consoleOrigin,
+        edgePort,
+        keycloakControl,
+        synchronizeClock: synchronizeFixtureClock,
+        userCredentials: credentials.admin,
+      })
+      const adminSession = sessionCookie(await context.cookies(consoleOrigin))
+      assert.equal(adminSession.httpOnly, true)
+      assert.equal(adminSession.secure, true)
+      await page.goto(`${consoleOrigin}/`)
+      await page.getByRole("button", { name: "Sign out" }).click()
+      await page.waitForURL((url) => url.pathname === "/auth/signin")
+      await context.clearCookies()
+      await synchronizeFixtureClock()
+      await signIn(page, consoleOrigin, credentials.operator, "/applications")
+      await assertRole(page, "Operator")
+      await assertConsoleNavigation(page, consoleOrigin)
+      await assertOperatorApplicationReadOnly(page, applicationFlow)
+      await page.goto(`${consoleOrigin}/`)
+      await page.getByRole("button", { name: "Sign out" }).click()
+      await page.waitForURL((url) => url.pathname === "/auth/signin")
+
+      postgresPersistenceEvidence = inspectPostgresPersistence(
+        sensitiveValues,
+        applicationFlow,
+      )
+      assert.deepEqual(pageErrors, [])
+      assertNoSensitiveValues(
+        browserMetadata,
+        sensitiveValues,
+        "browser metadata",
+      )
+      await page.evaluate(async () => navigator.clipboard.writeText(""))
+      await page.screenshot({
+        path: join(stateRoot, "credential-free-final.png"),
+      })
+      await context.close()
+      const browserVersion = browser.version()
+      await browser.close()
+      browser = undefined
+      evidence = {
+        architecture: process.arch,
+        browser: { name: "Google Chrome", version: browserVersion },
+        credentialMaterialPrinted: false,
+        evidenceClass: "LOCAL_INTEGRATED_REDUCED_CORE_ONLY",
+        flow: applicationFlow,
+        identity: {
+          ...identityFlow,
+          authorityBinding: identityAuthorityBinding,
+          commissioning: keycloakControl.commissioning,
+          outageRecovery: identityOutage,
+        },
+        noBypass,
+        nativeAdministration,
+        globalLogoutDuringOutage: logoutOutages,
+        observability,
+        persistence: postgresPersistenceEvidence,
+        proved: [
+          "actual Console Web and BFF authenticate through disposable Keycloak 26.7.0",
+          "real Product migrations and encrypted opaque sessions persist across a controlled BFF restart",
+          "Product-issued Key credentials reach actual private LiteLLM and deterministic inference for streaming and non-streaming Chat Completions",
+          "Firecrawl remains Key-disabled by default and actual reduced search and static scrape require its separate credential",
+          "actual Prometheus and Alertmanager remain private while Grafana, LiteLLM, and scoped Keycloak administration use service-owned sessions through the Product edge",
+          "the seven approved authorities deny alternate hosts, unsafe paths, spoofed forwarding metadata, and Product credentials on native surfaces",
+          "an actual Keycloak stop renders the controlled Console retry state and restart recovers on the same private loopback port",
+          "workload and credential canaries remain absent from Product state and browser artifacts",
+        ],
+        runtimeQualified: false,
+        status: "passed",
+        temporaryStateRemoved: true,
+      }
+      if (founderUatControl) {
+        await holdFounderUat({
+          caFile: certificate.ca,
+          children,
+          credentials,
+          edgePort,
+          firecrawlControl,
+          founderEdgeContainer,
+          identityAuthorityBinding,
+          keycloakControl,
+          liteLlmControl,
+          synchronizeClock: synchronizeFixtureClock,
+        })
+      }
+      const cleanup = await Promise.allSettled([
+        ...servers.map(closeServer),
+        ...children.map(stopChild),
+      ])
+      const cleanupFailures = cleanup
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason)
+      if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+          cleanupFailures,
+          "F0-C1 browser cleanup did not complete.",
+        )
+      }
+      servers.length = 0
+      children.length = 0
+      await rm(sessionKeyringFile, { force: true })
+      await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
+      await rm(stateRoot, { force: true, recursive: true })
+      assert.equal(await exists(stateRoot), false)
+      return evidence
+    }
+
+    const sharedCookie = sessionCookie(await context.cookies(consoleOrigin))
+    const revoker = await browser.newContext({
+      ignoreHTTPSErrors: !founderUatPlacement,
+    })
+    await revoker.addCookies([sharedCookie])
+    const revokerPage = await revoker.newPage()
+    await revokerPage.goto(`${consoleOrigin}/`)
+    await revokerPage.getByRole("button", { name: "Sign out" }).click()
+    try {
+      await revokerPage.waitForURL(
+        (url) =>
+          url.pathname === "/auth/signin" ||
+          (url.hostname === authorities.identity &&
+            url.pathname.endsWith("/protocol/openid-connect/auth")),
+        { timeout: 5_000 },
+      )
+    } catch {
+      throw new Error(
+        `Revoking browser did not reach sign-in at ${revokerPage.url()}: ${(await revokerPage.locator("body").innerText()).slice(0, 500)}`,
+      )
+    }
+    await revoker.close()
+    await page.goto(`${consoleOrigin}/hardware`)
+    await assertExpiredSignIn(page, "/hardware")
+
+    await signIn(page, consoleOrigin, credentials.admin, "/")
+    await advanceClock(241_000)
+    const refreshBefore = oidc.refreshCount
+    const secondPage = await context.newPage()
+    await Promise.all([
+      page.goto(`${consoleOrigin}/keys`),
+      secondPage.goto(`${consoleOrigin}/inference`),
+    ])
+    assert.equal(oidc.refreshCount - refreshBefore, 1)
+    await assertRole(page, "Administrator")
+    await assertRole(secondPage, "Administrator")
+    await secondPage.close()
+
+    await advanceClock(241_000)
+    oidc.setAvailable(false)
+    await page.goto(`${consoleOrigin}/settings`)
+    const unavailableHeading = page.getByRole("heading", {
+      name: "Identity service temporarily unavailable",
+    })
+    if ((await unavailableHeading.count()) !== 1) {
+      throw new Error(
+        `Identity outage did not render its recoverable state at ${page.url()}: ${(await page.locator("body").innerText()).slice(0, 500)}`,
+      )
+    }
+    await unavailableHeading.waitFor()
+    assert.equal(new URL(page.url()).pathname, "/auth/unavailable")
+    assert.equal(new URL(page.url()).searchParams.get("returnTo"), "/settings")
+    assert.ok(sessionCookie(await context.cookies(consoleOrigin)))
+    oidc.setAvailable(true)
+    await advanceClock(6_000)
+    await page.getByRole("link", { name: "Retry" }).click()
+    await page.getByRole("heading", { name: "Settings" }).waitFor()
+    if (integratedCoreMode && firecrawlControl) {
+      const firecrawlRow = page
+        .getByRole("row")
+        .filter({ has: page.getByRole("cell", { name: "Firecrawl" }) })
+      assert.equal(
+        await firecrawlRow.getByRole("cell", { name: "Reachable" }).count(),
+        1,
+        "Settings did not project the actual private Firecrawl service as reachable.",
+      )
+    }
+
+    await advanceClock(8 * 60 * 60 * 1000 + 1)
+    await page.goto(`${consoleOrigin}/team`)
+    await assertExpiredSignIn(page, "/team")
+    assert.equal(
+      (await context.cookies(consoleOrigin)).some(
+        (cookie) => cookie.name === "__Host-llm-machines-session",
+      ),
+      false,
+    )
+
+    await page.goto(
+      `${consoleOrigin}/auth/signin?returnTo=${encodeURIComponent("https://attacker.invalid/")}`,
+    )
+    const keycloakLink = page.getByRole("link", { name: /Keycloak/ })
+    if ((await keycloakLink.count()) === 1) {
+      await keycloakLink.click()
+    }
+    await completeIdentityLogin(page, credentials.operator)
+    assert.equal(new URL(page.url()).pathname, "/")
+    await assertRole(page, "Operator")
+    await assertConsoleNavigation(page, consoleOrigin)
+    await page.goto(`${consoleOrigin}/keys/apps/new`)
+    await page.getByRole("heading", { name: "Admin access required" }).waitFor()
+    await page.goto(`${consoleOrigin}/team/members/new`)
+    await page.getByRole("heading", { name: "Admin access required" }).waitFor()
+    await page.goto(`${consoleOrigin}/activity`)
+    assert.equal(
+      await page.getByText("Export JSON", { exact: true }).count(),
+      0,
+    )
+    assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
+    if (credentialLifecycleMode && applicationFlow) {
+      await assertOperatorApplicationReadOnly(page, applicationFlow)
+    }
+    if (observabilityMode) {
+      await assertObservabilityConsoleProjection(
+        page,
+        consoleOrigin,
+        observabilityCanaries,
+      )
+    }
+
+    await page.evaluate(async () => navigator.clipboard.writeText(""))
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), "")
+    await page.goto(`${consoleOrigin}/`)
+    await page.getByRole("button", { name: "Sign out" }).click()
+    await page.waitForURL(
+      (url) =>
+        url.pathname === "/auth/signin" ||
+        (url.hostname === authorities.identity &&
+          url.pathname.endsWith("/protocol/openid-connect/auth")),
+    )
+    await page.goto(`${consoleOrigin}/inference`)
+    assert.equal(new URL(page.url()).hostname, authorities.identity)
+    await page.getByLabel("Username").waitFor()
+    if (postgresControl) {
+      postgresPersistenceEvidence = inspectPostgresPersistence(
+        sensitiveValues,
+        applicationFlow,
+      )
+    }
+    assert.deepEqual(pageErrors, [])
+    assertNoSensitiveValues(
+      browserMetadata,
+      sensitiveValues,
+      "browser metadata",
+    )
+    await page.screenshot({
+      path: join(stateRoot, "credential-free-final.png"),
+    })
+    await context.close()
+
+    const browserVersion = browser.version()
+    await browser.close()
+    browser = undefined
+    evidence = {
+      architecture: process.arch,
+      browser: { name: "Google Chrome", version: browserVersion },
+      credentialMaterialPrinted: false,
+      evidenceClass: postgresPersistenceMode
+        ? "LOCAL_POSTGRES_RESTART_PERSISTENCE_ONLY"
+        : credentialLifecycleMode
+          ? "LOCAL_BROWSER_CREDENTIAL_LIFECYCLE_ONLY"
+          : liteLlmIntegrationMode
+            ? "LOCAL_PRIVATE_LITELLM_INTEGRATION_ONLY"
+            : observabilityMode
+              ? "LOCAL_BROWSER_OBSERVABILITY_PROJECTION_ONLY"
+              : applicationsMode
+                ? "LOCAL_BROWSER_APPLICATION_FLOW_ONLY"
+                : "LOCAL_BROWSER_SESSION_AND_ROLE_FLOW_ONLY",
+      ...(applicationFlow ? { flow: applicationFlow } : {}),
+      ...(observabilityFlow ? { observability: observabilityFlow } : {}),
+      ...(postgresOutageEvidence
+        ? { postgresOutage: postgresOutageEvidence }
+        : {}),
+      ...(postgresPersistenceEvidence
+        ? { persistence: postgresPersistenceEvidence }
+        : {}),
+      limitations: [
+        ...(postgresPersistenceMode
+          ? [
+              "Disposable local PostgreSQL is functional evidence, not VM103 or exact-Core qualification.",
+            ]
+          : [
+              "In-memory Console session storage is not PostgreSQL restart-persistence evidence.",
+            ]),
+        "The deterministic identity fixture is not Keycloak 26.7.0 runtime qualification.",
+        "A generated local CA with browser-only trust bypass is not appliance TLS evidence.",
+        "Reserved *.llmm.test aliases are loopback-only browser fixture authorities, not Product DNS constants.",
+        liteLlmIntegrationMode
+          ? `Exact LiteLLM ${liteLlmControl.imageContract.version} is private and disposable; deterministic inference is not SGLang or production-capacity evidence.`
+          : observabilityMode
+            ? "Prometheus, Alertmanager, and LiteLLM are deterministic private doubles, not packaged runtime qualification."
+            : applicationsMode
+              ? "Inference is deterministic; Firecrawl upstream execution remains F0-W1 evidence."
+              : "Inference is deterministic and Firecrawl is not exercised by F0-S1.",
+        "No result is Q0, release, capacity, or runtime-qualification evidence.",
+      ],
+      proved: [
+        "browser Authorization Code and PKCE login through the approved identity authority",
+        "safe same-origin return handling and one-time expired-session redirect",
+        "revoked and expired sessions clear local browser custody without a frozen Console",
+        "retryable identity outage preserves the session and recovers without a redirect loop",
+        "parallel browser requests serialize refresh-token rotation",
+        "logout clears local custody and protected navigation requires login",
+        "Admin and Operator can use all retained Console navigation without native expert surfaces",
+        "Operator is denied Admin-only Key, Team, and audit-export controls",
+        ...(postgresPersistenceMode
+          ? [
+              "real Product migrations initialize an empty disposable PostgreSQL database",
+              "Admin and Operator encrypted opaque sessions plus Key, credential, usage, audit, and Firecrawl metadata survive one controlled BFF restart",
+              "revoked credentials remain denied while an independently created second Key remains accepted after restart",
+              "PostgreSQL unavailability degrades readiness and recovers without state corruption",
+              "workload content and secret canaries remain absent from PostgreSQL and teardown artifacts",
+            ]
+          : []),
+        ...(applicationFlow
+          ? [
+              liteLlmIntegrationMode
+                ? "Admin creates a Key and its customer-facing credential reaches private LiteLLM only through the Product API authority"
+                : "Admin creates a Key and receives separate one-time inference and Firecrawl credentials through the actual Console UI",
+              liteLlmIntegrationMode
+                ? "non-streaming and streaming Chat Completions traverse actual LiteLLM and update usage and last-use metadata"
+                : "a standard OpenAI-compatible client reaches the Product API authority and updates passive connection, usage, and last-use evidence",
+              liteLlmIntegrationMode
+                ? "the Console renders real LiteLLM health, served models, usage, route summary, and safe credential metadata without mutation authority"
+                : "Firecrawl is disabled by default and requires explicit disclaimer acknowledgement for the selected Key",
+              ...(liteLlmIntegrationMode
+                ? [
+                    "LiteLLM outage fails the Product API and Console projection closed, then recovers without exposing a native service route",
+                    "Key credentials cannot authenticate directly to LiteLLM and native LiteLLM paths remain absent from Product ingress",
+                  ]
+                : []),
+              ...(credentialLifecycleMode
+                ? [
+                    "Admin revokes immutable inference and Firecrawl credentials through the Console while exact second-Key isolation remains enforced",
+                    "one-time secrets leave subsequent DOM, history, copied UI state, browser metadata, screenshots, and teardown artifacts",
+                    "Operator remains read-only across Key and credential lifecycle surfaces",
+                  ]
+                : []),
+            ]
+          : []),
+        ...(observabilityFlow
+          ? [
+              "Admin and Operator read the same source-backed Hardware and Inference projections through the actual Console",
+              "Prometheus supplies seven curated hardware signals and Alertmanager supplies allowlisted metadata-only active alerts",
+              "LiteLLM supplies health, usage, model inventory, route summary, and safe credential metadata through GET-only private reads",
+              "private source outage renders controlled unavailable states and the Console recovers without native service links",
+              "Grafana, Alertmanager, LiteLLM, and Keycloak native administration remain absent from Product navigation",
+              "queue depth remains explicitly not configured and no workload or source credential canary reaches browser or teardown state",
+            ]
+          : []),
+      ],
+      status: "passed",
+      temporaryStateRemoved: true,
+    }
+
+    async function advanceClock(milliseconds) {
+      currentTime = new Date(currentTime.getTime() + milliseconds)
+      await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
+        mode: 0o600,
+      })
+    }
+
+    async function synchronizeFixtureClock() {
+      currentTime = new Date()
+      await writeFile(clockFile, `${currentTime.toISOString()}\n`, {
+        mode: 0o600,
+      })
+    }
+  } catch (error) {
+    const safeError = sanitizedError(error, sensitiveValues)
+    const bffDiagnostics = (
+      await Promise.all(
+        ["bff", "bff-before-restart", "bff-after-restart"].flatMap((name) =>
+          ["stdout", "stderr"].map((stream) =>
+            readFile(join(stateRoot, `${name}.${stream}.log`), "utf8").catch(
+              () => "",
+            ),
+          ),
+        ),
+      )
+    ).join("\n")
+    const diagnostics = [
+      ...tlsErrors
+        .filter(
+          (message) =>
+            !message.includes("ECONNRESET") &&
+            !message.includes("socket hang up"),
+        )
+        .map((message) => new Error(message)),
+      ...(observedOrigins.length
+        ? [new Error(`Observed session origins: ${observedOrigins.join(", ")}`)]
+        : []),
+      ...(oidc?.lastGrantFailure
+        ? [new Error(`OIDC metadata: ${oidc.lastGrantFailure}`)]
+        : []),
+      ...(identityFixtureFailures.length
+        ? [
+            new Error(
+              `Identity fixture metadata: ${identityFixtureFailures.join(", ")}`,
+            ),
+          ]
+        : []),
+      ...(browserResponses.length
+        ? [
+            new Error(
+              `Browser response metadata: ${JSON.stringify(browserResponses.slice(-20))}`,
+            ),
+          ]
+        : []),
+      ...(page
+        ? [
+            new Error(
+              `Browser state: ${new URL(page.url()).pathname}\n${redactedDiagnosticTail(
+                await page
+                  .locator("body")
+                  .innerText()
+                  .catch(() => ""),
+                sensitiveValues,
+              )}`,
+            ),
+          ]
+        : []),
+      ...(bffDiagnostics
+        ? [
+            new Error(
+              `BFF metadata:\n${redactedDiagnosticTail(
+                bffDiagnostics,
+                sensitiveValues,
+              )}`,
+            ),
+          ]
+        : []),
+    ]
+    failure = diagnostics.length
+      ? new AggregateError(
+          [safeError, ...diagnostics],
+          "F0-S1 browser proof failed.",
+        )
+      : safeError
+  } finally {
+    await browser?.close().catch(() => undefined)
+    const cleanup = await Promise.allSettled([
+      ...servers.map(closeServer),
+      ...children.map(stopChild),
+    ])
+    const failures = cleanup
+      .filter((result) => result.status === "rejected")
+      .map((result) => result.reason)
+    if (failures.length > 0) {
+      failure = new AggregateError(
+        failure ? [failure, ...failures] : failures,
+        "F0-S1 cleanup did not complete.",
+      )
+    }
+    await rm(join(stateRoot, "f0-p1-session-keyring.json"), { force: true })
+    await rm(join(stateRoot, "f0-o1-observability-token"), { force: true })
+    if (failures.length === 0 && sensitiveValues.length > 0) {
+      try {
+        await assertStateFilesCredentialFree(stateRoot, sensitiveValues)
+      } catch (error) {
+        failure = failure
+          ? new AggregateError(
+              [failure, error],
+              "F0-U2 secret-retention verification failed.",
+            )
+          : error
+      }
+    }
+    await rm(stateRoot, { force: true, recursive: true })
+    await rm(processTemporaryRoot, { force: true, recursive: true })
+    if (await exists(stateRoot)) {
+      failure = new Error("F0-U2 temporary state was not removed.")
+    }
+    if (await exists(processTemporaryRoot)) {
+      failure = new Error("F0-U2 process temporary state was not removed.")
+    }
+  }
+  if (failure) {
+    throw failure
+  }
+  assert.ok(evidence)
+  return evidence
+}
+
+async function signIn(page, consoleOrigin, userCredentials, returnPath) {
+  await page.goto(`${consoleOrigin}${returnPath}`)
+  const username = page.getByLabel("Username")
+  if ((await username.count()) === 1 && (await username.isVisible())) {
+    await completeIdentityLogin(page, userCredentials)
+    return
+  }
+  const loginLink = page.getByRole("link", { name: /Keycloak/ })
+  if ((await loginLink.count()) !== 1) {
+    throw new Error(
+      `Console sign-in link was not rendered at ${page.url()}: ${(await page.locator("body").innerText()).slice(0, 500)}`,
+    )
+  }
+  await loginLink.click()
+  await completeIdentityLogin(page, userCredentials)
+}
+
+async function completeIdentityLogin(page, userCredentials) {
+  if (keycloakIdentityMode) {
+    const navigation = page.locator("nav[aria-label='Console navigation']")
+    const username = page.locator("#username")
+    await Promise.race([
+      navigation.waitFor({ timeout: 20_000 }),
+      username.waitFor({ timeout: 20_000 }),
+    ])
+    if ((await navigation.count()) === 1 && (await navigation.isVisible())) {
+      return
+    }
+    const identityCookies = await page.context().cookies(page.url())
+    assert.ok(
+      identityCookies.some((cookie) => cookie.name === "AUTH_SESSION_ID"),
+      "Keycloak did not establish its identity-host login cookie.",
+    )
+    assert.equal(
+      identityCookies.some((cookie) =>
+        cookie.name.startsWith("__Host-llm-machines-"),
+      ),
+      false,
+      "A Product Console cookie reached the identity authority.",
+    )
+    await username.fill(userCredentials.username)
+    await page.locator("#password").fill(userCredentials.password)
+    await page.locator("#kc-login").click()
+    try {
+      await navigation.waitFor({ timeout: 20_000 })
+    } catch {
+      const loginEvents = sanitizedKeycloakLoginEvents()
+      throw new Error(
+        `Console navigation was not rendered after Keycloak callback at ${sanitizedIdentityUrl(page.url())}: ${(await page.locator("body").innerText()).slice(0, 500)}; candidateIdentityEvents=${JSON.stringify(loginEvents)}`,
+      )
+    }
+    return
+  }
+  await page
+    .getByRole("heading", { name: "Fixture identity sign in" })
+    .waitFor({ timeout: 10_000 })
+  const loginCookie = (await page.context().cookies()).find(
+    (cookie) => cookie.name === "__Host-llm-machines-login",
+  )
+  assert.ok(loginCookie, "The browser did not retain the opaque login cookie.")
+  assert.equal(loginCookie.httpOnly, true)
+  assert.equal(loginCookie.secure, true)
+  await page.getByLabel("Username").fill(userCredentials.username)
+  await page.getByLabel("Password").fill(userCredentials.password)
+  await page.getByRole("button", { name: "Sign in" }).click()
+  const navigation = page.locator("nav[aria-label='Console navigation']")
+  try {
+    await navigation.waitFor({ timeout: 10_000 })
+  } catch {
+    throw new Error(
+      `Console navigation was not rendered after identity callback at ${page.url()}: ${(await page.locator("body").innerText()).slice(0, 500)}`,
+    )
+  }
+}
+
+async function assertRole(page, label) {
+  await page.getByText(label, { exact: true }).waitFor()
+}
+
+async function assertExpiredSignIn(page, returnTo) {
+  const current = new URL(page.url())
+  if (
+    current.hostname === authorities.identity &&
+    current.pathname.endsWith("/protocol/openid-connect/auth")
+  ) {
+    await page.getByLabel("Username").waitFor()
+    return
+  }
+  await page
+    .getByText("Your Console session expired.", { exact: false })
+    .waitFor()
+  assert.equal(current.pathname, "/auth/signin")
+  assert.equal(current.searchParams.get("session"), "expired")
+  assert.equal(current.searchParams.get("returnTo"), returnTo)
+}
+
+async function assertConsoleNavigation(page, consoleOrigin) {
+  for (const [path, heading] of consolePaths) {
+    await navigateConsolePath(page, consoleOrigin, path, heading)
+  }
+  const hrefs = await page
+    .locator("a")
+    .evaluateAll((links) =>
+      links.map((link) => link.getAttribute("href") ?? ""),
+    )
+  assert.equal(
+    hrefs.some((href) => /(?:grafana|litellm|keycloak.*admin)/i.test(href)),
+    false,
+  )
+}
+
+async function navigateConsolePath(page, consoleOrigin, path, heading) {
+  const deadline = performance.now() + 30_000
+  let lastReason = "navigation did not start"
+  while (performance.now() < deadline) {
+    let response = null
+    try {
+      response = await page.goto(`${consoleOrigin}${path}`, {
+        timeout: 5_000,
+        waitUntil: "domcontentloaded",
+      })
+    } catch (error) {
+      lastReason = `navigation error: ${error instanceof Error ? error.message : String(error)}`
+      await page.waitForTimeout(250)
+      continue
+    }
+
+    const headingVisible = await page
+      .getByRole("heading", { name: heading })
+      .first()
+      .isVisible()
+      .catch(() => false)
+    const result = classifyConsoleNavigationAttempt({
+      actualUrl: page.url(),
+      consoleOrigin,
+      expectedPath: path,
+      headingVisible,
+      responseStatus: response?.status() ?? null,
+    })
+    if (result.status === "READY") return
+    if (result.status === "FAIL") {
+      throw new Error(`${path} navigation failed: ${result.reason}.`)
+    }
+    lastReason = result.reason
+    await page.waitForTimeout(250)
+  }
+  throw new Error(`${path} did not recover within 30 seconds: ${lastReason}.`)
+}
+
+async function assertDesktopViewportLayout(page, consoleOrigin) {
+  const previousViewport = page.viewportSize()
+  try {
+    await page.setViewportSize({ height: 768, width: 1024 })
+    for (const [path, heading] of [
+      ["/keys", "Keys"],
+      ["/inference", "Inference"],
+      ["/hardware", "Hardware"],
+      ["/settings", "Settings"],
+    ]) {
+      await page.goto(`${consoleOrigin}${path}`)
+      await page.getByRole("heading", { name: heading }).first().waitFor()
+      const layout = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        mainRight:
+          document.querySelector("main")?.getBoundingClientRect().right ?? 0,
+        scrollWidth: document.documentElement.scrollWidth,
+      }))
+      assert.equal(
+        layout.scrollWidth,
+        layout.clientWidth,
+        `${path} overflowed at the 1024-pixel desktop boundary.`,
+      )
+      assert.ok(
+        layout.mainRight <= layout.clientWidth,
+        `${path} clipped its main Console surface at 1024 pixels.`,
+      )
+    }
+
+    await page.goto(`${consoleOrigin}/team`)
+    await page.getByRole("heading", { name: "Team" }).first().waitFor()
+    assert.equal(
+      await page.getByRole("link", { name: "Import CSV" }).count(),
+      0,
+    )
+    assert.equal(
+      await page.getByRole("link", { name: "Create group" }).count(),
+      0,
+    )
+  } finally {
+    if (previousViewport) await page.setViewportSize(previousViewport)
+  }
+}
+
+async function proveKeycloakIdentityCookieBoundary({
+  certificate,
+  context,
+  edgePort,
+}) {
+  const cookies = await context.cookies()
+  const consoleCookies = cookies.filter(
+    (cookie) => cookie.domain === authorities.console,
+  )
+  const identityCookies = cookies.filter(
+    (cookie) => cookie.domain === authorities.identity,
+  )
+  const productSession = sessionCookie(consoleCookies)
+  assert.ok(
+    identityCookies.some((cookie) =>
+      ["KEYCLOAK_IDENTITY", "KEYCLOAK_SESSION"].includes(cookie.name),
+    ),
+    "Keycloak did not retain a native identity-host session cookie.",
+  )
+  assert.equal(
+    identityCookies.some((cookie) =>
+      cookie.name.startsWith("__Host-llm-machines-"),
+    ),
+    false,
+  )
+  assert.equal(
+    consoleCookies.some((cookie) => cookie.name.startsWith("KEYCLOAK_")),
+    false,
+  )
+
+  const deniedNativePaths = [
+    "/admin/",
+    "/admin/master/console/",
+    "/realms/master/admin/",
+    "/realms/llm-machines/admin/",
+  ]
+  for (const path of deniedNativePaths) {
+    const response = await requestHttpsEdge(
+      `https://127.0.0.1:${edgePort}${path}`,
+      publicAuthorityHost(authorities.identity, edgePort),
+      certificate,
+      authorities.identity,
+    )
+    assert.equal(response.status, 404, `${path} was not denied.`)
+  }
+  return {
+    identityCookieNames: [...new Set(identityCookies.map(({ name }) => name))]
+      .filter((name) => !name.includes("RESTART"))
+      .sort(),
+    nativeAdminPathsDenied: deniedNativePaths,
+    productSessionCookie: productSession.name,
+  }
+}
+
+async function proveKeycloakTeamConsoleFlow({
+  bffPort,
+  consoleOrigin,
+  context,
+  credentials,
+  page,
+  sensitiveValues,
+  synchronizeClock,
+}) {
+  const displayName = `F0 I2 Operator ${randomBytes(4).toString("hex")}`
+  const email = `f0-i2-${randomBytes(5).toString("hex")}@fixture.invalid`
+
+  await page.goto(`${consoleOrigin}/team`)
+  await page.getByRole("heading", { name: "Team" }).first().waitFor()
+  await page.getByText("admin fixture", { exact: true }).waitFor()
+  await page.getByText("operator fixture", { exact: true }).waitFor()
+
+  await page.goto(`${consoleOrigin}/team/members/new`)
+  await page.getByRole("heading", { name: "Team > New member" }).waitFor()
+  await page.getByLabel("Name").fill(displayName)
+  await page.getByLabel("Company email").fill(email)
+  await page.getByLabel("Role").selectOption("operator")
+  await page.getByLabel("Group").selectOption({ label: "Operators" })
+  await page.getByRole("button", { name: "Create user" }).click()
+  await page.getByText("User created.", { exact: true }).waitFor()
+  const firstPassword = await page.getByLabel("Generated password").inputValue()
+  if (firstPassword) sensitiveValues.push(firstPassword)
+  assert.ok(firstPassword.length >= 20)
+  const detailHref = await page
+    .getByRole("link", { name: "Open member detail" })
+    .getAttribute("href")
+  assert.match(detailHref ?? "", /^\/team\/members\/[0-9a-f-]{36}$/)
+  const memberId = detailHref.split("/").at(-1)
+
+  await page.goto(`${consoleOrigin}${detailHref}`)
+  await page.getByRole("heading", { name: `Team > ${displayName}` }).waitFor()
+  const username = await page
+    .locator("dt", { hasText: "Username" })
+    .locator("xpath=following-sibling::dd")
+    .innerText()
+  assert.equal(
+    (await page.locator("body").innerText()).includes(firstPassword),
+    false,
+  )
+  await page.getByText("Operator", { exact: true }).first().waitFor()
+  await page.getByText("Active", { exact: true }).first().waitFor()
+  await synchronizeClock()
+  await assertKeycloakPasswordOutcome({
+    accepted: true,
+    consoleOrigin,
+    page,
+    password: firstPassword,
+    username,
+  })
+
+  await page.getByRole("button", { name: "Generate password" }).click()
+  await page.getByText("Password generated.", { exact: true }).waitFor()
+  const rotatedPassword = await page
+    .getByLabel("Generated password")
+    .inputValue()
+  if (rotatedPassword) sensitiveValues.push(rotatedPassword)
+  assert.ok(rotatedPassword.length >= 20)
+  assert.notEqual(rotatedPassword, firstPassword)
+  await synchronizeClock()
+  await assertKeycloakPasswordOutcome({
+    accepted: false,
+    consoleOrigin,
+    page,
+    password: firstPassword,
+    username,
+  })
+  await synchronizeClock()
+  await assertKeycloakPasswordOutcome({
+    accepted: true,
+    consoleOrigin,
+    page,
+    password: rotatedPassword,
+    username,
+  })
+
+  await page.goto(`${consoleOrigin}/team`)
+  await page.getByRole("heading", { name: "Team" }).first().waitFor()
+  const teamBody = await page.locator("body").innerText()
+  assert.equal(teamBody.includes(firstPassword), false)
+  assert.equal(teamBody.includes(rotatedPassword), false)
+
+  await page.goto(`${consoleOrigin}${detailHref}`)
+  await page.getByRole("button", { name: "Disable user" }).click()
+  await page.getByText("Team member disabled.", { exact: true }).waitFor()
+  await page.getByText("Disabled", { exact: true }).first().waitFor()
+  await page.getByText("Operator", { exact: true }).first().waitFor()
+  await page.getByText("Operators", { exact: true }).first().waitFor()
+  await page.getByRole("button", { name: "Reactivate user" }).click()
+  await page.getByText("Team member reactivated.", { exact: true }).waitFor()
+  await page.getByText("Active", { exact: true }).first().waitFor()
+  await page.getByText("Operator", { exact: true }).first().waitFor()
+  await page.getByText("Operators", { exact: true }).first().waitFor()
+
+  await page.goto(`${consoleOrigin}/`)
+  await page.getByRole("button", { name: "Sign out" }).click()
+  await page.waitForURL((url) => url.pathname === "/auth/signin")
+  await context.clearCookies()
+  await synchronizeClock()
+  await signIn(page, consoleOrigin, credentials.operator, "/team")
+  await assertRole(page, "Operator")
+  await page.getByText(displayName, { exact: true }).waitFor()
+  assert.equal(await page.getByRole("link", { name: "Create user" }).count(), 0)
+  await page.goto(`${consoleOrigin}/team/members/new`)
+  await page.getByRole("heading", { name: "Admin access required" }).waitFor()
+  await page.goto(`${consoleOrigin}${detailHref}`)
+  await page.getByRole("heading", { name: `Team > ${displayName}` }).waitFor()
+  for (const action of [
+    "Generate password",
+    "Disable user",
+    "Reactivate user",
+    "Delete",
+  ]) {
+    assert.equal(await page.getByRole("button", { name: action }).count(), 0)
+  }
+  const mutationCountBefore = identityMutationJournalRowCount()
+  const operatorSession = sessionCookie(await context.cookies(consoleOrigin))
+  const deniedMutation = await context.request.post(
+    `http://127.0.0.1:${bffPort}/api/admin/team/members/${encodeURIComponent(memberId)}/disable`,
+    {
+      data: {},
+      failOnStatusCode: false,
+      headers: {
+        Authorization: `Bearer ${credentials.bffService}`,
+        "Idempotency-Key": randomUUID(),
+        "x-llm-machines-console-session": operatorSession.value,
+      },
+    },
+  )
+  assert.equal(deniedMutation.status(), 403)
+  await deniedMutation.dispose()
+  assert.equal(identityMutationJournalRowCount(), mutationCountBefore)
+  await page.reload()
+  await page.getByText("Active", { exact: true }).first().waitFor()
+  await page.getByText("Operator", { exact: true }).first().waitFor()
+  await page.getByText("Operators", { exact: true }).first().waitFor()
+
+  return {
+    adminCreateOperator: "passed",
+    canonicalGroup: "Operators",
+    disableReactivate: "passed",
+    memberId,
+    oneTimePasswordReveal: "passed",
+    operatorMutationDenial: "passed",
+    passwordRotation: "passed",
+  }
+}
+
+async function assertIntegratedTeamProjection(
+  page,
+  consoleOrigin,
+  canManageUsers,
+) {
+  await page.goto(`${consoleOrigin}/team`)
+  await page.getByRole("heading", { name: "Team" }).first().waitFor()
+  await page.getByText("admin fixture", { exact: true }).waitFor()
+  await page.getByText("operator fixture", { exact: true }).waitFor()
+  assert.equal(
+    await page
+      .getByRole("heading", { name: "Keycloak admin API not configured" })
+      .count(),
+    0,
+  )
+  assert.equal(
+    await page.getByRole("link", { name: "Create user" }).count(),
+    canManageUsers ? 1 : 0,
+  )
+  if (!canManageUsers) {
+    await page.goto(`${consoleOrigin}/team/members/new`)
+    await page.getByRole("heading", { name: "Admin access required" }).waitFor()
+  }
+}
+
+async function assertKeycloakPasswordOutcome({
+  accepted,
+  consoleOrigin,
+  page,
+  password,
+  username,
+}) {
+  const browser = page.context().browser()
+  assert.ok(browser)
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: !founderUatPlacement,
+  })
+  const probe = await context.newPage()
+  try {
+    await probe.goto(`${consoleOrigin}/team`)
+    await probe.getByRole("link", { name: /Keycloak/ }).click()
+    await probe.locator("#username").fill(username)
+    await probe.locator("#password").fill(password)
+    const callbackResponsePromise = probe
+      .waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/console/session/callback",
+        { timeout: 20_000 },
+      )
+      .catch(() => null)
+    await probe.locator("#kc-login").click()
+    if (accepted) {
+      const expectedConsole = new URL(consoleOrigin)
+      try {
+        await probe.waitForURL(
+          (url) =>
+            url.origin === expectedConsole.origin && url.pathname === "/team",
+          { timeout: 20_000 },
+        )
+      } catch {
+        const observed = new URL(probe.url())
+        const callbackResponse = await callbackResponsePromise
+        const callbackLocation = callbackResponse?.headers().location
+        const callbackTarget = callbackLocation
+          ? new URL(callbackLocation, consoleOrigin)
+          : null
+        const cookieMetadata = (await context.cookies())
+          .map((cookie) => `${cookie.name}@${cookie.domain}${cookie.path}`)
+          .sort()
+        throw new Error(
+          `F0-I2 accepted password login stopped at ${observed.hostname}${observed.pathname}; callback=${callbackResponse?.status() ?? "missing"}->${callbackTarget ? `${callbackTarget.hostname}${callbackTarget.pathname}` : "missing"}; cookies=${cookieMetadata.join(",") || "none"}.`,
+        )
+      }
+      assert.equal(await probe.locator("#kc-totp-settings-form").count(), 0)
+      return
+    }
+    await probe.locator("#username").waitFor({ timeout: 20_000 })
+    assert.equal(await probe.locator("#kc-totp-settings-form").count(), 0)
+    assert.match(
+      await probe.locator("body").innerText(),
+      /Invalid username or password/i,
+    )
+  } finally {
+    await context.close()
+  }
+}
+
+async function proveKeycloakIdentityConsoleFlow({
+  certificate,
+  consoleOrigin,
+  context,
+  credentials,
+  edgePort,
+  page,
+}) {
+  const cookies = await context.cookies()
+  const consoleCookies = cookies.filter(
+    (cookie) => cookie.domain === authorities.console,
+  )
+  const identityCookies = cookies.filter(
+    (cookie) => cookie.domain === authorities.identity,
+  )
+  const productSession = sessionCookie(consoleCookies)
+  assert.equal(productSession.httpOnly, true)
+  assert.equal(productSession.secure, true)
+  assert.ok(
+    identityCookies.some((cookie) =>
+      ["KEYCLOAK_IDENTITY", "KEYCLOAK_SESSION"].includes(cookie.name),
+    ),
+    "Keycloak did not retain a native identity-host session cookie.",
+  )
+  assert.equal(
+    identityCookies.some((cookie) =>
+      cookie.name.startsWith("__Host-llm-machines-"),
+    ),
+    false,
+    "A Product session cookie reached the identity authority.",
+  )
+  assert.equal(
+    consoleCookies.some((cookie) => cookie.name.startsWith("KEYCLOAK_")),
+    false,
+    "A Keycloak native cookie reached the Console authority.",
+  )
+
+  const deniedNativePaths = [
+    "/admin/",
+    "/admin/master/console/",
+    "/realms/master/admin/",
+    "/realms/llm-machines/admin/",
+  ]
+  for (const path of deniedNativePaths) {
+    const response = await requestHttpsEdge(
+      `https://127.0.0.1:${edgePort}${path}`,
+      publicAuthorityHost(authorities.identity, edgePort),
+      certificate,
+      authorities.identity,
+    )
+    assert.equal(response.status, 404, `${path} was not denied.`)
+  }
+
+  await page.goto(`${consoleOrigin}/`)
+  await page.getByRole("button", { name: "Sign out" }).click()
+  await page.waitForURL((url) => url.pathname === "/auth/signin")
+  await page.goto(`${consoleOrigin}/inference`)
+  assert.equal(new URL(page.url()).pathname, "/auth/signin")
+  assert.equal(new URL(page.url()).searchParams.get("returnTo"), "/inference")
+
+  await context.clearCookies()
+  await signIn(page, consoleOrigin, credentials.operator, "/")
+  await assertRole(page, "Operator")
+  await assertConsoleNavigation(page, consoleOrigin)
+  await page.goto(`${consoleOrigin}/keys/apps/new`)
+  await page.getByRole("heading", { name: "Admin access required" }).waitFor()
+  await page.goto(`${consoleOrigin}/team/members/new`)
+  await page.getByRole("heading", { name: "Admin access required" }).waitFor()
+  await page.goto(`${consoleOrigin}/activity`)
+  assert.equal(await page.getByText("Export JSON", { exact: true }).count(), 0)
+  assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
+
+  await page.goto(`${consoleOrigin}/`)
+  await page.getByRole("button", { name: "Sign out" }).click()
+  await page.waitForURL((url) => url.pathname === "/auth/signin")
+  await page.goto(`${consoleOrigin}/team`)
+  assert.equal(new URL(page.url()).pathname, "/auth/signin")
+  assert.equal(new URL(page.url()).searchParams.get("returnTo"), "/team")
+
+  return {
+    adminRole: "Administrator",
+    identityCookieNames: [...new Set(identityCookies.map(({ name }) => name))]
+      .filter((name) => !name.includes("RESTART"))
+      .sort(),
+    nativeAdminPathsDenied: deniedNativePaths,
+    operatorRole: "Operator",
+    productSessionCookie: productSession.name,
+  }
+}
+
+async function proveCommissioningSessionContinuity({
+  advanceClock,
+  browser,
+  consoleOrigin,
+  context,
+  credentials,
+  page,
+  restartBff,
+}) {
+  assert.equal(typeof restartBff, "function")
+  await advanceClock(6 * 60 * 1000)
+  const secondPage = await context.newPage()
+  try {
+    await Promise.all([
+      navigateConsolePath(page, consoleOrigin, "/keys", "Keys"),
+      navigateConsolePath(secondPage, consoleOrigin, "/inference", "Inference"),
+    ])
+    await assertRole(page, "Administrator")
+    await assertRole(secondPage, "Administrator")
+  } finally {
+    await secondPage.close()
+  }
+
+  const operatorContext = await browser.newContext({
+    ignoreHTTPSErrors: !founderUatPlacement,
+  })
+  const operatorPage = await operatorContext.newPage()
+  try {
+    await signIn(operatorPage, consoleOrigin, credentials.operator, "/")
+    await assertRole(operatorPage, "Operator")
+    const restart = await restartBff()
+    await Promise.all([
+      navigateConsolePath(page, consoleOrigin, "/settings", "Settings"),
+      navigateConsolePath(operatorPage, consoleOrigin, "/team", "Team"),
+    ])
+    await assertRole(page, "Administrator")
+    await assertRole(operatorPage, "Operator")
+    return {
+      bffRestart: restart,
+      concurrentRefreshWindow: "PASSED",
+    }
+  } finally {
+    await operatorContext.close()
+  }
+}
+
+async function proveObservabilityConsoleFlow({
+  alertmanagerControl,
+  consoleOrigin,
+  inferenceControl,
+  observabilityCanaries,
+  page,
+  prometheusControl,
+}) {
+  await assertObservabilityConsoleProjection(
+    page,
+    consoleOrigin,
+    observabilityCanaries,
+  )
+
+  inferenceControl.available = false
+  await page.goto(`${consoleOrigin}/inference`)
+  await page
+    .getByText(
+      "LiteLLM is configured, but aggregate inference usage is unavailable.",
+    )
+    .waitFor()
+  assert.equal(
+    (await page.getByText("Unavailable", { exact: true }).count()) > 0,
+    true,
+  )
+  inferenceControl.available = true
+  await assertObservabilityConsoleProjection(
+    page,
+    consoleOrigin,
+    observabilityCanaries,
+  )
+
+  prometheusControl.available = false
+  alertmanagerControl.available = false
+  await page.goto(`${consoleOrigin}/hardware`)
+  await page
+    .getByText(
+      /Prometheus federation is configured, but hardware metrics could not be read/,
+    )
+    .waitFor()
+  await page
+    .getByText(
+      /Alert federation is configured, but its current state could not be read/,
+    )
+    .waitFor()
+  prometheusControl.available = true
+  alertmanagerControl.available = true
+  await assertObservabilityConsoleProjection(
+    page,
+    consoleOrigin,
+    observabilityCanaries,
+  )
+
+  for (const nativePath of ["/grafana", "/litellm", "/keycloak/admin"]) {
+    const response = await page.goto(`${consoleOrigin}${nativePath}`)
+    assert.equal(response?.status(), 404)
+  }
+
+  assertPrivateReadRequests(inferenceControl.requests, {
+    allowedPaths: new Set([
+      "/key/list",
+      "/model/info",
+      "/spend/logs/v2",
+      "/user/daily/activity/aggregated",
+      "/v1/model/info",
+      "/v1/models",
+    ]),
+    allowedQueryKeys: new Map([
+      [
+        "/key/list",
+        ["include_team_keys", "page", "return_full_object", "size"],
+      ],
+      ["/model/info", []],
+      [
+        "/spend/logs/v2",
+        ["end_date", "page", "page_size", "start_date", "status_filter"],
+      ],
+      ["/user/daily/activity/aggregated", ["end_date", "start_date"]],
+      ["/v1/model/info", []],
+      ["/v1/models", []],
+    ]),
+    source: "LiteLLM",
+  })
+  assertPrivateReadRequests(prometheusControl.requests, {
+    allowedPaths: new Set(["/api/v1/query", "/api/v1/query_range"]),
+    allowedQueryKeys: new Map([
+      ["/api/v1/query", ["query"]],
+      ["/api/v1/query_range", ["end", "query", "start", "step"]],
+    ]),
+    source: "Prometheus",
+  })
+  assertPrivateReadRequests(alertmanagerControl.requests, {
+    allowedPaths: new Set(["/-/ready", "/api/v2/alerts"]),
+    allowedQueryKeys: new Map([
+      ["/-/ready", []],
+      ["/api/v2/alerts", ["active", "inhibited", "silenced"]],
+    ]),
+    source: "Alertmanager",
+    unauthenticatedPaths: new Set(["/-/ready"]),
+  })
+
+  return {
+    activeAlerts: 1,
+    adminAndOperatorReadParity: "passed",
+    curatedHardwareSignals: 7,
+    grafanaAbsent: true,
+    liteLlmProjection: {
+      credentialMetadata: "safe-only",
+      models: 1,
+      requests: 17,
+      tokens: 1700,
+    },
+    nativeAdministration: "absent",
+    privateReads: {
+      alertmanager: summarizePrivateRequests(alertmanagerControl.requests),
+      liteLlm: summarizePrivateRequests(inferenceControl.requests),
+      prometheus: summarizePrivateRequests(prometheusControl.requests),
+    },
+    queueDepth: "not_configured",
+    sourceOutageRecovery: "passed",
+  }
+}
+
+async function proveIntegratedObservabilityConsoleFlow({
+  consoleOrigin,
+  founderUat,
+  page,
+}) {
+  await assertActualLiteLlmProjection(page, consoleOrigin)
+  await page.goto(`${consoleOrigin}/hardware`)
+  await page.getByRole("heading", { name: "Hardware" }).waitFor()
+  await page
+    .getByText("Prometheus is returning all 7 curated hardware signals.", {
+      exact: false,
+    })
+    .waitFor({ timeout: 30_000 })
+  for (const heading of [
+    "CPU utilization",
+    "GPU temperature",
+    "GPU utilization",
+    "RAM usage",
+    "Filesystem usage",
+    "Power draw",
+    "Network throughput",
+  ]) {
+    await page.getByRole("heading", { name: heading }).waitFor()
+  }
+  if (founderUat) {
+    await waitForFounderHealthyCpu({ consoleOrigin, page })
+    const alerts = page
+      .getByRole("heading", { name: "Active alerts", exact: true })
+      .locator("xpath=ancestor::section[1]")
+    await alerts.getByText("Healthy", { exact: true }).waitFor()
+    await alerts
+      .getByText("No active firing alerts were reported.", { exact: true })
+      .waitFor()
+  }
+  await page.goto(`${consoleOrigin}/`)
+  await page.getByRole("heading", { name: "Overview" }).waitFor()
+  await page.getByText("Models served", { exact: true }).waitFor()
+  await page.getByText("Targets up", { exact: true }).waitFor()
+  if (founderUat) {
+    const hardwareTile = page.locator("article").filter({
+      has: page.getByRole("heading", { name: "Hardware" }),
+    })
+    await hardwareTile.getByText("Available", { exact: true }).waitFor()
+    const systemTile = page.locator("article").filter({
+      has: page.getByRole("heading", { name: "System" }),
+    })
+    await systemTile.getByText("Operational", { exact: true }).waitFor()
+
+    await page.goto(`${consoleOrigin}/settings`)
+    await page.getByRole("heading", { name: "Settings" }).waitFor()
+    const grafanaRow = page.getByRole("row").filter({ hasText: "Grafana" })
+    await grafanaRow.getByText("Reachable", { exact: true }).waitFor()
+  }
+  const body = await page.locator("body").innerText()
+  assert.doesNotMatch(body, /Grafana.*(?:open|launch|visit)/i)
+  return {
+    alertmanager: founderUat
+      ? "actual-private-no-synthetic-alert"
+      : "actual-private-local-null-with-synthetic-alert",
+    grafana: "actual-private-no-customer-route",
+    hardwareSignals: 7,
+    liteLlmProjection:
+      "health-models-usage-route-summary-safe-credential-metadata",
+    prometheus: "actual-private",
+  }
+}
+
+async function waitForFounderHealthyCpu({ consoleOrigin, page }) {
+  const deadline = performance.now() + 120_000
+  let latestValue = null
+  while (performance.now() < deadline) {
+    const cpu = page
+      .getByRole("heading", { name: "CPU utilization", exact: true })
+      .locator("xpath=ancestor::section[1]")
+    await cpu.waitFor()
+    const value = cpu.getByText(/^\d+(?:\.\d+)?%$/)
+    if ((await value.count()) === 1) {
+      latestValue = Number.parseFloat((await value.innerText()).slice(0, -1))
+      if (Number.isFinite(latestValue) && latestValue < 85) return
+    }
+    await page.waitForTimeout(2_000)
+    await page.goto(`${consoleOrigin}/hardware`)
+  }
+  throw new Error(
+    `Founder CPU fixture did not warm below its warning threshold; latest=${latestValue ?? "unavailable"}`,
+  )
+}
+
+async function proveIntegratedNoBypass({ certificate, edgePort }) {
+  const denied = []
+  for (const [authority, path] of [
+    [authorities.console, "/grafana"],
+    [authorities.console, "/litellm"],
+    [authorities.console, "/keycloak/admin"],
+    [authorities.api, "/ui"],
+    [authorities.api, "/key/list"],
+    [authorities.api, "/model/info"],
+    [authorities.firecrawl, "/"],
+    [authorities.firecrawl, "/v2/crawl"],
+    [authorities.identity, "/admin/"],
+    [authorities.identity, "/realms/master/account"],
+  ]) {
+    const response = await requestHttpsEdgeWithHeaders({
+      certificate,
+      edgePort,
+      headers: {
+        authorization: "Bearer spoofed-customer-authority",
+        cookie: "KEYCLOAK_SESSION=spoofed; llmm-native=spoofed",
+        host: publicAuthorityHost(authority, edgePort),
+        "x-forwarded-host": "litellm.llmm.test",
+        "x-forwarded-proto": "http",
+      },
+      method: path === "/v2/crawl" ? "POST" : "GET",
+      path,
+      servername: authority,
+    })
+    assert.ok(
+      [400, 401, 403, 404, 421].includes(response.status),
+      `${authority}${path} bypass returned ${response.status}.`,
+    )
+    denied.push(`${authority}${path}`)
+  }
+  for (const authority of [
+    authorities.grafana,
+    authorities.keycloak,
+    authorities.litellm,
+  ]) {
+    const response = await requestHttpsEdgeWithHeaders({
+      certificate,
+      edgePort,
+      headers: { host: publicAuthorityHost(authority, edgePort) },
+      method: "GET",
+      path: "/",
+      servername: authorities.console,
+    })
+    assert.equal(response.status, 421)
+    denied.push(authority)
+  }
+  for (const [authority, path, method] of [
+    [authorities.grafana, "/api/admin/settings", "GET"],
+    [authorities.litellm, "/v1/agents", "GET"],
+    [authorities.keycloak, "/keycloak/admin/master/console/", "GET"],
+  ]) {
+    const response = await requestHttpsEdgeWithHeaders({
+      certificate,
+      edgePort,
+      headers: {
+        authorization: "Bearer llmm_t4_not-a-real-credential",
+        host: publicAuthorityHost(authority, edgePort),
+      },
+      method,
+      path,
+      servername: authority,
+    })
+    assert.ok(
+      [400, 403, 404, 421].includes(response.status),
+      `${authority}${path} forbidden native route returned ${response.status}.`,
+    )
+    denied.push(`${authority}${path}`)
+  }
+  const unsafe = await requestHttpsEdgeWithHeaders({
+    certificate,
+    edgePort,
+    headers: {
+      host: publicAuthorityHost(authorities.firecrawl, edgePort),
+    },
+    method: "POST",
+    path: "/v2/search?route=%2Fv2%2Fscrape",
+    servername: authorities.firecrawl,
+  })
+  assert.ok([400, 404].includes(unsafe.status))
+  return {
+    alternateAuthoritiesDenied: 3,
+    nativeAuthoritiesExactRoutesOnly: true,
+    nativeAndUnsafeRoutesDenied: denied,
+    spoofedCredentialAndForwardingHeadersDenied: true,
+  }
+}
+
+async function browserJson(page, path, options = {}) {
+  return page.evaluate(
+    async ({ body, method, path }) => {
+      const response = await fetch(path, {
+        body: body ? JSON.stringify(body) : undefined,
+        credentials: "same-origin",
+        headers: body ? { "content-type": "application/json" } : undefined,
+        method,
+      })
+      let parsed = null
+      try {
+        parsed = await response.json()
+      } catch {}
+      return { body: parsed, status: response.status }
+    },
+    { body: options.body, method: options.method ?? "GET", path },
+  )
+}
+
+async function proveIntegratedNativeAdministration({
+  browser,
+  certificate,
+  credentials,
+  edgePort,
+  synchronizeClock,
+}) {
+  const unifiedSso = await proveUnifiedNativeSsoAndLogout({
+    browser,
+    credentials,
+    edgePort,
+    synchronizeClock,
+  })
+  const grafanaAdmin = await nativeBrowserLogin({
+    browser,
+    credentials: credentials.admin,
+    entry: `${publicOrigin("grafana", edgePort)}/login/generic_oauth`,
+    requiredCookieName: "grafana_session",
+  })
+  const grafanaUser = await browserJson(grafanaAdmin.page, "/api/user")
+  const grafanaOrganizations = await browserJson(
+    grafanaAdmin.page,
+    "/api/user/orgs",
+  )
+  assert.equal(grafanaUser.status, 200)
+  assert.equal(grafanaUser.body?.isGrafanaAdmin, false)
+  assert.equal(grafanaOrganizations.body?.[0]?.role, "Editor")
+  const grafanaOperator = await nativeBrowserLogin({
+    browser,
+    credentials: credentials.operator,
+    deniedCookieName: "login_error",
+    entry: `${publicOrigin("grafana", edgePort)}/login/generic_oauth`,
+    expectDenied: true,
+  })
+  assert.equal(
+    (await grafanaOperator.context.cookies()).some(
+      ({ name }) => name === "grafana_session",
+    ),
+    false,
+  )
+  await grafanaOperator.context.close()
+  await grafanaAdmin.page.goto(`${publicOrigin("grafana", edgePort)}/logout`)
+  await eventually(
+    async () =>
+      !(await grafanaAdmin.context.cookies()).some(
+        ({ name }) => name === "grafana_session",
+      ),
+    60_000,
+  )
+  await grafanaAdmin.context.close()
+
+  const liteLlmAdmin = await nativeBrowserLogin({
+    browser,
+    credentials: credentials.admin,
+    entry: `${publicOrigin("litellm", edgePort)}/sso/key/generate`,
+  })
+  const liteLlmOperator = await nativeBrowserLogin({
+    browser,
+    credentials: credentials.operator,
+    entry: `${publicOrigin("litellm", edgePort)}/sso/key/generate`,
+  })
+  const [adminClaims, operatorClaims] = await Promise.all(
+    [liteLlmAdmin, liteLlmOperator].map(async (session) => {
+      await session.page.waitForURL(
+        (url) =>
+          url.origin === publicOrigin("litellm", edgePort) &&
+          url.pathname.startsWith("/ui"),
+        { timeout: 120_000 },
+      )
+      await eventually(
+        async () =>
+          (await session.context.cookies()).some(
+            ({ name }) => name === "token",
+          ),
+        60_000,
+      )
+      const token = (await session.context.cookies()).find(
+        ({ name }) => name === "token",
+      )
+      assert.ok(token)
+      assert.equal(token.secure, true)
+      assert.equal(token.httpOnly, false)
+      return nativeJwtClaims(decodeURIComponent(token.value))
+    }),
+  )
+  assert.equal(adminClaims.user_role, "proxy_admin")
+  assert.equal(adminClaims.user_id, credentials.admin.subject)
+  assert.equal(operatorClaims.user_role, "internal_user")
+  assert.equal(operatorClaims.user_id, credentials.operator.subject)
+  const adminKeyAlias = `founder-admin-${randomBytes(4).toString("hex")}`
+  const adminKey = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: adminClaims.key,
+    body: {
+      key_alias: adminKeyAlias,
+      models: ["fixture-model"],
+      user_id: credentials.admin.subject,
+    },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/key/generate",
+  })
+  assert.equal(adminKey.status, 200)
+  assert.match(adminKey.body?.key ?? "", /^sk-/)
+  assert.equal(adminKey.body?.user_id, credentials.admin.subject)
+  const operatorKeyAlias = `founder-operator-${randomBytes(4).toString("hex")}`
+  const operatorKey = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: operatorClaims.key,
+    body: {
+      key_alias: operatorKeyAlias,
+      models: ["fixture-model"],
+    },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/key/generate",
+  })
+  assert.equal(operatorKey.status, 200)
+  assert.match(operatorKey.body?.key ?? "", /^sk-/)
+  assert.equal(operatorKey.body?.user_id, credentials.operator.subject)
+  const operatorUiKeyList = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: operatorClaims.key,
+    caFile: certificate.ca,
+    edgePort,
+    method: "GET",
+    path: "/key/list?expand=false&include_created_by_keys=false&include_team_keys=false&page=1&return_full_object=true&size=50&sort_by=created_at&sort_order=desc&substring_matching=false",
+  })
+  assert.equal(operatorUiKeyList.status, 200)
+  const operatorUiKeyListJson = JSON.stringify(operatorUiKeyList.body)
+  assert.match(operatorUiKeyListJson, new RegExp(operatorKeyAlias))
+  assert.doesNotMatch(operatorUiKeyListJson, new RegExp(adminKeyAlias))
+  const globalMutation = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: operatorClaims.key,
+    body: {
+      litellm_params: { model: "openai/blocked" },
+      model_name: "blocked",
+    },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/model/new",
+  })
+  assert.ok([401, 403].includes(globalMutation.status))
+  const ownSpend = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: operatorClaims.key,
+    caFile: certificate.ca,
+    edgePort,
+    method: "GET",
+    path: "/user/info",
+  })
+  assert.equal(ownSpend.status, 200)
+  const ownKeyDelete = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: operatorClaims.key,
+    body: { keys: [operatorKey.body.key] },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/key/delete",
+  })
+  assert.equal(ownKeyDelete.status, 200)
+  const adminKeyDelete = await requestJsonThroughEdge({
+    authority: authorities.litellm,
+    bearerToken: adminClaims.key,
+    body: { keys: [adminKey.body.key] },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/key/delete",
+  })
+  assert.equal(adminKeyDelete.status, 200)
+  await Promise.all(
+    [liteLlmAdmin, liteLlmOperator].map((session) =>
+      logoutNativeLiteLlm(session, edgePort),
+    ),
+  )
+
+  const keycloakAdmin = await nativeBrowserLogin({
+    browser,
+    credentials: credentials.admin,
+    entry: `${publicOrigin("keycloak", edgePort)}/keycloak/admin/llm-machines/console/`,
+    captureKeycloakBearer: true,
+  })
+  assert.match(keycloakAdmin.bearer ?? "", /^eyJ/)
+  const users = await requestJsonThroughEdge({
+    authority: authorities.keycloak,
+    bearerToken: keycloakAdmin.bearer,
+    caFile: certificate.ca,
+    edgePort,
+    method: "GET",
+    path: "/keycloak/admin/realms/llm-machines/users?max=20",
+  })
+  assert.equal(users.status, 200)
+  const operator = users.body?.find(
+    ({ username }) => username === credentials.operator.username,
+  )
+  assert.match(operator?.id ?? "", /^[0-9a-f-]{36}$/)
+  const deleteDenied = await requestHttpsEdgeWithHeaders({
+    certificate,
+    edgePort,
+    headers: {
+      authorization: `Bearer ${keycloakAdmin.bearer}`,
+      host: publicAuthorityHost(authorities.keycloak, edgePort),
+    },
+    method: "DELETE",
+    path: `/keycloak/admin/realms/llm-machines/users/${operator.id}`,
+    servername: authorities.keycloak,
+  })
+  assert.equal(deleteDenied.status, 403)
+  const masterDenied = await requestHttpsEdgeWithHeaders({
+    certificate,
+    edgePort,
+    headers: {
+      authorization: `Bearer ${keycloakAdmin.bearer}`,
+      host: publicAuthorityHost(authorities.keycloak, edgePort),
+    },
+    method: "GET",
+    path: "/keycloak/admin/realms/master",
+    servername: authorities.keycloak,
+  })
+  assert.ok([403, 404].includes(masterDenied.status))
+  const keycloakOperator = await nativeBrowserLogin({
+    browser,
+    credentials: credentials.operator,
+    entry: `${publicOrigin("keycloak", edgePort)}/keycloak/admin/llm-machines/console/`,
+    expectDenied: true,
+  })
+  await keycloakOperator.context.close()
+  await logoutNativeKeycloak(keycloakAdmin, edgePort)
+
+  return {
+    grafana: {
+      admin: "Editor",
+      operator: "DENY",
+      serverAdministrator: false,
+    },
+    keycloak: {
+      admin: "SCOPED_APPLIANCE_REALM_ADMIN",
+      masterRealm: "DENY",
+      operator: "DENY",
+      userDelete: 403,
+    },
+    litellm: {
+      admin: "proxy_admin",
+      operator: "internal_user",
+      operatorGlobalMutation: "DENY",
+      operatorOwnKeyListIsolation: "PASS",
+      operatorOwnKeyAndSpend: "PASS",
+    },
+    nativeSessions: "SERVICE_OWNED",
+    status: "PASS",
+    unifiedSso,
+  }
+}
+
+async function proveUnifiedNativeSsoAndLogout({
+  browser,
+  credentials,
+  edgePort,
+  synchronizeClock,
+}) {
+  const results = {}
+  for (const [role, identity] of [
+    ["Admin", credentials.admin],
+    ["Operator", credentials.operator],
+  ]) {
+    const context = await browser.newContext({ ignoreHTTPSErrors: false })
+    const consolePage = await context.newPage()
+    await synchronizeClock()
+    await signIn(
+      consolePage,
+      publicOrigin("console", edgePort),
+      identity,
+      "/settings",
+    )
+    const credentialPrompts = []
+    const errors = []
+    const open = async (entry, expected) => {
+      const page = await context.newPage()
+      page.on("pageerror", (error) => {
+        const location = new URL(page.url())
+        errors.push({
+          kind: "pageerror",
+          message: error.message,
+          origin: location.origin,
+          path: location.pathname,
+        })
+      })
+      page.on("response", (response) => {
+        if (response.status() !== 400) return
+        const location = new URL(response.url())
+        errors.push({
+          kind: "response",
+          origin: location.origin,
+          path: location.pathname,
+          queryKeys: [...new Set(location.searchParams.keys())].sort(),
+          status: response.status(),
+        })
+      })
+      await page.goto(entry, { waitUntil: "domcontentloaded" })
+      await eventually(async () => expected(page), 120_000)
+      credentialPrompts.push(await page.locator("#username").count())
+      assert.notEqual(page.url(), "about:blank")
+      assert.notEqual((await page.title()).trim(), "400 Bad Request")
+      return page
+    }
+
+    const liteLlm = await open(
+      `${publicOrigin("litellm", edgePort)}/ui/`,
+      async (page) =>
+        new URL(page.url()).origin === publicOrigin("litellm", edgePort) &&
+        (await context.cookies()).some(({ name }) => name === "token"),
+    )
+    const liteLlmClaims = nativeJwtClaims(
+      decodeURIComponent(
+        (await context.cookies()).find(({ name }) => name === "token")?.value ??
+          "",
+      ),
+    )
+    assert.equal(
+      liteLlmClaims.user_role,
+      role === "Admin" ? "proxy_admin" : "internal_user",
+    )
+
+    const grafana = await open(
+      `${publicOrigin("grafana", edgePort)}/`,
+      async (page) =>
+        role === "Admin"
+          ? new URL(page.url()).origin === publicOrigin("grafana", edgePort) &&
+            (await context.cookies()).some(
+              ({ name }) => name === "grafana_session",
+            )
+          : /access denied|failed to get user info|login failed/i.test(
+              await page
+                .locator("body")
+                .innerText()
+                .catch(() => ""),
+            ),
+    )
+
+    const keycloak = await open(
+      `${publicOrigin("keycloak", edgePort)}/keycloak/admin/llm-machines/console/`,
+      async (page) =>
+        role === "Admin"
+          ? new URL(page.url()).origin === publicOrigin("keycloak", edgePort) &&
+            new URL(page.url()).pathname.startsWith(
+              "/keycloak/admin/llm-machines/console/",
+            ) &&
+            !/login-actions/.test(page.url())
+          : /access denied|do not have permission|forbidden/i.test(
+              await page
+                .locator("body")
+                .innerText()
+                .catch(() => ""),
+            ),
+    )
+
+    assert.deepEqual(credentialPrompts, [0, 0, 0])
+    assert.deepEqual(errors, [])
+    await consolePage.goto(`${publicOrigin("console", edgePort)}/`)
+    await consolePage.getByRole("button", { name: "Sign out" }).click()
+    await consolePage.waitForURL(
+      (url) =>
+        url.origin === publicOrigin("console", edgePort) &&
+        url.pathname === "/auth/signin",
+      { timeout: 120_000 },
+    )
+    const retained = (await context.cookies())
+      .map(({ name }) => name)
+      .filter((name) =>
+        [
+          "__Host-llm-machines-session",
+          "AUTH_SESSION_ID",
+          "KC_AUTH_SESSION_HASH",
+          "KC_RESTART",
+          "KEYCLOAK_IDENTITY",
+          "KEYCLOAK_SESSION",
+          "grafana_session",
+          "grafana_session_expiry",
+          "litellm_cp_return_to",
+          "litellm_oauth_state",
+          "sso_state",
+          "token",
+        ].includes(name),
+      )
+    assert.deepEqual(retained, [])
+    await consolePage.waitForTimeout(1_000)
+    assert.deepEqual(
+      errors.filter(({ status }) => status === 400),
+      [],
+    )
+    for (const nativePage of [grafana, liteLlm, keycloak]) {
+      assert.notEqual((await nativePage.title()).trim(), "400 Bad Request")
+    }
+
+    const afterLogout = await context.newPage()
+    await afterLogout.goto(`${publicOrigin("litellm", edgePort)}/ui/`, {
+      waitUntil: "domcontentloaded",
+    })
+    await afterLogout.locator("#username").waitFor({
+      state: "visible",
+      timeout: 120_000,
+    })
+    assert.equal(
+      new URL(afterLogout.url()).origin,
+      publicOrigin("identity", edgePort),
+    )
+
+    results[role.toLowerCase()] = {
+      credentialPrompts: 0,
+      globalLogout: "PASS",
+      grafana: role === "Admin" ? "Editor" : "DENY",
+      keycloak: role === "Admin" ? "APPLIANCE_REALM" : "DENY",
+      liteLlm: liteLlmClaims.user_role,
+      secondCredentialPrompts: 1,
+    }
+    await Promise.all([liteLlm.close(), grafana.close(), keycloak.close()])
+    await context.close()
+  }
+  return results
+}
+
+async function proveCoordinatedLogoutOutages({
+  browser,
+  credentials,
+  edgePort,
+  grafanaControl,
+  liteLlmControl,
+  synchronizeClock,
+}) {
+  assert.match(grafanaControl.container ?? "", /^[a-z0-9][a-z0-9_.-]{0,127}$/)
+  const results = {}
+  for (const outage of [
+    {
+      control: grafanaControl,
+      name: "grafana",
+      restart: () => waitForNativeHealth(grafanaControl, "/api/health"),
+    },
+    {
+      control: liteLlmControl,
+      name: "litellm",
+      restart: () => waitForLiteLlm(liteLlmControl),
+    },
+  ]) {
+    const context = await browser.newContext({ ignoreHTTPSErrors: false })
+    const consolePage = await context.newPage()
+    let stopped = false
+    let proofFailure = null
+    try {
+      await synchronizeClock()
+      await signIn(
+        consolePage,
+        publicOrigin("console", edgePort),
+        credentials.admin,
+        "/settings",
+      )
+      const liteLlmPage = await context.newPage()
+      await liteLlmPage.goto(`${publicOrigin("litellm", edgePort)}/ui/`, {
+        waitUntil: "domcontentloaded",
+      })
+      await eventually(
+        async () =>
+          (await context.cookies()).some(({ name }) => name === "token"),
+        120_000,
+      )
+      const grafanaPage = await context.newPage()
+      await grafanaPage.goto(`${publicOrigin("grafana", edgePort)}/`, {
+        waitUntil: "domcontentloaded",
+      })
+      await eventually(
+        async () =>
+          (await context.cookies()).some(
+            ({ name }) => name === "grafana_session",
+          ),
+        120_000,
+      )
+
+      const stop = dockerControl(outage.control, [
+        "stop",
+        "--time",
+        "5",
+        outage.control.container,
+      ])
+      assert.equal(stop.status, 0)
+      stopped = true
+
+      await consolePage.goto(`${publicOrigin("console", edgePort)}/`)
+      await consolePage.getByRole("button", { name: "Sign out" }).click()
+      await consolePage.waitForURL(
+        (url) =>
+          url.origin === publicOrigin("console", edgePort) &&
+          url.pathname === "/auth/signin",
+        { timeout: 120_000 },
+      )
+      const signedOutUrl = consolePage.url()
+      await consolePage.waitForTimeout(1_000)
+      assert.equal(consolePage.url(), signedOutUrl)
+      assert.deepEqual(protectedBrowserCookieNames(await context.cookies()), [])
+    } catch (error) {
+      proofFailure = error
+    }
+
+    if (stopped) {
+      const start = dockerControl(outage.control, [
+        "start",
+        outage.control.container,
+      ])
+      if (start.status !== 0) {
+        const recoveryError = new Error(
+          `F0-C1 could not restart ${outage.name} after logout outage proof.`,
+        )
+        proofFailure = proofFailure
+          ? new AggregateError([proofFailure, recoveryError])
+          : recoveryError
+      } else {
+        try {
+          await outage.restart()
+        } catch (recoveryError) {
+          proofFailure = proofFailure
+            ? new AggregateError([proofFailure, recoveryError])
+            : recoveryError
+        }
+      }
+    }
+    if (!proofFailure) {
+      const reentry = await context.newPage()
+      await reentry.goto(
+        outage.name === "grafana"
+          ? `${publicOrigin("grafana", edgePort)}/`
+          : `${publicOrigin("litellm", edgePort)}/ui/`,
+        { waitUntil: "domcontentloaded" },
+      )
+      await reentry.locator("#username").waitFor({
+        state: "visible",
+        timeout: 120_000,
+      })
+      assert.equal(
+        new URL(reentry.url()).origin,
+        publicOrigin("identity", edgePort),
+      )
+      results[outage.name] = "PASS"
+    }
+    await context.close()
+    if (proofFailure) throw proofFailure
+  }
+  return { ...results, redirectLoopAbsent: true }
+}
+
+function protectedBrowserCookieNames(cookies) {
+  const protectedNames = new Set([
+    "__Host-llm-machines-session",
+    "AUTH_SESSION_ID",
+    "KC_AUTH_SESSION_HASH",
+    "KC_RESTART",
+    "KEYCLOAK_IDENTITY",
+    "KEYCLOAK_SESSION",
+    "grafana_session",
+    "grafana_session_expiry",
+    "litellm_cp_return_to",
+    "litellm_oauth_state",
+    "sso_state",
+    "token",
+  ])
+  return cookies
+    .map(({ name }) => name)
+    .filter((name) => protectedNames.has(name))
+    .sort()
+}
+
+async function waitForNativeHealth(control, path) {
+  const deadline = performance.now() + 120_000
+  while (performance.now() < deadline) {
+    const response = await fetch(`${control.baseUrl}${path}`).catch(() => null)
+    if (response) {
+      const status = response.status
+      await response.body?.cancel()
+      if (status === 200) return
+    }
+    await delay(250)
+  }
+  throw new Error("F0-C1 native service did not recover after logout proof.")
+}
+
+async function nativeBrowserLogin({
+  browser,
+  captureKeycloakBearer = false,
+  credentials,
+  deniedCookieName = null,
+  entry,
+  expectDenied = false,
+  requiredCookieName = null,
+}) {
+  const entryOrigin = new URL(entry).origin
+  const context = await browser.newContext({ ignoreHTTPSErrors: false })
+  const page = await context.newPage()
+  const responseCookieNames = new Set()
+  const responseHeaderTasks = []
+  let bearer = null
+  let pkce = false
+  page.on("response", (response) => {
+    if (new URL(response.url()).origin !== entryOrigin) return
+    responseHeaderTasks.push(
+      response
+        .headersArray()
+        .then((headers) => {
+          for (const { name, value } of headers) {
+            if (name.toLowerCase() !== "set-cookie") continue
+            const cookieName = value.split("=", 1)[0]?.trim()
+            if (cookieName) responseCookieNames.add(cookieName)
+          }
+        })
+        .catch(() => undefined),
+    )
+  })
+  page.on("request", async (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.endsWith("/protocol/openid-connect/auth")) {
+      pkce ||= url.searchParams.get("code_challenge_method") === "S256"
+    }
+    if (!captureKeycloakBearer) return
+    const authorization = (await request.allHeaders().catch(() => null))
+      ?.authorization
+    if (authorization?.startsWith("Bearer eyJ")) {
+      const candidate = authorization.slice(7)
+      if (nativeJwtClaims(candidate).azp === "security-admin-console") {
+        bearer = candidate
+      }
+    }
+  })
+  page.on("response", async (response) => {
+    if (
+      !captureKeycloakBearer ||
+      !new URL(response.url()).pathname.endsWith(
+        "/protocol/openid-connect/token",
+      ) ||
+      response.status() !== 200
+    ) {
+      return
+    }
+    const payload = await response.json().catch(() => null)
+    if (
+      typeof payload?.access_token === "string" &&
+      nativeJwtClaims(payload.access_token).azp === "security-admin-console"
+    ) {
+      bearer = payload.access_token
+    }
+  })
+  await page.goto(entry, { waitUntil: "domcontentloaded" })
+  const username = page.locator("#username")
+  await username.waitFor({ state: "visible", timeout: 120_000 })
+  await username.fill(credentials.username)
+  await page.locator("#password").fill(credentials.password)
+  await page.locator("#password").press("Enter")
+  await eventually(async () => {
+    const text = await page
+      .locator("body")
+      .innerText()
+      .catch(() => "")
+    return (
+      new URL(page.url()).origin === entryOrigin ||
+      /do not have permission|access denied|failed to get user info|login failed/i.test(
+        text,
+      )
+    )
+  }, 120_000)
+  await page.waitForTimeout(1_000)
+  const text = await page
+    .locator("body")
+    .innerText()
+    .catch(() => "")
+  await Promise.all(responseHeaderTasks)
+  const denied =
+    /do not have permission|access denied|failed to get user info|login failed/i.test(
+      text,
+    ) || Boolean(deniedCookieName && responseCookieNames.has(deniedCookieName))
+  assert.equal(denied, expectDenied)
+  assert.equal(pkce, true)
+  if (!expectDenied) {
+    assert.equal(new URL(page.url()).origin, entryOrigin)
+  }
+  if (requiredCookieName && !expectDenied) {
+    await eventually(
+      async () =>
+        (await context.cookies(entryOrigin)).some(
+          ({ name }) => name === requiredCookieName,
+        ),
+      120_000,
+    )
+  }
+  if (captureKeycloakBearer && !expectDenied) {
+    await eventually(() => Promise.resolve(Boolean(bearer)), 120_000)
+  }
+  return { bearer, context, denied, page, pkce }
+}
+
+async function logoutNativeLiteLlm(session, edgePort) {
+  await session.page.goto(`${publicOrigin("litellm", edgePort)}/ui/`, {
+    waitUntil: "domcontentloaded",
+  })
+  const account = session.page.getByRole("button", { name: /Account menu/i })
+  await account.waitFor({ timeout: 60_000 })
+  await account.click()
+  await session.page
+    .getByTestId("sidebar-account-menu-panel")
+    .getByRole("button", { name: "Logout" })
+    .click()
+  await eventually(
+    async () =>
+      !(await session.context.cookies()).some(({ name }) => name === "token"),
+    60_000,
+  )
+  await session.context.close()
+}
+
+async function logoutNativeKeycloak(session, edgePort) {
+  await session.page.goto(
+    `${publicOrigin("identity", edgePort)}/realms/llm-machines/protocol/openid-connect/logout?client_id=security-admin-console&post_logout_redirect_uri=${encodeURIComponent(`${publicOrigin("keycloak", edgePort)}/keycloak/admin/llm-machines/console/`)}`,
+    { waitUntil: "domcontentloaded" },
+  )
+  const confirmation = session.page
+    .getByRole("button", { name: /sign out|logout/i })
+    .last()
+  if ((await confirmation.count()) > 0) await confirmation.click()
+  await eventually(
+    async () =>
+      !(await session.context.cookies()).some(({ name }) =>
+        ["KEYCLOAK_IDENTITY", "KEYCLOAK_SESSION"].includes(name),
+      ),
+    60_000,
+  )
+  await session.context.close()
+}
+
+function nativeJwtClaims(token) {
+  const parts = token.split(".")
+  assert.equal(parts.length, 3)
+  return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"))
+}
+
+async function assertObservabilityConsoleProjection(
+  page,
+  consoleOrigin,
+  observabilityCanaries,
+) {
+  await page.goto(`${consoleOrigin}/inference`)
+  await page.getByRole("heading", { name: "Inference" }).waitFor()
+  await page.getByText("LiteLLM remains private", { exact: true }).waitFor()
+  await page
+    .getByText("LiteLLM reports 17 requests and 1,700 tokens in the last 30d.")
+    .waitFor()
+  await page.getByText("fixture-model", { exact: true }).first().waitFor()
+  await page
+    .getByText("Route changes are not a v1 customer capability.", {
+      exact: false,
+    })
+    .waitFor()
+  await page.getByRole("button", { name: /Expand/ }).click()
+  await page.getByText("core-routing", { exact: true }).waitFor()
+  await page.getByText("inference-core", { exact: true }).waitFor()
+  for (const mutationName of [
+    "Create route",
+    "Create virtual key",
+    "Rotate virtual key",
+    "Revoke virtual key",
+  ]) {
+    assert.equal(
+      await page
+        .getByRole("button", { exact: true, name: mutationName })
+        .count(),
+      0,
+    )
+  }
+
+  await page.goto(`${consoleOrigin}/hardware`)
+  await page.getByRole("heading", { name: "Hardware" }).waitFor()
+  await page
+    .getByText("Prometheus is returning all 7 curated hardware signals.", {
+      exact: false,
+    })
+    .waitFor()
+  await page.getByRole("heading", { name: "LLMMGpuSaturation" }).waitFor()
+  for (const heading of [
+    "CPU utilization",
+    "GPU temperature",
+    "GPU utilization",
+    "RAM usage",
+    "Filesystem usage",
+    "Power draw",
+    "Network throughput",
+  ]) {
+    await page.getByRole("heading", { name: heading }).waitFor()
+  }
+
+  await page.goto(`${consoleOrigin}/`)
+  await page.getByRole("heading", { name: "Overview" }).waitFor()
+  await page.getByText("Models served", { exact: true }).waitFor()
+  await page.getByText("Targets up", { exact: true }).waitFor()
+
+  const body = await page.locator("body").innerText()
+  assertNoSensitiveValues(
+    [body],
+    Object.values(observabilityCanaries),
+    "Console projection",
+  )
+  assert.doesNotMatch(body, /Grafana.*(?:open|launch|visit)/i)
+}
+
+function assertPrivateReadRequests(
+  requests,
+  { allowedPaths, allowedQueryKeys, source, unauthenticatedPaths = new Set() },
+) {
+  assert.ok(requests.length > 0, `${source} received no private reads.`)
+  for (const request of requests) {
+    assert.equal(request.method, "GET", `${source} received a mutation.`)
+    if (!unauthenticatedPaths.has(request.path)) {
+      assert.equal(
+        request.authorized,
+        true,
+        `${source} read was unauthenticated.`,
+      )
+    }
+    assert.equal(
+      allowedPaths.has(request.path),
+      true,
+      `${source} received an unapproved path ${request.path}.`,
+    )
+    assert.deepEqual(
+      request.queryKeys,
+      allowedQueryKeys.get(request.path),
+      `${source} received unapproved query keys on ${request.path}.`,
+    )
+  }
+}
+
+function summarizePrivateRequests(requests) {
+  return [...new Set(requests.map((request) => request.path))].sort()
+}
+
+async function proveLiteLlmConsoleFlow({
+  certificate,
+  consoleOrigin,
+  edgePort,
+  liteLlmControl,
+  page,
+  sensitiveValues,
+  synchronizeClock,
+  userCredentials,
+}) {
+  assert.ok(liteLlmControl)
+  const applicationName = `LiteLLM client ${randomBytes(4).toString("hex")}`
+  await openApplicationCreate({
+    consoleOrigin,
+    page,
+    synchronizeClock,
+    userCredentials,
+  })
+  await submitApplicationCreate(page, applicationName)
+  await page.getByRole("heading", { name: "Key created" }).waitFor()
+  const applicationCredential = await revealedCredential(page, "API key")
+  sensitiveValues.push(applicationCredential)
+  assertCredentialFormat(
+    applicationCredential,
+    /^llmm_t4_[0-9a-f]{18}_[A-Za-z0-9_-]{43}$/,
+    "inference",
+  )
+  await page.getByRole("button", { name: "Done" }).click()
+  await page
+    .getByRole("heading", { exact: true, name: "Key settings" })
+    .waitFor()
+  await page.getByText(applicationName, { exact: true }).waitFor()
+  const detailPath = new URL(page.url()).pathname
+  assert.match(detailPath ?? "", /^\/keys\/apps\/app-/)
+
+  const models = await requestJsonThroughEdge({
+    authority: authorities.api,
+    bearerToken: applicationCredential,
+    caFile: certificate.ca,
+    edgePort,
+    method: "GET",
+    path: "/v1/models",
+  })
+  assert.equal(models.status, 200)
+  assert.equal(models.body?.data?.[0]?.id, "fixture-model")
+
+  const completion = await requestJsonThroughEdge({
+    authority: authorities.api,
+    bearerToken: applicationCredential,
+    body: {
+      messages: [{ content: liteLlmControl.canaries.prompt, role: "user" }],
+      model: "fixture-model",
+    },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/v1/chat/completions",
+  })
+  assert.equal(completion.status, 200)
+  assert.equal(
+    completion.body?.choices?.[0]?.message?.content,
+    liteLlmControl.canaries.response,
+  )
+  assert.equal(completion.body?.usage?.total_tokens, 5)
+
+  const stream = await requestTextThroughEdge({
+    authority: authorities.api,
+    bearerToken: applicationCredential,
+    body: {
+      messages: [
+        { content: liteLlmControl.canaries.streamingPrompt, role: "user" },
+      ],
+      model: "fixture-model",
+      stream: true,
+      stream_options: { include_usage: true },
+    },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/v1/chat/completions",
+  })
+  assert.equal(stream.status, 200)
+  assert.match(stream.contentType, /^text\/event-stream/)
+  assert.match(stream.body, /fixture-stream-response/)
+  assert.match(stream.body, /data: \[DONE\]/)
+
+  const directWithApplicationCredential = await fetch(
+    `${liteLlmControl.baseUrl}/v1/models`,
+    {
+      headers: { authorization: `Bearer ${applicationCredential}` },
+      signal: AbortSignal.timeout(5_000),
+    },
+  )
+  assert.equal(directWithApplicationCredential.status, 401)
+
+  await page.goto(`${consoleOrigin}/keys`)
+  const applicationRow = page.getByRole("row").filter({
+    has: page.getByRole("link", { exact: true, name: applicationName }),
+  })
+  await applicationRow.waitFor()
+  assert.match(
+    (await applicationRow.getByRole("cell").nth(1).innerText()).trim(),
+    /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/u,
+  )
+
+  await page.goto(`${consoleOrigin}${detailPath}`)
+  const usageSummary = page.locator(
+    'dl[aria-label="Inference usage, last 7 days"]',
+  )
+  await usageSummary.waitFor()
+  assert.ok(
+    Number.parseInt(await metricValue(usageSummary, "Requests, 7 days"), 10) >=
+      2,
+  )
+  assert.ok(
+    Number.parseInt(await metricValue(usageSummary, "Tokens, 7 days"), 10) >=
+      10,
+  )
+
+  await assertActualLiteLlmProjection(page, consoleOrigin)
+  for (const nativePath of ["/litellm", "/ui", "/key/list", "/model/info"]) {
+    const response = await page.goto(`${consoleOrigin}${nativePath}`)
+    assert.equal(response?.status(), 404)
+  }
+  for (const nativePath of ["/ui", "/key/list", "/model/info"]) {
+    const response = await requestJsonThroughEdge({
+      authority: authorities.api,
+      bearerToken: applicationCredential,
+      caFile: certificate.ca,
+      edgePort,
+      method: "GET",
+      path: nativePath,
+    })
+    assert.equal(response.status, 404)
+  }
+
+  stopLiteLlm(liteLlmControl)
+  const unavailable = await requestJsonThroughEdge({
+    authority: authorities.api,
+    bearerToken: applicationCredential,
+    body: {
+      messages: [
+        { content: liteLlmControl.canaries.outagePrompt, role: "user" },
+      ],
+      model: "fixture-model",
+    },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/v1/chat/completions",
+  })
+  assert.ok(unavailable.status >= 500)
+  await page.goto(`${consoleOrigin}/inference`)
+  await page
+    .getByText(/LiteLLM.*unavailable/i)
+    .first()
+    .waitFor()
+
+  startLiteLlm(liteLlmControl)
+  await waitForLiteLlm(liteLlmControl)
+  await assertActualLiteLlmProjection(page, consoleOrigin)
+  const recovered = await requestJsonThroughEdge({
+    authority: authorities.api,
+    bearerToken: applicationCredential,
+    body: {
+      messages: [
+        { content: liteLlmControl.canaries.recoveryPrompt, role: "user" },
+      ],
+      model: "fixture-model",
+    },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/v1/chat/completions",
+  })
+  assert.equal(recovered.status, 200)
+
+  return {
+    applicationAuthority: "Product-issued credential",
+    applicationCredentialDirectLiteLlmAccess: "denied",
+    consoleProjection: "health-models-usage-route-safe-credential-metadata",
+    nativeCustomerAccess: "absent",
+    nonStreaming: "passed",
+    outageRecovery: "passed",
+    streaming: "passed",
+  }
+}
+
+async function assertActualLiteLlmProjection(page, consoleOrigin) {
+  const deadline = performance.now() + 30_000
+  while (performance.now() < deadline) {
+    await page.goto(`${consoleOrigin}/inference`)
+    const body = await page.locator("body").innerText()
+    if (
+      body.includes("fixture-model") &&
+      /LiteLLM reports \d+ requests/.test(body)
+    ) {
+      break
+    }
+    await page.waitForTimeout(500)
+  }
+  await page.getByRole("heading", { name: "Inference" }).waitFor()
+  await page.getByText("LiteLLM remains private", { exact: true }).waitFor()
+  await page.getByText("fixture-model", { exact: true }).first().waitFor()
+  await page
+    .getByText("Route changes are not a v1 customer capability.", {
+      exact: false,
+    })
+    .waitFor()
+  await page.getByRole("button", { name: /Expand/ }).click()
+  await page.getByText("core-routing", { exact: true }).waitFor()
+  for (const mutationName of [
+    "Create route",
+    "Create virtual key",
+    "Rotate virtual key",
+    "Revoke virtual key",
+  ]) {
+    assert.equal(
+      await page
+        .getByRole("button", { exact: true, name: mutationName })
+        .count(),
+      0,
+    )
+  }
+}
+
+async function proveKeycloakOutageRecovery({
+  browser,
+  consoleOrigin,
+  edgePort,
+  keycloakControl,
+  synchronizeClock,
+  userCredentials,
+}) {
+  assert.ok(keycloakControl)
+  const initialPort = mappedKeycloakPort(keycloakControl)
+  assert.equal(initialPort, keycloakControl.upstreamPort)
+  const outageContext = await browser.newContext({
+    ignoreHTTPSErrors: !founderUatPlacement,
+  })
+  const outagePage = await outageContext.newPage()
+  try {
+    let stopped = false
+    let outageFailure = null
+    try {
+      const stop = dockerControl(keycloakControl, [
+        "stop",
+        "--time",
+        "5",
+        keycloakControl.container,
+      ])
+      if (stop.status !== 0) {
+        throw new Error("F0-C1 could not stop the disposable identity service.")
+      }
+      stopped = true
+      await outagePage.goto(
+        `${consoleOrigin}/auth/signin?returnTo=${encodeURIComponent("/settings")}`,
+      )
+      await outagePage.getByRole("link", { name: /Keycloak/ }).click()
+      await outagePage
+        .getByRole("heading", {
+          name: "Identity service temporarily unavailable",
+        })
+        .waitFor({ timeout: 20_000 })
+      const unavailableUrl = new URL(outagePage.url())
+      assert.equal(unavailableUrl.origin, consoleOrigin)
+      assert.equal(unavailableUrl.pathname, "/auth/unavailable")
+      assert.equal(unavailableUrl.searchParams.get("returnTo"), "/auth/signin")
+      await outagePage.waitForTimeout(1_000)
+      assert.equal(outagePage.url(), unavailableUrl.href)
+    } catch (error) {
+      outageFailure = error
+    }
+    if (stopped) {
+      try {
+        const start = dockerControl(keycloakControl, [
+          "start",
+          keycloakControl.container,
+        ])
+        if (start.status !== 0) {
+          throw new Error(
+            "F0-C1 could not restart the disposable identity service.",
+          )
+        }
+        await waitForKeycloakControl(keycloakControl)
+      } catch (recoveryError) {
+        if (outageFailure) {
+          throw new AggregateError(
+            [outageFailure, recoveryError],
+            "F0-C1 identity outage and recovery proof failed.",
+          )
+        }
+        throw recoveryError
+      }
+    }
+    if (outageFailure) throw outageFailure
+
+    assert.equal(mappedKeycloakPort(keycloakControl), initialPort)
+    await outagePage.getByRole("link", { name: "Retry" }).click()
+    await outagePage.getByRole("link", { name: /Keycloak/ }).waitFor()
+    await synchronizeClock()
+    await signIn(outagePage, consoleOrigin, userCredentials, "/settings")
+    await outagePage.getByRole("heading", { name: "Settings" }).waitFor()
+    return {
+      controlledConsoleState: true,
+      redirectLoopAbsent: true,
+      restartPortStable: true,
+      retryRecovered: true,
+    }
+  } finally {
+    await outageContext.close()
+  }
+}
+
+function mappedKeycloakPort(control) {
+  const result = dockerControl(control, ["port", control.container, "8080/tcp"])
+  if (result.status !== 0) return null
+  const match = result.stdout.trim().match(/127\.0\.0\.1:(\d+)$/)
+  return match ? Number.parseInt(match[1], 10) : null
+}
+
+async function waitForKeycloakControl(control) {
+  const deadline = performance.now() + 120_000
+  while (performance.now() < deadline) {
+    if (mappedKeycloakPort(control) !== control.upstreamPort) {
+      throw new Error("F0-C1 identity service restarted on an unexpected port.")
+    }
+    const response = await fetch(
+      `http://127.0.0.1:${control.upstreamPort}/realms/llm-machines/.well-known/openid-configuration`,
+    ).catch(() => null)
+    if (response) {
+      const status = response.status
+      await response.body?.cancel()
+      if (status === 200) return
+    }
+    await delay(250)
+  }
+  throw new Error("F0-C1 identity service did not recover.")
+}
+
+function stopLiteLlm(control) {
+  const result = dockerControl(control, [
+    "stop",
+    "--time",
+    "5",
+    control.container,
+  ])
+  if (result.status !== 0) throw new Error("F0-L2 could not stop LiteLLM.")
+}
+
+function startLiteLlm(control) {
+  const result = dockerControl(control, ["start", control.container])
+  if (result.status !== 0) throw new Error("F0-L2 could not restart LiteLLM.")
+}
+
+async function waitForLiteLlm(control) {
+  const deadline = performance.now() + 120_000
+  let lastStatus = null
+  while (performance.now() < deadline) {
+    try {
+      lastStatus = await requestLiteLlmStatus(control)
+      if (lastStatus === 200) return
+    } catch {}
+    await delay(250)
+  }
+  throw new Error(
+    `F0-L2 LiteLLM did not recover; last status was ${lastStatus ?? "unreachable"}.`,
+  )
+}
+
+function requestLiteLlmStatus(control) {
+  const target = new URL(control.baseUrl)
+  return new Promise((resolveStatus, rejectStatus) => {
+    const request = httpRequest(
+      {
+        headers: {
+          authorization: `Bearer ${control.adminKey}`,
+          connection: "close",
+        },
+        host: target.hostname,
+        method: "GET",
+        path: "/v1/models",
+        port: target.port,
+      },
+      (response) => {
+        response.once("end", () => resolveStatus(response.statusCode ?? 500))
+        response.resume()
+      },
+    )
+    request.setTimeout(2_000, () => request.destroy(new Error("timeout")))
+    request.once("error", rejectStatus)
+    request.end()
+  })
+}
+
+function dockerControl(control, arguments_) {
+  return spawnSync(
+    "docker",
+    ["--context", control.dockerContext, ...arguments_],
+    {
+      encoding: "utf8",
+      env: { LANG: "C", LC_ALL: "C", PATH: process.env.PATH ?? "" },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  )
+}
+
+async function proveApplicationConsoleFlow({
+  actualFirecrawl = null,
+  certificate,
+  consoleOrigin,
+  credentialLifecycleMode,
+  edgeBindAddress,
+  edgePort,
+  page,
+  postgresControl,
+  restartBff,
+  retentionCanaries,
+  sensitiveValues,
+  streamingRequired = false,
+  synchronizeClock,
+  userCredentials,
+}) {
+  const applicationName = `Browser client ${randomBytes(4).toString("hex")}`
+  await openApplicationCreate({
+    consoleOrigin,
+    page,
+    synchronizeClock,
+    userCredentials,
+  })
+  await submitApplicationCreate(page, applicationName)
+  try {
+    await page.getByRole("heading", { name: "Key created" }).waitFor()
+  } catch {
+    throw new Error(
+      `Key creation did not reach its one-time reveal: ${safeDiagnosticTail(await page.locator("body").innerText())}`,
+    )
+  }
+
+  const inferenceCredential = await revealedCredential(page, "API key")
+  const inferenceCredentialId = await revealedCredential(page, "Credential ID")
+  const inferenceCredentialLabel =
+    maskedCredentialIdentifierFromSecret(inferenceCredential)
+  sensitiveValues.push(inferenceCredential)
+  assertCredentialFormat(
+    inferenceCredential,
+    /^llmm_t4_[0-9a-f]{18}_[A-Za-z0-9_-]{43}$/,
+    "inference",
+  )
+  assert.equal(
+    await revealedCredential(page, "API base URL"),
+    `${publicOrigin("api", edgePort)}/v1`,
+  )
+  assert.equal(
+    await page.getByRole("button", { name: "Copy Firecrawl API key" }).count(),
+    0,
+  )
+  await assertCreatedKeyDialogKeyboardBoundary(page)
+  assert.equal(page.url().includes(inferenceCredential), false)
+  await page.keyboard.press("Escape")
+  const applicationHeading = page.getByRole("heading", {
+    exact: true,
+    name: "Key settings",
+  })
+  await applicationHeading.waitFor()
+  await page.getByText(applicationName, { exact: true }).waitFor()
+  assert.equal(
+    await applicationHeading.evaluate(
+      (heading) => document.activeElement === heading,
+    ),
+    true,
+  )
+  await assertSecretsAbsentFromPage(page, [inferenceCredential])
+  await captureKeysShowcase(
+    page,
+    "key-detail-firecrawl-off.png",
+    sensitiveValues,
+  )
+  const detailPath = new URL(page.url()).pathname
+  assert.match(detailPath ?? "", /^\/keys\/apps\/app-/)
+  if (postgresControl) {
+    assert.deepEqual(
+      postgresApplicationFirecrawlStatus(detailPath.split("/").at(-1)),
+      { credentialCount: 0, status: "disabled" },
+    )
+  }
+
+  const models = await requestJsonThroughEdge({
+    authority: authorities.api,
+    bearerToken: inferenceCredential,
+    caFile: certificate.ca,
+    edgePort,
+    method: "GET",
+    path: "/v1/models",
+  })
+  assert.equal(models.status, 200)
+  assert.equal(models.body?.data?.[0]?.id, "fixture-model")
+
+  const completion = await requestJsonThroughEdge({
+    authority: authorities.api,
+    bearerToken: inferenceCredential,
+    body: {
+      messages: [
+        {
+          content: retentionCanaries
+            ? `${retentionCanaries.prompt} ${retentionCanaries.request}`
+            : "disposable fixture input",
+          role: "user",
+        },
+      ],
+      model: "fixture-model",
+    },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/v1/chat/completions",
+  })
+  assert.equal(completion.status, 200)
+  assert.equal(completion.body?.usage?.total_tokens, 5)
+  if (retentionCanaries) {
+    assert.equal(
+      completion.body?.choices?.[0]?.message?.content,
+      retentionCanaries.response,
+    )
+  }
+
+  let streaming = null
+  if (streamingRequired) {
+    const response = await requestTextThroughEdge({
+      authority: authorities.api,
+      bearerToken: inferenceCredential,
+      body: {
+        messages: [
+          {
+            content: retentionCanaries?.request ?? "integrated stream input",
+            role: "user",
+          },
+        ],
+        model: "fixture-model",
+        stream: true,
+        stream_options: { include_usage: true },
+      },
+      caFile: certificate.ca,
+      edgePort,
+      method: "POST",
+      path: "/v1/chat/completions",
+    })
+    assert.equal(response.status, 200)
+    assert.match(response.contentType, /^text\/event-stream/)
+    assert.match(response.body, /fixture-stream-response/)
+    assert.match(response.body, /data: \[DONE\]/)
+    streaming = "passed"
+  }
+
+  const externalOpenAiClient = integratedCoreMode
+    ? await runOpenAiClientSmoke({
+        apiKey: inferenceCredential,
+        apiAuthority: authorities.api,
+        caFile: certificate.ca,
+        connectAddress: edgeBindAddress,
+        connectPort: edgePort,
+        edgePort,
+        prompt: retentionCanaries
+          ? `${retentionCanaries.prompt} ${retentionCanaries.request}`
+          : "external OpenAI SDK client input",
+        sensitiveValues,
+      })
+    : null
+
+  await page.getByRole("button", { name: "Refresh access status" }).click()
+  const inferenceAccessRow = page
+    .getByText("Inference API", { exact: true })
+    .locator("xpath=../..")
+  await inferenceAccessRow.getByText(/Client activity:\s*Connected/u).waitFor()
+  assert.equal(
+    await page.getByRole("heading", { exact: true, name: "Firecrawl" }).count(),
+    1,
+  )
+  assert.equal(
+    await page
+      .getByRole("heading", { exact: true, name: "Firecrawl credential" })
+      .count(),
+    0,
+  )
+
+  const firecrawlSwitch = page.getByRole("switch", {
+    name: "Enable Firecrawl",
+  })
+  assert.equal(await firecrawlSwitch.getAttribute("aria-checked"), "false")
+  assert.equal(await firecrawlSwitch.getAttribute("aria-expanded"), "false")
+  await firecrawlSwitch.click()
+  assert.equal(await firecrawlSwitch.getAttribute("aria-expanded"), "true")
+  await captureKeysShowcase(
+    page,
+    "key-detail-firecrawl-setup-expanded.png",
+    sensitiveValues,
+  )
+  assert.equal(
+    await page
+      .getByRole("heading", { exact: true, name: "Firecrawl credential" })
+      .count(),
+    0,
+  )
+  await page
+    .getByLabel(
+      /I understand that enabling Firecrawl permits outbound web requests/,
+    )
+    .check()
+  await page.getByRole("button", { name: "Enable Firecrawl" }).click()
+  await page
+    .getByRole("heading", { exact: true, name: "Firecrawl credential" })
+    .waitFor()
+  const firecrawlAccessRow = page
+    .locator('section[aria-labelledby="key-status-heading"]')
+    .getByText("Firecrawl", { exact: true })
+    .locator("xpath=../..")
+  await firecrawlAccessRow.getByText("Enabled", { exact: true }).waitFor()
+  assert.equal(
+    await page
+      .getByRole("switch", { name: "Disable Firecrawl" })
+      .getAttribute("aria-checked"),
+    "true",
+  )
+
+  const firecrawlCredential = await revealedCredential(
+    page,
+    "Firecrawl API key",
+  )
+  const firecrawlCredentialId = await revealedCredential(
+    page,
+    "Firecrawl credential ID",
+  )
+  const firecrawlCredentialLabel =
+    maskedCredentialIdentifierFromSecret(firecrawlCredential)
+  sensitiveValues.push(firecrawlCredential)
+  assertCredentialFormat(
+    firecrawlCredential,
+    /^llmm_fc_[0-9a-f]{16}_[A-Za-z0-9_-]{43}$/,
+    "Firecrawl",
+  )
+  if (firecrawlCredential === inferenceCredential) {
+    throw new Error("Inference and Firecrawl credentials were not separate.")
+  }
+
+  let actualFirecrawlEvidence = null
+  if (actualFirecrawl) {
+    const search = await requestJsonThroughEdge({
+      authority: authorities.firecrawl,
+      bearerToken: firecrawlCredential,
+      body: { limit: 1, query: actualFirecrawl.canaries.query },
+      caFile: certificate.ca,
+      edgePort,
+      method: "POST",
+      path: "/v2/search",
+    })
+    assert.equal(search.status, 200)
+    assert.equal(search.body?.success, true)
+    const scrape = await requestJsonThroughEdge({
+      authority: authorities.firecrawl,
+      bearerToken: firecrawlCredential,
+      body: {
+        formats: ["markdown"],
+        url: `https://example.com/?trace=${actualFirecrawl.canaries.url}`,
+      },
+      caFile: certificate.ca,
+      edgePort,
+      method: "POST",
+      path: "/v2/scrape",
+    })
+    assert.equal(scrape.status, 200)
+    assert.equal(scrape.body?.success, true)
+    assert.equal(typeof scrape.body?.data?.markdown, "string")
+    const unsupported = await requestHttpsEdgeWithHeaders({
+      certificate,
+      edgePort,
+      headers: {
+        authorization: `Bearer ${firecrawlCredential}`,
+        host: publicAuthorityHost(authorities.firecrawl, edgePort),
+      },
+      method: "POST",
+      path: "/v2/crawl",
+      servername: authorities.firecrawl,
+    })
+    assert.equal(unsupported.status, 404)
+    actualFirecrawlEvidence = {
+      search: "passed",
+      staticScrape: "passed",
+      unsupportedRouteDenied: true,
+    }
+  }
+  assert.equal(
+    await revealedCredential(page, "Firecrawl base URL"),
+    publicOrigin("firecrawl", edgePort),
+  )
+
+  if (credentialLifecycleMode) {
+    await page.getByRole("button", { name: "Copy Firecrawl API key" }).click()
+    await page
+      .getByRole("button", { name: "Copy Firecrawl API key" })
+      .getByText("Copied")
+      .waitFor()
+    assert.equal(
+      await page.evaluate(() => navigator.clipboard.readText()),
+      firecrawlCredential,
+    )
+    await page.goto(`${consoleOrigin}/keys`)
+    await page.goBack()
+    await assertSecretsAbsentFromPage(page, sensitiveValues)
+  }
+
+  await page.goto(`${consoleOrigin}/keys`)
+  const applicationRow = page.getByRole("row").filter({
+    has: page.getByRole("link", { exact: true, name: applicationName }),
+  })
+  await applicationRow.waitFor()
+  const applicationCells = applicationRow.getByRole("cell")
+  assert.equal(
+    await page
+      .getByRole("columnheader", { name: "Date Created" })
+      .evaluate((header) => getComputedStyle(header).whiteSpace),
+    "nowrap",
+  )
+  assert.match(
+    (await applicationCells.nth(1).innerText()).trim(),
+    /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/u,
+  )
+  assert.equal((await applicationCells.nth(3).innerText()).trim(), "Enabled")
+  assert.equal(
+    await applicationCells.nth(3).locator(".rounded-full").count(),
+    0,
+  )
+  await assertSecretsAbsentFromPage(page, sensitiveValues)
+  await captureKeysShowcase(page, "keys-list-desktop.png", sensitiveValues)
+  await captureKeysShowcaseAtViewport(
+    page,
+    "keys-list-mobile.png",
+    sensitiveValues,
+    { height: 844, width: 390 },
+  )
+
+  await page.goto(`${consoleOrigin}${detailPath}`)
+  const usageSummary = page.locator(
+    'dl[aria-label="Inference usage, last 7 days"]',
+  )
+  await usageSummary.waitFor()
+  await assertSecretsAbsentFromPage(page, sensitiveValues)
+  await captureKeysShowcase(
+    page,
+    "key-detail-firecrawl-enabled.png",
+    sensitiveValues,
+  )
+  const visibleRequests = Number.parseInt(
+    await metricValue(usageSummary, "Requests, 7 days"),
+    10,
+  )
+  const visibleTokens = Number.parseInt(
+    await metricValue(usageSummary, "Tokens, 7 days"),
+    10,
+  )
+  if (streamingRequired) {
+    assert.ok(visibleRequests >= 3)
+    assert.ok(visibleTokens >= 10)
+  } else {
+    assert.equal(visibleRequests, 2)
+    assert.equal(visibleTokens, 5)
+  }
+  assert.notEqual(await metricValue(usageSummary, "Last used"), "Never used")
+
+  const lifecycle = credentialLifecycleMode
+    ? await proveCredentialLifecycle({
+        certificate,
+        consoleOrigin,
+        edgePort,
+        firstApplication: {
+          detailPath,
+          firecrawlCredential,
+          firecrawlCredentialId,
+          firecrawlCredentialLabel,
+          inferenceCredential,
+          inferenceCredentialId,
+          inferenceCredentialLabel,
+          name: applicationName,
+        },
+        page,
+        postgresControl,
+        restartBff,
+        sensitiveValues,
+        synchronizeClock,
+        userCredentials,
+      })
+    : null
+
+  return {
+    applicationCreation: "passed",
+    credentialMaterialPrinted: false,
+    firecrawl: {
+      ...(actualFirecrawlEvidence ?? {}),
+      defaultOff: true,
+      disclaimerRequired: true,
+      perApplicationEnablement: "passed",
+      separateCredential: true,
+      upstreamExecutionEvidence: "F0-W1",
+    },
+    inference: {
+      connectionEvidence: "passed",
+      lastUseVisible: true,
+      openAiClient:
+        externalOpenAiClient ?? "not-executed-outside-integrated-core",
+      requestsVisible: visibleRequests,
+      tokensVisible: visibleTokens,
+      ...(streaming ? { streaming } : {}),
+    },
+    mutationAuthorization: "ADMIN_ROLE_PASSWORD_SESSION",
+    oneTimeReveal: "passed",
+    ...(lifecycle ? { lifecycle } : {}),
+  }
+}
+
+async function proveCredentialLifecycle({
+  certificate,
+  consoleOrigin,
+  edgePort,
+  firstApplication,
+  page,
+  postgresControl,
+  restartBff,
+  sensitiveValues,
+  synchronizeClock,
+  userCredentials,
+}) {
+  await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
+
+  for (const name of [
+    "Rotate credentials",
+    "Edit policy",
+    "Rotate Firecrawl credential",
+    "Edit Firecrawl policy",
+  ]) {
+    assert.equal(await page.getByRole("button", { name }).count(), 0)
+  }
+  await assertInferenceCredentialAccepted({
+    certificate,
+    credential: firstApplication.inferenceCredential,
+    edgePort,
+  })
+  await page.getByRole("button", { name: "Refresh access status" }).click()
+  const inferenceAccessRow = page
+    .getByText("Inference API", { exact: true })
+    .locator("xpath=../..")
+  await inferenceAccessRow.getByText(/Client activity:\s*Connected/u).waitFor()
+  await assertCredentialCard(page, firstApplication.inferenceCredentialLabel, {
+    lastUse: "used",
+    status: "Active",
+  })
+  await assertFirecrawlCredentialAccepted({
+    certificate,
+    credential: firstApplication.firecrawlCredential,
+    edgePort,
+  })
+  await page.getByRole("button", { name: "Refresh access status" }).click()
+  const firecrawlAccessRow = page
+    .locator('section[aria-labelledby="key-status-heading"]')
+    .getByText("Firecrawl", { exact: true })
+    .locator("xpath=../..")
+  await firecrawlAccessRow.getByText(/Client activity:\s*Connected/u).waitFor()
+  await assertCredentialCard(page, firstApplication.firecrawlCredentialLabel, {
+    lastUse: "used",
+    status: "Active",
+  })
+
+  await page.getByRole("switch", { name: "Disable Firecrawl" }).click()
+  const disableFirecrawlDialog = page.getByRole("dialog", {
+    name: "Disable Firecrawl?",
+  })
+  await disableFirecrawlDialog.waitFor()
+  await disableFirecrawlDialog
+    .getByRole("button", { name: "Disable Firecrawl" })
+    .click()
+  await page.getByRole("switch", { name: "Enable Firecrawl" }).waitFor()
+  await captureKeysShowcase(
+    page,
+    "key-detail-firecrawl-disabled-reenable.png",
+    sensitiveValues,
+  )
+  await page.getByRole("switch", { name: "Enable Firecrawl" }).click()
+  const reenableFirecrawlDialog = page.getByRole("dialog", {
+    name: "Re-enable Firecrawl?",
+  })
+  await reenableFirecrawlDialog.waitFor()
+  await reenableFirecrawlDialog
+    .getByRole("button", { name: "Re-enable Firecrawl" })
+    .click()
+  await page.getByRole("switch", { name: "Disable Firecrawl" }).waitFor()
+
+  await page.getByRole("button", { name: "Disable Key" }).click()
+  const disableKeyDialog = page.getByRole("dialog", {
+    name: "Disable this Key?",
+  })
+  await disableKeyDialog.waitFor()
+  await disableKeyDialog.getByRole("button", { name: "Disable" }).click()
+  await page.getByRole("button", { name: "Re-enable Key" }).waitFor()
+  await captureKeysShowcase(
+    page,
+    "key-detail-key-disabled-reenable.png",
+    sensitiveValues,
+  )
+  await page.getByRole("button", { name: "Re-enable Key" }).click()
+  await page.getByRole("button", { name: "Disable Key" }).waitFor()
+  await page.getByRole("switch", { name: "Enable Firecrawl" }).click()
+  const restoreFirecrawlDialog = page.getByRole("dialog", {
+    name: "Re-enable Firecrawl?",
+  })
+  await restoreFirecrawlDialog.waitFor()
+  await restoreFirecrawlDialog
+    .getByRole("button", { name: "Re-enable Firecrawl" })
+    .click()
+  await page.getByRole("switch", { name: "Disable Firecrawl" }).waitFor()
+
+  await openApplicationCreate({
+    consoleOrigin,
+    page,
+    synchronizeClock,
+    userCredentials,
+  })
+  const secondName = `Isolated browser client ${randomBytes(4).toString("hex")}`
+  await submitApplicationCreate(page, secondName)
+  await page.getByRole("heading", { name: "Key created" }).waitFor()
+  const secondInferenceCredential = await revealedCredential(page, "API key")
+  const secondInferenceCredentialLabel = maskedCredentialIdentifierFromSecret(
+    secondInferenceCredential,
+  )
+  sensitiveValues.push(secondInferenceCredential)
+  await page.getByRole("button", { name: "Done" }).click()
+  await page
+    .getByRole("heading", { exact: true, name: "Key settings" })
+    .waitFor()
+  await page.getByText(secondName, { exact: true }).waitFor()
+  const secondDetailPath = new URL(page.url()).pathname
+  assert.match(secondDetailPath ?? "", /^\/keys\/apps\/app-/)
+  await page.getByRole("switch", { name: "Enable Firecrawl" }).click()
+  await page
+    .getByLabel(
+      /I understand that enabling Firecrawl permits outbound web requests/,
+    )
+    .check()
+  await page.getByRole("button", { name: "Enable Firecrawl" }).click()
+  await page
+    .getByRole("heading", { exact: true, name: "Firecrawl credential" })
+    .waitFor()
+  const secondFirecrawlCredential = await revealedCredential(
+    page,
+    "Firecrawl API key",
+  )
+  const secondFirecrawlCredentialLabel = maskedCredentialIdentifierFromSecret(
+    secondFirecrawlCredential,
+  )
+  sensitiveValues.push(secondFirecrawlCredential)
+
+  await assertInferenceCredentialAccepted({
+    certificate,
+    credential: secondInferenceCredential,
+    edgePort,
+  })
+  await assertFirecrawlCredentialAccepted({
+    certificate,
+    credential: secondFirecrawlCredential,
+    edgePort,
+  })
+  await assertCrossApplicationMutationDenied({
+    foreignCredentialId: firstApplication.inferenceCredentialId,
+    ownCredentialLabel: secondInferenceCredentialLabel,
+    page,
+    type: "inference",
+  })
+  await assertCrossApplicationMutationDenied({
+    foreignCredentialId: firstApplication.firecrawlCredentialId,
+    ownCredentialLabel: secondFirecrawlCredentialLabel,
+    page,
+    type: "firecrawl",
+  })
+  await assertInferenceCredentialAccepted({
+    certificate,
+    credential: secondInferenceCredential,
+    edgePort,
+  })
+  await assertFirecrawlCredentialAccepted({
+    certificate,
+    credential: secondFirecrawlCredential,
+    edgePort,
+  })
+
+  let restartEvidence = null
+  let firstInferenceRevoked = false
+  await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
+  if (postgresControl) {
+    assert.ok(restartBff)
+    await revokeCredentialThroughUi(
+      page,
+      firstApplication.firecrawlCredentialLabel,
+      "Revoke Firecrawl key",
+    )
+    await revokeCredentialThroughUi(
+      page,
+      firstApplication.inferenceCredentialLabel,
+      "Revoke now",
+    )
+    firstInferenceRevoked = true
+    restartEvidence = await restartBff()
+    await page.goto(`${consoleOrigin}${firstApplication.detailPath}`)
+    await assertRole(page, "Administrator")
+    await page.getByRole("switch", { name: "Enable Firecrawl" }).waitFor()
+    await assertCredentialDenied({
+      authority: authorities.api,
+      body: undefined,
+      certificate,
+      credential: firstApplication.inferenceCredential,
+      edgePort,
+      path: "/v1/models",
+    })
+    await assertCredentialDenied({
+      authority: authorities.firecrawl,
+      body: { limit: 1, query: "post-restart revoked credential" },
+      certificate,
+      credential: firstApplication.firecrawlCredential,
+      edgePort,
+      path: "/v2/search",
+    })
+    await assertInferenceCredentialAccepted({
+      certificate,
+      credential: secondInferenceCredential,
+      edgePort,
+    })
+    await assertFirecrawlCredentialAccepted({
+      certificate,
+      credential: secondFirecrawlCredential,
+      edgePort,
+    })
+  } else {
+    await revokeCredentialThroughUi(
+      page,
+      firstApplication.firecrawlCredentialLabel,
+      "Revoke Firecrawl key",
+    )
+    await captureKeysShowcase(
+      page,
+      "key-detail-firecrawl-revoked.png",
+      sensitiveValues,
+    )
+  }
+  if (!firstInferenceRevoked) {
+    await revokeCredentialThroughUi(
+      page,
+      firstApplication.inferenceCredentialLabel,
+      "Revoke now",
+    )
+  }
+
+  await assertCredentialDenied({
+    authority: authorities.api,
+    body: undefined,
+    certificate,
+    credential: firstApplication.inferenceCredential,
+    edgePort,
+    path: "/v1/models",
+  })
+  await assertCredentialDenied({
+    authority: authorities.firecrawl,
+    body: { limit: 1, query: "post-revocation fixture query" },
+    certificate,
+    credential: firstApplication.firecrawlCredential,
+    edgePort,
+    path: "/v2/search",
+  })
+  await assertInferenceCredentialAccepted({
+    certificate,
+    credential: secondInferenceCredential,
+    edgePort,
+  })
+  await assertFirecrawlCredentialAccepted({
+    certificate,
+    credential: secondFirecrawlCredential,
+    edgePort,
+  })
+
+  assert.equal(
+    await page.getByRole("button", { name: "Re-enable Key" }).count(),
+    0,
+  )
+
+  await captureKeysShowcase(
+    page,
+    "key-detail-disabled-no-credentials.png",
+    sensitiveValues,
+  )
+  await captureKeysShowcaseAtViewport(
+    page,
+    "key-detail-disabled-no-credentials-mobile.png",
+    sensitiveValues,
+    { height: 844, width: 390 },
+  )
+
+  await page.goto(`${consoleOrigin}/keys`)
+  await assertSecretsAbsentFromPage(page, sensitiveValues)
+
+  return {
+    ageAndLastUse: "passed",
+    crossApplicationMutationDenial: "passed",
+    firecrawlRevocation: "passed",
+    immutableCredentialPolicy: "passed",
+    inferenceRevocation: "passed",
+    operatorPaths: [firstApplication.detailPath, secondDetailPath],
+    ...(restartEvidence ? { restart: restartEvidence } : {}),
+    secondApplicationIsolation: "passed",
+    secretDomAndHistoryRetention: "none",
+  }
+}
+
+async function assertInferenceCredentialAccepted({
+  certificate,
+  credential,
+  edgePort,
+}) {
+  const response = await requestJsonThroughEdge({
+    authority: authorities.api,
+    bearerToken: credential,
+    caFile: certificate.ca,
+    edgePort,
+    method: "GET",
+    path: "/v1/models",
+  })
+  assert.equal(response.status, 200, "An expected inference credential failed.")
+}
+
+async function assertFirecrawlCredentialAccepted({
+  certificate,
+  credential,
+  edgePort,
+}) {
+  const response = await requestJsonThroughEdge({
+    authority: authorities.firecrawl,
+    bearerToken: credential,
+    body: { limit: 1, query: "deterministic lifecycle query" },
+    caFile: certificate.ca,
+    edgePort,
+    method: "POST",
+    path: "/v2/search",
+  })
+  assert.equal(response.status, 200, "An expected Firecrawl credential failed.")
+}
+
+async function assertCredentialDenied({
+  authority,
+  body,
+  certificate,
+  credential,
+  edgePort,
+  path,
+}) {
+  const response = await requestJsonThroughEdge({
+    authority,
+    bearerToken: credential,
+    body,
+    caFile: certificate.ca,
+    edgePort,
+    method: body ? "POST" : "GET",
+    path,
+  })
+  assert.equal(response.status, 401, "A revoked credential was accepted.")
+}
+
+async function assertCredentialCard(page, credentialLabel, expected) {
+  const card = page.locator("article").filter({ hasText: credentialLabel })
+  await card.waitFor({ state: "attached" })
+  let text = ""
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    text = (await card.textContent()) ?? ""
+    if (text.toLowerCase().includes(expected.status.toLowerCase())) {
+      break
+    }
+    await page.waitForTimeout(100)
+  }
+  if (!text.toLowerCase().includes(expected.status.toLowerCase())) {
+    throw new Error(
+      `Credential metadata did not reach ${expected.status}: ${safeDiagnosticTail(text)}`,
+    )
+  }
+  if (expected.age) {
+    assert.match(text, new RegExp(expected.age))
+  }
+  if (expected.lastUse === "used") {
+    if (text.includes("Last used Never used")) {
+      throw new Error(
+        `Credential last-use metadata remained empty: ${safeDiagnosticTail(text)}`,
+      )
+    }
+  }
+}
+
+async function assertCrossApplicationMutationDenied({
+  foreignCredentialId,
+  ownCredentialLabel,
+  page,
+  type,
+}) {
+  const buttonName =
+    type === "firecrawl" ? "Revoke Firecrawl key" : "Revoke now"
+  const ownCard = page
+    .locator("article")
+    .filter({ hasText: ownCredentialLabel })
+  await ownCard.getByRole("button", { name: buttonName }).click()
+  const dialog = page.getByRole("dialog", {
+    name:
+      type === "firecrawl"
+        ? "Revoke Firecrawl credential?"
+        : "Revoke credential now?",
+  })
+  await dialog
+    .locator('input[name="credentialId"]')
+    .evaluate((input, value) => {
+      input.value = String(value)
+    }, foreignCredentialId)
+  await dialog.getByRole("button", { name: buttonName }).click()
+  await page
+    .locator("output")
+    .filter({ hasText: /not found|revocation failed/i })
+    .last()
+    .waitFor()
+  await assertCredentialCard(page, ownCredentialLabel, { status: "Active" })
+}
+
+async function revokeCredentialThroughUi(page, credentialLabel, buttonName) {
+  const card = page.locator("article").filter({ hasText: credentialLabel })
+  await card.getByRole("button", { name: buttonName }).click()
+  const dialog = page.getByRole("dialog", {
+    name:
+      buttonName === "Revoke Firecrawl key"
+        ? "Revoke Firecrawl credential?"
+        : "Revoke credential now?",
+  })
+  await dialog.getByRole("button", { name: buttonName }).click()
+  if (buttonName === "Revoke Firecrawl key") {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if (
+        (await page
+          .getByRole("switch", { name: "Enable Firecrawl" })
+          .count()) === 0
+      ) {
+        await page.waitForTimeout(100)
+        continue
+      }
+      assert.equal(await card.count(), 0)
+      return
+    }
+    throw new Error(
+      "Revoked Firecrawl metadata neither appeared nor collapsed after Firecrawl was disabled.",
+    )
+  }
+  await page
+    .locator("output")
+    .filter({ hasText: "Credential revoked immediately." })
+    .last()
+    .waitFor()
+  await assertCredentialCard(page, credentialLabel, { status: "Revoked" })
+}
+
+async function assertSecretsAbsentFromPage(page, sensitiveValues) {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      const content = await page.content()
+      assertNoSensitiveValues(
+        [content, page.url()],
+        sensitiveValues,
+        "browser DOM",
+      )
+      return
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.includes("page is navigating") ||
+        attempt === 9
+      ) {
+        throw error
+      }
+      await page.waitForTimeout(100)
+    }
+  }
+}
+
+async function captureKeysShowcase(page, filename, sensitiveValues) {
+  if (!keysShowcaseDirectory) return
+  await assertSecretsAbsentFromPage(page, sensitiveValues)
+  await mkdir(keysShowcaseDirectory, { recursive: true })
+  await page.waitForTimeout(250)
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+  })
+  await page.waitForTimeout(50)
+  await page.screenshot({
+    fullPage: true,
+    path: join(keysShowcaseDirectory, filename),
+  })
+}
+
+async function captureKeysShowcaseAtViewport(
+  page,
+  filename,
+  sensitiveValues,
+  viewport,
+) {
+  if (!keysShowcaseDirectory) return
+  const previousViewport = page.viewportSize()
+  try {
+    await page.setViewportSize(viewport)
+    await captureKeysShowcase(page, filename, sensitiveValues)
+  } finally {
+    if (previousViewport) await page.setViewportSize(previousViewport)
+  }
+}
+
+async function assertOperatorApplicationReadOnly(page, applicationFlow) {
+  for (const path of applicationFlow.lifecycle.operatorPaths) {
+    await page.goto(new URL(path, page.url()).toString())
+    await page
+      .getByText("Operator access is read-only.", { exact: false })
+      .first()
+      .waitFor()
+    for (const name of [
+      "Refresh access status",
+      "Rotate credentials",
+      "Revoke now",
+      "Disable Key",
+      "Revoke Firecrawl key",
+      "Edit policy",
+      "Edit Firecrawl policy",
+    ]) {
+      assert.equal(await page.getByRole("button", { name }).count(), 0)
+    }
+    const firecrawlSwitch = page.getByRole("switch", {
+      name: /^(?:Enable|Disable) Firecrawl$/u,
+    })
+    assert.equal(await firecrawlSwitch.count(), 1)
+    assert.equal(await firecrawlSwitch.isDisabled(), true)
+  }
+}
+
+async function openApplicationCreate({
+  consoleOrigin,
+  page,
+  synchronizeClock,
+  userCredentials,
+}) {
+  await page.goto(`${consoleOrigin}/keys/apps/new`)
+  const form = page.getByRole("heading", { name: "Create Key" })
+  const elevation = page.getByRole("heading", { name: "Verify your identity" })
+  await Promise.race([form.waitFor(), elevation.waitFor()])
+  if ((await elevation.count()) === 0) {
+    return
+  }
+
+  await synchronizeClock()
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/console/session/elevate",
+  )
+  await page.getByRole("button", { name: "Continue to verification" }).click()
+  const response = await responsePromise
+  try {
+    if (keycloakIdentityMode) {
+      await Promise.race([
+        page.locator("#username").waitFor({ timeout: 5_000 }),
+        page
+          .locator("nav[aria-label='Console navigation']")
+          .waitFor({ timeout: 5_000 }),
+      ])
+    } else {
+      await page
+        .getByRole("heading", { name: "Fixture identity sign in" })
+        .waitFor({ timeout: 5_000 })
+    }
+  } catch {
+    const location = response.headers().location
+    const redirect = location ? new URL(location) : null
+    throw new Error(
+      `MFA elevation returned ${response.status()} with redirect ${redirect ? `${redirect.origin}${redirect.pathname}` : "absent"} but did not navigate at ${new URL(page.url()).pathname}: ${safeDiagnosticTail(await page.locator("body").innerText())}`,
+    )
+  }
+  await completeIdentityLogin(page, userCredentials)
+  assert.equal(new URL(page.url()).pathname, "/keys/apps/new")
+  await form.waitFor()
+}
+
+async function submitApplicationCreate(page, applicationName) {
+  await page.getByLabel("Key name").fill(applicationName)
+  await page
+    .getByLabel("Description (optional)")
+    .fill("Disposable browser-driven Key proof")
+  await page.getByRole("button", { name: "Create Key" }).click()
+}
+
+async function revealedCredential(page, label) {
+  const copyButton = page.getByRole("button", { name: `Copy ${label}` })
+  await copyButton.waitFor()
+  return copyButton.locator("xpath=../div/*[last()]").innerText()
+}
+
+async function assertCreatedKeyDialogKeyboardBoundary(page) {
+  const dialog = page.getByRole("dialog", { name: "Key created" })
+  const heading = dialog.getByRole("heading", { name: "Key created" })
+  const firstControl = dialog.getByRole("button", {
+    name: "Copy Credential ID",
+  })
+  const lastControl = dialog.getByRole("button", { name: "Done" })
+  assert.equal(
+    await heading.evaluate((element) => document.activeElement === element),
+    true,
+  )
+  await lastControl.focus()
+  await page.keyboard.press("Tab")
+  assert.equal(
+    await firstControl.evaluate(
+      (element) => document.activeElement === element,
+    ),
+    true,
+  )
+  await page.keyboard.press("Shift+Tab")
+  assert.equal(
+    await lastControl.evaluate((element) => document.activeElement === element),
+    true,
+  )
+}
+
+function assertCredentialFormat(value, pattern, label) {
+  if (!pattern.test(value)) {
+    throw new Error(`The ${label} credential did not use its approved format.`)
+  }
+}
+
+function maskedCredentialIdentifierFromSecret(value) {
+  const match = /^(llmm_(?:t4|fc)_[0-9a-f]+)_/u.exec(value)
+  if (!match?.[1]) {
+    throw new Error("The credential did not contain a supported safe prefix.")
+  }
+  return `Credential •••• ${match[1].slice(-4)}`
+}
+
+async function metricValue(container, label) {
+  const metric = container.locator("dt", { hasText: label })
+  await metric.waitFor()
+  assert.equal((await metric.innerText()).trim(), label.toUpperCase())
+  return metric.locator("xpath=following-sibling::dd").innerText()
+}
+
+async function requestJsonThroughEdge({
+  authority,
+  bearerToken,
+  body,
+  caFile,
+  edgePort,
+  method,
+  path,
+}) {
+  const encodedBody = body === undefined ? undefined : JSON.stringify(body)
+  const ca = await readFile(caFile)
+  return new Promise((resolveRequest, rejectRequest) => {
+    const request = httpsRequest(
+      {
+        ca,
+        headers: {
+          authorization: `Bearer ${bearerToken}`,
+          host: publicAuthorityHost(authority, edgePort),
+          ...(encodedBody
+            ? {
+                "content-length": Buffer.byteLength(encodedBody),
+                "content-type": "application/json",
+              }
+            : {}),
+        },
+        host: "127.0.0.1",
+        method,
+        path,
+        port: edgePort,
+        rejectUnauthorized: true,
+        servername: authority,
+      },
+      (response) => {
+        const chunks = []
+        response.on("data", (chunk) => chunks.push(chunk))
+        response.once("end", () => {
+          const payload = Buffer.concat(chunks).toString("utf8")
+          try {
+            resolveRequest({
+              body: payload ? JSON.parse(payload) : null,
+              status: response.statusCode ?? 500,
+            })
+          } catch {
+            const contentType = response.headers["content-type"] ?? "absent"
+            rejectRequest(
+              new Error(
+                `The Product edge returned invalid JSON for ${method} https://${authority}${path} (status ${response.statusCode ?? 500}, content-type ${contentType}).`,
+              ),
+            )
+          }
+        })
+      },
+    )
+    request.once("error", rejectRequest)
+    request.end(encodedBody)
+  })
+}
+
+async function requestTextThroughEdge({
+  authority,
+  bearerToken,
+  body,
+  caFile,
+  edgePort,
+  method,
+  path,
+}) {
+  const encodedBody = JSON.stringify(body)
+  const ca = await readFile(caFile)
+  return new Promise((resolveRequest, rejectRequest) => {
+    const request = httpsRequest(
+      {
+        ca,
+        headers: {
+          accept: "text/event-stream",
+          authorization: `Bearer ${bearerToken}`,
+          "content-length": Buffer.byteLength(encodedBody),
+          "content-type": "application/json",
+          host: publicAuthorityHost(authority, edgePort),
+        },
+        host: "127.0.0.1",
+        method,
+        path,
+        port: edgePort,
+        rejectUnauthorized: true,
+        servername: authority,
+      },
+      (response) => {
+        const chunks = []
+        response.on("data", (chunk) => chunks.push(chunk))
+        response.once("end", () => {
+          resolveRequest({
+            body: Buffer.concat(chunks).toString("utf8"),
+            contentType: String(response.headers["content-type"] ?? ""),
+            status: response.statusCode ?? 500,
+          })
+        })
+      },
+    )
+    request.once("error", rejectRequest)
+    request.end(encodedBody)
+  })
+}
+
+async function runOpenAiClientSmoke({
+  apiKey,
+  apiAuthority,
+  caFile,
+  connectAddress,
+  connectPort,
+  edgePort,
+  prompt,
+  sensitiveValues,
+}) {
+  const stdoutChunks = []
+  const stderrChunks = []
+  let outputLength = 0
+  let stdinFailure = null
+  const child = spawn(
+    process.execPath,
+    [resolve(repositoryRoot, "test-support/f0-e2e2-openai-client/client.mjs")],
+    {
+      cwd: repositoryRoot,
+      env: {
+        LANG: "C",
+        LC_ALL: "C",
+        PATH: process.env.PATH ?? "",
+      },
+      stdio: ["pipe", "pipe", "pipe"],
+    },
+  )
+  const collect = (target) => (chunk) => {
+    outputLength += chunk.length
+    if (outputLength > 65_536) {
+      child.kill("SIGKILL")
+      return
+    }
+    target.push(chunk)
+  }
+  child.stdout.on("data", collect(stdoutChunks))
+  child.stderr.on("data", collect(stderrChunks))
+  child.stdin.on("error", (error) => {
+    if (error.code !== "EPIPE") stdinFailure = error
+  })
+  child.stdin.end(
+    JSON.stringify({
+      apiKey,
+      apiAuthority,
+      baseUrl: `${publicOrigin("api", edgePort)}/v1`,
+      caFile,
+      connectAddress,
+      connectPort,
+      model: "fixture-model",
+      prompt,
+    }),
+  )
+
+  const outcome = await new Promise((resolveChild, rejectChild) => {
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL")
+      rejectChild(new Error("The external OpenAI SDK client timed out."))
+    }, 60_000)
+    child.once("error", (error) => {
+      clearTimeout(timeout)
+      rejectChild(error)
+    })
+    child.once("close", (code, signal) => {
+      clearTimeout(timeout)
+      resolveChild({ code, signal })
+    })
+  })
+  const stdout = Buffer.concat(stdoutChunks).toString("utf8")
+  const stderr = Buffer.concat(stderrChunks).toString("utf8")
+  assertNoSensitiveValues(
+    [stdout, stderr],
+    sensitiveValues,
+    "external OpenAI SDK client output",
+  )
+  if (outputLength > 65_536) {
+    throw new Error("The external OpenAI SDK client exceeded its output limit.")
+  }
+  if (stdinFailure) {
+    throw new Error("The external OpenAI SDK client input failed.")
+  }
+  if (outcome.code !== 0) {
+    throw new Error(
+      `The external OpenAI SDK client failed with ${outcome.signal ?? outcome.code}: ${redactedDiagnosticTail(stderr, sensitiveValues)}`,
+    )
+  }
+
+  let evidence
+  try {
+    evidence = JSON.parse(stdout)
+  } catch {
+    throw new Error("The external OpenAI SDK client returned invalid evidence.")
+  }
+  assert.deepEqual(
+    {
+      client: evidence.client,
+      clientVersion: evidence.clientVersion,
+      modelDiscovery: evidence.modelDiscovery,
+      nonStreamingStatus: evidence.nonStreaming?.status,
+      processBoundary: evidence.processBoundary,
+      streamingStatus: evidence.streaming?.status,
+    },
+    {
+      client: "openai-node",
+      clientVersion: "7.4.0",
+      modelDiscovery: "passed",
+      nonStreamingStatus: "passed",
+      processBoundary: "child",
+      streamingStatus: "passed",
+    },
+  )
+  assert.ok(evidence.nonStreaming.totalTokens > 0)
+  assert.ok(evidence.streaming.chunks > 0)
+  assert.ok(evidence.streaming.totalTokens > 0)
+  return evidence
+}
+
+function createDevelopmentEdge({
+  applicationsMode,
+  bffPort,
+  certificate,
+  edgePort,
+  identityFixtureFailures,
+  keycloakControl,
+  observedOrigins,
+  oidc,
+  tlsErrors,
+  webPort,
+}) {
+  const server = createHttpsServer(
+    { cert: certificate.cert, key: certificate.key },
+    (request, response) => {
+      const host = (request.headers.host ?? "").split(":", 1)[0].toLowerCase()
+      const url = new URL(request.url ?? "/", `https://${request.headers.host}`)
+      if (host === authorities.grafana && url.pathname === "/logout") {
+        developmentLogoutRedirect(
+          request,
+          response,
+          url,
+          `${publicOrigin("litellm", edgePort)}/__llmm/global-logout`,
+        )
+        return
+      }
+      if (
+        host === authorities.litellm &&
+        url.pathname === "/__llmm/global-logout"
+      ) {
+        developmentLiteLlmGlobalLogout(request, response, url)
+        return
+      }
+      if (
+        host === authorities.litellm &&
+        url.pathname === "/__llmm/global-logout/continue"
+      ) {
+        developmentLogoutRedirect(
+          request,
+          response,
+          url,
+          `${publicOrigin("identity", edgePort)}/__llmm/global-logout`,
+        )
+        return
+      }
+      if (
+        host === authorities.identity &&
+        url.pathname === "/__llmm/global-logout"
+      ) {
+        developmentLogoutRedirect(
+          request,
+          response,
+          url,
+          `${publicOrigin("console", edgePort)}/auth/signin`,
+          [
+            "AUTH_SESSION_ID=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+            "KC_AUTH_SESSION_HASH=; Path=/realms/llm-machines/; Max-Age=0; Secure; SameSite=None",
+            "KC_RESTART=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+            "KEYCLOAK_IDENTITY=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+            "KEYCLOAK_SESSION=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+          ],
+        )
+        return
+      }
+      if (host === authorities.identity) {
+        if (keycloakControl) {
+          proxyIdentityRequest(
+            request,
+            response,
+            url,
+            keycloakControl.upstreamPort,
+            edgePort,
+          )
+          return
+        }
+        void oidc.handle(request, response, url).catch((error) => {
+          identityFixtureFailures.push(
+            error instanceof Error ? error.message : "unknown_fixture_failure",
+          )
+          if (!response.headersSent) {
+            sendJson(response, 400, { error: "identity_fixture_failure" })
+          } else {
+            response.destroy()
+          }
+        })
+        return
+      }
+      if (host === authorities.console) {
+        if (
+          url.pathname === "/api/console/session/logout" ||
+          url.pathname === "/api/console/session/elevate"
+        ) {
+          observedOrigins.push(String(request.headers.origin ?? "absent"))
+        }
+        const targetPort = url.pathname.startsWith("/api/console/session/")
+          ? bffPort
+          : webPort
+        proxyRequest(
+          request,
+          response,
+          targetPort,
+          url.pathname + url.search,
+          edgePort,
+        )
+        return
+      }
+      if (host === authorities.api && applicationsMode) {
+        proxyRequest(
+          request,
+          response,
+          bffPort,
+          `/api/app-gateway${url.pathname}${url.search}`,
+          edgePort,
+          true,
+        )
+        return
+      }
+      if (host === authorities.firecrawl && applicationsMode) {
+        proxyRequest(
+          request,
+          response,
+          bffPort,
+          url.pathname + url.search,
+          edgePort,
+          true,
+        )
+        return
+      }
+      if (host === authorities.api || host === authorities.firecrawl) {
+        sendJson(response, 404, { error: "surface_not_used_by_f0_s1" })
+        return
+      }
+      sendJson(response, 421, { error: "unknown_authority" })
+    },
+  )
+  server.on("tlsClientError", (error) => tlsErrors.push(error.message))
+  return server
+}
+
+function developmentLogoutRedirect(
+  request,
+  response,
+  url,
+  destination,
+  cookies = [],
+) {
+  if (!["GET", "HEAD"].includes(request.method ?? "") || url.search) {
+    sendJson(response, 400, { error: "invalid_logout_hop" })
+    return
+  }
+  response.writeHead(303, {
+    "cache-control": "no-store",
+    location: destination,
+    "referrer-policy": "no-referrer",
+    ...(cookies.length > 0 ? { "set-cookie": cookies } : {}),
+  })
+  response.end()
+}
+
+const liteLlmGlobalLogoutScript =
+  '(()=>{for(const p of["/","/ui"])document.cookie="token=; Max-Age=0; Path="+p+"; Secure; SameSite=Lax";try{sessionStorage.removeItem("token");for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith("m"+"cp-session-"+"to"+"ken:"))sessionStorage.removeItem(k)}}catch{}try{localStorage.removeItem("litellm_selected_worker_id");localStorage.removeItem("litellm_worker_url")}catch{}location.replace("/__llmm/global-logout/continue")})()'
+
+function developmentLiteLlmGlobalLogout(request, response, url) {
+  if (!["GET", "HEAD"].includes(request.method ?? "") || url.search) {
+    sendJson(response, 400, { error: "invalid_logout_hop" })
+    return
+  }
+  const scriptDigest = createHash("sha256")
+    .update(liteLlmGlobalLogoutScript)
+    .digest("base64")
+  response.writeHead(200, {
+    "cache-control": "no-store",
+    "content-security-policy": `default-src 'none'; script-src 'sha256-${scriptDigest}'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+    "content-type": "text/html; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "set-cookie": [
+      "token=; Path=/; Max-Age=0; Secure; SameSite=Lax",
+      "token=; Path=/ui; Max-Age=0; Secure; SameSite=Lax",
+      "litellm_cp_return_to=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+      "litellm_oauth_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+      "litellm_return_url=; Path=/; Max-Age=0; Secure; SameSite=Lax",
+      "sso_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+    ],
+  })
+  response.end(
+    `<!doctype html><meta charset="utf-8"><title>Signing out</title><script>${liteLlmGlobalLogoutScript}</script>`,
+  )
+}
+
+async function startFounderProductEdge({
+  bffPort,
+  certificate,
+  edgePort,
+  grafanaPort,
+  keycloakPort,
+  liteLlmPort,
+  stateRoot,
+  webPort,
+}) {
+  for (const [name, value] of Object.entries({
+    bffPort,
+    edgePort,
+    grafanaPort: Number.parseInt(grafanaPort, 10),
+    keycloakPort,
+    liteLlmPort: Number.parseInt(liteLlmPort, 10),
+    webPort,
+  })) {
+    if (!Number.isInteger(value) || value < 1024 || value > 65535) {
+      throw new Error(`F0-UAT0 Product edge ${name} is invalid.`)
+    }
+  }
+  const inventory = JSON.parse(
+    await readFile(
+      resolve(repositoryRoot, "infra/release/core-image-inventory.json"),
+      "utf8",
+    ),
+  )
+  const component = inventory.components?.find(
+    ({ id }) => id === "product-edge",
+  )
+  if (
+    component?.repository !== "docker.io/library/nginx" ||
+    component?.version !== "1.29.1-alpine" ||
+    !/^sha256:[a-f0-9]{64}$/.test(component?.indexDigest ?? "")
+  ) {
+    throw new Error("F0-UAT0 Product edge image identity is invalid.")
+  }
+  const image = `${component.repository}:${component.version}@${component.indexDigest}`
+  const container = `llmm-f0-uat0-edge-${randomBytes(8).toString("hex")}`
+  const configPath = join(stateRoot, "product-edge.nginx.conf")
+  let config = await readFile(
+    resolve(repositoryRoot, "infra/ingress/product-edge.nginx.conf.template"),
+    "utf8",
+  )
+  const replacements = {
+    "@@PRODUCT_API_HOST@@": authorities.api,
+    "@@PRODUCT_CONSOLE_HOST@@": authorities.console,
+    "@@PRODUCT_FIRECRAWL_HOST@@": authorities.firecrawl,
+    "@@PRODUCT_GRAFANA_HOST@@": authorities.grafana,
+    "@@PRODUCT_IDENTITY_HOST@@": authorities.identity,
+    "@@PRODUCT_KEYCLOAK_ADMIN_HOST@@": authorities.keycloak,
+    "@@PRODUCT_LITELLM_HOST@@": authorities.litellm,
+    "server console-bff:4001;": `server 127.0.0.1:${bffPort};`,
+    "server console-web:3000;": `server 127.0.0.1:${webPort};`,
+    "server grafana:3000;": `server 127.0.0.1:${Number.parseInt(grafanaPort, 10)};`,
+    "server keycloak:8080;": `server 127.0.0.1:${keycloakPort};`,
+    "server litellm:4000;": `server 127.0.0.1:${Number.parseInt(liteLlmPort, 10)};`,
+  }
+  for (const [placeholder, replacement] of Object.entries(replacements)) {
+    if (!config.includes(placeholder)) {
+      throw new Error(
+        `F0-UAT0 Product edge template input is missing: ${placeholder}.`,
+      )
+    }
+    config = config.replaceAll(placeholder, replacement)
+  }
+  config = config.replaceAll("listen 443 ssl", `listen ${edgePort} ssl`)
+  if (/@@[A-Z0-9_]+@@/.test(config) || /server [a-z-]+:\d+;/.test(config)) {
+    throw new Error("F0-UAT0 Product edge rendering is incomplete.")
+  }
+  await writeFile(configPath, config, { mode: 0o600 })
+
+  const mounts = [
+    [configPath, "/etc/nginx/nginx.conf"],
+    [
+      founderUatPlacement.tls.certificateFile,
+      "/run/secrets/llmm_edge_tls_certificate",
+    ],
+    [
+      founderUatPlacement.tls.privateKeyFile,
+      "/run/secrets/llmm_edge_tls_private_key",
+    ],
+    ...[
+      "proxy-common.inc",
+      "request-headers-console-browser.inc",
+      "request-headers-customer-api.inc",
+      "request-headers-grafana-browser.inc",
+      "request-headers-identity-browser.inc",
+      "request-headers-keycloak-admin-browser.inc",
+      "request-headers-litellm-browser.inc",
+      "request-safety.inc",
+    ].map((name) => [
+      resolve(repositoryRoot, "infra/ingress", name),
+      `/etc/nginx/llm-machines/${name}`,
+    ]),
+  ]
+  const edgeUid = process.getuid?.()
+  const edgeGid = process.getgid?.()
+  if (!Number.isSafeInteger(edgeUid) || !Number.isSafeInteger(edgeGid)) {
+    throw new Error("F0-UAT0 Product edge requires a native numeric identity.")
+  }
+  for (const [source] of mounts) {
+    const sourceStat = await stat(source)
+    const mode = sourceStat.mode & 0o777
+    const readable =
+      (sourceStat.uid === edgeUid && Boolean(mode & 0o400)) ||
+      (sourceStat.gid === edgeGid && Boolean(mode & 0o040)) ||
+      Boolean(mode & 0o004)
+    if (!sourceStat.isFile() || !readable) {
+      throw new Error(
+        `F0-UAT0 Product edge mount is unreadable by its native identity: ${basename(source)}`,
+      )
+    }
+  }
+  const edgeIdentity = `${edgeUid}:${edgeGid}`
+  const edgeTmpfsOwnership = `uid=${edgeUid},gid=${edgeGid},mode=0700`
+  const result = dockerControl(keycloakControl, [
+    "run",
+    "--detach",
+    "--name",
+    container,
+    "--label",
+    "com.llm-machines.test-package=F0-UAT0",
+    "--network",
+    "host",
+    "--user",
+    edgeIdentity,
+    "--read-only",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges=true",
+    "--tmpfs",
+    `/var/cache/nginx:rw,noexec,nosuid,nodev,size=16m,${edgeTmpfsOwnership}`,
+    "--tmpfs",
+    `/var/log/nginx:rw,noexec,nosuid,nodev,size=16m,${edgeTmpfsOwnership}`,
+    "--tmpfs",
+    `/var/run:rw,noexec,nosuid,nodev,size=4m,${edgeTmpfsOwnership}`,
+    ...mounts.flatMap(([source, target]) => [
+      "--mount",
+      `type=bind,src=${source},dst=${target},readonly`,
+    ]),
+    image,
+  ])
+  if (result.status !== 0) {
+    throw new Error(
+      `F0-UAT0 Product edge failed to start: ${safeDiagnosticTail(result.stderr)}`,
+    )
+  }
+  const owner = {
+    close(callback) {
+      const cleanup = dockerControl(keycloakControl, [
+        "rm",
+        "--force",
+        container,
+      ])
+      owner.listening = false
+      callback(
+        cleanup.status === 0
+          ? undefined
+          : new Error("F0-UAT0 Product edge cleanup failed."),
+      )
+    },
+    closeAllConnections() {},
+    container,
+    listening: true,
+  }
+  let lastProbe = null
+  try {
+    await eventually(async () => {
+      const state = dockerControl(keycloakControl, [
+        "inspect",
+        "--format",
+        "{{.State.Status}} {{.State.ExitCode}}",
+        container,
+      ])
+      if (state.status !== 0 || state.stdout.trim().startsWith("exited ")) {
+        throw new Error(
+          `F0-UAT0 Product edge exited before readiness: ${safeDiagnosticTail(state.stdout || state.stderr)}`,
+        )
+      }
+      try {
+        lastProbe = await requestHttpsEdgeWithHeaders({
+          certificate,
+          edgePort,
+          headers: { host: authorities.console },
+          method: "GET",
+          path: "/auth/signin",
+          servername: authorities.console,
+        })
+      } catch (error) {
+        lastProbe = {
+          error: error instanceof Error ? error.message : "unknown error",
+        }
+      }
+      return lastProbe?.status === 200
+    }, 30_000)
+  } catch (error) {
+    const logs = dockerControl(keycloakControl, [
+      "logs",
+      "--tail",
+      "100",
+      container,
+    ])
+    await closeServer(owner).catch(() => undefined)
+    throw new Error(
+      `F0-UAT0 Product edge readiness failed: ${safeDiagnosticTail(error instanceof Error ? error.message : String(error))}; probe=${safeDiagnosticTail(JSON.stringify(lastProbe))}; logs=${safeDiagnosticTail(`${logs.stdout}\n${logs.stderr}`)}`,
+    )
+  }
+  return owner
+}
+
+function proxyIdentityRequest(incoming, outgoing, url, upstreamPort, edgePort) {
+  const boundary = evaluateSourceBoundary({
+    customerPort: 443,
+    headers: incoming.headers,
+    hostHeaders: [authorities.identity],
+    hosts: Object.fromEntries(
+      ["api", "console", "firecrawl", "identity"].map((name) => [
+        name,
+        authorities[name],
+      ]),
+    ),
+    method: incoming.method ?? "GET",
+    rawTarget: `${url.pathname}${url.search}`,
+    sni: authorities.identity,
+  })
+  if (!boundary.allowed) {
+    sendJson(outgoing, 404, { error: "identity_route_denied" })
+    return
+  }
+  const upstream = httpRequest(
+    {
+      headers: boundary.forwardedHeaders,
+      host: "127.0.0.1",
+      method: incoming.method,
+      path: `${boundary.upstreamPath}${url.search}`,
+      port: upstreamPort,
+    },
+    (upstreamResponse) => {
+      if ([502, 503, 504].includes(upstreamResponse.statusCode ?? 0)) {
+        upstreamResponse.resume()
+        redirectIdentityUnavailable(outgoing, edgePort)
+        return
+      }
+      outgoing.writeHead(
+        upstreamResponse.statusCode ?? 502,
+        withoutHopByHop(upstreamResponse.headers),
+      )
+      upstreamResponse.pipe(outgoing)
+    },
+  )
+  upstream.on("error", () => {
+    if (!outgoing.headersSent) {
+      redirectIdentityUnavailable(outgoing, edgePort)
+    } else {
+      outgoing.destroy()
+    }
+  })
+  incoming.pipe(upstream)
+}
+
+function redirectIdentityUnavailable(response, edgePort) {
+  const location = new URL(
+    "/auth/unavailable",
+    publicOrigin("console", edgePort),
+  )
+  location.searchParams.set("returnTo", "/auth/signin")
+  response.writeHead(303, {
+    "cache-control": "no-store",
+    location: location.href,
+    pragma: "no-cache",
+    "retry-after": "5",
+  })
+  response.end()
+}
+
+function proxyRequest(
+  incoming,
+  outgoing,
+  port,
+  path,
+  edgePort,
+  forwardAuthorization = false,
+) {
+  const headers = normalizedProxyHeaders(incoming, forwardAuthorization)
+  const upstream = httpRequest(
+    {
+      headers,
+      host: "127.0.0.1",
+      method: incoming.method,
+      path,
+      port,
+    },
+    (upstreamResponse) => {
+      const responseHeaders = withoutHopByHop(upstreamResponse.headers)
+      const location = normalizedConsoleLocation(
+        responseHeaders.location,
+        edgePort,
+        port,
+      )
+      if (location) {
+        responseHeaders.location = location
+      }
+      outgoing.writeHead(upstreamResponse.statusCode ?? 502, responseHeaders)
+      upstreamResponse.pipe(outgoing)
+    },
+  )
+  upstream.on("error", () => {
+    if (!outgoing.headersSent) {
+      sendJson(outgoing, 502, { error: "upstream_unavailable" })
+    } else {
+      outgoing.destroy()
+    }
+  })
+  incoming.pipe(upstream)
+}
+
+function normalizedConsoleLocation(location, edgePort, upstreamPort) {
+  if (typeof location !== "string") {
+    return location
+  }
+  const url = new URL(location, publicOrigin("console", edgePort))
+  if (
+    (url.protocol === "http:" &&
+      url.hostname === authorities.console &&
+      url.port === String(edgePort)) ||
+    (["127.0.0.1", "localhost"].includes(url.hostname) &&
+      url.port === String(upstreamPort))
+  ) {
+    const publicConsole = new URL(publicOrigin("console", edgePort))
+    url.protocol = publicConsole.protocol
+    url.hostname = publicConsole.hostname
+    url.port = publicConsole.port
+    return url.toString()
+  }
+  return location
+}
+
+function normalizedProxyHeaders(request, forwardAuthorization = false) {
+  const blocked = new Set([
+    ...(forwardAuthorization ? [] : ["authorization"]),
+    ...(forwardAuthorization
+      ? ["cookie", "x-llm-machines-console-session"]
+      : []),
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+  ])
+  const headers = Object.fromEntries(
+    Object.entries(withoutHopByHop(request.headers)).filter(
+      ([name]) => !blocked.has(name),
+    ),
+  )
+  headers["x-forwarded-for"] = request.socket.remoteAddress ?? "127.0.0.1"
+  headers["x-forwarded-host"] = request.headers.host ?? ""
+  headers["x-forwarded-proto"] = "https"
+  return headers
+}
+
+function withoutHopByHop(headers) {
+  const blocked = new Set([
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+  ])
+  return Object.fromEntries(
+    Object.entries(headers).filter(([name]) => !blocked.has(name)),
+  )
+}
+
+function createInferenceDouble(
+  apiKey,
+  responseContent,
+  control = { available: true, requests: [] },
+  observabilityCanaries = null,
+) {
+  return createHttpServer((request, response) => {
+    void handleInferenceDoubleRequest(
+      request,
+      response,
+      apiKey,
+      responseContent,
+      control,
+      observabilityCanaries,
+    ).catch(() => {
+      if (!response.headersSent) {
+        sendJson(response, 500, { error: "fixture_failure" })
+      } else {
+        response.destroy()
+      }
+    })
+  })
+}
+
+function createFirecrawlDouble() {
+  return createHttpServer((request, response) => {
+    void handleFirecrawlDoubleRequest(request, response).catch(() => {
+      if (!response.headersSent) {
+        sendJson(response, 500, { error: "fixture_failure" })
+      } else {
+        response.destroy()
+      }
+    })
+  })
+}
+
+async function handleFirecrawlDoubleRequest(request, response) {
+  if (
+    request.method !== "POST" ||
+    (request.url !== "/v2/search" && request.url !== "/v2/scrape")
+  ) {
+    sendJson(response, 404, { error: "unsupported" })
+    return
+  }
+  if (request.headers.authorization || request.headers.cookie) {
+    sendJson(response, 400, { error: "credential_forwarding_forbidden" })
+    return
+  }
+  const body = await readJsonRequest(request)
+  if (
+    !body ||
+    (request.url === "/v2/search"
+      ? typeof body.query !== "string"
+      : typeof body.url !== "string" ||
+        new URL(body.url).hostname !== "allowed.example.test")
+  ) {
+    sendJson(response, 400, { error: "invalid_fixture_request" })
+    return
+  }
+  sendJson(response, 200, {
+    data:
+      request.url === "/v2/search"
+        ? {
+            web: [
+              {
+                description: "Deterministic search description",
+                title: "Deterministic search result",
+                url: "https://allowed.example.test/result",
+              },
+            ],
+          }
+        : {
+            markdown: "# Deterministic scrape result",
+            metadata: {
+              sourceURL: "https://allowed.example.test/page",
+              statusCode: 200,
+              title: "Deterministic scrape result",
+            },
+          },
+    success: true,
+  })
+}
+
+async function handleInferenceDoubleRequest(
+  request,
+  response,
+  apiKey,
+  responseContent,
+  control,
+  observabilityCanaries,
+) {
+  const authorized = request.headers.authorization === `Bearer ${apiKey}`
+  const url = new URL(request.url ?? "/", "http://fixture.invalid")
+  control.requests.push({
+    authorized,
+    method: request.method ?? "UNKNOWN",
+    path: url.pathname,
+    queryKeys: [...new Set(url.searchParams.keys())].sort(),
+  })
+  if (!authorized) {
+    sendJson(response, 401, { error: "unauthorized" })
+    return
+  }
+  if (!control.available) {
+    sendJson(response, 503, { error: "fixture_unavailable" })
+    return
+  }
+  if (request.method === "GET" && url.pathname === "/v1/models") {
+    sendJson(response, 200, {
+      data: [{ id: "fixture-model", object: "model", owned_by: "fixture" }],
+      object: "list",
+    })
+    return
+  }
+  if (
+    request.method === "GET" &&
+    url.pathname === "/user/daily/activity/aggregated"
+  ) {
+    sendJson(response, 200, {
+      metadata: {
+        total_api_requests: observabilityCanaries ? 17 : 0,
+        total_tokens: observabilityCanaries ? 1700 : 0,
+      },
+      results: observabilityCanaries
+        ? [
+            {
+              breakdown: {
+                model_groups: {
+                  "fixture-model": {
+                    metrics: { api_requests: 17, total_tokens: 1700 },
+                  },
+                },
+              },
+              date: "2026-08-07",
+              metrics: { total_api_requests: 17, total_tokens: 1700 },
+            },
+          ]
+        : [],
+    })
+    return
+  }
+  if (request.method === "GET" && url.pathname === "/model/info") {
+    sendJson(response, 200, {
+      data: [
+        {
+          model_info: {
+            id: "fixture-model-id",
+            litellm_provider: "fixture",
+            max_context_tokens: 8192,
+          },
+          model_name: "fixture-model",
+        },
+      ],
+    })
+    return
+  }
+  if (request.method === "GET" && url.pathname === "/key/list") {
+    sendJson(response, 200, {
+      current_page: 1,
+      keys: observabilityCanaries
+        ? [
+            {
+              blocked: false,
+              key_alias: "core-routing",
+              last_active: "2026-08-07T12:00:00.000Z",
+              models: ["fixture-model"],
+              team_alias: "inference-core",
+              token: observabilityCanaries.liteLlmCredential,
+            },
+          ]
+        : [],
+      total_count: observabilityCanaries ? 1 : 0,
+      total_pages: 1,
+    })
+    return
+  }
+  if (request.method === "GET" && url.pathname === "/spend/logs/v2") {
+    sendJson(response, 200, {
+      data: observabilityCanaries
+        ? [
+            {
+              model_group: "fixture-model",
+              spend: 0,
+              start_time: "2026-08-07T12:00:00.000Z",
+              total_tokens: 100,
+            },
+          ]
+        : [],
+    })
+    return
+  }
+  if (request.method !== "POST" || url.pathname !== "/v1/chat/completions") {
+    sendJson(response, 404, { error: "unsupported" })
+    return
+  }
+  const body = await readJsonRequest(request)
+  if (body?.model !== "fixture-model" || !Array.isArray(body.messages)) {
+    sendJson(response, 400, { error: "invalid_fixture_request" })
+    return
+  }
+  sendJson(response, 200, {
+    choices: [
+      {
+        finish_reason: "stop",
+        index: 0,
+        message: { content: responseContent, role: "assistant" },
+      },
+    ],
+    created: 0,
+    id: "chatcmpl-fixture",
+    model: "fixture-model",
+    object: "chat.completion",
+    usage: { completion_tokens: 2, prompt_tokens: 3, total_tokens: 5 },
+  })
+}
+
+function createPrometheusDouble(apiKey, control) {
+  return createHttpServer((request, response) => {
+    const authorized = request.headers.authorization === `Bearer ${apiKey}`
+    const url = new URL(request.url ?? "/", "http://fixture.invalid")
+    control.requests.push({
+      authorized,
+      method: request.method ?? "UNKNOWN",
+      path: url.pathname,
+      queryKeys: [...new Set(url.searchParams.keys())].sort(),
+    })
+    if (!authorized) {
+      sendJson(response, 401, { error: "unauthorized" })
+      return
+    }
+    if (!control.available) {
+      sendJson(response, 503, { error: "fixture_unavailable" })
+      return
+    }
+    if (request.method !== "GET") {
+      sendJson(response, 405, { error: "method_not_allowed" })
+      return
+    }
+    if (url.pathname === "/api/v1/query") {
+      const query = url.searchParams.get("query") ?? ""
+      const timestamp = Math.floor(Date.now() / 1000)
+      const result = query.startsWith("up{")
+        ? [
+            {
+              metric: { host: "core-a", job: "node" },
+              value: [timestamp, "1"],
+            },
+            {
+              metric: { host: "inference-a", job: "dcgm" },
+              value: [timestamp, "1"],
+            },
+          ]
+        : [
+            {
+              metric: { host: "core-a" },
+              value: [timestamp, query.includes("filesystem") ? "71" : "62"],
+            },
+          ]
+      sendJson(response, 200, {
+        data: { result, resultType: "vector" },
+        status: "success",
+      })
+      return
+    }
+    if (url.pathname === "/api/v1/query_range") {
+      const end = Number(url.searchParams.get("end"))
+      const start = Number(url.searchParams.get("start"))
+      const query = url.searchParams.get("query") ?? ""
+      const metric = {
+        __name__: metricNameForQuery(query),
+        device: query.includes("network") ? "eth0" : "/dev/vda1",
+        direction: query.includes("transmit") ? "TX" : "RX",
+        gpu: "0",
+        host: "core-a",
+        mountpoint: "/",
+      }
+      sendJson(response, 200, {
+        data: {
+          result: [
+            {
+              metric,
+              values: [
+                [Number.isFinite(start) ? start : 1, "41"],
+                [Number.isFinite(end) ? end : 2, "42"],
+              ],
+            },
+          ],
+          resultType: "matrix",
+        },
+        status: "success",
+      })
+      return
+    }
+    sendJson(response, 404, { error: "unsupported" })
+  })
+}
+
+function createAlertmanagerDouble(apiKey, control, observabilityCanaries) {
+  return createHttpServer((request, response) => {
+    const authorized = request.headers.authorization === `Bearer ${apiKey}`
+    const url = new URL(request.url ?? "/", "http://fixture.invalid")
+    control.requests.push({
+      authorized,
+      method: request.method ?? "UNKNOWN",
+      path: url.pathname,
+      queryKeys: [...new Set(url.searchParams.keys())].sort(),
+    })
+    if (request.method === "GET" && url.pathname === "/-/ready") {
+      sendJson(response, control.available ? 200 : 503, {
+        status: control.available ? "ready" : "unavailable",
+      })
+      return
+    }
+    if (!authorized) {
+      sendJson(response, 401, { error: "unauthorized" })
+      return
+    }
+    if (!control.available) {
+      sendJson(response, 503, { error: "fixture_unavailable" })
+      return
+    }
+    if (request.method !== "GET" || url.pathname !== "/api/v2/alerts") {
+      sendJson(response, 404, { error: "unsupported" })
+      return
+    }
+    sendJson(response, 200, [
+      {
+        labels: {
+          alertname: "LLMMGpuSaturation",
+          component: "inference",
+          severity: "warning",
+          unapproved: observabilityCanaries.workload,
+        },
+        startsAt: "2026-08-07T12:00:00.000Z",
+        status: { state: "active" },
+      },
+      {
+        labels: {
+          alertname: observabilityCanaries.alertLabel,
+          component: "inference",
+          severity: "critical",
+        },
+        startsAt: "2026-08-07T12:00:00.000Z",
+        status: { state: "active" },
+      },
+    ])
+  })
+}
+
+function metricNameForQuery(query) {
+  if (query.includes("GPU_TEMP")) return "DCGM_FI_DEV_GPU_TEMP"
+  if (query.includes("GPU_UTIL")) return "DCGM_FI_DEV_GPU_UTIL"
+  if (query.includes("memory")) return "node_memory_MemAvailable_bytes"
+  if (query.includes("filesystem")) return "node_filesystem_avail_bytes"
+  if (query.includes("power")) return "ipmi_power_watts"
+  if (query.includes("network")) return "node_network_receive_bytes_total"
+  return "node_cpu_seconds_total"
+}
+
+async function createCertificate(stateRoot) {
+  if (founderUatPlacement) {
+    const { caFile, certificateFile, privateKeyFile } = founderUatPlacement.tls
+    for (const path of [caFile, certificateFile, privateKeyFile]) {
+      if ((await realpath(path)) !== resolve(path)) {
+        throw new Error("F0-UAT0 placement TLS files must not be symlinks.")
+      }
+    }
+    const [caMode, certificateMode, privateKeyMode] = await Promise.all(
+      [caFile, certificateFile, privateKeyFile].map(
+        async (path) => (await stat(path)).mode & 0o777,
+      ),
+    )
+    if (
+      caMode & 0o022 ||
+      certificateMode & 0o022 ||
+      privateKeyMode & 0o077 ||
+      !(privateKeyMode & 0o400)
+    ) {
+      throw new Error("F0-UAT0 placement TLS file permissions are unsafe.")
+    }
+    const [caBytes, certBytes, keyBytes] = await Promise.all([
+      readFile(caFile),
+      readFile(certificateFile),
+      readFile(privateKeyFile),
+    ])
+    const caCertificate = new X509Certificate(caBytes)
+    const certificate = new X509Certificate(certBytes)
+    const now = Date.now()
+    if (
+      Date.parse(certificate.validFrom) > now ||
+      Date.parse(certificate.validTo) <= now ||
+      !certificate.verify(caCertificate.publicKey)
+    ) {
+      throw new Error("F0-UAT0 placement edge certificate is not valid.")
+    }
+    for (const host of Object.values(authorities)) {
+      if (!certificate.checkHost(host)) {
+        throw new Error(
+          `F0-UAT0 placement edge certificate does not cover ${host}.`,
+        )
+      }
+    }
+    const certificatePublicKey = certificate.publicKey.export({
+      format: "der",
+      type: "spki",
+    })
+    const privatePublicKey = createPublicKey(createPrivateKey(keyBytes)).export(
+      { format: "der", type: "spki" },
+    )
+    if (!certificatePublicKey.equals(privatePublicKey)) {
+      throw new Error(
+        "F0-UAT0 placement edge certificate and private key do not match.",
+      )
+    }
+    return {
+      ca: caFile,
+      cert: certBytes,
+      key: keyBytes,
+      spki: createHash("sha256").update(certificatePublicKey).digest("base64"),
+    }
+  }
+  const caKey = join(stateRoot, "ca.key")
+  const ca = join(stateRoot, "ca.crt")
+  const key = join(stateRoot, "edge.key")
+  const request = join(stateRoot, "edge.csr")
+  const cert = join(stateRoot, "edge.crt")
+  const extensions = join(stateRoot, "edge.ext")
+  await writeFile(
+    extensions,
+    [
+      "basicConstraints=CA:FALSE",
+      "keyUsage=digitalSignature,keyEncipherment",
+      "extendedKeyUsage=serverAuth",
+      `subjectAltName=${Object.values(authorities)
+        .map((host) => `DNS:${host}`)
+        .join(",")}`,
+      "",
+    ].join("\n"),
+    { mode: 0o600 },
+  )
+  runOpenSsl([
+    "req",
+    "-x509",
+    "-newkey",
+    "rsa:2048",
+    "-nodes",
+    "-keyout",
+    caKey,
+    "-out",
+    ca,
+    "-subj",
+    "/CN=LLMM F0-S1 throwaway CA",
+    "-days",
+    "1",
+    "-sha256",
+  ])
+  runOpenSsl([
+    "req",
+    "-newkey",
+    "rsa:2048",
+    "-nodes",
+    "-keyout",
+    key,
+    "-out",
+    request,
+    "-subj",
+    `/CN=${authorities.console}`,
+  ])
+  runOpenSsl([
+    "x509",
+    "-req",
+    "-in",
+    request,
+    "-CA",
+    ca,
+    "-CAkey",
+    caKey,
+    "-CAcreateserial",
+    "-out",
+    cert,
+    "-days",
+    "1",
+    "-sha256",
+    "-extfile",
+    extensions,
+  ])
+  const certBytes = await readFile(cert)
+  const publicKey = new X509Certificate(certBytes).publicKey.export({
+    format: "der",
+    type: "spki",
+  })
+  return {
+    ca,
+    cert: certBytes,
+    key: await readFile(key),
+    spki: createHash("sha256").update(publicKey).digest("base64"),
+  }
+}
+
+function runOpenSsl(arguments_) {
+  const result = spawnSync("openssl", arguments_, {
+    encoding: "utf8",
+    stdio: ["ignore", "ignore", "pipe"],
+  })
+  if (result.status !== 0) {
+    throw new Error(`OpenSSL fixture setup failed: ${result.stderr.trim()}`)
+  }
+}
+
+function postgresControlFromEnvironment() {
+  const databaseUrl = requiredEnvironment("F0_P1_DATABASE_URL")
+  const parsed = new URL(databaseUrl)
+  if (
+    parsed.protocol !== "postgresql:" ||
+    parsed.hostname !== "127.0.0.1" ||
+    !parsed.port ||
+    !parsed.username ||
+    !parsed.password ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error("F0-P1 requires a loopback-only PostgreSQL URL.")
+  }
+  const container = requiredEnvironment("F0_P1_POSTGRES_CONTAINER")
+  const database = requiredEnvironment("F0_P1_POSTGRES_DB")
+  const user = requiredEnvironment("F0_P1_POSTGRES_USER")
+  const dockerContext = process.env.F0_P1_DOCKER_CONTEXT?.trim() || null
+  if (
+    !/^[a-z0-9][a-z0-9_.-]{0,127}$/.test(container) ||
+    !/^[a-z_][a-z0-9_]{0,62}$/.test(database) ||
+    !/^[a-z_][a-z0-9_]{0,62}$/.test(user) ||
+    (dockerContext !== null && !/^[A-Za-z0-9_.-]{1,128}$/.test(dockerContext))
+  ) {
+    throw new Error("F0-P1 PostgreSQL control metadata is invalid.")
+  }
+  return { container, database, databaseUrl, dockerContext, user }
+}
+
+function liteLlmControlFromEnvironment() {
+  const configPath = requiredEnvironment("F0_L2_LITELLM_CONFIG_FILE")
+  let config
+  try {
+    config = JSON.parse(readFileSync(configPath, "utf8"))
+  } catch {
+    throw new Error("F0-L2 LiteLLM control metadata is invalid JSON.")
+  }
+  const baseUrl = new URL(String(config.baseUrl ?? ""))
+  if (
+    baseUrl.protocol !== "http:" ||
+    baseUrl.hostname !== "127.0.0.1" ||
+    !baseUrl.port ||
+    baseUrl.pathname !== "/" ||
+    baseUrl.search ||
+    baseUrl.hash ||
+    typeof config.adminKey !== "string" ||
+    config.adminKey.length < 20 ||
+    typeof config.routingKey !== "string" ||
+    config.routingKey.length < 20 ||
+    typeof config.container !== "string" ||
+    !/^[a-z0-9][a-z0-9_.-]{0,127}$/.test(config.container) ||
+    typeof config.dockerContext !== "string" ||
+    !/^[A-Za-z0-9_.-]{1,128}$/.test(config.dockerContext) ||
+    !/^sha256:[a-f0-9]{64}$/.test(config.image ?? "") ||
+    config.image !==
+      "sha256:d1396589f1fed1fa3e67142c5f93189e257db14ce92ce9d952fbf18a58350f6b" ||
+    config.imageContract?.manifestDigest !==
+      "sha256:37be0e64e02f7cd2667f6aaa318a69bdde737c6c564ee0a03471bbfff2912244" ||
+    config.imageContract?.platform !== "linux/amd64" ||
+    config.imageContract?.sourceRevision !==
+      "83d6d84bfb7abbbff70d456bc89028d426db8c33" ||
+    config.imageContract?.version !== "v1.96.2-llmm.1" ||
+    !config.canaries ||
+    ![
+      "outagePrompt",
+      "prompt",
+      "recoveryPrompt",
+      "response",
+      "streamingPrompt",
+    ].every(
+      (name) =>
+        typeof config.canaries[name] === "string" &&
+        config.canaries[name].length >= 20,
+    )
+  ) {
+    throw new Error("F0-L2 LiteLLM control metadata is invalid.")
+  }
+  return {
+    adminKey: config.adminKey,
+    baseUrl: baseUrl.origin,
+    canaries: config.canaries,
+    container: config.container,
+    dockerContext: config.dockerContext,
+    image: config.image,
+    imageContract: config.imageContract,
+    routingKey: config.routingKey,
+  }
+}
+
+function integratedFirecrawlControlFromEnvironment() {
+  const path = requiredEnvironment("F0_C1_FIRECRAWL_CONFIG_FILE")
+  const config = readControlFile(path, "Firecrawl")
+  const baseUrl = validatedLoopbackControlUrl(config.baseUrl, "Firecrawl")
+  if (
+    !Array.isArray(config.allowedHosts) ||
+    config.allowedHosts.length === 0 ||
+    config.allowedHosts.length > 8 ||
+    new Set(config.allowedHosts).size !== config.allowedHosts.length ||
+    config.allowedHosts.some(
+      (host) =>
+        typeof host !== "string" ||
+        !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host),
+    ) ||
+    !config.canaries ||
+    !["query", "url"].every(
+      (name) =>
+        typeof config.canaries[name] === "string" &&
+        config.canaries[name].length >= 20,
+    ) ||
+    !config.containers ||
+    Object.keys(config.containers).sort().join(",") !==
+      "api,browser,egress,search" ||
+    Object.values(config.containers).some(
+      (container) =>
+        typeof container !== "string" || !/^[a-f0-9]{64}$/.test(container),
+    )
+  ) {
+    throw new Error("F0-C1 Firecrawl control metadata is invalid.")
+  }
+  return {
+    allowedHosts: config.allowedHosts,
+    baseUrl,
+    canaries: config.canaries,
+    containers: config.containers,
+  }
+}
+
+function integratedObservabilityControlFromEnvironment() {
+  const path = requiredEnvironment("F0_C1_OBSERVABILITY_CONFIG_FILE")
+  const config = readControlFile(path, "observability")
+  return {
+    alertmanagerBaseUrl: validatedLoopbackControlUrl(
+      config.alertmanagerBaseUrl,
+      "Alertmanager",
+    ),
+    grafanaBaseUrl: validatedLoopbackControlUrl(
+      config.grafanaBaseUrl,
+      "Grafana",
+    ),
+    prometheusBaseUrl: validatedLoopbackControlUrl(
+      config.prometheusBaseUrl,
+      "Prometheus",
+    ),
+  }
+}
+
+function founderUatControlFromEnvironment() {
+  const values = {
+    commissioningStageFile:
+      process.env.F0_UAT0_COMMISSIONING_STAGE_FILE?.trim(),
+    controlFile: process.env.F0_UAT0_CONTROL_FILE?.trim(),
+    credentialFile: process.env.F0_UAT0_CREDENTIAL_FILE?.trim(),
+    outerInventory: process.env.F0_UAT0_OUTER_INVENTORY?.trim(),
+    stopFile: process.env.F0_UAT0_STOP_FILE?.trim(),
+  }
+  if (Object.values(values).every((value) => !value)) return null
+  if (Object.values(values).some((value) => !value)) {
+    throw new Error("F0-UAT0 operator control metadata is incomplete.")
+  }
+  for (const path of [
+    values.controlFile,
+    values.commissioningStageFile,
+    values.credentialFile,
+    values.stopFile,
+  ]) {
+    if (!isAbsolute(path)) {
+      throw new Error("F0-UAT0 operator control paths must be absolute.")
+    }
+  }
+  if (
+    new Set(
+      [
+        values.commissioningStageFile,
+        values.controlFile,
+        values.credentialFile,
+        values.stopFile,
+      ].map((path) => resolve(path, "..")),
+    ).size !== 1
+  ) {
+    throw new Error("F0-UAT0 operator control paths must share one owner root.")
+  }
+  let outerInventory
+  try {
+    outerInventory = JSON.parse(values.outerInventory)
+  } catch {
+    throw new Error("F0-UAT0 outer inventory is invalid JSON.")
+  }
+  if (
+    !outerInventory ||
+    typeof outerInventory !== "object" ||
+    typeof outerInventory.network !== "string" ||
+    typeof outerInventory.postgresVolume !== "string" ||
+    !outerInventory.containers ||
+    typeof outerInventory.containers !== "object"
+  ) {
+    throw new Error("F0-UAT0 outer inventory is invalid.")
+  }
+  return { ...values, outerInventory }
+}
+
+async function holdFounderUat({
+  caFile,
+  children,
+  credentials,
+  edgePort,
+  firecrawlControl,
+  founderEdgeContainer,
+  identityAuthorityBinding,
+  keycloakControl,
+  liteLlmControl,
+  synchronizeClock,
+}) {
+  assert.ok(founderUatControl)
+  assert.equal(typeof synchronizeClock, "function")
+  await synchronizeClock()
+  const credentialDocument = {
+    admin: founderCredential(credentials.admin),
+    operator: founderCredential(credentials.operator),
+    schemaVersion: 1,
+  }
+  await writeFile(
+    founderUatControl.credentialFile,
+    `${JSON.stringify(credentialDocument, null, 2)}\n`,
+    { flag: "wx", mode: 0o600 },
+  )
+  const inventory = {
+    applicationProcesses: children
+      .filter((record) => !record.stopping && !record.exited)
+      .map((record) => ({ name: record.name, pid: record.child.pid })),
+    edgeProcess: process.pid,
+    ...(founderEdgeContainer ? { edgeContainer: founderEdgeContainer } : {}),
+    firecrawl: firecrawlControl.containers ?? {},
+    identity: keycloakControl.container,
+    liteLlm: liteLlmControl.container,
+    outer: founderUatControl.outerInventory,
+  }
+  await writeFile(
+    founderUatControl.commissioningStageFile,
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        stage: "COMPLETE_CANDIDATE_JOURNEY",
+        status: "PASSED",
+        updatedAt: new Date().toISOString(),
+      },
+      null,
+      2,
+    )}\n`,
+    { mode: 0o600 },
+  )
+  await writeFile(
+    founderUatControl.controlFile,
+    `${JSON.stringify(
+      {
+        authorities: {
+          api: publicOrigin("api", edgePort),
+          console: publicOrigin("console", edgePort),
+          firecrawl: publicOrigin("firecrawl", edgePort),
+          grafana: publicOrigin("grafana", edgePort),
+          identity: publicOrigin("identity", edgePort),
+          keycloak: publicOrigin("keycloak", edgePort),
+          litellm: publicOrigin("litellm", edgePort),
+        },
+        caFile,
+        credentialFile: founderUatControl.credentialFile,
+        identityAuthorityBinding,
+        identityCommissioning: keycloakControl.commissioning,
+        inventory,
+        keepRunning: true,
+        privateNativeServices: [
+          "firecrawl",
+          "grafana-upstream",
+          "keycloak-upstream",
+          "litellm-upstream",
+          "postgresql",
+          "prometheus",
+          "sglang-or-inference-double",
+        ],
+        schemaVersion: 1,
+        status: "READY",
+      },
+      null,
+      2,
+    )}\n`,
+    { flag: "wx", mode: 0o600 },
+  )
+
+  while (!(await exists(founderUatControl.stopFile))) {
+    await synchronizeClock()
+    const failed = children.find((record) => !record.stopping && record.exited)
+    if (failed) {
+      throw new Error(
+        `F0-UAT0 managed process exited while founder access was active: ${failed.name}.`,
+      )
+    }
+    await delay(500)
+  }
+  await Promise.all([
+    rm(founderUatControl.controlFile, { force: true }),
+    rm(founderUatControl.credentialFile, { force: true }),
+    rm(founderUatControl.stopFile, { force: true }),
+  ])
+}
+
+function founderCredential(userCredentials) {
+  return {
+    password: userCredentials.password,
+    role: userCredentials.role,
+    username: userCredentials.username,
+  }
+}
+
+function readControlFile(path, service) {
+  if (!isAbsolute(path)) {
+    throw new Error(`F0-C1 ${service} control file must be absolute.`)
+  }
+  try {
+    return JSON.parse(readFileSync(path, "utf8"))
+  } catch {
+    throw new Error(`F0-C1 ${service} control metadata is invalid JSON.`)
+  }
+}
+
+function validatedLoopbackControlUrl(value, service) {
+  const url = new URL(String(value ?? ""))
+  if (
+    url.protocol !== "http:" ||
+    url.hostname !== "127.0.0.1" ||
+    !url.port ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash ||
+    url.username ||
+    url.password
+  ) {
+    throw new Error(`F0-C1 ${service} control URL is not loopback-only.`)
+  }
+  return url.origin
+}
+
+function requiredEnvironment(name) {
+  const value = process.env[name]?.trim()
+  if (!value) throw new Error(`The selected pre-Genesis mode requires ${name}.`)
+  return value
+}
+
+function postgresSessionSnapshot() {
+  return postgresJson(`
+    SELECT json_build_object(
+      'count', count(*)::integer,
+      'handles', COALESCE(json_agg(handle_digest ORDER BY handle_digest), '[]'::json),
+      'encryptedOnly', COALESCE(bool_and(
+        encryption_kid = 'f0-p1-throwaway'
+        AND encrypted_payload ?& ARRAY['version','kid','iv','tag','ciphertext']
+        AND (encrypted_payload - 'version' - 'kid' - 'iv' - 'tag' - 'ciphertext') = '{}'::jsonb
+      ), true)
+    )
+    FROM common.console_sessions;
+  `)
+}
+
+function postgresApplicationFirecrawlStatus(applicationId) {
+  assert.match(applicationId ?? "", /^app-[a-z0-9-]+$/)
+  return postgresJson(
+    `
+      SELECT json_build_object(
+        'status', access.status,
+        'credentialCount', (
+          SELECT count(*)::integer
+          FROM admin.application_firecrawl_credentials AS credential
+          WHERE credential.app_id = access.app_id
+        )
+      )
+      FROM admin.application_firecrawl_access AS access
+      WHERE access.app_id = :'application_id';
+    `,
+    { application_id: applicationId },
+  )
+}
+
+function inspectPostgresPersistence(sensitiveValues, applicationFlow = null) {
+  const applicationIds = applicationFlow
+    ? applicationFlow.lifecycle.operatorPaths.map((path) =>
+        path.split("/").at(-1),
+      )
+    : []
+  if (applicationFlow) {
+    assert.equal(applicationIds.length, 2)
+    for (const applicationId of applicationIds) {
+      assert.match(applicationId ?? "", /^app-[a-z0-9-]+$/)
+    }
+  }
+  const applicationFilter = applicationIds.length
+    ? "AND app_id IN (:'application_1', :'application_2')"
+    : ""
+  const idFilter = applicationIds.length
+    ? "AND id IN (:'application_1', :'application_2')"
+    : ""
+  const variables = Object.fromEntries(
+    applicationIds.map((applicationId, index) => [
+      `application_${index + 1}`,
+      applicationId,
+    ]),
+  )
+  const summary = postgresJson(
+    `
+    SELECT json_build_object(
+      'applications', (SELECT count(*)::integer FROM admin.applications WHERE status <> 'deleted' ${idFilter}),
+      'auditEvents', (SELECT count(*)::integer FROM common.audit_events),
+      'auditSubjects', (
+        SELECT count(DISTINCT keycloak_subject_id)::integer
+        FROM common.audit_events
+        WHERE keycloak_subject_id IS NOT NULL
+      ),
+      'auditMetadataOnly', NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'common'
+          AND table_name = 'audit_events'
+          AND column_name NOT IN (
+            'id','occurred_at','ingested_at','action','outcome','source_system',
+            'correlation_id','keycloak_subject_id','application_id',
+            'credential_record_id','credential_prefix','recovery_reason_code'
+          )
+      ),
+      'firecrawlCredentials', (SELECT count(*)::integer FROM admin.application_firecrawl_credentials WHERE true ${applicationFilter}),
+      'firecrawlEnabledApplications', (
+        SELECT count(*)::integer
+        FROM admin.application_firecrawl_access
+        WHERE status = 'enabled' ${applicationFilter}
+      ),
+      'firecrawlUsageRows', (SELECT count(*)::integer FROM admin.application_firecrawl_usage_daily WHERE true ${applicationFilter}),
+      'humanIdentities', (SELECT count(*)::integer FROM common.human_identities),
+      'inferenceCredentials', (SELECT count(*)::integer FROM admin.application_credentials WHERE true ${applicationFilter}),
+      'inferenceUsageRows', (SELECT count(*)::integer FROM admin.application_usage_daily WHERE true ${applicationFilter}),
+      'plaintextSessionPayloads', (
+        SELECT count(*)::integer
+        FROM common.console_sessions
+        WHERE NOT (encrypted_payload ?& ARRAY['version','kid','iv','tag','ciphertext'])
+      )
+    );
+  `,
+    variables,
+  )
+  assert.equal(summary.applications, 2)
+  assert.equal(summary.inferenceCredentials, 3)
+  assert.equal(summary.firecrawlCredentials, 3)
+  assert.equal(summary.firecrawlEnabledApplications, 1)
+  assert.ok(summary.inferenceUsageRows > 0)
+  assert.ok(summary.firecrawlUsageRows > 0)
+  assert.ok(summary.auditEvents > 0)
+  assert.ok(summary.auditSubjects >= 2)
+  assert.ok(summary.humanIdentities >= 1)
+  assert.equal(summary.auditMetadataOnly, true)
+  assert.equal(summary.plaintextSessionPayloads, 0)
+
+  const dump = postgresDocker([
+    "exec",
+    postgresControl.container,
+    "pg_dump",
+    "--data-only",
+    "--no-owner",
+    "--no-privileges",
+    "--dbname",
+    postgresControl.database,
+    "--username",
+    postgresControl.user,
+  ])
+  assertNoSensitiveValues([dump], sensitiveValues, "PostgreSQL data")
+  return {
+    ...summary,
+    canaryRetention: "none",
+    credentialMaterialPersisted: false,
+  }
+}
+
+function completedIdentityMutationCount() {
+  return postgresJson(`
+    SELECT count(*)::integer
+    FROM admin.identity_mutation_journal
+    WHERE state = 'completed';
+  `)
+}
+
+function inspectKeycloakTeamPersistence(
+  sensitiveValues,
+  identityMutationBaseline,
+) {
+  const summary = postgresJson(`
+    SELECT json_build_object(
+      'auditEvents', (
+        SELECT count(*)::integer
+        FROM common.audit_events
+        WHERE action LIKE 'team.%'
+      ),
+      'auditMetadataOnly', NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'common'
+          AND table_name = 'audit_events'
+          AND column_name NOT IN (
+            'id','occurred_at','ingested_at','action','outcome','source_system',
+            'correlation_id','keycloak_subject_id','application_id',
+            'credential_record_id','credential_prefix','recovery_reason_code'
+          )
+      ),
+      'completedIdentityMutations', (
+        SELECT count(*)::integer
+        FROM admin.identity_mutation_journal
+        WHERE state = 'completed'
+      ),
+      'identityMutationMetadataOnly', NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'admin'
+          AND table_name = 'identity_mutation_journal'
+          AND column_name NOT IN (
+            'id','idempotency_ledger_id','keycloak_subject_id','operation_code',
+            'request_fingerprint','target_type','target_identifier','state',
+            'resource_id','created_at','updated_at','keycloak_applied_at',
+            'completed_at','reconciliation_required_at','reconciliation_reason'
+          )
+      ),
+      'plaintextSessionPayloads', (
+        SELECT count(*)::integer
+        FROM common.console_sessions
+        WHERE NOT (encrypted_payload ?& ARRAY['version','kid','iv','tag','ciphertext'])
+      ),
+      'reconciliationRequired', (
+        SELECT count(*)::integer
+        FROM admin.identity_mutation_journal
+        WHERE state = 'reconciliation_required'
+      )
+    );
+  `)
+  assert.ok(summary.auditEvents >= 4)
+  assert.equal(summary.completedIdentityMutations - identityMutationBaseline, 4)
+  assert.equal(summary.auditMetadataOnly, true)
+  assert.equal(summary.identityMutationMetadataOnly, true)
+  assert.equal(summary.plaintextSessionPayloads, 0)
+  assert.equal(summary.reconciliationRequired, 0)
+
+  const dump = postgresDocker([
+    "exec",
+    postgresControl.container,
+    "pg_dump",
+    "--data-only",
+    "--no-owner",
+    "--no-privileges",
+    "--dbname",
+    postgresControl.database,
+    "--username",
+    postgresControl.user,
+  ])
+  assertNoSensitiveValues([dump], sensitiveValues, "PostgreSQL data")
+  return {
+    ...summary,
+    completedIdentityMutationsThisRun: 4,
+    credentialMaterialPersisted: false,
+  }
+}
+
+function identityMutationJournalRowCount() {
+  return Number.parseInt(
+    postgresPsql(`
+      SELECT count(*)::integer
+      FROM admin.identity_mutation_journal;
+    `),
+    10,
+  )
+}
+
+async function provePostgresOutageRecovery({
+  bffPort,
+  children,
+  consoleOrigin,
+  page,
+}) {
+  postgresDocker(["pause", postgresControl.container])
+  const degraded = await fetch(`http://127.0.0.1:${bffPort}/readyz`, {
+    signal: AbortSignal.timeout(15_000),
+  })
+  assert.equal(degraded.status, 503)
+  assert.deepEqual(await degraded.json(), {
+    service: "console-bff",
+    status: "degraded",
+    version: "0.0.0",
+  })
+  postgresDocker(["unpause", postgresControl.container])
+  await waitForPostgresControl()
+  await waitForStatus(`http://127.0.0.1:${bffPort}/readyz`, 200, children)
+  await page.goto(`${consoleOrigin}/keys`)
+  await page.getByRole("heading", { name: "Keys" }).waitFor()
+  await assertRole(page, "Administrator")
+  return {
+    degradedReadiness: 503,
+    outageMethod: "pause-unpause",
+    recoveredReadiness: 200,
+    statePreserved: true,
+  }
+}
+
+async function waitForPostgresControl() {
+  const deadline = performance.now() + 60_000
+  while (performance.now() < deadline) {
+    const result = postgresDockerResult([
+      "exec",
+      postgresControl.container,
+      "pg_isready",
+      "--dbname",
+      postgresControl.database,
+      "--username",
+      postgresControl.user,
+    ])
+    if (result.status === 0) return
+    await delay(250)
+  }
+  throw new Error("F0-P1 PostgreSQL did not recover.")
+}
+
+function postgresJson(sql, variables = {}) {
+  const output = postgresPsql(sql, variables)
+  try {
+    return JSON.parse(output)
+  } catch {
+    throw new Error("F0-P1 PostgreSQL returned invalid JSON evidence.")
+  }
+}
+
+function postgresPsql(sql, variables = {}) {
+  const variableArguments = Object.entries(variables).flatMap(
+    ([name, value]) => ["--set", `${name}=${value}`],
+  )
+  return postgresDocker(
+    [
+      "exec",
+      "--interactive",
+      postgresControl.container,
+      "psql",
+      "--no-align",
+      "--no-psqlrc",
+      "--set",
+      "ON_ERROR_STOP=1",
+      ...variableArguments,
+      "--tuples-only",
+      "--dbname",
+      postgresControl.database,
+      "--username",
+      postgresControl.user,
+    ],
+    sql,
+  ).trim()
+}
+
+function postgresDocker(arguments_, input) {
+  const result = postgresDockerResult(arguments_, input)
+  if (result.status !== 0) {
+    throw new Error(
+      `F0-P1 PostgreSQL control failed: ${safeDiagnosticTail(result.stderr)}`,
+    )
+  }
+  return result.stdout
+}
+
+function postgresDockerResult(arguments_, input) {
+  assert.ok(postgresControl)
+  return spawnSync(
+    "docker",
+    [
+      ...(postgresControl.dockerContext
+        ? ["--context", postgresControl.dockerContext]
+        : []),
+      ...arguments_,
+    ],
+    {
+      encoding: "utf8",
+      env: {
+        HOME: process.env.HOME ?? "",
+        LANG: "C",
+        LC_ALL: "C",
+        PATH: process.env.PATH ?? "",
+      },
+      input,
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  )
+}
+
+async function assertDevelopmentDependenciesReady() {
+  const required = [
+    "apps/bff/node_modules/tsx/dist/cli.mjs",
+    "apps/web/node_modules/next/dist/bin/next",
+    "packages/contracts/dist/inference-core.js",
+    "packages/copy/dist/index.js",
+  ]
+  try {
+    await Promise.all(
+      required.map((path) => access(resolve(repositoryRoot, path))),
+    )
+  } catch {
+    throw new Error(
+      "F0-S1 dependencies are not ready. Run the frozen install and build contracts/copy first.",
+    )
+  }
+}
+
+async function chromeExecutable() {
+  const candidates = [
+    process.env.PLAYWRIGHT_CHROME_EXECUTABLE,
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
+  ].filter(Boolean)
+  for (const candidate of candidates) {
+    try {
+      await access(candidate)
+      return candidate
+    } catch {
+      // Try the next explicitly supported local browser location.
+    }
+  }
+  throw new Error(
+    "F0-S1 requires an installed Chrome/Chromium browser or PLAYWRIGHT_CHROME_EXECUTABLE.",
+  )
+}
+
+async function createTemporaryStateRoot() {
+  const controlled = process.env.F0_C1_BROWSER_STATE_ROOT?.trim()
+  const controlledTemporaryRoot = process.env.F0_C1_BROWSER_TEMP_ROOT?.trim()
+  const [repositoryRealRoot, temporaryRealRoot] = await Promise.all([
+    realpath(repositoryRoot),
+    realpath(tmpdir()),
+  ])
+  if (controlled) {
+    if (
+      !integratedCoreMode ||
+      !isAbsolute(controlled) ||
+      !controlledTemporaryRoot ||
+      !isAbsolute(controlledTemporaryRoot)
+    ) {
+      throw new Error("F0-C1 browser state ownership is invalid.")
+    }
+    const [controlledRealRoot, expectedTemporaryRoot] = await Promise.all([
+      realpath(controlled),
+      realpath(controlledTemporaryRoot),
+    ])
+    if (
+      !pathIsInside(expectedTemporaryRoot, controlledRealRoot) ||
+      basename(controlledRealRoot).match(
+        /^llmm-f0-c1-browser-[a-f0-9]{16}$/,
+      ) === null
+    ) {
+      throw new Error("F0-C1 browser state escaped its temporary boundary.")
+    }
+    await chmod(controlledRealRoot, 0o700)
+    return controlledRealRoot
+  }
+  if (pathIsInside(repositoryRealRoot, temporaryRealRoot)) {
+    throw new Error(
+      "F0-S1 temporary state must be outside the source worktree.",
+    )
+  }
+  return mkdtemp(join(temporaryRealRoot, "llmm-f0-s1-"))
+}
+
+function keycloakControlFromEnvironment() {
+  const configFile = process.env.F0_I1_KEYCLOAK_CONFIG_FILE?.trim()
+  if (!configFile || !isAbsolute(configFile)) {
+    throw new Error(
+      "F0-I1 requires an absolute disposable Keycloak config file.",
+    )
+  }
+  const config = JSON.parse(readFileSync(configFile, "utf8"))
+  if (
+    !Number.isInteger(config.edgePort) ||
+    !Number.isInteger(config.upstreamPort) ||
+    typeof config.container !== "string" ||
+    !/^[a-z0-9][a-z0-9_.-]{0,127}$/.test(config.container) ||
+    typeof config.dockerContext !== "string" ||
+    !/^[A-Za-z0-9_.-]{1,128}$/.test(config.dockerContext) ||
+    !config.credentials
+  ) {
+    throw new Error("F0-I1 Keycloak control data is invalid.")
+  }
+  const adminBaseUrl = `http://127.0.0.1:${config.upstreamPort}`
+  if (
+    (keycloakTeamMode || integratedCoreMode) &&
+    (typeof config.credentials.humanAdmin !== "string" ||
+      config.credentials.humanAdmin.length < 32)
+  ) {
+    throw new Error("F0-I2 Keycloak Team control data is invalid.")
+  }
+  const commissioning =
+    keycloakTeamMode || integratedCoreMode
+      ? validateKeycloakCommissioning(config.commissioning)
+      : (config.commissioning ?? null)
+  return {
+    adminBaseUrl,
+    commissioning,
+    container: config.container,
+    credentials: config.credentials,
+    dockerContext: config.dockerContext,
+    edgePort: config.edgePort,
+    upstreamPort: config.upstreamPort,
+  }
+}
+
+async function proveIdentityAuthorityBinding({
+  keycloakControl,
+  waitForPublicMatch = false,
+}) {
+  if (!founderUatPlacement) {
+    return { status: "LOOPBACK_CANDIDATE_EDGE" }
+  }
+  if (!keycloakControl) {
+    throw new Error("F0-UAT0 placed identity requires Keycloak control.")
+  }
+  const jwksPath = "/realms/llm-machines/protocol/openid-connect/certs"
+  const candidateJwks = await requestKeycloakJson(
+    `http://127.0.0.1:${keycloakControl.upstreamPort}${jwksPath}`,
+  )
+  const deadline = performance.now() + (waitForPublicMatch ? 20 * 60_000 : 1)
+  let lastError = null
+  do {
+    try {
+      const publicJwks = await requestPublicIdentityJson({
+        edgePort: keycloakControl.edgePort,
+        path: jwksPath,
+      })
+      return assertIdentityAuthorityBinding({ candidateJwks, publicJwks })
+    } catch (error) {
+      lastError =
+        error instanceof Error
+          ? error
+          : new Error("Unknown Identity authority binding failure.")
+    }
+    if (performance.now() < deadline) await delay(1_000)
+  } while (performance.now() < deadline)
+  throw new Error(
+    `The public Identity authority did not bind to the candidate: ${safeDiagnosticTail(lastError?.message ?? "unknown failure")}`,
+  )
+}
+
+async function requestKeycloakJson(url) {
+  const response = await fetch(url, {
+    redirect: "error",
+    signal: AbortSignal.timeout(5_000),
+  })
+  if (response.status !== 200) {
+    await response.body?.cancel()
+    throw new Error(
+      `Keycloak readiness request failed with ${response.status}.`,
+    )
+  }
+  return response.json()
+}
+
+async function requestPublicIdentityJson({ edgePort, path }) {
+  const origin = new URL(publicOrigin("identity", edgePort))
+  const systemTrust = getCACertificates("system")
+  if (!Array.isArray(systemTrust) || systemTrust.length === 0) {
+    throw new Error("The public Identity probe has no system trust anchors.")
+  }
+  return new Promise((resolveRequest, rejectRequest) => {
+    const request = httpsRequest(
+      {
+        ca: systemTrust,
+        headers: { accept: "application/json", host: origin.host },
+        host: origin.hostname,
+        method: "GET",
+        path,
+        port: 443,
+        rejectUnauthorized: true,
+        servername: origin.hostname,
+        timeout: 5_000,
+      },
+      (response) => {
+        const chunks = []
+        let size = 0
+        response.on("data", (chunk) => {
+          size += chunk.length
+          if (size > 1024 * 1024) {
+            response.destroy(
+              new Error("Public Keycloak readiness response was too large."),
+            )
+            return
+          }
+          chunks.push(chunk)
+        })
+        response.once("end", () => {
+          if (response.statusCode !== 200) {
+            rejectRequest(
+              new Error(
+                `Public Keycloak readiness request failed with ${response.statusCode ?? 500}.`,
+              ),
+            )
+            return
+          }
+          try {
+            resolveRequest(JSON.parse(Buffer.concat(chunks).toString("utf8")))
+          } catch {
+            rejectRequest(
+              new Error("Public Keycloak readiness response was invalid JSON."),
+            )
+          }
+        })
+      },
+    )
+    request.once("error", rejectRequest)
+    request.once("timeout", () =>
+      request.destroy(
+        new Error("Public Keycloak readiness request timed out."),
+      ),
+    )
+    request.end()
+  })
+}
+
+function sanitizedKeycloakLoginEvents() {
+  if (!keycloakControl) return []
+  const result = dockerControl(keycloakControl, [
+    "logs",
+    "--tail",
+    "200",
+    keycloakControl.container,
+  ])
+  if (result.status !== 0) return ["logs-unavailable"]
+  return result.stdout
+    .split("\n")
+    .filter((line) => line.includes('type="LOGIN_ERROR"'))
+    .map((line) => line.match(/error="([a-z0-9_-]+)"/)?.[1])
+    .filter(Boolean)
+    .slice(-5)
+}
+
+function pathIsInside(parent, candidate) {
+  const fromParent = relative(parent, candidate)
+  return (
+    fromParent === "" ||
+    (!isAbsolute(fromParent) &&
+      fromParent !== ".." &&
+      !fromParent.startsWith(`..${sep}`))
+  )
+}
+
+async function prepareTemporaryWebProject(stateRoot) {
+  const sourceRoot = resolve(repositoryRoot, "apps/web")
+  const webRoot = join(stateRoot, "web")
+  await mkdir(webRoot, { mode: 0o700 })
+  const tsconfig = JSON.parse(
+    await readFile(resolve(sourceRoot, "tsconfig.json"), "utf8"),
+  )
+  tsconfig.extends = resolve(repositoryRoot, "tsconfig.base.json")
+  await writeFile(
+    join(webRoot, "tsconfig.json"),
+    `${JSON.stringify(tsconfig, null, 2)}\n`,
+    { mode: 0o600 },
+  )
+  await copyFile(
+    resolve(sourceRoot, "next-env.d.ts"),
+    join(webRoot, "next-env.d.ts"),
+  )
+  for (const path of [
+    "next.config.ts",
+    "package.json",
+    "postcss.config.mjs",
+    "public",
+    "src",
+  ]) {
+    await cp(resolve(sourceRoot, path), join(webRoot, path), {
+      recursive: true,
+    })
+  }
+  await symlink(
+    resolve(sourceRoot, "node_modules"),
+    join(webRoot, "node_modules"),
+  )
+  return webRoot
+}
+
+async function buildFounderWebProject(webRoot, environment, stateRoot) {
+  const result = spawnSync(
+    process.execPath,
+    [
+      resolve(repositoryRoot, "apps/web/node_modules/next/dist/bin/next"),
+      "build",
+    ],
+    {
+      cwd: webRoot,
+      encoding: "utf8",
+      env: {
+        HOME: stateRoot,
+        LANG: "C",
+        LC_ALL: "C",
+        PATH: process.env.PATH ?? "",
+        TMPDIR: stateRoot,
+        ...environment,
+      },
+      maxBuffer: 16 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  )
+  await Promise.all([
+    writeFile(join(stateRoot, "web-build.stdout.log"), result.stdout ?? "", {
+      mode: 0o600,
+    }),
+    writeFile(join(stateRoot, "web-build.stderr.log"), result.stderr ?? "", {
+      mode: 0o600,
+    }),
+  ])
+  if (result.status !== 0) {
+    throw new Error("F0-UAT0 could not build the founder Console Web surface.")
+  }
+}
+
+function startChild(
+  name,
+  command,
+  environment,
+  stateRoot,
+  cwd,
+  processTemporaryRoot,
+) {
+  const childTemporaryRoot = join(processTemporaryRoot, name)
+  mkdirSync(childTemporaryRoot, { mode: 0o700, recursive: true })
+  const stdout = createWriteStream(join(stateRoot, `${name}.stdout.log`), {
+    mode: 0o600,
+  })
+  const stderr = createWriteStream(join(stateRoot, `${name}.stderr.log`), {
+    mode: 0o600,
+  })
+  const detached = !integratedCoreMode
+  const child = spawn(command[0], command.slice(1), {
+    cwd,
+    detached,
+    env: {
+      HOME: stateRoot,
+      LANG: "C",
+      LC_ALL: "C",
+      TMPDIR: childTemporaryRoot,
+      ...environment,
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  })
+  const record = {
+    child,
+    detached,
+    exited: false,
+    name,
+    stderr,
+    stdout,
+    stopping: false,
+  }
+  child.stdout.pipe(stdout)
+  child.stderr.pipe(stderr)
+  child.once("exit", () => {
+    record.exited = true
+  })
+  return record
+}
+
+async function stopChild(record) {
+  record.stopping = true
+  if (!record.exited && record.child.pid) {
+    try {
+      if (record.detached) process.kill(-record.child.pid, "SIGTERM")
+      else record.child.kill("SIGTERM")
+    } catch (error) {
+      if (error.code !== "ESRCH") throw error
+    }
+    const deadline = performance.now() + 5_000
+    while (!record.exited && performance.now() < deadline) {
+      await delay(50)
+    }
+    if (!record.exited) {
+      try {
+        if (record.detached) process.kill(-record.child.pid, "SIGKILL")
+        else record.child.kill("SIGKILL")
+      } catch (error) {
+        if (error.code !== "ESRCH") throw error
+      }
+    }
+  }
+  await Promise.all([endStream(record.stdout), endStream(record.stderr)])
+}
+
+function endStream(stream) {
+  if (stream.closed) return Promise.resolve()
+  return new Promise((resolveEnd) => {
+    stream.once("close", resolveEnd)
+    stream.end()
+  })
+}
+
+async function reservePorts(count) {
+  const reservations = []
+  try {
+    for (let index = 0; index < count; index += 1) {
+      const server = createHttpServer()
+      await listen(server, 0)
+      reservations.push(server)
+    }
+    return reservations.map((server) => server.address().port)
+  } finally {
+    await Promise.all(reservations.map(closeServer))
+  }
+}
+
+async function browserSafePort() {
+  for (let port = 18443; port <= 18543; port += 1) {
+    const server = createHttpServer()
+    try {
+      await listen(server, port)
+      await closeServer(server)
+      return port
+    } catch {
+      await closeServer(server).catch(() => undefined)
+    }
+  }
+  throw new Error("No disposable browser-safe HTTPS port was available.")
+}
+
+function listen(server, port, host = "127.0.0.1") {
+  return new Promise((resolveListen, rejectListen) => {
+    server.once("error", rejectListen)
+    server.listen(port, host, resolveListen)
+  })
+}
+
+function listenLoopbackIpv6(server, port) {
+  return new Promise((resolveListen) => {
+    const onError = () => {
+      server.off("listening", onListening)
+      resolveListen(false)
+    }
+    const onListening = () => {
+      server.off("error", onError)
+      resolveListen(true)
+    }
+    server.once("error", onError)
+    server.once("listening", onListening)
+    server.listen({ host: "::1", ipv6Only: true, port })
+  })
+}
+
+function closeServer(server) {
+  if (!server.listening) return Promise.resolve()
+  return new Promise((resolveClose, rejectClose) => {
+    server.close((error) => (error ? rejectClose(error) : resolveClose()))
+    server.closeAllConnections?.()
+  })
+}
+
+async function requestHttpsEdge(url, host, certificate, servername) {
+  const ca = await readFile(certificate.ca)
+  return new Promise((resolveRequest, rejectRequest) => {
+    const request = httpsRequest(
+      url,
+      {
+        ca,
+        headers: host ? { host } : {},
+        rejectUnauthorized: true,
+        servername,
+      },
+      (response) => {
+        response.resume()
+        response.once("end", () => {
+          resolveRequest({
+            location: response.headers.location,
+            status: response.statusCode ?? 500,
+          })
+        })
+      },
+    )
+    request.once("error", rejectRequest)
+    request.end()
+  })
+}
+
+async function requestHttpsEdgeWithHeaders({
+  certificate,
+  edgePort,
+  headers,
+  method,
+  path,
+  servername,
+}) {
+  const ca = await readFile(certificate.ca)
+  return new Promise((resolveRequest, rejectRequest) => {
+    const request = httpsRequest(
+      {
+        ca,
+        headers,
+        host: "127.0.0.1",
+        method,
+        path,
+        port: edgePort,
+        rejectUnauthorized: true,
+        servername,
+      },
+      (response) => {
+        response.resume()
+        response.once("end", () => {
+          resolveRequest({
+            location: response.headers.location,
+            status: response.statusCode ?? 500,
+          })
+        })
+      },
+    )
+    request.once("error", rejectRequest)
+    request.end()
+  })
+}
+
+async function waitForHttp(url, children) {
+  const deadline = performance.now() + 45_000
+  while (performance.now() < deadline) {
+    const failed = children.find((record) => record.exited && !record.stopping)
+    if (failed) {
+      throw new Error(`${failed.name} exited during F0-S1 startup.`)
+    }
+    try {
+      const response = await fetch(url, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(2_000),
+      })
+      if (response.status < 500) return
+    } catch {
+      // The child is still starting.
+    }
+    await delay(100)
+  }
+  throw new Error(`Timed out waiting for ${new URL(url).pathname}.`)
+}
+
+async function waitForStatus(url, expectedStatus, children) {
+  const deadline = performance.now() + 45_000
+  while (performance.now() < deadline) {
+    const failed = children.find((record) => record.exited && !record.stopping)
+    if (failed) {
+      throw new Error(`${failed.name} exited during F0-P1 recovery.`)
+    }
+    try {
+      const response = await fetch(url, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(3_000),
+      })
+      if (response.status === expectedStatus) return
+    } catch {
+      // The disposable service is still recovering.
+    }
+    await delay(100)
+  }
+  throw new Error(
+    `Timed out waiting for ${new URL(url).pathname} status ${expectedStatus}.`,
+  )
+}
+
+function readJsonRequest(request) {
+  return new Promise((resolveBody, rejectBody) => {
+    const chunks = []
+    request.on("data", (chunk) => chunks.push(chunk))
+    request.once("error", rejectBody)
+    request.once("end", () => {
+      try {
+        resolveBody(JSON.parse(Buffer.concat(chunks).toString("utf8")))
+      } catch {
+        resolveBody(null)
+      }
+    })
+  })
+}
+
+function sendJson(response, status, value) {
+  const body = JSON.stringify(value)
+  response.writeHead(status, {
+    "cache-control": "no-store",
+    "content-length": Buffer.byteLength(body),
+    "content-type": "application/json",
+  })
+  response.end(body)
+}
+
+function user(role) {
+  return {
+    password: opaqueValue(),
+    role,
+    subject: `fixture-${role}-${randomBytes(8).toString("hex")}`,
+    username: `${role}-${randomBytes(6).toString("hex")}`,
+  }
+}
+
+function sessionCookie(cookies) {
+  const cookie = cookies.find(
+    (candidate) => candidate.name === "__Host-llm-machines-session",
+  )
+  assert.ok(cookie, "The browser did not receive the opaque Console cookie.")
+  assert.equal(cookie.httpOnly, true)
+  assert.equal(cookie.secure, true)
+  assert.equal(cookie.sameSite, "Lax")
+  return cookie
+}
+
+function opaqueValue() {
+  return randomBytes(32).toString("base64url")
+}
+
+function delay(milliseconds) {
+  return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds))
+}
+
+async function eventually(check, timeout = 10_000) {
+  const deadline = performance.now() + timeout
+  while (performance.now() < deadline) {
+    if (await check()) return
+    await delay(250)
+  }
+  throw new Error(`F0-S1 condition did not pass within ${timeout}ms.`)
+}
+
+function safeDiagnosticTail(value) {
+  return value
+    .slice(-4_000)
+    .replaceAll(/Bearer\s+[^\s"']+/gi, "Bearer [redacted]")
+    .replaceAll(/[A-Za-z0-9_-]{43,}/g, "[opaque]")
+}
+
+function redactedDiagnosticTail(value, sensitiveValues) {
+  let message = safeDiagnosticTail(value)
+  for (const sensitiveValue of sensitiveValues) {
+    if (!sensitiveValue) continue
+    message = message.replaceAll(sensitiveValue, "[credential]")
+  }
+  return message
+}
+
+function sanitizedError(error, sensitiveValues) {
+  const source =
+    error instanceof Error ? (error.stack ?? error.message) : String(error)
+  return new Error(redactedDiagnosticTail(source, sensitiveValues))
+}
+
+function assertNoSensitiveValues(values, sensitiveValues, surface) {
+  for (const value of values) {
+    for (const sensitiveValue of sensitiveValues) {
+      if (String(value).includes(sensitiveValue)) {
+        throw new Error(`F0-U2 retained credential material in ${surface}.`)
+      }
+    }
+  }
+}
+
+async function assertStateFilesCredentialFree(root, sensitiveValues) {
+  const pending = [root]
+  while (pending.length > 0) {
+    const directory = pending.pop()
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) {
+        pending.push(path)
+        continue
+      }
+      if (!entry.isFile()) {
+        continue
+      }
+      const content = await readFile(path)
+      for (const sensitiveValue of sensitiveValues) {
+        if (content.includes(Buffer.from(sensitiveValue))) {
+          throw new Error(
+            `A pre-Genesis teardown artifact retained credential material: ${relative(root, path)}.`,
+          )
+        }
+      }
+    }
+  }
+}
+
+async function exists(path) {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}

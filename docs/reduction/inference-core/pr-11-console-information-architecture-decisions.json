@@ -1,0 +1,726 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-11",
+  "scope": "retained-console-information-architecture-source-only",
+  "contractBaseCommit": "6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7",
+  "contractBaseTree": "44d6fb34db5f3d35e8b2f9bd2259756aec63b8a8",
+  "laneAnchorCommit": "6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7",
+  "reviewedDispositions": {
+    "historicalRegisterTransitions": {
+      "paths": [
+        "docs/reduction/inference-core/decision-register.md",
+        "docs/reduction/inference-core/validation-register.md"
+      ],
+      "retainedRevisionBindings": [
+        {
+          "retainedRevision": "PR-08",
+          "path": "docs/reduction/inference-core/decision-register.md",
+          "evidenceCommit": "6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7"
+        },
+        {
+          "retainedRevision": "PR-08",
+          "path": "docs/reduction/inference-core/validation-register.md",
+          "evidenceCommit": "6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7"
+        }
+      ]
+    },
+    "environmentTemplateCleanup": {
+      "path": ".env.example",
+      "allowedTransition": "delete-exact-retired-model-update-block-only",
+      "addedLines": 0,
+      "otherEnvironmentPaths": 0
+    },
+    "informationArchitecture": {
+      "logicalSurfaces": [
+        {
+          "id": "overview",
+          "label": "Overview",
+          "href": "/"
+        },
+        {
+          "id": "applications",
+          "label": "Applications",
+          "href": "/applications"
+        },
+        {
+          "id": "inference",
+          "label": "Inference",
+          "href": "/inference"
+        },
+        {
+          "id": "hardware",
+          "label": "Hardware",
+          "href": "/hardware"
+        },
+        {
+          "id": "team",
+          "label": "Team",
+          "href": "/team"
+        },
+        {
+          "id": "activity-audit",
+          "label": "Activity & Audit",
+          "href": "/activity"
+        },
+        {
+          "id": "settings",
+          "label": "Settings",
+          "href": "/settings"
+        }
+      ],
+      "rootPath": "/",
+      "rootSurface": "overview",
+      "activityAuditPath": "/activity",
+      "exactOrderRequired": true,
+      "additionalProductNavigationEntries": 0
+    },
+    "applications": {
+      "combinedConsoleSurface": true,
+      "capabilities": ["inference", "firecrawl"],
+      "credentialNamespaces": ["inference", "firecrawl"],
+      "credentialsRemainSeparate": true,
+      "firecrawlDefaultEnabled": false
+    },
+    "routeTransition": {
+      "removedRoutes": [
+        {
+          "surface": "bff",
+          "method": "POST",
+          "path": "/api/admin/inference/model-updates/apply",
+          "source": "apps/bff/src/routes/admin.ts",
+          "classification": "current-console-seam"
+        }
+      ],
+      "addedRoutes": [],
+      "reclassifiedRoutes": [],
+      "fastifyRegistrarChanges": 0,
+      "resolverFingerprintTransitions": [
+        {
+          "path": "apps/web/next.config.ts",
+          "symbol": "<file>",
+          "beforeSha256": "58f841f6ee4170e90c110e33727d85dabe6a2c096784b05940319d770a958f8b",
+          "afterSha256": "79a28582d628e566baa4231d4a718173cf4e9dde14242bc40e214d502262dbb3"
+        }
+      ]
+    },
+    "settingsMutations": {
+      "productionPersistence": "postgresql-required",
+      "fixtureMemoryOnly": true,
+      "atomicSettingsReceiptAudit": true,
+      "sharedTransactionAuditWriter": true,
+      "unavailableWithoutPersistence": true,
+      "freshDatabaseTelemetryPreviewDefault": "schema-valid",
+      "productionTelemetryPreviewParsing": "strict-no-fallback"
+    },
+    "webContentSecurityPolicy": {
+      "perRequestScriptNonce": true,
+      "requestResponsePolicyMatch": true,
+      "productionUnsafeInlineScript": false,
+      "productionUnsafeEval": false
+    },
+    "expertServices": {
+      "previews": [
+        {
+          "service": "grafana",
+          "consoleMode": "reduced-preview",
+          "nativeAccessAffordance": "disabled",
+          "liveUrlAvailable": false
+        },
+        {
+          "service": "litellm",
+          "consoleMode": "reduced-preview",
+          "nativeAccessAffordance": "disabled",
+          "liveUrlAvailable": false
+        },
+        {
+          "service": "keycloak",
+          "consoleMode": "reduced-preview",
+          "nativeAccessAffordance": "disabled",
+          "liveUrlAvailable": false
+        }
+      ],
+      "nativeLinksEnabled": false,
+      "nativeUrlsEmbeddedInProductNavigation": false,
+      "noBypassQualificationOwner": "PR-12"
+    },
+    "retiredProductSurfaces": {
+      "chatInterfacePresent": false,
+      "knowledgePresent": false,
+      "mcpPresent": false,
+      "agenticPresent": false,
+      "portainerPresent": false,
+      "retiredLoaderPresent": false,
+      "retiredRedirectPresent": false,
+      "retiredLinkPresent": false,
+      "retiredBundleChunkPresent": false
+    },
+    "scopeBoundaries": {
+      "sourceOnly": true,
+      "intermediateDeployment": false,
+      "runtimeQualified": false,
+      "nativeExpertSessionActivation": false,
+      "signingKeyMutation": false,
+      "vendorMaintenanceAccessMutation": false
+    }
+  },
+  "target": {
+    "findingEntriesDueByPr10c": 0,
+    "remainingFindingEntries": 1,
+    "fs105BuilderHubTombstones": [
+      {
+        "path": "apps/web/src/middleware.test.ts",
+        "removeBy": "PR-12"
+      }
+    ],
+    "legacyRoutes": 0,
+    "routes": 104,
+    "routeClassifications": {
+      "current-console-seam": 92,
+      "operational-auth": 4,
+      "private-operational": 4,
+      "public-t2": 2,
+      "required-now": 2
+    },
+    "publicInferenceRoutes": [
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/api/app-gateway/v1/models",
+        "source": "apps/bff/src/routes/app-gateway.ts",
+        "classification": "required-now"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/app-gateway/v1/chat/completions",
+        "source": "apps/bff/src/routes/app-gateway.ts",
+        "classification": "required-now"
+      }
+    ],
+    "publicFirecrawlRoutes": [
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/v2/scrape",
+        "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+        "classification": "public-t2"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/v2/search",
+        "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+        "classification": "public-t2"
+      }
+    ],
+    "addedRoutes": [
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/api/admin/isolation",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/isolation/activate",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/isolation/deactivate",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      }
+    ],
+    "adminOnlyRoutePolicyKeys": [
+      "GET /api/admin/recovery/status",
+      "POST /api/admin/isolation/activate",
+      "POST /api/admin/isolation/deactivate",
+      "POST /api/admin/observability/alert-egress",
+      "POST /api/admin/recovery/factor/commission",
+      "POST /api/admin/settings/organization",
+      "POST /api/admin/settings/telemetry"
+    ],
+    "fastifyRegistrars": [
+      {
+        "exportName": "registerAdminRoutes",
+        "importSource": "./routes/admin",
+        "sourcePath": "apps/bff/src/routes/admin.ts"
+      },
+      {
+        "exportName": "registerAppGatewayRoutes",
+        "importSource": "./routes/app-gateway",
+        "sourcePath": "apps/bff/src/routes/app-gateway.ts"
+      },
+      {
+        "exportName": "registerAuthorization",
+        "importSource": "./auth/authorization",
+        "sourcePath": "apps/bff/src/auth/authorization.ts"
+      },
+      {
+        "exportName": "registerFirecrawlGatewayRoutes",
+        "importSource": "./routes/firecrawl-gateway",
+        "sourcePath": "apps/bff/src/routes/firecrawl-gateway.ts"
+      },
+      {
+        "exportName": "registerObservabilityMetricsRoutes",
+        "importSource": "./routes/observability-metrics",
+        "sourcePath": "apps/bff/src/routes/observability-metrics.ts"
+      }
+    ],
+    "routeFingerprintTransitions": [
+      {
+        "path": "apps/bff/src/index.ts",
+        "symbol": "<file>",
+        "beforeSha256": "34861ad68b99b3ff2eb927daa76b8b9157a62e5841365e456c4335a168c34293",
+        "afterSha256": "32509b161073d225b6aef9e3993c778d997773073a14be5318b6d33e78ed093d"
+      },
+      {
+        "path": "apps/web/next.config.ts",
+        "symbol": "<file>",
+        "beforeSha256": "58f841f6ee4170e90c110e33727d85dabe6a2c096784b05940319d770a958f8b",
+        "afterSha256": "79a28582d628e566baa4231d4a718173cf4e9dde14242bc40e214d502262dbb3"
+      }
+    ],
+    "webInferenceConsumers": 0,
+    "escapeHatchPaths": [],
+    "sourceOnly": true,
+    "runtimeQualified": false,
+    "isolationRoutes": 3,
+    "productionFirewallBindings": 0,
+    "liveQualificationOwner": "PR-12",
+    "vendorMaintenanceAccessOwner": "PR-10D",
+    "findingEntriesDueByPr11": 0,
+    "environmentTemplateCleanup": {
+      "path": ".env.example",
+      "allowedTransition": "delete-exact-retired-model-update-block-only",
+      "addedLines": 0,
+      "otherEnvironmentPaths": 0
+    },
+    "removedRoutesByPr11": [
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/inference/model-updates/apply",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      }
+    ],
+    "logicalSurfaces": [
+      {
+        "id": "overview",
+        "label": "Overview",
+        "href": "/"
+      },
+      {
+        "id": "applications",
+        "label": "Applications",
+        "href": "/applications"
+      },
+      {
+        "id": "inference",
+        "label": "Inference",
+        "href": "/inference"
+      },
+      {
+        "id": "hardware",
+        "label": "Hardware",
+        "href": "/hardware"
+      },
+      {
+        "id": "team",
+        "label": "Team",
+        "href": "/team"
+      },
+      {
+        "id": "activity-audit",
+        "label": "Activity & Audit",
+        "href": "/activity"
+      },
+      {
+        "id": "settings",
+        "label": "Settings",
+        "href": "/settings"
+      }
+    ],
+    "settingsMutationPersistence": {
+      "productionPersistence": "postgresql-required",
+      "fixtureMemoryOnly": true,
+      "atomicSettingsReceiptAudit": true,
+      "sharedTransactionAuditWriter": true,
+      "unavailableWithoutPersistence": true,
+      "freshDatabaseTelemetryPreviewDefault": "schema-valid",
+      "productionTelemetryPreviewParsing": "strict-no-fallback"
+    },
+    "webContentSecurityPolicy": {
+      "perRequestScriptNonce": true,
+      "requestResponsePolicyMatch": true,
+      "productionUnsafeInlineScript": false,
+      "productionUnsafeEval": false
+    },
+    "rootSurface": "overview",
+    "activityAuditPath": "/activity",
+    "combinedApplicationCapabilities": ["inference", "firecrawl"],
+    "applicationCredentialNamespaces": ["inference", "firecrawl"],
+    "expertPreviews": [
+      {
+        "service": "grafana",
+        "consoleMode": "reduced-preview",
+        "nativeAccessAffordance": "disabled",
+        "liveUrlAvailable": false
+      },
+      {
+        "service": "litellm",
+        "consoleMode": "reduced-preview",
+        "nativeAccessAffordance": "disabled",
+        "liveUrlAvailable": false
+      },
+      {
+        "service": "keycloak",
+        "consoleMode": "reduced-preview",
+        "nativeAccessAffordance": "disabled",
+        "liveUrlAvailable": false
+      }
+    ],
+    "nativeExpertLinksEnabled": false,
+    "portainerInProductNavigation": false,
+    "agenticProductSurface": false
+  },
+  "operationPolicy": {
+    "addedSourcePaths": [
+      "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+      "apps/web/src/lib/security/content-security-policy.ts"
+    ],
+    "changedSourcePaths": [
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-hardware.ts",
+      "apps/bff/src/services/admin-inference.ts",
+      "apps/bff/src/services/admin-overview.ts",
+      "apps/bff/src/services/admin-settings-core.ts",
+      "apps/bff/src/services/admin-team.ts",
+      "apps/bff/src/services/audit.ts",
+      "apps/web/next.config.ts",
+      "apps/web/src/app/page.tsx",
+      "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+      "apps/web/src/components/console-v2/console-v2-icons.tsx",
+      "apps/web/src/components/console-v2/console-v2-sections.ts",
+      "apps/web/src/components/console-v2/console-v2-shell.tsx",
+      "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+      "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "apps/web/src/components/console-v2/settings-v2-experience.tsx",
+      "apps/web/src/components/console-v2/team-v2-experience.tsx",
+      "apps/web/src/lib/admin/actions-core.ts",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "apps/web/src/lib/admin/server-data-core.ts",
+      "apps/web/src/middleware.ts",
+      "package.json",
+      "packages/contracts/src/inference-core.ts",
+      "packages/copy/src/index.ts"
+    ],
+    "deletedSourcePaths": [],
+    "addedRepositoryPaths": [
+      "apps/bff/src/routes/admin-settings-persistence.test.ts",
+      "apps/bff/src/services/admin-overview.test.ts",
+      "apps/bff/src/services/admin-settings-core.test.ts",
+      "apps/web/src/components/console-v2/overview-v2-experience.test.tsx",
+      "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+      "apps/web/src/lib/admin/console-v2-routes-core.test.tsx",
+      "apps/web/src/lib/security/content-security-policy.ts",
+      "docs/reduction/inference-core/pr-11-console-information-architecture-decisions.json",
+      "scripts/inference-core/pr11-boundaries.test.mjs",
+      "scripts/inference-core/pr11-contract-revision.mjs",
+      "test-support/inference-core-db-tests/src/pr11-settings-atomicity.test.ts"
+    ],
+    "changedRepositoryPaths": [
+      ".env.example",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/routes/admin-authorization.test.ts",
+      "apps/bff/src/routes/admin-inference.test.ts",
+      "apps/bff/src/routes/admin-overview-ops.test.ts",
+      "apps/bff/src/routes/admin.test.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl.test.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-hardware.ts",
+      "apps/bff/src/services/admin-inference.test.ts",
+      "apps/bff/src/services/admin-inference.ts",
+      "apps/bff/src/services/admin-overview.ts",
+      "apps/bff/src/services/admin-settings-core.ts",
+      "apps/bff/src/services/admin-team-live-authority.test.ts",
+      "apps/bff/src/services/admin-team.ts",
+      "apps/bff/src/services/audit.test.ts",
+      "apps/bff/src/services/audit.ts",
+      "apps/web/next-config-security.test.ts",
+      "apps/web/next.config.ts",
+      "apps/web/src/app/page.test.tsx",
+      "apps/web/src/app/page.tsx",
+      "apps/web/src/components/console-v2/applications-v2-experience.test.tsx",
+      "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+      "apps/web/src/components/console-v2/console-v2-icons.tsx",
+      "apps/web/src/components/console-v2/console-v2-sections.ts",
+      "apps/web/src/components/console-v2/console-v2-shell.test.tsx",
+      "apps/web/src/components/console-v2/console-v2-shell.tsx",
+      "apps/web/src/components/console-v2/hardware-v2-experience.test.tsx",
+      "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+      "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+      "apps/web/src/components/console-v2/settings-v2-experience.tsx",
+      "apps/web/src/components/console-v2/team-v2-experience.tsx",
+      "apps/web/src/lib/admin/actions-core.test.ts",
+      "apps/web/src/lib/admin/actions-core.ts",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+      "apps/web/src/lib/admin/server-data-core.test.ts",
+      "apps/web/src/lib/admin/server-data-core.ts",
+      "apps/web/src/middleware.test.ts",
+      "apps/web/src/middleware.ts",
+      "docs/reduction/inference-core/README.md",
+      "docs/reduction/inference-core/decision-register.md",
+      "docs/reduction/inference-core/validation-register.md",
+      "infra/migrations/0000_inference_core.sql",
+      "package.json",
+      "packages/contracts/src/inference-core.test.ts",
+      "packages/contracts/src/inference-core.ts",
+      "packages/copy/src/index.ts",
+      "scripts/inference-core/guardrails.mjs",
+      "scripts/inference-core/guardrails.test.mjs"
+    ],
+    "deletedRepositoryPaths": []
+  },
+  "sourceEvidence": [
+    {
+      "path": ".env.example",
+      "sha256": "95bdefb5edfaaf04da07972609adfdaa2336fa13626167ae25a7544a75f53b61"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-schema.ts",
+      "sha256": "a08b8e04559c765093782b4b1b75cf98294643d4dff5186c70e628ce670e6e19"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-authorization.test.ts",
+      "sha256": "6aa00b121ccec5684b4b99768abc25cb3ab3f83d0bd04c518ed3bbe0261d3273"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-inference.test.ts",
+      "sha256": "2f511933d580baca46a7531384188a1add0c452f8230373eb1f849e45f22d0ec"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-overview-ops.test.ts",
+      "sha256": "a1e3db073c63b8dab98737c37620b6dbfc6d87fd942433e3895cdff84bf8af6e"
+    },
+    {
+      "path": "apps/bff/src/routes/admin-settings-persistence.test.ts",
+      "sha256": "2514cac03f576e7b03da2981701bcbb20f899abd08f26fdbf1d7ec6b476d94eb"
+    },
+    {
+      "path": "apps/bff/src/routes/admin.test.ts",
+      "sha256": "7e70e33ea7f68ddc557591f4bd1c001f2479fe3e174ce3c0047fe9704dc0a1cc"
+    },
+    {
+      "path": "apps/bff/src/routes/admin.ts",
+      "sha256": "0688697598c93700e3336906d798abba773039c610795eef85a381cf2f8bf0a9"
+    },
+    {
+      "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "sha256": "36617e5c6c7c781c7943b433a8df06ba5e9a6a301f81dc49637f083731f0ec09"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl.test.ts",
+      "sha256": "0e55e79d5a7aef19eb691e8d51d9fc165302339e67b9c163e12ee566ebe89bc7"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "sha256": "d2c99d9643e4992757a32248506577cb3a0f5525813aa82d29014d68d94972e9"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps.ts",
+      "sha256": "b2e1c4666a4927cc26db0e2d5e7da17b946784ba2af14a2d9d110c917c5fd7df"
+    },
+    {
+      "path": "apps/bff/src/services/admin-hardware.ts",
+      "sha256": "4cdf24196405ded964cb862e9f93bf4f93b2714bc7a1fa526efaca485000f20a"
+    },
+    {
+      "path": "apps/bff/src/services/admin-inference.test.ts",
+      "sha256": "a9d48819cdb841efdd7255b286882930e3a780edc3e3ec5d2e55650034d714d3"
+    },
+    {
+      "path": "apps/bff/src/services/admin-inference.ts",
+      "sha256": "24874aae69703353bd1989a5908c7845e91ec67282baec717769ca1ca77fd48e"
+    },
+    {
+      "path": "apps/bff/src/services/admin-overview.test.ts",
+      "sha256": "acc90109187da04e962543d4778c27208b6389b6af3a364d65dfd91124fcebdc"
+    },
+    {
+      "path": "apps/bff/src/services/admin-overview.ts",
+      "sha256": "96c3397c419961ebd07a2a7388aa3c6447dd9056626782fe2c234aae3df58496"
+    },
+    {
+      "path": "apps/bff/src/services/admin-settings-core.test.ts",
+      "sha256": "8fb7b4b68233d585ba77c53baa695fbfcf371b1ccf901337a2399072795d7bf3"
+    },
+    {
+      "path": "apps/bff/src/services/admin-settings-core.ts",
+      "sha256": "c7bada016dc34889d9f59ce567bd6b842bcbd002fbd67bd74be4daf62beddb4d"
+    },
+    {
+      "path": "apps/bff/src/services/admin-team-live-authority.test.ts",
+      "sha256": "cac6926d0ee350fb028c3dadb4b6feee31357d6c2eb71692633238fec8f23c2d"
+    },
+    {
+      "path": "apps/bff/src/services/admin-team.ts",
+      "sha256": "0812154d954fa66ab1ac4fe4753146a7487fb655094d76b392fe0f56095bbff8"
+    },
+    {
+      "path": "apps/bff/src/services/audit.test.ts",
+      "sha256": "5acdfa6f4c0063640140ca0c246df6de5c9f3c5b9d32a360a6c2e27190b8a75d"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "sha256": "8a7a7c79bed0181f8f51f32013e23e7e2effc9b85c0a8415fbbc58a65ec04aa6"
+    },
+    {
+      "path": "apps/web/next-config-security.test.ts",
+      "sha256": "bdc04af3684593b17d07c1e948433ebcf696da0233e562ed8f315ac1aba24eb3"
+    },
+    {
+      "path": "apps/web/next.config.ts",
+      "sha256": "46b16cba11db63928e9f354bb2dc73fb6d4c7763d6da74b546d70fa288b162f5"
+    },
+    {
+      "path": "apps/web/src/app/page.test.tsx",
+      "sha256": "a1fcea03e249d07ad85b37ae65f7b693e191ade3f19db686097a5b7256bed14f"
+    },
+    {
+      "path": "apps/web/src/app/page.tsx",
+      "sha256": "859ab8e24b76f25808c3bc15d68a068281bd4b5c48db8c0c2a17cc62ff46a7c9"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/applications-v2-experience.test.tsx",
+      "sha256": "fd9a11d2efdaa2d4f5d3cf4bd4fd1114d66719fe65cd06025001fd7ad165756b"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+      "sha256": "8a7ca745f830bc8dfa79b895528e2e7eb36bfe26eda5351cc1b1c93dfafc1737"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-icons.tsx",
+      "sha256": "bfaa4ceb78fe09155037c50f77f392897a1f2e18e6c6816f2440e48ad9d355f4"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-sections.ts",
+      "sha256": "79f9fa6acc85142b85742bb752bb4593f3420149116cdd1abf7232eee15a2520"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-shell.test.tsx",
+      "sha256": "923cb839ce76282c09de4bfd935d262d77e5d61d96847dc4e0ec06e7baf70430"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/console-v2-shell.tsx",
+      "sha256": "a8ba097784a794a9ae6e2949efc8354e357238e59127c8f75ebbe2a34833ecdd"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/hardware-v2-experience.test.tsx",
+      "sha256": "2e345e5d52fa651831fe56b4caa0024d4687a9cca6b12a6802a53e674b51a995"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+      "sha256": "f80f72cb3c96884d8db34304f13f7372890e8a9cd05650daa4ca383105f62e89"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "sha256": "5eada7352411f7ea033d378a1b41d8f988e25635993f031e9fa4284ed7c18f46"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/overview-v2-experience.test.tsx",
+      "sha256": "abb48a1e7e51b4cf3f42b06a4dac8152b76c7dbfb4a07c9ecb8cbec36c67ee50"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+      "sha256": "529a3f898b2c0be7991615001ea6bae10b8a6a718c800b47516850db38d885a1"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+      "sha256": "f0bd90d487bf319d3518a8909703bb2aa6eaaf0033f0fbd650dc9505a185513d"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/settings-v2-experience.tsx",
+      "sha256": "fe50af81c0d5fb6363c00363ba1e75776d4d1594a108ea68e8b387466a09854f"
+    },
+    {
+      "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
+      "sha256": "35cd88cfe94cb56d75b7082037235fa7987f1314a4ecd2d0145131e7bc0f53b8"
+    },
+    {
+      "path": "apps/web/src/lib/admin/actions-core.test.ts",
+      "sha256": "4b9296356874958ae4c5bd2151ab62242848a1e8174e1ee40583b9f469213742"
+    },
+    {
+      "path": "apps/web/src/lib/admin/actions-core.ts",
+      "sha256": "f74a542a3b1ec3feec8939d056d1f9a55eb3801d30d900abaee19c05923ef8c9"
+    },
+    {
+      "path": "apps/web/src/lib/admin/console-v2-routes-core.test.tsx",
+      "sha256": "31dc1cdd25e162550ee9d01c74821e8b903912b6578c802fe445947f9408dba7"
+    },
+    {
+      "path": "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "sha256": "87485699105ec92b363720d42a9328503dbfead48c48589185f177322c70f2f8"
+    },
+    {
+      "path": "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+      "sha256": "19d9291b7264d1fd96ecd1b783843d9669092b47120e626864abe45da0db329e"
+    },
+    {
+      "path": "apps/web/src/lib/admin/server-data-core.test.ts",
+      "sha256": "ccc83a0e129266dc47e3c98ef2ee8bcf2bba30e254385f029a01616ab1d3bfcf"
+    },
+    {
+      "path": "apps/web/src/lib/admin/server-data-core.ts",
+      "sha256": "9a58a8808a1abd958ad42f6fa9ab23168a31c91cecdf9c9454f696921621742f"
+    },
+    {
+      "path": "apps/web/src/lib/security/content-security-policy.ts",
+      "sha256": "88c878b60be8be7c4fffcdd775f21c3cccf512cfcd13d02fcfc70dd5ee52f859"
+    },
+    {
+      "path": "apps/web/src/middleware.test.ts",
+      "sha256": "ffd0e7936e0d3cbd17349ae315e66b94af4336236b2f9c394239061ed9c52e6a"
+    },
+    {
+      "path": "apps/web/src/middleware.ts",
+      "sha256": "711de75880cdcdbd86ce05fa953c749e8f9e4f90c85cc48dad47e86dd226d586"
+    },
+    {
+      "path": "infra/migrations/0000_inference_core.sql",
+      "sha256": "a72d24708cf4ef9a1c7fe5905f92653cd8cdb75aefc067b9c289960224c14b00"
+    },
+    {
+      "path": "packages/contracts/src/inference-core.test.ts",
+      "sha256": "a1790a554261cce4829eea0fd5537845b3a677059d8066794016a9ba69c932a0"
+    },
+    {
+      "path": "packages/contracts/src/inference-core.ts",
+      "sha256": "5fb81aa206055208d7797794b74c70bc417134486af752eaeb6feac305282c2d"
+    },
+    {
+      "path": "packages/copy/src/index.ts",
+      "sha256": "e20a7d2ab5427f47ce0ff49f83cd266a3b83e787db153ed324058551313ed530"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr11-settings-atomicity.test.ts",
+      "sha256": "d252dd4175f9a9dbce3c75800d9a7270e8704e027d58b36cb8692f2264e1f413"
+    }
+  ],
+  "reviewStatus": "reviewed"
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "llm-machines.pre-genesis-functional-evidence.v1",
+  "workPackage": "F0-L2",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "6fb13ba3674a69fec7a9496b81bf2feeef09599b",
+  "command": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && PRE_GENESIS_DOCKER_CONTEXT=<isolated-context> node scripts/pre-genesis/reduced-core-litellm-integration.mjs",
+  "evidenceClass": "LOCAL_PRIVATE_LITELLM_INTEGRATION_ONLY",
+  "services": [
+    "actual Console Web and BFF",
+    "actual LiteLLM v1.85.0 selected by immutable multi-platform digest",
+    "disposable PostgreSQL 17.6 for LiteLLM usage metadata",
+    "loopback-only four-authority Product edge",
+    "deterministic Keycloak-compatible identity and OpenAI-compatible inference fixtures"
+  ],
+  "proved": [
+    "a Product-issued Application credential authenticates at the API authority while the private LiteLLM routing credential remains internal",
+    "non-streaming and streaming Chat Completions traverse actual LiteLLM",
+    "the Console read-only projection renders actual LiteLLM health, served models, usage, route summary, and safe credential metadata",
+    "Console route and virtual-key mutations plus native LiteLLM customer routes remain absent",
+    "an Application credential cannot authenticate directly to LiteLLM",
+    "LiteLLM outage fails closed and the Product flow plus Console projection recover after restart",
+    "LiteLLM spend metadata retains no prompt, response, or proxy request payload and workload canaries remain absent from database dumps, logs, browser state, and teardown files",
+    "all disposable containers, network, and temporary state are removed"
+  ],
+  "exactRuntime": {
+    "litellm": "ghcr.io/berriai/litellm:v1.85.0@sha256:2e8517e2bed423c50ab7e40fb1ac0a9cbe62a764e9d65161d871fb6a9bf75a2d",
+    "postgres": "docker.io/library/postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3"
+  },
+  "preservedBoundaries": [
+    "Application credentials remain the customer-facing inference authority",
+    "LiteLLM remains private with a read-only Console projection only",
+    "there is no Console route or virtual-key mutation authority",
+    "there is no native customer LiteLLM UI or direct Product port",
+    "no real identity, inference, customer, registry, release, or signing credential is used"
+  ],
+  "notEvidenceFor": [
+    "real SGLang behavior or production inference capacity",
+    "exact linux/amd64 Core composition or VM103 qualification",
+    "production commissioning, backup, restore, release packaging, or Q0",
+    "native LiteLLM administration"
+  ],
+  "nextPackage": "F0-F2 isolated actual reduced Firecrawl integration"
+}

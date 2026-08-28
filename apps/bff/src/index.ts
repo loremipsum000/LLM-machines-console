@@ -1,25 +1,166 @@
 import {
   type HealthResponse,
   healthResponseSchema,
-} from "@llm-machines/contracts"
-import Fastify, { type FastifyInstance } from "fastify"
-import { registerPersonaAuth } from "./auth/persona"
-import { registerAdminRoutes } from "./routes/admin"
-import { registerAgenticRuntimeRoutes } from "./routes/agentic-runtime"
-import { registerAppGatewayRoutes } from "./routes/app-gateway"
-import { registerBuilderRoutes } from "./routes/builder"
-import { registerHubRoutes } from "./routes/hub"
-import { registerKnowledgeRoutes } from "./routes/knowledge"
-import { registerMcpGatewayRoutes } from "./routes/mcp-gateway"
-import { registerOpenAICompatibleRoutes } from "./routes/openai-compatible"
+} from "@llm-machines/contracts/inference-core"
+import Fastify, {
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
+  type HookHandlerDoneFunction,
+} from "fastify"
+import {
+  type AuthorizationOptions,
+  registerAuthorization,
+} from "./auth/authorization"
+import {
+  createRuntimeAuthorizationOptions,
+  createTestFixtureAuthorizationOptions,
+} from "./auth/runtime-live-authority"
+import {
+  assertProductionFixturesDisabled,
+  canUseBffFixtureData,
+  isProductionRuntime,
+} from "./config/fixture-mode"
+import {
+  checkInferenceCoreDbReadiness,
+  closeInferenceCoreDb,
+  getInferenceCoreDb,
+} from "./db/inference-core-client"
+import {
+  type AdminEmergencyIsolationService,
+  type AdminEmergencyRecoveryService,
+  registerAdminRoutes,
+} from "./routes/admin"
+import {
+  type AppGatewayIsolationTrafficGate,
+  registerAppGatewayRoutes,
+} from "./routes/app-gateway"
+import {
+  type ConsoleSessionRouteOptions,
+  registerConsoleSessionRoutes,
+} from "./routes/console-session"
+import {
+  type FirecrawlGatewayRouteOptions,
+  type FirecrawlIsolationTrafficGate,
+  registerFirecrawlGatewayRoutes,
+} from "./routes/firecrawl-gateway"
+import {
+  observabilityMetricsRouteOptionsFromRuntime,
+  registerObservabilityMetricsRoutes,
+} from "./routes/observability-metrics"
+import { assertProductionConnectedAppRevealEndpoints } from "./services/admin-connected-apps"
+import {
+  type ConsoleSessionRuntime,
+  createConsoleSessionRuntimeFromEnv,
+} from "./services/console-session-runtime"
+import {
+  type EmergencyIsolationService,
+  InMemoryEmergencyIsolationNonRestorableAuthority,
+  InMemoryEmergencyIsolationStore,
+  EmergencyIsolationService as RuntimeEmergencyIsolationService,
+  emergencyIsolationServiceFromRuntime,
+} from "./services/emergency-isolation"
+import { emergencyRecoveryServiceFromRuntime } from "./services/emergency-recovery"
+import { fileEmergencyIsolationAuthorityFromRuntime } from "./services/file-emergency-isolation-marker"
+import { firecrawlGatewayOptionsFromRuntime } from "./services/firecrawl-gateway-runtime"
+import { IsolationTrafficGate } from "./services/isolation-traffic-gate"
+import {
+  type LifecycleRestoreIsolationRecoveryAuthority,
+  createDrizzleLifecycleRestoreIsolationRecoveryAuthority,
+} from "./services/lifecycle-operation-journal"
 
-export function buildServer(): FastifyInstance {
+type SharedIsolationTrafficGate = AppGatewayIsolationTrafficGate &
+  FirecrawlIsolationTrafficGate
+
+export interface BuildServerOptions {
+  testAuthorization?: AuthorizationOptions
+  testConsoleSessionRouteOptions?: ConsoleSessionRouteOptions
+  testEmergencyIsolationService?: AdminEmergencyIsolationService | null
+  testEmergencyRecoveryService?: AdminEmergencyRecoveryService | null
+  testFirecrawlGateway?: FirecrawlGatewayRouteOptions
+  testIsolationTrafficGate?: SharedIsolationTrafficGate
+  testLoggerStream?: { write(message: string): void }
+}
+
+export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
+  assertProductionFixturesDisabled()
+  assertProductionConnectedAppRevealEndpoints()
+
+  if (isProductionRuntime() && !process.env.DATABASE_URL?.trim()) {
+    throw new Error("DATABASE_URL is required for the Console BFF.")
+  }
+
+  const testRuntime = process.env.NODE_ENV === "test"
   const server = Fastify({
     bodyLimit: bffBodyLimitBytes(),
-    logger: true,
+    disableRequestLogging: true,
+    logger: {
+      serializers: { req: queryFreeRequestLogSerializer },
+      ...(testRuntime && options.testLoggerStream
+        ? { stream: options.testLoggerStream }
+        : {}),
+    },
+  })
+  server.addHook("onRequest", logQueryFreeIncomingRequest)
+  server.addHook("onResponse", logQueryFreeCompletedRequest)
+  const consoleSessionRuntime: ConsoleSessionRuntime | null = testRuntime
+    ? null
+    : createConsoleSessionRuntimeFromEnv({
+        database: getInferenceCoreDb(),
+      })
+  const consoleSessionRouteOptions = testRuntime
+    ? options.testConsoleSessionRouteOptions
+    : consoleSessionRuntime?.routeOptions
+  server.addHook("onClose", async () => {
+    consoleSessionRuntime?.close()
+    await closeInferenceCoreDb()
   })
 
-  registerPersonaAuth(server)
+  const emergencyRecoveryService =
+    testRuntime && options.testEmergencyRecoveryService !== undefined
+      ? options.testEmergencyRecoveryService
+      : emergencyRecoveryServiceFromRuntime()
+  const runtimeIsolation = createRuntimeIsolation(
+    testRuntime && canUseBffFixtureData(),
+  )
+  const emergencyIsolationService =
+    testRuntime && options.testEmergencyIsolationService !== undefined
+      ? options.testEmergencyIsolationService
+      : runtimeIsolation.service
+  const isolationTrafficGate =
+    testRuntime && options.testIsolationTrafficGate
+      ? options.testIsolationTrafficGate
+      : runtimeIsolation.gate
+  const authorizationOptions = testRuntime
+    ? (options.testAuthorization ??
+      createTestFixtureAuthorizationOptions(
+        emergencyRecoveryService,
+        consoleSessionRouteOptions?.service,
+      ))
+    : createRuntimeAuthorizationOptions(
+        emergencyRecoveryService,
+        requiredConsoleSessionRuntime(consoleSessionRuntime).service,
+      )
+
+  registerAuthorization(server, authorizationOptions)
+  if (consoleSessionRouteOptions) {
+    registerConsoleSessionRoutes(server, consoleSessionRouteOptions)
+  }
+  if (
+    runtimeIsolation.service &&
+    emergencyIsolationService === runtimeIsolation.service
+  ) {
+    server.addHook("onReady", async () => {
+      try {
+        await runtimeIsolation.service?.bootstrap()
+      } catch {
+        server.log.warn(
+          { failureClass: "emergency_isolation_bootstrap_failed" },
+          "Emergency isolation remains sealed",
+        )
+      }
+    })
+  }
 
   const liveness = async (): Promise<HealthResponse> =>
     healthResponseSchema.parse({
@@ -30,24 +171,149 @@ export function buildServer(): FastifyInstance {
 
   server.get("/livez", liveness)
   server.get("/healthz", liveness)
-  server.get("/readyz", async (): Promise<HealthResponse> => {
-    return healthResponseSchema.parse({
+  server.get("/readyz", async (_request, reply): Promise<HealthResponse> => {
+    const databaseRequired =
+      isProductionRuntime() || Boolean(process.env.DATABASE_URL?.trim())
+    const ready = !databaseRequired || (await checkInferenceCoreDbReadiness())
+    const response = healthResponseSchema.parse({
       service: "console-bff",
-      status: "ok",
+      status: ready ? "ok" : "degraded",
       version: "0.0.0",
     })
+    return ready ? response : reply.code(503).send(response)
   })
 
-  registerOpenAICompatibleRoutes(server)
-  registerAppGatewayRoutes(server)
-  registerAdminRoutes(server)
-  registerKnowledgeRoutes(server)
-  registerAgenticRuntimeRoutes(server)
-  registerMcpGatewayRoutes(server)
-  registerHubRoutes(server)
-  registerBuilderRoutes(server)
+  registerAppGatewayRoutes(server, { isolationGate: isolationTrafficGate })
+  const firecrawlGateway = firecrawlGatewayOptionsFromRuntime()
+  registerFirecrawlGatewayRoutes(
+    server,
+    testRuntime && options.testFirecrawlGateway
+      ? {
+          ...firecrawlGateway,
+          ...options.testFirecrawlGateway,
+          isolationGate: isolationTrafficGate,
+        }
+      : { ...firecrawlGateway, isolationGate: isolationTrafficGate },
+  )
+  registerObservabilityMetricsRoutes(
+    server,
+    observabilityMetricsRouteOptionsFromRuntime(),
+  )
+  registerAdminRoutes(server, {
+    emergencyIsolationService,
+    emergencyRecoveryService,
+  })
 
   return server
+}
+
+function requiredConsoleSessionRuntime(
+  runtime: ConsoleSessionRuntime | null,
+): ConsoleSessionRuntime {
+  if (!runtime) {
+    throw new Error("Durable Console session runtime is unavailable.")
+  }
+  return runtime
+}
+
+function createRuntimeIsolation(useFixtureStore: boolean): {
+  gate: IsolationTrafficGate
+  service: EmergencyIsolationService | null
+} {
+  let service: EmergencyIsolationService | null = null
+  const nonRestorableAuthority = useFixtureStore
+    ? new InMemoryEmergencyIsolationNonRestorableAuthority()
+    : fileEmergencyIsolationAuthorityFromRuntime()
+  const lifecycleRestoreIsolationRecoveryAuthority = useFixtureStore
+    ? emptyLifecycleRestoreIsolationRecoveryAuthority()
+    : createDrizzleLifecycleRestoreIsolationRecoveryAuthority()
+  const gate = new IsolationTrafficGate({
+    read: async () => (service ? await service.durableAdmissionStatus() : null),
+  })
+  service = emergencyIsolationServiceFromRuntime(gate, {
+    lifecycleRestoreIsolationRecoveryAuthority,
+    nonRestorableAuthority,
+  })
+  if (!service && useFixtureStore) {
+    service = new RuntimeEmergencyIsolationService(
+      new InMemoryEmergencyIsolationStore(),
+      gate,
+      {
+        lifecycleRestoreIsolationRecoveryAuthority,
+        nonRestorableAuthority,
+      },
+    )
+  }
+  return { gate, service }
+}
+
+function emptyLifecycleRestoreIsolationRecoveryAuthority(): LifecycleRestoreIsolationRecoveryAuthority {
+  return {
+    async readRestoreOperation() {
+      return null
+    },
+    async readUnfencedRestore() {
+      return null
+    },
+    async recordIsolationReconciled() {
+      return false
+    },
+    async terminalizeUnfencedRestore() {
+      return false
+    },
+  }
+}
+
+function logQueryFreeIncomingRequest(
+  request: FastifyRequest,
+  _reply: FastifyReply,
+  done: HookHandlerDoneFunction,
+): void {
+  request.log.info({ req: request }, "incoming request")
+  done()
+}
+
+function logQueryFreeCompletedRequest(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  done: HookHandlerDoneFunction,
+): void {
+  request.log.info(
+    { responseTime: reply.elapsedTime, statusCode: reply.statusCode },
+    "request completed",
+  )
+  done()
+}
+
+export function queryFreeRequestLogSerializer(request: FastifyRequest): {
+  method: string
+  remoteAddress: string
+  url: string
+} {
+  return {
+    method: request.method,
+    remoteAddress: request.ip,
+    url: requestPathname(request.raw.url),
+  }
+}
+
+function requestPathname(rawUrl: string | undefined): string {
+  if (!rawUrl) {
+    return "[missing-request-target]"
+  }
+  try {
+    const pathname = new URL(rawUrl, "http://request.invalid").pathname
+    if (
+      pathname !== "/v2/search" &&
+      pathname !== "/v2/scrape" &&
+      (pathname === "/v2" || pathname.startsWith("/v2/"))
+    ) {
+      return "/v2/[unsupported]"
+    }
+    return pathname
+  } catch {
+    return "[invalid-request-target]"
+  }
 }
 
 function bffBodyLimitBytes(): number {

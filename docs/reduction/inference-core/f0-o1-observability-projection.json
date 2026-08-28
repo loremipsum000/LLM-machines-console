@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "F0-O1",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "a13d19749dc8a152cc1902180e4069687af56c4b",
+  "command": "corepack pnpm run test:pre-genesis:observability",
+  "evidenceClass": "LOCAL_BROWSER_OBSERVABILITY_PROJECTION_ONLY",
+  "services": [
+    "actual Console Web",
+    "actual Console BFF",
+    "deterministic Keycloak-compatible OIDC fixture",
+    "loopback-only HTTPS four-authority router",
+    "private deterministic LiteLLM, Prometheus, and Alertmanager doubles"
+  ],
+  "proved": [
+    "Admin and Operator receive the same read-only retained-service projection",
+    "Inference shows LiteLLM health, served models, usage, route summary, and safe credential metadata",
+    "Hardware shows seven curated Prometheus-backed signals and metadata-only approved alerts",
+    "LiteLLM, Prometheus, and Alertmanager reads use exact private GET-only route and query-key allowlists",
+    "source outages render controlled unavailable states and recover without a frozen Console",
+    "queue depth is explicitly not configured and no synthetic value is advertised",
+    "Grafana, LiteLLM native UI, and Keycloak Admin links, routes, grants, and mutations remain absent",
+    "workload, source credential, and unapproved alert-label canaries are absent from browser, metrics, logs, and teardown artifacts",
+    "temporary state and throwaway credentials are removed after the proof"
+  ],
+  "preservedBoundaries": [
+    "Console remains useful without Grafana",
+    "LiteLLM remains private and read-only through the approved Console projection",
+    "Keycloak remains private with no native customer administration",
+    "Grafana remains absent and inactive",
+    "no real identity, inference, observability, customer, or signing credential is used"
+  ],
+  "notEvidenceFor": [
+    "real LiteLLM, Prometheus, Alertmanager, or Keycloak runtime behavior",
+    "exact amd64 Core composition or VM103 qualification",
+    "production alert delivery, hardware accuracy, backup, restore, release packaging, or Q0",
+    "real SGLang capacity or production inference qualification"
+  ],
+  "nextPackage": "F0-I1 disposable Keycloak 26.7.0 identity integration",
+  "forbiddenOutcomes": [
+    "native customer LiteLLM, Keycloak Admin, or Grafana access",
+    "observability mutation",
+    "real credential use",
+    "live infrastructure access",
+    "runtime qualification claim",
+    "Product main merge",
+    "Gitea Genesis"
+  ]
+}

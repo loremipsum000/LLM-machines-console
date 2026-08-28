@@ -1,0 +1,490 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "F0-E0",
+  "status": "source-only-not-runtime-qualified",
+  "edge": {
+    "implementation": "nginx-reference-template",
+    "customerFacingTcpPorts": [443],
+    "hostTemplates": {
+      "api": "@@PRODUCT_API_HOST@@",
+      "console": "@@PRODUCT_CONSOLE_HOST@@",
+      "firecrawl": "@@PRODUCT_FIRECRAWL_HOST@@",
+      "identity": "@@PRODUCT_IDENTITY_HOST@@"
+    },
+    "clientSniMustEqualSelectedHost": true,
+    "hostHeaderMustExactlyEqualClientSni": true,
+    "absentDuplicateUnknownOrAlternateHostAction": "reject",
+    "cleartextAction": "reject",
+    "rejectingDefaultTlsServer": true
+  },
+  "upstreams": [
+    {
+      "id": "console-web",
+      "authority": "console-web:3000"
+    },
+    {
+      "id": "console-bff",
+      "authority": "console-bff:4001"
+    },
+    {
+      "id": "keycloak-identity",
+      "authority": "keycloak:8080"
+    }
+  ],
+  "routes": [
+    {
+      "id": "inference-models",
+      "surface": "inference",
+      "hostId": "api",
+      "methods": ["GET", "HEAD"],
+      "path": { "kind": "exact", "value": "/v1/models" },
+      "queryPolicy": "forbid",
+      "headerProfile": "customer-api",
+      "upstreamId": "console-bff",
+      "upstreamPath": "/api/app-gateway/v1/models"
+    },
+    {
+      "id": "inference-chat-completions",
+      "surface": "inference",
+      "hostId": "api",
+      "methods": ["POST"],
+      "path": { "kind": "exact", "value": "/v1/chat/completions" },
+      "queryPolicy": "forbid",
+      "headerProfile": "customer-api",
+      "upstreamId": "console-bff",
+      "upstreamPath": "/api/app-gateway/v1/chat/completions"
+    },
+    {
+      "id": "firecrawl-search",
+      "surface": "firecrawl",
+      "hostId": "firecrawl",
+      "methods": ["POST"],
+      "path": { "kind": "exact", "value": "/v2/search" },
+      "queryPolicy": "forbid",
+      "headerProfile": "customer-api",
+      "upstreamId": "console-bff",
+      "upstreamPath": "/v2/search"
+    },
+    {
+      "id": "firecrawl-scrape",
+      "surface": "firecrawl",
+      "hostId": "firecrawl",
+      "methods": ["POST"],
+      "path": { "kind": "exact", "value": "/v2/scrape" },
+      "queryPolicy": "forbid",
+      "headerProfile": "customer-api",
+      "upstreamId": "console-bff",
+      "upstreamPath": "/v2/scrape"
+    },
+    {
+      "id": "console-session-login",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD"],
+      "path": { "kind": "exact", "value": "/api/console/session/login" },
+      "queryPolicy": "console-navigation",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-bff",
+      "upstreamPath": "/api/console/session/login"
+    },
+    {
+      "id": "console-session-callback",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD"],
+      "path": { "kind": "exact", "value": "/api/console/session/callback" },
+      "queryPolicy": "oidc-browser",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-bff",
+      "upstreamPath": "/api/console/session/callback"
+    },
+    {
+      "id": "console-session-logout",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["POST"],
+      "path": { "kind": "exact", "value": "/api/console/session/logout" },
+      "queryPolicy": "forbid",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-bff",
+      "upstreamPath": "/api/console/session/logout"
+    },
+    {
+      "id": "console-session-elevate",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["POST"],
+      "path": { "kind": "exact", "value": "/api/console/session/elevate" },
+      "queryPolicy": "forbid",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-bff",
+      "upstreamPath": "/api/console/session/elevate"
+    },
+    {
+      "id": "identity-backchannel-logout",
+      "surface": "identity",
+      "hostId": "console",
+      "methods": ["POST"],
+      "path": {
+        "kind": "exact",
+        "value": "/api/internal/console-session/backchannel-logout"
+      },
+      "queryPolicy": "forbid",
+      "headerProfile": "identity-backchannel",
+      "upstreamId": "console-bff",
+      "upstreamPath": "/api/internal/console-session/backchannel-logout"
+    },
+    {
+      "id": "console-audit-export",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD"],
+      "path": { "kind": "exact", "value": "/api/admin/audit/export" },
+      "queryPolicy": "console-navigation",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-web",
+      "upstreamPath": "/api/admin/audit/export"
+    },
+    {
+      "id": "console-audit-verification-keys",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD"],
+      "path": {
+        "kind": "exact",
+        "value": "/api/admin/audit/export/verification-keys"
+      },
+      "queryPolicy": "forbid",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-web",
+      "upstreamPath": "/api/admin/audit/export/verification-keys"
+    },
+    {
+      "id": "console-root",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD"],
+      "path": { "kind": "exact", "value": "/" },
+      "queryPolicy": "console-navigation",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-web",
+      "upstreamPath": "preserve"
+    },
+    {
+      "id": "console-read-only-pages",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD"],
+      "path": {
+        "kind": "regex",
+        "value": "^/(?:activity|hardware|inference|keys|applications|team)$"
+      },
+      "queryPolicy": "console-navigation",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-web",
+      "upstreamPath": "preserve"
+    },
+    {
+      "id": "console-next-action-pages",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD", "POST"],
+      "path": {
+        "kind": "regex",
+        "value": "^/(?:(?:keys|applications)/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$"
+      },
+      "queryPolicy": "console-navigation",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-web",
+      "upstreamPath": "preserve"
+    },
+    {
+      "id": "console-team-import-template",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD"],
+      "path": { "kind": "exact", "value": "/team/import/template" },
+      "queryPolicy": "forbid",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-web",
+      "upstreamPath": "/team/import/template"
+    },
+    {
+      "id": "console-auth-pages",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD"],
+      "path": {
+        "kind": "regex",
+        "value": "^/auth/(?:signin|elevate|unavailable)$"
+      },
+      "queryPolicy": "console-navigation",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-web",
+      "upstreamPath": "preserve"
+    },
+    {
+      "id": "console-next-assets",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD"],
+      "path": { "kind": "prefix", "value": "/_next/" },
+      "queryPolicy": "console-navigation",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-web",
+      "upstreamPath": "preserve"
+    },
+    {
+      "id": "console-product-assets",
+      "surface": "console",
+      "hostId": "console",
+      "methods": ["GET", "HEAD"],
+      "path": {
+        "kind": "regex",
+        "value": "^/(?:console-v2/|fonts/|apple-touch-icon\\.png$|favicon(?:-16x16|-32x32|-48x48)?\\.png$|favicon\\.ico$|icon\\.svg$)"
+      },
+      "queryPolicy": "forbid",
+      "headerProfile": "console-browser",
+      "upstreamId": "console-web",
+      "upstreamPath": "preserve"
+    },
+    {
+      "id": "identity-authorization",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["GET", "HEAD"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/auth"
+      },
+      "queryPolicy": "oidc-browser",
+      "headerProfile": "identity-browser",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines/protocol/openid-connect/auth"
+    },
+    {
+      "id": "identity-logout",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["GET", "HEAD", "POST"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/logout"
+      },
+      "queryPolicy": "oidc-browser",
+      "headerProfile": "identity-browser",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines/protocol/openid-connect/logout"
+    },
+    {
+      "id": "identity-logout-confirm",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["GET", "HEAD", "POST"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/logout/logout-confirm"
+      },
+      "queryPolicy": "oidc-browser",
+      "headerProfile": "identity-browser",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines/protocol/openid-connect/logout/logout-confirm"
+    },
+    {
+      "id": "identity-token",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["POST"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/token"
+      },
+      "queryPolicy": "forbid",
+      "headerProfile": "identity-server-form",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines/protocol/openid-connect/token"
+    },
+    {
+      "id": "identity-revocation",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["POST"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/revoke"
+      },
+      "queryPolicy": "forbid",
+      "headerProfile": "identity-server-form",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines/protocol/openid-connect/revoke"
+    },
+    {
+      "id": "identity-jwks",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["GET", "HEAD"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines/protocol/openid-connect/certs"
+      },
+      "queryPolicy": "forbid",
+      "headerProfile": "identity-server-jwks",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines/protocol/openid-connect/certs"
+    },
+    {
+      "id": "identity-application-token",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["POST"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines-applications/protocol/openid-connect/token"
+      },
+      "queryPolicy": "forbid",
+      "headerProfile": "identity-application-token",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines-applications/protocol/openid-connect/token"
+    },
+    {
+      "id": "identity-application-jwks",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["GET", "HEAD"],
+      "path": {
+        "kind": "exact",
+        "value": "/realms/llm-machines-applications/protocol/openid-connect/certs"
+      },
+      "queryPolicy": "forbid",
+      "headerProfile": "identity-server-jwks",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "/realms/llm-machines-applications/protocol/openid-connect/certs"
+    },
+    {
+      "id": "identity-login-actions",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["GET", "HEAD", "POST"],
+      "path": {
+        "kind": "prefix",
+        "value": "/realms/llm-machines/login-actions/"
+      },
+      "queryPolicy": "oidc-browser",
+      "headerProfile": "identity-browser",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "preserve"
+    },
+    {
+      "id": "identity-resources",
+      "surface": "identity",
+      "hostId": "identity",
+      "methods": ["GET", "HEAD"],
+      "path": { "kind": "prefix", "value": "/resources/" },
+      "queryPolicy": "oidc-browser",
+      "headerProfile": "identity-browser",
+      "upstreamId": "keycloak-identity",
+      "upstreamPath": "preserve"
+    }
+  ],
+  "headerPolicy": {
+    "requestHeaderForwarding": "drop-all-then-explicit",
+    "allowlists": {
+      "customer-api": [
+        "Accept",
+        "Authorization",
+        "Content-Length",
+        "Content-Type"
+      ],
+      "console-browser": [
+        "Accept",
+        "Accept-Language",
+        "Content-Length",
+        "Content-Type",
+        "Cookie",
+        "Origin",
+        "Next-Action",
+        "Next-Router-Prefetch",
+        "Next-Router-State-Tree",
+        "Next-Url",
+        "Purpose",
+        "RSC",
+        "X-Nextjs-Data"
+      ],
+      "identity-browser": [
+        "Accept",
+        "Accept-Language",
+        "Content-Length",
+        "Content-Type",
+        "Cookie",
+        "Origin"
+      ],
+      "identity-server-form": ["Accept", "Content-Length", "Content-Type"],
+      "identity-application-token": [
+        "Accept",
+        "Authorization",
+        "Content-Length",
+        "Content-Type"
+      ],
+      "identity-server-jwks": ["Accept"],
+      "identity-backchannel": ["Accept", "Content-Length", "Content-Type"]
+    },
+    "edgeGenerated": [
+      "Host",
+      "X-Forwarded-For",
+      "X-Forwarded-Host",
+      "X-Forwarded-Proto",
+      "X-Forwarded-Port",
+      "X-Request-ID"
+    ],
+    "browserBearerForwarding": false,
+    "applicationTokenClientSecretBasicForwarding": true,
+    "applicationTokenClientSecretPostAllowed": false,
+    "consoleSessionForwardedToIdentity": false,
+    "clientForwardedOrIdentityHeadersTrusted": false,
+    "websocketUpgradeForwarded": false
+  },
+  "responsePolicy": {
+    "consoleAndIdentitySetCookieAllowed": true,
+    "consoleAndIdentityLocationAllowed": true,
+    "internalAuthorityDisclosureAllowed": false,
+    "nativeAdministrationRedirectAllowed": false
+  },
+  "contentHandling": {
+    "requestBuffering": false,
+    "responseBuffering": false,
+    "cache": false,
+    "requestOrResponseBodiesLogged": false,
+    "requestTargetOrQueryLogged": false,
+    "arbitraryHeadersLogged": false,
+    "metadataOnlyLogFields": [
+      "timestamp",
+      "request_id",
+      "surface",
+      "status",
+      "upstream_status",
+      "upstream_connect_seconds",
+      "upstream_header_seconds",
+      "upstream_response_seconds",
+      "request_bytes",
+      "response_bytes",
+      "duration_seconds"
+    ]
+  },
+  "privateNativeSystems": [
+    "alertmanager",
+    "firecrawl-native",
+    "grafana",
+    "keycloak-admin",
+    "litellm",
+    "portainer",
+    "postgresql",
+    "prometheus",
+    "sglang"
+  ],
+  "runtimeQualification": {
+    "directNetworkNoBypass": "NOT_EVALUATED_RUNTIME",
+    "dnsAndCertificateBinding": "NOT_EVALUATED_RUNTIME",
+    "nativeListenerIsolation": "NOT_EVALUATED_RUNTIME",
+    "packagedNginxBehavior": "NOT_EVALUATED_RUNTIME"
+  }
+}

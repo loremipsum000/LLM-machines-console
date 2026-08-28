@@ -1,0 +1,5 @@
+infra/firecrawl/release/patches/*.patch -whitespace
+infra/portainer/ce-downstream/THIRD_PARTY_NOTICES.md whitespace=-blank-at-eof
+infra/portainer/ce-downstream/evidence/frontend-license-custody/legal/** -whitespace
+infra/portainer/ce-downstream/evidence/license-custody/runtime/legal/** -whitespace
+infra/portainer/ce-downstream/patches/*.patch -whitespace

@@ -1,0 +1,452 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-10C",
+  "scope": "emergency-isolation-source-only",
+  "contractBaseCommit": "f29ea2a0c69871973ea553d3edf83b783d6c9879",
+  "contractBaseTree": "991109ad85e0c454af62ed42c4a5a69068b301e0",
+  "laneAnchorCommit": "f29ea2a0c69871973ea553d3edf83b783d6c9879",
+  "reviewedDispositions": {
+    "historicalTestRepairs": {
+      "paths": [
+        "scripts/inference-core/pr05-boundaries.test.mjs",
+        "scripts/inference-core/pr06-boundaries.test.mjs",
+        "scripts/inference-core/pr10-boundaries.test.mjs"
+      ],
+      "retainedRevisionBindings": [
+        {
+          "retainedRevision": "PR-05",
+          "path": "scripts/inference-core/pr05-boundaries.test.mjs",
+          "evidenceCommit": "da6f0c0a2b5e477449a09527a28c7e51ef432c20"
+        },
+        {
+          "retainedRevision": "PR-06",
+          "path": "scripts/inference-core/pr06-boundaries.test.mjs",
+          "evidenceCommit": "cd5a389cde949d07aa64ef7a0513cb585bb8bb7a"
+        },
+        {
+          "retainedRevision": "PR-09",
+          "path": "scripts/inference-core/pr05-boundaries.test.mjs",
+          "evidenceCommit": "e9f2516585dccec69317fd0426ac4fcf6fa0d9b1"
+        },
+        {
+          "retainedRevision": "PR-10",
+          "path": "scripts/inference-core/pr10-boundaries.test.mjs",
+          "evidenceCommit": "f29ea2a0c69871973ea553d3edf83b783d6c9879"
+        }
+      ]
+    },
+    "isolationState": {
+      "scope": "global-singleton",
+      "states": [
+        "inactive",
+        "engaging",
+        "active",
+        "disengaging",
+        "recovery_required"
+      ],
+      "effectiveTrafficStates": ["open", "sealed"],
+      "failureCodes": [
+        "state_invalid",
+        "admission_fence_failed",
+        "inflight_abort_failed",
+        "enforcement_failed",
+        "verification_failed",
+        "restore_reassertion_failed",
+        "journal_failed"
+      ],
+      "nonInactiveStateFailsClosed": true,
+      "optimisticRevisionRequired": true,
+      "activationConfirmation": "ACTIVATE EMERGENCY ISOLATION",
+      "deactivationConfirmation": "DEACTIVATE EMERGENCY ISOLATION",
+      "stateAuditAndIdempotencyAtomicity": "single-postgresql-transaction",
+      "rawErrorTextPersisted": false
+    },
+    "routeAuthorization": {
+      "status": {
+        "method": "GET",
+        "path": "/api/admin/isolation",
+        "capability": "console.operational.view",
+        "allowedRoles": ["Admin", "Operator"]
+      },
+      "mutations": [
+        {
+          "method": "POST",
+          "path": "/api/admin/isolation/activate",
+          "standingRole": "Admin",
+          "emergencyElevatedOperatorAllowed": false
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/isolation/deactivate",
+          "standingRole": "Admin",
+          "emergencyElevatedOperatorAllowed": false
+        }
+      ],
+      "mutationReauthentication": {
+        "maxAuthenticationAgeSeconds": 300,
+        "acceptedMfaMethods": [
+          "otp",
+          "hwk",
+          "webauthn",
+          "webauthn-passwordless"
+        ]
+      }
+    },
+    "trafficEnforcement": {
+      "publicInferenceRoutesUnchanged": true,
+      "publicFirecrawlRoutesUnchanged": true,
+      "blocksNewInferenceAdmissions": true,
+      "blocksNewFirecrawlAdmissions": true,
+      "inProcessAbortSignalPropagation": true,
+      "activationWaitsForInflightAbortAndZeroLocalLeases": true,
+      "terminalFinalizationReservation": true,
+      "successAccountingAndResponseShareFinalizationLane": true,
+      "engagementWaitsForFinalizingResponseRelease": true,
+      "isolationFirstSettlesFailureExactlyOnce": true,
+      "deactivationCommitReservation": true,
+      "admissionsCannotInvalidatePreparedDeactivation": true,
+      "localOpenOccursOnlyAfterDurableInactiveCommit": true,
+      "adminHealthAndMetricsRemainReachable": true,
+      "bulkApplicationDisableUsed": false,
+      "liveTopologyFirewallAndNoBypassQualificationOwner": "PR-12",
+      "liveInflightDrainAndAbortQualificationOwner": "PR-12"
+    },
+    "restoreSafety": {
+      "restoreMayClearIsolation": false,
+      "isolationFenceHeldAcrossRestoreAndCompensation": true,
+      "fenceAcquisitionPersistsAndReadsBackRecoveryRequiredBeforeAnyActiveRestore": true,
+      "nonRestorableAuthorityRequired": true,
+      "unboundOrUnavailableAuthorityFailsClosed": true,
+      "operationScopedMarkerCompareAndSet": true,
+      "startupReconcilesMarkerBeforeInactiveCanOpen": true,
+      "markerAcquisitionFailureAttemptsConsoleRecoveryBeforeReject": true,
+      "mutationsBlockedUntilMarkerClearLinearization": true,
+      "markerClearRequiresConsoleRecoveryReadback": true,
+      "unfencedJournalAdmissionSealsUntilReconciled": true,
+      "preparedUnfencedRestoreCasToRecoveryRequiredBeforeValidation": true,
+      "survivingMarkerClearRequiresMatchingTerminalRestore": true,
+      "unresolvedOrUnknownMarkerOwnerNeverClearedAtBootstrap": true,
+      "lifecycleReconciliationLockedAndIdempotent": true,
+      "postAdmissionOrdering": [
+        "journal.begin-created",
+        "durable-recovery-required-fence-acquired-and-read-back",
+        "prepareRestore-validation",
+        "quiesce"
+      ],
+      "fenceOrderingExemption": "pre-admission-manifest-rejection-only",
+      "durableIsolationReassertedBeforeAdmissionReopens": true,
+      "reassertionFailureState": "recovery_required",
+      "everyAdmittedRestoreEndsDurableRecoveryRequired": true,
+      "recoveryRequiredReassertedAfterEveryAppliedOrPartialRestoreFailureBeforeReturnOrResume": true
+    },
+    "zeroContentRetention": {
+      "workloadContentDays": 0,
+      "requestOrResponseContentPersisted": false,
+      "rawErrorTextPersisted": false,
+      "runtimeQualificationOwner": "PR-12"
+    },
+    "deferredWork": {
+      "liveTopologyQualificationOwner": "PR-12",
+      "firewallEnforcementQualificationOwner": "PR-12",
+      "inflightDrainAndAbortQualificationOwner": "PR-12",
+      "nonRestorableAuthorityBackendAndQualificationOwner": "PR-12",
+      "productionDeploymentOwner": "PR-12",
+      "vendorMaintenanceAccessOwner": "PR-10D"
+    },
+    "scopeBoundaries": {
+      "sourceOnly": true,
+      "intermediateDeployment": false,
+      "runtimeQualified": false,
+      "isolationRoutes": 3,
+      "productionFirewallBindings": 0
+    }
+  },
+  "sourceEvidence": [
+    {
+      "path": "apps/bff/src/db/inference-core-client.ts",
+      "sha256": "1d216929dd2e5cff3a57d34d24eb4ac0a251426d7385b6af9feca7896c32431d"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-schema.ts",
+      "sha256": "9dcc8e50a1c4787b2777f0881ff32a91fa4f150acc15c075e333ffe1633a40a7"
+    },
+    {
+      "path": "apps/bff/src/index.ts",
+      "sha256": "c6bacb7e6e62f117185e60a568b7218630bdd32b07021fcca65437d6786059f5"
+    },
+    {
+      "path": "apps/bff/src/routes/admin.ts",
+      "sha256": "41d23b4c33d8fa093a926c870a3d0abbd2b69ba772323ffa62af32c5061ae644"
+    },
+    {
+      "path": "apps/bff/src/routes/app-gateway.ts",
+      "sha256": "1e4ade271c8e7218189a6c97a63342a9a60d3e556965ba8c3451e5616e891411"
+    },
+    {
+      "path": "apps/bff/src/routes/firecrawl-gateway.ts",
+      "sha256": "b9b8dbb6ba9ed308b6676d68c3bc18e0379dce6a03ba2a6415a604275f371953"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "sha256": "5e0c6aa94dac03a549294765c648debc89492cd3b877daff54627b668721f634"
+    },
+    {
+      "path": "apps/bff/src/services/admin-connected-apps.ts",
+      "sha256": "0eea0bac71cece2e2bdefc0610e6ef36820b4217ea597c38bc8d34dac125926c"
+    },
+    {
+      "path": "apps/bff/src/services/emergency-isolation.ts",
+      "sha256": "17593fc417d24243dd5c02406e8993c9267ac5f306e34d5ed457385d26155226"
+    },
+    {
+      "path": "apps/bff/src/services/identity-mutation-journal.ts",
+      "sha256": "01142036ce2e09d1b857cadf3a0d4340651e6d1540db59502a2285d45ac37fcf"
+    },
+    {
+      "path": "apps/bff/src/services/isolation-traffic-gate.ts",
+      "sha256": "0db62ff716d74390173cb513254ac7f1e9c1659570da83fa3e20f2500de0f83f"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-operation-journal.ts",
+      "sha256": "de4f5d38dfe75357561660b261fd5387f68116501fe2a565da5976e8db02c0b4"
+    },
+    {
+      "path": "apps/bff/src/services/lifecycle-orchestration.ts",
+      "sha256": "725eaa0e6f0f771235b9450b756eb43cd650901e160ad71b9e57fdf713cd7fdd"
+    },
+    {
+      "path": "apps/bff/src/services/litellm-chat-transport.ts",
+      "sha256": "e021b6c833881ebec53341607085d97d89ae2c7a569133ef47f3fd1ef547aa14"
+    },
+    {
+      "path": "infra/migrations/0000_inference_core.sql",
+      "sha256": "3ae5539a1bc2cb566d9190fbe8c974ad44bbd652d9505fa26ae48ae89eec717e"
+    },
+    {
+      "path": "packages/contracts/src/index.ts",
+      "sha256": "8756001830e8067c18a431eb2a21cda30761d0ca452dd1586aa88e5e0106b29a"
+    },
+    {
+      "path": "packages/contracts/src/inference-core.ts",
+      "sha256": "f57f50590cdd45eca045a6a26cb6fdb03033b69a99d16e207abf30c7070683dd"
+    },
+    {
+      "path": "packages/contracts/src/inference-core-isolation.ts",
+      "sha256": "760037bc3652c95482b1db533a83d83a595f647219e4cc01d35a8fa0e4c9e03b"
+    },
+    {
+      "path": "scripts/inference-core/pr05-boundaries.test.mjs",
+      "sha256": "bdc49afadf15f86600c0b29032f2e22c6206d0780374ceb4a3c2b1578e679cf3"
+    },
+    {
+      "path": "scripts/inference-core/pr06-boundaries.test.mjs",
+      "sha256": "f8a7a6685c5af5d00e6080b17ed9056fa6b3ab83751adf44014721ed65fba171"
+    },
+    {
+      "path": "scripts/inference-core/pr10-boundaries.test.mjs",
+      "sha256": "c56b9cf25da50b1e8879b2f1b1bbfede246a6f5aa0ac93951ad81f06b1da5d14"
+    }
+  ],
+  "target": {
+    "findingEntriesDueByPr10c": 0,
+    "remainingFindingEntries": 1,
+    "fs105BuilderHubTombstones": [
+      {
+        "path": "apps/web/src/middleware.test.ts",
+        "removeBy": "PR-12"
+      }
+    ],
+    "legacyRoutes": 0,
+    "routes": 105,
+    "routeClassifications": {
+      "current-console-seam": 93,
+      "operational-auth": 4,
+      "private-operational": 4,
+      "public-t2": 2,
+      "required-now": 2
+    },
+    "publicInferenceRoutes": [
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/api/app-gateway/v1/models",
+        "source": "apps/bff/src/routes/app-gateway.ts",
+        "classification": "required-now"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/app-gateway/v1/chat/completions",
+        "source": "apps/bff/src/routes/app-gateway.ts",
+        "classification": "required-now"
+      }
+    ],
+    "publicFirecrawlRoutes": [
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/v2/scrape",
+        "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+        "classification": "public-t2"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/v2/search",
+        "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+        "classification": "public-t2"
+      }
+    ],
+    "addedRoutes": [
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/api/admin/isolation",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/isolation/activate",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/isolation/deactivate",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      }
+    ],
+    "adminOnlyRoutePolicyKeys": [
+      "GET /api/admin/recovery/status",
+      "POST /api/admin/isolation/activate",
+      "POST /api/admin/isolation/deactivate",
+      "POST /api/admin/observability/alert-egress",
+      "POST /api/admin/recovery/factor/commission",
+      "POST /api/admin/settings/organization",
+      "POST /api/admin/settings/telemetry"
+    ],
+    "fastifyRegistrars": [
+      {
+        "exportName": "registerAdminRoutes",
+        "importSource": "./routes/admin",
+        "sourcePath": "apps/bff/src/routes/admin.ts"
+      },
+      {
+        "exportName": "registerAppGatewayRoutes",
+        "importSource": "./routes/app-gateway",
+        "sourcePath": "apps/bff/src/routes/app-gateway.ts"
+      },
+      {
+        "exportName": "registerAuthorization",
+        "importSource": "./auth/authorization",
+        "sourcePath": "apps/bff/src/auth/authorization.ts"
+      },
+      {
+        "exportName": "registerFirecrawlGatewayRoutes",
+        "importSource": "./routes/firecrawl-gateway",
+        "sourcePath": "apps/bff/src/routes/firecrawl-gateway.ts"
+      },
+      {
+        "exportName": "registerObservabilityMetricsRoutes",
+        "importSource": "./routes/observability-metrics",
+        "sourcePath": "apps/bff/src/routes/observability-metrics.ts"
+      }
+    ],
+    "routeFingerprintTransitions": [
+      {
+        "path": "apps/bff/src/index.ts",
+        "symbol": "<file>",
+        "beforeSha256": "34861ad68b99b3ff2eb927daa76b8b9157a62e5841365e456c4335a168c34293",
+        "afterSha256": "32509b161073d225b6aef9e3993c778d997773073a14be5318b6d33e78ed093d"
+      }
+    ],
+    "webInferenceConsumers": 0,
+    "escapeHatchPaths": [],
+    "sourceOnly": true,
+    "runtimeQualified": false,
+    "isolationRoutes": 3,
+    "productionFirewallBindings": 0,
+    "liveQualificationOwner": "PR-12",
+    "vendorMaintenanceAccessOwner": "PR-10D"
+  },
+  "operationPolicy": {
+    "addedSourcePaths": [
+      "apps/bff/src/services/emergency-isolation.ts",
+      "apps/bff/src/services/isolation-traffic-gate.ts",
+      "packages/contracts/src/inference-core-isolation.ts"
+    ],
+    "changedSourcePaths": [
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/app-gateway.ts",
+      "apps/bff/src/routes/firecrawl-gateway.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/identity-mutation-journal.ts",
+      "apps/bff/src/services/lifecycle-operation-journal.ts",
+      "apps/bff/src/services/lifecycle-orchestration.ts",
+      "apps/bff/src/services/litellm-chat-transport.ts",
+      "package.json",
+      "packages/contracts/src/index.ts",
+      "packages/contracts/src/inference-core.ts"
+    ],
+    "deletedSourcePaths": [],
+    "addedRepositoryPaths": [
+      "apps/bff/src/routes/admin-isolation.test.ts",
+      "apps/bff/src/services/emergency-isolation.test.ts",
+      "apps/bff/src/services/emergency-isolation.ts",
+      "apps/bff/src/services/isolation-traffic-gate.test.ts",
+      "apps/bff/src/services/isolation-traffic-gate.ts",
+      "docs/reduction/inference-core/pr-10c-emergency-isolation-decisions.json",
+      "packages/contracts/src/inference-core-isolation.test.ts",
+      "packages/contracts/src/inference-core-isolation.ts",
+      "scripts/inference-core/pr10c-boundaries.test.mjs",
+      "scripts/inference-core/pr10c-contract-revision.mjs",
+      "test-support/inference-core-db-tests/src/pr10c-emergency-isolation.test.ts"
+    ],
+    "changedRepositoryPaths": [
+      "apps/bff/src/db/inference-core-client.test.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.test.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin-authorization.test.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/app-gateway.test.ts",
+      "apps/bff/src/routes/app-gateway.ts",
+      "apps/bff/src/routes/firecrawl-gateway.test.ts",
+      "apps/bff/src/routes/firecrawl-gateway.ts",
+      "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "apps/bff/src/services/admin-connected-apps-firecrawl.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/identity-mutation-journal.ts",
+      "apps/bff/src/services/lifecycle-operation-journal.test.ts",
+      "apps/bff/src/services/lifecycle-operation-journal.ts",
+      "apps/bff/src/services/lifecycle-orchestration.test.ts",
+      "apps/bff/src/services/lifecycle-orchestration.ts",
+      "apps/bff/src/services/litellm-chat-transport.test.ts",
+      "apps/bff/src/services/litellm-chat-transport.ts",
+      "docs/reduction/inference-core/README.md",
+      "infra/migrations/0000_inference_core.sql",
+      "package.json",
+      "packages/contracts/src/index.ts",
+      "packages/contracts/src/inference-core.ts",
+      "scripts/inference-core/guardrails.mjs",
+      "scripts/inference-core/guardrails.test.mjs",
+      "scripts/inference-core/pr05-boundaries.test.mjs",
+      "scripts/inference-core/pr06-boundaries.test.mjs",
+      "scripts/inference-core/pr10-boundaries.test.mjs",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+      "test-support/inference-core-db-tests/src/pr10-lifecycle-journal.test.ts"
+    ],
+    "deletedRepositoryPaths": []
+  },
+  "reviewStatus": "reviewed"
+}

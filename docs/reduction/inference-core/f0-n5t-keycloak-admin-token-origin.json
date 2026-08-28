@@ -1,0 +1,88 @@
+{
+  "schema": "llm-machines.f0-n5t-keycloak-admin-token-origin.v1",
+  "workPackage": "F0-N5T",
+  "status": "SOURCE_SECURITY_CORRECTION_COMPLETE_F0_N7_PENDING",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "ec2508c76f2b35b34407738dd2f3cdcc286e4608",
+    "tree": "75e2a2f94228d68a391522c81c2e8b4f653fea6a"
+  },
+  "implementationCandidate": {
+    "commit": "74d09ef999c1b9f3a93795cbabe51f57697bc57e",
+    "tree": "f153621f0ea9d2316d2fe1a354aa5e61e8e7c197"
+  },
+  "defect": {
+    "owner": "F0-N5R",
+    "description": "The identity token location stripped every Origin, so the Keycloak Admin SPA could complete authorization but the browser rejected its token response for lack of an exact CORS authorization response.",
+    "historicalEvidenceRewritten": false,
+    "historicalEvidenceSha256": {
+      "f0N5": "6f27c25a8fb3bacd62f9c15490a7944fefe1b1fbd6bf3e66480f8c2cd27ef21e",
+      "f0N5r": "085327fcafbe0bb8e6c997c1713652d694f0ea5fcceea2b493f08b8cc6e0d213",
+      "f0N5s": "f871c18021d58412fda288a06eaa0d6f17bd22710f560d1058aa9c1a95e3dd59"
+    }
+  },
+  "correction": {
+    "identityPath": "/realms/llm-machines/protocol/openid-connect/token",
+    "method": "POST",
+    "noOrigin": "ALLOW_SERVER_SIDE_EXCHANGE",
+    "allowedBrowserOrigin": "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
+    "otherBrowserOrigins": "DENY_403_BEFORE_UPSTREAM",
+    "forwardedOrigin": "EXACT_ALLOWED_BROWSER_ORIGIN_ONLY",
+    "authorizationForwarded": false,
+    "cookieForwarded": false,
+    "consoleSessionForwarded": false,
+    "keycloakClientConfigurationChanged": false,
+    "nativeSessionRemainsKeycloakOwned": true
+  },
+  "disposableRuntimeObservation": {
+    "date": "2026-08-15",
+    "environment": "VM117 isolated linux/amd64",
+    "browser": "Chromium 151.0.7922.108",
+    "keycloakVersion": "26.7.0",
+    "rawEvidenceSha256": "7c5dcc878f1d9cbd9b0890ef804a684c4c893349511dab6781ee23d48bf31a0f",
+    "results": {
+      "adminConsole": "PASS",
+      "exactBrowserOrigin": "PASS",
+      "tokenStatus": 200,
+      "foreignOriginStatus": 403,
+      "noOriginServerExchange": "ADMITTED_TO_KEYCLOAK"
+    },
+    "credentialValuesRecorded": false,
+    "cookieValuesRecorded": false,
+    "workloadContentRecorded": false,
+    "containersRemoved": true,
+    "networkRemoved": true,
+    "volumeRemoved": true,
+    "temporaryFilesRemoved": true,
+    "founderEnvironmentPreserved": true
+  },
+  "sourceArtifacts": {
+    "infra/ingress/product-edge.nginx.conf.template": "sha256:2e9e3990c32aa66d16ad92de883d5a5eb684c73e0367de6f1b5fed42a50a1d1b",
+    "infra/ingress/native-admin-edge-profile.json": "sha256:44014f72acdb488479f27c650169b7b4ad1d8f6a26596e060423a5b1f24c90da",
+    "infra/ingress/validate-ingress.mjs": "sha256:169a872af0377e642e74d6f914a6b4aa86921f5240b4c3bcc9f25e3723b439fc",
+    "infra/ingress/validate-ingress.test.mjs": "sha256:8601bbe6212c68d27cf444224a38275e8854d1d7b92d80785606e2498cccd10c"
+  },
+  "implementationChangedPaths": [
+    "infra/ingress/native-admin-edge-profile.json",
+    "infra/ingress/product-edge.nginx.conf.template",
+    "infra/ingress/validate-ingress.mjs",
+    "infra/ingress/validate-ingress.test.mjs"
+  ],
+  "sourceBoundary": {
+    "productBehaviorActivated": false,
+    "liveRuntimeChanged": false,
+    "vm103Changed": false,
+    "dnsCertificateOrGatewayChanged": false,
+    "releaseInventoryChanged": false,
+    "grafanaOrLitellmPolicyChanged": false,
+    "portainerChanged": false
+  },
+  "remainingGate": {
+    "package": "F0-N7",
+    "required": "Complete HTTPS browser, role, outage, restart, retention, and no-bypass replay for Grafana, LiteLLM, and Keycloak."
+  }
+}

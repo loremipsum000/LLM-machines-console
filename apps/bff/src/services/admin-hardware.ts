@@ -1,16 +1,21 @@
-import type {
-  AdminHardwareChart,
-  AdminHardwareChartId,
-  AdminHardwareChartType,
-  AdminHardwareRange,
-  AdminHardwareResponse,
-  AdminHardwareSeries,
-  AdminHardwareThreshold,
-  AdminHardwareUnit,
-  HubSeverity,
-  HubSourceStatus,
-} from "@llm-machines/contracts"
-import { canUseBffFixtureData } from "../config/fixture-mode"
+import {
+  type AdminHardwareAlert,
+  type AdminHardwareChart,
+  type AdminHardwareChartId,
+  type AdminHardwareChartType,
+  type AdminHardwareRange,
+  type AdminHardwareResponse,
+  type AdminHardwareSeries,
+  type AdminHardwareThreshold,
+  type AdminHardwareUnit,
+  type InferenceCoreSeverity,
+  type InferenceCoreSourceStatus,
+  aggregateInferenceCoreSourceStatus,
+} from "@llm-machines/contracts/inference-core"
+import {
+  type AdminAlertmanagerSummary,
+  getAdminAlertmanagerSummary,
+} from "./admin-alertmanager"
 import {
   PrometheusClient,
   type PrometheusMatrixSample,
@@ -35,8 +40,6 @@ interface HardwareChartDefinition {
 
 const DEFAULT_RANGE: AdminHardwareRange = "6h"
 const DEFAULT_HOST = "all"
-const HARDWARE_DASHBOARD_PATH =
-  "/d/llmm-infra-overview/llm-machines-infrastructure-overview"
 
 const RANGE_SECONDS: Record<AdminHardwareRange, number> = {
   "1h": 60 * 60,
@@ -64,30 +67,89 @@ const chartDefinitions: HardwareChartDefinition[] = [
       )}}[5m])))`,
   },
   {
-    id: "gpu_temperature",
-    title: "GPU temperature",
-    description: "GPU package temperature from DCGM or nvidia-smi fallback.",
+    id: "xpu_temperature",
+    title: "XPU temperature",
+    description: "Intel XPU GPU and device-memory temperatures from XPUM.",
     chartType: "line",
     unit: "celsius",
-    emptyMessage: "No GPU temperature metrics are available.",
+    emptyMessage: "No Intel XPU temperature metrics are available.",
     thresholds: [threshold("Warning", "warning", 85, "celsius")],
     promql: (host) =>
-      `DCGM_FI_DEV_GPU_TEMP${hostSelector(host)} or llmm_nvidia_gpu_temperature_celsius${hostSelector(
+      metricSelector(
+        "hw_temperature_celsius",
         host,
+        'job="xpu"',
+        'hw_sensor_location=~"gpu|memory"',
+        'statistic="max"',
+      ),
+  },
+  {
+    id: "xpu_utilization",
+    title: "XPU utilization",
+    description: "Intel XPU all-engine utilization reported by XPUM.",
+    chartType: "area",
+    unit: "percent",
+    emptyMessage: "No Intel XPU utilization metrics are available.",
+    thresholds: [threshold("Sustained high", "warning", 90, "percent")],
+    promql: (host) =>
+      `100 * ${metricSelector(
+        "hw_gpu_utilization_ratio",
+        host,
+        'job="xpu"',
+        'hw_gpu_task="all"',
       )}`,
   },
   {
-    id: "gpu_utilization",
-    title: "GPU utilization",
-    description: "GPU core utilization from DCGM or nvidia-smi fallback.",
+    id: "xpu_memory_utilization",
+    title: "XPU memory utilization",
+    description: "Intel XPU device-memory utilization reported by XPUM.",
     chartType: "area",
     unit: "percent",
-    emptyMessage: "No GPU utilization metrics are available.",
-    thresholds: [threshold("Sustained high", "warning", 90, "percent")],
+    emptyMessage: "No Intel XPU memory metrics are available.",
+    thresholds: [threshold("High", "warning", 90, "percent")],
     promql: (host) =>
-      `DCGM_FI_DEV_GPU_UTIL${hostSelector(host)} or llmm_nvidia_gpu_utilization_percent${hostSelector(
+      `100 * ${metricSelector(
+        "hw_memory_utilization_ratio",
         host,
+        'job="xpu"',
+        'hw_memory_location="device"',
       )}`,
+  },
+  {
+    id: "xpu_device_health",
+    title: "XPU device health",
+    description:
+      "Derived directly from XPUM reset-needed state: 1 is healthy and 0 requires reset.",
+    chartType: "line",
+    unit: "state",
+    emptyMessage: "No Intel XPU device-health state is available.",
+    thresholds: [],
+    promql: (host) =>
+      `1 - ${metricSelector(
+        "hw_status",
+        host,
+        'job="xpu"',
+        'hw_type="gpu"',
+        'hw_state="reset_needed"',
+      )}`,
+  },
+  {
+    id: "xpu_frequency_status",
+    title: "XPU frequency status",
+    description:
+      "XPUM frequency-domain state. Throttle-reason series appear only after the driver reports a real throttle event.",
+    chartType: "line",
+    unit: "state",
+    emptyMessage: "No Intel XPU frequency-status metrics are available.",
+    thresholds: [],
+    promql: (host) =>
+      metricSelector(
+        "hw_status",
+        host,
+        'job="xpu"',
+        'hw_type="frequency"',
+        'hw_state=~"ok|throttled"',
+      ),
   },
   {
     id: "ram_usage",
@@ -131,14 +193,94 @@ const chartDefinitions: HardwareChartDefinition[] = [
       )}}))`,
   },
   {
+    id: "bmc_sensor_health",
+    title: "BMC sensor health",
+    description:
+      "Maximum genuine IPMI sensor severity by host: 0 nominal, 1 warning, 2 critical.",
+    chartType: "line",
+    unit: "state",
+    emptyMessage: "No BMC sensor-health metrics are available.",
+    thresholds: [
+      threshold("Warning", "warning", 1, "state"),
+      threshold("Critical", "critical", 2, "state"),
+    ],
+    promql: (host) =>
+      `max by (host) (${[
+        "ipmi_temperature_state",
+        "ipmi_fan_speed_state",
+        "ipmi_voltage_state",
+        "ipmi_current_state",
+        "ipmi_power_state",
+        "ipmi_sensor_state",
+      ]
+        .map((metric) => metricSelector(metric, host, 'job="ipmi"'))
+        .join(" or ")})`,
+  },
+  {
+    id: "chassis_power_state",
+    title: "Chassis power state",
+    description: "BMC chassis power state: 1 on, 0 otherwise.",
+    chartType: "line",
+    unit: "state",
+    emptyMessage: "No BMC chassis power-state metric is available.",
+    thresholds: [],
+    promql: (host) =>
+      metricSelector("ipmi_chassis_power_state", host, 'job="ipmi"'),
+  },
+  {
+    id: "chassis_temperature",
+    title: "Chassis temperatures",
+    description: "Genuine temperature sensor readings reported by the BMC.",
+    chartType: "line",
+    unit: "celsius",
+    emptyMessage: "No BMC temperature readings are available.",
+    thresholds: [threshold("Warning", "warning", 70, "celsius")],
+    promql: (host) =>
+      metricSelector("ipmi_temperature_celsius", host, 'job="ipmi"'),
+  },
+  {
+    id: "fan_speed",
+    title: "Chassis fan speed",
+    description: "Genuine fan speed readings reported by the BMC.",
+    chartType: "line",
+    unit: "rpm",
+    emptyMessage: "No BMC fan-speed readings are available.",
+    thresholds: [],
+    promql: (host) => metricSelector("ipmi_fan_speed_rpm", host, 'job="ipmi"'),
+  },
+  {
     id: "power_draw",
-    title: "Power draw",
-    description: "Live chassis power draw for compute-node-a from IPMI DCMI.",
+    title: "Appliance power draw",
+    description:
+      "Live chassis input power from the BMC's genuine PW consumption sensor.",
     chartType: "area",
     unit: "watt",
-    emptyMessage: "No IPMI DCMI power draw metrics are available.",
+    emptyMessage: "No BMC input-power sensor metric is available.",
     thresholds: [],
-    promql: () => 'ipmi_dcmi_power_consumption_watts{host="compute-node-a"}',
+    promql: (host) =>
+      metricSelector(
+        "ipmi_power_watts",
+        host,
+        'job="ipmi"',
+        'name="PW consumption"',
+      ),
+  },
+  {
+    id: "monthly_energy_projection",
+    title: "Projected monthly energy",
+    description:
+      "Projected 30-day kWh from the genuine BMC input-power samples currently retained; this is not historical 30-day consumption until a full window exists.",
+    chartType: "area",
+    unit: "kilowatt_hour",
+    emptyMessage: "No retained BMC input-power samples are available.",
+    thresholds: [],
+    promql: (host) =>
+      `avg_over_time(${metricSelector(
+        "ipmi_power_watts",
+        host,
+        'job="ipmi"',
+        'name="PW consumption"',
+      )}[30d]) * 24 * 30 / 1000`,
   },
   {
     id: "network_throughput",
@@ -165,44 +307,55 @@ export async function getAdminHardware(
   const range = parseHardwareRange(options.range)
   const host = normalizeHost(options.host)
   const baseUrl = process.env.ADMIN_PROMETHEUS_BASE_URL?.trim()
-  const grafanaUrl = grafanaDashboardUrl()
   const generatedAt = new Date()
   const stepSeconds = resolveStepSeconds(range, options.step)
   const step = `${stepSeconds}s`
+  const alertmanagerPromise = getAdminAlertmanagerSummary()
 
   if (!baseUrl) {
+    const alertmanager = await alertmanagerPromise
     return emptyHardwareResponse({
+      alertmanager,
+      chartSourceStatus: "not_configured",
       generatedAt,
-      grafanaUrl,
       host,
       range,
-      sourceStatus: "not_configured",
+      sourceStatus: combinedHardwareSourceStatus(
+        "not_configured",
+        alertmanager.sourceStatus,
+      ),
       step,
-      summary:
-        "Prometheus federation is not configured for this BFF, so live hardware graphs are unavailable.",
+      summary: `Prometheus federation is not configured for this BFF, so live hardware graphs are unavailable. ${alertmanager.summary}`,
     })
   }
 
-  const client = new PrometheusClient(baseUrl)
   const start = new Date(generatedAt.getTime() - RANGE_SECONDS[range] * 1000)
 
   try {
-    const chartSamples = await Promise.all(
-      chartDefinitions.map(async (definition) => ({
-        definition,
-        samples: await client.queryRange({
-          end: generatedAt,
-          query: definition.promql(host),
-          start,
-          step,
-        }),
-      })),
-    )
+    const client = new PrometheusClient(baseUrl)
+    const [chartSamples, alertmanager] = await Promise.all([
+      Promise.all(
+        chartDefinitions.map(async (definition) => ({
+          definition,
+          samples: await client.queryRange({
+            end: generatedAt,
+            query: definition.promql(host),
+            start,
+            step,
+          }),
+        })),
+      ),
+      alertmanagerPromise,
+    ])
     const charts = chartSamples.map(({ definition, samples }) =>
       toHardwareChart(definition, samples, host),
     )
     const availableHosts = collectAvailableHosts(charts, host)
-    const sourceStatus = hardwareSourceStatus(charts)
+    const metricsSourceStatus = hardwareSourceStatus(charts)
+    const sourceStatus = combinedHardwareSourceStatus(
+      metricsSourceStatus,
+      alertmanager.sourceStatus,
+    )
 
     return {
       generatedAt: generatedAt.toISOString(),
@@ -211,22 +364,27 @@ export async function getAdminHardware(
       selectedHost: host,
       availableHosts,
       sourceStatus,
-      summary: hardwareSummary(charts, sourceStatus),
-      grafanaUrl,
+      alertSourceStatus: alertmanager.sourceStatus,
+      summary: `${hardwareSummary(charts, metricsSourceStatus)} ${alertmanager.summary}`,
+      grafanaUrl: null,
       alertmanagerUrl: null,
       charts,
-      activeAlerts: [],
+      activeAlerts: alertLinks(alertmanager.alerts),
     }
   } catch {
+    const alertmanager = await alertmanagerPromise
     return emptyHardwareResponse({
+      alertmanager,
+      chartSourceStatus: "unavailable",
       generatedAt,
-      grafanaUrl,
       host,
       range,
-      sourceStatus: "unavailable",
+      sourceStatus: combinedHardwareSourceStatus(
+        "unavailable",
+        alertmanager.sourceStatus,
+      ),
       step,
-      summary:
-        "Prometheus federation is configured, but hardware metrics could not be read.",
+      summary: `Prometheus federation is configured, but hardware metrics could not be read. ${alertmanager.summary}`,
     })
   }
 }
@@ -266,6 +424,9 @@ function toHardwareSeries(
   const device =
     sample.metric.gpu ??
     sample.metric.device ??
+    sample.metric.pci_bdf ??
+    sample.metric.hw_sensor_location ??
+    sample.metric.hw_name ??
     sample.metric.mountpoint ??
     sample.metric.name ??
     null
@@ -285,19 +446,21 @@ function toHardwareSeries(
 }
 
 function emptyHardwareResponse({
+  alertmanager,
+  chartSourceStatus,
   generatedAt,
-  grafanaUrl,
   host,
   range,
   sourceStatus,
   step,
   summary,
 }: {
+  alertmanager: AdminAlertmanagerSummary
+  chartSourceStatus: InferenceCoreSourceStatus
   generatedAt: Date
-  grafanaUrl: string | null
   host: string
   range: AdminHardwareRange
-  sourceStatus: HubSourceStatus
+  sourceStatus: InferenceCoreSourceStatus
   step: string
   summary: string
 }): AdminHardwareResponse {
@@ -308,8 +471,9 @@ function emptyHardwareResponse({
     selectedHost: host,
     availableHosts: host === DEFAULT_HOST ? [] : [host],
     sourceStatus,
+    alertSourceStatus: alertmanager.sourceStatus,
     summary,
-    grafanaUrl,
+    grafanaUrl: null,
     alertmanagerUrl: null,
     charts: chartDefinitions.map((definition) => ({
       id: definition.id,
@@ -318,14 +482,32 @@ function emptyHardwareResponse({
       chartType: definition.chartType,
       unit: definition.unit,
       promql: definition.promql(host),
-      sourceStatus,
+      sourceStatus: chartSourceStatus,
       emptyMessage: definition.emptyMessage,
       grafanaUrl: null,
       thresholds: definition.thresholds,
       series: [],
     })),
-    activeAlerts: [],
+    activeAlerts: alertLinks(alertmanager.alerts),
   }
+}
+
+function alertLinks(alerts: AdminHardwareAlert[]): AdminHardwareAlert[] {
+  return alerts.map((alert) => ({
+    ...alert,
+    grafanaUrl: null,
+    alertmanagerUrl: null,
+  }))
+}
+
+function combinedHardwareSourceStatus(
+  metricsStatus: InferenceCoreSourceStatus,
+  alertStatus: InferenceCoreSourceStatus,
+): InferenceCoreSourceStatus {
+  return aggregateInferenceCoreSourceStatus([
+    { required: true, status: metricsStatus },
+    { required: false, status: alertStatus },
+  ])
 }
 
 function collectAvailableHosts(
@@ -346,7 +528,9 @@ function collectAvailableHosts(
   return Array.from(hosts).sort((a, b) => a.localeCompare(b))
 }
 
-function hardwareSourceStatus(charts: AdminHardwareChart[]): HubSourceStatus {
+function hardwareSourceStatus(
+  charts: AdminHardwareChart[],
+): InferenceCoreSourceStatus {
   if (charts.every((chart) => chart.series.length === 0)) {
     return "degraded"
   }
@@ -358,7 +542,7 @@ function hardwareSourceStatus(charts: AdminHardwareChart[]): HubSourceStatus {
 
 function hardwareSummary(
   charts: AdminHardwareChart[],
-  sourceStatus: HubSourceStatus,
+  sourceStatus: InferenceCoreSourceStatus,
 ): string {
   if (sourceStatus === "ok") {
     return `Prometheus is returning all ${chartDefinitions.length} curated hardware signals.`
@@ -373,9 +557,12 @@ function nodeSelector(host: string, ...extra: string[]): string {
   return ['job="node"', ...hostMatcher(host), ...extra].join(",")
 }
 
-function hostSelector(host: string): string {
-  const matcher = hostMatcher(host)
-  return matcher.length > 0 ? `{${matcher.join(",")}}` : ""
+function metricSelector(
+  metric: string,
+  host: string,
+  ...extra: string[]
+): string {
+  return `${metric}{${[...hostMatcher(host), ...extra].join(",")}}`
 }
 
 function hostMatcher(host: string): string[] {
@@ -383,12 +570,17 @@ function hostMatcher(host: string): string[] {
 }
 
 function escapeLabelValue(value: string): string {
-  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')
+  return value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("\n", "\\n")
+    .replaceAll("\r", "\\r")
+    .replaceAll("\t", "\\t")
+    .replaceAll('"', '\\"')
 }
 
 function threshold(
   label: string,
-  severity: HubSeverity,
+  severity: InferenceCoreSeverity,
   value: number,
   unit: AdminHardwareUnit,
 ): AdminHardwareThreshold {
@@ -408,7 +600,19 @@ function parseHardwareRange(range?: string): AdminHardwareRange {
 
 function normalizeHost(host?: string): string {
   const trimmed = host?.trim()
-  return trimmed && trimmed !== "" ? trimmed : DEFAULT_HOST
+  return trimmed &&
+    trimmed !== "" &&
+    trimmed.length <= 255 &&
+    hasNoControlCharacters(trimmed)
+    ? trimmed
+    : DEFAULT_HOST
+}
+
+function hasNoControlCharacters(value: string): boolean {
+  return Array.from(value).every((character) => {
+    const codePoint = character.codePointAt(0) ?? 0
+    return codePoint >= 32 && codePoint !== 127
+  })
 }
 
 function resolveStepSeconds(
@@ -436,13 +640,9 @@ function parseStepSeconds(step?: string): number | null {
     return null
   }
   const unit = match[2]
-  if (unit === "h") {
-    return value * 60 * 60
-  }
-  if (unit === "m") {
-    return value * 60
-  }
-  return value
+  const seconds =
+    unit === "h" ? value * 60 * 60 : unit === "m" ? value * 60 : value
+  return seconds >= 30 && seconds <= 86_400 ? seconds : null
 }
 
 function finiteNumber(rawValue: string): number | null {
@@ -507,11 +707,15 @@ function seriesLabel(
       index,
     )
   }
-  if (chartId === "gpu_temperature" || chartId === "gpu_utilization") {
+  if (chartId.startsWith("xpu_")) {
     return joinedSeriesLabel(
       [
         metric.host ?? metric.instance,
-        metric.gpu ? `GPU ${metric.gpu}` : metric.device,
+        metric.pci_bdf,
+        metric.hw_sensor_location,
+        metric.hw_gpu_task,
+        metric.hw_memory_location,
+        metric.hw_state,
       ],
       index,
     )
@@ -559,51 +763,14 @@ function joinedSeriesLabel(
 
 function metricSource(metric: Record<string, string>): string | null {
   const metricName = metric.__name__ ?? ""
-  if (metricName.startsWith("DCGM_")) {
-    return "DCGM"
-  }
-  if (metricName.startsWith("llmm_nvidia")) {
-    return "nvidia-smi"
+  if (metricName.startsWith("hw_") || metric.job === "xpu") {
+    return "Intel XPUM"
   }
   if (metricName.startsWith("node_")) {
     return "node_exporter"
   }
-  if (metricName.startsWith("ipmi_")) {
+  if (metricName.startsWith("ipmi_") || metric.job === "ipmi") {
     return "ipmi_exporter"
   }
   return null
-}
-
-function grafanaDashboardUrl(): string | null {
-  return configuredExternalUrl("GRAFANA_PUBLIC_URL", "GRAFANA_PUBLIC_ORIGIN")
-}
-
-function configuredExternalUrl(
-  primaryEnv: string,
-  fallbackEnv?: string,
-): string | null {
-  const configured =
-    process.env[primaryEnv]?.trim() ||
-    (fallbackEnv ? process.env[fallbackEnv]?.trim() : "")
-  if (configured) {
-    return primaryEnv.startsWith("GRAFANA")
-      ? withDashboardPath(configured)
-      : configured
-  }
-  if (primaryEnv.startsWith("GRAFANA") && canUseBffFixtureData()) {
-    return withDashboardPath("https://grafana.example.test")
-  }
-  return null
-}
-
-function withDashboardPath(baseUrl: string): string {
-  try {
-    const parsed = new URL(baseUrl)
-    if (!parsed.pathname || parsed.pathname === "/") {
-      return new URL(HARDWARE_DASHBOARD_PATH, parsed).toString()
-    }
-    return parsed.toString()
-  } catch {
-    return baseUrl
-  }
 }

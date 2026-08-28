@@ -1,90 +1,144 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import type { Actor } from "../auth/persona"
-import { getDb } from "../db/client"
+import type { Actor } from "../auth/authorization"
+import { getInferenceCoreDb } from "../db/inference-core-client"
+import {
+  humanIdentities,
+  humanIdentityRoles,
+} from "../db/inference-core-schema"
 import { upsertActorUser } from "./users"
 
-vi.mock("../db/client", () => ({
-  getDb: vi.fn(),
+vi.mock("../db/inference-core-client", () => ({
+  getInferenceCoreDb: vi.fn(),
 }))
 
 const actor: Actor = {
   authMode: "keycloak",
   email: "demo-admin@identity.example.test",
-  persona: "admin",
-  roles: ["admin"],
+  role: "admin",
   subject: "keycloak-uuid",
 }
 
 describe("upsertActorUser", () => {
   afterEach(() => {
-    vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
 
-  it("uses the existing storage id when the actor email is already present", async () => {
-    const db = buildDbMock([{ id: "demo-admin" }])
-    vi.mocked(getDb).mockReturnValue(db.instance)
+  it("returns the actor unchanged when persistence is not configured", async () => {
+    vi.mocked(getInferenceCoreDb).mockReturnValue(null)
 
-    const storedActor = await upsertActorUser(actor)
-
-    expect(storedActor).toEqual({
-      ...actor,
-      subject: "demo-admin",
-    })
-    expect(db.update).toHaveBeenCalledOnce()
-    expect(db.insert).toHaveBeenCalledOnce()
-    expect(db.insertValues).toHaveBeenCalledWith(
-      expect.objectContaining({
-        displayName: actor.email,
-        email: `${actor.subject}@local.invalid`,
-        id: actor.subject,
-      }),
-    )
-    expect(db.insertOnConflictDoUpdate).toHaveBeenCalledOnce()
+    await expect(upsertActorUser(actor)).resolves.toBe(actor)
   })
 
-  it("inserts by actor subject when there is no existing email row", async () => {
-    const db = buildDbMock([])
-    vi.mocked(getDb).mockReturnValue(db.instance)
+  it("preserves the Keycloak subject and projects only admin/operator roles", async () => {
+    const db = buildDbMock()
+    vi.mocked(getInferenceCoreDb).mockReturnValue(db.instance)
 
     const storedActor = await upsertActorUser(actor)
 
     expect(storedActor).toBe(actor)
-    expect(db.insert).toHaveBeenCalledOnce()
-    expect(db.insertValues).toHaveBeenCalledWith(
-      expect.objectContaining({
-        email: actor.email,
-        id: actor.subject,
-      }),
+    expect(storedActor.subject).toBe("keycloak-uuid")
+    expect(db.transaction).toHaveBeenCalledOnce()
+    expect(db.insert).toHaveBeenNthCalledWith(1, humanIdentities)
+    expect(db.identityValues).toHaveBeenCalledWith({
+      subjectId: actor.subject,
+      firstSeenAt: expect.any(Date),
+      lastSeenAt: expect.any(Date),
+    })
+    expect(db.identityOnConflictDoUpdate).toHaveBeenCalledWith({
+      target: humanIdentities.subjectId,
+      set: {
+        lastSeenAt: expect.any(Date),
+      },
+    })
+    expect(Object.keys(db.identityValues.mock.calls[0][0])).toEqual([
+      "subjectId",
+      "firstSeenAt",
+      "lastSeenAt",
+    ])
+    expect(db.deleteTable).toHaveBeenCalledWith(humanIdentityRoles)
+    expect(db.deleteWhere).toHaveBeenCalledOnce()
+    expect(db.insert).toHaveBeenNthCalledWith(2, humanIdentityRoles)
+    expect(db.roleValues).toHaveBeenCalledWith([
+      {
+        subjectId: actor.subject,
+        role: "admin",
+        observedAt: expect.any(Date),
+      },
+    ])
+  })
+
+  it("projects the current resolved role", async () => {
+    const db = buildDbMock()
+    vi.mocked(getInferenceCoreDb).mockReturnValue(db.instance)
+
+    const currentOperator: Actor = {
+      ...actor,
+      role: "operator",
+    }
+
+    await expect(upsertActorUser(currentOperator)).resolves.toBe(
+      currentOperator,
     )
-    expect(db.insertOnConflictDoUpdate).toHaveBeenCalledOnce()
+    expect(db.deleteWhere).toHaveBeenCalledOnce()
+    expect(db.roleValues).toHaveBeenCalledWith([
+      {
+        subjectId: actor.subject,
+        role: "operator",
+        observedAt: expect.any(Date),
+      },
+    ])
+    expect(db.insert).toHaveBeenCalledTimes(2)
   })
 })
 
-function buildDbMock(existingUsers: Array<{ id: string }>) {
-  const selectLimit = vi.fn(async () => existingUsers)
-  const selectWhere = vi.fn(() => ({ limit: selectLimit }))
-  const selectFrom = vi.fn(() => ({ where: selectWhere }))
-  const select = vi.fn(() => ({ from: selectFrom }))
+function buildDbMock() {
+  const identityOnConflictDoUpdate = vi.fn(async () => undefined)
+  const identityValues = vi.fn(
+    (_values: {
+      subjectId: string
+      firstSeenAt: Date
+      lastSeenAt: Date
+    }) => ({
+      onConflictDoUpdate: identityOnConflictDoUpdate,
+    }),
+  )
+  const roleValues = vi.fn(
+    async (
+      _values: Array<{
+        subjectId: string
+        role: string
+        observedAt: Date
+      }>,
+    ) => undefined,
+  )
+  const insert = vi.fn((table) => {
+    if (table === humanIdentities) {
+      return { values: identityValues }
+    }
+    return { values: roleValues }
+  })
 
-  const updateWhere = vi.fn(async () => undefined)
-  const updateSet = vi.fn(() => ({ where: updateWhere }))
-  const update = vi.fn(() => ({ set: updateSet }))
-
-  const insertOnConflictDoUpdate = vi.fn(async () => undefined)
-  const insertValues = vi.fn(() => ({
-    onConflictDoUpdate: insertOnConflictDoUpdate,
-  }))
-  const insert = vi.fn(() => ({ values: insertValues }))
+  const deleteWhere = vi.fn(async () => undefined)
+  const deleteTable = vi.fn(() => ({ where: deleteWhere }))
+  const transactionClient = {
+    delete: deleteTable,
+    insert,
+  }
+  const transaction = vi.fn(
+    async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+      callback(transactionClient),
+  )
 
   return {
+    deleteTable,
+    deleteWhere,
+    identityOnConflictDoUpdate,
+    identityValues,
     insert,
-    insertOnConflictDoUpdate,
-    insertValues,
     instance: {
-      insert,
-      select,
-      update,
-    } as unknown as ReturnType<typeof getDb>,
-    update,
+      transaction,
+    } as unknown as ReturnType<typeof getInferenceCoreDb>,
+    roleValues,
+    transaction,
   }
 }

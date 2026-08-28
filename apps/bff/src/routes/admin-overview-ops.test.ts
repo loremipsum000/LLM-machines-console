@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
 import { resetAuditEventsForTest } from "../services/audit"
-import { resetHubStateForTest } from "../services/hub"
 
 const adminHeaders = {
   authorization: "Bearer test-service-key",
@@ -16,13 +15,13 @@ describe("Admin overview LiteLLM ops federation", () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     resetAuditEventsForTest()
-    resetHubStateForTest()
   })
 
   it("federates Admin overview ops from LiteLLM when configured", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_LITELLM_BASE_URL", "http://litellm.test")
     vi.stubEnv("ADMIN_LITELLM_API_KEY", "litellm-key")
+    vi.stubEnv("BFF_FALLBACK_MODELS", "qwen3-35b-local,gemma4")
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = new URL(input.toString())
       if (url.pathname === "/user/daily/activity/aggregated") {
@@ -65,7 +64,7 @@ describe("Admin overview LiteLLM ops federation", () => {
             {
               request_duration_ms: 1800,
               status: "success",
-              user: "demo-builder",
+              user: "app-user",
             },
             {
               request_duration_ms: 5500,
@@ -73,6 +72,22 @@ describe("Admin overview LiteLLM ops federation", () => {
               user: "demo-admin",
             },
           ],
+        })
+      }
+      if (url.pathname === "/model/info") {
+        return jsonResponse({
+          data: [
+            { model_info: { id: "model-1" }, model_name: "qwen3-35b-local" },
+            { model_info: { id: "model-2" }, model_name: "gemma4" },
+          ],
+        })
+      }
+      if (url.pathname === "/key/list") {
+        return jsonResponse({
+          current_page: 1,
+          keys: [],
+          total_count: 0,
+          total_pages: 0,
         })
       }
       return new Response("{}", { status: 500 })
@@ -89,8 +104,7 @@ describe("Admin overview LiteLLM ops federation", () => {
     expect(opsTile(response.json())).toMatchObject({
       href: "/inference",
       sourceStatus: "ok",
-      summary:
-        "LiteLLM reports 12 requests, 1,800 tokens, and 0 failed requests in the last 30 days.",
+      summary: "LiteLLM reports 12 requests and 1,800 tokens in the last 30d.",
       metrics: expect.arrayContaining([
         expect.objectContaining({
           id: "requests",
@@ -105,13 +119,8 @@ describe("Admin overview LiteLLM ops federation", () => {
           value: "qwen3-35b-local",
         }),
         expect.objectContaining({
-          id: "p95-latency",
-          tone: "good",
-          value: "5.5s",
-        }),
-        expect.objectContaining({
-          id: "top-user",
-          value: "demo-admin",
+          id: "models",
+          value: "2",
         }),
       ]),
     })
@@ -122,6 +131,7 @@ describe("Admin overview LiteLLM ops federation", () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_LITELLM_BASE_URL", "http://litellm.test")
     vi.stubEnv("ADMIN_LITELLM_API_KEY", "litellm-key")
+    vi.stubEnv("BFF_FALLBACK_MODELS", "qwen3-35b-local,gemma4")
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"))
     const server = buildServer()
 
@@ -136,11 +146,11 @@ describe("Admin overview LiteLLM ops federation", () => {
       sourceStatus: "unavailable",
       metrics: expect.arrayContaining([
         expect.objectContaining({
-          id: "p95-latency",
+          id: "requests",
           value: "Unavailable",
         }),
         expect.objectContaining({
-          id: "top-user",
+          id: "models",
           value: "Unavailable",
         }),
       ]),
@@ -150,7 +160,7 @@ describe("Admin overview LiteLLM ops federation", () => {
 })
 
 function opsTile(response: { tiles: Array<{ id: string }> }) {
-  return response.tiles.find((tile) => tile.id === "ops")
+  return response.tiles.find((tile) => tile.id === "inference")
 }
 
 function jsonResponse(payload: unknown): Response {

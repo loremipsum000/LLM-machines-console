@@ -1,10 +1,10 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import type {
   AdminInferenceUnit,
   AdminInferenceUsagePoint,
-} from "@llm-machines/contracts"
+} from "@llm-machines/contracts/inference-core"
+import dynamic from "next/dynamic"
 
 const CHART_WIDTH = 614
 const CHART_HEIGHT = 196
@@ -102,7 +102,10 @@ export function InferenceUsageChartPrimitive({
             }}
             itemStyle={{ color: "#fdfdfd" }}
             labelStyle={{ color: "#fdfdfd" }}
-            formatter={(value) => [formatMetricValue(Number(value), unit), label]}
+            formatter={(value) => [
+              formatMetricValue(Number(value), unit),
+              label,
+            ]}
             labelFormatter={(value) => formatDateTime(String(value))}
           />
           <Area

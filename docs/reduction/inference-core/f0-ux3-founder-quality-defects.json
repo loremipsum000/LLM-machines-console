@@ -1,0 +1,100 @@
+{
+  "schema": "llm-machines.pre-genesis-founder-quality-defects.v1",
+  "workPackage": "F0-UX3",
+  "assessedCommit": "8354ed398402b3ccdcf43619b9df2cba0b9e29be",
+  "assessedTree": "c16afcb47b8bea9b21b34b7fa872f411ba25ab57",
+  "environment": "VM117 temporary founder QA only",
+  "productDestination": "VM103 Core Appliance with a separate private SGLang plane",
+  "status": "MATERIAL_CORRECTIONS_IMPLEMENTED_PENDING_FINAL_REPLAY",
+  "computerUse": {
+    "status": "IN_PROGRESS_ARC",
+    "reason": "Visible Chrome remained unavailable. Arc completed the real Keycloak login and exposed the Application-creation elevation defect without changing browser security settings. Brave reproduced a Keycloak restart-cookie compatibility failure under its default protections.",
+    "playwrightIsNotASubstitute": true
+  },
+  "findings": [
+    {
+      "id": "UX-01",
+      "severity": "major",
+      "roles": ["admin", "operator"],
+      "surfaces": ["Applications", "Inference", "Hardware", "Settings"],
+      "reproduction": "Open the authenticated Console at a 1024 by 768 desktop viewport.",
+      "expected": "The fixed navigation and 640-pixel Console content remain inside the viewport without horizontal scrolling or clipped controls.",
+      "actual": "The shell extends 150 pixels past the viewport and clips page actions and controls.",
+      "evidence": "Playwright measured document overflow and clipped controls in credential-free screenshots for both roles.",
+      "resolution": "F0-UX3 uses a bounded responsive Console content width and enforces the 1024-pixel desktop boundary in the real-browser suite; admitted through protected PR 76.",
+      "blocksFounderAcceptance": true,
+      "blocksVm103Cutover": true
+    },
+    {
+      "id": "UX-02",
+      "severity": "major",
+      "roles": ["admin"],
+      "surfaces": ["Team"],
+      "reproduction": "Sign in as Admin and open Team.",
+      "expected": "The v1 Team overview offers approved basic user administration only.",
+      "actual": "The overview advertises deferred CSV import and arbitrary group creation.",
+      "evidence": "Credential-free Admin Team screenshot and accessible-role inspection.",
+      "resolution": "F0-UX3 removes both deferred actions from the Team overview while retaining approved basic user administration; admitted through protected PR 76.",
+      "blocksFounderAcceptance": true,
+      "blocksVm103Cutover": true
+    },
+    {
+      "id": "UAT-01",
+      "severity": "major",
+      "roles": ["admin", "operator"],
+      "surfaces": ["Overview", "Hardware"],
+      "reproduction": "Start the keep-running F0-UAT0 environment from clean temporary state and open Overview.",
+      "expected": "A clean founder environment reports the actual healthy baseline unless a supported alert is active.",
+      "actual": "The UAT fixture posts an alert outside the Product allowlist, so the Product correctly omits it and reports Degraded and Needs attention.",
+      "evidence": "Overview and Hardware screenshots plus source trace from the UAT alert fixture to the strict Alertmanager allowlist.",
+      "resolution": "F0-UAT1 skips the disposable synthetic alert only in keep-running founder mode, projects private Grafana health into Settings, and adds browser assertions for healthy Hardware and System state.",
+      "blocksFounderAcceptance": true,
+      "blocksVm103Cutover": false
+    },
+    {
+      "id": "A11Y-01",
+      "severity": "minor",
+      "roles": ["admin", "operator"],
+      "surfaces": ["Console shell", "range controls", "text links"],
+      "reproduction": "Inspect visible interactive bounds in the authenticated Console.",
+      "expected": "Frequently used targets should be comfortably operable at desktop sizes.",
+      "actual": "Several targets are 20 to 32 pixels high. Focus-visible styling, form labels, accessible names, heading structure, and keyboard shortcuts are present.",
+      "evidence": "Playwright geometry and source-level focus-style inspection.",
+      "resolution": "Recorded as non-blocking final polish; no focus, label, naming, heading, or keyboard-access defect was demonstrated.",
+      "blocksFounderAcceptance": false,
+      "blocksVm103Cutover": false
+    },
+    {
+      "id": "UAT-02",
+      "severity": "major",
+      "roles": ["admin", "operator"],
+      "surfaces": ["Hardware"],
+      "reproduction": "Start the keep-running founder environment and inspect the CPU utilization signal after Prometheus has collected the deterministic metrics fixture.",
+      "expected": "The healthy founder fixture reports a utilization value consistent with the displayed warning and critical thresholds.",
+      "actual": "A static idle counter yields a zero idle rate, so the Console correctly derives 100 percent utilization while the fixture has no corresponding alert.",
+      "evidence": "Protected-final Playwright Hardware inspection at commit c89a018a67f745e8310404de045e239a9a077f00.",
+      "resolution": "F0-UAT2 uses two private idle-counter series, one clock-backed and one constant, whose five-minute rate converges to 50 percent without changing Product queries or alert policy. F0-UX5 scopes the assertion to the exact CPU card and waits through the bounded Prometheus warm-up until the real value is below the 85 percent warning threshold.",
+      "blocksFounderAcceptance": true,
+      "blocksVm103Cutover": false
+    },
+    {
+      "id": "UAT-03",
+      "severity": "major",
+      "roles": ["admin"],
+      "surfaces": ["Applications", "High-risk verification"],
+      "reproduction": "Open Add app without a fresh elevation, complete the form, and submit Create app in visible Arc.",
+      "expected": "High-risk verification occurs before data entry, then returns the Admin to the empty creation form with a fresh elevation window.",
+      "actual": "Verification begins only after submission, returns to the Applications list, and discards the completed form, forcing duplicate entry. A later invalid submission also clears the form.",
+      "evidence": "Visible Arc Computer Use against VM117 from protected integration c89a018a67f745e8310404de045e239a9a077f00.",
+      "resolution": "F0-UX4 gates the Add app route before rendering the form, returns verified Admins to /applications/apps/new, retains the server-action capability check as defense in depth, and updates the browser harness to reject post-entry elevation.",
+      "blocksFounderAcceptance": true,
+      "blocksVm103Cutover": true
+    }
+  ],
+  "falsePositives": [
+    {
+      "observation": "Grafana name appears in Hardware, Activity and Settings.",
+      "disposition": "Allowed private observability provenance only. No link, grant, customer hostname, native route or direct port is exposed."
+    }
+  ]
+}

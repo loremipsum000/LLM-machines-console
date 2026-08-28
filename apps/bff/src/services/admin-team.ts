@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto"
 import type {
   AdminTeamActionResponse,
-  AdminTeamBreakGlass,
   AdminTeamBulkGroupAssignmentRequest,
   AdminTeamCsvImportCommitRequest,
   AdminTeamCsvImportCommitResponse,
@@ -14,40 +13,41 @@ import type {
   AdminTeamMember,
   AdminTeamMemberDetail,
   AdminTeamMemberMutationResponse,
-  AdminTeamScimStatus,
   AdminTeamOverviewResponse,
+  AdminTeamScimStatus,
   CreateAdminTeamGroupRequest,
   CreateAdminTeamMemberRequest,
-  UpdateAdminTeamBreakGlassRequest,
   UpdateAdminTeamGroupRequest,
-} from "@llm-machines/contracts"
-import { eq } from "drizzle-orm"
-import type { Actor } from "../auth/persona"
-import { getDb } from "../db/client"
-import { consoleSettings } from "../db/schema"
+} from "@llm-machines/contracts/inference-core"
+import {
+  adminTeamBatchLimit,
+  adminTeamCsvMaxBytes,
+} from "@llm-machines/contracts/inference-core"
+import type { Actor } from "../auth/authorization"
 import { emitAudit, getRecentAuditEvents } from "./audit"
 import {
-  adminMcpServerUnlocksForAccessGroup,
-  renameAdminMcpServerAccessGroup,
-} from "./admin-connector-registry"
-import {
-  knowledgeUnlocksForAccessGroup,
-  renameKnowledgeAccessGroup,
-} from "./knowledge/admin"
+  type IdentityMutationRouteContext,
+  type IdentityMutationTargetInput,
+  type IdentityMutationTargetType,
+  type IdentityMutationTargetsPhase,
+  type KeycloakMutationPhase,
+  executeJournaledIdentityMutation,
+} from "./identity-mutation-journal"
 import {
   KeycloakAdminClient,
-  KeycloakAdminError,
-  keycloakAdminConfigFromEnv,
-  roleFromRealmRoles,
   type KeycloakAdminConfig,
+  KeycloakAdminError,
   type KeycloakAdminGroup,
   type KeycloakAdminUser,
-} from "./team-keycloak-admin"
-import { upsertActorUser } from "./users"
+  classifyRetainedRealmRoles,
+  keycloakAdminConfigFromEnv,
+} from "./inference-core-keycloak-admin"
+
+export type AdminTeamMutationContext = IdentityMutationRouteContext
 
 export const TEAM_CSV_TEMPLATE =
   "name,username,email,group,role,send_invite,enabled\n"
-const singletonSettingsId = "singleton"
+export const TEAM_CSV_MAX_ROWS = adminTeamBatchLimit
 const TEAM_CSV_HEADERS = [
   "name",
   "username",
@@ -68,27 +68,8 @@ export class AdminTeamError extends Error {
   }
 }
 
-let breakGlassAdminId: string | null = null
-let breakGlassUpdatedAt: string | null = null
-let breakGlassUpdatedBy: string | null = null
-
-interface BreakGlassState {
-  selectedAdminId: string | null
-  updatedAt: string | null
-  updatedBy: string | null
-}
-
 export function resetAdminTeamStateForTest(): void {
-  breakGlassAdminId = null
-  breakGlassUpdatedAt = null
-  breakGlassUpdatedBy = null
   cachedAuditEvents = []
-}
-
-export function setBreakGlassAdminForTest(id: string | null): void {
-  breakGlassAdminId = id
-  breakGlassUpdatedAt = id ? new Date().toISOString() : null
-  breakGlassUpdatedBy = id ? "test" : null
 }
 
 export async function getAdminTeamOverview(
@@ -96,9 +77,7 @@ export async function getAdminTeamOverview(
 ): Promise<AdminTeamOverviewResponse> {
   const service = teamService()
   if (!service) {
-    await emitTeamAudit(actor, "team.members.read", "overview", {
-      serviceStatus: "not_configured",
-    })
+    await emitTeamAudit(actor, "team.members.read", "failed")
     return emptyTeamOverview("not_configured")
   }
 
@@ -112,19 +91,16 @@ export async function getAdminTeamOverview(
         groups.map((group) =>
           teamGroupFromKeycloak(
             group,
-            members.filter((member) => memberHasGroup(member, group.name)).length,
+            members.filter((member) => memberHasGroup(member, group.name))
+              .length,
           ),
         ),
       )),
     ]
 
-    await emitTeamAudit(actor, "team.members.read", "overview", {
-      returnedCount: members.length,
-    })
+    await emitTeamAudit(actor, "team.members.read")
 
-    const breakGlassState = await readBreakGlassState()
     return {
-      breakGlass: breakGlass(members, breakGlassState),
       generatedAt: new Date().toISOString(),
       groups: teamGroups,
       members,
@@ -141,49 +117,8 @@ export async function getAdminTeamScimStatus(
   actor: Actor,
 ): Promise<AdminTeamScimStatus> {
   const scim = scimStatus()
-  await emitTeamAudit(actor, "team.scim.read", "scim", {
-    status: scim.status,
-  })
+  await emitTeamAudit(actor, "team.scim.read")
   return scim
-}
-
-export async function getAdminTeamBreakGlass(
-  actor: Actor,
-): Promise<AdminTeamBreakGlass> {
-  const service = requireTeamService()
-  const members = await listTeamMembers(service)
-  const result = breakGlass(members, await readBreakGlassState())
-  await emitTeamAudit(actor, "team.break_glass.read", "break-glass", {
-    selectedAdminId: result.selectedAdminId,
-  })
-  return result
-}
-
-export async function updateAdminTeamBreakGlass(
-  actor: Actor,
-  request: UpdateAdminTeamBreakGlassRequest,
-): Promise<AdminTeamBreakGlass> {
-  const service = requireTeamService()
-  const members = await listTeamMembers(service)
-  const eligibleAdmins = members.filter(
-    (member) => member.enabled && member.role === "admin",
-  )
-  const selected = eligibleAdmins.find(
-    (member) => member.id === request.selectedAdminId,
-  )
-  if (!selected) {
-    throw new AdminTeamError(
-      400,
-      "Break-glass Admin must be an enabled Admin user.",
-    )
-  }
-
-  const state = await writeBreakGlassState(actor, selected.id)
-  const result = breakGlass(members, state)
-  await emitTeamAudit(actor, "team.break_glass.updated", selected.id, {
-    selectedAdminId: selected.id,
-  })
-  return result
 }
 
 export async function getAdminTeamGroupDetail(
@@ -193,19 +128,14 @@ export async function getAdminTeamGroupDetail(
   const service = requireTeamService()
   await refreshTeamAuditCache()
   const group = await groupById(service, id)
-  const [members, unlocks] = await Promise.all([
-    membersForGroup(service, group),
-    groupUnlocks(group.name),
-  ])
-  await emitTeamAudit(actor, "team.group.read", id)
+  const members = await membersForGroup(service, group)
+  await emitTeamAudit(actor, "team.group.read")
   return {
     group: {
       ...group,
       memberCount: members.length,
-      unlockCount: unlocks.length,
     },
     members,
-    unlocks,
   }
 }
 
@@ -216,277 +146,595 @@ export async function getAdminTeamMemberDetail(
   const service = requireTeamService()
   await refreshTeamAuditCache()
   const member = await memberById(service, id)
-  await emitTeamAudit(actor, "team.member.read", id)
+  await emitTeamAudit(actor, "team.member.read")
   return {
     activity: recentActivityForMember(member),
     member,
-    usage: usageForMember(member),
   }
 }
 
 export async function createAdminTeamMember(
   actor: Actor,
   request: CreateAdminTeamMemberRequest,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamMemberMutationResponse> {
-  const service = requireTeamService()
-  assertCorporateEmail(service.config, request.email)
-  await assertClassifiedGroups(service, request.groups)
-  const username =
-    request.username ??
-    generatedTeamUsername(
-      request.displayName,
-      firstClassifiedGroup(request.groups),
-    )
-
-  const userId = await service.client.createUser({
-    displayName: request.displayName,
-    email: request.email,
-    enabled: request.enabled,
-    username,
+  return executeTeamIdentityMutation<
+    CreateMemberMutationPreflight,
+    AdminTeamMemberMutationResponse
+  >(actor, context, {
+    action: "team.member.created",
+    apply: async (prepared, keycloak) => {
+      const userId = await keycloak.firstWrite(
+        () =>
+          prepared.service.client.createUser({
+            displayName: request.displayName,
+            email: request.email,
+            enabled: false,
+            username: prepared.username,
+          }),
+        (createdId) => createdId,
+      )
+      if (prepared.password) {
+        await keycloak.writeAfterFirst(() =>
+          prepared.service.client.setPassword(userId, prepared.password ?? ""),
+        )
+      }
+      await keycloak.writeAfterFirst(() =>
+        assignCanonicalRoleAndGroups(
+          prepared.service,
+          userId,
+          request.role,
+          request.groups,
+        ),
+      )
+      await keycloak.readAfterWrite(() =>
+        memberWithExpectedAuthority(
+          prepared.service,
+          userId,
+          request.role,
+          false,
+          request.groups,
+        ),
+      )
+      if (request.sendInvite) {
+        await keycloak.writeAfterFirst(() =>
+          prepared.service.client.executeEmailActions(userId, [
+            "UPDATE_PASSWORD",
+          ]),
+        )
+      }
+      if (request.enabled) {
+        await keycloak.writeAfterFirst(() =>
+          prepared.service.client.updateUserEnabled(userId, true),
+        )
+      }
+      const member = await keycloak.readAfterWrite(() =>
+        memberWithExpectedAuthority(
+          prepared.service,
+          userId,
+          request.role,
+          request.enabled,
+          request.groups,
+        ),
+      )
+      return { generatedPassword: prepared.password, member }
+    },
+    preflight: async (signal) => {
+      const service = requireTeamService(signal)
+      assertWorkEmail(service.config, request.email)
+      assertRoleGroupSelection(request.role, request.groups)
+      await assertAssignableGroups(service, request.role, request.groups)
+      return {
+        password: request.generatePassword ? generatePassword() : null,
+        service,
+        username:
+          request.username ??
+          generatedTeamUsername(
+            request.displayName,
+            firstClassifiedGroup(request.groups, request.role),
+          ),
+      }
+    },
+    targetIdentifier: request.email.trim().toLowerCase(),
+    targetType: "user",
   })
-  const password = request.generatePassword ? generatePassword() : null
-  if (password) {
-    await service.client.setPassword(userId, password)
-  }
-  await assignRoleAndGroups(service, userId, request.role, request.groups)
-  if (request.sendInvite) {
-    await service.client.executeEmailActions(userId, ["UPDATE_PASSWORD"])
-  }
-
-  const member = await memberById(service, userId)
-  await emitTeamAudit(actor, "team.member.created", userId, {
-    groups: request.groups,
-    role: request.role,
-    sendInvite: request.sendInvite,
-    generatedPassword: Boolean(password),
-  })
-  return { generatedPassword: password, member }
 }
 
 export async function sendAdminTeamInvite(
   actor: Actor,
   id: string,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamActionResponse> {
-  const service = requireTeamService()
-  const member = await memberById(service, id)
-  assertCorporateEmail(service.config, member.email)
-  await service.client.executeEmailActions(id, ["UPDATE_PASSWORD"])
-  await emitTeamAudit(actor, "team.member.invited", id)
-  return { member, status: "sent" }
+  return executeTeamIdentityMutation<
+    MemberEmailMutationPreflight,
+    AdminTeamActionResponse
+  >(actor, context, {
+    action: "team.member.invited",
+    apply: async (prepared, keycloak) => {
+      await keycloak.firstWrite(
+        () =>
+          prepared.service.client.executeEmailActions(id, ["UPDATE_PASSWORD"]),
+        id,
+      )
+      return { member: prepared.member, status: "sent" }
+    },
+    preflight: (signal) => prepareMemberEmailAction(id, signal),
+    targetIdentifier: id,
+    targetType: "user",
+  })
 }
 
 export async function sendAdminTeamPasswordReset(
   actor: Actor,
   id: string,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamActionResponse> {
-  const service = requireTeamService()
-  const member = await memberById(service, id)
-  assertCorporateEmail(service.config, member.email)
-  await service.client.executeEmailActions(id, ["UPDATE_PASSWORD"])
-  await emitTeamAudit(actor, "team.member.password_reset_email_sent", id)
-  return { member, status: "sent" }
+  return executeTeamIdentityMutation<
+    MemberEmailMutationPreflight,
+    AdminTeamActionResponse
+  >(actor, context, {
+    action: "team.member.password_reset_email_sent",
+    apply: async (prepared, keycloak) => {
+      await keycloak.firstWrite(
+        () =>
+          prepared.service.client.executeEmailActions(id, ["UPDATE_PASSWORD"]),
+        id,
+      )
+      return { member: prepared.member, status: "sent" }
+    },
+    preflight: (signal) => prepareMemberEmailAction(id, signal),
+    targetIdentifier: id,
+    targetType: "user",
+  })
 }
 
 export async function generateAdminTeamPassword(
   actor: Actor,
   id: string,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamMemberMutationResponse> {
-  const service = requireTeamService()
-  const password = generatePassword()
-  await service.client.setPassword(id, password)
-  const member = await memberById(service, id)
-  await emitTeamAudit(actor, "team.member.password_generated", id)
-  return { generatedPassword: password, member }
+  return executeTeamIdentityMutation<
+    PasswordMutationPreflight,
+    AdminTeamMemberMutationResponse
+  >(actor, context, {
+    action: "team.member.password_generated",
+    apply: async (prepared, keycloak) => {
+      await keycloak.firstWrite(
+        () => prepared.service.client.setPassword(id, prepared.password),
+        id,
+      )
+      const member = await keycloak.readAfterWrite(() =>
+        memberById(prepared.service, id),
+      )
+      return { generatedPassword: prepared.password, member }
+    },
+    preflight: async (signal) => {
+      const service = requireTeamService(signal)
+      await memberById(service, id)
+      return { password: generatePassword(), service }
+    },
+    targetIdentifier: id,
+    targetType: "user",
+  })
 }
 
 export async function disableAdminTeamMember(
   actor: Actor,
   id: string,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamActionResponse> {
-  await assertCanMutateMember(actor, id)
-  const service = requireTeamService()
-  await service.client.updateUserEnabled(id, false)
-  const member = await memberById(service, id)
-  await emitTeamAudit(actor, "team.member.disabled", id)
-  return { member, status: "disabled" }
+  return executeTeamIdentityMutation<TeamService, AdminTeamActionResponse>(
+    actor,
+    context,
+    {
+      action: "team.member.disabled",
+      apply: async (service, keycloak) => {
+        await keycloak.firstWrite(
+          () => service.client.updateUserEnabled(id, false),
+          id,
+        )
+        const member = await keycloak.readAfterWrite(() =>
+          memberWithExpectedEnabledState(service, id, false),
+        )
+        return { member, status: "disabled" }
+      },
+      preflight: async (signal) => {
+        const service = requireTeamService(signal)
+        await assertCanMutateMember(actor, id, service)
+        return service
+      },
+      targetIdentifier: id,
+      targetType: "user",
+    },
+  )
 }
 
 export async function reactivateAdminTeamMember(
   actor: Actor,
   id: string,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamActionResponse> {
-  const service = requireTeamService()
-  await service.client.updateUserEnabled(id, true)
-  const member = await memberById(service, id)
-  await emitTeamAudit(actor, "team.member.reactivated", id)
-  return { member, status: "reactivated" }
+  return executeTeamIdentityMutation<TeamService, AdminTeamActionResponse>(
+    actor,
+    context,
+    {
+      action: "team.member.reactivated",
+      apply: async (service, keycloak) => {
+        await keycloak.firstWrite(
+          () => service.client.updateUserEnabled(id, true),
+          id,
+        )
+        const member = await keycloak.readAfterWrite(() =>
+          memberWithExpectedEnabledState(service, id, true),
+        )
+        return { member, status: "reactivated" }
+      },
+      preflight: async (signal) => {
+        const service = requireTeamService(signal)
+        await memberById(service, id)
+        return service
+      },
+      targetIdentifier: id,
+      targetType: "user",
+    },
+  )
 }
 
 export async function deleteAdminTeamMember(
   actor: Actor,
   id: string,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamActionResponse> {
-  await assertCanMutateMember(actor, id)
-  const service = requireTeamService()
-  await service.client.deleteUser(id)
-  await emitTeamAudit(actor, "team.member.deleted", id)
-  return { member: null, status: "deleted" }
+  return executeTeamIdentityMutation<TeamService, AdminTeamActionResponse>(
+    actor,
+    context,
+    {
+      action: "team.member.deleted",
+      apply: async (service, keycloak) => {
+        await keycloak.firstWrite(() => service.client.deleteUser(id), id)
+        return { member: null, status: "deleted" }
+      },
+      preflight: async (signal) => {
+        const service = requireTeamService(signal)
+        await assertCanMutateMember(actor, id, service)
+        return service
+      },
+      targetIdentifier: id,
+      targetType: "user",
+    },
+  )
 }
 
 export async function createAdminTeamGroup(
   actor: Actor,
   request: CreateAdminTeamGroupRequest,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamGroupMutationResponse> {
-  const service = requireTeamService()
-  assertMutableGroupName(request.name)
-  await assertGroupNameAvailable(service, request.name)
-  const id = await service.client.createGroup(request.name)
-  const group = await groupById(service, id)
-  await emitTeamAudit(actor, "team.group.created", id, { name: request.name })
-  return { group, status: "created" }
+  return executeTeamIdentityMutation<
+    TeamService,
+    AdminTeamGroupMutationResponse
+  >(actor, context, {
+    action: "team.group.created",
+    apply: async (service, keycloak) => {
+      const id = await keycloak.firstWrite(
+        () => service.client.createGroup(request.name),
+        (createdId) => createdId,
+      )
+      const group = await keycloak.readAfterWrite(() => groupById(service, id))
+      return { group, status: "created" }
+    },
+    preflight: async (signal) => {
+      const service = requireTeamService(signal)
+      assertMutableGroupName(request.name)
+      await assertGroupNameAvailable(service, request.name)
+      return service
+    },
+    targetIdentifier: request.name.trim().toLowerCase(),
+    targetType: "group",
+  })
 }
 
 export async function updateAdminTeamGroup(
   actor: Actor,
   id: string,
   request: UpdateAdminTeamGroupRequest,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamGroupMutationResponse> {
-  assertMutableGroupId(id)
-  const service = requireTeamService()
-  const group = await groupById(service, id)
-  assertMutableGroup(group)
-  assertMutableGroupName(request.name)
-  if (group.name.toLowerCase() !== request.name.toLowerCase()) {
-    await assertGroupNameAvailable(service, request.name)
-  }
-  await service.client.updateGroup(id, request.name)
-  const [knowledgeChangedCount, mcpChangedCount] = await Promise.all([
-    renameKnowledgeAccessGroup(actor, group.name, request.name),
-    renameAdminMcpServerAccessGroup(actor, group.name, request.name),
-  ])
-  const updated = await groupById(service, id)
-  await emitTeamAudit(actor, "team.group.updated", id, {
-    knowledgeChangedCount,
-    mcpChangedCount,
-    name: request.name,
-    previousName: group.name,
+  return executeTeamIdentityMutation<
+    TeamService,
+    AdminTeamGroupMutationResponse
+  >(actor, context, {
+    action: "team.group.updated",
+    apply: async (service, keycloak) => {
+      await keycloak.firstWrite(
+        () => service.client.updateGroup(id, request.name),
+        id,
+      )
+      const updated = await keycloak.readAfterWrite(() =>
+        groupById(service, id),
+      )
+      return { group: updated, status: "updated" }
+    },
+    preflight: async (signal) => {
+      assertMutableGroupId(id)
+      const service = requireTeamService(signal)
+      const group = await groupById(service, id)
+      assertMutableGroup(group)
+      assertMutableGroupName(request.name)
+      if (group.name.toLowerCase() !== request.name.toLowerCase()) {
+        await assertGroupNameAvailable(service, request.name)
+      }
+      return service
+    },
+    targetIdentifier: id,
+    targetType: "group",
   })
-  return { group: updated, status: "updated" }
 }
 
 export async function deleteAdminTeamGroup(
   actor: Actor,
   id: string,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamGroupMutationResponse> {
-  assertMutableGroupId(id)
-  const service = requireTeamService()
-  const group = await groupById(service, id)
-  assertMutableGroup(group)
-  const unlocks = await groupUnlocks(group.name)
-  if (unlocks.length > 0) {
-    throw new AdminTeamError(
-      409,
-      `Group is still referenced by: ${unlocks
-        .map((unlock) => unlock.name)
-        .join(", ")}.`,
-    )
-  }
-  await service.client.deleteGroup(id)
-  await emitTeamAudit(actor, "team.group.deleted", id, { name: group.name })
-  return { group: null, status: "deleted" }
+  return executeTeamIdentityMutation<
+    TeamService,
+    AdminTeamGroupMutationResponse
+  >(actor, context, {
+    action: "team.group.deleted",
+    apply: async (service, keycloak) => {
+      await keycloak.firstWrite(() => service.client.deleteGroup(id), id)
+      return { group: null, status: "deleted" }
+    },
+    preflight: async (signal) => {
+      assertMutableGroupId(id)
+      const service = requireTeamService(signal)
+      const group = await groupById(service, id)
+      assertMutableGroup(group)
+      return service
+    },
+    targetIdentifier: id,
+    targetType: "group",
+  })
 }
 
 export async function bulkAssignAdminTeamGroupMembers(
   actor: Actor,
   id: string,
   request: AdminTeamBulkGroupAssignmentRequest,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamGroupMutationResponse> {
-  assertMutableGroupId(id)
-  const service = requireTeamService()
-  const group = await groupById(service, id)
-  assertMutableGroup(group)
-  for (const memberId of request.memberIds) {
-    await service.client.joinGroup(memberId, group.id)
-  }
-  const updated = await groupById(service, id)
-  await emitTeamAudit(actor, "team.group.member_assigned", id, {
-    assignedCount: request.memberIds.length,
-    memberIds: request.memberIds,
+  assertBatchSize(request.memberIds.length, "Team group assignment")
+  assertUniqueMemberIds(request.memberIds)
+  return executeTeamIdentityMutation<
+    GroupMembershipMutationPreflight,
+    AdminTeamGroupMutationResponse
+  >(actor, context, {
+    action: "team.group.member_assigned",
+    apply: async (prepared, keycloak, targets) => {
+      for (const [ordinal, memberId] of request.memberIds.entries()) {
+        try {
+          await targets.start(ordinal)
+          const assign = () =>
+            prepared.service.client.joinGroup(memberId, prepared.group.id)
+          if (ordinal === 0) {
+            await keycloak.firstWrite(assign, prepared.group.id)
+          } else {
+            await keycloak.writeAfterFirst(assign)
+          }
+          await keycloak.readAfterWrite(() =>
+            assertGroupContainsMember(
+              prepared.service,
+              prepared.group.id,
+              memberId,
+            ),
+          )
+          await targets.applied(ordinal)
+        } catch (error) {
+          await targets.settleFailure(ordinal, error)
+          throw error
+        }
+      }
+      const updated = await keycloak.readAfterWrite(() =>
+        groupById(prepared.service, id),
+      )
+      return { group: updated, status: "assigned" }
+    },
+    preflight: async (signal) => {
+      assertMutableGroupId(id)
+      const service = requireTeamService(signal)
+      const group = await groupById(service, id)
+      assertMutableGroup(group)
+      return { group, service }
+    },
+    targetIdentifier: id,
+    targets: (prepared) =>
+      request.memberIds.map((memberId) => ({
+        intent: {
+          groupId: prepared.group.id,
+          kind: "group_membership" as const,
+          memberId,
+        },
+        targetIdentifier: membershipTargetIdentifier(
+          prepared.group.id,
+          memberId,
+        ),
+        targetType: "group_membership" as const,
+      })),
+    targetType: "group",
   })
-  return { group: updated, status: "assigned" }
 }
 
 export async function removeAdminTeamGroupMember(
   actor: Actor,
   id: string,
   memberId: string,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamGroupMutationResponse> {
-  assertMutableGroupId(id)
-  const service = requireTeamService()
-  const group = await groupById(service, id)
-  assertMutableGroup(group)
-  await service.client.leaveGroup(memberId, group.id)
-  const updated = await groupById(service, id)
-  await emitTeamAudit(actor, "team.group.member_removed", id, { memberId })
-  return { group: updated, status: "removed" }
+  return executeTeamIdentityMutation<
+    GroupMembershipMutationPreflight,
+    AdminTeamGroupMutationResponse
+  >(actor, context, {
+    action: "team.group.member_removed",
+    apply: async (prepared, keycloak) => {
+      await keycloak.firstWrite(
+        () => prepared.service.client.leaveGroup(memberId, prepared.group.id),
+        prepared.group.id,
+      )
+      await keycloak.readAfterWrite(() =>
+        assertGroupExcludesMember(
+          prepared.service,
+          prepared.group.id,
+          memberId,
+        ),
+      )
+      const updated = await keycloak.readAfterWrite(() =>
+        groupById(prepared.service, id),
+      )
+      return { group: updated, status: "removed" }
+    },
+    preflight: async (signal) => {
+      assertMutableGroupId(id)
+      const service = requireTeamService(signal)
+      const group = await groupById(service, id)
+      assertMutableGroup(group)
+      return { group, service }
+    },
+    targetIdentifier: membershipTargetIdentifier(id, memberId),
+    targetType: "group",
+  })
 }
 
 export async function previewAdminTeamCsvImport(
   actor: Actor,
   request: AdminTeamCsvImportPreviewRequest,
 ): Promise<AdminTeamCsvImportPreviewResponse> {
+  assertCsvRowLimit(request.csv)
   const service = requireTeamService()
   const response = await buildCsvImportPreview(service, request.csv)
-  await emitTeamAudit(actor, "team.csv_import.previewed", "csv-import", {
-    rowCount: response.rows.length,
-    valid: response.valid,
-    validCount: response.rows.filter((row) => row.status === "valid").length,
-  })
+  await emitTeamAudit(actor, "team.csv_import.previewed")
   return response
 }
 
 export async function commitAdminTeamCsvImport(
   actor: Actor,
   request: AdminTeamCsvImportCommitRequest,
+  context: AdminTeamMutationContext,
 ): Promise<AdminTeamCsvImportCommitResponse> {
-  const service = requireTeamService()
-  const preview = await buildCsvImportPreview(service, request.csv)
-  if (!preview.valid && !request.allowPartial) {
-    throw new AdminTeamError(
-      400,
-      "CSV import preview contains invalid rows. Fix the CSV or explicitly allow partial import.",
-    )
-  }
-
-  const rows: AdminTeamCsvImportRow[] = []
-  for (const row of preview.rows) {
-    if (row.status !== "valid") {
-      rows.push({ ...row, status: "skipped" })
-      continue
-    }
-
-    try {
-      const userId = await service.client.createUser({
-        displayName: row.name,
-        email: row.email,
-        enabled: row.enabled,
-        username: row.username,
-      })
-      await assignRoleAndGroups(service, userId, row.role, [row.group])
-      if (row.sendInvite) {
-        await service.client.executeEmailActions(userId, ["UPDATE_PASSWORD"])
+  assertCsvRowLimit(request.csv)
+  return executeTeamIdentityMutation<
+    CsvImportMutationPreflight,
+    AdminTeamCsvImportCommitResponse
+  >(actor, context, {
+    action: "team.csv_import.committed",
+    apply: async (prepared, keycloak, targets) => {
+      const rows: AdminTeamCsvImportRow[] = []
+      let firstWrite = true
+      let targetOrdinal = 0
+      for (const row of prepared.preview.rows) {
+        if (row.status !== "valid") {
+          rows.push({ ...row, status: "skipped" })
+          continue
+        }
+        const ordinal = targetOrdinal
+        targetOrdinal += 1
+        const targetIntent = csvUserTargetIntent(row)
+        try {
+          await targets.start(ordinal)
+          const create = async () => {
+            const createdId = await prepared.service.client.createUser({
+              displayName: row.name,
+              email: row.email,
+              enabled: false,
+              username: row.username,
+            })
+            await targets.recordResourceId(ordinal, createdId)
+            return createdId
+          }
+          const userId = firstWrite
+            ? await keycloak.firstWrite(create, (createdId) => createdId)
+            : await keycloak.writeAfterFirst(create)
+          firstWrite = false
+          await keycloak.writeAfterFirst(() =>
+            assignCanonicalRoleAndGroups(
+              prepared.service,
+              userId,
+              row.role,
+              row.group ? [row.group] : [],
+            ),
+          )
+          await keycloak.readAfterWrite(() =>
+            memberWithExpectedAuthority(
+              prepared.service,
+              userId,
+              row.role,
+              false,
+              targetIntent.group ? [targetIntent.group] : [],
+            ),
+          )
+          if (row.sendInvite) {
+            await keycloak.writeAfterFirst(() =>
+              prepared.service.client.executeEmailActions(userId, [
+                "UPDATE_PASSWORD",
+              ]),
+            )
+          }
+          if (row.enabled) {
+            await keycloak.writeAfterFirst(() =>
+              prepared.service.client.updateUserEnabled(userId, true),
+            )
+          }
+          await keycloak.readAfterWrite(() =>
+            memberWithExpectedAuthority(
+              prepared.service,
+              userId,
+              row.role,
+              row.enabled,
+              targetIntent.group ? [targetIntent.group] : [],
+            ),
+          )
+          await targets.applied(ordinal)
+          rows.push({ ...row, status: "created" })
+        } catch (error) {
+          await targets.settleFailure(ordinal, error)
+          throw error
+        }
       }
-      rows.push({ ...row, status: "created" })
-    } catch (error) {
-      rows.push({
-        ...row,
-        errors: [teamImportFailureMessage(error)],
-        status: "failed",
-      })
-    }
-  }
+      return csvCommitResponse(rows)
+    },
+    preflight: async (signal) => {
+      const service = requireTeamService(signal)
+      const preview = await buildCsvImportPreview(service, request.csv)
+      if (!preview.valid && !request.allowPartial) {
+        throw new AdminTeamError(
+          400,
+          "CSV import preview contains invalid rows. Fix the CSV or explicitly allow partial import.",
+        )
+      }
+      if (!preview.rows.some((row) => row.status === "valid")) {
+        throw new AdminTeamError(
+          400,
+          "CSV import contains no valid users to create.",
+        )
+      }
+      return { preview, service }
+    },
+    targetIdentifier: "csv-import",
+    targets: (prepared) =>
+      prepared.preview.rows
+        .filter((row) => row.status === "valid")
+        .map((row) => ({
+          intent: csvUserTargetIntent(row),
+          targetIdentifier: row.email.trim().toLowerCase(),
+          targetType: "user" as const,
+        })),
+    targetType: "user",
+  })
+}
 
-  const response = {
+function csvCommitResponse(
+  rows: AdminTeamCsvImportRow[],
+): AdminTeamCsvImportCommitResponse {
+  return {
     createdCount: rows.filter((row) => row.status === "created").length,
     failedCount: rows.filter((row) => row.status === "failed").length,
     generatedAt: new Date().toISOString(),
@@ -494,14 +742,83 @@ export async function commitAdminTeamCsvImport(
     skippedCount: rows.filter((row) => row.status === "skipped").length,
     valid: rows.every((row) => row.status === "created"),
   }
-  await emitTeamAudit(actor, "team.csv_import.committed", "csv-import", {
-    createdCount: response.createdCount,
-    failedCount: response.failedCount,
-    rowCount: rows.length,
-    skippedCount: response.skippedCount,
-    usernames: rows.map((row) => row.username).filter(Boolean),
-  })
-  return response
+}
+
+function csvUserTargetIntent(row: AdminTeamCsvImportRow) {
+  return {
+    displayName: row.name.trim(),
+    email: row.email.trim().toLowerCase(),
+    enabled: row.enabled,
+    group: row.group,
+    kind: "csv_user" as const,
+    line: row.line,
+    role: row.role,
+    sendInvite: row.sendInvite,
+    username: row.username.trim().toLowerCase(),
+  }
+}
+
+function assertCsvRowLimit(csv: string): void {
+  if (Buffer.byteLength(csv, "utf8") > adminTeamCsvMaxBytes) {
+    throw new AdminTeamError(
+      400,
+      `CSV import must not exceed ${adminTeamCsvMaxBytes} UTF-8 bytes.`,
+    )
+  }
+
+  let dataRows = 0
+  let lineIndex = 0
+  let lineStart = 0
+  for (let index = 0; index <= csv.length; index += 1) {
+    if (index < csv.length && csv[index] !== "\n") {
+      continue
+    }
+    const lineEnd =
+      index > lineStart && csv[index - 1] === "\r" ? index - 1 : index
+    if (lineIndex > 0 && csv.slice(lineStart, lineEnd).trim().length > 0) {
+      dataRows += 1
+      if (dataRows > TEAM_CSV_MAX_ROWS) {
+        throw new AdminTeamError(
+          400,
+          `CSV import is limited to ${TEAM_CSV_MAX_ROWS} data rows per request.`,
+        )
+      }
+    }
+    lineIndex += 1
+    lineStart = index + 1
+  }
+}
+
+function assertBatchSize(count: number, subject: string): void {
+  if (count < 1) {
+    throw new AdminTeamError(400, "Select at least one Team member.")
+  }
+  if (count > adminTeamBatchLimit) {
+    throw new AdminTeamError(
+      400,
+      `${subject} is limited to ${adminTeamBatchLimit} members per request.`,
+    )
+  }
+}
+
+function assertUniqueMemberIds(memberIds: string[]): void {
+  if (new Set(memberIds).size !== memberIds.length) {
+    throw new AdminTeamError(
+      400,
+      "Team group assignment cannot contain duplicate members.",
+    )
+  }
+}
+
+function membershipTargetIdentifier(groupId: string, memberId: string): string {
+  const identifier = `group:${groupId.length}:${groupId}|member:${memberId.length}:${memberId}`
+  if (identifier.length > 255) {
+    throw new AdminTeamError(
+      400,
+      "Team group membership identifiers exceed the supported length.",
+    )
+  }
+  return identifier
 }
 
 async function buildCsvImportPreview(
@@ -515,10 +832,18 @@ async function buildCsvImportPreview(
     existingUsers.map((user) => user.username.toLowerCase()),
   )
   const csvUsernameCounts = new Map<string, number>()
+  const csvEmailCounts = new Map<string, number>()
   for (const row of parsed.rows) {
     const username = row.values.username?.trim().toLowerCase()
     if (username) {
-      csvUsernameCounts.set(username, (csvUsernameCounts.get(username) ?? 0) + 1)
+      csvUsernameCounts.set(
+        username,
+        (csvUsernameCounts.get(username) ?? 0) + 1,
+      )
+    }
+    const email = row.values.email?.trim().toLowerCase()
+    if (email) {
+      csvEmailCounts.set(email, (csvEmailCounts.get(email) ?? 0) + 1)
     }
   }
 
@@ -529,6 +854,7 @@ async function buildCsvImportPreview(
       groups,
       existingUsernames,
       csvUsernameCounts,
+      csvEmailCounts,
     ),
   )
   return {
@@ -544,6 +870,7 @@ function csvImportRowFromValues(
   groups: KeycloakAdminGroup[],
   existingUsernames: Set<string>,
   csvUsernameCounts: Map<string, number>,
+  csvEmailCounts: Map<string, number>,
 ): AdminTeamCsvImportRow {
   const name = row.values.name?.trim() ?? ""
   const username = row.values.username?.trim() ?? ""
@@ -568,23 +895,31 @@ function csvImportRowFromValues(
     errors.push("Email is required.")
   } else if (!isEmailLike(email)) {
     errors.push("Email is malformed.")
+  } else if ((csvEmailCounts.get(email.toLowerCase()) ?? 0) > 1) {
+    errors.push("Email is duplicated in the CSV.")
   } else {
-    const corporateError = corporateEmailError(service.config, email)
-    if (corporateError) {
-      errors.push(corporateError)
+    const emailError = workEmailError(service.config, email)
+    if (emailError) {
+      errors.push(emailError)
     }
   }
-  if (!group) {
-    errors.push("Group is required. Choose a Team group.")
-  } else if (group.toLowerCase() === "everyone") {
+  if (group.toLowerCase() === "everyone") {
     errors.push("Everyone is not a user group. Choose a Team group.")
-  } else if (
-    !findGroup(groups, group)
-  ) {
+  } else if (group && !findGroup(groups, group)) {
     errors.push(`Unknown group: ${group}.`)
   }
   if (!role) {
-    errors.push("Role must be consumer, builder, or admin.")
+    errors.push("Role must be admin or operator.")
+  } else {
+    if (!findCanonicalRoleGroup(groups, role)) {
+      errors.push(
+        `Canonical ${canonicalRoleGroupName(role)} role group is unavailable.`,
+      )
+    }
+    const roleGroupError = roleGroupSelectionError(role, [group])
+    if (roleGroupError) {
+      errors.push(roleGroupError)
+    }
   }
   if (sendInvite === null) {
     errors.push("send_invite must be true or false.")
@@ -610,7 +945,7 @@ function csvImportRowFromValues(
     group: normalizedGroup,
     line: row.line,
     name,
-    role: role ?? "consumer",
+    role: role ?? "operator",
     sendInvite: sendInvite ?? false,
     status: errors.length > 0 ? "invalid" : "valid",
     username,
@@ -712,17 +1047,20 @@ function sameHeaders(headers: string[]): boolean {
   )
 }
 
-function parseCsvRole(value: string | undefined): AdminTeamCsvImportRow["role"] | null {
+function parseCsvRole(
+  value: string | undefined,
+): AdminTeamCsvImportRow["role"] | null {
   const role = value?.trim().toLowerCase()
   if (!role) {
-    return "consumer"
+    return "operator"
   }
-  return role === "admin" || role === "builder" || role === "consumer"
-    ? role
-    : null
+  return role === "admin" || role === "operator" ? role : null
 }
 
-function parseCsvBoolean(value: string | undefined, fallback: boolean): boolean | null {
+function parseCsvBoolean(
+  value: string | undefined,
+  fallback: boolean,
+): boolean | null {
   const normalized = value?.trim().toLowerCase()
   if (!normalized) {
     return fallback
@@ -740,7 +1078,7 @@ function isEmailLike(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
-function corporateEmailError(
+function workEmailError(
   config: KeycloakAdminConfig,
   email: string,
 ): string | null {
@@ -750,29 +1088,34 @@ function corporateEmailError(
   const domain = email.split("@")[1]?.toLowerCase()
   return domain && config.allowedEmailDomains.includes(domain)
     ? null
-    : "A corporate email address is required."
+    : "A work email address is required."
 }
 
-function teamImportFailureMessage(error: unknown): string {
-  if (error instanceof AdminTeamError) {
-    return error.message
-  }
-  if (error instanceof KeycloakAdminError) {
-    return "Keycloak Admin API request failed."
-  }
-  return "User could not be created in Keycloak."
-}
-
-async function listTeamMembers(service: TeamService): Promise<AdminTeamMember[]> {
+async function listTeamMembers(
+  service: TeamService,
+): Promise<AdminTeamMember[]> {
   const users = await service.client.listUsers()
-  return Promise.all(users.map((user) => memberFromKeycloak(service, user)))
+  const members = await Promise.all(
+    users.map((user) => memberFromKeycloak(service, user)),
+  )
+  return members.filter((member): member is AdminTeamMember => member !== null)
 }
 
 async function memberById(
   service: TeamService,
   id: string,
 ): Promise<AdminTeamMember> {
-  return memberFromKeycloak(service, await service.client.getUser(id))
+  const member = await memberFromKeycloak(
+    service,
+    await service.client.getUser(id),
+  )
+  if (!member) {
+    throw new AdminTeamError(
+      409,
+      "Keycloak user does not have an explicit Admin or Operator role.",
+    )
+  }
+  return member
 }
 
 async function groupById(
@@ -783,17 +1126,40 @@ async function groupById(
     return everyoneGroup((await listTeamMembers(service)).length)
   }
   const group = await service.client.getGroup(id)
-  const [members, unlocks] = await Promise.all([
-    service.client.getGroupMembers(group.id).catch(() => []),
-    groupUnlocks(group.name),
-  ])
+  const members = await service.client.getGroupMembers(group.id).catch(() => [])
   return {
     id: group.id,
-    keycloakHref: keycloakGroupHref(group.id),
     memberCount: members.length,
     name: group.name,
-    unlockCount: unlocks.length,
     virtual: false,
+  }
+}
+
+async function assertGroupContainsMember(
+  service: TeamService,
+  groupId: string,
+  memberId: string,
+): Promise<void> {
+  const members = await service.client.getGroupMembers(groupId)
+  if (!members.some((member) => member.id === memberId)) {
+    throw new KeycloakAdminError(
+      "invalid",
+      `Keycloak group ${groupId} is missing the expected member postcondition.`,
+    )
+  }
+}
+
+async function assertGroupExcludesMember(
+  service: TeamService,
+  groupId: string,
+  memberId: string,
+): Promise<void> {
+  const groups = await service.client.getUserGroups(memberId)
+  if (groups.some((group) => group.id === groupId)) {
+    throw new KeycloakAdminError(
+      "invalid",
+      `Keycloak group ${groupId} still contains the removed member postcondition.`,
+    )
   }
 }
 
@@ -805,41 +1171,49 @@ async function membersForGroup(
     return listTeamMembers(service)
   }
   const members = await service.client.getGroupMembers(group.id)
-  return Promise.all(members.map((member) => memberFromKeycloak(service, member)))
+  const classified = await Promise.all(
+    members.map((member) => memberFromKeycloak(service, member)),
+  )
+  return classified.filter(
+    (member): member is AdminTeamMember => member !== null,
+  )
 }
 
-async function teamGroupFromKeycloak(
+function teamGroupFromKeycloak(
   group: KeycloakAdminGroup,
   memberCount: number,
-): Promise<AdminTeamGroup> {
+): AdminTeamGroup {
   return {
     id: group.id,
-    keycloakHref: keycloakGroupHref(group.id),
     memberCount,
     name: group.name,
-    unlockCount: (await groupUnlocks(group.name)).length,
     virtual: false,
   }
-}
-
-async function groupUnlocks(
-  groupName: string,
-): Promise<AdminTeamGroupDetail["unlocks"]> {
-  const [corpora, mcpServers] = await Promise.all([
-    knowledgeUnlocksForAccessGroup(groupName),
-    adminMcpServerUnlocksForAccessGroup(groupName),
-  ])
-  return [...corpora, ...mcpServers]
 }
 
 async function memberFromKeycloak(
   service: TeamService,
   user: KeycloakAdminUser,
-): Promise<AdminTeamMember> {
+): Promise<AdminTeamMember | null> {
   const [groups, roles] = await Promise.all([
     service.client.getUserGroups(user.id).catch(() => []),
-    service.client.getUserRealmRoles(user.id).catch(() => []),
+    service.client.getUserEffectiveRealmRoles(user.id),
   ])
+  const classification = classifyRetainedRealmRoles(
+    roles.map((item) => item.name),
+  )
+  if (
+    classification.status === "ambiguous" ||
+    classification.status === "invalid_case"
+  ) {
+    throw new KeycloakAdminError(
+      "invalid",
+      `Keycloak user ${user.id} does not have one exact retained appliance role.`,
+    )
+  }
+  if (classification.status === "unclassified") {
+    return null
+  }
   return {
     createdAt: user.createdAt,
     displayName: user.displayName,
@@ -847,56 +1221,195 @@ async function memberFromKeycloak(
     enabled: user.enabled,
     groups: groups.map((group) => group.name),
     id: user.id,
-    keycloakHref: keycloakUserHref(user.id),
     lastActiveAt: lastActiveAtFor(user),
-    role: roleFromRealmRoles(roles.map((role) => role.name)),
+    role: classification.role,
     status: user.enabled ? "active" : "disabled",
     username: user.username,
   }
 }
 
-async function assignRoleAndGroups(
+async function assignCanonicalRoleAndGroups(
   service: TeamService,
   userId: string,
   role: CreateAdminTeamMemberRequest["role"],
   groups: string[],
 ): Promise<void> {
-  const realmRole = await service.client.getRealmRole(role)
-  await service.client.assignRealmRole(userId, realmRole)
   const keycloakGroups = await service.client.listGroups()
-  for (const groupName of groups.filter((group) => group !== "Everyone")) {
-    const group = findGroup(keycloakGroups, groupName)
-    if (group) {
-      await service.client.joinGroup(userId, group.id)
+  const canonicalGroup = findCanonicalRoleGroup(keycloakGroups, role)
+  if (!canonicalGroup) {
+    throw new KeycloakAdminError(
+      "invalid",
+      `Canonical ${canonicalRoleGroupName(role)} role group is unavailable.`,
+    )
+  }
+  const selectedNames = [
+    canonicalGroup.name,
+    ...groups.filter(
+      (group) =>
+        group.toLowerCase() !== "everyone" &&
+        group.toLowerCase() !== canonicalGroup.name.toLowerCase(),
+    ),
+  ]
+  const assigned = new Set<string>()
+  for (const groupName of selectedNames) {
+    const group =
+      groupName === canonicalGroup.name
+        ? canonicalGroup
+        : findGroup(keycloakGroups, groupName)
+    if (!group) {
+      throw new KeycloakAdminError(
+        "invalid",
+        `Keycloak Team group ${groupName} disappeared during assignment.`,
+      )
     }
+    if (assigned.has(group.id)) {
+      continue
+    }
+    await service.client.joinGroup(userId, group.id)
+    assigned.add(group.id)
   }
 }
 
-async function assertClassifiedGroups(
+async function memberWithExpectedAuthority(
   service: TeamService,
+  userId: string,
+  role: CreateAdminTeamMemberRequest["role"],
+  enabled: boolean,
+  requiredGroups: string[] = [],
+): Promise<AdminTeamMember> {
+  const member = await memberById(service, userId)
+  const canonicalGroup = canonicalRoleGroupName(role)
+  const hasCanonicalGroup = member.groups.includes(canonicalGroup)
+  const effectiveGroups = new Set(
+    member.groups.map((group) => group.trim().toLowerCase()),
+  )
+  const hasRequiredGroups = requiredGroups.every((group) =>
+    effectiveGroups.has(group.trim().toLowerCase()),
+  )
+  const hasContradictoryRoleGroup = member.groups.some((group) => {
+    const retainedRole = retainedRoleForGroupName(group)
+    return retainedRole !== null && retainedRole !== role
+  })
+  if (
+    member.role !== role ||
+    member.enabled !== enabled ||
+    !hasCanonicalGroup ||
+    !hasRequiredGroups ||
+    hasContradictoryRoleGroup
+  ) {
+    throw new KeycloakAdminError(
+      "invalid",
+      `Keycloak user ${userId} failed canonical ${canonicalGroup} authority verification.`,
+    )
+  }
+  return member
+}
+
+async function memberWithExpectedEnabledState(
+  service: TeamService,
+  userId: string,
+  enabled: boolean,
+): Promise<AdminTeamMember> {
+  const member = await memberById(service, userId)
+  if (member.enabled !== enabled) {
+    throw new KeycloakAdminError(
+      "invalid",
+      `Keycloak user ${userId} failed the requested enabled-state postcondition.`,
+    )
+  }
+  return member
+}
+
+function assertRoleGroupSelection(
+  role: CreateAdminTeamMemberRequest["role"],
+  groups: string[],
+): void {
+  const error = roleGroupSelectionError(role, groups)
+  if (error) {
+    throw new AdminTeamError(400, error)
+  }
+}
+
+function roleGroupSelectionError(
+  role: CreateAdminTeamMemberRequest["role"],
+  groups: string[],
+): string | null {
+  const mismatched = groups.find((group) => {
+    const retainedRole = retainedRoleForGroupName(group)
+    return retainedRole !== null && retainedRole !== role
+  })
+  return mismatched
+    ? `${mismatched} is a reserved ${capitalizeRole(retainedRoleForGroupName(mismatched) ?? role)} role group and cannot be combined with the selected ${capitalizeRole(role)} role.`
+    : null
+}
+
+function retainedRoleForGroupName(
+  name: string,
+): CreateAdminTeamMemberRequest["role"] | null {
+  const normalized = name.trim().toLowerCase()
+  if (normalized === "admins") {
+    return "admin"
+  }
+  if (normalized === "operators") {
+    return "operator"
+  }
+  return null
+}
+
+function canonicalRoleGroupName(
+  role: CreateAdminTeamMemberRequest["role"],
+): "Admins" | "Operators" {
+  return role === "admin" ? "Admins" : "Operators"
+}
+
+function findCanonicalRoleGroup(
+  groups: KeycloakAdminGroup[],
+  role: CreateAdminTeamMemberRequest["role"],
+): KeycloakAdminGroup | null {
+  const name = canonicalRoleGroupName(role)
+  return groups.find((group) => group.name === name) ?? null
+}
+
+function capitalizeRole(
+  role: CreateAdminTeamMemberRequest["role"],
+): "Admin" | "Operator" {
+  return role === "admin" ? "Admin" : "Operator"
+}
+
+async function assertAssignableGroups(
+  service: TeamService,
+  role: CreateAdminTeamMemberRequest["role"],
   groups: string[],
 ): Promise<void> {
-  const selectedGroups = groups.filter((group) => group !== "Everyone")
-  if (selectedGroups.length === 0) {
+  if (groups.some((group) => group.toLowerCase() === "everyone")) {
     throw new AdminTeamError(
       400,
-      "Select one Team group before creating a user.",
+      "Everyone is virtual and cannot be assigned to a Keycloak user.",
     )
   }
   const keycloakGroups = await service.client.listGroups()
-  const missing = selectedGroups.filter((groupName) => {
+  if (!findCanonicalRoleGroup(keycloakGroups, role)) {
+    throw new AdminTeamError(
+      503,
+      `Canonical ${canonicalRoleGroupName(role)} role group is unavailable.`,
+    )
+  }
+  const missing = groups.filter((groupName) => {
     return !findGroup(keycloakGroups, groupName)
   })
   if (missing.length > 0) {
-    throw new AdminTeamError(
-      400,
-      `Unknown Team group: ${missing.join(", ")}.`,
-    )
+    throw new AdminTeamError(400, `Unknown Team group: ${missing.join(", ")}.`)
   }
 }
 
-function firstClassifiedGroup(groups: string[]): string {
-  return groups.find((group) => group !== "Everyone") ?? "team"
+function firstClassifiedGroup(
+  groups: string[],
+  role: CreateAdminTeamMemberRequest["role"],
+): string {
+  return (
+    groups.find((group) => retainedRoleForGroupName(group) === null) ??
+    canonicalRoleGroupName(role)
+  )
 }
 
 function generatedTeamUsername(displayName: string, groupName: string): string {
@@ -945,47 +1458,136 @@ interface TeamService {
   config: KeycloakAdminConfig
 }
 
-function teamService(): TeamService | null {
+interface CreateMemberMutationPreflight {
+  password: string | null
+  service: TeamService
+  username: string
+}
+
+interface MemberEmailMutationPreflight {
+  member: AdminTeamMember
+  service: TeamService
+}
+
+interface PasswordMutationPreflight {
+  password: string
+  service: TeamService
+}
+
+interface GroupMembershipMutationPreflight {
+  group: AdminTeamGroup
+  service: TeamService
+}
+
+interface CsvImportMutationPreflight {
+  preview: AdminTeamCsvImportPreviewResponse
+  service: TeamService
+}
+
+interface TeamIdentityMutationPlan<Preflight, Result> {
+  action: string
+  apply(
+    preflight: Preflight,
+    keycloak: KeycloakMutationPhase,
+    targets: IdentityMutationTargetsPhase,
+  ): Promise<Result>
+  preflight(signal: AbortSignal): Promise<Preflight>
+  targetIdentifier: string
+  targets?(preflight: Preflight): IdentityMutationTargetInput[]
+  targetType: IdentityMutationTargetType
+}
+
+async function executeTeamIdentityMutation<Preflight, Result>(
+  actor: Actor,
+  context: AdminTeamMutationContext,
+  plan: TeamIdentityMutationPlan<Preflight, Result>,
+): Promise<Result> {
+  return executeJournaledIdentityMutation({
+    apply: plan.apply,
+    context,
+    finalize: async () => emitTeamAudit(actor, plan.action),
+    keycloakSubjectId: actor.subject,
+    preflight: plan.preflight,
+    targetIdentifier: plan.targetIdentifier,
+    ...(plan.targets ? { targets: plan.targets } : {}),
+    targetType: plan.targetType,
+  })
+}
+
+async function prepareMemberEmailAction(
+  id: string,
+  signal: AbortSignal,
+): Promise<{
+  member: AdminTeamMember
+  service: TeamService
+}> {
+  const service = requireTeamService(signal)
+  const member = await memberById(service, id)
+  assertWorkEmail(service.config, member.email)
+  return { member, service }
+}
+
+function teamService(signal?: AbortSignal): TeamService | null {
   const configResult = keycloakAdminConfigFromEnv()
   if (configResult.status !== "ok") {
     return null
   }
   return {
-    client: new KeycloakAdminClient(configResult.config),
+    client: new KeycloakAdminClient(
+      configResult.config,
+      undefined,
+      undefined,
+      signal,
+    ),
     config: configResult.config,
   }
 }
 
-function requireTeamService(): TeamService {
-  const service = teamService()
+function requireTeamService(signal?: AbortSignal): TeamService {
+  const service = teamService(signal)
   if (!service) {
     throw new AdminTeamError(503, "Keycloak Admin API is not configured.")
   }
   return service
 }
 
-function assertCorporateEmail(
-  config: KeycloakAdminConfig,
-  email: string,
-): void {
+function assertWorkEmail(config: KeycloakAdminConfig, email: string): void {
   if (config.allowedEmailDomains.length === 0) {
     return
   }
   const domain = email.split("@")[1]?.toLowerCase()
   if (!domain || !config.allowedEmailDomains.includes(domain)) {
-    throw new AdminTeamError(400, "A corporate email address is required.")
+    throw new AdminTeamError(400, "A work email address is required.")
   }
 }
 
-async function assertCanMutateMember(actor: Actor, id: string): Promise<void> {
+async function assertCanMutateMember(
+  actor: Actor,
+  id: string,
+  service: TeamService,
+): Promise<void> {
   if (actor.subject === id) {
-    throw new AdminTeamError(409, "Admins cannot disable or delete themselves.")
+    throw new AdminTeamError(409, "Users cannot disable or delete themselves.")
   }
-  const breakGlassState = await readBreakGlassState()
-  if (breakGlassState.selectedAdminId === id) {
+  const authorities = await service.client.listLiveHumanAuthorities()
+  const target = authorities.find((authority) => authority.subject === id)
+  if (!target) {
     throw new AdminTeamError(
       409,
-      "The selected break-glass Admin cannot be disabled or deleted.",
+      "Keycloak user does not have exactly one retained Admin or Operator role.",
+    )
+  }
+  const enabledOperators = authorities.filter(
+    (authority) => authority.enabled && authority.role === "operator",
+  )
+  if (
+    target.enabled &&
+    target.role === "operator" &&
+    enabledOperators.length <= 1
+  ) {
+    throw new AdminTeamError(
+      409,
+      "The last enabled Operator is the appliance's recovery-ready Operator and cannot be disabled or deleted.",
     )
   }
 }
@@ -997,6 +1599,14 @@ function assertMutableGroup(group: AdminTeamGroup): void {
       "Everyone is virtual and cannot be edited or deleted.",
     )
   }
+  // PR-12 commissioning enforces that only these canonical named groups can
+  // carry retained human roles; the BFF therefore guards that seeded invariant.
+  if (retainedRoleForGroupName(group.name)) {
+    throw new AdminTeamError(
+      409,
+      `${group.name} is a reserved role group and cannot be renamed, deleted, or changed through generic group membership actions.`,
+    )
+  }
 }
 
 function assertMutableGroupName(name: string): void {
@@ -1004,6 +1614,12 @@ function assertMutableGroupName(name: string): void {
     throw new AdminTeamError(
       409,
       "Everyone is virtual and cannot be edited or deleted.",
+    )
+  }
+  if (retainedRoleForGroupName(name)) {
+    throw new AdminTeamError(
+      409,
+      "Admins and Operators are reserved role groups and cannot be created or used as generic Team group names.",
     )
   }
 }
@@ -1021,7 +1637,6 @@ function emptyTeamOverview(
   serviceStatus: AdminTeamOverviewResponse["serviceStatus"],
 ): AdminTeamOverviewResponse {
   return {
-    breakGlass: breakGlass([], memoryBreakGlassState()),
     generatedAt: new Date().toISOString(),
     groups: [everyoneGroup(0)],
     members: [],
@@ -1039,130 +1654,12 @@ function unavailableOverview(error: unknown): AdminTeamOverviewResponse {
   return emptyTeamOverview("unavailable")
 }
 
-function breakGlass(
-  members: AdminTeamMember[],
-  state: BreakGlassState,
-): AdminTeamBreakGlass {
-  const eligibleAdmins = members.filter(
-    (member) => member.enabled && member.role === "admin",
-  )
-  const selectedAdminId = eligibleAdmins.some(
-    (member) => member.id === state.selectedAdminId,
-  )
-    ? state.selectedAdminId
-    : null
-  return {
-    eligibleAdmins,
-    selectedAdminId,
-    updatedAt: selectedAdminId ? state.updatedAt : null,
-    updatedBy: selectedAdminId ? state.updatedBy : null,
-  }
-}
-
-function memoryBreakGlassState(): BreakGlassState {
-  return {
-    selectedAdminId: breakGlassAdminId,
-    updatedAt: breakGlassUpdatedAt,
-    updatedBy: breakGlassUpdatedBy,
-  }
-}
-
-function setMemoryBreakGlassState(state: BreakGlassState): BreakGlassState {
-  breakGlassAdminId = state.selectedAdminId
-  breakGlassUpdatedAt = state.updatedAt
-  breakGlassUpdatedBy = state.updatedBy
-  return state
-}
-
-async function readBreakGlassState(): Promise<BreakGlassState> {
-  const db = getDb()
-  if (!db) {
-    return memoryBreakGlassState()
-  }
-
-  const [row] = await db
-    .select({
-      selectedAdminId: consoleSettings.breakGlassAdminId,
-      updatedAt: consoleSettings.breakGlassUpdatedAt,
-      updatedBy: consoleSettings.breakGlassUpdatedBy,
-    })
-    .from(consoleSettings)
-    .where(eq(consoleSettings.id, singletonSettingsId))
-    .limit(1)
-
-  if (!row) {
-    return setMemoryBreakGlassState({
-      selectedAdminId: null,
-      updatedAt: null,
-      updatedBy: null,
-    })
-  }
-
-  return setMemoryBreakGlassState({
-    selectedAdminId: row.selectedAdminId,
-    updatedAt: row.updatedAt?.toISOString() ?? null,
-    updatedBy: row.updatedBy,
-  })
-}
-
-async function writeBreakGlassState(
-  actor: Actor,
-  selectedAdminId: string,
-): Promise<BreakGlassState> {
-  const now = new Date()
-  const state = setMemoryBreakGlassState({
-    selectedAdminId,
-    updatedAt: now.toISOString(),
-    updatedBy: actor.subject,
-  })
-  const db = getDb()
-  if (!db) {
-    return state
-  }
-
-  const persistedActor = await upsertActorUser(actor)
-  await db
-    .insert(consoleSettings)
-    .values({
-      id: singletonSettingsId,
-      organizationName: "LLM Machines",
-      defaultLanguage: "en",
-      telemetryEnabled: false,
-      telemetryPayloadPreview: {},
-      privacyPolicyHref: "/privacy",
-      dataResidencyStatement:
-        "Customer data stays on the deployed appliance by default.",
-      breakGlassAdminId: selectedAdminId,
-      breakGlassUpdatedAt: now,
-      breakGlassUpdatedBy: persistedActor.subject,
-      updatedBy: persistedActor.subject,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: consoleSettings.id,
-      set: {
-        breakGlassAdminId: selectedAdminId,
-        breakGlassUpdatedAt: now,
-        breakGlassUpdatedBy: persistedActor.subject,
-        updatedBy: persistedActor.subject,
-        updatedAt: now,
-      },
-    })
-
-  return setMemoryBreakGlassState({
-    selectedAdminId,
-    updatedAt: now.toISOString(),
-    updatedBy: persistedActor.subject,
-  })
-}
-
 function scimStatus(): AdminTeamOverviewResponse["scim"] {
   const provider = optionalEnv("TEAM_SCIM_PROVIDER")
   if (provider) {
     return {
       detail:
-        "SCIM status is read-only in Console. Manage provisioning details in Keycloak.",
-      keycloakHref: keycloakAdminHref(),
+        "SCIM status is read-only in Console. Provisioning configuration remains private to the appliance identity service.",
       lastSyncAt: validIsoDate(optionalEnv("TEAM_SCIM_LAST_SYNC_AT")),
       provider,
       sourceStatus: "ok",
@@ -1171,9 +1668,7 @@ function scimStatus(): AdminTeamOverviewResponse["scim"] {
   }
 
   return {
-    detail:
-      "SCIM synchronization is configured directly in Keycloak when available.",
-    keycloakHref: keycloakAdminHref(),
+    detail: "SCIM synchronization is not configured for this appliance.",
     lastSyncAt: null,
     provider: null,
     sourceStatus: "not_configured",
@@ -1184,10 +1679,8 @@ function scimStatus(): AdminTeamOverviewResponse["scim"] {
 function everyoneGroup(memberCount: number): AdminTeamGroup {
   return {
     id: "everyone",
-    keycloakHref: null,
     memberCount,
     name: "Everyone",
-    unlockCount: 0,
     virtual: true,
   }
 }
@@ -1196,50 +1689,19 @@ function recentActivityForMember(
   member: AdminTeamMember,
 ): AdminTeamMemberDetail["activity"] {
   return getCachedAuditEvents()
-    .filter((event) => eventMatchesMember(event.actorId, member))
+    .filter((event) =>
+      event.keycloakSubjectId
+        ? eventMatchesMember(event.keycloakSubjectId, member)
+        : false,
+    )
     .slice(0, 20)
     .map((event) => ({
       action: event.action,
       createdAt: event.createdAt,
-      href: "#audit-log-deferred",
       id: event.id,
       targetId: event.targetId,
       targetType: event.targetType,
     }))
-}
-
-function usageForMember(member: AdminTeamMember): AdminTeamMemberDetail["usage"] {
-  const modelCounts = new Map<string, number>()
-  let prompts = 0
-  let tokens = 0
-  let mcpCalls = 0
-  for (const event of getCachedAuditEvents()) {
-    if (!eventMatchesMember(event.actorId, member)) {
-      continue
-    }
-    prompts += numberMetadata(event.metadata.prompts)
-    prompts += numberMetadata(event.metadata.promptTokens) > 0 ? 1 : 0
-    tokens += numberMetadata(event.metadata.tokens)
-    tokens += numberMetadata(event.metadata.totalTokens)
-    const model =
-      typeof event.metadata.model === "string" ? event.metadata.model : null
-    if (model) {
-      modelCounts.set(model, (modelCounts.get(model) ?? 0) + 1)
-    }
-    if (event.action === "connector.mcp.forwarded") {
-      mcpCalls += 1
-    }
-  }
-
-  return {
-    mcpCalls,
-    mostUsedModel:
-      [...modelCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
-    prompts,
-    sourceStatus: "ok",
-    tokens,
-    window: "30d",
-  }
 }
 
 let cachedAuditEvents: Awaited<ReturnType<typeof getRecentAuditEvents>> = []
@@ -1253,38 +1715,28 @@ export async function refreshTeamAuditCache(): Promise<void> {
 }
 
 function eventMatchesMember(actorId: string, member: AdminTeamMember): boolean {
-  const identities = new Set([
-    member.id.toLowerCase(),
-    member.username.toLowerCase(),
-    member.email.toLowerCase(),
-    member.email.split("@")[0]?.toLowerCase() ?? "",
-  ])
-  return identities.has(actorId.toLowerCase())
+  return actorId.toLowerCase() === member.id.toLowerCase()
 }
 
 function lastActiveAtFor(user: KeycloakAdminUser): string | null {
   return (
-    getCachedAuditEvents().find((event) => eventMatchesMember(event.actorId, {
-      createdAt: user.createdAt,
-      displayName: user.displayName,
-      email: user.email,
-      enabled: user.enabled,
-      groups: [],
-      id: user.id,
-      keycloakHref: null,
-      lastActiveAt: null,
-      role: "consumer",
-      status: user.enabled ? "active" : "disabled",
-      username: user.username,
-    }))?.createdAt ?? null
+    getCachedAuditEvents().find((event) =>
+      event.keycloakSubjectId
+        ? eventMatchesMember(event.keycloakSubjectId, {
+            createdAt: user.createdAt,
+            displayName: user.displayName,
+            email: user.email,
+            enabled: user.enabled,
+            groups: [],
+            id: user.id,
+            lastActiveAt: null,
+            role: "operator",
+            status: user.enabled ? "active" : "disabled",
+            username: user.username,
+          })
+        : false,
+    )?.createdAt ?? null
   )
-}
-
-function numberMetadata(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return Math.max(0, Math.trunc(value))
-  }
-  return 0
 }
 
 function generatePassword(): string {
@@ -1294,53 +1746,20 @@ function generatePassword(): string {
 async function emitTeamAudit(
   actor: Actor,
   action: string,
-  targetId: string,
-  metadata: Record<string, unknown> = {},
+  outcome: "succeeded" | "failed" | "denied" = "succeeded",
 ): Promise<void> {
   await emitAudit({
-    actorId: actor.subject,
     action,
-    targetId,
-    targetType: "team",
-    metadata: {
-      authMode: actor.authMode,
-      ...metadata,
-    },
+    keycloakSubjectId: actor.subject,
+    outcome,
+    sourceSystem: "console",
   })
   await refreshTeamAuditCache()
-}
-
-function keycloakAdminHref(): string | null {
-  const explicit = optionalEnv("KEYCLOAK_ADMIN_PUBLIC_URL")
-  if (explicit) {
-    return trimTrailingSlash(explicit)
-  }
-  const configResult = keycloakAdminConfigFromEnv()
-  if (configResult.status !== "ok") {
-    return null
-  }
-  return `${configResult.config.baseUrl}/admin/${encodeURIComponent(
-    configResult.config.realm,
-  )}/console/#/${encodeURIComponent(configResult.config.realm)}`
-}
-
-function keycloakUserHref(id: string): string | null {
-  const base = keycloakAdminHref()
-  return base ? `${base}/users/${encodeURIComponent(id)}` : null
-}
-
-function keycloakGroupHref(id: string): string | null {
-  const base = keycloakAdminHref()
-  return base ? `${base}/groups/${encodeURIComponent(id)}` : null
 }
 
 function optionalEnv(name: string): string | null {
   const value = process.env[name]?.trim()
   return value ? value : null
-}
-
-function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/, "")
 }
 
 function validIsoDate(value: string | null): string | null {

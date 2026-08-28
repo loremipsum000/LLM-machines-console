@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "id": "PR-11A",
+  "workPackage": "PR-11A-R1-V1-SOURCE-CLOSURE",
+  "sourceClosureStatus": "SOURCE_CLOSED",
+  "sourceClosureScope": "validated-source-only",
+  "accepted": false,
+  "revisionBound": true,
+  "revisionBoundTo": {
+    "integrationCommit": "837c3c3e139fd6b82db650d20a4f0fcf902e2fda",
+    "integrationTree": "acc4f5540ebc863bd53e76aae8af3bcdd40136bb",
+    "contractRevisionPath": "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+    "contractRevisionSha256": "962bfba459d84433e6a5c1cbdf841c923e08235ca1ae53ba970765e146671a18"
+  },
+  "validatedCandidate": {
+    "commit": "fb5ac5be13012a3de5e2da733bdc83c7d82efed3",
+    "tree": "acc4f5540ebc863bd53e76aae8af3bcdd40136bb",
+    "independentReview": "PASS"
+  },
+  "protectedAdmission": {
+    "pullRequest": 20,
+    "baseRef": "codex/inference-core-stack-reduction",
+    "commit": "837c3c3e139fd6b82db650d20a4f0fcf902e2fda",
+    "tree": "acc4f5540ebc863bd53e76aae8af3bcdd40136bb",
+    "firstParent": "0e794ccd6e0f2593f2e6ab34b8fc1d521835b6fd",
+    "secondParent": "fb5ac5be13012a3de5e2da733bdc83c7d82efed3",
+    "candidateTreeIdentical": true,
+    "candidateDiff": "empty"
+  },
+  "evidence": {
+    "aggregatePath": "docs/reduction/inference-core/pr-11a-r1-v1-aggregate-evidence.json",
+    "aggregateSha256": "5db38fac92fa051fba57123cfdaf9979ca3725357436ad2c5264f0fcbfa3843b",
+    "activeReviewedRevision": "PR-11"
+  },
+  "status": {
+    "runtimeQualified": false,
+    "contractActivation": "INACTIVE",
+    "q0": "NOT_STARTED",
+    "grafanaQualification": "NOT_STARTED",
+    "pr12": "NOT_STARTED",
+    "deployment": "INACTIVE",
+    "productMain": "UNCHANGED"
+  },
+  "interpretation": {
+    "sourceClosure": "The reviewed PR-11A source candidate is present on protected integration with an identical tree.",
+    "accepted": "False means this record does not assert product acceptance or runtime qualification.",
+    "revisionBound": "True binds the inactive PR-11A source revision to the protected integration commit without activating it."
+  }
+}

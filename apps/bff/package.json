@@ -4,23 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "audit:ingest": "tsx src/commands/audit-ingestion.ts",
     "build": "corepack pnpm --filter @llm-machines/contracts build && tsc --project tsconfig.json",
     "dev": "tsx watch src/index.ts",
-    "dev:knowledge-url-worker": "tsx watch src/workers/knowledge-url-acquisition.ts",
     "format": "biome format --write .",
-    "knowledge:embeddings:backfill": "tsx src/scripts/backfill-knowledge-embeddings.ts",
     "lint": "biome lint .",
+    "retention:prune": "tsx src/commands/inference-core-retention.ts",
     "test": "corepack pnpm --filter @llm-machines/contracts build && vitest run",
-    "typecheck": "tsc --project tsconfig.json",
-    "worker:knowledge-url": "tsx src/workers/knowledge-url-acquisition.ts"
+    "typecheck": "tsc --project tsconfig.json"
   },
   "dependencies": {
     "@llm-machines/contracts": "workspace:*",
     "drizzle-orm": "0.44.2",
     "fastify": "4.29.1",
-    "ioredis": "5.6.1",
-    "minio": "^8.0.7",
-    "mongodb": "6.20.0",
     "postgres": "3.4.7"
   },
   "devDependencies": {

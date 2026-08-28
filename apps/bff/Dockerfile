@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:22.23.2-bookworm-slim@sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46
 
 WORKDIR /workspace
 
@@ -18,8 +18,9 @@ COPY packages/contracts packages/contracts
 RUN corepack pnpm --filter @llm-machines/contracts build
 
 ENV HOST=0.0.0.0
+ENV NODE_ENV=production
 ENV PORT=4001
 
 EXPOSE 4001
 
-CMD ["corepack", "pnpm", "--filter", "@llm-machines/bff", "exec", "tsx", "src/index.ts"]
+CMD ["corepack", "pnpm", "--filter", "@llm-machines/bff", "exec", "tsx", "src/production-entrypoint.ts"]

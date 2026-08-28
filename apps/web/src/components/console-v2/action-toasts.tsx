@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { useEffect } from "react"
 
 export type ConsoleActionToastTone =
   | "danger"
@@ -24,9 +24,6 @@ interface ConsoleActionToastsProps {
 const ONE_TIME_ACTION_QUERY_PARAMS = [
   "appAction",
   "inferenceAction",
-  "knowledgeAction",
-  "knowledgeUpload",
-  "mcpAction",
   "settingsAction",
   "teamAction",
 ]

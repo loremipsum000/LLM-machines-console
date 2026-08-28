@@ -1,0 +1,57 @@
+{
+  "schema": "llm-machines.firecrawl-source-lock.v2",
+  "status": "source-ready-not-release-admitted",
+  "sourceOnly": true,
+  "runtimeQualified": false,
+  "historicalCharacterization": {
+    "commit": "ff74f3c94c563627929af31c46d48dda8e7d6192",
+    "tree": "8a978eb0f6d0ef04a896ec29f138a84a7cf14d79",
+    "admitted": false,
+    "purpose": "source and lab characterization evidence only"
+  },
+  "upstream": {
+    "repository": "https://github.com/firecrawl/firecrawl.git",
+    "tag": "v2.11.0",
+    "commit": "ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+    "sourceArchive": "https://codeload.github.com/firecrawl/firecrawl/tar.gz/ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+    "sourceArchiveSha256": "b7c6df0b8b692397c8a19e84f94b85ce0a2d961b36fc1d5ff78088db88819f59",
+    "declaredLicense": "AGPL-3.0-only",
+    "licenseSha256": "9b4649365c4f29d8f41301f4cda1e5bd9da51cf1bbb19ab9d568ff57d56e3b33"
+  },
+  "releaseSource": {
+    "manifest": "infra/firecrawl/release/source-package.json",
+    "validator": "infra/firecrawl/release/validate-source-package.mjs",
+    "assembler": "infra/firecrawl/release/assemble-source-packet.mjs",
+    "orderedPatches": [
+      "infra/firecrawl/release/patches/build-hardening.patch",
+      "infra/firecrawl/release/patches/reduced-runtime.patch"
+    ]
+  },
+  "reducedRuntime": {
+    "included": [
+      "synchronous search",
+      "static scrape",
+      "private browser service",
+      "private search service",
+      "fail-closed egress proxy"
+    ],
+    "omitted": [
+      "PostgreSQL",
+      "NuQ",
+      "RabbitMQ",
+      "reranker",
+      "asynchronous jobs",
+      "persistent cache",
+      "BFF coordination Redis"
+    ]
+  },
+  "releaseAdmissionOwner": "PR-12",
+  "releaseAdmissionRequired": [
+    "exact private-registry image digests",
+    "signed image provenance",
+    "SBOM and vulnerability disposition",
+    "complete license and notice set",
+    "recipient-accessible corresponding source",
+    "Q0 disabled and one-Application-enabled qualification on the Core baseline"
+  ]
+}

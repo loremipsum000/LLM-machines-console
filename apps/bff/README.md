@@ -1,63 +1,74 @@
 # BFF
 
-Fastify backend-for-frontend for persona-aware routes, SSE streaming, audit emission, and orchestration between the web app, sidecar, and data plane.
+Fastify backend-for-frontend for the LLM Machines inference-core Console.
 
-## OpenAI-compatible LibreChat Gateway
+## Retained surfaces
 
-LibreChat should point at the BFF as a custom OpenAI-compatible provider:
+- Health endpoints for service and dependency checks.
+- Admin control-plane routes under `/api/admin`.
+- Connected-application inference gateway:
+  - `GET /api/app-gateway/v1/models`
+  - `POST /api/app-gateway/v1/chat/completions`
 
-- `GET /v1/models`
-- `POST /v1/chat/completions`
+The application gateway passes streaming and non-streaming Chat Completions to
+LiteLLM. Tool definitions and tool-call messages are transported as protocol
+data; the BFF does not execute tools.
 
-Auth is two-layered:
+## Authentication
 
-- LibreChat authenticates as a trusted caller with `Authorization: Bearer ${BFF_SERVICE_API_KEY}`.
-- LibreChat forwards per-user identity with `x-llm-machines-keycloak-token: {{LIBRECHAT_OPENID_ACCESS_TOKEN}}`. The BFF validates that Keycloak token and maps `realm_access.roles` to `consumer`, `builder`, or `admin`.
+Admin routes validate Keycloak bearer tokens or trusted service-forwarded
+tokens. Header-only service identity is retained for local and test
+compatibility and is disabled by default outside tests.
 
-During lab bootstrap, the BFF can fall back to `x-llm-machines-user-*` headers for user attribution when LibreChat OIDC is not configured yet. Production should make the forwarded Keycloak token mandatory.
+Console uses separate Keycloak service credentials for human identity
+administration and Application OAuth client administration. The human service
+client is `console-human-admin` in the `llm-machines` human realm. The
+Application service client is `console-application-admin` in the
+`llm-machines-applications` Application realm, configured through
+`KEYCLOAK_APPLICATION_ADMIN_CLIENT_ID` and
+`KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET`. The two services use separate
+credentials with no fallback between them. Application clients inherit the
+Application realm's 300-second access-token lifetime. The
+`console-application-admin` service client has an exact 60-second client
+override.
 
-## Slash-command Middleware
+Application-gateway requests use static credentials or Application-realm OAuth
+access tokens issued per connected application. OAuth validation requires the
+explicit `KEYCLOAK_APPLICATION_ISSUER_URL`, whose realm must be exactly
+`llm-machines-applications`; it never falls back to the human-realm issuer or
+either Admin API credential. Tokens must carry the exact `console-bff`
+audience, a canonical `azp` in the `llmm-app-UUID` namespace, a matching
+`client_id` when that claim is present, and an issued lifetime no longer than
+300 seconds. PR-06 provides OAuth client creation, rotation, revocation, and
+reconciliation. Deterministic packaging and commissioning of the two-realm
+Keycloak configuration remain PR-12 work.
 
-The `/v1/chat/completions` route intercepts Hub slash invocations before LiteLLM pass-through:
+The Admin Inference projection reads LiteLLM with the separate
+`ADMIN_LITELLM_BASE_URL` and `ADMIN_LITELLM_API_KEY` configuration. It does not
+reuse or fall back to the `LITELLM_KEY` data-plane credential.
 
-- `@summary-agent ...` resolves against the caller-visible Hub resource catalog, enforces runnable state, emits `hub.agent.invoke`, and returns an OpenAI-compatible response.
-- If `AGENTIC_OPENCLAW_BASE_URL` is configured, `@summary-agent` runs through OpenClaw with `AGENTIC_OPENCLAW_TOKEN` when present. The chat-completions path defaults to `/v1/chat/completions` and can be overridden with `AGENTIC_OPENCLAW_CHAT_COMPLETIONS_PATH`; configured runtime failures fail closed with `hub.agent.invoke_failed` instead of silently falling back.
-- Streaming slash invocations request OpenClaw streaming, relay OpenAI-shaped content chunks through the BFF encoder, then persist the accumulated response as Hub task/artifact output.
-- If no OpenClaw runtime URL is configured, the route keeps a deterministic local response only when `BFF_FIXTURE_MODE=true` or under tests. Outside fixture mode, slash invocations fail closed instead of pretending the agent ran.
-- Successful agent invocations create a completed Hub task session plus a markdown artifact for the invoking actor, then publish Hub live events for the updated task and created artifact.
-- Unknown or hidden agents fail closed and emit `hub.agent.invoke_denied`.
-- Workflow slash commands are reserved but return a problem-details response until the workflow runtime is selected.
+Key model authorization intersects that read-only `/model/info` projection
+with the canonically rendered delivery profiles in
+`INFERENCE_MODEL_ADMISSION_DIR`. Only unexpired `ACTIVE_MEASURED` profiles with
+qualification evidence admit aliases. The same intersection supplies the
+Manual selector, validates Manual mutations, and authorizes Auto model lists
+and Chat Completions. Auto is resolved on every request and stores no alias
+snapshot. Missing, stale, malformed, or inconsistent inputs fail closed.
 
-Plain chat messages still pass through to LiteLLM when `LITELLM_URL` and `LITELLM_KEY` are configured.
+Commissioning must render profiles with `infra/inference/render-profile.mjs`,
+replace the admission directory atomically, and mount it read-only into the
+BFF. `BFF_FALLBACK_MODELS` is fixture-only and cannot supply production model
+authorization.
 
-## Hub Recent Chat Mirror
+## Retention boundary
 
-LibreChat forwards conversation metadata to the BFF with:
+The BFF does not retain prompts, responses, chat history, or tool arguments.
+Audit records retain only the metadata needed to attribute and operate
+application requests.
 
-- `x-librechat-thread-id: {{LIBRECHAT_BODY_CONVERSATIONID}}`
-- `x-librechat-message-id: {{LIBRECHAT_BODY_MESSAGEID}}`
-
-When `DATABASE_URL` is configured, the BFF stores actor-scoped rows in `hub.chat_threads` and the Hub home/search surfaces those rows as recent chats. No-DB fixture mode falls back to deterministic sample threads only when `BFF_FIXTURE_MODE=true` or under tests.
-
-Optional historical title backfill is enabled only when `LIBRECHAT_MONGO_URL` is configured. The BFF maps the current actor to LibreChat by Keycloak `openidId` or email, imports only the latest three titled conversations from the configured `LIBRECHAT_MONGO_DB` (default `LibreChat`), and stores only conversation ID/title metadata. It does not import LibreChat message bodies.
-
-## MCP Catalog Bundles
-
-The BFF uses the repo-owned catalog seed in dev/fixture mode. Production should import an appliance-local signed catalog bundle by setting both:
-
-- `MCP_CATALOG_BUNDLE_PATH` — path to the local JSON bundle.
-- `MCP_CATALOG_PUBLIC_KEY_PEM` — Ed25519 public key PEM used to verify the bundle.
-
-Bundles are verified before use and fail closed if the signature or required policy metadata is invalid. The BFF does not fetch public marketplace catalogs at runtime.
-
-In `NODE_ENV=production`, missing `MCP_CATALOG_BUNDLE_PATH` fails closed unless `MCP_CATALOG_ALLOW_SEED=true` or `BFF_FIXTURE_MODE=true` is set explicitly. The lab compose file sets the seed override while the signed catalog packaging path is still being finalized; customer deployments should prefer a signed bundle.
-
-## Fixture Mode
-
-`BFF_FIXTURE_MODE=true` enables deterministic no-database/no-runtime fallbacks for local UI work: starter Hub chats, static task/artifact rows, static model list fallback, OpenClaw local agent responses, and Agent Studio local preview. Keep it disabled for configured lab or production validation unless the purpose of the run is explicitly fixture testing.
-
-## Hub Live Events
-
-Hub SSE uses in-process fanout for local fixture mode. Set `REDIS_URL` in multi-process or multi-replica environments so Hub live events publish through Redis as well. `HUB_EVENT_CHANNEL` can override the default `hub:events` channel name.
-
-Notification read state remains stored through the Hub data layer; Redis fanout is only for live delivery to active SSE subscribers.
+PostgreSQL coordinates metadata-only idempotency and usage accounting across
+BFF instances. Requests, failures, input and output tokens, total tokens,
+latency, route, and allowed model aliases are accounting metadata, not workload
+content. Optional requests-per-second, concurrent-request, and normalized
+context-size protections are disabled by default. The optional seven-day token
+threshold is visibility only and never blocks inference.

@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildServer } from "../index"
 import { resetAuditEventsForTest } from "../services/audit"
-import { resetHubStateForTest } from "../services/hub"
 
 const adminHeaders = {
   authorization: "Bearer test-service-key",
@@ -16,35 +15,41 @@ describe("Admin overview health federation", () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     resetAuditEventsForTest()
-    resetHubStateForTest()
   })
 
   it("federates Admin overview health from Prometheus when configured", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_PROMETHEUS_BASE_URL", "http://prometheus.test")
+    vi.stubEnv("ADMIN_ALERTMANAGER_BASE_URL", "http://alertmanager.test")
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = new URL(input.toString())
       const query = url.searchParams.get("query") ?? ""
+      if (url.hostname === "alertmanager.test") {
+        return Response.json([
+          {
+            labels: {
+              alertname: "LLMMInferenceQueueDepthSignalMissing",
+              component: "inference",
+              rule_id: "infra-exporter-down",
+              severity: "warning",
+            },
+            startsAt: "2026-08-01T08:00:00.000Z",
+            status: { state: "active" },
+          },
+        ])
+      }
       if (query.startsWith("up{")) {
         return prometheusResponse([
           prometheusSample({ host: "oss-stack", job: "node" }, "1"),
           prometheusSample({ host: "compute-node-a", job: "node" }, "1"),
-          prometheusSample({ host: "agentic", job: "node" }, "0"),
+          prometheusSample({ host: "control-node", job: "node" }, "0"),
         ])
       }
-      if (query.startsWith("ALERTS{")) {
-        return prometheusResponse([
-          prometheusSample(
-            { alertname: "InfraExporterDown", severity: "warning" },
-            "1",
-          ),
-        ])
-      }
-      if (query === "max(DCGM_FI_DEV_GPU_UTIL)") {
+      if (
+        query ===
+        'max(100 * hw_gpu_utilization_ratio{job="xpu",hw_gpu_task="all"})'
+      ) {
         return prometheusResponse([prometheusSample({}, "72")])
-      }
-      if (query === "max(llmm_nvidia_gpu_utilization_percent)") {
-        return prometheusResponse([])
       }
       if (query.includes("node_filesystem_avail_bytes")) {
         return prometheusResponse([prometheusSample({}, "63")])
@@ -63,7 +68,7 @@ describe("Admin overview health federation", () => {
     expect(healthTile(response.json())).toMatchObject({
       sourceStatus: "degraded",
       summary:
-        "Prometheus reports 2/3 monitored targets up with 1 active alert.",
+        "Prometheus reports 2/3 monitored targets up. Alertmanager reports 1 active alert.",
       metrics: expect.arrayContaining([
         expect.objectContaining({
           id: "gpu",
@@ -92,6 +97,7 @@ describe("Admin overview health federation", () => {
   it("marks Admin overview health unavailable when Prometheus cannot be read", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     vi.stubEnv("ADMIN_PROMETHEUS_BASE_URL", "http://prometheus.test")
+    vi.stubEnv("ADMIN_ALERTMANAGER_BASE_URL", "http://alertmanager.test")
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"))
     const server = buildServer()
 
@@ -116,7 +122,7 @@ describe("Admin overview health federation", () => {
 })
 
 function healthTile(response: { tiles: Array<{ id: string }> }) {
-  return response.tiles.find((tile) => tile.id === "health")
+  return response.tiles.find((tile) => tile.id === "hardware")
 }
 
 function prometheusResponse(samples: unknown[]): Response {

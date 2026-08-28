@@ -2,9 +2,10 @@ import type { SVGProps } from "react"
 
 type IconProps = SVGProps<SVGSVGElement>
 
-export function ApplicationsIcon(props: IconProps) {
+export function OverviewIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"
@@ -13,25 +14,13 @@ export function ApplicationsIcon(props: IconProps) {
       {...props}
     >
       <path
-        d="M16.01 2.96L12.47 2.96C11.99 2.96 11.3 3.66 11.3 4.14V7.68C11.3 8.16 11.99 8.85 12.47 8.85L16.01 8.85C16.49 8.85 17.19 8.16 17.19 7.68V4.14C17.19 3.66 16.49 2.96 16.01 2.96Z"
+        d="M2.5 8.33L10 2.5L17.5 8.33"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M16.01 11.37L12.47 11.37C11.99 11.37 11.3 12.07 11.3 12.55V16.08C11.3 16.56 11.99 17.26 12.47 17.26L16.01 17.26C16.49 17.26 17.19 16.56 17.19 16.08V12.55C17.19 12.07 16.49 11.37 16.01 11.37Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7.68 2.96L4.14 2.96C3.66 2.96 2.96 3.66 2.96 4.14V7.68C2.96 8.16 3.66 8.85 4.14 8.85L7.68 8.85C8.16 8.85 8.85 8.16 8.85 7.68V4.14C8.85 3.66 8.16 2.96 7.68 2.96Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7.68 11.37L4.14 11.37C3.66 11.37 2.96 12.07 2.96 12.55V16.08C2.96 16.56 3.66 17.26 4.14 17.26L7.68 17.26C8.16 17.26 8.85 16.56 8.85 16.08V12.55C8.85 12.07 8.16 11.37 7.68 11.37Z"
+        d="M4.17 7.5V16.67H15.83V7.5M7.5 16.67V11.67H12.5V16.67"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -40,9 +29,36 @@ export function ApplicationsIcon(props: IconProps) {
   )
 }
 
+export function KeysIcon(props: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="20"
+      viewBox="0 0 20 20"
+      width="20"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <path
+        d="M7.59456 9.6056C7.35382 9.0066 7.23094 8.36676 7.23266 7.7212C7.23266 5.0206 9.40826 2.7764 12.1075 2.6903C12.797 2.66731 13.4839 2.78614 14.1256 3.03941C14.7674 3.29269 15.3503 3.67502 15.8382 4.16272C16.3262 4.65043 16.7088 5.23313 16.9625 5.87473C17.2161 6.51633 17.3353 7.20316 17.3127 7.8927C17.2238 10.5919 14.9796 12.7675 12.279 12.7675C11.6334 12.7692 10.9936 12.6463 10.3946 12.4056L9.47266 13.3275H7.79266V15.0075H6.11266V16.6875H3.87266C3.72414 16.6875 3.5817 16.6285 3.47668 16.5235C3.37166 16.4185 3.31266 16.276 3.31266 16.1275V14.1192C3.31273 13.9709 3.37163 13.8286 3.47646 13.7237L7.59456 9.6056Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.12"
+      />
+      <path
+        d="M13.304 7.90487C13.9715 7.90487 14.5127 7.36372 14.5127 6.69619C14.5127 6.02865 13.9715 5.4875 13.304 5.4875C12.6364 5.4875 12.0953 6.02865 12.0953 6.69619C12.0953 7.36372 12.6364 7.90487 13.304 7.90487Z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
 export function HardwareIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"
@@ -81,6 +97,7 @@ export function HardwareIcon(props: IconProps) {
 export function InferenceIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"
@@ -110,9 +127,10 @@ export function InferenceIcon(props: IconProps) {
   )
 }
 
-export function KnowledgeIcon(props: IconProps) {
+export function ActivityIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"
@@ -121,13 +139,13 @@ export function KnowledgeIcon(props: IconProps) {
       {...props}
     >
       <path
-        d="M12.5 4.17H16.67C17.13 4.17 17.5 4.54 17.5 5V13.33C17.5 13.79 17.13 14.17 16.67 14.17H13C12.17 14.17 11.39 14.58 10.92 15.28L10 16.67V6.67C10 5.29 11.12 4.17 12.5 4.17Z"
+        d="M5 2.5H15C15.92 2.5 16.67 3.25 16.67 4.17V15.83C16.67 16.75 15.92 17.5 15 17.5H5C4.08 17.5 3.33 16.75 3.33 15.83V4.17C3.33 3.25 4.08 2.5 5 2.5Z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M7.5 4.17H3.33C2.87 4.17 2.5 4.54 2.5 5V13.33C2.5 13.79 2.87 14.17 3.33 14.17H7C7.83 14.17 8.61 14.58 9.08 15.28L10 16.67V6.67C10 5.29 8.88 4.17 7.5 4.17Z"
+        d="M6.67 6.25H13.33M6.67 10H13.33M6.67 13.75H10.83"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -139,6 +157,7 @@ export function KnowledgeIcon(props: IconProps) {
 export function SettingsIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"
@@ -165,6 +184,7 @@ export function SettingsIcon(props: IconProps) {
 export function TeamIcon(props: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       fill="none"
       height="20"
       viewBox="0 0 20 20"

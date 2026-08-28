@@ -1,0 +1,917 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-09",
+  "scope": "activity-audit-observability-source-only",
+  "contractBaseCommit": "c07d651b1f7d16f777839c3c15783a61271239c3",
+  "contractBaseTree": "0b2e55ce2f4c9be726dde4443a9f0bee91556b69",
+  "laneAnchorCommit": "c07d651b1f7d16f777839c3c15783a61271239c3",
+  "reviewedDispositions": {
+    "activityAudit": {
+      "sources": [
+        "console",
+        "keycloak",
+        "litellm",
+        "grafana",
+        "alertmanager",
+        "firecrawl",
+        "lifecycle"
+      ],
+      "nativeIngressSources": [
+        "keycloak",
+        "litellm",
+        "grafana",
+        "alertmanager"
+      ],
+      "ingressMechanism": "product_owned_audited_ingress",
+      "ingressState": "implemented_pending_runtime_qualification",
+      "nativeEventIdentity": {
+        "suppliedBy": "product-owned-native-adapter",
+        "adapterContract": "source-namespaced-deterministic-uuidv5",
+        "pr09Validation": "canonical-uuidv5-shape-only",
+        "namespaceDerivationProvenInPr09": false,
+        "configuredNativeAdaptersInPr09": 0,
+        "persistedAs": "audit_events.id",
+        "idempotencyBoundary": "audit_events-primary-key",
+        "replay": "idempotent-only-for-identical-canonical-metadata",
+        "collision": "reject-different-canonical-metadata",
+        "rawSourceEventIdRetained": false,
+        "rawSourceEventIdExported": false,
+        "deduplicateByCorrelationId": false
+      },
+      "nativeCursor": {
+        "format": "v1-canonical-utc-watermark-uuidv5-tie-breaker",
+        "storage": ["cursor_version", "cursor_watermark", "cursor_tie_breaker"],
+        "order": ["watermark_asc", "tie_breaker_asc"],
+        "monotonic": true,
+        "establishedCursorMayClear": false,
+        "concurrency": "row-lock-compare-and-set",
+        "attemptOrdering": "older-attempt-cannot-overwrite-newer-attempt",
+        "batchCursor": "must-match-final-event-watermark-and-id"
+      },
+      "activityAndExportPageCursor": {
+        "encoding": "base64url-json",
+        "fields": ["id", "occurredAt"],
+        "pagination": "deterministic-live-keyset",
+        "crossPageSnapshot": false
+      },
+      "timelineOrder": ["occurred_at_desc", "id_desc"],
+      "exportOrder": ["occurred_at_asc", "id_asc"],
+      "maxNativeEventsPerRun": 1000,
+      "nativeIdentifiers": {
+        "correlationId": "required-canonical-uuid",
+        "keycloakSubjectId": "nullable-for-system-originated-events",
+        "opaqueIdentifierPattern": "^[A-Za-z0-9][A-Za-z0-9_:-]*$",
+        "prohibitedIdentifierPrefixes": [
+          "llmm_",
+          "bearer",
+          "token",
+          "secret",
+          "password",
+          "api-key"
+        ],
+        "providerTokenWholeValuePolicy": {
+          "disposition": "reject",
+          "matching": "anchored-whole-value",
+          "appliesTo": [
+            "keycloakSubjectId",
+            "applicationId",
+            "credentialRecordId"
+          ],
+          "families": "reviewed-provider-token-shape-set",
+          "valuesRecordedInGovernance": false
+        },
+        "credentialPrefixPatterns": [
+          "^llmm_t4_[0-9a-f]{18}$",
+          "^llmm_fc_[0-9a-f]{16}$"
+        ],
+        "credentialIdentifierCardinality": "record-id-or-prefix-never-both"
+      },
+      "nativeActions": {
+        "keycloak": [
+          "keycloak.authentication.failed",
+          "keycloak.authentication.succeeded",
+          "keycloak.credential.updated",
+          "keycloak.role.assigned",
+          "keycloak.role.revoked",
+          "keycloak.user.created",
+          "keycloak.user.deleted",
+          "keycloak.user.updated"
+        ],
+        "litellm": [
+          "litellm.request.denied",
+          "litellm.request.failed",
+          "litellm.request.succeeded",
+          "litellm.route.created",
+          "litellm.route.deleted",
+          "litellm.route.updated",
+          "litellm.virtual_key.created",
+          "litellm.virtual_key.revoked",
+          "litellm.virtual_key.rotated",
+          "litellm.virtual_key.updated"
+        ],
+        "grafana": [
+          "grafana.alert_rule.created",
+          "grafana.alert_rule.deleted",
+          "grafana.alert_rule.updated",
+          "grafana.dashboard.created",
+          "grafana.dashboard.deleted",
+          "grafana.dashboard.updated",
+          "grafana.datasource.updated",
+          "grafana.folder.created",
+          "grafana.folder.deleted",
+          "grafana.folder.updated"
+        ],
+        "alertmanager": [
+          "alertmanager.configuration.reloaded",
+          "alertmanager.notification.failed",
+          "alertmanager.notification.succeeded",
+          "alertmanager.silence.created",
+          "alertmanager.silence.deleted",
+          "alertmanager.silence.expired"
+        ]
+      },
+      "nativeRecoveryReasonCodes": {
+        "keycloak": [
+          "account_disabled",
+          "authentication_failed",
+          "authorization_denied",
+          "invalid_credentials",
+          "policy_rejected"
+        ],
+        "litellm": [
+          "model_denied",
+          "rate_limited",
+          "request_failed",
+          "route_unavailable"
+        ],
+        "grafana": [
+          "operation_failed",
+          "permission_denied",
+          "validation_failed"
+        ],
+        "alertmanager": [
+          "delivery_failed",
+          "receiver_unavailable",
+          "silence_rejected"
+        ]
+      },
+      "allowedMetadataFields": [
+        "id",
+        "occurredAt",
+        "ingestedAt",
+        "action",
+        "outcome",
+        "sourceSystem",
+        "correlationId",
+        "keycloakSubjectId",
+        "applicationId",
+        "credentialRecordId",
+        "credentialPrefix",
+        "recoveryReasonCode"
+      ],
+      "compatibilityTargetProjection": {
+        "persistence": false,
+        "export": false,
+        "mode": "derived-read-only",
+        "fields": ["targetType", "targetId"],
+        "derivedOnlyFrom": [
+          "keycloakSubjectId",
+          "applicationId",
+          "credentialRecordId",
+          "credentialPrefix",
+          "correlationId"
+        ]
+      },
+      "prohibitedContentFields": [
+        "prompt",
+        "response",
+        "completion",
+        "requestBody",
+        "responseBody",
+        "headers",
+        "toolArguments",
+        "toolResults",
+        "searchTerms",
+        "url",
+        "pageContent"
+      ],
+      "authorization": {
+        "admin": ["view", "filter", "signed-export"],
+        "operator": ["view", "filter"],
+        "operatorExport": false
+      },
+      "retentionDays": 365
+    },
+    "auditExport": {
+      "formats": ["json", "csv"],
+      "envelope": "compact-jws",
+      "algorithm": "Ed25519",
+      "deterministicPayloadBytes": true,
+      "maximumEventsPerPage": 5000,
+      "maximumPayloadBytes": 8388608,
+      "maximumRangeDays": 365,
+      "pagination": "deterministic-live-keyset",
+      "cursorEncoding": "base64url-json-id-occurredAt",
+      "crossPageSnapshot": false,
+      "privateKeySource": "mounted-file-only",
+      "publicVerificationKeySource": "mounted-jwks-file",
+      "privateKeyInGit": false,
+      "privateKeyInEnvironment": false,
+      "missingOrInvalidMaterial": "signed-export-surface-only-http-503",
+      "unaffectedSurfaces": ["inference", "audit-ingestion", "audit-view"]
+    },
+    "expertAccess": {
+      "systems": ["keycloak", "litellm", "grafana", "alertmanager"],
+      "auditIngestion": "implemented_pending_runtime_qualification",
+      "mechanism": "product_owned_audited_ingress",
+      "consoleProjection": "read_only",
+      "directAccess": "disabled",
+      "nativeMutation": "disabled",
+      "enablementOwner": "PR-12",
+      "noBypassProofRequired": true
+    },
+    "grafanaOss": {
+      "adminRole": "Editor",
+      "operatorRole": "Viewer",
+      "retainedRoleCardinality": "exactly-one",
+      "ambiguousRetainedRoles": "deny",
+      "baseline": "provisioned-locked",
+      "customerFolder": "unprovisioned-customer-editable",
+      "customerFolderAdminPermission": "Edit",
+      "customerFolderOperatorPermission": "View",
+      "strictFolderConfinementClaim": false,
+      "runtimeActivationOwner": "PR-12"
+    },
+    "observability": {
+      "metricsEndpoint": {
+        "method": "GET",
+        "path": "/internal/observability/metrics",
+        "exposure": "private-authenticated",
+        "authentication": "mounted-private-file-bearer",
+        "queryAllowed": false,
+        "additionalExporterService": false
+      },
+      "prometheusQueryApi": {
+        "authentication": "mounted-private-file-bearer",
+        "runtimeEnvironmentCredentialAllowed": false
+      },
+      "accountingMetrics": [
+        "llm_machines_inference_requests_5m",
+        "llm_machines_inference_failures_5m",
+        "llm_machines_inference_server_failures_5m",
+        "llm_machines_inference_in_flight_requests",
+        "llm_machines_inference_retained_requests",
+        "llm_machines_inference_retained_failures",
+        "llm_machines_inference_retained_input_tokens",
+        "llm_machines_inference_retained_output_tokens",
+        "llm_machines_inference_retained_total_tokens",
+        "llm_machines_inference_retained_latency_milliseconds_sum",
+        "llm_machines_inference_retained_latency_milliseconds_max"
+      ],
+      "queueDepth": {
+        "stateMetric": "llm_machines_inference_queue_depth_source_info{status=\"not_configured\"}",
+        "valueMetric": "llm_machines_inference_queue_depth",
+        "valueEmittedInPr09": false,
+        "concurrencyOrInFlightIsSubstitute": false,
+        "genuineSignalOwner": "PR-12"
+      },
+      "alerts": [
+        "LLMMGpuSaturation",
+        "LLMMInferenceFailureRatioHigh",
+        "LLMMInferenceQueueDepthPersisting",
+        "LLMMInferenceQueueDepthSignalMissing"
+      ],
+      "localDefaultReceiver": "local-null",
+      "llmMachinesCloudRelay": false
+    },
+    "alertEgress": {
+      "pr09Scope": "redacted-transport-intent-and-warning-acknowledgement-only",
+      "transports": ["disabled", "smtp", "webhook"],
+      "warningVersion": "alert-egress-v1",
+      "mutationAuthority": "admin-only-no-breakglass-operator",
+      "operatorRead": true,
+      "deliveryStates": ["disabled", "prepared_pending_runtime_qualification"],
+      "persistedDestination": false,
+      "persistedEmailOrUrl": false,
+      "persistedSecret": false,
+      "runtimeDelivery": false,
+      "defaultState": "disabled",
+      "dedicatedUpdaterFields": [
+        "alert_egress_revision",
+        "alert_egress_updated_at",
+        "alert_egress_updated_by",
+        "alert_egress_acknowledged_at",
+        "alert_egress_acknowledged_by",
+        "alert_egress_warning_version"
+      ],
+      "stateAuditReceiptAtomicity": "single-postgresql-transaction",
+      "receiptFinalization": "same-transaction",
+      "receiptFailureRollsBackStateAndAudit": true,
+      "customerDestinationAndSecretInjectionOwner": "PR-12",
+      "nativeReloadDeliveryAndNoBypassQualificationOwner": "PR-12"
+    },
+    "retention": {
+      "workloadContentDays": 0,
+      "auditMetadataDays": 365,
+      "applicationAndUsageMetadataDays": 90,
+      "metricsAndAlertStateDays": 30,
+      "alertmanagerNotificationAndSilenceHours": 720,
+      "runtimeQualificationOwner": "PR-12"
+    },
+    "scopeBoundaries": {
+      "sourceOnly": true,
+      "intermediateDeployment": false,
+      "finalNavigationOwner": "PR-11",
+      "nativeLinksMountedSecretsRuntimeAndNoBypassOwner": "PR-12"
+    }
+  },
+  "standaloneDbTestBoundary": {
+    "path": "test-support/inference-core-db-tests",
+    "classification": "standalone-test-only-workspace",
+    "allowedPaths": [
+      "test-support/inference-core-db-tests/package.json",
+      "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "test-support/inference-core-db-tests/src/idempotency.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+      "test-support/inference-core-db-tests/src/pr05-emergency-recovery.test.ts",
+      "test-support/inference-core-db-tests/src/pr05-identity-mutation-journal.test.ts",
+      "test-support/inference-core-db-tests/src/pr06-application-credential-reconciliation.test.ts",
+      "test-support/inference-core-db-tests/src/pr07-inference-data-plane.test.ts",
+      "test-support/inference-core-db-tests/src/pr08-firecrawl-schema.test.ts",
+      "test-support/inference-core-db-tests/src/pr09-alert-egress.test.ts",
+      "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
+      "test-support/inference-core-db-tests/tsconfig.json"
+    ],
+    "packageManifest": {
+      "path": "test-support/inference-core-db-tests/package.json",
+      "sha256": "ff725f8972d4a0e4ed349daa1ffbfb4aa10ab40a4c76be60f739125781c85470",
+      "name": "@llm-machines/inference-core-db-tests",
+      "packageManager": "pnpm@10.0.0",
+      "scripts": {
+        "test": "vitest run",
+        "typecheck": "tsc --project tsconfig.json"
+      },
+      "devDependencies": {
+        "@electric-sql/pglite": "0.5.4",
+        "@types/node": "22.15.18",
+        "drizzle-orm": "0.44.2",
+        "typescript": "5.8.3",
+        "vitest": "3.1.4"
+      }
+    },
+    "lockfile": {
+      "path": "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "sha256": "a7318f062798050494d0651ba28ca8ae50ab01b1db085bb1bdd884f3e79d5c61"
+    },
+    "workspaceManifest": {
+      "path": "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "sha256": "44b627aa58902d12f2b7469e46784fd611bac456409c630d7636c0e7059c14aa"
+    },
+    "tsconfig": {
+      "path": "test-support/inference-core-db-tests/tsconfig.json",
+      "sha256": "28282abe534bce160861ed5c0798292c960cb61c7dfa5636d552a245c7223d09"
+    },
+    "rootIsolation": {
+      "workspaceManifestPath": "pnpm-workspace.yaml",
+      "rootLockfilePath": "pnpm-lock.yaml",
+      "productionManifestPath": "apps/bff/package.json",
+      "pglitePackage": "@electric-sql/pglite",
+      "drizzlePackage": "drizzle-orm@0.44.2",
+      "pglitePeerRange": ">=0.2.0",
+      "allowedRootMetadataOccurrences": 2
+    },
+    "rootScripts": {
+      "test:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test",
+      "typecheck:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests typecheck"
+    }
+  },
+  "resolverFingerprints": [
+    {
+      "path": "apps/bff/src/auth/authorization.ts",
+      "symbol": "<file>",
+      "sha256": "003776367928a1bebcc77b2f181393eb63eb6651dcaa4085135a3da11b557470"
+    },
+    {
+      "path": "apps/bff/src/auth/runtime-live-authority.ts",
+      "symbol": "<file>",
+      "sha256": "0ca02d54900a9f645b0abad5269164fbdf97affd2d3f67126d7c5fa158169799"
+    },
+    {
+      "path": "apps/bff/src/index.ts",
+      "symbol": "<file>",
+      "sha256": "34861ad68b99b3ff2eb927daa76b8b9157a62e5841365e456c4335a168c34293"
+    },
+    {
+      "path": "apps/web/next.config.ts",
+      "symbol": "<file>",
+      "sha256": "58f841f6ee4170e90c110e33727d85dabe6a2c096784b05940319d770a958f8b"
+    },
+    {
+      "path": "apps/web/src/lib/auth/auth.ts",
+      "symbol": "<file>",
+      "sha256": "142c783a7ab90c05a56bad8c2283f8cb4b900cc9eb7b32624697bc71f4ff8b66"
+    }
+  ],
+  "sourceFingerprints": [
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "nativeAuditActions",
+      "sha256": "6c0bb9bc896cdd685532e9d73d8bddda67d57c2b844d42255d0efcbfd07d9981"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "nativeAuditRecoveryReasonCodes",
+      "sha256": "b35b0e11671e71fff66f90d0808a7853a8565a66cf57b7e607f07e402d7c35c3"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "parseAuditEventInput",
+      "sha256": "5d423079e238e3fc00bdf4d487023da33f3db04722aa56c768d912e35d4a3595"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "auditEventValues",
+      "sha256": "7ed6cd673e2a195d6fdff463afb9bf3133a10a7e0b4298880f7e75636789da78"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "toAuditEventRecord",
+      "sha256": "feb629ba383c7cb8ebf2af4fbe1b09d297fc1abc0007c0902a578f7cfc05bf87"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "auditEventInputKeys",
+      "sha256": "0c4dfa73fdd8f1385e6c1c64fb72ff6190c0dbc4c650c165dad443bba9aeb351"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "NATIVE_PROVIDER_TOKEN_SHAPED_IDENTIFIER_PATTERN",
+      "sha256": "b5a3d5775c58f4dafb111406097037938fa48b868506184b3b17fceea810cfb2"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "assertNativeIdentifier",
+      "sha256": "20c960d730ae046cf42fea581487134d5c77f1ba99c76f1a25d24c0d8c8059ab"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "getDatabaseAuditEvents",
+      "sha256": "1b0a535a3c3ad3ce5d3085f42fab690949538c265c55b7f166bca10d20b0299a"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "getDatabaseAuditEventsAscending",
+      "sha256": "6c7ef6768f7b77080d93ab4ddec52432000f6bd868634dc392cc78d5f0a0d08d"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "databaseAuditConditions",
+      "sha256": "b99221a5d32c0b9d4327fa2de1070e9651c7c86c5e5759e2e8598ea181541763"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "encodeAuditCursor",
+      "sha256": "d2e10caab5375187322b9169e32874befe4f4eb0b0cb6625767a5157ebc069f9"
+    },
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "symbol": "decodeAuditCursor",
+      "sha256": "03e1c5c1c704ee628107721f0afd0e9b6c3cb62d05460d03527084dadd9d6e86"
+    },
+    {
+      "path": "apps/bff/src/services/audit-ingestion.ts",
+      "symbol": "ingestOneSource",
+      "sha256": "60a4d795803f69db74ed1f662199d883eefc218566f8535ea3aed2f03641bf4c"
+    },
+    {
+      "path": "apps/bff/src/services/audit-ingestion.ts",
+      "symbol": "recordSourceFailure",
+      "sha256": "bcbeb418be3b57abd166a6a97c80a541bd2810cc7b2f89487b77071236de6cd4"
+    },
+    {
+      "path": "apps/bff/src/services/audit-ingestion.ts",
+      "symbol": "validateNativeAuditSourceBatch",
+      "sha256": "f2518c2a350122ea67a4a3a8fb1bdde1ab0952d173aef0cbc7e1306fac8063b1"
+    },
+    {
+      "path": "apps/bff/src/services/audit-ingestion.ts",
+      "symbol": "canonicalNativeEventId",
+      "sha256": "142a8ad38d914bb1726bb19bf985219dda306c4a9044fa8a814bc490816b3fe1"
+    },
+    {
+      "path": "apps/bff/src/services/audit-ingestion.ts",
+      "symbol": "sameStoredNativeAuditEvent",
+      "sha256": "28dbc64af9caec02bdfea706c61140d0de24bdc3719b52177e3522c052e5249b"
+    },
+    {
+      "path": "apps/bff/src/services/audit-ingestion.ts",
+      "symbol": "storedCursor",
+      "sha256": "8e95fa7f5819fc09a11361ae94dd37cb8bb3be2d0d67ea193d84f1eb61f444a3"
+    },
+    {
+      "path": "apps/bff/src/services/audit-ingestion.ts",
+      "symbol": "compareCanonicalCursors",
+      "sha256": "9baa751d128a371fc84861ce45306a0b5b18817dbed91b27c50d18fc4e4ceb6d"
+    },
+    {
+      "path": "apps/bff/src/services/audit-export.ts",
+      "symbol": "canonicalExportEvent",
+      "sha256": "3584a43adf5cfc009134c298551eb3a880970798477565d58ee153b6cab22514"
+    },
+    {
+      "path": "apps/bff/src/services/audit-export.ts",
+      "symbol": "csvExport",
+      "sha256": "9de905ddc40c0f6015360e30b9292d94cde4b3b1a5cdc12101fd97fd6ef9a6f5"
+    },
+    {
+      "path": "apps/bff/src/services/admin-alert-egress.ts",
+      "symbol": "updateAdminAlertEgress",
+      "sha256": "4da64ffd2a555f05a481e3cf21571ccfd3e4d961d8c68e53e38bc52249a4cb82"
+    },
+    {
+      "path": "apps/bff/src/routes/admin.ts",
+      "symbol": "withAdminIdempotentMutation",
+      "sha256": "7c9339373a79d23afe641ca694b28e9c0bf8ba1f7f9873e254012d0c33b2c6e7"
+    },
+    {
+      "path": "apps/bff/src/services/idempotency.ts",
+      "symbol": "completeIdempotency",
+      "sha256": "594f42252426ffd8a9b26fbb1520976bc99c7be9820096caf39e1c96ed198dc3"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-schema.ts",
+      "symbol": "auditEvents",
+      "sha256": "4c8924f39a8bf86bdb7c6335ad4475cff48fc5b7550b80c15509f955b2246c52"
+    }
+  ],
+  "nativeIdentifierEvidence": [
+    {
+      "path": "apps/bff/src/services/audit.ts",
+      "sha256": "a4b06232244c09d0e6db38faab162cfc56d45e83466fbd6107a9233b4612aefc"
+    },
+    {
+      "path": "apps/bff/src/db/inference-core-schema.ts",
+      "sha256": "16fc48c5bff4fb2f63dd816de44365b70bab6d42fbedd5e9d090c6a4089c2995"
+    },
+    {
+      "path": "infra/migrations/0000_inference_core.sql",
+      "sha256": "b71b11531d671d26130c55f533f33e802aa2555d5f913fd56a26cc1cfb6448ff"
+    },
+    {
+      "path": "apps/bff/src/services/audit.test.ts",
+      "sha256": "21d0cc54565cbdd2469842eca493a3165833bd225a294afd249a0a88a5091c4d"
+    },
+    {
+      "path": "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
+      "sha256": "209db6339f4cee48e25a01849e5fad1ffcf48df3e8269d7cdc1de963c220af85"
+    }
+  ],
+  "webAuthenticationEvidence": [
+    {
+      "path": "apps/web/src/middleware.test.ts",
+      "sha256": "635f7c7c3ec01318170ec785546b4e05db0cb7e0f63e452e327e84ede1c51867"
+    },
+    {
+      "path": "apps/web/src/middleware.ts",
+      "sha256": "c3ffb281c0dd538123fb476bc36c682c50693f9c06f637fc92627ec56fa9b0a9"
+    }
+  ],
+  "target": {
+    "findingEntriesDueByPr09": 0,
+    "remainingFindingEntries": 1,
+    "fs105BuilderHubTombstones": [
+      {
+        "path": "apps/web/src/middleware.test.ts",
+        "removeBy": "PR-12"
+      }
+    ],
+    "legacyRoutes": 0,
+    "routes": 102,
+    "routeClassifications": {
+      "current-console-seam": 90,
+      "operational-auth": 4,
+      "private-operational": 4,
+      "public-t2": 2,
+      "required-now": 2
+    },
+    "publicInferenceRoutes": [
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/api/app-gateway/v1/models",
+        "source": "apps/bff/src/routes/app-gateway.ts",
+        "classification": "required-now"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/app-gateway/v1/chat/completions",
+        "source": "apps/bff/src/routes/app-gateway.ts",
+        "classification": "required-now"
+      }
+    ],
+    "publicFirecrawlRoutes": [
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/v2/scrape",
+        "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+        "classification": "public-t2"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/v2/search",
+        "source": "apps/bff/src/routes/firecrawl-gateway.ts",
+        "classification": "public-t2"
+      }
+    ],
+    "firecrawlAdminRoutes": [
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl/enable",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "PATCH",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl/test",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl/rotate-credentials",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl/disable",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/firecrawl/credentials/:credentialId/revoke",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      }
+    ],
+    "addedRoutes": [
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/api/admin/audit/export/verification-keys",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/api/admin/audit/export",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/api/admin/observability/alert-egress",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/internal/observability/metrics",
+        "source": "apps/bff/src/routes/observability-metrics.ts",
+        "classification": "private-operational"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/observability/alert-egress",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "web-handler",
+        "method": "GET",
+        "path": "/api/admin/audit/export/verification-keys",
+        "source": "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "web-handler",
+        "method": "GET",
+        "path": "/api/admin/audit/export",
+        "source": "apps/web/src/app/api/admin/audit/export/route.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "web-page",
+        "method": "PAGE",
+        "path": "/activity",
+        "source": "apps/web/src/app/activity/page.tsx",
+        "classification": "current-console-seam"
+      }
+    ],
+    "activityAuditPath": "/activity",
+    "adminOnlyRoutePolicyKeys": [
+      "GET /api/admin/recovery/status",
+      "POST /api/admin/recovery/factor/commission",
+      "POST /api/admin/observability/alert-egress",
+      "POST /api/admin/settings/organization",
+      "POST /api/admin/settings/telemetry"
+    ],
+    "fastifyRegistrars": [
+      {
+        "exportName": "registerAdminRoutes",
+        "importSource": "./routes/admin",
+        "sourcePath": "apps/bff/src/routes/admin.ts"
+      },
+      {
+        "exportName": "registerAppGatewayRoutes",
+        "importSource": "./routes/app-gateway",
+        "sourcePath": "apps/bff/src/routes/app-gateway.ts"
+      },
+      {
+        "exportName": "registerAuthorization",
+        "importSource": "./auth/authorization",
+        "sourcePath": "apps/bff/src/auth/authorization.ts"
+      },
+      {
+        "exportName": "registerFirecrawlGatewayRoutes",
+        "importSource": "./routes/firecrawl-gateway",
+        "sourcePath": "apps/bff/src/routes/firecrawl-gateway.ts"
+      },
+      {
+        "exportName": "registerObservabilityMetricsRoutes",
+        "importSource": "./routes/observability-metrics",
+        "sourcePath": "apps/bff/src/routes/observability-metrics.ts"
+      }
+    ],
+    "webInferenceConsumers": 0,
+    "escapeHatchPaths": [],
+    "activityPageAvailable": true,
+    "globalNavigationOwner": "PR-11",
+    "nativeExpertLinksEnabled": false,
+    "sourceOnly": true,
+    "runtimeQualified": false
+  },
+  "operationPolicy": {
+    "addedSourcePaths": [
+      "apps/bff/src/commands/audit-ingestion.ts",
+      "apps/bff/src/routes/observability-metrics.ts",
+      "apps/bff/src/services/admin-alert-egress.ts",
+      "apps/bff/src/services/admin-alertmanager.ts",
+      "apps/bff/src/services/admin-observability-metrics.ts",
+      "apps/bff/src/services/audit-export-signing.ts",
+      "apps/bff/src/services/audit-export.ts",
+      "apps/bff/src/services/audit-ingestion.ts",
+      "apps/web/src/app/activity/page.tsx",
+      "apps/web/src/app/api/admin/audit/export/route.ts",
+      "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+      "apps/web/src/components/console-v2/activity-v2-experience.tsx"
+    ],
+    "changedSourcePaths": [
+      "apps/bff/package.json",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/services/admin-audit.ts",
+      "apps/bff/src/services/admin-hardware.ts",
+      "apps/bff/src/services/admin-health.ts",
+      "apps/bff/src/services/admin-overview.ts",
+      "apps/bff/src/services/admin-prometheus.ts",
+      "apps/bff/src/services/audit.ts",
+      "apps/bff/src/services/expert-capabilities.ts",
+      "apps/bff/src/services/inference-core-retention.ts",
+      "apps/web/src/components/console-v2/console-v2-sections.ts",
+      "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "apps/web/src/lib/admin/server-data-core.ts",
+      "apps/web/src/middleware.ts",
+      "package.json",
+      "packages/contracts/src/inference-core.ts"
+    ],
+    "deletedSourcePaths": [],
+    "addedRepositoryPaths": [
+      "apps/bff/src/commands/audit-ingestion.test.ts",
+      "apps/bff/src/commands/audit-ingestion.ts",
+      "apps/bff/src/routes/admin-alert-egress.test.ts",
+      "apps/bff/src/routes/admin-audit-export.test.ts",
+      "apps/bff/src/routes/observability-metrics.test.ts",
+      "apps/bff/src/routes/observability-metrics.ts",
+      "apps/bff/src/services/admin-alert-egress.test.ts",
+      "apps/bff/src/services/admin-alert-egress.ts",
+      "apps/bff/src/services/admin-alertmanager.test.ts",
+      "apps/bff/src/services/admin-alertmanager.ts",
+      "apps/bff/src/services/admin-audit.test.ts",
+      "apps/bff/src/services/admin-observability-metrics.test.ts",
+      "apps/bff/src/services/admin-observability-metrics.ts",
+      "apps/bff/src/services/admin-prometheus.test.ts",
+      "apps/bff/src/services/audit-export-signing.test.ts",
+      "apps/bff/src/services/audit-export-signing.ts",
+      "apps/bff/src/services/audit-export.test.ts",
+      "apps/bff/src/services/audit-export.ts",
+      "apps/bff/src/services/audit-ingestion.test.ts",
+      "apps/bff/src/services/audit-ingestion.ts",
+      "apps/web/src/app/activity/page.tsx",
+      "apps/web/src/app/api/admin/audit/export/route.test.ts",
+      "apps/web/src/app/api/admin/audit/export/route.ts",
+      "apps/web/src/app/api/admin/audit/export/verification-keys/route.test.ts",
+      "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+      "apps/web/src/components/console-v2/activity-v2-experience.test.tsx",
+      "apps/web/src/components/console-v2/activity-v2-experience.tsx",
+      "apps/web/src/components/console-v2/hardware-v2-experience.test.tsx",
+      "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
+      "infra/observability/README.md",
+      "infra/observability/alertmanager/alertmanager.yml",
+      "infra/observability/grafana/customer-folder-contract.json",
+      "infra/observability/grafana/dashboards/baseline/inference-core-overview.json",
+      "infra/observability/grafana/grafana.ini",
+      "infra/observability/grafana/provisioning/dashboards/baseline.yml",
+      "infra/observability/grafana/provisioning/datasources/prometheus.yml",
+      "infra/observability/prometheus/file-sd/inference-core.json",
+      "infra/observability/prometheus/prometheus.yml",
+      "infra/observability/prometheus/rules/alert-rules.yml",
+      "infra/observability/prometheus/rules/recording-rules.yml",
+      "infra/observability/runtime-contract.json",
+      "infra/observability/validate-profile.mjs",
+      "infra/observability/validate-profile.test.mjs",
+      "scripts/inference-core/pr09-boundaries.test.mjs",
+      "scripts/inference-core/pr09-contract-revision.mjs",
+      "test-support/inference-core-db-tests/src/pr09-alert-egress.test.ts",
+      "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts"
+    ],
+    "changedRepositoryPaths": [
+      ".env.example",
+      "apps/bff/package.json",
+      "apps/bff/src/db/inference-core-client.test.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.test.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin-authorization.test.ts",
+      "apps/bff/src/routes/admin-hardware.test.ts",
+      "apps/bff/src/routes/admin-overview-health.test.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "apps/bff/src/services/admin-audit.ts",
+      "apps/bff/src/services/admin-hardware.ts",
+      "apps/bff/src/services/admin-health.ts",
+      "apps/bff/src/services/admin-inference.test.ts",
+      "apps/bff/src/services/admin-overview.ts",
+      "apps/bff/src/services/admin-prometheus.ts",
+      "apps/bff/src/services/audit.test.ts",
+      "apps/bff/src/services/audit.ts",
+      "apps/bff/src/services/expert-capabilities.test.ts",
+      "apps/bff/src/services/expert-capabilities.ts",
+      "apps/bff/src/services/inference-core-retention.test.ts",
+      "apps/bff/src/services/inference-core-retention.ts",
+      "apps/web/src/app/page.test.tsx",
+      "apps/web/src/components/console-v2/console-v2-sections.ts",
+      "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "apps/web/src/lib/admin/retained-core-boundaries.test.ts",
+      "apps/web/src/lib/admin/server-data-core.test.ts",
+      "apps/web/src/lib/admin/server-data-core.ts",
+      "apps/web/src/middleware.test.ts",
+      "apps/web/src/middleware.ts",
+      "infra/keycloak/README.md",
+      "infra/keycloak/inference-core-commissioning.json",
+      "infra/keycloak/inference-core-realm-seed.json",
+      "infra/migrations/0000_inference_core.sql",
+      "package.json",
+      "packages/contracts/src/inference-core.test.ts",
+      "packages/contracts/src/inference-core.ts",
+      "scripts/inference-core/guardrails.mjs",
+      "scripts/inference-core/guardrails.test.mjs",
+      "scripts/inference-core/pr02-boundaries.test.mjs",
+      "scripts/inference-core/pr05-boundaries.test.mjs",
+      "scripts/inference-core/pr05-keycloak-seed.mjs",
+      "scripts/inference-core/pr05-keycloak-seed.test.mjs",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-retention.test.ts"
+    ],
+    "deletedRepositoryPaths": []
+  },
+  "reviewStatus": "reviewed"
+}

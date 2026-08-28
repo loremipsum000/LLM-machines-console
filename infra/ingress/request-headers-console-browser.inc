@@ -1,0 +1,14 @@
+proxy_set_header Accept $http_accept;
+proxy_set_header Accept-Language $http_accept_language;
+proxy_set_header Content-Length $content_length;
+proxy_set_header Content-Type $http_content_type;
+proxy_set_header Cookie $http_cookie;
+proxy_set_header Origin $http_origin;
+proxy_set_header Next-Action $http_next_action;
+proxy_set_header Next-Router-Prefetch $http_next_router_prefetch;
+proxy_set_header Next-Router-State-Tree $http_next_router_state_tree;
+proxy_set_header Next-Url $http_next_url;
+proxy_set_header Purpose $http_purpose;
+proxy_set_header RSC $http_rsc;
+proxy_set_header X-Nextjs-Data $http_x_nextjs_data;
+proxy_set_header Authorization "";

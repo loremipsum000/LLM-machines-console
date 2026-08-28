@@ -1,0 +1,436 @@
+@font-face {
+  font-family: "Urbanist";
+  src: url("../fonts/urbanist/Urbanist-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Urbanist";
+  src: url("../fonts/urbanist/Urbanist-Medium.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Urbanist";
+  src: url("../fonts/urbanist/Urbanist-SemiBold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Urbanist";
+  src: url("../fonts/urbanist/Urbanist-Bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  --llmm-bg: #050505;
+  --llmm-bg-soft: #0b0b0b;
+  --llmm-panel: rgba(11, 11, 11, 0.88);
+  --llmm-fg: #f4f4f3;
+  --llmm-muted: #8a8a87;
+  --llmm-dim: #4a4a47;
+  --llmm-line: #1c1c1b;
+  --llmm-line-bright: #2a2a28;
+  --llmm-accent: #e8e8e6;
+  --llmm-danger: #ff7a7a;
+  --llmm-success: #64d6a5;
+  --llmm-font-display: "Urbanist", ui-sans-serif, system-ui, sans-serif;
+  --llmm-font-body: "Urbanist", ui-sans-serif, system-ui, sans-serif;
+  --keycloak-logo-url: url("../img/llm-machines-logo-full.png");
+  --keycloak-bg-logo-url: none;
+  --keycloak-logo-height: 62px;
+  --keycloak-logo-width: 224px;
+}
+
+html.login-pf,
+html.login-pf body,
+body#keycloak-bg {
+  min-height: 100%;
+  background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.035) 1px,
+      transparent 1px
+    )
+    0 0 / 72px 72px,
+    linear-gradient(0deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px) 0 0 /
+    72px 72px,
+    radial-gradient(
+      circle at 18% 24%,
+      rgba(232, 232, 230, 0.13),
+      transparent 28rem
+    ),
+    radial-gradient(
+      circle at 88% 78%,
+      rgba(100, 214, 165, 0.1),
+      transparent 26rem
+    ), var(--llmm-bg);
+  color: var(--llmm-fg);
+  font-family: var(--llmm-font-body);
+  letter-spacing: 0;
+}
+
+body#keycloak-bg {
+  overflow-x: hidden;
+}
+
+body#keycloak-bg::before {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(
+      115deg,
+      rgba(5, 5, 5, 0.18),
+      rgba(5, 5, 5, 0.86) 58%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 13px,
+      rgba(255, 255, 255, 0.018) 13px 14px
+    );
+}
+
+body#keycloak-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+.pf-v5-c-login {
+  min-height: 100vh;
+  display: grid;
+  align-items: center;
+  padding: 48px 28px;
+}
+
+.pf-v5-c-login__container {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(360px, 456px);
+  grid-template-areas: "header main";
+  align-items: center;
+  gap: 56px;
+}
+
+.pf-v5-c-login__header {
+  grid-area: header;
+  align-self: stretch;
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-left: 1px solid var(--llmm-line-bright);
+  padding: 42px 0 42px 34px;
+}
+
+#kc-header-wrapper {
+  width: var(--keycloak-logo-width);
+  height: var(--keycloak-logo-height);
+  overflow: hidden;
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+  text-indent: -9999px;
+  white-space: nowrap;
+  background: var(--keycloak-logo-url) no-repeat left center / contain;
+}
+
+.pf-v5-c-login__header::before {
+  width: 52px;
+  height: 1px;
+  margin-bottom: 34px;
+  content: "";
+  background: var(--llmm-muted);
+}
+
+.pf-v5-c-login__header::after {
+  max-width: 460px;
+  margin-top: 64px;
+  color: var(--llmm-muted);
+  content: "Sovereign AI access\A Identity stays inside the appliance perimeter.";
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.pf-v5-c-login__main {
+  grid-area: main;
+  width: 100%;
+  margin: 0;
+  padding: 34px;
+  background: var(--llmm-panel);
+  border: 1px solid var(--llmm-line-bright);
+  border-radius: 0;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.44);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.pf-v5-c-login__main-header {
+  display: block;
+  margin-bottom: 26px;
+}
+
+#kc-page-title {
+  margin: 0;
+  color: var(--llmm-fg);
+  font-family: var(--llmm-font-display);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: 0;
+}
+
+#kc-page-title::after {
+  display: block;
+  margin-top: 14px;
+  color: var(--llmm-muted);
+  content: "Use your appliance identity to continue.";
+  font-family: var(--llmm-font-body);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.pf-v5-c-login__main-body {
+  color: var(--llmm-fg);
+}
+
+.pf-v5-c-form {
+  display: grid;
+  gap: 18px;
+}
+
+.pf-v5-c-form__group {
+  margin: 0;
+}
+
+.pf-v5-c-form__label,
+.pf-v5-c-form__label-text,
+.pf-v5-c-check__label {
+  color: var(--llmm-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pf-v5-c-form-control {
+  min-height: 50px;
+  color: var(--llmm-fg);
+  background: rgba(5, 5, 5, 0.72);
+  border: 1px solid var(--llmm-line-bright);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.pf-v5-c-form-control input,
+.pf-v5-c-form-control select {
+  min-height: 48px;
+  color: var(--llmm-fg);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.pf-v5-c-form-control input:focus,
+.pf-v5-c-form-control select:focus {
+  outline: none;
+}
+
+.pf-v5-c-form-control:focus-within {
+  border-color: var(--llmm-accent);
+  box-shadow: 0 0 0 1px rgba(232, 232, 230, 0.44);
+}
+
+.pf-v5-c-input-group {
+  gap: 0;
+}
+
+.pf-v5-c-button.pf-m-control {
+  min-height: 50px;
+  color: var(--llmm-muted);
+  background: rgba(5, 5, 5, 0.72);
+  border: 1px solid var(--llmm-line-bright);
+  border-left: 0;
+  border-radius: 0;
+}
+
+.pf-v5-c-button.pf-m-control:hover,
+.pf-v5-c-button.pf-m-control:focus {
+  color: var(--llmm-fg);
+  background: rgba(232, 232, 230, 0.08);
+}
+
+.pf-v5-c-helper-text,
+.pf-v5-c-helper-text__item-text,
+.pf-v5-c-helper-text__item-text a,
+#kc-info-wrapper,
+#kc-info-wrapper a {
+  color: var(--llmm-muted);
+  font-size: 13px;
+}
+
+a {
+  color: var(--llmm-accent);
+  text-decoration: none;
+}
+
+a:hover,
+a:focus {
+  color: var(--llmm-fg);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.pf-v5-c-form__actions {
+  margin-top: 8px;
+}
+
+#kc-login,
+.pf-v5-c-button.pf-m-primary {
+  min-height: 52px;
+  color: var(--llmm-bg);
+  background: var(--llmm-accent);
+  border: 1px solid var(--llmm-accent);
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: background-color 130ms ease, border-color 130ms ease, color 130ms
+    ease;
+}
+
+#kc-login:hover,
+#kc-login:focus,
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-v5-c-button.pf-m-primary:focus {
+  color: var(--llmm-fg);
+  background: transparent;
+}
+
+.pf-v5-c-button.pf-m-secondary,
+#try-another-way {
+  min-height: 48px;
+  color: var(--llmm-fg);
+  background: transparent;
+  border: 1px solid var(--llmm-line-bright);
+  border-radius: 0;
+}
+
+.pf-v5-c-alert {
+  color: var(--llmm-fg);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--llmm-line-bright);
+  border-radius: 0;
+}
+
+.pf-v5-c-alert.pf-m-danger {
+  border-color: rgba(255, 122, 122, 0.52);
+}
+
+.pf-v5-c-alert.pf-m-success {
+  border-color: rgba(100, 214, 165, 0.52);
+}
+
+.pf-v5-c-alert__title,
+.kc-feedback-text,
+.pf-v5-c-helper-text__item.pf-m-error,
+.pf-v5-c-helper-text__item.pf-m-error .pf-v5-c-helper-text__item-text {
+  color: var(--llmm-danger);
+}
+
+.pf-v5-c-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.pf-v5-c-check__input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--llmm-accent);
+}
+
+.pf-v5-c-login__main-footer,
+.pf-v5-c-login__main-footer-band {
+  margin-top: 22px;
+}
+
+.pf-v5-c-login__main-footer-links,
+.pf-v5-c-login__main-footer-links-item {
+  width: 100%;
+}
+
+.pf-v5-c-login__main-footer-links-item-link {
+  min-height: 48px;
+  justify-content: center;
+  color: var(--llmm-fg);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--llmm-line-bright);
+  border-radius: 0;
+}
+
+.kc-logo-text {
+  display: none;
+}
+
+#kc-attempted-username {
+  color: var(--llmm-fg);
+}
+
+@media (max-width: 900px) {
+  .pf-v5-c-login {
+    padding: 28px 18px;
+  }
+
+  .pf-v5-c-login__container {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "main";
+    gap: 26px;
+  }
+
+  .pf-v5-c-login__header {
+    min-height: auto;
+    padding: 18px 0 0;
+    border-left: 0;
+  }
+
+  .pf-v5-c-login__header::before {
+    margin-bottom: 20px;
+  }
+
+  .pf-v5-c-login__header::after {
+    margin-top: 18px;
+    font-size: 14px;
+  }
+
+  .pf-v5-c-login__main {
+    padding: 26px 22px;
+  }
+}
+
+@media (max-width: 520px) {
+  .pf-v5-c-login {
+    padding: 22px 14px;
+  }
+
+  .pf-v5-c-login__main {
+    padding: 24px 18px;
+  }
+
+  #kc-page-title {
+    font-size: 25px;
+  }
+}

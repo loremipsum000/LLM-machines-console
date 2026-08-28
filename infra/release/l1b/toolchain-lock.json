@@ -1,0 +1,92 @@
+{
+  "schema": "llm-machines.vm103-l1b-toolchain-lock.v1",
+  "status": "LOCKED_SOURCE_TOOLCHAIN",
+  "containsCredentials": false,
+  "platform": "linux/amd64",
+  "installationMediaSha256": "0b813535dd76f2ea96eff908c65e8521512c92a0631fd41c95756ffd7d4896dc",
+  "hostTools": [
+    {
+      "id": "node",
+      "version": "22.23.2",
+      "url": "https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-x64.tar.xz",
+      "sha256": "d60acfe00a2932254bb0ad20e01b0d74397a0875595de719654b214f4b03f307"
+    },
+    {
+      "id": "pnpm",
+      "version": "10.0.0",
+      "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.0.0.tgz",
+      "sha256": "43abf6e720fb7bc53c591b0862605c7d323d0a9d2dd33bcac07b062e13cf4948"
+    },
+    { "id": "zstd", "version": "1.5.7", "source": "debian" },
+    {
+      "id": "dnsmasq",
+      "version": "2.91-1+deb13u1",
+      "binaryVersion": "2.91",
+      "url": "https://deb.debian.org/debian/pool/main/d/dnsmasq/dnsmasq-base_2.91-1%2bdeb13u1_amd64.deb",
+      "sha256": "32fe2686b0adbe31dbedfadeea7eee8e47785e0ab39ffa9f655ca1bd7ba25d55"
+    },
+    {
+      "id": "iproute2",
+      "version": "6.15.0-1",
+      "binaryVersion": "ip utility, iproute2-6.15.0",
+      "url": "https://deb.debian.org/debian/pool/main/i/iproute2/iproute2_6.15.0-1_amd64.deb",
+      "sha256": "7b2dcade4a83ded723fcab21c5a53c47f29352c9c5e1661a089a1e481b3fb48a"
+    }
+  ],
+  "dockerPackages": [
+    {
+      "id": "docker-ce",
+      "version": "5:29.5.3-1~debian.13~trixie",
+      "url": "https://download.docker.com/linux/debian/dists/trixie/pool/stable/amd64/docker-ce_29.5.3-1~debian.13~trixie_amd64.deb",
+      "sha256": "b6006c672ce4c429a00f43b6575e37268a6f5aff219a7ffa8968f6bbc0408289"
+    },
+    {
+      "id": "docker-ce-cli",
+      "version": "5:29.5.3-1~debian.13~trixie",
+      "url": "https://download.docker.com/linux/debian/dists/trixie/pool/stable/amd64/docker-ce-cli_29.5.3-1~debian.13~trixie_amd64.deb",
+      "sha256": "495a277f4d5185a6a4a5e70e765dd47fcd7ee357cd97d3a5c850fec547f57c25"
+    },
+    {
+      "id": "containerd.io",
+      "version": "2.2.0-2~debian.13~trixie",
+      "url": "https://download.docker.com/linux/debian/dists/trixie/pool/stable/amd64/containerd.io_2.2.0-2~debian.13~trixie_amd64.deb",
+      "sha256": "d4db76f71f45b3fc643165246db247f6ddfb3af20f29c54c17d62dc027d4f3e7"
+    },
+    {
+      "id": "docker-buildx-plugin",
+      "version": "0.34.1-1~debian.13~trixie",
+      "url": "https://download.docker.com/linux/debian/dists/trixie/pool/stable/amd64/docker-buildx-plugin_0.34.1-1~debian.13~trixie_amd64.deb",
+      "sha256": "7c069da2541563b78b5f440292058f69e4742a31d491936842019f4e26ced2e1"
+    }
+  ],
+  "containerTools": [
+    {
+      "id": "buildkit",
+      "version": "0.30.0",
+      "repository": "docker.io/moby/buildkit",
+      "indexDigest": "sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+      "platformDigest": "sha256:57269d1784e49b46228c45a1a1b870fbe40e0a639ab60b37b032d83af5bccdfc"
+    },
+    {
+      "id": "skopeo",
+      "version": "1.20.0",
+      "repository": "quay.io/skopeo/stable",
+      "indexDigest": "sha256:47853bb9fb24202af9110531ebd6e43c5f97701254ca290596640290d17942f4",
+      "platformDigest": "sha256:9c68e585103448f7e4abb835132ffe9759d7a962a0fa426035775956e7a1e021"
+    },
+    {
+      "id": "syft",
+      "version": "1.50.0",
+      "repository": "ghcr.io/anchore/syft",
+      "indexDigest": "sha256:1288ea4c8b38767b4e620c1e312c8cb26b6e887a99b4f07ab6cd19fc6f225026",
+      "platformDigest": "sha256:5145aaf0384ca6db481c95e093e5c3b31a3b3f3af3dd3aadfb7529df88578019"
+    },
+    {
+      "id": "trivy",
+      "version": "0.73.0",
+      "repository": "ghcr.io/aquasecurity/trivy",
+      "indexDigest": "sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c",
+      "platformDigest": "sha256:4bbf3824d974b70f27631005e2e6194d4d8fbd6e72c4a9e04cf521e25c5cb07f"
+    }
+  ]
+}

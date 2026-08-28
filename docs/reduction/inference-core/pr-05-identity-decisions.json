@@ -1,0 +1,344 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-05",
+  "scope": "identity-authorization-emergency-recovery",
+  "contractBaseCommit": "9c502a6d4d79435f469288aa66001db7c4be4aa5",
+  "laneAnchorCommit": "9c502a6d4d79435f469288aa66001db7c4be4aa5",
+  "operationPolicy": {
+    "addedSourcePaths": [
+      "apps/bff/src/auth/authorization.ts",
+      "apps/bff/src/auth/runtime-live-authority.ts",
+      "apps/bff/src/services/emergency-recovery.ts",
+      "apps/bff/src/services/identity-mutation-journal.ts",
+      "packages/contracts/src/inference-core-recovery.ts"
+    ],
+    "changedSourcePaths": [
+      "apps/bff/src/auth/keycloak-jwt.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/services/admin-audit.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-inference.ts",
+      "apps/bff/src/services/admin-overview.ts",
+      "apps/bff/src/services/admin-settings-core.ts",
+      "apps/bff/src/services/admin-team.ts",
+      "apps/bff/src/services/idempotency.ts",
+      "apps/bff/src/services/inference-core-keycloak-admin.ts",
+      "apps/bff/src/services/inference-core-retention.ts",
+      "apps/bff/src/services/users.ts",
+      "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+      "apps/web/src/components/console-v2/console-v2-sections.ts",
+      "apps/web/src/components/console-v2/console-v2-shell.tsx",
+      "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "apps/web/src/components/console-v2/team-v2-experience.tsx",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "apps/web/src/lib/auth/auth.ts",
+      "apps/web/src/lib/auth/role-claims.ts",
+      "apps/web/src/lib/auth/session.ts",
+      "apps/web/src/lib/auth/token-refresh.ts",
+      "apps/web/src/middleware.ts",
+      "package.json",
+      "packages/contracts/src/common.ts",
+      "packages/contracts/src/index.ts",
+      "packages/contracts/src/inference-core.ts"
+    ],
+    "deletedSourcePaths": ["apps/bff/src/auth/persona.ts"],
+    "addedRepositoryPaths": [
+      "apps/bff/src/auth/authorization-security.test.ts",
+      "apps/bff/src/auth/authorization.ts",
+      "apps/bff/src/auth/keycloak-jwt-token-type.test.ts",
+      "apps/bff/src/auth/runtime-live-authority.test.ts",
+      "apps/bff/src/auth/runtime-live-authority.ts",
+      "apps/bff/src/db/inference-core-client.test.ts",
+      "apps/bff/src/routes/admin-authorization.test.ts",
+      "apps/bff/src/routes/admin-csv-body-limit.test.ts",
+      "apps/bff/src/routes/admin-recovery.test.ts",
+      "apps/bff/src/services/admin-team-live-authority.test.ts",
+      "apps/bff/src/services/emergency-recovery.test.ts",
+      "apps/bff/src/services/emergency-recovery.ts",
+      "apps/bff/src/services/identity-mutation-journal.test.ts",
+      "apps/bff/src/services/identity-mutation-journal.ts",
+      "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+      "apps/web/src/lib/auth/session.test.ts",
+      "docs/reduction/inference-core/pr-05-identity-decisions.json",
+      "infra/keycloak/README.md",
+      "infra/keycloak/inference-core-commissioning.json",
+      "infra/keycloak/inference-core-realm-seed.json",
+      "packages/contracts/src/inference-core-recovery.test.ts",
+      "packages/contracts/src/inference-core-recovery.ts",
+      "scripts/inference-core/pr05-boundaries.test.mjs",
+      "scripts/inference-core/pr05-contract-revision.mjs",
+      "scripts/inference-core/pr05-keycloak-seed.mjs",
+      "scripts/inference-core/pr05-keycloak-seed.test.mjs",
+      "test-support/inference-core-db-tests/src/pr05-emergency-recovery.test.ts",
+      "test-support/inference-core-db-tests/src/pr05-identity-mutation-journal.test.ts"
+    ],
+    "changedRepositoryPaths": [
+      ".env.example",
+      "apps/bff/src/auth/keycloak-jwt.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.test.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.test.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin.test.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/app-gateway-boundary.test.ts",
+      "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "apps/bff/src/services/admin-audit.ts",
+      "apps/bff/src/services/admin-connected-apps-atomicity.test.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-inference.ts",
+      "apps/bff/src/services/admin-overview.ts",
+      "apps/bff/src/services/admin-settings-core.ts",
+      "apps/bff/src/services/admin-team.ts",
+      "apps/bff/src/services/expert-capabilities.test.ts",
+      "apps/bff/src/services/idempotency.ts",
+      "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
+      "apps/bff/src/services/inference-core-keycloak-admin.ts",
+      "apps/bff/src/services/inference-core-retention.ts",
+      "apps/bff/src/services/users.test.ts",
+      "apps/bff/src/services/users.ts",
+      "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+      "apps/web/src/components/console-v2/console-v2-sections.ts",
+      "apps/web/src/components/console-v2/console-v2-shell.test.tsx",
+      "apps/web/src/components/console-v2/console-v2-shell.tsx",
+      "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "apps/web/src/components/console-v2/team-v2-experience.tsx",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "apps/web/src/lib/auth/auth.ts",
+      "apps/web/src/lib/auth/role-claims.test.ts",
+      "apps/web/src/lib/auth/role-claims.ts",
+      "apps/web/src/lib/auth/session.ts",
+      "apps/web/src/lib/auth/token-refresh.test.ts",
+      "apps/web/src/lib/auth/token-refresh.ts",
+      "apps/web/src/middleware.test.ts",
+      "apps/web/src/middleware.ts",
+      "docs/reduction/inference-core/README.md",
+      "infra/migrations/0000_inference_core.sql",
+      "package.json",
+      "packages/contracts/src/common.ts",
+      "packages/contracts/src/index.ts",
+      "packages/contracts/src/inference-core.test.ts",
+      "packages/contracts/src/inference-core.ts",
+      "scripts/inference-core/guardrails.mjs",
+      "scripts/inference-core/guardrails.test.mjs",
+      "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "test-support/inference-core-db-tests/src/idempotency.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-retention.test.ts"
+    ],
+    "deletedRepositoryPaths": [
+      "apps/bff/src/auth/persona-security.test.ts",
+      "apps/bff/src/auth/persona.ts"
+    ]
+  },
+  "resolverFingerprints": [
+    {
+      "path": "apps/bff/src/auth/authorization.ts",
+      "symbol": "<file>",
+      "sha256": "003776367928a1bebcc77b2f181393eb63eb6651dcaa4085135a3da11b557470"
+    },
+    {
+      "path": "apps/bff/src/auth/runtime-live-authority.ts",
+      "symbol": "<file>",
+      "sha256": "0ca02d54900a9f645b0abad5269164fbdf97affd2d3f67126d7c5fa158169799"
+    },
+    {
+      "path": "apps/bff/src/index.ts",
+      "symbol": "<file>",
+      "sha256": "cc35892e495e0701a4b55bd4c77a009762f8d7b92068a1e3741adf100e95a4e4"
+    },
+    {
+      "path": "apps/web/next.config.ts",
+      "symbol": "<file>",
+      "sha256": "58f841f6ee4170e90c110e33727d85dabe6a2c096784b05940319d770a958f8b"
+    },
+    {
+      "path": "apps/web/src/lib/auth/auth.ts",
+      "symbol": "<file>",
+      "sha256": "142c783a7ab90c05a56bad8c2283f8cb4b900cc9eb7b32624697bc71f4ff8b66"
+    }
+  ],
+  "reviewStatus": "reviewed",
+  "reviewedDispositions": {
+    "humanAuthorization": {
+      "roles": ["admin", "operator"],
+      "rankedPersonasRetained": false,
+      "serverAuthorization": "explicit-capability-default-deny",
+      "liveRoleResolution": {
+        "source": "keycloak-current-user-and-realm-role-state",
+        "cache": "none",
+        "keycloakUnavailable": "fail-closed"
+      },
+      "webRoleRefresh": "replace-from-current-token-never-merge-stale-authority"
+    },
+    "delegatedKeycloakAdministration": {
+      "customerAdminClass": "delegated-realm-administrator",
+      "allowedBuiltInNavigationRoles": ["query-users", "query-groups"],
+      "forbiddenBypassRoles": [
+        "admin",
+        "realm-admin",
+        "manage-realm",
+        "manage-users",
+        "manage-clients"
+      ],
+      "nativeOperatorVisibility": "read-only",
+      "nativeOperatorMutations": "denied",
+      "operatorMutations": "console-only",
+      "masterRealmAuthority": false,
+      "humanAndApplicationClientAdministrationSeparated": true
+    },
+    "emergencyRecovery": {
+      "purpose": "admin-lockout-recovery-while-keycloak-and-control-plane-are-healthy",
+      "factorScope": "one-per-appliance",
+      "factorHolder": "customer-offline",
+      "plaintextPersistence": false,
+      "oneTimeDisplay": true,
+      "eligibleActors": "enabled-operators-with-current-live-operator-role",
+      "reauthenticationMaximumAgeSeconds": 300,
+      "mfaProofRequired": true,
+      "reasonCodes": ["admin_lockout", "admin_role_repair", "admin_mfa_repair"],
+      "activationAbuseControl": {
+        "concurrentVerifierCapacity": 1,
+        "admittedAttemptsPerSubject": 5,
+        "windowSeconds": 60,
+        "subjectStateCapacity": 1024,
+        "implementation": "process-local",
+        "qualification": {
+          "workPackage": "PR-12",
+          "exactBffProcessCount": 1,
+          "multiReplicaRequires": "postgresql-backed-atomic-counter-and-lease"
+        }
+      },
+      "sessionTtlSeconds": 900,
+      "renewalAllowed": false,
+      "maximumConcurrentSessions": 1,
+      "restartSafeExpiry": true,
+      "explicitRevocation": true,
+      "automaticExpiry": true,
+      "grantedAuthority": "console-admin-capabilities",
+      "persistentKeycloakAdminRole": false,
+      "nativeExpertAccess": false
+    },
+    "lastOperatorProtection": {
+      "console": "deny-disable-delete-or-role-removal-of-last-enabled-operator",
+      "nativeKeycloak": "operators-and-operators-group-not-mutable-by-customer-admin",
+      "customKeycloakExtension": false
+    },
+    "auditAndReconciliation": {
+      "metadataOnly": true,
+      "freeTextRecoveryReason": false,
+      "durableIntentBeforeExternalIdentityMutation": true,
+      "ambiguousCompletion": "reconciliation-required-no-automatic-reexecution"
+    },
+    "identityMutationBounds": {
+      "maximumUnresolvedMutations": 1,
+      "cooperativeDeadlineMs": 30000,
+      "queueAcquireTimeoutMs": 2000,
+      "teamBatchMaxItems": 100,
+      "csvContractMaxBytes": 245760,
+      "csvRouteBodyMaxBytes": 262144
+    },
+    "packageBoundaries": {
+      "pr05": [
+        "human-authorization",
+        "delegated-keycloak-logical-seed",
+        "bootstrap-admin-and-first-operator-commissioning",
+        "emergency-recovery",
+        "identity-mutation-audit-producer"
+      ],
+      "pr06": [
+        "application-oauth-client-lifecycle",
+        "application-credential-reconciliation"
+      ],
+      "pr09": ["cross-system-audit-ingestion", "signed-audit-export"],
+      "pr12": ["deterministic-runtime-packaging-of-keycloak-seed"]
+    }
+  },
+  "target": {
+    "findingEntriesDueByPr05": 0,
+    "fs109LegacyPersonaFindingEntries": 0,
+    "fs105BuilderHubTombstones": [
+      {
+        "path": "apps/web/src/middleware.test.ts",
+        "removeBy": "PR-12"
+      }
+    ],
+    "legacyRoutes": 0,
+    "routes": 83,
+    "routeClassifications": {
+      "current-console-seam": 74,
+      "operational-auth": 4,
+      "private-operational": 3,
+      "required-now": 2
+    },
+    "recoveryRoutes": [
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/recovery/factor/commission",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/recovery/sessions",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/recovery/sessions/:id/revoke",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "GET",
+        "path": "/api/admin/recovery/status",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      }
+    ],
+    "adminOnlyRoutePolicyKeys": [
+      "GET /api/admin/recovery/status",
+      "POST /api/admin/recovery/factor/commission",
+      "POST /api/admin/settings/organization",
+      "POST /api/admin/settings/telemetry"
+    ],
+    "fastifyRegistrars": [
+      {
+        "exportName": "registerAdminRoutes",
+        "importSource": "./routes/admin",
+        "sourcePath": "apps/bff/src/routes/admin.ts"
+      },
+      {
+        "exportName": "registerAppGatewayRoutes",
+        "importSource": "./routes/app-gateway",
+        "sourcePath": "apps/bff/src/routes/app-gateway.ts"
+      },
+      {
+        "exportName": "registerAuthorization",
+        "importSource": "./auth/authorization",
+        "sourcePath": "apps/bff/src/auth/authorization.ts"
+      }
+    ],
+    "webInferenceConsumers": 0,
+    "escapeHatchPaths": []
+  },
+  "webAuthenticationEvidence": [
+    {
+      "path": "apps/web/src/middleware.test.ts",
+      "sha256": "40e62e44aaddcbc2a3a6f5f2602751405e3c5dc23244ee218fb9cedaa257aec5"
+    },
+    {
+      "path": "apps/web/src/middleware.ts",
+      "sha256": "c31e5f8b645586166ad3e1a829adb4384a96e80cd218b26be61574b61117fc84"
+    }
+  ]
+}

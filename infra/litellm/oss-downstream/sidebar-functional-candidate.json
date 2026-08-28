@@ -1,0 +1,66 @@
+{
+  "schema": "llm-machines.litellm-oss-functional-candidate.v1",
+  "status": "VM103_FUNCTIONAL_CANDIDATE_RELEASE_UNADMITTED",
+  "containsCredentials": false,
+  "runtimeQualified": false,
+  "releaseAdmitted": false,
+  "baseSourcePackage": "infra/litellm/oss-downstream/source-package.json",
+  "baseVersion": "v1.96.2-llmm.1",
+  "version": "v1.96.2-llmm.2",
+  "platform": "linux/amd64",
+  "sourceRevision": "83d6d84bfb7abbbff70d456bc89028d426db8c33",
+  "overlay": {
+    "path": "infra/litellm/oss-downstream/patches/sidebar-functional-candidate.patch",
+    "sha256": "01206a6e02bc2debb6c56f3e35381bd5e2c58726ea4e56cfaa7e2c20833dde59",
+    "scope": [
+      "hide retired native sidebar entries",
+      "bump downstream UI build identity",
+      "bump downstream OCI label",
+      "restrict Admin metadata reads to proxy_admin",
+      "exclude retired agent metadata",
+      "remove general configuration and Enterprise audit UI dependencies"
+    ]
+  },
+  "sourceInventory": {
+    "fileCount": 9019,
+    "sha256SumsSha256": "996127beb403a87cf89f9695cad7dd104cfbfb287f62f3028c5bfad00449dc04",
+    "inventoryDocumentSha256": "7bfd37be1892a7c5cd599ed09d6e63b7395aa7594019c32cbcd131d17a19b302"
+  },
+  "labArtifact": {
+    "evidenceStatus": "SINGLE_VM103_FUNCTIONAL_BUILD_NOT_RELEASE_EVIDENCE",
+    "buildCount": 1,
+    "configDigest": "sha256:ffdcf982db0992bb106d64c2b1b6a7120d7b549a53ca9a02aa640e11163ab145",
+    "imageBytes": 1144519133,
+    "os": "linux",
+    "architecture": "amd64",
+    "enterpriseMaterial": false,
+    "deterministicRebuildCompared": false,
+    "completeReleaseEvidence": false
+  },
+  "productBoundary": {
+    "removedNavigation": [
+      "Agents",
+      "Workflow Runs",
+      "Memory",
+      "MCP Servers",
+      "Skills",
+      "Search Tools",
+      "Vector Stores",
+      "Tool Policies",
+      "AI Hub"
+    ],
+    "consoleSessionForwarding": false,
+    "nativeOidcPreserved": true,
+    "operatorPages": ["api-keys", "new_usage"],
+    "adminMetadataReads": [
+      "model_group_info",
+      "model_info_v2",
+      "spend_logs_ui"
+    ],
+    "deniedDependencies": [
+      "config_list",
+      "spend_log_detail",
+      "enterprise_audit_preview"
+    ]
+  }
+}

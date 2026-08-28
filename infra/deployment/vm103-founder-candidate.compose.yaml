@@ -1,0 +1,75 @@
+services:
+  web:
+    image: ${LLMM_WEB_IMAGE:?exact Web image required}
+    container_name: llmm-founder-candidate-web
+    network_mode: host
+    restart: unless-stopped
+    env_file:
+      - ${LLMM_CONFIGURATION_ROOT:?configuration root required}/web.env
+    environment:
+      LLMM_RUNTIME_SECRET_FILES: CONSOLE_BFF_SERVICE_API_KEY=/run/secrets/llmm_bff_service_api_key
+    volumes:
+      - ${LLMM_SECRET_ROOT:?secret root required}/bff-service-api-key:/run/secrets/llmm_bff_service_api_key:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:34954/',{redirect:'manual'}).then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+
+  bff:
+    image: ${LLMM_BFF_IMAGE:?exact BFF image required}
+    container_name: llmm-founder-candidate-bff
+    network_mode: host
+    restart: unless-stopped
+    extra_hosts:
+      - "firecrawl-api:127.0.0.1"
+    env_file:
+      - ${LLMM_CONFIGURATION_ROOT}/runtime-import.env
+      - ${LLMM_CONFIGURATION_ROOT:?configuration root required}/bff.env
+    environment:
+      EMERGENCY_ISOLATION_MARKER_DIRECTORY: /run/llm-machines/non-restorable-isolation
+      LLMM_RUNTIME_SECRET_FILES: BFF_SERVICE_API_KEY=/run/secrets/llmm_bff_service_api_key,CONSOLE_OIDC_CLIENT_SECRET=/run/secrets/llmm_console_oidc_client_secret,DATABASE_URL=/run/secrets/llmm_database_url,LITELLM_KEY=/run/secrets/llmm_litellm_key,ADMIN_LITELLM_API_KEY=/run/secrets/llmm_litellm_key,KEYCLOAK_ADMIN_CLIENT_SECRET=/run/secrets/llmm_keycloak_admin_client_secret,KEYCLOAK_APPLICATION_ADMIN_CLIENT_SECRET=/run/secrets/llmm_keycloak_application_admin_client_secret
+    volumes:
+      - ${LLMM_SECRET_ROOT}/bff-service-api-key:/run/secrets/llmm_bff_service_api_key:ro
+      - ${LLMM_SECRET_ROOT}/console-oidc-client-secret:/run/secrets/llmm_console_oidc_client_secret:ro
+      - ${LLMM_SECRET_ROOT}/database-url:/run/secrets/llmm_database_url:ro
+      - ${LLMM_SECRET_ROOT}/litellm-key:/run/secrets/llmm_litellm_key:ro
+      - ${LLMM_SECRET_ROOT}/keycloak-admin-client-secret:/run/secrets/llmm_keycloak_admin_client_secret:ro
+      - ${LLMM_SECRET_ROOT}/keycloak-application-admin-client-secret:/run/secrets/llmm_keycloak_application_admin_client_secret:ro
+      - ${LLMM_CONFIGURATION_ROOT}/session-keyring.json:/run/llm-machines/session-keyring.json:ro
+      - ${LLMM_CONFIGURATION_ROOT}/edge-ca.crt:/run/llm-machines/edge-ca.crt:ro
+      - ${LLMM_CONFIGURATION_ROOT}/non-restorable-isolation:/run/llm-machines/non-restorable-isolation
+      - ${LLMM_INFERENCE_MODEL_ADMISSION_DIR:?admission directory required}:/run/llm-machines/inference-admission:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:44294/readyz').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+
+  edge:
+    image: ${LLMM_EDGE_IMAGE:?exact edge image required}
+    container_name: llmm-founder-candidate-edge
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+      bff:
+        condition: service_healthy
+    volumes:
+      - ${LLMM_CONFIGURATION_ROOT}/product-edge.nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${LLMM_SOURCE_ROOT:?source root required}/infra/ingress/proxy-common.inc:/etc/nginx/llm-machines/proxy-common.inc:ro
+      - ${LLMM_SOURCE_ROOT}/infra/ingress/request-safety.inc:/etc/nginx/llm-machines/request-safety.inc:ro
+      - ${LLMM_SOURCE_ROOT}/infra/ingress/request-headers-console-browser.inc:/etc/nginx/llm-machines/request-headers-console-browser.inc:ro
+      - ${LLMM_SOURCE_ROOT}/infra/ingress/request-headers-customer-api.inc:/etc/nginx/llm-machines/request-headers-customer-api.inc:ro
+      - ${LLMM_SOURCE_ROOT}/infra/ingress/request-headers-identity-browser.inc:/etc/nginx/llm-machines/request-headers-identity-browser.inc:ro
+      - ${LLMM_SOURCE_ROOT}/infra/ingress/request-headers-grafana-browser.inc:/etc/nginx/llm-machines/request-headers-grafana-browser.inc:ro
+      - ${LLMM_SOURCE_ROOT}/infra/ingress/request-headers-litellm-browser.inc:/etc/nginx/llm-machines/request-headers-litellm-browser.inc:ro
+      - ${LLMM_SOURCE_ROOT}/infra/ingress/request-headers-keycloak-admin-browser.inc:/etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc:ro
+      - ${LLMM_CONFIGURATION_ROOT}/edge.crt:/run/secrets/llmm_edge_tls_certificate:ro
+      - ${LLMM_CONFIGURATION_ROOT}/edge.key:/run/secrets/llmm_edge_tls_private_key:ro
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 10s
+      timeout: 3s
+      retries: 12

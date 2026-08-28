@@ -1,10 +1,10 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import type {
   AdminHardwareChart,
   AdminHardwareUnit,
-} from "@llm-machines/contracts"
+} from "@llm-machines/contracts/inference-core"
+import dynamic from "next/dynamic"
 
 const chartColors = [
   "#009fff",
@@ -426,6 +426,15 @@ function formatAxisValue(value: number, unit: AdminHardwareUnit): string {
   if (unit === "watt") {
     return `${Math.round(value)} W`
   }
+  if (unit === "rpm") {
+    return `${Math.round(value)} RPM`
+  }
+  if (unit === "kilowatt_hour") {
+    return `${value.toFixed(1)} kWh`
+  }
+  if (unit === "state") {
+    return String(Math.round(value))
+  }
   return `${Math.round(value)}%`
 }
 
@@ -441,6 +450,15 @@ function formatMetricValue(value: number, unit: AdminHardwareUnit): string {
   }
   if (unit === "watt") {
     return `${Math.round(value)} W`
+  }
+  if (unit === "rpm") {
+    return `${Math.round(value).toLocaleString("en-US")} RPM`
+  }
+  if (unit === "kilowatt_hour") {
+    return `${value.toFixed(1)} kWh`
+  }
+  if (unit === "state") {
+    return String(Math.round(value))
   }
   return `${Math.round(value)}%`
 }

@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation"
+import { renderOverviewConsoleRoute } from "@/lib/admin/console-v2-routes-core"
 
 export const dynamic = "force-dynamic"
 
-export default function HomePage() {
-  redirect("/knowledge")
+export default async function HomePage() {
+  return renderOverviewConsoleRoute()
 }

@@ -1,25 +1,21 @@
 import { createHash } from "node:crypto"
-import type {
-  AdminInferenceDashboard,
-  AdminInferenceModel,
-  AdminInferenceModelUpdate,
-  AdminInferenceModelUpdateActionResponse,
-  AdminInferenceModelUsage,
-  AdminInferenceRange,
-  AdminInferenceUsagePoint,
-  AdminInferenceVirtualKey,
-  ApplyAdminInferenceModelUpdateRequest,
-  HubSourceStatus,
-} from "@llm-machines/contracts"
-import { personaCanAccess } from "@llm-machines/contracts"
-import type { Actor } from "../auth/persona"
-import { canUseBffFixtureData } from "../config/fixture-mode"
+import {
+  type AdminInferenceDashboard,
+  type AdminInferenceModel,
+  type AdminInferenceModelUsage,
+  type AdminInferenceRange,
+  type AdminInferenceUsagePoint,
+  type AdminInferenceVirtualKey,
+  type InferenceCoreSourceStatus,
+  aggregateInferenceCoreSourceStatus,
+} from "@llm-machines/contracts/inference-core"
+import type { Actor } from "../auth/authorization"
 import {
   LiteLlmAdminClient,
   liteLlmConfig,
   liteLlmDateWindow,
 } from "./admin-litellm-client"
-import { emitAudit } from "./audit"
+import { getAuthoritativeModelInventory } from "./model-admission-inventory"
 
 interface InferenceQueryOptions {
   range?: string
@@ -27,12 +23,12 @@ interface InferenceQueryOptions {
 
 interface LiteLlmReadResult<T> {
   data: T | null
-  status: HubSourceStatus
+  status: InferenceCoreSourceStatus
 }
 
 interface ActivityReadModel {
   modelUsage: AdminInferenceModelUsage[]
-  totals: AdminInferenceDashboard["totals"]
+  totals: NonNullable<AdminInferenceDashboard["totals"]>
   usagePoints: AdminInferenceUsagePoint[]
 }
 
@@ -44,24 +40,31 @@ const RANGE_DAYS: Record<AdminInferenceRange, number> = {
 }
 const VIRTUAL_KEY_PAGE_SIZE = 100
 const VIRTUAL_KEY_MAX_PAGES = 50
+const VIRTUAL_KEY_MAX_COUNT = VIRTUAL_KEY_PAGE_SIZE * VIRTUAL_KEY_MAX_PAGES
+const VIRTUAL_KEY_MAX_AGGREGATE_BYTES = 8 * 1024 * 1024
+const VIRTUAL_KEY_READ_DEADLINE_MS = 10_000
+const VIRTUAL_KEY_ID_DOMAIN =
+  "llm-machines:admin-inference:litellm-virtual-key:v1\0"
+const VIRTUAL_KEY_ALIAS_MAX_LENGTH = 160
+const VIRTUAL_KEY_OWNER_MAX_LENGTH = 254
+const VIRTUAL_KEY_TEAM_MAX_LENGTH = 160
+const VIRTUAL_KEY_MODEL_MAX_LENGTH = 160
+const VIRTUAL_KEY_MODEL_MAX_COUNT = 100
 
 export async function getAdminInference(
   actor: Actor,
   options: InferenceQueryOptions = {},
 ): Promise<AdminInferenceDashboard> {
-  if (!personaCanAccess(actor.persona, "admin")) {
-    throw new Error("Admin inference requires admin persona.")
+  if (actor.role !== "admin" && actor.role !== "operator") {
+    throw new Error("Admin inference requires Admin or Operator access.")
   }
-
   const range = parseInferenceRange(options.range)
   const generatedAt = new Date()
   const config = liteLlmConfig()
-  const modelUpdate = readModelUpdate()
 
   if (!config) {
     return emptyInferenceDashboard({
       generatedAt,
-      modelUpdate,
       range,
       sourceStatus: "not_configured",
       summary:
@@ -71,143 +74,41 @@ export async function getAdminInference(
 
   const client = new LiteLlmAdminClient(config)
   const window = liteLlmDateWindow(RANGE_DAYS[range])
-  const activity = await readActivity(client, window)
-  const spendLogs = await readSpendLogs(client, window)
-  const models = await readModels(client)
-  const virtualKeys = await readVirtualKeys(client)
+  const [activity, models, virtualKeys] = await Promise.all([
+    readActivity(client, window),
+    readModels(),
+    readVirtualKeys(client),
+  ])
+  const spendLogs =
+    activity.data && activity.data.modelUsage.length > 0
+      ? await readSpendLogs(client, window)
+      : null
   const modelUsage = mergeModelUsage(
     activity.data?.modelUsage ?? [],
-    spendLogs.data ?? [],
+    spendLogs?.data ?? [],
   )
-  const availableModels = modelInventory(models.data, modelUsage)
-  const sourceStatus = aggregateSourceStatus([
+  const sourceStatus = aggregateInferenceCoreSourceStatus([
     activity.status,
-    spendLogs.status,
     models.status,
     virtualKeys.status,
   ])
-  const totals = activity.data?.totals ?? totalsFromModelUsage(modelUsage)
+  const totals = activity.data?.totals ?? null
 
   return {
+    aggregateUsageSourceStatus: activity.status,
     generatedAt: generatedAt.toISOString(),
-    liteLlmUrl: liteLlmPublicUrl(),
-    modelUpdate,
+    liteLlmUrl: null,
+    modelInventorySourceStatus: models.status,
     modelUsage,
-    models: sortModelsByUsage(availableModels, modelUsage),
+    models: sortModelsByUsage(models.data ?? [], modelUsage),
     range,
     sourceStatus,
-    summary: inferenceSummary(totals, sourceStatus, range),
+    summary: inferenceSummary(totals, activity.status, range),
     totals,
     usagePoints: activity.data?.usagePoints ?? [],
     virtualKeys: virtualKeys.data ?? [],
+    virtualKeysSourceStatus: virtualKeys.status,
   }
-}
-
-export async function applyAdminInferenceModelUpdate(
-  actor: Actor,
-  request: ApplyAdminInferenceModelUpdateRequest,
-): Promise<AdminInferenceModelUpdateActionResponse> {
-  if (!personaCanAccess(actor.persona, "admin")) {
-    throw new Error("Admin inference model update requires admin persona.")
-  }
-  if (request.confirmation !== "UPDATE MODEL") {
-    return modelUpdateActionResponse({
-      detail: "Model update confirmation is invalid.",
-      modelUpdate: readModelUpdate(),
-      status: "blocked",
-    })
-  }
-
-  const modelUpdate = readModelUpdate()
-  if (
-    !modelUpdate ||
-    !modelUpdate.updateActionEnabled ||
-    modelUpdate.status !== "available"
-  ) {
-    await emitModelUpdateAudit(actor, "admin.inference.model_update.blocked", {
-      reason: "not_available_or_unconfigured",
-      status: modelUpdate?.status ?? "not_configured",
-    })
-    return modelUpdateActionResponse({
-      detail:
-        "No governed model update adapter is currently available for this appliance.",
-      modelUpdate,
-      status: "blocked",
-    })
-  }
-
-  await emitModelUpdateAudit(actor, "admin.inference.model_update.started", {
-    affectedModels: modelUpdate.affectedModels,
-    availableVersion: modelUpdate.availableVersion,
-    currentVersion: modelUpdate.currentVersion,
-  })
-
-  const outcome = configuredModelUpdateOutcome()
-  if (outcome === "failed") {
-    const failedUpdate: AdminInferenceModelUpdate = {
-      ...modelUpdate,
-      detail:
-        "The governed model update adapter reported a failure. Review appliance updater logs for details.",
-      status: "failed",
-      updateActionEnabled: false,
-    }
-    await emitModelUpdateAudit(actor, "admin.inference.model_update.failed", {
-      affectedModels: modelUpdate.affectedModels,
-      availableVersion: modelUpdate.availableVersion,
-      currentVersion: modelUpdate.currentVersion,
-    })
-    return modelUpdateActionResponse({
-      detail: failedUpdate.detail,
-      modelUpdate: failedUpdate,
-      status: "failed",
-    })
-  }
-
-  if (outcome === "blocked") {
-    const blockedUpdate: AdminInferenceModelUpdate = {
-      ...modelUpdate,
-      detail:
-        "The governed model update adapter blocked the request for this appliance.",
-      status: "blocked",
-      updateActionEnabled: false,
-    }
-    await emitModelUpdateAudit(actor, "admin.inference.model_update.blocked", {
-      affectedModels: modelUpdate.affectedModels,
-      availableVersion: modelUpdate.availableVersion,
-      currentVersion: modelUpdate.currentVersion,
-      reason: "adapter_blocked",
-    })
-    return modelUpdateActionResponse({
-      detail: blockedUpdate.detail,
-      modelUpdate: blockedUpdate,
-      status: "blocked",
-    })
-  }
-
-  if (outcome === "started") {
-    const runningUpdate: AdminInferenceModelUpdate = {
-      ...modelUpdate,
-      detail: "The governed model update adapter started the update.",
-      status: "running",
-      updateActionEnabled: false,
-    }
-    return modelUpdateActionResponse({
-      detail: runningUpdate.detail,
-      modelUpdate: runningUpdate,
-      status: "started",
-    })
-  }
-
-  await emitModelUpdateAudit(actor, "admin.inference.model_update.completed", {
-    affectedModels: modelUpdate.affectedModels,
-    availableVersion: modelUpdate.availableVersion,
-    currentVersion: modelUpdate.currentVersion,
-  })
-  return modelUpdateActionResponse({
-    detail: "The governed model update completed.",
-    modelUpdate: null,
-    status: "completed",
-  })
 }
 
 function parseInferenceRange(range?: string): AdminInferenceRange {
@@ -226,7 +127,7 @@ async function readActivity(
         start_date: window.startDate,
       }),
     )
-    return { data: parseActivity(payload, window), status: "ok" }
+    return { data: parseActivity(payload), status: "ok" }
   } catch {
     return { data: null, status: "unavailable" }
   }
@@ -249,25 +150,28 @@ async function readSpendLogs(
     )
     return { data: parseSpendLogs(payload), status: "ok" }
   } catch {
-    return { data: null, status: "degraded" }
+    return { data: null, status: "unavailable" }
   }
 }
 
-async function readModels(
-  client: LiteLlmAdminClient,
-): Promise<LiteLlmReadResult<AdminInferenceModel[]>> {
-  try {
-    return { data: parseModels(await client.getJson("/model/info")), status: "ok" }
-  } catch {
-    try {
-      return {
-        data: parseModels(await client.getJson("/v1/model/info")),
-        status: "ok",
-      }
-    } catch {
-      return { data: null, status: "degraded" }
+async function readModels(): Promise<LiteLlmReadResult<AdminInferenceModel[]>> {
+  const inventory = await getAuthoritativeModelInventory()
+  if (!inventory.ok) {
+    return {
+      data: null,
+      status:
+        inventory.reason === "not_configured"
+          ? "not_configured"
+          : "unavailable",
     }
   }
+  const admitted = new Set(inventory.aliases)
+  const models = parseModels(inventory.liteLlmModelInfo).filter((model) =>
+    admitted.has(model.name),
+  )
+  return models.length === inventory.aliases.length
+    ? { data: models, status: "ok" }
+    : { data: null, status: "unavailable" }
 }
 
 async function readVirtualKeys(
@@ -276,7 +180,7 @@ async function readVirtualKeys(
   try {
     return { data: await readAllVirtualKeys(client), status: "ok" }
   } catch {
-    return { data: null, status: "degraded" }
+    return { data: null, status: "unavailable" }
   }
 }
 
@@ -284,10 +188,13 @@ async function readAllVirtualKeys(
   client: LiteLlmAdminClient,
 ): Promise<AdminInferenceVirtualKey[]> {
   const keys: AdminInferenceVirtualKey[] = []
-  let page = 1
-  let totalPages: number | null = null
+  const seenIds = new Set<string>()
+  const deadline = AbortSignal.timeout(VIRTUAL_KEY_READ_DEADLINE_MS)
+  let aggregateBytes = 0
+  let expectedTotalCount: number | null = null
+  let expectedTotalPages: number | null = null
 
-  while (page <= (totalPages ?? VIRTUAL_KEY_MAX_PAGES)) {
+  for (let page = 1; page <= VIRTUAL_KEY_MAX_PAGES; page += 1) {
     const payload = await client.getJson(
       "/key/list",
       new URLSearchParams({
@@ -296,43 +203,78 @@ async function readAllVirtualKeys(
         return_full_object: "true",
         size: String(VIRTUAL_KEY_PAGE_SIZE),
       }),
+      {
+        onBytesRead(byteLength) {
+          aggregateBytes += byteLength
+          if (aggregateBytes > VIRTUAL_KEY_MAX_AGGREGATE_BYTES) {
+            throw new Error(
+              "LiteLLM virtual-key responses exceeded the aggregate read limit.",
+            )
+          }
+        },
+        signal: deadline,
+      },
     )
-    const pageRows = arrayPayload(payload)
-    keys.push(...parseVirtualKeys(payload, keys.length))
-    totalPages = totalPages ?? totalPagesFromPayload(payload)
-
-    if (totalPages ? page >= totalPages : pageRows.length < VIRTUAL_KEY_PAGE_SIZE) {
-      break
+    const parsedPage = parseVirtualKeyPage(payload, page)
+    if (expectedTotalCount === null || expectedTotalPages === null) {
+      expectedTotalCount = parsedPage.totalCount
+      expectedTotalPages = parsedPage.totalPages
+      validateVirtualKeyPagination(expectedTotalCount, expectedTotalPages)
+    } else if (
+      parsedPage.totalCount !== expectedTotalCount ||
+      parsedPage.totalPages !== expectedTotalPages
+    ) {
+      throw new Error("LiteLLM virtual-key pagination changed while reading.")
     }
 
-    page += 1
-    if (page > VIRTUAL_KEY_MAX_PAGES) {
+    for (const key of parseVirtualKeys(parsedPage.rows)) {
+      if (seenIds.has(key.id)) {
+        throw new Error("LiteLLM virtual-key pagination contained a duplicate.")
+      }
+      seenIds.add(key.id)
+      keys.push(key)
+    }
+    if (keys.length > expectedTotalCount) {
+      throw new Error("LiteLLM virtual-key pagination exceeded its total.")
+    }
+
+    if (expectedTotalPages === 0 || page === expectedTotalPages) {
       break
     }
   }
 
+  if (expectedTotalCount === null || keys.length !== expectedTotalCount) {
+    throw new Error("LiteLLM virtual-key pagination was incomplete.")
+  }
   return keys
 }
 
-function parseActivity(
-  payload: unknown,
-  window: { endDate: string; startDate: string },
-): ActivityReadModel {
-  if (!isRecord(payload)) {
+function parseActivity(payload: unknown): ActivityReadModel {
+  if (
+    !isRecord(payload) ||
+    !isRecord(payload.metadata) ||
+    !Array.isArray(payload.results)
+  ) {
     throw new Error("Invalid LiteLLM activity response.")
   }
-  const metadata = isRecord(payload.metadata) ? payload.metadata : {}
-  const totals = {
-    requests: Math.trunc(
-      numberField(metadata, "total_api_requests") ||
-        numberField(metadata, "api_requests") ||
-        numberField(metadata, "requests"),
-    ),
-    tokens: Math.trunc(
-      numberField(metadata, "total_tokens") || numberField(metadata, "tokens"),
-    ),
+  const metadata = payload.metadata
+  const requests = nonNegativeNumberFromFields(metadata, [
+    "total_api_requests",
+    "api_requests",
+    "requests",
+  ])
+  const tokens = nonNegativeNumberFromFields(metadata, [
+    "total_tokens",
+    "tokens",
+  ])
+  if (requests === null || tokens === null) {
+    throw new Error("Invalid LiteLLM activity totals.")
   }
-  const results = Array.isArray(payload.results) ? payload.results : []
+  const totals = {
+    requests: Math.trunc(requests),
+    tokens: Math.trunc(tokens),
+  }
+  const results = payload.results
   const usagePoints = results
     .map((item) => activityPoint(item))
     .filter((item): item is AdminInferenceUsagePoint => Boolean(item))
@@ -343,16 +285,7 @@ function parseActivity(
   return {
     modelUsage,
     totals,
-    usagePoints:
-      usagePoints.length > 0
-        ? usagePoints
-        : [
-            {
-              requests: totals.requests,
-              timestamp: dateOnlyToIso(window.endDate),
-              tokens: totals.tokens,
-            },
-          ],
+    usagePoints,
   }
 }
 
@@ -362,20 +295,23 @@ function activityPoint(value: unknown): AdminInferenceUsagePoint | null {
   }
   const metrics = isRecord(value.metrics) ? value.metrics : value
   const timestamp = timestampField(value) ?? timestampField(metrics)
-  if (!timestamp) {
+  const requests = nonNegativeNumberFromFields(metrics, [
+    "total_api_requests",
+    "api_requests",
+    "successful_requests",
+    "requests",
+  ])
+  const tokens = nonNegativeNumberFromFields(metrics, [
+    "total_tokens",
+    "tokens",
+  ])
+  if (!timestamp || requests === null || tokens === null) {
     return null
   }
   return {
-    requests: Math.trunc(
-      numberField(metrics, "total_api_requests") ||
-        numberField(metrics, "api_requests") ||
-        numberField(metrics, "successful_requests") ||
-        numberField(metrics, "requests"),
-    ),
+    requests: Math.trunc(requests),
     timestamp,
-    tokens: Math.trunc(
-      numberField(metrics, "total_tokens") || numberField(metrics, "tokens"),
-    ),
+    tokens: Math.trunc(tokens),
   }
 }
 
@@ -393,22 +329,28 @@ function modelUsageFromActivityResult(
         return null
       }
       const metrics = isRecord(group.metrics) ? group.metrics : group
+      const requests = nonNegativeNumberFromFields(metrics, [
+        "api_requests",
+        "successful_requests",
+        "requests",
+      ])
+      const tokens = nonNegativeNumberFromFields(metrics, [
+        "total_tokens",
+        "tokens",
+      ])
+      if (requests === null || tokens === null) {
+        return null
+      }
       return {
         lastUsedAt,
         model,
-        requests: Math.trunc(
-          numberField(metrics, "api_requests") ||
-            numberField(metrics, "successful_requests") ||
-            numberField(metrics, "requests"),
-        ),
+        requests: Math.trunc(requests),
         spendUsd: nullableNumber(
           numberField(metrics, "spend") ||
             numberField(metrics, "cost") ||
             numberField(metrics, "response_cost"),
         ),
-        tokens: Math.trunc(
-          numberField(metrics, "total_tokens") || numberField(metrics, "tokens"),
-        ),
+        tokens: Math.trunc(tokens),
       }
     })
     .filter((item): item is AdminInferenceModelUsage => Boolean(item))
@@ -469,16 +411,19 @@ function parseSpendLogs(payload: unknown): AdminInferenceModelUsage[] {
 }
 
 function parseModels(payload: unknown): AdminInferenceModel[] {
-  const rows = arrayPayload(payload)
-  return rows
-    .map((row, index) => modelFromRow(row, index))
-    .filter((item): item is AdminInferenceModel => Boolean(item))
+  const rows = strictArrayPayload(payload)
+  const models: AdminInferenceModel[] = []
+  for (const [index, row] of rows.entries()) {
+    const model = modelFromRow(row, index)
+    if (!model) {
+      throw new Error("Invalid LiteLLM model inventory row.")
+    }
+    models.push(model)
+  }
+  return models
 }
 
-function modelFromRow(
-  row: unknown,
-  index: number,
-): AdminInferenceModel | null {
+function modelFromRow(row: unknown, index: number): AdminInferenceModel | null {
   if (!isRecord(row)) {
     return null
   }
@@ -519,109 +464,100 @@ function modelFromRow(
   }
 }
 
-function parseVirtualKeys(
-  payload: unknown,
-  indexOffset = 0,
-): AdminInferenceVirtualKey[] {
-  return arrayPayload(payload)
-    .map((row, index) => virtualKeyFromRow(row, index + indexOffset))
-    .filter((item): item is AdminInferenceVirtualKey => Boolean(item))
+function parseVirtualKeys(rows: unknown[]): AdminInferenceVirtualKey[] {
+  return rows.map(virtualKeyFromRow)
 }
 
-function virtualKeyFromRow(
-  row: unknown,
-  index: number,
-): AdminInferenceVirtualKey | null {
+function virtualKeyFromRow(row: unknown): AdminInferenceVirtualKey {
   if (!isRecord(row)) {
-    return null
+    throw new Error("Invalid LiteLLM virtual-key row.")
   }
-  const keyHash =
-    stringField(row, "key_hash") ??
-    stringField(row, "token_id") ??
-    stringField(row, "id") ??
-    stringField(row, "token")
-  const expiresAt = timestampFieldFromFields(row, [
-    "expires",
-    "expires_at",
-    "expiration",
-  ])
+  const upstreamIdentifier = stringField(row, "token")
+  if (
+    !upstreamIdentifier ||
+    (row.blocked !== null &&
+      row.blocked !== undefined &&
+      typeof row.blocked !== "boolean")
+  ) {
+    throw new Error("Invalid LiteLLM virtual-key identity or state.")
+  }
+  const expiresAt = strictOptionalTimestamp(row, "expires")
   return {
     alias:
-      safeAlias(stringField(row, "key_alias") ?? stringField(row, "alias")) ??
-      `Virtual key ${index + 1}`,
-    budgetUsd: nullableNumber(
-      numberField(row, "max_budget") || numberField(row, "budget"),
-    ),
+      sanitizedDisplayField(
+        stringField(row, "key_alias"),
+        VIRTUAL_KEY_ALIAS_MAX_LENGTH,
+      ) ?? "Unnamed virtual key",
+    budgetUsd: optionalNonNegativeNumber(row, "max_budget"),
     expiresAt,
-    id: safeKeyId(keyHash, index),
-    lastUsedAt: timestampFieldFromFields(row, [
-      "last_active",
-      "last_used_at",
-      "last_used",
-      "updated_at",
-    ]),
-    models: stringArrayField(row.models),
-    owner:
-      stringField(row, "user_email") ??
-      stringField(row, "user_id") ??
-      stringField(row, "created_by"),
-    spendUsd: nullableNumber(numberField(row, "spend")),
+    id: opaqueVirtualKeyId(upstreamIdentifier),
+    lastUsedAt: strictOptionalTimestamp(row, "last_active"),
+    models: sanitizedModelAliases(row.models),
+    owner: sanitizedDisplayField(
+      stringField(row, "user_email"),
+      VIRTUAL_KEY_OWNER_MAX_LENGTH,
+    ),
+    spendUsd: optionalNonNegativeNumber(row, "spend"),
     status: virtualKeyStatus(row, expiresAt),
-    team:
-      stringField(row, "team_alias") ??
-      stringField(row, "team_id") ??
-      stringField(row, "organization_id"),
+    team: sanitizedDisplayField(
+      stringField(row, "team_alias"),
+      VIRTUAL_KEY_TEAM_MAX_LENGTH,
+    ),
   }
 }
 
-function arrayPayload(payload: unknown): unknown[] {
+function parseVirtualKeyPage(
+  payload: unknown,
+  expectedPage: number,
+): {
+  rows: unknown[]
+  totalCount: number
+  totalPages: number
+} {
+  if (!isRecord(payload) || !Array.isArray(payload.keys)) {
+    throw new Error("Invalid LiteLLM virtual-key page.")
+  }
+  const currentPage = strictIntegerField(payload, "current_page", 1)
+  const totalCount = strictIntegerField(payload, "total_count", 0)
+  const totalPages = strictIntegerField(payload, "total_pages", 0)
+  if (
+    currentPage !== expectedPage ||
+    payload.keys.length > VIRTUAL_KEY_PAGE_SIZE
+  ) {
+    throw new Error("Invalid LiteLLM virtual-key pagination metadata.")
+  }
+  return { rows: payload.keys, totalCount, totalPages }
+}
+
+function validateVirtualKeyPagination(
+  totalCount: number,
+  totalPages: number,
+): void {
+  const calculatedPages = Math.ceil(totalCount / VIRTUAL_KEY_PAGE_SIZE)
+  const emptyPageCountIsValid = totalCount === 0 && totalPages === 1
+  if (
+    totalCount > VIRTUAL_KEY_MAX_COUNT ||
+    totalPages > VIRTUAL_KEY_MAX_PAGES ||
+    (totalPages !== calculatedPages && !emptyPageCountIsValid)
+  ) {
+    throw new Error("Invalid LiteLLM virtual-key pagination bounds.")
+  }
+}
+
+function strictArrayPayload(payload: unknown): unknown[] {
   if (Array.isArray(payload)) {
     return payload
   }
   if (!isRecord(payload)) {
-    return []
+    throw new Error("Invalid LiteLLM model inventory response.")
   }
-  for (const field of ["data", "keys", "models", "model_info"]) {
+  for (const field of ["data", "models", "model_info"]) {
     const value = payload[field]
     if (Array.isArray(value)) {
       return value
     }
   }
-  return []
-}
-
-function totalPagesFromPayload(payload: unknown): number | null {
-  if (!isRecord(payload)) {
-    return null
-  }
-  const direct =
-    integerField(payload, "total_pages") ?? integerField(payload, "totalPages")
-  if (direct) {
-    return direct
-  }
-  const metadata = isRecord(payload.metadata) ? payload.metadata : null
-  return metadata
-    ? (integerField(metadata, "total_pages") ??
-        integerField(metadata, "totalPages"))
-    : null
-}
-
-function modelInventory(
-  models: AdminInferenceModel[] | null,
-  modelUsage: AdminInferenceModelUsage[],
-): AdminInferenceModel[] {
-  if (models && models.length > 0) {
-    return models
-  }
-  return modelUsage.map((usage, index) => ({
-    contextWindow: null,
-    id: `inferred-${index + 1}`,
-    mode: null,
-    name: usage.model,
-    outputCostPerMillionTokens: null,
-    provider: null,
-    sourceStatus: "degraded",
-  }))
+  throw new Error("Invalid LiteLLM model inventory response.")
 }
 
 function mergeModelUsage(
@@ -632,7 +568,7 @@ function mergeModelUsage(
     return sortModelUsage(activityUsage)
   }
   if (activityUsage.length === 0) {
-    return sortModelUsage(logUsage)
+    return []
   }
 
   const merged = new Map(
@@ -641,7 +577,6 @@ function mergeModelUsage(
   for (const usage of logUsage) {
     const existing = merged.get(usage.model)
     if (!existing) {
-      merged.set(usage.model, { ...usage })
       continue
     }
     merged.set(usage.model, {
@@ -682,7 +617,10 @@ function sortModelUsage(
   usage: AdminInferenceModelUsage[],
 ): AdminInferenceModelUsage[] {
   return [...usage].sort(
-    (a, b) => b.requests - a.requests || b.tokens - a.tokens || a.model.localeCompare(b.model),
+    (a, b) =>
+      b.requests - a.requests ||
+      b.tokens - a.tokens ||
+      a.model.localeCompare(b.model),
   )
 }
 
@@ -698,164 +636,46 @@ function sortModelsByUsage(
   )
 }
 
-function totalsFromModelUsage(
-  modelUsage: AdminInferenceModelUsage[],
-): AdminInferenceDashboard["totals"] {
-  return {
-    requests: modelUsage.reduce((sum, item) => sum + item.requests, 0),
-    tokens: modelUsage.reduce((sum, item) => sum + item.tokens, 0),
-  }
-}
-
-function aggregateSourceStatus(statuses: HubSourceStatus[]): HubSourceStatus {
-  if (statuses.every((status) => status === "unavailable")) {
-    return "unavailable"
-  }
-  if (statuses.some((status) => status !== "ok")) {
-    return "degraded"
-  }
-  return "ok"
-}
-
 function emptyInferenceDashboard({
   generatedAt,
-  modelUpdate,
   range,
   sourceStatus,
   summary,
 }: {
   generatedAt: Date
-  modelUpdate: AdminInferenceModelUpdate | null
   range: AdminInferenceRange
-  sourceStatus: HubSourceStatus
+  sourceStatus: InferenceCoreSourceStatus
   summary: string
 }): AdminInferenceDashboard {
   return {
+    aggregateUsageSourceStatus: sourceStatus,
     generatedAt: generatedAt.toISOString(),
-    liteLlmUrl: liteLlmPublicUrl(),
-    modelUpdate,
+    liteLlmUrl: null,
+    modelInventorySourceStatus: sourceStatus,
     modelUsage: [],
     models: [],
     range,
     sourceStatus,
     summary,
-    totals: {
-      requests: 0,
-      tokens: 0,
-    },
+    totals: null,
     usagePoints: [],
     virtualKeys: [],
+    virtualKeysSourceStatus: sourceStatus,
   }
 }
 
 function inferenceSummary(
   totals: AdminInferenceDashboard["totals"],
-  sourceStatus: HubSourceStatus,
+  aggregateUsageSourceStatus: InferenceCoreSourceStatus,
   range: AdminInferenceRange,
 ): string {
-  if (sourceStatus === "unavailable") {
-    return "LiteLLM is configured, but the BFF could not read inference usage."
+  if (aggregateUsageSourceStatus === "not_configured") {
+    return "LiteLLM aggregate usage is not configured for this BFF."
+  }
+  if (aggregateUsageSourceStatus !== "ok" || totals === null) {
+    return "LiteLLM is configured, but aggregate inference usage is unavailable."
   }
   return `LiteLLM reports ${formatNumber(totals.requests)} requests and ${formatNumber(totals.tokens)} tokens in the last ${range}.`
-}
-
-function readModelUpdate(): AdminInferenceModelUpdate | null {
-  const status = process.env.INFERENCE_MODEL_UPDATE_STATUS?.trim()
-  if (
-    status !== "available" &&
-    status !== "running" &&
-    status !== "failed" &&
-    status !== "blocked"
-  ) {
-    return null
-  }
-  return {
-    affectedModels: envList("INFERENCE_MODEL_UPDATE_AFFECTED_MODELS"),
-    availableVersion:
-      process.env.INFERENCE_MODEL_UPDATE_AVAILABLE_VERSION?.trim() ??
-      "Unknown",
-    currentVersion:
-      process.env.INFERENCE_MODEL_UPDATE_CURRENT_VERSION?.trim() ?? "Unknown",
-    detail:
-      process.env.INFERENCE_MODEL_UPDATE_DETAIL?.trim() ??
-      "A governed model update is available.",
-    estimatedDowntime:
-      process.env.INFERENCE_MODEL_UPDATE_ESTIMATED_DOWNTIME?.trim() || null,
-    releaseNotes:
-      process.env.INFERENCE_MODEL_UPDATE_RELEASE_NOTES?.trim() || null,
-    status,
-    updateActionEnabled:
-      process.env.INFERENCE_MODEL_UPDATE_ACTION_ENABLED === "true",
-  }
-}
-
-function configuredModelUpdateOutcome():
-  | "blocked"
-  | "completed"
-  | "failed"
-  | "started" {
-  const configured = process.env.INFERENCE_MODEL_UPDATE_APPLY_RESULT?.trim()
-  if (
-    configured === "blocked" ||
-    configured === "failed" ||
-    configured === "started"
-  ) {
-    return configured
-  }
-  return "completed"
-}
-
-function modelUpdateActionResponse({
-  detail,
-  modelUpdate,
-  status,
-}: {
-  detail: string
-  modelUpdate: AdminInferenceModelUpdate | null
-  status: AdminInferenceModelUpdateActionResponse["status"]
-}): AdminInferenceModelUpdateActionResponse {
-  return {
-    detail,
-    generatedAt: new Date().toISOString(),
-    modelUpdate,
-    status,
-  }
-}
-
-async function emitModelUpdateAudit(
-  actor: Actor,
-  action: string,
-  metadata: Record<string, unknown>,
-): Promise<void> {
-  await emitAudit({
-    action,
-    actorId: actor.subject,
-    metadata: {
-      authMode: actor.authMode,
-      ...metadata,
-    },
-    targetId: "inference-model-update",
-    targetType: "admin.inference",
-  })
-}
-
-function liteLlmPublicUrl(): string | null {
-  const configured =
-    process.env.LITELLM_PUBLIC_URL?.trim() ||
-    process.env.LITELLM_PUBLIC_ORIGIN?.trim() ||
-    (canUseBffFixtureData() ? "https://litellm.example.test" : "")
-  if (!configured) {
-    return null
-  }
-  try {
-    const parsed = new URL(configured)
-    if (parsed.pathname && parsed.pathname !== "/") {
-      return parsed.toString()
-    }
-    return new URL("/ui/", parsed).toString()
-  } catch {
-    return configured
-  }
 }
 
 function tokenCount(log: Record<string, unknown>): number {
@@ -882,6 +702,25 @@ function numberField(record: Record<string, unknown>, field: string): number {
   return 0
 }
 
+function nonNegativeNumberFromFields(
+  record: Record<string, unknown>,
+  fields: string[],
+): number | null {
+  for (const field of fields) {
+    const value = record[field]
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      return value
+    }
+    if (typeof value === "string" && value.trim().length > 0) {
+      const parsed = Number(value)
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        return parsed
+      }
+    }
+  }
+  return null
+}
+
 function integerField(
   record: Record<string, unknown>,
   field: string,
@@ -900,16 +739,6 @@ function stringField(
   }
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : null
-}
-
-function stringArrayField(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return []
-  }
-  return value
-    .filter((item): item is string => typeof item === "string")
-    .map((item) => item.trim())
-    .filter(Boolean)
 }
 
 function timestampField(record: Record<string, unknown>): string | null {
@@ -995,52 +824,114 @@ function providerFromModel(model: string | null): string | null {
   return model.split("/")[0] ?? null
 }
 
-function safeAlias(value: string | null): string | null {
-  if (!value || looksSensitive(value)) {
+function looksSensitive(value: string): boolean {
+  return (
+    /sk-[a-z0-9_-]{8,}/i.test(value) ||
+    /\bauthorization\s*:\s*bearer\s+\S+/i.test(value) ||
+    /\bbearer\s+[a-z0-9._~+/=-]{8,}/i.test(value) ||
+    /(?:api[\s_-]*key|client[\s_-]*secret|password|secret|token)\s*[:=]\s*\S+/i.test(
+      value,
+    ) ||
+    /(?:^|[^a-f0-9])[a-f0-9]{64}(?![a-f0-9])/i.test(value)
+  )
+}
+
+function opaqueVirtualKeyId(upstreamIdentifier: string): string {
+  const digest = createHash("sha256")
+    .update(VIRTUAL_KEY_ID_DOMAIN)
+    .update(upstreamIdentifier)
+    .digest("hex")
+  return `litellm-vk-${digest}`
+}
+
+function sanitizedDisplayField(
+  value: string | null,
+  maxLength: number,
+): string | null {
+  if (!value) {
     return null
   }
+  const withoutControlCharacters = Array.from(value, (character) => {
+    const codePoint = character.codePointAt(0) ?? 0
+    return codePoint <= 31 || (codePoint >= 127 && codePoint <= 159)
+      ? " "
+      : character
+  })
+    .join("")
+    .replace(/\p{Default_Ignorable_Code_Point}/gu, "")
+  const sanitized = withoutControlCharacters.replace(/\s+/g, " ").trim()
+  if (!sanitized || looksSensitive(sanitized)) {
+    return null
+  }
+  return Array.from(sanitized).slice(0, maxLength).join("")
+}
+
+function sanitizedModelAliases(value: unknown): string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+    throw new Error("Invalid LiteLLM virtual-key model list.")
+  }
+  return [
+    ...new Set(
+      value
+        .map((item) =>
+          sanitizedDisplayField(item, VIRTUAL_KEY_MODEL_MAX_LENGTH),
+        )
+        .filter((item): item is string => Boolean(item)),
+    ),
+  ].slice(0, VIRTUAL_KEY_MODEL_MAX_COUNT)
+}
+
+function strictIntegerField(
+  record: Record<string, unknown>,
+  field: string,
+  minimum: number,
+): number {
+  const value = record[field]
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < minimum
+  ) {
+    throw new Error(`Invalid LiteLLM ${field}.`)
+  }
   return value
 }
 
-function safeKeyId(value: string | null, index: number): string {
-  if (!value) {
-    return `virtual-key-${index + 1}`
+function strictOptionalTimestamp(
+  record: Record<string, unknown>,
+  field: string,
+): string | null {
+  const value = record[field]
+  if (value === null || value === undefined || value === "") {
+    return null
   }
-  if (looksSensitive(value)) {
-    return `sha256:${hashValue(value).slice(0, 16)}`
+  const normalized = normalizeTimestamp(value)
+  if (!normalized) {
+    throw new Error(`Invalid LiteLLM ${field}.`)
   }
-  return value
+  return normalized
 }
 
-function looksSensitive(value: string): boolean {
-  return /^sk-[a-z0-9_-]+/i.test(value) || value.toLowerCase().includes("secret")
-}
-
-function hashValue(value: string): string {
-  return createHash("sha256").update(value).digest("hex")
+function optionalNonNegativeNumber(
+  record: Record<string, unknown>,
+  field: string,
+): number | null {
+  const value = record[field]
+  if (value === null || value === undefined || value === "") {
+    return null
+  }
+  const parsed = typeof value === "number" ? value : Number(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
 }
 
 function virtualKeyStatus(
   row: Record<string, unknown>,
   expiresAt: string | null,
 ): AdminInferenceVirtualKey["status"] {
-  if (row.blocked === true || stringField(row, "status") === "blocked") {
-    return "blocked"
-  }
   if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
     return "expired"
   }
-  const status = stringField(row, "status")
-  return status === "active" ? "active" : "unknown"
-}
-
-function envList(name: string): string[] {
-  return (
-    process.env[name]
-      ?.split(",")
-      .map((item) => item.trim())
-      .filter(Boolean) ?? []
-  )
+  return row.blocked === true ? "blocked" : "active"
 }
 
 function formatNumber(value: number): string {

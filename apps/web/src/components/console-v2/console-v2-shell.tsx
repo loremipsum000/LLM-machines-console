@@ -1,14 +1,15 @@
 "use client"
 
+import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { ComponentType, ReactNode, SVGProps } from "react"
-import { useEffect, useState } from "react"
+import type { ComponentType, FormEvent, ReactNode, SVGProps } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   type ConsoleV2SectionId,
-  consoleV2Sections,
+  consoleV2SectionsForRole,
 } from "./console-v2-sections"
 
 export type { ConsoleV2SectionId } from "./console-v2-sections"
@@ -19,20 +20,27 @@ let shortcutModifierVisible = false
 const modifierSubscribers = new Set<ModifierSubscriber>()
 
 interface ConsoleV2ShellProps {
-  activeSection: ConsoleV2SectionId
+  accessRole: RetainedConsoleRole
+  activeSection?: ConsoleV2SectionId
   children: ReactNode
 }
 
 export function ConsoleV2Shell({
+  accessRole,
   activeSection,
   children,
 }: ConsoleV2ShellProps) {
   const router = useRouter()
+  const visibleSections = useMemo(
+    () => consoleV2SectionsForRole(accessRole),
+    [accessRole],
+  )
   const [modifierVisible, setModifierVisible] = useState(
     shortcutModifierVisible,
   )
   const [shortcutModifier, setShortcutModifier] =
     useState<ShortcutModifier>("meta")
+  const [signOutFailed, setSignOutFailed] = useState(false)
 
   useEffect(() => {
     setShortcutModifier(detectShortcutModifier())
@@ -50,7 +58,7 @@ export function ConsoleV2Shell({
         return
       }
 
-      const section = consoleV2Sections[shortcutIndex]
+      const section = visibleSections[shortcutIndex]
       if (!section) {
         return
       }
@@ -80,12 +88,40 @@ export function ConsoleV2Shell({
       window.removeEventListener("blur", hideModifier)
       document.removeEventListener("visibilitychange", hideModifier)
     }
-  }, [router])
+  }, [router, visibleSections])
+
+  async function signOut(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSignOutFailed(false)
+    try {
+      const response = await fetch("/api/console/session/logout", {
+        credentials: "same-origin",
+        headers: { accept: "application/json" },
+        method: "POST",
+      })
+      const body = (await response.json()) as { next?: unknown }
+      if (!response.ok || typeof body.next !== "string") throw new Error()
+      const next = new URL(body.next)
+      if (
+        next.protocol !== "https:" ||
+        next.username ||
+        next.password ||
+        next.pathname !== "/logout" ||
+        next.search ||
+        next.hash
+      ) {
+        throw new Error()
+      }
+      window.location.assign(next)
+    } catch {
+      setSignOutFailed(true)
+    }
+  }
 
   return (
     <div className="min-h-screen min-h-dvh bg-[#181818] font-sans text-[#fdfdfd]">
       <div className="relative min-h-screen min-h-dvh bg-[#181818]">
-        <aside className="m-2 flex min-h-[720px] w-[260px] flex-col justify-between overflow-hidden rounded-[12px] bg-[#2e2c2e] p-2 max-lg:w-[calc(100%-16px)] lg:fixed lg:inset-y-2 lg:left-0 lg:m-0 lg:h-[calc(100vh-16px)]">
+        <aside className="m-2 flex min-h-[720px] w-[260px] flex-col justify-between overflow-hidden rounded-[12px] bg-[#2e2c2e] p-2 max-lg:w-[calc(100%-16px)] lg:fixed lg:inset-y-2 lg:left-2 lg:m-0 lg:h-[calc(100vh-16px)]">
           <div className="flex w-full flex-col gap-8">
             <div className="flex h-12 w-full items-center gap-2.5 p-2">
               <Image
@@ -105,10 +141,10 @@ export function ConsoleV2Shell({
             </div>
 
             <nav
-              aria-label="Console v2 navigation"
+              aria-label="Console navigation"
               className="flex w-full flex-col gap-0.5"
             >
-              {consoleV2Sections.map((section, index) => (
+              {visibleSections.map((section, index) => (
                 <ConsoleV2NavLink
                   active={section.id === activeSection}
                   href={section.href}
@@ -123,39 +159,39 @@ export function ConsoleV2Shell({
             </nav>
           </div>
 
-          <div className="flex w-full flex-col gap-4">
-            <div className="flex w-full flex-col gap-3 p-1.5 text-sm text-white">
-              <Link
-                className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                href="/resources"
-              >
-                Help
-              </Link>
-              <Link
-                className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                href="/resources"
-              >
-                Documentation
-              </Link>
+          <div className="grid gap-2">
+            <div
+              className="rounded-lg border border-[#454345] bg-[#242324] px-3 py-2"
+              data-console-role={accessRole}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#8f8f8f]">
+                Current access
+              </p>
+              <p className="mt-1 text-sm font-medium text-white">
+                {accessRole === "admin" ? "Administrator" : "Operator"}
+              </p>
             </div>
-
-            <div className="flex h-10 w-full items-center justify-between rounded-full border border-[#323337] bg-[#181818] py-1 pl-1 pr-2">
-              <div className="flex items-center gap-2">
-                <div
-                  aria-hidden
-                  className="size-8 rounded-full bg-[radial-gradient(circle_at_32%_28%,#ff8bd8_0,#f344c8_28%,#8f6dff_56%,#12a8ff_100%)]"
-                />
-                <div className="flex items-center gap-2 whitespace-nowrap text-[#dfdfdf]">
-                  <p className="text-sm font-medium">Pero Peric</p>
-                  <p className="text-[10px]">Admin</p>
-                </div>
-              </div>
-              <ArrowRightIcon aria-hidden className="size-6 text-[#dfdfdf]" />
-            </div>
+            <form
+              action="/api/console/session/logout"
+              method="post"
+              onSubmit={signOut}
+            >
+              <button
+                className="flex h-8 w-full items-center rounded px-3 text-sm font-medium text-[#bdbdbd] transition-colors hover:bg-[#3d3b3d] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+                type="submit"
+              >
+                Sign out
+              </button>
+            </form>
+            {signOutFailed ? (
+              <output className="px-3 text-xs text-status-critical">
+                Sign-out is temporarily unavailable. Retry.
+              </output>
+            ) : null}
           </div>
         </aside>
 
-        <main className="min-w-0 px-5 py-8 max-lg:pt-4 sm:px-8 lg:ml-[534px] lg:w-[640px] lg:px-0 lg:py-0">
+        <main className="min-w-0 px-5 py-8 max-lg:pt-4 sm:px-8 lg:ml-[clamp(320px,calc(100vw-690px),534px)] lg:w-[min(640px,calc(100vw-352px))] lg:px-0 lg:py-0">
           {children}
         </main>
       </div>
@@ -276,32 +312,4 @@ function shortcutAriaLabel(
   return shortcutModifier === "meta"
     ? `Meta+${shortcut}`
     : `Control+${shortcut}`
-}
-
-function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      height="24"
-      viewBox="0 0 24 24"
-      width="24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <path
-        d="M7 12H17"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M13 8L17 12L13 16"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
 }

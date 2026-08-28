@@ -1,0 +1,139 @@
+{
+  "schema": "llm-machines.vm103-l1b-bootstrap-service-start-containment.v1",
+  "workPackage": "VM103-L1B-P11",
+  "status": "SOURCE_BOOTSTRAP_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "6c395ff78be53ac99f11eb0f6b54b909e07a0a6a",
+    "tree": "734ffacb989e64efb3d7be2677c584b4e0d796d3"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "runId": "20260817T204308Z",
+    "stage": "POST_PACKAGE_INSTALL_PRE_ASSEMBLY",
+    "result": "SYSTEM_DISK_RUNTIME_STATE_DETECTED",
+    "systemDiskBytes": {
+      "docker": 213053,
+      "containerd": 65572
+    },
+    "servicesAutoStarted": true,
+    "servicesStoppedAndDisabledAfterObservation": true,
+    "assemblyVolumesFormatted": true,
+    "assemblyAStarted": false,
+    "assemblyBStarted": false,
+    "vmStateAfterObservation": "STOPPED_PROTECTED_FAILURE_PRESERVED",
+    "failedAttemptSnapshot": "l1b-bootstrap-failure-20260817T204308Z",
+    "evidenceRoot": "/var/lib/llmm-vm118-evidence/vm103-l1b-assembly-a-20260817T204308Z",
+    "evidenceSha256": {
+      "egressResolution": "1bfe63c01576b3d864eba5bd91f0997ee431f0fa06fde9d17277da90c40cbe62",
+      "transactionManifest": "7ff4f432110dfe79510c8fa986dafd1a9d39679c5b340b508697f8e443872872",
+      "firewall": "12e2815734402c619b3d20a51dd87d3e90c3f68b284be25fe61878e5c7a60939",
+      "firewallReceipt": "04cb55e1e088da28d332ef792688ee1d6b61567202abd4233a7ab32cae9f4d34",
+      "bootstrapLog": "9312eedc004feb1a435474859162f80b9b69253164b669bc66b43ac45ee79cb0",
+      "dockerJournal": "fde86373895cc7342eb297d41b1708bc7263cda4e42a62c6c179c917b56cae07",
+      "failureState": "debcfd5ebcabf4c90ad0ee03446e9db787fb384930fc000daea519d8e996a565"
+    }
+  },
+  "correction": {
+    "implementationCommit": "a26439357a4d2f75da0c5687f21d3183dbc5e5e0",
+    "implementationTree": "496edb9d7bceb75155128eb2cfac869daf9f0484",
+    "serviceStartGuard": {
+      "path": "/usr/sbin/policy-rc.d",
+      "exitStatus": 101,
+      "preExistingPathRejected": true,
+      "exitTrapCleanup": true,
+      "terminationSignalsExitBeforeExecutionResumes": true
+    },
+    "canonicalRuntimeUnits": [
+      "docker.service",
+      "docker.socket",
+      "containerd.service"
+    ],
+    "sameCanonicalRule": {
+      "disableAndStop": true,
+      "inactiveRequired": true,
+      "disabledRequired": true
+    },
+    "globalRuntimeRoots": ["/var/lib/docker", "/var/lib/containerd"],
+    "rootInspectionFailureDenied": true,
+    "rootsCheckedBeforeNetworkBootstrap": true,
+    "rootsCheckedAfterPackageInstall": true,
+    "assemblyFormattingAfterAllContainmentChecks": true
+  },
+  "validation": {
+    "commands": [
+      "corepack pnpm install --frozen-lockfile",
+      "node --test infra/release/l1b/*.test.mjs scripts/inference-core/vm103-l1b-*.test.mjs",
+      "corepack pnpm test",
+      "corepack pnpm run test:release",
+      "corepack pnpm exec biome check .",
+      "corepack pnpm run typecheck",
+      "corepack pnpm run build",
+      "git diff --check 6c395ff78be53ac99f11eb0f6b54b909e07a0a6a...a26439357a4d2f75da0c5687f21d3183dbc5e5e0",
+      "git fsck --full"
+    ],
+    "testCounts": {
+      "focused": 69,
+      "guardrails": 660,
+      "release": 210,
+      "database": 126,
+      "contracts": 69,
+      "web": 187,
+      "bff": 887
+    },
+    "localLogSha256": {
+      "install": "87dc93c65267de1a99bae679883af445dc1948a31ce1ff91c64d6160361c4a14",
+      "focused": "8c4e8d522c868305af84ed2c4aa57dc9fcd65ac1c30a35fd92451eff297720b9",
+      "root": "8f7338d15582807a1032b83d6c4bd6d4b11f5468518822192d30551de8673df1",
+      "release": "9ebdc29c1321fee2ea84b6b9edd3dd6cc8cf3c250a5d2fbfe9739597d416529b",
+      "biome": "9d4e91edb2d21ba09d088b201698a31c52afcc22b2b0b4c2d5e5f18ff2f59f79",
+      "typecheck": "7edabcae672db79cda03488a7a53910e9d4b68a192915fb82cca8ed22575f82b",
+      "build": "97118856ec162393f3d7da2fbfa86b66a3104d01ac7334905f2675914a48f18d",
+      "diffCheck": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fsck": "b33fc957ef8d29a3673f11e28cc75e10ae31dca26ad2482891e81da171b415d4",
+      "securityScan": "40728969471b3d59cadab87815e11a90889d8e9f07a881c6c7b3131efa959014"
+    },
+    "detachedLogSha256": {
+      "identity": "fcc5c570a244bd4b886d4c5ce56bfd2e1c39a2d21dc513169973ad6166f77d4a",
+      "install": "9b5a147379c69f7f477879c0c29bcc207203eed509fa725a0a26d613e8c420b5",
+      "focused": "f0f13ad5aa5a08bb8d84393bafa8c35057456a99d2cab526c149be703a27b423",
+      "root": "d9ea02ece3723f3b41662f8f638c6b6fa4d947227afa6254625250bc0ee1dc35",
+      "release": "3e4ef8546745e916dcb3d8a8475ae36299abba5bd4ee00c73b66173fb7d8f348",
+      "biome": "850bb0f0fd97e19ac946145ef0db8bf9b6c7a86515d4bb38f77bf2d5ade504fc",
+      "typecheck": "7835b33a5e72c62c1502c13aad02e8d144ef886417bd217efc19b2da1d8978ea",
+      "build": "e9d50cf402cc803af56151a5d49323be1ec9d9633509208c34cbc39994a3a873",
+      "diffCheck": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fsck": "9a97b1655ce90b59a200f64abbef4d8ec16bb0bb1f240352f0641f984aa26d4a"
+    },
+    "securityScan": {
+      "secretFindings": 0,
+      "internalAddressFindings": 0,
+      "mutableImageFindings": 0,
+      "unsafeConfigurationFindings": 0
+    },
+    "materialReview": {
+      "reviewerId": "p11-independent-read-only-review",
+      "reviewedCommit": "a26439357a4d2f75da0c5687f21d3183dbc5e5e0",
+      "reviewedTree": "496edb9d7bceb75155128eb2cfac869daf9f0484",
+      "verdict": "PASS",
+      "materialFindings": 0
+    }
+  },
+  "boundaries": {
+    "vm118ChangedBySourcePackage": false,
+    "runtimeRetryStarted": false,
+    "failedAttemptEvidencePreserved": true,
+    "productBehaviorChanged": false,
+    "egressPolicyChanged": false,
+    "credentialsCreated": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false,
+    "assemblyAStarted": false,
+    "assemblyBStarted": false
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "F0-S1",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "94d2011787642ed757b63ab03fa59df300bf1ef5",
+  "command": "corepack pnpm run test:pre-genesis:browser",
+  "prerequisites": [
+    "corepack pnpm install --frozen-lockfile",
+    "installed Chrome or Chromium, or PLAYWRIGHT_CHROME_EXECUTABLE",
+    "OpenSSL available for a disposable local certificate authority"
+  ],
+  "evidenceClass": "LOCAL_BROWSER_SESSION_AND_ROLE_FLOW_ONLY",
+  "browserAutomation": {
+    "library": "playwright-core@1.62.1",
+    "browser": "locally installed Chrome or Chromium",
+    "publicFixtureAuthorities": [
+      "console.llmm.test",
+      "api.llmm.test",
+      "identity.llmm.test",
+      "firecrawl.llmm.test"
+    ],
+    "authorityPlacement": "reserved test names mapped only to loopback",
+    "credentialMaterialPrinted": false
+  },
+  "services": [
+    "actual Console Web",
+    "actual Console BFF session routes and service",
+    "in-memory Console session repository",
+    "deterministic Keycloak-compatible OIDC fixture",
+    "loopback-only HTTPS four-authority router",
+    "deterministic private inference model-list double"
+  ],
+  "proved": [
+    "browser Authorization Code and PKCE login through the identity authority",
+    "Admin MFA-bearing identity and Operator role mapping",
+    "safe same-origin return handling",
+    "revoked and expired sessions clear local browser custody and redirect once",
+    "retryable identity outage preserves the session and recovers without a loop",
+    "parallel browser requests serialize refresh-token rotation",
+    "logout clears local custody and protected navigation requires login",
+    "all retained Console sections remain usable without native Grafana, LiteLLM, or Keycloak Admin interfaces",
+    "Operator is denied Admin-only Application, Team, and audit-export controls",
+    "temporary-state cleanup"
+  ],
+  "productCorrections": [
+    "Console logout now uses a same-origin credentialed request while preserving strict BFF Origin validation",
+    "retryable identity outage redirects Console pages to the recoverable state instead of a failing middleware rewrite",
+    "audit-download identity outage remains a direct 503 without clearing the session"
+  ],
+  "notEvidenceFor": [
+    "PostgreSQL Console-session persistence or restart behavior",
+    "Keycloak 26.7.0 runtime qualification",
+    "Product Nginx or appliance TLS",
+    "real LiteLLM, Firecrawl, or SGLang runtime behavior",
+    "exact Core images",
+    "runtime no-bypass",
+    "release packaging or Q0",
+    "production inference capacity"
+  ],
+  "deferred": [
+    "F0-U1 browser Application creation and credential reveal",
+    "F0-U1 Firecrawl disclaimer and per-Application enablement",
+    "PostgreSQL restart persistence",
+    "real Keycloak integration",
+    "real SGLang smoke and production qualification"
+  ],
+  "forbiddenOutcomes": [
+    "real credential use",
+    "live infrastructure access",
+    "runtime qualification claim",
+    "Product main merge",
+    "Gitea Genesis"
+  ]
+}

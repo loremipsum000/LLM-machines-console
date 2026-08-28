@@ -1,0 +1,31 @@
+{
+  "schema": "llm-machines.pre-genesis-functional-evidence.v1",
+  "workPackage": "F0-E2E2",
+  "status": "source-candidate-awaiting-protected-uat-replay",
+  "accepted": false,
+  "runtimeQualified": false,
+  "baseCommit": "e78caa55940ca720b1b5ff53a112e4951eeec6f4",
+  "command": "node scripts/pre-genesis/reduced-core-uat.mjs start",
+  "externalClient": {
+    "package": "openai",
+    "version": "7.4.0",
+    "processBoundary": "separate child process",
+    "credentialTransport": "bounded stdin only",
+    "networkBoundary": "TLS-verified api.llmm.test authority mapped to the loopback-only Product edge"
+  },
+  "requiredJourney": [
+    "Admin login through actual Keycloak and Application creation through the actual Console",
+    "one-time inference credential reveal followed by standard OpenAI SDK model discovery",
+    "standard OpenAI SDK non-streaming and streaming Chat Completions through the Product API authority and private LiteLLM",
+    "usage, token accounting, last-use, rotation, overlap, revocation, and second-Application isolation",
+    "Firecrawl default-off, disclaimer, selected-Application enablement, separate credential, search, static scrape, route denial, rotation, revocation, and isolation",
+    "Operator remains non-mutating and all native service listeners remain private",
+    "restart persistence and zero-content-retention canaries pass before the environment enters founder READY state"
+  ],
+  "notEvidenceFor": [
+    "production deployment, Product main admission, Genesis publication, or Product acceptance",
+    "release packaging, D2A, signing, Q0, or runtime qualification",
+    "real SGLang behavior or production inference capacity"
+  ],
+  "nextPackage": "F0-UX2 model-driven exploratory browser review after the protected UAT replay passes"
+}

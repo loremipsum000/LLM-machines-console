@@ -1,0 +1,40 @@
+groups:
+  - name: llmm.inference.alerts
+    interval: 30s
+    rules:
+      - alert: LLMMGpuSaturation
+        expr: llm_machines:gpu_utilization_ratio:max > 0.95
+        for: 10m
+        labels:
+          severity: warning
+          component: inference
+        annotations:
+          summary: GPU utilization is persistently saturated
+          description: Available accelerator compute has remained highly utilized.
+      - alert: LLMMInferenceFailureRatioHigh
+        expr: (llm_machines:inference_failure_ratio:5m > 0.05) and (llm_machines:inference_requests:5m >= 20)
+        for: 5m
+        labels:
+          severity: warning
+          component: inference
+        annotations:
+          summary: Inference failures exceed the operational threshold
+          description: The failure ratio is elevated after the minimum request volume was reached.
+      - alert: LLMMInferenceQueueDepthPersisting
+        expr: llm_machines:inference_queue_depth:max > 0
+        for: 10m
+        labels:
+          severity: warning
+          component: inference
+        annotations:
+          summary: Inference work is persistently queued
+          description: Genuine runtime queue depth has remained above zero.
+      - alert: LLMMInferenceQueueDepthSignalMissing
+        expr: absent(llm_machines_inference_queue_depth) == 1
+        for: 10m
+        labels:
+          severity: info
+          component: inference
+        annotations:
+          summary: Queue depth telemetry is unavailable
+          description: The runtime is not publishing the normalized queue depth signal.

@@ -1,0 +1,184 @@
+{
+  "apiVersion": "inference-core.llm-machines/v1",
+  "kind": "LogicalObservabilityRuntimeContract",
+  "metadata": {
+    "activation": "PR-12",
+    "changePackage": "PR-09",
+    "containsCredentials": false,
+    "sourceOnly": true
+  },
+  "prometheus": {
+    "retention": "30d",
+    "requiredRuntimeArguments": ["--storage.tsdb.retention.time=30d"],
+    "scrapeTimeout": "20s",
+    "scrapeAuthentication": {
+      "credentialSource": "mounted-file",
+      "required": true
+    },
+    "scrapeDiscovery": {
+      "seedTargetCount": 0,
+      "targetValuesOwner": "packaging-pr12",
+      "type": "file_sd"
+    },
+    "normalizedMetrics": [
+      {
+        "availability": "pr12-qualified-adapter",
+        "labels": [],
+        "name": "llm_machines_gpu_utilization_ratio",
+        "type": "gauge",
+        "unit": "ratio"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_requests_5m",
+        "type": "gauge",
+        "unit": "requests"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_failures_5m",
+        "type": "gauge",
+        "unit": "requests"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_server_failures_5m",
+        "type": "gauge",
+        "unit": "requests"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_in_flight_requests",
+        "type": "gauge",
+        "unit": "requests"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": ["status"],
+        "name": "llm_machines_inference_queue_depth_source_info",
+        "type": "gauge",
+        "unit": "state"
+      },
+      {
+        "availability": "pr12-qualified-adapter",
+        "labels": [],
+        "name": "llm_machines_inference_queue_depth",
+        "type": "gauge",
+        "unit": "requests"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_retained_requests",
+        "type": "gauge",
+        "unit": "requests"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_retained_failures",
+        "type": "gauge",
+        "unit": "requests"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_retained_input_tokens",
+        "type": "gauge",
+        "unit": "tokens"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_retained_output_tokens",
+        "type": "gauge",
+        "unit": "tokens"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_retained_total_tokens",
+        "type": "gauge",
+        "unit": "tokens"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_retained_latency_milliseconds_sum",
+        "type": "gauge",
+        "unit": "milliseconds"
+      },
+      {
+        "availability": "pr09-bff",
+        "labels": [],
+        "name": "llm_machines_inference_retained_latency_milliseconds_max",
+        "type": "gauge",
+        "unit": "milliseconds"
+      }
+    ],
+    "queueDepthFallback": "none",
+    "ruleManagement": {
+      "provisioned": true,
+      "runtimeMount": "read-only",
+      "uiEditable": false
+    },
+    "ruleFiles": [
+      "/etc/prometheus/rules/recording-rules.yml",
+      "/etc/prometheus/rules/alert-rules.yml"
+    ]
+  },
+  "alertmanager": {
+    "defaultReceiver": "local-null",
+    "externalReceiverState": "disabled",
+    "externalReceiverActivationRequires": [
+      "admin-egress-warning-acknowledgement",
+      "audited-console-action",
+      "customer-owned-destination",
+      "explicit-egress-policy"
+    ],
+    "retention": "720h",
+    "requiredRuntimeArguments": ["--data.retention=720h"]
+  },
+  "grafana": {
+    "alertAuthority": {
+      "backend": "standalone-alertmanager",
+      "grafanaUnifiedAlerting": "disabled",
+      "prometheusAlertsPanel": "retained",
+      "unavailableMeansZeroActive": false
+    },
+    "baseline": {
+      "allowUiUpdates": false,
+      "datasourceEditable": false,
+      "disableDeletion": true,
+      "provisioned": true
+    },
+    "hardwareDatasource": {
+      "managementTargetsInVm103": false,
+      "operatorAccess": "DENY",
+      "publicAccess": false,
+      "queryOnly": true,
+      "runtimeBinding": "$LLMM_HARDWARE_PROMETHEUS_URL",
+      "uid": "llmm-hardware-prometheus"
+    },
+    "customerFolder": {
+      "adminPermission": "Edit",
+      "operatorPermission": "DENY",
+      "provisioned": false,
+      "title": "Customer Editable",
+      "uid": "llmm-customer-editable"
+    },
+    "oidc": {
+      "adminRole": "Editor",
+      "ambiguousRetainedRoles": "deny",
+      "clientId": "grafana",
+      "operatorRole": "DENY",
+      "roleClaim": "realm_access.roles",
+      "strict": true,
+      "unknownRole": "deny"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "apiVersion": "inference-core.llm-machines/v1",
+  "kind": "LogicalGrafanaFolderBoundary",
+  "metadata": {
+    "activation": "PR-12",
+    "changePackage": "PR-09",
+    "sourceOnly": true
+  },
+  "baseline": {
+    "adminPermission": "View",
+    "allowUiUpdates": false,
+    "disableDeletion": true,
+    "operatorPermission": "DENY",
+    "placement": "grafana-root",
+    "provisioned": true,
+    "provider": "llmm-baseline"
+  },
+  "customerEditable": {
+    "adminPermission": "Edit",
+    "creationOwner": "packaging-pr12",
+    "operatorPermission": "DENY",
+    "provisioned": false,
+    "title": "Customer Editable",
+    "uid": "llmm-customer-editable"
+  },
+  "ossRoleBoundary": {
+    "adminOrgRole": "Editor",
+    "editorScope": "all-non-provisioned-content",
+    "operatorOrgRole": "DENY",
+    "strictFolderOnlyEditing": false
+  }
+}

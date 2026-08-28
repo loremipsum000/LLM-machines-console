@@ -1,0 +1,56 @@
+{
+  "schema": "llm-machines.firecrawl-source-reproducibility.v1",
+  "status": "SOURCE_PACKET_REPRODUCIBLE_RUNTIME_UNQUALIFIED",
+  "containsCredentials": false,
+  "runtimeQualified": false,
+  "runs": 2,
+  "sourcePackageSha256": "03999d38ff61a58cbd7af5a655109e6d87c327423946b7782c00adc18a3faaa7",
+  "upstreamArchives": [
+    {
+      "id": "firecrawl",
+      "archiveFile": "firecrawl-ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5.tar.gz",
+      "archiveSha256": "b7c6df0b8b692397c8a19e84f94b85ce0a2d961b36fc1d5ff78088db88819f59"
+    },
+    {
+      "id": "searxng",
+      "archiveFile": "searxng-c01178d03129d861582adf84a692e699f2f7ec05.tar.gz",
+      "archiveSha256": "81f025e643e5c1e7829ac58306fd7e4b4e3a1970483adb20993efdf0ac440f60"
+    },
+    {
+      "id": "squid",
+      "archiveFile": "squid-a8c54a8f23f0dc41025097caab73ec445f49b78f.tar.gz",
+      "archiveSha256": "23bf67bd489142bfc06f2a085a376f81d1bffc0277ab9612af6f63d569c685d7"
+    },
+    {
+      "id": "playwright",
+      "archiveFile": "playwright-e3950d9c140d007bd52853b45813c6274b24e36f.tar.gz",
+      "archiveSha256": "33616cb05537331c5038e387e70c8a62fd1604162f338b62e0c4132c47647e2d"
+    }
+  ],
+  "patchesApplied": [
+    {
+      "order": 1,
+      "path": "infra/firecrawl/release/patches/build-hardening.patch",
+      "sha256": "d60190411adb30eb6dc27100be0f0b2ffa9c1be762d79599abb19df03d4f8ed8"
+    },
+    {
+      "order": 2,
+      "path": "infra/firecrawl/release/patches/reduced-runtime.patch",
+      "sha256": "d5c271d0961b90988bc86b36c4897163030624346a989b7e9480e4472e0535d6"
+    }
+  ],
+  "fileCount": 1535,
+  "symlinkCount": 0,
+  "inventorySha256": "0a2be30b55a6f5f3312f6f2d27c0bdf8b427712a0d8cad100a55448b70884565",
+  "sha256SumsSha256": "b58fcbb4524734c3c4c7891b362309ce5b73404c5ca47629fcc89611f3be1b38",
+  "packetSha256": "960956bda6520e64296b276fdadb7d96f470669390a34bf43611648f23453309",
+  "workspaceCleanupVerified": true,
+  "productBoundary": {
+    "installed": true,
+    "defaultEnabled": false,
+    "customerExposure": "product-edge-only",
+    "nativeUi": false,
+    "routes": ["POST /v2/search", "POST /v2/scrape"],
+    "persistentWorkloadContent": false
+  }
+}

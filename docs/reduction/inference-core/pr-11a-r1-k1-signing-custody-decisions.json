@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-11A-R1-K1",
+  "scope": "signing-custody-and-public-trust-source-only",
+  "integrationBaseCommit": "1743cb746f87c7497a34f4de7e3bfc0db3ff0be2",
+  "integrationBaseTree": "d1e5402ffd12a0b9c9dee15faa78893edfd89223",
+  "sourceHeadCommit": "cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc",
+  "sourceHeadTree": "59dd7047e45059cc79e587d93fc4f9df969b06dc",
+  "exactBranch": "codex/inference-core-pr-11a-r1-k1",
+  "reviewStatus": "source-candidate-independently-reviewed",
+  "localValidation": "passed-local-and-fresh-clone-full-source-gates",
+  "accepted": false,
+  "revisionBound": false,
+  "runtimeQualified": false,
+  "bindingDecisions": {
+    "vendorCustody": {
+      "releaseRoot": "offline-hardware-backed-trust-metadata-only",
+      "separatePurposes": [
+        "release-artifact",
+        "update-bundle",
+        "offline-entitlement"
+      ],
+      "privateMaterialOnAppliance": false,
+      "privateMaterialInGit": false,
+      "privateMaterialInCiEnvironmentVariables": false,
+      "cloudSigningDependency": false,
+      "algorithmSelection": "deferred-to-pr12-and-q0"
+    },
+    "auditExportCustody": {
+      "algorithm": "Ed25519",
+      "owner": "customer",
+      "scope": "per-appliance",
+      "privateKeyProvisioning": "root-only-mounted-secret",
+      "encryptedAtRest": true,
+      "tpmSealing": "required-when-available",
+      "recoveryEnvelope": "customer-held",
+      "includedInProductDataOrRestic": false
+    },
+    "trustMetadata": {
+      "requiredFields": [
+        "purpose",
+        "kid",
+        "issuer",
+        "algorithm",
+        "publicKey",
+        "validity",
+        "rotation",
+        "revocation"
+      ],
+      "maximumDualTrustDays": 30,
+      "newSigningUsesSuccessorOnly": true,
+      "wrongPurposeFailsClosed": true,
+      "wrongIssuerFailsClosed": true,
+      "wrongAlgorithmFailsClosed": true,
+      "ambiguousTrustFailsClosed": true
+    },
+    "failureIsolation": {
+      "missingOrInvalidAuditKey": "audit-export-only-503",
+      "inferenceContinues": true,
+      "auditIngestionContinues": true,
+      "auditViewContinues": true
+    }
+  },
+  "governanceCheckpointPaths": [
+    "docs/reduction/inference-core/README.md",
+    "docs/reduction/inference-core/decision-register.md",
+    "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json",
+    "docs/reduction/inference-core/validation-register.md",
+    "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs"
+  ],
+  "sourcePathInventory": [
+    ".env.example",
+    "apps/bff/src/routes/admin-audit-export.test.ts",
+    "apps/bff/src/services/audit-export-signing.test.ts",
+    "apps/bff/src/services/audit-export-signing.ts",
+    "apps/bff/src/services/audit-export.test.ts",
+    "apps/bff/src/services/signing-trust.test.ts",
+    "apps/bff/src/services/signing-trust.ts",
+    "docs/reduction/inference-core/README.md",
+    "docs/reduction/inference-core/decision-register.md",
+    "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json",
+    "docs/reduction/inference-core/validation-register.md",
+    "packages/contracts/src/index.ts",
+    "packages/contracts/src/inference-core-signing.test.ts",
+    "packages/contracts/src/inference-core-signing.ts",
+    "packages/contracts/src/inference-core.ts",
+    "scripts/inference-core/guardrails.mjs",
+    "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+    "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+    "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs"
+  ],
+  "sourcePathCounts": {
+    "added": 6,
+    "modified": 13,
+    "deleted": 0,
+    "total": 19
+  },
+  "sourceAcceptanceCriteria": [
+    "vendor release-root, release-artifact, update-bundle, offline-entitlement, and audit-export purposes cannot share key IDs or public key material",
+    "vendor private signing material is absent from appliance source, Git, CI environment-variable contracts, and cloud signing dependencies",
+    "audit export signing resolves only a customer-owned per-appliance Ed25519 key from strict public trust metadata and a root-only mounted private key",
+    "wrong purpose, issuer, algorithm, appliance, validity, rotation, revocation, overlap, ambiguity, key match, file ownership, mode, or symlink state fails closed",
+    "missing or invalid audit signing material returns export-only 503 without stopping inference, audit ingestion, or audit view",
+    "no real key, recovery envelope, mount, TPM binding, deployment, runtime activation, aggregate PR-11A revision, or PR-12 artifact is created"
+  ],
+  "independentReview": {
+    "reviewedCommit": "cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc",
+    "reviewedTree": "59dd7047e45059cc79e587d93fc4f9df969b06dc",
+    "result": "passed-no-findings",
+    "freshClone": "passed-clean-detached-checkout",
+    "cleanup": "verified",
+    "runtimeActivated": false
+  },
+  "explicitlyDisabledAfterPackage": [
+    "real-vendor-signing-keys",
+    "real-customer-audit-key",
+    "signing-key-mounts",
+    "tpm-sealing",
+    "recovery-envelope-provisioning",
+    "runtime-signing-activation",
+    "R1-D1-storage-recovery",
+    "R1-V1-aggregate-acceptance",
+    "optional-R1-G1-grafana",
+    "PR-12-release-packaging"
+  ],
+  "forbiddenOutputs": {
+    "aggregatePr11aContractRevision": true,
+    "liveInfrastructureMutation": true,
+    "productMainMutationBeforeProtectedMerge": true,
+    "realSecretBinding": true,
+    "runtimeDeployment": true,
+    "vendorPrivateSigningMaterial": true
+  }
+}

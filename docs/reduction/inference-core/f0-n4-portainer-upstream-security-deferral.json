@@ -1,0 +1,127 @@
+{
+  "schema": "llm-machines.f0-n4-portainer-deferral.v1",
+  "workPackage": "F0-N4",
+  "status": "DEFERRED_UPSTREAM_SECURITY",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "branch": "codex/inference-core-stack-reduction",
+    "commit": "2193952c191dc0db7a2f0d5a0072e63e30d8c0ad",
+    "tree": "4e80e9d177da4bdd7dabeea2ab932e0a69f59529"
+  },
+  "decision": {
+    "disposition": "DEFERRED_UPSTREAM_SECURITY",
+    "reason": "The exact Portainer CE 2.39.6 feasibility image is reproducible, but reachable security findings in appliance-administration paths cannot be resolved by a narrow build-only overlay.",
+    "intendedForLaterReconsideration": true,
+    "permanentlyRemoved": false,
+    "admitted": false,
+    "includedInCurrentCoreBom": false,
+    "includedInCurrentImmutableImageLock": false,
+    "packaged": false,
+    "deployed": false,
+    "exposed": false,
+    "linked": false,
+    "advertised": false,
+    "blocksRemainingPreGenesisSequence": false,
+    "broadDownstreamForkAuthorized": false,
+    "vulnerabilityWorkaroundAuthorized": false,
+    "alternativeAdministrationBridgeAuthorized": false,
+    "sharedAccountAuthorized": false,
+    "proxyImpersonationAuthorized": false
+  },
+  "historicalFeasibilityEvidence": {
+    "preserveUnchanged": true,
+    "rewriteAsAcceptedImage": false,
+    "version": "2.39.6",
+    "sourceCommit": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+    "sourceTree": "9a2418f78d3f2cf4047e86b0878227b5e61d55fa",
+    "sourceArchiveSha256": "e268480ff7719ca1e476a754437b624128ceb380a2800b2c581862970dd119d2",
+    "boundedOverlay": {
+      "fingerprintSha256": "1a09a0ac33484b039f3edfa9372a78657eac3dd67c13db837c3f34a1867a3cb8",
+      "twoBuildsByteIdentical": true,
+      "ociArchiveSha256": "8b7a2ff1b9b18a2c2fe0700e2c9071d2675cfacc9cefacbc72fc3471588928fb",
+      "ociManifestDigest": "sha256:dc5d372705a1046b4d2b3d026a63c6bf0a459f119898d42825ff8904649393d5",
+      "ociConfigDigest": "sha256:80639f79887cb78b8419b3db7d0fe75b04b247744040875359f08c001f2e09bd",
+      "archiveSizeBytes": 83130880
+    },
+    "securityEvidence": {
+      "trivyVersion": "0.74.0",
+      "trivyReportSha256": "cbdb8f8a8c131704766530b64aa98e52e3d5505196ec30b46a7c8b0364a2b722",
+      "trivyCounts": {
+        "critical": 0,
+        "high": 6,
+        "medium": 3,
+        "unknown": 3
+      },
+      "cycloneDxComponents": 305,
+      "cycloneDxDependencies": 306,
+      "cycloneDxSha256": "38a8181d8df41221d1ccd6793d84ce3bb83aedd87d70124e965a8674ecbb5315",
+      "govulncheckVersion": "1.7.0",
+      "govulncheckJsonSha256": "24bd8bcdf356cd14af95cff0555d8e04ce64c523ba0ac8b80177ec532db6ac48",
+      "reachableVulnerabilities": 10,
+      "affectedSecurityDomains": [
+        "Docker archive and copy operations",
+        "Docker authorization and plugin handling",
+        "OpenPGP maintenance",
+        "Gorilla CSRF trusted-origin validation",
+        "Go module checksum and tile verification"
+      ],
+      "materialDisposition": "BLOCKED_FOR_APPLIANCE_ADMINISTRATION"
+    },
+    "runtimeCharacterizationAfterSecurityBlock": "NOT_RUN_AGAINST_REJECTED_IMAGE",
+    "meaning": "This evidence characterizes why the proposed CE image was not admitted. It is not an image lock, release artifact, runtime qualification, or Product acceptance record."
+  },
+  "currentBoundary": {
+    "retainedNativeSurfaces": ["Grafana", "LiteLLM", "Keycloak Admin Console"],
+    "portainerAuthorityConfigured": false,
+    "portainerIngressConfigured": false,
+    "portainerStartupConfigured": false,
+    "portainerNavigationConfigured": false,
+    "portainerImageLocked": false,
+    "portainerCurrentAvailabilityImplied": false,
+    "defenseOnlyDenialReferencesPermitted": true,
+    "consoleRemainsPrimary": true
+  },
+  "futureAdmission": {
+    "workPackage": "F0-N4R",
+    "trigger": "A suitable newer upstream Portainer CE release is available and separately authorized for reconsideration.",
+    "mustRepeat": [
+      "exact-version source and OCI supply-chain verification",
+      "fresh vulnerability scan and material disposition",
+      "source and binary licensing plus notices",
+      "Keycloak SSO qualification",
+      "customer Admin mapping to supported Portainer administrator authority",
+      "Operator and unknown-subject denial",
+      "customer recovery-administrator qualification",
+      "backup and clean restore",
+      "restart persistence",
+      "exact browser route profile",
+      "direct-port and Product-edge no-bypass qualification"
+    ],
+    "mayReuseRejectedImage": false,
+    "mayInheritSecurityAdmission": false
+  },
+  "remainingSequence": [
+    "F0-N5 three-service Product-edge profiles",
+    "F0-N6 Console Technical Tools for Grafana, LiteLLM, and Keycloak",
+    "F0-N7 aggregate three-service native-access validation",
+    "F0-N8 governance-only pre-Genesis closure"
+  ],
+  "sourceChangeBoundary": {
+    "governanceOnly": true,
+    "productBehaviorChanged": false,
+    "runtimeConfigurationChanged": false,
+    "releaseInventoryChanged": false,
+    "historicalEvidenceRewritten": false,
+    "changedPaths": [
+      "docs/reduction/inference-core/README.md",
+      "docs/reduction/inference-core/decision-register.md",
+      "docs/reduction/inference-core/f0-n4-portainer-upstream-security-deferral.json",
+      "docs/reduction/inference-core/validation-register.md",
+      "scripts/inference-core/f0-n4-portainer-upstream-security-deferral.test.mjs"
+    ]
+  }
+}

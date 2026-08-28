@@ -1,0 +1,2415 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-11A-R1-V1-SUCCESSOR",
+  "scope": "aggregate-source-evidence-and-contract-revision-only",
+  "contractBase": {
+    "commit": "9d8f1a6144cb280104cdce0a21ab7dafa72087ec",
+    "tree": "a7cb76ff95ec4ffc12cbd589b0514564602c35da"
+  },
+  "exactInput": {
+    "commit": "0e794ccd6e0f2593f2e6ab34b8fc1d521835b6fd",
+    "tree": "0c94b6164a81dd4da9884afa7ff2b37bd1c03079"
+  },
+  "status": {
+    "accepted": false,
+    "revisionBound": false,
+    "runtimeQualified": false,
+    "contractRevision": "generated-unaccepted-source-candidate",
+    "protectedAdmission": "pending-user-approval-and-protected-pr",
+    "runtimeQualification": "Q0-not-started"
+  },
+  "productBoundary": {
+    "consolePrimaryCustomerSurface": true,
+    "grafanaNativeAccess": "optional-inactive-no-grants-host-routes-links-or-runtime-qualification",
+    "litellm": "private-console-read-only-projection-only",
+    "keycloak": "private-identity-provider-console-basic-identity-mutations-only",
+    "expertIngressActivated": false,
+    "productBehaviorChangedByR1V1": false,
+    "pr12Started": false,
+    "q0Started": false
+  },
+  "packages": [
+    {
+      "id": "R1-C0",
+      "pullRequest": 13,
+      "firstParent": "9d8f1a6144cb280104cdce0a21ab7dafa72087ec",
+      "packageHead": "6b773e334b5ffa18495ab5c3c9e72f559343fb3e",
+      "reviewedSource": "6b773e334b5ffa18495ab5c3c9e72f559343fb3e",
+      "mergeCommit": "0f29c7939fa885c11c191e8b672f09e16635ddcb",
+      "mergeTree": "b6295cda2c91a889be39ef2b62dd632ba18614cb",
+      "evidencePaths": [
+        "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json",
+        "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs"
+      ],
+      "packageHeadTree": "b6295cda2c91a889be39ef2b62dd632ba18614cb",
+      "reviewedSourceTree": "b6295cda2c91a889be39ef2b62dd632ba18614cb",
+      "pathCounts": {
+        "added": 4,
+        "modified": 28,
+        "deleted": 2,
+        "total": 34
+      },
+      "paths": [
+        {
+          "path": "apps/bff/src/auth/authorization-security.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/auth/authorization.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/commands/audit-ingestion.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/routes/admin-hardware.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/routes/admin-inference.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/routes/admin-isolation.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/routes/admin-recovery.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/admin-team.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/audit-ingestion.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/audit-ingestion.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/emergency-recovery.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/emergency-recovery.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/expert-capabilities.test.ts",
+          "status": "D"
+        },
+        {
+          "path": "apps/bff/src/services/expert-capabilities.ts",
+          "status": "D"
+        },
+        {
+          "path": "apps/bff/src/services/native-audit-source.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/services/native-audit-source.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/hardware-v2-experience.test.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/README.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/decision-register.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json",
+          "status": "A"
+        },
+        {
+          "path": "docs/reduction/inference-core/validation-register.md",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-authorization.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-authorization.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-recovery.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-recovery.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core.ts",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/guardrails.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr02-boundaries.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+          "status": "A"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json",
+          "sha256": "62c892a4b6bba096fe26a99202588984bd0e8fdc1249f7ea2c0b6309060a8527"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+          "sha256": "64b16b8608fcf6e65eccb08047d3f236d1c540cfe6f54dc38fd1daee763c3ca4"
+        }
+      ]
+    },
+    {
+      "id": "R1-S1",
+      "pullRequest": 14,
+      "firstParent": "0f29c7939fa885c11c191e8b672f09e16635ddcb",
+      "packageHead": "28655df1a919757329a1493bea5811f064d143d0",
+      "reviewedSource": "28655df1a919757329a1493bea5811f064d143d0",
+      "mergeCommit": "39057332207cca6193495453b7336eda07608255",
+      "mergeTree": "4deb5b337120202b52173b05910f1cbf028b50c3",
+      "evidencePaths": [
+        "docs/reduction/inference-core/pr-11a-r1-s1-console-session-decisions.json",
+        "scripts/inference-core/pr11a-r1-s1-boundaries.test.mjs"
+      ],
+      "packageHeadTree": "4deb5b337120202b52173b05910f1cbf028b50c3",
+      "reviewedSourceTree": "4deb5b337120202b52173b05910f1cbf028b50c3",
+      "pathCounts": {
+        "added": 37,
+        "modified": 56,
+        "deleted": 9,
+        "total": 102
+      },
+      "paths": [
+        {
+          "path": ".env.example",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/auth/authorization-security.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/auth/authorization.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/auth/console-session-cookie.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/auth/console-session-cookie.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/auth/console-session-crypto.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/auth/console-session-crypto.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/auth/console-session-keyring.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/auth/console-session-keyring.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/auth/console-session-token-validator.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/auth/console-session-token-validator.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/auth/runtime-live-authority.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/auth/runtime-live-authority.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/db/inference-core-client.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/db/inference-core-client.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/db/inference-core-schema.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/db/inference-core-schema.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/index.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/index.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/routes/console-session.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/routes/console-session.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/console-session-oidc.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/services/console-session-oidc.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/services/console-session-runtime.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/services/console-session-runtime.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/services/console-session-service.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/services/console-session-service.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/services/console-session-store-drizzle.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/services/console-session-store.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/services/inference-core-retention.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/inference-core-retention.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/README.md",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/package.json",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/app/api/admin/audit/export/route.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/app/api/admin/audit/export/route.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/app/api/admin/audit/export/verification-keys/route.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/app/api/auth/[...nextauth]/route.ts",
+          "status": "D"
+        },
+        {
+          "path": "apps/web/src/app/auth/elevate/page.test.tsx",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/app/auth/elevate/page.tsx",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/app/auth/keycloak/route.ts",
+          "status": "D"
+        },
+        {
+          "path": "apps/web/src/app/auth/signin/page.test.tsx",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/app/auth/signin/page.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/app/auth/unavailable/page.test.tsx",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/app/auth/unavailable/page.tsx",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/app/team/import/template/route.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/app/team/import/template/route.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/console-v2-shell.test.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/console-v2-shell.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/admin/actions-core.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/admin/actions-core.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/admin/console-v2-routes-core.test.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/admin/server-data-core.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/admin/server-data-core.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/auth/auth.ts",
+          "status": "D"
+        },
+        {
+          "path": "apps/web/src/lib/auth/env.test.ts",
+          "status": "D"
+        },
+        {
+          "path": "apps/web/src/lib/auth/env.ts",
+          "status": "D"
+        },
+        {
+          "path": "apps/web/src/lib/auth/mfa-elevation.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/lib/auth/mfa-elevation.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/lib/auth/role-claims.test.ts",
+          "status": "D"
+        },
+        {
+          "path": "apps/web/src/lib/auth/role-claims.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/auth/safe-return.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/lib/auth/safe-return.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/lib/auth/session-client.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/lib/auth/session-client.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/web/src/lib/auth/session.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/auth/session.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/auth/token-refresh.test.ts",
+          "status": "D"
+        },
+        {
+          "path": "apps/web/src/lib/auth/token-refresh.ts",
+          "status": "D"
+        },
+        {
+          "path": "apps/web/src/lib/bff/server-request.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/middleware.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/middleware.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/types/next-auth.d.ts",
+          "status": "D"
+        },
+        {
+          "path": "docs/reduction/inference-core/README.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/decision-register.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/pr-11a-r1-s1-console-session-decisions.json",
+          "status": "A"
+        },
+        {
+          "path": "docs/reduction/inference-core/validation-register.md",
+          "status": "M"
+        },
+        {
+          "path": "infra/keycloak/README.md",
+          "status": "M"
+        },
+        {
+          "path": "infra/keycloak/inference-core-realm-seed.json",
+          "status": "M"
+        },
+        {
+          "path": "infra/keycloak/pr11a-console-session-policy.json",
+          "status": "A"
+        },
+        {
+          "path": "infra/keycloak/validate-pr11a-session-policy.mjs",
+          "status": "A"
+        },
+        {
+          "path": "infra/keycloak/validate-pr11a-session-policy.test.mjs",
+          "status": "A"
+        },
+        {
+          "path": "infra/migrations/0000_inference_core.sql",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/index.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-session.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-session.ts",
+          "status": "A"
+        },
+        {
+          "path": "packages/contracts/src/inference-core.ts",
+          "status": "M"
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/guardrails.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/guardrails.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr05-boundaries.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr05-keycloak-seed.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr05-keycloak-seed.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr10c-boundaries.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-s1-boundaries.test.mjs",
+          "status": "A"
+        },
+        {
+          "path": "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
+          "status": "M"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/pr-11a-r1-s1-console-session-decisions.json",
+          "sha256": "4cb3e93a9e3f316b31795ed2ae863c8a2d14706f0795f14a3df61bdae809cf50"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-s1-boundaries.test.mjs",
+          "sha256": "21ee1eb5c3b8f70be4f113ffc6e6fd6df02bf0feaf132f59ba977b62cf16bcb9"
+        }
+      ]
+    },
+    {
+      "id": "R1-E1",
+      "pullRequest": 15,
+      "firstParent": "39057332207cca6193495453b7336eda07608255",
+      "packageHead": "e9489f0f500f6c7ca5aabb1dd3f2b1df0993385b",
+      "reviewedSource": "c60280c11318aa21d230e7002cb7d703625a7168",
+      "mergeCommit": "1743cb746f87c7497a34f4de7e3bfc0db3ff0be2",
+      "mergeTree": "d1e5402ffd12a0b9c9dee15faa78893edfd89223",
+      "evidencePaths": [
+        "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json",
+        "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs"
+      ],
+      "packageHeadTree": "d1e5402ffd12a0b9c9dee15faa78893edfd89223",
+      "reviewedSourceTree": "898d5ef6605dc9e14ff401208f09acabc062fe1b",
+      "pathCounts": {
+        "added": 17,
+        "modified": 9,
+        "deleted": 0,
+        "total": 26
+      },
+      "paths": [
+        {
+          "path": "docs/reduction/inference-core/README.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/decision-register.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json",
+          "status": "A"
+        },
+        {
+          "path": "docs/reduction/inference-core/validation-register.md",
+          "status": "M"
+        },
+        {
+          "path": "infra/ingress/README.md",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/edge-policy.json",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/no-bypass-policy.json",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/product-edge.nginx.conf.template",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/proxy-common.inc",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/request-headers-console-browser.inc",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/request-headers-customer-api.inc",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/request-headers-identity-browser.inc",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/request-safety.inc",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/source-no-bypass.mjs",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/source-no-bypass.test.mjs",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/validate-ingress.mjs",
+          "status": "A"
+        },
+        {
+          "path": "infra/ingress/validate-ingress.test.mjs",
+          "status": "A"
+        },
+        {
+          "path": "package.json",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/index.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-ingress.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-ingress.ts",
+          "status": "A"
+        },
+        {
+          "path": "packages/contracts/src/inference-core.ts",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/guardrails.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+          "status": "A"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-s1-boundaries.test.mjs",
+          "status": "M"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json",
+          "sha256": "acb867b6811757395d751b8dafc668077b87c5bdb1d6428a3166f9b6ac4cc562"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+          "sha256": "cd4959294951328c7f748a2c2adc14576af044419834060372a82ed4e9a9c0b2"
+        }
+      ]
+    },
+    {
+      "id": "R1-K1",
+      "pullRequest": 16,
+      "firstParent": "1743cb746f87c7497a34f4de7e3bfc0db3ff0be2",
+      "packageHead": "e8a1a820069ceefa475001fcda20d1fc2b3dbec4",
+      "reviewedSource": "cd1f7c43bd7c2abe32a2423d1ce77506ecde84cc",
+      "mergeCommit": "ffc49eb6e97169ced202efbaa6363c85bfdd40dc",
+      "mergeTree": "e1a2c49683f215ca03561e90d0fd73b2c54da17f",
+      "evidencePaths": [
+        "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json",
+        "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs"
+      ],
+      "packageHeadTree": "e1a2c49683f215ca03561e90d0fd73b2c54da17f",
+      "reviewedSourceTree": "59dd7047e45059cc79e587d93fc4f9df969b06dc",
+      "pathCounts": {
+        "added": 6,
+        "modified": 13,
+        "deleted": 0,
+        "total": 19
+      },
+      "paths": [
+        {
+          "path": ".env.example",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/routes/admin-audit-export.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/audit-export-signing.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/audit-export-signing.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/audit-export.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/signing-trust.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "apps/bff/src/services/signing-trust.ts",
+          "status": "A"
+        },
+        {
+          "path": "docs/reduction/inference-core/README.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/decision-register.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json",
+          "status": "A"
+        },
+        {
+          "path": "docs/reduction/inference-core/validation-register.md",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/index.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-signing.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-signing.ts",
+          "status": "A"
+        },
+        {
+          "path": "packages/contracts/src/inference-core.ts",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/guardrails.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
+          "status": "A"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json",
+          "sha256": "8f0f93ffbf851ef419ccb251c33504895d939eab0156c15df16b7c4c97ae426d"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
+          "sha256": "3f551f7d1c2c691a74dc3981e7e6ccf7179bc2366ef045084fd991cfb415d94c"
+        }
+      ]
+    },
+    {
+      "id": "R1-D1",
+      "pullRequest": 17,
+      "firstParent": "ffc49eb6e97169ced202efbaa6363c85bfdd40dc",
+      "packageHead": "e04c7f809abf4df00f15ad8f05e7c271da44fa3c",
+      "reviewedSource": "46295906c3d733b0e56abe94d9732d8eb0549c29",
+      "mergeCommit": "cc08cf8e9afce12def143f2f395d30bfbe04f515",
+      "mergeTree": "4795e390f6d204be71de9c52b8b142c6724f8825",
+      "evidencePaths": [
+        "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json",
+        "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs"
+      ],
+      "packageHeadTree": "4795e390f6d204be71de9c52b8b142c6724f8825",
+      "reviewedSourceTree": "dbbf55c1ed957aa905356b2faf11467c02781fb4",
+      "pathCounts": {
+        "added": 9,
+        "modified": 9,
+        "deleted": 0,
+        "total": 18
+      },
+      "paths": [
+        {
+          "path": "docs/reduction/inference-core/README.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/decision-register.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json",
+          "status": "A"
+        },
+        {
+          "path": "docs/reduction/inference-core/validation-register.md",
+          "status": "M"
+        },
+        {
+          "path": "infra/storage/README.md",
+          "status": "A"
+        },
+        {
+          "path": "infra/storage/profile.json",
+          "status": "A"
+        },
+        {
+          "path": "infra/storage/profile.schema.json",
+          "status": "A"
+        },
+        {
+          "path": "infra/storage/validate-profile.mjs",
+          "status": "A"
+        },
+        {
+          "path": "infra/storage/validate-profile.test.mjs",
+          "status": "A"
+        },
+        {
+          "path": "package.json",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/index.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-storage.test.ts",
+          "status": "A"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-storage.ts",
+          "status": "A"
+        },
+        {
+          "path": "packages/contracts/src/inference-core.ts",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/guardrails.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
+          "status": "A"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
+          "status": "M"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json",
+          "sha256": "933e1db703ee505e93bd9fef7c7bd5b1bffdf873da6838a32bf24fd86b834aba"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
+          "sha256": "3866b2430a7e878a4db5e279f9e18d7aa75610a3078fafdf7c43a6768b5d0672"
+        }
+      ]
+    },
+    {
+      "id": "R1-D1-HYGIENE",
+      "pullRequest": 18,
+      "firstParent": "cc08cf8e9afce12def143f2f395d30bfbe04f515",
+      "packageHead": "7241678fffb1d63f5f9e3a565d587a03e8dd1a5b",
+      "reviewedSource": "7241678fffb1d63f5f9e3a565d587a03e8dd1a5b",
+      "mergeCommit": "949d1f2fd05a8329e7676ad2423bf55d0eab29ba",
+      "mergeTree": "93390c0fd7bd31263b437da69888e27c30ca8ab0",
+      "evidencePaths": [
+        "docs/reduction/inference-core/validation-register.md",
+        "infra/storage/validate-profile.test.mjs"
+      ],
+      "packageHeadTree": "93390c0fd7bd31263b437da69888e27c30ca8ab0",
+      "reviewedSourceTree": "93390c0fd7bd31263b437da69888e27c30ca8ab0",
+      "pathCounts": {
+        "added": 0,
+        "modified": 1,
+        "deleted": 0,
+        "total": 1
+      },
+      "paths": [
+        {
+          "path": "infra/storage/validate-profile.test.mjs",
+          "status": "M"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/validation-register.md",
+          "sha256": "eeffaad0dc45ede1a612d2bffd4bacf741564c1ad2c416fd4ae33f9cf81d0de5"
+        },
+        {
+          "path": "infra/storage/validate-profile.test.mjs",
+          "sha256": "a6118fb80292c5734b4a12a98ab90e332dee07e5343f5cc92264a1f09bb6d520"
+        }
+      ]
+    },
+    {
+      "id": "R1-H1",
+      "pullRequest": 19,
+      "firstParent": "949d1f2fd05a8329e7676ad2423bf55d0eab29ba",
+      "packageHead": "4c6b83ad57a9ef3dd8a38a06025f951f2664758b",
+      "reviewedSource": "49ad418408aab32f30e7f6008aa71ad66ba5e708",
+      "mergeCommit": "0e794ccd6e0f2593f2e6ab34b8fc1d521835b6fd",
+      "mergeTree": "0c94b6164a81dd4da9884afa7ff2b37bd1c03079",
+      "evidencePaths": [
+        "docs/reduction/inference-core/pr-11a-r1-h1-hygiene-decisions.json",
+        "scripts/inference-core/pr11a-r1-h1-boundaries.test.mjs"
+      ],
+      "packageHeadTree": "0c94b6164a81dd4da9884afa7ff2b37bd1c03079",
+      "reviewedSourceTree": "eb9b31503d575e6587f4cf7957b74f9c001cd632",
+      "pathCounts": {
+        "added": 2,
+        "modified": 35,
+        "deleted": 0,
+        "total": 37
+      },
+      "paths": [
+        {
+          "path": "apps/bff/src/services/admin-prometheus.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/admin-settings-validation.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/admin-settings-validation.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/bff/src/services/users.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/app/api/admin/audit/export/route.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/app/layout.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/action-toasts.test.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/action-toasts.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/hardware-chart-primitives.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/inference-chart-primitives.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/ui/button.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/components/ui/card.tsx",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/admin/actions-core.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/admin/actions-core.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/auth/session-client.ts",
+          "status": "M"
+        },
+        {
+          "path": "apps/web/src/lib/utils.ts",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/decision-register.md",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
+          "status": "M"
+        },
+        {
+          "path": "docs/reduction/inference-core/pr-11a-r1-h1-hygiene-decisions.json",
+          "status": "A"
+        },
+        {
+          "path": "docs/reduction/inference-core/validation-register.md",
+          "status": "M"
+        },
+        {
+          "path": "infra/ingress/edge-policy.json",
+          "status": "M"
+        },
+        {
+          "path": "infra/ingress/source-no-bypass.mjs",
+          "status": "M"
+        },
+        {
+          "path": "infra/ingress/source-no-bypass.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "infra/ingress/validate-ingress.mjs",
+          "status": "M"
+        },
+        {
+          "path": "infra/ingress/validate-ingress.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-authorization.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-ingress.test.ts",
+          "status": "M"
+        },
+        {
+          "path": "packages/contracts/src/inference-core-ingress.ts",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/guardrails.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/guardrails.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr02-boundaries.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr09-boundaries.test.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr09-contract-revision.mjs",
+          "status": "M"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-h1-boundaries.test.mjs",
+          "status": "A"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "docs/reduction/inference-core/pr-11a-r1-h1-hygiene-decisions.json",
+          "sha256": "66c820f737be03af68d66e87b8daad802d33b125e7f7a3ba0f571865df660c98"
+        },
+        {
+          "path": "scripts/inference-core/pr11a-r1-h1-boundaries.test.mjs",
+          "sha256": "16e1c11e3b9aad599a95605b1637b27204f85ed9707fd50deb5dd1355a699e0d"
+        }
+      ]
+    }
+  ],
+  "aggregateMergedSource": {
+    "pathCounts": {
+      "added": 75,
+      "modified": 95,
+      "deleted": 11,
+      "total": 181
+    },
+    "paths": [
+      {
+        "path": ".env.example",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/auth/authorization-security.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/auth/authorization.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/auth/console-session-cookie.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/auth/console-session-cookie.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/auth/console-session-crypto.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/auth/console-session-crypto.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/auth/console-session-keyring.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/auth/console-session-keyring.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/auth/console-session-token-validator.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/auth/console-session-token-validator.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/auth/runtime-live-authority.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/auth/runtime-live-authority.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/commands/audit-ingestion.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/db/inference-core-client.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/db/inference-core-client.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/db/inference-core-schema.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/db/inference-core-schema.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/index.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/index.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/routes/admin-audit-export.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/routes/admin-hardware.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/routes/admin-inference.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/routes/admin-isolation.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/routes/admin-recovery.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/routes/console-session.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/routes/console-session.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/routes/inference-core-characterization.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/admin-prometheus.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/admin-settings-validation.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/admin-settings-validation.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/admin-team.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/audit-export-signing.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/audit-export-signing.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/audit-export.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/audit-ingestion.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/audit-ingestion.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/console-session-oidc.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/console-session-oidc.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/console-session-runtime.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/console-session-runtime.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/console-session-service.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/console-session-service.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/console-session-store-drizzle.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/console-session-store.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/emergency-recovery.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/emergency-recovery.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/expert-capabilities.test.ts",
+        "status": "D"
+      },
+      {
+        "path": "apps/bff/src/services/expert-capabilities.ts",
+        "status": "D"
+      },
+      {
+        "path": "apps/bff/src/services/inference-core-retention.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/inference-core-retention.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/bff/src/services/native-audit-source.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/native-audit-source.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/signing-trust.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/signing-trust.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/bff/src/services/users.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/README.md",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/package.json",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/app/api/admin/audit/export/route.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/app/api/admin/audit/export/route.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/app/api/admin/audit/export/verification-keys/route.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/app/api/auth/[...nextauth]/route.ts",
+        "status": "D"
+      },
+      {
+        "path": "apps/web/src/app/auth/elevate/page.test.tsx",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/app/auth/elevate/page.tsx",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/app/auth/keycloak/route.ts",
+        "status": "D"
+      },
+      {
+        "path": "apps/web/src/app/auth/signin/page.test.tsx",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/app/auth/signin/page.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/app/auth/unavailable/page.test.tsx",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/app/auth/unavailable/page.tsx",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/app/layout.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/app/team/import/template/route.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/app/team/import/template/route.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/action-toasts.test.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/action-toasts.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/console-v2-shell.test.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/console-v2-shell.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/hardware-chart-primitives.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/hardware-v2-experience.test.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/inference-chart-primitives.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/console-v2/team-v2-experience.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/ui/button.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/components/ui/card.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/admin/actions-core.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/admin/actions-core.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/admin/console-v2-routes-core.test.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/admin/server-data-core.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/admin/server-data-core.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/auth/auth.ts",
+        "status": "D"
+      },
+      {
+        "path": "apps/web/src/lib/auth/env.test.ts",
+        "status": "D"
+      },
+      {
+        "path": "apps/web/src/lib/auth/env.ts",
+        "status": "D"
+      },
+      {
+        "path": "apps/web/src/lib/auth/mfa-elevation.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/lib/auth/mfa-elevation.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/lib/auth/role-claims.test.ts",
+        "status": "D"
+      },
+      {
+        "path": "apps/web/src/lib/auth/role-claims.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/auth/safe-return.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/lib/auth/safe-return.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/lib/auth/session-client.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/lib/auth/session-client.ts",
+        "status": "A"
+      },
+      {
+        "path": "apps/web/src/lib/auth/session.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/auth/session.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/auth/token-refresh.test.ts",
+        "status": "D"
+      },
+      {
+        "path": "apps/web/src/lib/auth/token-refresh.ts",
+        "status": "D"
+      },
+      {
+        "path": "apps/web/src/lib/bff/server-request.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/lib/utils.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/middleware.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/middleware.ts",
+        "status": "M"
+      },
+      {
+        "path": "apps/web/src/types/next-auth.d.ts",
+        "status": "D"
+      },
+      {
+        "path": "docs/reduction/inference-core/README.md",
+        "status": "M"
+      },
+      {
+        "path": "docs/reduction/inference-core/decision-register.md",
+        "status": "M"
+      },
+      {
+        "path": "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
+        "status": "M"
+      },
+      {
+        "path": "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json",
+        "status": "A"
+      },
+      {
+        "path": "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json",
+        "status": "A"
+      },
+      {
+        "path": "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json",
+        "status": "A"
+      },
+      {
+        "path": "docs/reduction/inference-core/pr-11a-r1-h1-hygiene-decisions.json",
+        "status": "A"
+      },
+      {
+        "path": "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json",
+        "status": "A"
+      },
+      {
+        "path": "docs/reduction/inference-core/pr-11a-r1-s1-console-session-decisions.json",
+        "status": "A"
+      },
+      {
+        "path": "docs/reduction/inference-core/validation-register.md",
+        "status": "M"
+      },
+      {
+        "path": "infra/ingress/README.md",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/edge-policy.json",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/no-bypass-policy.json",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/product-edge.nginx.conf.template",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/proxy-common.inc",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/request-headers-console-browser.inc",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/request-headers-customer-api.inc",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/request-headers-identity-browser.inc",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/request-safety.inc",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/source-no-bypass.mjs",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/source-no-bypass.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/validate-ingress.mjs",
+        "status": "A"
+      },
+      {
+        "path": "infra/ingress/validate-ingress.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "infra/keycloak/README.md",
+        "status": "M"
+      },
+      {
+        "path": "infra/keycloak/inference-core-realm-seed.json",
+        "status": "M"
+      },
+      {
+        "path": "infra/keycloak/pr11a-console-session-policy.json",
+        "status": "A"
+      },
+      {
+        "path": "infra/keycloak/validate-pr11a-session-policy.mjs",
+        "status": "A"
+      },
+      {
+        "path": "infra/keycloak/validate-pr11a-session-policy.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "infra/migrations/0000_inference_core.sql",
+        "status": "M"
+      },
+      {
+        "path": "infra/storage/README.md",
+        "status": "A"
+      },
+      {
+        "path": "infra/storage/profile.json",
+        "status": "A"
+      },
+      {
+        "path": "infra/storage/profile.schema.json",
+        "status": "A"
+      },
+      {
+        "path": "infra/storage/validate-profile.mjs",
+        "status": "A"
+      },
+      {
+        "path": "infra/storage/validate-profile.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "package.json",
+        "status": "M"
+      },
+      {
+        "path": "packages/contracts/src/index.ts",
+        "status": "M"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-authorization.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-authorization.ts",
+        "status": "M"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-ingress.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-ingress.ts",
+        "status": "A"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-recovery.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-recovery.ts",
+        "status": "M"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-session.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-session.ts",
+        "status": "A"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-signing.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-signing.ts",
+        "status": "A"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-storage.test.ts",
+        "status": "A"
+      },
+      {
+        "path": "packages/contracts/src/inference-core-storage.ts",
+        "status": "A"
+      },
+      {
+        "path": "packages/contracts/src/inference-core.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "packages/contracts/src/inference-core.ts",
+        "status": "M"
+      },
+      {
+        "path": "pnpm-lock.yaml",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/guardrails.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/guardrails.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr02-boundaries.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr05-boundaries.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr05-keycloak-seed.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr05-keycloak-seed.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr09-boundaries.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr09-contract-revision.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr10c-boundaries.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-h1-boundaries.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-s1-boundaries.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+        "status": "M"
+      },
+      {
+        "path": "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts",
+        "status": "M"
+      }
+    ]
+  },
+  "v1ClosureSource": {
+    "pathCounts": {
+      "added": 2,
+      "modified": 11,
+      "deleted": 0,
+      "total": 13
+    },
+    "paths": [
+      {
+        "path": "docs/reduction/inference-core/README.md",
+        "status": "M"
+      },
+      {
+        "path": "docs/reduction/inference-core/decision-register.md",
+        "status": "M"
+      },
+      {
+        "path": "docs/reduction/inference-core/validation-register.md",
+        "status": "M"
+      },
+      {
+        "path": "package.json",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/guardrails.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-h1-boundaries.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-s1-boundaries.test.mjs",
+        "status": "M"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-v1-boundaries.test.mjs",
+        "status": "A"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-v1-contract-revision.mjs",
+        "status": "A"
+      }
+    ],
+    "sourceFingerprints": [
+      {
+        "path": "docs/reduction/inference-core/README.md",
+        "sha256": "3e8e6aaafe0e78326e11aade75be08d42a70998eebe969e9f62aa8814e432425"
+      },
+      {
+        "path": "docs/reduction/inference-core/decision-register.md",
+        "sha256": "926b96defc88cbbfe1e12e9df9149d731e9c762749eb9111bf3d82d2e88d0112"
+      },
+      {
+        "path": "docs/reduction/inference-core/validation-register.md",
+        "sha256": "89b65cf76e9dfd608f4fd353136ffefd333c4c14982c6fd98ebc4681b5936c38"
+      },
+      {
+        "path": "package.json",
+        "sha256": "e8497cb83554b236e21f6f9d99c79492c4e9e1be56250c54f3ce78d7cee55ed3"
+      },
+      {
+        "path": "scripts/inference-core/guardrails.mjs",
+        "sha256": "85c78b6386d1aede70f55f9a17f019a733912268d1bf4b040db02b10d854d711"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+        "sha256": "485ee3288ece6f52538878a0d90c5c9a3dad357ca7ed7105bdb269cbf5e18ec0"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
+        "sha256": "bf4ad2f6a672036c92cd1d3d42abc1e9f08a885f2721f7eec2d839ccaad94094"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+        "sha256": "cf30ed2055337fa2303787481c741cbfdaf6d0ba847707da24e7952e4b056755"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-h1-boundaries.test.mjs",
+        "sha256": "4c0ce10477cf27ca9701c2551c337bc98a3313c7d72c272b4c8f076211b65373"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
+        "sha256": "0a809fe3b280941ee0957243d8f0ee8b661cb51c6a0289c9da3b2c1ce845b0dc"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-s1-boundaries.test.mjs",
+        "sha256": "12fd2e7c7eeac4d3ccaa27cc115d68158b57be5e27d6f23af582519e9979a662"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-v1-boundaries.test.mjs",
+        "sha256": "86a08c664778cbb0d85cffec3f9a7c85dde087d3fab8391d1f8bd1cc1ed8c28c"
+      },
+      {
+        "path": "scripts/inference-core/pr11a-r1-v1-contract-revision.mjs",
+        "sha256": "ece821551e943f1310c62ef871e4fbadb6bce611c781305f156f89a005e43c3f"
+      }
+    ],
+    "generatedDestinations": [
+      "docs/reduction/inference-core/contract-revisions/PR-11A.json",
+      "docs/reduction/inference-core/pr-11a-r1-v1-aggregate-evidence.json"
+    ]
+  },
+  "historicalBlockedAttempt": {
+    "remoteAnchor": {
+      "commit": "cc08cf8e9afce12def143f2f395d30bfbe04f515",
+      "tree": "4795e390f6d204be71de9c52b8b142c6724f8825"
+    },
+    "localEvidenceHead": {
+      "commit": "2c61275adfd5676f30dccefd48cdd63de0dcf317",
+      "tree": "13d8b4b911d0201671c1f2fe42d780b769f0ad7f"
+    },
+    "localEvidenceCommits": [
+      {
+        "commit": "470e72b81dd823378fd6d65a5b3af7428d775f5a",
+        "tree": "fd9c9b0a923d06df30d22d152f9a22b2036f3f0b",
+        "disposition": "blocked-candidate-preparation"
+      },
+      {
+        "commit": "07c36afe962567ce4ac84005da05d4a70a71cf08",
+        "tree": "9b58a005804238063f88bee07b2d778a7b711010",
+        "disposition": "blocked-validation-record"
+      },
+      {
+        "commit": "2c61275adfd5676f30dccefd48cdd63de0dcf317",
+        "tree": "13d8b4b911d0201671c1f2fe42d780b769f0ad7f",
+        "disposition": "blocked-evidence-binding"
+      }
+    ],
+    "inspectedWorktree": {
+      "path": "/Users/dardanberisha/Temp/LLM-machines/product-worktrees/inference-core-pr-11a-r1-v1",
+      "branch": "codex/inference-core-pr-11a-r1-v1",
+      "clean": true,
+      "head": "2c61275adfd5676f30dccefd48cdd63de0dcf317"
+    },
+    "disposition": "read-only-historical-evidence-not-a-successor-base-or-portable-validation-dependency"
+  },
+  "recordReconciliation": [
+    {
+      "package": "R1-S1",
+      "historicalRecord": "docs/reduction/inference-core/pr-11a-r1-s1-console-session-decisions.json",
+      "historicalRecordSha256": "4cb3e93a9e3f316b31795ed2ae863c8a2d14706f0795f14a3df61bdae809cf50",
+      "recordedSourceHead": "f9ca423533ba74f7a8d2fe205e27f7561285830b",
+      "recordedSourceTree": "5858c2b926769cc31bfd0cbcc9472528f5ba3479",
+      "reviewedAndMergedPackageHead": "28655df1a919757329a1493bea5811f064d143d0",
+      "reviewedAndMergedPackageTree": "4deb5b337120202b52173b05910f1cbf028b50c3",
+      "explanation": "The immutable decision record retains the pre-review source identity. A governance-only successor bound the reviewed package head before PR 14 merged it.",
+      "treatment": "Preserve the historical record and bind both identities in aggregate evidence."
+    },
+    {
+      "package": "R1-D1",
+      "historicalRecord": "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json",
+      "historicalRecordSha256": "933e1db703ee505e93bd9fef7c7bd5b1bffdf873da6838a32bf24fd86b834aba",
+      "reviewedSourceHead": "46295906c3d733b0e56abe94d9732d8eb0549c29",
+      "reviewedSourceTree": "dbbf55c1ed957aa905356b2faf11467c02781fb4",
+      "packageHead": "e04c7f809abf4df00f15ad8f05e7c271da44fa3c",
+      "packageHeadTree": "4795e390f6d204be71de9c52b8b142c6724f8825",
+      "mergeCommit": "cc08cf8e9afce12def143f2f395d30bfbe04f515",
+      "explanation": "The immutable decision record binds the independently reviewed source head. A governance-only commit completed the package head before PR 17 merged it, and PR 18 later corrected one D1-owned test hygiene defect.",
+      "treatment": "Preserve the historical record and bind reviewed source, package head, merge, and hygiene successor identities in aggregate evidence."
+    }
+  ],
+  "validation": {
+    "evaluatedSourceCommit": "da0ace0497321646713d1adf3f952565d6fb3708",
+    "evaluatedSourceTree": "1246613089b4898b7e18479dba628f75f3a01a07",
+    "localIntegratedGate": "pass-at-evaluated-source",
+    "cleanDetachedFreshCloneGate": "pass-at-evaluated-source",
+    "independentReview": "pending-final-candidate-review",
+    "cleanup": "pass-temporary-clone-removed",
+    "behavioralDefectFound": false,
+    "behaviorRepairInsideV1": false,
+    "recommendation": "source-gates-passed-awaiting-final-independent-review-and-protected-admission",
+    "commands": [
+      "corepack pnpm install --frozen-lockfile",
+      "corepack pnpm exec biome check .",
+      "corepack pnpm test",
+      "corepack pnpm typecheck",
+      "corepack pnpm build",
+      "corepack pnpm build:inference-core",
+      "node --test scripts/inference-core/pr11a-r1-*-boundaries.test.mjs",
+      "corepack pnpm check:inference-core -- --base-ref 0e794ccd6e0f2593f2e6ab34b8fc1d521835b6fd",
+      "git diff --check",
+      "git fsck --full"
+    ]
+  },
+  "operationPolicy": {
+    "addedSourcePaths": [
+      "apps/bff/src/auth/console-session-cookie.ts",
+      "apps/bff/src/auth/console-session-crypto.ts",
+      "apps/bff/src/auth/console-session-keyring.ts",
+      "apps/bff/src/auth/console-session-token-validator.ts",
+      "apps/bff/src/routes/console-session.ts",
+      "apps/bff/src/services/console-session-oidc.ts",
+      "apps/bff/src/services/console-session-runtime.ts",
+      "apps/bff/src/services/console-session-service.ts",
+      "apps/bff/src/services/console-session-store-drizzle.ts",
+      "apps/bff/src/services/console-session-store.ts",
+      "apps/bff/src/services/native-audit-source.ts",
+      "apps/bff/src/services/signing-trust.ts",
+      "apps/web/src/app/auth/elevate/page.tsx",
+      "apps/web/src/app/auth/unavailable/page.tsx",
+      "apps/web/src/lib/auth/mfa-elevation.ts",
+      "apps/web/src/lib/auth/safe-return.ts",
+      "apps/web/src/lib/auth/session-client.ts",
+      "packages/contracts/src/inference-core-ingress.ts",
+      "packages/contracts/src/inference-core-session.ts",
+      "packages/contracts/src/inference-core-signing.ts",
+      "packages/contracts/src/inference-core-storage.ts"
+    ],
+    "changedSourcePaths": [
+      "apps/bff/src/auth/authorization.ts",
+      "apps/bff/src/auth/runtime-live-authority.ts",
+      "apps/bff/src/commands/audit-ingestion.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/services/admin-prometheus.ts",
+      "apps/bff/src/services/admin-settings-validation.ts",
+      "apps/bff/src/services/admin-team.ts",
+      "apps/bff/src/services/audit-export-signing.ts",
+      "apps/bff/src/services/audit-ingestion.ts",
+      "apps/bff/src/services/emergency-recovery.ts",
+      "apps/bff/src/services/inference-core-retention.ts",
+      "apps/web/README.md",
+      "apps/web/package.json",
+      "apps/web/src/app/api/admin/audit/export/route.ts",
+      "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+      "apps/web/src/app/auth/signin/page.tsx",
+      "apps/web/src/app/layout.tsx",
+      "apps/web/src/app/team/import/template/route.ts",
+      "apps/web/src/components/console-v2/action-toasts.tsx",
+      "apps/web/src/components/console-v2/console-v2-shell.tsx",
+      "apps/web/src/components/console-v2/hardware-chart-primitives.tsx",
+      "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+      "apps/web/src/components/console-v2/inference-chart-primitives.tsx",
+      "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "apps/web/src/components/console-v2/team-v2-experience.tsx",
+      "apps/web/src/components/ui/button.tsx",
+      "apps/web/src/components/ui/card.tsx",
+      "apps/web/src/lib/admin/actions-core.ts",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "apps/web/src/lib/admin/server-data-core.ts",
+      "apps/web/src/lib/auth/role-claims.ts",
+      "apps/web/src/lib/auth/session.ts",
+      "apps/web/src/lib/bff/server-request.ts",
+      "apps/web/src/lib/utils.ts",
+      "apps/web/src/middleware.ts",
+      "package.json",
+      "packages/contracts/src/index.ts",
+      "packages/contracts/src/inference-core-authorization.ts",
+      "packages/contracts/src/inference-core-recovery.ts",
+      "packages/contracts/src/inference-core.ts",
+      "pnpm-lock.yaml"
+    ],
+    "deletedSourcePaths": [
+      "apps/bff/src/services/expert-capabilities.ts",
+      "apps/web/src/app/api/auth/[...nextauth]/route.ts",
+      "apps/web/src/app/auth/keycloak/route.ts",
+      "apps/web/src/lib/auth/auth.ts",
+      "apps/web/src/lib/auth/env.ts",
+      "apps/web/src/lib/auth/token-refresh.ts"
+    ],
+    "addedRepositoryPaths": [
+      "apps/bff/src/auth/console-session-cookie.test.ts",
+      "apps/bff/src/auth/console-session-cookie.ts",
+      "apps/bff/src/auth/console-session-crypto.test.ts",
+      "apps/bff/src/auth/console-session-crypto.ts",
+      "apps/bff/src/auth/console-session-keyring.test.ts",
+      "apps/bff/src/auth/console-session-keyring.ts",
+      "apps/bff/src/auth/console-session-token-validator.test.ts",
+      "apps/bff/src/auth/console-session-token-validator.ts",
+      "apps/bff/src/routes/console-session.test.ts",
+      "apps/bff/src/routes/console-session.ts",
+      "apps/bff/src/services/console-session-oidc.test.ts",
+      "apps/bff/src/services/console-session-oidc.ts",
+      "apps/bff/src/services/console-session-runtime.test.ts",
+      "apps/bff/src/services/console-session-runtime.ts",
+      "apps/bff/src/services/console-session-service.test.ts",
+      "apps/bff/src/services/console-session-service.ts",
+      "apps/bff/src/services/console-session-store-drizzle.ts",
+      "apps/bff/src/services/console-session-store.ts",
+      "apps/bff/src/services/native-audit-source.test.ts",
+      "apps/bff/src/services/native-audit-source.ts",
+      "apps/bff/src/services/signing-trust.test.ts",
+      "apps/bff/src/services/signing-trust.ts",
+      "apps/web/src/app/auth/elevate/page.test.tsx",
+      "apps/web/src/app/auth/elevate/page.tsx",
+      "apps/web/src/app/auth/signin/page.test.tsx",
+      "apps/web/src/app/auth/unavailable/page.test.tsx",
+      "apps/web/src/app/auth/unavailable/page.tsx",
+      "apps/web/src/app/team/import/template/route.test.ts",
+      "apps/web/src/lib/auth/mfa-elevation.test.ts",
+      "apps/web/src/lib/auth/mfa-elevation.ts",
+      "apps/web/src/lib/auth/safe-return.test.ts",
+      "apps/web/src/lib/auth/safe-return.ts",
+      "apps/web/src/lib/auth/session-client.test.ts",
+      "apps/web/src/lib/auth/session-client.ts",
+      "docs/reduction/inference-core/pr-11a-identity-ingress-hardening-decisions.json",
+      "docs/reduction/inference-core/pr-11a-r1-d1-storage-recovery-decisions.json",
+      "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json",
+      "docs/reduction/inference-core/pr-11a-r1-h1-hygiene-decisions.json",
+      "docs/reduction/inference-core/pr-11a-r1-k1-signing-custody-decisions.json",
+      "docs/reduction/inference-core/pr-11a-r1-s1-console-session-decisions.json",
+      "infra/ingress/README.md",
+      "infra/ingress/edge-policy.json",
+      "infra/ingress/no-bypass-policy.json",
+      "infra/ingress/product-edge.nginx.conf.template",
+      "infra/ingress/proxy-common.inc",
+      "infra/ingress/request-headers-console-browser.inc",
+      "infra/ingress/request-headers-customer-api.inc",
+      "infra/ingress/request-headers-identity-browser.inc",
+      "infra/ingress/request-safety.inc",
+      "infra/ingress/source-no-bypass.mjs",
+      "infra/ingress/source-no-bypass.test.mjs",
+      "infra/ingress/validate-ingress.mjs",
+      "infra/ingress/validate-ingress.test.mjs",
+      "infra/keycloak/pr11a-console-session-policy.json",
+      "infra/keycloak/validate-pr11a-session-policy.mjs",
+      "infra/keycloak/validate-pr11a-session-policy.test.mjs",
+      "infra/storage/README.md",
+      "infra/storage/profile.json",
+      "infra/storage/profile.schema.json",
+      "infra/storage/validate-profile.mjs",
+      "infra/storage/validate-profile.test.mjs",
+      "packages/contracts/src/inference-core-ingress.test.ts",
+      "packages/contracts/src/inference-core-ingress.ts",
+      "packages/contracts/src/inference-core-session.test.ts",
+      "packages/contracts/src/inference-core-session.ts",
+      "packages/contracts/src/inference-core-signing.test.ts",
+      "packages/contracts/src/inference-core-signing.ts",
+      "packages/contracts/src/inference-core-storage.test.ts",
+      "packages/contracts/src/inference-core-storage.ts",
+      "scripts/inference-core/pr11a-r1-c0-boundaries.test.mjs",
+      "scripts/inference-core/pr11a-r1-d1-boundaries.test.mjs",
+      "scripts/inference-core/pr11a-r1-e1-boundaries.test.mjs",
+      "scripts/inference-core/pr11a-r1-h1-boundaries.test.mjs",
+      "scripts/inference-core/pr11a-r1-k1-boundaries.test.mjs",
+      "scripts/inference-core/pr11a-r1-s1-boundaries.test.mjs",
+      "scripts/inference-core/pr11a-r1-v1-boundaries.test.mjs",
+      "scripts/inference-core/pr11a-r1-v1-contract-revision.mjs"
+    ],
+    "changedRepositoryPaths": [
+      ".env.example",
+      "apps/bff/src/auth/authorization-security.test.ts",
+      "apps/bff/src/auth/authorization.ts",
+      "apps/bff/src/auth/runtime-live-authority.test.ts",
+      "apps/bff/src/auth/runtime-live-authority.ts",
+      "apps/bff/src/commands/audit-ingestion.ts",
+      "apps/bff/src/db/inference-core-client.test.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.test.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.test.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin-audit-export.test.ts",
+      "apps/bff/src/routes/admin-hardware.test.ts",
+      "apps/bff/src/routes/admin-inference.test.ts",
+      "apps/bff/src/routes/admin-isolation.test.ts",
+      "apps/bff/src/routes/admin-recovery.test.ts",
+      "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "apps/bff/src/services/admin-prometheus.ts",
+      "apps/bff/src/services/admin-settings-validation.test.ts",
+      "apps/bff/src/services/admin-settings-validation.ts",
+      "apps/bff/src/services/admin-team.ts",
+      "apps/bff/src/services/audit-export-signing.test.ts",
+      "apps/bff/src/services/audit-export-signing.ts",
+      "apps/bff/src/services/audit-export.test.ts",
+      "apps/bff/src/services/audit-ingestion.test.ts",
+      "apps/bff/src/services/audit-ingestion.ts",
+      "apps/bff/src/services/emergency-recovery.test.ts",
+      "apps/bff/src/services/emergency-recovery.ts",
+      "apps/bff/src/services/inference-core-retention.test.ts",
+      "apps/bff/src/services/inference-core-retention.ts",
+      "apps/bff/src/services/users.test.ts",
+      "apps/web/README.md",
+      "apps/web/package.json",
+      "apps/web/src/app/api/admin/audit/export/route.test.ts",
+      "apps/web/src/app/api/admin/audit/export/route.ts",
+      "apps/web/src/app/api/admin/audit/export/verification-keys/route.test.ts",
+      "apps/web/src/app/api/admin/audit/export/verification-keys/route.ts",
+      "apps/web/src/app/auth/signin/page.tsx",
+      "apps/web/src/app/layout.tsx",
+      "apps/web/src/app/team/import/template/route.ts",
+      "apps/web/src/components/console-v2/action-toasts.test.tsx",
+      "apps/web/src/components/console-v2/action-toasts.tsx",
+      "apps/web/src/components/console-v2/console-v2-shell.test.tsx",
+      "apps/web/src/components/console-v2/console-v2-shell.tsx",
+      "apps/web/src/components/console-v2/hardware-chart-primitives.tsx",
+      "apps/web/src/components/console-v2/hardware-v2-experience.test.tsx",
+      "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
+      "apps/web/src/components/console-v2/inference-chart-primitives.tsx",
+      "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+      "apps/web/src/components/console-v2/team-v2-experience.tsx",
+      "apps/web/src/components/ui/button.tsx",
+      "apps/web/src/components/ui/card.tsx",
+      "apps/web/src/lib/admin/actions-core.test.ts",
+      "apps/web/src/lib/admin/actions-core.ts",
+      "apps/web/src/lib/admin/console-v2-routes-core.test.tsx",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "apps/web/src/lib/admin/server-data-core.test.ts",
+      "apps/web/src/lib/admin/server-data-core.ts",
+      "apps/web/src/lib/auth/role-claims.ts",
+      "apps/web/src/lib/auth/session.test.ts",
+      "apps/web/src/lib/auth/session.ts",
+      "apps/web/src/lib/bff/server-request.ts",
+      "apps/web/src/lib/utils.ts",
+      "apps/web/src/middleware.test.ts",
+      "apps/web/src/middleware.ts",
+      "docs/reduction/inference-core/README.md",
+      "docs/reduction/inference-core/decision-register.md",
+      "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
+      "docs/reduction/inference-core/validation-register.md",
+      "infra/keycloak/README.md",
+      "infra/keycloak/inference-core-realm-seed.json",
+      "infra/migrations/0000_inference_core.sql",
+      "package.json",
+      "packages/contracts/src/index.ts",
+      "packages/contracts/src/inference-core-authorization.test.ts",
+      "packages/contracts/src/inference-core-authorization.ts",
+      "packages/contracts/src/inference-core-recovery.test.ts",
+      "packages/contracts/src/inference-core-recovery.ts",
+      "packages/contracts/src/inference-core.test.ts",
+      "packages/contracts/src/inference-core.ts",
+      "pnpm-lock.yaml",
+      "scripts/inference-core/guardrails.mjs",
+      "scripts/inference-core/guardrails.test.mjs",
+      "scripts/inference-core/pr02-boundaries.test.mjs",
+      "scripts/inference-core/pr05-boundaries.test.mjs",
+      "scripts/inference-core/pr05-keycloak-seed.mjs",
+      "scripts/inference-core/pr05-keycloak-seed.test.mjs",
+      "scripts/inference-core/pr09-boundaries.test.mjs",
+      "scripts/inference-core/pr09-contract-revision.mjs",
+      "scripts/inference-core/pr10c-boundaries.test.mjs",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+      "test-support/inference-core-db-tests/src/pr09-audit-ingestion.test.ts"
+    ],
+    "deletedRepositoryPaths": [
+      "apps/bff/src/services/expert-capabilities.test.ts",
+      "apps/bff/src/services/expert-capabilities.ts",
+      "apps/web/src/app/api/auth/[...nextauth]/route.ts",
+      "apps/web/src/app/auth/keycloak/route.ts",
+      "apps/web/src/lib/auth/auth.ts",
+      "apps/web/src/lib/auth/env.test.ts",
+      "apps/web/src/lib/auth/env.ts",
+      "apps/web/src/lib/auth/role-claims.test.ts",
+      "apps/web/src/lib/auth/token-refresh.test.ts",
+      "apps/web/src/lib/auth/token-refresh.ts",
+      "apps/web/src/types/next-auth.d.ts"
+    ]
+  }
+}

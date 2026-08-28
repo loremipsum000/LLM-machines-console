@@ -1,0 +1,116 @@
+{
+  "apiVersion": "inference-core.llm-machines/v1",
+  "kind": "InferenceDeliveryProfile",
+  "metadata": {
+    "profileId": "synthetic-multi-node",
+    "revision": 3,
+    "admissionScope": "SYNTHETIC_ONLY",
+    "lifecycleState": "SYNTHETIC_UNMEASURED",
+    "containsCredentials": false
+  },
+  "engine": {
+    "contractVersion": "0.5.13",
+    "sourceCommit": "28b095c01005d4a3a2a5b637b7d028b07fba31b2",
+    "image": {
+      "repository": "registry.invalid/llm-machines/sglang",
+      "version": "0.5.13-synthetic",
+      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+      "platform": {
+        "os": "linux",
+        "architecture": "amd64"
+      },
+      "sourceRevision": "28b095c01005d4a3a2a5b637b7d028b07fba31b2",
+      "licenseSpdx": "Apache-2.0",
+      "sbomDigest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+      "provenanceDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "privateRegistryMirror": "registry.invalid/llm-machines/sglang"
+    }
+  },
+  "accelerator": {
+    "backend": "rocm",
+    "vendor": "synthetic-vendor-b",
+    "architecture": "synthetic-architecture-b",
+    "nodes": 2,
+    "devicesPerNode": 4,
+    "productionSupportClaim": false
+  },
+  "model": {
+    "alias": "synthetic-model-b",
+    "sourceKind": "signed-release-media",
+    "source": "synthetic/model-b",
+    "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "artifactDigest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+    "manifestDigest": "sha256:4242424242424242424242424242424242424242424242424242424242424242",
+    "licenseSpdx": "Apache-2.0",
+    "precision": "int8",
+    "quantization": "synthetic-int8",
+    "mountPath": "/srv/llm-machines/inference-models/synthetic-model-b"
+  },
+  "limits": {
+    "configuredContextTokens": 16384,
+    "maxOutputTokens": 4096
+  },
+  "parallelism": {
+    "tensor": 4,
+    "pipeline": 2,
+    "data": 1,
+    "replicas": 1
+  },
+  "launch": {
+    "additionalArguments": [
+      {
+        "name": "--mem-fraction-static",
+        "value": 0.8
+      }
+    ]
+  },
+  "network": {
+    "serviceName": "synthetic-inference-b",
+    "port": 30001,
+    "visibility": "private-inference-plane",
+    "allowedCallers": ["litellm-private", "prometheus-private-metrics-only"]
+  },
+  "probes": {
+    "liveness": {
+      "method": "GET",
+      "path": "/health"
+    },
+    "readiness": {
+      "method": "GET",
+      "path": "/health_generate"
+    },
+    "metrics": {
+      "method": "GET",
+      "path": "/metrics"
+    }
+  },
+  "capacity": {
+    "state": "UNMEASURED",
+    "profileRevision": null,
+    "engineImageDigest": null,
+    "modelArtifactDigest": null,
+    "evidenceDigest": null,
+    "measuredAt": null,
+    "validUntil": null,
+    "effectiveContextTokens": null,
+    "maxOutputTokens": null,
+    "throughputTokensPerSecond": null,
+    "maxConcurrentRequests": null,
+    "p95LatencyMilliseconds": null,
+    "queue": {
+      "state": "not_configured",
+      "maxObservedDepth": null
+    }
+  },
+  "activation": {
+    "state": "INACTIVE",
+    "qualifiedProfileDigest": null
+  },
+  "rollback": {
+    "profileId": "synthetic-multi-node",
+    "revision": 2,
+    "engineImageDigest": "sha256:5151515151515151515151515151515151515151515151515151515151515151",
+    "modelArtifactDigest": "sha256:5252525252525252525252525252525252525252525252525252525252525252"
+  },
+  "coreCompatibilityFingerprint": "sha256:9249bdc91f2dc7ac8471de88aad851644a8b8526d57c5f1501e6c63db246d1d7"
+}

@@ -1,19 +1,23 @@
+import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
+import { productCopy } from "@llm-machines/copy"
 import type { ComponentType, SVGProps } from "react"
 import {
-  ApplicationsIcon,
+  ActivityIcon,
   HardwareIcon,
   InferenceIcon,
-  KnowledgeIcon,
+  KeysIcon,
+  OverviewIcon,
   SettingsIcon,
   TeamIcon,
 } from "./console-v2-icons"
 
 export type ConsoleV2SectionId =
-  | "knowledge"
+  | "overview"
   | "applications"
   | "inference"
   | "hardware"
   | "team"
+  | "activity"
   | "settings"
 
 export interface ConsoleV2Section {
@@ -25,16 +29,16 @@ export interface ConsoleV2Section {
 
 export const consoleV2Sections: ConsoleV2Section[] = [
   {
-    id: "knowledge",
-    href: "/knowledge",
-    icon: KnowledgeIcon,
-    label: "Knowledge",
+    id: "overview",
+    href: "/",
+    icon: OverviewIcon,
+    label: "Overview",
   },
   {
     id: "applications",
-    href: "/applications",
-    icon: ApplicationsIcon,
-    label: "Applications",
+    href: productCopy.vocabulary.primaryIntegration.href,
+    icon: KeysIcon,
+    label: productCopy.vocabulary.primaryIntegration.plural,
   },
   {
     id: "inference",
@@ -55,9 +59,30 @@ export const consoleV2Sections: ConsoleV2Section[] = [
     label: "Team",
   },
   {
+    id: "activity",
+    href: "/activity",
+    icon: ActivityIcon,
+    label: "Activity & Audit",
+  },
+  {
     id: "settings",
     href: "/settings",
     icon: SettingsIcon,
     label: "Settings",
   },
 ]
+
+export function consoleV2SectionsForRole(
+  role: RetainedConsoleRole,
+): ConsoleV2Section[] {
+  return consoleV2Sections.filter((section) =>
+    roleCanAccessConsoleSection(role, section.id),
+  )
+}
+
+export function roleCanAccessConsoleSection(
+  role: RetainedConsoleRole,
+  _section: ConsoleV2SectionId,
+): boolean {
+  return role === "admin" || role === "operator"
+}

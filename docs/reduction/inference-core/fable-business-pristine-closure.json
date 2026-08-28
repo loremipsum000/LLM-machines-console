@@ -1,0 +1,350 @@
+{
+  "schemaVersion": 1,
+  "closureId": "FABLE_BUSINESS_PRISTINE_2026_08_28",
+  "auditedBaseline": {
+    "candidateCommit": "0f0399c6a091d4ec0ea78f4379362add38c87b22",
+    "candidateTree": "ced785bf0d7f63efab780443e1207b0e3ece73d8",
+    "protectedMerge": "005ab894e2ef6826879738eac99030fc97b9fb70",
+    "pullRequest": 147
+  },
+  "externalEvidence": {
+    "root": "fable-audits/2026-08-28-005ab894",
+    "ephemeralClonePreserved": true,
+    "cleanupAuthorized": false,
+    "reports": [
+      {
+        "name": "business-architecture-review",
+        "fileCount": 10,
+        "inventorySha256": "6450de9697fcf8ea1f48309feddf67d7d38ef6d0be5d31e84804e4823a9c549d",
+        "findingsSha256": "dcc75ffbae04e0d8653138a4e35765b20ea6da2913bd4c5ef216cac191d46001"
+      },
+      {
+        "name": "code-pristine-review",
+        "fileCount": 13,
+        "inventorySha256": "9ef71aff101f73f5dd5ce7b6f1db0ca58d0574a603f3e84cc8c7ee6cc7aaa9b8",
+        "findingsSha256": "94c3b183b0972b0e65cc249e1482818e4afd9752c01fa33490432afdf3c6195e"
+      }
+    ]
+  },
+  "remediations": [
+    {
+      "package": "business-authority-reconciliation",
+      "candidateCommit": "85b4d1f0bd426811ec3159352575809080cafe7c",
+      "candidateTree": "58260edf503d214a510ce221a10293c2d93a5fb7",
+      "protectedMerge": "428f2d1e0dfd2742aebb55bdf488ab4c11f9ae7b",
+      "pullRequest": 152,
+      "reviewer": "Carson",
+      "reviewVerdict": "PASS_NO_MATERIAL_FINDINGS",
+      "findings": ["PG-001", "PG-002", "AD-003", "UX-001", "CL-017"],
+      "validationEvidence": [
+        [
+          "root-test",
+          "bd5943f1e093e60a9fc7f03c0d713844acd44698f9653e98c014aba24431ff66"
+        ],
+        [
+          "lint",
+          "7aaa631fc7f61f55df9740b7ea8d904a300d0717c02f43e85971669c5a8d475e"
+        ],
+        [
+          "typecheck",
+          "c1417b2ab9f2493798827704473f75d1e406d630f38909976d8f3ad55b73d91c"
+        ],
+        [
+          "build",
+          "47585416c55748b81057f54d8df8a4fef53b66709df853b22e59a26249649917"
+        ],
+        [
+          "security",
+          "41a77c58ade12212772bf14aa632f94b5a6ab003ea7772c22c992b20ab71e734"
+        ],
+        [
+          "detached-install",
+          "ee1f6e0eeb187e1e3e57b40dc4306bf3ee3adb1be4a1110e3100297a59a89c07"
+        ],
+        [
+          "detached-root-test",
+          "15bc34c008c3f42b062fdcaf7299443d6359340986387b90ee9f0927454d3f0a"
+        ],
+        [
+          "detached-lint",
+          "f5cea36e04c2aa955898c7b155ce18c71230dea8e839eeaa273826d99956f920"
+        ],
+        [
+          "detached-typecheck",
+          "0a9be6d3c52d20cf85b0982989bd8b24c532ccde2615cf35c84aa6df848bc905"
+        ],
+        [
+          "detached-build",
+          "c4d43fbed2519c1c6e874a31a85a06ade1539a2faaf09ec8d778e6c738ffc0a2"
+        ],
+        [
+          "detached-security",
+          "e9f8f8804bbc620cb76da396410964161edb581e2760cff343317f49b331de05"
+        ]
+      ]
+    },
+    {
+      "package": "cleanliness-contract-ownership",
+      "candidateCommit": "53722847a419252156c29922601439fd2bc8958b",
+      "candidateTree": "dd66ef499533d5eb880f28f871142efa4d45f71e",
+      "protectedMerge": "cf3066e24dd0fa8dae35c53ff53f98be8f536b76",
+      "pullRequest": 153,
+      "reviewer": "Kepler",
+      "reviewVerdict": "PASS_NO_MATERIAL_FINDINGS",
+      "findings": ["AD-001", "CL-004", "CL-008", "CL-012"],
+      "validationEvidence": [
+        [
+          "root-test",
+          "2d4949957a7163dfc458472eaaf40abc3bc1e54dc0532e2ddb966d555a89603b"
+        ],
+        [
+          "release-test",
+          "392514ff1bbe2f3dbe0dcd2c7d1d0444c0b63cfd4632a005d42f6f2811fe9101"
+        ],
+        [
+          "lint",
+          "1441be314cc448d4912aabe5e0442276184b2cffc40f63ed623739897632206b"
+        ],
+        [
+          "typecheck",
+          "8e5d713493032fa65daf01addc76ea8fcc0f9885d351696302359cfd94b5ed59"
+        ],
+        [
+          "build",
+          "99211623a648a5c2dba3bd11a4440ed49623a6ba031254c2b3eb31412d655299"
+        ],
+        [
+          "security",
+          "79072c37ff2023ea04ccbecc91535615596b504801d3776389351e0d2325a6ed"
+        ],
+        [
+          "detached-install",
+          "7f224155d679868191bfa5f9f333bc22f229ca5a4cb05a1e7659e6a00a9527aa"
+        ],
+        [
+          "detached-root-test",
+          "88c8aeb9e3174752868344e34152c88aefe63b967c416a5346c7878179b96121"
+        ],
+        [
+          "detached-release-test",
+          "8407d9849c8ce7cda2549939c41ebe4512189fe90d7f4a8ac158d717f2c3cb5d"
+        ],
+        [
+          "detached-lint",
+          "09db6be5dd16dd81f7a978250111aedaccdef8c008217492d8fa986fe3bd1e3f"
+        ],
+        [
+          "detached-typecheck",
+          "a4e4473d4f0b221fbf6304ee8ac4c9cbdc70fdfb74c02e972ba0f9ca2b38cc69"
+        ],
+        [
+          "detached-build",
+          "c8e29a7ffb2cbfa33f47fba88b45d23fe93a0f7498fb2ead36423450bc23834c"
+        ],
+        [
+          "detached-security",
+          "d4acc59f82df0008f783b694a2722de28afc5340ae439dd1a2a4b537b7c51cfa"
+        ]
+      ]
+    }
+  ],
+  "findingDispositions": [
+    {
+      "id": "PG-001",
+      "status": "FIXED",
+      "owner": "business-authority-reconciliation"
+    },
+    {
+      "id": "PG-002",
+      "status": "FIXED",
+      "owner": "business-authority-reconciliation"
+    },
+    {
+      "id": "PG-003",
+      "status": "DEFERRED_PRODUCT_ROADMAP",
+      "owner": "backup-and-recovery-ux"
+    },
+    {
+      "id": "PG-004",
+      "status": "DEFERRED_PRODUCT_ROADMAP",
+      "owner": "lifecycle-update-ux"
+    },
+    {
+      "id": "PG-005",
+      "status": "DEFERRED_PRODUCT_ROADMAP",
+      "owner": "alert-delivery-ux"
+    },
+    {
+      "id": "PG-006",
+      "status": "DEFERRED_PRODUCT_ROADMAP",
+      "owner": "emergency-isolation-ux"
+    },
+    {
+      "id": "AD-001",
+      "status": "FIXED",
+      "owner": "cleanliness-contract-ownership"
+    },
+    {
+      "id": "AD-002",
+      "status": "DEFERRED_RUNTIME_QUALIFICATION",
+      "owner": "commissioning-runtime-evidence"
+    },
+    {
+      "id": "AD-003",
+      "status": "FIXED",
+      "owner": "business-authority-reconciliation"
+    },
+    {
+      "id": "AD-004",
+      "status": "DEFERRED_MEASUREMENT",
+      "owner": "release-governance-maintenance"
+    },
+    {
+      "id": "UX-001",
+      "status": "PARTIALLY_FIXED",
+      "owner": "business-authority-reconciliation",
+      "remaining": "Disambiguate Product Keys, credential identifiers, audit verification keys, and LiteLLM virtual keys without changing their separate authorities"
+    },
+    {
+      "id": "UX-002",
+      "status": "DEFERRED_PRODUCT_ROADMAP",
+      "owner": "supported-state-ux"
+    },
+    {
+      "id": "UX-003",
+      "status": "DEFERRED_PRODUCT_ROADMAP",
+      "owner": "localization"
+    },
+    {
+      "id": "UX-004",
+      "status": "DEFERRED_PRODUCT_ROADMAP",
+      "owner": "observability-copy"
+    },
+    {
+      "id": "OS-001",
+      "status": "DEFERRED_PRODUCT_ROADMAP",
+      "owner": "support-bundle"
+    },
+    {
+      "id": "OS-002",
+      "status": "DEFERRED_PRODUCT_ROADMAP",
+      "owner": "release-identity-ux"
+    },
+    {
+      "id": "HY-001",
+      "status": "DEFERRED_MEASUREMENT",
+      "owner": "accessibility-qualification"
+    },
+    {
+      "id": "HY-002",
+      "status": "DEFERRED_CUSTOMER_RESEARCH",
+      "owner": "commissioning-alert-expectations"
+    },
+    {
+      "id": "HY-003",
+      "status": "DEFERRED_CUSTOMER_RESEARCH",
+      "owner": "integration-test-ux"
+    },
+    {
+      "id": "CL-001",
+      "status": "DEFERRED_REFACTOR",
+      "owner": "bff-domain-boundaries"
+    },
+    {
+      "id": "CL-002",
+      "status": "DEFERRED_REFACTOR",
+      "owner": "bff-route-registrars"
+    },
+    {
+      "id": "CL-003",
+      "status": "DEFERRED_REFACTOR",
+      "owner": "web-keys-surface"
+    },
+    {
+      "id": "CL-004",
+      "status": "FIXED",
+      "owner": "cleanliness-contract-ownership"
+    },
+    {
+      "id": "CL-005",
+      "status": "DEFERRED_MAINTENANCE",
+      "owner": "web-formatters"
+    },
+    {
+      "id": "CL-006",
+      "status": "DEFERRED_MAINTENANCE",
+      "owner": "bff-security-utilities"
+    },
+    {
+      "id": "CL-007",
+      "status": "DEFERRED_MAINTENANCE",
+      "owner": "problem-details"
+    },
+    {
+      "id": "CL-008",
+      "status": "FIXED",
+      "owner": "cleanliness-contract-ownership"
+    },
+    {
+      "id": "CL-009",
+      "status": "DEFERRED_MAINTENANCE",
+      "owner": "bff-runtime-wiring"
+    },
+    {
+      "id": "CL-010",
+      "status": "DEFERRED_REFACTOR",
+      "owner": "contract-domains"
+    },
+    {
+      "id": "CL-011",
+      "status": "DEFERRED_REFACTOR",
+      "owner": "release-guardrail-data"
+    },
+    {
+      "id": "CL-012",
+      "status": "FIXED",
+      "owner": "cleanliness-contract-ownership"
+    },
+    {
+      "id": "CL-013",
+      "status": "DEFERRED_MAINTENANCE",
+      "owner": "test-fixtures"
+    },
+    {
+      "id": "CL-014",
+      "status": "DEFERRED_MAINTENANCE",
+      "owner": "web-form-primitives"
+    },
+    {
+      "id": "CL-015",
+      "status": "DEFERRED_MAINTENANCE",
+      "owner": "ingress-validation"
+    },
+    {
+      "id": "CL-016",
+      "status": "DEFERRED_MEASUREMENT",
+      "owner": "validation-runtime"
+    },
+    {
+      "id": "CL-017",
+      "status": "PARTIALLY_FIXED",
+      "owner": "business-authority-reconciliation",
+      "remaining": "updateActionEnabled awaits PG-004"
+    },
+    {
+      "id": "CL-018",
+      "status": "DEFERRED_PRODUCT_ROADMAP",
+      "owner": "customer-copy-authority"
+    }
+  ],
+  "protectedSuccessorTip": {
+    "commit": "cf3066e24dd0fa8dae35c53ff53f98be8f536b76",
+    "tree": "dd66ef499533d5eb880f28f871142efa4d45f71e"
+  },
+  "status": {
+    "productAccepted": false,
+    "runtimeQualified": false,
+    "contractActivation": "INACTIVE",
+    "genesisPublished": false
+  }
+}

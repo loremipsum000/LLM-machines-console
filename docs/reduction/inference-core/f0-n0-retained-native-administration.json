@@ -1,0 +1,347 @@
+{
+  "schema": "llm-machines.retained-native-administration-scope.v1",
+  "workPackage": "F0-N0",
+  "status": "PROSPECTIVE_SCOPE_CORRECTION_SOURCE_ONLY",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "branch": "codex/inference-core-stack-reduction",
+    "commit": "eecbdc6099d36876b94b78689a54c914f6228eb4",
+    "tree": "c5d9b5e8282418441e9c3c55fe85e858caa70d1e"
+  },
+  "historicalEvidencePolicy": {
+    "disposition": "PRESERVE_UNCHANGED",
+    "meaning": "Earlier records accurately describe the narrower boundary at their historical commits. This prospective correction supersedes that target state only after its service packages pass protected admission.",
+    "rewritesPermitted": false
+  },
+  "productBoundary": {
+    "objective": "Remove customer workload applications and unfinished retrieval capabilities while retaining supported OSS appliance administration.",
+    "removed": [
+      "RETIRED_FIRST_PARTY_CHAT_UI",
+      "RETIRED_FIRST_PARTY_CONVERSATIONS",
+      "RETIRED_RETRIEVAL_UI",
+      "RETIRED_RETRIEVAL_PIPELINE",
+      "RETIRED_DOCUMENT_COLLECTIONS",
+      "RETIRED_TOOL_PROTOCOL",
+      "RETIRED_PRODUCT_DOCUMENT_PIPELINE"
+    ],
+    "retained": [
+      "Console",
+      "Grafana native administration",
+      "Keycloak appliance-realm administration",
+      "Portainer appliance administration",
+      "LiteLLM native technical administration",
+      "private observability and lifecycle services",
+      "Application-managed Firecrawl without a native customer UI"
+    ],
+    "console": {
+      "position": "PRIMARY_SIMPLIFIED_UNIFIED_CUSTOMER_SURFACE",
+      "remainsUsefulWithoutNativeTools": true,
+      "nativeToolsDoNotReplace": [
+        "Applications",
+        "Inference",
+        "Hardware",
+        "Team",
+        "Activity & Audit",
+        "Settings"
+      ],
+      "applicationCredentialsRemainRecommended": true
+    }
+  },
+  "nativeSurfaces": [
+    {
+      "id": "grafana",
+      "authority": "https://grafana.lab.llm-machines.com/",
+      "roles": {
+        "Admin": "Editor",
+        "Operator": "DENY"
+      },
+      "serverAdministrator": false,
+      "implementationOwner": "F0-N2",
+      "activation": "INACTIVE_PENDING_EXACT_OIDC_AND_INGRESS_QUALIFICATION"
+    },
+    {
+      "id": "keycloak-admin",
+      "authority": "https://keycloak.lab.llm-machines.com/keycloak/admin/llm-machines/console/",
+      "roles": {
+        "Admin": "LEAST_PRIVILEGED_APPLIANCE_REALM_ADMINISTRATION",
+        "Operator": "DENY"
+      },
+      "realm": "llm-machines",
+      "forbiddenAuthority": [
+        "master realm",
+        "unrelated realms",
+        "realm creation",
+        "server-wide administration",
+        "cross-realm access"
+      ],
+      "implementationOwner": "F0-N3",
+      "activation": "INACTIVE_PENDING_FGAP_AND_BROWSER_QUALIFICATION"
+    },
+    {
+      "id": "portainer",
+      "authority": "https://portainer.lab.llm-machines.com/",
+      "roles": {
+        "Admin": "PORTAINER_ADMINISTRATOR",
+        "Operator": "DENY"
+      },
+      "customerOwned": true,
+      "customerRecoveryAdministratorRequired": true,
+      "vendorSupport": "DISTINCT_NAMED_AUDITABLE_ACCOUNT_OVER_CUSTOMER_APPROVED_VPN_ONLY",
+      "supportBoundary": "Customer changes through Portainer can move the appliance outside its supported configuration.",
+      "implementationOwner": "F0-N4",
+      "activation": "INACTIVE_PENDING_CE_SSO_RBAC_AND_RECOVERY_QUALIFICATION"
+    },
+    {
+      "id": "litellm",
+      "authority": "https://litellm.lab.llm-machines.com/ui/",
+      "roles": {
+        "Admin": "proxy_admin",
+        "Operator": "internal_user"
+      },
+      "operatorAllowed": [
+        "create own virtual keys",
+        "view own virtual keys",
+        "delete own virtual keys",
+        "view own spend"
+      ],
+      "operatorDenied": [
+        "route mutation",
+        "model mutation",
+        "other-user or shared-key mutation",
+        "team mutation",
+        "user mutation",
+        "global budget mutation",
+        "system mutation",
+        "proxy_admin"
+      ],
+      "sharedHumanCredentials": false,
+      "masterKeyAsHumanCredential": false,
+      "enterpriseLicenseAllowed": false,
+      "freeSsoUserLimit": 5,
+      "proposedVersion": "v1.96.2",
+      "proposedSourceRevision": "83d6d84bfb7abbbff70d456bc89028d426db8c33",
+      "proposedOciIndex": "sha256:154e23bb5f31b1f10e16392a8ef299bd2cde08de3a64a6849002cfcc25ce3c63",
+      "proposedLinuxAmd64Manifest": "sha256:6378c0f68aa9d91820b80cd2ac68b8bb8d70f6c498f504edc7296a9dfd44b0a8",
+      "implementationOwner": "F0-N1",
+      "activation": "INACTIVE_PENDING_SUPPLY_CHAIN_MIGRATION_SSO_ROLE_AND_RETENTION_QUALIFICATION"
+    }
+  ],
+  "identityBoundary": {
+    "issuer": "Keycloak llm-machines realm",
+    "theme": "repository-owned llm-machines theme",
+    "protocol": "Authorization Code plus PKCE where the native service supports it",
+    "unifiedLoginMeaning": "Keycloak SSO with separate native service sessions",
+    "consoleSessionForwarding": false,
+    "sharedApplicationCookies": false,
+    "sharedHumanAccounts": false,
+    "anonymousAdministration": false,
+    "reverseProxyImpersonation": false,
+    "passwordOnlyPreGenesis": true,
+    "mandatoryTotp": false,
+    "idleSessionSeconds": 28800,
+    "maximumSessionSeconds": 86400,
+    "refreshRotationRevocationSafeRedirectOutageRecoveryAndLogoutRequired": true
+  },
+  "ingressBoundary": {
+    "dedicatedServiceHostnames": true,
+    "consoleSubpaths": false,
+    "iframes": false,
+    "productEdgeOnly": true,
+    "directNativePortsCustomerAccessible": false,
+    "exactPerServiceBrowserRouteInventoryRequired": true,
+    "nativeSessionHeadersPreservedOnlyByExactProfile": true,
+    "rejectAlternateHostSniForwardingSpoofTraversalAndDirectPorts": true,
+    "forbiddenPublicServices": [
+      "Prometheus",
+      "Alertmanager",
+      "PostgreSQL",
+      "Firecrawl internals",
+      "SGLang listeners"
+    ]
+  },
+  "firecrawlBoundary": {
+    "installed": true,
+    "defaultOff": true,
+    "applicationManaged": true,
+    "separateCredential": true,
+    "routes": ["POST /v2/search", "POST /v2/scrape"],
+    "nativeCustomerUi": false,
+    "zeroWorkloadContentRetention": true
+  },
+  "sourceRebaseline": [
+    {
+      "owner": "F0-N0",
+      "disposition": "PROSPECTIVE_GOVERNANCE_CORRECTION",
+      "paths": [
+        "docs/reduction/inference-core/README.md",
+        "docs/reduction/inference-core/decision-register.md",
+        "docs/reduction/inference-core/validation-register.md"
+      ]
+    },
+    {
+      "owner": "HISTORICAL_EVIDENCE",
+      "disposition": "PRESERVE_UNCHANGED_AND_SUPERSEDE_PROSPECTIVELY",
+      "paths": [
+        "docs/reduction/inference-core/pr-09-activity-audit-observability-decisions.json",
+        "docs/reduction/inference-core/pr-11-console-information-architecture-decisions.json",
+        "docs/reduction/inference-core/pr-11a-r1-e1-product-edge-decisions.json",
+        "docs/reduction/inference-core/f0-o1-observability-projection.json",
+        "docs/reduction/inference-core/f0-i1-keycloak-identity.json",
+        "docs/reduction/inference-core/f0-i2-keycloak-team.json",
+        "docs/reduction/inference-core/f0-l2-private-litellm.json",
+        "docs/reduction/inference-core/f0-v1-pre-genesis-closure.json",
+        "docs/reduction/inference-core/f0-v2-founder-handover-closure.json"
+      ]
+    },
+    {
+      "owner": "F0-N1",
+      "disposition": "REPLACE_PRIVATE_PROJECTION_ONLY_LITELLM_IDENTITY_AND_PROVE_NATIVE_ROLE_BOUNDARY",
+      "paths": [
+        "infra/release/core-image-inventory.json",
+        "infra/release/license-disposition.json",
+        "infra/release/validate-image-lock.mjs",
+        "infra/release/validate-image-lock.test.mjs",
+        "scripts/inference-core/f0-l2-private-litellm.test.mjs",
+        "scripts/pre-genesis/reduced-core-integrated.mjs",
+        "scripts/pre-genesis/reduced-core-browser-session.mjs"
+      ]
+    },
+    {
+      "owner": "F0-N2",
+      "disposition": "REPLACE_OPTIONAL_INACTIVE_GRAFANA_ROLE_AND_NATIVE_LOGIN_ASSUMPTIONS",
+      "paths": [
+        "infra/observability/grafana/grafana.ini",
+        "infra/observability/validate-profile.mjs",
+        "infra/observability/validate-profile.test.mjs",
+        "scripts/inference-core/f0-o1-observability-projection.test.mjs"
+      ]
+    },
+    {
+      "owner": "F0-N3",
+      "disposition": "ADD_SCOPED_NATIVE_ADMIN_CLIENT_FGAP_THEME_AND_SESSION_PROFILE_WITHOUT_WEAKENING_CONSOLE_IDENTITY",
+      "paths": [
+        "infra/keycloak/README.md",
+        "infra/keycloak/inference-core-commissioning.json",
+        "infra/keycloak/inference-core-realm-seed.json",
+        "infra/keycloak/pr11a-console-session-policy.json",
+        "infra/keycloak/validate-pr11a-session-policy.mjs",
+        "infra/keycloak/validate-pr11a-session-policy.test.mjs",
+        "scripts/inference-core/pr05-keycloak-seed.mjs",
+        "scripts/inference-core/pr05-keycloak-seed.test.mjs",
+        "apps/bff/src/services/inference-core-keycloak-admin.test.ts"
+      ]
+    },
+    {
+      "owner": "F0-N4",
+      "disposition": "RESTORE_PORTAINER_TO_CORE_INVENTORY_STARTUP_BACKUP_LICENSE_AND_ADMIN_ONLY_NATIVE_ACCESS",
+      "paths": [
+        "infra/release/core-image-inventory.json",
+        "infra/release/license-disposition.json",
+        "infra/release/validate-image-lock.mjs",
+        "infra/release/validate-image-lock.test.mjs",
+        "infra/storage/README.md",
+        "infra/storage/profile.json",
+        "infra/storage/validate-profile.mjs",
+        "infra/storage/validate-profile.test.mjs",
+        "scripts/pre-genesis/reduced-core-integrated.mjs",
+        "scripts/pre-genesis/reduced-core-uat.mjs",
+        "docs/reduction/inference-core/founder-uat-runbook.md"
+      ]
+    },
+    {
+      "owner": "F0-N5",
+      "disposition": "REPLACE_BLANKET_NATIVE_DENIAL_WITH_FOUR_EXACT_HOST_PROFILES_WHILE_RETAINING_DIRECT_PORT_DENIAL",
+      "paths": [
+        "packages/contracts/src/inference-core-ingress.ts",
+        "packages/contracts/src/inference-core-ingress.test.ts",
+        "infra/ingress/README.md",
+        "infra/ingress/edge-policy.json",
+        "infra/ingress/no-bypass-policy.json",
+        "infra/ingress/product-edge.nginx.conf.template",
+        "infra/ingress/source-no-bypass.test.mjs",
+        "infra/ingress/validate-ingress.mjs",
+        "infra/ingress/validate-ingress.test.mjs"
+      ]
+    },
+    {
+      "owner": "F0-N6",
+      "disposition": "ADD_ROLE_FILTERED_TECHNICAL_TOOLS_WITHOUT_CHANGING_THE_PRIMARY_SEVEN_SURFACES",
+      "paths": [
+        "apps/web/src/components/console-v2/console-v2-sections.ts",
+        "apps/web/src/components/console-v2/console-v2-shell.tsx",
+        "scripts/pre-genesis/reduced-core-browser-session.mjs"
+      ]
+    },
+    {
+      "owner": "F0-N7",
+      "disposition": "REPLACE_AGGREGATE_ABSENCE_ASSERTIONS_WITH_EXACT_ROLE_ROUTE_NO_BYPASS_RETENTION_AND_RESTART_ASSERTIONS",
+      "paths": [
+        "scripts/inference-core/guardrails.mjs",
+        "scripts/inference-core/guardrails.test.mjs",
+        "scripts/inference-core/pr09-boundaries.test.mjs",
+        "scripts/inference-core/pr11-boundaries.test.mjs",
+        "scripts/inference-core/pr11a-r1-v1-boundaries.test.mjs",
+        "scripts/inference-core/f0-v1-pre-genesis-closure.test.mjs",
+        "scripts/inference-core/f0-v2-founder-handover-closure.test.mjs"
+      ]
+    }
+  ],
+  "missingSourceCapabilities": [
+    {
+      "owner": "F0-N1",
+      "capability": "LiteLLM v1.96.2 supply-chain evidence, database migration proof, free-SSO role proof, and exact native browser route inventory"
+    },
+    {
+      "owner": "F0-N2",
+      "capability": "Grafana Admin-only native browser route and denial profile"
+    },
+    {
+      "owner": "F0-N3",
+      "capability": "repository-owned llm-machines Keycloak login theme plus appliance-realm native Admin Console FGAP profile"
+    },
+    {
+      "owner": "F0-N4",
+      "capability": "Portainer image lock, licensing evidence, runtime definition, backup boundary, customer recovery admin, and CE SSO role proof"
+    },
+    {
+      "owner": "F0-N5",
+      "capability": "four exact native service hostname profiles with per-target browser route, query, cookie, redirect, CSRF, WebSocket, SSE, logout, and no-bypass matrices"
+    },
+    {
+      "owner": "F0-N6",
+      "capability": "role-filtered Console Technical Tools navigation and support-boundary copy"
+    }
+  ],
+  "implementationSequence": [
+    "F0-N0 scope and governance correction",
+    "F0-N1 LiteLLM v1.96.2 upgrade, free SSO, and role characterization",
+    "F0-N2 Grafana Admin-only OIDC correction",
+    "F0-N3 scoped Keycloak Admin Console access",
+    "F0-N4 Portainer Core restoration and Admin-only SSO",
+    "F0-N5 Product-edge and DNS source profiles",
+    "F0-N6 Console Technical Tools navigation and copy",
+    "F0-N7 aggregate validation",
+    "F0-N8 pre-Genesis closure amendment"
+  ],
+  "liveReadOnlyObservations": {
+    "observedAt": "2026-08-13",
+    "currentGatewayDisposition": "Retained native hostnames currently fail closed and are not active customer routes.",
+    "currentCoreDisposition": "Grafana, Keycloak, and LiteLLM are private; Portainer is not currently present in the reduced Core runtime.",
+    "wildcardCertificateNotAfter": "2026-08-16T08:40:46Z",
+    "certificateMutationAuthorized": false,
+    "runtimeMutationPerformed": false
+  },
+  "stopConditions": [
+    "LiteLLM requires paid licensing, trial material, or paid organization/team RBAC",
+    "LiteLLM Operator own-key access cannot be isolated from global administration",
+    "Keycloak appliance-realm administration requires master-realm authority",
+    "Portainer CE cannot provide the required SSO and Admin-only boundary",
+    "a public native port is required",
+    "certificate renewal requires external credentials or DNS mutation",
+    "another approved Product boundary must change"
+  ]
+}

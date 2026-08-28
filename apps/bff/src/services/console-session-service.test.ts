@@ -1,0 +1,749 @@
+import { randomBytes } from "node:crypto"
+import { describe, expect, it, vi } from "vitest"
+import { createConsoleSessionCipher } from "../auth/console-session-crypto"
+import type {
+  ConsoleOidcClient,
+  ConsoleOidcTokenResult,
+  ConsoleOidcTokenSet,
+} from "./console-session-oidc"
+import {
+  ConsoleSessionService,
+  type ConsoleTokenValidation,
+  type ConsoleTokenValidator,
+  normalizeConsoleReturnPath,
+} from "./console-session-service"
+import { TestOnlyInMemoryConsoleSessionRepository } from "./console-session-store"
+
+describe("opaque server-side Console sessions", () => {
+  it("uses PKCE S256 and expires a login transaction at exactly 120 seconds", async () => {
+    const fixture = createFixture()
+    const login = await fixture.service.beginLogin("/applications?tab=keys")
+    const [persistedLogin] = fixture.repository.loginRecords.values()
+    if (!persistedLogin) {
+      throw new Error("Expected a persisted login transaction.")
+    }
+    expect(JSON.stringify(persistedLogin)).not.toContain(
+      "/applications?tab=keys",
+    )
+    expect(fixture.oidc.authorizationUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        codeChallenge: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+        nonce: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+        state: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+      }),
+    )
+    fixture.advance(120_000)
+
+    await expect(
+      fixture.service.completeLogin({
+        code: "authorization-code",
+        loginHandle: login.loginHandle,
+        state: fixture.lastState(),
+      }),
+    ).resolves.toEqual({ reason: "invalid", state: "terminal" })
+    expect(fixture.oidc.exchangeCode).not.toHaveBeenCalled()
+  })
+
+  it("keeps access and refresh tokens only in an authenticated encrypted record", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    const [record] = fixture.repository.sessionRecords.values()
+
+    expect(session.sessionHandle).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(record?.encryptedPayload).not.toContain("access-1")
+    expect(record?.encryptedPayload).not.toContain("refresh-1")
+    expect(JSON.stringify(record)).not.toMatch(
+      /operator@example\.test|Operations|operator-1|keycloak-session-1/,
+    )
+    await expect(
+      fixture.service.resolve(session.sessionHandle),
+    ).resolves.toMatchObject({
+      session: { accessToken: "access-1", role: "operator" },
+      state: "active",
+    })
+  })
+
+  it("burns a login transaction after a state mismatch", async () => {
+    const fixture = createFixture()
+    const login = await fixture.service.beginLogin("/applications")
+
+    await expect(
+      fixture.service.completeLogin({
+        code: "authorization-code",
+        loginHandle: login.loginHandle,
+        state: "wrong-state",
+      }),
+    ).resolves.toEqual({ reason: "invalid", state: "terminal" })
+    await expect(
+      fixture.service.completeLogin({
+        code: "authorization-code",
+        loginHandle: login.loginHandle,
+        state: fixture.lastState(),
+      }),
+    ).resolves.toEqual({ reason: "invalid", state: "terminal" })
+    expect(fixture.oidc.exchangeCode).not.toHaveBeenCalled()
+    expect(fixture.repository.loginRecords.size).toBe(0)
+  })
+
+  it("accepts password-only Admin login and rejects offline browser authority", async () => {
+    const adminFixture = createFixture({
+      identity: fixtureIdentity({ role: "admin" }),
+    })
+    const adminLogin = await adminFixture.service.beginLogin("/")
+    await expect(
+      adminFixture.service.completeLogin({
+        code: "authorization-code",
+        loginHandle: adminLogin.loginHandle,
+        state: adminFixture.lastState(),
+      }),
+    ).resolves.toMatchObject({ state: "active" })
+
+    const offlineFixture = createFixture({
+      identity: fixtureIdentity({ offlineAccess: true }),
+    })
+    const offlineLogin = await offlineFixture.service.beginLogin("/")
+    await expect(
+      offlineFixture.service.completeLogin({
+        code: "authorization-code",
+        loginHandle: offlineLogin.loginHandle,
+        state: offlineFixture.lastState(),
+      }),
+    ).resolves.toMatchObject({ reason: "invalid", state: "terminal" })
+  })
+
+  it("expires idle and maximum sessions and clears their encrypted authority", async () => {
+    const idleFixture = createFixture()
+    const idleSession = await idleFixture.login()
+    const [idleRecord] = idleFixture.repository.sessionRecords.values()
+    expect(idleRecord?.idleExpiresAt.getTime()).toBe(
+      idleRecord?.createdAt.getTime() + 8 * 60 * 60 * 1000,
+    )
+    expect(idleRecord?.absoluteExpiresAt.getTime()).toBe(
+      idleRecord?.createdAt.getTime() + 24 * 60 * 60 * 1000,
+    )
+    idleFixture.advance(8 * 60 * 60 * 1000)
+
+    await expect(
+      idleFixture.service.resolve(idleSession.sessionHandle),
+    ).resolves.toEqual({ reason: "expired", state: "terminal" })
+    expect(idleFixture.repository.sessionRecords.size).toBe(0)
+
+    const maximumFixture = createFixture()
+    const maximumSession = await maximumFixture.login()
+    const [maximumRecord] = maximumFixture.repository.sessionRecords.values()
+    if (!maximumRecord) throw new Error("Expected a Console session record.")
+    maximumRecord.idleExpiresAt = new Date(
+      maximumRecord.createdAt.getTime() + 25 * 60 * 60 * 1000,
+    )
+    maximumFixture.advance(24 * 60 * 60 * 1000)
+
+    await expect(
+      maximumFixture.service.resolve(maximumSession.sessionHandle),
+    ).resolves.toEqual({ reason: "expired", state: "terminal" })
+    expect(maximumFixture.repository.sessionRecords.size).toBe(0)
+  })
+
+  it("serializes one-time refresh across concurrent requests and browser tabs", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    fixture.advance(4 * 60 * 1000 + 1)
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    fixture.oidc.refresh.mockImplementationOnce(async () => {
+      await gate
+      return { state: "ok", tokens: fixture.tokens("2") }
+    })
+
+    const tabs = Array.from({ length: 20 }, () =>
+      fixture.service.resolve(session.sessionHandle),
+    )
+    release()
+    const results = await Promise.all(tabs)
+
+    expect(fixture.oidc.refresh).toHaveBeenCalledTimes(1)
+    expect(results).toHaveLength(20)
+    expect(results.every((result) => result.state === "active")).toBe(true)
+    const [record] = fixture.repository.sessionRecords.values()
+    expect(record?.refreshGeneration).toBe(1)
+  })
+
+  it("refreshes inside the 60-second clock-skew window", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    fixture.advance(4 * 60 * 1000 + 1)
+    fixture.oidc.refresh.mockResolvedValueOnce({
+      state: "ok",
+      tokens: fixture.tokens("2"),
+    })
+
+    await expect(
+      fixture.service.resolve(session.sessionHandle),
+    ).resolves.toMatchObject({
+      refreshCount: 1,
+      session: { accessToken: "access-2" },
+      state: "active",
+    })
+  })
+
+  it.each(["identity_restart", "identity_unavailable"] as const)(
+    "preserves the local session during retryable %s",
+    async (reason) => {
+      const fixture = createFixture()
+      const session = await fixture.login()
+      fixture.advance(4 * 60 * 1000 + 1)
+      fixture.oidc.refresh.mockResolvedValueOnce({
+        reason,
+        state: "unavailable",
+      })
+
+      await expect(
+        fixture.service.resolve(session.sessionHandle),
+      ).resolves.toEqual({
+        reason,
+        retryable: true,
+        state: "unavailable",
+      })
+      expect(fixture.repository.sessionRecords.size).toBe(1)
+      expect(fixture.telemetry).toHaveBeenCalledWith({
+        event: "console_session.refresh_failed",
+        reason,
+        sessionReference: expect.stringMatching(/^[a-f0-9]{12}$/),
+      })
+    },
+  )
+
+  it("does not consume a one-time refresh token when validator readiness is unavailable", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    fixture.advance(4 * 60 * 1000 + 1)
+    fixture.validator.readiness.mockResolvedValueOnce({
+      reason: "identity_restart",
+      state: "unavailable",
+    })
+
+    await expect(
+      fixture.service.resolve(session.sessionHandle),
+    ).resolves.toEqual({
+      reason: "identity_restart",
+      retryable: true,
+      state: "unavailable",
+    })
+    expect(fixture.oidc.refresh).not.toHaveBeenCalled()
+    expect(fixture.repository.sessionRecords.size).toBe(1)
+  })
+
+  it("preserves a newly rotated refresh token when post-refresh validation is unavailable", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    fixture.advance(4 * 60 * 1000 + 1)
+    fixture.oidc.refresh.mockResolvedValueOnce({
+      state: "ok",
+      tokens: fixture.tokens("2"),
+    })
+    fixture.validator.validate.mockResolvedValueOnce({
+      reason: "identity_restart",
+      state: "unavailable",
+    })
+
+    await expect(
+      fixture.service.resolve(session.sessionHandle),
+    ).resolves.toEqual({
+      reason: "identity_restart",
+      retryable: true,
+      state: "unavailable",
+    })
+    expect(fixture.repository.sessionRecords.size).toBe(1)
+
+    fixture.advance(5_000)
+    fixture.oidc.refresh.mockResolvedValueOnce({
+      state: "ok",
+      tokens: fixture.tokens("3"),
+    })
+    await expect(
+      fixture.service.resolve(session.sessionHandle),
+    ).resolves.toMatchObject({
+      refreshCount: 1,
+      session: { accessToken: "access-3" },
+      state: "active",
+    })
+    expect(fixture.oidc.refresh).toHaveBeenNthCalledWith(1, "refresh-1")
+    expect(fixture.oidc.refresh).toHaveBeenNthCalledWith(2, "refresh-2")
+  })
+
+  it("revokes the family on refresh reuse without emitting token material", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    fixture.advance(4 * 60 * 1000 + 1)
+    fixture.oidc.refresh.mockResolvedValueOnce({
+      state: "ok",
+      tokens: fixture.tokens("1"),
+    })
+
+    await expect(
+      fixture.service.resolve(session.sessionHandle),
+    ).resolves.toEqual({
+      reason: "reuse_detected",
+      state: "terminal",
+    })
+    expect(JSON.stringify(fixture.telemetry.mock.calls)).not.toMatch(
+      /access-|refresh-/,
+    )
+    expect(fixture.repository.sessionRecords.size).toBe(0)
+  })
+
+  it("hard-deletes a session after a revoked refresh token", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    fixture.advance(4 * 60 * 1000 + 1)
+    fixture.oidc.refresh.mockResolvedValueOnce({
+      reason: "revoked",
+      state: "terminal",
+    })
+
+    await expect(
+      fixture.service.resolve(session.sessionHandle),
+    ).resolves.toEqual({ reason: "revoked", state: "terminal" })
+    expect(fixture.repository.sessionRecords.size).toBe(0)
+    expect(fixture.telemetry).toHaveBeenCalledWith({
+      event: "console_session.refresh_failed",
+      reason: "revoked",
+      sessionReference: expect.stringMatching(/^[a-f0-9]{12}$/),
+    })
+  })
+
+  it("allows no more than one refresh and one downstream replay", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    fixture.oidc.refresh.mockResolvedValueOnce({
+      state: "ok",
+      tokens: fixture.tokens("2"),
+    })
+    const operation = vi.fn(async (accessToken: string) => ({
+      status: 401,
+      value: accessToken,
+    }))
+
+    await expect(
+      fixture.service.executeWithSession(session.sessionHandle, operation),
+    ).resolves.toEqual({ reason: "revoked", state: "terminal" })
+    expect(fixture.oidc.refresh).toHaveBeenCalledTimes(1)
+    expect(operation).toHaveBeenCalledTimes(2)
+  })
+
+  it("coalesces parallel downstream 401 refreshes across browser tabs", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    let initialCalls = 0
+    let releaseInitialCalls: () => void = () => {}
+    const bothInitialCalls = new Promise<void>((resolve) => {
+      releaseInitialCalls = resolve
+    })
+    const operation = vi.fn(async (accessToken: string) => {
+      if (accessToken === "access-1") {
+        initialCalls += 1
+        if (initialCalls === 2) {
+          releaseInitialCalls()
+        }
+        await bothInitialCalls
+        return { status: 401, value: accessToken }
+      }
+      return { status: 200, value: accessToken }
+    })
+
+    const results = await Promise.all([
+      fixture.service.executeWithSession(session.sessionHandle, operation),
+      fixture.service.executeWithSession(session.sessionHandle, operation),
+    ])
+
+    expect(results).toEqual([
+      { state: "ok", value: "access-2" },
+      { state: "ok", value: "access-2" },
+    ])
+    expect(fixture.oidc.refresh).toHaveBeenCalledTimes(1)
+    expect(operation).toHaveBeenCalledTimes(4)
+    expect(
+      [...fixture.repository.sessionRecords.values()][0]?.refreshGeneration,
+    ).toBe(1)
+  })
+
+  it("does not cascade refresh rotation across tabs after a post-rotation validation outage", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    let initialCalls = 0
+    let releaseInitialCalls: () => void = () => {}
+    const bothInitialCalls = new Promise<void>((resolve) => {
+      releaseInitialCalls = resolve
+    })
+    const operation = vi.fn(async (accessToken: string) => {
+      if (accessToken === "access-1") {
+        initialCalls += 1
+        if (initialCalls === 2) {
+          releaseInitialCalls()
+        }
+        await bothInitialCalls
+        return { status: 401, value: accessToken }
+      }
+      return { status: 200, value: accessToken }
+    })
+    fixture.oidc.refresh.mockResolvedValueOnce({
+      state: "ok",
+      tokens: fixture.tokens("2"),
+    })
+    fixture.validator.validate.mockResolvedValueOnce({
+      reason: "identity_restart",
+      state: "unavailable",
+    })
+
+    const results = await Promise.all([
+      fixture.service.executeWithSession(session.sessionHandle, operation),
+      fixture.service.executeWithSession(session.sessionHandle, operation),
+    ])
+
+    expect(results).toEqual([
+      {
+        reason: "identity_restart",
+        retryable: true,
+        state: "unavailable",
+      },
+      {
+        reason: "identity_restart",
+        retryable: true,
+        state: "unavailable",
+      },
+    ])
+    expect(operation).toHaveBeenCalledTimes(2)
+    expect(fixture.oidc.refresh).toHaveBeenCalledTimes(1)
+    expect(fixture.repository.sessionRecords.size).toBe(1)
+    expect(
+      [...fixture.repository.sessionRecords.values()][0]?.refreshGeneration,
+    ).toBe(1)
+  })
+
+  it("coalesces parallel pre-refresh identity outages with a bounded retry delay", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    fixture.advance(4 * 60 * 1000 + 1)
+    fixture.validator.readiness.mockResolvedValue({
+      reason: "identity_timeout",
+      state: "unavailable",
+    })
+
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        fixture.service.resolve(session.sessionHandle),
+      ),
+    )
+
+    expect(results).toHaveLength(20)
+    expect(
+      results.every(
+        (result) =>
+          result.state === "unavailable" &&
+          result.reason === "identity_timeout",
+      ),
+    ).toBe(true)
+    expect(fixture.validator.readiness).toHaveBeenCalledTimes(1)
+    expect(fixture.oidc.refresh).not.toHaveBeenCalled()
+
+    fixture.advance(5_000)
+    fixture.validator.readiness.mockResolvedValue({ state: "ready" })
+    await expect(
+      fixture.service.resolve(session.sessionHandle),
+    ).resolves.toMatchObject({ state: "active" })
+    expect(fixture.oidc.refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it("handles explicit logout and verified back-channel logout", async () => {
+    const fixture = createFixture()
+    const first = await fixture.login()
+    await fixture.service.logout(first.sessionHandle)
+    expect(fixture.oidc.revoke).toHaveBeenCalledWith("refresh-1")
+    await expect(
+      fixture.service.resolve(first.sessionHandle),
+    ).resolves.toMatchObject({
+      state: "terminal",
+    })
+
+    const second = await fixture.login()
+    const claims = {
+      expiresAt: new Date(fixture.now().getTime() + 60_000),
+      issuedAt: fixture.now(),
+      jti: "logout-event-1",
+      keycloakSessionId: "keycloak-session-1",
+    }
+    await expect(fixture.service.backchannelLogout(claims)).resolves.toBe(1)
+    const [retainUntil] = fixture.repository.logoutTokenReplays.values()
+    expect(retainUntil?.toISOString()).toBe(
+      new Date(claims.expiresAt.getTime() + 60_000).toISOString(),
+    )
+    await expect(fixture.service.backchannelLogout(claims)).resolves.toBe(0)
+    await expect(
+      fixture.service.resolve(second.sessionHandle),
+    ).resolves.toMatchObject({
+      state: "terminal",
+    })
+  })
+
+  it("uses the server-side identity end-session operation for global logout", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+
+    await fixture.service.globalLogout(session.sessionHandle)
+
+    expect(fixture.oidc.endSession).toHaveBeenCalledWith("refresh-1")
+    expect(fixture.oidc.revoke).not.toHaveBeenCalled()
+    expect(await fixture.repository.latestNativeLogoutAt("operator-1")).toEqual(
+      fixture.now(),
+    )
+    await expect(
+      fixture.service.resolve(session.sessionHandle),
+    ).resolves.toMatchObject({ state: "terminal" })
+  })
+
+  it("keeps the native logout fence authoritative when Keycloak is unavailable", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    fixture.oidc.endSession.mockRejectedValueOnce(
+      new Error("identity unavailable"),
+    )
+
+    await expect(
+      fixture.service.globalLogout(session.sessionHandle),
+    ).resolves.toBeUndefined()
+    expect(await fixture.repository.latestNativeLogoutAt("operator-1")).toEqual(
+      fixture.now(),
+    )
+    expect(fixture.repository.sessionRecords.size).toBe(0)
+  })
+
+  it("uses a global native fence when the opaque session payload is corrupt", async () => {
+    const fixture = createFixture()
+    const session = await fixture.login()
+    const [digest, record] = fixture.repository.sessionRecords.entries().next()
+      .value ?? [null, null]
+    if (!digest || !record)
+      throw new Error("Expected a durable session record.")
+    fixture.repository.sessionRecords.set(digest, {
+      ...record,
+      encryptedPayload: "invalid-encrypted-payload",
+    })
+
+    await fixture.service.globalLogout(session.sessionHandle)
+
+    expect(await fixture.repository.latestNativeGlobalLogoutAt()).toEqual(
+      fixture.now(),
+    )
+    expect(fixture.repository.sessionRecords.size).toBe(0)
+    expect(fixture.oidc.endSession).not.toHaveBeenCalled()
+  })
+
+  it("rejects expired back-channel logout without retaining replay state", async () => {
+    const fixture = createFixture()
+    await fixture.login()
+
+    await expect(
+      fixture.service.backchannelLogout({
+        expiresAt: fixture.now(),
+        issuedAt: new Date(fixture.now().getTime() - 60_000),
+        jti: "expired-logout-event",
+        subject: "operator-1",
+      }),
+    ).resolves.toBe(0)
+    expect(fixture.repository.logoutTokenReplays.size).toBe(0)
+    expect(fixture.repository.sessionRecords.size).toBe(1)
+  })
+
+  it("binds an explicit reauthentication transaction to the current subject", async () => {
+    const mfaVerifiedAt = new Date("2026-08-02T10:00:00.000Z")
+    const fixture = createFixture({
+      identity: fixtureIdentity({ mfaVerifiedAt }),
+    })
+    const current = await fixture.login()
+    const elevation = await fixture.service.beginElevation({
+      action: "applications.credentials.test_rotate_revoke",
+      returnTo: "/applications?tab=keys",
+      sessionHandle: current.sessionHandle,
+    })
+    expect(elevation).toMatchObject({ state: "started" })
+    expect(fixture.oidc.authorizationUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ elevation: true }),
+    )
+    if (elevation.state !== "started") {
+      throw new Error("Expected elevation authorization to start.")
+    }
+    const completed = await fixture.service.completeLogin({
+      code: "elevation-code",
+      loginHandle: elevation.loginHandle,
+      state: fixture.lastState(),
+    })
+    expect(completed).toMatchObject({
+      returnPath: "/applications?tab=keys",
+      state: "active",
+    })
+    expect(fixture.oidc.revoke).toHaveBeenCalledWith("refresh-1")
+  })
+
+  it("allows explicit password reauthentication without MFA evidence", async () => {
+    const fixture = createFixture({
+      identity: fixtureIdentity({
+        mfaVerifiedAt: new Date("2026-08-02T09:54:59.000Z"),
+      }),
+    })
+    const current = await fixture.login()
+    const elevation = await fixture.service.beginElevation({
+      action: "team.users_roles.manage",
+      returnTo: "/team",
+      sessionHandle: current.sessionHandle,
+    })
+    if (elevation.state !== "started") {
+      throw new Error("Expected elevation authorization to start.")
+    }
+    await expect(
+      fixture.service.completeLogin({
+        code: "elevation-code",
+        loginHandle: elevation.loginHandle,
+        state: fixture.lastState(),
+      }),
+    ).resolves.toMatchObject({ returnPath: "/team", state: "active" })
+  })
+})
+
+describe("Console return-path normalization", () => {
+  it("preserves a legitimate same-origin path and query", () => {
+    expect(
+      normalizeConsoleReturnPath("/applications?next=%2Fmodels&tab=keys"),
+    ).toBe("/applications?next=%2Fmodels&tab=keys")
+  })
+
+  it.each([
+    "/%2e%2e//attacker.example.test",
+    "/.%2e//attacker.example.test",
+    "/safe/%2E%2E/settings",
+    "/safe/../settings",
+    "//attacker.example.test/path",
+    "/%0aattacker.example.test",
+  ])("rejects unsafe return target %s", (value) => {
+    expect(normalizeConsoleReturnPath(value)).toBe("/")
+  })
+})
+
+function createFixture(
+  options: {
+    identity?: ReturnType<typeof fixtureIdentity>
+  } = {},
+) {
+  let clock = new Date("2026-08-02T10:00:00.000Z")
+  let authorizationInput: { elevation?: boolean; state: string } | null = null
+  const repository = new TestOnlyInMemoryConsoleSessionRepository()
+  const oidc = {
+    authorizationUrl: vi.fn((input: { state: string }) => {
+      authorizationInput = input
+      return `https://console.example.test/identity/authorize?state=${input.state}`
+    }),
+    exchangeCode: vi.fn<ConsoleOidcClient["exchangeCode"]>(async () => ({
+      state: "ok",
+      tokens: tokens("1"),
+    })),
+    endSession: vi.fn<ConsoleOidcClient["endSession"]>(async () => undefined),
+    refresh: vi.fn<ConsoleOidcClient["refresh"]>(
+      async (): Promise<ConsoleOidcTokenResult> => ({
+        state: "ok",
+        tokens: tokens("2"),
+      }),
+    ),
+    revoke: vi.fn<ConsoleOidcClient["revoke"]>(async () => undefined),
+  }
+  const telemetry = vi.fn()
+  const validator = {
+    readiness: vi.fn<ConsoleTokenValidator["readiness"]>(async () => ({
+      state: "ready",
+    })),
+    validate: vi.fn(
+      async (
+        tokenSet: ConsoleOidcTokenSet,
+      ): Promise<ConsoleTokenValidation> => ({
+        identity: {
+          ...(options.identity ?? fixtureIdentity()),
+          accessExpiresAt: new Date(clock.getTime() + 5 * 60 * 1000),
+          keycloakSessionId: "keycloak-session-1",
+        },
+        state: "valid",
+      }),
+    ),
+  }
+  const service = new ConsoleSessionService(
+    repository,
+    createConsoleSessionCipher({
+      activeKid: "test-key",
+      keys: { "test-key": randomBytes(32) },
+    }),
+    oidc,
+    validator,
+    { record: telemetry },
+    {
+      clientId: "console-web",
+      issuer: "https://console.example.test/identity/realms/appliance",
+    },
+    () => new Date(clock),
+  )
+  return {
+    advance(milliseconds: number) {
+      clock = new Date(clock.getTime() + milliseconds)
+    },
+    lastState() {
+      if (!authorizationInput) {
+        throw new Error("Authorization was not started.")
+      }
+      return authorizationInput.state
+    },
+    async login() {
+      const login = await service.beginLogin("/applications?tab=keys")
+      const completed = await service.completeLogin({
+        code: "authorization-code",
+        loginHandle: login.loginHandle,
+        state: this.lastState(),
+      })
+      if (completed.state !== "active") {
+        throw new Error("Expected active test session.")
+      }
+      return completed
+    },
+    now: () => new Date(clock),
+    oidc,
+    repository,
+    service,
+    telemetry,
+    tokens,
+    validator,
+  }
+}
+
+function fixtureIdentity(
+  overrides: Partial<{
+    email: string
+    groups: string[]
+    mfaVerifiedAt: Date
+    offlineAccess: boolean
+    role: "admin" | "operator"
+    subject: string
+  }> = {},
+) {
+  return {
+    email: "operator@example.test",
+    groups: ["Operations"],
+    offlineAccess: false,
+    role: "operator" as const,
+    subject: "operator-1",
+    ...overrides,
+  }
+}
+
+function tokens(version: string): ConsoleOidcTokenSet {
+  return {
+    accessToken: `access-${version}`,
+    idToken: `id-${version}`,
+    refreshToken: `refresh-${version}`,
+  }
+}

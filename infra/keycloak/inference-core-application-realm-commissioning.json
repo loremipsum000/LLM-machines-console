@@ -1,0 +1,137 @@
+{
+  "apiVersion": "inference-core.llm-machines/v1",
+  "kind": "LogicalKeycloakApplicationRealmCommissioningPlan",
+  "metadata": {
+    "changePackage": "PR-06",
+    "containsCredentials": false,
+    "packagingTarget": "PR-12"
+  },
+  "realm": "llm-machines-applications",
+  "preconditions": [
+    "empty-application-realm",
+    "offline-application-seed-validation-passed",
+    "human-realm-commissioning-remains-independent"
+  ],
+  "phases": [
+    {
+      "completionAssertions": [
+        "keycloak-version-is-at-least-26.6.0",
+        "admin-fine-grained-authz-v2-is-enabled",
+        "application-realm-admin-permissions-are-enabled",
+        "application-realm-is-not-master",
+        "application-realm-default-access-token-lifetime-is-300-seconds",
+        "application-admin-access-token-lifetime-is-60-seconds",
+        "application-admin-uses-client-credentials-only",
+        "application-admin-has-query-clients-only",
+        "application-admin-fgap-is-Clients-manage-and-view-only",
+        "application-admin-has-no-Users-Groups-Roles-or-Organizations-authority",
+        "human-realm-clients-are-absent",
+        "no-human-user-group-role-or-browser-flow-is-seeded",
+        "no-client-credential-is-in-seed",
+        "offline_access-is-absent-from-retained-client-optional-scopes",
+        "offline_access-is-absent-from-the-realm-default-role-composite"
+      ],
+      "id": "validate-application-realm-seed",
+      "mutationOwner": "packaging-pr12"
+    },
+    {
+      "completionAssertions": [
+        "application-admin-service-client-is-enabled",
+        "application-admin-service-token-expires-after-60-seconds",
+        "application-admin-live-negative-controls-passed",
+        "all-application-fgap-v2-evaluations-match-the-verification-matrix",
+        "service-client-value-stored-outside-git"
+      ],
+      "id": "commission-application-admin",
+      "mutationOwner": "commissioning-control-plane"
+    },
+    {
+      "completionAssertions": [
+        "managed-client-id-matches-llmm-app-UUID",
+        "managed-client-uses-client-credentials-only",
+        "managed-client-has-empty-default-and-optional-scopes",
+        "managed-client-token-audience-is-console-bff",
+        "managed-client-token-expires-after-300-seconds",
+        "managed-client-token-issuer-is-application-realm",
+        "managed-client-does-not-receive-refresh-or-offline-token",
+        "human-realm-remains-outside-application-admin-authority"
+      ],
+      "id": "qualify-managed-application-client-contract",
+      "mutationOwner": "packaging-pr12"
+    }
+  ],
+  "fgapV2EvaluationMatrix": [
+    {
+      "expected": "PERMIT",
+      "principal": "console-application-admin-service-account",
+      "resource": "client:any-in-application-realm",
+      "resourceType": "Clients",
+      "scope": "view"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "console-application-admin-service-account",
+      "resource": "client:any-in-application-realm",
+      "resourceType": "Clients",
+      "scope": "manage"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-application-admin-service-account",
+      "resource": "client:any-in-application-realm",
+      "resourceType": "Clients",
+      "scope": "map-roles"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-application-admin-service-account",
+      "resource": "user:any",
+      "resourceType": "Users",
+      "scope": "manage"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-application-admin-service-account",
+      "resource": "group:any",
+      "resourceType": "Groups",
+      "scope": "manage"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-application-admin-service-account",
+      "resource": "role:any",
+      "resourceType": "Roles",
+      "scope": "map-role"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-application-admin-service-account",
+      "resource": "organization:any",
+      "resourceType": "Organizations",
+      "scope": "manage"
+    }
+  ],
+  "tokenLifetimeTests": [
+    {
+      "client": "managed-client:llmm-app-UUID",
+      "expectedAccessTokenSeconds": 300
+    },
+    {
+      "client": "console-application-admin",
+      "expectedAccessTokenSeconds": 60
+    }
+  ],
+  "tokenNegativeTests": [
+    {
+      "expectedGrantedScopeContainsOfflineAccess": false,
+      "expectedOfflineToken": false,
+      "expectedRefreshToken": false,
+      "id": "application-offline-and-refresh-access-not-issued",
+      "requestedScope": "offline_access",
+      "requestingClients": [
+        "console-application-admin",
+        "managed-client:llmm-app-UUID"
+      ]
+    }
+  ]
+}

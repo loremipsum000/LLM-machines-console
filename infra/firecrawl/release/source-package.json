@@ -1,0 +1,201 @@
+{
+  "schema": "llm-machines.firecrawl-release-source.v1",
+  "status": "SOURCE_READY_RUNTIME_UNQUALIFIED",
+  "containsCredentials": false,
+  "runtimeQualified": false,
+  "productBoundary": {
+    "installed": true,
+    "defaultEnabled": false,
+    "customerExposure": "product-edge-only",
+    "nativeUi": false,
+    "routes": ["POST /v2/search", "POST /v2/scrape"],
+    "persistentWorkloadContent": false
+  },
+  "upstreamComponents": [
+    {
+      "id": "firecrawl",
+      "roles": ["api", "browser"],
+      "repository": "https://github.com/firecrawl/firecrawl",
+      "version": "v2.11.0",
+      "revision": "ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+      "archiveFile": "firecrawl-ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5.tar.gz",
+      "archiveUrl": "https://codeload.github.com/firecrawl/firecrawl/tar.gz/ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+      "archiveSha256": "b7c6df0b8b692397c8a19e84f94b85ce0a2d961b36fc1d5ff78088db88819f59",
+      "license": "AGPL-3.0-only",
+      "licensePath": "LICENSE",
+      "licenseSha256": "9b4649365c4f29d8f41301f4cda1e5bd9da51cf1bbb19ab9d568ff57d56e3b33"
+    },
+    {
+      "id": "searxng",
+      "roles": ["search"],
+      "repository": "https://github.com/searxng/searxng",
+      "version": "2026.7.28-c01178d03",
+      "revision": "c01178d03129d861582adf84a692e699f2f7ec05",
+      "archiveFile": "searxng-c01178d03129d861582adf84a692e699f2f7ec05.tar.gz",
+      "archiveUrl": "https://codeload.github.com/searxng/searxng/tar.gz/c01178d03129d861582adf84a692e699f2f7ec05",
+      "archiveSha256": "81f025e643e5c1e7829ac58306fd7e4b4e3a1970483adb20993efdf0ac440f60",
+      "license": "AGPL-3.0-or-later",
+      "licensePath": "LICENSE",
+      "licenseSha256": "57c8ff29ed27c831053060885640b4651378f999a621b83dcd062cb7dcd185f0"
+    },
+    {
+      "id": "squid",
+      "roles": ["egress"],
+      "repository": "https://github.com/squid-cache/squid",
+      "version": "SQUID_6_14",
+      "revision": "a8c54a8f23f0dc41025097caab73ec445f49b78f",
+      "archiveFile": "squid-a8c54a8f23f0dc41025097caab73ec445f49b78f.tar.gz",
+      "archiveUrl": "https://codeload.github.com/squid-cache/squid/tar.gz/a8c54a8f23f0dc41025097caab73ec445f49b78f",
+      "archiveSha256": "23bf67bd489142bfc06f2a085a376f81d1bffc0277ab9612af6f63d569c685d7",
+      "license": "GPL-2.0-or-later",
+      "licensePath": "COPYING",
+      "licenseSha256": "8177f9162714c5d3c6c9401559ac8fe7a6c3d88c094654d10d3bb86ac0e2f304"
+    },
+    {
+      "id": "playwright",
+      "roles": ["browser"],
+      "repository": "https://github.com/microsoft/playwright",
+      "version": "v1.62.0",
+      "revision": "e3950d9c140d007bd52853b45813c6274b24e36f",
+      "archiveFile": "playwright-e3950d9c140d007bd52853b45813c6274b24e36f.tar.gz",
+      "archiveUrl": "https://codeload.github.com/microsoft/playwright/tar.gz/e3950d9c140d007bd52853b45813c6274b24e36f",
+      "archiveSha256": "33616cb05537331c5038e387e70c8a62fd1604162f338b62e0c4132c47647e2d",
+      "license": "Apache-2.0",
+      "licensePath": "LICENSE",
+      "licenseSha256": "45873d72ae638b24e44b0088f6034b689a9e94775a1b23635255b0fa6fbc9867",
+      "noticePath": "NOTICE",
+      "noticeSha256": "6d6021e445bedc57da120a7d8de5df3aa34c51882a3d2788f6bb6d47fefedc87"
+    }
+  ],
+  "patches": [
+    {
+      "order": 1,
+      "path": "infra/firecrawl/release/patches/build-hardening.patch",
+      "sha256": "d60190411adb30eb6dc27100be0f0b2ffa9c1be762d79599abb19df03d4f8ed8",
+      "purpose": "byte-locked Linux build inputs, dependency remediation, Koffi executable-stack correction, non-root Wolfi runtimes"
+    },
+    {
+      "order": 2,
+      "path": "infra/firecrawl/release/patches/reduced-runtime.patch",
+      "sha256": "d5c271d0961b90988bc86b36c4897163030624346a989b7e9480e4472e0535d6",
+      "purpose": "search-and-static-scrape-only entrypoint and self-hosted zero-content retention"
+    }
+  ],
+  "apiBuildValidationTests": [
+    "src/lib/canonical-url.test.ts",
+    "src/lib/validateUrl.test.ts",
+    "src/scraper/scrapeURL/__tests__/shouldCheckRobots.test.ts",
+    "src/search/highlight-budget.test.ts",
+    "src/search/scrape.test.ts"
+  ],
+  "lockedFiles": [
+    {
+      "path": "infra/firecrawl/release/locks/Cargo.lock",
+      "target": "apps/api/native/Cargo.lock",
+      "sha256": "dd723e1829fb911aa8c3ccc4e1d06690ffd91a5fbc8d67cfa3b0a63e377ab2ef"
+    },
+    {
+      "path": "infra/firecrawl/release/locks/api-wolfi.sha256",
+      "target": "apps/api/package-locks/api-wolfi.sha256",
+      "sha256": "348b5e00d070803abcc0c91ac3c9e27ddbfccf1a149fee072d00aee985655f28"
+    },
+    {
+      "path": "infra/firecrawl/release/locks/playwright-wolfi.sha256",
+      "target": "apps/playwright-service-ts/package-locks/playwright-wolfi.sha256",
+      "sha256": "eb1f2fe73044351c5b51d87f60a4e14c13a9da78a8fadb992ebe717f49be02c9"
+    }
+  ],
+  "buildInputs": [
+    {
+      "id": "dockerfile-frontend",
+      "version": "dockerfile-1",
+      "repository": "docker.io/docker/dockerfile",
+      "platform": "frontend",
+      "digest": "sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89"
+    },
+    {
+      "id": "node-api-builder",
+      "version": "22.23.2-bookworm",
+      "repository": "docker.io/library/node",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:0557ac14e0d45d02ed563067b82856ca5e7aa3437fa28d98d4350ea9c3d9494a",
+      "platformDigest": "sha256:673fce836d5a9185da33352682bfedb17c174d016370d08616748dff76fda862",
+      "sourceRevision": "bc0a422bce0f729dd85790639d9f1918143f1235"
+    },
+    {
+      "id": "node-browser-builder",
+      "version": "22.23.2-bookworm-slim",
+      "repository": "docker.io/library/node",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46",
+      "platformDigest": "sha256:0f65470961851f2354dc8e560853e2f428ea928436135fc7e35780ab100c7e00",
+      "sourceRevision": "bc0a422bce0f729dd85790639d9f1918143f1235"
+    },
+    {
+      "id": "go-builder",
+      "version": "1.25.12-bookworm",
+      "repository": "docker.io/library/golang",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58",
+      "platformDigest": "sha256:eecd15e52d06149b84ac1caa56cfd07f584da6803e5621a77024f38827f342ec",
+      "sourceRevision": "294097713ad2eaf9ee4c5e9dc57e040ac4b402d6"
+    },
+    {
+      "id": "wolfi-runtime",
+      "version": "digest-003627df3c1e",
+      "repository": "cgr.dev/chainguard/wolfi-base",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:003627df3c1e1bba0c4116afcddb314aca9594ee2328c7e876a8081a6c988b2e",
+      "platformDigest": "sha256:d2ad9a742d38e1ab550fbb20911056339632a5ca2f01777a32422a4c944fcb99"
+    },
+    {
+      "id": "playwright-browser-source",
+      "version": "v1.62.0-noble",
+      "repository": "mcr.microsoft.com/playwright",
+      "platform": "linux/amd64",
+      "indexDigest": "sha256:baed2032d533817f3dbe6425de795788430ba345e819a1201337009ba17c9d07",
+      "platformDigest": "sha256:02bbb2155cd7109e3e9c741941097ed1608cf8b6fa44ee2595896da2bdc1f471"
+    },
+    {
+      "id": "searxng-runtime-source",
+      "version": "2026.7.28-c01178d03",
+      "repository": "docker.io/searxng/searxng",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:80622959f0f3512e6623d6bdbcea9f13c8d22c8d9715c498d0ae2be1c8535930",
+      "sourceRevision": "c01178d03129d861582adf84a692e699f2f7ec05"
+    },
+    {
+      "id": "squid-runtime-source",
+      "version": "6.6-24.04_edge",
+      "repository": "docker.io/ubuntu/squid",
+      "platform": "linux/amd64",
+      "platformDigest": "sha256:94f844158e12b52f51b4ae996515e37e8fb3e8d85e1c86caba1a297376e4ec4f",
+      "sourceRevision": "a8c54a8f23f0dc41025097caab73ec445f49b78f"
+    }
+  ],
+  "externalByteInputs": [
+    {
+      "id": "foundationdb-client-amd64",
+      "version": "7.3.63-1",
+      "url": "https://github.com/apple/foundationdb/releases/download/7.3.63/foundationdb-clients_7.3.63-1_amd64.deb",
+      "sha256": "4241d43395d74f229b232e3dd2e71a693013db96d4924010cf403ee93119b423",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "rustup-init-amd64",
+      "version": "1.28.2",
+      "url": "https://static.rust-lang.org/rustup/archive/1.28.2/x86_64-unknown-linux-gnu/rustup-init",
+      "sha256": "20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c",
+      "toolchain": "1.88.0"
+    }
+  ],
+  "requiredReleaseOutputs": [
+    "exact private-registry image digests for api, browser, search, and egress",
+    "CycloneDX JSON SBOM for every image",
+    "SLSA provenance for every built or mirrored image",
+    "vulnerability disposition bound to every image digest",
+    "recipient-accessible corresponding-source packet",
+    "two-run corresponding-source reproducibility evidence",
+    "public signature verification material"
+  ]
+}

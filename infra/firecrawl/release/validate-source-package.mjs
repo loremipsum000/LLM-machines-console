@@ -1,0 +1,373 @@
+#!/usr/bin/env node
+
+import { createHash } from "node:crypto"
+import { lstatSync, readFileSync } from "node:fs"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+
+const releaseRoot = path.dirname(fileURLToPath(import.meta.url))
+const repositoryRoot = path.resolve(releaseRoot, "../../..")
+const digestPattern = /^[a-f0-9]{64}$/
+const ociDigestPattern = /^sha256:[a-f0-9]{64}$/
+const commitPattern = /^[a-f0-9]{40}$/
+const forbiddenIdentity =
+  /(?:intel[-_ ]arc[-_ ]b50|sglang-xpu|demo[-_.]?(?:host|alias)|\blatest\b)/i
+
+const expectedComponentIds = ["firecrawl", "searxng", "squid", "playwright"]
+const expectedComponents = new Map([
+  [
+    "firecrawl",
+    [
+      "ef12eb36b2f3382838dfe0a0c1a5add3d5df7fe5",
+      "b7c6df0b8b692397c8a19e84f94b85ce0a2d961b36fc1d5ff78088db88819f59",
+      "9b4649365c4f29d8f41301f4cda1e5bd9da51cf1bbb19ab9d568ff57d56e3b33",
+    ],
+  ],
+  [
+    "searxng",
+    [
+      "c01178d03129d861582adf84a692e699f2f7ec05",
+      "81f025e643e5c1e7829ac58306fd7e4b4e3a1970483adb20993efdf0ac440f60",
+      "57c8ff29ed27c831053060885640b4651378f999a621b83dcd062cb7dcd185f0",
+    ],
+  ],
+  [
+    "squid",
+    [
+      "a8c54a8f23f0dc41025097caab73ec445f49b78f",
+      "23bf67bd489142bfc06f2a085a376f81d1bffc0277ab9612af6f63d569c685d7",
+      "8177f9162714c5d3c6c9401559ac8fe7a6c3d88c094654d10d3bb86ac0e2f304",
+    ],
+  ],
+  [
+    "playwright",
+    [
+      "e3950d9c140d007bd52853b45813c6274b24e36f",
+      "33616cb05537331c5038e387e70c8a62fd1604162f338b62e0c4132c47647e2d",
+      "45873d72ae638b24e44b0088f6034b689a9e94775a1b23635255b0fa6fbc9867",
+    ],
+  ],
+])
+const expectedPatchPaths = [
+  "infra/firecrawl/release/patches/build-hardening.patch",
+  "infra/firecrawl/release/patches/reduced-runtime.patch",
+]
+const expectedLockPaths = [
+  "infra/firecrawl/release/locks/Cargo.lock",
+  "infra/firecrawl/release/locks/api-wolfi.sha256",
+  "infra/firecrawl/release/locks/playwright-wolfi.sha256",
+]
+const expectedPatchDigests = [
+  "d60190411adb30eb6dc27100be0f0b2ffa9c1be762d79599abb19df03d4f8ed8",
+  "d5c271d0961b90988bc86b36c4897163030624346a989b7e9480e4472e0535d6",
+]
+const expectedApiBuildValidationTests = [
+  "src/lib/canonical-url.test.ts",
+  "src/lib/validateUrl.test.ts",
+  "src/scraper/scrapeURL/__tests__/shouldCheckRobots.test.ts",
+  "src/search/highlight-budget.test.ts",
+  "src/search/scrape.test.ts",
+]
+const expectedLockDigests = [
+  "dd723e1829fb911aa8c3ccc4e1d06690ffd91a5fbc8d67cfa3b0a63e377ab2ef",
+  "348b5e00d070803abcc0c91ac3c9e27ddbfccf1a149fee072d00aee985655f28",
+  "eb1f2fe73044351c5b51d87f60a4e14c13a9da78a8fadb992ebe717f49be02c9",
+]
+const expectedBuildInputIdsSha256 =
+  "e0a6ac8c96347705ca06218cf3b7088e203e842f98f24851df03ecb08e9f39c0"
+const expectedBuildInputsSha256 =
+  "88f96ff604784ca33745dda83c2384ccc82df1edbacfe7c25a8ffd4f3ea86549"
+
+export function sha256File(file) {
+  return createHash("sha256").update(readFileSync(file)).digest("hex")
+}
+
+function validateLocalFile(errors, entry, root) {
+  if (!digestPattern.test(entry?.sha256 ?? "")) {
+    errors.push(`${entry?.path ?? "unknown file"} must declare a SHA-256`)
+    return
+  }
+  const file = path.resolve(root, entry.path)
+  if (!file.startsWith(`${root}${path.sep}`)) {
+    errors.push(`${entry.path} escapes the repository`)
+    return
+  }
+  try {
+    if (!lstatSync(file).isFile()) {
+      errors.push(`${entry.path} must be a regular file`)
+    } else if (sha256File(file) !== entry.sha256) {
+      errors.push(`${entry.path} differs from its locked SHA-256`)
+    }
+  } catch {
+    errors.push(`${entry.path} is missing`)
+  }
+}
+
+export function validateSourcePackage(manifest, root = repositoryRoot) {
+  const errors = []
+  if (manifest?.schema !== "llm-machines.firecrawl-release-source.v1") {
+    errors.push("Firecrawl release source schema is not v1")
+  }
+  if (manifest?.status !== "SOURCE_READY_RUNTIME_UNQUALIFIED") {
+    errors.push("Firecrawl source package must remain runtime-unqualified")
+  }
+  if (manifest?.containsCredentials !== false) {
+    errors.push("Firecrawl source package must be credential-free")
+  }
+  if (manifest?.runtimeQualified !== false) {
+    errors.push("Firecrawl source package cannot claim runtime qualification")
+  }
+  if (
+    JSON.stringify(manifest?.productBoundary) !==
+    JSON.stringify({
+      installed: true,
+      defaultEnabled: false,
+      customerExposure: "product-edge-only",
+      nativeUi: false,
+      routes: ["POST /v2/search", "POST /v2/scrape"],
+      persistentWorkloadContent: false,
+    })
+  ) {
+    errors.push("Firecrawl product boundary differs from the approved profile")
+  }
+
+  const components = Array.isArray(manifest?.upstreamComponents)
+    ? manifest.upstreamComponents
+    : []
+  if (
+    JSON.stringify(components.map(({ id }) => id)) !==
+    JSON.stringify(expectedComponentIds)
+  ) {
+    errors.push("Firecrawl source package has an incomplete component set")
+  }
+  for (const component of components) {
+    if (!commitPattern.test(component.revision ?? "")) {
+      errors.push(`${component.id} must bind an exact source commit`)
+    }
+    if (!digestPattern.test(component.archiveSha256 ?? "")) {
+      errors.push(`${component.id} must bind an exact source archive SHA-256`)
+    }
+    if (!digestPattern.test(component.licenseSha256 ?? "")) {
+      errors.push(`${component.id} must bind an exact license SHA-256`)
+    }
+    if (
+      !/^https:\/\/(?:codeload\.)?github\.com\//.test(
+        component.archiveUrl ?? "",
+      )
+    ) {
+      errors.push(`${component.id} source archive must use the approved host`)
+    }
+    if (forbiddenIdentity.test(JSON.stringify(component))) {
+      errors.push(`${component.id} contains a mutable or demo identity`)
+    }
+    const expected = expectedComponents.get(component.id)
+    if (
+      !expected ||
+      JSON.stringify([
+        component.revision,
+        component.archiveSha256,
+        component.licenseSha256,
+      ]) !== JSON.stringify(expected)
+    ) {
+      errors.push(`${component.id} differs from its admitted source identity`)
+    }
+  }
+
+  const patches = Array.isArray(manifest?.patches) ? manifest.patches : []
+  if (
+    JSON.stringify(patches.map(({ path: file }) => file)) !==
+    JSON.stringify(expectedPatchPaths)
+  ) {
+    errors.push("Firecrawl patches must match the exact reviewed order")
+  }
+  patches.forEach((entry, index) => {
+    if (entry.order !== index + 1) {
+      errors.push(`${entry.path} has an invalid patch order`)
+    }
+    if (entry.sha256 !== expectedPatchDigests[index]) {
+      errors.push(`${entry.path} differs from its reviewed patch identity`)
+    }
+    validateLocalFile(errors, entry, root)
+  })
+
+  if (
+    JSON.stringify(manifest?.apiBuildValidationTests) !==
+    JSON.stringify(expectedApiBuildValidationTests)
+  ) {
+    errors.push("Firecrawl API build validation tests differ")
+  }
+  const buildPatch = readFileSync(
+    path.resolve(root, expectedPatchPaths[0]),
+    "utf8",
+  )
+  for (const token of [
+    "Koffi 2.9.0 ships its linux/x64 native module with an executable GNU_STACK.",
+    "elf.writeUInt32LE(flags & ~1, offset + 4);",
+    "RUN /usr/bin/node -e 'require(\"koffi\")'",
+  ]) {
+    if (!buildPatch.includes(token)) {
+      errors.push("Firecrawl API Koffi runtime hardening differs")
+      break
+    }
+  }
+  const validationCommand = buildPatch
+    .split("+RUN pnpm exec vitest run \\\n")[1]
+    ?.split("\n RUN pnpm run build")[0]
+  const patchedValidationTests = validationCommand
+    ?.split("\n")
+    .filter((line) => line.startsWith("+    "))
+    .map((line) => line.slice(5).replace(/ \\$/, ""))
+  if (
+    JSON.stringify(patchedValidationTests) !==
+    JSON.stringify(expectedApiBuildValidationTests)
+  ) {
+    errors.push("build hardening patch has stale API validation tests")
+  }
+
+  const lockedFiles = Array.isArray(manifest?.lockedFiles)
+    ? manifest.lockedFiles
+    : []
+  if (
+    JSON.stringify(lockedFiles.map(({ path: file }) => file)) !==
+    JSON.stringify(expectedLockPaths)
+  ) {
+    errors.push("Firecrawl build lock set differs")
+  }
+  for (const [index, entry] of lockedFiles.entries()) {
+    if (typeof entry.target !== "string" || !entry.target.startsWith("apps/")) {
+      errors.push(`${entry.path} has an invalid target`)
+    }
+    if (entry.sha256 !== expectedLockDigests[index]) {
+      errors.push(`${entry.path} differs from its reviewed lock identity`)
+    }
+    validateLocalFile(errors, entry, root)
+  }
+
+  const buildInputs = Array.isArray(manifest?.buildInputs)
+    ? manifest.buildInputs
+    : []
+  if (
+    createHash("sha256")
+      .update(JSON.stringify(buildInputs.map(({ id }) => id)))
+      .digest("hex") !== expectedBuildInputIdsSha256
+  ) {
+    errors.push("Firecrawl build inputs differ from the admitted ordered set")
+  }
+  if (new Set(buildInputs.map(({ id }) => id)).size !== buildInputs.length) {
+    errors.push("Firecrawl build input identifiers must be unique")
+  }
+  for (const input of buildInputs) {
+    if (!input.id || !input.repository || !input.version || !input.platform) {
+      errors.push("Every Firecrawl build input needs identity and platform")
+    }
+    if (forbiddenIdentity.test(JSON.stringify(input))) {
+      errors.push(`${input.id ?? "unknown input"} contains a mutable identity`)
+    }
+    const digests = [
+      input.digest,
+      input.indexDigest,
+      input.platformDigest,
+    ].filter(Boolean)
+    if (
+      digests.length === 0 ||
+      digests.some((value) => !ociDigestPattern.test(value))
+    ) {
+      errors.push(`${input.id ?? "unknown input"} needs exact OCI digests`)
+    }
+    if (input.platform === "linux/amd64" && !input.platformDigest) {
+      errors.push(`${input.id} must bind its linux/amd64 manifest`)
+    }
+  }
+  if (
+    createHash("sha256").update(JSON.stringify(buildInputs)).digest("hex") !==
+    expectedBuildInputsSha256
+  ) {
+    errors.push("Firecrawl build inputs differ from admitted OCI identities")
+  }
+
+  for (const input of manifest?.externalByteInputs ?? []) {
+    if (!input.id || !input.version || !/^https:\/\//.test(input.url ?? "")) {
+      errors.push("Every external byte input needs an exact public identity")
+    }
+    if (!digestPattern.test(input.sha256 ?? "")) {
+      errors.push(`${input.id ?? "unknown input"} needs an exact SHA-256`)
+    }
+  }
+
+  if (
+    !manifest?.requiredReleaseOutputs?.includes(
+      "two-run corresponding-source reproducibility evidence",
+    )
+  ) {
+    errors.push("Firecrawl release outputs omit reproducibility evidence")
+  }
+
+  const serialized = JSON.stringify(manifest)
+  if (forbiddenIdentity.test(serialized)) {
+    errors.push(
+      "Firecrawl source package contains a forbidden release identity",
+    )
+  }
+  if (
+    /-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:AKIA|gh[pousr]_)/.test(serialized)
+  ) {
+    errors.push("Firecrawl source package contains credential material")
+  }
+
+  const reducedPatch = readFileSync(
+    path.resolve(root, expectedPatchPaths[1]),
+    "utf8",
+  )
+  for (const required of [
+    "dist/src/llm-machines-server.js",
+    'app.post(\n+  "/v2/search"',
+    'app.post(\n+  "/v2/scrape"',
+    "isSelfHosted() ||",
+    'response.status(404).json({ success: false, error: "Not found" })',
+    "Squid resolves the exact allowlisted hostname",
+    "if (PROXY_SERVER) {",
+    'scrapeZDR: "forced"',
+  ]) {
+    if (!reducedPatch.includes(required)) {
+      errors.push(`reduced runtime patch is missing ${required}`)
+    }
+  }
+  for (const forbidden of [
+    '+CMD ["/usr/bin/node", "dist/src/harness.js"',
+    '+        "scrape.url": req.body.url',
+    "+      query: req.body.query",
+    '+import "./services/sentry"',
+    '+import cors from "cors"',
+  ]) {
+    if (reducedPatch.includes(forbidden)) {
+      errors.push(
+        `reduced runtime patch preserves forbidden content: ${forbidden}`,
+      )
+    }
+  }
+
+  return errors
+}
+
+export function readSourcePackage(root = repositoryRoot) {
+  return JSON.parse(
+    readFileSync(
+      path.resolve(root, "infra/firecrawl/release/source-package.json"),
+      "utf8",
+    ),
+  )
+}
+
+export function verifyCheckedInSourcePackage(root = repositoryRoot) {
+  return validateSourcePackage(readSourcePackage(root), root)
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const errors = verifyCheckedInSourcePackage()
+  if (errors.length > 0) {
+    console.error(errors.join("\n"))
+    process.exitCode = 1
+  } else {
+    console.log("Firecrawl release source package is internally consistent.")
+  }
+}

@@ -19,6 +19,9 @@
     "test": "tsc --project tsconfig.json",
     "typecheck": "tsc --project tsconfig.json"
   },
+  "dependencies": {
+    "@llm-machines/contracts": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "5.8.3"
   },

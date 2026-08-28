@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "F0-W1",
+  "status": "source-candidate-not-runtime-qualified",
+  "accepted": false,
+  "runtimeQualified": false,
+  "command": "node scripts/pre-genesis/reduced-core-dev.mjs --firecrawl-slice",
+  "prerequisites": [
+    "corepack pnpm install --frozen-lockfile",
+    "corepack pnpm build"
+  ],
+  "evidenceClass": "LOCAL_DETERMINISTIC_FIRECRAWL_APPLICATION_FLOW_ONLY",
+  "controlPlane": {
+    "applicationCreation": "actual Console BFF admin route with a generated local Admin fixture identity",
+    "enablement": "actual per-Application enable route with explicit disclaimer acceptance",
+    "credentialReveal": "one-time Firecrawl credential response independent of the Application inference credential",
+    "credentialMaterialPrinted": false
+  },
+  "dataPlane": {
+    "publicAuthority": "firecrawl.localhost",
+    "routes": ["POST /v2/search", "POST /v2/scrape"],
+    "upstream": "deterministic local Firecrawl response double"
+  },
+  "proved": [
+    "Firecrawl default-off Application state",
+    "explicit disclaimer-bound enablement",
+    "separate inference and Firecrawl credential namespaces",
+    "separate Firecrawl credentials for two Applications",
+    "governed search and static scrape through the Firecrawl authority",
+    "exact-host scrape egress allowlist enforcement",
+    "unsupported crawl route denial without upstream traffic",
+    "per-credential last-use and connection metadata",
+    "cross-Application Firecrawl credential-record mutation denial",
+    "credential rotation, bounded overlap use, and revocation",
+    "no credential forwarding to the Firecrawl upstream",
+    "zero-retention scrape request flags",
+    "temporary-state cleanup"
+  ],
+  "services": [
+    "console-web",
+    "console-bff",
+    "local-authority-router-double",
+    "openai-compatible-inference-double",
+    "firecrawl-response-double"
+  ],
+  "state": "in-memory fixture data removed with the disposable runtime",
+  "notEvidenceFor": [
+    "browser-driven Console administration",
+    "Keycloak login or session runtime",
+    "Product Nginx or TLS",
+    "PostgreSQL persistence",
+    "exact Core images",
+    "real Firecrawl service behavior or external web access",
+    "runtime egress enforcement",
+    "runtime no-bypass",
+    "production qualification"
+  ],
+  "forbiddenOutcomes": [
+    "real credential use",
+    "live infrastructure access",
+    "runtime qualification claim",
+    "Product main merge",
+    "Gitea Genesis"
+  ]
+}

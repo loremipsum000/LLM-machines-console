@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-08",
+  "scope": "firecrawl-search-static-scrape-source-only",
+  "reviewStatus": "reviewed-for-reconstruction",
+  "productBase": {
+    "repository": "https://github.com/loremipsum000/LLM-machines-console",
+    "branch": "codex/inference-core-pr-08",
+    "commit": "c47ffd38661ce9a7561f967aecbb9bae15cdadf5",
+    "tree": "6071f1aa62690c509346cf1af7017a4cc669d28b"
+  },
+  "privateCheckpoint": {
+    "branch": "codex/firecrawl-hermes-pilot",
+    "base": "eeab335ab3e46add36e4efcfb4dad2b3b47a8202",
+    "baseTree": "c38ca6e7ea85e454f7c191441ade7679b7ee4c41",
+    "commit": "ff74f3c94c563627929af31c46d48dda8e7d6192",
+    "tree": "8a978eb0f6d0ef04a896ec29f138a84a7cf14d79",
+    "privateHoldRef": "refs/heads/hold/firecrawl-hermes-pilot",
+    "selectedManifestV2Sha256": "889c8c50f1debc1b8f5c6cf2bc096135e7dbcde23a2af9567ceacc39ecf5c604",
+    "exclusionLedgerV2Sha256": "058ef3baff0939b20abea31f5d4b7674aa8b2fb735eb0c97da11c392490e1337",
+    "combinedBindingV2Sha256": "1e067a3be0d3309d6fee6e5c5d63680621b2da9883100d5931ab5bf86d81e520",
+    "readOnly": true,
+    "wholesaleMergeAllowed": false,
+    "wholesaleCherryPickAllowed": false
+  },
+  "sourceCommits": [
+    {
+      "commit": "842e8ebdc16c0dbb33b4288ca5887170d38e0198",
+      "treatment": "reconstruct-reviewed-contract-safety-lifecycle-and-test-units-only"
+    },
+    {
+      "commit": "97777cc96d44ca9bf086e656a517e9706698e766",
+      "treatment": "replay-buildx-portability-only-if-required-by-reduced-publisher"
+    },
+    {
+      "commit": "fdd7dc06c92486a94e9e42a22b98615f8159f381",
+      "treatment": "replay-pinned-rustup-fix-only-if-required-and-regenerate-lock"
+    },
+    {
+      "commit": "cf41824a55148be12fcfd67dc62722040e0c8573",
+      "treatment": "reconstruct-hardening-provenance-and-worker-corrections-only"
+    },
+    {
+      "commit": "ff74f3c94c563627929af31c46d48dda8e7d6192",
+      "treatment": "replay-digest-parser-portability-only-after-reduced-publisher-exists"
+    }
+  ],
+  "sourceArtifacts": [
+    {
+      "path": "infra/librechat/web-search/hermes-firecrawl/docker-compose.yml",
+      "blob": "6766a13139ebec3cfd6d17934ecaccfd3714d2a5",
+      "bytes": 16447,
+      "sha256": "760561f9c9204cd7d83181f13a404cf5ee718ca82d53e3f68319b5d8b1e49cdd"
+    },
+    {
+      "path": "infra/librechat/web-search/hermes-firecrawl/searxng/settings.yml",
+      "blob": "646fb8b16fe19956911f9986cf181740c02eaad0",
+      "bytes": 1024,
+      "sha256": "e78c0b13422ff413e09357161d795e1e05ff4eef92c1dc0bd93f189f80d456da"
+    },
+    {
+      "path": "infra/librechat/web-search/hermes-firecrawl/egress-proxy/squid.conf",
+      "blob": "10031f476cde1dbed5b2c172bbc8983962e1ea36",
+      "bytes": 2250,
+      "sha256": "abb846b8355aad7f9e0df7c47a719c0e8ba39be2842c62a5e345fb5e2df7a2b9"
+    },
+    {
+      "path": "infra/librechat/web-search/hermes-firecrawl/supply-chain/source-lock.env",
+      "blob": "8dfb98ef212dd53ccf6844947929c94d045305e5",
+      "bytes": 2593,
+      "sha256": "018eed1e85812fbaff922bf4b07d343ae91eb02490e616dddd8874f39c90732f"
+    },
+    {
+      "path": "infra/librechat/web-search/hermes-firecrawl/supply-chain/image-lock.env",
+      "blob": "2c7c1b680c58068d18d9de5d149bccccbb95a6d7",
+      "bytes": 3387,
+      "sha256": "e8c687045f9b07692c6b63cf6e2dd0338f601a35f677c9bfde52557753871a38"
+    },
+    {
+      "path": "infra/librechat/web-search/hermes-firecrawl/supply-chain/third-party-source-ledger.json",
+      "blob": "ff8494a2df1df5234f4bef9008981712cd410b60",
+      "bytes": 6718,
+      "sha256": "3b81614a6c05b4f106785d29088edc1217addd3969432a3cd0057425995900e1"
+    },
+    {
+      "path": "infra/librechat/web-search/hermes-firecrawl/supply-chain/patches/runtime-policy.patch",
+      "blob": "aa2281e4d98e5ee0c6010b3e5f54bf8c70e10d8a",
+      "bytes": 26547,
+      "sha256": "eb110989c841107d1c55ba50ef4ae3e3710bb27b27fde3dc8881f34b7e3dabdd"
+    }
+  ],
+  "semanticSelections": [
+    {
+      "sourcePaths": [
+        "packages/contracts/src/firecrawl.ts",
+        "packages/contracts/src/firecrawl.test.ts"
+      ],
+      "units": [
+        "bounded-search-request",
+        "bounded-static-scrape-request",
+        "search-and-scrape-scope-identifiers",
+        "json-response-envelope",
+        "unknown-capability-field-denials"
+      ],
+      "requiredCorrections": [
+        "remove-staging-production",
+        "remove-expiry",
+        "attach-policy-and-credentials-to-unified-application"
+      ]
+    },
+    {
+      "sourcePaths": [
+        "apps/bff/src/routes/firecrawl-gateway.ts",
+        "apps/bff/src/routes/firecrawl-gateway.test.ts"
+      ],
+      "units": [
+        "exact-post-search-and-scrape-routes",
+        "strict-method-path-query-and-body-denials",
+        "bounded-route-and-upstream-deadlines",
+        "bounded-response-stream-reading-and-cancellation",
+        "bearer-token-non-forwarding",
+        "forced-cache-off-and-zero-data-retention",
+        "metadata-only-outcome-audit",
+        "generic-client-errors"
+      ],
+      "requiredCorrections": [
+        "publish-exactly-post-v2-search-and-post-v2-scrape",
+        "use-dedicated-per-application-firecrawl-static-credentials",
+        "remove-hermes-host-and-proxy-identity",
+        "use-private-product-generic-upstream",
+        "reject-crawl-map-batch-extract-agent-browser-webhook-admin-health-and-inline-search-scrape"
+      ]
+    },
+    {
+      "sourcePaths": [
+        "apps/bff/src/services/security/url-safety.ts",
+        "apps/bff/src/services/security/url-safety.test.ts"
+      ],
+      "units": [
+        "http-https-only",
+        "userinfo-denial",
+        "private-reserved-metadata-and-local-target-denial",
+        "all-address-dns-validation",
+        "manual-redirect-validation",
+        "bounded-fetch"
+      ],
+      "requiredCorrections": [
+        "enforce-system-egress-destination-allowlist-without-customer-url-governance",
+        "enforce-every-redirect-at-authoritative-egress",
+        "cover-ipv4-mapped-ipv6-and-ipv6-special-ranges",
+        "treat-bff-dns-validation-as-defense-in-depth-not-authoritative-rebinding-control"
+      ]
+    },
+    {
+      "sourcePaths": [
+        "apps/bff/src/services/firecrawl-clients.ts",
+        "apps/bff/src/services/firecrawl-clients.test.ts"
+      ],
+      "units": [
+        "one-time-static-key-reveal",
+        "hash-only-storage",
+        "constant-time-verification",
+        "last-use-metadata",
+        "rotation-and-revocation"
+      ],
+      "requiredCorrections": [
+        "no-automatic-expiry",
+        "fixed-86400-second-overlap",
+        "unified-application-ownership",
+        "separate-inference-firecrawl-and-litellm-credential-namespaces"
+      ]
+    },
+    {
+      "sourcePaths": [
+        "infra/librechat/web-search/hermes-firecrawl/docker-compose.yml",
+        "infra/librechat/web-search/hermes-firecrawl/egress-proxy/squid.conf",
+        "infra/librechat/web-search/hermes-firecrawl/searxng/settings.yml",
+        "infra/librechat/web-search/hermes-firecrawl/supply-chain"
+      ],
+      "units": [
+        "private-network-separation",
+        "default-off-profile",
+        "no-request-body-logging",
+        "volatile-transient-state",
+        "resource-and-process-bounds",
+        "direct-egress-denial",
+        "pinned-upstream-source-and-image-provenance",
+        "hardened-source-builds",
+        "corresponding-source-reconstruction"
+      ],
+      "requiredCorrections": [
+        "move-to-infra-firecrawl",
+        "remove-hermes-librechat-lab-and-fixed-topology-identifiers",
+        "replace-public-ip-denylist-with-authoritative-destination-allowlist-plus-public-ip-validation",
+        "qualify-synchronous-operation-without-nuq-postgres-rabbitmq",
+        "keep-native-services-readiness-stores-queues-caches-and-ports-private",
+        "bind-notices-sbom-provenance-and-source-access-to-reduced-product"
+      ]
+    },
+    {
+      "sourcePaths": ["tools/websearch-benchmark/firecrawl-gateway-v2"],
+      "units": [
+        "search-and-scrape-contract-cases",
+        "load-and-cancellation-evaluation",
+        "retention-canaries",
+        "artifact-scanner"
+      ],
+      "requiredCorrections": [
+        "remove-hermes-version-ownership",
+        "use-synthetic-third-party-client-fixtures",
+        "run-against-product-route-and-credential-contract"
+      ]
+    }
+  ],
+  "hardExclusions": [
+    "infra/migrations/0027_admin_firecrawl_gateway_clients.sql",
+    "standalone-firecrawl-clients",
+    "staging-production-environments",
+    "credential-expiry",
+    "agentic-or-hermes-runtime-coupling",
+    "hermes-desktop-product-ownership",
+    "librechat-hub-builder-knowledge-rag-mcp-coupling",
+    "lab-dns-hostnames-ip-addresses-vm-identifiers-and-runbooks",
+    "old-transition-candidate-and-public-vhost-scripts",
+    "redis-gateway-coordination",
+    "nuq-firecrawl-postgresql-and-rabbitmq-unless-newly-proven-necessary",
+    "reranker",
+    "native-and-excluded-firecrawl-public-routes",
+    "direct-api-firecrawl-dev-access",
+    "customer-supplied-headers-cookies-authenticated-sessions-screenshots-and-interactions",
+    "request-or-response-content-in-databases-audit-usage-logs-metrics-queues-caches-crash-output-or-backups",
+    "broad-dependency-upgrades",
+    "pilot-branch-ancestry",
+    "pr-08-web-ui",
+    "pr-08-runtime-deployment-and-qualification"
+  ],
+  "targetContract": {
+    "publicRoutes": [
+      {
+        "method": "POST",
+        "path": "/v2/search"
+      },
+      {
+        "method": "POST",
+        "path": "/v2/scrape"
+      }
+    ],
+    "surfaceClassification": "public-t2",
+    "inferenceRoutes": "unchanged",
+    "installed": true,
+    "defaultOffPerApplication": true,
+    "adminEnableAndReenableOnly": true,
+    "operatorExistingAccessActions": [
+      "view",
+      "passive-test",
+      "rotate",
+      "revoke",
+      "disable"
+    ],
+    "disclaimerRequired": true,
+    "credentialAutomaticExpiry": false,
+    "credentialOverlapSeconds": 86400,
+    "testConnection": "passive-real-client-authentication-evidence",
+    "governedPrivateUpstream": "http://firecrawl-api:3002",
+    "destinationPolicy": "system-egress-allowlist-plus-public-address-validation-no-customer-url-governance",
+    "customerUrlGovernance": false,
+    "nativeServicesPrivate": true,
+    "workloadContentRetention": false,
+    "uiVisibility": "hidden-until-PR-11",
+    "runtimeDeployment": "out-of-scope",
+    "runtimeAndFinalQualification": "PR-12"
+  }
+}

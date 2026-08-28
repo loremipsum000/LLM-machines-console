@@ -1,0 +1,116 @@
+{
+  "schema": "llm-machines.keycloak-native-admin-profile.v1",
+  "workPackage": "F0-N3",
+  "status": "SOURCE_CHARACTERIZATION_ONLY",
+  "activation": "INACTIVE_PENDING_F0_N5",
+  "runtimeQualified": false,
+  "runtime": {
+    "version": "26.7.0",
+    "image": "quay.io/keycloak/keycloak:26.7.0@sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13",
+    "platform": "linux/amd64",
+    "platformManifest": "sha256:26939e1318d6f008fc2ee6e10cec1cf8f1ba8a21846c1bc81b91ed0506bc2a7a",
+    "customProviderPlugins": []
+  },
+  "authority": {
+    "characterizationOrigin": "https://keycloak.lab.llm-machines.com",
+    "adminConsolePath": "/keycloak/admin/llm-machines/console/",
+    "realm": "llm-machines",
+    "masterRealm": false,
+    "directPortCustomerExposure": false
+  },
+  "authentication": {
+    "loginTheme": "llm-machines",
+    "passwordOnlyPreGenesis": true,
+    "mandatoryTotp": false,
+    "authorizationCode": true,
+    "pkce": "S256",
+    "consoleSessionForwarded": false,
+    "sharedHumanAccounts": false,
+    "reverseProxyImpersonation": false,
+    "nativeSessionRequired": true,
+    "idleSeconds": 28800,
+    "maximumSeconds": 86400,
+    "refreshTokenRotation": true,
+    "refreshTokenMaxReuse": 0
+  },
+  "theme": {
+    "name": "llm-machines",
+    "sourcePath": "infra/keycloak/themes/llm-machines",
+    "fileCount": 26,
+    "inventorySha256": "f883805154c75083121bbce8e56a023b16428c42cdc5192c050629118286bee8",
+    "credentialMaterial": false
+  },
+  "customerRoles": {
+    "Admin": "SCOPED_APPLIANCE_REALM_ADMIN",
+    "Operator": "DENY",
+    "other": "DENY"
+  },
+  "realmManagementRoles": {
+    "Admin": ["query-groups", "query-users"],
+    "Operator": []
+  },
+  "fineGrainedAdminPermissionsV2": {
+    "policy": "customer-admin-role",
+    "permissions": [
+      {
+        "resourceType": "Users",
+        "resources": "ALL_APPLIANCE_REALM_USERS",
+        "scopes": ["manage", "view"]
+      },
+      {
+        "resourceType": "Groups",
+        "resources": ["group:Admins", "group:Operators"],
+        "scopes": ["view", "view-members"]
+      }
+    ],
+    "forbiddenScopes": [
+      "impersonate",
+      "manage-group-membership",
+      "manage-members",
+      "manage-membership",
+      "manage-membership-of-members",
+      "map-role",
+      "map-roles"
+    ],
+    "forbiddenResourceTypes": ["Clients", "Organizations", "Roles"]
+  },
+  "approvedNativeOperations": [
+    "users.list_view",
+    "users.create",
+    "users.update",
+    "users.password_reset",
+    "sessions.list_view",
+    "sessions.invalidate"
+  ],
+  "layeredDeleteControl": {
+    "upstreamResidual": "Keycloak 26.7.0 Users/manage also permits user deletion",
+    "acceptedBy": "founder-steering-2026-08-14",
+    "effectiveOnlyBehindProductEdge": true,
+    "requiredF0N5Denial": {
+      "method": "DELETE",
+      "pathPattern": "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}$",
+      "expectedStatus": 403
+    },
+    "activationFailClosed": true,
+    "nativeDeleteControlMayRemainVisible": true,
+    "supportCopyRequired": true
+  },
+  "explicitDenials": [
+    "master-realm administration",
+    "unrelated-realm administration",
+    "realm creation",
+    "server-wide administration",
+    "client mutation",
+    "identity-provider mutation",
+    "impersonation",
+    "administrative-role escalation",
+    "unrelated group mutation",
+    "system configuration mutation"
+  ],
+  "failureBoundary": {
+    "identityOutage": "CONTROLLED_NATIVE_UNAVAILABLE_NO_REDIRECT_LOOP",
+    "identityRestart": "NATIVE_SESSION_REVALIDATED_OR_LOGIN_REQUIRED",
+    "logout": "NATIVE_SESSION_CLEARED",
+    "edgeAuditOutage": "FAIL_CLOSED_BEFORE_NATIVE_REQUEST"
+  }
+}

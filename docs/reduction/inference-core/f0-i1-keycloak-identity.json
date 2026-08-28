@@ -1,0 +1,41 @@
+{
+  "schema": "llm-machines.pre-genesis-functional-evidence.v1",
+  "workPackage": "F0-I1",
+  "accepted": false,
+  "runtimeQualified": false,
+  "evidenceClass": "LOCAL_KEYCLOAK_IDENTITY_INTEGRATION_ONLY",
+  "command": "PRE_GENESIS_DOCKER_CONTEXT=<isolated-context> corepack pnpm run test:pre-genesis:keycloak-identity",
+  "exactImage": "quay.io/keycloak/keycloak:26.7.0@sha256:0f198be292568439d700cdbfb893e69a6009bb43a94a06a945b1d3d506c76b13",
+  "sourceRevision": "6c73e3027811d9c7b22683edd825e839272e9547",
+  "proved": [
+    "actual Console Web and BFF complete Authorization Code plus PKCE login through the identity authority",
+    "Admin and Operator authenticate through the exact pinned Keycloak image with password and TOTP",
+    "lowercase admin and operator realm roles map to the retained Console roles",
+    "the Console browser receives only opaque Product session material while Keycloak cookies remain identity-host scoped",
+    "Console logout clears local Product session custody and protected navigation returns to sign-in",
+    "the existing Product identity route allowlist carries login actions and static resources while native Keycloak administration remains denied",
+    "all credentials and OTP seeds are generated throwaway material and disposable state is removed"
+  ],
+  "preservedBoundaries": [
+    "Keycloak remains private except for approved identity routes through the Product edge",
+    "the native Keycloak Admin Console remains absent from v1",
+    "Console identity mutations and Keycloak FGAP permissions are not exercised or expanded",
+    "no Console browser-session token is forwarded as a native Keycloak credential",
+    "no live infrastructure, registry, release artifact, Product main, Gitea, D2A, or Q0 state changes"
+  ],
+  "notEvidenceFor": [
+    "production realm commissioning or customer identity migration",
+    "Keycloak FGAP v2 or Console user and password mutations",
+    "exact linux/amd64 Core composition or VM103 qualification",
+    "production TLS, DNS, database, backup, restore, capacity, or availability",
+    "Q0 runtime qualification, Product acceptance, release signing, or activation"
+  ],
+  "remainingQualification": [
+    "credential-free production realm translation and commissioning",
+    "synchronized-clock refresh expiry, reuse detection, concurrency, clock skew, outage recovery, revocation response, and backchannel logout",
+    "Console basic identity mutation against scoped Keycloak permissions",
+    "exact-Core restart, outage, persistence, backup, and restore",
+    "Q0 MFA and clock-skew qualification"
+  ],
+  "nextPackage": "F0-I2 scoped Console identity mutation with disposable Keycloak and PostgreSQL"
+}

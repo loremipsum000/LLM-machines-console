@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:22.23.2-bookworm-slim@sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46
 
 WORKDIR /workspace
 

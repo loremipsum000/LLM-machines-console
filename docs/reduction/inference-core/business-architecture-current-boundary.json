@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "status": "CURRENT_PROTECTED_BOUNDARY",
+  "precedence": {
+    "basis": "Later explicit founder steering and protected Product decisions supersede stale current-facing planning rows until the planning repository receives an isolated reconciliation. Historical planning and PR evidence remains unchanged.",
+    "stalePlanningDocuments": [
+      "docs/console/Console-Inference-Core-Target-State-Canon.md",
+      "docs/console/Console-Inference-Core-Stack-Reduction-Strategy.md",
+      "docs/console/Console-Inference-Core-Stack-Reduction-Implementation-Plan.md"
+    ]
+  },
+  "auditedBaseline": {
+    "candidateCommit": "0f0399c6a091d4ec0ea78f4379362add38c87b22",
+    "protectedMerge": "005ab894e2ef6826879738eac99030fc97b9fb70",
+    "tree": "ced785bf0d7f63efab780443e1207b0e3ece73d8"
+  },
+  "supersedingProtectedDecisions": [
+    {
+      "pullRequest": 133,
+      "mergeCommit": "5371b88433015db577a95dd6678811c69b3237ce"
+    },
+    {
+      "pullRequest": 134,
+      "mergeCommit": "8c8868bfd7787cb6c2ef22101701398fd8d106d4"
+    },
+    {
+      "pullRequest": 137,
+      "mergeCommit": "ccc64a551286aa32309e272e6f93c3051f0577bf"
+    },
+    {
+      "pullRequest": 138,
+      "mergeCommit": "f389eff2af5cda17b64dab7c8a7babdd1805e04e"
+    }
+  ],
+  "customerVocabulary": {
+    "canonicalHref": "/keys",
+    "canonicalPlural": "Keys",
+    "canonicalSingular": "Key",
+    "legacyRedirect": "/applications"
+  },
+  "internalCompatibilityVocabulary": [
+    "application",
+    "applicationId",
+    "/api/admin/applications"
+  ],
+  "consoleOperatorAuthority": {
+    "createKey": false,
+    "revokeCredential": false,
+    "rotateCredential": false,
+    "testConnection": false,
+    "updateKey": false
+  },
+  "nativeLiteLlmOperatorAuthority": "OWN_VIRTUAL_KEYS_AND_SPEND_ONLY",
+  "productAccepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "genesis": "UNPUBLISHED"
+}

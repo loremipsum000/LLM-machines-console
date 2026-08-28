@@ -1,60 +1,51 @@
 # Web App
 
-Surface for `/`, `/admin`, and `/builder`.
+The customer Console is a focused control-plane UI with these retained surfaces:
 
-## Hub BFF Data
+- `/` (Overview)
+- `/activity`
+- `/applications`
+- `/inference`
+- `/hardware`
+- `/team`
+- `/settings`
 
-The Hub reads through `src/lib/hub/server-data.ts`, which is server-only.
-Browser EventSource clients subscribe to the same-origin
-`/api/hub/events` route; that route proxies BFF SSE server-side when configured.
+Routes outside this retained set bypass authentication middleware so Next.js
+can return its normal `404` response.
 
-For local Hub/Builder UI work, `CONSOLE_WEB_FIXTURE_MODE=true` can still let
-non-Console server loaders and Hub browser proxy routes use typed fixtures when
-no BFF request can be built. Production Console routes such as `/knowledge`,
-`/applications`, `/inference`, `/hardware`, `/team`, and `/settings` ignore that
-fixture fallback and fail closed unless the BFF request can be built. To call the
-BFF from the server runtime, configure Auth.js with Keycloak and set:
+## BFF and authentication
 
-- `AUTH_SECRET`
-- `AUTH_KEYCLOAK_ID`
-- `AUTH_KEYCLOAK_SECRET`
-- `AUTH_KEYCLOAK_ISSUER`
+The browser holds only the host-only `__Host-llm-machines-session` opaque
+session cookie. It is `Secure`, `HttpOnly`, `SameSite=Lax`, scoped to `/`, and
+has no `Domain`. Middleware validates the handle through the private BFF
+`/api/internal/console-session/resolve` route before serving a retained Console
+page and slides the browser cookie for 1,800 seconds after an active result. The
+BFF continues to enforce the session's idle and absolute limits.
+
+All appliance data requests are made server-side through
+`src/lib/bff/server-request.ts`. The Web service requires only:
+
 - `CONSOLE_BFF_URL`
 - `CONSOLE_BFF_SERVICE_API_KEY`
+- `WEB_IDENTITY_ORIGIN` as the exact HTTPS Identity authority allowed for the
+  native high-risk elevation form redirect
 
-For the lab realm, `AUTH_KEYCLOAK_ID` should use the `console-web` client seeded
-by `infra/keycloak/seed-lab-realm.sh`; its callback is
-`/api/auth/callback/keycloak`.
+`CONSOLE_BFF_SERVICE_API_KEY` is a server-only credential. Never expose it
+through a `NEXT_PUBLIC_*` variable or send it to the browser. Web-to-BFF
+requests carry service authentication and the opaque session handle only. They
+must not forward Keycloak access or refresh tokens, user identity headers, or
+roles supplied by the browser.
 
-The Hub forwards the authenticated session subject, email, realm roles, and
-Keycloak access token to the BFF from server-only code. If the BFF is configured
-but no Auth.js session is available, or the BFF returns an error, the page fails
-closed instead of returning fixtures.
+The product edge owns the browser session routes:
 
-Do not expose `CONSOLE_BFF_SERVICE_API_KEY` through a `NEXT_PUBLIC_*` variable.
-The browser must never call the BFF with the trusted service key.
+- `GET /api/console/session/login?returnTo=<path-only>`
+- `GET /api/console/session/callback`
+- `POST /api/console/session/logout`
+- `POST /api/console/session/elevate` with a bound high-risk `action` and a
+  path-only `returnTo`
 
-## External Surfaces
-
-The Hub links to LibreChat directly through `LIBRECHAT_PUBLIC_URL`; mirrored
-recent chat rows point at LibreChat `/c/<conversation-id>` routes. The internal
-`/chat` route is only a compatibility redirect and should not render an iframe.
-
-Admin role handoff pages still render upstream tools through
-`src/lib/auth/sso-bridge.ts`. Configure iframe sources with:
-
-- `GRAFANA_EMBED_URL`
-- `KEYCLOAK_ADMIN_EMBED_URL`
-- `LITELLM_EMBED_URL`
-
-Public external links and iframe fallback links use:
-
-- `LIBRECHAT_PUBLIC_URL`
-- `GRAFANA_PUBLIC_URL`
-- `KEYCLOAK_ADMIN_PUBLIC_URL` for the admin-console drilldown, or
-  `KEYCLOAK_PUBLIC_URL` as the base used to derive it
-- `LITELLM_PUBLIC_URL`
-
-If an embed URL is absent but a public route exists, the route renders a compact
-external-route card. It only renders `Not configured` when neither an embed nor
-fallback route is available.
+Terminal session results clear the exact opaque cookie and redirect once to
+`/auth/signin?session=expired&returnTo=<path-only>`. Retryable identity outages
+preserve the cookie and render `/auth/unavailable` with HTTP 503 so a temporary
+Keycloak or BFF failure cannot create a sign-in loop. Auth.js and browser-owned
+JWT refresh state are not part of the Console session boundary.

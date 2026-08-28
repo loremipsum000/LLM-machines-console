@@ -1,0 +1,3052 @@
+{
+  "accepted": false,
+  "artifact": {
+    "configDigest": "sha256:45f3a24c1cdf26f9e372d458afd7309f3b270a2aeaeae6ac0eb3d809e742bf7a",
+    "layerDigests": [
+      "sha256:08e9494a6bc8d17b4ba4a1b57ffa658cb8f341c76f448b146b2139758469d74c"
+    ],
+    "manifestDigest": "sha256:f945186dd7943b83b1f39fed23898161b66ccb0d9943e50b272a03edf1797e20",
+    "ociArchiveSha256": "0dd846c806f74032244edc3e2eaed781717bb9feb590eea247c6ae05d00013eb"
+  },
+  "assemblies": [
+    {
+      "id": "A",
+      "packageStoreIdentityCount": 275,
+      "publicBytes": 47612241,
+      "publicFileCount": 35,
+      "publicInventorySha256": "6f43f103842df302ddb6c694e75dc7f8e620197f8aeaef5bacc4c82fb91da385",
+      "sourceMapCount": 9,
+      "sourceMapInventorySha256": "186a8277f0cf1b5440c9c07f7cf22d2ce98632fa7f7582a869ee45a146a3dc43",
+      "sourcePathCount": 6422
+    },
+    {
+      "id": "B",
+      "packageStoreIdentityCount": 275,
+      "publicBytes": 47612241,
+      "publicFileCount": 35,
+      "publicInventorySha256": "6f43f103842df302ddb6c694e75dc7f8e620197f8aeaef5bacc4c82fb91da385",
+      "sourceMapCount": 9,
+      "sourceMapInventorySha256": "186a8277f0cf1b5440c9c07f7cf22d2ce98632fa7f7582a869ee45a146a3dc43",
+      "sourcePathCount": 6422
+    }
+  ],
+  "runtime": {
+    "bytes": 47612241,
+    "componentCount": 275,
+    "components": [
+      {
+        "bomRef": "pkg:npm/%40aws-crypto/sha256-js@2.0.1",
+        "lockKey": "@aws-crypto+sha256-js@2.0.1",
+        "name": "@aws-crypto/sha256-js",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 4,
+        "version": "2.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40aws-crypto/util@2.0.1",
+        "lockKey": "@aws-crypto+util@2.0.1",
+        "name": "@aws-crypto/util",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 5,
+        "version": "2.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40aws-sdk/util-utf8-browser@3.37.0",
+        "lockKey": "@aws-sdk+util-utf8-browser@3.37.0",
+        "name": "@aws-sdk/util-utf8-browser",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "3.37.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40babel/runtime@7.26.0",
+        "lockKey": "@babel+runtime@7.26.0",
+        "name": "@babel/runtime",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 28,
+        "version": "7.26.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/autocomplete@6.18.6",
+        "lockKey": "@codemirror+autocomplete@6.18.6",
+        "name": "@codemirror/autocomplete",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.18.6"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/commands@6.8.0",
+        "lockKey": "@codemirror+commands@6.8.0",
+        "name": "@codemirror/commands",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.8.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/lang-yaml@6.1.2",
+        "lockKey": "@codemirror+lang-yaml@6.1.2",
+        "name": "@codemirror/lang-yaml",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/language@6.10.8",
+        "lockKey": "@codemirror+language@6.10.8",
+        "name": "@codemirror/language",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.10.8"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/legacy-modes@6.4.2",
+        "lockKey": "@codemirror+legacy-modes@6.4.2",
+        "name": "@codemirror/legacy-modes",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "6.4.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/lint@6.8.4",
+        "lockKey": "@codemirror+lint@6.8.4",
+        "name": "@codemirror/lint",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.8.4"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/merge@6.10.0",
+        "lockKey": "@codemirror+merge@6.10.0",
+        "name": "@codemirror/merge",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.10.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/search@6.5.8",
+        "lockKey": "@codemirror+search@6.5.8",
+        "name": "@codemirror/search",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.5.8"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/state@6.5.1",
+        "lockKey": "@codemirror+state@6.5.1",
+        "name": "@codemirror/state",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.5.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/theme-one-dark@6.1.2",
+        "lockKey": "@codemirror+theme-one-dark@6.1.2",
+        "name": "@codemirror/theme-one-dark",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40codemirror/view@6.36.2",
+        "lockKey": "@codemirror+view@6.36.2",
+        "name": "@codemirror/view",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.36.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40emotion/cache@11.6.0",
+        "lockKey": "@emotion+cache@11.6.0",
+        "name": "@emotion/cache",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "11.6.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40emotion/hash@0.8.0",
+        "lockKey": "@emotion+hash@0.8.0",
+        "name": "@emotion/hash",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.8.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40emotion/memoize@0.7.5",
+        "lockKey": "@emotion+memoize@0.7.5",
+        "name": "@emotion/memoize",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.7.5"
+      },
+      {
+        "bomRef": "pkg:npm/%40emotion/react@11.6.0",
+        "lockKey": "@emotion+react@11.6.0_@babel+core@7.23.6_@types+react@17.0.75_react@17.0.2",
+        "name": "@emotion/react",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "11.6.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40emotion/serialize@1.0.2",
+        "lockKey": "@emotion+serialize@1.0.2",
+        "name": "@emotion/serialize",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40emotion/sheet@1.1.0",
+        "lockKey": "@emotion+sheet@1.1.0",
+        "name": "@emotion/sheet",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40emotion/unitless@0.7.5",
+        "lockKey": "@emotion+unitless@0.7.5",
+        "name": "@emotion/unitless",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.7.5"
+      },
+      {
+        "bomRef": "pkg:npm/%40emotion/utils@1.0.0",
+        "lockKey": "@emotion+utils@1.0.0",
+        "name": "@emotion/utils",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40lezer/common@1.2.3",
+        "lockKey": "@lezer+common@1.2.3",
+        "name": "@lezer/common",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.2.3"
+      },
+      {
+        "bomRef": "pkg:npm/%40lezer/highlight@1.2.1",
+        "lockKey": "@lezer+highlight@1.2.1",
+        "name": "@lezer/highlight",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.2.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40lezer/lr@1.4.2",
+        "lockKey": "@lezer+lr@1.4.2",
+        "name": "@lezer/lr",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.4.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40lezer/yaml@1.0.3",
+        "lockKey": "@lezer+yaml@1.0.3",
+        "name": "@lezer/yaml",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.3"
+      },
+      {
+        "bomRef": "pkg:npm/%40marijn/find-cluster-break@1.0.2",
+        "lockKey": "@marijn+find-cluster-break@1.0.2",
+        "name": "@marijn/find-cluster-break",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40nxmix/tokenize-ansi@3.0.0",
+        "lockKey": "@nxmix+tokenize-ansi@3.0.0",
+        "name": "@nxmix/tokenize-ansi",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 4,
+        "version": "3.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40open-amt-cloud-toolkit/ui-toolkit-react@2.0.0",
+        "lockKey": "@open-amt-cloud-toolkit+ui-toolkit-react@2.0.0_react-dom@17.0.2_react@17.0.2__react-is@17.0.2_react@17.0.2",
+        "name": "@open-amt-cloud-toolkit/ui-toolkit-react",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40popperjs/core@2.11.6",
+        "lockKey": "@popperjs+core@2.11.6",
+        "name": "@popperjs/core",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 54,
+        "version": "2.11.6"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/primitive@1.1.2",
+        "lockKey": "@radix-ui+primitive@1.1.2",
+        "name": "@radix-ui/primitive",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-compose-refs@1.1.2",
+        "lockKey": "@radix-ui+react-compose-refs@1.1.2_@types+react@17.0.75_react@17.0.2",
+        "name": "@radix-ui/react-compose-refs",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-context@1.1.2",
+        "lockKey": "@radix-ui+react-context@1.1.2_@types+react@17.0.75_react@17.0.2",
+        "name": "@radix-ui/react-context",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-dialog@1.1.11",
+        "lockKey": "@radix-ui+react-dialog@1.1.11_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@radix-ui/react-dialog",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.11"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-dismissable-layer@1.1.7",
+        "lockKey": "@radix-ui+react-dismissable-layer@1.1.7_@types+react-dom@17.0.25_@types+react@17.0.75_r_66a971c3297d8d20ec5e8583841ae853",
+        "name": "@radix-ui/react-dismissable-layer",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.7"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-focus-guards@1.1.2",
+        "lockKey": "@radix-ui+react-focus-guards@1.1.2_@types+react@17.0.75_react@17.0.2",
+        "name": "@radix-ui/react-focus-guards",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-focus-scope@1.1.4",
+        "lockKey": "@radix-ui+react-focus-scope@1.1.4_@types+react-dom@17.0.25_@types+react@17.0.75_react-d_20eb62031e5d6b788dfc9b26c973f002",
+        "name": "@radix-ui/react-focus-scope",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.4"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-id@1.1.1",
+        "lockKey": "@radix-ui+react-id@1.1.1_@types+react@17.0.75_react@17.0.2",
+        "name": "@radix-ui/react-id",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-portal@1.1.6",
+        "lockKey": "@radix-ui+react-portal@1.1.6_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@radix-ui/react-portal",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.6"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-presence@1.1.4",
+        "lockKey": "@radix-ui+react-presence@1.1.4_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@radix-ui/react-presence",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.4"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-primitive@2.1.0",
+        "lockKey": "@radix-ui+react-primitive@2.1.0_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom_45f1e7bd7bfdfd4fb3cb89a1ac7bddbd",
+        "name": "@radix-ui/react-primitive",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-slot@1.2.0",
+        "lockKey": "@radix-ui+react-slot@1.2.0_@types+react@17.0.75_react@17.0.2",
+        "name": "@radix-ui/react-slot",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.2.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-use-callback-ref@1.1.1",
+        "lockKey": "@radix-ui+react-use-callback-ref@1.1.1_@types+react@17.0.75_react@17.0.2",
+        "name": "@radix-ui/react-use-callback-ref",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-use-controllable-state@1.2.2",
+        "lockKey": "@radix-ui+react-use-controllable-state@1.2.2_@types+react@17.0.75_react@17.0.2",
+        "name": "@radix-ui/react-use-controllable-state",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.2.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-use-escape-keydown@1.1.1",
+        "lockKey": "@radix-ui+react-use-escape-keydown@1.1.1_@types+react@17.0.75_react@17.0.2",
+        "name": "@radix-ui/react-use-escape-keydown",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40radix-ui/react-use-layout-effect@1.1.1",
+        "lockKey": "@radix-ui+react-use-layout-effect@1.1.1_@types+react@17.0.75_react@17.0.2",
+        "name": "@radix-ui/react-use-layout-effect",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/auto-id@0.16.0",
+        "lockKey": "@reach+auto-id@0.16.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/auto-id",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.16.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/auto-id@0.18.0",
+        "lockKey": "@reach+auto-id@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/auto-id",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.18.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/combobox@0.18.0",
+        "lockKey": "@reach+combobox@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/combobox",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "0.18.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/descendants@0.16.1",
+        "lockKey": "@reach+descendants@0.16.1_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/descendants",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.16.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/descendants@0.18.0",
+        "lockKey": "@reach+descendants@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/descendants",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.18.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/dialog@0.17.0",
+        "lockKey": "@reach+dialog@0.17.0_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/dialog",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "0.17.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/dropdown@0.16.1",
+        "lockKey": "@reach+dropdown@0.16.1_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/dropdown",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.16.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/menu-button@0.16.1",
+        "lockKey": "@reach+menu-button@0.16.1_react-dom@17.0.2_react@17.0.2__react-is@17.0.2_react@17.0.2",
+        "name": "@reach/menu-button",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "0.16.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/observe-rect@1.2.0",
+        "lockKey": "@reach+observe-rect@1.2.0",
+        "name": "@reach/observe-rect",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.2.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/popover@0.16.0",
+        "lockKey": "@reach+popover@0.16.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/popover",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.16.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/popover@0.18.0",
+        "lockKey": "@reach+popover@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/popover",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.18.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/portal@0.16.0",
+        "lockKey": "@reach+portal@0.16.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/portal",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.16.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/portal@0.17.0",
+        "lockKey": "@reach+portal@0.17.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/portal",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.17.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/portal@0.18.0",
+        "lockKey": "@reach+portal@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/portal",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.18.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/rect@0.16.0",
+        "lockKey": "@reach+rect@0.16.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/rect",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.16.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/rect@0.18.0",
+        "lockKey": "@reach+rect@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/rect",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.18.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/utils@0.16.0",
+        "lockKey": "@reach+utils@0.16.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/utils",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 13,
+        "version": "0.16.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/utils@0.17.0",
+        "lockKey": "@reach+utils@0.17.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/utils",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 8,
+        "version": "0.17.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40reach/utils@0.18.0",
+        "lockKey": "@reach+utils@0.18.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@reach/utils",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.18.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40sagold/json-pointer@5.1.2",
+        "lockKey": "@sagold+json-pointer@5.1.2",
+        "name": "@sagold/json-pointer",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "5.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40sagold/json-query@6.2.0",
+        "lockKey": "@sagold+json-query@6.2.0",
+        "name": "@sagold/json-query",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 8,
+        "version": "6.2.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40seznam/compose-react-refs@1.0.6",
+        "lockKey": "@seznam+compose-react-refs@1.0.6",
+        "name": "@seznam/compose-react-refs",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.6"
+      },
+      {
+        "bomRef": "pkg:npm/%40shikijs/core@1.29.2",
+        "lockKey": "@shikijs+core@1.29.2",
+        "name": "@shikijs/core",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.29.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40shikijs/engine-oniguruma@1.29.2",
+        "lockKey": "@shikijs+engine-oniguruma@1.29.2",
+        "name": "@shikijs/engine-oniguruma",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.29.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40shikijs/langs@1.29.2",
+        "lockKey": "@shikijs+langs@1.29.2",
+        "name": "@shikijs/langs",
+        "sourceMapPaths": [
+          "701.5785ffe50e4ebe4cc192.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.29.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40shikijs/markdown-it@1.29.2",
+        "lockKey": "@shikijs+markdown-it@1.29.2",
+        "name": "@shikijs/markdown-it",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.29.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40shikijs/themes@1.29.2",
+        "lockKey": "@shikijs+themes@1.29.2",
+        "name": "@shikijs/themes",
+        "sourceMapPaths": [
+          "572.3d10cb1ff863ec496d85.js.map",
+          "933.734458950fabeaa7302d.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.29.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40shikijs/types@1.29.2",
+        "lockKey": "@shikijs+types@1.29.2",
+        "name": "@shikijs/types",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.29.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40shikijs/vscode-textmate@10.0.2",
+        "lockKey": "@shikijs+vscode-textmate@10.0.2",
+        "name": "@shikijs/vscode-textmate",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "10.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/%40tanstack/query-core@4.36.1",
+        "lockKey": "@tanstack+query-core@4.36.1",
+        "name": "@tanstack/query-core",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 17,
+        "version": "4.36.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40tanstack/react-query-devtools@4.36.1",
+        "lockKey": "@tanstack+react-query-devtools@4.36.1_@tanstack+react-query@4.36.1_react-dom@17.0.2_rea_7a9a9359f46ea58755c154a4791164a3",
+        "name": "@tanstack/react-query-devtools",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.36.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40tanstack/react-query@4.36.1",
+        "lockKey": "@tanstack+react-query@4.36.1_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@tanstack/react-query",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 11,
+        "version": "4.36.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40tanstack/react-table@8.9.0",
+        "lockKey": "@tanstack+react-table@8.9.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@tanstack/react-table",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "8.9.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40tanstack/table-core@8.9.0",
+        "lockKey": "@tanstack+table-core@8.9.0",
+        "name": "@tanstack/table-core",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "8.9.0"
+      },
+      {
+        "bomRef": "pkg:npm/%40tippyjs/react@4.2.6",
+        "lockKey": "@tippyjs+react@4.2.6_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "@tippyjs/react",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.2.6"
+      },
+      {
+        "bomRef": "pkg:npm/%40uirouter/angularjs@1.0.11",
+        "lockKey": "@uirouter+angularjs@1.0.11_angular@1.8.2",
+        "name": "@uirouter/angularjs",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.11"
+      },
+      {
+        "bomRef": "pkg:npm/%40uirouter/core@5.0.11",
+        "lockKey": "@uirouter+core@5.0.11",
+        "name": "@uirouter/core",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 72,
+        "version": "5.0.11"
+      },
+      {
+        "bomRef": "pkg:npm/%40uirouter/core@6.0.7",
+        "lockKey": "@uirouter+core@6.0.7",
+        "name": "@uirouter/core",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 61,
+        "version": "6.0.7"
+      },
+      {
+        "bomRef": "pkg:npm/%40uirouter/react-hybrid@1.0.4",
+        "lockKey": "@uirouter+react-hybrid@1.0.4_angular@1.8.2_react@17.0.2",
+        "name": "@uirouter/react-hybrid",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 9,
+        "version": "1.0.4"
+      },
+      {
+        "bomRef": "pkg:npm/%40uirouter/react@1.0.7",
+        "lockKey": "@uirouter+react@1.0.7_react@17.0.2",
+        "name": "@uirouter/react",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 16,
+        "version": "1.0.7"
+      },
+      {
+        "bomRef": "pkg:npm/%40uiw/codemirror-extensions-basic-setup@4.23.11",
+        "lockKey": "@uiw+codemirror-extensions-basic-setup@4.23.11_@codemirror+autocomplete@6.18.6_@codemir_f2b9440c86bcf7cbad89458529f4fc71",
+        "name": "@uiw/codemirror-extensions-basic-setup",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.23.11"
+      },
+      {
+        "bomRef": "pkg:npm/%40uiw/codemirror-themes@4.23.7",
+        "lockKey": "@uiw+codemirror-themes@4.23.7_@codemirror+language@6.10.8_@codemirror+state@6.5.1_@codemirror+view@6.36.2",
+        "name": "@uiw/codemirror-themes",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.23.7"
+      },
+      {
+        "bomRef": "pkg:npm/%40uiw/react-codemirror@4.23.11",
+        "lockKey": "@uiw+react-codemirror@4.23.11_@babel+runtime@7.26.0_@codemirror+autocomplete@6.18.6_@co_f7597f0d96a2c78fe480889520fa4e30",
+        "name": "@uiw/react-codemirror",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 5,
+        "version": "4.23.11"
+      },
+      {
+        "bomRef": "pkg:npm/%40vtaits/use-lazy-ref@0.1.4",
+        "lockKey": "@vtaits+use-lazy-ref@0.1.4_react@17.0.2",
+        "name": "@vtaits/use-lazy-ref",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.1.4"
+      },
+      {
+        "bomRef": "pkg:npm/%40wojtekmaj/date-utils@1.5.1",
+        "lockKey": "@wojtekmaj+date-utils@1.5.1",
+        "name": "@wojtekmaj/date-utils",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.5.1"
+      },
+      {
+        "bomRef": "pkg:npm/%40wojtekmaj/react-daterange-picker@5.5.0",
+        "lockKey": "@wojtekmaj+react-daterange-picker@5.5.0_@types+react-dom@17.0.25_@types+react@17.0.75_r_f15c5c591fb88c4ffa1c4a32d467ce5f",
+        "name": "@wojtekmaj/react-daterange-picker",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 4,
+        "version": "5.5.0"
+      },
+      {
+        "bomRef": "pkg:npm/angular-clipboard@1.7.0",
+        "lockKey": "angular-clipboard@1.7.0_angular@1.8.2",
+        "name": "angular-clipboard",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.7.0"
+      },
+      {
+        "bomRef": "pkg:npm/angular-file-saver@1.1.3",
+        "lockKey": "angular-file-saver@1.1.3",
+        "name": "angular-file-saver",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.3"
+      },
+      {
+        "bomRef": "pkg:npm/angular-loading-bar@0.9.0",
+        "lockKey": "angular-loading-bar@0.9.0",
+        "name": "angular-loading-bar",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "0.9.0"
+      },
+      {
+        "bomRef": "pkg:npm/angular-local-storage@0.5.2",
+        "lockKey": "angular-local-storage@0.5.2",
+        "name": "angular-local-storage",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "0.5.2"
+      },
+      {
+        "bomRef": "pkg:npm/angular-messages@1.8.2",
+        "lockKey": "angular-messages@1.8.2",
+        "name": "angular-messages",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.8.2"
+      },
+      {
+        "bomRef": "pkg:npm/angular-moment-picker@0.10.2",
+        "lockKey": "angular-moment-picker@0.10.2",
+        "name": "angular-moment-picker",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "0.10.2"
+      },
+      {
+        "bomRef": "pkg:npm/angular-resource@1.8.2",
+        "lockKey": "angular-resource@1.8.2",
+        "name": "angular-resource",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.8.2"
+      },
+      {
+        "bomRef": "pkg:npm/angular-sanitize@1.8.2",
+        "lockKey": "angular-sanitize@1.8.2",
+        "name": "angular-sanitize",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.8.2"
+      },
+      {
+        "bomRef": "pkg:npm/angular-ui-bootstrap@2.5.6",
+        "lockKey": "angular-ui-bootstrap@2.5.6",
+        "name": "angular-ui-bootstrap",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "2.5.6"
+      },
+      {
+        "bomRef": "pkg:npm/angular-utils-pagination@0.11.1",
+        "lockKey": "angular-utils-pagination@0.11.1",
+        "name": "angular-utils-pagination",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "0.11.1"
+      },
+      {
+        "bomRef": "pkg:npm/angular@1.8.2",
+        "lockKey": "angular@1.8.2",
+        "name": "angular",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.8.2"
+      },
+      {
+        "bomRef": "pkg:npm/angularjs-scroll-glue@2.2.0",
+        "lockKey": "angularjs-scroll-glue@2.2.0",
+        "name": "angularjs-scroll-glue",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.2.0"
+      },
+      {
+        "bomRef": "pkg:npm/angularjs-slider@6.7.0",
+        "lockKey": "angularjs-slider@6.7.0_angular@1.8.2",
+        "name": "angularjs-slider",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "6.7.0"
+      },
+      {
+        "bomRef": "pkg:npm/ansi-regex@5.0.1",
+        "lockKey": "ansi-regex@5.0.1",
+        "name": "ansi-regex",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "5.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/aria-hidden@1.2.4",
+        "lockKey": "aria-hidden@1.2.4",
+        "name": "aria-hidden",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.2.4"
+      },
+      {
+        "bomRef": "pkg:npm/axios-cache-interceptor@1.11.2",
+        "lockKey": "axios-cache-interceptor@1.11.2_axios@1.18.1",
+        "name": "axios-cache-interceptor",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.11.2"
+      },
+      {
+        "bomRef": "pkg:npm/axios-progress-bar@1.2.0",
+        "lockKey": "axios-progress-bar@https+++codeload.github.com+portainer+progress-bar-4-axios+tar.gz+d4_5d5baaecb0636f0c5e0cbde9dbb8df91",
+        "name": "axios-progress-bar",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.2.0"
+      },
+      {
+        "bomRef": "pkg:npm/axios@1.18.1",
+        "lockKey": "axios@1.18.1",
+        "name": "axios",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 52,
+        "version": "1.18.1"
+      },
+      {
+        "bomRef": "pkg:npm/base64-js@1.5.1",
+        "lockKey": "base64-js@1.5.1",
+        "name": "base64-js",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.5.1"
+      },
+      {
+        "bomRef": "pkg:npm/best-effort-json-parser@1.1.3",
+        "lockKey": "best-effort-json-parser@1.1.3",
+        "name": "best-effort-json-parser",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.3"
+      },
+      {
+        "bomRef": "pkg:npm/bootstrap@3.4.1",
+        "lockKey": "bootstrap@3.4.1",
+        "name": "bootstrap",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 67,
+        "version": "3.4.1"
+      },
+      {
+        "bomRef": "pkg:npm/buffer@6.0.3",
+        "lockKey": "buffer@6.0.3",
+        "name": "buffer",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.0.3"
+      },
+      {
+        "bomRef": "pkg:npm/cache-parser@1.2.6",
+        "lockKey": "cache-parser@1.2.6",
+        "name": "cache-parser",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.2.6"
+      },
+      {
+        "bomRef": "pkg:npm/call-bind-apply-helpers@1.0.2",
+        "lockKey": "call-bind-apply-helpers@1.0.2",
+        "name": "call-bind-apply-helpers",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 5,
+        "version": "1.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/call-bound@1.0.4",
+        "lockKey": "call-bound@1.0.4",
+        "name": "call-bound",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.4"
+      },
+      {
+        "bomRef": "pkg:npm/ccount@2.0.1",
+        "lockKey": "ccount@2.0.1",
+        "name": "ccount",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/character-entities-html4@2.1.0",
+        "lockKey": "character-entities-html4@2.1.0",
+        "name": "character-entities-html4",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/character-entities-legacy@3.0.0",
+        "lockKey": "character-entities-legacy@3.0.0",
+        "name": "character-entities-legacy",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "3.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/chardet@1.4.0",
+        "lockKey": "chardet@1.4.0",
+        "name": "chardet",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 8,
+        "version": "1.4.0"
+      },
+      {
+        "bomRef": "pkg:npm/chart.js@2.9.4",
+        "lockKey": "chart.js@2.9.4",
+        "name": "chart.js",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.9.4"
+      },
+      {
+        "bomRef": "pkg:npm/class-variance-authority@0.7.1",
+        "lockKey": "class-variance-authority@0.7.1",
+        "name": "class-variance-authority",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.7.1"
+      },
+      {
+        "bomRef": "pkg:npm/classnames@2.3.1",
+        "lockKey": "classnames@2.3.1",
+        "name": "classnames",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.3.1"
+      },
+      {
+        "bomRef": "pkg:npm/clsx@1.1.1",
+        "lockKey": "clsx@1.1.1",
+        "name": "clsx",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/clsx@2.1.1",
+        "lockKey": "clsx@2.1.1",
+        "name": "clsx",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/codemirror-json-schema@0.8.0",
+        "lockKey": "codemirror-json-schema@0.8.0_@codemirror+language@6.10.8_@codemirror+lint@6.8.4_@codemi_fd52565ed96d42fe2e8546cb72e6868b",
+        "name": "codemirror-json-schema",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 20,
+        "version": "0.8.0"
+      },
+      {
+        "bomRef": "pkg:npm/comma-separated-tokens@2.0.3",
+        "lockKey": "comma-separated-tokens@2.0.3",
+        "name": "comma-separated-tokens",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.3"
+      },
+      {
+        "bomRef": "pkg:npm/core-js@3.20.0",
+        "lockKey": "core-js@3.20.0",
+        "name": "core-js",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 241,
+        "version": "3.20.0"
+      },
+      {
+        "bomRef": "pkg:npm/crelt@1.0.6",
+        "lockKey": "crelt@1.0.6",
+        "name": "crelt",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.6"
+      },
+      {
+        "bomRef": "pkg:npm/cross-fetch@4.1.0",
+        "lockKey": "cross-fetch@4.1.0",
+        "name": "cross-fetch",
+        "sourceMapPaths": [
+          "709.228e7f0967d9fa2386ce.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/date-fns@2.29.3",
+        "lockKey": "date-fns@2.29.3",
+        "name": "date-fns",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 55,
+        "version": "2.29.3"
+      },
+      {
+        "bomRef": "pkg:npm/deepmerge@2.2.1",
+        "lockKey": "deepmerge@2.2.1",
+        "name": "deepmerge",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.2.1"
+      },
+      {
+        "bomRef": "pkg:npm/deepmerge@4.3.1",
+        "lockKey": "deepmerge@4.3.1",
+        "name": "deepmerge",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.3.1"
+      },
+      {
+        "bomRef": "pkg:npm/detect-element-overflow@1.4.2",
+        "lockKey": "detect-element-overflow@1.4.2",
+        "name": "detect-element-overflow",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.4.2"
+      },
+      {
+        "bomRef": "pkg:npm/dom-serializer@2.0.0",
+        "lockKey": "dom-serializer@2.0.0",
+        "name": "dom-serializer",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "2.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/domelementtype@2.3.0",
+        "lockKey": "domelementtype@2.3.0",
+        "name": "domelementtype",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.3.0"
+      },
+      {
+        "bomRef": "pkg:npm/domhandler@5.0.3",
+        "lockKey": "domhandler@5.0.3",
+        "name": "domhandler",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "5.0.3"
+      },
+      {
+        "bomRef": "pkg:npm/domutils@3.1.0",
+        "lockKey": "domutils@3.1.0",
+        "name": "domutils",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 8,
+        "version": "3.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/dunder-proto@1.0.1",
+        "lockKey": "dunder-proto@1.0.1",
+        "name": "dunder-proto",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/ebnf@1.9.1",
+        "lockKey": "ebnf@1.9.1",
+        "name": "ebnf",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "1.9.1"
+      },
+      {
+        "bomRef": "pkg:npm/entities@4.5.0",
+        "lockKey": "entities@4.5.0",
+        "name": "entities",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 8,
+        "version": "4.5.0"
+      },
+      {
+        "bomRef": "pkg:npm/es-define-property@1.0.1",
+        "lockKey": "es-define-property@1.0.1",
+        "name": "es-define-property",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/es-errors@1.3.0",
+        "lockKey": "es-errors@1.3.0",
+        "name": "es-errors",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 7,
+        "version": "1.3.0"
+      },
+      {
+        "bomRef": "pkg:npm/es-object-atoms@1.1.1",
+        "lockKey": "es-object-atoms@1.1.1",
+        "name": "es-object-atoms",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/escape-string-regexp@4.0.0",
+        "lockKey": "escape-string-regexp@4.0.0",
+        "name": "escape-string-regexp",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/fast-copy@3.0.2",
+        "lockKey": "fast-copy@3.0.2",
+        "name": "fast-copy",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "3.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/fast-deep-equal@3.1.3",
+        "lockKey": "fast-deep-equal@3.1.3",
+        "name": "fast-deep-equal",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "3.1.3"
+      },
+      {
+        "bomRef": "pkg:npm/fast-defer@1.1.9",
+        "lockKey": "fast-defer@1.1.9",
+        "name": "fast-defer",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.9"
+      },
+      {
+        "bomRef": "pkg:npm/fast-json-patch@3.1.1",
+        "lockKey": "fast-json-patch@3.1.1",
+        "name": "fast-json-patch",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 4,
+        "version": "3.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/file-saver@2.0.5",
+        "lockKey": "file-saver@2.0.5",
+        "name": "file-saver",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.5"
+      },
+      {
+        "bomRef": "pkg:npm/filesize-parser@1.5.0",
+        "lockKey": "filesize-parser@1.5.0",
+        "name": "filesize-parser",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.5.0"
+      },
+      {
+        "bomRef": "pkg:npm/filesize@10.1.6",
+        "lockKey": "filesize@10.1.6",
+        "name": "filesize",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "10.1.6"
+      },
+      {
+        "bomRef": "pkg:npm/focus-lock@0.11.2",
+        "lockKey": "focus-lock@0.11.2",
+        "name": "focus-lock",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 19,
+        "version": "0.11.2"
+      },
+      {
+        "bomRef": "pkg:npm/formik@2.2.9",
+        "lockKey": "formik@2.2.9_react@17.0.2",
+        "name": "formik",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.2.9"
+      },
+      {
+        "bomRef": "pkg:npm/function-bind@1.1.2",
+        "lockKey": "function-bind@1.1.2",
+        "name": "function-bind",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/get-intrinsic@1.3.0",
+        "lockKey": "get-intrinsic@1.3.0",
+        "name": "get-intrinsic",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.3.0"
+      },
+      {
+        "bomRef": "pkg:npm/get-nonce@1.0.1",
+        "lockKey": "get-nonce@1.0.1",
+        "name": "get-nonce",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/get-proto@1.0.1",
+        "lockKey": "get-proto@1.0.1",
+        "name": "get-proto",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "1.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/get-user-locale@2.3.1",
+        "lockKey": "get-user-locale@2.3.1",
+        "name": "get-user-locale",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.3.1"
+      },
+      {
+        "bomRef": "pkg:npm/gopd@1.2.0",
+        "lockKey": "gopd@1.2.0",
+        "name": "gopd",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.2.0"
+      },
+      {
+        "bomRef": "pkg:npm/has-symbols@1.1.0",
+        "lockKey": "has-symbols@1.1.0",
+        "name": "has-symbols",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/hasown@2.0.2",
+        "lockKey": "hasown@2.0.2",
+        "name": "hasown",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/hast-util-to-html@9.0.5",
+        "lockKey": "hast-util-to-html@9.0.5",
+        "name": "hast-util-to-html",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 12,
+        "version": "9.0.5"
+      },
+      {
+        "bomRef": "pkg:npm/hast-util-whitespace@3.0.0",
+        "lockKey": "hast-util-whitespace@3.0.0",
+        "name": "hast-util-whitespace",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "3.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/hoist-non-react-statics@3.3.2",
+        "lockKey": "hoist-non-react-statics@3.3.2",
+        "name": "hoist-non-react-statics",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "3.3.2"
+      },
+      {
+        "bomRef": "pkg:npm/html-void-elements@3.0.0",
+        "lockKey": "html-void-elements@3.0.0",
+        "name": "html-void-elements",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "3.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/htmlparser2@8.0.2",
+        "lockKey": "htmlparser2@8.0.2",
+        "name": "htmlparser2",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "8.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/http-vary@1.0.3",
+        "lockKey": "http-vary@1.0.3",
+        "name": "http-vary",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.3"
+      },
+      {
+        "bomRef": "pkg:npm/i18next-browser-languagedetector@6.1.2",
+        "lockKey": "i18next-browser-languagedetector@6.1.2",
+        "name": "i18next-browser-languagedetector",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/i18next-http-backend@3.0.4",
+        "lockKey": "i18next-http-backend@3.0.4",
+        "name": "i18next-http-backend",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "3.0.4"
+      },
+      {
+        "bomRef": "pkg:npm/i18next@21.10.0",
+        "lockKey": "i18next@21.10.0",
+        "name": "i18next",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "21.10.0"
+      },
+      {
+        "bomRef": "pkg:npm/ieee754@1.2.1",
+        "lockKey": "ieee754@1.2.1",
+        "name": "ieee754",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.2.1"
+      },
+      {
+        "bomRef": "pkg:npm/is-plain-object@5.0.0",
+        "lockKey": "is-plain-object@5.0.0",
+        "name": "is-plain-object",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "5.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/jquery@3.6.0",
+        "lockKey": "jquery@3.6.0",
+        "name": "jquery",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "3.6.0"
+      },
+      {
+        "bomRef": "pkg:npm/js-base64@3.7.2",
+        "lockKey": "js-base64@3.7.2",
+        "name": "js-base64",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "3.7.2"
+      },
+      {
+        "bomRef": "pkg:npm/js-yaml@3.15.1",
+        "lockKey": "js-yaml@3.15.1",
+        "name": "js-yaml",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "3.15.1"
+      },
+      {
+        "bomRef": "pkg:npm/json-schema-library@9.3.5",
+        "lockKey": "json-schema-library@9.3.5",
+        "name": "json-schema-library",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 55,
+        "version": "9.3.5"
+      },
+      {
+        "bomRef": "pkg:npm/json5@2.2.3",
+        "lockKey": "json5@2.2.3",
+        "name": "json5",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.2.3"
+      },
+      {
+        "bomRef": "pkg:npm/krustykrab@1.1.0",
+        "lockKey": "krustykrab@1.1.0",
+        "name": "krustykrab",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/linkify-it@5.0.2",
+        "lockKey": "linkify-it@5.0.2",
+        "name": "linkify-it",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "5.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/lodash.memoize@4.1.2",
+        "lockKey": "lodash.memoize@4.1.2",
+        "name": "lodash.memoize",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/lodash@4.18.1",
+        "lockKey": "lodash@4.18.1",
+        "name": "lodash",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 316,
+        "version": "4.18.1"
+      },
+      {
+        "bomRef": "pkg:npm/loglevel@1.9.2",
+        "lockKey": "loglevel@1.9.2",
+        "name": "loglevel",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.9.2"
+      },
+      {
+        "bomRef": "pkg:npm/lucide-react@0.503.0",
+        "lockKey": "lucide-react@0.503.0_react@17.0.2",
+        "name": "lucide-react",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1589,
+        "version": "0.503.0"
+      },
+      {
+        "bomRef": "pkg:npm/make-event-props@1.6.2",
+        "lockKey": "make-event-props@1.6.2",
+        "name": "make-event-props",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.6.2"
+      },
+      {
+        "bomRef": "pkg:npm/markdown-it@12.3.2",
+        "lockKey": "markdown-it@12.3.2",
+        "name": "markdown-it",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 52,
+        "version": "12.3.2"
+      },
+      {
+        "bomRef": "pkg:npm/markdown-to-jsx@7.7.4",
+        "lockKey": "markdown-to-jsx@7.7.4_react@17.0.2",
+        "name": "markdown-to-jsx",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "7.7.4"
+      },
+      {
+        "bomRef": "pkg:npm/math-intrinsics@1.1.0",
+        "lockKey": "math-intrinsics@1.1.0",
+        "name": "math-intrinsics",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 8,
+        "version": "1.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/mdurl@1.0.1",
+        "lockKey": "mdurl@1.0.1",
+        "name": "mdurl",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 5,
+        "version": "1.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/memoize-one@5.2.1",
+        "lockKey": "memoize-one@5.2.1",
+        "name": "memoize-one",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "5.2.1"
+      },
+      {
+        "bomRef": "pkg:npm/moment-timezone@0.5.41",
+        "lockKey": "moment-timezone@0.5.41",
+        "name": "moment-timezone",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "0.5.41"
+      },
+      {
+        "bomRef": "pkg:npm/moment@2.29.4",
+        "lockKey": "moment@2.29.4",
+        "name": "moment",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.29.4"
+      },
+      {
+        "bomRef": "pkg:npm/mustache@4.2.0",
+        "lockKey": "mustache@4.2.0",
+        "name": "mustache",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.2.0"
+      },
+      {
+        "bomRef": "pkg:npm/nanoclone@0.2.1",
+        "lockKey": "nanoclone@0.2.1",
+        "name": "nanoclone",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.2.1"
+      },
+      {
+        "bomRef": "pkg:npm/nanoid@3.3.18",
+        "lockKey": "nanoid@3.3.18",
+        "name": "nanoid",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "3.3.18"
+      },
+      {
+        "bomRef": "pkg:npm/nearley@2.20.1",
+        "lockKey": "nearley@2.20.1",
+        "name": "nearley",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.20.1"
+      },
+      {
+        "bomRef": "pkg:npm/ng-file-upload@12.2.13",
+        "lockKey": "ng-file-upload@12.2.13",
+        "name": "ng-file-upload",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "12.2.13"
+      },
+      {
+        "bomRef": "pkg:npm/object-assign@4.1.1",
+        "lockKey": "object-assign@4.1.1",
+        "name": "object-assign",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/object-code@2.0.0",
+        "lockKey": "object-code@2.0.0",
+        "name": "object-code",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/object-inspect@1.13.4",
+        "lockKey": "object-inspect@1.13.4",
+        "name": "object-inspect",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.13.4"
+      },
+      {
+        "bomRef": "pkg:npm/parse-duration@2.1.4",
+        "lockKey": "parse-duration@2.1.4",
+        "name": "parse-duration",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "2.1.4"
+      },
+      {
+        "bomRef": "pkg:npm/parse-srcset@1.0.2",
+        "lockKey": "parse-srcset@1.0.2",
+        "name": "parse-srcset",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/picocolors@1.1.1",
+        "lockKey": "picocolors@1.1.1",
+        "name": "picocolors",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/postcss@8.5.25",
+        "lockKey": "postcss@8.5.25",
+        "name": "postcss",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 27,
+        "version": "8.5.25"
+      },
+      {
+        "bomRef": "pkg:npm/prop-types@15.8.1",
+        "lockKey": "prop-types@15.8.1",
+        "name": "prop-types",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "15.8.1"
+      },
+      {
+        "bomRef": "pkg:npm/property-expr@2.0.4",
+        "lockKey": "property-expr@2.0.4",
+        "name": "property-expr",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.4"
+      },
+      {
+        "bomRef": "pkg:npm/property-information@7.0.0",
+        "lockKey": "property-information@7.0.0",
+        "name": "property-information",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 17,
+        "version": "7.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/punycode@2.3.1",
+        "lockKey": "punycode@2.3.1",
+        "name": "punycode",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.3.1"
+      },
+      {
+        "bomRef": "pkg:npm/qs@6.14.1",
+        "lockKey": "qs@6.14.1",
+        "name": "qs",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 5,
+        "version": "6.14.1"
+      },
+      {
+        "bomRef": "pkg:npm/rc-slider@10.1.1",
+        "lockKey": "rc-slider@10.1.1_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "rc-slider",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 15,
+        "version": "10.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/rc-util@5.28.0",
+        "lockKey": "rc-util@5.28.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "rc-util",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 8,
+        "version": "5.28.0"
+      },
+      {
+        "bomRef": "pkg:npm/react-calendar@4.8.0",
+        "lockKey": "react-calendar@4.8.0_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "react-calendar",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 27,
+        "version": "4.8.0"
+      },
+      {
+        "bomRef": "pkg:npm/react-clientside-effect@1.2.6",
+        "lockKey": "react-clientside-effect@1.2.6_react@17.0.2",
+        "name": "react-clientside-effect",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.2.6"
+      },
+      {
+        "bomRef": "pkg:npm/react-clock@4.6.0",
+        "lockKey": "react-clock@4.6.0_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "react-clock",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 8,
+        "version": "4.6.0"
+      },
+      {
+        "bomRef": "pkg:npm/react-codemirror-merge@4.23.11",
+        "lockKey": "react-codemirror-merge@4.23.11_@babel+runtime@7.26.0_@codemirror+autocomplete@6.18.6_@c_4388f01fc10e67db7813c0b2e7cbfae3",
+        "name": "react-codemirror-merge",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 5,
+        "version": "4.23.11"
+      },
+      {
+        "bomRef": "pkg:npm/react-date-picker@10.6.0",
+        "lockKey": "react-date-picker@10.6.0_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "react-date-picker",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 11,
+        "version": "10.6.0"
+      },
+      {
+        "bomRef": "pkg:npm/react-datetime-picker@5.6.0",
+        "lockKey": "react-datetime-picker@5.6.0_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "react-datetime-picker",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 10,
+        "version": "5.6.0"
+      },
+      {
+        "bomRef": "pkg:npm/react-dom@17.0.2",
+        "lockKey": "react-dom@17.0.2_react@17.0.2",
+        "name": "react-dom",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "17.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/react-fast-compare@2.0.4",
+        "lockKey": "react-fast-compare@2.0.4",
+        "name": "react-fast-compare",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.4"
+      },
+      {
+        "bomRef": "pkg:npm/react-fit@1.7.1",
+        "lockKey": "react-fit@1.7.1_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "react-fit",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.7.1"
+      },
+      {
+        "bomRef": "pkg:npm/react-focus-lock@2.9.1",
+        "lockKey": "react-focus-lock@2.9.1_@types+react@17.0.75_react@17.0.2",
+        "name": "react-focus-lock",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 7,
+        "version": "2.9.1"
+      },
+      {
+        "bomRef": "pkg:npm/react-i18next@11.15.3",
+        "lockKey": "react-i18next@11.15.3_i18next@21.10.0_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "react-i18next",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "11.15.3"
+      },
+      {
+        "bomRef": "pkg:npm/react-is@16.13.1",
+        "lockKey": "react-is@16.13.1",
+        "name": "react-is",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "16.13.1"
+      },
+      {
+        "bomRef": "pkg:npm/react-is@17.0.2",
+        "lockKey": "react-is@17.0.2",
+        "name": "react-is",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "17.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/react-json-view-lite@1.2.1",
+        "lockKey": "react-json-view-lite@1.2.1_react@17.0.2",
+        "name": "react-json-view-lite",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.2.1"
+      },
+      {
+        "bomRef": "pkg:npm/react-remove-scroll-bar@2.3.8",
+        "lockKey": "react-remove-scroll-bar@2.3.8_@types+react@17.0.75_react@17.0.2",
+        "name": "react-remove-scroll-bar",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "2.3.8"
+      },
+      {
+        "bomRef": "pkg:npm/react-remove-scroll@2.6.3",
+        "lockKey": "react-remove-scroll@2.6.3_@types+react@17.0.75_react@17.0.2",
+        "name": "react-remove-scroll",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 7,
+        "version": "2.6.3"
+      },
+      {
+        "bomRef": "pkg:npm/react-select-async-paginate@0.7.11",
+        "lockKey": "react-select-async-paginate@0.7.11_@types+react@17.0.75_react-select@5.2.1_@babel+core@_8341b40270e9049ad9ff421e600774a2",
+        "name": "react-select-async-paginate",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "0.7.11"
+      },
+      {
+        "bomRef": "pkg:npm/react-select@5.2.1",
+        "lockKey": "react-select@5.2.1_@babel+core@7.23.6_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "react-select",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 6,
+        "version": "5.2.1"
+      },
+      {
+        "bomRef": "pkg:npm/react-style-singleton@2.2.3",
+        "lockKey": "react-style-singleton@2.2.3_@types+react@17.0.75_react@17.0.2",
+        "name": "react-style-singleton",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "2.2.3"
+      },
+      {
+        "bomRef": "pkg:npm/react-time-picker@6.6.0",
+        "lockKey": "react-time-picker@6.6.0_@types+react-dom@17.0.25_@types+react@17.0.75_react-dom@17.0.2_react@17.0.2__react@17.0.2",
+        "name": "react-time-picker",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 9,
+        "version": "6.6.0"
+      },
+      {
+        "bomRef": "pkg:npm/react@17.0.2",
+        "lockKey": "react@17.0.2",
+        "name": "react",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 4,
+        "version": "17.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/sanitize-html@2.17.0",
+        "lockKey": "sanitize-html@2.17.0",
+        "name": "sanitize-html",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.17.0"
+      },
+      {
+        "bomRef": "pkg:npm/scheduler@0.20.2",
+        "lockKey": "scheduler@0.20.2",
+        "name": "scheduler",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "0.20.2"
+      },
+      {
+        "bomRef": "pkg:npm/side-channel-list@1.0.0",
+        "lockKey": "side-channel-list@1.0.0",
+        "name": "side-channel-list",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/side-channel-map@1.0.1",
+        "lockKey": "side-channel-map@1.0.1",
+        "name": "side-channel-map",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/side-channel-weakmap@1.0.2",
+        "lockKey": "side-channel-weakmap@1.0.2",
+        "name": "side-channel-weakmap",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/side-channel@1.1.0",
+        "lockKey": "side-channel@1.1.0",
+        "name": "side-channel",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/sleep-promise@9.1.0",
+        "lockKey": "sleep-promise@9.1.0",
+        "name": "sleep-promise",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "9.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/smtp-address-parser@1.0.10",
+        "lockKey": "smtp-address-parser@1.0.10",
+        "name": "smtp-address-parser",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.0.10"
+      },
+      {
+        "bomRef": "pkg:npm/space-separated-tokens@2.0.2",
+        "lockKey": "space-separated-tokens@2.0.2",
+        "name": "space-separated-tokens",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/spinkit@2.0.1",
+        "lockKey": "spinkit@2.0.1",
+        "name": "spinkit",
+        "sourceMapPaths": [
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/stringify-entities@4.0.4",
+        "lockKey": "stringify-entities@4.0.4",
+        "name": "stringify-entities",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 7,
+        "version": "4.0.4"
+      },
+      {
+        "bomRef": "pkg:npm/strip-ansi@6.0.1",
+        "lockKey": "strip-ansi@6.0.1",
+        "name": "strip-ansi",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "6.0.1"
+      },
+      {
+        "bomRef": "pkg:npm/style-mod@4.1.2",
+        "lockKey": "style-mod@4.1.2",
+        "name": "style-mod",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.1.2"
+      },
+      {
+        "bomRef": "pkg:npm/stylis@4.0.10",
+        "lockKey": "stylis@4.0.10",
+        "name": "stylis",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 7,
+        "version": "4.0.10"
+      },
+      {
+        "bomRef": "pkg:npm/tabbable@4.0.0",
+        "lockKey": "tabbable@4.0.0",
+        "name": "tabbable",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.0.0"
+      },
+      {
+        "bomRef": "pkg:npm/tabbable@5.3.3",
+        "lockKey": "tabbable@5.3.3",
+        "name": "tabbable",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "5.3.3"
+      },
+      {
+        "bomRef": "pkg:npm/tiny-warning@1.0.3",
+        "lockKey": "tiny-warning@1.0.3",
+        "name": "tiny-warning",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.3"
+      },
+      {
+        "bomRef": "pkg:npm/tippy.js@6.3.7",
+        "lockKey": "tippy.js@6.3.7",
+        "name": "tippy.js",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "6.3.7"
+      },
+      {
+        "bomRef": "pkg:npm/toastr@2.1.4",
+        "lockKey": "toastr@2.1.4",
+        "name": "toastr",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "2.1.4"
+      },
+      {
+        "bomRef": "pkg:npm/toposort@2.0.2",
+        "lockKey": "toposort@2.0.2",
+        "name": "toposort",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.2"
+      },
+      {
+        "bomRef": "pkg:npm/tslib@1.14.1",
+        "lockKey": "tslib@1.14.1",
+        "name": "tslib",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.14.1"
+      },
+      {
+        "bomRef": "pkg:npm/tslib@2.8.1",
+        "lockKey": "tslib@2.8.1",
+        "name": "tslib",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.8.1"
+      },
+      {
+        "bomRef": "pkg:npm/uc.micro@1.0.6",
+        "lockKey": "uc.micro@1.0.6",
+        "name": "uc.micro",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 6,
+        "version": "1.0.6"
+      },
+      {
+        "bomRef": "pkg:npm/uc.micro@2.1.0",
+        "lockKey": "uc.micro@2.1.0",
+        "name": "uc.micro",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.1.0"
+      },
+      {
+        "bomRef": "pkg:npm/update-input-width@1.4.2",
+        "lockKey": "update-input-width@1.4.2",
+        "name": "update-input-width",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.4.2"
+      },
+      {
+        "bomRef": "pkg:npm/use-callback-ref@1.3.3",
+        "lockKey": "use-callback-ref@1.3.3_@types+react@17.0.75_react@17.0.2",
+        "name": "use-callback-ref",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "1.3.3"
+      },
+      {
+        "bomRef": "pkg:npm/use-is-mounted-ref@1.5.0",
+        "lockKey": "use-is-mounted-ref@1.5.0_react@17.0.2",
+        "name": "use-is-mounted-ref",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.5.0"
+      },
+      {
+        "bomRef": "pkg:npm/use-isomorphic-layout-effect@1.2.1",
+        "lockKey": "use-isomorphic-layout-effect@1.2.1_@types+react@17.0.75_react@17.0.2",
+        "name": "use-isomorphic-layout-effect",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.2.1"
+      },
+      {
+        "bomRef": "pkg:npm/use-latest@1.3.0",
+        "lockKey": "use-latest@1.3.0_@types+react@17.0.75_react@17.0.2",
+        "name": "use-latest",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.3.0"
+      },
+      {
+        "bomRef": "pkg:npm/use-sidecar@1.1.3",
+        "lockKey": "use-sidecar@1.1.3_@types+react@17.0.75_react@17.0.2",
+        "name": "use-sidecar",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 2,
+        "version": "1.1.3"
+      },
+      {
+        "bomRef": "pkg:npm/use-sync-external-store@1.2.0",
+        "lockKey": "use-sync-external-store@1.2.0_react@17.0.2",
+        "name": "use-sync-external-store",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 4,
+        "version": "1.2.0"
+      },
+      {
+        "bomRef": "pkg:npm/uuid@3.4.0",
+        "lockKey": "uuid@3.4.0",
+        "name": "uuid",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 5,
+        "version": "3.4.0"
+      },
+      {
+        "bomRef": "pkg:npm/valid-url@1.0.9",
+        "lockKey": "valid-url@1.0.9",
+        "name": "valid-url",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "1.0.9"
+      },
+      {
+        "bomRef": "pkg:npm/w3c-keyname@2.2.8",
+        "lockKey": "w3c-keyname@2.2.8",
+        "name": "w3c-keyname",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.2.8"
+      },
+      {
+        "bomRef": "pkg:npm/warning@4.0.3",
+        "lockKey": "warning@4.0.3",
+        "name": "warning",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "4.0.3"
+      },
+      {
+        "bomRef": "pkg:npm/xterm@3.14.5",
+        "lockKey": "xterm@3.14.5",
+        "name": "xterm",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map",
+          "vendor.5912aaf498ef1cf92d1e.css.map"
+        ],
+        "sourcePathCount": 63,
+        "version": "3.14.5"
+      },
+      {
+        "bomRef": "pkg:npm/yaml@1.10.2",
+        "lockKey": "yaml@1.10.2",
+        "name": "yaml",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 7,
+        "version": "1.10.2"
+      },
+      {
+        "bomRef": "pkg:npm/yaml@2.7.0",
+        "lockKey": "yaml@2.7.0",
+        "name": "yaml",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 72,
+        "version": "2.7.0"
+      },
+      {
+        "bomRef": "pkg:npm/yup@0.32.11",
+        "lockKey": "yup@0.32.11",
+        "name": "yup",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 24,
+        "version": "0.32.11"
+      },
+      {
+        "bomRef": "pkg:npm/zustand@4.1.1",
+        "lockKey": "zustand@4.1.1_react@17.0.2",
+        "name": "zustand",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 3,
+        "version": "4.1.1"
+      },
+      {
+        "bomRef": "pkg:npm/zwitch@2.0.4",
+        "lockKey": "zwitch@2.0.4",
+        "name": "zwitch",
+        "sourceMapPaths": [
+          "vendor.3ff3c2ad47bbfe9230e0.js.map"
+        ],
+        "sourcePathCount": 1,
+        "version": "2.0.4"
+      }
+    ],
+    "fileCount": 35,
+    "files": [
+      {
+        "bytes": 108738,
+        "path": "060b2710bdbbe3dfe48b.svg",
+        "sha256": "42f60659d265c1a3c30f9fa42abcbb56bd4a53af4d83d316d6dd7a36903c43e5"
+      },
+      {
+        "bytes": 12034,
+        "path": "0fc6560f4e6fe8bfb3be.svg",
+        "sha256": "04b4388cef3fb602ee228cfcdfe9b204cdc30a72cdd2081ad6c67b6b415fe5b5"
+      },
+      {
+        "bytes": 4079,
+        "path": "19c2b168a8d85994e14e.png",
+        "sha256": "63d6324702d0ecaee8dad82d3de6df58b42d636883e505ff0b658c96483c4132"
+      },
+      {
+        "bytes": 68585,
+        "path": "2b3c7053dcd54989a6f5.png",
+        "sha256": "4397ed265b0703e5d7e65290da54373c897819902717f2eb6407f1dcaa480f13"
+      },
+      {
+        "bytes": 13953,
+        "path": "572.3d10cb1ff863ec496d85.js",
+        "sha256": "76c96375014c58087e1ca510a8b1c126d599367775ea529b978d82089b342974"
+      },
+      {
+        "bytes": 18752,
+        "path": "572.3d10cb1ff863ec496d85.js.map",
+        "sha256": "fda3d8d5380c411b5d08c8475a8aacc08d3f6cb1cde9ef7bd31edb935878d9ad"
+      },
+      {
+        "bytes": 1096,
+        "path": "6102815b8a2c1fb84a24.png",
+        "sha256": "2139da6c668b09f870126af7ebd87021cb31833af0b92d7a3d18dce5ed9b6b4f"
+      },
+      {
+        "bytes": 249,
+        "path": "6d50eaeb9f128c130ed9.xml",
+        "sha256": "eed143118846e1c426d214873f2f48e2f5fc8cbbfbc9043cbf569e4660b9bcf9"
+      },
+      {
+        "bytes": 49891,
+        "path": "6f093ccc2a3930add0af.svg",
+        "sha256": "cf3b6c6dd247081a69e9a8ce4a4d3c878dd9bcf4af09c0124af55a7d21865cb7"
+      },
+      {
+        "bytes": 198223,
+        "path": "701.5785ffe50e4ebe4cc192.js",
+        "sha256": "41feb115183a00afc9bca5a9b7a85e31df07284b9266864772038f3c4ad43762"
+      },
+      {
+        "bytes": 280798,
+        "path": "701.5785ffe50e4ebe4cc192.js.map",
+        "sha256": "6fb3af1632831e9618b9bc9d56b0302afdaf2a6e4506b78323180be68359dc7f"
+      },
+      {
+        "bytes": 10346,
+        "path": "709.228e7f0967d9fa2386ce.js",
+        "sha256": "c215350bb4dbf297a40b6e482d8cf50be4722440d81611ccbe58f44c99856e84"
+      },
+      {
+        "bytes": 34781,
+        "path": "709.228e7f0967d9fa2386ce.js.map",
+        "sha256": "9ff92e0fc194146b017b145eb7b75375aa62d5abfe063461aeb73aff377ed809"
+      },
+      {
+        "bytes": 13810,
+        "path": "933.734458950fabeaa7302d.js",
+        "sha256": "92a38e8588626dc67b6a56b68b5032668456b034ca97fddc823742272e81f508"
+      },
+      {
+        "bytes": 18587,
+        "path": "933.734458950fabeaa7302d.js.map",
+        "sha256": "9554ad25c835b53909f4a7f2df86fa2bf902f0684df235936a6dd7db13b845d8"
+      },
+      {
+        "bytes": 5200,
+        "path": "9d07a3ace464cfd6e27c.png",
+        "sha256": "51568fd7c1b72c7237af21036cf18fecac381f9fe1a77220849be7b4fabd432a"
+      },
+      {
+        "bytes": 16320,
+        "path": "a95b934015bd43d099fa.svg",
+        "sha256": "d5405e720d60316462b27597ff396bf138286b39cda4fa7095bcc450c96819b7"
+      },
+      {
+        "bytes": 1840,
+        "path": "b1f2baef7b5736909c25.png",
+        "sha256": "3ca87565aab08359da716e477162dffc959099f8a30b33ca2b031e5186522a44"
+      },
+      {
+        "bytes": 6291,
+        "path": "c2c179f41199d25e0055.png",
+        "sha256": "a89cd69e6e292a139cb4f1a4e856cfe1f7af7f0fad36fc50f3ae7d8416df6b37"
+      },
+      {
+        "bytes": 1482,
+        "path": "d35773788f0de379e3d2.png",
+        "sha256": "edd3bf636d4fb23187d60c8b7ff1d091a8d25813f21e4da3b5b57e760edad653"
+      },
+      {
+        "bytes": 14202,
+        "path": "index.html",
+        "sha256": "abfb83ad3c80b48b195576f6d21d61536117cea1e76cc4b24cfd76fbcf59982f"
+      },
+      {
+        "bytes": 765,
+        "path": "locales/en/translation.json",
+        "sha256": "9b5efc981a7f611bca2d416d26fcd7148b230a1cbffa67b8ac696bdd1db24be4"
+      },
+      {
+        "bytes": 1298619,
+        "path": "main.1a8779f936ef144f7430.css",
+        "sha256": "d3bcfda5a1351d732615150d576ba9ccff9c4ced8ea5d73b3dceca29ebf27955"
+      },
+      {
+        "bytes": 197013,
+        "path": "main.1a8779f936ef144f7430.css.map",
+        "sha256": "fadb630a7a5583e236c3e36dcbcecd113b50305524aaeb3bc172359fc1ce6bc2"
+      },
+      {
+        "bytes": 7148467,
+        "path": "main.2ed02efbbdeb4a68793b.js",
+        "sha256": "a21650398f4a952f9e7f70d3a38cc6e6571b30e681f50e0b095fee5aa032cc4b"
+      },
+      {
+        "bytes": 149,
+        "path": "main.2ed02efbbdeb4a68793b.js.LICENSE.txt",
+        "sha256": "cdf963ced7d25a0f98901a547647b4d6e2dbe0197fd78c87a059a87b0e542fe2"
+      },
+      {
+        "bytes": 12895266,
+        "path": "main.2ed02efbbdeb4a68793b.js.map",
+        "sha256": "fcc04d9ee23d81571c7ff6c65e397fc9c2a48899148190e14d85987b33ad751b"
+      },
+      {
+        "bytes": 4335,
+        "path": "runtime.2be226186de831a07eac.js",
+        "sha256": "cbb6a5e3839c6a545d30c1ff7b6746787d00e7af1c195548a1e4bba7eae2bb63"
+      },
+      {
+        "bytes": 20584,
+        "path": "runtime.2be226186de831a07eac.js.map",
+        "sha256": "a6f277523183da0c4241d1d6c179d7f43fa9a60a99931cb891c3e5090b141595"
+      },
+      {
+        "bytes": 8360,
+        "path": "timeout.html",
+        "sha256": "12986cada984ccf5d1299eb873198215ff6008a4eef3aeed2c2fba0c732853bf"
+      },
+      {
+        "bytes": 5297926,
+        "path": "vendor.3ff3c2ad47bbfe9230e0.js",
+        "sha256": "62e6f3c3f3565db1b5a3e4e8a56055d2f6a66e8cdbe34ac803dc0b558ac9290a"
+      },
+      {
+        "bytes": 8663,
+        "path": "vendor.3ff3c2ad47bbfe9230e0.js.LICENSE.txt",
+        "sha256": "6e97a7362b637aa53004259b525f73ea0aacf3e81555f8a9d0bca8bc7d339d15"
+      },
+      {
+        "bytes": 19051824,
+        "path": "vendor.3ff3c2ad47bbfe9230e0.js.map",
+        "sha256": "5ed90a228056314f079b252a1750743e0c5b92a11baf5dbbfb4fa80dd1228ac1"
+      },
+      {
+        "bytes": 340173,
+        "path": "vendor.5912aaf498ef1cf92d1e.css",
+        "sha256": "a13299c938bce64d203b3ab357e14de532d999370dc019b906d782f67ed72189"
+      },
+      {
+        "bytes": 460840,
+        "path": "vendor.5912aaf498ef1cf92d1e.css.map",
+        "sha256": "01fda12efb3b312bf9df2ef8c34f1f5e4d1e53746e75e511bc985aecf003db34"
+      }
+    ],
+    "inventorySha256": "6f43f103842df302ddb6c694e75dc7f8e620197f8aeaef5bacc4c82fb91da385",
+    "packageStoreIdentityCount": 275,
+    "path": "/public",
+    "sourceMapCount": 9,
+    "sourceMapInventorySha256": "186a8277f0cf1b5440c9c07f7cf22d2ce98632fa7f7582a869ee45a146a3dc43",
+    "sourceMaps": [
+      {
+        "path": "572.3d10cb1ff863ec496d85.js.map",
+        "sha256": "fda3d8d5380c411b5d08c8475a8aacc08d3f6cb1cde9ef7bd31edb935878d9ad",
+        "sourceCount": 1
+      },
+      {
+        "path": "701.5785ffe50e4ebe4cc192.js.map",
+        "sha256": "6fb3af1632831e9618b9bc9d56b0302afdaf2a6e4506b78323180be68359dc7f",
+        "sourceCount": 1
+      },
+      {
+        "path": "709.228e7f0967d9fa2386ce.js.map",
+        "sha256": "9ff92e0fc194146b017b145eb7b75375aa62d5abfe063461aeb73aff377ed809",
+        "sourceCount": 1
+      },
+      {
+        "path": "933.734458950fabeaa7302d.js.map",
+        "sha256": "9554ad25c835b53909f4a7f2df86fa2bf902f0684df235936a6dd7db13b845d8",
+        "sourceCount": 1
+      },
+      {
+        "path": "main.1a8779f936ef144f7430.css.map",
+        "sha256": "fadb630a7a5583e236c3e36dcbcecd113b50305524aaeb3bc172359fc1ce6bc2",
+        "sourceCount": 70
+      },
+      {
+        "path": "main.2ed02efbbdeb4a68793b.js.map",
+        "sha256": "fcc04d9ee23d81571c7ff6c65e397fc9c2a48899148190e14d85987b33ad751b",
+        "sourceCount": 2850
+      },
+      {
+        "path": "runtime.2be226186de831a07eac.js.map",
+        "sha256": "a6f277523183da0c4241d1d6c179d7f43fa9a60a99931cb891c3e5090b141595",
+        "sourceCount": 17
+      },
+      {
+        "path": "vendor.3ff3c2ad47bbfe9230e0.js.map",
+        "sha256": "5ed90a228056314f079b252a1750743e0c5b92a11baf5dbbfb4fa80dd1228ac1",
+        "sourceCount": 3399
+      },
+      {
+        "path": "vendor.5912aaf498ef1cf92d1e.css.map",
+        "sha256": "01fda12efb3b312bf9df2ef8c34f1f5e4d1e53746e75e511bc985aecf003db34",
+        "sourceCount": 82
+      }
+    ],
+    "sourcePathCount": 6422
+  },
+  "runtimeQualified": false,
+  "schema": "llm-machines.portainer-ce-frontend-runtime-binding.v1",
+  "source": {
+    "fileCount": 4832,
+    "goModSha256": "70ed650f74a77f7106d91d49e57b5cae46a716321843a6498fb962cc743f07a1",
+    "goSumSha256": "7aca1421455d57bb1f2a4041d7487af1f908d7c26a881b0c9c2fe89df4ed0398",
+    "packageJsonSha256": "3936e9c5529e92fbf110b60964b7ed56a25b8b39a885713c5fa30499499ebb82",
+    "pnpmLockSha256": "99971755c3784ab0930a87018d7ba5fd90db9e5c41c14e198ca81a1152dc6d9a",
+    "revision": "723d1a2268f0fefe70d57f5981ce15d5d1ffc679",
+    "sourceInventorySha256": "cf12b690711cc07fba9bf25098a5418e3cabd658e698b97cd0ba52a5666194ed",
+    "tree": "9a2418f78d3f2cf4047e86b0878227b5e61d55fa",
+    "webpackCommonSha256": "159bd6f9147aa46c16a80c0aa13fbe7105be4b0a95aab6fb98b6a3e4544ef5d3",
+    "webpackProductionSha256": "e27e426749d2cb5fa4e042ba178090f6d2e8d74762b1338e3815cd14192c5925"
+  },
+  "status": "SOURCE_SECURITY_CHARACTERIZED_NOT_CORE_ADMITTED"
+}

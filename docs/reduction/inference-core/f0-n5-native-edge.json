@@ -1,0 +1,141 @@
+{
+  "schema": "llm-machines.f0-n5-native-edge-evidence.v1",
+  "workPackage": "F0-N5",
+  "status": "SOURCE_PROFILE_COMPLETE_RUNTIME_VALIDATION_PENDING",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE_PENDING_F0_N7",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "bbc36142ae528576e82759bb3ccec5027bd26917",
+    "tree": "e96471cd847b470e20822d62a92bacd33a338fe0"
+  },
+  "productBoundary": {
+    "consoleRemainsPrimary": true,
+    "dedicatedNativeAuthorities": true,
+    "customerFacingTcpPorts": [443],
+    "directNativePortsRemainPrivate": true,
+    "nativeSessionsRemainServiceOwned": true,
+    "consoleSessionForwarded": false,
+    "consoleTokenForwarded": false,
+    "sharedHumanAccounts": false,
+    "anonymousAdministration": false,
+    "reverseProxyImpersonation": false,
+    "metadataOnlyIngressAudit": true,
+    "portainer": "DEFERRED_UPSTREAM_SECURITY"
+  },
+  "nativeAuthorities": [
+    {
+      "service": "Grafana",
+      "version": "13.1.3",
+      "hostTemplate": "@@PRODUCT_GRAFANA_HOST@@",
+      "labAuthority": "https://grafana.lab.llm-machines.com",
+      "roles": {
+        "Admin": "Editor",
+        "Operator": "DENY",
+        "serverAdministrator": false
+      },
+      "authentication": "Generic OAuth Authorization Code with PKCE S256",
+      "cookies": ["grafana_session", "grafana_session_expiry"],
+      "webSocketRequired": false,
+      "sseRequired": false
+    },
+    {
+      "service": "LiteLLM",
+      "version": "v1.96.2-llmm.1",
+      "hostTemplate": "@@PRODUCT_LITELLM_HOST@@",
+      "labAuthority": "https://litellm.lab.llm-machines.com/ui/",
+      "roles": {
+        "Admin": "proxy_admin",
+        "Operator": "internal_user"
+      },
+      "operatorAuthority": "OWN_VIRTUAL_KEYS_AND_OWN_SPEND_ONLY",
+      "authentication": "Generic OIDC Authorization Code with PKCE S256",
+      "freeSsoBillableUserLimit": 5,
+      "cookies": ["litellm_oauth_state", "token"],
+      "webSocketRequired": false,
+      "sseSupportedForNativeInference": true
+    },
+    {
+      "service": "Keycloak Admin Console",
+      "version": "26.7.0",
+      "hostTemplate": "@@PRODUCT_KEYCLOAK_ADMIN_HOST@@",
+      "labAuthority": "https://keycloak.lab.llm-machines.com/keycloak/admin/llm-machines/console/",
+      "roles": {
+        "Admin": "SCOPED_APPLIANCE_REALM_ADMIN",
+        "Operator": "DENY"
+      },
+      "authentication": "native Keycloak browser session with Authorization Code and PKCE S256",
+      "realm": "llm-machines",
+      "masterRealm": "DENY",
+      "unrelatedRealms": "DENY",
+      "userDeleteEdgeStatus": 403,
+      "webSocketRequired": false,
+      "sseRequired": false
+    }
+  ],
+  "edgeControls": {
+    "exactHostAndSni": true,
+    "defaultTlsServerRejectsUnknownSni": true,
+    "exactMethodsAndPaths": true,
+    "queryKeysAllowlistedByRoute": true,
+    "rawPathTraversalRejected": true,
+    "spoofedForwardingHeadersCleared": true,
+    "consoleCookiesRejectedOnNativeHosts": true,
+    "productCredentialsRejectedOnNativeHosts": true,
+    "nativeCookieAndRedirectResponsesPreserved": true,
+    "originAndRefererPreservedWhereRequired": true,
+    "webSocketUpgradeForwarded": false,
+    "unlistedRouteStatus": 404,
+    "unlistedMethodStatus": 403,
+    "controlledUpstreamFailureStatus": 503
+  },
+  "authorityCustody": {
+    "productionDomainOwner": "customer",
+    "connectedTls": "PROVIDER_NEUTRAL_SCOPED_DNS_01_OR_DELEGATED_CHALLENGE_ZONE",
+    "disconnectedTls": "CUSTOMER_OWNED_PRIVATE_CA",
+    "porkbunDependency": false,
+    "customerSpecificValuesInProductSource": false,
+    "labCertificateExpiryUtc": "2026-11-12T08:25:59Z",
+    "labCertificateSha256": "EA:D3:7B:FB:0B:5F:08:64:6A:8A:D9:1A:FE:EF:6D:BC:73:C8:4C:5F:23:60:17:B6:C2:14:6C:7E:E3:CC:66:41"
+  },
+  "sourceArtifacts": {
+    "infra/ingress/product-edge.nginx.conf.template": "sha256:e25b3e88aa723ea9eb24c36669bbf77e25634467fc7fb767bd370a908441884b",
+    "infra/ingress/native-admin-edge-profile.json": "sha256:8db3bfcc7bbd08065a000f1a6cc2293c261564dcfe5a9f4951eb7dd92ced4274",
+    "infra/ingress/request-headers-grafana-browser.inc": "sha256:86b48ede17e1d05b8e16f286598dc7df63da083bde49f8f885440a37ccf2a5f9",
+    "infra/ingress/request-headers-litellm-browser.inc": "sha256:1cd73c5689efa144908db278ed8a01d941c2d7f327bd6b6a76f9cf9faf0fd8fd",
+    "infra/ingress/request-headers-keycloak-admin-browser.inc": "sha256:1cd73c5689efa144908db278ed8a01d941c2d7f327bd6b6a76f9cf9faf0fd8fd"
+  },
+  "runtimeEvidence": {
+    "httpsBrowserReplay": "NOT_STARTED_F0_N7",
+    "adminAndOperatorRoleReplay": "NOT_STARTED_F0_N7",
+    "directPortAndAlternateHostNoBypass": "NOT_STARTED_F0_N7",
+    "serviceAndIdentityOutage": "NOT_STARTED_F0_N7",
+    "restartAndRetention": "NOT_STARTED_F0_N7",
+    "liveDnsTlsOrGatewayMutation": false
+  },
+  "sourceChangeBoundary": {
+    "productBehaviorActivated": false,
+    "liveRuntimeChanged": false,
+    "dnsOrCertificateChanged": false,
+    "releaseInventoryChanged": false,
+    "historicalEvidenceRewritten": false,
+    "changedPaths": [
+      "docs/reduction/inference-core/README.md",
+      "docs/reduction/inference-core/decision-register.md",
+      "docs/reduction/inference-core/f0-n5-native-edge.json",
+      "docs/reduction/inference-core/validation-register.md",
+      "infra/ingress/README.md",
+      "infra/ingress/native-admin-edge-profile.json",
+      "infra/ingress/product-edge.nginx.conf.template",
+      "infra/ingress/request-headers-grafana-browser.inc",
+      "infra/ingress/request-headers-keycloak-admin-browser.inc",
+      "infra/ingress/request-headers-litellm-browser.inc",
+      "infra/ingress/validate-ingress.mjs",
+      "infra/ingress/validate-ingress.test.mjs",
+      "scripts/inference-core/f0-n5-native-edge.test.mjs"
+    ]
+  },
+  "nextPackage": "F0-N6 Console Technical Tools navigation and support-boundary copy"
+}

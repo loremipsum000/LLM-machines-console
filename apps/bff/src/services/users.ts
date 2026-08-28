@@ -1,80 +1,61 @@
-import { eq, sql } from "drizzle-orm"
-import { getDb } from "../db/client"
-import { users } from "../db/schema"
-import type { Actor } from "../auth/persona"
+import { eq } from "drizzle-orm"
+import type { Actor } from "../auth/authorization"
+import {
+  type InferenceCoreTransaction,
+  getInferenceCoreDb,
+} from "../db/inference-core-client"
+import {
+  humanIdentities,
+  humanIdentityRoles,
+} from "../db/inference-core-schema"
 
-export async function upsertActorUser(actor: Actor): Promise<Actor> {
-  const db = getDb()
-  if (!db) {
+export async function upsertActorUser(
+  actor: Actor,
+  transaction?: InferenceCoreTransaction,
+): Promise<Actor> {
+  const db = getInferenceCoreDb()
+  if (!transaction && !db) {
     return actor
   }
 
   const now = new Date()
-  const email = actor.email ?? `${actor.subject}@local.invalid`
-  const displayName = actor.email ?? actor.subject
+  const projectedRoles = [actor.role]
 
-  if (actor.email) {
-    const existing = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.email, actor.email))
-      .limit(1)
+  const upsert = async (executor: InferenceCoreTransaction) => {
+    await executor
+      .insert(humanIdentities)
+      .values({
+        subjectId: actor.subject,
+        firstSeenAt: now,
+        lastSeenAt: now,
+      })
+      .onConflictDoUpdate({
+        target: humanIdentities.subjectId,
+        set: {
+          lastSeenAt: now,
+        },
+      })
 
-    if (existing[0] && existing[0].id !== actor.subject) {
-      await db
-        .update(users)
-        .set({
-          displayName,
-          persona: actor.persona,
-          updatedAt: now,
-        })
-        .where(eq(users.id, existing[0].id))
+    await executor
+      .delete(humanIdentityRoles)
+      .where(eq(humanIdentityRoles.subjectId, actor.subject))
 
-      await db
-        .insert(users)
-        .values({
-          id: actor.subject,
-          email: `${actor.subject}@local.invalid`,
-          displayName,
-          persona: actor.persona,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: users.id,
-          set: {
-            displayName,
-            persona: actor.persona,
-            updatedAt: now,
-          },
-        })
-
-      return {
-        ...actor,
-        subject: existing[0].id,
-      }
+    if (projectedRoles.length > 0) {
+      await executor.insert(humanIdentityRoles).values(
+        projectedRoles.map((role) => ({
+          subjectId: actor.subject,
+          role,
+          observedAt: now,
+        })),
+      )
     }
   }
 
-  await db
-    .insert(users)
-    .values({
-      id: actor.subject,
-      email,
-      displayName,
-      persona: actor.persona,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: users.id,
-      set: {
-        email: sql`excluded.email`,
-        displayName: sql`excluded.display_name`,
-        persona: sql`excluded.persona`,
-        updatedAt: now,
-      },
-    })
+  if (transaction) {
+    await upsert(transaction)
+  } else if (db) {
+    await db.transaction(upsert)
+  }
 
   return actor
 }

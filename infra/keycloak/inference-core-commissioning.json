@@ -1,0 +1,338 @@
+{
+  "apiVersion": "inference-core.llm-machines/v1",
+  "kind": "LogicalKeycloakCommissioningPlan",
+  "metadata": {
+    "changePackage": "PR-09",
+    "containsCredentials": false,
+    "packagingTarget": "PR-12"
+  },
+  "realm": "llm-machines",
+  "preconditions": [
+    "empty-appliance-realm",
+    "offline-seed-validation-passed",
+    "customer-present-for-one-time-values"
+  ],
+  "phases": [
+    {
+      "completionAssertions": [
+        "keycloak-version-is-at-least-26.6.0",
+        "admin-fine-grained-authz-v2-is-enabled",
+        "realm-admin-permissions-are-enabled",
+        "application-admin-is-absent-from-human-realm",
+        "human-admin-has-no-Clients-authority",
+        "realm-is-not-master",
+        "no-seed-user-exists",
+        "no-client-credential-is-in-seed",
+        "customer-admin-has-query-users-and-query-groups-only",
+        "fgap-logical-selectors-were-resolved-to-appliance-realm-uuids",
+        "no-active-Roles-permission-is-installed",
+        "no-Users-map-roles-scope-is-installed",
+        "no-Users-reset-password-permission-is-installed",
+        "offline_access-is-absent-from-retained-client-optional-scopes",
+        "offline_access-is-absent-from-the-realm-default-role-composite",
+        "grafana-client-is-confidential-and-credential-free-in-source",
+        "grafana-client-uses-authorization-code-pkce-s256-only",
+        "grafana-client-has-no-service-account-or-direct-grant",
+        "grafana-client-scope-is-limited-to-admin-and-operator",
+        "grafana-client-emits-realm-access-roles-to-id-and-access-tokens",
+        "grafana-client-has-no-offline-scope"
+      ],
+      "id": "validate-logical-seed",
+      "mutationOwner": "packaging-pr12"
+    },
+    {
+      "completionAssertions": [
+        "llm-machines-browser-password-is-the-browser-binding",
+        "username-password-execution-reference-is-pwd",
+        "mandatory-totp-is-disabled-for-pre-genesis",
+        "oidc-amr-mapper-adds-amr-to-access-token",
+        "basic-client-scope-adds-auth_time-to-access-token",
+        "console-web-audience-mapper-hardcodes-console-bff",
+        "bootstrap-admin-is-enabled",
+        "bootstrap-admin-is-only-in-Admins",
+        "temporary-login-value-was-shown-once",
+        "UPDATE_PASSWORD-completed",
+        "access-token-amr-proves-password-authentication",
+        "access-token-auth_time-is-recent",
+        "scope-offline_access-does-not-yield-an-offline-token",
+        "grafana-exact-root-origin-and-callback-were-bound-outside-git",
+        "grafana-admin-token-maps-to-Editor",
+        "grafana-operator-native-login-is-denied",
+        "grafana-unrecognized-role-is-denied",
+        "grafana-dual-retained-role-token-is-denied"
+      ],
+      "id": "commission-bootstrap-admin",
+      "mutationOwner": "commissioning-control-plane",
+      "requiredActions": ["UPDATE_PASSWORD"]
+    },
+    {
+      "completionAssertions": [
+        "first-operator-is-enabled",
+        "first-operator-is-only-in-Operators",
+        "UPDATE_PASSWORD-completed",
+        "access-token-amr-proves-password-authentication",
+        "access-token-auth_time-is-recent",
+        "offline-recovery-value-was-shown-once",
+        "only-hardened-recovery-verifier-was-persisted",
+        "last-enabled-operator-protection-passed"
+      ],
+      "id": "commission-first-operator",
+      "mutationOwner": "console-admin-workflow",
+      "requiredActions": ["UPDATE_PASSWORD"]
+    },
+    {
+      "completionAssertions": [
+        "all-fgap-v2-evaluations-match-the-verification-matrix",
+        "customer-admin-user-delete-is-denied-by-F0-N5-product-edge-before-activation",
+        "fgap-users-manage-residual-controls-are-active",
+        "fgap-groups-manage-residual-controls-are-active",
+        "temporary-bootstrap-login-value-destroyed",
+        "service-client-values-stored-outside-git",
+        "delegated-admin-can-view-canonical-groups-without-membership-mutation",
+        "delegated-service-non-system-group-scopes-are-active",
+        "canonical-groups-are-the-only-role-assignment-path",
+        "operator-has-no-standing-admin-authority",
+        "grafana-client-secret-is-stored-outside-git",
+        "grafana-admin-is-not-Grafana-Admin",
+        "grafana-operator-native-login-is-denied",
+        "grafana-native-access-remains-inactive-until-F0-N5-admission"
+      ],
+      "id": "close-commissioning",
+      "mutationOwner": "commissioning-control-plane"
+    }
+  ],
+  "fgapV2EvaluationMatrix": [
+    {
+      "expected": "PERMIT",
+      "principal": "customer-admin-role",
+      "resource": "user:any",
+      "resourceType": "Users",
+      "scope": "view"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "customer-admin-role",
+      "resource": "user:any",
+      "resourceType": "Users",
+      "scope": "manage"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "customer-admin-role",
+      "resource": "group:Admins",
+      "resourceType": "Groups",
+      "scope": "view"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "customer-admin-role",
+      "resource": "group:Operators",
+      "resourceType": "Groups",
+      "scope": "view"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "customer-admin-role",
+      "resource": "group:Admins",
+      "resourceType": "Groups",
+      "scope": "view-members"
+    },
+    {
+      "expected": "DENY",
+      "principal": "customer-admin-role",
+      "resource": "group:Admins",
+      "resourceType": "Groups",
+      "scope": "manage-members"
+    },
+    {
+      "expected": "DENY",
+      "principal": "customer-admin-role",
+      "resource": "group:Admins",
+      "resourceType": "Groups",
+      "scope": "manage"
+    },
+    {
+      "expected": "DENY",
+      "principal": "customer-admin-role",
+      "resource": "group:Operators",
+      "resourceType": "Groups",
+      "scope": "manage"
+    },
+    {
+      "expected": "DENY",
+      "principal": "customer-admin-role",
+      "resource": "group:Admins",
+      "resourceType": "Groups",
+      "scope": "manage-membership"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "customer-admin-role",
+      "resource": "group:Operators",
+      "resourceType": "Groups",
+      "scope": "view-members"
+    },
+    {
+      "expected": "DENY",
+      "principal": "customer-admin-role",
+      "resource": "group:Operators",
+      "resourceType": "Groups",
+      "scope": "manage-membership"
+    },
+    {
+      "expected": "DENY",
+      "principal": "customer-admin-role",
+      "resource": "group:Operators",
+      "resourceType": "Groups",
+      "scope": "manage-members"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "customer-admin-role",
+      "resource": "user:any",
+      "resourceType": "Users",
+      "scope": "reset-password"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "customer-admin-role",
+      "resource": "user:any",
+      "resourceType": "Users",
+      "scope": "reset-password"
+    },
+    {
+      "expected": "DENY",
+      "principal": "customer-admin-role",
+      "resource": "user:member-of:Operators",
+      "resourceType": "Users",
+      "scope": "manage-group-membership"
+    },
+    {
+      "expected": "DENY",
+      "principal": "customer-admin-role",
+      "resource": "role:admin",
+      "resourceType": "Roles",
+      "scope": "map-role"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "console-human-admin-service-account",
+      "resource": "user:any",
+      "resourceType": "Users",
+      "scope": "manage"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "console-human-admin-service-account",
+      "resource": "user:any",
+      "resourceType": "Users",
+      "scope": "manage-group-membership"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-human-admin-service-account",
+      "resource": "user:any",
+      "resourceType": "Users",
+      "scope": "map-roles"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "console-human-admin-service-account",
+      "resource": "user:any",
+      "resourceType": "Users",
+      "scope": "reset-password"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "console-human-admin-service-account",
+      "resource": "group:non-system",
+      "resourceType": "Groups",
+      "scope": "view"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "console-human-admin-service-account",
+      "resource": "group:non-system",
+      "resourceType": "Groups",
+      "scope": "view-members"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "console-human-admin-service-account",
+      "resource": "group:non-system",
+      "resourceType": "Groups",
+      "scope": "manage"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "console-human-admin-service-account",
+      "resource": "group:non-system",
+      "resourceType": "Groups",
+      "scope": "manage-membership"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-human-admin-service-account",
+      "resource": "group:Admins",
+      "resourceType": "Groups",
+      "scope": "manage"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-human-admin-service-account",
+      "resource": "group:Operators",
+      "resourceType": "Groups",
+      "scope": "manage"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "console-human-admin-service-account",
+      "resource": "group:Operators",
+      "resourceType": "Groups",
+      "scope": "manage-membership"
+    },
+    {
+      "expected": "PERMIT",
+      "principal": "console-human-admin-service-account",
+      "resource": "group:Operators",
+      "resourceType": "Groups",
+      "scope": "manage-membership-of-members"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-human-admin-service-account",
+      "resource": "role:admin",
+      "resourceType": "Roles",
+      "scope": "map-role"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-human-admin-service-account",
+      "resource": "role:operator",
+      "resourceType": "Roles",
+      "scope": "map-role"
+    },
+    {
+      "expected": "DENY",
+      "principal": "console-human-admin-service-account",
+      "resource": "client:any",
+      "resourceType": "Clients",
+      "scope": "manage"
+    }
+  ],
+  "tokenNegativeTests": [
+    {
+      "expectedGrantedScopeContainsOfflineAccess": false,
+      "expectedOfflineToken": false,
+      "id": "offline-access-not-issued",
+      "requestedScope": "offline_access",
+      "requestingClients": ["console-human-admin", "console-web", "grafana"]
+    }
+  ],
+  "preGenesisAuthenticationEvidence": {
+    "mandatoryTotp": false,
+    "passwordReference": "pwd",
+    "requiredAccessTokenClaims": ["amr", "auth_time"],
+    "roleAuthorizationRequired": true
+  }
+}

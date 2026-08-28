@@ -1,110 +1,359 @@
-import { type NextFetchEvent, NextRequest } from "next/server"
-import { afterEach, describe, expect, it, vi } from "vitest"
-import {
-  getSignInRedirectUrl,
-  isHubAuthRequired,
-} from "@/lib/auth/middleware-policy"
 import middleware from "@/middleware"
+import { NextRequest } from "next/server"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const authSpies = vi.hoisted(() => {
-  const authenticatedMiddleware = vi.fn(
-    () => new Response(null, { status: 204 }),
-  )
-  return {
-    auth: vi.fn(() => authenticatedMiddleware),
-    authenticatedMiddleware,
-  }
-})
-
-vi.mock("@/lib/auth/auth", () => ({
-  auth: authSpies.auth,
+const sessionHandle = "A".repeat(43)
+const mocks = vi.hoisted(() => ({
+  opaqueConsoleSessionHandle: vi.fn(),
+  resolveConsoleSession: vi.fn(),
 }))
 
-describe("Hub middleware helpers", () => {
+vi.mock("@/lib/auth/session-client", () => ({
+  CONSOLE_SESSION_COOKIE: "__Host-llm-machines-session",
+  CONSOLE_SESSION_MAX_AGE_SECONDS: 28800,
+  opaqueConsoleSessionHandle: mocks.opaqueConsoleSessionHandle,
+  resolveConsoleSession: mocks.resolveConsoleSession,
+}))
+
+describe("Console middleware", () => {
+  beforeEach(() => {
+    mocks.opaqueConsoleSessionHandle.mockImplementation((cookie?: string) => {
+      const values = (cookie?.split(";") ?? [])
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.startsWith("__Host-llm-machines-session="))
+        .map((entry) => entry.slice(entry.indexOf("=") + 1))
+      return values.length === 1 && /^[A-Za-z0-9_-]{43}$/.test(values[0] ?? "")
+        ? values[0]
+        : null
+    })
+    mocks.resolveConsoleSession.mockResolvedValue({
+      session: {
+        groups: [],
+        mfaVerifiedAt: null,
+        role: "operator",
+        subject: "operator-1",
+      },
+      state: "active",
+    })
+  })
+
   afterEach(() => {
-    authSpies.auth.mockClear()
-    authSpies.authenticatedMiddleware.mockClear()
-    vi.unstubAllEnvs()
+    vi.clearAllMocks()
   })
 
-  it("keeps local fixture mode open by default", () => {
-    expect(isHubAuthRequired({ NODE_ENV: "development" })).toBe(false)
+  it("protects every retained Console route with a path-only return target", async () => {
+    const protectedPaths = [
+      "/",
+      "/activity",
+      "/applications",
+      "/applications/add",
+      "/api/admin/audit/export",
+      "/api/admin/audit/export/verification-keys",
+      "/hardware",
+      "/inference",
+      "/settings",
+      "/team",
+      "/team/import/template",
+    ]
+    for (const pathname of protectedPaths) {
+      const response = await runMiddleware(pathname)
+      expect(response.status, pathname).toBe(307)
+      expect(response.headers.get("location"), pathname).toContain(
+        "/auth/signin?returnTo=",
+      )
+    }
+    expect(mocks.resolveConsoleSession).not.toHaveBeenCalled()
   })
 
-  it("requires auth for production BFF-backed runtimes", () => {
+  it("never places an origin in the sign-in return target", async () => {
+    const response = await runMiddleware(
+      "/applications/apps/app-1?tab=credentials",
+    )
+
+    expect(response.headers.get("location")).toBe(
+      "https://console.example.test/auth/signin?returnTo=%2Fapplications%2Fapps%2Fapp-1%3Ftab%3Dcredentials",
+    )
+    expect(response.headers.get("location")).not.toContain("returnTo=https%3A")
+  })
+
+  it("uses the configured Console authority behind the private Product edge", async () => {
+    process.env.WEB_CONSOLE_ORIGIN = "https://console.lab.llm-machines.com"
+    try {
+      const response = await runMiddleware(
+        "/applications?tab=credentials",
+        false,
+        "https://localhost:45881",
+      )
+
+      expect(response.headers.get("location")).toBe(
+        "https://console.lab.llm-machines.com/auth/signin?returnTo=%2Fapplications%3Ftab%3Dcredentials",
+      )
+    } finally {
+      Reflect.deleteProperty(process.env, "WEB_CONSOLE_ORIGIN")
+    }
+  })
+
+  it("rejects an inexact configured Console authority", async () => {
+    process.env.WEB_CONSOLE_ORIGIN =
+      "https://console.lab.llm-machines.com/unapproved"
+    try {
+      await expect(runMiddleware("/applications")).rejects.toThrow(
+        "WEB_CONSOLE_ORIGIN must be an exact HTTPS origin.",
+      )
+    } finally {
+      Reflect.deleteProperty(process.env, "WEB_CONSOLE_ORIGIN")
+    }
+  })
+
+  it("clears malformed and duplicate host cookies with explicit expiry", async () => {
+    const cases = [
+      {
+        cookie: "__Host-llm-machines-session=not-opaque",
+        expectedLocation:
+          "https://console.example.test/auth/signin?session=expired&returnTo=%2Fapi%2Fadmin%2Faudit%2Fexport%3Fformat%3Djson",
+        pathname: "/api/admin/audit/export?format=json",
+      },
+      {
+        cookie: `__Host-llm-machines-session=${sessionHandle}; __Host-llm-machines-session=${"B".repeat(43)}`,
+        expectedLocation:
+          "https://console.example.test/auth/signin?session=expired&returnTo=%2Fapplications",
+        pathname: "/applications",
+      },
+    ]
+
+    for (const testCase of cases) {
+      const response = await runMiddleware(testCase.pathname, testCase.cookie)
+      const setCookie = response.headers.get("set-cookie") ?? ""
+
+      expect(response.status, testCase.pathname).toBe(307)
+      expect(response.headers.get("location"), testCase.pathname).toBe(
+        testCase.expectedLocation,
+      )
+      expect(setCookie, testCase.pathname).toContain(
+        "__Host-llm-machines-session=",
+      )
+      expect(setCookie, testCase.pathname).toContain("Max-Age=0")
+      expect(setCookie, testCase.pathname).not.toContain("Domain=")
+    }
+    expect(mocks.resolveConsoleSession).not.toHaveBeenCalled()
+  })
+
+  it("slides an active host-only opaque cookie for exactly eight hours", async () => {
+    const response = await runMiddleware("/applications", true)
+    const setCookie = response.headers.get("set-cookie") ?? ""
+
+    expect(response.headers.get("x-middleware-next")).toBe("1")
+    expect(mocks.resolveConsoleSession).toHaveBeenCalledWith(
+      `__Host-llm-machines-session=${sessionHandle}`,
+    )
+    expect(setCookie).toContain(`__Host-llm-machines-session=${sessionHandle}`)
+    expect(setCookie).toContain("Path=/")
+    expect(setCookie).toContain("Max-Age=28800")
+    expect(setCookie).toContain("HttpOnly")
+    expect(setCookie).toContain("Secure")
+    expect(setCookie).toContain("SameSite=lax")
+    expect(setCookie).not.toContain("Domain=")
+  })
+
+  it("clears a terminal cookie and redirects once with explicit expiry", async () => {
+    mocks.resolveConsoleSession.mockResolvedValue({
+      reason: "expired",
+      state: "terminal",
+    })
+
+    const response = await runMiddleware("/settings?tab=updates", true)
+    const setCookie = response.headers.get("set-cookie") ?? ""
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "https://console.example.test/auth/signin?session=expired&returnTo=%2Fsettings%3Ftab%3Dupdates",
+    )
+    expect(setCookie).toContain("__Host-llm-machines-session=")
+    expect(setCookie).toContain("Max-Age=0")
+    expect(setCookie).toContain("Path=/")
+    expect(setCookie).toContain("HttpOnly")
+    expect(setCookie).toContain("Secure")
+    expect(setCookie).toContain("SameSite=lax")
+    expect(setCookie).not.toContain("Domain=")
+  })
+
+  it("clears a later terminal transition on the one-time sign-in landing", async () => {
+    mocks.resolveConsoleSession.mockResolvedValue({
+      reason: "revoked",
+      state: "terminal",
+    })
+
+    const response = await runMiddleware(
+      "/auth/signin?session=expired&returnTo=%2Fapplications",
+      true,
+    )
+    const setCookie = response.headers.get("set-cookie") ?? ""
+
+    expect(response.headers.get("x-middleware-next")).toBe("1")
+    expect(response.headers.get("location")).toBeNull()
+    expect(mocks.resolveConsoleSession).toHaveBeenCalledOnce()
+    expect(setCookie).toContain("__Host-llm-machines-session=")
+    expect(setCookie).toContain("Max-Age=0")
+    expect(setCookie).not.toContain("Domain=")
+  })
+
+  it("does not let an expired query clear a still-active session", async () => {
+    const response = await runMiddleware(
+      "/auth/signin?session=expired&returnTo=%2Fapplications",
+      true,
+    )
+
+    expect(response.headers.get("x-middleware-next")).toBe("1")
+    expect(response.headers.get("set-cookie")).toBeNull()
+    expect(response.headers.get("location")).toBeNull()
+    expect(mocks.resolveConsoleSession).toHaveBeenCalledOnce()
+  })
+
+  it("preserves the cookie when the one-time sign-in check is unavailable", async () => {
+    mocks.resolveConsoleSession.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+
+    const response = await runMiddleware(
+      "/auth/signin?session=expired&returnTo=%2Fsettings%3Ftab%3Dupdates",
+      true,
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "https://console.example.test/auth/unavailable?returnTo=%2Fsettings%3Ftab%3Dupdates",
+    )
+    expect(response.headers.get("set-cookie")).toBeNull()
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull()
+  })
+
+  it("clears an expired audit-download session and preserves one safe return path", async () => {
+    mocks.resolveConsoleSession.mockResolvedValue({
+      reason: "expired",
+      state: "terminal",
+    })
+
+    const response = await runMiddleware(
+      "/api/admin/audit/export?format=json",
+      true,
+    )
+    const setCookie = response.headers.get("set-cookie") ?? ""
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "https://console.example.test/auth/signin?session=expired&returnTo=%2Fapi%2Fadmin%2Faudit%2Fexport%3Fformat%3Djson",
+    )
+    expect(response.headers.get("location")).not.toContain("returnTo=https%3A")
+    expect(setCookie).toContain("__Host-llm-machines-session=")
+    expect(setCookie).toContain("Max-Age=0")
+  })
+
+  it("redirects to controlled recovery without clearing an eligible cookie", async () => {
+    mocks.resolveConsoleSession.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+
+    const response = await runMiddleware("/team?view=members", true)
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "https://console.example.test/auth/unavailable?returnTo=%2Fteam%3Fview%3Dmembers",
+    )
+    expect(response.headers.get("cache-control")).toBe("no-store, max-age=0")
+    expect(response.headers.get("set-cookie")).toBeNull()
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull()
+  })
+
+  it("keeps an audit-download session during an outage without a redirect loop", async () => {
+    mocks.resolveConsoleSession.mockResolvedValue({
+      reason: "identity_unavailable",
+      retryable: true,
+      state: "unavailable",
+    })
+
+    const response = await runMiddleware(
+      "/api/admin/audit/export/verification-keys",
+      true,
+    )
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull()
+    expect(response.headers.get("cache-control")).toBe("no-store, max-age=0")
+    expect(response.headers.get("set-cookie")).toBeNull()
+    expect(response.headers.get("location")).toBeNull()
+  })
+
+  it("bypasses auth pages, session endpoints, assets, and retired paths", async () => {
+    for (const pathname of [
+      "/auth/signin",
+      "/auth/unavailable",
+      "/api/console/session/login",
+      "/api/console/session/callback",
+      "/api/console/session/logout",
+      "/api/console/session/elevate",
+      "/api/internal/console-session/resolve",
+      "/api/admin/audit/export/extra",
+      "/api/admin/audit/exported",
+      "/favicon-32x32.png",
+      "/icon.svg",
+      "/unknown",
+      "/chat",
+      "/builder",
+      "/artifacts/example",
+      "/resources",
+      "/tasks",
+      "/profile",
+      "/usage",
+      "/inference/model-update",
+    ]) {
+      const response = await runMiddleware(pathname, true)
+      expect(response.headers.get("x-middleware-next"), pathname).toBe("1")
+    }
+    expect(mocks.resolveConsoleSession).not.toHaveBeenCalled()
+  })
+
+  it("forwards a fresh script nonce and returns the same production CSP", async () => {
+    const first = await runMiddleware("/auth/signin")
+    const second = await runMiddleware("/auth/signin")
+    const firstCsp = first.headers.get("content-security-policy")
+    const secondCsp = second.headers.get("content-security-policy")
+    const scriptPolicy = firstCsp
+      ?.split(";")
+      .map((directive) => directive.trim())
+      .find((directive) => directive.startsWith("script-src "))
+
+    expect(scriptPolicy).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+'$/)
+    expect(scriptPolicy).not.toContain("'unsafe-inline'")
+    expect(scriptPolicy).not.toContain("'unsafe-eval'")
     expect(
-      isHubAuthRequired({
-        CONSOLE_BFF_URL: "https://bff.example.test",
-        NODE_ENV: "production",
-      }),
-    ).toBe(true)
-  })
-
-  it("allows explicit auth requirement override", () => {
-    expect(
-      isHubAuthRequired({
-        CONSOLE_REQUIRE_AUTH: "true",
-        NODE_ENV: "development",
-      }),
-    ).toBe(true)
-    expect(
-      isHubAuthRequired({
-        CONSOLE_BFF_URL: "https://bff.example.test",
-        CONSOLE_REQUIRE_AUTH: "false",
-        NODE_ENV: "production",
-      }),
-    ).toBe(false)
-  })
-
-  it("builds Auth.js sign-in redirects with the original callback URL", () => {
-    const redirectUrl = getSignInRedirectUrl(
-      "https://console.example.test/resources",
-    )
-
-    expect(redirectUrl.toString()).toBe(
-      "https://console.example.test/auth/signin?callbackUrl=https%3A%2F%2Fconsole.example.test%2Fresources",
-    )
-  })
-
-  it("bypasses Auth.js middleware for local fixture-mode routes", () => {
-    vi.stubEnv("NODE_ENV", "development")
-
-    middleware(
-      new NextRequest("http://localhost:3001/builder"),
-      {} as NextFetchEvent,
-    )
-
-    expect(authSpies.authenticatedMiddleware).not.toHaveBeenCalled()
-    expect(authSpies.auth).not.toHaveBeenCalled()
-  })
-
-  it("bypasses Auth.js middleware for favicon assets", () => {
-    vi.stubEnv("CONSOLE_BFF_URL", "https://bff.example.test")
-    vi.stubEnv("NODE_ENV", "production")
-
-    middleware(
-      new NextRequest("https://console.example.test/favicon-32x32.png"),
-      {} as NextFetchEvent,
-    )
-    middleware(
-      new NextRequest("https://console.example.test/icon.svg"),
-      {} as NextFetchEvent,
-    )
-
-    expect(authSpies.authenticatedMiddleware).not.toHaveBeenCalled()
-    expect(authSpies.auth).not.toHaveBeenCalled()
-  })
-
-  it("runs Auth.js middleware for BFF-backed production routes", () => {
-    vi.stubEnv("CONSOLE_BFF_URL", "https://bff.example.test")
-    vi.stubEnv("NODE_ENV", "production")
-
-    middleware(
-      new NextRequest("https://console.example.test/knowledge"),
-      {} as NextFetchEvent,
-    )
-
-    expect(authSpies.auth).toHaveBeenCalledTimes(1)
-    expect(authSpies.authenticatedMiddleware).toHaveBeenCalledTimes(1)
+      first.headers.get("x-middleware-request-content-security-policy"),
+    ).toBe(firstCsp)
+    expect(secondCsp).not.toBe(firstCsp)
   })
 })
+
+async function runMiddleware(
+  pathname: string,
+  withSession: boolean | string = false,
+  origin = "https://console.example.test",
+): Promise<Response> {
+  const request = new NextRequest(`${origin}${pathname}`, {
+    headers: withSession
+      ? {
+          cookie:
+            typeof withSession === "string"
+              ? withSession
+              : `__Host-llm-machines-session=${sessionHandle}`,
+        }
+      : undefined,
+  })
+  const response = await middleware(request)
+  if (!(response instanceof Response)) {
+    throw new Error("Expected middleware to return a Response.")
+  }
+  return response
+}

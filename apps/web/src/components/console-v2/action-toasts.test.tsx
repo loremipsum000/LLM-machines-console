@@ -8,15 +8,15 @@ describe("ConsoleActionToasts", () => {
       <ConsoleActionToasts
         notifications={[
           {
-            description: "Corpus deleted.",
-            id: "knowledge-action-hardDeleted",
-            title: "Knowledge",
+            description: "Key disabled.",
+            id: "application-action-disabled",
+            title: "Keys",
             tone: "danger",
           },
           {
-            description: "0 added, 1 failed.",
-            id: "knowledge-upload-uploaded-0-failed-1",
-            title: "Document upload",
+            description: "Connection test failed.",
+            id: "application-test-failed",
+            title: "Connection test",
             tone: "danger",
           },
         ]}
@@ -24,10 +24,10 @@ describe("ConsoleActionToasts", () => {
     )
 
     expect(screen.getByLabelText("Action notifications")).toBeTruthy()
-    expect(screen.getByText("Knowledge")).toBeTruthy()
-    expect(screen.getByText("Corpus deleted.")).toBeTruthy()
-    expect(screen.getByText("Document upload")).toBeTruthy()
-    expect(screen.getByText("0 added, 1 failed.")).toBeTruthy()
+    expect(screen.getByText("Keys")).toBeTruthy()
+    expect(screen.getByText("Key disabled.")).toBeTruthy()
+    expect(screen.getByText("Connection test")).toBeTruthy()
+    expect(screen.getByText("Connection test failed.")).toBeTruthy()
     expect(screen.getAllByRole("alert")).toHaveLength(2)
     const style = screen.getAllByRole("alert")[0]?.getAttribute("style")
     expect(style).toContain("animation-duration: 5320ms")
@@ -39,9 +39,9 @@ describe("ConsoleActionToasts", () => {
       <ConsoleActionToasts
         notifications={[
           {
-            description: "Permissions updated.",
-            id: "knowledge-action-permissionsUpdated",
-            title: "Knowledge",
+            description: "Organization updated.",
+            id: "settings-action-organization-updated",
+            title: "Settings",
             tone: "success",
           },
         ]}
@@ -56,7 +56,7 @@ describe("ConsoleActionToasts", () => {
     window.history.pushState(
       {},
       "",
-      "/admin/knowledge?corpus=corpus-1&view=edit-sources&knowledgeAction=failed&knowledgeUpload=uploaded-0-failed-1&q=sonic",
+      "/keys?view=overview&appAction=failed&settingsAction=saved&q=status",
     )
 
     render(
@@ -64,8 +64,8 @@ describe("ConsoleActionToasts", () => {
         notifications={[
           {
             description: "Action failed.",
-            id: "knowledge-action-failed",
-            title: "Knowledge",
+            id: "application-action-failed",
+            title: "Keys",
             tone: "danger",
           },
         ]}
@@ -73,9 +73,7 @@ describe("ConsoleActionToasts", () => {
     )
 
     await waitFor(() => {
-      expect(window.location.search).toBe(
-        "?corpus=corpus-1&view=edit-sources&q=sonic",
-      )
+      expect(window.location.search).toBe("?view=overview&q=status")
     })
   })
 })

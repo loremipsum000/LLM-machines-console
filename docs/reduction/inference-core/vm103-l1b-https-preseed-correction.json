@@ -1,0 +1,46 @@
+{
+  "schema": "llm-machines.vm103-l1b-https-preseed-correction.v1",
+  "workPackage": "VM103-L1B-P3",
+  "status": "SOURCE_PROVISIONING_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "7f05204698170bb0736dde2150328577697edb62",
+    "tree": "54a273c990e2f237305c1694be0318b48714a3bd"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "result": "INTERACTIVE_HTTPS_MIRROR_HOSTNAME_PROMPT",
+    "cause": "HTTP_NAMESPACE_DID_NOT_PRESEED_HTTPS_QUESTION",
+    "vmStateAfterObservation": "STOPPED_PARTIAL_INSTALL_PRESERVED",
+    "systemDiskUsedBytes": 483680256,
+    "assemblyAUsedBytes": 57344,
+    "assemblyBUsedBytes": 57344
+  },
+  "correction": {
+    "protocolQuestion": "mirror/protocol",
+    "protocolType": "select",
+    "protocol": "https",
+    "hostnameQuestion": "mirror/https/hostname",
+    "hostname": "deb.debian.org",
+    "directoryQuestion": "mirror/https/directory",
+    "directory": "/debian",
+    "proxyQuestion": "mirror/https/proxy",
+    "suiteQuestion": "mirror/suite",
+    "suite": "trixie",
+    "httpNamespaceAbsent": true
+  },
+  "boundaries": {
+    "manualInstallerAnswerProhibited": true,
+    "vm118RemainsStoppedUntilProtectedAdmission": true,
+    "assemblyDisksWrittenByInstaller": false,
+    "otherVmOrWorkloadChanged": false,
+    "productRuntimeChanged": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "id": "PR-12-SOURCE-CLOSURE-AMENDMENT-3",
+  "workPackage": "PR-12-FIRECRAWL-NODE-BUILD-INPUT-SUCCESSOR",
+  "sourceClosureStatus": "SOURCE_CLOSED",
+  "amendmentStatus": "SOURCE_CLOSURE_AMENDED",
+  "sourceClosureScope": "deterministic-release-packaging-source-only",
+  "accepted": false,
+  "releaseSourceBound": true,
+  "predecessor": {
+    "path": "docs/reduction/inference-core/pr-12-source-closure-amendment-2.json",
+    "sha256": "c3e2d4398fc1ca753bd13094e87c1e0f968225c2a0fefdf5711189c51971422f",
+    "releaseSource": {
+      "commit": "4b2fc6a3278dfad2857b5caed4fb0d6cbdafee8f",
+      "tree": "1f9eea21ccf21d9b6fbc118f37a0d9fcb5c80d36"
+    },
+    "disposition": "PRESERVED_HISTORICAL_SOURCE_CLOSURE_AMENDMENT"
+  },
+  "reason": {
+    "defect": "The locked Node API build-input index and linux/amd64 manifest were unavailable from the authoritative registry.",
+    "correction": "The successor binds the same readable Node version and source revision to retrievable official immutable OCI identities, validates the complete build-input entry and identifier uniqueness, and regenerates the Firecrawl corresponding-source evidence from actual disposable assembly.",
+    "effect": "Amendment 2 remains immutable evidence but its release source is no longer the permitted D2A-RC build input. The successor changes release supply-chain evidence only and does not change Product behavior."
+  },
+  "releaseSource": {
+    "commit": "059866dc07dbc2af95df84ee834fca598a9a64a9",
+    "tree": "f14535be105e8073668c922e306a317bed55b993"
+  },
+  "interveningProtectedHistory": {
+    "fromReleaseSource": "4b2fc6a3278dfad2857b5caed4fb0d6cbdafee8f",
+    "throughIntegration": "d3fa915d999f92b489822f4dcfd9c09732cebea3",
+    "firstParentAdmissions": [
+      "7e1af95925cbf462e63371cbfd329b7ab4f04f9b",
+      "2f97c5cbad70cbfc68987e9d8f5722107534537a",
+      "22b007fb4ec3094a1336d65d706d53b9b652843a",
+      "4f8ab8e087adc30cda5ea194daaee1fe8c68d2f8",
+      "94d2011787642ed757b63ab03fa59df300bf1ef5",
+      "6810a6077d5af1f3e99253924e36a4458729bc1d",
+      "393d76561ab7922903497ce194e1c82550cf835a",
+      "2eba73cfe74ce1e26e9768bcca9ac3f4b990e936",
+      "a13d19749dc8a152cc1902180e4069687af56c4b",
+      "5cd3a695283ad565dae2dd8764bda05d9657bec1",
+      "03997c40fec20a2b7303ebc14c62abdb1a5c40ca",
+      "6fb13ba3674a69fec7a9496b81bf2feeef09599b",
+      "868153cf07221f450a468523ee5e08f5d6c9922c",
+      "d3fa915d999f92b489822f4dcfd9c09732cebea3"
+    ],
+    "includesPullRequest53": true,
+    "disposition": "PRESERVED_PROTECTED_HISTORY_NOT_RECLASSIFIED_AS_PR12_SUCCESSORS"
+  },
+  "successors": [
+    {
+      "id": "PR-12-FIRECRAWL-BUILD-TEST-LOCK-SUCCESSOR",
+      "pullRequest": 54,
+      "base": {
+        "commit": "d3fa915d999f92b489822f4dcfd9c09732cebea3",
+        "tree": "4644afad2640872db73a0fa438f2860fb6608152"
+      },
+      "candidate": {
+        "commit": "ba917666b48f8b49b6d7a10b1d000bce75655b04",
+        "tree": "7a5acfdc3c2e78f00915e173dc9a1782f0797d46",
+        "independentReview": "PASS"
+      },
+      "protectedAdmission": {
+        "commit": "01c51555256ffcb741f1539ce2498ea858a314e1",
+        "tree": "7a5acfdc3c2e78f00915e173dc9a1782f0797d46",
+        "firstParent": "d3fa915d999f92b489822f4dcfd9c09732cebea3",
+        "secondParent": "ba917666b48f8b49b6d7a10b1d000bce75655b04",
+        "candidateTreeIdentical": true
+      },
+      "productBehaviorChanged": false,
+      "runtimeQualified": false
+    },
+    {
+      "id": "PR-12-FIRECRAWL-NODE-BUILD-INPUT-SUCCESSOR",
+      "pullRequest": 55,
+      "base": {
+        "commit": "01c51555256ffcb741f1539ce2498ea858a314e1",
+        "tree": "7a5acfdc3c2e78f00915e173dc9a1782f0797d46"
+      },
+      "candidate": {
+        "commit": "177a74659c46c37bc67e9ea7114fe01a7553380b",
+        "tree": "f14535be105e8073668c922e306a317bed55b993",
+        "independentReview": "PASS"
+      },
+      "protectedAdmission": {
+        "commit": "059866dc07dbc2af95df84ee834fca598a9a64a9",
+        "tree": "f14535be105e8073668c922e306a317bed55b993",
+        "firstParent": "01c51555256ffcb741f1539ce2498ea858a314e1",
+        "secondParent": "177a74659c46c37bc67e9ea7114fe01a7553380b",
+        "candidateTreeIdentical": true
+      },
+      "productBehaviorChanged": false,
+      "runtimeQualified": false
+    }
+  ],
+  "nodeApiBuildInput": {
+    "repository": "docker.io/library/node",
+    "readableVersion": "node:22.23.2-bookworm",
+    "sourceRevision": "bc0a422bce0f729dd85790639d9f1918143f1235",
+    "indexDigest": "sha256:0557ac14e0d45d02ed563067b82856ca5e7aa3437fa28d98d4350ea9c3d9494a",
+    "platform": "linux/amd64",
+    "platformDigest": "sha256:673fce836d5a9185da33352682bfedb17c174d016370d08616748dff76fda862",
+    "configurationDigest": "sha256:6fa4cea04fca5c92ab1d8b54f46b0894993aa03a95db420fbad48d5695344f2b",
+    "license": "MIT",
+    "licenseTextSha256": "782e17d54343aa3f6db60430015692b6540089b3ec5b78274981ada2d3c3c423"
+  },
+  "firecrawlEvidence": {
+    "sourcePackageSha256": "640021d4a3de65cf5d3df440ef773275b1115a2aa29c52525a7b4d55454fa9be",
+    "fileCount": 1535,
+    "symlinkCount": 0,
+    "inventorySha256": "7074c41943d877162520a6bffe97dec81a5a599ddb985ded649b033908fbcf19",
+    "sha256SumsSha256": "b9b36d804b5e9de144a0ee7d3498bfcfd2d0f29cdf64bb4cadba47e5cd7d9116",
+    "packetSha256": "cc0bdea9f1a5e04752149c792317c43f46f062e00660f25c8f14cb4b89960027",
+    "patches": [
+      {
+        "path": "infra/firecrawl/release/patches/build-hardening.patch",
+        "sha256": "46e3de809c685b635d54dbae759bac3811b1c67397eb75d3d60c1efd59adae0a"
+      },
+      {
+        "path": "infra/firecrawl/release/patches/reduced-runtime.patch",
+        "sha256": "0ae6844072e0e9d9f3874838bab438434980e460d4e6f4fc95d6c5c59c4b06b9"
+      }
+    ]
+  },
+  "evidenceBindings": [
+    {
+      "path": "infra/firecrawl/release/assemble-source-packet.mjs",
+      "sha256": "c7be6e7f677781e9aa12385b810a4b918105cccb17c29bb412d3ce5b98a1d069"
+    },
+    {
+      "path": "infra/firecrawl/release/patches/build-hardening.patch",
+      "sha256": "46e3de809c685b635d54dbae759bac3811b1c67397eb75d3d60c1efd59adae0a"
+    },
+    {
+      "path": "infra/firecrawl/release/source-package.json",
+      "sha256": "640021d4a3de65cf5d3df440ef773275b1115a2aa29c52525a7b4d55454fa9be"
+    },
+    {
+      "path": "infra/firecrawl/release/reproducibility-evidence.json",
+      "sha256": "32de6bfc01c1ef7807b17676764cf9c26d26e8a0568c3a5e2573518f41e364a3"
+    },
+    {
+      "path": "infra/firecrawl/release/validate-source-package.mjs",
+      "sha256": "1a3ee3dac5421d9f8ee28844a8664588ce2273ce908156d350c1c3fc46c1b04d"
+    },
+    {
+      "path": "infra/firecrawl/release/validate-source-package.test.mjs",
+      "sha256": "756012630989f9ebd8a413001e4890a18f20553396e95214639a96eecd241186"
+    }
+  ],
+  "status": {
+    "runtimeQualified": false,
+    "contractActivation": "INACTIVE",
+    "d2aRc": "NOT_STARTED",
+    "q0": "NOT_STARTED",
+    "grafanaCustomerAccess": "DEFERRED_V1",
+    "deployment": "INACTIVE",
+    "productMain": "UNCHANGED"
+  },
+  "interpretation": {
+    "sourceClosure": "The current PR-12 release source contains the retrievable immutable Node API build input and its regenerated deterministic Firecrawl evidence.",
+    "accepted": "False means this amendment does not assert Product acceptance, release admission, runtime qualification, contract activation, or deployment readiness.",
+    "releaseSourceBound": "Any later D2A-RC construction must use this exact release-source commit and tree. The historical 4b2fc6a release source is not the current build input.",
+    "runtimeBoundary": "D2A-RC construction and Q0 remain not started. F0-F2 is a separate local functional package and cannot establish release or runtime qualification."
+  }
+}

@@ -1,0 +1,228 @@
+name: llm-machines-firecrawl
+
+x-runtime-policy: &runtime-policy
+  profiles:
+    - firecrawl
+  pull_policy: never
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  init: true
+  restart: "no"
+
+x-no-request-logs: &no-request-logs
+  driver: none
+
+x-component-labels: &component-labels
+  llm-machines.component: firecrawl
+  llm-machines.data-classification: transient-web-content
+  llm-machines.retention: none
+
+services:
+  firecrawl-api:
+    <<: *runtime-policy
+    image: ${FIRECRAWL_API_IMAGE:?Set an exact private Harbor image digest}
+    depends_on:
+      firecrawl-browser:
+        condition: service_healthy
+      firecrawl-search:
+        condition: service_healthy
+      firecrawl-egress:
+        condition: service_healthy
+    user: "65532:65532"
+    command: ["node", "dist/src/llm-machines-server.js"]
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3002"
+      ENV: local
+      IS_PRODUCTION: "true"
+      USE_DB_AUTHENTICATION: "false"
+      PLAYWRIGHT_MICROSERVICE_URL: http://firecrawl-browser:3000/scrape
+      SEARXNG_ENDPOINT: http://firecrawl-search:8080
+      SEARXNG_ENGINES: duckduckgo,wikipedia,wikidata
+      SEARXNG_CATEGORIES: general
+      MAX_CONCURRENT_JOBS: "${FIRECRAWL_MAX_CONCURRENT_JOBS:-2}"
+      ALLOW_LOCAL_WEBHOOKS: "false"
+      DISABLE_WEBHOOK_DELIVERY: "true"
+      FIRECRAWL_LOG_TO_FILE: "false"
+      FIRECRAWL_SAVE_MOCKS: "false"
+      LOGGING_LEVEL: error
+      ENABLE_SEARCH_INDEX: "false"
+      SEARCH_INDEX_SAMPLE_RATE: "0"
+      PROXY_SERVER: http://firecrawl-egress:3128
+      PROXY_USERNAME: ""
+      PROXY_PASSWORD: ""
+      HTTP_PROXY: http://firecrawl-egress:3128
+      HTTPS_PROXY: http://firecrawl-egress:3128
+      NO_PROXY: 127.0.0.1,localhost,firecrawl-api,firecrawl-browser,firecrawl-search
+    networks:
+      control: {}
+      search: {}
+      browser: {}
+      proxy: {}
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m,uid=65532,gid=65532,mode=0700
+    pids_limit: 512
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    cpus: "${FIRECRAWL_API_CPUS:-4.00}"
+    mem_limit: "${FIRECRAWL_API_MEMORY:-4g}"
+    memswap_limit: "${FIRECRAWL_API_MEMORY:-4g}"
+    logging: *no-request-logs
+    labels: *component-labels
+    healthcheck:
+      test:
+        - CMD
+        - /usr/bin/node
+        - -e
+        - >-
+          Promise.all(['/v0/health/liveness','/v0/health/readiness'].map(path=>fetch('http://127.0.0.1:3002'+path).then(response=>{if(!response.ok)throw new Error(path)}))).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  firecrawl-browser:
+    <<: *runtime-policy
+    image: ${FIRECRAWL_BROWSER_IMAGE:?Set an exact private Harbor image digest}
+    user: "65532:65532"
+    environment:
+      PORT: "3000"
+      BLOCK_MEDIA: "true"
+      ALLOW_LOCAL_WEBHOOKS: "false"
+      MAX_CONCURRENT_PAGES: "${FIRECRAWL_MAX_CONCURRENT_JOBS:-2}"
+      PROXY_SERVER: http://firecrawl-egress:3128
+      PROXY_USERNAME: ""
+      PROXY_PASSWORD: ""
+      HTTP_PROXY: http://firecrawl-egress:3128
+      HTTPS_PROXY: http://firecrawl-egress:3128
+      NO_PROXY: 127.0.0.1,localhost,firecrawl-api,firecrawl-browser,firecrawl-search
+    networks:
+      browser: {}
+      proxy: {}
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g,uid=65532,gid=65532,mode=0700
+      - /home/nonroot/.cache:rw,noexec,nosuid,size=128m,uid=65532,gid=65532,mode=0700
+    shm_size: 256m
+    pids_limit: 512
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    cpus: "${FIRECRAWL_BROWSER_CPUS:-2.00}"
+    mem_limit: "${FIRECRAWL_BROWSER_MEMORY:-3g}"
+    memswap_limit: "${FIRECRAWL_BROWSER_MEMORY:-3g}"
+    logging: *no-request-logs
+    labels: *component-labels
+    healthcheck:
+      test:
+        - CMD
+        - /usr/bin/node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3000/health').then(response=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))
+      interval: 20s
+      timeout: 10s
+      retries: 12
+      start_period: 45s
+
+  firecrawl-search:
+    <<: *runtime-policy
+    image: ${FIRECRAWL_SEARCH_IMAGE:?Set an exact private Harbor image digest}
+    user: "65532:65532"
+    environment:
+      SEARXNG_BASE_URL: http://firecrawl-search:8080/
+      SEARXNG_SECRET: ${FIRECRAWL_SEARXNG_SECRET:?Set a generated runtime secret}
+      HTTP_PROXY: http://firecrawl-egress:3128
+      HTTPS_PROXY: http://firecrawl-egress:3128
+      NO_PROXY: 127.0.0.1,localhost,firecrawl-api,firecrawl-browser,firecrawl-search
+    networks:
+      search: {}
+      proxy: {}
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=65532,gid=65532,mode=0700
+      - /var/cache/searxng:rw,noexec,nosuid,size=128m,uid=65532,gid=65532,mode=0700
+    pids_limit: 128
+    cpus: "${FIRECRAWL_SEARCH_CPUS:-0.75}"
+    mem_limit: "${FIRECRAWL_SEARCH_MEMORY:-768m}"
+    memswap_limit: "${FIRECRAWL_SEARCH_MEMORY:-768m}"
+    logging: *no-request-logs
+    labels: *component-labels
+    healthcheck:
+      test:
+        - CMD
+        - /usr/bin/python
+        - -c
+        - >-
+          import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/', timeout=3).read(1)
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  firecrawl-egress:
+    <<: *runtime-policy
+    image: ${FIRECRAWL_EGRESS_IMAGE:?Set an exact private Harbor image digest}
+    user: "13:13"
+    entrypoint: ["squid"]
+    command: ["-N", "-f", "/etc/squid/squid.conf"]
+    networks:
+      proxy: {}
+      egress: {}
+    volumes:
+      - ./egress/squid.conf:/etc/squid/squid.conf:ro
+      - ${FIRECRAWL_EGRESS_ALLOWLIST_DIR:-./egress/allowlists/default}:/etc/squid/allowlists:ro
+    tmpfs:
+      - /run/squid:rw,noexec,nosuid,size=8m,uid=13,gid=13,mode=0700
+      - /var/log/squid:rw,noexec,nosuid,size=8m,uid=13,gid=13,mode=0700
+      - /var/spool/squid:rw,noexec,nosuid,size=32m,uid=13,gid=13,mode=0700
+      - /tmp:rw,noexec,nosuid,size=16m,uid=13,gid=13,mode=0700
+    pids_limit: 64
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    cpus: "${FIRECRAWL_EGRESS_CPUS:-0.25}"
+    mem_limit: "${FIRECRAWL_EGRESS_MEMORY:-128m}"
+    memswap_limit: "${FIRECRAWL_EGRESS_MEMORY:-128m}"
+    logging: *no-request-logs
+    labels: *component-labels
+    healthcheck:
+      test:
+        - CMD
+        - /usr/bin/perl
+        - -MIO::Socket::INET
+        - -e
+        - >-
+          exit(IO::Socket::INET->new(PeerHost=>'127.0.0.1',PeerPort=>3128,Proto=>'tcp',Timeout=>3)?0:1)
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+networks:
+  control:
+    name: llm-machines-firecrawl-control
+    internal: true
+    enable_ipv6: false
+  search:
+    name: llm-machines-firecrawl-search
+    internal: true
+    enable_ipv6: false
+  browser:
+    name: llm-machines-firecrawl-browser
+    internal: true
+    enable_ipv6: false
+  proxy:
+    name: llm-machines-firecrawl-proxy
+    internal: true
+    enable_ipv6: false
+  egress:
+    name: llm-machines-firecrawl-egress
+    enable_ipv6: false

@@ -1,0 +1,1562 @@
+worker_processes auto;
+error_log /dev/null emerg;
+
+events {
+  worker_connections 1024;
+}
+
+http {
+  map_hash_bucket_size 128;
+
+  server_tokens off;
+  merge_slashes off;
+  ignore_invalid_headers on;
+
+  map "$request_method:$http_next_action" $llmm_console_page_method_allowed {
+    default 0;
+    ~^GET: 1;
+    ~^HEAD: 1;
+    ~^POST:.+ 1;
+  }
+
+  map $http_authorization $llmm_application_client_authorization {
+    default "";
+    "~^[Bb][Aa][Ss][Ii][Cc][ ]+bGxtbS1hcHAt[A-Za-z0-9+/]{48}(?:O[g-v][AEIMQUYcgkosw048]=|O[g-v][A-Za-z0-9+/]{2}(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/][AQgw]==|[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=)?)$" $http_authorization;
+  }
+
+  map $http_authorization $llmm_native_product_credential {
+    default 0;
+    "~*^Bearer[ ]+llmm_(?:t4|fc)_" 1;
+  }
+
+  map $http_origin $llmm_identity_token_origin_allowed {
+    default 0;
+    "" 1;
+    "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@" 1;
+  }
+
+  map $http_origin $llmm_identity_token_origin {
+    default "";
+    "https://@@PRODUCT_KEYCLOAK_ADMIN_HOST@@" $http_origin;
+  }
+
+  map $args $llmm_query_none {
+    default 0;
+    "" 1;
+  }
+
+  map $args $llmm_query_oidc_callback {
+    default 0;
+    ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_grafana_oauth {
+    default 0;
+    "" 1;
+    "redirectTo=" 1;
+    "~^redirectTo=%2F(?!%2F)(?!.*%(?:25|5[Cc]))(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})*$" 1;
+    ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_grafana_root {
+    default 0;
+    "" 1;
+    ~^(?:from|orgId|timezone|to)=[^&]*(?:&(?:from|orgId|timezone|to)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_grafana_login {
+    default 0;
+    "" 1;
+    ~^redirectTo=[^&]*$ 1;
+  }
+
+  map $args $llmm_query_grafana_session_rotation {
+    default 0;
+    "" 1;
+    "redirectTo=" 1;
+    "~^redirectTo=%2F(?!%2F)(?!.*%(?:25|5[Cc]))(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})*$" 1;
+  }
+
+  map $args $llmm_query_grafana_search {
+    default 0;
+    "" 1;
+    ~^(?:limit|query|type)=[^&]*(?:&(?:limit|query|type)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_grafana_prometheus_query {
+    default 0;
+    "" 1;
+    "~^(?:ds_type=prometheus&requestId=[A-Za-z0-9_-]{1,64}|requestId=[A-Za-z0-9_-]{1,64}&ds_type=prometheus)$" 1;
+  }
+
+  map $args $llmm_query_grafana_dashboard {
+    default 0;
+    "" 1;
+    "~^(?:orgId|from|to|timezone|refresh|viewPanel|kiosk|theme|inspect|editPanel|fullscreen)=[A-Za-z0-9._~%:+-]{0,128}(?:&(?:orgId|from|to|timezone|refresh|viewPanel|kiosk|theme|inspect|editPanel|fullscreen)=[A-Za-z0-9._~%:+-]{0,128})*$" 1;
+  }
+
+  map $args $llmm_query_grafana_static {
+    default 0;
+    "" 1;
+    "~^_cache=[A-Za-z0-9._-]{1,128}$" 1;
+  }
+
+  map $args $llmm_query_litellm_ui {
+    default 0;
+    "" 1;
+    ~^(?:_rsc|login|page|redirect_to)=[^&]*(?:&(?:_rsc|login|page|redirect_to)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_litellm_rsc {
+    default 0;
+    "" 1;
+    "~^_rsc=[A-Za-z0-9_-]{1,128}$" 1;
+  }
+
+  map $args $llmm_query_litellm_sso_entry {
+    default 0;
+    "" 1;
+    "return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2F" 1;
+    "return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2Flogin%2F" 1;
+  }
+
+  map $args $llmm_query_litellm_key_list {
+    default 0;
+    "" 1;
+    ~^(?:expand|include_created_by_keys|include_team_keys|page|return_full_object|size|sort_by|sort_order|substring_matching|user_id)=[^&]*(?:&(?:expand|include_created_by_keys|include_team_keys|page|return_full_object|size|sort_by|sort_order|substring_matching|user_id)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_litellm_models {
+    default 0;
+    "" 1;
+    ~^(?:include_model_access_groups|return_wildcard_routes)=[^&]*(?:&(?:include_model_access_groups|return_wildcard_routes)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_litellm_model_group_info {
+    default 0;
+    "" 1;
+    ~^model_group=[^&]*$ 1;
+  }
+
+  map $args $llmm_query_litellm_model_info_v2 {
+    default 0;
+    "" 1;
+    ~^(?:exclude_auto_routers|include_team_models|modelId|page|search|size|sortBy|sortOrder|teamId)=[^&]*(?:&(?:exclude_auto_routers|include_team_models|modelId|page|search|size|sortBy|sortOrder|teamId)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_litellm_spend_logs_ui {
+    default 0;
+    ~^(?:api_key|end_date|end_user|error_code|error_message|key_alias|max_spend|min_spend|model|model_group|model_id|page|page_size|request_id|session_id|sort_by|sort_order|start_date|status_filter|team_id|user_id)=[^&]*(?:&(?:api_key|end_date|end_user|error_code|error_message|key_alias|max_spend|min_spend|model|model_group|model_id|page|page_size|request_id|session_id|sort_by|sort_order|start_date|status_filter|team_id|user_id)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_litellm_team_list {
+    default 0;
+    "" 1;
+    ~^(?:page|page_size|user_id)=[^&]*(?:&(?:page|page_size|user_id)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_litellm_team_list_v1 {
+    default 0;
+    "" 1;
+    ~^user_id=[^&]*$ 1;
+  }
+
+  map $args $llmm_query_keycloak_console {
+    default 0;
+    "" 1;
+    ~^(?:code|iss|session_state|state)=[^&]*(?:&(?:code|iss|session_state|state)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_keycloak_whoami {
+    default 0;
+    "" 1;
+    ~^currentRealm=[^&]*$ 1;
+  }
+
+  map $args $llmm_query_keycloak_authorization {
+    default 0;
+    ~^(?:acr_values|client_id|code_challenge|code_challenge_method|max_age|nonce|prompt|redirect_uri|response_mode|response_type|scope|state)=[^&]*(?:&(?:acr_values|client_id|code_challenge|code_challenge_method|max_age|nonce|prompt|redirect_uri|response_mode|response_type|scope|state)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_keycloak_login_action {
+    default 0;
+    ~^(?:client_data|client_id|execution|session_code|tab_id)=[^&]*(?:&(?:client_data|client_id|execution|session_code|tab_id)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_keycloak_logout {
+    default 0;
+    "" 1;
+    ~^(?:client_id|id_token_hint|post_logout_redirect_uri)=[^&]*(?:&(?:client_id|id_token_hint|post_logout_redirect_uri)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_keycloak_login_status {
+    default 0;
+    ~^(?:client_id|origin)=[^&]*(?:&(?:client_id|origin)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_keycloak_users {
+    default 0;
+    "" 1;
+    ~^(?:briefRepresentation|email|exact|first|max|q|search|username)=[^&]*(?:&(?:briefRepresentation|email|exact|first|max|q|search|username)=[^&]*)*$ 1;
+  }
+
+  map $args $llmm_query_keycloak_groups {
+    default 0;
+    "" 1;
+    ~^(?:briefRepresentation|exact|first|max|search)=[^&]*(?:&(?:briefRepresentation|exact|first|max|search)=[^&]*)*$ 1;
+  }
+
+  log_format llmm_ingress_metadata escape=json
+    '{"timestamp":"$time_iso8601","request_id":"$request_id",'
+    '"surface":"$llmm_surface","status":"$status",'
+    '"upstream_status":"$upstream_status",'
+    '"upstream_connect_seconds":"$upstream_connect_time",'
+    '"upstream_header_seconds":"$upstream_header_time",'
+    '"upstream_response_seconds":"$upstream_response_time",'
+    '"request_bytes":"$request_length","response_bytes":"$bytes_sent",'
+    '"duration_seconds":"$request_time"}';
+  access_log /var/log/nginx/ingress-metadata.log llmm_ingress_metadata;
+
+  upstream console_web {
+    server console-web:3000;
+    keepalive 32;
+  }
+
+  upstream console_bff {
+    server console-bff:4001;
+    keepalive 32;
+  }
+
+  upstream keycloak_identity {
+    server keycloak:8080;
+    keepalive 16;
+  }
+
+  upstream grafana_native {
+    server grafana:3000;
+    keepalive 16;
+  }
+
+  upstream litellm_native {
+    server litellm:4000;
+    keepalive 16;
+  }
+
+  server {
+    listen 443 ssl default_server;
+    server_name "";
+    ssl_reject_handshake on;
+    return 421;
+  }
+
+  server {
+    listen 443 ssl;
+    server_name @@PRODUCT_CONSOLE_HOST@@;
+    ssl_certificate /run/secrets/llmm_edge_tls_certificate;
+    ssl_certificate_key /run/secrets/llmm_edge_tls_private_key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    set $llmm_public_host @@PRODUCT_CONSOLE_HOST@@;
+    set $llmm_surface rejected;
+    include /etc/nginx/llm-machines/request-safety.inc;
+
+    if ($ssl_server_name = "") { return 421; }
+    if ($http_host != $ssl_server_name) { return 421; }
+
+    location = /api/console/session/login {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_identity_unavailable?;
+      proxy_pass http://console_bff/api/console/session/login;
+    }
+
+    location = /api/console/session/callback {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_pass http://console_bff/api/console/session/callback;
+    }
+
+    location = /api/console/session/logout {
+      set $llmm_surface console;
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 1k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://console_bff/api/console/session/logout;
+    }
+
+    location = /api/console/session/elevate {
+      set $llmm_surface console;
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 4k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Content-Type "application/x-www-form-urlencoded";
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_identity_unavailable?;
+      proxy_pass http://console_bff/api/console/session/elevate;
+    }
+
+    location = /__llmm_identity_unavailable {
+      internal;
+      default_type application/problem+json;
+      add_header Cache-Control "no-store" always;
+      add_header Pragma "no-cache" always;
+      add_header Retry-After "5" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      return 503 '{"type":"urn:llm-machines:identity-unavailable","title":"Identity service unavailable","status":503,"detail":"Identity is temporarily unavailable. Retry this operation."}';
+    }
+
+    location = /api/internal/console-session/backchannel-logout {
+      set $llmm_surface identity;
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      proxy_set_header Accept $http_accept;
+      proxy_set_header Content-Length $content_length;
+      proxy_set_header Content-Type $http_content_type;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Authorization "";
+      proxy_set_header Cookie "";
+      proxy_set_header Origin "";
+      proxy_pass http://console_bff/api/internal/console-session/backchannel-logout;
+    }
+
+    location = /api/admin/audit/export {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_pass http://console_web/api/admin/audit/export;
+    }
+
+    location = /api/admin/audit/export/verification-keys {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_pass http://console_web/api/admin/audit/export/verification-keys;
+    }
+
+    location = / {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://console_web;
+    }
+
+    location ~ "^/(?:activity|hardware|inference|keys|applications|team)$" {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://console_web;
+    }
+
+    location ~ "^/(?:(?:keys|applications)/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$" {
+      set $llmm_surface console;
+      limit_except GET HEAD POST { deny all; }
+      if ($llmm_console_page_method_allowed = 0) { return 405; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://console_web;
+    }
+
+    location = /team/import/template {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_pass http://console_web/team/import/template;
+    }
+
+    location ~ ^/auth/(?:signin|elevate|unavailable)$ {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://console_web;
+    }
+
+    location ^~ /_next/ {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://console_web;
+    }
+
+    location ^~ /console-v2/ {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://console_web;
+    }
+
+    location ^~ /fonts/ {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://console_web;
+    }
+
+    location ~ ^/(?:apple-touch-icon\.png|favicon(?:-16x16|-32x32|-48x48)?\.png|favicon\.ico|icon\.svg)$ {
+      set $llmm_surface console;
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-console-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://console_web;
+    }
+
+    location ~* ^/(?:api/(?:app-gateway|internal|expert-ingress|live)|realms|admin|ui|public|key|model|router|metrics|graph|-|v0|v2/(?:crawl|map|batch|extract))(?:/|$) {
+      return 404;
+    }
+
+    location / {
+      return 404;
+    }
+  }
+
+  server {
+    listen 443 ssl;
+    server_name @@PRODUCT_API_HOST@@;
+    ssl_certificate /run/secrets/llmm_edge_tls_certificate;
+    ssl_certificate_key /run/secrets/llmm_edge_tls_private_key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    set $llmm_public_host @@PRODUCT_API_HOST@@;
+    set $llmm_surface rejected;
+    include /etc/nginx/llm-machines/request-safety.inc;
+
+    if ($ssl_server_name = "") { return 421; }
+    if ($http_host != $ssl_server_name) { return 421; }
+
+    location = /v1/models {
+      set $llmm_surface inference;
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_read_timeout 10s;
+      proxy_send_timeout 10s;
+      proxy_pass http://console_bff/api/app-gateway/v1/models;
+    }
+
+    location = /v1/chat/completions {
+      set $llmm_surface inference;
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 72m;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_read_timeout 310s;
+      proxy_send_timeout 310s;
+      proxy_pass http://console_bff/api/app-gateway/v1/chat/completions;
+    }
+
+    location / {
+      return 404;
+    }
+  }
+
+  server {
+    listen 443 ssl;
+    server_name @@PRODUCT_FIRECRAWL_HOST@@;
+    ssl_certificate /run/secrets/llmm_edge_tls_certificate;
+    ssl_certificate_key /run/secrets/llmm_edge_tls_private_key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    set $llmm_public_host @@PRODUCT_FIRECRAWL_HOST@@;
+    set $llmm_surface rejected;
+    include /etc/nginx/llm-machines/request-safety.inc;
+
+    if ($ssl_server_name = "") { return 421; }
+    if ($http_host != $ssl_server_name) { return 421; }
+
+    location = /v2/search {
+      set $llmm_surface firecrawl;
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 16k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_read_timeout 35s;
+      proxy_send_timeout 35s;
+      proxy_pass http://console_bff/v2/search;
+    }
+
+    location = /v2/scrape {
+      set $llmm_surface firecrawl;
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 16k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-customer-api.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_read_timeout 55s;
+      proxy_send_timeout 55s;
+      proxy_pass http://console_bff/v2/scrape;
+    }
+
+    location / {
+      return 404;
+    }
+  }
+
+  server {
+    listen 443 ssl;
+    server_name @@PRODUCT_IDENTITY_HOST@@;
+    ssl_certificate /run/secrets/llmm_edge_tls_certificate;
+    ssl_certificate_key /run/secrets/llmm_edge_tls_private_key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    set $llmm_public_host @@PRODUCT_IDENTITY_HOST@@;
+    set $llmm_surface identity;
+    include /etc/nginx/llm-machines/request-safety.inc;
+
+    if ($ssl_server_name = "") { return 421; }
+    if ($http_host != $ssl_server_name) { return 421; }
+    if ($http_cookie ~* "(?:^|;\\s*)__Host-llm-machines-(?:session|login)=") { return 400; }
+
+    location = /__llmm/console-login {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      return 303 https://@@PRODUCT_CONSOLE_HOST@@/;
+    }
+
+    location = /__llmm/global-logout {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      add_header Set-Cookie "AUTH_SESSION_ID=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None" always;
+      add_header Set-Cookie "KC_AUTH_SESSION_HASH=; Path=/realms/llm-machines/; Max-Age=0; Secure; SameSite=None" always;
+      add_header Set-Cookie "KC_RESTART=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None" always;
+      add_header Set-Cookie "KEYCLOAK_IDENTITY=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None" always;
+      add_header Set-Cookie "KEYCLOAK_SESSION=; Path=/realms/llm-machines/; Max-Age=0; HttpOnly; Secure; SameSite=None" always;
+      return 303 https://@@PRODUCT_CONSOLE_HOST@@/auth/signin;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/auth {
+      limit_except GET { deny all; }
+      if ($llmm_query_keycloak_authorization = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_intercept_errors on;
+      error_page 502 503 504 =303 /__llmm_identity_unavailable?;
+      proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/auth;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/logout {
+      limit_except GET HEAD POST { deny all; }
+      if ($llmm_query_keycloak_logout = 0) { return 400; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/logout;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/logout/logout-confirm {
+      limit_except GET HEAD POST { deny all; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/logout/logout-confirm;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/token {
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      if ($llmm_identity_token_origin_allowed = 0) { return 403; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Accept "application/json";
+      proxy_set_header Content-Length $content_length;
+      proxy_set_header Content-Type "application/x-www-form-urlencoded";
+      proxy_set_header Authorization "";
+      proxy_set_header Cookie "";
+      proxy_set_header Origin $llmm_identity_token_origin;
+      proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/token;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/revoke {
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Accept "application/json";
+      proxy_set_header Content-Length $content_length;
+      proxy_set_header Content-Type "application/x-www-form-urlencoded";
+      proxy_set_header Authorization "";
+      proxy_set_header Cookie "";
+      proxy_set_header Origin "";
+      proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/revoke;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/certs {
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Accept "application/json";
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_set_header Authorization "";
+      proxy_set_header Cookie "";
+      proxy_set_header Origin "";
+      proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/certs;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/userinfo {
+      limit_except GET HEAD POST { deny all; }
+      if ($args != "") { return 400; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Authorization $http_authorization;
+      proxy_set_header Referer $http_referer;
+      proxy_pass http://keycloak_identity/realms/llm-machines/protocol/openid-connect/userinfo;
+    }
+
+    location ~ ^/realms/llm-machines/protocol/openid-connect/3p-cookies/step[12]\.html$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/login-status-iframe.html {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /realms/llm-machines/protocol/openid-connect/login-status-iframe.html/init {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_keycloak_login_status = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /realms/llm-machines-applications/protocol/openid-connect/token {
+      limit_except POST { deny all; }
+      if ($args != "") { return 400; }
+      if ($llmm_application_client_authorization = "") { return 401; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Accept "application/json";
+      proxy_set_header Content-Length $content_length;
+      proxy_set_header Content-Type "application/x-www-form-urlencoded";
+      proxy_set_header Authorization $llmm_application_client_authorization;
+      proxy_set_header Cookie "";
+      proxy_set_header Origin "";
+      proxy_pass http://keycloak_identity/realms/llm-machines-applications/protocol/openid-connect/token;
+    }
+
+    location = /realms/llm-machines-applications/protocol/openid-connect/certs {
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Accept "application/json";
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_set_header Authorization "";
+      proxy_set_header Cookie "";
+      proxy_set_header Origin "";
+      proxy_pass http://keycloak_identity/realms/llm-machines-applications/protocol/openid-connect/certs;
+    }
+
+    location ^~ /realms/llm-machines/login-actions/ {
+      limit_except GET HEAD POST { deny all; }
+      if ($llmm_query_keycloak_login_action = 0) { return 400; }
+      client_max_body_size 24k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =303 /__llmm_identity_unavailable?;
+      proxy_pass http://keycloak_identity/realms/llm-machines/login-actions/;
+    }
+
+    location ^~ /resources/ {
+      limit_except GET { deny all; }
+      if ($args != "") { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-identity-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_set_header Content-Length "";
+      proxy_set_header Content-Type "";
+      proxy_pass http://keycloak_identity/resources/;
+    }
+
+    location = /__llmm_identity_unavailable {
+      internal;
+      add_header Cache-Control "no-store" always;
+      add_header Pragma "no-cache" always;
+      add_header Retry-After "5" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      return 303 https://@@PRODUCT_CONSOLE_HOST@@/auth/unavailable?returnTo=%2Fauth%2Fsignin;
+    }
+
+    location ~* ^/(?:admin|realms/(?:master|[^/]+)/admin|metrics|health)(?:/|$) {
+      return 404;
+    }
+
+    location / {
+      return 404;
+    }
+  }
+
+  server {
+    listen 443 ssl;
+    server_name @@PRODUCT_GRAFANA_HOST@@;
+    ssl_certificate /run/secrets/llmm_edge_tls_certificate;
+    ssl_certificate_key /run/secrets/llmm_edge_tls_private_key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    set $llmm_public_host @@PRODUCT_GRAFANA_HOST@@;
+    set $llmm_surface grafana-native;
+    include /etc/nginx/llm-machines/request-safety.inc;
+
+    if ($ssl_server_name = "") { return 421; }
+    if ($http_host != $ssl_server_name) { return 421; }
+    if ($http_cookie ~* "(?:^|;\\s*)__Host-llm-machines-(?:session|login)=") { return 400; }
+    if ($llmm_native_product_credential = 1) { return 400; }
+    proxy_intercept_errors on;
+    error_page 502 503 504 =503 /__llmm_native_unavailable?;
+
+    location = / {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_grafana_root = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /login {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_grafana_login = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /login/generic_oauth {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_grafana_oauth = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /user/auth-tokens/rotate {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_grafana_session_rotation = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/user/auth-tokens/rotate {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 1k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /logout {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_connect_timeout 2s;
+      proxy_read_timeout 2s;
+      proxy_send_timeout 2s;
+      proxy_intercept_errors on;
+      error_page 500 502 503 504 = @grafana_global_logout_fallback;
+      proxy_pass http://grafana_native;
+    }
+
+    location ~ ^/profile(?:/notifications)?$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location @grafana_global_logout_fallback {
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      add_header Set-Cookie "grafana_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "grafana_session_expiry=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      return 303 https://@@PRODUCT_LITELLM_HOST@@/__llmm/global-logout;
+    }
+
+    location ~ ^/api/plugins/(?:elasticsearch|tempo|zipkin)/settings$ {
+      return 404;
+    }
+
+    location ~ ^/api/(?:dashboards/home|login/ping|plugins|user|user/auth-tokens|user/orgs|user/stars|user/teams)$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/user/preferences {
+      limit_except GET HEAD PATCH PUT { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 16k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/user/revoke-auth-token {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 1k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location ~ "^/api/plugins/[a-z0-9_-]{1,128}/settings$" {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/dashboards/db {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 2m;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location ~ "^/d/(?:llmm-inference-core-overview/inference-core-overview|llmm-infra-overview/llm-machines-infrastructure-overview)$" {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_grafana_dashboard = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location ~ "^/api/dashboards/uid/(?:llmm-inference-core-overview|llmm-infra-overview)$" {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/ds/query {
+      limit_except POST { deny all; }
+      if ($llmm_query_grafana_prometheus_query = 0) { return 400; }
+      client_max_body_size 256k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location ~ "^/api/dashboards/uid/[A-Za-z0-9_-]{1,128}$" {
+      limit_except DELETE { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /api/frontend-metrics {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 32k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /apis/dashboard.grafana.app/ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /apis/dashboard.grafana.app/v0alpha1/namespaces/default/search {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_grafana_search = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location ~ "^/apis/dashboard\.grafana\.app/(?:v0alpha1|v1alpha1|v1beta1|v1|v2alpha1|v2beta1|v2)/namespaces/default/dashboards/(?:llmm-inference-core-overview|llmm-infra-overview)(?:/dto)?$" {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /apis/features.grafana.app/v0alpha1/namespaces/default/ofrep/v1/evaluate/flags {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 64k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location ~ "^/avatar/[A-Za-z0-9_-]{1,256}$" {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location ~ ^/(?:public/(?:build|fonts|img|plugins)/|resources/).+$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_grafana_static = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-grafana-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://grafana_native;
+    }
+
+    location = /__llmm_native_unavailable {
+      internal;
+      default_type application/problem+json;
+      add_header Cache-Control "no-store" always;
+      add_header Retry-After "5" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      return 503 '{"type":"urn:llm-machines:native-service-unavailable","title":"Technical service unavailable","status":503}';
+    }
+
+    location / {
+      return 404;
+    }
+  }
+
+  server {
+    listen 443 ssl;
+    server_name @@PRODUCT_LITELLM_HOST@@;
+    ssl_certificate /run/secrets/llmm_edge_tls_certificate;
+    ssl_certificate_key /run/secrets/llmm_edge_tls_private_key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    set $llmm_public_host @@PRODUCT_LITELLM_HOST@@;
+    set $llmm_surface litellm-native;
+    include /etc/nginx/llm-machines/request-safety.inc;
+
+    if ($ssl_server_name = "") { return 421; }
+    if ($http_host != $ssl_server_name) { return 421; }
+    if ($http_cookie ~* "(?:^|;\\s*)__Host-llm-machines-(?:session|login)=") { return 400; }
+    if ($llmm_native_product_credential = 1) { return 400; }
+    proxy_cookie_flags ~^(?:litellm_cp_return_to|litellm_oauth_state|sso_state)$ secure httponly samesite=lax;
+    proxy_cookie_flags token secure samesite=lax;
+    proxy_intercept_errors on;
+    error_page 502 503 504 =503 /__llmm_native_unavailable?;
+
+    location = /__llmm_litellm_browser_authorize {
+      internal;
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header Authorization "";
+      proxy_set_header Cookie $http_cookie;
+      proxy_set_header X-LLM-Machines-Native-Auth-Mode browser;
+      proxy_pass http://console_bff/api/internal/native-session/litellm/authorize;
+    }
+
+    location = /__llmm_litellm_key_authorize {
+      internal;
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header Authorization $http_authorization;
+      proxy_set_header Cookie "";
+      proxy_set_header X-LLM-Machines-Native-Auth-Mode key;
+      proxy_pass http://console_bff/api/internal/native-session/litellm/authorize;
+    }
+
+    location @litellm_reauthenticate {
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      return 303 https://@@PRODUCT_LITELLM_HOST@@/ui/login/;
+    }
+
+    location = /ui/ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_ui = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      error_page 401 = @litellm_reauthenticate;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://litellm_native;
+    }
+
+    location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_ui = 0) { return 400; }
+      return 308 https://@@PRODUCT_LITELLM_HOST@@$uri/;
+    }
+
+    location ~ ^/ui/(?:access-groups|admin-panel|api-keys|api-reference|budgets|caching|cost-optimization|cost-tracking|guardrails|guardrails-monitor|logging-and-alerts|logs|models-and-endpoints|old-usage|organizations|playground|policies|projects|prompts|router-settings|tag-management|teams|transform-request|ui-theme|usage|users)/$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_ui = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      error_page 401 = @litellm_reauthenticate;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://litellm_native;
+    }
+
+    location ~ ^/ui/login/?$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_ui = 0) { return 400; }
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      return 303 https://@@PRODUCT_LITELLM_HOST@@/sso/key/generate?return_to=https%3A%2F%2F@@PRODUCT_LITELLM_HOST@@%2Fui%2F;
+    }
+
+    location ~ ^/(?:litellm-asset-prefix/_next/static/|ui/__next\.|litellm/\.well-known/litellm-ui-config).*$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_rsc = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /sso/key/generate {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_sso_entry = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /__llmm/global-logout {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      default_type text/html;
+      add_header Cache-Control "no-store" always;
+      add_header Content-Security-Policy "default-src 'none'; script-src 'sha256-VbNiVsNvQhuaeXk4CCsEPOAaq+kGFm93zDY/X81uCqY='; base-uri 'none'; frame-ancestors 'none'; form-action 'none'" always;
+      add_header Referrer-Policy "no-referrer" always;
+      add_header Set-Cookie "token=; Path=/; Max-Age=0; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "token=; Path=/ui; Max-Age=0; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "litellm_cp_return_to=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "litellm_oauth_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "litellm_return_url=; Path=/; Max-Age=0; Secure; SameSite=Lax" always;
+      add_header Set-Cookie "sso_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+      return 200 '<!doctype html><meta charset="utf-8"><title>Signing out</title><script>(()=>{for(const p of["/","/ui"])document.cookie="token=; Max-Age=0; Path="+p+"; Secure; SameSite=Lax";try{sessionStorage.removeItem("token");for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith("m"+"cp-session-"+"to"+"ken:"))sessionStorage.removeItem(k)}}catch{}try{localStorage.removeItem("litellm_selected_worker_id");localStorage.removeItem("litellm_worker_url")}catch{}location.replace("/__llmm/global-logout/continue")})()</script>';
+    }
+
+    location = /__llmm/global-logout/continue {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+      return 303 https://@@PRODUCT_IDENTITY_HOST@@/__llmm/global-logout;
+    }
+
+    location = /sso/callback {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_oidc_callback = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /key/generate {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 64k;
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /key/list {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_key_list = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /key/info {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /key/delete {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 64k;
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /v2/key/info {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 64k;
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /user/info {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /models {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_models = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /model_group/info {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_model_group_info = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /v2/model/info {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_model_info_v2 = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /spend/logs/ui {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_spend_logs_ui = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /v2/team/list {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_team_list = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /team/list {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_litellm_team_list_v1 = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location ~ ^/(?:api/plugins|organization/list|policies/list|project/list|prompts/list|user/available_roles|user/available_users|v2/guardrails/list|v2/user/info)$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location ~ ^/(?:get/ui_settings|get/ui_theme_settings|get_image|get_favicon|health/license|health/readiness/details|sso/get/ui_settings)$ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location ~ ^/(?:model/new|team/new|organization/new|user/new|config/update)$ {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 256k;
+      auth_request /__llmm_litellm_browser_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /v1/models {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      auth_request /__llmm_litellm_key_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_pass http://litellm_native;
+    }
+
+    location = /v1/chat/completions {
+      limit_except POST { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 72m;
+      auth_request /__llmm_litellm_key_authorize;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-litellm-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_read_timeout 310s;
+      proxy_send_timeout 310s;
+      proxy_pass http://litellm_native;
+    }
+
+    location ~* ^/(?:public/litellm_blog_posts|v1/agents)(?:/|$) {
+      return 404;
+    }
+
+    location = /__llmm_native_unavailable {
+      internal;
+      default_type application/problem+json;
+      add_header Cache-Control "no-store" always;
+      add_header Retry-After "5" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      return 503 '{"type":"urn:llm-machines:native-service-unavailable","title":"Technical service unavailable","status":503}';
+    }
+
+    location / {
+      return 404;
+    }
+  }
+
+  server {
+    listen 443 ssl;
+    server_name @@PRODUCT_KEYCLOAK_ADMIN_HOST@@;
+    ssl_certificate /run/secrets/llmm_edge_tls_certificate;
+    ssl_certificate_key /run/secrets/llmm_edge_tls_private_key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    set $llmm_public_host @@PRODUCT_KEYCLOAK_ADMIN_HOST@@;
+    set $llmm_surface keycloak-admin-native;
+    include /etc/nginx/llm-machines/request-safety.inc;
+
+    if ($ssl_server_name = "") { return 421; }
+    if ($http_host != $ssl_server_name) { return 421; }
+    if ($http_cookie ~* "(?:^|;\\s*)__Host-llm-machines-(?:session|login)=") { return 400; }
+    if ($llmm_native_product_credential = 1) { return 400; }
+    proxy_intercept_errors on;
+    error_page 502 503 504 =503 /__llmm_native_unavailable?;
+
+    location = /keycloak/admin/llm-machines/console/whoami {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_keycloak_whoami = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location ^~ /keycloak/admin/llm-machines/console/ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_keycloak_console = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      proxy_intercept_errors on;
+      error_page 502 503 504 =503 /__llmm_native_unavailable?;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /keycloak/admin/realms/llm-machines {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /keycloak/admin/serverinfo {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /keycloak/admin/realms/llm-machines/ui-ext/info {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /keycloak/admin/realms/llm-machines/users/profile {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /keycloak/admin/realms/llm-machines/users {
+      limit_except GET HEAD POST { deny all; }
+      if ($llmm_query_keycloak_users = 0) { return 400; }
+      client_max_body_size 64k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location ~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}$" {
+      if ($request_method = DELETE) { return 403; }
+      limit_except GET HEAD PUT { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 64k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location ~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/reset-password$" {
+      limit_except PUT { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      client_max_body_size 32k;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location ~ "^/keycloak/admin/realms/llm-machines/users/[0-9a-f-]{36}/sessions$" {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location ~ "^/keycloak/admin/realms/llm-machines/sessions/[A-Za-z0-9_-]{24}$" {
+      limit_except DELETE { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location ~ "^/keycloak/admin/realms/llm-machines/groups(?:/[0-9a-f-]{36}(?:/members)?)?$" {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_keycloak_groups = 0) { return 400; }
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location ^~ /keycloak/resources/ {
+      limit_except GET HEAD { deny all; }
+      if ($llmm_query_none = 0) { return 400; }
+      proxy_pass_request_body off;
+      include /etc/nginx/llm-machines/proxy-common.inc;
+      include /etc/nginx/llm-machines/request-headers-keycloak-admin-browser.inc;
+      proxy_set_header Host $llmm_public_host;
+      rewrite ^/keycloak/(.*)$ /$1 break;
+      proxy_pass http://keycloak_identity;
+    }
+
+    location = /__llmm_native_unavailable {
+      internal;
+      default_type application/problem+json;
+      add_header Cache-Control "no-store" always;
+      add_header Retry-After "5" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      return 503 '{"type":"urn:llm-machines:native-service-unavailable","title":"Identity administration unavailable","status":503}';
+    }
+
+    location ~* ^/keycloak/(?:admin/(?:master|realms/(?:master|(?!(?:llm-machines)(?:/|$))[^/]+))|realms/(?:master|(?!(?:llm-machines)(?:/|$))[^/]+))(?:/|$) {
+      return 404;
+    }
+
+    location / {
+      return 404;
+    }
+  }
+}

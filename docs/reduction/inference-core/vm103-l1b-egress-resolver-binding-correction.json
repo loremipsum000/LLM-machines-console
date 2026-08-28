@@ -1,0 +1,44 @@
+{
+  "schema": "llm-machines.vm103-l1b-egress-resolver-binding-correction.v1",
+  "workPackage": "VM103-L1B-P5",
+  "status": "SOURCE_PROVISIONING_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "5d9996ca936586474757898be3fd5219fe839f61",
+    "tree": "a215a312f1b9ee5699221237389ca8d08857e7a0"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "result": "HTTPS_MIRROR_CONNECTION_TIMEOUT",
+    "cause": "FIREWALL_RESOLUTION_USED_DIFFERENT_DNS_AUTHORITY",
+    "policyResolver": "10.33.74.1",
+    "installerResolvedAddress": "199.232.18.132",
+    "renderedFirewallAddress": "199.232.190.132",
+    "provisioningHostDigVersion": "9.20.23-1~deb13u1-Debian",
+    "provisioningHostPythonVersion": "3.13.5",
+    "vmStateAfterObservation": "STOPPED_PARTIAL_INSTALL_PRESERVED",
+    "failedAttemptSnapshot": "rpool/data/vm-118-disk-0@failed-egress-resolver-mismatch-5d9996c"
+  },
+  "correction": {
+    "resolutionSchema": "llm-machines.vm103-l1b-egress-resolution.v2",
+    "executionHost": "PROXMOX_PROVISIONING_HOST",
+    "resolverTool": "/usr/bin/dig",
+    "resolverBoundToSourcePolicy": true,
+    "resolverIdentityRecorded": true,
+    "differentResolverRejected": true,
+    "liveFirewallExceptionAdded": false
+  },
+  "boundaries": {
+    "manualInstallerSelectionProhibited": true,
+    "vm118RemainsStoppedUntilProtectedAdmission": true,
+    "otherVmOrWorkloadChanged": false,
+    "productRuntimeChanged": false,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}

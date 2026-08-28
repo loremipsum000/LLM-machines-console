@@ -1,0 +1,338 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "PR-06",
+  "scope": "application-control-plane",
+  "contractBaseCommit": "da6f0c0a2b5e477449a09527a28c7e51ef432c20",
+  "laneAnchorCommit": "da6f0c0a2b5e477449a09527a28c7e51ef432c20",
+  "operationPolicy": {
+    "addedSourcePaths": [],
+    "changedSourcePaths": [
+      "apps/bff/README.md",
+      "apps/bff/src/config/fixture-mode.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/app-gateway.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-inference.ts",
+      "apps/bff/src/services/admin-litellm-client.ts",
+      "apps/bff/src/services/idempotency.ts",
+      "apps/bff/src/services/identity-mutation-journal.ts",
+      "apps/bff/src/services/inference-core-keycloak-admin.ts",
+      "apps/bff/src/services/users.ts",
+      "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+      "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "apps/web/src/lib/admin/actions-core.ts",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "package.json",
+      "packages/contracts/src/inference-core.ts"
+    ],
+    "deletedSourcePaths": [],
+    "addedRepositoryPaths": [
+      "apps/bff/src/config/fixture-mode.test.ts",
+      "apps/bff/src/routes/admin-connected-apps-lifecycle.test.ts",
+      "apps/bff/src/services/admin-inference.test.ts",
+      "apps/bff/src/services/admin-litellm-client.test.ts",
+      "apps/bff/src/services/litellm-chat-transport.test.ts",
+      "apps/web/src/components/console-v2/applications-v2-experience.test.tsx",
+      "docs/reduction/inference-core/pr-06-application-decisions.json",
+      "infra/keycloak/inference-core-application-realm-commissioning.json",
+      "infra/keycloak/inference-core-application-realm-seed.json",
+      "scripts/inference-core/pr06-boundaries.test.mjs",
+      "scripts/inference-core/pr06-contract-revision.mjs",
+      "test-support/inference-core-db-tests/src/pr06-application-credential-reconciliation.test.ts"
+    ],
+    "changedRepositoryPaths": [
+      ".env.example",
+      "apps/bff/README.md",
+      "apps/bff/src/config/fixture-mode.ts",
+      "apps/bff/src/db/inference-core-client.ts",
+      "apps/bff/src/db/inference-core-schema.test.ts",
+      "apps/bff/src/db/inference-core-schema.ts",
+      "apps/bff/src/index.test.ts",
+      "apps/bff/src/index.ts",
+      "apps/bff/src/routes/admin-authorization.test.ts",
+      "apps/bff/src/routes/admin-inference.test.ts",
+      "apps/bff/src/routes/admin.test.ts",
+      "apps/bff/src/routes/admin.ts",
+      "apps/bff/src/routes/app-gateway-accounting-errors.test.ts",
+      "apps/bff/src/routes/app-gateway.test.ts",
+      "apps/bff/src/routes/app-gateway.ts",
+      "apps/bff/src/routes/inference-core-characterization.test.ts",
+      "apps/bff/src/services/admin-connected-apps-accounting.test.ts",
+      "apps/bff/src/services/admin-connected-apps-atomicity.test.ts",
+      "apps/bff/src/services/admin-connected-apps.ts",
+      "apps/bff/src/services/admin-inference.ts",
+      "apps/bff/src/services/admin-litellm-client.ts",
+      "apps/bff/src/services/admin-team-live-authority.test.ts",
+      "apps/bff/src/services/expert-capabilities.test.ts",
+      "apps/bff/src/services/idempotency.ts",
+      "apps/bff/src/services/identity-mutation-journal.test.ts",
+      "apps/bff/src/services/identity-mutation-journal.ts",
+      "apps/bff/src/services/inference-core-keycloak-admin.test.ts",
+      "apps/bff/src/services/inference-core-keycloak-admin.ts",
+      "apps/bff/src/services/users.ts",
+      "apps/web/src/components/console-v2/applications-v2-experience.tsx",
+      "apps/web/src/components/console-v2/inference-v2-experience.tsx",
+      "apps/web/src/components/console-v2/role-aware-presentation.test.tsx",
+      "apps/web/src/lib/admin/actions-core.test.ts",
+      "apps/web/src/lib/admin/actions-core.ts",
+      "apps/web/src/lib/admin/console-v2-routes-core.tsx",
+      "docs/reduction/inference-core/README.md",
+      "infra/keycloak/README.md",
+      "infra/keycloak/inference-core-commissioning.json",
+      "infra/keycloak/inference-core-realm-seed.json",
+      "infra/migrations/0000_inference_core.sql",
+      "package.json",
+      "packages/contracts/src/inference-core.test.ts",
+      "packages/contracts/src/inference-core.ts",
+      "scripts/inference-core/guardrails.mjs",
+      "scripts/inference-core/guardrails.test.mjs",
+      "scripts/inference-core/pr05-keycloak-seed.mjs",
+      "scripts/inference-core/pr05-keycloak-seed.test.mjs",
+      "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/pr05-identity-mutation-journal.test.ts"
+    ],
+    "deletedRepositoryPaths": []
+  },
+  "reviewStatus": "reviewed",
+  "reviewedDispositions": {
+    "applicationLifecycle": {
+      "states": ["enabled", "disabled", "deleted"],
+      "authenticationMode": "immutable-after-create",
+      "environmentQualifiedCredentials": false,
+      "softDelete": {
+        "credentialsRevokedImmediately": true,
+        "identifiersAndAuditLinkageRetained": true
+      }
+    },
+    "credentialLifecycle": {
+      "supportedInferenceModes": ["api_key", "oauth_client_credentials"],
+      "defaultInferenceMode": "api_key",
+      "oneApplicationCredentialNamespacePerApplication": true,
+      "plaintextPersistence": false,
+      "oneTimeSecretDisplay": true,
+      "staticKeyAutomaticExpiry": false,
+      "oauthClientSecretAutomaticExpiry": false,
+      "oauthAccessTokenLifetimeSeconds": 300
+    },
+    "applicationPolicy": {
+      "stableModelAliasAllowlistRequired": true,
+      "silentModelSubstitution": false,
+      "missingOrUnhealthyAlias": "degraded-and-fail-closed",
+      "requestLimit": "optional-disabled-by-default",
+      "tokenLimit": "optional-disabled-by-default"
+    },
+    "rotation": {
+      "staticKeyOverlapSeconds": 86400,
+      "retiringStaticKeyImmediateRevoke": true,
+      "oauthOldClientSecretInvalidation": "immediate",
+      "issuedOauthAccessTokens": "valid-only-until-short-expiry"
+    },
+    "connectionEvidence": {
+      "source": "authenticated-real-client-get-models",
+      "activeProbe": false,
+      "metadataOnly": true,
+      "applianceReadinessIsClientConnectionProof": false
+    },
+    "credentialIsolation": {
+      "inferenceAndFirecrawlInterchangeable": false,
+      "inferenceAndLiteLlmNativeKeysInterchangeable": false,
+      "firecrawlAndLiteLlmNativeKeysInterchangeable": false,
+      "liteLlmProjection": "redacted-read-only"
+    },
+    "oauthReconciliation": {
+      "journal": "admin.identity_mutation_journal",
+      "targetType": "oauth_client",
+      "durableIntentBeforeKeycloakMutation": true,
+      "ambiguousCompletion": "reconciliation-required-no-automatic-reexecution",
+      "parallelApplicationJournal": false
+    },
+    "authority": {
+      "adminOnly": ["create", "policy-change", "re-enable", "soft-delete"],
+      "adminOrOperator": ["disable", "test", "rotate", "revoke"]
+    },
+    "keycloakApplicationAdministration": {
+      "allowedRealmTopologies": ["dedicated-application-realm"],
+      "realmTopology": "dedicated-application-realm"
+    },
+    "packageBoundaries": {
+      "pr06": [
+        "application-lifecycle-and-policy",
+        "application-oauth-client-lifecycle",
+        "application-credential-reconciliation"
+      ],
+      "pr07": [
+        "oauth-access-token-validation",
+        "runtime-limit-enforcement",
+        "inference-data-plane-qualification"
+      ],
+      "pr08": ["firecrawl-credential-lifecycle"],
+      "pr09": ["cross-system-audit-ingestion", "signed-audit-export"]
+    }
+  },
+  "standaloneDbTestBoundary": {
+    "path": "test-support/inference-core-db-tests",
+    "classification": "standalone-test-only-workspace",
+    "allowedPaths": [
+      "test-support/inference-core-db-tests/package.json",
+      "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "test-support/inference-core-db-tests/src/admin-connected-apps-storage.test.ts",
+      "test-support/inference-core-db-tests/src/idempotency.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-migration.test.ts",
+      "test-support/inference-core-db-tests/src/inference-core-retention.test.ts",
+      "test-support/inference-core-db-tests/src/pr05-emergency-recovery.test.ts",
+      "test-support/inference-core-db-tests/src/pr05-identity-mutation-journal.test.ts",
+      "test-support/inference-core-db-tests/src/pr06-application-credential-reconciliation.test.ts",
+      "test-support/inference-core-db-tests/tsconfig.json"
+    ],
+    "packageManifest": {
+      "path": "test-support/inference-core-db-tests/package.json",
+      "sha256": "ff725f8972d4a0e4ed349daa1ffbfb4aa10ab40a4c76be60f739125781c85470",
+      "name": "@llm-machines/inference-core-db-tests",
+      "packageManager": "pnpm@10.0.0",
+      "scripts": {
+        "test": "vitest run",
+        "typecheck": "tsc --project tsconfig.json"
+      },
+      "devDependencies": {
+        "@electric-sql/pglite": "0.5.4",
+        "@types/node": "22.15.18",
+        "drizzle-orm": "0.44.2",
+        "typescript": "5.8.3",
+        "vitest": "3.1.4"
+      }
+    },
+    "lockfile": {
+      "path": "test-support/inference-core-db-tests/pnpm-lock.yaml",
+      "sha256": "a7318f062798050494d0651ba28ca8ae50ab01b1db085bb1bdd884f3e79d5c61"
+    },
+    "workspaceManifest": {
+      "path": "test-support/inference-core-db-tests/pnpm-workspace.yaml",
+      "sha256": "44b627aa58902d12f2b7469e46784fd611bac456409c630d7636c0e7059c14aa"
+    },
+    "tsconfig": {
+      "path": "test-support/inference-core-db-tests/tsconfig.json",
+      "sha256": "28282abe534bce160861ed5c0798292c960cb61c7dfa5636d552a245c7223d09"
+    },
+    "rootIsolation": {
+      "workspaceManifestPath": "pnpm-workspace.yaml",
+      "rootLockfilePath": "pnpm-lock.yaml",
+      "productionManifestPath": "apps/bff/package.json",
+      "pglitePackage": "@electric-sql/pglite",
+      "drizzlePackage": "drizzle-orm@0.44.2",
+      "pglitePeerRange": ">=0.2.0",
+      "allowedRootMetadataOccurrences": 2
+    },
+    "rootScripts": {
+      "test:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests test",
+      "typecheck:inference-core-db": "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests typecheck"
+    }
+  },
+  "resolverFingerprints": [
+    {
+      "path": "apps/bff/src/auth/authorization.ts",
+      "symbol": "<file>",
+      "sha256": "003776367928a1bebcc77b2f181393eb63eb6651dcaa4085135a3da11b557470"
+    },
+    {
+      "path": "apps/bff/src/auth/runtime-live-authority.ts",
+      "symbol": "<file>",
+      "sha256": "0ca02d54900a9f645b0abad5269164fbdf97affd2d3f67126d7c5fa158169799"
+    },
+    {
+      "path": "apps/bff/src/index.ts",
+      "symbol": "<file>",
+      "sha256": "86e9f1722a5fef97f64aadd09b61eb51cc4f028a54c91595e6d633bc5273c475"
+    },
+    {
+      "path": "apps/web/next.config.ts",
+      "symbol": "<file>",
+      "sha256": "58f841f6ee4170e90c110e33727d85dabe6a2c096784b05940319d770a958f8b"
+    },
+    {
+      "path": "apps/web/src/lib/auth/auth.ts",
+      "symbol": "<file>",
+      "sha256": "142c783a7ab90c05a56bad8c2283f8cb4b900cc9eb7b32624697bc71f4ff8b66"
+    }
+  ],
+  "target": {
+    "findingEntriesDueByPr06": 0,
+    "remainingFindingEntries": 1,
+    "fs105BuilderHubTombstones": [
+      {
+        "path": "apps/web/src/middleware.test.ts",
+        "removeBy": "PR-12"
+      }
+    ],
+    "legacyRoutes": 0,
+    "routes": 86,
+    "routeClassifications": {
+      "current-console-seam": 77,
+      "operational-auth": 4,
+      "private-operational": 3,
+      "required-now": 2
+    },
+    "addedApplicationRoutes": [
+      {
+        "surface": "bff",
+        "method": "DELETE",
+        "path": "/api/admin/applications/connected-apps/:id",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/credentials/:credentialId/revoke",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      },
+      {
+        "surface": "bff",
+        "method": "POST",
+        "path": "/api/admin/applications/connected-apps/:id/enable",
+        "source": "apps/bff/src/routes/admin.ts",
+        "classification": "current-console-seam"
+      }
+    ],
+    "adminOnlyRoutePolicyKeys": [
+      "GET /api/admin/recovery/status",
+      "POST /api/admin/recovery/factor/commission",
+      "POST /api/admin/settings/organization",
+      "POST /api/admin/settings/telemetry"
+    ],
+    "fastifyRegistrars": [
+      {
+        "exportName": "registerAdminRoutes",
+        "importSource": "./routes/admin",
+        "sourcePath": "apps/bff/src/routes/admin.ts"
+      },
+      {
+        "exportName": "registerAppGatewayRoutes",
+        "importSource": "./routes/app-gateway",
+        "sourcePath": "apps/bff/src/routes/app-gateway.ts"
+      },
+      {
+        "exportName": "registerAuthorization",
+        "importSource": "./auth/authorization",
+        "sourcePath": "apps/bff/src/auth/authorization.ts"
+      }
+    ],
+    "webInferenceConsumers": 0,
+    "escapeHatchPaths": []
+  },
+  "webAuthenticationEvidence": [
+    {
+      "path": "apps/web/src/middleware.test.ts",
+      "sha256": "40e62e44aaddcbc2a3a6f5f2602751405e3c5dc23244ee218fb9cedaa257aec5"
+    },
+    {
+      "path": "apps/web/src/middleware.ts",
+      "sha256": "c31e5f8b645586166ad3e1a829adb4384a96e80cd218b26be61574b61117fc84"
+    }
+  ]
+}

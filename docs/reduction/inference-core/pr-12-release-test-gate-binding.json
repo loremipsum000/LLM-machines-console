@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "PR-12-RELEASE-TEST-GATE-SUCCESSOR",
+  "status": "SOURCE_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "d2aRc": "NOT_STARTED",
+  "base": {
+    "commit": "6f7f92a2cd3f8406f73b622155dc3ad25fa8cd9e",
+    "tree": "ba732496afc48015e0875d7cd9bf2098b710de50"
+  },
+  "commands": {
+    "release": "node --test infra/inference/*.test.mjs infra/release/*.test.mjs infra/firecrawl/release/*.test.mjs infra/keycloak/*.test.mjs scripts/inference-core/pr12-*.test.mjs",
+    "product": "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm run test:release && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test"
+  },
+  "suites": [
+    "infra/inference/*.test.mjs",
+    "infra/release/*.test.mjs",
+    "infra/firecrawl/release/*.test.mjs",
+    "infra/keycloak/*.test.mjs",
+    "scripts/inference-core/pr12-*.test.mjs"
+  ],
+  "protectedFiles": [
+    {
+      "path": "package.json",
+      "sha256": "aecb0f9633c9b1abde5d83838fa82bf3bb9b6f4159a80975badfc88eec32d1ba"
+    },
+    {
+      "path": "scripts/inference-core/guardrails.mjs",
+      "sha256": "13f23648bd9fbb01642c593dd8ef8f06e6f875a3ba197f09b43d4fcb270a98a7"
+    },
+    {
+      "path": "scripts/inference-core/pr12-release-gate.test.mjs",
+      "sha256": "ea25a0e7bf5b4fd83f2104c8bf330a38f1284ad0ac39ae40375cc9862d165a34"
+    }
+  ]
+}

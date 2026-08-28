@@ -1,0 +1,955 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "1 - avg by (host) (rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[5m]))",
+          "legendFormat": "{{host}}",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU utilization",
+      "type": "timeseries",
+      "description": "Average non-idle CPU time from node_exporter."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "hw_temperature_celsius{job=\"xpu\",hw_sensor_location=~\"gpu|memory\",statistic=\"max\"}",
+          "legendFormat": "{{host}} {{hw_sensor_location}}",
+          "refId": "A"
+        }
+      ],
+      "title": "XPU temperature",
+      "type": "timeseries",
+      "description": "Genuine Intel Arc temperatures from official XPUM."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "100 * hw_memory_utilization_ratio{job=\"xpu\",hw_memory_location=\"device\"}",
+          "legendFormat": "{{host}} {{pci_bdf}}",
+          "refId": "A"
+        }
+      ],
+      "title": "XPU memory utilization",
+      "type": "timeseries",
+      "description": "Genuine Intel XPU device-memory utilization from official XPUM."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "node_memory_MemTotal_bytes{job=\"node\"} - node_memory_MemAvailable_bytes{job=\"node\"}",
+          "legendFormat": "{{host}} used",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "node_memory_MemTotal_bytes{job=\"node\"}",
+          "legendFormat": "{{host}} total",
+          "refId": "B"
+        }
+      ],
+      "title": "RAM",
+      "type": "timeseries",
+      "description": "Used and total system memory from node_exporter."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "100 * (1 - (node_filesystem_avail_bytes{job=\"node\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|fuse.*\",device!~\"/dev/fuse\",mountpoint!~\"/run.*|/var/lib/docker/.+\"} / node_filesystem_size_bytes{job=\"node\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|fuse.*\",device!~\"/dev/fuse\",mountpoint!~\"/run.*|/var/lib/docker/.+\"}))",
+          "legendFormat": "{{host}} {{mountpoint}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Filesystem used",
+      "type": "timeseries",
+      "description": "Filesystem utilization excluding transient, overlay, and FUSE mounts."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "100 * hw_gpu_utilization_ratio{job=\"xpu\",hw_gpu_task=\"all\"}",
+          "legendFormat": "{{host}} {{pci_bdf}}",
+          "refId": "A"
+        }
+      ],
+      "title": "XPU utilization",
+      "type": "timeseries",
+      "description": "Genuine Intel XPU all-engine utilization from official XPUM."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "rate(node_network_receive_bytes_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*\"}[5m])",
+          "legendFormat": "{{host}} {{device}} rx",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "rate(node_network_transmit_bytes_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*\"}[5m])",
+          "legendFormat": "{{host}} {{device}} tx",
+          "refId": "B"
+        }
+      ],
+      "title": "Network throughput",
+      "type": "timeseries",
+      "description": "Receive and transmit throughput from node_exporter."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "rate(node_network_receive_errs_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*\"}[5m]) + rate(node_network_transmit_errs_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*\"}[5m]) + rate(node_network_receive_drop_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*\"}[5m]) + rate(node_network_transmit_drop_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*\"}[5m])",
+          "legendFormat": "{{host}} {{device}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Network drops and errors",
+      "type": "timeseries",
+      "description": "Genuine network drop and error rates from node_exporter."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "reset required"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "healthy"
+                }
+              },
+              "type": "value"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 24
+      },
+      "id": 16,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.1.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "1 - hw_status{job=\"xpu\",hw_type=\"gpu\",hw_state=\"reset_needed\"}",
+          "legendFormat": "{{host}} {{pci_bdf}}",
+          "refId": "A"
+        }
+      ],
+      "title": "XPU device health",
+      "type": "stat",
+      "description": "Derived directly from XPUM reset-needed state: 1 healthy, 0 requires reset."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "inactive"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "active"
+                }
+              },
+              "type": "value"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 24
+      },
+      "id": 17,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.1.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "hw_status{job=\"xpu\",hw_type=\"frequency\",hw_state=~\"ok|throttled\"}",
+          "legendFormat": "{{host}} {{hw_frequency_domain}} {{hw_state}}",
+          "refId": "A"
+        }
+      ],
+      "title": "XPU frequency and throttling state",
+      "type": "stat",
+      "description": "Official XPUM frequency status. Throttle-reason series are emitted only after a real driver-reported event."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 24
+      },
+      "id": 18,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "hw_power_watts{job=\"xpu\",hw_sensor_location=~\"card|package\"}",
+          "legendFormat": "{{host}} {{hw_sensor_location}}",
+          "refId": "A"
+        }
+      ],
+      "title": "XPU power",
+      "type": "timeseries",
+      "description": "Genuine Intel XPU card and package power from official XPUM."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 31
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "ipmi_temperature_celsius{job=\"ipmi\"}",
+          "legendFormat": "{{host}} {{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Chassis temperatures",
+      "type": "timeseries",
+      "description": "Genuine BMC temperature-sensor readings."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rpm"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 31
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "ipmi_fan_speed_rpm{job=\"ipmi\"}",
+          "legendFormat": "{{host}} {{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Chassis fan speed",
+      "type": "timeseries",
+      "description": "Genuine BMC fan-speed readings."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 39
+      },
+      "id": 9,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "{__name__=~\"ipmi_(temperature|fan_speed|voltage|current|power|sensor)_state\",job=\"ipmi\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{host}} {{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "BMC sensor health and faults",
+      "type": "table",
+      "description": "All genuine BMC sensor severities; nonzero values are warning or critical."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 39
+      },
+      "id": 10,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "ALERTS{alertstate=\"firing\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Active infrastructure alerts",
+      "type": "table",
+      "description": "Current Prometheus firing alerts. An empty table means no firing rule series."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 46
+      },
+      "id": 14,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.1.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "ipmi_power_watts{job=\"ipmi\",name=\"PW consumption\"}",
+          "legendFormat": "{{host}} chassis",
+          "refId": "A"
+        }
+      ],
+      "title": "Appliance power draw",
+      "type": "stat",
+      "description": "Genuine current chassis input power from the BMC PW consumption sensor."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 46
+      },
+      "id": 15,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.1.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "avg_over_time(ipmi_power_watts{job=\"ipmi\",name=\"PW consumption\"}[30d]) * 24 * 30 / 1000",
+          "legendFormat": "{{host}} projected",
+          "refId": "A"
+        }
+      ],
+      "title": "Projected monthly energy",
+      "type": "stat",
+      "description": "Projected 30-day kWh from the genuine samples currently retained; not historical 30-day consumption until a complete window exists."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "off"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "on"
+                }
+              },
+              "type": "value"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 46
+      },
+      "id": 21,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.1.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "ipmi_chassis_power_state{job=\"ipmi\"}",
+          "legendFormat": "{{host}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Chassis power state",
+      "type": "stat",
+      "description": "Genuine BMC chassis power state."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "llmm-hardware-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "iops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 53
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "rate(node_disk_reads_completed_total{job=\"node\",device!~\"loop.*|ram.*\"}[5m])",
+          "legendFormat": "{{host}} {{device}} reads",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "llmm-hardware-prometheus"
+          },
+          "expr": "rate(node_disk_writes_completed_total{job=\"node\",device!~\"loop.*|ram.*\"}[5m])",
+          "legendFormat": "{{host}} {{device}} writes",
+          "refId": "B"
+        }
+      ],
+      "title": "Disk IOPS",
+      "type": "timeseries",
+      "description": "Read and write operations from node_exporter."
+    },
+    {
+      "description": "Explicit unavailable-state marker; no synthetic telemetry.",
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 61
+      },
+      "id": 22,
+      "options": {
+        "content": "PDM telemetry is **stopped and unavailable**. The management system remains intentionally outside this collector scope.",
+        "mode": "markdown"
+      },
+      "title": "PDM telemetry",
+      "type": "text"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["llm-machines", "infra", "hardware", "ipmi", "intel-xpu"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "LLM Machines Infrastructure Overview",
+  "uid": "llmm-infra-overview",
+  "version": 2,
+  "weekStart": "",
+  "description": "Read-only appliance hardware dashboard backed only by the private management-side Prometheus datasource."
+}

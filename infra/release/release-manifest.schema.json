@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://llm-machines.invalid/schemas/release-manifest.v2.json",
+  "title": "LLM Machines deterministic Core release manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "release",
+    "contracts",
+    "artifacts",
+    "qualification"
+  ],
+  "properties": {
+    "schema": { "const": "llm-machines.release-manifest.v2" },
+    "status": { "const": "PACKAGED_UNQUALIFIED" },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "artifactName",
+        "sourceCommit",
+        "sourceTree",
+        "sourceDateEpoch",
+        "evidenceEvaluatedAt",
+        "platform"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+        },
+        "artifactName": {
+          "type": "string",
+          "pattern": "^llm-machines-core-[0-9A-Za-z.-]+-linux-amd64\\.tar\\.zst$"
+        },
+        "sourceCommit": { "$ref": "#/$defs/sha1" },
+        "sourceTree": { "$ref": "#/$defs/sha1" },
+        "sourceDateEpoch": { "type": "integer", "minimum": 1 },
+        "evidenceEvaluatedAt": { "type": "string", "format": "date-time" },
+        "platform": { "const": "linux/amd64" }
+      }
+    },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "releasePlanSha256",
+        "releaseEvidencePolicySha256",
+        "coreImageInventorySha256",
+        "coreImageLockSha256",
+        "deploymentPlacementSchemaSha256",
+        "deliveryProfileSchemaSha256",
+        "inferenceArtifactLockSchemaSha256",
+        "firecrawlSourcePackageSha256",
+        "initialInstallDescriptorSchemaSha256",
+        "productInstallationStateSchemaSha256",
+        "rollbackDescriptorSchemaSha256"
+      ],
+      "properties": {
+        "releasePlanSha256": { "$ref": "#/$defs/sha256" },
+        "releaseEvidencePolicySha256": { "$ref": "#/$defs/sha256" },
+        "coreImageInventorySha256": { "$ref": "#/$defs/sha256" },
+        "coreImageLockSha256": { "$ref": "#/$defs/sha256" },
+        "deploymentPlacementSchemaSha256": { "$ref": "#/$defs/sha256" },
+        "deliveryProfileSchemaSha256": { "$ref": "#/$defs/sha256" },
+        "inferenceArtifactLockSchemaSha256": { "$ref": "#/$defs/sha256" },
+        "firecrawlSourcePackageSha256": { "$ref": "#/$defs/sha256" },
+        "initialInstallDescriptorSchemaSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "productInstallationStateSchemaSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "rollbackDescriptorSchemaSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "evidenceId",
+          "path",
+          "size",
+          "sha256",
+          "mediaType",
+          "classification"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+          },
+          "evidenceId": {
+            "type": ["string", "null"],
+            "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+          },
+          "size": { "type": "integer", "minimum": 0 },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "mediaType": { "type": "string", "minLength": 3 },
+          "classification": {
+            "enum": [
+              "core",
+              "evidence",
+              "license",
+              "source",
+              "installer",
+              "rollback",
+              "public-trust"
+            ]
+          }
+        }
+      }
+    },
+    "qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtimeQualified", "q0", "contractActivation"],
+      "properties": {
+        "runtimeQualified": { "const": false },
+        "q0": { "const": "NOT_STARTED" },
+        "contractActivation": { "const": "INACTIVE" }
+      }
+    }
+  },
+  "$defs": {
+    "sha1": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}

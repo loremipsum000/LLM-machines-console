@@ -1,0 +1,115 @@
+{
+  "schema": "llm-machines.vm103-l1b-ipv4-canonicalization-correction.v1",
+  "workPackage": "VM103-L1B-P10",
+  "status": "SOURCE_CANONICALIZATION_SUCCESSOR_CANDIDATE",
+  "accepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "q0": "NOT_STARTED",
+  "genesisPublished": false,
+  "protectedInput": {
+    "commit": "8744e5613b3c33722c0d508031416eed8eb53ac4",
+    "tree": "16b3b9c8d2af69a5453ad9fbf1ca0bcfe0f25050"
+  },
+  "runtimeObservation": {
+    "vmid": 118,
+    "stage": "PRE_TRANSACTION",
+    "result": "CANONICAL_ADDRESS_ORDER_MISMATCH",
+    "resolutionSha256": "a1f6f7b6ba8696b97cb3c4fc8e43263fb79f512441c6f7ce03c1436d8cc8e7fe",
+    "failureStderrSha256": "a4903f37ce6c662db4e91d750455279cea31f8696cedd40939f60639c91f8924",
+    "diagnosticSha256": "92ee62aafe6d66c173c1f6d272328479003f0967c79852150619bda392f721cc",
+    "affectedHostCount": 12,
+    "firewallChanged": false,
+    "bootstrapStarted": false,
+    "assemblyAStarted": false
+  },
+  "correction": {
+    "canonicalRule": "IPV4_NUMERIC_ASCENDING",
+    "resolutionSchema": "llm-machines.vm103-l1b-egress-resolution.v3",
+    "resolverEnforcesRule": true,
+    "javascriptValidatorEnforcesRule": true,
+    "pythonBindingValidatorEnforcesRule": true,
+    "lexicalOrderRejected": true,
+    "egressPolicyBroadened": false
+  },
+  "implementationCandidate": {
+    "commit": "01891588baaf99e1cfb85bc7a2276674daa4777c",
+    "tree": "1635614814b30a70f71996c3db1ab246a9c14964"
+  },
+  "validation": {
+    "commands": [
+      "corepack pnpm install --frozen-lockfile",
+      "node --test infra/release/l1b/resolve-egress-hosts.test.mjs infra/release/l1b/egress-transaction.test.mjs infra/release/l1b/render-egress-bindings.test.mjs infra/release/l1b/render-proxmox-firewall.test.mjs infra/release/l1b/validate-source.test.mjs scripts/inference-core/vm103-l1b-proxmox-firewall-compatibility.test.mjs scripts/inference-core/vm103-l1b-ipv4-canonicalization-correction.test.mjs",
+      "corepack pnpm test",
+      "corepack pnpm run test:release",
+      "corepack pnpm exec biome check .",
+      "corepack pnpm run typecheck",
+      "corepack pnpm run build",
+      "git diff --check 8744e5613b3c33722c0d508031416eed8eb53ac4...HEAD",
+      "git fsck --full"
+    ],
+    "local": {
+      "result": "PASS",
+      "focusedTests": 24,
+      "rootGuardrailTests": 659,
+      "releaseTests": 206,
+      "databaseTests": 126,
+      "contractsTests": 69,
+      "webTests": 187,
+      "bffTests": 887,
+      "biomeFiles": 629,
+      "fsckDisposition": "PASS_WITH_UNREFERENCED_DANGLING_OBJECTS",
+      "logSha256": {
+        "install": "5ba4056c3801424e6278d8f21d3b92e699daa6d913fe3ab68daebe2247553425",
+        "focused": "91f59f8ea4f7d5cd883f225c4ad76241ba7825e07b95890470f5495f605f7289",
+        "root": "d5e5ec1ad00b2ecded2b35255e3d230982df7d87b69d0faf617196687acc2bef",
+        "release": "df3ef549f6513b73d171cfe3ca3629016773deef1ac2a895862b5ee46d790d8c",
+        "biome": "2787571779fafe9fb42fee097aa309b2108f94122fc3f165b7cafd7ca0d36194",
+        "typecheck": "545f413940b38b1d578ff37f132148faea4f80242409fdabf9b2e1baaf89aaef",
+        "build": "f5a80184a5538b48d135582ad1bce7537495ad826c9da1328e6380e1eddec928",
+        "gitChecks": "b33fc957ef8d29a3673f11e28cc75e10ae31dca26ad2482891e81da171b415d4",
+        "security": "99ede6c534c32d9f10027a2a8fad2f82a676d9abe57a742e3ed2a869ac44a9eb"
+      }
+    },
+    "detachedClone": {
+      "result": "PASS",
+      "commit": "01891588baaf99e1cfb85bc7a2276674daa4777c",
+      "tree": "1635614814b30a70f71996c3db1ab246a9c14964",
+      "logSha256": {
+        "clone": "583f9107dce71bb327b47c767755ae6cf9428826563abb9ce5e72ba85cc594dd",
+        "checkout": "2a2cb64811f04919e231507283c402a4db3fdd20251c75c25d7da15760e3b418",
+        "install": "24188b530ab8e96d70118b578b9b65b60c7b27437f7817eb481fe9e159902d67",
+        "focused": "8250bca28bae63e07201b9d69acc95004b76ce4191f7d15f21e50da4ff8b317d",
+        "root": "77fe00cd8291de756e23fc8e6c7b79c8a33059d2bae1cd6bf6869c0abe678fc7",
+        "release": "8aa3a0ca3b87c681de5b0c480b32fb28cfb30c807b9fd6a0a307f7071b29f426",
+        "biome": "024fda3a1a339835430dfab209518c0aba1a5b828d8596af0aafb312cf4f39ab",
+        "typecheck": "3eab55d46adb243b4268b2f244a8be602ce3bf47de03e0c5af8c0463db8e82d2",
+        "build": "3c0b698e5f05e53178e8b40b84eb550223808e7b66fab9b6195ee2c76e52a153",
+        "gitChecks": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "security": "99ede6c534c32d9f10027a2a8fad2f82a676d9abe57a742e3ed2a869ac44a9eb"
+      }
+    },
+    "securityScan": {
+      "result": "PASS",
+      "secretFindings": 0,
+      "internalAddressFindings": 0,
+      "mutableImageFindings": 0,
+      "unsafeConfigurationFindings": 0
+    },
+    "materialReview": {
+      "reviewer": "independent-material-reviewer-l1b-02",
+      "reviewedCommit": "01891588baaf99e1cfb85bc7a2276674daa4777c",
+      "reviewedTree": "1635614814b30a70f71996c3db1ab246a9c14964",
+      "verdict": "PASS",
+      "materialFindings": []
+    }
+  },
+  "boundaries": {
+    "productRuntimeChanged": false,
+    "firewallInstalled": false,
+    "assemblyVolumesRemainUnformatted": true,
+    "registryMutation": false,
+    "signing": false,
+    "deployment": false
+  }
+}

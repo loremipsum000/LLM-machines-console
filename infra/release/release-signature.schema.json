@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://llm-machines.invalid/schemas/release-signature.v1.json",
+  "title": "LLM Machines detached release signature",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "purpose",
+    "algorithm",
+    "issuer",
+    "kid",
+    "signedManifestSha256",
+    "signedAt",
+    "signature"
+  ],
+  "properties": {
+    "schema": { "const": "llm-machines.release-signature.v1" },
+    "status": { "const": "SIGNED_OFFLINE" },
+    "purpose": { "const": "release-artifact" },
+    "algorithm": { "const": "Ed25519" },
+    "issuer": { "const": "urn:llm-machines:vendor" },
+    "kid": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "signedManifestSha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "signedAt": { "type": "string", "format": "date-time" },
+    "signature": { "type": "string", "pattern": "^[A-Za-z0-9_-]{86}$" }
+  }
+}
