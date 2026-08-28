@@ -15,7 +15,7 @@ export const inferenceCoreAlertNames: readonly string[] = Object.freeze([
 ])
 
 export const inferenceCoreCompatibilityFingerprint =
-  "sha256:9249bdc91f2dc7ac8471de88aad851644a8b8526d57c5f1501e6c63db246d1d7"
+  "sha256:8ef12de33f7d900f2c6b9a1f8117f8635088d655b52bd7fa5c481c32117b293e"
 
 export const healthResponseSchema = z
   .object({
@@ -137,7 +137,7 @@ export const adminOverviewTileSchema = z
     id: adminOverviewTileIdSchema,
     title: z.string().min(1),
     summary: z.string().min(1),
-    href: z.enum(["/keys", "/inference", "/hardware", "/activity"]),
+    href: z.enum(["/keys", "/inference", "/hardware", "/settings"]),
     sourceStatus: inferenceCoreSourceStatusSchema,
     metrics: z.array(adminOverviewMetricSchema).min(1),
     updatedAt: z.string().datetime(),
@@ -153,7 +153,6 @@ export const adminActivityEventSchema = z
     targetType: z.string().min(1),
     targetId: z.string().min(1),
     severity: inferenceCoreSeveritySchema,
-    href: z.string().regex(/^\/activity\?eventId=[A-Za-z0-9_.!~*'()%\-]+$/),
     createdAt: z.string().datetime(),
   })
   .strict()
@@ -203,7 +202,6 @@ export const adminAuditEventSchema = z
     reason: z.string().min(1).nullable(),
     severity: inferenceCoreSeveritySchema,
     metadata: z.array(adminAuditMetadataEntrySchema),
-    href: z.string().min(1),
     createdAt: z.string().datetime(),
   })
   .strict()
@@ -1379,7 +1377,6 @@ const defaultAdminConnectedAppFirecrawl = {
 export const adminConnectedAppSchema = z
   .object({
     allowedModels: adminConnectedAppAllowedModelsSchema,
-    auditHref: z.string().min(1),
     authMethod: adminConnectedAppAuthMethodSchema,
     connectionStatus: adminConnectedAppConnectionStatusSchema,
     createdAt: z.string().datetime(),

@@ -379,7 +379,6 @@ describe("role-aware Console presentation", () => {
 
 const connectedApp: AdminConnectedApp = {
   allowedModels: ["qwen"],
-  auditHref: "/activity?applicationId=app-1",
   authMethod: "api_key",
   connectionStatus: "not_connected",
   createdAt: "2026-07-31T08:00:00.000Z",

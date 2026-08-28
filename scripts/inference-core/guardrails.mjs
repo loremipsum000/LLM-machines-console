@@ -3530,6 +3530,90 @@ export const currentKeysLogicalSurfaceContract = pr11LogicalSurfaceContract.map(
       : surface,
 )
 
+export const currentActivityRetiredLogicalSurfaceContract =
+  currentKeysLogicalSurfaceContract.filter(({ id }) => id !== "activity-audit")
+
+export const activityAuditSurfaceRetirementPath =
+  "docs/reduction/inference-core/console-activity-audit-surface-retirement.json"
+export const activityAuditSurfaceRetirementBase =
+  "1546448712fb6863538153c3aa97f227f735715a"
+export const activityAuditSurfaceRetirementBaseTree =
+  "53c6483060dc49b5be5d78443200964eabf560ff"
+
+export function verifyActivityAuditSurfaceRetirementDocument(document) {
+  const expected = {
+    schemaVersion: 1,
+    id: "CONSOLE-ACTIVITY-AUDIT-SURFACE-RETIREMENT",
+    status: "SOURCE_SUCCESSOR_CANDIDATE",
+    base: {
+      commit: activityAuditSurfaceRetirementBase,
+      tree: activityAuditSurfaceRetirementBaseTree,
+    },
+    customerBoundary: {
+      logicalSurfaces: [
+        "Overview",
+        "Keys",
+        "Inference",
+        "Hardware",
+        "Team",
+        "Settings",
+      ],
+      removedRoute: "/activity",
+      removedRouteBehavior: "ABSENT_404",
+      overviewRecentActivity: "METADATA_ONLY_NON_INTERACTIVE",
+      auditEvidenceLocation: "/settings",
+      coreCompatibilityFingerprint:
+        "sha256:8ef12de33f7d900f2c6b9a1f8117f8635088d655b52bd7fa5c481c32117b293e",
+    },
+    retainedControls: {
+      auditReadApi: "/api/admin/audit",
+      signedExportApis: [
+        "/api/admin/audit/export",
+        "/api/admin/audit/export/verification-keys",
+      ],
+      adminExportOnly: true,
+      operatorExportDenied: true,
+      auditLedger: "RETAINED",
+      nativeIngestion: "RETAINED",
+      metadataOnlyRetention: "RETAINED",
+      authorizationAndSigning: "RETAINED",
+    },
+    historicalEvidence: "PRESERVED_UNCHANGED",
+    productAccepted: false,
+    runtimeQualified: false,
+    contractActivation: "INACTIVE",
+    genesis: "UNPUBLISHED",
+  }
+  if (JSON.stringify(document) === JSON.stringify(expected)) {
+    return []
+  }
+  const errors = []
+  if (
+    JSON.stringify(document?.retainedControls) !==
+    JSON.stringify(expected.retainedControls)
+  ) {
+    errors.push("Activity retirement changed retained controls")
+  }
+  if (
+    JSON.stringify(document?.customerBoundary) !==
+    JSON.stringify(expected.customerBoundary)
+  ) {
+    errors.push("Activity retirement changed the customer boundary")
+  }
+  if (
+    document?.productAccepted !== false ||
+    document?.runtimeQualified !== false ||
+    document?.contractActivation !== "INACTIVE" ||
+    document?.genesis !== "UNPUBLISHED"
+  ) {
+    errors.push("Activity retirement overstated Product status")
+  }
+  if (errors.length === 0) {
+    errors.push("Activity retirement decision shape changed")
+  }
+  return errors.sort()
+}
+
 export const businessArchitectureCurrentBoundaryPath =
   "docs/reduction/inference-core/business-architecture-current-boundary.json"
 
@@ -3835,6 +3919,23 @@ export const pr11KeysGrafanaConsoleHrefManifest = [
   {
     path: "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
     expression: "expression:grafanaHref",
+  },
+].sort(comparePr11HrefEntries)
+
+export const activityAuditRetiredConsoleHrefManifest = [
+  ...pr11KeysGrafanaConsoleHrefManifest.filter(
+    ({ path, expression }) =>
+      path !==
+        "apps/web/src/components/console-v2/activity-v2-experience.tsx" &&
+      !(
+        path ===
+          "apps/web/src/components/console-v2/overview-v2-experience.tsx" &&
+        ["expression:event.href", "literal:/activity"].includes(expression)
+      ),
+  ),
+  {
+    path: "apps/web/src/components/console-v2/audit-evidence-panel.tsx",
+    expression: "literal:/api/admin/audit/export/verification-keys",
   },
 ].sort(comparePr11HrefEntries)
 
@@ -6288,6 +6389,10 @@ function hasPr11aR1V1SourceClosureMarker(root) {
   )
 }
 
+function hasActivityAuditSurfaceRetirementMarker(root) {
+  return isRegularFile(resolve(root, activityAuditSurfaceRetirementPath))
+}
+
 function hasPr11aR1E1SourceMarker(root) {
   return (
     hasPr11aR1S1SourceMarker(root) &&
@@ -6889,6 +6994,25 @@ export function verifyPr11aR1V1SourceClosurePackage({
   actualRoutes,
 }) {
   const errors = []
+  let activityRetirementDecision = null
+  if (hasActivityAuditSurfaceRetirementMarker(root)) {
+    try {
+      activityRetirementDecision = readJson(
+        resolve(root, activityAuditSurfaceRetirementPath),
+      )
+      errors.push(
+        ...verifyActivityAuditSurfaceRetirementDocument(
+          activityRetirementDecision,
+        ),
+      )
+    } catch {
+      errors.push("invalid Activity retirement decision document")
+    }
+  }
+  const activityRetirementActive =
+    activityRetirementDecision !== null &&
+    verifyActivityAuditSurfaceRetirementDocument(activityRetirementDecision)
+      .length === 0
   const changes = listPr11aR1V1SourceClosureChanges(root)
   const expectedChanges = pr11aR1V1SourceClosurePaths.map((path) => ({
     path,
@@ -6955,20 +7079,34 @@ export function verifyPr11aR1V1SourceClosurePackage({
     JSON.stringify(actualIntegratedFindings) !==
       JSON.stringify(expectedIntegratedFindings) ||
     JSON.stringify(classifications) !==
-      JSON.stringify({
-        "current-console-seam": 92,
-        "legacy-retired": 8,
-        "operational-auth": 2,
-        "private-operational": 4,
-        "public-t2": 2,
-        "required-now": 2,
-      }) ||
-    actualRoutes.routes.length !== 110 ||
+      JSON.stringify(
+        activityRetirementActive
+          ? {
+              "current-console-seam": 91,
+              "legacy-retired": 8,
+              "operational-auth": 2,
+              "private-operational": 4,
+              "public-t2": 2,
+              "required-now": 2,
+            }
+          : {
+              "current-console-seam": 92,
+              "legacy-retired": 8,
+              "operational-auth": 2,
+              "private-operational": 4,
+              "public-t2": 2,
+              "required-now": 2,
+            },
+      ) ||
+    actualRoutes.routes.length !== (activityRetirementActive ? 109 : 110) ||
     actualRoutes.fastifyRegistrars.length !== 6 ||
     actualRoutes.webInferenceConsumers.length !== 0 ||
     actualRoutes.escapeHatches.length !== 0
   ) {
     errors.push("PR-11A source closure changed the admitted Product shape")
+  }
+  if (activityRetirementActive) {
+    errors.push(...verifyPr11SourceBoundary(root))
   }
   let closure
   try {
@@ -9657,6 +9795,23 @@ function verifyReviewedPr11SuccessorTarget({
   const boundaryPath = resolve(root, businessArchitectureCurrentBoundaryPath)
   if (isRegularFile(boundaryPath)) {
     successorPaths.add(businessArchitectureCurrentBoundaryPath)
+  }
+  const activityRetirementPath = resolve(
+    root,
+    activityAuditSurfaceRetirementPath,
+  )
+  if (isRegularFile(activityRetirementPath)) {
+    successorPaths.add(activityAuditSurfaceRetirementPath)
+    successorPaths.add(
+      "apps/web/src/components/console-v2/audit-evidence-panel.tsx",
+    )
+    successorPaths.delete("apps/web/src/app/activity/page.tsx")
+    successorPaths.delete(
+      "apps/web/src/components/console-v2/activity-v2-experience.tsx",
+    )
+    successorPaths.delete(
+      "apps/web/src/components/console-v2/activity-v2-experience.test.tsx",
+    )
   }
   return [
     ...new Set([
@@ -13818,7 +13973,8 @@ export function verifyPr11ConsoleHrefManifest(manifest) {
   const serialized = JSON.stringify(manifest)
   return serialized === JSON.stringify(pr11ConsoleHrefManifest) ||
     serialized === JSON.stringify(pr11KeysConsoleHrefManifest) ||
-    serialized === JSON.stringify(pr11KeysGrafanaConsoleHrefManifest)
+    serialized === JSON.stringify(pr11KeysGrafanaConsoleHrefManifest) ||
+    serialized === JSON.stringify(activityAuditRetiredConsoleHrefManifest)
     ? []
     : ["PR-11 Console href manifest changed"]
 }
@@ -13861,6 +14017,7 @@ export function verifyPr11ExpertPayloadSourceBoundary(path, source) {
 export function verifyPr11OverviewHrefContractSource(
   source,
   expectedHrefs = ["/applications", "/inference", "/hardware", "/activity"],
+  { requireEventHref = true } = {},
 ) {
   const sourceFile = ts.createSourceFile(
     "packages/contracts/src/inference-core.ts",
@@ -13885,10 +14042,14 @@ export function verifyPr11OverviewHrefContractSource(
     "href",
   )
   const expectedEventHref = String.raw`z.string().regex(/^\/activity\?eventId=[A-Za-z0-9_.!~*'()%\-]+$/)`
-  if (
-    normalizePr11CompactSource(eventHref?.getText(sourceFile)) !==
-    expectedEventHref
-  ) {
+  if (requireEventHref) {
+    if (
+      normalizePr11CompactSource(eventHref?.getText(sourceFile)) !==
+      expectedEventHref
+    ) {
+      errors.push("PR-11 Overview activity href contract is not internal-only")
+    }
+  } else if (eventHref !== undefined) {
     errors.push("PR-11 Overview activity href contract is not internal-only")
   }
   return errors.sort()
@@ -14063,6 +14224,7 @@ export function verifyPr11SourceBoundary(
     "apps/web/src/components/console-v2/console-v2-sections.ts"
   const sectionsSource = read(sectionsPath)
   let usesCurrentKeysBoundary = false
+  let usesActivityRetirementBoundary = false
   if (candidatePaths.has(businessArchitectureCurrentBoundaryPath)) {
     try {
       const boundary = JSON.parse(
@@ -14079,9 +14241,25 @@ export function verifyPr11SourceBoundary(
       errors.push("invalid business architecture current-boundary document")
     }
   }
-  const expectedLogicalSurfaces = usesCurrentKeysBoundary
-    ? currentKeysLogicalSurfaceContract
-    : pr11LogicalSurfaceContract
+  if (candidatePaths.has(activityAuditSurfaceRetirementPath)) {
+    try {
+      const retirement = JSON.parse(
+        readFileSync(resolve(root, activityAuditSurfaceRetirementPath), "utf8"),
+      )
+      const retirementErrors =
+        verifyActivityAuditSurfaceRetirementDocument(retirement)
+      errors.push(...retirementErrors)
+      usesActivityRetirementBoundary =
+        usesCurrentKeysBoundary && retirementErrors.length === 0
+    } catch {
+      errors.push("invalid Activity retirement decision document")
+    }
+  }
+  const expectedLogicalSurfaces = usesActivityRetirementBoundary
+    ? currentActivityRetiredLogicalSurfaceContract
+    : usesCurrentKeysBoundary
+      ? currentKeysLogicalSurfaceContract
+      : pr11LogicalSurfaceContract
   const navigationEntries = [
     ...sectionsSource.matchAll(/\{\s*id:\s*"([^"]+)"[\s\S]*?\n\s*\},/g),
   ].map((match) => ({
@@ -14158,11 +14336,52 @@ export function verifyPr11SourceBoundary(
             "/inference",
             "/hardware",
             "/activity",
+            "/settings",
           ].includes(href),
         )
         .map(({ href }) => href),
+      { requireEventHref: !usesActivityRetirementBoundary },
     ),
   )
+  if (usesActivityRetirementBoundary) {
+    for (const retiredPath of [
+      "apps/web/src/app/activity/page.tsx",
+      "apps/web/src/components/console-v2/activity-v2-experience.tsx",
+      "apps/web/src/components/console-v2/activity-v2-experience.test.tsx",
+    ]) {
+      if (candidatePaths.has(retiredPath)) {
+        errors.push(`Activity retirement path remains ${retiredPath}`)
+      }
+    }
+    if (sectionsSource.includes('"/activity"')) {
+      errors.push("Activity retirement navigation remains")
+    }
+    const middlewareSource = read("apps/web/src/middleware.ts")
+    if (middlewareSource.includes('"/activity"')) {
+      errors.push("Activity retirement middleware route remains")
+    }
+    const auditPanelSource = read(
+      "apps/web/src/components/console-v2/audit-evidence-panel.tsx",
+    )
+    if (
+      !auditPanelSource.includes('action="/api/admin/audit/export"') ||
+      !auditPanelSource.includes(
+        'href="/api/admin/audit/export/verification-keys"',
+      )
+    ) {
+      errors.push("Activity retirement Settings audit evidence is incomplete")
+    }
+    const adminRouteSourceForAudit = read("apps/bff/src/routes/admin.ts")
+    for (const retainedRoute of [
+      '"/api/admin/audit"',
+      '"/api/admin/audit/export"',
+      '"/api/admin/audit/export/verification-keys"',
+    ]) {
+      if (!adminRouteSourceForAudit.includes(retainedRoute)) {
+        errors.push(`Activity retirement removed audit route ${retainedRoute}`)
+      }
+    }
+  }
   const adminRouteSource = read("apps/bff/src/routes/admin.ts")
   errors.push(...verifyPr11OverviewRouteParseBoundary(adminRouteSource))
   errors.push(

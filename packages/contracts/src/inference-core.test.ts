@@ -71,7 +71,7 @@ describe("inference-core status ownership", () => {
 
 it("pins the rendered inference profile compatibility fingerprint", () => {
   expect(inferenceCoreCompatibilityFingerprint).toBe(
-    "sha256:9249bdc91f2dc7ac8471de88aad851644a8b8526d57c5f1501e6c63db246d1d7",
+    "sha256:8ef12de33f7d900f2c6b9a1f8117f8635088d655b52bd7fa5c481c32117b293e",
   )
 })
 
@@ -129,7 +129,7 @@ describe("Inference Core contract boundary", () => {
       applications: "/keys",
       hardware: "/hardware",
       inference: "/inference",
-      system: "/activity",
+      system: "/settings",
     } as const
     const tile = (id: "applications" | "inference" | "hardware" | "system") =>
       ({
@@ -485,7 +485,6 @@ describe("Inference Core contract boundary", () => {
     } as const
     const application = {
       allowedModels: ["local-chat"],
-      auditHref: "/activity?applicationId=app-1",
       authMethod: "api_key",
       connectionStatus: "not_connected",
       createdAt: timestamp,
@@ -973,7 +972,6 @@ describe("Inference Core contract boundary", () => {
             action: "admin.audit.read",
             actorId: "subject-1",
             createdAt: timestamp,
-            href: "/activity?eventId=00000000-0000-4000-8000-000000000001",
             id: "00000000-0000-4000-8000-000000000001",
             metadata: [],
             outcome: "succeeded",

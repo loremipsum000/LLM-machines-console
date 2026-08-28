@@ -19,8 +19,8 @@ export function TechnicalToolsPanel({
       </h2>
       <p className="mt-1 text-sm leading-5 text-[#b2b2b2]">
         Console is the recommended, simplified way to manage Keys, credentials,
-        inference, hardware, Team, Activity &amp; Audit, and Settings. Open a
-        native tool only when you need its deeper technical controls.
+        inference, hardware, Team, and Settings. Open a native tool only when
+        you need its deeper technical controls.
       </p>
       <p className="mt-2 text-xs leading-5 text-[#8b8b8b]">
         Each tool opens in a new tab and uses your current Keycloak sign-in to

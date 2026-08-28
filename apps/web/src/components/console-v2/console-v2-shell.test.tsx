@@ -15,7 +15,6 @@ const expectedNavigation = [
   ["Inference", "/inference"],
   ["Hardware", "/hardware"],
   ["Team", "/team"],
-  ["Activity & Audit", "/activity"],
   ["Settings", "/settings"],
 ] as const
 
@@ -138,7 +137,7 @@ describe("ConsoleV2Shell", () => {
     ).toBe("Control+2")
     expect(screen.getByText("Ctrl 2")).toBeTruthy()
 
-    fireEvent.keyDown(window, { ctrlKey: true, key: "7" })
+    fireEvent.keyDown(window, { ctrlKey: true, key: "6" })
 
     expect(navigationMocks.router.push).toHaveBeenCalledWith("/settings")
 
@@ -214,15 +213,7 @@ describe("ConsoleV2Shell", () => {
     )
     expect(
       navigationLinks.map((link) => link.getAttribute("aria-keyshortcuts")),
-    ).toEqual([
-      "Meta+1",
-      "Meta+2",
-      "Meta+3",
-      "Meta+4",
-      "Meta+5",
-      "Meta+6",
-      "Meta+7",
-    ])
+    ).toEqual(["Meta+1", "Meta+2", "Meta+3", "Meta+4", "Meta+5", "Meta+6"])
     expect(
       within(navigation)
         .getByRole("link", { name: "Team" })
@@ -230,7 +221,7 @@ describe("ConsoleV2Shell", () => {
     ).toBe("Meta+5")
 
     fireEvent.keyDown(window, { key: "5", metaKey: true })
-    fireEvent.keyDown(window, { key: "7", metaKey: true })
+    fireEvent.keyDown(window, { key: "6", metaKey: true })
 
     expect(navigationMocks.router.push).toHaveBeenNthCalledWith(1, "/team")
     expect(navigationMocks.router.push).toHaveBeenNthCalledWith(2, "/settings")

@@ -1025,7 +1025,7 @@ function consoleElevationReturnPath(
     return "/team"
   }
   if (capability.startsWith("activity_audit.")) {
-    return "/activity"
+    return "/settings"
   }
   if (
     capability.startsWith("updates.") ||

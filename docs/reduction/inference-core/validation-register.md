@@ -150,3 +150,18 @@ are PR-12 evidence, not PR-08 evidence.
   hashes for 56 changed product-source and test files.
 - Full guardrail, Web, BFF, Contracts, database, build, typecheck, formatting,
   security, and clean-clone checks pass before publication.
+
+## Prospective Activity & Audit surface-retirement validation
+
+- Exact six-item navigation and shortcut order are source-tested.
+- `/activity` is absent from Web routing, middleware, and Product-edge page
+  admission, and explicit no-bypass tests require its denial.
+- Overview recent activity remains schema-validated, metadata-only, and
+  non-interactive; no response emits an `/activity` href.
+- Admin audit export and verification-key controls remain in Settings;
+  Operator receives no export control.
+- BFF audit read, signed export, verification-key, ingestion, ledger,
+  authorization, retention, and content-canary tests remain mandatory.
+- Historical route and seven-surface evidence is resolved at its admitted
+  commits. The current source successor is 109 routes with 91
+  `current-console-seam` routes; the historical route baseline is unchanged.

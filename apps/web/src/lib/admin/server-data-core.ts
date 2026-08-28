@@ -3,7 +3,6 @@ import "server-only"
 import { getBffRequest } from "@/lib/bff/server-request"
 import {
   type AdminConnectedAppDetail,
-  adminAuditResponseSchema,
   adminConnectedAppDetailSchema,
   adminConnectedAppsResponseSchema,
   adminHardwareResponseSchema,
@@ -14,17 +13,6 @@ import {
   adminTeamMemberDetailSchema,
   adminTeamOverviewResponseSchema,
 } from "@llm-machines/contracts/inference-core"
-
-export interface AdminAuditFilters {
-  applicationId?: string
-  cursor?: string
-  eventId?: string
-  limit?: string
-  outcome?: string
-  query?: string
-  severity?: string
-  source?: string
-}
 
 export class ConsoleBffAuthExpiredError extends Error {
   constructor(path: string) {
@@ -69,23 +57,6 @@ export async function getAdminHardware(
   return getAdminData(
     `/api/admin/hardware${queryString ? `?${queryString}` : ""}`,
     adminHardwareResponseSchema,
-  )
-}
-
-export async function getAdminAudit(filters: AdminAuditFilters = {}) {
-  const params = new URLSearchParams()
-  appendFilter(params, "q", filters.query)
-  appendFilter(params, "applicationId", filters.applicationId)
-  appendFilter(params, "eventId", filters.eventId)
-  appendFilter(params, "cursor", filters.cursor)
-  appendFilter(params, "limit", filters.limit)
-  appendFilter(params, "source", filters.source)
-  appendFilter(params, "outcome", filters.outcome)
-  appendFilter(params, "severity", filters.severity)
-  const queryString = params.toString()
-  return getAdminData(
-    `/api/admin/audit${queryString ? `?${queryString}` : ""}`,
-    adminAuditResponseSchema,
   )
 }
 
@@ -225,16 +196,5 @@ async function getNullableAdminData<T>(
       throw error
     }
     throw new Error(`Console BFF request failed for ${path}.`)
-  }
-}
-
-function appendFilter(
-  params: URLSearchParams,
-  name: string,
-  value: string | undefined,
-) {
-  const normalized = value?.trim()
-  if (normalized) {
-    params.set(name, normalized)
   }
 }

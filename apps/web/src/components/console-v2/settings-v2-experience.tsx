@@ -19,6 +19,7 @@ import Image from "next/image"
 import { useRef, useState } from "react"
 import type { ChangeEvent, ReactNode } from "react"
 import { ConsoleActionToasts } from "./action-toasts"
+import { AuditEvidencePanel } from "./audit-evidence-panel"
 import { sourceStatusLabel } from "./source-status"
 
 const returnTo = "/settings"
@@ -93,6 +94,10 @@ export function SettingsV2Experience({
           services={settings.reachability}
         />
         <TechnicalToolsPanel tools={technicalTools} />
+        <AuditEvidencePanel
+          accessRole={accessRole}
+          generatedAt={settings.generatedAt}
+        />
         <UpdatesLicensePanel settings={settings} />
         <PrivacyPanel
           accessRole={accessRole}

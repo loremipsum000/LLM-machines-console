@@ -166,7 +166,6 @@ const consolePaths = [
   ["/inference", "Inference"],
   ["/hardware", "Hardware"],
   ["/team", "Team"],
-  ["/activity", "Activity & Audit"],
   ["/settings", "Settings"],
 ]
 const evidence = await runBrowserSessionProof()
@@ -1331,7 +1330,7 @@ async function runBrowserSessionProof() {
     await page.getByRole("heading", { name: "Admin access required" }).waitFor()
     await page.goto(`${consoleOrigin}/team/members/new`)
     await page.getByRole("heading", { name: "Admin access required" }).waitFor()
-    await page.goto(`${consoleOrigin}/activity`)
+    await page.goto(`${consoleOrigin}/settings`)
     assert.equal(
       await page.getByText("Export JSON", { exact: true }).count(),
       0,
@@ -2166,7 +2165,7 @@ async function proveKeycloakIdentityConsoleFlow({
   await page.getByRole("heading", { name: "Admin access required" }).waitFor()
   await page.goto(`${consoleOrigin}/team/members/new`)
   await page.getByRole("heading", { name: "Admin access required" }).waitFor()
-  await page.goto(`${consoleOrigin}/activity`)
+  await page.goto(`${consoleOrigin}/settings`)
   assert.equal(await page.getByText("Export JSON", { exact: true }).count(), 0)
   assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
 

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import ActivityPage, { dynamic as activityDynamic } from "./activity/page"
 import ApplicationsPage, {
   dynamic as applicationsDynamic,
 } from "./applications/[[...section]]/page"
@@ -18,7 +17,6 @@ const navigationMocks = vi.hoisted(() => ({
 }))
 
 const routeMocks = vi.hoisted(() => ({
-  renderActivityConsoleRoute: vi.fn(async () => null),
   renderApplicationsConsoleRoute: vi.fn(async () => null),
   renderHardwareConsoleRoute: vi.fn(async () => null),
   renderInferenceConsoleRoute: vi.fn(async () => null),
@@ -48,23 +46,12 @@ describe("retained Console routes", () => {
   it("keeps every retained page dynamic", () => {
     expect([
       applicationsDynamic,
-      activityDynamic,
       homeDynamic,
       hardwareDynamic,
       inferenceDynamic,
       settingsDynamic,
       teamDynamic,
-    ]).toEqual(Array(7).fill("force-dynamic"))
-  })
-
-  it("routes Activity through the retained core owner", async () => {
-    const searchParams = Promise.resolve({ eventId: "event-1" })
-
-    await ActivityPage({ searchParams })
-
-    expect(routeMocks.renderActivityConsoleRoute).toHaveBeenCalledWith(
-      searchParams,
-    )
+    ]).toEqual(Array(6).fill("force-dynamic"))
   })
 
   it("routes Applications through the retained core owner", async () => {

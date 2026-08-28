@@ -2,7 +2,6 @@ import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import { productCopy } from "@llm-machines/copy"
 import type { ComponentType, SVGProps } from "react"
 import {
-  ActivityIcon,
   HardwareIcon,
   InferenceIcon,
   KeysIcon,
@@ -17,7 +16,6 @@ export type ConsoleV2SectionId =
   | "inference"
   | "hardware"
   | "team"
-  | "activity"
   | "settings"
 
 export interface ConsoleV2Section {
@@ -57,12 +55,6 @@ export const consoleV2Sections: ConsoleV2Section[] = [
     href: "/team",
     icon: TeamIcon,
     label: "Team",
-  },
-  {
-    id: "activity",
-    href: "/activity",
-    icon: ActivityIcon,
-    label: "Activity & Audit",
   },
   {
     id: "settings",

@@ -1,8 +1,4 @@
 import {
-  type ActivityFilters,
-  ActivityV2Experience,
-} from "@/components/console-v2/activity-v2-experience"
-import {
   ApplicationsV2Experience,
   type ApplicationsView,
 } from "@/components/console-v2/applications-v2-experience"
@@ -21,7 +17,6 @@ import {
   type TeamView,
 } from "@/components/console-v2/team-v2-experience"
 import {
-  getAdminAudit,
   getAdminConnectedAppDetail,
   getAdminConnectedApps,
   getAdminHardware,
@@ -44,18 +39,9 @@ import { notFound, redirect } from "next/navigation"
 import type { ReactNode } from "react"
 
 export interface ConsoleV2SearchParams {
-  applicationId?: string
   appAction?: string
-  cursor?: string
-  event?: string
-  eventId?: string
-  limit?: string
-  outcome?: string
-  q?: string
   range?: string
-  severity?: string
   settingsAction?: string
-  source?: string
   step?: string
   teamAction?: string
 }
@@ -69,42 +55,6 @@ export async function renderOverviewConsoleRoute() {
   return withConsoleAccess("overview", async () => {
     const overview = await getAdminOverview()
     return <OverviewV2Experience overview={overview} />
-  })
-}
-
-export async function renderActivityConsoleRoute(
-  searchParams?: Promise<ConsoleV2SearchParams>,
-) {
-  return withConsoleAccess("activity", async (role) => {
-    const resolvedSearchParams = searchParams ? await searchParams : undefined
-    const audit = await getAdminAudit({
-      applicationId: resolvedSearchParams?.applicationId,
-      cursor: resolvedSearchParams?.cursor,
-      eventId: resolvedSearchParams?.eventId ?? resolvedSearchParams?.event,
-      limit: resolvedSearchParams?.limit,
-      outcome: resolvedSearchParams?.outcome,
-      query: resolvedSearchParams?.q,
-      severity: resolvedSearchParams?.severity,
-      source: resolvedSearchParams?.source,
-    })
-    const filters: ActivityFilters = {
-      applicationId: audit.selectedApplicationId,
-      cursor: normalizedSearchParam(resolvedSearchParams?.cursor),
-      eventId: audit.selectedEventId,
-      limit: normalizedSearchParam(resolvedSearchParams?.limit),
-      outcome: audit.selectedOutcome,
-      query: audit.query,
-      severity: audit.selectedSeverity,
-      source: audit.selectedSource,
-    }
-
-    return (
-      <ActivityV2Experience
-        accessRole={role}
-        activity={audit}
-        filters={filters}
-      />
-    )
   })
 }
 
