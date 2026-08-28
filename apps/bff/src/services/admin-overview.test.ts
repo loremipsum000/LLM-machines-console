@@ -77,6 +77,7 @@ describe("Admin Overview aggregation", () => {
       "system",
     ])
     expect(overview.tiles[0]).toMatchObject({
+      href: "/keys",
       metrics: [
         { label: "Keys", value: "2" },
         { label: "Connected", value: "1" },

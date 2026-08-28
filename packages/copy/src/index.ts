@@ -1,3 +1,5 @@
+import { inferenceCoreCustomerVocabulary } from "@llm-machines/contracts"
+
 export const productCopy = {
   appName: "LLM Machines Console",
   metadata: {
@@ -13,5 +15,8 @@ export const productCopy = {
       keycloak: "Sign in with Keycloak",
       title: "Sign in",
     },
+  },
+  vocabulary: {
+    primaryIntegration: inferenceCoreCustomerVocabulary.primaryIntegration,
   },
 } as const

@@ -5,6 +5,8 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { test } from "node:test"
 import {
+  businessArchitectureCurrentBoundaryPath,
+  currentKeysLogicalSurfaceContract,
   extractPr11ConsoleHrefManifest,
   pr10cDecisionPath,
   pr11AllowedRepositoryPaths,
@@ -30,6 +32,7 @@ import {
   pr11TargetContract,
   readPr11DecisionDocument,
   repositoryRoot,
+  verifyBusinessArchitectureCurrentBoundaryDocument,
   verifyPr10cDecisionDocument,
   verifyPr11BaseEvidence,
   verifyPr11ConsoleHrefManifest,
@@ -126,6 +129,98 @@ test("PR-11 fixes exactly seven ordered logical surfaces", () => {
   assert.deepEqual(
     pr11TargetContract.removedRoutesByPr11,
     pr11RemovedRouteContract,
+  )
+})
+
+test("the current protected successor uses Keys without rewriting PR-11", () => {
+  assert.deepEqual(
+    currentKeysLogicalSurfaceContract.map(({ label, href }) => ({
+      label,
+      href,
+    })),
+    [
+      { label: "Overview", href: "/" },
+      { label: "Keys", href: "/keys" },
+      { label: "Inference", href: "/inference" },
+      { label: "Hardware", href: "/hardware" },
+      { label: "Team", href: "/team" },
+      { label: "Activity & Audit", href: "/activity" },
+      { label: "Settings", href: "/settings" },
+    ],
+  )
+})
+
+test("only the exact current-boundary record authorizes the Keys successor", () => {
+  const boundary = JSON.parse(
+    readFileSync(
+      resolve(repositoryRoot, businessArchitectureCurrentBoundaryPath),
+      "utf8",
+    ),
+  )
+  assert.deepEqual(
+    verifyBusinessArchitectureCurrentBoundaryDocument(boundary),
+    [],
+  )
+  assert.match(
+    verifyBusinessArchitectureCurrentBoundaryDocument(null).join("\n"),
+    /current-boundary shape/,
+  )
+  assert.match(
+    verifyBusinessArchitectureCurrentBoundaryDocument({
+      ...boundary,
+      schemaVersion: 2,
+    }).join("\n"),
+    /current-boundary state/,
+  )
+  assert.match(
+    verifyBusinessArchitectureCurrentBoundaryDocument({
+      ...boundary,
+      customerVocabulary: {
+        ...boundary.customerVocabulary,
+        canonicalHref: "/applications",
+      },
+    }).join("\n"),
+    /customer vocabulary/,
+  )
+  assert.match(
+    verifyBusinessArchitectureCurrentBoundaryDocument({
+      ...boundary,
+      precedence: { ...boundary.precedence, basis: "forged" },
+    }).join("\n"),
+    /precedence/,
+  )
+  assert.match(
+    verifyBusinessArchitectureCurrentBoundaryDocument({
+      ...boundary,
+      auditedBaseline: {
+        ...boundary.auditedBaseline,
+        candidateCommit: "0".repeat(40),
+      },
+    }).join("\n"),
+    /audited baseline/,
+  )
+  assert.match(
+    verifyBusinessArchitectureCurrentBoundaryDocument({
+      ...boundary,
+      internalCompatibilityVocabulary: ["application"],
+    }).join("\n"),
+    /compatibility vocabulary/,
+  )
+  assert.match(
+    verifyBusinessArchitectureCurrentBoundaryDocument({
+      ...boundary,
+      supersedingProtectedDecisions:
+        boundary.supersedingProtectedDecisions.slice(0, 3),
+    }).join("\n"),
+    /protected-decision ancestry/,
+  )
+
+  const withoutBoundary = currentWorktreePaths().filter(
+    (path) => path !== businessArchitectureCurrentBoundaryPath,
+  )
+  assert.match(
+    verifyPr11SourceBoundary(repositoryRoot, withoutBoundary).join("\n"),
+    /Overview tile href contract is not internal-only|navigation inventory or order changed/,
   )
 })
 
@@ -289,7 +384,15 @@ test("PR-11 rejects literal, aliased, and BFF-supplied external hrefs", () => {
     "packages/contracts/src/inference-core.ts",
   )
   const contractsSource = readFileSync(contractsPath, "utf8")
-  assert.deepEqual(verifyPr11OverviewHrefContractSource(contractsSource), [])
+  assert.deepEqual(
+    verifyPr11OverviewHrefContractSource(contractsSource, [
+      "/keys",
+      "/inference",
+      "/hardware",
+      "/activity",
+    ]),
+    [],
+  )
   const broadTileContract = contractsSource.replace(
     /href: z\.enum\(\[[\s\S]*?\]\),/,
     "href: z.string().url(),",

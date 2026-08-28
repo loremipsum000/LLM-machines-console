@@ -1,4 +1,5 @@
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
+import { productCopy } from "@llm-machines/copy"
 import type { ComponentType, SVGProps } from "react"
 import {
   ActivityIcon,
@@ -26,7 +27,7 @@ export interface ConsoleV2Section {
   label: string
 }
 
-const pr11ConsoleV2Sections: ConsoleV2Section[] = [
+export const consoleV2Sections: ConsoleV2Section[] = [
   {
     id: "overview",
     href: "/",
@@ -35,9 +36,9 @@ const pr11ConsoleV2Sections: ConsoleV2Section[] = [
   },
   {
     id: "applications",
-    href: "/applications",
+    href: productCopy.vocabulary.primaryIntegration.href,
     icon: KeysIcon,
-    label: "Applications", // INTERNAL_PR11_APPLICATION_NAV_COMPATIBILITY
+    label: productCopy.vocabulary.primaryIntegration.plural,
   },
   {
     id: "inference",
@@ -70,13 +71,6 @@ const pr11ConsoleV2Sections: ConsoleV2Section[] = [
     label: "Settings",
   },
 ]
-
-export const consoleV2Sections: ConsoleV2Section[] = pr11ConsoleV2Sections.map(
-  (section) =>
-    section.id === "applications"
-      ? { ...section, href: "/keys", label: "Keys" }
-      : section,
-)
 
 export function consoleV2SectionsForRole(
   role: RetainedConsoleRole,

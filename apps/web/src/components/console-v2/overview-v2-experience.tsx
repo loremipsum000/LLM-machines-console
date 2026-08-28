@@ -41,12 +41,7 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
         className="mt-8 grid gap-3 sm:grid-cols-2"
       >
         {overview.tiles.map((tile) => (
-          <OverviewTileCard
-            key={tile.id}
-            tile={
-              tile.id === "applications" ? { ...tile, href: "/keys" } : tile
-            }
-          />
+          <OverviewTileCard key={tile.id} tile={tile} />
         ))}
       </section>
 
