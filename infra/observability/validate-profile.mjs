@@ -406,6 +406,14 @@ export function validateRuntimeContract(source) {
     add(errors, "Grafana baseline and customer folder boundary changed")
   }
   if (
+    contract?.grafana?.alertAuthority?.backend !== "standalone-alertmanager" ||
+    contract?.grafana?.alertAuthority?.grafanaUnifiedAlerting !== "disabled" ||
+    contract?.grafana?.alertAuthority?.prometheusAlertsPanel !== "retained" ||
+    contract?.grafana?.alertAuthority?.unavailableMeansZeroActive !== false
+  ) {
+    add(errors, "Grafana must defer alert authority to standalone Alertmanager")
+  }
+  if (
     contract?.grafana?.hardwareDatasource?.managementTargetsInVm103 !== false ||
     contract?.grafana?.hardwareDatasource?.operatorAccess !== "DENY" ||
     contract?.grafana?.hardwareDatasource?.publicAccess !== false ||
@@ -726,6 +734,9 @@ export function validateGrafana(
   if (!grafana.includes("[auth.generic_oauth]\nenabled = true")) {
     add(errors, "Grafana Generic OAuth must be enabled")
   }
+  if (!grafana.includes("[unified_alerting]\nenabled = false")) {
+    add(errors, "Grafana unified alerting must remain disabled")
+  }
   for (const binding of [
     "auth_url = $__env{LLMM_KEYCLOAK_AUTH_URL}",
     "token_url = $__env{LLMM_KEYCLOAK_TOKEN_URL}",
@@ -750,7 +761,7 @@ export function validateGrafana(
       add(errors, `Grafana datasource is missing ${required}`)
   }
   for (const required of [
-    "folderUid: llmm-baseline",
+    "folder: ''",
     "disableDeletion: true",
     "allowUiUpdates: false",
     "path: /etc/grafana/provisioning/dashboards/baseline",
@@ -764,6 +775,8 @@ export function validateGrafana(
     folder?.baseline?.provisioned !== true ||
     folder?.baseline?.allowUiUpdates !== false ||
     folder?.baseline?.disableDeletion !== true ||
+    folder?.baseline?.placement !== "grafana-root" ||
+    folder?.baseline?.provider !== "llmm-baseline" ||
     folder?.customerEditable?.provisioned !== false ||
     folder?.customerEditable?.adminPermission !== "Edit" ||
     folder?.customerEditable?.operatorPermission !== "DENY" ||

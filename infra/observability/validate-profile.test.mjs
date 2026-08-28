@@ -240,6 +240,47 @@ test("Grafana role mapping requires exactly one retained role", () => {
   )
 })
 
+test("Grafana baseline remains root-provisioned for the Admin Editor role", () => {
+  const changed = sources.dashboardProvider.replace(
+    "folder: ''",
+    "folder: LLM Machines Baseline\n    folderUid: llmm-baseline",
+  )
+  assert.match(
+    validateGrafana(
+      sources.grafana,
+      sources.datasource,
+      changed,
+      sources.folderBoundary,
+      sources.dashboard,
+    ).join("\n"),
+    /folder: ''/,
+  )
+})
+
+test("Grafana defers alert authority to standalone Alertmanager", () => {
+  const changedGrafana = sources.grafana.replace(
+    "[unified_alerting]\nenabled = false\n",
+    "[unified_alerting]\nenabled = true\n",
+  )
+  assert.match(
+    validateGrafana(
+      changedGrafana,
+      sources.datasource,
+      sources.dashboardProvider,
+      sources.folderBoundary,
+      sources.dashboard,
+    ).join("\n"),
+    /unified alerting/,
+  )
+
+  const changedContract = JSON.parse(sources.runtimeContract)
+  changedContract.grafana.alertAuthority.unavailableMeansZeroActive = true
+  assert.match(
+    validateRuntimeContract(JSON.stringify(changedContract)).join("\n"),
+    /standalone Alertmanager/,
+  )
+})
+
 test("the hardware dashboard uses only the private hardware datasource and genuine Intel XPU/IPMI metrics", () => {
   assert.deepEqual(
     validateHardwareGrafana(

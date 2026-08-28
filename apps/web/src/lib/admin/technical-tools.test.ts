@@ -31,12 +31,17 @@ describe("Console Technical Tools configuration", () => {
   })
 
   it("gives Operator only the advanced LiteLLM authority", () => {
-    expect(technicalToolsForRole("operator", environment)).toEqual([
+    const tools = technicalToolsForRole("operator", environment)
+    expect(tools).toEqual([
       expect.objectContaining({
         href: "https://litellm.example.test/ui/",
         id: "litellm",
       }),
     ])
+    expect(tools.some(({ id }) => id === "grafana")).toBe(false)
+    expect(JSON.stringify(tools)).not.toContain(
+      environment.PRODUCT_GRAFANA_HOST,
+    )
   })
 
   it.each([
