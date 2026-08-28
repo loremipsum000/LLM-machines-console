@@ -94,6 +94,9 @@ export function ActivityV2Experience({
 }
 
 function ActivitySourceHealth({ activity }: { activity: ActivityViewModel }) {
+  const unavailableSources = activity.sources.filter(
+    (source) => source.sourceStatus === "unavailable",
+  )
   return (
     <section
       aria-labelledby="activity-source-health-title"
@@ -113,6 +116,12 @@ function ActivitySourceHealth({ activity }: { activity: ActivityViewModel }) {
           {sourceStatusLabel(activity.sourceStatus)}
         </span>
       </div>
+      {unavailableSources.length > 0 ? (
+        <output className="mt-3 block text-sm leading-5 text-[#ffcc4d]">
+          Locally stored audit events remain available. Native ingestion is
+          unavailable for {formatSourceList(unavailableSources)}.
+        </output>
+      ) : null}
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {activity.sources.map((source) => (
           <div
@@ -136,6 +145,17 @@ function ActivitySourceHealth({ activity }: { activity: ActivityViewModel }) {
       </div>
     </section>
   )
+}
+
+function formatSourceList(sources: ActivityAuditSource[]): string {
+  const labels = sources.map((source) => source.label)
+  if (labels.length < 2) {
+    return labels[0] ?? ""
+  }
+  if (labels.length === 2) {
+    return `${labels[0]} and ${labels[1]}`
+  }
+  return `${labels.slice(0, -1).join(", ")}, and ${labels.at(-1)}`
 }
 
 function ActivityFiltersPanel({

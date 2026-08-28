@@ -2,6 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react"
 import React from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  type ActivityAuditSource,
   type ActivityFilters,
   ActivityV2Experience,
   type ActivityViewModel,
@@ -171,6 +172,76 @@ describe("ActivityV2Experience", () => {
       screen.getByText("No audit events match the current filters."),
     ).toBeTruthy()
   })
+
+  it("keeps local events available while naming unavailable native ingestion sources", () => {
+    const { rerender } = render(
+      <ActivityV2Experience
+        accessRole="operator"
+        activity={{
+          ...activity,
+          sourceStatus: "degraded",
+          sources: [
+            consoleAuditSource,
+            {
+              ...keycloakAuditSource,
+              label: "Keycloak",
+              sourceStatus: "unavailable",
+            },
+          ],
+        }}
+        filters={emptyFilters}
+      />,
+    )
+
+    expect(screen.getByRole("status").textContent).toBe(
+      "Locally stored audit events remain available. Native ingestion is unavailable for Keycloak.",
+    )
+
+    rerender(
+      <ActivityV2Experience
+        accessRole="operator"
+        activity={{
+          ...activity,
+          sourceStatus: "degraded",
+          sources: [
+            consoleAuditSource,
+            {
+              ...keycloakAuditSource,
+              label: "Keycloak",
+              sourceStatus: "unavailable",
+            },
+            {
+              ...keycloakAuditSource,
+              id: "grafana",
+              label: "Grafana",
+              sourceStatus: "unavailable",
+            },
+          ],
+        }}
+        filters={emptyFilters}
+      />,
+    )
+    expect(screen.getByRole("status").textContent).toContain(
+      "Keycloak and Grafana",
+    )
+
+    rerender(
+      <ActivityV2Experience
+        accessRole="operator"
+        activity={{
+          ...activity,
+          sourceStatus: "ok",
+          sources: activity.sources.map((source) => ({
+            ...source,
+            sourceStatus: "ok",
+          })),
+        }}
+        filters={emptyFilters}
+      />,
+    )
+    expect(screen.queryByRole("status")).toBeNull()
+    expect(screen.getAllByText("Healthy").length).toBeGreaterThan(0)
+  })
 })
 
 const emptyFilters: ActivityFilters = {
@@ -182,6 +253,30 @@ const emptyFilters: ActivityFilters = {
   query: null,
   severity: null,
   source: null,
+}
+
+const consoleAuditSource: ActivityAuditSource = {
+  cursorHealth: "not_applicable",
+  id: "console",
+  ingressReadiness: "not_applicable",
+  label: "Console audit",
+  lastAttemptAt: null,
+  lastErrorCode: null,
+  lastEventAt: "2026-08-01T08:00:00.000Z",
+  lastSuccessAt: null,
+  sourceStatus: "ok",
+}
+
+const keycloakAuditSource: ActivityAuditSource = {
+  cursorHealth: "never_run",
+  id: "keycloak",
+  ingressReadiness: "implemented_pending_runtime_qualification",
+  label: "Keycloak audit",
+  lastAttemptAt: null,
+  lastErrorCode: null,
+  lastEventAt: null,
+  lastSuccessAt: null,
+  sourceStatus: "not_configured",
 }
 
 const activity: ActivityViewModel = {
@@ -207,28 +302,5 @@ const activity: ActivityViewModel = {
   generatedAt: "2026-08-01T08:01:00.000Z",
   nextCursor: "cursor-2",
   sourceStatus: "degraded",
-  sources: [
-    {
-      cursorHealth: "not_applicable",
-      id: "console",
-      ingressReadiness: "not_applicable",
-      label: "Console audit",
-      lastAttemptAt: null,
-      lastErrorCode: null,
-      lastEventAt: "2026-08-01T08:00:00.000Z",
-      lastSuccessAt: null,
-      sourceStatus: "ok",
-    },
-    {
-      cursorHealth: "never_run",
-      id: "keycloak",
-      ingressReadiness: "implemented_pending_runtime_qualification",
-      label: "Keycloak audit",
-      lastAttemptAt: null,
-      lastErrorCode: null,
-      lastEventAt: null,
-      lastSuccessAt: null,
-      sourceStatus: "not_configured",
-    },
-  ],
+  sources: [consoleAuditSource, keycloakAuditSource],
 }

@@ -96,7 +96,7 @@ export async function getAdminAuditTimeline(
   }
 }
 
-function aggregateAuditSourceStatus(
+export function aggregateAuditSourceStatus(
   sources: AdminAuditSource[],
 ): AdminAuditResponse["sourceStatus"] {
   const nativeSources = sources.filter(

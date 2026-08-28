@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Actor } from "../auth/authorization"
-import { getAdminAuditTimeline } from "./admin-audit"
+import {
+  aggregateAuditSourceStatus,
+  getAdminAuditTimeline,
+} from "./admin-audit"
 import { emitAudit, resetAuditEventsForTest } from "./audit"
 
 const operator: Actor = {
@@ -101,4 +104,65 @@ describe("Admin audit timeline", () => {
       }),
     ])
   })
+
+  it("keeps readable local audit data degraded while native ingestion is unavailable", () => {
+    const consoleSource = auditSource("console", "ok", "not_applicable")
+    const keycloakUnavailable = auditSource(
+      "keycloak",
+      "unavailable",
+      "implemented_pending_runtime_qualification",
+    )
+    const grafanaUnavailable = auditSource(
+      "grafana",
+      "unavailable",
+      "implemented_pending_runtime_qualification",
+    )
+
+    expect(
+      aggregateAuditSourceStatus([consoleSource, keycloakUnavailable]),
+    ).toBe("degraded")
+    expect(
+      aggregateAuditSourceStatus([
+        consoleSource,
+        keycloakUnavailable,
+        grafanaUnavailable,
+      ]),
+    ).toBe("degraded")
+    expect(
+      aggregateAuditSourceStatus([
+        consoleSource,
+        auditSource(
+          "keycloak",
+          "ok",
+          "implemented_pending_runtime_qualification",
+        ),
+        auditSource(
+          "grafana",
+          "ok",
+          "implemented_pending_runtime_qualification",
+        ),
+      ]),
+    ).toBe("ok")
+  })
 })
+
+function auditSource(
+  id: "console" | "keycloak" | "grafana",
+  sourceStatus: "ok" | "unavailable",
+  ingressReadiness:
+    | "not_applicable"
+    | "implemented_pending_runtime_qualification",
+) {
+  return {
+    cursorHealth:
+      ingressReadiness === "not_applicable" ? "not_applicable" : "healthy",
+    id,
+    ingressReadiness,
+    label: id,
+    lastAttemptAt: null,
+    lastErrorCode: null,
+    lastEventAt: null,
+    lastSuccessAt: null,
+    sourceStatus,
+  } as const
+}
