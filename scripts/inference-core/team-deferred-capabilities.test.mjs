@@ -45,6 +45,8 @@ test("the current Team boundary preserves F0-I2 deferrals", () => {
   assert.match(experienceSource, /generateAdminTeamPasswordAction/)
   assert.match(experienceSource, /disableAdminTeamMemberAction/)
   assert.match(experienceSource, /reactivateAdminTeamMemberAction/)
+  assert.match(experienceSource, /deleteAdminTeamMemberAction/)
+  assert.match(experienceSource, /Type DELETE(?: to confirm)?/)
 
   const actionSource = source(webActionsPath)
   assert.doesNotMatch(
@@ -57,6 +59,11 @@ test("the current Team boundary preserves F0-I2 deferrals", () => {
   )
   assert.match(actionSource, /sendInvite: false/)
   assert.match(actionSource, /role === "admin" \? "Admins" : "Operators"/)
+  assert.match(actionSource, /confirmation !== "DELETE"/)
+  assert.match(
+    actionSource,
+    /members\/\$\{encodeURIComponent\(memberId\)\}\/delete/,
+  )
 
   const bffSource = source(bffRoutesPath)
   assert.doesNotMatch(
@@ -71,10 +78,13 @@ test("the current Team boundary preserves F0-I2 deferrals", () => {
   assert.match(bffSource, /members\/:id\/generate-password/)
   assert.match(bffSource, /members\/:id\/disable/)
   assert.match(bffSource, /members\/:id\/reactivate/)
+  assert.match(bffSource, /members\/:id\/delete/)
+  assert.match(bffSource, /requires exact DELETE confirmation/)
   assert.match(bffSource, /body\.data\.sendInvite/)
 
   const csvTemplateRouteSource = source(csvTemplateRoutePath)
   assert.match(csvTemplateRouteSource, /status: 404/)
+  assert.match(csvTemplateRouteSource, /"Cache-Control": "no-store"/)
   assert.doesNotMatch(csvTemplateRouteSource, /getBffRequest|fetch\(/)
   assert.deepEqual(
     buildPr11ConsoleHrefManifest(repositoryRoot, currentWorktreePaths()),
@@ -89,6 +99,14 @@ test("the current Team boundary preserves F0-I2 deferrals", () => {
 
   const boundary = JSON.parse(source(teamDeferredCapabilitiesBoundaryPath))
   assert.deepEqual(verifyTeamDeferredCapabilitiesBoundaryDocument(boundary), [])
+  assert.deepEqual(boundary.currentBoundary.tombstonedWebRoutes, [
+    {
+      cacheControl: "no-store",
+      method: "GET",
+      path: "/team/import/template",
+      status: 404,
+    },
+  ])
   assert.equal(boundary.historicalEvidence, "PRESERVED_UNCHANGED")
   assert.equal(boundary.productAccepted, false)
   assert.equal(boundary.runtimeQualified, false)

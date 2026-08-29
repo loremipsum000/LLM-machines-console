@@ -8,6 +8,7 @@ import {
   checkAdminConnectedAppFirecrawlConnectionAction,
   createAdminConnectedAppAction,
   createAdminTeamMemberAction,
+  deleteAdminTeamMemberAction,
   disableAdminConnectedAppFirecrawlAction,
   enableAdminConnectedAppFirecrawlAction,
   generateAdminTeamPasswordAction,
@@ -390,6 +391,29 @@ describe("inference-core Admin actions", () => {
       })
     },
   )
+
+  it("requires exact Admin confirmation before deleting a Team member", async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("memberId", "member-1")
+    formData.set("confirmation", "delete")
+
+    await expect(deleteAdminTeamMemberAction(formData)).rejects.toThrow(
+      "redirect:/team/members/member-1?teamAction=deleteConfirmation",
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
+    formData.set("confirmation", "DELETE")
+
+    await expect(deleteAdminTeamMemberAction(formData)).rejects.toThrow(
+      "Authorized Console session required.",
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
 
   afterEach(() => {
     vi.unstubAllGlobals()

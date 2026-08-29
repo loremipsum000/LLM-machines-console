@@ -3859,6 +3859,7 @@ export function verifyTeamDeferredCapabilitiesBoundaryDocument(document) {
         "ADMIN_GENERATE_ONE_TIME_PASSWORD",
         "ADMIN_DISABLE_USER",
         "ADMIN_REACTIVATE_USER",
+        "ADMIN_DELETE_USER_WITH_EXACT_CONFIRMATION",
         "ADMIN_VIEW_APPROVED_USER_METADATA",
         "OPERATOR_READ_ONLY_TEAM_VIEW",
       ],
@@ -3868,12 +3869,20 @@ export function verifyTeamDeferredCapabilitiesBoundaryDocument(document) {
         "EMAIL_DELIVERY",
         "IDENTITY_MIGRATION",
       ],
-      deferredBehavior: "ABSENT_404",
+      deferredBffBehavior: "ABSENT_404",
+      retiredWebBehavior: "ROUTE_REMOVED_OR_EXPLICIT_NO_STORE_404_TOMBSTONE",
       removedWebRoutes: [
         "/team/groups/:id",
         "/team/groups/new",
         "/team/import",
-        "/team/import/template",
+      ],
+      tombstonedWebRoutes: [
+        {
+          method: "GET",
+          path: "/team/import/template",
+          status: 404,
+          cacheControl: "no-store",
+        },
       ],
       removedBffRoutes: [
         "GET /api/admin/team/csv-template",

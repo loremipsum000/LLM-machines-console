@@ -75,6 +75,22 @@ describe("Admin Team deferred Product boundary", () => {
     })
     await server.close()
   })
+
+  it("requires exact confirmation before deleting a Team member", async () => {
+    const adminServer = teamBoundaryServer()
+    const invalidConfirmation = await adminServer.inject({
+      method: "POST",
+      payload: { confirmation: "delete" },
+      url: "/api/admin/team/members/member-1/delete",
+    })
+
+    expect(invalidConfirmation.statusCode).toBe(400)
+    expect(invalidConfirmation.json()).toMatchObject({
+      detail: "Deleting a Team member requires exact DELETE confirmation.",
+      title: "Invalid Team member delete request",
+    })
+    await adminServer.close()
+  })
 })
 
 function teamBoundaryServer() {

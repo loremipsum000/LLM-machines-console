@@ -53,13 +53,81 @@ function sourceProfile() {
   return profile
 }
 
+function placementArtifacts(source, rendered, overrides = {}) {
+  const values = {
+    LLMM_BFF_IMAGE: `sha256:${"b".repeat(64)}`,
+    LLMM_CONFIGURATION_ROOT: "/etc/llmm/configuration",
+    LLMM_EDGE_IMAGE: `nginx@sha256:${"c".repeat(64)}`,
+    LLMM_INFERENCE_CORE_COMPATIBILITY_FINGERPRINT:
+      rendered.coreCompatibilityFingerprint,
+    LLMM_INFERENCE_HOST: "10.33.74.166",
+    LLMM_INFERENCE_MODEL_ADMISSION_DIR: "/etc/llmm/admission",
+    LLMM_INFERENCE_PROFILE_FILE: `${source.metadata.profileId}.json`,
+    LLMM_INFERENCE_PROFILE_ID: source.metadata.profileId,
+    LLMM_INFERENCE_PROFILE_REVISION: String(source.metadata.revision),
+    LLMM_INFERENCE_QUALIFIED_PROFILE_DIGEST:
+      source.activation.qualifiedProfileDigest,
+    LLMM_INFERENCE_RENDERED_PROFILE_DIGEST: sha256(canonicalJson(rendered)),
+    LLMM_SECRET_ROOT: "/etc/llmm/secrets",
+    LLMM_SOURCE_ROOT: "/opt/llmm/source",
+    LLMM_WEB_IMAGE: `sha256:${"d".repeat(64)}`,
+    ...overrides,
+  }
+  const placementEnvironment = `${Object.entries(values)
+    .map(([name, value]) => `${name}=${value}`)
+    .join("\n")}\n`
+  const artifacts = [
+    "bff.env",
+    "image-bindings.json",
+    "placement.env",
+    "product-edge.nginx.conf",
+    "web.env",
+  ].map((name) => ({
+    name,
+    sha256:
+      name === "placement.env"
+        ? sha256(placementEnvironment)
+        : `sha256:${name.charCodeAt(0).toString(16).padStart(2, "0").repeat(32)}`,
+  }))
+  const renderedConfigurationManifest = `${JSON.stringify(
+    {
+      artifacts,
+      schema: "llm-machines.vm103-founder-rendered-config.v1",
+      source: { commit: "e".repeat(40), tree: "f".repeat(40) },
+    },
+    null,
+    2,
+  )}\n`
+  return {
+    expectedManifestDigest: sha256(renderedConfigurationManifest),
+    placementEnvironment,
+    renderedConfigurationManifest,
+  }
+}
+
+function renderRoute(source, rendered, endpoint, validationTime = now) {
+  const placement = placementArtifacts(source, rendered)
+  return renderVm103LiteLlmRoute(
+    source,
+    rendered,
+    placement.placementEnvironment,
+    placement.renderedConfigurationManifest,
+    placement.expectedManifestDigest,
+    endpoint,
+    validationTime,
+  )
+}
+
 test("renders one credential-free route from the exact activated profile pair", () => {
   const source = sourceProfile()
   const rendered = renderDeliveryProfile(source, contracts)
+  const placement = placementArtifacts(source, rendered)
   const result = renderVm103LiteLlmRoute(
     source,
     rendered,
-    "10.33.74.166",
+    placement.placementEnvironment,
+    placement.renderedConfigurationManifest,
+    placement.expectedManifestDigest,
     "http://10.33.74.166:30005/v1",
     now,
   )
@@ -74,6 +142,14 @@ test("renders one credential-free route from the exact activated profile pair", 
     source.activation.qualifiedProfileDigest,
   )
   assert.equal(result.renderedProfileDigest, sha256(canonicalJson(rendered)))
+  assert.equal(
+    result.renderedConfigurationManifestDigest,
+    placement.expectedManifestDigest,
+  )
+  assert.equal(
+    result.renderedPlacementDigest,
+    sha256(placement.placementEnvironment),
+  )
   assert.deepEqual(result.rollback, source.rollback)
   assert.match(result.config, new RegExp(`model_name: ${source.model.alias}`))
   assert.match(result.config, /api_base: http:\/\/10\.33\.74\.166:30005\/v1/)
@@ -81,7 +157,13 @@ test("renders one credential-free route from the exact activated profile pair", 
   assert.match(result.config, /store_prompts_in_spend_logs: false/)
   assert.match(result.config, /turn_off_message_logging: true/)
   assert.doesNotMatch(result.config, /fixture-model|password|secret/i)
-  assert.match(result.sha256, /^[0-9a-f]{64}$/)
+  assert.match(result.sha256, /^sha256:[0-9a-f]{64}$/)
+  assert.match(result.runtimeBindingDigest, /^sha256:[0-9a-f]{64}$/)
+  assert.equal(
+    result.runtimeModelId,
+    `llmm-route-${result.runtimeBindingDigest.slice(7)}`,
+  )
+  assert.match(result.config, new RegExp(`id: ${result.runtimeModelId}`))
 })
 
 test("content-binds the exact canonical rendered profile deterministically", () => {
@@ -94,31 +176,101 @@ test("content-binds the exact canonical rendered profile deterministically", () 
     profileQualificationDigest(changedSource)
   const changedRendered = renderDeliveryProfile(changedSource, contracts)
 
-  const first = renderVm103LiteLlmRoute(
+  const first = renderRoute(
     firstSource,
     firstRendered,
-    "10.33.74.166",
     "http://10.33.74.166:30005/v1",
     now,
   )
-  const equivalent = renderVm103LiteLlmRoute(
+  const equivalent = renderRoute(
     firstSource,
     equivalentRendered,
-    "10.33.74.166",
     "http://10.33.74.166:30005/v1",
     now,
   )
-  const changed = renderVm103LiteLlmRoute(
+  const changed = renderRoute(
     changedSource,
     changedRendered,
-    "10.33.74.166",
     "http://10.33.74.166:30005/v1",
     now,
   )
 
   assert.equal(first.renderedProfileDigest, equivalent.renderedProfileDigest)
   assert.notEqual(first.renderedProfileDigest, changed.renderedProfileDigest)
-  assert.equal(first.sha256, changed.sha256)
+  assert.notEqual(first.sha256, changed.sha256)
+  assert.notEqual(first.runtimeBindingDigest, changed.runtimeBindingDigest)
+})
+
+test("derives the private host and profile only from the manifest-bound placement", () => {
+  const source = sourceProfile()
+  const rendered = renderDeliveryProfile(source, contracts)
+  const placement = placementArtifacts(source, rendered)
+
+  assert.throws(
+    () =>
+      renderVm103LiteLlmRoute(
+        source,
+        rendered,
+        placement.placementEnvironment,
+        placement.renderedConfigurationManifest,
+        `sha256:${"0".repeat(64)}`,
+        "http://10.33.74.166:30005/v1",
+        now,
+      ),
+    /exact rendered placement manifest/,
+  )
+
+  const driftedPlacement = placementArtifacts(source, rendered, {
+    LLMM_INFERENCE_HOST: "10.33.74.165",
+  })
+  assert.throws(
+    () =>
+      renderVm103LiteLlmRoute(
+        source,
+        rendered,
+        driftedPlacement.placementEnvironment,
+        driftedPlacement.renderedConfigurationManifest,
+        driftedPlacement.expectedManifestDigest,
+        "http://10.33.74.166:30005/v1",
+        now,
+      ),
+    /exact private endpoint/,
+  )
+
+  const wrongProfile = placementArtifacts(source, rendered, {
+    LLMM_INFERENCE_PROFILE_ID: "substituted-profile",
+  })
+  assert.throws(
+    () =>
+      renderVm103LiteLlmRoute(
+        source,
+        rendered,
+        wrongProfile.placementEnvironment,
+        wrongProfile.renderedConfigurationManifest,
+        wrongProfile.expectedManifestDigest,
+        "http://10.33.74.166:30005/v1",
+        now,
+      ),
+    /rendered placement artifact/,
+  )
+
+  const tamperedEnvironment = placement.placementEnvironment.replace(
+    "LLMM_INFERENCE_HOST=10.33.74.166",
+    "LLMM_INFERENCE_HOST=10.33.74.165",
+  )
+  assert.throws(
+    () =>
+      renderVm103LiteLlmRoute(
+        source,
+        rendered,
+        tamperedEnvironment,
+        placement.renderedConfigurationManifest,
+        placement.expectedManifestDigest,
+        "http://10.33.74.165:30005/v1",
+        now,
+      ),
+    /exact rendered placement manifest/,
+  )
 })
 
 test("rejects invalid, inactive, stale, and public source inputs", () => {
@@ -126,10 +278,9 @@ test("rejects invalid, inactive, stale, and public source inputs", () => {
   invalid.model.artifactDigest = "wrong"
   assert.throws(
     () =>
-      renderVm103LiteLlmRoute(
+      renderRoute(
         invalid,
         renderDeliveryProfile(sourceProfile(), contracts),
-        "10.33.74.166",
         "http://10.33.74.166:30005/v1",
         now,
       ),
@@ -139,10 +290,9 @@ test("rejects invalid, inactive, stale, and public source inputs", () => {
   const inactive = structuredClone(syntheticProfile)
   assert.throws(
     () =>
-      renderVm103LiteLlmRoute(
+      renderRoute(
         inactive,
         renderDeliveryProfile(inactive, contracts),
-        "10.33.74.166",
         "http://10.33.74.166:30005/v1",
         now,
       ),
@@ -154,10 +304,9 @@ test("rejects invalid, inactive, stale, and public source inputs", () => {
   stale.activation.qualifiedProfileDigest = profileQualificationDigest(stale)
   assert.throws(
     () =>
-      renderVm103LiteLlmRoute(
+      renderRoute(
         stale,
         renderDeliveryProfile(stale, contracts),
-        "10.33.74.166",
         "http://10.33.74.166:30005/v1",
         now,
       ),
@@ -167,14 +316,7 @@ test("rejects invalid, inactive, stale, and public source inputs", () => {
   const source = sourceProfile()
   const rendered = renderDeliveryProfile(source, contracts)
   assert.throws(
-    () =>
-      renderVm103LiteLlmRoute(
-        source,
-        rendered,
-        "10.33.74.166",
-        "http://203.0.113.10:30005/v1",
-        now,
-      ),
+    () => renderRoute(source, rendered, "http://203.0.113.10:30005/v1", now),
     /exact private endpoint/,
   )
 })
@@ -231,14 +373,7 @@ test("rejects every well-formed substitution in the rendered identity", () => {
     const rendered = structuredClone(renderDeliveryProfile(source, contracts))
     mutate(rendered)
     assert.throws(
-      () =>
-        renderVm103LiteLlmRoute(
-          source,
-          rendered,
-          "10.33.74.166",
-          "http://10.33.74.166:30005/v1",
-          now,
-        ),
+      () => renderRoute(source, rendered, "http://10.33.74.166:30005/v1", now),
       /exact canonical rendering/,
     )
   }
@@ -254,14 +389,7 @@ test("rejects an endpoint that disagrees with the qualified command and network"
     "https://10.33.74.166:30005/v1",
   ]) {
     assert.throws(
-      () =>
-        renderVm103LiteLlmRoute(
-          source,
-          rendered,
-          "10.33.74.166",
-          endpoint,
-          now,
-        ),
+      () => renderRoute(source, rendered, endpoint, now),
       /exact private endpoint/,
     )
   }
@@ -278,10 +406,9 @@ test("rejects rollback fields outside the canonical credential-free schema", () 
   )
   assert.throws(
     () =>
-      renderVm103LiteLlmRoute(
+      renderRoute(
         source,
         renderDeliveryProfile(sourceProfile(), contracts),
-        "10.33.74.166",
         "http://10.33.74.166:30005/v1",
         now,
       ),

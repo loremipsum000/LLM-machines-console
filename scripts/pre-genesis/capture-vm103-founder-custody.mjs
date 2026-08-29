@@ -24,7 +24,7 @@ const keycloakControlSecretMappings = {
   oidcClient: "console-oidc-client-secret",
 }
 
-const nonSecretNames = [
+export const founderRuntimeImportAllowedNames = [
   "ADMIN_ALERTMANAGER_BASE_URL",
   "ADMIN_ALERTMANAGER_TIMEOUT_MS",
   "ADMIN_GRAFANA_BASE_URL",
@@ -76,13 +76,13 @@ export function parseRuntimeSecretMaterial(buffer) {
     throw new Error("The founder custody source is missing exact file paths.")
   }
   const nonSecrets = Object.fromEntries(
-    nonSecretNames
+    founderRuntimeImportAllowedNames
       .filter((name) => environment[name]?.trim())
       .map((name) => {
         const value = environment[name].trim()
         if (
           value.length > 2048 ||
-          /[\r\n\0]/.test(value) ||
+          /[\r\n\0$'"\\`]/.test(value) ||
           /^https?:\/\/[^/@:]+:[^/@]+@/.test(value)
         ) {
           throw new Error(`The founder custody source has unsafe ${name}.`)
