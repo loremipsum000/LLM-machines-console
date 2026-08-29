@@ -80,7 +80,7 @@ Status, restart, stop, and rollback remain exact-project operations:
 
 ```sh
 systemctl status llmm-founder-candidate.service
-systemctl reload llmm-founder-candidate.service
+systemctl restart llmm-founder-candidate.service
 systemctl stop llmm-founder-candidate.service
 docker compose --project-name llmm-founder-candidate --file <compose> stop
 ```

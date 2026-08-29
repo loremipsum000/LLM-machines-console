@@ -44,6 +44,22 @@ import { verifyFounderSourceCheckout } from "../pre-genesis/verify-vm103-founder
 
 const digest = `sha256:${"a".repeat(64)}`
 
+test("founder runbook uses the admitted stop-start restart lifecycle", () => {
+  const runbook = readFileSync(
+    new URL(
+      "../../infra/deployment/VM103-FOUNDER-CANDIDATE.md",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+
+  assert.match(runbook, /systemctl restart llmm-founder-candidate\.service/)
+  assert.doesNotMatch(
+    runbook,
+    /systemctl reload llmm-founder-candidate\.service/,
+  )
+})
+
 test("founder LiteLLM route is pinned to the current canonical Core contract", () => {
   assert.equal(
     vm103CoreCompatibilityFingerprint,
