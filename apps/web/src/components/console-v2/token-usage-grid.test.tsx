@@ -114,6 +114,12 @@ describe("TokenUsageGrid", () => {
     ).toBe(4)
   })
 
+  it("labels months that begin in the middle of a calendar week", () => {
+    const calendar = buildUsageCalendar("2026-08-29T09:30:00.000Z", [])
+
+    expect(calendar.monthLabels.filter(Boolean)).toEqual(["Jun", "Jul", "Aug"])
+  })
+
   it("has no automated accessibility violations", async () => {
     const { container } = render(
       <TokenUsageGrid

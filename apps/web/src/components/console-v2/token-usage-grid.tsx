@@ -244,6 +244,7 @@ export function buildUsageCalendar(
   const calendarEnd = new Date(
     endDate.getTime() + (6 - endDate.getUTCDay()) * DAY_MS,
   )
+  const firstDateKey = firstDate.toISOString().slice(0, 10)
   const admittedPoints = points.filter(({ date }) => {
     const pointDate = utcDateStart(date)
     return pointDate >= firstDate && pointDate <= endDate
@@ -275,19 +276,14 @@ export function buildUsageCalendar(
   const weekCount = cells.length / 7
   const monthLabels = Array.from({ length: weekCount }, (_, weekIndex) => {
     const week = cells.slice(weekIndex * 7, weekIndex * 7 + 7)
-    const firstInRange = week.find(({ inRange }) => inRange)
-    if (!firstInRange) {
+    const labelDay = week.find(
+      ({ date, dateValue, inRange }) =>
+        inRange && (date === firstDateKey || dateValue.getUTCDate() === 1),
+    )
+    if (!labelDay) {
       return null
     }
-    const previousInRange = cells
-      .slice(0, weekIndex * 7)
-      .filter(({ inRange }) => inRange)
-      .at(-1)
-    return !previousInRange ||
-      previousInRange.dateValue.getUTCMonth() !==
-        firstInRange.dateValue.getUTCMonth()
-      ? monthFormatter.format(firstInRange.dateValue)
-      : null
+    return monthFormatter.format(labelDay.dateValue)
   })
 
   return {
