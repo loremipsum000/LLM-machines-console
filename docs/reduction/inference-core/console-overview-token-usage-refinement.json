@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "id": "CONSOLE-OVERVIEW-TOKEN-USAGE-REFINEMENT",
+  "status": "SOURCE_SUCCESSOR_CANDIDATE",
+  "base": {
+    "commit": "ac4a4821fb49625e76344f25d38de41b6aef09ab",
+    "tree": "02dc3621728067aecf14bbafd74a4a2f525a837f"
+  },
+  "predecessor": {
+    "id": "CONSOLE-ACTIVITY-AUDIT-SURFACE-RETIREMENT",
+    "record": "docs/reduction/inference-core/console-activity-audit-surface-retirement.json",
+    "historicalEvidence": "PRESERVED_UNCHANGED"
+  },
+  "overview": {
+    "recentActivity": "ABSENT",
+    "operationalCards": {
+      "ids": ["applications", "inference", "hardware", "system"],
+      "layout": "ONE_COLUMN_FULL_WIDTH"
+    },
+    "tokenUsage": {
+      "source": "LITELLM_AGGREGATE_USAGE",
+      "range": "90d",
+      "timezone": "UTC",
+      "granularity": "day",
+      "maximumPoints": 90,
+      "missingDays": "NOT_REPORTED_NOT_ZERO",
+      "scale": "RELATIVE_LOG_FOUR_BLUE_LEVELS",
+      "promptResponseRetention": false
+    }
+  },
+  "settingsAuditExport": {
+    "role": "admin",
+    "operatorSurface": "ABSENT",
+    "control": "ONE_BUTTON",
+    "label": "Export last 30 days",
+    "method": "GET",
+    "path": "/api/admin/audit/export",
+    "format": "json",
+    "windowDays": 30,
+    "verificationKeyApi": "RETAINED_WITHOUT_SECOND_UI_CONTROL"
+  },
+  "retainedControls": {
+    "auditReadApi": "/api/admin/audit",
+    "signedExportApis": [
+      "/api/admin/audit/export",
+      "/api/admin/audit/export/verification-keys"
+    ],
+    "auditLedger": "RETAINED",
+    "nativeIngestion": "RETAINED",
+    "metadataOnlyRetention": "RETAINED",
+    "authorizationAndSigning": "RETAINED"
+  },
+  "productAccepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "genesis": "UNPUBLISHED"
+}

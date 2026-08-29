@@ -145,18 +145,53 @@ export const adminOverviewTileSchema = z
   .strict()
 export type AdminOverviewTile = z.infer<typeof adminOverviewTileSchema>
 
-export const adminActivityEventSchema = z
+export const adminOverviewTokenUsagePointSchema = z
   .object({
-    id: z.string().min(1),
-    actorId: z.string().min(1),
-    action: z.string().min(1),
-    targetType: z.string().min(1),
-    targetId: z.string().min(1),
-    severity: inferenceCoreSeveritySchema,
-    createdAt: z.string().datetime(),
+    date: z.string().date(),
+    tokens: z.number().int().min(0),
   })
   .strict()
-export type AdminActivityEvent = z.infer<typeof adminActivityEventSchema>
+export type AdminOverviewTokenUsagePoint = z.infer<
+  typeof adminOverviewTokenUsagePointSchema
+>
+
+export const adminOverviewTokenUsageSchema = z
+  .object({
+    points: z.array(adminOverviewTokenUsagePointSchema).max(90),
+    range: z.literal("90d"),
+    sourceStatus: inferenceCoreSourceStatusSchema,
+  })
+  .strict()
+  .superRefine((usage, context) => {
+    if (usage.sourceStatus !== "ok" && usage.points.length > 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Overview token usage points require an authoritative aggregate source.",
+        path: ["points"],
+      })
+    }
+
+    for (let index = 1; index < usage.points.length; index += 1) {
+      const previousPoint = usage.points[index - 1]
+      const currentPoint = usage.points[index]
+      if (
+        previousPoint &&
+        currentPoint &&
+        previousPoint.date >= currentPoint.date
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Overview token usage points must be unique and ordered by UTC date.",
+          path: ["points", index, "date"],
+        })
+      }
+    }
+  })
+export type AdminOverviewTokenUsage = z.infer<
+  typeof adminOverviewTokenUsageSchema
+>
 
 export const adminAuditMetadataEntrySchema = z
   .object({
@@ -320,10 +355,9 @@ export type InferenceCoreNativeAuditCapability = z.infer<
 
 export const adminOverviewResponseSchema = z
   .object({
-    activitySourceStatus: inferenceCoreSourceStatusSchema,
     generatedAt: z.string().datetime(),
     tiles: z.array(adminOverviewTileSchema).length(4),
-    activityEvents: z.array(adminActivityEventSchema),
+    tokenUsage: adminOverviewTokenUsageSchema,
   })
   .strict()
 export type AdminOverviewResponse = z.infer<typeof adminOverviewResponseSchema>

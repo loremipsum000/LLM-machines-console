@@ -3539,6 +3539,12 @@ export const activityAuditSurfaceRetirementBase =
   "1546448712fb6863538153c3aa97f227f735715a"
 export const activityAuditSurfaceRetirementBaseTree =
   "53c6483060dc49b5be5d78443200964eabf560ff"
+export const overviewTokenUsageRefinementPath =
+  "docs/reduction/inference-core/console-overview-token-usage-refinement.json"
+export const overviewTokenUsageRefinementBase =
+  "ac4a4821fb49625e76344f25d38de41b6aef09ab"
+export const overviewTokenUsageRefinementBaseTree =
+  "02dc3621728067aecf14bbafd74a4a2f525a837f"
 
 export function verifyActivityAuditSurfaceRetirementDocument(document) {
   const expected = {
@@ -3610,6 +3616,99 @@ export function verifyActivityAuditSurfaceRetirementDocument(document) {
   }
   if (errors.length === 0) {
     errors.push("Activity retirement decision shape changed")
+  }
+  return errors.sort()
+}
+
+export function verifyOverviewTokenUsageRefinementDocument(document) {
+  const expected = {
+    schemaVersion: 1,
+    id: "CONSOLE-OVERVIEW-TOKEN-USAGE-REFINEMENT",
+    status: "SOURCE_SUCCESSOR_CANDIDATE",
+    base: {
+      commit: overviewTokenUsageRefinementBase,
+      tree: overviewTokenUsageRefinementBaseTree,
+    },
+    predecessor: {
+      id: "CONSOLE-ACTIVITY-AUDIT-SURFACE-RETIREMENT",
+      record: activityAuditSurfaceRetirementPath,
+      historicalEvidence: "PRESERVED_UNCHANGED",
+    },
+    overview: {
+      recentActivity: "ABSENT",
+      operationalCards: {
+        ids: ["applications", "inference", "hardware", "system"],
+        layout: "ONE_COLUMN_FULL_WIDTH",
+      },
+      tokenUsage: {
+        source: "LITELLM_AGGREGATE_USAGE",
+        range: "90d",
+        timezone: "UTC",
+        granularity: "day",
+        maximumPoints: 90,
+        missingDays: "NOT_REPORTED_NOT_ZERO",
+        scale: "RELATIVE_LOG_FOUR_BLUE_LEVELS",
+        promptResponseRetention: false,
+      },
+    },
+    settingsAuditExport: {
+      role: "admin",
+      operatorSurface: "ABSENT",
+      control: "ONE_BUTTON",
+      label: "Export last 30 days",
+      method: "GET",
+      path: "/api/admin/audit/export",
+      format: "json",
+      windowDays: 30,
+      verificationKeyApi: "RETAINED_WITHOUT_SECOND_UI_CONTROL",
+    },
+    retainedControls: {
+      auditReadApi: "/api/admin/audit",
+      signedExportApis: [
+        "/api/admin/audit/export",
+        "/api/admin/audit/export/verification-keys",
+      ],
+      auditLedger: "RETAINED",
+      nativeIngestion: "RETAINED",
+      metadataOnlyRetention: "RETAINED",
+      authorizationAndSigning: "RETAINED",
+    },
+    productAccepted: false,
+    runtimeQualified: false,
+    contractActivation: "INACTIVE",
+    genesis: "UNPUBLISHED",
+  }
+  if (JSON.stringify(document) === JSON.stringify(expected)) {
+    return []
+  }
+  const errors = []
+  if (
+    JSON.stringify(document?.overview) !== JSON.stringify(expected.overview)
+  ) {
+    errors.push("Overview token-usage refinement boundary changed")
+  }
+  if (
+    JSON.stringify(document?.settingsAuditExport) !==
+    JSON.stringify(expected.settingsAuditExport)
+  ) {
+    errors.push("Overview token-usage refinement audit export changed")
+  }
+  if (
+    JSON.stringify(document?.retainedControls) !==
+    JSON.stringify(expected.retainedControls)
+  ) {
+    errors.push("Overview token-usage refinement changed retained controls")
+  }
+  if (
+    document?.productAccepted !== false ||
+    document?.runtimeQualified !== false ||
+    document?.contractActivation !== "INACTIVE" ||
+    document?.genesis !== "UNPUBLISHED"
+  ) {
+    errors.push("Overview token-usage refinement overstated Product status")
+  }
+  if (errors.length === 0) {
+    errors.push("Overview token-usage refinement decision shape changed")
   }
   return errors.sort()
 }
@@ -3938,6 +4037,12 @@ export const activityAuditRetiredConsoleHrefManifest = [
     expression: "literal:/api/admin/audit/export/verification-keys",
   },
 ].sort(comparePr11HrefEntries)
+
+export const overviewTokenUsageConsoleHrefManifest =
+  activityAuditRetiredConsoleHrefManifest.filter(
+    ({ path }) =>
+      path !== "apps/web/src/components/console-v2/audit-evidence-panel.tsx",
+  )
 
 export const pr11RetiredEnvExampleBlock = [
   "",
@@ -6391,6 +6496,10 @@ function hasPr11aR1V1SourceClosureMarker(root) {
 
 function hasActivityAuditSurfaceRetirementMarker(root) {
   return isRegularFile(resolve(root, activityAuditSurfaceRetirementPath))
+}
+
+function hasOverviewTokenUsageRefinementMarker(root) {
+  return isRegularFile(resolve(root, overviewTokenUsageRefinementPath))
 }
 
 function hasPr11aR1E1SourceMarker(root) {
@@ -9811,6 +9920,12 @@ function verifyReviewedPr11SuccessorTarget({
     )
     successorPaths.delete(
       "apps/web/src/components/console-v2/activity-v2-experience.test.tsx",
+    )
+  }
+  if (hasOverviewTokenUsageRefinementMarker(root)) {
+    successorPaths.add(overviewTokenUsageRefinementPath)
+    successorPaths.add(
+      "apps/web/src/components/console-v2/token-usage-grid.tsx",
     )
   }
   return [
@@ -13974,7 +14089,8 @@ export function verifyPr11ConsoleHrefManifest(manifest) {
   return serialized === JSON.stringify(pr11ConsoleHrefManifest) ||
     serialized === JSON.stringify(pr11KeysConsoleHrefManifest) ||
     serialized === JSON.stringify(pr11KeysGrafanaConsoleHrefManifest) ||
-    serialized === JSON.stringify(activityAuditRetiredConsoleHrefManifest)
+    serialized === JSON.stringify(activityAuditRetiredConsoleHrefManifest) ||
+    serialized === JSON.stringify(overviewTokenUsageConsoleHrefManifest)
     ? []
     : ["PR-11 Console href manifest changed"]
 }
@@ -14225,6 +14341,7 @@ export function verifyPr11SourceBoundary(
   const sectionsSource = read(sectionsPath)
   let usesCurrentKeysBoundary = false
   let usesActivityRetirementBoundary = false
+  let usesOverviewTokenUsageRefinement = false
   if (candidatePaths.has(businessArchitectureCurrentBoundaryPath)) {
     try {
       const boundary = JSON.parse(
@@ -14253,6 +14370,25 @@ export function verifyPr11SourceBoundary(
         usesCurrentKeysBoundary && retirementErrors.length === 0
     } catch {
       errors.push("invalid Activity retirement decision document")
+    }
+  }
+  if (candidatePaths.has(overviewTokenUsageRefinementPath)) {
+    try {
+      const refinement = JSON.parse(
+        readFileSync(resolve(root, overviewTokenUsageRefinementPath), "utf8"),
+      )
+      const refinementErrors =
+        verifyOverviewTokenUsageRefinementDocument(refinement)
+      errors.push(...refinementErrors)
+      usesOverviewTokenUsageRefinement =
+        usesActivityRetirementBoundary && refinementErrors.length === 0
+      if (!usesActivityRetirementBoundary && refinementErrors.length === 0) {
+        errors.push(
+          "Overview token-usage refinement requires the Activity retirement predecessor",
+        )
+      }
+    } catch {
+      errors.push("invalid Overview token-usage refinement decision document")
     }
   }
   const expectedLogicalSurfaces = usesActivityRetirementBoundary
@@ -14312,7 +14448,9 @@ export function verifyPr11SourceBoundary(
   if (!serverData.includes("getAdminOverview")) {
     errors.push("PR-11 source-backed Overview loader is missing")
   }
-  read("apps/web/src/components/console-v2/overview-v2-experience.tsx")
+  const overviewSource = read(
+    "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+  )
 
   const applicationsSource = read(
     "apps/web/src/components/console-v2/applications-v2-experience.tsx",
@@ -14363,7 +14501,58 @@ export function verifyPr11SourceBoundary(
     const auditPanelSource = read(
       "apps/web/src/components/console-v2/audit-evidence-panel.tsx",
     )
-    if (
+    if (usesOverviewTokenUsageRefinement) {
+      const exportButtons = auditPanelSource.match(/<button\b/g) ?? []
+      if (
+        !auditPanelSource.includes('action="/api/admin/audit/export"') ||
+        !auditPanelSource.includes("Export last 30 days") ||
+        !/name="format"\s+type="hidden"\s+value="json"/.test(
+          auditPanelSource,
+        ) ||
+        exportButtons.length !== 1 ||
+        auditPanelSource.includes(
+          'href="/api/admin/audit/export/verification-keys"',
+        )
+      ) {
+        errors.push(
+          "Overview token-usage refinement Settings export is incomplete",
+        )
+      }
+      if (
+        !overviewSource.includes("TokenUsageGrid") ||
+        !overviewSource.includes('className="mt-8 grid gap-3"') ||
+        overviewSource.includes("Recent activity")
+      ) {
+        errors.push("Overview token-usage refinement layout is incomplete")
+      }
+      const tokenUsageSource = read(
+        "apps/web/src/components/console-v2/token-usage-grid.tsx",
+      )
+      if (
+        !tokenUsageSource.includes("RANGE_DAYS = 90") ||
+        !tokenUsageSource.includes("No token usage reported") ||
+        !tokenUsageSource.includes("bg-[#009fff]")
+      ) {
+        errors.push("Overview token-usage grid contract is incomplete")
+      }
+      const overviewServiceSource = read(
+        "apps/bff/src/services/admin-overview.ts",
+      )
+      if (
+        !/getAdminInference\(actor,\s*\{\s*range:\s*"90d"\s*\}\)/.test(
+          overviewServiceSource,
+        ) ||
+        overviewServiceSource.includes("getRecentAuditEvents")
+      ) {
+        errors.push("Overview token-usage BFF projection is incomplete")
+      }
+      if (
+        !contractsSource.includes("adminOverviewTokenUsageSchema") ||
+        contractsSource.includes("adminActivityEventSchema")
+      ) {
+        errors.push("Overview token-usage response contract is incomplete")
+      }
+    } else if (
       !auditPanelSource.includes('action="/api/admin/audit/export"') ||
       !auditPanelSource.includes(
         'href="/api/admin/audit/export/verification-keys"',

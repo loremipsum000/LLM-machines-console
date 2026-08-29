@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils"
 import type {
-  AdminActivityEvent,
   AdminOverviewMetric,
   AdminOverviewResponse,
   AdminOverviewTile,
@@ -8,6 +7,7 @@ import type {
 } from "@llm-machines/contracts/inference-core"
 import Link from "next/link"
 import { sourceStatusLabel } from "./source-status"
+import { TokenUsageGrid } from "./token-usage-grid"
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
@@ -20,8 +20,6 @@ interface OverviewV2ExperienceProps {
 }
 
 export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
-  const auditUnavailable = overview.activitySourceStatus === "unavailable"
-
   return (
     <div className="w-full min-h-screen pb-16 pt-8 lg:pt-[73px]">
       <header>
@@ -29,8 +27,8 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
           Overview
         </h1>
         <p className="mt-3 max-w-[560px] text-sm leading-5 text-[#b2b2b2]">
-          See key access, inference usage, appliance health, system status, and
-          recent activity at a glance.
+          See key access, token usage, inference availability, hardware health,
+          and system status at a glance.
         </p>
         <p className="mt-2 text-xs leading-5 text-[#8f8f8f]">
           Updated {formatTimestamp(overview.generatedAt)} UTC
@@ -38,43 +36,39 @@ export function OverviewV2Experience({ overview }: OverviewV2ExperienceProps) {
       </header>
 
       <section
-        aria-label="Operational overview"
-        className="mt-8 grid gap-3 sm:grid-cols-2"
+        aria-labelledby="overview-token-usage-title"
+        className="mt-8 rounded-lg border border-[#353535] bg-[#232323] p-4"
       >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2
+              className="text-base font-semibold leading-5 text-white"
+              id="overview-token-usage-title"
+            >
+              Token usage
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-[#b2b2b2]">
+              Daily aggregate token volume reported by LiteLLM. No prompts or
+              responses are retained.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <span className="text-xs leading-4 text-[#8f8f8f]">
+              Last 90 days · UTC
+            </span>
+            <SourceStatus status={overview.tokenUsage.sourceStatus} />
+          </div>
+        </div>
+        <TokenUsageGrid
+          generatedAt={overview.generatedAt}
+          usage={overview.tokenUsage}
+        />
+      </section>
+
+      <section aria-label="Operational overview" className="mt-8 grid gap-3">
         {overview.tiles.map((tile) => (
           <OverviewTileCard key={tile.id} tile={tile} />
         ))}
-      </section>
-
-      <section
-        aria-labelledby="overview-recent-activity-title"
-        className="mt-8 rounded-lg border border-[#353535] bg-[#232323] p-4"
-      >
-        <div>
-          <h2
-            className="text-base font-semibold leading-5 text-white"
-            id="overview-recent-activity-title"
-          >
-            Recent activity
-          </h2>
-          <p className="mt-1 text-sm leading-5 text-[#b2b2b2]">
-            Metadata-only events from the Console audit source.
-          </p>
-        </div>
-
-        {overview.activityEvents.length > 0 ? (
-          <div className="mt-4 flex flex-col gap-2">
-            {overview.activityEvents.map((event) => (
-              <ActivityEventRow event={event} key={event.id} />
-            ))}
-          </div>
-        ) : (
-          <p className="mt-4 rounded-md border border-[#353535] bg-[#1d1d1d] p-3 text-sm leading-5 text-[#b2b2b2]">
-            {auditUnavailable
-              ? "Recent audit activity is unavailable."
-              : "No recent audit activity has been recorded."}
-          </p>
-        )}
       </section>
     </div>
   )
@@ -84,7 +78,7 @@ function OverviewTileCard({ tile }: { tile: OverviewTile }) {
   return (
     <article
       aria-labelledby={`overview-tile-${tile.id}`}
-      className="flex min-h-[260px] flex-col rounded-lg border border-[#353535] bg-[#232323] p-4"
+      className="flex w-full flex-col rounded-lg border border-[#353535] bg-[#232323] p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -101,7 +95,7 @@ function OverviewTileCard({ tile }: { tile: OverviewTile }) {
         <SourceStatus status={tile.sourceStatus} />
       </div>
 
-      <dl className="mt-4 grid grid-cols-2 gap-2">
+      <dl className="mt-4 grid gap-2 sm:grid-cols-2">
         {tile.metrics.map((item) => (
           <MetricCard item={item} key={item.id} />
         ))}
@@ -174,47 +168,6 @@ function SourceStatus({ status }: { status: InferenceCoreSourceStatus }) {
       />
       {sourceStatusLabel(status)}
     </span>
-  )
-}
-
-function ActivityEventRow({ event }: { event: AdminActivityEvent }) {
-  return (
-    <article className="rounded-md border border-[#353535] bg-[#1d1d1d] p-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="break-words text-sm font-semibold leading-5 text-white">
-            {event.action}
-          </p>
-          <p className="mt-1 break-words text-xs leading-5 text-[#b2b2b2]">
-            {event.targetType} {event.targetId}
-          </p>
-          <p className="break-words text-xs leading-5 text-[#8f8f8f]">
-            Subject {event.actorId}
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
-          <span
-            className={cn(
-              "inline-flex rounded-full border px-2 py-1 text-xs font-medium leading-none",
-              event.severity === "info" &&
-                "border-[#244b5e] bg-[#1d3038] text-[#7dd8ff]",
-              event.severity === "warning" &&
-                "border-[#5b4a18] bg-[#302914] text-[#ffcc4d]",
-              event.severity === "critical" &&
-                "border-[#5e2424] bg-[#351d1d] text-[#ff7b7b]",
-            )}
-          >
-            {event.severity}
-          </span>
-          <time
-            className="mt-2 block text-xs leading-4 text-[#8f8f8f]"
-            dateTime={event.createdAt}
-          >
-            {formatTimestamp(event.createdAt)} UTC
-          </time>
-        </div>
-      </div>
-    </article>
   )
 }
 

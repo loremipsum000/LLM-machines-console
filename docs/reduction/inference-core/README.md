@@ -1400,3 +1400,25 @@ and signed export APIs remain retained controls. Historical PR-09, PR-11,
 PR-11A, F0, and audit evidence remains unchanged. Product acceptance and
 runtime qualification remain false, contract activation remains inactive, and
 Genesis remains unpublished.
+
+## Console Overview token-usage refinement
+
+The prospective successor removes the final Recent Activity card from
+Overview. Audit generation, ingestion, ledger storage, signed export,
+verification-key service, authorization, and metadata-only retention remain
+unchanged. Settings now presents Admin with one visible signed JSON action,
+`Export last 30 days`; Operator has no export surface. The verification-key API
+remains available to export verification without adding a second Settings
+control.
+
+Overview now presents the four retained operational cards as one full-width
+column and adds a 90-day UTC token-usage grid sourced only from LiteLLM's
+aggregate usage projection. The grid uses relative blue intensity, reports an
+exact token count and date on hover or keyboard selection, and distinguishes a
+missing daily observation from an authentic zero. Unavailable or unconfigured
+aggregate usage fails visibly closed. No prompt or response content enters the
+contract, Web payload, or retained evidence.
+
+The predecessor Activity-retirement record remains byte-identical historical
+evidence. Product acceptance and runtime qualification remain false, contract
+activation remains inactive, and Genesis remains unpublished.

@@ -1,20 +1,9 @@
 import { render, screen } from "@testing-library/react"
-import React from "react"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 import { AuditEvidencePanel } from "./audit-evidence-panel"
 
-vi.mock("next/link", () => ({
-  default: ({
-    children,
-    href,
-    prefetch: _prefetch,
-    ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { prefetch?: boolean }) =>
-    React.createElement("a", { href: String(href), ...props }, children),
-}))
-
 describe("AuditEvidencePanel", () => {
-  it("keeps signed audit evidence available to Admin from Settings", () => {
+  it("offers Admin one signed metadata-only JSON export for 30 days", () => {
     const { container } = render(
       <AuditEvidencePanel
         accessRole="admin"
@@ -23,33 +12,39 @@ describe("AuditEvidencePanel", () => {
     )
 
     expect(
-      screen
-        .getByRole("link", { name: "Verification keys" })
-        .getAttribute("href"),
-    ).toBe("/api/admin/audit/export/verification-keys")
-    expect(screen.getByRole("button", { name: "Export JSON" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Export CSV" })).toBeTruthy()
+      screen.getByRole("button", { name: "Export last 30 days" }),
+    ).toBeTruthy()
+    expect(screen.getAllByRole("button")).toHaveLength(1)
+    expect(screen.queryByRole("link")).toBeNull()
+
     const form = container.querySelector("form")
     expect(form?.getAttribute("action")).toBe("/api/admin/audit/export")
-    expect(
-      (screen.getByLabelText("From (UTC)") as HTMLInputElement).defaultValue,
-    ).toBe("2026-07-29T12:30")
-    expect(
-      (screen.getByLabelText("To (UTC)") as HTMLInputElement).defaultValue,
-    ).toBe("2026-08-28T12:30")
+    expect(form?.getAttribute("method")).toBe("get")
+    expect(hiddenValue(form, "format")).toBe("json")
+    expect(hiddenValue(form, "from")).toBe("2026-07-29T12:30:00.000Z")
+    expect(hiddenValue(form, "to")).toBe("2026-08-28T12:30:00.000Z")
   })
 
-  it("keeps Operator informed without exposing export controls", () => {
-    render(
+  it("renders no audit export surface for Operator", () => {
+    const { container } = render(
       <AuditEvidencePanel
         accessRole="operator"
         generatedAt="2026-08-28T12:30:00.000Z"
       />,
     )
 
-    expect(screen.getByRole("heading", { name: "Audit evidence" })).toBeTruthy()
+    expect(container.childElementCount).toBe(0)
     expect(screen.queryByRole("button", { name: /Export/ })).toBeNull()
-    expect(screen.queryByRole("link", { name: "Verification keys" })).toBeNull()
-    expect(screen.getByText(/require Admin access/)).toBeTruthy()
   })
 })
+
+function hiddenValue(
+  form: HTMLFormElement | null,
+  name: string,
+): string | null {
+  return (
+    form
+      ?.querySelector<HTMLInputElement>(`input[name="${name}"]`)
+      ?.getAttribute("value") ?? null
+  )
+}

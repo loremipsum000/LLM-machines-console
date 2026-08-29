@@ -152,8 +152,6 @@ describe("Inference Core contract boundary", () => {
 
     expect(
       adminOverviewResponseSchema.safeParse({
-        activityEvents: [],
-        activitySourceStatus: "ok",
         generatedAt: timestamp,
         tiles: [
           tile("applications"),
@@ -161,6 +159,14 @@ describe("Inference Core contract boundary", () => {
           tile("hardware"),
           tile("system"),
         ],
+        tokenUsage: {
+          points: [
+            { date: "2026-07-30", tokens: 100 },
+            { date: "2026-07-31", tokens: 250 },
+          ],
+          range: "90d",
+          sourceStatus: "ok",
+        },
       }).success,
     ).toBe(true)
     expect(
@@ -177,19 +183,7 @@ describe("Inference Core contract boundary", () => {
     ).toBe(false)
     expect(
       adminOverviewResponseSchema.safeParse({
-        activityEvents: [
-          {
-            action: "console.application.read",
-            actorId: "admin-1",
-            createdAt: timestamp,
-            href: "https://grafana.example.test/event-1",
-            id: "event-1",
-            severity: "info",
-            targetId: "app-1",
-            targetType: "application",
-          },
-        ],
-        activitySourceStatus: "ok",
+        activityEvents: [],
         generatedAt: timestamp,
         tiles: [
           tile("applications"),
@@ -197,6 +191,40 @@ describe("Inference Core contract boundary", () => {
           tile("hardware"),
           tile("system"),
         ],
+        tokenUsage: { points: [], range: "90d", sourceStatus: "ok" },
+      }).success,
+    ).toBe(false)
+  })
+
+  it("requires authoritative, unique, ordered Overview token usage", () => {
+    const base = {
+      points: [
+        { date: "2026-07-30", tokens: 100 },
+        { date: "2026-07-31", tokens: 250 },
+      ],
+      range: "90d",
+      sourceStatus: "ok",
+    } as const
+
+    expect(
+      adminOverviewResponseSchema.shape.tokenUsage.safeParse(base).success,
+    ).toBe(true)
+    expect(
+      adminOverviewResponseSchema.shape.tokenUsage.safeParse({
+        ...base,
+        points: [...base.points].reverse(),
+      }).success,
+    ).toBe(false)
+    expect(
+      adminOverviewResponseSchema.shape.tokenUsage.safeParse({
+        ...base,
+        points: [base.points[0], base.points[0]],
+      }).success,
+    ).toBe(false)
+    expect(
+      adminOverviewResponseSchema.shape.tokenUsage.safeParse({
+        ...base,
+        sourceStatus: "unavailable",
       }).success,
     ).toBe(false)
   })

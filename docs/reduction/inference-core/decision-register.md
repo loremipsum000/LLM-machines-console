@@ -214,3 +214,22 @@ per-package JSON file and contract revision.
 - Preserve all historical seven-surface PR-11 and later evidence unchanged.
   This prospective decision does not claim Product acceptance, runtime
   qualification, contract activation, Q0 completion, or Genesis publication.
+
+## Prospective Overview token-usage refinement
+
+- Remove the non-interactive Recent Activity card from Overview while retaining
+  the audit ledger, native ingestion, read API, signing, signed export, and
+  verification-key API.
+- Present Admin with one Settings action, `Export last 30 days`, producing the
+  signed metadata-only JSON export. Operator receives no export surface.
+- Present Keys, Inference, Hardware, and System cards as a one-column,
+  full-width stack.
+- Add a 90-day UTC daily token-usage grid from the existing authoritative
+  LiteLLM aggregate projection. Missing observations are not presented as zero;
+  an unavailable or unconfigured source fails visibly closed.
+- Use a relative four-level blue scale and exact date/token hover and keyboard
+  feedback. Do not imply a one-year history or retain prompt or response
+  content.
+- Preserve the preceding Activity-retirement decision byte-for-byte. Product
+  acceptance and runtime qualification remain false, contract activation
+  remains inactive, and Genesis remains unpublished.

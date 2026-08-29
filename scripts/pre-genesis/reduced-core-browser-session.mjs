@@ -1294,6 +1294,7 @@ async function runBrowserSessionProof() {
     await advanceClock(6_000)
     await page.getByRole("link", { name: "Retry" }).click()
     await page.getByRole("heading", { name: "Settings" }).waitFor()
+    await page.getByRole("button", { name: "Export last 30 days" }).waitFor()
     if (integratedCoreMode && firecrawlControl) {
       const firecrawlRow = page
         .getByRole("row")
@@ -1332,10 +1333,9 @@ async function runBrowserSessionProof() {
     await page.getByRole("heading", { name: "Admin access required" }).waitFor()
     await page.goto(`${consoleOrigin}/settings`)
     assert.equal(
-      await page.getByText("Export JSON", { exact: true }).count(),
+      await page.getByText("Export last 30 days", { exact: true }).count(),
       0,
     )
-    assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
     if (credentialLifecycleMode && applicationFlow) {
       await assertOperatorApplicationReadOnly(page, applicationFlow)
     }
@@ -2166,8 +2166,10 @@ async function proveKeycloakIdentityConsoleFlow({
   await page.goto(`${consoleOrigin}/team/members/new`)
   await page.getByRole("heading", { name: "Admin access required" }).waitFor()
   await page.goto(`${consoleOrigin}/settings`)
-  assert.equal(await page.getByText("Export JSON", { exact: true }).count(), 0)
-  assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
+  assert.equal(
+    await page.getByText("Export last 30 days", { exact: true }).count(),
+    0,
+  )
 
   await page.goto(`${consoleOrigin}/`)
   await page.getByRole("button", { name: "Sign out" }).click()
@@ -2392,6 +2394,7 @@ async function proveIntegratedObservabilityConsoleFlow({
   }
   await page.goto(`${consoleOrigin}/`)
   await page.getByRole("heading", { name: "Overview" }).waitFor()
+  await page.getByRole("heading", { name: "Token usage" }).waitFor()
   await page.getByText("Models served", { exact: true }).waitFor()
   await page.getByText("Targets up", { exact: true }).waitFor()
   if (founderUat) {

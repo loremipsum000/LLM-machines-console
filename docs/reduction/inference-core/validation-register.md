@@ -165,3 +165,21 @@ are PR-12 evidence, not PR-08 evidence.
 - Historical route and seven-surface evidence is resolved at its admitted
   commits. The current source successor is 109 routes with 91
   `current-console-seam` routes; the historical route baseline is unchanged.
+
+## Prospective Overview token-usage refinement validation
+
+- Contract tests require at most 90 unique, strictly ordered UTC daily points
+  and reject usage data when the aggregate source is not authoritative.
+- BFF tests prove the existing LiteLLM 90-day aggregate projection is clipped,
+  grouped by UTC date, sorted deterministically, and unavailable without
+  fabricated points when its source fails.
+- Web tests prove 90 displayed days, relative blue levels, exact hover and
+  keyboard feedback, honest missing-day copy, explicit unavailable state, and
+  automated accessibility checks.
+- Overview tests require four full-width one-column operational cards and the
+  absence of Recent Activity. Settings tests require exactly one Admin export
+  button for signed JSON covering the last 30 days and no Operator surface.
+- Guardrails preserve the predecessor retirement record byte-for-byte, retain
+  every audit backend API and control, reject a verification-key UI shortcut,
+  and bind the prospective successor to commit `ac4a4821fb49625e76344f25d38de41b6aef09ab`,
+  tree `02dc3621728067aecf14bbafd74a4a2f525a837f`.
