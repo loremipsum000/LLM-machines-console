@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "CONSOLE-OVERVIEW-SURFACE-RETIREMENT",
+  "status": "SOURCE_SUCCESSOR_CANDIDATE",
+  "base": {
+    "commit": "94c60abd28d95cec456ddaec3ed7fabdff4fc6d6",
+    "tree": "4c00bb0583f73e58ff0faaee947e59c9a5fe0f52"
+  },
+  "predecessor": {
+    "id": "CONSOLE-OVERVIEW-TOKEN-USAGE-REFINEMENT",
+    "record": "docs/reduction/inference-core/console-overview-token-usage-refinement.json",
+    "sha256": "b2895e5bd29d5779d65ef8ee1e1daa4c9dc0b0fca32d3dea85036493a4682394",
+    "historicalEvidence": "PRESERVED_UNCHANGED"
+  },
+  "customerBoundary": {
+    "logicalSurfaces": ["Keys", "Inference", "Hardware", "Team", "Settings"],
+    "removedSurface": "Overview",
+    "rootRoute": "/",
+    "rootBehavior": "AUTHENTICATED_REDIRECT_TO_KEYS",
+    "rootTarget": "/keys",
+    "removedWebRoute": "/overview",
+    "removedWebRouteBehavior": "ABSENT_404",
+    "removedWebPaths": [
+      "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+      "apps/web/src/components/console-v2/overview-v2-experience.test.tsx",
+      "apps/web/src/components/console-v2/token-usage-grid.tsx",
+      "apps/web/src/components/console-v2/token-usage-grid.test.tsx"
+    ],
+    "removedBffPath": "/api/admin/overview",
+    "removedBffBehavior": "ABSENT_404",
+    "removedBffSourcePaths": [
+      "apps/bff/src/services/admin-overview.ts",
+      "apps/bff/src/services/admin-overview.test.ts",
+      "apps/bff/src/services/admin-health.ts",
+      "apps/bff/src/services/admin-ops.ts",
+      "apps/bff/src/services/admin-ops-parsers.ts"
+    ],
+    "coreCompatibilityFingerprint": "sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40"
+  },
+  "retainedControls": {
+    "auditEvidenceLocation": "/settings",
+    "auditExportLabel": "Export last 30 days",
+    "auditReadApi": "/api/admin/audit",
+    "signedExportApis": [
+      "/api/admin/audit/export",
+      "/api/admin/audit/export/verification-keys"
+    ],
+    "adminExportOnly": true,
+    "operatorExportDenied": true,
+    "auditLedger": "RETAINED",
+    "nativeIngestion": "RETAINED",
+    "metadataOnlyRetention": "RETAINED",
+    "authorizationAndSigning": "RETAINED"
+  },
+  "historicalEvidence": "PRESERVED_UNCHANGED",
+  "productAccepted": false,
+  "runtimeQualified": false,
+  "contractActivation": "INACTIVE",
+  "genesis": "UNPUBLISHED"
+}

@@ -108,7 +108,6 @@ describe("retained Web inference-core boundaries", () => {
   it("keeps retained read-only components free of legacy actions", () => {
     for (const path of [
       "../../components/console-v2/inference-v2-experience.tsx",
-      "../../components/console-v2/overview-v2-experience.tsx",
       "../../components/console-v2/hardware-v2-experience.tsx",
     ]) {
       const componentSource = source(path)

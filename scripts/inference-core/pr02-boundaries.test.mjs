@@ -63,8 +63,6 @@ test("retained BFF entrypoints have no direct retired imports", () => {
 test("retained Admin and Web seams use the isolated Contracts subpath", () => {
   const paths = [
     "apps/bff/src/routes/admin.ts",
-    "apps/bff/src/services/admin-overview.ts",
-    "apps/bff/src/services/admin-ops.ts",
     "apps/bff/src/services/admin-settings-core.ts",
     "apps/bff/src/services/admin-team.ts",
     "apps/web/src/lib/admin/server-data-core.ts",

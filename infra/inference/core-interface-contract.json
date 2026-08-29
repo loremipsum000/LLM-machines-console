@@ -49,7 +49,6 @@
     "credential-record-id"
   ],
   "consoleSections": [
-    "overview",
     "applications",
     "inference",
     "hardware",

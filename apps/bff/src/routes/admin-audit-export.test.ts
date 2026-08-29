@@ -115,15 +115,15 @@ describe("Admin signed audit export routes", () => {
       url,
       headers: adminHeaders,
     })
-    const overview = await server.inject({
+    const settings = await server.inject({
       method: "GET",
-      url: "/api/admin/overview",
+      url: "/api/admin/settings",
       headers: adminHeaders,
     })
 
     expect(operatorExport.statusCode).toBe(403)
     expect(adminExport.statusCode).toBe(503)
-    expect(overview.statusCode).toBe(200)
+    expect(settings.statusCode).toBe(200)
     await server.close()
   })
 })

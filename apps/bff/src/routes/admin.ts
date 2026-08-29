@@ -23,7 +23,6 @@ import {
   adminConnectedAppsResponseSchema,
   adminHardwareResponseSchema,
   adminInferenceDashboardSchema,
-  adminOverviewResponseSchema,
   adminSettingsResponseSchema,
   adminTeamActionResponseSchema,
   adminTeamBulkGroupAssignmentRequestSchema,
@@ -93,7 +92,6 @@ import {
 } from "../services/admin-connected-apps-firecrawl"
 import { getAdminHardware } from "../services/admin-hardware"
 import { getAdminInference } from "../services/admin-inference"
-import { getAdminOverview } from "../services/admin-overview"
 import {
   getAdminSettings,
   updateAdminSettingsOrganization,
@@ -534,15 +532,6 @@ export function registerAdminRoutes(
         throw error
       }
     },
-  )
-
-  server.get(
-    "/api/admin/overview",
-    withCapability("console.operational.view"),
-    async (request) =>
-      adminOverviewResponseSchema.parse(
-        await getAdminOverview(requireActor(request)),
-      ),
   )
 
   server.get(

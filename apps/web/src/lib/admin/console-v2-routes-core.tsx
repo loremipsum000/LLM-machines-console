@@ -10,7 +10,6 @@ import {
 } from "@/components/console-v2/console-v2-shell"
 import { HardwareV2Experience } from "@/components/console-v2/hardware-v2-experience"
 import { InferenceV2Experience } from "@/components/console-v2/inference-v2-experience"
-import { OverviewV2Experience } from "@/components/console-v2/overview-v2-experience"
 import { SettingsV2Experience } from "@/components/console-v2/settings-v2-experience"
 import {
   TeamV2Experience,
@@ -21,7 +20,6 @@ import {
   getAdminConnectedApps,
   getAdminHardware,
   getAdminInference,
-  getAdminOverview,
   getAdminSettings,
   getAdminTeamGroupDetail,
   getAdminTeamMemberDetail,
@@ -50,13 +48,6 @@ type ActiveConsoleSession = Extract<
   CurrentConsoleSessionResolution,
   { state: "active" }
 >["session"]
-
-export async function renderOverviewConsoleRoute() {
-  return withConsoleAccess("overview", async () => {
-    const overview = await getAdminOverview()
-    return <OverviewV2Experience overview={overview} />
-  })
-}
 
 export async function renderApplicationsConsoleRoute({
   section,
@@ -338,7 +329,6 @@ function ConsoleCapabilityDeniedPanel() {
 }
 
 function consoleSectionReturnPath(activeSection: ConsoleV2SectionId): string {
-  if (activeSection === "overview") return "/"
   return activeSection === "applications" ? "/keys" : `/${activeSection}`
 }
 

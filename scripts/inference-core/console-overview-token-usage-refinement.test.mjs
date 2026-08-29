@@ -1,9 +1,11 @@
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { test } from "node:test"
 import {
+  overviewSurfaceRetirementBase,
   overviewTokenUsageRefinementPath,
   repositoryRoot,
   verifyOverviewTokenUsageRefinementDocument,
@@ -11,11 +13,24 @@ import {
 } from "./guardrails.mjs"
 
 const read = (path) => readFileSync(resolve(repositoryRoot, path), "utf8")
+const readAtOverviewRetirementBase = (path) =>
+  execFileSync("git", ["show", `${overviewSurfaceRetirementBase}:${path}`], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  })
 
 test("the prospective refinement record is exact and status-bounded", () => {
-  const decision = JSON.parse(read(overviewTokenUsageRefinementPath))
+  const bytes = readFileSync(
+    resolve(repositoryRoot, overviewTokenUsageRefinementPath),
+  )
+  const decision = JSON.parse(bytes)
 
   assert.deepEqual(verifyOverviewTokenUsageRefinementDocument(decision), [])
+  assert.equal(
+    createHash("sha256").update(bytes).digest("hex"),
+    "b2895e5bd29d5779d65ef8ee1e1daa4c9dc0b0fca32d3dea85036493a4682394",
+  )
   const forged = structuredClone(decision)
   forged.overview.tokenUsage.range = "365d"
   assert.match(
@@ -37,13 +52,19 @@ test("the historical Activity retirement record remains byte-identical", () => {
   )
 })
 
-test("Overview uses one-column cards and authoritative 90-day token usage", () => {
-  const overview = read(
+test("the bound predecessor used one-column cards and authoritative 90-day token usage", () => {
+  const overview = readAtOverviewRetirementBase(
     "apps/web/src/components/console-v2/overview-v2-experience.tsx",
   )
-  const grid = read("apps/web/src/components/console-v2/token-usage-grid.tsx")
-  const service = read("apps/bff/src/services/admin-overview.ts")
-  const contracts = read("packages/contracts/src/inference-core.ts")
+  const grid = readAtOverviewRetirementBase(
+    "apps/web/src/components/console-v2/token-usage-grid.tsx",
+  )
+  const service = readAtOverviewRetirementBase(
+    "apps/bff/src/services/admin-overview.ts",
+  )
+  const contracts = readAtOverviewRetirementBase(
+    "packages/contracts/src/inference-core.ts",
+  )
 
   assert.match(overview, /TokenUsageGrid/)
   assert.match(overview, /className="mt-8 grid gap-3"/)
@@ -55,6 +76,26 @@ test("Overview uses one-column cards and authoritative 90-day token usage", () =
   assert.doesNotMatch(service, /getRecentAuditEvents/)
   assert.match(contracts, /adminOverviewTokenUsageSchema/)
   assert.doesNotMatch(contracts, /adminActivityEventSchema/)
+})
+
+test("the current successor removes the Overview implementation and API", () => {
+  for (const path of [
+    "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+    "apps/web/src/components/console-v2/token-usage-grid.tsx",
+    "apps/bff/src/services/admin-overview.ts",
+  ]) {
+    assert.throws(() => read(path))
+  }
+
+  assert.match(read("apps/web/src/app/page.tsx"), /redirect\("\/keys"\)/)
+  assert.doesNotMatch(
+    read("apps/bff/src/routes/admin.ts"),
+    /\/api\/admin\/overview|adminOverviewResponseSchema|getAdminOverview/,
+  )
+  assert.doesNotMatch(
+    read("packages/contracts/src/inference-core.ts"),
+    /adminOverview(?:Response|TokenUsage)Schema/,
+  )
 })
 
 test("Settings has one Admin export control while audit APIs remain", () => {

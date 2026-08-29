@@ -13,8 +13,6 @@ import {
   adminConnectedAppTestResultSchema,
   adminHardwareResponseSchema,
   adminInferenceDashboardSchema,
-  adminOverviewResponseSchema,
-  adminOverviewTileSchema,
   adminSettingsResponseSchema,
   adminSettingsServiceIdSchema,
   adminTeamGroupDetailSchema,
@@ -71,7 +69,7 @@ describe("inference-core status ownership", () => {
 
 it("pins the rendered inference profile compatibility fingerprint", () => {
   expect(inferenceCoreCompatibilityFingerprint).toBe(
-    "sha256:8ef12de33f7d900f2c6b9a1f8117f8635088d655b52bd7fa5c481c32117b293e",
+    "sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40",
   )
 })
 
@@ -122,111 +120,9 @@ describe("Inference Core contract boundary", () => {
     expect(inferenceCoreContracts).not.toHaveProperty(
       "adminConnectedAppFirecrawlPolicyRequestSchema",
     )
-  })
-
-  it("accepts only retained Overview tiles", () => {
-    const hrefById = {
-      applications: "/keys",
-      hardware: "/hardware",
-      inference: "/inference",
-      system: "/settings",
-    } as const
-    const tile = (id: "applications" | "inference" | "hardware" | "system") =>
-      ({
-        href: hrefById[id],
-        id,
-        metrics: [
-          {
-            detail: null,
-            id: `${id}-status`,
-            label: "Status",
-            tone: "good",
-            value: "Ready",
-          },
-        ],
-        sourceStatus: "ok",
-        summary: `${id} summary`,
-        title: id,
-        updatedAt: timestamp,
-      }) as const
-
-    expect(
-      adminOverviewResponseSchema.safeParse({
-        generatedAt: timestamp,
-        tiles: [
-          tile("applications"),
-          tile("inference"),
-          tile("hardware"),
-          tile("system"),
-        ],
-        tokenUsage: {
-          points: [
-            { date: "2026-07-30", tokens: 100 },
-            { date: "2026-07-31", tokens: 250 },
-          ],
-          range: "90d",
-          sourceStatus: "ok",
-        },
-      }).success,
-    ).toBe(true)
-    expect(
-      adminOverviewTileSchema.safeParse({
-        ...tile("system"),
-        id: "governance",
-      }).success,
-    ).toBe(false)
-    expect(
-      adminOverviewTileSchema.safeParse({
-        ...tile("inference"),
-        href: "https://litellm.example.test",
-      }).success,
-    ).toBe(false)
-    expect(
-      adminOverviewResponseSchema.safeParse({
-        activityEvents: [],
-        generatedAt: timestamp,
-        tiles: [
-          tile("applications"),
-          tile("inference"),
-          tile("hardware"),
-          tile("system"),
-        ],
-        tokenUsage: { points: [], range: "90d", sourceStatus: "ok" },
-      }).success,
-    ).toBe(false)
-  })
-
-  it("requires authoritative, unique, ordered Overview token usage", () => {
-    const base = {
-      points: [
-        { date: "2026-07-30", tokens: 100 },
-        { date: "2026-07-31", tokens: 250 },
-      ],
-      range: "90d",
-      sourceStatus: "ok",
-    } as const
-
-    expect(
-      adminOverviewResponseSchema.shape.tokenUsage.safeParse(base).success,
-    ).toBe(true)
-    expect(
-      adminOverviewResponseSchema.shape.tokenUsage.safeParse({
-        ...base,
-        points: [...base.points].reverse(),
-      }).success,
-    ).toBe(false)
-    expect(
-      adminOverviewResponseSchema.shape.tokenUsage.safeParse({
-        ...base,
-        points: [base.points[0], base.points[0]],
-      }).success,
-    ).toBe(false)
-    expect(
-      adminOverviewResponseSchema.shape.tokenUsage.safeParse({
-        ...base,
-        sourceStatus: "unavailable",
-      }).success,
-    ).toBe(false)
+    expect(inferenceCoreContracts).not.toHaveProperty(
+      "adminOverviewResponseSchema",
+    )
   })
 
   it("models alert egress as redacted intent pending runtime qualification", () => {

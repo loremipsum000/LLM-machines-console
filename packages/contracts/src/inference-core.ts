@@ -15,7 +15,7 @@ export const inferenceCoreAlertNames: readonly string[] = Object.freeze([
 ])
 
 export const inferenceCoreCompatibilityFingerprint =
-  "sha256:8ef12de33f7d900f2c6b9a1f8117f8635088d655b52bd7fa5c481c32117b293e"
+  "sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40"
 
 export const healthResponseSchema = z
   .object({
@@ -102,96 +102,6 @@ export const inferenceCoreSeverityRank: Readonly<
     inferenceCoreSeverityOrder.map((severity, index) => [severity, index]),
   ) as Record<InferenceCoreSeverity, number>,
 )
-
-export const adminOverviewTileIdSchema = z.enum([
-  "applications",
-  "inference",
-  "hardware",
-  "system",
-])
-export type AdminOverviewTileId = z.infer<typeof adminOverviewTileIdSchema>
-
-export const adminOverviewMetricToneSchema = z.enum([
-  "neutral",
-  "good",
-  "warning",
-  "critical",
-])
-export type AdminOverviewMetricTone = z.infer<
-  typeof adminOverviewMetricToneSchema
->
-
-export const adminOverviewMetricSchema = z
-  .object({
-    id: z.string().min(1),
-    label: z.string().min(1),
-    value: z.string().min(1),
-    detail: z.string().min(1).nullable(),
-    tone: adminOverviewMetricToneSchema,
-  })
-  .strict()
-export type AdminOverviewMetric = z.infer<typeof adminOverviewMetricSchema>
-
-export const adminOverviewTileSchema = z
-  .object({
-    id: adminOverviewTileIdSchema,
-    title: z.string().min(1),
-    summary: z.string().min(1),
-    href: z.enum(["/keys", "/inference", "/hardware", "/settings"]),
-    sourceStatus: inferenceCoreSourceStatusSchema,
-    metrics: z.array(adminOverviewMetricSchema).min(1),
-    updatedAt: z.string().datetime(),
-  })
-  .strict()
-export type AdminOverviewTile = z.infer<typeof adminOverviewTileSchema>
-
-export const adminOverviewTokenUsagePointSchema = z
-  .object({
-    date: z.string().date(),
-    tokens: z.number().int().min(0),
-  })
-  .strict()
-export type AdminOverviewTokenUsagePoint = z.infer<
-  typeof adminOverviewTokenUsagePointSchema
->
-
-export const adminOverviewTokenUsageSchema = z
-  .object({
-    points: z.array(adminOverviewTokenUsagePointSchema).max(90),
-    range: z.literal("90d"),
-    sourceStatus: inferenceCoreSourceStatusSchema,
-  })
-  .strict()
-  .superRefine((usage, context) => {
-    if (usage.sourceStatus !== "ok" && usage.points.length > 0) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "Overview token usage points require an authoritative aggregate source.",
-        path: ["points"],
-      })
-    }
-
-    for (let index = 1; index < usage.points.length; index += 1) {
-      const previousPoint = usage.points[index - 1]
-      const currentPoint = usage.points[index]
-      if (
-        previousPoint &&
-        currentPoint &&
-        previousPoint.date >= currentPoint.date
-      ) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message:
-            "Overview token usage points must be unique and ordered by UTC date.",
-          path: ["points", index, "date"],
-        })
-      }
-    }
-  })
-export type AdminOverviewTokenUsage = z.infer<
-  typeof adminOverviewTokenUsageSchema
->
 
 export const adminAuditMetadataEntrySchema = z
   .object({
@@ -352,15 +262,6 @@ export const inferenceCoreNativeAuditCapabilitySchema = z
 export type InferenceCoreNativeAuditCapability = z.infer<
   typeof inferenceCoreNativeAuditCapabilitySchema
 >
-
-export const adminOverviewResponseSchema = z
-  .object({
-    generatedAt: z.string().datetime(),
-    tiles: z.array(adminOverviewTileSchema).length(4),
-    tokenUsage: adminOverviewTokenUsageSchema,
-  })
-  .strict()
-export type AdminOverviewResponse = z.infer<typeof adminOverviewResponseSchema>
 
 export const adminTeamServiceStatusSchema = z.enum([
   "ok",
