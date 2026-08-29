@@ -258,6 +258,40 @@ describe("role-aware Console presentation", () => {
     expect(screen.queryByRole("link", { name: "Create group" })).toBeNull()
   })
 
+  it("keeps the Team members table reachable within the Console main column", () => {
+    const { rerender } = render(
+      <TeamV2Experience
+        accessRole="admin"
+        overview={teamOverview}
+        view="manage-users"
+      />,
+    )
+
+    const adminSection = screen
+      .getByRole("heading", { level: 2, name: "Manage users" })
+      .closest("section")
+    const adminTableRegion = screen.getByRole("region", {
+      name: "Team members table",
+    })
+    expect(adminSection?.className).toContain("w-full")
+    expect(adminSection?.className).not.toContain("w-[860px]")
+    expect(adminTableRegion.className).toContain("overflow-x-auto")
+    expect(screen.getByRole("table").className).toContain("min-w-[760px]")
+    expect(screen.getByRole("columnheader", { name: "Actions" })).toBeTruthy()
+
+    rerender(
+      <TeamV2Experience
+        accessRole="operator"
+        overview={teamOverview}
+        view="manage-users"
+      />,
+    )
+
+    expect(screen.getByRole("table").className).toContain("min-w-[560px]")
+    expect(screen.queryByRole("columnheader", { name: "Actions" })).toBeNull()
+    expect(screen.queryByRole("link", { name: "Create user" })).toBeNull()
+  })
+
   it.each([
     {
       detail: /Configure the Keycloak service account/,

@@ -3556,6 +3556,12 @@ export const overviewSurfaceRetirementBase =
   "94c60abd28d95cec456ddaec3ed7fabdff4fc6d6"
 export const overviewSurfaceRetirementBaseTree =
   "4c00bb0583f73e58ff0faaee947e59c9a5fe0f52"
+export const teamDeferredCapabilitiesBoundaryPath =
+  "docs/reduction/inference-core/console-team-deferred-capabilities-boundary.json"
+export const teamDeferredCapabilitiesBoundaryBase =
+  "48731b98f6a82eb5dccadf3c04cd348c36bed348"
+export const teamDeferredCapabilitiesBoundaryBaseTree =
+  "5ce0ac6299c43e4a6071df2d81f5054c46d378e9"
 export const overviewTokenUsageRefinementSha256 =
   "b2895e5bd29d5779d65ef8ee1e1daa4c9dc0b0fca32d3dea85036493a4682394"
 export const overviewSurfaceRetiredSourcePaths = [
@@ -3827,6 +3833,94 @@ export function verifyOverviewSurfaceRetirementDocument(document) {
   }
   if (errors.length === 0) {
     errors.push("Overview retirement decision shape changed")
+  }
+  return errors.sort()
+}
+
+export function verifyTeamDeferredCapabilitiesBoundaryDocument(document) {
+  const expected = {
+    schemaVersion: 1,
+    id: "CONSOLE-TEAM-DEFERRED-CAPABILITIES-BOUNDARY",
+    status: "SOURCE_SUCCESSOR_CANDIDATE",
+    base: {
+      commit: teamDeferredCapabilitiesBoundaryBase,
+      tree: teamDeferredCapabilitiesBoundaryBaseTree,
+    },
+    predecessor: {
+      id: "F0-I2-KEYCLOAK-TEAM",
+      record: "docs/reduction/inference-core/f0-i2-keycloak-team.json",
+      sha256:
+        "d2312012cbe4911fe7def6dc1df5580adc6c3295f039adf8e459dc75b2cf66da",
+      historicalEvidence: "PRESERVED_UNCHANGED",
+    },
+    currentBoundary: {
+      retained: [
+        "ADMIN_CREATE_USER_WITH_CANONICAL_ROLE",
+        "ADMIN_GENERATE_ONE_TIME_PASSWORD",
+        "ADMIN_DISABLE_USER",
+        "ADMIN_REACTIVATE_USER",
+        "ADMIN_VIEW_APPROVED_USER_METADATA",
+        "OPERATOR_READ_ONLY_TEAM_VIEW",
+      ],
+      deferred: [
+        "ARBITRARY_GROUP_ADMINISTRATION",
+        "CSV_IMPORT",
+        "EMAIL_DELIVERY",
+        "IDENTITY_MIGRATION",
+      ],
+      deferredBehavior: "ABSENT_404",
+      removedWebRoutes: [
+        "/team/groups/:id",
+        "/team/groups/new",
+        "/team/import",
+        "/team/import/template",
+      ],
+      removedBffRoutes: [
+        "GET /api/admin/team/csv-template",
+        "GET /api/admin/team/groups/:id",
+        "POST /api/admin/team/groups",
+        "POST /api/admin/team/groups/:id/delete",
+        "POST /api/admin/team/groups/:id/members/:memberId/remove",
+        "POST /api/admin/team/groups/:id/members/bulk-assign",
+        "POST /api/admin/team/groups/:id/update",
+        "POST /api/admin/team/import/commit",
+        "POST /api/admin/team/import/preview",
+        "POST /api/admin/team/members/:id/invite",
+        "POST /api/admin/team/members/:id/reset-password-email",
+      ],
+    },
+    historicalEvidence: "PRESERVED_UNCHANGED",
+    productAccepted: false,
+    runtimeQualified: false,
+    contractActivation: "INACTIVE",
+    genesis: "UNPUBLISHED",
+  }
+  if (JSON.stringify(document) === JSON.stringify(expected)) {
+    return []
+  }
+  const errors = []
+  if (
+    JSON.stringify(document?.currentBoundary) !==
+    JSON.stringify(expected.currentBoundary)
+  ) {
+    errors.push("Team deferred-capability boundary changed")
+  }
+  if (
+    JSON.stringify(document?.predecessor) !==
+    JSON.stringify(expected.predecessor)
+  ) {
+    errors.push("Team deferred-capability predecessor changed")
+  }
+  if (
+    document?.productAccepted !== false ||
+    document?.runtimeQualified !== false ||
+    document?.contractActivation !== "INACTIVE" ||
+    document?.genesis !== "UNPUBLISHED"
+  ) {
+    errors.push("Team deferred-capability boundary overstated Product status")
+  }
+  if (errors.length === 0) {
+    errors.push("Team deferred-capability decision shape changed")
   }
   return errors.sort()
 }
@@ -4169,6 +4263,23 @@ export const overviewSurfaceRetiredConsoleHrefManifest =
         "apps/web/src/components/console-v2/overview-v2-experience.tsx" &&
       path !== "apps/web/src/components/console-v2/token-usage-grid.tsx",
   )
+
+export const teamDeferredCapabilitiesRetiredConsoleHrefManifest = [
+  ...overviewSurfaceRetiredConsoleHrefManifest.filter(
+    ({ path, expression }) =>
+      !(
+        path === "apps/web/src/components/console-v2/team-v2-experience.tsx" &&
+        [
+          "expression:`/team/groups/${group.id}`",
+          "literal:/team/import/template",
+        ].includes(expression)
+      ),
+  ),
+  {
+    path: "apps/web/src/components/console-v2/team-v2-experience.tsx",
+    expression: "expression:`/team/members/${memberId}`",
+  },
+].sort(comparePr11HrefEntries)
 
 export const pr11RetiredEnvExampleBlock = [
   "",
@@ -6632,6 +6743,10 @@ function hasOverviewSurfaceRetirementMarker(root) {
   return isRegularFile(resolve(root, overviewSurfaceRetirementPath))
 }
 
+function hasTeamDeferredCapabilitiesBoundaryMarker(root) {
+  return isRegularFile(resolve(root, teamDeferredCapabilitiesBoundaryPath))
+}
+
 function usesOverviewSurfaceRetirement(root, currentRoutes) {
   if (!hasOverviewSurfaceRetirementMarker(root)) {
     return false
@@ -7245,6 +7360,7 @@ export function verifyPr11aR1V1SourceClosurePackage({
   const errors = []
   let activityRetirementDecision = null
   let overviewRetirementDecision = null
+  let teamDeferredCapabilitiesDecision = null
   if (hasActivityAuditSurfaceRetirementMarker(root)) {
     try {
       activityRetirementDecision = readJson(
@@ -7280,6 +7396,26 @@ export function verifyPr11aR1V1SourceClosurePackage({
     overviewRetirementDecision !== null &&
     verifyOverviewSurfaceRetirementDocument(overviewRetirementDecision)
       .length === 0
+  if (hasTeamDeferredCapabilitiesBoundaryMarker(root)) {
+    try {
+      teamDeferredCapabilitiesDecision = readJson(
+        resolve(root, teamDeferredCapabilitiesBoundaryPath),
+      )
+      errors.push(
+        ...verifyTeamDeferredCapabilitiesBoundaryDocument(
+          teamDeferredCapabilitiesDecision,
+        ),
+      )
+    } catch {
+      errors.push("invalid Team deferred-capability boundary document")
+    }
+  }
+  const teamDeferredCapabilitiesActive =
+    overviewRetirementActive &&
+    teamDeferredCapabilitiesDecision !== null &&
+    verifyTeamDeferredCapabilitiesBoundaryDocument(
+      teamDeferredCapabilitiesDecision,
+    ).length === 0
   const changes = listPr11aR1V1SourceClosureChanges(root)
   const expectedChanges = pr11aR1V1SourceClosurePaths.map((path) => ({
     path,
@@ -7347,35 +7483,50 @@ export function verifyPr11aR1V1SourceClosurePackage({
       JSON.stringify(expectedIntegratedFindings) ||
     JSON.stringify(classifications) !==
       JSON.stringify(
-        overviewRetirementActive
+        teamDeferredCapabilitiesActive
           ? {
-              "current-console-seam": 90,
+              "current-console-seam": 79,
               "legacy-retired": 8,
               "operational-auth": 2,
               "private-operational": 4,
               "public-t2": 2,
               "required-now": 2,
             }
-          : activityRetirementActive
+          : overviewRetirementActive
             ? {
-                "current-console-seam": 91,
+                "current-console-seam": 90,
                 "legacy-retired": 8,
                 "operational-auth": 2,
                 "private-operational": 4,
                 "public-t2": 2,
                 "required-now": 2,
               }
-            : {
-                "current-console-seam": 92,
-                "legacy-retired": 8,
-                "operational-auth": 2,
-                "private-operational": 4,
-                "public-t2": 2,
-                "required-now": 2,
-              },
+            : activityRetirementActive
+              ? {
+                  "current-console-seam": 91,
+                  "legacy-retired": 8,
+                  "operational-auth": 2,
+                  "private-operational": 4,
+                  "public-t2": 2,
+                  "required-now": 2,
+                }
+              : {
+                  "current-console-seam": 92,
+                  "legacy-retired": 8,
+                  "operational-auth": 2,
+                  "private-operational": 4,
+                  "public-t2": 2,
+                  "required-now": 2,
+                },
       ) ||
     actualRoutes.routes.length !==
-      (overviewRetirementActive ? 108 : activityRetirementActive ? 109 : 110) ||
+      (teamDeferredCapabilitiesActive
+        ? 97
+        : overviewRetirementActive
+          ? 108
+          : activityRetirementActive
+            ? 109
+            : 110) ||
     actualRoutes.fastifyRegistrars.length !== 6 ||
     actualRoutes.webInferenceConsumers.length !== 0 ||
     actualRoutes.escapeHatches.length !== 0
@@ -14275,7 +14426,9 @@ export function verifyPr11ConsoleHrefManifest(manifest) {
     serialized === JSON.stringify(pr11KeysGrafanaConsoleHrefManifest) ||
     serialized === JSON.stringify(activityAuditRetiredConsoleHrefManifest) ||
     serialized === JSON.stringify(overviewTokenUsageConsoleHrefManifest) ||
-    serialized === JSON.stringify(overviewSurfaceRetiredConsoleHrefManifest)
+    serialized === JSON.stringify(overviewSurfaceRetiredConsoleHrefManifest) ||
+    serialized ===
+      JSON.stringify(teamDeferredCapabilitiesRetiredConsoleHrefManifest)
     ? []
     : ["PR-11 Console href manifest changed"]
 }

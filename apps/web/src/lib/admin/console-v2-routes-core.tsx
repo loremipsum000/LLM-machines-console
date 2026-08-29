@@ -21,7 +21,6 @@ import {
   getAdminHardware,
   getAdminInference,
   getAdminSettings,
-  getAdminTeamGroupDetail,
   getAdminTeamMemberDetail,
   getAdminTeamOverview,
   isConsoleBffAuthExpiredError,
@@ -181,20 +180,12 @@ export async function renderTeamConsoleRoute({
     }
     const selectedMemberId =
       teamView === "member-detail" ? section?.[1] : undefined
-    const selectedGroupId =
-      teamView === "group-detail" ? section?.[1] : undefined
     const [overview, memberDetail] = await Promise.all([
       getAdminTeamOverview(),
       selectedMemberId ? getAdminTeamMemberDetail(selectedMemberId) : null,
     ])
-    const groupDetail = selectedGroupId
-      ? await getAdminTeamGroupDetail(selectedGroupId)
-      : null
 
     if (teamView === "member-detail" && !selectedMemberId) {
-      notFound()
-    }
-    if (teamView === "group-detail" && !selectedGroupId) {
       notFound()
     }
 
@@ -202,7 +193,6 @@ export async function renderTeamConsoleRoute({
       <TeamV2Experience
         accessRole={role}
         detail={memberDetail}
-        groupDetail={groupDetail}
         overview={overview}
         teamAction={
           role === "admin" ? resolvedSearchParams?.teamAction : undefined
@@ -375,15 +365,6 @@ function resolveTeamView(section?: string[]): TeamView {
   if (!section?.[0]) {
     return "overview"
   }
-  if (section[0] === "import") {
-    return "import"
-  }
-  if (section[0] === "groups" && section[1] === "new") {
-    return "new-group"
-  }
-  if (section[0] === "groups" && section[1]) {
-    return "group-detail"
-  }
   if (section[0] === "members" && section[1] === "new") {
     return "new-member"
   }
@@ -397,7 +378,7 @@ function resolveTeamView(section?: string[]): TeamView {
 }
 
 function isTeamMutationView(view: TeamView): boolean {
-  return view === "import" || view === "new-group" || view === "new-member"
+  return view === "new-member"
 }
 
 function normalizedSearchParam(value: string | undefined): string | null {

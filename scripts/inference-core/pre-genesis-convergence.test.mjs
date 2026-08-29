@@ -1,9 +1,15 @@
 import assert from "node:assert/strict"
-import { readFile, rm } from "node:fs/promises"
+import { execFileSync } from "node:child_process"
+import { createHash } from "node:crypto"
+import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 
+import {
+  coreCompatibilityFingerprint,
+  loadContracts,
+} from "../../infra/inference/validate-profile.mjs"
 import {
   parseKeycloakControlSecretMaterial,
   parseLiteLlmSecretMaterial,
@@ -16,13 +22,23 @@ import {
   reconcileFounderFirewall,
 } from "../pre-genesis/manage-vm103-founder-firewall.mjs"
 import { renderVm103FounderCandidate } from "../pre-genesis/render-vm103-founder-candidate.mjs"
+import { vm103CoreCompatibilityFingerprint } from "../pre-genesis/render-vm103-litellm-route.mjs"
 import {
   validateApplicationJwks,
   validateApplicationTokenClaims,
 } from "../pre-genesis/verify-vm103-application-identity.mjs"
+import { verifyFounderRenderedConfiguration } from "../pre-genesis/verify-vm103-founder-config.mjs"
 import { validateFounderImageInspections } from "../pre-genesis/verify-vm103-founder-images.mjs"
+import { verifyFounderSourceCheckout } from "../pre-genesis/verify-vm103-founder-source.mjs"
 
 const digest = `sha256:${"a".repeat(64)}`
+
+test("founder LiteLLM route is pinned to the current canonical Core contract", () => {
+  assert.equal(
+    vm103CoreCompatibilityFingerprint,
+    coreCompatibilityFingerprint(loadContracts().core),
+  )
+})
 
 function placement() {
   return {
@@ -50,7 +66,8 @@ function placement() {
     },
     paths: {
       admission: "/etc/llmm/admission",
-      compose: "/opt/llmm/candidate.compose.yaml",
+      compose:
+        "/opt/llmm/source/infra/deployment/vm103-founder-candidate.compose.yaml",
       configuration: "/etc/llmm/configuration",
       secret: "/etc/llmm/secrets",
       source: "/opt/llmm/source",
@@ -93,6 +110,13 @@ test("founder placement renders exact edge, supervision, and private inference c
     )
     const imageBindings = JSON.parse(
       await readFile(join(root, "image-bindings.json"), "utf8"),
+    )
+    const placementEnvironment = await readFile(
+      join(root, "placement.env"),
+      "utf8",
+    )
+    const renderedConfigurationManifest = await readFile(
+      join(root, "rendered-config-manifest.json"),
     )
     const vm103Firewall = await readFile(
       join(root, "llmm-founder-edge-firewall.service"),
@@ -146,6 +170,22 @@ test("founder placement renders exact edge, supervision, and private inference c
     )
     assert.match(vm103, /docker compose .* up --detach --wait/)
     assert.match(vm103, /verify-vm103-founder-images\.mjs/)
+    assert.match(
+      vm103,
+      new RegExp(
+        `--no-replace-objects -c safe\\.directory=/opt/llmm/source -C /opt/llmm/source cat-file blob ${"b".repeat(40)}:scripts/pre-genesis/verify-vm103-founder-source\\.mjs \\| /opt/node-v22\\.23\\.2/bin/node --input-type=module - /opt/llmm/source ${"b".repeat(40)} ${"c".repeat(40)}`,
+      ),
+    )
+    assert.doesNotMatch(
+      vm103,
+      /node \/opt\/llmm\/source\/scripts\/pre-genesis\/verify-vm103-founder-source\.mjs/,
+    )
+    assert.match(
+      vm103,
+      new RegExp(
+        `cat-file blob ${"b".repeat(40)}:scripts/pre-genesis/verify-vm103-founder-config\\.mjs`,
+      ),
+    )
     assert.match(vm103, /verify-vm103-application-identity\.mjs/)
     assert.match(
       vm103,
@@ -156,6 +196,39 @@ test("founder placement renders exact edge, supervision, and private inference c
       schema: "llm-machines.vm103-founder-images.v1",
       source: { commit: "b".repeat(40), tree: "c".repeat(40) },
     })
+    assert.equal(
+      placementEnvironment,
+      [
+        `LLMM_BFF_IMAGE=${digest}`,
+        "LLMM_CONFIGURATION_ROOT=/etc/llmm/configuration",
+        `LLMM_EDGE_IMAGE=nginx@${digest}`,
+        "LLMM_INFERENCE_HOST=10.20.0.2",
+        "LLMM_INFERENCE_MODEL_ADMISSION_DIR=/etc/llmm/admission",
+        "LLMM_SECRET_ROOT=/etc/llmm/secrets",
+        "LLMM_SOURCE_ROOT=/opt/llmm/source",
+        `LLMM_WEB_IMAGE=${digest}`,
+        "",
+      ].join("\n"),
+    )
+    const renderedManifestDigest = `sha256:${createHash("sha256")
+      .update(renderedConfigurationManifest)
+      .digest("hex")}`
+    assert.match(vm103, new RegExp(renderedManifestDigest))
+    const canonicalRoot = await realpath(root)
+    assert.deepEqual(
+      verifyFounderRenderedConfiguration(
+        canonicalRoot,
+        join(canonicalRoot, "rendered-config-manifest.json"),
+        renderedManifestDigest,
+        "b".repeat(40),
+        "c".repeat(40),
+      ),
+      {
+        manifestDigest: renderedManifestDigest,
+        source: { commit: "b".repeat(40), tree: "c".repeat(40) },
+        state: "exact-rendered-configuration",
+      },
+    )
     assert.match(
       vm103,
       /Requires=docker\.service llmm-founder-edge-firewall\.service/,
@@ -397,6 +470,15 @@ test("founder placement rejects mutable images, duplicate ports, and public netw
     (value) => {
       value.network.prometheus = "203.0.113.9"
     },
+    (value) => {
+      value.paths.source = "/opt/llmm/source value"
+    },
+    (value) => {
+      value.paths.secret = value.paths.configuration
+    },
+    (value) => {
+      value.paths.compose = "/opt/llmm/source/alternate.compose.yaml"
+    },
   ]) {
     const value = placement()
     mutate(value)
@@ -407,6 +489,181 @@ test("founder placement rejects mutable images, duplicate ports, and public netw
       ),
       /invalid/,
     )
+  }
+})
+
+test("founder source checkout must match the exact clean commit and tree", async () => {
+  const root = await mkdtemp(join(tmpdir(), "llmm-founder-source-"))
+  try {
+    const checkoutRoot = await realpath(root)
+    execFileSync("/usr/bin/git", ["init", "--quiet", root])
+    execFileSync("/usr/bin/git", [
+      "-C",
+      root,
+      "config",
+      "user.email",
+      "founder-test@example.invalid",
+    ])
+    execFileSync("/usr/bin/git", [
+      "-C",
+      root,
+      "config",
+      "user.name",
+      "Founder Test",
+    ])
+    await writeFile(join(root, "tracked.txt"), "exact\n")
+    await writeFile(
+      join(root, "verify.mjs"),
+      await readFile("scripts/pre-genesis/verify-vm103-founder-source.mjs"),
+    )
+    execFileSync("/usr/bin/git", [
+      "-C",
+      root,
+      "add",
+      "tracked.txt",
+      "verify.mjs",
+    ])
+    execFileSync("/usr/bin/git", [
+      "-C",
+      root,
+      "commit",
+      "--quiet",
+      "-m",
+      "exact",
+    ])
+    const commit = execFileSync(
+      "/usr/bin/git",
+      ["-C", root, "rev-parse", "HEAD"],
+      {
+        encoding: "utf8",
+      },
+    ).trim()
+    const tree = execFileSync(
+      "/usr/bin/git",
+      ["-C", root, "rev-parse", "HEAD^{tree}"],
+      { encoding: "utf8" },
+    ).trim()
+
+    assert.deepEqual(verifyFounderSourceCheckout(checkoutRoot, commit, tree), {
+      commit,
+      state: "exact-clean-checkout",
+      tree,
+    })
+    const exactBlobResult = execFileSync(
+      "/bin/bash",
+      [
+        "-o",
+        "pipefail",
+        "-ec",
+        `/usr/bin/git --no-replace-objects -c safe.directory=${checkoutRoot} -C ${checkoutRoot} cat-file blob ${commit}:verify.mjs | ${process.execPath} --input-type=module - ${checkoutRoot} ${commit} ${tree}`,
+      ],
+      { encoding: "utf8" },
+    )
+    assert.deepEqual(JSON.parse(exactBlobResult), {
+      commit,
+      state: "exact-clean-checkout",
+      tree,
+    })
+    assert.throws(
+      () => verifyFounderSourceCheckout(checkoutRoot, "d".repeat(40), tree),
+      /source checkout binding is invalid/,
+    )
+    assert.throws(
+      () => verifyFounderSourceCheckout(checkoutRoot, commit, "e".repeat(40)),
+      /source checkout binding is invalid/,
+    )
+
+    await writeFile(join(root, "tracked.txt"), "dirty\n")
+    assert.throws(
+      () => verifyFounderSourceCheckout(checkoutRoot, commit, tree),
+      /source checkout binding is invalid/,
+    )
+    execFileSync("/usr/bin/git", ["-C", root, "checkout", "--", "tracked.txt"])
+    await writeFile(join(root, "untracked.txt"), "untracked\n")
+    assert.throws(
+      () => verifyFounderSourceCheckout(checkoutRoot, commit, tree),
+      /source checkout binding is invalid/,
+    )
+    await rm(join(root, "untracked.txt"))
+
+    execFileSync("/usr/bin/git", [
+      "-C",
+      root,
+      "update-index",
+      "--assume-unchanged",
+      "tracked.txt",
+    ])
+    await writeFile(join(root, "tracked.txt"), "assume-unchanged bypass\n")
+    assert.throws(
+      () => verifyFounderSourceCheckout(checkoutRoot, commit, tree),
+      /source checkout binding is invalid/,
+    )
+    execFileSync("/usr/bin/git", [
+      "-C",
+      root,
+      "update-index",
+      "--no-assume-unchanged",
+      "tracked.txt",
+    ])
+    execFileSync("/usr/bin/git", ["-C", root, "checkout", "--", "tracked.txt"])
+
+    execFileSync("/usr/bin/git", [
+      "-C",
+      root,
+      "update-index",
+      "--skip-worktree",
+      "tracked.txt",
+    ])
+    assert.throws(
+      () => verifyFounderSourceCheckout(checkoutRoot, commit, tree),
+      /source checkout binding is invalid/,
+    )
+    execFileSync("/usr/bin/git", [
+      "-C",
+      root,
+      "update-index",
+      "--no-skip-worktree",
+      "tracked.txt",
+    ])
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
+})
+
+test("founder rendered configuration fails closed on config and manifest drift", async () => {
+  const root = await mkdtemp(join(tmpdir(), "llmm-founder-config-"))
+  try {
+    await renderVm103FounderCandidate(placement(), root)
+    const canonicalRoot = await realpath(root)
+    const manifestPath = join(canonicalRoot, "rendered-config-manifest.json")
+    const manifestBytes = await readFile(manifestPath)
+    const manifestDigest = `sha256:${createHash("sha256")
+      .update(manifestBytes)
+      .digest("hex")}`
+    const verify = () =>
+      verifyFounderRenderedConfiguration(
+        canonicalRoot,
+        manifestPath,
+        manifestDigest,
+        "b".repeat(40),
+        "c".repeat(40),
+      )
+
+    assert.equal(verify().state, "exact-rendered-configuration")
+    await writeFile(join(root, "placement.env"), "LLMM_WEB_IMAGE=drift\n", {
+      mode: 0o600,
+    })
+    assert.throws(verify, /rendered configuration binding is invalid/)
+
+    await renderVm103FounderCandidate(placement(), root)
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"))
+    manifest.artifacts[0].sha256 = `sha256:${"f".repeat(64)}`
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, {
+      mode: 0o600,
+    })
+    assert.throws(verify, /rendered configuration binding is invalid/)
+  } finally {
+    await rm(root, { force: true, recursive: true })
   }
 })
 

@@ -15,11 +15,8 @@ export async function renderVm103FounderCandidate(placement, outputRoot) {
     "utf8",
   )
   const edge = renderEdge(template, placement)
-  const artifacts = {
+  const renderedConfiguration = {
     "bff.env": renderBffEnvironment(placement),
-    "gateway-inference-route.service": renderGatewayUnit(placement),
-    "inference-firewall.nft": renderInferenceFirewall(placement),
-    "inference-private-route.service": renderInferenceUnit(placement),
     "image-bindings.json": `${JSON.stringify(
       {
         images: { bff: placement.images.bff, web: placement.images.web },
@@ -30,9 +27,34 @@ export async function renderVm103FounderCandidate(placement, outputRoot) {
       2,
     )}\n`,
     "product-edge.nginx.conf": edge,
-    "llmm-founder-candidate.service": renderVm103Unit(placement),
-    "llmm-founder-edge-firewall.service": renderVm103FirewallUnit(placement),
+    "placement.env": renderPlacementEnvironment(placement),
     "web.env": renderWebEnvironment(placement),
+  }
+  const renderedConfigurationManifest = `${JSON.stringify(
+    {
+      artifacts: Object.entries(renderedConfiguration)
+        .map(([name, content]) => ({ name, sha256: sha256(content) }))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+      schema: "llm-machines.vm103-founder-rendered-config.v1",
+      source: placement.source,
+    },
+    null,
+    2,
+  )}\n`
+  const renderedConfigurationManifestDigest = sha256(
+    renderedConfigurationManifest,
+  )
+  const artifacts = {
+    ...renderedConfiguration,
+    "gateway-inference-route.service": renderGatewayUnit(placement),
+    "inference-firewall.nft": renderInferenceFirewall(placement),
+    "inference-private-route.service": renderInferenceUnit(placement),
+    "llmm-founder-candidate.service": renderVm103Unit(
+      placement,
+      renderedConfigurationManifestDigest,
+    ),
+    "llmm-founder-edge-firewall.service": renderVm103FirewallUnit(placement),
+    "rendered-config-manifest.json": renderedConfigurationManifest,
   }
   const inventory = []
   for (const [name, content] of Object.entries(artifacts)) {
@@ -133,9 +155,18 @@ function validatePlacement(value) {
     "secret",
     "source",
   ])
-  for (const path of Object.values(value.paths)) {
-    if (!path.startsWith("/") || path.includes("..") || path.includes("\n"))
-      fail("path")
+  for (const path of Object.values(value.paths))
+    if (!safeAbsolutePath(path)) fail("path")
+  const paths = Object.values(value.paths)
+  if (new Set(paths).size !== paths.length) fail("path collision")
+  if (
+    value.paths.compose !==
+    resolve(
+      value.paths.source,
+      "infra/deployment/vm103-founder-candidate.compose.yaml",
+    )
+  ) {
+    fail("Compose source binding")
   }
 }
 
@@ -220,8 +251,41 @@ function renderBffEnvironment(p) {
   })
 }
 
-function renderVm103Unit(p) {
-  return `[Unit]\nDescription=LLM Machines pre-Genesis founder candidate\nAfter=docker.service llmm-founder-edge-firewall.service network-online.target\nRequires=docker.service llmm-founder-edge-firewall.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStartPre=/opt/node-v22.23.2/bin/node ${p.paths.source}/scripts/pre-genesis/verify-vm103-founder-images.mjs ${p.paths.configuration}/image-bindings.json\nExecStartPre=/opt/node-v22.23.2/bin/node ${p.paths.source}/scripts/pre-genesis/verify-vm103-application-identity.mjs http://127.0.0.1:${p.ports.keycloak} https://${p.authorities.identity}/realms/llm-machines-applications llm-machines-applications console-application-admin ${p.paths.secret}/keycloak-application-admin-client-secret\nExecStart=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} up --detach --wait\nExecReload=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} restart\nExecStop=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} stop\nTimeoutStartSec=900\nTimeoutStopSec=180\n\n[Install]\nWantedBy=multi-user.target\n`
+function renderPlacementEnvironment(p) {
+  return lines({
+    LLMM_BFF_IMAGE: p.images.bff,
+    LLMM_CONFIGURATION_ROOT: p.paths.configuration,
+    LLMM_EDGE_IMAGE: p.images.edge,
+    LLMM_INFERENCE_HOST: p.network.inference,
+    LLMM_INFERENCE_MODEL_ADMISSION_DIR: p.paths.admission,
+    LLMM_SECRET_ROOT: p.paths.secret,
+    LLMM_SOURCE_ROOT: p.paths.source,
+    LLMM_WEB_IMAGE: p.images.web,
+  })
+}
+
+function renderVm103Unit(p, renderedConfigurationManifestDigest) {
+  const verifySource = renderExactBlobInvocation(
+    p,
+    "scripts/pre-genesis/verify-vm103-founder-source.mjs",
+    [p.paths.source, p.source.commit, p.source.tree],
+  )
+  const verifyConfiguration = renderExactBlobInvocation(
+    p,
+    "scripts/pre-genesis/verify-vm103-founder-config.mjs",
+    [
+      p.paths.configuration,
+      `${p.paths.configuration}/rendered-config-manifest.json`,
+      renderedConfigurationManifestDigest,
+      p.source.commit,
+      p.source.tree,
+    ],
+  )
+  return `[Unit]\nDescription=LLM Machines pre-Genesis founder candidate\nAfter=docker.service llmm-founder-edge-firewall.service network-online.target\nRequires=docker.service llmm-founder-edge-firewall.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStartPre=${verifySource}\nExecStartPre=${verifyConfiguration}\nExecStartPre=/opt/node-v22.23.2/bin/node ${p.paths.source}/scripts/pre-genesis/verify-vm103-founder-images.mjs ${p.paths.configuration}/image-bindings.json\nExecStartPre=/opt/node-v22.23.2/bin/node ${p.paths.source}/scripts/pre-genesis/verify-vm103-application-identity.mjs http://127.0.0.1:${p.ports.keycloak} https://${p.authorities.identity}/realms/llm-machines-applications llm-machines-applications console-application-admin ${p.paths.secret}/keycloak-application-admin-client-secret\nExecStart=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} up --detach --wait\nExecReload=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} restart\nExecStop=/usr/bin/docker compose --project-name llmm-founder-candidate --env-file ${p.paths.configuration}/placement.env --file ${p.paths.compose} stop\nTimeoutStartSec=900\nTimeoutStopSec=180\n\n[Install]\nWantedBy=multi-user.target\n`
+}
+
+function renderExactBlobInvocation(p, script, arguments_) {
+  return `/bin/bash -o pipefail -ec '/usr/bin/git --no-replace-objects -c safe.directory=${p.paths.source} -C ${p.paths.source} cat-file blob ${p.source.commit}:${script} | /opt/node-v22.23.2/bin/node --input-type=module - ${arguments_.join(" ")}'`
 }
 
 function renderVm103FirewallUnit(p) {
@@ -277,6 +341,14 @@ function exactImage(value) {
 }
 function localImageId(value) {
   return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value)
+}
+function safeAbsolutePath(value) {
+  return (
+    typeof value === "string" &&
+    /^\/(?:[A-Za-z0-9._-]+\/?)+$/.test(value) &&
+    !value.includes("..") &&
+    resolve(value) === value
+  )
 }
 function privateIpv4(value) {
   if (typeof value !== "string") return false

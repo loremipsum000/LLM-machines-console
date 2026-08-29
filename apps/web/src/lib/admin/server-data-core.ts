@@ -8,7 +8,6 @@ import {
   adminHardwareResponseSchema,
   adminInferenceDashboardSchema,
   adminSettingsResponseSchema,
-  adminTeamGroupDetailSchema,
   adminTeamMemberDetailSchema,
   adminTeamOverviewResponseSchema,
 } from "@llm-machines/contracts/inference-core"
@@ -103,13 +102,6 @@ export async function getAdminTeamMemberDetail(memberId: string) {
   return getNullableAdminData(
     `/api/admin/team/members/${encodeURIComponent(memberId)}`,
     adminTeamMemberDetailSchema,
-  )
-}
-
-export async function getAdminTeamGroupDetail(groupId: string) {
-  return getNullableAdminData(
-    `/api/admin/team/groups/${encodeURIComponent(groupId)}`,
-    adminTeamGroupDetailSchema,
   )
 }
 

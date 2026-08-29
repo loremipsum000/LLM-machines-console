@@ -4,30 +4,70 @@ import { createHash } from "node:crypto"
 import { readFile, writeFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 
-export function renderVm103LiteLlmRoute(profile, endpoint, now = new Date()) {
-  const url = new URL(endpoint)
-  const model = profile?.capabilityAdvertisement?.models?.[0]
-  const freshness = profile?.capabilityAdvertisement?.freshness
+import { renderDeliveryProfile } from "../../infra/inference/render-profile.mjs"
+import {
+  canonicalJson,
+  sha256 as canonicalSha256,
+  coreCompatibilityFingerprint,
+  loadContracts,
+  validateDeliveryProfile,
+} from "../../infra/inference/validate-profile.mjs"
+
+const contracts = loadContracts()
+export const vm103CoreCompatibilityFingerprint = coreCompatibilityFingerprint(
+  contracts.core,
+)
+
+export function renderVm103LiteLlmRoute(
+  sourceProfile,
+  renderedProfile,
+  expectedInferenceHost,
+  endpoint,
+  now = new Date(),
+) {
+  const sourceErrors = validateDeliveryProfile(sourceProfile, contracts.core)
   if (
-    profile?.apiVersion !== "inference-core.llm-machines/v1" ||
-    profile?.kind !== "RenderedInferenceDeliveryProfile" ||
-    profile?.qualification?.scope !== "INTERNAL_TEST_ONLY" ||
-    profile?.qualification?.productionCapacityClaim !== false ||
-    profile?.capabilityAdvertisement?.state !== "ACTIVE_MEASURED" ||
-    profile.capabilityAdvertisement.models.length !== 1 ||
-    typeof model?.alias !== "string" ||
-    !/^[a-z0-9][a-z0-9._-]{0,127}$/.test(model.alias) ||
-    !freshness?.measuredAt ||
-    !freshness?.validUntil ||
-    Date.parse(freshness.measuredAt) > now.getTime() ||
-    Date.parse(freshness.validUntil) <= now.getTime() ||
-    profile?.network?.visibility !== "private-inference-plane" ||
-    !profile.network.allowedCallers?.includes("litellm-private")
+    sourceErrors.length > 0 ||
+    sourceProfile?.metadata?.admissionScope !== "INTERNAL_TEST_ONLY" ||
+    sourceProfile?.metadata?.lifecycleState !==
+      "ACTIVE_MEASURED_INTERNAL_TEST" ||
+    sourceProfile?.activation?.state !== "ACTIVE_INTERNAL_TEST" ||
+    sourceProfile?.accelerator?.productionSupportClaim !== false ||
+    sourceProfile?.capacity?.state !== "MEASURED"
+  ) {
+    throw new Error(
+      `The LiteLLM route requires one exact activated internal-test source profile.${sourceErrors.length > 0 ? ` ${sourceErrors.join(" ")}` : ""}`,
+    )
+  }
+
+  const canonicalRenderedProfile = canonicalJson(renderedProfile)
+  const expectedRenderedProfile = renderDeliveryProfile(
+    sourceProfile,
+    contracts,
+  )
+  if (canonicalJson(expectedRenderedProfile) !== canonicalRenderedProfile) {
+    throw new Error(
+      "The LiteLLM route requires the exact canonical rendering of its activated source profile.",
+    )
+  }
+
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
+    throw new Error("The LiteLLM route requires an exact validation time.")
+  }
+  const measuredAt = Date.parse(sourceProfile.capacity.measuredAt)
+  const validUntil = Date.parse(sourceProfile.capacity.validUntil)
+  if (
+    !Number.isFinite(measuredAt) ||
+    !Number.isFinite(validUntil) ||
+    measuredAt > now.getTime() ||
+    validUntil <= now.getTime()
   ) {
     throw new Error(
       "The LiteLLM route requires one current measured internal profile.",
     )
   }
+
+  const url = new URL(endpoint)
   if (
     url.protocol !== "http:" ||
     url.username ||
@@ -35,36 +75,16 @@ export function renderVm103LiteLlmRoute(profile, endpoint, now = new Date()) {
     url.pathname !== "/v1" ||
     url.search ||
     url.hash ||
-    !privateIpv4(url.hostname) ||
-    !Number.isInteger(Number(url.port)) ||
-    Number(url.port) < 1024 ||
-    Number(url.port) > 65_535
+    !privateIpv4(expectedInferenceHost) ||
+    url.hostname !== expectedInferenceHost ||
+    Number(url.port) !== sourceProfile.network.port
   ) {
     throw new Error(
-      "The LiteLLM route requires one exact private SGLang endpoint.",
-    )
-  }
-  const expectedArguments = [
-    "--served-model-name",
-    model.alias,
-    "--port",
-    url.port,
-  ]
-  const command = profile?.engine?.command
-  if (
-    !Array.isArray(command) ||
-    expectedArguments.some(
-      (value, index) =>
-        command.indexOf(value) < 0 ||
-        (index % 2 === 1 &&
-          command[command.indexOf(expectedArguments[index - 1]) + 1] !== value),
-    )
-  ) {
-    throw new Error(
-      "The LiteLLM route disagrees with the measured engine command.",
+      "The LiteLLM route requires the exact private endpoint bound by the activated source profile.",
     )
   }
 
+  const model = expectedRenderedProfile.capabilityAdvertisement.models[0]
   const config = [
     "model_list:",
     `  - model_name: ${model.alias}`,
@@ -86,12 +106,26 @@ export function renderVm103LiteLlmRoute(profile, endpoint, now = new Date()) {
     "  turn_off_message_logging: true",
     "",
   ].join("\n")
+
   return {
     config,
-    sha256: createHash("sha256").update(config).digest("hex"),
+    coreCompatibilityFingerprint: vm103CoreCompatibilityFingerprint,
+    engineImageDigest: sourceProfile.engine.image.digest,
+    evidenceDigest: sourceProfile.capacity.evidenceDigest,
     modelAlias: model.alias,
-    profileId: profile.source.profileId,
-    profileRevision: profile.source.revision,
+    modelArtifactDigest: sourceProfile.model.artifactDigest,
+    modelManifestDigest: sourceProfile.model.manifestDigest,
+    profileId: sourceProfile.metadata.profileId,
+    profileRevision: sourceProfile.metadata.revision,
+    qualifiedProfileDigest: sourceProfile.activation.qualifiedProfileDigest,
+    renderedProfileDigest: canonicalSha256(canonicalRenderedProfile),
+    rollback: {
+      profileId: sourceProfile.rollback.profileId,
+      revision: sourceProfile.rollback.revision,
+      engineImageDigest: sourceProfile.rollback.engineImageDigest,
+      modelArtifactDigest: sourceProfile.rollback.modelArtifactDigest,
+    },
+    sha256: createHash("sha256").update(config).digest("hex"),
   }
 }
 
@@ -117,20 +151,48 @@ function privateIpv4(value) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [profilePath, endpoint, outputPath] = process.argv.slice(2)
-  if (!profilePath || !endpoint || !outputPath) {
+  const [
+    sourceProfilePath,
+    renderedProfilePath,
+    expectedInferenceHost,
+    endpoint,
+    outputPath,
+  ] = process.argv.slice(2)
+  if (
+    !sourceProfilePath ||
+    !renderedProfilePath ||
+    !expectedInferenceHost ||
+    !endpoint ||
+    !outputPath
+  ) {
     throw new Error(
-      "Usage: render-vm103-litellm-route.mjs PROFILE ENDPOINT OUTPUT",
+      "Usage: render-vm103-litellm-route.mjs SOURCE_PROFILE RENDERED_PROFILE EXPECTED_PRIVATE_HOST ENDPOINT OUTPUT",
     )
   }
-  const profile = JSON.parse(await readFile(profilePath, "utf8"))
-  const result = renderVm103LiteLlmRoute(profile, endpoint)
+  const sourceProfile = JSON.parse(await readFile(sourceProfilePath, "utf8"))
+  const renderedProfile = JSON.parse(
+    await readFile(renderedProfilePath, "utf8"),
+  )
+  const result = renderVm103LiteLlmRoute(
+    sourceProfile,
+    renderedProfile,
+    expectedInferenceHost,
+    endpoint,
+  )
   await writeFile(outputPath, result.config, { flag: "wx", mode: 0o600 })
   process.stdout.write(
     `${JSON.stringify({
+      coreCompatibilityFingerprint: result.coreCompatibilityFingerprint,
+      engineImageDigest: result.engineImageDigest,
+      evidenceDigest: result.evidenceDigest,
       modelAlias: result.modelAlias,
+      modelArtifactDigest: result.modelArtifactDigest,
+      modelManifestDigest: result.modelManifestDigest,
       profileId: result.profileId,
       profileRevision: result.profileRevision,
+      qualifiedProfileDigest: result.qualifiedProfileDigest,
+      renderedProfileDigest: result.renderedProfileDigest,
+      rollback: result.rollback,
       sha256: result.sha256,
     })}\n`,
   )
