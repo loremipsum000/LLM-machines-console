@@ -58,11 +58,28 @@ describe("TokenUsageGrid", () => {
     )
     expect(screen.getByText("250 tokens on Jul 31, 2026 UTC")).toBeTruthy()
 
-    const grid = screen.getByRole("button", {
+    const group = screen.getByRole("group", {
       name: /Daily token usage for the last 90 days/,
     })
-    fireEvent.keyDown(grid, { key: "End" })
-    fireEvent.keyDown(grid, { key: "ArrowUp" })
+    const selectedDay = screen.getByRole("button", {
+      name: "250 tokens on Jul 31, 2026 UTC",
+    })
+    expect(selectedDay.getAttribute("aria-pressed")).toBe("true")
+    expect(group.querySelectorAll('button[tabindex="0"]')).toHaveLength(1)
+    fireEvent.keyDown(selectedDay, { key: "End" })
+    fireEvent.keyDown(
+      screen.getByRole("button", {
+        name: "No token usage reported on Aug 2, 2026 UTC",
+      }),
+      { key: "ArrowUp" },
+    )
+    expect(
+      screen
+        .getByRole("button", {
+          name: "No token usage reported on Aug 1, 2026 UTC",
+        })
+        .getAttribute("aria-pressed"),
+    ).toBe("true")
     expect(
       screen.getByText("No token usage reported on Aug 1, 2026 UTC"),
     ).toBeTruthy()
@@ -80,7 +97,7 @@ describe("TokenUsageGrid", () => {
       screen.getByText("Token usage is temporarily unavailable."),
     ).toBeTruthy()
     expect(
-      screen.queryByRole("button", {
+      screen.queryByRole("group", {
         name: /Daily token usage for the last 90 days/,
       }),
     ).toBeNull()

@@ -81,10 +81,13 @@ export function TokenUsageGrid({ generatedAt, usage }: TokenUsageGridProps) {
   )
   const hasReportedUsage = calendar.rangeDays.some(({ reported }) => reported)
 
-  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+  function handleKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentDate: string,
+  ) {
     const currentIndex = Math.max(
       0,
-      calendar.rangeDays.findIndex(({ date }) => date === selectedDay?.date),
+      calendar.rangeDays.findIndex(({ date }) => date === currentDate),
     )
     const offset = {
       ArrowDown: 1,
@@ -107,7 +110,11 @@ export function TokenUsageGrid({ generatedAt, usage }: TokenUsageGridProps) {
       return
     }
     event.preventDefault()
-    setSelectedDate(calendar.rangeDays[nextIndex]?.date ?? null)
+    const nextDate = calendar.rangeDays[nextIndex]?.date ?? null
+    setSelectedDate(nextDate)
+    if (nextDate) {
+      document.getElementById(`overview-token-usage-day-${nextDate}`)?.focus()
+    }
   }
 
   return (
@@ -149,26 +156,28 @@ export function TokenUsageGrid({ generatedAt, usage }: TokenUsageGridProps) {
                 </span>
               ))}
             </div>
-            <button
+            <fieldset
               aria-describedby="overview-token-usage-detail"
-              aria-label="Daily token usage for the last 90 days. Use arrow keys to inspect dates."
-              className="grid w-full appearance-none gap-1 rounded-md border-0 bg-transparent p-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#009fff]"
-              onKeyDown={handleKeyDown}
+              className="grid w-full gap-1 border-0 bg-transparent p-0"
               style={{ gridTemplateColumns: gridColumns }}
-              type="button"
             >
+              <legend className="sr-only">
+                Daily token usage for the last 90 days. Use arrow keys to
+                inspect dates.
+              </legend>
               {calendarRows.map((row) => (
                 <span
-                  aria-hidden
+                  aria-hidden={false}
                   className="contents"
                   key={`row-${row[0]?.date ?? "missing"}`}
                 >
                   {row.map((day) =>
                     day?.inRange ? (
-                      <span
-                        aria-hidden
+                      <button
+                        aria-label={usageLabel(day)}
+                        aria-pressed={selectedDay?.date === day.date}
                         className={cn(
-                          "aspect-square min-w-0 rounded-[3px] border transition-transform hover:scale-110",
+                          "aspect-square min-w-0 appearance-none rounded-[3px] border p-0 transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#009fff]",
                           LEVEL_CLASSES[day.level],
                           !day.reported && "border-dashed opacity-70",
                           selectedDay?.date === day.date &&
@@ -177,9 +186,15 @@ export function TokenUsageGrid({ generatedAt, usage }: TokenUsageGridProps) {
                         data-date={day.date}
                         data-level={day.level}
                         data-reported={day.reported ? "true" : "false"}
+                        id={`overview-token-usage-day-${day.date}`}
                         key={day.date}
+                        onClick={() => setSelectedDate(day.date)}
+                        onFocus={() => setSelectedDate(day.date)}
+                        onKeyDown={(event) => handleKeyDown(event, day.date)}
                         onMouseEnter={() => setSelectedDate(day.date)}
+                        tabIndex={selectedDay?.date === day.date ? 0 : -1}
                         title={usageLabel(day)}
+                        type="button"
                       />
                     ) : (
                       <span aria-hidden key={day?.date ?? "missing-cell"} />
@@ -187,7 +202,7 @@ export function TokenUsageGrid({ generatedAt, usage }: TokenUsageGridProps) {
                   )}
                 </span>
               ))}
-            </button>
+            </fieldset>
           </div>
         </div>
       </div>
