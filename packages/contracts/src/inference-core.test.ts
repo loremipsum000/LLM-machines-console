@@ -342,8 +342,6 @@ describe("Inference Core contract boundary", () => {
       },
       organization: {
         defaultLanguage: "en",
-        fullLogo: null,
-        iconLogo: null,
         organizationName: "LLM Machines",
         updatedAt: null,
         updatedBy: null,
@@ -386,6 +384,24 @@ describe("Inference Core contract boundary", () => {
     } as const
 
     expect(adminSettingsResponseSchema.safeParse(settings).success).toBe(true)
+    expect(
+      adminSettingsResponseSchema.safeParse({
+        ...settings,
+        organization: {
+          ...settings.organization,
+          fullLogo: { dataUrl: "data:image/png;base64,legacy" },
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      inferenceCoreContracts.updateAdminSettingsOrganizationRequestSchema.safeParse(
+        {
+          defaultLanguage: "en",
+          fullLogo: { dataUrl: "data:image/png;base64,legacy" },
+          organizationName: "LLM Machines",
+        },
+      ).success,
+    ).toBe(false)
     expect(
       adminSettingsResponseSchema.safeParse({
         ...settings,

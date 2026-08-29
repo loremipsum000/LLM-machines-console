@@ -554,37 +554,9 @@ export type AdminTeamCsvImportCommitResponse = z.infer<
 export const adminSettingsLanguageSchema = z.enum(["en", "hr"])
 export type AdminSettingsLanguage = z.infer<typeof adminSettingsLanguageSchema>
 
-export const adminSettingsLogoMimeTypeSchema = z.enum([
-  "image/png",
-  "image/jpeg",
-])
-export type AdminSettingsLogoMimeType = z.infer<
-  typeof adminSettingsLogoMimeTypeSchema
->
-
-const maxLogoBytes = 1024 * 1024
-
-export const adminSettingsLogoAssetSchema = z
-  .object({
-    checksum: z.string().min(1),
-    dataUrl: z.string().min(1).max(1_500_000),
-    fileName: z.string().trim().min(1).max(120),
-    height: z.number().int().positive(),
-    mimeType: adminSettingsLogoMimeTypeSchema,
-    sizeBytes: z.number().int().positive().max(maxLogoBytes),
-    updatedAt: z.string().datetime(),
-    width: z.number().int().positive(),
-  })
-  .strict()
-export type AdminSettingsLogoAsset = z.infer<
-  typeof adminSettingsLogoAssetSchema
->
-
 export const adminSettingsOrganizationSchema = z
   .object({
     defaultLanguage: adminSettingsLanguageSchema,
-    fullLogo: adminSettingsLogoAssetSchema.nullable(),
-    iconLogo: adminSettingsLogoAssetSchema.nullable(),
     organizationName: z.string().trim().min(1).max(120),
     updatedAt: z.string().datetime().nullable(),
     updatedBy: z.string().min(1).nullable(),
@@ -597,20 +569,9 @@ export type AdminSettingsOrganization = z.infer<
 export const updateAdminSettingsOrganizationRequestSchema = z
   .object({
     defaultLanguage: adminSettingsLanguageSchema,
-    fullLogo: adminSettingsLogoAssetSchema.nullable().optional(),
-    iconLogo: adminSettingsLogoAssetSchema.nullable().optional(),
     organizationName: z.string().trim().min(1).max(120),
   })
   .strict()
-  .superRefine((value, ctx) => {
-    if (value.iconLogo && value.iconLogo.width !== value.iconLogo.height) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Icon logo must use a 1:1 aspect ratio.",
-        path: ["iconLogo"],
-      })
-    }
-  })
 export type UpdateAdminSettingsOrganizationRequest = z.infer<
   typeof updateAdminSettingsOrganizationRequestSchema
 >

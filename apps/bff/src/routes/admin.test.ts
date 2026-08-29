@@ -87,9 +87,10 @@ describe("Inference Core Admin routes", () => {
       url: "/api/admin/settings",
       headers: adminHeaders,
     })
+    const payload = response.json()
 
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
+    expect(payload).toMatchObject({
       organization: {
         organizationName: "LLM Machines",
         defaultLanguage: "en",
@@ -102,8 +103,11 @@ describe("Inference Core Admin routes", () => {
         updateActionEnabled: false,
       },
     })
+    expect(payload.organization).not.toHaveProperty("fullLogo")
+    expect(payload.organization).not.toHaveProperty("iconLogo")
+    expect(JSON.stringify(payload)).not.toContain("data:image")
     expect(
-      response.json().reachability.map((service: { id: string }) => service.id),
+      payload.reachability.map((service: { id: string }) => service.id),
     ).toEqual([
       "web",
       "bff",
@@ -118,6 +122,33 @@ describe("Inference Core Admin routes", () => {
     ])
     await server.close()
   })
+
+  it.each(["fullLogo", "iconLogo"])(
+    "rejects the retired %s organization mutation field",
+    async (field) => {
+      vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+      const server = buildServer()
+      const response = await server.inject({
+        method: "POST",
+        url: "/api/admin/settings/organization",
+        headers: {
+          ...adminHeaders,
+          "idempotency-key": `settings-retired-${field}`,
+        },
+        payload: {
+          defaultLanguage: "en",
+          organizationName: "LLM Machines",
+          [field]: { dataUrl: "data:image/png;base64,legacy" },
+        },
+      })
+
+      expect(response.statusCode).toBe(400)
+      expect(response.json()).toMatchObject({
+        detail: "Organization name and default language are required.",
+      })
+      await server.close()
+    },
+  )
 
   it("preserves organization and privacy mutations with idempotency", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")

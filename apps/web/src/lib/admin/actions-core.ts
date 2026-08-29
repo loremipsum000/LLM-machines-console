@@ -1,7 +1,6 @@
 "use server"
 
-import { Buffer } from "node:buffer"
-import { createHash, randomUUID } from "node:crypto"
+import { randomUUID } from "node:crypto"
 import { normalizeConsoleReturnPath } from "@/lib/auth/safe-return"
 import { getCurrentConsoleSession } from "@/lib/auth/session"
 import { getBffRequest } from "@/lib/bff/server-request"
@@ -10,7 +9,6 @@ import {
   type AdminConnectedAppCredential,
   type AdminConnectedAppFirecrawlCredential,
   type AdminSettingsLanguage,
-  type AdminSettingsLogoAsset,
   type InferenceCoreCapability,
   type InferenceCoreHumanRole,
   adminConnectedAppCreateRequestSchema,
@@ -42,21 +40,10 @@ export async function updateAdminSettingsOrganizationAction(
   const defaultLanguage = parseAdminSettingsLanguage(
     requiredFormValue(formData, "defaultLanguage"),
   )
-  let fullLogo: AdminSettingsLogoAsset | null | undefined
-  let iconLogo: AdminSettingsLogoAsset | null | undefined
-
-  try {
-    fullLogo = await settingsLogoAssetFromForm(formData, "fullLogo")
-    iconLogo = await settingsLogoAssetFromForm(formData, "iconLogo")
-  } catch {
-    redirectTo(withActionStatus(fallback, "settingsAction", "invalidLogo"))
-  }
 
   try {
     await postAdminSettingsMutation("/api/admin/settings/organization", {
       defaultLanguage,
-      fullLogo,
-      iconLogo,
       organizationName,
     })
   } catch (error) {
@@ -1021,57 +1008,6 @@ function parseHumanRole(value: string): InferenceCoreHumanRole {
   throw new Error("role must be operator or admin.")
 }
 
-async function settingsLogoAssetFromForm(
-  formData: FormData,
-  name: "fullLogo" | "iconLogo",
-): Promise<AdminSettingsLogoAsset | null | undefined> {
-  if (checkboxFormValue(formData, `clear${capitalize(name)}`)) {
-    return null
-  }
-
-  const value = formData.get(name)
-  if (!(value instanceof File) || value.size === 0) {
-    return undefined
-  }
-  if (value.type !== "image/png" && value.type !== "image/jpeg") {
-    throw new Error("Logo must be a PNG or JPEG.")
-  }
-  if (value.size > 1024 * 1024) {
-    throw new Error("Logo must be at or below 1 MiB.")
-  }
-
-  const width = parsePositiveInteger(
-    requiredFormValue(formData, `${name}Width`),
-  )
-  const height = parsePositiveInteger(
-    requiredFormValue(formData, `${name}Height`),
-  )
-  if (name === "iconLogo" && width !== height) {
-    throw new Error("Icon logo must use a 1:1 aspect ratio.")
-  }
-
-  const buffer = Buffer.from(await value.arrayBuffer())
-  const mimeType = value.type as AdminSettingsLogoAsset["mimeType"]
-  return {
-    checksum: `sha256:${createHash("sha256").update(buffer).digest("hex")}`,
-    dataUrl: `data:${mimeType};base64,${buffer.toString("base64")}`,
-    fileName: value.name,
-    height,
-    mimeType,
-    sizeBytes: value.size,
-    updatedAt: new Date().toISOString(),
-    width,
-  }
-}
-
-function parsePositiveInteger(value: string): number {
-  const parsed = Number.parseInt(value, 10)
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    throw new Error("Expected a positive integer.")
-  }
-  return parsed
-}
-
 function parseAdminSettingsLanguage(value: string): AdminSettingsLanguage {
   return value === "hr" ? "hr" : "en"
 }
@@ -1164,8 +1100,4 @@ function withActionStatus(href: string, key: string, value: string): string {
   const params = new URLSearchParams(query)
   params.set(key, value)
   return `${path}?${params.toString()}`
-}
-
-function capitalize(value: string): string {
-  return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`
 }
