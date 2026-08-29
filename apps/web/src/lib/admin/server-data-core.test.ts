@@ -152,8 +152,6 @@ describe("inference-core Admin data loader", () => {
 function overviewFixture() {
   const generatedAt = "2026-08-01T08:01:00.000Z"
   return {
-    activityEvents: [],
-    activitySourceStatus: "ok",
     generatedAt,
     tiles: [
       overviewTile("applications", "Keys", "/keys", generatedAt),
@@ -161,6 +159,11 @@ function overviewFixture() {
       overviewTile("hardware", "Hardware", "/hardware", generatedAt),
       overviewTile("system", "System", "/settings", generatedAt),
     ],
+    tokenUsage: {
+      points: [{ date: "2026-07-31", tokens: 100 }],
+      range: "90d",
+      sourceStatus: "ok",
+    },
   }
 }
 

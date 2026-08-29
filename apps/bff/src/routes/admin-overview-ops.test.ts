@@ -104,7 +104,7 @@ describe("Admin overview LiteLLM ops federation", () => {
     expect(opsTile(response.json())).toMatchObject({
       href: "/inference",
       sourceStatus: "ok",
-      summary: "LiteLLM reports 12 requests and 1,800 tokens in the last 30d.",
+      summary: "LiteLLM reports 12 requests and 1,800 tokens in the last 90d.",
       metrics: expect.arrayContaining([
         expect.objectContaining({
           id: "requests",

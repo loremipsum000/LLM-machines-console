@@ -8,7 +8,6 @@ import { getAdminConnectedAppsProjection } from "./admin-connected-apps"
 import { getAdminHealthSummary } from "./admin-health"
 import { getAdminInference } from "./admin-inference"
 import { getAdminOverview } from "./admin-overview"
-import { type AuditEventRecord, getRecentAuditEvents } from "./audit"
 
 vi.mock("./admin-connected-apps", () => ({
   getAdminConnectedAppsProjection: vi.fn(),
@@ -20,10 +19,6 @@ vi.mock("./admin-health", () => ({
 
 vi.mock("./admin-inference", () => ({
   getAdminInference: vi.fn(),
-}))
-
-vi.mock("./audit", () => ({
-  getRecentAuditEvents: vi.fn(),
 }))
 
 const operator: Actor = {
@@ -38,7 +33,7 @@ describe("Admin Overview aggregation", () => {
     vi.useRealTimers()
   })
 
-  it("projects authentic application, inference, health, and audit state", async () => {
+  it("projects authentic application, inference, health, and token-usage state", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-08-02T09:30:00.000Z"))
     vi.mocked(getAdminConnectedAppsProjection).mockResolvedValue(
@@ -62,13 +57,10 @@ describe("Admin Overview aggregation", () => {
       summary:
         "Prometheus reports 7/8 monitored targets up. Alertmanager reports one active alert.",
     })
-    vi.mocked(getRecentAuditEvents).mockResolvedValue([auditEventFixture()])
-
     const overview = await getAdminOverview(operator)
 
-    expect(getRecentAuditEvents).toHaveBeenCalledWith(10)
     expect(getAdminConnectedAppsProjection).toHaveBeenCalledWith()
-    expect(getAdminInference).toHaveBeenCalledWith(operator, { range: "30d" })
+    expect(getAdminInference).toHaveBeenCalledWith(operator, { range: "90d" })
     expect(overview.generatedAt).toBe("2026-08-02T09:30:00.000Z")
     expect(overview.tiles.map((tile) => tile.id)).toEqual([
       "applications",
@@ -108,14 +100,14 @@ describe("Admin Overview aggregation", () => {
       ]),
       sourceStatus: "degraded",
     })
-    expect(overview.activityEvents).toEqual([
-      expect.objectContaining({
-        action: "console.application.credential.rotated",
-        actorId: "admin-1",
-        severity: "info",
-      }),
-    ])
-    expect(overview.activitySourceStatus).toBe("ok")
+    expect(overview.tokenUsage).toEqual({
+      points: [
+        { date: "2026-07-31", tokens: 250 },
+        { date: "2026-08-01", tokens: 12_500 },
+      ],
+      range: "90d",
+      sourceStatus: "ok",
+    })
   })
 
   it("returns bounded unavailable tiles instead of fabricated source values", async () => {
@@ -126,12 +118,14 @@ describe("Admin Overview aggregation", () => {
     )
     vi.mocked(getAdminInference).mockRejectedValue(new Error("litellm"))
     vi.mocked(getAdminHealthSummary).mockRejectedValue(new Error("prometheus"))
-    vi.mocked(getRecentAuditEvents).mockRejectedValue(new Error("audit"))
 
     const overview = await getAdminOverview(operator)
 
-    expect(overview.activityEvents).toEqual([])
-    expect(overview.activitySourceStatus).toBe("unavailable")
+    expect(overview.tokenUsage).toEqual({
+      points: [],
+      range: "90d",
+      sourceStatus: "unavailable",
+    })
     expect(
       overview.tiles.every((tile) => tile.sourceStatus === "unavailable"),
     ).toBe(true)
@@ -167,6 +161,11 @@ describe("Admin Overview aggregation", () => {
       { label: "Models served", value: "2" },
       { label: "Top model", value: "Unavailable" },
     ])
+    expect(usageUnavailable.tokenUsage).toEqual({
+      points: [],
+      range: "90d",
+      sourceStatus: "unavailable",
+    })
 
     vi.mocked(getAdminInference).mockResolvedValue({
       ...inferenceFixture(),
@@ -234,7 +233,6 @@ function mockSupportingOverviewSources(): void {
     sourceStatus: "ok",
     summary: "Hardware sources are available.",
   })
-  vi.mocked(getRecentAuditEvents).mockResolvedValue([])
 }
 
 function connectedAppsFixture(): AdminConnectedAppsResponse {
@@ -275,12 +273,33 @@ function inferenceFixture(): AdminInferenceDashboard {
       modelFixture("model-1", "qwen-local"),
       modelFixture("model-2", "completion-local"),
     ],
-    range: "30d",
+    range: "90d",
     sourceStatus: "ok",
     summary:
-      "LiteLLM reports 1,250 requests and 75,000 tokens in the last 30d.",
+      "LiteLLM reports 1,250 requests and 75,000 tokens in the last 90d.",
     totals: { requests: 1_250, tokens: 75_000 },
-    usagePoints: [],
+    usagePoints: [
+      {
+        requests: 1,
+        timestamp: "2026-05-04T12:00:00.000Z",
+        tokens: 99_999,
+      },
+      {
+        requests: 1,
+        timestamp: "2026-07-31T08:00:00.000Z",
+        tokens: 100,
+      },
+      {
+        requests: 1,
+        timestamp: "2026-07-31T18:00:00.000Z",
+        tokens: 150,
+      },
+      {
+        requests: 1,
+        timestamp: "2026-08-01T12:00:00.000Z",
+        tokens: 12_500,
+      },
+    ],
     virtualKeys: [],
     virtualKeysSourceStatus: "ok",
   }
@@ -295,28 +314,6 @@ function modelFixture(id: string, name: string) {
     outputCostPerMillionTokens: null,
     provider: "local",
     sourceStatus: "ok" as const,
-  }
-}
-
-function auditEventFixture(): AuditEventRecord {
-  return {
-    action: "console.application.credential.rotated",
-    actorId: "admin-1",
-    applicationId: "app-1",
-    correlationId: "correlation-1",
-    createdAt: "2026-08-02T09:20:00.000Z",
-    credentialPrefix: "llm_abcd",
-    credentialRecordId: "credential-1",
-    id: "event-1",
-    ingestedAt: "2026-08-02T09:20:00.000Z",
-    keycloakSubjectId: "admin-1",
-    metadata: {},
-    occurredAt: "2026-08-02T09:20:00.000Z",
-    outcome: "succeeded",
-    recoveryReasonCode: null,
-    sourceSystem: "console",
-    targetId: "credential-1",
-    targetType: "application_credential",
   }
 }
 

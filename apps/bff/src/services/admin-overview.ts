@@ -1,10 +1,10 @@
 import {
-  type AdminActivityEvent,
   type AdminConnectedAppsResponse,
   type AdminInferenceDashboard,
   type AdminOverviewMetric,
   type AdminOverviewResponse,
   type AdminOverviewTile,
+  type AdminOverviewTokenUsage,
   type InferenceCoreSourceStatus,
   aggregateInferenceCoreSourceStatus,
   inferenceCoreCustomerVocabulary,
@@ -13,8 +13,6 @@ import type { Actor } from "../auth/authorization"
 import { getAdminConnectedAppsProjection } from "./admin-connected-apps"
 import { type AdminHealthSummary, getAdminHealthSummary } from "./admin-health"
 import { getAdminInference } from "./admin-inference"
-import type { AuditEventRecord } from "./audit"
-import { getRecentAuditEvents } from "./audit"
 
 interface SourceRead<T> {
   data: T | null
@@ -29,35 +27,25 @@ export async function getAdminOverview(
   }
 
   const generatedAt = new Date().toISOString()
-  const audit = await readSource(() => getRecentAuditEvents(10), "ok")
   const [applications, inference, health] = await Promise.all([
     readSource(() => getAdminConnectedAppsProjection()),
-    readSource(() => getAdminInference(actor, { range: "30d" })),
+    readSource(() => getAdminInference(actor, { range: "90d" })),
     readSource(() => getAdminHealthSummary()),
   ])
-  const auditEvents = audit.data ?? []
-  const activityEvents = auditEvents.map(toAdminActivityEvent)
   const tiles = [
     applicationsTile(applications, generatedAt),
     inferenceTile(inference, generatedAt),
     hardwareTile(health, generatedAt),
     systemTile(
-      [
-        applications.sourceStatus,
-        inference.sourceStatus,
-        health.sourceStatus,
-        audit.sourceStatus,
-      ],
-      auditEvents,
+      [applications.sourceStatus, inference.sourceStatus, health.sourceStatus],
       generatedAt,
     ),
   ] satisfies AdminOverviewTile[]
 
   return {
-    activityEvents,
-    activitySourceStatus: audit.sourceStatus,
     generatedAt,
     tiles,
+    tokenUsage: tokenUsageProjection(inference, generatedAt),
   }
 }
 
@@ -224,12 +212,9 @@ function hardwareTile(
 
 function systemTile(
   sourceStatuses: InferenceCoreSourceStatus[],
-  auditEvents: AuditEventRecord[],
   generatedAt: string,
 ): AdminOverviewTile {
   const sourceStatus = aggregateInferenceCoreSourceStatus(sourceStatuses)
-  const latestEvent = auditEvents[0]
-  const auditAvailable = sourceStatuses[3] !== "unavailable"
 
   return {
     href: "/settings",
@@ -243,24 +228,6 @@ function systemTile(
         sourceStatusTone(sourceStatus),
       ),
       metric(
-        "recent-audit",
-        "Recent audit",
-        auditAvailable ? auditEvents.length : "Unavailable",
-        auditAvailable ? "Latest 10 metadata-only events" : "Audit source",
-        auditAvailable ? "neutral" : "warning",
-      ),
-      metric(
-        "last-action",
-        "Last action",
-        auditAvailable
-          ? (latestEvent?.action ?? "No recent activity")
-          : "Unavailable",
-        auditAvailable
-          ? (latestEvent?.actorId ?? "Audit source")
-          : "Audit source",
-        auditAvailable ? "neutral" : "warning",
-      ),
-      metric(
         "update-status",
         "Update status",
         "Unavailable",
@@ -269,7 +236,7 @@ function systemTile(
       ),
     ],
     sourceStatus,
-    summary: systemSummary(sourceStatus, auditAvailable),
+    summary: systemSummary(sourceStatus),
     title: "System",
     updatedAt: generatedAt,
   }
@@ -340,10 +307,7 @@ function sourceStatusFromData(
     : null
 }
 
-function systemSummary(
-  sourceStatus: InferenceCoreSourceStatus,
-  auditAvailable: boolean,
-): string {
+function systemSummary(sourceStatus: InferenceCoreSourceStatus): string {
   if (sourceStatus === "unavailable") {
     return "Console cannot currently read its operational source previews."
   }
@@ -351,11 +315,55 @@ function systemSummary(
     return "Operational source previews are not configured for this BFF."
   }
   if (sourceStatus === "degraded") {
-    return auditAvailable
-      ? "One or more operational source previews require attention."
-      : "Recent audit is unavailable and one or more source previews require attention."
+    return "One or more operational source previews require attention."
   }
-  return "Keys, inference, hardware, and recent audit sources are reporting normally."
+  return "Keys, inference, and hardware sources are reporting normally."
+}
+
+function tokenUsageProjection(
+  inference: SourceRead<AdminInferenceDashboard>,
+  generatedAt: string,
+): AdminOverviewTokenUsage {
+  const dashboard = inference.data
+  if (!dashboard || dashboard.aggregateUsageSourceStatus !== "ok") {
+    return {
+      points: [],
+      range: "90d",
+      sourceStatus:
+        dashboard?.aggregateUsageSourceStatus ?? inference.sourceStatus,
+    }
+  }
+
+  const endDate = utcDateStart(generatedAt)
+  const firstDate = new Date(endDate.getTime() - 89 * 24 * 60 * 60 * 1000)
+  const totalsByDate = new Map<string, number>()
+  for (const point of dashboard.usagePoints) {
+    const pointDate = utcDateStart(point.timestamp)
+    if (pointDate < firstDate || pointDate > endDate) {
+      continue
+    }
+    const date = pointDate.toISOString().slice(0, 10)
+    totalsByDate.set(date, (totalsByDate.get(date) ?? 0) + point.tokens)
+  }
+
+  return {
+    points: [...totalsByDate.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([date, tokens]) => ({ date, tokens })),
+    range: "90d",
+    sourceStatus: "ok",
+  }
+}
+
+function utcDateStart(value: string): Date {
+  const parsed = new Date(value)
+  return new Date(
+    Date.UTC(
+      parsed.getUTCFullYear(),
+      parsed.getUTCMonth(),
+      parsed.getUTCDate(),
+    ),
+  )
 }
 
 function sourceMetricValue(
@@ -422,21 +430,6 @@ function metric(
     label,
     tone,
     value: typeof value === "number" ? value.toLocaleString("en-US") : value,
-  }
-}
-
-function toAdminActivityEvent(event: AuditEventRecord): AdminActivityEvent {
-  return {
-    action: event.action,
-    actorId: event.actorId,
-    createdAt: event.createdAt,
-    id: event.id,
-    severity:
-      event.outcome === "failed" || event.outcome === "denied"
-        ? "warning"
-        : "info",
-    targetId: event.targetId,
-    targetType: event.targetType,
   }
 }
 

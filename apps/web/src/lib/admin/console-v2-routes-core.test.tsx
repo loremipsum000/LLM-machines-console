@@ -163,10 +163,9 @@ describe("Overview Console route", () => {
       activeConsoleSession("operator"),
     )
     mocks.getAdminOverview.mockResolvedValue({
-      activityEvents: [],
-      activitySourceStatus: "ok",
       generatedAt: "2026-08-02T09:30:00.000Z",
       tiles: [],
+      tokenUsage: { points: [], range: "90d", sourceStatus: "ok" },
     })
 
     render(await renderOverviewConsoleRoute())

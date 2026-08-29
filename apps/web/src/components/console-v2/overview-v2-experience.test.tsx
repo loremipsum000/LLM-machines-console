@@ -19,12 +19,25 @@ afterEach(() => {
 })
 
 describe("OverviewV2Experience", () => {
-  it("renders the four source-backed previews and metadata-only activity", () => {
+  it("renders a 90-day token grid and four full-width operational cards", () => {
     render(<OverviewV2Experience overview={overviewFixture()} />)
 
-    expect(screen.getByText(/recent activity at a glance/i)).toBeTruthy()
+    expect(screen.queryByText("Recent activity")).toBeNull()
+    expect(
+      screen.getByRole("group", {
+        name: /Daily token usage for the last 90 days/,
+      }),
+    ).toBeTruthy()
+    expect(screen.getByText("Last 90 days · UTC")).toBeTruthy()
+    expect(
+      screen.getByText(/No prompts or responses are retained/),
+    ).toBeTruthy()
+
     const region = screen.getByRole("region", { name: "Operational overview" })
-    expect(within(region).getAllByRole("article")).toHaveLength(4)
+    const cards = within(region).getAllByRole("article")
+    expect(cards).toHaveLength(4)
+    expect(region.className).not.toContain("sm:grid-cols-2")
+    expect(cards.every((card) => card.className.includes("w-full"))).toBe(true)
     expect(
       screen.getByRole("link", { name: "Open Keys" }).getAttribute("href"),
     ).toBe("/keys")
@@ -36,16 +49,9 @@ describe("OverviewV2Experience", () => {
         "Unavailable",
       ),
     ).toBeTruthy()
-
-    const activity = screen.getByRole("region", { name: "Recent activity" })
-    expect(
-      within(activity).getByText("console.application.credential.rotated"),
-    ).toBeTruthy()
-    expect(within(activity).getByText("Subject admin-1")).toBeTruthy()
-    expect(within(activity).queryByRole("link")).toBeNull()
   })
 
-  it("shows unavailable source and audit states without fabricated values", () => {
+  it("shows unavailable sources without fabricated values or usage cells", () => {
     const overview = overviewFixture()
     overview.tiles = overview.tiles.map((tile) => ({
       ...tile,
@@ -57,17 +63,22 @@ describe("OverviewV2Experience", () => {
       sourceStatus: tile.id === "system" ? "degraded" : "unavailable",
       summary: `${tile.title} source is unavailable.`,
     }))
-    overview.activityEvents = []
-    overview.activitySourceStatus = "unavailable"
+    overview.tokenUsage = {
+      points: [],
+      range: "90d",
+      sourceStatus: "unavailable",
+    }
 
     render(<OverviewV2Experience overview={overview} />)
 
     expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(4)
     expect(
-      screen.getByText("Recent audit activity is unavailable."),
+      screen.getByText("Token usage is temporarily unavailable."),
     ).toBeTruthy()
     expect(
-      screen.queryByText("No recent audit activity has been recorded."),
+      screen.queryByRole("group", {
+        name: /Daily token usage for the last 90 days/,
+      }),
     ).toBeNull()
   })
 
@@ -83,18 +94,6 @@ describe("OverviewV2Experience", () => {
 function overviewFixture() {
   const generatedAt = "2026-08-02T09:30:00.000Z"
   return adminOverviewResponseSchema.parse({
-    activityEvents: [
-      {
-        action: "console.application.credential.rotated",
-        actorId: "admin-1",
-        createdAt: "2026-08-02T09:20:00.000Z",
-        id: "event-1",
-        severity: "info",
-        targetId: "credential-1",
-        targetType: "application_credential",
-      },
-    ],
-    activitySourceStatus: "ok",
     generatedAt,
     tiles: [
       tileFixture("applications", "Keys", "/keys", [
@@ -119,6 +118,14 @@ function overviewFixture() {
         metricFixture("update-status", "Update status", "Unavailable"),
       ]),
     ],
+    tokenUsage: {
+      points: [
+        { date: "2026-07-31", tokens: 250 },
+        { date: "2026-08-01", tokens: 12_500 },
+      ],
+      range: "90d",
+      sourceStatus: "ok",
+    },
   })
 }
 

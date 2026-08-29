@@ -168,6 +168,8 @@ const consolePaths = [
   ["/team", "Team"],
   ["/settings", "Settings"],
 ]
+const liteLlmGlobalLogoutScript =
+  '(()=>{for(const p of["/","/ui"])document.cookie="token=; Max-Age=0; Path="+p+"; Secure; SameSite=Lax";try{sessionStorage.removeItem("token");for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith("m"+"cp-session-"+"to"+"ken:"))sessionStorage.removeItem(k)}}catch{}try{localStorage.removeItem("litellm_selected_worker_id");localStorage.removeItem("litellm_worker_url")}catch{}location.replace("/__llmm/global-logout/continue")})()'
 const evidence = await runBrowserSessionProof()
 process.stdout.write(`${JSON.stringify(evidence)}\n`)
 
@@ -1294,6 +1296,7 @@ async function runBrowserSessionProof() {
     await advanceClock(6_000)
     await page.getByRole("link", { name: "Retry" }).click()
     await page.getByRole("heading", { name: "Settings" }).waitFor()
+    await page.getByRole("button", { name: "Export last 30 days" }).waitFor()
     if (integratedCoreMode && firecrawlControl) {
       const firecrawlRow = page
         .getByRole("row")
@@ -1332,10 +1335,9 @@ async function runBrowserSessionProof() {
     await page.getByRole("heading", { name: "Admin access required" }).waitFor()
     await page.goto(`${consoleOrigin}/settings`)
     assert.equal(
-      await page.getByText("Export JSON", { exact: true }).count(),
+      await page.getByText("Export last 30 days", { exact: true }).count(),
       0,
     )
-    assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
     if (credentialLifecycleMode && applicationFlow) {
       await assertOperatorApplicationReadOnly(page, applicationFlow)
     }
@@ -2166,8 +2168,10 @@ async function proveKeycloakIdentityConsoleFlow({
   await page.goto(`${consoleOrigin}/team/members/new`)
   await page.getByRole("heading", { name: "Admin access required" }).waitFor()
   await page.goto(`${consoleOrigin}/settings`)
-  assert.equal(await page.getByText("Export JSON", { exact: true }).count(), 0)
-  assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
+  assert.equal(
+    await page.getByText("Export last 30 days", { exact: true }).count(),
+    0,
+  )
 
   await page.goto(`${consoleOrigin}/`)
   await page.getByRole("button", { name: "Sign out" }).click()
@@ -2392,6 +2396,7 @@ async function proveIntegratedObservabilityConsoleFlow({
   }
   await page.goto(`${consoleOrigin}/`)
   await page.getByRole("heading", { name: "Overview" }).waitFor()
+  await page.getByRole("heading", { name: "Token usage" }).waitFor()
   await page.getByText("Models served", { exact: true }).waitFor()
   await page.getByText("Targets up", { exact: true }).waitFor()
   if (founderUat) {
@@ -5229,9 +5234,6 @@ function developmentLogoutRedirect(
   })
   response.end()
 }
-
-const liteLlmGlobalLogoutScript =
-  '(()=>{for(const p of["/","/ui"])document.cookie="token=; Max-Age=0; Path="+p+"; Secure; SameSite=Lax";try{sessionStorage.removeItem("token");for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith("m"+"cp-session-"+"to"+"ken:"))sessionStorage.removeItem(k)}}catch{}try{localStorage.removeItem("litellm_selected_worker_id");localStorage.removeItem("litellm_worker_url")}catch{}location.replace("/__llmm/global-logout/continue")})()'
 
 function developmentLiteLlmGlobalLogout(request, response, url) {
   if (!["GET", "HEAD"].includes(request.method ?? "") || url.search) {
