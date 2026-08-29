@@ -42,11 +42,11 @@ describe("Inference Core Admin routes", () => {
     const server = buildServer()
     const unauthenticated = await server.inject({
       method: "GET",
-      url: "/api/admin/overview",
+      url: "/api/admin/settings",
     })
     const wrongRole = await server.inject({
       method: "GET",
-      url: "/api/admin/overview",
+      url: "/api/admin/settings",
       headers: unclassifiedHeaders,
     })
 
@@ -62,6 +62,20 @@ describe("Inference Core Admin routes", () => {
         }),
       ]),
     )
+    await server.close()
+  })
+
+  it("does not register the retired Overview projection", async () => {
+    vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
+    const server = buildServer()
+
+    const response = await server.inject({
+      headers: adminHeaders,
+      method: "GET",
+      url: "/api/admin/overview",
+    })
+
+    expect(response.statusCode).toBe(404)
     await server.close()
   })
 
@@ -349,15 +363,10 @@ describe("Inference Core Admin routes", () => {
     await server.close()
   })
 
-  it("returns the retained overview, applications, hardware, and inference projections", async () => {
+  it("returns the retained applications, hardware, and inference projections", async () => {
     vi.stubEnv("BFF_SERVICE_API_KEY", "test-service-key")
     const server = buildServer()
-    const [overview, applications, hardware, inference] = await Promise.all([
-      server.inject({
-        method: "GET",
-        url: "/api/admin/overview",
-        headers: adminHeaders,
-      }),
+    const [applications, hardware, inference] = await Promise.all([
       server.inject({
         method: "GET",
         url: "/api/admin/applications/connected-apps",
@@ -375,15 +384,6 @@ describe("Inference Core Admin routes", () => {
       }),
     ])
 
-    expect(overview.statusCode).toBe(200)
-    expect(
-      overview.json().tiles.map((tile: { id: string }) => tile.id),
-    ).toEqual(["applications", "inference", "hardware", "system"])
-    expect(
-      overview
-        .json()
-        .tiles.every((tile: { href: string }) => tile.href.startsWith("/")),
-    ).toBe(true)
     expect(applications.statusCode).toBe(200)
     expect(applications.json()).toHaveProperty("apps")
     expect(hardware.statusCode).toBe(200)
@@ -395,8 +395,6 @@ describe("Inference Core Admin routes", () => {
     const files = [
       "../index.ts",
       "./admin.ts",
-      "../services/admin-overview.ts",
-      "../services/admin-ops.ts",
       "../services/admin-settings-core.ts",
       "../services/admin-team.ts",
     ]

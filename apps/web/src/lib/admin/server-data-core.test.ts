@@ -4,7 +4,6 @@ import {
   ConsoleBffAuthExpiredError,
   ConsoleBffUnavailableError,
   getAdminConnectedApps,
-  getAdminOverview,
 } from "./server-data-core"
 
 vi.mock("@/lib/auth/session", () => ({
@@ -91,7 +90,7 @@ describe("inference-core Admin data loader", () => {
     })
     const fetchSpy = vi.spyOn(globalThis, "fetch")
 
-    await expect(getAdminOverview()).rejects.toBeInstanceOf(
+    await expect(getAdminConnectedApps()).rejects.toBeInstanceOf(
       ConsoleBffAuthExpiredError,
     )
     expect(fetchSpy).not.toHaveBeenCalled()
@@ -107,7 +106,7 @@ describe("inference-core Admin data loader", () => {
     })
     const fetchSpy = vi.spyOn(globalThis, "fetch")
 
-    await expect(getAdminOverview()).rejects.toBeInstanceOf(
+    await expect(getAdminConnectedApps()).rejects.toBeInstanceOf(
       ConsoleBffUnavailableError,
     )
     expect(fetchSpy).not.toHaveBeenCalled()
@@ -125,69 +124,8 @@ describe("inference-core Admin data loader", () => {
       }),
     )
 
-    await expect(getAdminOverview()).rejects.toBeInstanceOf(
+    await expect(getAdminConnectedApps()).rejects.toBeInstanceOf(
       ConsoleBffUnavailableError,
     )
   })
-
-  it("loads the source-backed Overview without fixture fallback", async () => {
-    vi.stubEnv("CONSOLE_BFF_URL", "http://bff.test")
-    vi.stubEnv("CONSOLE_BFF_SERVICE_API_KEY", "service-key")
-    vi.mocked(getCurrentConsoleSession).mockResolvedValue(
-      activeConsoleSession("operator"),
-    )
-    const payload = overviewFixture()
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }))
-
-    await expect(getAdminOverview()).resolves.toEqual(payload)
-    expect(fetchSpy).toHaveBeenCalledWith(
-      "http://bff.test/api/admin/overview",
-      expect.objectContaining({ cache: "no-store" }),
-    )
-  })
 })
-
-function overviewFixture() {
-  const generatedAt = "2026-08-01T08:01:00.000Z"
-  return {
-    generatedAt,
-    tiles: [
-      overviewTile("applications", "Keys", "/keys", generatedAt),
-      overviewTile("inference", "Inference", "/inference", generatedAt),
-      overviewTile("hardware", "Hardware", "/hardware", generatedAt),
-      overviewTile("system", "System", "/settings", generatedAt),
-    ],
-    tokenUsage: {
-      points: [{ date: "2026-07-31", tokens: 100 }],
-      range: "90d",
-      sourceStatus: "ok",
-    },
-  }
-}
-
-function overviewTile(
-  id: "applications" | "hardware" | "inference" | "system",
-  title: string,
-  href: string,
-  updatedAt: string,
-) {
-  return {
-    href,
-    id,
-    metrics: [
-      {
-        detail: "Authentic BFF source",
-        id: `${id}-status`,
-        label: "Status",
-        tone: "good" as const,
-        value: "Operational",
-      },
-    ],
-    sourceStatus: "ok" as const,
-    summary: `${title} source preview is available.`,
-    title,
-    updatedAt,
-  }
-}

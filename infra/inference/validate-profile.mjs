@@ -224,6 +224,20 @@ export function validateCoreContract(core) {
     errors,
   )
   if (
+    !sameJson(core?.consoleSections, [
+      "applications",
+      "inference",
+      "hardware",
+      "team",
+      "settings",
+    ])
+  ) {
+    add(
+      errors,
+      "Core Console sections must match the reduced five-surface order",
+    )
+  }
+  if (
     !sameJson(core?.coreAppliance?.baseline, {
       localDiskGiB: 100,
       memoryMiB: 32768,

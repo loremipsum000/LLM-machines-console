@@ -299,7 +299,6 @@ function reviewedBffRoutes(): RuntimeRoute[] {
       url: "/api/admin/audit/export/verification-keys",
     },
     { method: "GET", url: "/api/admin/observability/alert-egress" },
-    { method: "GET", url: "/api/admin/overview" },
     { method: "GET", url: "/api/admin/recovery/status" },
     { method: "GET", url: "/api/admin/settings" },
     { method: "GET", url: "/api/admin/team" },

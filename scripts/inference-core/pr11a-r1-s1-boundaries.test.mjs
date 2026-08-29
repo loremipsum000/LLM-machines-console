@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import {
   activityAuditSurfaceRetirementPath,
   buildRouteBaseline,
+  overviewSurfaceRetirementPath,
   pr11aR1S1Pr09NativeIdentifierSuccessorEvidence,
   verifyReviewedPr09NativeIdentifierEvidence,
 } from "./guardrails.mjs"
@@ -133,6 +134,15 @@ test("R1-S1 makes only the reviewed opaque-session route transition", () => {
       method: "PAGE",
       path: "/activity",
       source: "apps/web/src/app/activity/page.tsx",
+      classification: "current-console-seam",
+    })
+  }
+  if (existsSync(resolve(repositoryRoot, overviewSurfaceRetirementPath))) {
+    successorAwareRoutes.push({
+      surface: "bff",
+      method: "GET",
+      path: "/api/admin/overview",
+      source: "apps/bff/src/routes/admin.ts",
       classification: "current-console-seam",
     })
   }

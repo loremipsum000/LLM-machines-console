@@ -20,7 +20,6 @@ const routeMocks = vi.hoisted(() => ({
   renderApplicationsConsoleRoute: vi.fn(async () => null),
   renderHardwareConsoleRoute: vi.fn(async () => null),
   renderInferenceConsoleRoute: vi.fn(async () => null),
-  renderOverviewConsoleRoute: vi.fn(async () => null),
   renderSettingsConsoleRoute: vi.fn(async () => null),
   renderTeamConsoleRoute: vi.fn(async () => null),
 }))
@@ -36,11 +35,12 @@ describe("retained Console routes", () => {
     vi.clearAllMocks()
   })
 
-  it("renders Overview directly at the root route", async () => {
-    await HomePage()
+  it("redirects the authenticated root route to Keys", async () => {
+    await expect(HomePage()).rejects.toThrow("redirect:/keys")
 
-    expect(routeMocks.renderOverviewConsoleRoute).toHaveBeenCalledOnce()
-    expect(navigationMocks.redirect).not.toHaveBeenCalled()
+    expect(navigationMocks.redirect).toHaveBeenCalledOnce()
+    expect(navigationMocks.redirect).toHaveBeenCalledWith("/keys")
+    expect(routeMocks.renderApplicationsConsoleRoute).not.toHaveBeenCalled()
   })
 
   it("keeps every retained page dynamic", () => {

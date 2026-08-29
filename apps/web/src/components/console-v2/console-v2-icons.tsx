@@ -2,33 +2,6 @@ import type { SVGProps } from "react"
 
 type IconProps = SVGProps<SVGSVGElement>
 
-export function OverviewIcon(props: IconProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      fill="none"
-      height="20"
-      viewBox="0 0 20 20"
-      width="20"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <path
-        d="M2.5 8.33L10 2.5L17.5 8.33"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M4.17 7.5V16.67H15.83V7.5M7.5 16.67V11.67H12.5V16.67"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 export function KeysIcon(props: IconProps) {
   return (
     <svg

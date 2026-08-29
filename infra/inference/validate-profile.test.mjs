@@ -327,6 +327,30 @@ test("Core baseline has no customer model or accelerator assumption", () => {
   assert.ok(storage.backup.excludedDatasets.includes("models"))
 })
 
+test("Core Console sections match the exact reduced five-surface order", () => {
+  assert.deepEqual(contracts.core.consoleSections, [
+    "applications",
+    "inference",
+    "hardware",
+    "team",
+    "settings",
+  ])
+
+  for (const consoleSections of [
+    ["overview", ...contracts.core.consoleSections],
+    contracts.core.consoleSections.slice(1),
+    [...contracts.core.consoleSections, "activity"],
+    [...contracts.core.consoleSections].reverse(),
+  ]) {
+    const changed = structuredClone(contracts.core)
+    changed.consoleSections = consoleSections
+    assert.match(
+      validateCoreContract(changed).join("\n"),
+      /reduced five-surface order/,
+    )
+  }
+})
+
 test("credential material and workstation paths are rejected", () => {
   for (const source of [
     ["-----BEGIN ", "PRIVATE KEY-----"].join(""),

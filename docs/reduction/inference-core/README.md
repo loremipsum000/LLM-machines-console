@@ -1422,3 +1422,24 @@ contract, Web payload, or retained evidence.
 The predecessor Activity-retirement record remains byte-identical historical
 evidence. Product acceptance and runtime qualification remain false, contract
 activation remains inactive, and Genesis remains unpublished.
+
+## Console Overview surface retirement
+
+The prospective successor removes Overview as a customer surface. The Console
+now has five primary surfaces in fixed order: Keys, Inference, Hardware, Team,
+and Settings. The authenticated root remains protected and redirects to Keys;
+the absent `/overview` route is not retained as a compatibility surface. The
+private Overview BFF projection and its Overview-only contracts are also
+absent because no retained Product surface consumes them.
+
+Settings retains the Admin-only `Export last 30 days` action, audit read and
+signed-export APIs, ledger, native ingestion, metadata-only retention,
+authorization, and signing controls. Historical Activity retirement and
+Overview token-usage refinement records remain unchanged evidence. The new
+five-surface Core compatibility fingerprint is
+`sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40`;
+delivery profiles bound to the preceding fingerprint fail closed until
+separately revised and qualified.
+
+Product acceptance and runtime qualification remain false, contract activation
+remains inactive, and Genesis remains unpublished.

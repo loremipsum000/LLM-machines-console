@@ -10,7 +10,6 @@ const navigationMocks = vi.hoisted(() => ({
 }))
 
 const expectedNavigation = [
-  ["Overview", "/"],
   ["Keys", "/keys"],
   ["Inference", "/inference"],
   ["Hardware", "/hardware"],
@@ -65,9 +64,9 @@ describe("ConsoleV2Shell", () => {
       within(navigation)
         .getByRole("link", { name: "Inference" })
         .getAttribute("aria-keyshortcuts"),
-    ).toBe("Meta+3")
+    ).toBe("Meta+2")
 
-    fireEvent.keyDown(window, { key: "3", metaKey: true })
+    fireEvent.keyDown(window, { key: "2", metaKey: true })
 
     expect(navigationMocks.router.push).toHaveBeenCalledWith("/inference")
 
@@ -82,7 +81,7 @@ describe("ConsoleV2Shell", () => {
       </ConsoleV2Shell>,
     )
 
-    const applicationsShortcut = screen.getByText("⌘2")
+    const applicationsShortcut = screen.getByText("⌘1")
     expect(String(applicationsShortcut.className)).toContain("opacity-0")
 
     fireEvent.keyDown(window, { key: "Meta", metaKey: true })
@@ -102,7 +101,7 @@ describe("ConsoleV2Shell", () => {
       </ConsoleV2Shell>,
     )
 
-    fireEvent.keyDown(window, { key: "3", metaKey: true })
+    fireEvent.keyDown(window, { key: "2", metaKey: true })
     unmount()
 
     render(
@@ -111,7 +110,7 @@ describe("ConsoleV2Shell", () => {
       </ConsoleV2Shell>,
     )
 
-    const inferenceShortcut = screen.getByText("⌘3")
+    const inferenceShortcut = screen.getByText("⌘2")
     expect(String(inferenceShortcut.className)).toContain("opacity-100")
 
     fireEvent.keyUp(window, { key: "Meta" })
@@ -134,10 +133,10 @@ describe("ConsoleV2Shell", () => {
       within(navigation)
         .getByRole("link", { name: "Keys" })
         .getAttribute("aria-keyshortcuts"),
-    ).toBe("Control+2")
-    expect(screen.getByText("Ctrl 2")).toBeTruthy()
+    ).toBe("Control+1")
+    expect(screen.getByText("Ctrl 1")).toBeTruthy()
 
-    fireEvent.keyDown(window, { ctrlKey: true, key: "6" })
+    fireEvent.keyDown(window, { ctrlKey: true, key: "5" })
 
     expect(navigationMocks.router.push).toHaveBeenCalledWith("/settings")
 
@@ -174,6 +173,9 @@ describe("ConsoleV2Shell", () => {
       "currentColor",
     )
     expect(screen.getByText("Administrator")).toBeTruthy()
+    expect(
+      within(navigation).queryByRole("link", { name: "Overview" }),
+    ).toBeNull()
     const signOutForm = screen
       .getByRole("button", { name: "Sign out" })
       .closest("form")
@@ -213,19 +215,38 @@ describe("ConsoleV2Shell", () => {
     )
     expect(
       navigationLinks.map((link) => link.getAttribute("aria-keyshortcuts")),
-    ).toEqual(["Meta+1", "Meta+2", "Meta+3", "Meta+4", "Meta+5", "Meta+6"])
+    ).toEqual(["Meta+1", "Meta+2", "Meta+3", "Meta+4", "Meta+5"])
     expect(
       within(navigation)
         .getByRole("link", { name: "Team" })
         .getAttribute("aria-keyshortcuts"),
-    ).toBe("Meta+5")
+    ).toBe("Meta+4")
 
+    fireEvent.keyDown(window, { key: "4", metaKey: true })
     fireEvent.keyDown(window, { key: "5", metaKey: true })
-    fireEvent.keyDown(window, { key: "6", metaKey: true })
 
     expect(navigationMocks.router.push).toHaveBeenNthCalledWith(1, "/team")
     expect(navigationMocks.router.push).toHaveBeenNthCalledWith(2, "/settings")
     expect(screen.getByText("Operator")).toBeTruthy()
+  })
+
+  it("leaves the removed sixth shortcut unhandled", () => {
+    mockNavigatorPlatform("MacIntel")
+    render(
+      <ConsoleV2Shell accessRole="admin" activeSection="applications">
+        <h1>Keys</h1>
+      </ConsoleV2Shell>,
+    )
+
+    const event = new KeyboardEvent("keydown", {
+      cancelable: true,
+      key: "6",
+      metaKey: true,
+    })
+    window.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(navigationMocks.router.push).not.toHaveBeenCalled()
   })
 
   it("starts the coordinated logout with a same-origin JSON POST", () => {

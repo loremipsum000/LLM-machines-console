@@ -161,7 +161,6 @@ function publicAuthorityHost(authority, edgePort) {
 }
 
 const consolePaths = [
-  ["/", "Overview"],
   ["/keys", "Keys"],
   ["/inference", "Inference"],
   ["/hardware", "Hardware"],
@@ -1710,6 +1709,7 @@ async function assertExpiredSignIn(page, returnTo) {
 }
 
 async function assertConsoleNavigation(page, consoleOrigin) {
+  await assertRootKeysLanding(page, consoleOrigin)
   for (const [path, heading] of consolePaths) {
     await navigateConsolePath(page, consoleOrigin, path, heading)
   }
@@ -1721,6 +1721,25 @@ async function assertConsoleNavigation(page, consoleOrigin) {
   assert.equal(
     hrefs.some((href) => /(?:grafana|litellm|keycloak.*admin)/i.test(href)),
     false,
+  )
+}
+
+async function assertRootKeysLanding(page, consoleOrigin) {
+  await page.goto(`${consoleOrigin}/`)
+  await page.waitForURL(
+    (url) => url.origin === consoleOrigin && url.pathname === "/keys",
+  )
+  await page.getByRole("heading", { name: "Keys" }).first().waitFor()
+  const navigation = page.locator("nav[aria-label='Console navigation']")
+  assert.equal(
+    await navigation.getByRole("link", { name: "Overview" }).count(),
+    0,
+  )
+  assert.equal(
+    await navigation
+      .getByRole("link", { name: "Keys" })
+      .getAttribute("aria-current"),
+    "page",
   )
 }
 
@@ -2394,21 +2413,8 @@ async function proveIntegratedObservabilityConsoleFlow({
       .getByText("No active firing alerts were reported.", { exact: true })
       .waitFor()
   }
-  await page.goto(`${consoleOrigin}/`)
-  await page.getByRole("heading", { name: "Overview" }).waitFor()
-  await page.getByRole("heading", { name: "Token usage" }).waitFor()
-  await page.getByText("Models served", { exact: true }).waitFor()
-  await page.getByText("Targets up", { exact: true }).waitFor()
+  await assertRootKeysLanding(page, consoleOrigin)
   if (founderUat) {
-    const hardwareTile = page.locator("article").filter({
-      has: page.getByRole("heading", { name: "Hardware" }),
-    })
-    await hardwareTile.getByText("Available", { exact: true }).waitFor()
-    const systemTile = page.locator("article").filter({
-      has: page.getByRole("heading", { name: "System" }),
-    })
-    await systemTile.getByText("Operational", { exact: true }).waitFor()
-
     await page.goto(`${consoleOrigin}/settings`)
     await page.getByRole("heading", { name: "Settings" }).waitFor()
     const grafanaRow = page.getByRole("row").filter({ hasText: "Grafana" })
@@ -3357,10 +3363,7 @@ async function assertObservabilityConsoleProjection(
     await page.getByRole("heading", { name: heading }).waitFor()
   }
 
-  await page.goto(`${consoleOrigin}/`)
-  await page.getByRole("heading", { name: "Overview" }).waitFor()
-  await page.getByText("Models served", { exact: true }).waitFor()
-  await page.getByText("Targets up", { exact: true }).waitFor()
+  await assertRootKeysLanding(page, consoleOrigin)
 
   const body = await page.locator("body").innerText()
   assertNoSensitiveValues(

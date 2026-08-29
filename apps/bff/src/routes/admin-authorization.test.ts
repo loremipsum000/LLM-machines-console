@@ -18,7 +18,6 @@ const expectedAdminRoutePolicies = {
   "GET /api/admin/audit/export/verification-keys": capability(
     "activity_audit.export",
   ),
-  "GET /api/admin/overview": capability("console.operational.view"),
   "GET /api/admin/observability/alert-egress": capability(
     "console.operational.view",
   ),

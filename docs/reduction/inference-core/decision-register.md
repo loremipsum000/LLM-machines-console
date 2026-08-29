@@ -233,3 +233,25 @@ per-package JSON file and contract revision.
 - Preserve the preceding Activity-retirement decision byte-for-byte. Product
   acceptance and runtime qualification remain false, contract activation
   remains inactive, and Genesis remains unpublished.
+
+## Prospective Overview surface retirement
+
+- Remove Overview from the current customer-facing navigation and shortcut
+  order. The five retained primary surfaces are Keys, Inference, Hardware,
+  Team, and Settings.
+- Keep `/` protected and redirect an authenticated request to `/keys`. Keep
+  `/overview` absent with `404` behavior rather than introducing a legacy
+  customer route.
+- Remove the unconsumed private `/api/admin/overview` projection and
+  Overview-only Web, BFF, and shared-contract implementations.
+- Retain the Settings Admin-only `Export last 30 days` action and all audit
+  read, signed-export, verification-key, ledger, ingestion, authorization,
+  signing, and metadata-only retention controls. Operator export remains
+  denied.
+- Bind the resulting five-surface Core contract to
+  `sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40`.
+  Existing delivery profiles remain fail-closed until explicitly revised and
+  qualified against this contract.
+- Preserve the preceding Overview-refinement record byte-for-byte. Product
+  acceptance and runtime qualification remain false, contract activation
+  remains inactive, and Genesis remains unpublished.

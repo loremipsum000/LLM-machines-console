@@ -1,24 +1,32 @@
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { test } from "node:test"
 import { coreCompatibilityFingerprint } from "../../infra/inference/validate-profile.mjs"
 import {
   activityAuditSurfaceRetirementPath,
-  currentActivityRetiredLogicalSurfaceContract,
+  currentOverviewRetiredLogicalSurfaceContract,
+  overviewTokenUsageRefinementBase,
   repositoryRoot,
   verifyActivityAuditSurfaceRetirementDocument,
   verifyPr11SourceBoundary,
 } from "./guardrails.mjs"
 
-test("the current Console boundary has six ordered customer surfaces", () => {
+const gitAt = (path) =>
+  execFileSync("git", ["show", `${overviewTokenUsageRefinementBase}:${path}`], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  })
+
+test("the current Console boundary has five ordered customer surfaces", () => {
   assert.deepEqual(
-    currentActivityRetiredLogicalSurfaceContract.map(({ label, href }) => ({
+    currentOverviewRetiredLogicalSurfaceContract.map(({ label, href }) => ({
       label,
       href,
     })),
     [
-      { label: "Overview", href: "/" },
       { label: "Keys", href: "/keys" },
       { label: "Inference", href: "/inference" },
       { label: "Hardware", href: "/hardware" },
@@ -42,7 +50,7 @@ test("the retirement decision preserves audit controls", () => {
   )
 })
 
-test("the current source has no Activity page or navigation contract", () => {
+test("the current source has no Activity or Overview page contract", () => {
   assert.deepEqual(verifyPr11SourceBoundary(repositoryRoot), [])
   assert.throws(() =>
     readFileSync(resolve(repositoryRoot, "apps/web/src/app/activity/page.tsx")),
@@ -55,20 +63,38 @@ test("the current source has no Activity page or navigation contract", () => {
       ),
     ),
   )
+  assert.throws(() =>
+    readFileSync(
+      resolve(
+        repositoryRoot,
+        "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+      ),
+    ),
+  )
 })
 
-test("the current Core compatibility contract has the same six-surface boundary", () => {
+test("the Activity retirement fingerprint remains bound to the predecessor source", () => {
   const contract = JSON.parse(
-    readFileSync(
-      resolve(repositoryRoot, "infra/inference/core-interface-contract.json"),
-    ),
+    gitAt("infra/inference/core-interface-contract.json"),
   )
   const decision = JSON.parse(
     readFileSync(resolve(repositoryRoot, activityAuditSurfaceRetirementPath)),
   )
 
+  assert.equal(
+    coreCompatibilityFingerprint(contract),
+    decision.customerBoundary.coreCompatibilityFingerprint,
+  )
+})
+
+test("the current Core compatibility contract has the five-surface boundary", () => {
+  const contract = JSON.parse(
+    readFileSync(
+      resolve(repositoryRoot, "infra/inference/core-interface-contract.json"),
+    ),
+  )
+
   assert.deepEqual(contract.consoleSections, [
-    "overview",
     "applications",
     "inference",
     "hardware",
@@ -77,7 +103,7 @@ test("the current Core compatibility contract has the same six-surface boundary"
   ])
   assert.equal(
     coreCompatibilityFingerprint(contract),
-    decision.customerBoundary.coreCompatibilityFingerprint,
+    "sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40",
   )
 })
 

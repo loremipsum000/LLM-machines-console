@@ -6,12 +6,12 @@ const read = (path) =>
   readFile(new URL(`../../${path}`, import.meta.url), "utf8")
 
 test("Keys vocabulary is canonical without view-layer remapping", async () => {
-  const [contracts, copy, sections, overview, decision, boundary] =
+  const [contracts, copy, sections, rootPage, decision, boundary] =
     await Promise.all([
       read("packages/contracts/src/inference-core.ts"),
       read("packages/copy/src/index.ts"),
       read("apps/web/src/components/console-v2/console-v2-sections.ts"),
-      read("apps/web/src/components/console-v2/overview-v2-experience.tsx"),
+      read("apps/web/src/app/page.tsx"),
       read("docs/reduction/inference-core/decision-register.md"),
       read(
         "docs/reduction/inference-core/business-architecture-current-boundary.json",
@@ -27,7 +27,12 @@ test("Keys vocabulary is canonical without view-layer remapping", async () => {
   )
   assert.match(sections, /productCopy\.vocabulary\.primaryIntegration\.href/)
   assert.doesNotMatch(sections, /INTERNAL_PR11_APPLICATION_NAV_COMPATIBILITY/)
-  assert.doesNotMatch(overview, /tile\.id === "applications"/)
+  assert.doesNotMatch(sections, /id:\s*"overview"/)
+  assert.match(rootPage, /redirect\("\/keys"\)/)
+  await assert.rejects(
+    read("apps/web/src/components/console-v2/overview-v2-experience.tsx"),
+    /ENOENT/,
+  )
   assert.match(decision, /Console Operators remain read-only/)
   assert.match(decision, /internal database, route, capability, and audit/i)
 
