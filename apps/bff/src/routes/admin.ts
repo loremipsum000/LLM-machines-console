@@ -582,7 +582,7 @@ export function registerAdminRoutes(
         return invalidRequest(
           reply,
           "Invalid organization settings request",
-          "Organization name, default language, and valid PNG/JPEG logo metadata are required.",
+          "Organization name and default language are required.",
         )
       }
       return withAdminIdempotentMutation(

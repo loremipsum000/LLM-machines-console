@@ -172,8 +172,17 @@ describe("Settings persistence authority", () => {
   it("keeps PostgreSQL Settings writes and success audits inside the receipt transaction", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("BFF_FIXTURE_MODE", "false")
-    const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined)
-    const values = vi.fn(() => ({ onConflictDoUpdate }))
+    const persistedValues: Record<string, unknown>[] = []
+    const conflictSets: Record<string, unknown>[] = []
+    const onConflictDoUpdate = vi.fn(
+      async ({ set }: { set: Record<string, unknown> }) => {
+        conflictSets.push(set)
+      },
+    )
+    const values = vi.fn((value: Record<string, unknown>) => {
+      persistedValues.push(value)
+      return { onConflictDoUpdate }
+    })
     const insert = vi.fn(() => ({ values }))
     const transaction = { insert }
     const select = vi.fn(() => ({
@@ -205,6 +214,10 @@ describe("Settings persistence authority", () => {
       transaction,
     )
     expect(insert).toHaveBeenCalledTimes(1)
+    expect(persistedValues[0]).not.toHaveProperty("fullLogo")
+    expect(persistedValues[0]).not.toHaveProperty("iconLogo")
+    expect(conflictSets[0]).not.toHaveProperty("fullLogo")
+    expect(conflictSets[0]).not.toHaveProperty("iconLogo")
     expect(emitAuditMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: "admin.settings.organization.updated",
@@ -216,6 +229,8 @@ describe("Settings persistence authority", () => {
     insert.mockClear()
     emitAuditMock.mockClear()
     upsertActorUserMock.mockClear()
+    persistedValues.length = 0
+    conflictSets.length = 0
     await expect(
       updateAdminSettingsTelemetry(
         adminActor,
@@ -230,6 +245,10 @@ describe("Settings persistence authority", () => {
       transaction,
     )
     expect(insert).toHaveBeenCalledTimes(2)
+    expect(persistedValues[0]).not.toHaveProperty("fullLogo")
+    expect(persistedValues[0]).not.toHaveProperty("iconLogo")
+    expect(conflictSets[0]).not.toHaveProperty("fullLogo")
+    expect(conflictSets[0]).not.toHaveProperty("iconLogo")
     expect(emitAuditMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: "admin.settings.telemetry.enabled",

@@ -15,6 +15,7 @@ import {
   revokeAdminConnectedAppCredentialAction,
   revokeAdminConnectedAppFirecrawlCredentialAction,
   softDeleteAdminConnectedAppAction,
+  updateAdminSettingsOrganizationAction,
 } from "./actions-core"
 
 const connectedApp: AdminConnectedApp = {
@@ -120,6 +121,32 @@ describe("inference-core Admin actions", () => {
     mocks.getBffRequest.mockClear()
     mocks.redirect.mockClear()
     mocks.revalidatePath.mockClear()
+  })
+
+  it("submits only organization name and language without logo handling", async () => {
+    const fetchSpy = vi.fn(async () => Response.json({}, { status: 200 }))
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("organizationName", "Example Appliance")
+    formData.set("defaultLanguage", "hr")
+    formData.set("fullLogo", "data:image/png;base64,legacy-full-logo")
+    formData.set("iconLogo", "data:image/png;base64,legacy-icon-logo")
+
+    await expect(
+      updateAdminSettingsOrganizationAction(formData),
+    ).rejects.toThrow("redirect:/settings?settingsAction=failed")
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://bff.test/api/admin/settings/organization",
+      expect.objectContaining({
+        body: JSON.stringify({
+          defaultLanguage: "hr",
+          organizationName: "Example Appliance",
+        }),
+        method: "POST",
+      }),
+    )
   })
 
   it("authorizes Admin mutations by role without MFA elevation", async () => {

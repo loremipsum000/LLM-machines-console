@@ -11,6 +11,7 @@ import {
 } from "../../../apps/bff/src/db/inference-core-client"
 import * as schema from "../../../apps/bff/src/db/inference-core-schema"
 import {
+  getAdminSettings,
   updateAdminSettingsOrganization,
   updateAdminSettingsTelemetry,
 } from "../../../apps/bff/src/services/admin-settings-core"
@@ -132,6 +133,64 @@ describe("PR-11 Settings transaction atomicity", () => {
       resourceId: null,
       state: "pending",
       statusCode: null,
+    })
+  })
+
+  it("preserves legacy logo columns while omitting them from Settings responses", async () => {
+    const legacyFullLogo = {
+      dataUrl: "data:image/png;base64,legacy-full-logo",
+      fileName: "legacy-full.png",
+    }
+    const legacyIconLogo = {
+      dataUrl: "data:image/png;base64,legacy-icon-logo",
+      fileName: "legacy-icon.png",
+    }
+    await database.update(schema.consoleSettings).set({
+      defaultLanguage: "en",
+      fullLogo: legacyFullLogo,
+      iconLogo: legacyIconLogo,
+      organizationName: "Legacy branding",
+    })
+
+    const organizationReceipt = await createReceiptCommit(database)
+    const organization = await updateAdminSettingsOrganization(
+      admin,
+      {
+        defaultLanguage: "hr",
+        organizationName: "Fixed branding",
+      },
+      randomUUID(),
+      organizationReceipt.commitWithReceipt,
+    )
+    const telemetryReceipt = await createReceiptCommit(database)
+    const telemetry = await updateAdminSettingsTelemetry(
+      admin,
+      {
+        confirmation: "ENABLE TELEMETRY",
+        enabled: true,
+      },
+      randomUUID(),
+      telemetryReceipt.commitWithReceipt,
+    )
+
+    expect(organization).toMatchObject({ status: "ok" })
+    expect(telemetry).toMatchObject({ status: "ok" })
+    expect(JSON.stringify(organization)).not.toContain("data:image")
+    expect(JSON.stringify(telemetry)).not.toContain("data:image")
+    const settings = await getAdminSettings(admin)
+    expect(settings.organization).not.toHaveProperty("fullLogo")
+    expect(settings.organization).not.toHaveProperty("iconLogo")
+    expect(JSON.stringify(settings)).not.toContain("data:image")
+
+    const [stored] = await database
+      .select({
+        fullLogo: schema.consoleSettings.fullLogo,
+        iconLogo: schema.consoleSettings.iconLogo,
+      })
+      .from(schema.consoleSettings)
+    expect(stored).toEqual({
+      fullLogo: legacyFullLogo,
+      iconLogo: legacyIconLogo,
     })
   })
 })

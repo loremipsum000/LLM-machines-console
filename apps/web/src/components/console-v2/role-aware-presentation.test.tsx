@@ -344,10 +344,18 @@ describe("role-aware Console presentation", () => {
   )
 
   it("keeps Operator Settings visible and read-only while Admin retains mutations", () => {
-    const { rerender } = render(
+    const legacyLogoSettings = {
+      ...settingsResponse,
+      organization: {
+        ...settingsResponse.organization,
+        fullLogo: { dataUrl: "data:image/png;base64,legacy-full-logo" },
+        iconLogo: { dataUrl: "data:image/png;base64,legacy-icon-logo" },
+      },
+    } as AdminSettingsResponse
+    const { container, rerender } = render(
       <SettingsV2Experience
         accessRole="operator"
-        settings={settingsResponse}
+        settings={legacyLogoSettings}
       />,
     )
 
@@ -373,9 +381,15 @@ describe("role-aware Console presentation", () => {
     expect(screen.queryByRole("link", { name: "Privacy policy" })).toBeNull()
 
     expect(screen.queryByRole("button", { name: /System update/ })).toBeNull()
+    expect(container.querySelector('input[type="file"]')).toBeNull()
+    expect(container.querySelector('img[src^="data:"]')).toBeNull()
+    expect(container.innerHTML).not.toContain("data:image")
+    expect(screen.queryByText("Full logo")).toBeNull()
+    expect(screen.queryByText("Icon logo")).toBeNull()
+    expect(screen.queryByText(/Console shell branding/i)).toBeNull()
 
     rerender(
-      <SettingsV2Experience accessRole="admin" settings={settingsResponse} />,
+      <SettingsV2Experience accessRole="admin" settings={legacyLogoSettings} />,
     )
 
     expect(
@@ -390,6 +404,11 @@ describe("role-aware Console presentation", () => {
     ).toBeTruthy()
     expect(screen.queryByRole("button", { name: /System update/ })).toBeNull()
     expect(screen.queryByRole("link", { name: "Privacy policy" })).toBeNull()
+    expect(container.querySelector('input[type="file"]')).toBeNull()
+    expect(container.querySelector('img[src^="data:"]')).toBeNull()
+    expect(container.innerHTML).not.toContain("data:image")
+    expect(screen.queryByText(/logo/i)).toBeNull()
+    expect(screen.queryByText(/Console shell branding/i)).toBeNull()
 
     rerender(
       <SettingsV2Experience
@@ -493,8 +512,6 @@ const settingsResponse: AdminSettingsResponse = {
   },
   organization: {
     defaultLanguage: "en",
-    fullLogo: null,
-    iconLogo: null,
     organizationName: "Example Organization",
     updatedAt: null,
     updatedBy: null,

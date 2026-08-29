@@ -5,7 +5,6 @@ import {
   type AdminSettingsResponse,
   type UpdateAdminSettingsOrganizationRequest,
   type UpdateAdminSettingsTelemetryRequest,
-  adminSettingsLogoAssetSchema,
   adminSettingsResponseSchema,
   adminSettingsTelemetryPayloadPreviewSchema,
 } from "@llm-machines/contracts/inference-core"
@@ -16,10 +15,6 @@ import { getInferenceCoreDb } from "../db/inference-core-client"
 import { consoleSettings, licenseState } from "../db/inference-core-schema"
 import { LiteLlmAdminClient, liteLlmConfig } from "./admin-litellm-client"
 import { PrometheusClient } from "./admin-prometheus"
-import {
-  type SettingsLogoKind,
-  validateSettingsLogoAsset,
-} from "./admin-settings-validation"
 import { emitAudit } from "./audit"
 import { parseFirecrawlEgressAllowedHosts } from "./firecrawl-url-safety"
 import type { IdentityMutationRouteContext } from "./identity-mutation-journal"
@@ -72,15 +67,6 @@ export async function updateAdminSettingsOrganization(
   correlationId?: string,
   commitWithReceipt?: CommitWithReceipt,
 ): Promise<SettingsMutationResult> {
-  const fullLogo = validateOptionalLogo(request.fullLogo, "full")
-  if (!fullLogo.valid) {
-    return { status: "invalid", detail: fullLogo.detail }
-  }
-  const iconLogo = validateOptionalLogo(request.iconLogo, "icon")
-  if (!iconLogo.valid) {
-    return { status: "invalid", detail: iconLogo.detail }
-  }
-
   const db = getInferenceCoreDb()
   if (!db && !canUseBffFixtureData()) {
     return {
@@ -93,14 +79,6 @@ export async function updateAdminSettingsOrganization(
   const organization: AdminSettingsOrganization = {
     organizationName: request.organizationName,
     defaultLanguage: request.defaultLanguage,
-    fullLogo:
-      request.fullLogo === undefined
-        ? existing.organization.fullLogo
-        : fullLogo.asset,
-    iconLogo:
-      request.iconLogo === undefined
-        ? existing.organization.iconLogo
-        : iconLogo.asset,
     updatedAt: now.toISOString(),
     updatedBy: actor.subject,
   }
@@ -138,8 +116,6 @@ export async function updateAdminSettingsOrganization(
             id: singletonSettingsId,
             organizationName: organization.organizationName,
             defaultLanguage: organization.defaultLanguage,
-            fullLogo: organization.fullLogo,
-            iconLogo: organization.iconLogo,
             telemetryEnabled: existing.privacy.telemetryEnabled,
             telemetryPayloadPreview: existing.privacy.telemetryPayloadPreview,
             dataResidencyStatement: existing.privacy.dataResidencyStatement,
@@ -151,8 +127,6 @@ export async function updateAdminSettingsOrganization(
             set: {
               organizationName: organization.organizationName,
               defaultLanguage: organization.defaultLanguage,
-              fullLogo: organization.fullLogo,
-              iconLogo: organization.iconLogo,
               updatedBy: actorId,
               updatedAt: now,
             },
@@ -237,8 +211,6 @@ export async function updateAdminSettingsTelemetry(
             id: singletonSettingsId,
             organizationName: existing.organization.organizationName,
             defaultLanguage: existing.organization.defaultLanguage,
-            fullLogo: existing.organization.fullLogo,
-            iconLogo: existing.organization.iconLogo,
             telemetryEnabled: request.enabled,
             telemetryPayloadPreview: privacy.telemetryPayloadPreview,
             dataResidencyStatement: privacy.dataResidencyStatement,
@@ -319,7 +291,15 @@ async function readSettings(): Promise<AdminSettingsResponse> {
   }
 
   const [settingsRow] = await db
-    .select()
+    .select({
+      dataResidencyStatement: consoleSettings.dataResidencyStatement,
+      defaultLanguage: consoleSettings.defaultLanguage,
+      organizationName: consoleSettings.organizationName,
+      telemetryEnabled: consoleSettings.telemetryEnabled,
+      telemetryPayloadPreview: consoleSettings.telemetryPayloadPreview,
+      updatedAt: consoleSettings.updatedAt,
+      updatedBy: consoleSettings.updatedBy,
+    })
     .from(consoleSettings)
     .where(eq(consoleSettings.id, singletonSettingsId))
     .limit(1)
@@ -336,8 +316,6 @@ async function readSettings(): Promise<AdminSettingsResponse> {
       ? {
           organizationName: settingsRow.organizationName,
           defaultLanguage: settingsRow.defaultLanguage,
-          fullLogo: parseLogo(settingsRow.fullLogo),
-          iconLogo: parseLogo(settingsRow.iconLogo),
           updatedAt: settingsRow.updatedAt.toISOString(),
           updatedBy: settingsRow.updatedBy,
         }
@@ -796,8 +774,6 @@ function defaultSettings(
     organization: {
       organizationName: "LLM Machines",
       defaultLanguage: "en",
-      fullLogo: null,
-      iconLogo: null,
       updatedAt: null,
       updatedBy: null,
     },
@@ -906,25 +882,6 @@ function environmentBoolean(name: string): boolean | null {
     return false
   }
   return null
-}
-
-function validateOptionalLogo(
-  logo: UpdateAdminSettingsOrganizationRequest["fullLogo"],
-  kind: SettingsLogoKind,
-):
-  | { asset: AdminSettingsOrganization["fullLogo"]; valid: true }
-  | { detail: string; valid: false } {
-  if (logo === undefined || logo === null) {
-    return { asset: null, valid: true }
-  }
-  const result = validateSettingsLogoAsset(logo, kind)
-  return result.valid ? { asset: result.asset, valid: true } : result
-}
-
-function parseLogo(value: unknown): AdminSettingsOrganization["fullLogo"] {
-  return value === null || value === undefined
-    ? null
-    : adminSettingsLogoAssetSchema.parse(value)
 }
 
 function dateOrNull(value: string | null): Date | null {
