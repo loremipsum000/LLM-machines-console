@@ -20,6 +20,7 @@ const placementKeys = [
   "LLMM_INFERENCE_PROFILE_REVISION",
   "LLMM_INFERENCE_QUALIFIED_PROFILE_DIGEST",
   "LLMM_INFERENCE_RENDERED_PROFILE_DIGEST",
+  "LLMM_INFERENCE_WORKLOAD_UNIT",
   "LLMM_SECRET_ROOT",
   "LLMM_SOURCE_ROOT",
   "LLMM_WEB_IMAGE",
@@ -432,7 +433,10 @@ function validatePlacement(
       placement.LLMM_INFERENCE_CORE_COMPATIBILITY_FINGERPRINT,
     ) ||
     !digestPattern.test(placement.LLMM_INFERENCE_QUALIFIED_PROFILE_DIGEST) ||
-    !digestPattern.test(placement.LLMM_INFERENCE_RENDERED_PROFILE_DIGEST)
+    !digestPattern.test(placement.LLMM_INFERENCE_RENDERED_PROFILE_DIGEST) ||
+    !/^(?=.{1,128}$)(?:[a-z0-9][a-z0-9_.-]*-)?sglang(?:-[a-z0-9][a-z0-9_.-]*)?\.service$/.test(
+      placement.LLMM_INFERENCE_WORKLOAD_UNIT,
+    )
   ) {
     fail()
   }

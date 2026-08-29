@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 
 import { renderInferenceFirewallContract } from "./manage-vm103-inference-route.mjs"
 import {
+  isSafeSglangWorkloadUnit,
   renderVm103LiteLlmRoute,
   vm103CoreCompatibilityFingerprint,
 } from "./render-vm103-litellm-route.mjs"
@@ -221,6 +222,7 @@ function validatePlacement(value) {
     "qualifiedProfileDigest",
     "renderedProfileDigest",
     "revision",
+    "workloadUnit",
   ])
   if (
     !digest(value.inferenceProfile.coreCompatibilityFingerprint) ||
@@ -230,7 +232,8 @@ function validatePlacement(value) {
     !digest(value.inferenceProfile.qualifiedProfileDigest) ||
     !digest(value.inferenceProfile.renderedProfileDigest) ||
     !Number.isSafeInteger(value.inferenceProfile.revision) ||
-    value.inferenceProfile.revision < 1
+    value.inferenceProfile.revision < 1 ||
+    !isSafeSglangWorkloadUnit(value.inferenceProfile.workloadUnit)
   ) {
     fail("inference profile binding")
   }
@@ -387,6 +390,7 @@ function renderPlacementEnvironment(p) {
       p.inferenceProfile.qualifiedProfileDigest,
     LLMM_INFERENCE_RENDERED_PROFILE_DIGEST:
       p.inferenceProfile.renderedProfileDigest,
+    LLMM_INFERENCE_WORKLOAD_UNIT: p.inferenceProfile.workloadUnit,
     LLMM_SECRET_ROOT: p.paths.secret,
     LLMM_SOURCE_ROOT: p.paths.source,
     LLMM_WEB_IMAGE: p.images.web,
@@ -462,7 +466,8 @@ function renderInferenceUnit(p, managerDigest) {
   const command =
     "/opt/node-v22.23.2/bin/node /etc/llm-machines/manage-vm103-inference-route.mjs"
   const arguments_ = `${managerDigest} ${p.network.vm103} ${p.network.gateway} eno1 ${p.network.vm103} ${p.ports.sglang} /etc/llm-machines/inference-firewall.nft`
-  return `[Unit]\nDescription=Source-restricted VM103 to SGLang route\nBefore=docker.service\nAfter=network-online.target\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=${command} apply ${arguments_}\nExecStop=${command} remove ${arguments_}\n\n[Install]\nWantedBy=multi-user.target\n`
+  const workloadUnit = p.inferenceProfile.workloadUnit
+  return `[Unit]\nDescription=Source-restricted VM103 to SGLang route\nBefore=${workloadUnit}\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=${command} apply ${arguments_}\nExecStop=${command} remove ${arguments_}\n\n[Install]\nRequiredBy=${workloadUnit}\n`
 }
 
 function lines(values) {

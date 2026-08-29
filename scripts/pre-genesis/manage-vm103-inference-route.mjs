@@ -130,12 +130,12 @@ export function reconcileInferenceRoute(
     let routeCreated = false
     let nftCreated = false
     try {
-      addRoute()
-      routeCreated = true
-      if (inspectRoute().state !== "exact") fail("route apply")
       addNft()
       nftCreated = true
       if (inspectNft().state !== "exact") fail("nft apply")
+      addRoute()
+      routeCreated = true
+      if (inspectRoute().state !== "exact") fail("route apply")
       return { preimage: "absent", state: "exact" }
     } catch (error) {
       cleanupOwnedState({
@@ -257,6 +257,8 @@ function cleanupOwnedState({
     if (route.state === "exact") deleteRoute()
     else if (route.state !== "absent") fail("failed-apply route ownership")
     if (inspectRoute().state !== "absent") fail("failed-apply route cleanup")
+  } else if (nftCreated && inspectRoute().state !== "absent") {
+    fail("failed-apply route ownership")
   }
   if (nftCreated) {
     const table = inspectNft()

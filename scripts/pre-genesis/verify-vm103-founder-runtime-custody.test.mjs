@@ -141,6 +141,7 @@ async function createFixture() {
       qualifiedProfileDigest: sourceProfile.activation.qualifiedProfileDigest,
       renderedProfileDigest: sha256(canonicalJson(renderedProfile)),
       revision: sourceProfile.metadata.revision,
+      workloadUnit: "llmm-sglang-internal-test.service",
     },
     network: {
       edgeGateway: "10.30.0.1",

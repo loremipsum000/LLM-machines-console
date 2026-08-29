@@ -277,16 +277,107 @@ function cleanupFailedApply({ deleteRule, inspect }) {
 
 function overlapsOwnedTraffic(words, source, destination, port) {
   if (words[1] !== chain) return false
-  const sources = optionValues(words, "-s")
-  const destinations = optionValues(words, "-d")
-  if (
-    !sources.includes(`${source}/32`) ||
-    !destinations.includes(`${destination}/32`)
-  ) {
-    return false
+  return (
+    ipv4SelectorsMayMatch(words, ["-s", "--source"], source) &&
+    ipv4SelectorsMayMatch(words, ["-d", "--destination"], destination) &&
+    protocolSelectorsMayMatchTcp(words) &&
+    portSelectorsMayMatch(words, port)
+  )
+}
+
+function ipv4SelectorsMayMatch(words, options, address) {
+  const selectors = optionSelectors(words, options)
+  if (selectors.length === 0) return true
+  return selectors.every(({ negated, value }) => {
+    const contains = ipv4SelectorContains(value, address)
+    if (contains === undefined) return true
+    return negated ? !contains : contains
+  })
+}
+
+function protocolSelectorsMayMatchTcp(words) {
+  const selectors = optionSelectors(words, ["-p", "--protocol"])
+  if (selectors.length === 0) return true
+  return selectors.every(({ negated, value }) => {
+    const normalized = value.toLowerCase()
+    let matches
+    if (normalized === "tcp" || normalized === "6" || normalized === "all") {
+      matches = true
+    } else if (
+      normalized === "udp" ||
+      normalized === "17" ||
+      normalized === "icmp" ||
+      normalized === "1"
+    ) {
+      matches = false
+    } else {
+      return true
+    }
+    return negated ? !matches : matches
+  })
+}
+
+function portSelectorsMayMatch(words, port) {
+  const selectors = optionSelectors(words, ["--dport", "--dports"])
+  if (selectors.length === 0) return true
+  return selectors.every(({ negated, value }) => {
+    const contains = portSelectorContains(value, port)
+    if (contains === undefined) return true
+    return negated ? !contains : contains
+  })
+}
+
+function optionSelectors(words, options) {
+  const selectors = []
+  for (let index = 0; index < words.length - 1; index += 1) {
+    if (!options.includes(words[index])) continue
+    selectors.push({
+      negated: words[index - 1] === "!",
+      value: words[index + 1],
+    })
   }
-  const ports = optionValues(words, "--dport")
-  return ports.length === 0 || ports.includes(String(port))
+  return selectors
+}
+
+function ipv4SelectorContains(selector, address) {
+  const match = /^(\d{1,3}(?:\.\d{1,3}){3})(?:\/(\d{1,2}))?$/.exec(selector)
+  if (!match || isIP(match[1]) !== 4 || isIP(address) !== 4) return undefined
+  const prefix = match[2] === undefined ? 32 : Number(match[2])
+  if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) return undefined
+  const mask = prefix === 0 ? 0 : (0xff_ff_ff_ff << (32 - prefix)) >>> 0
+  return (ipv4Integer(match[1]) & mask) === (ipv4Integer(address) & mask)
+}
+
+function ipv4Integer(address) {
+  return address
+    .split(".")
+    .map(Number)
+    .reduce((value, octet) => (value * 256 + octet) >>> 0, 0)
+}
+
+function portSelectorContains(selector, port) {
+  let unknown = false
+  for (const item of selector.split(",")) {
+    if (/^\d{1,5}$/.test(item)) {
+      const value = Number(item)
+      if (value > 65_535) unknown = true
+      else if (value === port) return true
+      continue
+    }
+    const range = /^(\d{1,5})(?::|-)(\d{1,5})$/.exec(item)
+    if (!range) {
+      unknown = true
+      continue
+    }
+    const lower = Number(range[1])
+    const upper = Number(range[2])
+    if (lower > upper || upper > 65_535) {
+      unknown = true
+      continue
+    }
+    if (lower <= port && port <= upper) return true
+  }
+  return unknown ? undefined : false
 }
 
 function optionValues(words, option) {

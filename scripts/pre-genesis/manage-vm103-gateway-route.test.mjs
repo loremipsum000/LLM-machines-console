@@ -89,6 +89,52 @@ test("rejects owned-comment, broad, duplicate, and semantically extended collisi
   )
 })
 
+test("rejects every overlapping port selector while preserving disjoint traffic", () => {
+  for (const selector of [
+    "--dport 30000:30010",
+    "--dport 30000-30010",
+    "--dport 30005:30005",
+    "-m multiport --dports 443,30000:30010,8443",
+  ]) {
+    assert.equal(
+      inspectGatewayFirewall(
+        `-A POSTROUTING -s ${source}/32 -d ${destination}/32 -p tcp ${selector} -j ACCEPT\n`,
+        source,
+        destination,
+        port,
+      ).state,
+      "collision",
+    )
+  }
+
+  for (const rule of [
+    `-A POSTROUTING -s ${source}/32 -d ${destination}/32 -p tcp --dport 30006:30010 -j ACCEPT`,
+    `-A POSTROUTING -s ${source}/32 -d ${destination}/32 -p tcp -m multiport --dports 443,8443 -j ACCEPT`,
+    `-A POSTROUTING -s ${source}/32 -d ${destination}/32 -p udp --dport ${port} -j ACCEPT`,
+    `-A POSTROUTING -s 10.0.1.0/24 -d ${destination}/32 -p tcp --dport ${port} -j ACCEPT`,
+    `-A POSTROUTING -s ${source}/32 -d 10.33.75.0/24 -p tcp --dport ${port} -j ACCEPT`,
+    `-A POSTROUTING -s ${source}/32 -d ${destination}/32 -p tcp ! --dport ${port} -j ACCEPT`,
+  ]) {
+    assert.deepEqual(
+      inspectGatewayFirewall(`${rule}\n`, source, destination, port),
+      { exactOwnedCount: 0, state: "absent" },
+    )
+  }
+})
+
+test("rejects broader source and destination selectors that cover owned traffic", () => {
+  for (const rule of [
+    `-A POSTROUTING -s 10.0.0.0/24 -d ${destination}/32 -p tcp --dport ${port} -j MASQUERADE`,
+    `-A POSTROUTING -s ${source}/32 -d 10.33.74.0/24 -p tcp --dport ${port} -j SNAT --to-source 10.33.74.140`,
+    `-A POSTROUTING -p tcp --dport ${port} -j ACCEPT`,
+  ]) {
+    assert.equal(
+      inspectGatewayFirewall(`${rule}\n`, source, destination, port).state,
+      "collision",
+    )
+  }
+})
+
 test("applies and removes only the exact independently owned rule", () => {
   let state = { exactOwnedCount: 0, state: "absent" }
   let locked = false

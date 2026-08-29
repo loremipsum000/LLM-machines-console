@@ -93,6 +93,7 @@ function placement() {
         documents.sourceProfile.activation.qualifiedProfileDigest,
       renderedProfileDigest: sha256(canonicalJson(documents.renderedProfile)),
       revision: documents.sourceProfile.metadata.revision,
+      workloadUnit: "llmm-sglang-internal-test.service",
     },
     network: {
       edgeGateway: "10.30.0.1",
@@ -292,6 +293,14 @@ test("founder placement renders exact edge, supervision, and private inference c
       inferenceUnit,
       /\/etc\/llm-machines\/manage-vm103-inference-route\.mjs remove/,
     )
+    assert.match(inferenceUnit, /^Before=llmm-sglang-internal-test\.service$/m)
+    assert.match(inferenceUnit, /^Wants=network-online\.target$/m)
+    assert.match(
+      inferenceUnit,
+      /^RequiredBy=llmm-sglang-internal-test\.service$/m,
+    )
+    assert.doesNotMatch(inferenceUnit, /^WantedBy=multi-user\.target$/m)
+    assert.doesNotMatch(inferenceUnit, /docker\.service/)
     assert.doesNotMatch(inferenceUnit, /ip route (?:replace|del)/)
     assert.equal(
       renderedInferenceRouteManager,
@@ -453,6 +462,7 @@ test("founder placement renders exact edge, supervision, and private inference c
         `LLMM_INFERENCE_PROFILE_REVISION=${documents.sourceProfile.metadata.revision}`,
         `LLMM_INFERENCE_QUALIFIED_PROFILE_DIGEST=${documents.sourceProfile.activation.qualifiedProfileDigest}`,
         `LLMM_INFERENCE_RENDERED_PROFILE_DIGEST=${sha256(canonicalJson(documents.renderedProfile))}`,
+        "LLMM_INFERENCE_WORKLOAD_UNIT=llmm-sglang-internal-test.service",
         "LLMM_SECRET_ROOT=/etc/llmm/secrets",
         "LLMM_SOURCE_ROOT=/opt/llmm/source",
         `LLMM_WEB_IMAGE=${digest}`,
@@ -727,6 +737,22 @@ test("founder placement rejects mutable images, duplicate ports, and public netw
     },
     (value) => {
       value.paths.compose = "/opt/llmm/source/alternate.compose.yaml"
+    },
+    (value) => {
+      value.inferenceProfile.workloadUnit = "docker.service"
+    },
+    (value) => {
+      value.inferenceProfile.workloadUnit = "containerd.service"
+    },
+    (value) => {
+      value.inferenceProfile.workloadUnit = "podman.service"
+    },
+    (value) => {
+      value.inferenceProfile.workloadUnit =
+        "llmm-sglang.service\nRequiredBy=docker.service"
+    },
+    (value) => {
+      value.inferenceProfile.workloadUnit = "../llmm-sglang.service"
     },
   ]) {
     const value = placement()

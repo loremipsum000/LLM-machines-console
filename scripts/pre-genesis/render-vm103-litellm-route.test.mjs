@@ -68,6 +68,7 @@ function placementArtifacts(source, rendered, overrides = {}) {
     LLMM_INFERENCE_QUALIFIED_PROFILE_DIGEST:
       source.activation.qualifiedProfileDigest,
     LLMM_INFERENCE_RENDERED_PROFILE_DIGEST: sha256(canonicalJson(rendered)),
+    LLMM_INFERENCE_WORKLOAD_UNIT: "llmm-sglang-internal-test.service",
     LLMM_SECRET_ROOT: "/etc/llmm/secrets",
     LLMM_SOURCE_ROOT: "/opt/llmm/source",
     LLMM_WEB_IMAGE: `sha256:${"d".repeat(64)}`,
@@ -253,6 +254,31 @@ test("derives the private host and profile only from the manifest-bound placemen
       ),
     /rendered placement artifact/,
   )
+
+  for (const workloadUnit of [
+    "docker.service",
+    "containerd.service",
+    "podman.service",
+    "sglang@fixture.service",
+    "../sglang.service",
+  ]) {
+    const wrongWorkload = placementArtifacts(source, rendered, {
+      LLMM_INFERENCE_WORKLOAD_UNIT: workloadUnit,
+    })
+    assert.throws(
+      () =>
+        renderVm103LiteLlmRoute(
+          source,
+          rendered,
+          wrongWorkload.placementEnvironment,
+          wrongWorkload.renderedConfigurationManifest,
+          wrongWorkload.expectedManifestDigest,
+          "http://10.33.74.166:30005/v1",
+          now,
+        ),
+      /rendered placement artifact/,
+    )
+  }
 
   const tamperedEnvironment = placement.placementEnvironment.replace(
     "LLMM_INFERENCE_HOST=10.33.74.166",

@@ -249,13 +249,13 @@ test("applies and removes only one exact independently owned lifecycle", () => {
     preimage: "absent",
     state: "exact",
   })
-  assert.deepEqual(operations, ["add-route", "add-nft"])
+  assert.deepEqual(operations, ["add-nft", "add-route"])
   assert.deepEqual(reconcileInferenceRoute("remove", dependencies), {
     state: "absent",
   })
   assert.deepEqual(operations, [
-    "add-route",
     "add-nft",
+    "add-route",
     "delete-route",
     "delete-nft",
   ])
@@ -287,53 +287,95 @@ test("rejects every pre-existing exact or foreign route and firewall state", () 
 })
 
 test("restores the absent preimage after a partially failed apply", () => {
-  let route = "absent"
+  let nft = "absent"
   const operations = []
   assert.throws(
     () =>
       reconcileInferenceRoute("apply", {
         addNft: () => {
           operations.push("add-nft")
-          throw new Error("simulated nft failure")
+          nft = "exact"
         },
         addRoute: () => {
           operations.push("add-route")
-          route = "exact"
+          throw new Error("simulated route failure")
         },
-        deleteNft: assert.fail,
-        deleteRoute: () => {
-          operations.push("delete-route")
-          route = "absent"
+        deleteNft: () => {
+          operations.push("delete-nft")
+          nft = "absent"
         },
-        inspectNft: () => ({ state: "absent" }),
-        inspectRoute: () => ({ state: route }),
+        deleteRoute: assert.fail,
+        inspectNft: () => ({ state: nft }),
+        inspectRoute: () => ({ state: "absent" }),
       }),
-    /simulated nft failure/,
+    /simulated route failure/,
   )
-  assert.deepEqual(operations, ["add-route", "add-nft", "delete-route"])
+  assert.deepEqual(operations, ["add-nft", "add-route", "delete-nft"])
 })
 
 test("does not delete a racing route when route creation itself fails", () => {
   let route = "absent"
-  let deleteCalls = 0
+  let nft = "absent"
   assert.throws(
     () =>
       reconcileInferenceRoute("apply", {
-        addNft: assert.fail,
+        addNft: () => {
+          nft = "exact"
+        },
         addRoute: () => {
           route = "collision"
           throw new Error("simulated route race")
         },
         deleteNft: assert.fail,
-        deleteRoute: () => {
-          deleteCalls += 1
-        },
-        inspectNft: () => ({ state: "absent" }),
+        deleteRoute: assert.fail,
+        inspectNft: () => ({ state: nft }),
         inspectRoute: () => ({ state: route }),
       }),
-    /simulated route race/,
+    /failed-apply route ownership/,
   )
-  assert.equal(deleteCalls, 0)
+  assert.equal(nft, "exact")
+})
+
+test("removes an exact failed route before removing its restrictive firewall", () => {
+  let route = "absent"
+  let nft = "absent"
+  const operations = []
+  let routeInspections = 0
+  assert.throws(
+    () =>
+      reconcileInferenceRoute("apply", {
+        addNft: () => {
+          operations.push("add-nft")
+          nft = "exact"
+        },
+        addRoute: () => {
+          operations.push("add-route")
+          route = "exact"
+        },
+        deleteNft: () => {
+          operations.push("delete-nft")
+          nft = "absent"
+        },
+        deleteRoute: () => {
+          operations.push("delete-route")
+          route = "absent"
+        },
+        inspectNft: () => ({ state: nft }),
+        inspectRoute: () => {
+          routeInspections += 1
+          return {
+            state: routeInspections === 2 ? "collision" : route,
+          }
+        },
+      }),
+    /route apply/,
+  )
+  assert.deepEqual(operations, [
+    "add-nft",
+    "add-route",
+    "delete-route",
+    "delete-nft",
+  ])
 })
 
 test("fails closed without deleting foreign or partially owned rollback state", () => {

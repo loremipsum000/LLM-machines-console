@@ -18,6 +18,15 @@ export const vm103CoreCompatibilityFingerprint = coreCompatibilityFingerprint(
   contracts.core,
 )
 
+export function isSafeSglangWorkloadUnit(value) {
+  return (
+    typeof value === "string" &&
+    /^(?=.{1,128}$)(?:[a-z0-9][a-z0-9_.-]*-)?sglang(?:-[a-z0-9][a-z0-9_.-]*)?\.service$/.test(
+      value,
+    )
+  )
+}
+
 export function renderVm103LiteLlmRoute(
   sourceProfile,
   renderedProfile,
@@ -191,6 +200,7 @@ const placementKeys = [
   "LLMM_INFERENCE_PROFILE_REVISION",
   "LLMM_INFERENCE_QUALIFIED_PROFILE_DIGEST",
   "LLMM_INFERENCE_RENDERED_PROFILE_DIGEST",
+  "LLMM_INFERENCE_WORKLOAD_UNIT",
   "LLMM_SECRET_ROOT",
   "LLMM_SOURCE_ROOT",
   "LLMM_WEB_IMAGE",
@@ -277,7 +287,8 @@ function placementBinding(
     ) ||
     !/^sha256:[0-9a-f]{64}$/.test(
       placement.LLMM_INFERENCE_RENDERED_PROFILE_DIGEST,
-    )
+    ) ||
+    !isSafeSglangWorkloadUnit(placement.LLMM_INFERENCE_WORKLOAD_UNIT)
   ) {
     throw new Error(
       "The LiteLLM route requires the exact rendered placement artifact.",
