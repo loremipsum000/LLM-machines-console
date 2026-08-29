@@ -709,6 +709,10 @@ async function runBrowserSessionProof() {
     await assertRole(page, "Administrator")
     await assertConsoleNavigation(page, consoleOrigin)
     await assertDesktopViewportLayout(page, consoleOrigin)
+    await assertTeamMembersViewport(page, consoleOrigin, {
+      canCreate: true,
+      heading: "Team > Manage users",
+    })
 
     if (commissioningLoginMode) {
       const session = await proveCommissioningSessionContinuity({
@@ -1325,8 +1329,12 @@ async function runBrowserSessionProof() {
       await keycloakLink.click()
     }
     await completeIdentityLogin(page, credentials.operator)
-    assert.equal(new URL(page.url()).pathname, "/")
+    assert.equal(new URL(page.url()).pathname, "/keys")
     await assertRole(page, "Operator")
+    await assertTeamMembersViewport(page, consoleOrigin, {
+      canCreate: false,
+      heading: "Team > Members",
+    })
     await assertConsoleNavigation(page, consoleOrigin)
     await page.goto(`${consoleOrigin}/keys/apps/new`)
     await page.getByRole("heading", { name: "Admin access required" }).waitFor()
@@ -1825,6 +1833,40 @@ async function assertDesktopViewportLayout(page, consoleOrigin) {
   }
 }
 
+async function assertTeamMembersViewport(
+  page,
+  consoleOrigin,
+  { canCreate, heading },
+) {
+  const previousViewport = page.viewportSize()
+  try {
+    await page.setViewportSize({ height: 768, width: 1024 })
+    await page.goto(`${consoleOrigin}/team/members`)
+    await page.getByRole("heading", { name: heading }).first().waitFor()
+    const layout = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      mainRight:
+        document.querySelector("main")?.getBoundingClientRect().right ?? 0,
+      scrollWidth: document.documentElement.scrollWidth,
+    }))
+    assert.equal(
+      layout.scrollWidth,
+      layout.clientWidth,
+      "/team/members overflowed at the 1024-pixel desktop boundary.",
+    )
+    assert.ok(
+      layout.mainRight <= layout.clientWidth,
+      "/team/members clipped its main Console surface at 1024 pixels.",
+    )
+    assert.equal(
+      await page.getByRole("link", { name: "Create user" }).count(),
+      canCreate ? 1 : 0,
+    )
+  } finally {
+    if (previousViewport) await page.setViewportSize(previousViewport)
+  }
+}
+
 async function proveKeycloakIdentityCookieBoundary({
   certificate,
   context,
@@ -1901,7 +1943,6 @@ async function proveKeycloakTeamConsoleFlow({
   await page.getByLabel("Name").fill(displayName)
   await page.getByLabel("Company email").fill(email)
   await page.getByLabel("Role").selectOption("operator")
-  await page.getByLabel("Group").selectOption({ label: "Operators" })
   await page.getByRole("button", { name: "Create user" }).click()
   await page.getByText("User created.", { exact: true }).waitFor()
   const firstPassword = await page.getByLabel("Generated password").inputValue()

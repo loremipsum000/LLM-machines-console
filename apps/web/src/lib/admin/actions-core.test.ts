@@ -7,6 +7,8 @@ import {
   checkAdminConnectedAppConnectionAction,
   checkAdminConnectedAppFirecrawlConnectionAction,
   createAdminConnectedAppAction,
+  createAdminTeamMemberAction,
+  deleteAdminTeamMemberAction,
   disableAdminConnectedAppFirecrawlAction,
   enableAdminConnectedAppFirecrawlAction,
   generateAdminTeamPasswordAction,
@@ -345,6 +347,71 @@ describe("inference-core Admin actions", () => {
       ),
     ).rejects.toThrow("redirect:/auth/signin?session=expired&returnTo=%2Fteam")
     expect(mocks.redirect).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { group: "Admins", role: "admin" },
+    { group: "Operators", role: "operator" },
+  ])(
+    "creates a $role with its canonical group and no email delivery",
+    async ({ group, role }) => {
+      const fetchSpy = vi.fn(
+        async (_input: RequestInfo | URL, _init?: RequestInit) =>
+          Response.json(
+            { detail: "Identity service temporarily unavailable." },
+            { status: 503 },
+          ),
+      )
+      vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+      const formData = new FormData()
+      formData.set("displayName", "Test Person")
+      formData.set("email", "test.person@example.test")
+      formData.set("generatePassword", "on")
+      formData.set("role", role)
+
+      await expect(
+        createAdminTeamMemberAction(
+          {
+            error: null,
+            generatedPassword: null,
+            memberId: null,
+            status: "idle",
+          },
+          formData,
+        ),
+      ).resolves.toMatchObject({ status: "failed" })
+
+      const request = fetchSpy.mock.calls[0]?.[1]
+      expect(request).toBeDefined()
+      expect(JSON.parse(String(request?.body))).toMatchObject({
+        groups: [group],
+        role,
+        sendInvite: false,
+      })
+    },
+  )
+
+  it("requires exact Admin confirmation before deleting a Team member", async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy as unknown as typeof fetch)
+    const formData = new FormData()
+    formData.set("memberId", "member-1")
+    formData.set("confirmation", "delete")
+
+    await expect(deleteAdminTeamMemberAction(formData)).rejects.toThrow(
+      "redirect:/team/members/member-1?teamAction=deleteConfirmation",
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+
+    mocks.getCurrentConsoleSession.mockResolvedValue(
+      activeConsoleSession("operator"),
+    )
+    formData.set("confirmation", "DELETE")
+
+    await expect(deleteAdminTeamMemberAction(formData)).rejects.toThrow(
+      "Authorized Console session required.",
+    )
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 

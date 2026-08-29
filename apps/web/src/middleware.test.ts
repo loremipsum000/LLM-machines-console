@@ -52,7 +52,6 @@ describe("Console middleware", () => {
       "/inference",
       "/settings",
       "/team",
-      "/team/import/template",
     ]
     for (const pathname of protectedPaths) {
       const response = await runMiddleware(pathname)

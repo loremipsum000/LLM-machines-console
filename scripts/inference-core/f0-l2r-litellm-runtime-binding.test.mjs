@@ -233,7 +233,7 @@ test("F0-L2R source fingerprints and path inventory are exact", async () => {
   assert.equal(evidence.sourceChangeBoundary.vm103Touched, false)
 })
 
-test("F0-L2R preserves earlier local candidates as unpushed evidence", async () => {
+test("F0-L2R records earlier local candidates without requiring unpublished objects", async () => {
   const evidence = await readJson(evidencePath)
 
   assert.deepEqual(
@@ -245,9 +245,9 @@ test("F0-L2R preserves earlier local candidates as unpushed evidence", async () 
     ],
   )
   for (const candidate of evidence.preservedLocalEvidence) {
+    assert.match(candidate.commit, /^[0-9a-f]{40}$/)
     assert.equal(candidate.published, false)
     assert.equal(candidate.disposition, "UNPUSHED_HISTORICAL_EVIDENCE")
-    assert.match(git("cat-file", "-t", candidate.commit), /^commit$/)
   }
 })
 

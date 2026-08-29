@@ -291,6 +291,16 @@ test("profile-controlled arguments cannot override identity, retention, or custo
   }
 })
 
+test("rollback accepts only the four canonical credential-free fields", () => {
+  const changed = mutate(single, (profile) => {
+    profile.rollback.secretToken = "forbidden"
+  })
+  assert.match(
+    validateDeliveryProfile(changed, contracts.core).join("\n"),
+    /rollback keys must be exactly engineImageDigest, modelArtifactDigest, profileId, revision/,
+  )
+})
+
 test("parallelism cannot exceed declared hardware", () => {
   const changed = mutate(single, (profile) => {
     profile.parallelism.replicas = 2

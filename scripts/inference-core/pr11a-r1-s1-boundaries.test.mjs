@@ -21,6 +21,8 @@ const validationRegisterPath =
   "docs/reduction/inference-core/validation-register.md"
 const acceptedRouteBaselinePath =
   "docs/reduction/inference-core/route-baseline.json"
+const teamDeferredCapabilitiesBoundaryPath =
+  "docs/reduction/inference-core/console-team-deferred-capabilities-boundary.json"
 const integrationBase = "0f29c7939fa885c11c191e8b672f09e16635ddcb"
 const sourceBase = "aa831424949fb49095de48714b508ada0b57f589"
 const sourceBaseTree = "3c17e44c23fd15b1d84722529b4f96693ec0cd93"
@@ -146,6 +148,28 @@ test("R1-S1 makes only the reviewed opaque-session route transition", () => {
       classification: "current-console-seam",
     })
   }
+  if (
+    existsSync(resolve(repositoryRoot, teamDeferredCapabilitiesBoundaryPath))
+  ) {
+    const retiredTeamRoutes = new Set([
+      "GET /api/admin/team/csv-template",
+      "GET /api/admin/team/groups/:id",
+      "POST /api/admin/team/groups/:id/delete",
+      "POST /api/admin/team/groups/:id/members/:memberId/remove",
+      "POST /api/admin/team/groups/:id/members/bulk-assign",
+      "POST /api/admin/team/groups/:id/update",
+      "POST /api/admin/team/groups",
+      "POST /api/admin/team/import/commit",
+      "POST /api/admin/team/import/preview",
+      "POST /api/admin/team/members/:id/invite",
+      "POST /api/admin/team/members/:id/reset-password-email",
+    ])
+    successorAwareRoutes.push(
+      ...accepted.routes.filter(({ method, path }) =>
+        retiredTeamRoutes.has(`${method} ${path}`),
+      ),
+    )
+  }
   const nativeSessionSuccessor = successorAwareRoutes.filter(
     ({ method, path, source, surface }) =>
       method === "GET" &&
@@ -237,8 +261,7 @@ test("R1-S1 mutation actions cannot swallow terminal Console sessions", () => {
   const terminalRethrows = source.match(
     /rethrowTerminalConsoleSession\(error\)/g,
   )
-
-  assert.equal(terminalRethrows?.length, 19)
+  assert.equal(terminalRethrows?.length, 10)
   assert.doesNotMatch(
     source,
     /export async function rotateAdminConnectedAppCredentialsAction/,

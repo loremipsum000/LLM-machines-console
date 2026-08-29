@@ -27,31 +27,8 @@ const expectedAdminRoutePolicies = {
   "POST /api/admin/settings/telemetry": adminOnly(),
   "GET /api/admin/team": capability("team.identity.view"),
   "GET /api/admin/team/scim": capability("team.identity.view"),
-  "GET /api/admin/team/csv-template": capability("team.identity.view"),
-  "POST /api/admin/team/import/preview": capability("team.identity.view"),
-  "POST /api/admin/team/import/commit": capability("team.users_roles.manage"),
-  "GET /api/admin/team/groups/:id": capability("team.identity.view"),
-  "POST /api/admin/team/groups": capability("team.users_roles.manage"),
-  "POST /api/admin/team/groups/:id/update": capability(
-    "team.users_roles.manage",
-  ),
-  "POST /api/admin/team/groups/:id/delete": capability(
-    "team.users_roles.manage",
-  ),
-  "POST /api/admin/team/groups/:id/members/bulk-assign": capability(
-    "team.users_roles.manage",
-  ),
-  "POST /api/admin/team/groups/:id/members/:memberId/remove": capability(
-    "team.users_roles.manage",
-  ),
   "GET /api/admin/team/members/:id": capability("team.identity.view"),
   "POST /api/admin/team/members": capability("team.users_roles.manage"),
-  "POST /api/admin/team/members/:id/invite": capability(
-    "team.users_roles.manage",
-  ),
-  "POST /api/admin/team/members/:id/reset-password-email": capability(
-    "team.local_password.manage",
-  ),
   "POST /api/admin/team/members/:id/generate-password": capability(
     "team.local_password.manage",
   ),

@@ -47,6 +47,9 @@ test("the predecessor Overview-refinement record remains byte-identical", () => 
 
 test("Overview is absent while root safely lands on Keys", () => {
   const page = read("apps/web/src/app/page.tsx")
+  const browserSession = read(
+    "scripts/pre-genesis/reduced-core-browser-session.mjs",
+  )
   const sections = read(
     "apps/web/src/components/console-v2/console-v2-sections.ts",
   )
@@ -56,6 +59,10 @@ test("Overview is absent while root safely lands on Keys", () => {
   )
 
   assert.match(page, /redirect\("\/keys"\)/)
+  assert.match(
+    browserSession,
+    /completeIdentityLogin\(page, credentials\.operator\)[\s\S]*?assert\.equal\(new URL\(page\.url\(\)\)\.pathname, "\/keys"\)/,
+  )
   assert.doesNotMatch(sections, /id: "overview"/)
   assert.doesNotMatch(routes, /\/api\/admin\/overview/)
   assert.deepEqual(contract.consoleSections, [

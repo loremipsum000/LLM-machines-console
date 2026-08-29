@@ -25,18 +25,10 @@ import {
   adminInferenceDashboardSchema,
   adminSettingsResponseSchema,
   adminTeamActionResponseSchema,
-  adminTeamBulkGroupAssignmentRequestSchema,
-  adminTeamCsvImportCommitRequestSchema,
-  adminTeamCsvImportCommitResponseSchema,
-  adminTeamCsvImportPreviewRequestSchema,
-  adminTeamCsvImportPreviewResponseSchema,
-  adminTeamGroupDetailSchema,
-  adminTeamGroupMutationResponseSchema,
   adminTeamMemberDetailSchema,
   adminTeamMemberMutationResponseSchema,
   adminTeamOverviewResponseSchema,
   adminTeamScimStatusSchema,
-  createAdminTeamGroupRequestSchema,
   createAdminTeamMemberRequestSchema,
   deleteAdminTeamMemberRequestSchema,
   emergencyIsolationActivationRequestSchema,
@@ -53,7 +45,6 @@ import {
   updateAdminAlertEgressRequestSchema,
   updateAdminSettingsOrganizationRequestSchema,
   updateAdminSettingsTelemetryRequestSchema,
-  updateAdminTeamGroupRequestSchema,
 } from "@llm-machines/contracts/inference-core"
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Actor } from "../auth/authorization"
@@ -100,25 +91,14 @@ import {
 import {
   AdminTeamError,
   type AdminTeamMutationContext,
-  TEAM_CSV_TEMPLATE,
-  bulkAssignAdminTeamGroupMembers,
-  commitAdminTeamCsvImport,
-  createAdminTeamGroup,
   createAdminTeamMember,
-  deleteAdminTeamGroup,
   deleteAdminTeamMember,
   disableAdminTeamMember,
   generateAdminTeamPassword,
-  getAdminTeamGroupDetail,
   getAdminTeamMemberDetail,
   getAdminTeamOverview,
   getAdminTeamScimStatus,
-  previewAdminTeamCsvImport,
   reactivateAdminTeamMember,
-  removeAdminTeamGroupMember,
-  sendAdminTeamInvite,
-  sendAdminTeamPasswordReset,
-  updateAdminTeamGroup,
 } from "../services/admin-team"
 import { InvalidAuditCursorError, emitAudit } from "../services/audit"
 import {
@@ -159,8 +139,6 @@ export const adminOnlyAdminRoutePolicyKeys = [
   "POST /api/admin/settings/organization",
   "POST /api/admin/settings/telemetry",
 ] as const
-
-const teamCsvImportBodyLimitBytes = 256 * 1024
 
 type AdminOnlyAdminRoutePolicyKey =
   (typeof adminOnlyAdminRoutePolicyKeys)[number]
@@ -678,262 +656,6 @@ export function registerAdminRoutes(
   )
 
   server.get(
-    "/api/admin/team/csv-template",
-    withCapability("team.identity.view"),
-    async (_request, reply) =>
-      reply
-        .header("content-type", "text/csv; charset=utf-8")
-        .header(
-          "content-disposition",
-          'attachment; filename="team-users-template.csv"',
-        )
-        .send(TEAM_CSV_TEMPLATE),
-  )
-
-  server.post(
-    "/api/admin/team/import/preview",
-    {
-      bodyLimit: teamCsvImportBodyLimitBytes,
-      config: {
-        authorization: {
-          capability: "team.identity.view",
-          kind: "capability",
-        },
-      },
-    },
-    async (request, reply) => {
-      const body = adminTeamCsvImportPreviewRequestSchema.safeParse(
-        request.body ?? {},
-      )
-      if (!body.success) {
-        return invalidRequest(
-          reply,
-          "Invalid Team CSV import preview request",
-          "CSV text is required.",
-        )
-      }
-      return teamRouteResult(reply, async () =>
-        adminTeamCsvImportPreviewResponseSchema.parse(
-          await previewAdminTeamCsvImport(requireActor(request), body.data),
-        ),
-      )
-    },
-  )
-
-  server.post(
-    "/api/admin/team/import/commit",
-    {
-      bodyLimit: teamCsvImportBodyLimitBytes,
-      config: {
-        authorization: {
-          capability: "team.users_roles.manage",
-          kind: "capability",
-        },
-      },
-    },
-    async (request, reply) => {
-      const body = adminTeamCsvImportCommitRequestSchema.safeParse(
-        request.body ?? {},
-      )
-      if (!body.success) {
-        return invalidRequest(
-          reply,
-          "Invalid Team CSV import commit request",
-          "CSV text is required.",
-        )
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "POST /api/admin/team/import/commit",
-        body.data,
-        async (actor, identityContext) => ({
-          payload: adminTeamCsvImportCommitResponseSchema.parse(
-            await commitAdminTeamCsvImport(actor, body.data, identityContext),
-          ),
-          statusCode: 200,
-        }),
-        200,
-      )
-    },
-  )
-
-  server.get(
-    "/api/admin/team/groups/:id",
-    withCapability("team.identity.view"),
-    async (request, reply) => {
-      const id = routeId(request)
-      if (!id) {
-        return missingId(reply, "Team group")
-      }
-      return teamRouteResult(reply, async () =>
-        adminTeamGroupDetailSchema.parse(
-          await getAdminTeamGroupDetail(requireActor(request), id),
-        ),
-      )
-    },
-  )
-
-  server.post(
-    "/api/admin/team/groups",
-    withCapability("team.users_roles.manage"),
-    async (request, reply) => {
-      const body = createAdminTeamGroupRequestSchema.safeParse(
-        request.body ?? {},
-      )
-      if (!body.success) {
-        return invalidRequest(
-          reply,
-          "Invalid Team group request",
-          "A group name is required.",
-        )
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "POST /api/admin/team/groups",
-        body.data,
-        async (actor, identityContext) => ({
-          payload: adminTeamGroupMutationResponseSchema.parse(
-            await createAdminTeamGroup(actor, body.data, identityContext),
-          ),
-          statusCode: 201,
-        }),
-        201,
-      )
-    },
-  )
-
-  server.post(
-    "/api/admin/team/groups/:id/update",
-    withCapability("team.users_roles.manage"),
-    async (request, reply) => {
-      const id = routeId(request)
-      const body = updateAdminTeamGroupRequestSchema.safeParse(
-        request.body ?? {},
-      )
-      if (!id) {
-        return missingId(reply, "Team group")
-      }
-      if (!body.success) {
-        return invalidRequest(
-          reply,
-          "Invalid Team group request",
-          "A group name is required.",
-        )
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "POST /api/admin/team/groups/:id/update",
-        { id, ...body.data },
-        async (actor, identityContext) => ({
-          payload: adminTeamGroupMutationResponseSchema.parse(
-            await updateAdminTeamGroup(actor, id, body.data, identityContext),
-          ),
-          statusCode: 200,
-        }),
-        200,
-      )
-    },
-  )
-
-  server.post(
-    "/api/admin/team/groups/:id/delete",
-    withCapability("team.users_roles.manage"),
-    async (request, reply) => {
-      const id = routeId(request)
-      if (!id) {
-        return missingId(reply, "Team group")
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "POST /api/admin/team/groups/:id/delete",
-        { id },
-        async (actor, identityContext) => ({
-          payload: adminTeamGroupMutationResponseSchema.parse(
-            await deleteAdminTeamGroup(actor, id, identityContext),
-          ),
-          statusCode: 200,
-        }),
-        200,
-      )
-    },
-  )
-
-  server.post(
-    "/api/admin/team/groups/:id/members/bulk-assign",
-    withCapability("team.users_roles.manage"),
-    async (request, reply) => {
-      const id = routeId(request)
-      const body = adminTeamBulkGroupAssignmentRequestSchema.safeParse(
-        request.body ?? {},
-      )
-      if (!id) {
-        return missingId(reply, "Team group")
-      }
-      if (!body.success) {
-        return invalidRequest(
-          reply,
-          "Invalid Team group assignment request",
-          "At least one member id is required.",
-        )
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "POST /api/admin/team/groups/:id/members/bulk-assign",
-        { id, ...body.data },
-        async (actor, identityContext) => ({
-          payload: adminTeamGroupMutationResponseSchema.parse(
-            await bulkAssignAdminTeamGroupMembers(
-              actor,
-              id,
-              body.data,
-              identityContext,
-            ),
-          ),
-          statusCode: 200,
-        }),
-        200,
-      )
-    },
-  )
-
-  server.post(
-    "/api/admin/team/groups/:id/members/:memberId/remove",
-    withCapability("team.users_roles.manage"),
-    async (request, reply) => {
-      const { id, memberId } = request.params as {
-        id?: string
-        memberId?: string
-      }
-      if (!id || !memberId) {
-        return invalidRequest(reply, "Team group and member ids are required")
-      }
-      return withAdminIdempotentMutation(
-        request,
-        reply,
-        "POST /api/admin/team/groups/:id/members/:memberId/remove",
-        { id, memberId },
-        async (actor, identityContext) => ({
-          payload: adminTeamGroupMutationResponseSchema.parse(
-            await removeAdminTeamGroupMember(
-              actor,
-              id,
-              memberId,
-              identityContext,
-            ),
-          ),
-          statusCode: 200,
-        }),
-        200,
-      )
-    },
-  )
-
-  server.get(
     "/api/admin/team/members/:id",
     withCapability("team.identity.view"),
     async (request, reply) => {
@@ -953,6 +675,7 @@ export function registerAdminRoutes(
     "/api/admin/team/members",
     withCapability("team.users_roles.manage"),
     async (request, reply) => {
+      reply.header("cache-control", "no-store")
       const body = createAdminTeamMemberRequestSchema.safeParse(
         request.body ?? {},
       )
@@ -960,7 +683,19 @@ export function registerAdminRoutes(
         return invalidRequest(
           reply,
           "Invalid Team member request",
-          "A name, work email, Admin or Operator role, and valid group list are required.",
+          "A name, work email, Admin or Operator role, and canonical role group are required.",
+        )
+      }
+      const canonicalGroup = body.data.role === "admin" ? "Admins" : "Operators"
+      if (
+        body.data.sendInvite ||
+        body.data.groups.length !== 1 ||
+        body.data.groups[0] !== canonicalGroup
+      ) {
+        return invalidRequest(
+          reply,
+          "Unsupported Team member request",
+          "Team members must use the canonical role group and local password commissioning.",
         )
       }
       return withAdminIdempotentMutation(
@@ -984,26 +719,10 @@ export function registerAdminRoutes(
   )
 
   server.post(
-    "/api/admin/team/members/:id/invite",
-    withCapability("team.users_roles.manage"),
-    async (request, reply) =>
-      teamMemberAction(request, reply, "invite", sendAdminTeamInvite),
-  )
-  server.post(
-    "/api/admin/team/members/:id/reset-password-email",
-    withCapability("team.local_password.manage"),
-    async (request, reply) =>
-      teamMemberAction(
-        request,
-        reply,
-        "reset-password-email",
-        sendAdminTeamPasswordReset,
-      ),
-  )
-  server.post(
     "/api/admin/team/members/:id/generate-password",
     withCapability("team.local_password.manage"),
     async (request, reply) => {
+      reply.header("cache-control", "no-store")
       const id = routeId(request)
       if (!id) {
         return missingId(reply, "Team member")

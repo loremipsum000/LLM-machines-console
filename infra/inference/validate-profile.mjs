@@ -739,6 +739,12 @@ export function validateDeliveryProfile(profile, coreContract) {
     add(errors, "inactive profiles cannot make a production support claim")
   }
 
+  exactKeys(
+    profile.rollback,
+    ["profileId", "revision", "engineImageDigest", "modelArtifactDigest"],
+    "rollback",
+    errors,
+  )
   if (
     !profileIdPattern.test(profile.rollback?.profileId ?? "") ||
     !isPositiveInteger(profile.rollback?.revision) ||
