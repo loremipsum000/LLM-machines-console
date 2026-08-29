@@ -24,7 +24,7 @@ describe("OverviewV2Experience", () => {
 
     expect(screen.queryByText("Recent activity")).toBeNull()
     expect(
-      screen.getByRole("button", {
+      screen.getByRole("group", {
         name: /Daily token usage for the last 90 days/,
       }),
     ).toBeTruthy()
@@ -76,7 +76,7 @@ describe("OverviewV2Experience", () => {
       screen.getByText("Token usage is temporarily unavailable."),
     ).toBeTruthy()
     expect(
-      screen.queryByRole("button", {
+      screen.queryByRole("group", {
         name: /Daily token usage for the last 90 days/,
       }),
     ).toBeNull()
