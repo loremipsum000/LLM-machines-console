@@ -80,3 +80,13 @@ test("Settings has one Admin export control while audit APIs remain", () => {
 test("the complete current source boundary accepts the successor", () => {
   assert.deepEqual(verifyPr11SourceBoundary(repositoryRoot), [])
 })
+
+test("the browser proof initializes its logout fixture before execution", () => {
+  const browserProof = read(
+    "scripts/pre-genesis/reduced-core-browser-session.mjs",
+  )
+  assert.ok(
+    browserProof.indexOf("const liteLlmGlobalLogoutScript") <
+      browserProof.indexOf("const evidence = await runBrowserSessionProof()"),
+  )
+})

@@ -168,6 +168,8 @@ const consolePaths = [
   ["/team", "Team"],
   ["/settings", "Settings"],
 ]
+const liteLlmGlobalLogoutScript =
+  '(()=>{for(const p of["/","/ui"])document.cookie="token=; Max-Age=0; Path="+p+"; Secure; SameSite=Lax";try{sessionStorage.removeItem("token");for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith("m"+"cp-session-"+"to"+"ken:"))sessionStorage.removeItem(k)}}catch{}try{localStorage.removeItem("litellm_selected_worker_id");localStorage.removeItem("litellm_worker_url")}catch{}location.replace("/__llmm/global-logout/continue")})()'
 const evidence = await runBrowserSessionProof()
 process.stdout.write(`${JSON.stringify(evidence)}\n`)
 
@@ -5232,9 +5234,6 @@ function developmentLogoutRedirect(
   })
   response.end()
 }
-
-const liteLlmGlobalLogoutScript =
-  '(()=>{for(const p of["/","/ui"])document.cookie="token=; Max-Age=0; Path="+p+"; Secure; SameSite=Lax";try{sessionStorage.removeItem("token");for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith("m"+"cp-session-"+"to"+"ken:"))sessionStorage.removeItem(k)}}catch{}try{localStorage.removeItem("litellm_selected_worker_id");localStorage.removeItem("litellm_worker_url")}catch{}location.replace("/__llmm/global-logout/continue")})()'
 
 function developmentLiteLlmGlobalLogout(request, response, url) {
   if (!["GET", "HEAD"].includes(request.method ?? "") || url.search) {
