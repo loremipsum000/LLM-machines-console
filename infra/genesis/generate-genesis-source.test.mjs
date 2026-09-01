@@ -56,6 +56,7 @@ function sourcePolicy(entries) {
     schema: "llm-machines.genesis-source-classification.v1",
     status: "REVIEWED_SOURCE_POLICY",
     classes: {
+      DEFERRED_NOT_ADMITTED: { genesisDisposition: "exclude" },
       HISTORICAL_EVIDENCE: { genesisDisposition: "exclude" },
       PRODUCT_SOURCE: { genesisDisposition: "include" },
       RELEASE_CONTRACT: { genesisDisposition: "include" },
@@ -190,6 +191,45 @@ test("unknown source paths fail closed", () => {
     () => inspectGenesis(source, "HEAD"),
     /tracked paths do not match/,
   )
+})
+
+test("unadmitted LiteLLM candidate and lab artifact evidence stay excluded", () => {
+  const candidatePaths = [
+    "infra/litellm/oss-downstream/patches/sidebar-functional-candidate.patch",
+    "infra/litellm/oss-downstream/sidebar-functional-candidate.json",
+    "infra/litellm/oss-downstream/validate-sidebar-functional-candidate.mjs",
+    "infra/litellm/oss-downstream/validate-sidebar-functional-candidate.test.mjs",
+  ]
+  const source = createSourceRepository(
+    candidatePaths.map((path) => ({
+      path,
+      class: "DEFERRED_NOT_ADMITTED",
+    })),
+  )
+  for (const path of candidatePaths) {
+    write(
+      source,
+      path,
+      path.endsWith(".json")
+        ? '{"version":"v1.96.2-llmm.2","labArtifact":{"status":"unadmitted"},"runtimeEvidence":{"status":"unadmitted"}}\n'
+        : "unadmitted functional candidate evidence\n",
+    )
+  }
+  runGit(source, ["add", "-A"])
+  runGit(source, ["commit", "-q", "-m", "Add unadmitted candidate evidence"])
+
+  const result = inspectGenesis(source, "HEAD")
+  assert.equal(result.manifest.includedPathCount, 5)
+  assert.equal(result.manifest.excludedPathCount, 5)
+  const generatedPaths = runGit(source, [
+    "ls-tree",
+    "-r",
+    "--name-only",
+    result.manifest.generatedGenesisTree,
+  ]).split("\n")
+  for (const path of candidatePaths) {
+    assert.doesNotMatch(generatedPaths.join("\n"), new RegExp(`^${path}$`, "m"))
+  }
 })
 
 test("included text cannot contain the forbidden automation identity", () => {

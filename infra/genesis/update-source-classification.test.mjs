@@ -35,6 +35,14 @@ test("lab, historical and deferred paths remain excluded", () => {
     classifyPath("infra/portainer/README.md"),
     "DEFERRED_NOT_ADMITTED",
   )
+  for (const path of [
+    "infra/litellm/oss-downstream/patches/sidebar-functional-candidate.patch",
+    "infra/litellm/oss-downstream/sidebar-functional-candidate.json",
+    "infra/litellm/oss-downstream/validate-sidebar-functional-candidate.mjs",
+    "infra/litellm/oss-downstream/validate-sidebar-functional-candidate.test.mjs",
+  ]) {
+    assert.equal(classifyPath(path), "DEFERRED_NOT_ADMITTED")
+  }
   assert.equal(
     classifyPath("docs/reduction/inference-core/evidence.json"),
     "HISTORICAL_EVIDENCE",

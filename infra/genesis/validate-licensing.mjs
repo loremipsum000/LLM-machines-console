@@ -191,6 +191,7 @@ function validateSnapshotRootPackage(root) {
     "lint",
     "retention:inference-core",
     "test",
+    "test:genesis-guardrails",
     "test:inference-core-authorization",
     "test:inference-core-characterization",
     "test:inference-core-db",
@@ -206,6 +207,8 @@ function validateSnapshotRootPackage(root) {
   const snapshotCommands = Object.values(snapshotPackage.scripts ?? {}).join(
     "\n",
   )
+  const expectedSnapshotGuardrailCommand =
+    "node --test infra/firecrawl/validate-profile.test.mjs infra/ingress/source-no-bypass.test.mjs infra/litellm/oss-downstream/validate-source-package.test.mjs infra/observability/validate-profile.test.mjs infra/storage/validate-profile.test.mjs"
   if (
     snapshotCommands.includes("--base-ref") ||
     snapshotCommands.includes("scripts/inference-core/guardrails.mjs") ||
@@ -213,6 +216,9 @@ function validateSnapshotRootPackage(root) {
     snapshotCommands.includes("scripts/pre-genesis/") ||
     snapshotCommands.includes("infra/ingress/validate-ingress.mjs") ||
     !snapshotPackage.scripts?.test?.includes("check:genesis") ||
+    !snapshotPackage.scripts?.test?.includes("test:genesis-guardrails") ||
+    snapshotPackage.scripts?.["test:genesis-guardrails"] !==
+      expectedSnapshotGuardrailCommand ||
     !snapshotPackage.scripts?.["test:release"]?.includes(
       "infra/genesis/*.test.mjs",
     )

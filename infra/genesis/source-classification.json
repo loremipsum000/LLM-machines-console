@@ -2061,11 +2061,11 @@
     },
     {
       "path": "infra/litellm/oss-downstream/patches/sidebar-functional-candidate.patch",
-      "class": "THIRD_PARTY_COMPLIANCE"
+      "class": "DEFERRED_NOT_ADMITTED"
     },
     {
       "path": "infra/litellm/oss-downstream/sidebar-functional-candidate.json",
-      "class": "THIRD_PARTY_COMPLIANCE"
+      "class": "DEFERRED_NOT_ADMITTED"
     },
     {
       "path": "infra/litellm/oss-downstream/source-package.json",
@@ -2081,11 +2081,11 @@
     },
     {
       "path": "infra/litellm/oss-downstream/validate-sidebar-functional-candidate.mjs",
-      "class": "THIRD_PARTY_COMPLIANCE"
+      "class": "DEFERRED_NOT_ADMITTED"
     },
     {
       "path": "infra/litellm/oss-downstream/validate-sidebar-functional-candidate.test.mjs",
-      "class": "THIRD_PARTY_COMPLIANCE"
+      "class": "DEFERRED_NOT_ADMITTED"
     },
     {
       "path": "infra/litellm/oss-downstream/validate-source-package.mjs",

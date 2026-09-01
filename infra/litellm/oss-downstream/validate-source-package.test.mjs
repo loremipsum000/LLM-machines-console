@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import path from "node:path"
 import { test } from "node:test"
@@ -27,6 +28,28 @@ test("checked-in LiteLLM OSS downstream source package passes", () => {
     sha256File(path.resolve(import.meta.dirname, "upstream-cosign.pub")),
     manifest.upstream.signature.publicKeySha256,
   )
+})
+
+test("the admitted source assembler cannot consume an unadmitted candidate", () => {
+  const assembler = path.resolve(import.meta.dirname, "assemble-source.mjs")
+  const source = readFileSync(assembler, "utf8")
+  assert.doesNotMatch(source, /sidebar-functional-candidate|labArtifact/)
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      assembler,
+      "--archive",
+      "unused.tar.gz",
+      "--output",
+      "unused-output",
+      "--candidate",
+      "unadmitted.json",
+    ],
+    { encoding: "utf8" },
+  )
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /expected --archive PATH --output PATH/)
 })
 
 test("enterprise dependency, build copy, and runtime copy are removed", () => {

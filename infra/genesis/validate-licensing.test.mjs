@@ -157,3 +157,29 @@ test("the snapshot transform cannot change non-script package metadata", () => {
   assert.throws(() => validateLicensing(fixtureRoot), /must remain private/)
   restore()
 })
+
+test("the snapshot retained guardrail lane cannot be removed or renamed", () => {
+  for (const mutate of [
+    (manifest) => {
+      delete manifest.scripts["test:genesis-guardrails"]
+    },
+    (manifest) => {
+      manifest.scripts["test:genesis-guardrails"] = manifest.scripts[
+        "test:genesis-guardrails"
+      ].replace(
+        "source-no-bypass.test.mjs",
+        "source-no-bypass-renamed.test.mjs",
+      )
+    },
+  ]) {
+    const restore = mutateJson(
+      "infra/genesis/snapshot-root-package.json",
+      mutate,
+    )
+    assert.throws(
+      () => validateLicensing(fixtureRoot),
+      /snapshot root scripts|reviewed standalone gates/,
+    )
+    restore()
+  }
+})
