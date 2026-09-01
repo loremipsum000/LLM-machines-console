@@ -39,8 +39,8 @@
       "sourceRequired": false
     },
     {
-      "id": "Proprietary",
-      "redistribution": "product-license-only",
+      "id": "LicenseRef-PolyForm-Internal-Use-1.0.0",
+      "redistribution": "internal-use-only-no-distribution",
       "sourceRequired": false
     }
   ],

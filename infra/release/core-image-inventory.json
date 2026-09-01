@@ -59,7 +59,7 @@
       "dockerfile": "apps/web/Dockerfile",
       "version": "release-version",
       "sourceRevision": "release-source-commit",
-      "license": "Proprietary",
+      "license": "LicenseRef-PolyForm-Internal-Use-1.0.0",
       "mirrorRepository": "core/console-web"
     },
     {
@@ -70,7 +70,7 @@
       "dockerfile": "apps/bff/Dockerfile",
       "version": "release-version",
       "sourceRevision": "release-source-commit",
-      "license": "Proprietary",
+      "license": "LicenseRef-PolyForm-Internal-Use-1.0.0",
       "mirrorRepository": "core/console-bff"
     },
     {

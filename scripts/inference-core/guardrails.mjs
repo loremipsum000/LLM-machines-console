@@ -28,10 +28,11 @@ export const pr12ReleaseTestGateBindingPath =
   "docs/reduction/inference-core/pr-12-release-test-gate-binding.json"
 
 const pr12ReleaseTestCommand =
-  "node --test infra/inference/*.test.mjs infra/release/*.test.mjs infra/firecrawl/release/*.test.mjs infra/keycloak/*.test.mjs scripts/inference-core/pr12-*.test.mjs"
+  "node --test infra/genesis/*.test.mjs infra/inference/*.test.mjs infra/release/*.test.mjs infra/firecrawl/release/*.test.mjs infra/keycloak/*.test.mjs scripts/inference-core/pr12-*.test.mjs"
 const pr12FullProductTestCommand =
   "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm run test:release && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test"
 const pr12RequiredReleaseTestSuites = [
+  "infra/genesis/*.test.mjs",
   "infra/inference/*.test.mjs",
   "infra/release/*.test.mjs",
   "infra/firecrawl/release/*.test.mjs",
