@@ -258,6 +258,40 @@ describe("role-aware Console presentation", () => {
     expect(screen.queryByRole("link", { name: "Create group" })).toBeNull()
   })
 
+  it("keeps the Team members table reachable within the Console main column", () => {
+    const { rerender } = render(
+      <TeamV2Experience
+        accessRole="admin"
+        overview={teamOverview}
+        view="manage-users"
+      />,
+    )
+
+    const adminSection = screen
+      .getByRole("heading", { level: 2, name: "Manage users" })
+      .closest("section")
+    const adminTableRegion = screen.getByRole("region", {
+      name: "Team members table",
+    })
+    expect(adminSection?.className).toContain("w-full")
+    expect(adminSection?.className).not.toContain("w-[860px]")
+    expect(adminTableRegion.className).toContain("overflow-x-auto")
+    expect(screen.getByRole("table").className).toContain("min-w-[760px]")
+    expect(screen.getByRole("columnheader", { name: "Actions" })).toBeTruthy()
+
+    rerender(
+      <TeamV2Experience
+        accessRole="operator"
+        overview={teamOverview}
+        view="manage-users"
+      />,
+    )
+
+    expect(screen.getByRole("table").className).toContain("min-w-[560px]")
+    expect(screen.queryByRole("columnheader", { name: "Actions" })).toBeNull()
+    expect(screen.queryByRole("link", { name: "Create user" })).toBeNull()
+  })
+
   it.each([
     {
       detail: /Configure the Keycloak service account/,
@@ -310,10 +344,18 @@ describe("role-aware Console presentation", () => {
   )
 
   it("keeps Operator Settings visible and read-only while Admin retains mutations", () => {
-    const { rerender } = render(
+    const legacyLogoSettings = {
+      ...settingsResponse,
+      organization: {
+        ...settingsResponse.organization,
+        fullLogo: { dataUrl: "data:image/png;base64,legacy-full-logo" },
+        iconLogo: { dataUrl: "data:image/png;base64,legacy-icon-logo" },
+      },
+    } as AdminSettingsResponse
+    const { container, rerender } = render(
       <SettingsV2Experience
         accessRole="operator"
-        settings={settingsResponse}
+        settings={legacyLogoSettings}
       />,
     )
 
@@ -339,9 +381,15 @@ describe("role-aware Console presentation", () => {
     expect(screen.queryByRole("link", { name: "Privacy policy" })).toBeNull()
 
     expect(screen.queryByRole("button", { name: /System update/ })).toBeNull()
+    expect(container.querySelector('input[type="file"]')).toBeNull()
+    expect(container.querySelector('img[src^="data:"]')).toBeNull()
+    expect(container.innerHTML).not.toContain("data:image")
+    expect(screen.queryByText("Full logo")).toBeNull()
+    expect(screen.queryByText("Icon logo")).toBeNull()
+    expect(screen.queryByText(/Console shell branding/i)).toBeNull()
 
     rerender(
-      <SettingsV2Experience accessRole="admin" settings={settingsResponse} />,
+      <SettingsV2Experience accessRole="admin" settings={legacyLogoSettings} />,
     )
 
     expect(
@@ -356,6 +404,11 @@ describe("role-aware Console presentation", () => {
     ).toBeTruthy()
     expect(screen.queryByRole("button", { name: /System update/ })).toBeNull()
     expect(screen.queryByRole("link", { name: "Privacy policy" })).toBeNull()
+    expect(container.querySelector('input[type="file"]')).toBeNull()
+    expect(container.querySelector('img[src^="data:"]')).toBeNull()
+    expect(container.innerHTML).not.toContain("data:image")
+    expect(screen.queryByText(/logo/i)).toBeNull()
+    expect(screen.queryByText(/Console shell branding/i)).toBeNull()
 
     rerender(
       <SettingsV2Experience
@@ -379,7 +432,6 @@ describe("role-aware Console presentation", () => {
 
 const connectedApp: AdminConnectedApp = {
   allowedModels: ["qwen"],
-  auditHref: "/activity?applicationId=app-1",
   authMethod: "api_key",
   connectionStatus: "not_connected",
   createdAt: "2026-07-31T08:00:00.000Z",
@@ -460,8 +512,6 @@ const settingsResponse: AdminSettingsResponse = {
   },
   organization: {
     defaultLanguage: "en",
-    fullLogo: null,
-    iconLogo: null,
     organizationName: "Example Organization",
     updatedAt: null,
     updatedBy: null,

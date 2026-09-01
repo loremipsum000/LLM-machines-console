@@ -161,14 +161,14 @@ function publicAuthorityHost(authority, edgePort) {
 }
 
 const consolePaths = [
-  ["/", "Overview"],
   ["/keys", "Keys"],
   ["/inference", "Inference"],
   ["/hardware", "Hardware"],
   ["/team", "Team"],
-  ["/activity", "Activity & Audit"],
   ["/settings", "Settings"],
 ]
+const liteLlmGlobalLogoutScript =
+  '(()=>{for(const p of["/","/ui"])document.cookie="token=; Max-Age=0; Path="+p+"; Secure; SameSite=Lax";try{sessionStorage.removeItem("token");for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith("m"+"cp-session-"+"to"+"ken:"))sessionStorage.removeItem(k)}}catch{}try{localStorage.removeItem("litellm_selected_worker_id");localStorage.removeItem("litellm_worker_url")}catch{}location.replace("/__llmm/global-logout/continue")})()'
 const evidence = await runBrowserSessionProof()
 process.stdout.write(`${JSON.stringify(evidence)}\n`)
 
@@ -709,6 +709,10 @@ async function runBrowserSessionProof() {
     await assertRole(page, "Administrator")
     await assertConsoleNavigation(page, consoleOrigin)
     await assertDesktopViewportLayout(page, consoleOrigin)
+    await assertTeamMembersViewport(page, consoleOrigin, {
+      canCreate: true,
+      heading: "Team > Manage users",
+    })
 
     if (commissioningLoginMode) {
       const session = await proveCommissioningSessionContinuity({
@@ -1295,6 +1299,7 @@ async function runBrowserSessionProof() {
     await advanceClock(6_000)
     await page.getByRole("link", { name: "Retry" }).click()
     await page.getByRole("heading", { name: "Settings" }).waitFor()
+    await page.getByRole("button", { name: "Export last 30 days" }).waitFor()
     if (integratedCoreMode && firecrawlControl) {
       const firecrawlRow = page
         .getByRole("row")
@@ -1324,19 +1329,22 @@ async function runBrowserSessionProof() {
       await keycloakLink.click()
     }
     await completeIdentityLogin(page, credentials.operator)
-    assert.equal(new URL(page.url()).pathname, "/")
+    assert.equal(new URL(page.url()).pathname, "/keys")
     await assertRole(page, "Operator")
+    await assertTeamMembersViewport(page, consoleOrigin, {
+      canCreate: false,
+      heading: "Team > Members",
+    })
     await assertConsoleNavigation(page, consoleOrigin)
     await page.goto(`${consoleOrigin}/keys/apps/new`)
     await page.getByRole("heading", { name: "Admin access required" }).waitFor()
     await page.goto(`${consoleOrigin}/team/members/new`)
     await page.getByRole("heading", { name: "Admin access required" }).waitFor()
-    await page.goto(`${consoleOrigin}/activity`)
+    await page.goto(`${consoleOrigin}/settings`)
     assert.equal(
-      await page.getByText("Export JSON", { exact: true }).count(),
+      await page.getByText("Export last 30 days", { exact: true }).count(),
       0,
     )
-    assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
     if (credentialLifecycleMode && applicationFlow) {
       await assertOperatorApplicationReadOnly(page, applicationFlow)
     }
@@ -1709,6 +1717,7 @@ async function assertExpiredSignIn(page, returnTo) {
 }
 
 async function assertConsoleNavigation(page, consoleOrigin) {
+  await assertRootKeysLanding(page, consoleOrigin)
   for (const [path, heading] of consolePaths) {
     await navigateConsolePath(page, consoleOrigin, path, heading)
   }
@@ -1720,6 +1729,25 @@ async function assertConsoleNavigation(page, consoleOrigin) {
   assert.equal(
     hrefs.some((href) => /(?:grafana|litellm|keycloak.*admin)/i.test(href)),
     false,
+  )
+}
+
+async function assertRootKeysLanding(page, consoleOrigin) {
+  await page.goto(`${consoleOrigin}/`)
+  await page.waitForURL(
+    (url) => url.origin === consoleOrigin && url.pathname === "/keys",
+  )
+  await page.getByRole("heading", { name: "Keys" }).first().waitFor()
+  const navigation = page.locator("nav[aria-label='Console navigation']")
+  assert.equal(
+    await navigation.getByRole("link", { name: "Overview" }).count(),
+    0,
+  )
+  assert.equal(
+    await navigation
+      .getByRole("link", { name: "Keys" })
+      .getAttribute("aria-current"),
+    "page",
   )
 }
 
@@ -1805,6 +1833,40 @@ async function assertDesktopViewportLayout(page, consoleOrigin) {
   }
 }
 
+async function assertTeamMembersViewport(
+  page,
+  consoleOrigin,
+  { canCreate, heading },
+) {
+  const previousViewport = page.viewportSize()
+  try {
+    await page.setViewportSize({ height: 768, width: 1024 })
+    await page.goto(`${consoleOrigin}/team/members`)
+    await page.getByRole("heading", { name: heading }).first().waitFor()
+    const layout = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      mainRight:
+        document.querySelector("main")?.getBoundingClientRect().right ?? 0,
+      scrollWidth: document.documentElement.scrollWidth,
+    }))
+    assert.equal(
+      layout.scrollWidth,
+      layout.clientWidth,
+      "/team/members overflowed at the 1024-pixel desktop boundary.",
+    )
+    assert.ok(
+      layout.mainRight <= layout.clientWidth,
+      "/team/members clipped its main Console surface at 1024 pixels.",
+    )
+    assert.equal(
+      await page.getByRole("link", { name: "Create user" }).count(),
+      canCreate ? 1 : 0,
+    )
+  } finally {
+    if (previousViewport) await page.setViewportSize(previousViewport)
+  }
+}
+
 async function proveKeycloakIdentityCookieBoundary({
   certificate,
   context,
@@ -1881,7 +1943,6 @@ async function proveKeycloakTeamConsoleFlow({
   await page.getByLabel("Name").fill(displayName)
   await page.getByLabel("Company email").fill(email)
   await page.getByLabel("Role").selectOption("operator")
-  await page.getByLabel("Group").selectOption({ label: "Operators" })
   await page.getByRole("button", { name: "Create user" }).click()
   await page.getByText("User created.", { exact: true }).waitFor()
   const firstPassword = await page.getByLabel("Generated password").inputValue()
@@ -2166,9 +2227,11 @@ async function proveKeycloakIdentityConsoleFlow({
   await page.getByRole("heading", { name: "Admin access required" }).waitFor()
   await page.goto(`${consoleOrigin}/team/members/new`)
   await page.getByRole("heading", { name: "Admin access required" }).waitFor()
-  await page.goto(`${consoleOrigin}/activity`)
-  assert.equal(await page.getByText("Export JSON", { exact: true }).count(), 0)
-  assert.equal(await page.getByText("Export CSV", { exact: true }).count(), 0)
+  await page.goto(`${consoleOrigin}/settings`)
+  assert.equal(
+    await page.getByText("Export last 30 days", { exact: true }).count(),
+    0,
+  )
 
   await page.goto(`${consoleOrigin}/`)
   await page.getByRole("button", { name: "Sign out" }).click()
@@ -2391,20 +2454,8 @@ async function proveIntegratedObservabilityConsoleFlow({
       .getByText("No active firing alerts were reported.", { exact: true })
       .waitFor()
   }
-  await page.goto(`${consoleOrigin}/`)
-  await page.getByRole("heading", { name: "Overview" }).waitFor()
-  await page.getByText("Models served", { exact: true }).waitFor()
-  await page.getByText("Targets up", { exact: true }).waitFor()
+  await assertRootKeysLanding(page, consoleOrigin)
   if (founderUat) {
-    const hardwareTile = page.locator("article").filter({
-      has: page.getByRole("heading", { name: "Hardware" }),
-    })
-    await hardwareTile.getByText("Available", { exact: true }).waitFor()
-    const systemTile = page.locator("article").filter({
-      has: page.getByRole("heading", { name: "System" }),
-    })
-    await systemTile.getByText("Operational", { exact: true }).waitFor()
-
     await page.goto(`${consoleOrigin}/settings`)
     await page.getByRole("heading", { name: "Settings" }).waitFor()
     const grafanaRow = page.getByRole("row").filter({ hasText: "Grafana" })
@@ -3353,10 +3404,7 @@ async function assertObservabilityConsoleProjection(
     await page.getByRole("heading", { name: heading }).waitFor()
   }
 
-  await page.goto(`${consoleOrigin}/`)
-  await page.getByRole("heading", { name: "Overview" }).waitFor()
-  await page.getByText("Models served", { exact: true }).waitFor()
-  await page.getByText("Targets up", { exact: true }).waitFor()
+  await assertRootKeysLanding(page, consoleOrigin)
 
   const body = await page.locator("body").innerText()
   assertNoSensitiveValues(
@@ -5230,9 +5278,6 @@ function developmentLogoutRedirect(
   })
   response.end()
 }
-
-const liteLlmGlobalLogoutScript =
-  '(()=>{for(const p of["/","/ui"])document.cookie="token=; Max-Age=0; Path="+p+"; Secure; SameSite=Lax";try{sessionStorage.removeItem("token");for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith("m"+"cp-session-"+"to"+"ken:"))sessionStorage.removeItem(k)}}catch{}try{localStorage.removeItem("litellm_selected_worker_id");localStorage.removeItem("litellm_worker_url")}catch{}location.replace("/__llmm/global-logout/continue")})()'
 
 function developmentLiteLlmGlobalLogout(request, response, url) {
   if (!["GET", "HEAD"].includes(request.method ?? "") || url.search) {

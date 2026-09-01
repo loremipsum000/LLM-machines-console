@@ -5,9 +5,17 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { test } from "node:test"
 import {
+  activityAuditRetiredConsoleHrefManifest,
+  activityAuditSurfaceRetirementBase,
+  activityAuditSurfaceRetirementPath,
   businessArchitectureCurrentBoundaryPath,
+  currentActivityRetiredLogicalSurfaceContract,
   currentKeysLogicalSurfaceContract,
+  currentOverviewRetiredLogicalSurfaceContract,
   extractPr11ConsoleHrefManifest,
+  overviewSurfaceRetiredConsoleHrefManifest,
+  overviewSurfaceRetirementBase,
+  overviewSurfaceRetirementPath,
   pr10cDecisionPath,
   pr11AllowedRepositoryPaths,
   pr11ConsoleHrefManifest,
@@ -32,7 +40,9 @@ import {
   pr11TargetContract,
   readPr11DecisionDocument,
   repositoryRoot,
+  verifyActivityAuditSurfaceRetirementDocument,
   verifyBusinessArchitectureCurrentBoundaryDocument,
+  verifyOverviewSurfaceRetirementDocument,
   verifyPr10cDecisionDocument,
   verifyPr11BaseEvidence,
   verifyPr11ConsoleHrefManifest,
@@ -147,6 +157,81 @@ test("the current protected successor uses Keys without rewriting PR-11", () => 
       { label: "Activity & Audit", href: "/activity" },
       { label: "Settings", href: "/settings" },
     ],
+  )
+})
+
+test("the Activity retirement successor has six ordered surfaces", () => {
+  assert.deepEqual(
+    currentActivityRetiredLogicalSurfaceContract.map(({ label, href }) => ({
+      label,
+      href,
+    })),
+    [
+      { label: "Overview", href: "/" },
+      { label: "Keys", href: "/keys" },
+      { label: "Inference", href: "/inference" },
+      { label: "Hardware", href: "/hardware" },
+      { label: "Team", href: "/team" },
+      { label: "Settings", href: "/settings" },
+    ],
+  )
+  const decision = JSON.parse(
+    readFileSync(
+      resolve(repositoryRoot, activityAuditSurfaceRetirementPath),
+      "utf8",
+    ),
+  )
+  assert.deepEqual(verifyActivityAuditSurfaceRetirementDocument(decision), [])
+  assert.match(
+    verifyActivityAuditSurfaceRetirementDocument({
+      ...decision,
+      retainedControls: {
+        ...decision.retainedControls,
+        auditLedger: "REMOVED",
+      },
+    }).join("\n"),
+    /retained controls/,
+  )
+  assert.deepEqual(
+    verifyPr11ConsoleHrefManifest(activityAuditRetiredConsoleHrefManifest),
+    [],
+  )
+})
+
+test("the Overview retirement successor has five ordered surfaces", () => {
+  assert.deepEqual(
+    currentOverviewRetiredLogicalSurfaceContract.map(({ label, href }) => ({
+      label,
+      href,
+    })),
+    [
+      { label: "Keys", href: "/keys" },
+      { label: "Inference", href: "/inference" },
+      { label: "Hardware", href: "/hardware" },
+      { label: "Team", href: "/team" },
+      { label: "Settings", href: "/settings" },
+    ],
+  )
+  const decision = JSON.parse(
+    readFileSync(
+      resolve(repositoryRoot, overviewSurfaceRetirementPath),
+      "utf8",
+    ),
+  )
+  assert.deepEqual(verifyOverviewSurfaceRetirementDocument(decision), [])
+  assert.match(
+    verifyOverviewSurfaceRetirementDocument({
+      ...decision,
+      customerBoundary: {
+        ...decision.customerBoundary,
+        rootTarget: "/inference",
+      },
+    }).join("\n"),
+    /customer boundary/,
+  )
+  assert.deepEqual(
+    verifyPr11ConsoleHrefManifest(overviewSurfaceRetiredConsoleHrefManifest),
+    [],
   )
 })
 
@@ -383,7 +468,10 @@ test("PR-11 rejects literal, aliased, and BFF-supplied external hrefs", () => {
     repositoryRoot,
     "packages/contracts/src/inference-core.ts",
   )
-  const contractsSource = readFileSync(contractsPath, "utf8")
+  const contractsSource = gitAt([
+    "show",
+    `${activityAuditSurfaceRetirementBase}:packages/contracts/src/inference-core.ts`,
+  ])
   assert.deepEqual(
     verifyPr11OverviewHrefContractSource(contractsSource, [
       "/keys",
@@ -402,19 +490,37 @@ test("PR-11 rejects literal, aliased, and BFF-supplied external hrefs", () => {
     /Overview tile href contract is not internal-only/,
   )
 
-  const adminRouteSource = readFileSync(
-    resolve(repositoryRoot, "apps/bff/src/routes/admin.ts"),
-    "utf8",
+  const currentContractsSource = readFileSync(contractsPath, "utf8")
+  assert.doesNotMatch(
+    currentContractsSource,
+    /adminOverview(?:Response|TokenUsage)Schema/,
   )
-  assert.deepEqual(verifyPr11OverviewRouteParseBoundary(adminRouteSource), [])
+
+  const historicalAdminRouteSource = gitAt([
+    "show",
+    `${overviewSurfaceRetirementBase}:apps/bff/src/routes/admin.ts`,
+  ])
+  assert.deepEqual(
+    verifyPr11OverviewRouteParseBoundary(historicalAdminRouteSource),
+    [],
+  )
   assert.match(
     verifyPr11OverviewRouteParseBoundary(
-      adminRouteSource.replace(
+      historicalAdminRouteSource.replace(
         /adminOverviewResponseSchema\.parse\(\s*await\s+getAdminOverview\(\s*requireActor\(request\)\s*\)\s*,?\s*\)/,
         "await getAdminOverview(requireActor(request))",
       ),
     ).join("\n"),
     /BFF Overview response is not contract-parsed/,
+  )
+
+  const currentAdminRouteSource = readFileSync(
+    resolve(repositoryRoot, "apps/bff/src/routes/admin.ts"),
+    "utf8",
+  )
+  assert.doesNotMatch(
+    currentAdminRouteSource,
+    /\/api\/admin\/overview|adminOverviewResponseSchema|getAdminOverview/,
   )
 })
 
@@ -608,7 +714,7 @@ test("PR-11 applies one exact route removal and retains the registrar inventory"
   )
 })
 
-test("PR-11 source boundary enforces the final seven-surface UI", () => {
+test("the current PR-11 successor enforces the five-surface UI", () => {
   assert.deepEqual(
     verifyPr11SourceBoundary(repositoryRoot, currentWorktreePaths()),
     [],

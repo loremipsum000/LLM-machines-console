@@ -1,7 +1,6 @@
 "use server"
 
-import { Buffer } from "node:buffer"
-import { createHash, randomUUID } from "node:crypto"
+import { randomUUID } from "node:crypto"
 import { normalizeConsoleReturnPath } from "@/lib/auth/safe-return"
 import { getCurrentConsoleSession } from "@/lib/auth/session"
 import { getBffRequest } from "@/lib/bff/server-request"
@@ -10,9 +9,6 @@ import {
   type AdminConnectedAppCredential,
   type AdminConnectedAppFirecrawlCredential,
   type AdminSettingsLanguage,
-  type AdminSettingsLogoAsset,
-  type AdminTeamCsvImportCommitResponse,
-  type AdminTeamCsvImportPreviewResponse,
   type InferenceCoreCapability,
   type InferenceCoreHumanRole,
   adminConnectedAppCreateRequestSchema,
@@ -27,16 +23,10 @@ import {
   adminConnectedAppTestResultSchema,
   adminSettingsResponseSchema,
   adminTeamActionResponseSchema,
-  adminTeamBulkGroupAssignmentRequestSchema,
-  adminTeamCsvImportCommitResponseSchema,
-  adminTeamCsvImportPreviewResponseSchema,
-  adminTeamGroupMutationResponseSchema,
   adminTeamMemberMutationResponseSchema,
-  createAdminTeamGroupRequestSchema,
   createAdminTeamMemberRequestSchema,
   deleteAdminTeamMemberRequestSchema,
   roleHasInferenceCoreCapability,
-  updateAdminTeamGroupRequestSchema,
 } from "@llm-machines/contracts/inference-core"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
@@ -50,21 +40,10 @@ export async function updateAdminSettingsOrganizationAction(
   const defaultLanguage = parseAdminSettingsLanguage(
     requiredFormValue(formData, "defaultLanguage"),
   )
-  let fullLogo: AdminSettingsLogoAsset | null | undefined
-  let iconLogo: AdminSettingsLogoAsset | null | undefined
-
-  try {
-    fullLogo = await settingsLogoAssetFromForm(formData, "fullLogo")
-    iconLogo = await settingsLogoAssetFromForm(formData, "iconLogo")
-  } catch {
-    redirectTo(withActionStatus(fallback, "settingsAction", "invalidLogo"))
-  }
 
   try {
     await postAdminSettingsMutation("/api/admin/settings/organization", {
       defaultLanguage,
-      fullLogo,
-      iconLogo,
       organizationName,
     })
   } catch (error) {
@@ -107,23 +86,7 @@ export interface TeamMemberActionState {
   error: string | null
   generatedPassword: string | null
   memberId: string | null
-  status:
-    | "idle"
-    | "created"
-    | "generated"
-    | "sent"
-    | "disabled"
-    | "reactivated"
-    | "deleted"
-    | "failed"
-}
-
-export interface TeamCsvImportActionState {
-  commit: AdminTeamCsvImportCommitResponse | null
-  csv: string
-  error: string | null
-  preview: AdminTeamCsvImportPreviewResponse | null
-  status: "committed" | "failed" | "idle" | "invalid" | "previewed"
+  status: "created" | "failed" | "generated" | "idle"
 }
 
 export async function createAdminTeamMemberAction(
@@ -134,15 +97,8 @@ export async function createAdminTeamMemberAction(
   let request: ReturnType<typeof createAdminTeamMemberRequestSchema.parse>
   try {
     const displayName = requiredFormValue(formData, "displayName")
-    const groups = teamGroupsFromForm(formData)
-    if (groups.length === 0) {
-      return {
-        error: "Select a Team group before creating the user.",
-        generatedPassword: null,
-        memberId: null,
-        status: "failed",
-      }
-    }
+    const role = parseHumanRole(requiredFormValue(formData, "role"))
+    const groups = [role === "admin" ? "Admins" : "Operators"]
 
     request = createAdminTeamMemberRequestSchema.parse({
       displayName,
@@ -150,13 +106,13 @@ export async function createAdminTeamMemberAction(
       enabled: true,
       generatePassword: checkboxFormValue(formData, "generatePassword"),
       groups,
-      role: parseHumanRole(requiredFormValue(formData, "role")),
-      sendInvite: checkboxFormValue(formData, "sendInvite"),
+      role,
+      sendInvite: false,
       username: generatedTeamUsername(displayName, groups[0]),
     })
   } catch {
     return {
-      error: "Name, company email, role, and group are required.",
+      error: "Name, company email, and role are required.",
       generatedPassword: null,
       memberId: null,
       status: "failed",
@@ -187,50 +143,6 @@ export async function createAdminTeamMemberAction(
       status: "failed",
     }
   }
-}
-
-export async function sendAdminTeamInviteAction(
-  formData: FormData,
-): Promise<void> {
-  await requireCapability("team.users_roles.manage")
-  const memberId = requiredFormValue(formData, "memberId")
-  const fallback = teamReturnHref(formData, `/team/members/${memberId}`)
-
-  try {
-    await postAdminTeamActionMutation(
-      `/api/admin/team/members/${encodeURIComponent(memberId)}/invite`,
-      undefined,
-    )
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    redirectTo(withActionStatus(fallback, "teamAction", "failed"))
-  }
-
-  revalidatePath("/team")
-  redirectTo(withActionStatus(fallback, "teamAction", "inviteSent"))
-}
-
-export async function sendAdminTeamPasswordResetAction(
-  formData: FormData,
-): Promise<void> {
-  await requireCapability("team.local_password.manage")
-  const memberId = requiredFormValue(formData, "memberId")
-  const fallback = teamReturnHref(formData, `/team/members/${memberId}`)
-
-  try {
-    await postAdminTeamActionMutation(
-      `/api/admin/team/members/${encodeURIComponent(
-        memberId,
-      )}/reset-password-email`,
-      undefined,
-    )
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    redirectTo(withActionStatus(fallback, "teamAction", "failed"))
-  }
-
-  revalidatePath("/team")
-  redirectTo(withActionStatus(fallback, "teamAction", "passwordResetSent"))
 }
 
 export async function generateAdminTeamPasswordAction(
@@ -339,215 +251,6 @@ export async function deleteAdminTeamMemberAction(
       "deleted",
     ),
   )
-}
-
-export async function createAdminTeamGroupAction(
-  formData: FormData,
-): Promise<void> {
-  await requireCapability("team.users_roles.manage")
-  const request = createAdminTeamGroupRequestSchema.parse({
-    name: requiredFormValue(formData, "name"),
-  })
-  const fallback = teamReturnHref(formData, "/team/groups/new")
-  let groupId: string | null = null
-
-  try {
-    const result = await postAdminTeamGroupMutation(
-      "/api/admin/team/groups",
-      request,
-    )
-    if (!result.group) {
-      throw new Error("Team group create response did not include a group.")
-    }
-    groupId = result.group.id
-    revalidatePath("/team")
-    revalidatePath("/team/groups")
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    redirectTo(withActionStatus(fallback, "teamAction", "failed"))
-  }
-  redirectTo(
-    withActionStatus(
-      `/team/groups/${encodeURIComponent(groupId ?? "")}`,
-      "teamAction",
-      "groupCreated",
-    ),
-  )
-}
-
-export async function updateAdminTeamGroupAction(
-  formData: FormData,
-): Promise<void> {
-  await requireCapability("team.users_roles.manage")
-  const groupId = requiredFormValue(formData, "groupId")
-  const fallback = teamReturnHref(formData, `/team/groups/${groupId}`)
-  const request = updateAdminTeamGroupRequestSchema.parse({
-    name: requiredFormValue(formData, "name"),
-  })
-
-  try {
-    await postAdminTeamGroupMutation(
-      `/api/admin/team/groups/${encodeURIComponent(groupId)}/update`,
-      request,
-    )
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    redirectTo(withActionStatus(fallback, "teamAction", "failed"))
-  }
-
-  revalidatePath("/team")
-  revalidatePath(`/team/groups/${groupId}`)
-  redirectTo(withActionStatus(fallback, "teamAction", "groupUpdated"))
-}
-
-export async function deleteAdminTeamGroupAction(
-  formData: FormData,
-): Promise<void> {
-  await requireCapability("team.users_roles.manage")
-  const groupId = requiredFormValue(formData, "groupId")
-  const fallback = teamReturnHref(formData, `/team/groups/${groupId}`)
-  const confirmation = requiredFormValue(formData, "confirmation")
-
-  if (confirmation !== "DELETE") {
-    redirectTo(
-      withActionStatus(fallback, "teamAction", "groupDeleteConfirmation"),
-    )
-  }
-
-  try {
-    await postAdminTeamGroupMutation(
-      `/api/admin/team/groups/${encodeURIComponent(groupId)}/delete`,
-      undefined,
-    )
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    redirectTo(withActionStatus(fallback, "teamAction", "failed"))
-  }
-
-  revalidatePath("/team")
-  revalidatePath("/team/groups")
-  redirectTo(withActionStatus("/team", "teamAction", "groupDeleted"))
-}
-
-export async function bulkAssignAdminTeamGroupMembersAction(
-  formData: FormData,
-): Promise<void> {
-  await requireCapability("team.users_roles.manage")
-  const groupId = requiredFormValue(formData, "groupId")
-  const fallback = teamReturnHref(formData, `/team/groups/${groupId}`)
-  const request = adminTeamBulkGroupAssignmentRequestSchema.safeParse({
-    memberIds: formData.getAll("memberIds").flatMap((value) => {
-      const memberId = String(value)
-      return memberId ? [memberId] : []
-    }),
-  })
-  if (!request.success) {
-    redirectTo(withActionStatus(fallback, "teamAction", "missingSelection"))
-  }
-
-  try {
-    await postAdminTeamGroupMutation(
-      `/api/admin/team/groups/${encodeURIComponent(
-        groupId,
-      )}/members/bulk-assign`,
-      request.data,
-    )
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    redirectTo(withActionStatus(fallback, "teamAction", "failed"))
-  }
-
-  revalidatePath("/team")
-  revalidatePath(`/team/groups/${groupId}`)
-  redirectTo(withActionStatus(fallback, "teamAction", "groupMembersAssigned"))
-}
-
-export async function removeAdminTeamGroupMemberAction(
-  formData: FormData,
-): Promise<void> {
-  await requireCapability("team.users_roles.manage")
-  const groupId = requiredFormValue(formData, "groupId")
-  const memberId = requiredFormValue(formData, "memberId")
-  const fallback = teamReturnHref(formData, `/team/groups/${groupId}`)
-
-  try {
-    await postAdminTeamGroupMutation(
-      `/api/admin/team/groups/${encodeURIComponent(
-        groupId,
-      )}/members/${encodeURIComponent(memberId)}/remove`,
-      undefined,
-    )
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    redirectTo(withActionStatus(fallback, "teamAction", "failed"))
-  }
-
-  revalidatePath("/team")
-  revalidatePath(`/team/groups/${groupId}`)
-  redirectTo(withActionStatus(fallback, "teamAction", "groupMemberRemoved"))
-}
-
-export async function previewAdminTeamCsvImportAction(
-  _previousState: TeamCsvImportActionState,
-  formData: FormData,
-): Promise<TeamCsvImportActionState> {
-  await requireCapability("team.users_roles.manage")
-  const csv = await csvTextFromForm(formData)
-  if (!csv) {
-    return emptyCsvImportState("CSV file is required.")
-  }
-
-  try {
-    const preview = await postAdminTeamCsvImportPreviewMutation(
-      "/api/admin/team/import/preview",
-      { csv },
-    )
-    return {
-      commit: null,
-      csv,
-      error: null,
-      preview,
-      status: preview.valid ? "previewed" : "invalid",
-    }
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    return emptyCsvImportState("CSV import preview failed.")
-  }
-}
-
-export async function commitAdminTeamCsvImportAction(
-  _previousState: TeamCsvImportActionState,
-  formData: FormData,
-): Promise<TeamCsvImportActionState> {
-  await requireCapability("team.users_roles.manage")
-  const csv = requiredFormValue(formData, "csv")
-  const allowPartial = checkboxFormValue(formData, "allowPartial")
-
-  try {
-    const commit = await postAdminTeamCsvImportCommitMutation(
-      "/api/admin/team/import/commit",
-      { allowPartial, csv },
-    )
-    revalidatePath("/team")
-    revalidatePath("/team/groups")
-    return {
-      commit,
-      csv,
-      error: null,
-      preview: commit,
-      status: "committed",
-    }
-  } catch (error) {
-    rethrowTerminalConsoleSession(error)
-    return {
-      commit: null,
-      csv,
-      error:
-        "CSV import commit failed. Fix invalid rows or explicitly allow partial import.",
-      preview: null,
-      status: "failed",
-    }
-  }
 }
 
 export interface ConnectedAppCreateActionState {
@@ -1025,7 +728,7 @@ function consoleElevationReturnPath(
     return "/team"
   }
   if (capability.startsWith("activity_audit.")) {
-    return "/activity"
+    return "/settings"
   }
   if (
     capability.startsWith("updates.") ||
@@ -1123,33 +826,6 @@ async function postAdminTeamActionMutation(
 ) {
   return adminTeamActionResponseSchema.parse(
     await postAdminMutation(path, body, "Team member action"),
-  )
-}
-
-async function postAdminTeamGroupMutation(
-  path: string,
-  body: unknown | undefined,
-) {
-  return adminTeamGroupMutationResponseSchema.parse(
-    await postAdminMutation(path, body, "Team group"),
-  )
-}
-
-async function postAdminTeamCsvImportPreviewMutation(
-  path: string,
-  body: unknown,
-) {
-  return adminTeamCsvImportPreviewResponseSchema.parse(
-    await postAdminMutation(path, body, "Team CSV import preview"),
-  )
-}
-
-async function postAdminTeamCsvImportCommitMutation(
-  path: string,
-  body: unknown,
-) {
-  return adminTeamCsvImportCommitResponseSchema.parse(
-    await postAdminMutation(path, body, "Team CSV import commit"),
   )
 }
 
@@ -1309,39 +985,6 @@ function checkboxFormValue(formData: FormData, name: string): boolean {
   return formData.get(name) === "on"
 }
 
-async function csvTextFromForm(formData: FormData): Promise<string> {
-  const file = formData.get("csvFile")
-  if (file instanceof File && file.size > 0) {
-    if (typeof file.text === "function") {
-      return (await file.text()).trim()
-    }
-    if (typeof file.arrayBuffer === "function") {
-      return new TextDecoder().decode(await file.arrayBuffer()).trim()
-    }
-  }
-  return optionalFormValue(formData, "csv") ?? ""
-}
-
-function emptyCsvImportState(error: string): TeamCsvImportActionState {
-  return {
-    commit: null,
-    csv: "",
-    error,
-    preview: null,
-    status: "failed",
-  }
-}
-
-function teamGroupsFromForm(formData: FormData): string[] {
-  return formData.getAll("groups").flatMap((value) => {
-    if (typeof value !== "string") {
-      return []
-    }
-    const group = value.trim()
-    return group.length > 0 && group !== "Everyone" ? [group] : []
-  })
-}
-
 function generatedTeamUsername(displayName: string, groupName: string): string {
   const username = [usernameSegment(displayName), usernameSegment(groupName)]
     .filter(Boolean)
@@ -1363,57 +1006,6 @@ function parseHumanRole(value: string): InferenceCoreHumanRole {
     return value
   }
   throw new Error("role must be operator or admin.")
-}
-
-async function settingsLogoAssetFromForm(
-  formData: FormData,
-  name: "fullLogo" | "iconLogo",
-): Promise<AdminSettingsLogoAsset | null | undefined> {
-  if (checkboxFormValue(formData, `clear${capitalize(name)}`)) {
-    return null
-  }
-
-  const value = formData.get(name)
-  if (!(value instanceof File) || value.size === 0) {
-    return undefined
-  }
-  if (value.type !== "image/png" && value.type !== "image/jpeg") {
-    throw new Error("Logo must be a PNG or JPEG.")
-  }
-  if (value.size > 1024 * 1024) {
-    throw new Error("Logo must be at or below 1 MiB.")
-  }
-
-  const width = parsePositiveInteger(
-    requiredFormValue(formData, `${name}Width`),
-  )
-  const height = parsePositiveInteger(
-    requiredFormValue(formData, `${name}Height`),
-  )
-  if (name === "iconLogo" && width !== height) {
-    throw new Error("Icon logo must use a 1:1 aspect ratio.")
-  }
-
-  const buffer = Buffer.from(await value.arrayBuffer())
-  const mimeType = value.type as AdminSettingsLogoAsset["mimeType"]
-  return {
-    checksum: `sha256:${createHash("sha256").update(buffer).digest("hex")}`,
-    dataUrl: `data:${mimeType};base64,${buffer.toString("base64")}`,
-    fileName: value.name,
-    height,
-    mimeType,
-    sizeBytes: value.size,
-    updatedAt: new Date().toISOString(),
-    width,
-  }
-}
-
-function parsePositiveInteger(value: string): number {
-  const parsed = Number.parseInt(value, 10)
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    throw new Error("Expected a positive integer.")
-  }
-  return parsed
 }
 
 function parseAdminSettingsLanguage(value: string): AdminSettingsLanguage {
@@ -1508,8 +1100,4 @@ function withActionStatus(href: string, key: string, value: string): string {
   const params = new URLSearchParams(query)
   params.set(key, value)
   return `${path}?${params.toString()}`
-}
-
-function capitalize(value: string): string {
-  return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`
 }

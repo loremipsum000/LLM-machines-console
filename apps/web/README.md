@@ -2,13 +2,15 @@
 
 The customer Console is a focused control-plane UI with these retained surfaces:
 
-- `/` (Overview)
-- `/activity`
-- `/applications`
+- `/` (authenticated compatibility redirect to `/keys`)
+- `/keys`
 - `/inference`
 - `/hardware`
 - `/team`
 - `/settings`
+
+Legacy `/applications` paths redirect temporarily to their canonical `/keys`
+equivalents.
 
 Routes outside this retained set bypass authentication middleware so Next.js
 can return its normal `404` response.

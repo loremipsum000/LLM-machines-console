@@ -28,10 +28,11 @@ export const pr12ReleaseTestGateBindingPath =
   "docs/reduction/inference-core/pr-12-release-test-gate-binding.json"
 
 const pr12ReleaseTestCommand =
-  "node --test infra/inference/*.test.mjs infra/release/*.test.mjs infra/firecrawl/release/*.test.mjs infra/keycloak/*.test.mjs scripts/inference-core/pr12-*.test.mjs"
+  "node --test infra/genesis/*.test.mjs infra/inference/*.test.mjs infra/release/*.test.mjs infra/firecrawl/release/*.test.mjs infra/keycloak/*.test.mjs scripts/inference-core/pr12-*.test.mjs"
 const pr12FullProductTestCommand =
   "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm run test:release && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test"
 const pr12RequiredReleaseTestSuites = [
+  "infra/genesis/*.test.mjs",
   "infra/inference/*.test.mjs",
   "infra/release/*.test.mjs",
   "infra/firecrawl/release/*.test.mjs",
@@ -1756,6 +1757,7 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/validation-register.md",
   "docs/reduction/inference-core/retention-characterization.json",
   "docs/reduction/inference-core/route-baseline.json",
+  "infra/genesis/source-classification.json",
   "infra/firecrawl/release/locks/Cargo.lock",
   "infra/firecrawl/release/locks/api-wolfi.sha256",
   "infra/firecrawl/release/locks/playwright-wolfi.sha256",
@@ -2275,6 +2277,14 @@ export const pr04StandaloneDbTestBoundary = {
     "typecheck:inference-core-db":
       "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests typecheck",
   },
+}
+
+const productLicenseStandaloneDbManifestSuccessor = {
+  path: "test-support/inference-core-db-tests/package.json",
+  predecessorSha256:
+    "ff725f8972d4a0e4ed349daa1ffbfb4aa10ab40a4c76be60f739125781c85470",
+  sha256: "da14a2dc68d44fffdc0c31e99dcd39153717979499f753d5bbb92bae2a5471d9",
+  license: "SEE LICENSE IN LICENSE",
 }
 
 export const pr05StandaloneDbTestBoundary = {
@@ -3530,6 +3540,410 @@ export const currentKeysLogicalSurfaceContract = pr11LogicalSurfaceContract.map(
       : surface,
 )
 
+export const currentActivityRetiredLogicalSurfaceContract =
+  currentKeysLogicalSurfaceContract.filter(({ id }) => id !== "activity-audit")
+
+export const currentOverviewRetiredLogicalSurfaceContract =
+  currentActivityRetiredLogicalSurfaceContract.filter(
+    ({ id }) => id !== "overview",
+  )
+
+export const activityAuditSurfaceRetirementPath =
+  "docs/reduction/inference-core/console-activity-audit-surface-retirement.json"
+export const activityAuditSurfaceRetirementBase =
+  "1546448712fb6863538153c3aa97f227f735715a"
+export const activityAuditSurfaceRetirementBaseTree =
+  "53c6483060dc49b5be5d78443200964eabf560ff"
+export const overviewTokenUsageRefinementPath =
+  "docs/reduction/inference-core/console-overview-token-usage-refinement.json"
+export const overviewTokenUsageRefinementBase =
+  "ac4a4821fb49625e76344f25d38de41b6aef09ab"
+export const overviewTokenUsageRefinementBaseTree =
+  "02dc3621728067aecf14bbafd74a4a2f525a837f"
+export const overviewSurfaceRetirementPath =
+  "docs/reduction/inference-core/console-overview-surface-retirement.json"
+export const overviewSurfaceRetirementBase =
+  "94c60abd28d95cec456ddaec3ed7fabdff4fc6d6"
+export const overviewSurfaceRetirementBaseTree =
+  "4c00bb0583f73e58ff0faaee947e59c9a5fe0f52"
+export const teamDeferredCapabilitiesBoundaryPath =
+  "docs/reduction/inference-core/console-team-deferred-capabilities-boundary.json"
+export const teamDeferredCapabilitiesBoundaryBase =
+  "48731b98f6a82eb5dccadf3c04cd348c36bed348"
+export const teamDeferredCapabilitiesBoundaryBaseTree =
+  "5ce0ac6299c43e4a6071df2d81f5054c46d378e9"
+export const overviewTokenUsageRefinementSha256 =
+  "b2895e5bd29d5779d65ef8ee1e1daa4c9dc0b0fca32d3dea85036493a4682394"
+export const overviewSurfaceRetiredSourcePaths = [
+  "apps/bff/src/routes/admin-overview-health.test.ts",
+  "apps/bff/src/routes/admin-overview-ops.test.ts",
+  "apps/bff/src/services/admin-health.ts",
+  "apps/bff/src/services/admin-ops-parsers.ts",
+  "apps/bff/src/services/admin-ops.ts",
+  "apps/bff/src/services/admin-overview.test.ts",
+  "apps/bff/src/services/admin-overview.ts",
+  "apps/web/src/components/console-v2/overview-v2-experience.test.tsx",
+  "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+  "apps/web/src/components/console-v2/token-usage-grid.test.tsx",
+  "apps/web/src/components/console-v2/token-usage-grid.tsx",
+]
+
+export function verifyActivityAuditSurfaceRetirementDocument(document) {
+  const expected = {
+    schemaVersion: 1,
+    id: "CONSOLE-ACTIVITY-AUDIT-SURFACE-RETIREMENT",
+    status: "SOURCE_SUCCESSOR_CANDIDATE",
+    base: {
+      commit: activityAuditSurfaceRetirementBase,
+      tree: activityAuditSurfaceRetirementBaseTree,
+    },
+    customerBoundary: {
+      logicalSurfaces: [
+        "Overview",
+        "Keys",
+        "Inference",
+        "Hardware",
+        "Team",
+        "Settings",
+      ],
+      removedRoute: "/activity",
+      removedRouteBehavior: "ABSENT_404",
+      overviewRecentActivity: "METADATA_ONLY_NON_INTERACTIVE",
+      auditEvidenceLocation: "/settings",
+      coreCompatibilityFingerprint:
+        "sha256:8ef12de33f7d900f2c6b9a1f8117f8635088d655b52bd7fa5c481c32117b293e",
+    },
+    retainedControls: {
+      auditReadApi: "/api/admin/audit",
+      signedExportApis: [
+        "/api/admin/audit/export",
+        "/api/admin/audit/export/verification-keys",
+      ],
+      adminExportOnly: true,
+      operatorExportDenied: true,
+      auditLedger: "RETAINED",
+      nativeIngestion: "RETAINED",
+      metadataOnlyRetention: "RETAINED",
+      authorizationAndSigning: "RETAINED",
+    },
+    historicalEvidence: "PRESERVED_UNCHANGED",
+    productAccepted: false,
+    runtimeQualified: false,
+    contractActivation: "INACTIVE",
+    genesis: "UNPUBLISHED",
+  }
+  if (JSON.stringify(document) === JSON.stringify(expected)) {
+    return []
+  }
+  const errors = []
+  if (
+    JSON.stringify(document?.retainedControls) !==
+    JSON.stringify(expected.retainedControls)
+  ) {
+    errors.push("Activity retirement changed retained controls")
+  }
+  if (
+    JSON.stringify(document?.customerBoundary) !==
+    JSON.stringify(expected.customerBoundary)
+  ) {
+    errors.push("Activity retirement changed the customer boundary")
+  }
+  if (
+    document?.productAccepted !== false ||
+    document?.runtimeQualified !== false ||
+    document?.contractActivation !== "INACTIVE" ||
+    document?.genesis !== "UNPUBLISHED"
+  ) {
+    errors.push("Activity retirement overstated Product status")
+  }
+  if (errors.length === 0) {
+    errors.push("Activity retirement decision shape changed")
+  }
+  return errors.sort()
+}
+
+export function verifyOverviewTokenUsageRefinementDocument(document) {
+  const expected = {
+    schemaVersion: 1,
+    id: "CONSOLE-OVERVIEW-TOKEN-USAGE-REFINEMENT",
+    status: "SOURCE_SUCCESSOR_CANDIDATE",
+    base: {
+      commit: overviewTokenUsageRefinementBase,
+      tree: overviewTokenUsageRefinementBaseTree,
+    },
+    predecessor: {
+      id: "CONSOLE-ACTIVITY-AUDIT-SURFACE-RETIREMENT",
+      record: activityAuditSurfaceRetirementPath,
+      historicalEvidence: "PRESERVED_UNCHANGED",
+    },
+    overview: {
+      recentActivity: "ABSENT",
+      operationalCards: {
+        ids: ["applications", "inference", "hardware", "system"],
+        layout: "ONE_COLUMN_FULL_WIDTH",
+      },
+      tokenUsage: {
+        source: "LITELLM_AGGREGATE_USAGE",
+        range: "90d",
+        timezone: "UTC",
+        granularity: "day",
+        maximumPoints: 90,
+        missingDays: "NOT_REPORTED_NOT_ZERO",
+        scale: "RELATIVE_LOG_FOUR_BLUE_LEVELS",
+        promptResponseRetention: false,
+      },
+    },
+    settingsAuditExport: {
+      role: "admin",
+      operatorSurface: "ABSENT",
+      control: "ONE_BUTTON",
+      label: "Export last 30 days",
+      method: "GET",
+      path: "/api/admin/audit/export",
+      format: "json",
+      windowDays: 30,
+      verificationKeyApi: "RETAINED_WITHOUT_SECOND_UI_CONTROL",
+    },
+    retainedControls: {
+      auditReadApi: "/api/admin/audit",
+      signedExportApis: [
+        "/api/admin/audit/export",
+        "/api/admin/audit/export/verification-keys",
+      ],
+      auditLedger: "RETAINED",
+      nativeIngestion: "RETAINED",
+      metadataOnlyRetention: "RETAINED",
+      authorizationAndSigning: "RETAINED",
+    },
+    productAccepted: false,
+    runtimeQualified: false,
+    contractActivation: "INACTIVE",
+    genesis: "UNPUBLISHED",
+  }
+  if (JSON.stringify(document) === JSON.stringify(expected)) {
+    return []
+  }
+  const errors = []
+  if (
+    JSON.stringify(document?.overview) !== JSON.stringify(expected.overview)
+  ) {
+    errors.push("Overview token-usage refinement boundary changed")
+  }
+  if (
+    JSON.stringify(document?.settingsAuditExport) !==
+    JSON.stringify(expected.settingsAuditExport)
+  ) {
+    errors.push("Overview token-usage refinement audit export changed")
+  }
+  if (
+    JSON.stringify(document?.retainedControls) !==
+    JSON.stringify(expected.retainedControls)
+  ) {
+    errors.push("Overview token-usage refinement changed retained controls")
+  }
+  if (
+    document?.productAccepted !== false ||
+    document?.runtimeQualified !== false ||
+    document?.contractActivation !== "INACTIVE" ||
+    document?.genesis !== "UNPUBLISHED"
+  ) {
+    errors.push("Overview token-usage refinement overstated Product status")
+  }
+  if (errors.length === 0) {
+    errors.push("Overview token-usage refinement decision shape changed")
+  }
+  return errors.sort()
+}
+
+export function verifyOverviewSurfaceRetirementDocument(document) {
+  const expected = {
+    schemaVersion: 1,
+    id: "CONSOLE-OVERVIEW-SURFACE-RETIREMENT",
+    status: "SOURCE_SUCCESSOR_CANDIDATE",
+    base: {
+      commit: overviewSurfaceRetirementBase,
+      tree: overviewSurfaceRetirementBaseTree,
+    },
+    predecessor: {
+      id: "CONSOLE-OVERVIEW-TOKEN-USAGE-REFINEMENT",
+      record: overviewTokenUsageRefinementPath,
+      sha256: overviewTokenUsageRefinementSha256,
+      historicalEvidence: "PRESERVED_UNCHANGED",
+    },
+    customerBoundary: {
+      logicalSurfaces: ["Keys", "Inference", "Hardware", "Team", "Settings"],
+      removedSurface: "Overview",
+      rootRoute: "/",
+      rootBehavior: "AUTHENTICATED_REDIRECT_TO_KEYS",
+      rootTarget: "/keys",
+      removedWebRoute: "/overview",
+      removedWebRouteBehavior: "ABSENT_404",
+      removedWebPaths: [
+        "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+        "apps/web/src/components/console-v2/overview-v2-experience.test.tsx",
+        "apps/web/src/components/console-v2/token-usage-grid.tsx",
+        "apps/web/src/components/console-v2/token-usage-grid.test.tsx",
+      ],
+      removedBffPath: "/api/admin/overview",
+      removedBffBehavior: "ABSENT_404",
+      removedBffSourcePaths: [
+        "apps/bff/src/services/admin-overview.ts",
+        "apps/bff/src/services/admin-overview.test.ts",
+        "apps/bff/src/services/admin-health.ts",
+        "apps/bff/src/services/admin-ops.ts",
+        "apps/bff/src/services/admin-ops-parsers.ts",
+      ],
+      coreCompatibilityFingerprint:
+        "sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40",
+    },
+    retainedControls: {
+      auditEvidenceLocation: "/settings",
+      auditExportLabel: "Export last 30 days",
+      auditReadApi: "/api/admin/audit",
+      signedExportApis: [
+        "/api/admin/audit/export",
+        "/api/admin/audit/export/verification-keys",
+      ],
+      adminExportOnly: true,
+      operatorExportDenied: true,
+      auditLedger: "RETAINED",
+      nativeIngestion: "RETAINED",
+      metadataOnlyRetention: "RETAINED",
+      authorizationAndSigning: "RETAINED",
+    },
+    historicalEvidence: "PRESERVED_UNCHANGED",
+    productAccepted: false,
+    runtimeQualified: false,
+    contractActivation: "INACTIVE",
+    genesis: "UNPUBLISHED",
+  }
+  if (JSON.stringify(document) === JSON.stringify(expected)) {
+    return []
+  }
+  const errors = []
+  if (
+    JSON.stringify(document?.customerBoundary) !==
+    JSON.stringify(expected.customerBoundary)
+  ) {
+    errors.push("Overview retirement changed the customer boundary")
+  }
+  if (
+    JSON.stringify(document?.retainedControls) !==
+    JSON.stringify(expected.retainedControls)
+  ) {
+    errors.push("Overview retirement changed retained controls")
+  }
+  if (
+    document?.productAccepted !== false ||
+    document?.runtimeQualified !== false ||
+    document?.contractActivation !== "INACTIVE" ||
+    document?.genesis !== "UNPUBLISHED"
+  ) {
+    errors.push("Overview retirement overstated Product status")
+  }
+  if (errors.length === 0) {
+    errors.push("Overview retirement decision shape changed")
+  }
+  return errors.sort()
+}
+
+export function verifyTeamDeferredCapabilitiesBoundaryDocument(document) {
+  const expected = {
+    schemaVersion: 1,
+    id: "CONSOLE-TEAM-DEFERRED-CAPABILITIES-BOUNDARY",
+    status: "SOURCE_SUCCESSOR_CANDIDATE",
+    base: {
+      commit: teamDeferredCapabilitiesBoundaryBase,
+      tree: teamDeferredCapabilitiesBoundaryBaseTree,
+    },
+    predecessor: {
+      id: "F0-I2-KEYCLOAK-TEAM",
+      record: "docs/reduction/inference-core/f0-i2-keycloak-team.json",
+      sha256:
+        "d2312012cbe4911fe7def6dc1df5580adc6c3295f039adf8e459dc75b2cf66da",
+      historicalEvidence: "PRESERVED_UNCHANGED",
+    },
+    currentBoundary: {
+      retained: [
+        "ADMIN_CREATE_USER_WITH_CANONICAL_ROLE",
+        "ADMIN_GENERATE_ONE_TIME_PASSWORD",
+        "ADMIN_DISABLE_USER",
+        "ADMIN_REACTIVATE_USER",
+        "ADMIN_DELETE_USER_WITH_EXACT_CONFIRMATION",
+        "ADMIN_VIEW_APPROVED_USER_METADATA",
+        "OPERATOR_READ_ONLY_TEAM_VIEW",
+      ],
+      deferred: [
+        "ARBITRARY_GROUP_ADMINISTRATION",
+        "CSV_IMPORT",
+        "EMAIL_DELIVERY",
+        "IDENTITY_MIGRATION",
+      ],
+      deferredBffBehavior: "ABSENT_404",
+      retiredWebBehavior: "ROUTE_REMOVED_OR_EXPLICIT_NO_STORE_404_TOMBSTONE",
+      removedWebRoutes: [
+        "/team/groups/:id",
+        "/team/groups/new",
+        "/team/import",
+      ],
+      tombstonedWebRoutes: [
+        {
+          method: "GET",
+          path: "/team/import/template",
+          status: 404,
+          cacheControl: "no-store",
+        },
+      ],
+      removedBffRoutes: [
+        "GET /api/admin/team/csv-template",
+        "GET /api/admin/team/groups/:id",
+        "POST /api/admin/team/groups",
+        "POST /api/admin/team/groups/:id/delete",
+        "POST /api/admin/team/groups/:id/members/:memberId/remove",
+        "POST /api/admin/team/groups/:id/members/bulk-assign",
+        "POST /api/admin/team/groups/:id/update",
+        "POST /api/admin/team/import/commit",
+        "POST /api/admin/team/import/preview",
+        "POST /api/admin/team/members/:id/invite",
+        "POST /api/admin/team/members/:id/reset-password-email",
+      ],
+    },
+    historicalEvidence: "PRESERVED_UNCHANGED",
+    productAccepted: false,
+    runtimeQualified: false,
+    contractActivation: "INACTIVE",
+    genesis: "UNPUBLISHED",
+  }
+  if (JSON.stringify(document) === JSON.stringify(expected)) {
+    return []
+  }
+  const errors = []
+  if (
+    JSON.stringify(document?.currentBoundary) !==
+    JSON.stringify(expected.currentBoundary)
+  ) {
+    errors.push("Team deferred-capability boundary changed")
+  }
+  if (
+    JSON.stringify(document?.predecessor) !==
+    JSON.stringify(expected.predecessor)
+  ) {
+    errors.push("Team deferred-capability predecessor changed")
+  }
+  if (
+    document?.productAccepted !== false ||
+    document?.runtimeQualified !== false ||
+    document?.contractActivation !== "INACTIVE" ||
+    document?.genesis !== "UNPUBLISHED"
+  ) {
+    errors.push("Team deferred-capability boundary overstated Product status")
+  }
+  if (errors.length === 0) {
+    errors.push("Team deferred-capability decision shape changed")
+  }
+  return errors.sort()
+}
+
 export const businessArchitectureCurrentBoundaryPath =
   "docs/reduction/inference-core/business-architecture-current-boundary.json"
 
@@ -3835,6 +4249,54 @@ export const pr11KeysGrafanaConsoleHrefManifest = [
   {
     path: "apps/web/src/components/console-v2/hardware-v2-experience.tsx",
     expression: "expression:grafanaHref",
+  },
+].sort(comparePr11HrefEntries)
+
+export const activityAuditRetiredConsoleHrefManifest = [
+  ...pr11KeysGrafanaConsoleHrefManifest.filter(
+    ({ path, expression }) =>
+      path !==
+        "apps/web/src/components/console-v2/activity-v2-experience.tsx" &&
+      !(
+        path ===
+          "apps/web/src/components/console-v2/overview-v2-experience.tsx" &&
+        ["expression:event.href", "literal:/activity"].includes(expression)
+      ),
+  ),
+  {
+    path: "apps/web/src/components/console-v2/audit-evidence-panel.tsx",
+    expression: "literal:/api/admin/audit/export/verification-keys",
+  },
+].sort(comparePr11HrefEntries)
+
+export const overviewTokenUsageConsoleHrefManifest =
+  activityAuditRetiredConsoleHrefManifest.filter(
+    ({ path }) =>
+      path !== "apps/web/src/components/console-v2/audit-evidence-panel.tsx",
+  )
+
+export const overviewSurfaceRetiredConsoleHrefManifest =
+  overviewTokenUsageConsoleHrefManifest.filter(
+    ({ path }) =>
+      path !==
+        "apps/web/src/components/console-v2/overview-v2-experience.tsx" &&
+      path !== "apps/web/src/components/console-v2/token-usage-grid.tsx",
+  )
+
+export const teamDeferredCapabilitiesRetiredConsoleHrefManifest = [
+  ...overviewSurfaceRetiredConsoleHrefManifest.filter(
+    ({ path, expression }) =>
+      !(
+        path === "apps/web/src/components/console-v2/team-v2-experience.tsx" &&
+        [
+          "expression:`/team/groups/${group.id}`",
+          "literal:/team/import/template",
+        ].includes(expression)
+      ),
+  ),
+  {
+    path: "apps/web/src/components/console-v2/team-v2-experience.tsx",
+    expression: "expression:`/team/members/${memberId}`",
   },
 ].sort(comparePr11HrefEntries)
 
@@ -5861,7 +6323,13 @@ export function verifyStandaloneDbTestBoundary(
       continue
     }
     const actualSha256 = sha256(readFileSync(absolutePath))
-    if (actualSha256 !== evidence.sha256) {
+    const acceptedProductLicenseSuccessor =
+      evidence === boundary.packageManifest &&
+      evidence.path === productLicenseStandaloneDbManifestSuccessor.path &&
+      evidence.sha256 ===
+        productLicenseStandaloneDbManifestSuccessor.predecessorSha256 &&
+      actualSha256 === productLicenseStandaloneDbManifestSuccessor.sha256
+    if (actualSha256 !== evidence.sha256 && !acceptedProductLicenseSuccessor) {
       errors.push(
         `standalone DB test boundary changed ${evidence.path} expected=${evidence.sha256} actual=${actualSha256}`,
       )
@@ -5880,7 +6348,21 @@ export function verifyStandaloneDbTestBoundary(
       devDependencies: boundary.packageManifest.devDependencies,
     }
     const manifest = readJson(resolve(root, manifestPath))
-    if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest)) {
+    const expectedProductLicenseSuccessor = {
+      name: boundary.packageManifest.name,
+      private: true,
+      license: productLicenseStandaloneDbManifestSuccessor.license,
+      version: "0.0.0",
+      type: "module",
+      packageManager: boundary.packageManifest.packageManager,
+      scripts: boundary.packageManifest.scripts,
+      devDependencies: boundary.packageManifest.devDependencies,
+    }
+    if (
+      JSON.stringify(manifest) !== JSON.stringify(expectedManifest) &&
+      JSON.stringify(manifest) !==
+        JSON.stringify(expectedProductLicenseSuccessor)
+    ) {
       errors.push("invalid standalone DB test package manifest")
     }
   }
@@ -6285,6 +6767,32 @@ function hasPr11aR1V1SourceClosureMarker(root) {
         "scripts/inference-core/pr11a-r1-v1-source-closure.test.mjs",
       ),
     )
+  )
+}
+
+function hasActivityAuditSurfaceRetirementMarker(root) {
+  return isRegularFile(resolve(root, activityAuditSurfaceRetirementPath))
+}
+
+function hasOverviewTokenUsageRefinementMarker(root) {
+  return isRegularFile(resolve(root, overviewTokenUsageRefinementPath))
+}
+
+function hasOverviewSurfaceRetirementMarker(root) {
+  return isRegularFile(resolve(root, overviewSurfaceRetirementPath))
+}
+
+function hasTeamDeferredCapabilitiesBoundaryMarker(root) {
+  return isRegularFile(resolve(root, teamDeferredCapabilitiesBoundaryPath))
+}
+
+function usesOverviewSurfaceRetirement(root, currentRoutes) {
+  if (!hasOverviewSurfaceRetirementMarker(root)) {
+    return false
+  }
+  return !(currentRoutes?.routes ?? []).some(
+    ({ method, path, surface }) =>
+      method === "GET" && path === "/api/admin/overview" && surface === "bff",
   )
 }
 
@@ -6889,6 +7397,64 @@ export function verifyPr11aR1V1SourceClosurePackage({
   actualRoutes,
 }) {
   const errors = []
+  let activityRetirementDecision = null
+  let overviewRetirementDecision = null
+  let teamDeferredCapabilitiesDecision = null
+  if (hasActivityAuditSurfaceRetirementMarker(root)) {
+    try {
+      activityRetirementDecision = readJson(
+        resolve(root, activityAuditSurfaceRetirementPath),
+      )
+      errors.push(
+        ...verifyActivityAuditSurfaceRetirementDocument(
+          activityRetirementDecision,
+        ),
+      )
+    } catch {
+      errors.push("invalid Activity retirement decision document")
+    }
+  }
+  const activityRetirementActive =
+    activityRetirementDecision !== null &&
+    verifyActivityAuditSurfaceRetirementDocument(activityRetirementDecision)
+      .length === 0
+  if (hasOverviewSurfaceRetirementMarker(root)) {
+    try {
+      overviewRetirementDecision = readJson(
+        resolve(root, overviewSurfaceRetirementPath),
+      )
+      errors.push(
+        ...verifyOverviewSurfaceRetirementDocument(overviewRetirementDecision),
+      )
+    } catch {
+      errors.push("invalid Overview retirement decision document")
+    }
+  }
+  const overviewRetirementActive =
+    activityRetirementActive &&
+    overviewRetirementDecision !== null &&
+    verifyOverviewSurfaceRetirementDocument(overviewRetirementDecision)
+      .length === 0
+  if (hasTeamDeferredCapabilitiesBoundaryMarker(root)) {
+    try {
+      teamDeferredCapabilitiesDecision = readJson(
+        resolve(root, teamDeferredCapabilitiesBoundaryPath),
+      )
+      errors.push(
+        ...verifyTeamDeferredCapabilitiesBoundaryDocument(
+          teamDeferredCapabilitiesDecision,
+        ),
+      )
+    } catch {
+      errors.push("invalid Team deferred-capability boundary document")
+    }
+  }
+  const teamDeferredCapabilitiesActive =
+    overviewRetirementActive &&
+    teamDeferredCapabilitiesDecision !== null &&
+    verifyTeamDeferredCapabilitiesBoundaryDocument(
+      teamDeferredCapabilitiesDecision,
+    ).length === 0
   const changes = listPr11aR1V1SourceClosureChanges(root)
   const expectedChanges = pr11aR1V1SourceClosurePaths.map((path) => ({
     path,
@@ -6955,20 +7521,59 @@ export function verifyPr11aR1V1SourceClosurePackage({
     JSON.stringify(actualIntegratedFindings) !==
       JSON.stringify(expectedIntegratedFindings) ||
     JSON.stringify(classifications) !==
-      JSON.stringify({
-        "current-console-seam": 92,
-        "legacy-retired": 8,
-        "operational-auth": 2,
-        "private-operational": 4,
-        "public-t2": 2,
-        "required-now": 2,
-      }) ||
-    actualRoutes.routes.length !== 110 ||
+      JSON.stringify(
+        teamDeferredCapabilitiesActive
+          ? {
+              "current-console-seam": 79,
+              "legacy-retired": 8,
+              "operational-auth": 2,
+              "private-operational": 4,
+              "public-t2": 2,
+              "required-now": 2,
+            }
+          : overviewRetirementActive
+            ? {
+                "current-console-seam": 90,
+                "legacy-retired": 8,
+                "operational-auth": 2,
+                "private-operational": 4,
+                "public-t2": 2,
+                "required-now": 2,
+              }
+            : activityRetirementActive
+              ? {
+                  "current-console-seam": 91,
+                  "legacy-retired": 8,
+                  "operational-auth": 2,
+                  "private-operational": 4,
+                  "public-t2": 2,
+                  "required-now": 2,
+                }
+              : {
+                  "current-console-seam": 92,
+                  "legacy-retired": 8,
+                  "operational-auth": 2,
+                  "private-operational": 4,
+                  "public-t2": 2,
+                  "required-now": 2,
+                },
+      ) ||
+    actualRoutes.routes.length !==
+      (teamDeferredCapabilitiesActive
+        ? 97
+        : overviewRetirementActive
+          ? 108
+          : activityRetirementActive
+            ? 109
+            : 110) ||
     actualRoutes.fastifyRegistrars.length !== 6 ||
     actualRoutes.webInferenceConsumers.length !== 0 ||
     actualRoutes.escapeHatches.length !== 0
   ) {
     errors.push("PR-11A source closure changed the admitted Product shape")
+  }
+  if (activityRetirementActive) {
+    errors.push(...verifyPr11SourceBoundary(root))
   }
   let closure
   try {
@@ -9657,6 +10262,45 @@ function verifyReviewedPr11SuccessorTarget({
   const boundaryPath = resolve(root, businessArchitectureCurrentBoundaryPath)
   if (isRegularFile(boundaryPath)) {
     successorPaths.add(businessArchitectureCurrentBoundaryPath)
+  }
+  const activityRetirementPath = resolve(
+    root,
+    activityAuditSurfaceRetirementPath,
+  )
+  if (isRegularFile(activityRetirementPath)) {
+    successorPaths.add(activityAuditSurfaceRetirementPath)
+    successorPaths.add(
+      "apps/web/src/components/console-v2/audit-evidence-panel.tsx",
+    )
+    successorPaths.delete("apps/web/src/app/activity/page.tsx")
+    successorPaths.delete(
+      "apps/web/src/components/console-v2/activity-v2-experience.tsx",
+    )
+    successorPaths.delete(
+      "apps/web/src/components/console-v2/activity-v2-experience.test.tsx",
+    )
+  }
+  if (hasOverviewTokenUsageRefinementMarker(root)) {
+    successorPaths.add(overviewTokenUsageRefinementPath)
+    if (!hasOverviewSurfaceRetirementMarker(root)) {
+      successorPaths.add(
+        "apps/web/src/components/console-v2/token-usage-grid.tsx",
+      )
+    }
+  }
+  const canApplyOverviewSurfaceRetirement =
+    hasOverviewSurfaceRetirementMarker(root) &&
+    (successorPaths.has(overviewSurfaceRetirementPath) ||
+      [
+        "apps/bff/src/services/admin-overview.ts",
+        "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+      ].every((path) => successorPaths.has(path)))
+  if (canApplyOverviewSurfaceRetirement) {
+    successorPaths.add(overviewSurfaceRetirementPath)
+    successorPaths.add("infra/inference/core-interface-contract.json")
+    for (const path of overviewSurfaceRetiredSourcePaths) {
+      successorPaths.delete(path)
+    }
   }
   return [
     ...new Set([
@@ -13818,7 +14462,12 @@ export function verifyPr11ConsoleHrefManifest(manifest) {
   const serialized = JSON.stringify(manifest)
   return serialized === JSON.stringify(pr11ConsoleHrefManifest) ||
     serialized === JSON.stringify(pr11KeysConsoleHrefManifest) ||
-    serialized === JSON.stringify(pr11KeysGrafanaConsoleHrefManifest)
+    serialized === JSON.stringify(pr11KeysGrafanaConsoleHrefManifest) ||
+    serialized === JSON.stringify(activityAuditRetiredConsoleHrefManifest) ||
+    serialized === JSON.stringify(overviewTokenUsageConsoleHrefManifest) ||
+    serialized === JSON.stringify(overviewSurfaceRetiredConsoleHrefManifest) ||
+    serialized ===
+      JSON.stringify(teamDeferredCapabilitiesRetiredConsoleHrefManifest)
     ? []
     : ["PR-11 Console href manifest changed"]
 }
@@ -13861,6 +14510,7 @@ export function verifyPr11ExpertPayloadSourceBoundary(path, source) {
 export function verifyPr11OverviewHrefContractSource(
   source,
   expectedHrefs = ["/applications", "/inference", "/hardware", "/activity"],
+  { requireEventHref = true } = {},
 ) {
   const sourceFile = ts.createSourceFile(
     "packages/contracts/src/inference-core.ts",
@@ -13885,10 +14535,14 @@ export function verifyPr11OverviewHrefContractSource(
     "href",
   )
   const expectedEventHref = String.raw`z.string().regex(/^\/activity\?eventId=[A-Za-z0-9_.!~*'()%\-]+$/)`
-  if (
-    normalizePr11CompactSource(eventHref?.getText(sourceFile)) !==
-    expectedEventHref
-  ) {
+  if (requireEventHref) {
+    if (
+      normalizePr11CompactSource(eventHref?.getText(sourceFile)) !==
+      expectedEventHref
+    ) {
+      errors.push("PR-11 Overview activity href contract is not internal-only")
+    }
+  } else if (eventHref !== undefined) {
     errors.push("PR-11 Overview activity href contract is not internal-only")
   }
   return errors.sort()
@@ -14063,6 +14717,9 @@ export function verifyPr11SourceBoundary(
     "apps/web/src/components/console-v2/console-v2-sections.ts"
   const sectionsSource = read(sectionsPath)
   let usesCurrentKeysBoundary = false
+  let usesActivityRetirementBoundary = false
+  let usesOverviewTokenUsageRefinement = false
+  let usesOverviewSurfaceRetirement = false
   if (candidatePaths.has(businessArchitectureCurrentBoundaryPath)) {
     try {
       const boundary = JSON.parse(
@@ -14079,9 +14736,80 @@ export function verifyPr11SourceBoundary(
       errors.push("invalid business architecture current-boundary document")
     }
   }
-  const expectedLogicalSurfaces = usesCurrentKeysBoundary
-    ? currentKeysLogicalSurfaceContract
-    : pr11LogicalSurfaceContract
+  if (candidatePaths.has(activityAuditSurfaceRetirementPath)) {
+    try {
+      const retirement = JSON.parse(
+        readFileSync(resolve(root, activityAuditSurfaceRetirementPath), "utf8"),
+      )
+      const retirementErrors =
+        verifyActivityAuditSurfaceRetirementDocument(retirement)
+      errors.push(...retirementErrors)
+      usesActivityRetirementBoundary =
+        usesCurrentKeysBoundary && retirementErrors.length === 0
+    } catch {
+      errors.push("invalid Activity retirement decision document")
+    }
+  }
+  if (candidatePaths.has(overviewTokenUsageRefinementPath)) {
+    try {
+      const refinement = JSON.parse(
+        readFileSync(resolve(root, overviewTokenUsageRefinementPath), "utf8"),
+      )
+      const refinementErrors =
+        verifyOverviewTokenUsageRefinementDocument(refinement)
+      errors.push(...refinementErrors)
+      usesOverviewTokenUsageRefinement =
+        usesActivityRetirementBoundary && refinementErrors.length === 0
+      if (!usesActivityRetirementBoundary && refinementErrors.length === 0) {
+        errors.push(
+          "Overview token-usage refinement requires the Activity retirement predecessor",
+        )
+      }
+    } catch {
+      errors.push("invalid Overview token-usage refinement decision document")
+    }
+  }
+  if (candidatePaths.has(overviewSurfaceRetirementPath)) {
+    try {
+      const retirement = JSON.parse(
+        readFileSync(resolve(root, overviewSurfaceRetirementPath), "utf8"),
+      )
+      const retirementErrors =
+        verifyOverviewSurfaceRetirementDocument(retirement)
+      errors.push(...retirementErrors)
+      usesOverviewSurfaceRetirement =
+        usesOverviewTokenUsageRefinement && retirementErrors.length === 0
+      if (!usesOverviewTokenUsageRefinement && retirementErrors.length === 0) {
+        errors.push(
+          "Overview retirement requires the token-usage refinement predecessor",
+        )
+      }
+      if (
+        sha256(
+          readFileSync(resolve(root, overviewTokenUsageRefinementPath)),
+        ) !== overviewTokenUsageRefinementSha256
+      ) {
+        errors.push("Overview retirement predecessor evidence changed")
+      }
+      if (
+        resolveCommit(root, overviewSurfaceRetirementBase) !==
+          overviewSurfaceRetirementBase ||
+        resolveTree(root, overviewSurfaceRetirementBase) !==
+          overviewSurfaceRetirementBaseTree
+      ) {
+        errors.push("Overview retirement base identity changed")
+      }
+    } catch {
+      errors.push("invalid Overview retirement decision document")
+    }
+  }
+  const expectedLogicalSurfaces = usesOverviewSurfaceRetirement
+    ? currentOverviewRetiredLogicalSurfaceContract
+    : usesActivityRetirementBoundary
+      ? currentActivityRetiredLogicalSurfaceContract
+      : usesCurrentKeysBoundary
+        ? currentKeysLogicalSurfaceContract
+        : pr11LogicalSurfaceContract
   const navigationEntries = [
     ...sectionsSource.matchAll(/\{\s*id:\s*"([^"]+)"[\s\S]*?\n\s*\},/g),
   ].map((match) => ({
@@ -14119,22 +14847,40 @@ export function verifyPr11SourceBoundary(
   }
 
   const rootPage = read("apps/web/src/app/page.tsx")
-  if (
-    /\bredirect\s*\(/.test(rootPage) ||
-    rootPage.includes('"/applications"') ||
-    !/renderOverviewConsoleRoute|OverviewV2Experience/.test(rootPage)
-  ) {
-    errors.push("PR-11 root path does not render Overview directly")
-  }
   const routeCore = read("apps/web/src/lib/admin/console-v2-routes-core.tsx")
-  if (!routeCore.includes("renderOverviewConsoleRoute")) {
-    errors.push("PR-11 Overview route renderer is missing")
-  }
   const serverData = read("apps/web/src/lib/admin/server-data-core.ts")
-  if (!serverData.includes("getAdminOverview")) {
-    errors.push("PR-11 source-backed Overview loader is missing")
+  let overviewSource = ""
+  if (usesOverviewSurfaceRetirement) {
+    if (
+      !/\bredirect\s*\(\s*["']\/keys["']\s*\)/.test(rootPage) ||
+      /renderOverviewConsoleRoute|OverviewV2Experience/.test(rootPage)
+    ) {
+      errors.push("Overview retirement root route does not redirect to Keys")
+    }
+    if (routeCore.includes("renderOverviewConsoleRoute")) {
+      errors.push("Overview retirement route renderer remains")
+    }
+    if (serverData.includes("getAdminOverview")) {
+      errors.push("Overview retirement source-backed loader remains")
+    }
+  } else {
+    if (
+      /\bredirect\s*\(/.test(rootPage) ||
+      rootPage.includes('"/applications"') ||
+      !/renderOverviewConsoleRoute|OverviewV2Experience/.test(rootPage)
+    ) {
+      errors.push("PR-11 root path does not render Overview directly")
+    }
+    if (!routeCore.includes("renderOverviewConsoleRoute")) {
+      errors.push("PR-11 Overview route renderer is missing")
+    }
+    if (!serverData.includes("getAdminOverview")) {
+      errors.push("PR-11 source-backed Overview loader is missing")
+    }
+    overviewSource = read(
+      "apps/web/src/components/console-v2/overview-v2-experience.tsx",
+    )
   }
-  read("apps/web/src/components/console-v2/overview-v2-experience.tsx")
 
   const applicationsSource = read(
     "apps/web/src/components/console-v2/applications-v2-experience.tsx",
@@ -14147,24 +14893,176 @@ export function verifyPr11SourceBoundary(
   }
 
   const contractsSource = read("packages/contracts/src/inference-core.ts")
-  errors.push(
-    ...verifyPr11OverviewHrefContractSource(
-      contractsSource,
-      expectedLogicalSurfaces
-        .filter(({ href }) =>
-          [
-            "/applications",
-            "/keys",
-            "/inference",
-            "/hardware",
-            "/activity",
-          ].includes(href),
+  if (usesOverviewSurfaceRetirement) {
+    if (/adminOverview|AdminOverview/.test(contractsSource)) {
+      errors.push("Overview retirement response contract remains")
+    }
+    if (
+      !contractsSource.includes(
+        '"sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40"',
+      )
+    ) {
+      errors.push("Overview retirement Core compatibility fingerprint changed")
+    }
+    try {
+      const coreInterface = JSON.parse(
+        read("infra/inference/core-interface-contract.json"),
+      )
+      if (
+        JSON.stringify(coreInterface.consoleSections) !==
+        JSON.stringify([
+          "applications",
+          "inference",
+          "hardware",
+          "team",
+          "settings",
+        ])
+      ) {
+        errors.push("Overview retirement Core interface sections changed")
+      }
+    } catch {
+      errors.push("invalid Overview retirement Core interface contract")
+    }
+  } else {
+    errors.push(
+      ...verifyPr11OverviewHrefContractSource(
+        contractsSource,
+        expectedLogicalSurfaces
+          .filter(({ href }) =>
+            [
+              "/applications",
+              "/keys",
+              "/inference",
+              "/hardware",
+              "/activity",
+              "/settings",
+            ].includes(href),
+          )
+          .map(({ href }) => href),
+        { requireEventHref: !usesActivityRetirementBoundary },
+      ),
+    )
+  }
+  if (usesActivityRetirementBoundary) {
+    for (const retiredPath of [
+      "apps/web/src/app/activity/page.tsx",
+      "apps/web/src/components/console-v2/activity-v2-experience.tsx",
+      "apps/web/src/components/console-v2/activity-v2-experience.test.tsx",
+    ]) {
+      if (candidatePaths.has(retiredPath)) {
+        errors.push(`Activity retirement path remains ${retiredPath}`)
+      }
+    }
+    if (sectionsSource.includes('"/activity"')) {
+      errors.push("Activity retirement navigation remains")
+    }
+    const middlewareSource = read("apps/web/src/middleware.ts")
+    if (middlewareSource.includes('"/activity"')) {
+      errors.push("Activity retirement middleware route remains")
+    }
+    const auditPanelSource = read(
+      "apps/web/src/components/console-v2/audit-evidence-panel.tsx",
+    )
+    if (usesOverviewTokenUsageRefinement) {
+      const exportButtons = auditPanelSource.match(/<button\b/g) ?? []
+      if (
+        !auditPanelSource.includes('action="/api/admin/audit/export"') ||
+        !auditPanelSource.includes("Export last 30 days") ||
+        !/name="format"\s+type="hidden"\s+value="json"/.test(
+          auditPanelSource,
+        ) ||
+        exportButtons.length !== 1 ||
+        auditPanelSource.includes(
+          'href="/api/admin/audit/export/verification-keys"',
         )
-        .map(({ href }) => href),
-    ),
-  )
+      ) {
+        errors.push(
+          "Overview token-usage refinement Settings export is incomplete",
+        )
+      }
+      if (!usesOverviewSurfaceRetirement) {
+        if (
+          !overviewSource.includes("TokenUsageGrid") ||
+          !overviewSource.includes('className="mt-8 grid gap-3"') ||
+          overviewSource.includes("Recent activity")
+        ) {
+          errors.push("Overview token-usage refinement layout is incomplete")
+        }
+        const tokenUsageSource = read(
+          "apps/web/src/components/console-v2/token-usage-grid.tsx",
+        )
+        if (
+          !tokenUsageSource.includes("RANGE_DAYS = 90") ||
+          !tokenUsageSource.includes("No token usage reported") ||
+          !tokenUsageSource.includes("bg-[#009fff]")
+        ) {
+          errors.push("Overview token-usage grid contract is incomplete")
+        }
+        const overviewServiceSource = read(
+          "apps/bff/src/services/admin-overview.ts",
+        )
+        if (
+          !/getAdminInference\(actor,\s*\{\s*range:\s*"90d"\s*\}\)/.test(
+            overviewServiceSource,
+          ) ||
+          overviewServiceSource.includes("getRecentAuditEvents")
+        ) {
+          errors.push("Overview token-usage BFF projection is incomplete")
+        }
+        if (
+          !contractsSource.includes("adminOverviewTokenUsageSchema") ||
+          contractsSource.includes("adminActivityEventSchema")
+        ) {
+          errors.push("Overview token-usage response contract is incomplete")
+        }
+      }
+    } else if (
+      !auditPanelSource.includes('action="/api/admin/audit/export"') ||
+      !auditPanelSource.includes(
+        'href="/api/admin/audit/export/verification-keys"',
+      )
+    ) {
+      errors.push("Activity retirement Settings audit evidence is incomplete")
+    }
+    const adminRouteSourceForAudit = read("apps/bff/src/routes/admin.ts")
+    for (const retainedRoute of [
+      '"/api/admin/audit"',
+      '"/api/admin/audit/export"',
+      '"/api/admin/audit/export/verification-keys"',
+    ]) {
+      if (!adminRouteSourceForAudit.includes(retainedRoute)) {
+        errors.push(`Activity retirement removed audit route ${retainedRoute}`)
+      }
+    }
+  }
   const adminRouteSource = read("apps/bff/src/routes/admin.ts")
-  errors.push(...verifyPr11OverviewRouteParseBoundary(adminRouteSource))
+  if (usesOverviewSurfaceRetirement) {
+    if (
+      adminRouteSource.includes('"/api/admin/overview"') ||
+      /adminOverview|AdminOverview|getAdminOverview/.test(adminRouteSource)
+    ) {
+      errors.push("Overview retirement BFF route remains")
+    }
+    for (const retiredPath of overviewSurfaceRetiredSourcePaths) {
+      if (
+        candidatePaths.has(retiredPath) ||
+        isRegularFile(resolve(root, retiredPath))
+      ) {
+        errors.push(`Overview retirement path remains ${retiredPath}`)
+      }
+    }
+    if (candidatePaths.has("apps/web/src/app/overview/page.tsx")) {
+      errors.push("Overview retirement Web route remains /overview")
+    }
+    if (
+      /adminOverview|AdminOverview|getAdminOverview/.test(routeCore) ||
+      /adminOverview|AdminOverview|getAdminOverview/.test(serverData)
+    ) {
+      errors.push("Overview retirement Web projection remains")
+    }
+  } else {
+    errors.push(...verifyPr11OverviewRouteParseBoundary(adminRouteSource))
+  }
   errors.push(
     ...verifyPr11ConsoleHrefManifest(buildPr11ConsoleHrefManifest(root, paths)),
   )
@@ -14215,15 +15113,32 @@ export function verifyPr11TargetState({
   paths = listCandidatePaths(root),
 }) {
   const errors = []
+  const overviewRetirementActive = usesOverviewSurfaceRetirement(
+    root,
+    currentRoutes,
+  )
+  const expectedRouteCount = overviewRetirementActive
+    ? 108
+    : pr11TargetContract.routes
+  const expectedRouteClassifications = overviewRetirementActive
+    ? {
+        "current-console-seam": 90,
+        "legacy-retired": 8,
+        "operational-auth": 2,
+        "private-operational": 4,
+        "public-t2": 2,
+        "required-now": 2,
+      }
+    : pr11TargetContract.routeClassifications
   const activeRevision = currentRoutes.reviewedRevisions?.at(-1)?.id
   if (!["PR-10C", "PR-11"].includes(activeRevision)) {
     errors.push(
       `PR-11 target has invalid active predecessor ${String(activeRevision)}`,
     )
   }
-  if ((currentRoutes.routes ?? []).length !== pr11TargetContract.routes) {
+  if ((currentRoutes.routes ?? []).length !== expectedRouteCount) {
     errors.push(
-      `PR-11 total route count changed expected=${pr11TargetContract.routes} actual=${(currentRoutes.routes ?? []).length}`,
+      `PR-11 total route count changed expected=${expectedRouteCount} actual=${(currentRoutes.routes ?? []).length}`,
     )
   }
   const classificationCounts = Object.fromEntries(
@@ -14231,7 +15146,7 @@ export function verifyPr11TargetState({
   )
   if (
     JSON.stringify(classificationCounts) !==
-    JSON.stringify(pr11TargetContract.routeClassifications)
+    JSON.stringify(expectedRouteClassifications)
   ) {
     errors.push("PR-11 route classification counts changed")
   }
@@ -14262,6 +15177,12 @@ export function verifyPr11TargetState({
     errors.push("PR-11 remaining finding boundary changed")
   }
   for (const path of pr11RequiredFrozenRepositoryPaths) {
+    if (
+      hasOverviewSurfaceRetirementMarker(root) &&
+      overviewSurfaceRetiredSourcePaths.includes(path)
+    ) {
+      continue
+    }
     if (!isRegularFile(resolve(root, path))) {
       errors.push(`PR-11 frozen repository path is missing ${path}`)
     }
@@ -23214,6 +24135,7 @@ function forbiddenPolicyDigest() {
       pr08IgnoredFindingFingerprints,
       pr04RetiredDependencyBoundaries,
       pr04StandaloneDbTestBoundary,
+      productLicenseStandaloneDbManifestSuccessor,
       implementation: [
         listCandidatePaths,
         listCachedEntries,

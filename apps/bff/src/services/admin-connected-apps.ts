@@ -2263,7 +2263,6 @@ function toPublicApp(bundle: ConnectedAppBundle): AdminConnectedApp {
   }
   return {
     allowedModels: [...record.allowedModels],
-    auditHref: `/activity?applicationId=${encodeURIComponent(record.id)}`,
     authMethod: record.authMethod,
     connectionStatus: record.connectionStatus,
     createdAt: record.createdAt,

@@ -150,3 +150,59 @@ are PR-12 evidence, not PR-08 evidence.
   hashes for 56 changed product-source and test files.
 - Full guardrail, Web, BFF, Contracts, database, build, typecheck, formatting,
   security, and clean-clone checks pass before publication.
+
+## Prospective Activity & Audit surface-retirement validation
+
+- Exact six-item navigation and shortcut order are source-tested.
+- `/activity` is absent from Web routing, middleware, and Product-edge page
+  admission, and explicit no-bypass tests require its denial.
+- Overview recent activity remains schema-validated, metadata-only, and
+  non-interactive; no response emits an `/activity` href.
+- Admin audit export and verification-key controls remain in Settings;
+  Operator receives no export control.
+- BFF audit read, signed export, verification-key, ingestion, ledger,
+  authorization, retention, and content-canary tests remain mandatory.
+- Historical route and seven-surface evidence is resolved at its admitted
+  commits. The current source successor is 109 routes with 91
+  `current-console-seam` routes; the historical route baseline is unchanged.
+
+## Prospective Overview token-usage refinement validation
+
+- Contract tests require at most 90 unique, strictly ordered UTC daily points
+  and reject usage data when the aggregate source is not authoritative.
+- BFF tests prove the existing LiteLLM 90-day aggregate projection is clipped,
+  grouped by UTC date, sorted deterministically, and unavailable without
+  fabricated points when its source fails.
+- Web tests prove 90 displayed days, relative blue levels, exact hover and
+  keyboard feedback, honest missing-day copy, explicit unavailable state, and
+  automated accessibility checks.
+- Overview tests require four full-width one-column operational cards and the
+  absence of Recent Activity. Settings tests require exactly one Admin export
+  button for signed JSON covering the last 30 days and no Operator surface.
+- Guardrails preserve the predecessor retirement record byte-for-byte, retain
+  every audit backend API and control, reject a verification-key UI shortcut,
+  and bind the prospective successor to commit `ac4a4821fb49625e76344f25d38de41b6aef09ab`,
+  tree `02dc3621728067aecf14bbafd74a4a2f525a837f`.
+
+## Prospective Overview surface-retirement validation
+
+- Exact five-item navigation and shortcut order are source-tested: Keys,
+  Inference, Hardware, Team, and Settings.
+- The protected root redirects to `/keys` without an intermediate Console
+  chooser. `/overview` remains absent and browser proof requires direct access
+  to fail with `404`.
+- Overview Web components, token-usage rendering, private BFF projection,
+  Overview-only BFF services, and shared Overview contracts remain absent.
+- Settings retains exactly one Admin `Export last 30 days` action while the
+  audit read, signed-export, verification-key, ingestion, ledger,
+  authorization, signing, metadata-only retention, and content-canary suites
+  remain mandatory.
+- The five-section Core contract and synthetic delivery profiles bind
+  `sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40`.
+  The validator rejects missing, extra, stale, or reordered sections and stale
+  compatibility fingerprints.
+- The predecessor Overview-refinement record remains byte-identical at
+  SHA-256 `b2895e5bd29d5779d65ef8ee1e1daa4c9dc0b0fca32d3dea85036493a4682394`.
+  Historical route and surface evidence remains unchanged. The current source
+  successor is 108 routes with 90 `current-console-seam` routes; the historical
+  route baseline remains unchanged.

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import ActivityPage, { dynamic as activityDynamic } from "./activity/page"
 import ApplicationsPage, {
   dynamic as applicationsDynamic,
 } from "./applications/[[...section]]/page"
@@ -18,11 +17,9 @@ const navigationMocks = vi.hoisted(() => ({
 }))
 
 const routeMocks = vi.hoisted(() => ({
-  renderActivityConsoleRoute: vi.fn(async () => null),
   renderApplicationsConsoleRoute: vi.fn(async () => null),
   renderHardwareConsoleRoute: vi.fn(async () => null),
   renderInferenceConsoleRoute: vi.fn(async () => null),
-  renderOverviewConsoleRoute: vi.fn(async () => null),
   renderSettingsConsoleRoute: vi.fn(async () => null),
   renderTeamConsoleRoute: vi.fn(async () => null),
 }))
@@ -38,33 +35,23 @@ describe("retained Console routes", () => {
     vi.clearAllMocks()
   })
 
-  it("renders Overview directly at the root route", async () => {
-    await HomePage()
+  it("redirects the authenticated root route to Keys", async () => {
+    await expect(HomePage()).rejects.toThrow("redirect:/keys")
 
-    expect(routeMocks.renderOverviewConsoleRoute).toHaveBeenCalledOnce()
-    expect(navigationMocks.redirect).not.toHaveBeenCalled()
+    expect(navigationMocks.redirect).toHaveBeenCalledOnce()
+    expect(navigationMocks.redirect).toHaveBeenCalledWith("/keys")
+    expect(routeMocks.renderApplicationsConsoleRoute).not.toHaveBeenCalled()
   })
 
   it("keeps every retained page dynamic", () => {
     expect([
       applicationsDynamic,
-      activityDynamic,
       homeDynamic,
       hardwareDynamic,
       inferenceDynamic,
       settingsDynamic,
       teamDynamic,
-    ]).toEqual(Array(7).fill("force-dynamic"))
-  })
-
-  it("routes Activity through the retained core owner", async () => {
-    const searchParams = Promise.resolve({ eventId: "event-1" })
-
-    await ActivityPage({ searchParams })
-
-    expect(routeMocks.renderActivityConsoleRoute).toHaveBeenCalledWith(
-      searchParams,
-    )
+    ]).toEqual(Array(6).fill("force-dynamic"))
   })
 
   it("routes Applications through the retained core owner", async () => {

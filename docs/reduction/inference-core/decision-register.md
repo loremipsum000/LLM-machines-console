@@ -200,3 +200,58 @@ per-package JSON file and contract revision.
 - This prospective reconciliation changes no wire identifier, stored data,
   credential authority, public API, native role, or runtime qualification
   status. Historical PR-11 and earlier records remain unchanged.
+
+## Prospective Console Activity & Audit surface retirement
+
+- Remove the customer-facing `/activity` page and navigation entry. The
+  current primary Console order is Overview, Keys, Inference, Hardware, Team,
+  and Settings; `/activity` is absent rather than redirected.
+- Keep Overview recent activity as non-interactive metadata-only context.
+- Keep Admin signed JSON/CSV audit export and verification keys in Settings.
+  Operator export remains denied.
+- Preserve the BFF audit read/export routes, audit ledger, native ingestion,
+  authorization, signing, retention, and zero-content-retention boundaries.
+- Preserve all historical seven-surface PR-11 and later evidence unchanged.
+  This prospective decision does not claim Product acceptance, runtime
+  qualification, contract activation, Q0 completion, or Genesis publication.
+
+## Prospective Overview token-usage refinement
+
+- Remove the non-interactive Recent Activity card from Overview while retaining
+  the audit ledger, native ingestion, read API, signing, signed export, and
+  verification-key API.
+- Present Admin with one Settings action, `Export last 30 days`, producing the
+  signed metadata-only JSON export. Operator receives no export surface.
+- Present Keys, Inference, Hardware, and System cards as a one-column,
+  full-width stack.
+- Add a 90-day UTC daily token-usage grid from the existing authoritative
+  LiteLLM aggregate projection. Missing observations are not presented as zero;
+  an unavailable or unconfigured source fails visibly closed.
+- Use a relative four-level blue scale and exact date/token hover and keyboard
+  feedback. Do not imply a one-year history or retain prompt or response
+  content.
+- Preserve the preceding Activity-retirement decision byte-for-byte. Product
+  acceptance and runtime qualification remain false, contract activation
+  remains inactive, and Genesis remains unpublished.
+
+## Prospective Overview surface retirement
+
+- Remove Overview from the current customer-facing navigation and shortcut
+  order. The five retained primary surfaces are Keys, Inference, Hardware,
+  Team, and Settings.
+- Keep `/` protected and redirect an authenticated request to `/keys`. Keep
+  `/overview` absent with `404` behavior rather than introducing a legacy
+  customer route.
+- Remove the unconsumed private `/api/admin/overview` projection and
+  Overview-only Web, BFF, and shared-contract implementations.
+- Retain the Settings Admin-only `Export last 30 days` action and all audit
+  read, signed-export, verification-key, ledger, ingestion, authorization,
+  signing, and metadata-only retention controls. Operator export remains
+  denied.
+- Bind the resulting five-surface Core contract to
+  `sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40`.
+  Existing delivery profiles remain fail-closed until explicitly revised and
+  qualified against this contract.
+- Preserve the preceding Overview-refinement record byte-for-byte. Product
+  acceptance and runtime qualification remain false, contract activation
+  remains inactive, and Genesis remains unpublished.

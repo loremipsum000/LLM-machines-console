@@ -3,17 +3,22 @@
 import { usePendingConsoleSessionRecovery } from "@/lib/auth/pending-session-recovery"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import type {
-  AdminTeamCsvImportPreviewResponse,
   AdminTeamGroup,
-  AdminTeamGroupDetail,
   AdminTeamMember,
   AdminTeamMemberDetail,
   AdminTeamOverviewResponse,
 } from "@llm-machines/contracts/inference-core"
-import { ArrowLeft, Mail, Plus, RotateCcw, Shield, Trash2 } from "lucide-react"
+import { ArrowLeft, Plus, Shield, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { useActionState } from "react"
-import type { ReactNode } from "react"
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+} from "react"
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react"
 
 const teamDateTimeFormatter = new Intl.DateTimeFormat("en", {
   dateStyle: "medium",
@@ -21,31 +26,18 @@ const teamDateTimeFormatter = new Intl.DateTimeFormat("en", {
   timeStyle: "short",
 })
 import {
-  type TeamCsvImportActionState,
   type TeamMemberActionState,
-  bulkAssignAdminTeamGroupMembersAction,
-  commitAdminTeamCsvImportAction,
-  createAdminTeamGroupAction,
   createAdminTeamMemberAction,
-  deleteAdminTeamGroupAction,
   deleteAdminTeamMemberAction,
   disableAdminTeamMemberAction,
   generateAdminTeamPasswordAction,
-  previewAdminTeamCsvImportAction,
   reactivateAdminTeamMemberAction,
-  removeAdminTeamGroupMemberAction,
-  sendAdminTeamInviteAction,
-  sendAdminTeamPasswordResetAction,
-  updateAdminTeamGroupAction,
 } from "@/lib/admin/actions-core"
 import { ConsoleActionToasts } from "./action-toasts"
 
 export type TeamView =
-  | "group-detail"
-  | "import"
   | "manage-users"
   | "member-detail"
-  | "new-group"
   | "new-member"
   | "overview"
 
@@ -56,25 +48,76 @@ const initialTeamActionState: TeamMemberActionState = {
   status: "idle",
 }
 
-const initialCsvImportState: TeamCsvImportActionState = {
-  commit: null,
-  csv: "",
-  error: null,
-  preview: null,
-  status: "idle",
+type TeamMemberMutationAction = (
+  previousState: TeamMemberActionState,
+  formData: FormData,
+) => Promise<TeamMemberActionState>
+
+function useOneTimeTeamMutationAction(action: TeamMemberMutationAction) {
+  const [state, setState] = useState(initialTeamActionState)
+  const [pending, startTransition] = useTransition()
+  const responseEpoch = useRef(0)
+  const clearResult = useCallback(() => {
+    responseEpoch.current += 1
+    setState(initialTeamActionState)
+  }, [])
+  usePendingConsoleSessionRecovery(pending)
+
+  useEffect(() => {
+    const invalidateRestoredReveal = (event: Event) => {
+      if ("persisted" in event && event.persisted === true) {
+        clearResult()
+      }
+    }
+    const invalidateHiddenResponse = () => {
+      if (document.visibilityState === "hidden") {
+        clearResult()
+      }
+    }
+    window.addEventListener("pagehide", clearResult)
+    window.addEventListener("pageshow", invalidateRestoredReveal)
+    window.addEventListener("popstate", clearResult)
+    document.addEventListener("visibilitychange", invalidateHiddenResponse)
+    invalidateHiddenResponse()
+    return () => {
+      window.removeEventListener("pagehide", clearResult)
+      window.removeEventListener("pageshow", invalidateRestoredReveal)
+      window.removeEventListener("popstate", clearResult)
+      document.removeEventListener("visibilitychange", invalidateHiddenResponse)
+    }
+  }, [clearResult])
+
+  const formAction = useCallback(
+    (formData: FormData) => {
+      const requestEpoch = responseEpoch.current + 1
+      responseEpoch.current = requestEpoch
+      setState(initialTeamActionState)
+      startTransition(async () => {
+        const result = await action(initialTeamActionState, formData)
+        if (
+          requestEpoch !== responseEpoch.current ||
+          document.visibilityState === "hidden"
+        ) {
+          return
+        }
+        setState(result)
+      })
+    },
+    [action],
+  )
+
+  return { clearResult, formAction, pending, state }
 }
 
 export function TeamV2Experience({
   accessRole,
   detail,
-  groupDetail,
   overview,
   teamAction,
   view,
 }: {
   accessRole: RetainedConsoleRole
   detail?: AdminTeamMemberDetail | null
-  groupDetail?: AdminTeamGroupDetail | null
   overview: AdminTeamOverviewResponse
   teamAction?: string
   view: TeamView
@@ -85,27 +128,8 @@ export function TeamV2Experience({
     return <TeamMutationAccessDenied />
   }
 
-  if (view === "new-group") {
-    return <NewGroupView />
-  }
-
-  if (view === "group-detail") {
-    return (
-      <GroupDetailView
-        detail={groupDetail ?? null}
-        canManageTeam={canManageTeam}
-        members={overview.members}
-        teamAction={visibleTeamAction}
-      />
-    )
-  }
-
   if (view === "new-member") {
-    return <NewMemberView groups={overview.groups} />
-  }
-
-  if (view === "import") {
-    return <CsvImportView />
+    return <NewMemberView />
   }
 
   if (view === "manage-users") {
@@ -155,7 +179,7 @@ function TeamMutationAccessDenied() {
 }
 
 function isTeamMutationView(view: TeamView): boolean {
-  return view === "import" || view === "new-group" || view === "new-member"
+  return view === "new-member"
 }
 
 function TeamOverviewView({
@@ -241,311 +265,6 @@ function TeamOverviewView({
   )
 }
 
-function NewGroupView() {
-  return (
-    <div className="relative w-full lg:h-[1024px]">
-      <SubpageHeader title="Team > New group" />
-      <BackToTeamLink />
-      <section className="mt-8 lg:absolute lg:top-[164px] lg:mt-0 lg:w-[640px]">
-        <form
-          action={createAdminTeamGroupAction}
-          className="grid gap-5 rounded-lg border border-[#353535] bg-[#232323] p-5"
-        >
-          <input name="returnTo" type="hidden" value="/team/groups/new" />
-          <LabeledInput
-            label="Group name"
-            name="name"
-            placeholder="Operations"
-            required
-          />
-          <button
-            className="h-12 w-fit rounded-md bg-[#2e2e2e] px-5 text-base font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-            type="submit"
-          >
-            Create group
-          </button>
-        </form>
-      </section>
-    </div>
-  )
-}
-
-function GroupDetailView({
-  canManageTeam,
-  detail,
-  members,
-  teamAction,
-}: {
-  canManageTeam: boolean
-  detail: AdminTeamGroupDetail | null
-  members: AdminTeamMember[]
-  teamAction?: string
-}) {
-  if (!detail) {
-    return (
-      <div className="relative w-full lg:h-[1024px]">
-        <SubpageHeader title="Team > Group" />
-        <BackToTeamLink />
-        <p className="mt-20 text-base leading-6 text-[#b2b2b2]">
-          This group could not be loaded from Keycloak.
-        </p>
-      </div>
-    )
-  }
-
-  const { group } = detail
-  const assignableMembers = members.filter(
-    (member) =>
-      !detail.members.some((groupMember) => groupMember.id === member.id),
-  )
-
-  return (
-    <div className="relative w-full lg:h-[1024px]">
-      <SubpageHeader title={`Team > ${group.name}`} />
-      <BackToTeamLink />
-      <TeamActionNotice action={teamAction} />
-      <section className="mt-8 grid gap-5 lg:absolute lg:top-[164px] lg:mt-0 lg:w-[640px]">
-        <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
-          <div className="rounded-lg border border-[#353535] bg-[#232323] p-5">
-            <h2 className="text-2xl font-semibold leading-none text-white">
-              Group basics
-            </h2>
-            <dl className="mt-5 grid gap-4 text-sm leading-5 md:grid-cols-2">
-              <DetailItem label="Name" value={group.name} />
-              <DetailItem
-                label="Members"
-                value={group.memberCount.toString()}
-              />
-              <DetailItem
-                label="Source"
-                value={
-                  group.virtual ? "Virtual Everyone group" : "Keycloak group"
-                }
-              />
-            </dl>
-          </div>
-          {canManageTeam ? <GroupActions group={group} /> : null}
-        </div>
-        <section className="rounded-lg border border-[#353535] bg-[#232323] p-5">
-          <h2 className="text-2xl font-semibold leading-none text-white">
-            Members
-          </h2>
-          <GroupMembersTable
-            canManageTeam={canManageTeam}
-            group={group}
-            members={detail.members}
-          />
-          {canManageTeam && !group.virtual ? (
-            <form
-              action={bulkAssignAdminTeamGroupMembersAction}
-              className="mt-5 grid gap-3 rounded-md border border-[#353535] p-4"
-            >
-              <input name="groupId" type="hidden" value={group.id} />
-              <input
-                name="returnTo"
-                type="hidden"
-                value={`/team/groups/${group.id}`}
-              />
-              <p className="text-sm font-semibold leading-5 text-white">
-                Bulk assign users
-              </p>
-              {assignableMembers.length > 0 ? (
-                <div className="grid gap-2 text-sm leading-5 text-[#d9d9d9]">
-                  {assignableMembers.map((member) => (
-                    <label key={member.id} className="flex items-center gap-3">
-                      <input
-                        className="size-4 accent-[#009fff]"
-                        name="memberIds"
-                        type="checkbox"
-                        value={member.id}
-                      />
-                      {member.displayName} ({member.username})
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm leading-5 text-[#b2b2b2]">
-                  Every listed user is already in this group.
-                </p>
-              )}
-              <button
-                className="h-10 w-fit rounded-md bg-[#2e2e2e] px-4 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                type="submit"
-              >
-                Assign selected
-              </button>
-            </form>
-          ) : null}
-        </section>
-      </section>
-    </div>
-  )
-}
-
-function CsvImportView() {
-  const [previewState, previewAction, previewPending] = useActionState(
-    previewAdminTeamCsvImportAction,
-    initialCsvImportState,
-  )
-  const [commitState, commitAction, commitPending] = useActionState(
-    commitAdminTeamCsvImportAction,
-    initialCsvImportState,
-  )
-  usePendingConsoleSessionRecovery(
-    previewPending || commitPending,
-    previewState == null || commitState == null,
-  )
-  const activeState = commitState.status !== "idle" ? commitState : previewState
-  const rows = activeState.preview?.rows ?? activeState.commit?.rows ?? []
-  const canCommit = Boolean(activeState.preview?.valid && activeState.csv)
-
-  return (
-    <div className="relative w-full lg:h-[1024px]">
-      <SubpageHeader title="Team > CSV import" />
-      <BackToTeamLink />
-      <section className="mt-8 grid gap-5 lg:absolute lg:top-[164px] lg:mt-0 lg:w-[640px]">
-        <form
-          action={previewAction}
-          className="grid gap-5 rounded-lg border border-[#353535] bg-[#232323] p-5"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold leading-none text-white">
-                Import users
-              </h2>
-              <p className="mt-3 max-w-[620px] text-sm leading-5 text-[#b2b2b2]">
-                Upload a CSV with name, username, company email, group, role,
-                invite preference, and enabled state. Preview validates every
-                row before users are created in Keycloak.
-              </p>
-            </div>
-            <Link
-              className="inline-flex h-10 shrink-0 items-center rounded-md bg-[#2e2e2e] px-4 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-              download
-              href="/team/import/template"
-            >
-              Download template
-            </Link>
-          </div>
-          <label className="grid gap-2 text-sm font-medium leading-5 text-[#d9d9d9]">
-            CSV file
-            <input
-              accept=".csv,text/csv"
-              className="rounded-md border border-[#353535] bg-[#181818] px-3 py-3 text-white file:mr-4 file:rounded-md file:border-0 file:bg-[#2e2e2e] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[#009fff]"
-              name="csvFile"
-              required
-              type="file"
-            />
-          </label>
-          <button
-            className="h-12 w-fit rounded-md bg-[#2e2e2e] px-5 text-base font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-            type="submit"
-          >
-            Preview import
-          </button>
-        </form>
-        <CsvImportStatus state={activeState} />
-        {rows.length > 0 ? (
-          <section className="rounded-lg border border-[#353535] bg-[#232323] p-5">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-semibold leading-none text-white">
-                Preview rows
-              </h2>
-              <form action={commitAction} className="flex items-center gap-4">
-                <input name="csv" type="hidden" value={activeState.csv} />
-                {!canCommit ? (
-                  <label className="flex items-center gap-2 text-sm font-medium leading-5 text-[#d9d9d9]">
-                    <input
-                      className="size-4 accent-[#009fff]"
-                      name="allowPartial"
-                      type="checkbox"
-                    />
-                    Import valid rows only
-                  </label>
-                ) : null}
-                <button
-                  className="h-10 rounded-md bg-[#2e2e2e] px-4 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                  type="submit"
-                >
-                  Commit import
-                </button>
-              </form>
-            </div>
-            <CsvImportRowsTable rows={rows} />
-          </section>
-        ) : null}
-      </section>
-    </div>
-  )
-}
-
-function CsvImportStatus({ state }: { state: TeamCsvImportActionState }) {
-  if (state.status === "idle") {
-    return null
-  }
-  if (state.error) {
-    return (
-      <p className="rounded-md border border-[#5b2529] bg-[#371d1f] p-4 text-sm font-semibold leading-5 text-[#ff6262]">
-        {state.error}
-      </p>
-    )
-  }
-  const summary =
-    state.status === "committed" && state.commit
-      ? `${state.commit.createdCount} created, ${state.commit.failedCount} failed, ${state.commit.skippedCount} skipped.`
-      : state.preview?.valid
-        ? "CSV preview is valid and ready to commit."
-        : "CSV preview has row-level issues to fix."
-  return (
-    <p className="rounded-md border border-[#353535] bg-[#232323] p-4 text-sm font-semibold leading-5 text-white">
-      {summary}
-    </p>
-  )
-}
-
-function CsvImportRowsTable({
-  rows,
-}: {
-  rows: AdminTeamCsvImportPreviewResponse["rows"]
-}) {
-  return (
-    <div className="mt-5 overflow-hidden rounded-md border border-[#353535]">
-      <table className="w-full border-collapse text-left">
-        <thead className="border-b border-[#353535] text-xs uppercase leading-none tracking-[0.08em] text-[#8f8f8f]">
-          <tr>
-            <th className="px-4 py-3 font-semibold">Line</th>
-            <th className="px-4 py-3 font-semibold">Username</th>
-            <th className="px-4 py-3 font-semibold">Email</th>
-            <th className="px-4 py-3 font-semibold">Group</th>
-            <th className="px-4 py-3 font-semibold">Status</th>
-            <th className="px-4 py-3 font-semibold">Result</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[#353535] text-sm leading-5 text-white">
-          {rows.map((row) => (
-            <tr key={`${row.line}-${row.username}`}>
-              <td className="p-4 text-[#d9d9d9]">{row.line}</td>
-              <td className="p-4">{row.username || "-"}</td>
-              <td className="p-4 text-[#d9d9d9]">{row.email || "-"}</td>
-              <td className="p-4 text-[#d9d9d9]">{row.group || "-"}</td>
-              <td className="p-4">
-                <span className="rounded-full border border-[#353535] px-3 py-1 text-xs font-semibold text-[#d9d9d9]">
-                  {row.status}
-                </span>
-              </td>
-              <td className="p-4 text-[#b2b2b2]">
-                {row.errors.length > 0
-                  ? row.errors.join(" ")
-                  : row.actions.join(", ")}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
 function ManageUsersView({
   canManageTeam,
   members,
@@ -562,7 +281,7 @@ function ManageUsersView({
       <SubpageHeader title={`Team > ${pageTitle}`} />
       <BackToTeamLink />
       <TeamActionNotice action={teamAction} />
-      <section className="mt-8 lg:absolute lg:top-[164px] lg:mt-0 lg:w-[860px]">
+      <section className="mt-8 w-full lg:absolute lg:top-[164px] lg:mt-0">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-[28px] font-semibold leading-none text-white">
             {pageTitle}
@@ -599,8 +318,13 @@ function ManageUsersTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-[#353535] bg-[#232323]">
-      <table className="w-full border-collapse text-left">
+    <section
+      aria-label="Team members table"
+      className="w-full overflow-x-auto rounded-lg border border-[#353535] bg-[#232323]"
+    >
+      <table
+        className={`w-full border-collapse text-left ${canManageTeam ? "min-w-[760px]" : "min-w-[560px]"}`}
+      >
         <thead className="border-b border-[#353535] text-xs uppercase leading-none tracking-[0.08em] text-[#8f8f8f]">
           <tr>
             <th className="px-4 py-3 font-semibold">Name</th>
@@ -647,7 +371,7 @@ function ManageUsersTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </section>
   )
 }
 
@@ -710,14 +434,9 @@ function UserLifecycleActions({
   )
 }
 
-function NewMemberView({ groups }: { groups: AdminTeamGroup[] }) {
-  const [state, formAction, pending] = useActionState(
-    createAdminTeamMemberAction,
-    initialTeamActionState,
-  )
-  usePendingConsoleSessionRecovery(pending, state == null)
-  const assignableGroups = realGroups(groups)
-
+function NewMemberView() {
+  const { clearResult, formAction, pending, state } =
+    useOneTimeTeamMutationAction(createAdminTeamMemberAction)
   return (
     <div className="relative w-full lg:h-[1024px]">
       <SubpageHeader title="Team > New member" />
@@ -746,29 +465,15 @@ function NewMemberView({ groups }: { groups: AdminTeamGroup[] }) {
               <option value="operator">Operator</option>
               <option value="admin">Admin</option>
             </LabeledSelect>
-            <LabeledSelect defaultValue="" label="Group" name="groups" required>
-              <option disabled value="">
-                Select group
-              </option>
-              {assignableGroups.map((group) => (
-                <option key={group.id} value={group.name}>
-                  {group.name}
-                </option>
-              ))}
-            </LabeledSelect>
           </div>
           <p className="text-sm leading-5 text-[#b2b2b2]">
-            Username is generated from name and group, for example{" "}
+            The selected role assigns the canonical Admins or Operators group.
+            Username is generated from the name and role group, for example{" "}
             <code className="font-mono text-[#d9d9d9]">
-              ada.lovelace.engineering
+              ada.lovelace.operators
             </code>
             , and can be used to log in alongside the company email address.
           </p>
-          {assignableGroups.length === 0 ? (
-            <p className="rounded-md border border-[#5b4a20] bg-[#2c2718] px-4 py-3 text-sm font-medium leading-5 text-[#f2c94c]">
-              Create a Team group before adding users.
-            </p>
-          ) : null}
           <div className="grid gap-3 text-sm font-medium leading-5 text-[#d9d9d9]">
             <label className="flex items-center gap-3">
               <input
@@ -779,24 +484,16 @@ function NewMemberView({ groups }: { groups: AdminTeamGroup[] }) {
               />
               Generate non-temporary password
             </label>
-            <label className="flex items-center gap-3">
-              <input
-                className="size-4 accent-[#009fff]"
-                name="sendInvite"
-                type="checkbox"
-              />
-              Send invite email after user creation
-            </label>
           </div>
           <button
             className="h-12 w-fit rounded-md bg-[#2e2e2e] px-5 text-base font-semibold leading-none text-white disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-            disabled={assignableGroups.length === 0}
+            disabled={pending}
             type="submit"
           >
-            Create user
+            {pending ? "Creating user..." : "Create user"}
           </button>
-          <TeamMutationResult state={state} />
         </form>
+        <TeamMutationResult onClear={clearResult} state={state} />
       </section>
     </div>
   )
@@ -877,11 +574,12 @@ function MemberActions({
 }: {
   member: AdminTeamMember
 }) {
-  const [passwordState, passwordAction, passwordPending] = useActionState(
-    generateAdminTeamPasswordAction,
-    initialTeamActionState,
-  )
-  usePendingConsoleSessionRecovery(passwordPending, passwordState == null)
+  const {
+    clearResult,
+    formAction: passwordAction,
+    pending: passwordPending,
+    state: passwordState,
+  } = useOneTimeTeamMutationAction(generateAdminTeamPasswordAction)
   const returnTo = `/team/members/${member.id}`
 
   return (
@@ -890,24 +588,13 @@ function MemberActions({
         Account actions
       </h2>
       <div className="mt-5 grid gap-3">
-        <form action={sendAdminTeamInviteAction}>
-          <input name="memberId" type="hidden" value={member.id} />
-          <input name="returnTo" type="hidden" value={returnTo} />
-          <ActionButton icon={<Mail aria-hidden className="size-4" />}>
-            Invite by email
-          </ActionButton>
-        </form>
-        <form action={sendAdminTeamPasswordResetAction}>
-          <input name="memberId" type="hidden" value={member.id} />
-          <input name="returnTo" type="hidden" value={returnTo} />
-          <ActionButton icon={<RotateCcw aria-hidden className="size-4" />}>
-            Reset password email
-          </ActionButton>
-        </form>
         <form action={passwordAction}>
           <input name="memberId" type="hidden" value={member.id} />
-          <ActionButton icon={<Shield aria-hidden className="size-4" />}>
-            Generate password
+          <ActionButton
+            disabled={passwordPending}
+            icon={<Shield aria-hidden className="size-4" />}
+          >
+            {passwordPending ? "Generating password..." : "Generate password"}
           </ActionButton>
         </form>
         {member.enabled ? (
@@ -951,7 +638,7 @@ function MemberActions({
           </form>
         </details>
       </div>
-      <TeamMutationResult state={passwordState} />
+      <TeamMutationResult onClear={clearResult} state={passwordState} />
     </aside>
   )
 }
@@ -1022,156 +709,19 @@ function GroupsList({ groups }: { groups: AdminTeamGroup[] }) {
     <div className="overflow-hidden rounded-lg border border-[#353535] bg-[#232323]">
       {visibleGroups.map((group, index, list) => (
         <div className="contents" key={group.id}>
-          <Link
-            className="grid gap-2 p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-            href={`/team/groups/${group.id}`}
-          >
+          <div className="grid gap-2 p-4">
             <span className="text-base font-semibold leading-5 text-white">
               {group.name}
             </span>
             <span className="text-sm leading-5 text-[#b2b2b2]">
               {group.memberCount} members
             </span>
-          </Link>
+          </div>
           {index < list.length - 1 ? (
             <span aria-hidden className="block h-px w-full bg-[#353535]" />
           ) : null}
         </div>
       ))}
-    </div>
-  )
-}
-
-function GroupActions({ group }: { group: AdminTeamGroup }) {
-  if (group.virtual) {
-    return (
-      <aside className="rounded-lg border border-[#353535] bg-[#232323] p-5">
-        <h2 className="text-xl font-semibold leading-none text-white">
-          Group actions
-        </h2>
-        <p className="mt-4 text-sm leading-5 text-[#b2b2b2]">
-          Everyone is virtual and maps to unrestricted access. It cannot be
-          edited or deleted in Keycloak.
-        </p>
-      </aside>
-    )
-  }
-
-  const returnTo = `/team/groups/${group.id}`
-
-  return (
-    <aside className="rounded-lg border border-[#353535] bg-[#232323] p-5">
-      <h2 className="text-xl font-semibold leading-none text-white">
-        Group actions
-      </h2>
-      <form action={updateAdminTeamGroupAction} className="mt-5 grid gap-3">
-        <input name="groupId" type="hidden" value={group.id} />
-        <input name="returnTo" type="hidden" value={returnTo} />
-        <LabeledInput
-          defaultValue={group.name}
-          label="Group name"
-          name="name"
-          placeholder="Operations"
-          required
-        />
-        <button
-          className="h-10 w-fit rounded-md bg-[#2e2e2e] px-4 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-          type="submit"
-        >
-          Save group
-        </button>
-      </form>
-      <details className="mt-5 rounded-md border border-[#353535] p-3">
-        <summary className="cursor-pointer text-sm font-semibold leading-5 text-[#ff6262]">
-          Delete group
-        </summary>
-        <form action={deleteAdminTeamGroupAction} className="mt-3 grid gap-3">
-          <input name="groupId" type="hidden" value={group.id} />
-          <input name="returnTo" type="hidden" value={returnTo} />
-          <label className="grid gap-2 text-sm font-medium leading-5 text-[#d9d9d9]">
-            Type DELETE to confirm
-            <input
-              className="h-10 rounded-md border border-[#353535] bg-[#181818] px-3 text-white outline-none focus:border-[#009fff]"
-              name="confirmation"
-              required
-            />
-          </label>
-          <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#371d1f] px-4 text-sm font-semibold leading-none text-[#ff6262] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-            type="submit"
-          >
-            <Trash2 aria-hidden className="size-4" />
-            Delete
-          </button>
-        </form>
-      </details>
-    </aside>
-  )
-}
-
-function GroupMembersTable({
-  canManageTeam,
-  group,
-  members,
-}: {
-  canManageTeam: boolean
-  group: AdminTeamGroup
-  members: AdminTeamMember[]
-}) {
-  if (members.length === 0) {
-    return (
-      <p className="mt-5 text-sm leading-5 text-[#b2b2b2]">
-        No users are assigned to this group yet.
-      </p>
-    )
-  }
-
-  return (
-    <div className="mt-5 overflow-hidden rounded-md border border-[#353535]">
-      <table className="w-full border-collapse text-left">
-        <thead className="border-b border-[#353535] text-xs uppercase leading-none tracking-[0.08em] text-[#8f8f8f]">
-          <tr>
-            <th className="px-4 py-3 font-semibold">Name</th>
-            <th className="px-4 py-3 font-semibold">Username</th>
-            <th className="px-4 py-3 font-semibold">Role</th>
-            {canManageTeam ? (
-              <th className="px-4 py-3 font-semibold">Action</th>
-            ) : null}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[#353535] text-sm leading-5 text-white">
-          {members.map((member) => (
-            <tr key={member.id}>
-              <td className="p-4">{member.displayName}</td>
-              <td className="p-4 text-[#d9d9d9]">{member.username}</td>
-              <td className="p-4 text-[#d9d9d9]">{capitalize(member.role)}</td>
-              {canManageTeam ? (
-                <td className="p-4">
-                  {!group.virtual ? (
-                    <form action={removeAdminTeamGroupMemberAction}>
-                      <input name="groupId" type="hidden" value={group.id} />
-                      <input name="memberId" type="hidden" value={member.id} />
-                      <input
-                        name="returnTo"
-                        type="hidden"
-                        value={`/team/groups/${group.id}`}
-                      />
-                      <button
-                        className="rounded-md bg-[#2e2e2e] px-3 py-2 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-                        type="submit"
-                      >
-                        Remove
-                      </button>
-                    </form>
-                  ) : (
-                    <span className="text-[#8f8f8f]">Virtual</span>
-                  )}
-                </td>
-              ) : null}
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   )
 }
@@ -1288,32 +838,40 @@ function TeamActionNotice({ action }: { action?: string }) {
   )
 }
 
-function TeamMutationResult({ state }: { state: TeamMemberActionState }) {
+function TeamMutationResult({
+  onClear,
+  state,
+}: {
+  onClear: () => void
+  state: TeamMemberActionState
+}) {
   if (state.status === "idle") {
     return null
   }
   if (state.error) {
     return (
-      <p className="rounded-md border border-[#371d1f] bg-[#261719] px-4 py-3 text-sm font-medium leading-5 text-[#ff6262]">
+      <p className="mt-3 rounded-md border border-[#371d1f] bg-[#261719] px-4 py-3 text-sm font-medium leading-5 text-[#ff6262]">
         {state.error}
       </p>
     )
   }
+  if (state.generatedPassword) {
+    return (
+      <TeamPasswordRevealDialog
+        memberId={state.memberId}
+        onClear={onClear}
+        password={state.generatedPassword}
+        title={
+          state.status === "generated" ? "Password generated." : "User created."
+        }
+      />
+    )
+  }
   return (
-    <div className="rounded-md border border-[#353535] bg-[#181818] px-4 py-3 text-sm leading-5 text-[#d9d9d9]">
+    <div className="mt-3 rounded-md border border-[#353535] bg-[#181818] px-4 py-3 text-sm leading-5 text-[#d9d9d9]">
       <p className="font-semibold text-white">
         {state.status === "generated" ? "Password generated." : "User created."}
       </p>
-      {state.generatedPassword ? (
-        <label className="mt-3 grid gap-2 font-medium">
-          Generated password
-          <input
-            className="h-10 rounded-md border border-[#353535] bg-[#101010] px-3 font-mono text-white"
-            readOnly
-            value={state.generatedPassword}
-          />
-        </label>
-      ) : null}
       {state.memberId ? (
         <Link
           className="mt-3 inline-flex text-sm font-semibold text-white underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
@@ -1324,6 +882,120 @@ function TeamMutationResult({ state }: { state: TeamMemberActionState }) {
       ) : null}
     </div>
   )
+}
+
+function TeamPasswordRevealDialog({
+  memberId,
+  onClear,
+  password,
+  title,
+}: {
+  memberId: string | null
+  onClear: () => void
+  password: string
+  title: string
+}) {
+  const descriptionId = useId()
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const titleId = useId()
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) {
+      return
+    }
+    if (typeof dialog.showModal === "function") {
+      dialog.showModal()
+    } else {
+      dialog.setAttribute("open", "")
+    }
+    headingRef.current?.focus()
+    return () => {
+      if (dialog.open && typeof dialog.close === "function") {
+        dialog.close()
+      }
+    }
+  }, [])
+
+  return (
+    <dialog
+      aria-describedby={descriptionId}
+      aria-labelledby={titleId}
+      className="m-auto w-[calc(100%_-_2rem)] max-w-[520px] rounded-lg border border-[#7b5d1a] bg-[#232323] p-5 text-white backdrop:bg-black/70"
+      onCancel={(event) => {
+        event.preventDefault()
+        onClear()
+      }}
+      onKeyDown={trapTeamPasswordDialogFocus}
+      ref={dialogRef}
+    >
+      <h2
+        className="text-xl font-semibold"
+        id={titleId}
+        ref={headingRef}
+        tabIndex={-1}
+      >
+        {title}
+      </h2>
+      <p className="mt-2 text-sm font-medium text-[#ffdb8a]" id={descriptionId}>
+        This password is displayed only once. Store it before closing.
+      </p>
+      <label className="mt-4 grid gap-2 text-sm font-medium">
+        Generated password
+        <input
+          autoComplete="off"
+          className="h-10 rounded-md border border-[#353535] bg-[#101010] px-3 font-mono text-white"
+          readOnly
+          spellCheck={false}
+          value={password}
+        />
+      </label>
+      <div className="mt-4 flex justify-end gap-2">
+        {memberId ? (
+          <Link
+            className="inline-flex h-10 items-center rounded-md bg-[#2e2e2e] px-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+            href={`/team/members/${memberId}`}
+            onClick={onClear}
+          >
+            Open member detail
+          </Link>
+        ) : null}
+        <button
+          className="h-10 rounded-md bg-[#009fff] px-4 text-sm font-semibold text-[#081018] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#73cfff]"
+          onClick={onClear}
+          type="button"
+        >
+          Done
+        </button>
+      </div>
+    </dialog>
+  )
+}
+
+function trapTeamPasswordDialogFocus(
+  event: ReactKeyboardEvent<HTMLDialogElement>,
+) {
+  if (event.key !== "Tab") {
+    return
+  }
+  const focusable = [
+    ...event.currentTarget.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ]
+  const first = focusable[0]
+  const last = focusable.at(-1)
+  if (!first || !last) {
+    return
+  }
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 
 function PageHeader({ title }: { title: string }) {
@@ -1439,14 +1111,17 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 function ActionButton({
   children,
+  disabled = false,
   icon,
 }: {
   children: ReactNode
+  disabled?: boolean
   icon?: ReactNode
 }) {
   return (
     <button
       className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#2e2e2e] px-4 text-sm font-semibold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
+      disabled={disabled}
       type="submit"
     >
       {icon}
@@ -1476,30 +1151,6 @@ function formatTeamAction(
     deleted: { description: "Team member deleted.", tone: "danger" },
     disabled: { description: "Team member disabled.", tone: "warning" },
     failed: { description: "Team action failed.", tone: "danger" },
-    groupCreated: { description: "Team group created.", tone: "success" },
-    groupDeleteConfirmation: {
-      description: "Type DELETE before deleting the group.",
-      tone: "warning",
-    },
-    groupDeleted: { description: "Team group deleted.", tone: "danger" },
-    groupMemberRemoved: {
-      description: "Group member removed.",
-      tone: "success",
-    },
-    groupMembersAssigned: {
-      description: "Selected users assigned to the group.",
-      tone: "success",
-    },
-    groupUpdated: { description: "Team group updated.", tone: "success" },
-    inviteSent: { description: "Invite email sent.", tone: "success" },
-    missingSelection: {
-      description: "Select at least one user first.",
-      tone: "warning",
-    },
-    passwordResetSent: {
-      description: "Password reset email sent.",
-      tone: "success",
-    },
     reactivated: { description: "Team member reactivated.", tone: "success" },
   }
   return (

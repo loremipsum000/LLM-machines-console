@@ -224,6 +224,20 @@ export function validateCoreContract(core) {
     errors,
   )
   if (
+    !sameJson(core?.consoleSections, [
+      "applications",
+      "inference",
+      "hardware",
+      "team",
+      "settings",
+    ])
+  ) {
+    add(
+      errors,
+      "Core Console sections must match the reduced five-surface order",
+    )
+  }
+  if (
     !sameJson(core?.coreAppliance?.baseline, {
       localDiskGiB: 100,
       memoryMiB: 32768,
@@ -725,6 +739,12 @@ export function validateDeliveryProfile(profile, coreContract) {
     add(errors, "inactive profiles cannot make a production support claim")
   }
 
+  exactKeys(
+    profile.rollback,
+    ["profileId", "revision", "engineImageDigest", "modelArtifactDigest"],
+    "rollback",
+    errors,
+  )
   if (
     !profileIdPattern.test(profile.rollback?.profileId ?? "") ||
     !isPositiveInteger(profile.rollback?.revision) ||

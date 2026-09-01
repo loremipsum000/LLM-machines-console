@@ -538,7 +538,9 @@ describe("Keys experience", () => {
     const revealDialog = await screen.findByRole("dialog", {
       name: "Key created",
     })
-    expect(within(revealDialog).getByText(oauthReveal.clientSecret)).toBeTruthy()
+    expect(
+      within(revealDialog).getByText(oauthReveal.clientSecret),
+    ).toBeTruthy()
     expect(within(revealDialog).getByText(oauthReveal.clientId)).toBeTruthy()
     expect(
       screen.queryByRole("button", { name: "Copy Firecrawl API key" }),
@@ -1141,7 +1143,6 @@ const model: AdminInferenceModel = {
 
 const application: AdminConnectedApp = {
   allowedModels: [model.name],
-  auditHref: "/activity?app=app-1",
   authMethod: "api_key",
   connectionStatus: "not_connected",
   createdAt: "2026-07-31T08:00:00.000Z",

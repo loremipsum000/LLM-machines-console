@@ -1385,3 +1385,61 @@ inactive, Q0 is not started, and Genesis is unpublished. F0-N4R2 is the next
 package and must independently admit the exact image into the Core BOM and
 image lock together with startup, persistence, recovery-administrator, backup,
 restart, health, stop, and clean-restore contracts.
+
+## Console Activity & Audit surface retirement
+
+The prospective current Console has six primary customer surfaces: Overview,
+Keys, Inference, Hardware, Team, and Settings. The dedicated `/activity` page
+is absent and fails closed; Overview retains a non-interactive metadata-only
+recent-activity summary. Admin signed audit export and verification-key access
+remain available in Settings, while Operator export remains denied.
+
+This is presentation consolidation only. Audit generation, ledger storage,
+native ingestion, metadata-only retention, authorization, signing, read APIs,
+and signed export APIs remain retained controls. Historical PR-09, PR-11,
+PR-11A, F0, and audit evidence remains unchanged. Product acceptance and
+runtime qualification remain false, contract activation remains inactive, and
+Genesis remains unpublished.
+
+## Console Overview token-usage refinement
+
+The prospective successor removes the final Recent Activity card from
+Overview. Audit generation, ingestion, ledger storage, signed export,
+verification-key service, authorization, and metadata-only retention remain
+unchanged. Settings now presents Admin with one visible signed JSON action,
+`Export last 30 days`; Operator has no export surface. The verification-key API
+remains available to export verification without adding a second Settings
+control.
+
+Overview now presents the four retained operational cards as one full-width
+column and adds a 90-day UTC token-usage grid sourced only from LiteLLM's
+aggregate usage projection. The grid uses relative blue intensity, reports an
+exact token count and date on hover or keyboard selection, and distinguishes a
+missing daily observation from an authentic zero. Unavailable or unconfigured
+aggregate usage fails visibly closed. No prompt or response content enters the
+contract, Web payload, or retained evidence.
+
+The predecessor Activity-retirement record remains byte-identical historical
+evidence. Product acceptance and runtime qualification remain false, contract
+activation remains inactive, and Genesis remains unpublished.
+
+## Console Overview surface retirement
+
+The prospective successor removes Overview as a customer surface. The Console
+now has five primary surfaces in fixed order: Keys, Inference, Hardware, Team,
+and Settings. The authenticated root remains protected and redirects to Keys;
+the absent `/overview` route is not retained as a compatibility surface. The
+private Overview BFF projection and its Overview-only contracts are also
+absent because no retained Product surface consumes them.
+
+Settings retains the Admin-only `Export last 30 days` action, audit read and
+signed-export APIs, ledger, native ingestion, metadata-only retention,
+authorization, and signing controls. Historical Activity retirement and
+Overview token-usage refinement records remain unchanged evidence. The new
+five-surface Core compatibility fingerprint is
+`sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40`;
+delivery profiles bound to the preceding fingerprint fail closed until
+separately revised and qualified.
+
+Product acceptance and runtime qualification remain false, contract activation
+remains inactive, and Genesis remains unpublished.

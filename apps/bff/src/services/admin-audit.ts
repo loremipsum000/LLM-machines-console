@@ -200,7 +200,6 @@ function toAdminAuditEvent(event: AuditEventRecord): AdminAuditEvent {
     reason: event.reason ?? null,
     severity: auditSeverity(event),
     metadata: metadataEntries(event.metadata),
-    href: `/activity?eventId=${encodeURIComponent(event.id)}`,
     createdAt: event.createdAt,
   }
 }

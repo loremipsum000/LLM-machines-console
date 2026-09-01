@@ -49,12 +49,10 @@
     "credential-record-id"
   ],
   "consoleSections": [
-    "overview",
     "applications",
     "inference",
     "hardware",
     "team",
-    "activity-audit",
     "settings"
   ],
   "profileInvariant": true

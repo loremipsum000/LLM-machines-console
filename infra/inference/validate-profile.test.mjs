@@ -291,6 +291,16 @@ test("profile-controlled arguments cannot override identity, retention, or custo
   }
 })
 
+test("rollback accepts only the four canonical credential-free fields", () => {
+  const changed = mutate(single, (profile) => {
+    profile.rollback.secretToken = "forbidden"
+  })
+  assert.match(
+    validateDeliveryProfile(changed, contracts.core).join("\n"),
+    /rollback keys must be exactly engineImageDigest, modelArtifactDigest, profileId, revision/,
+  )
+})
+
 test("parallelism cannot exceed declared hardware", () => {
   const changed = mutate(single, (profile) => {
     profile.parallelism.replicas = 2
@@ -325,6 +335,30 @@ test("Core baseline has no customer model or accelerator assumption", () => {
     "separate-customer-owned-mounted-filesystem",
   )
   assert.ok(storage.backup.excludedDatasets.includes("models"))
+})
+
+test("Core Console sections match the exact reduced five-surface order", () => {
+  assert.deepEqual(contracts.core.consoleSections, [
+    "applications",
+    "inference",
+    "hardware",
+    "team",
+    "settings",
+  ])
+
+  for (const consoleSections of [
+    ["overview", ...contracts.core.consoleSections],
+    contracts.core.consoleSections.slice(1),
+    [...contracts.core.consoleSections, "activity"],
+    [...contracts.core.consoleSections].reverse(),
+  ]) {
+    const changed = structuredClone(contracts.core)
+    changed.consoleSections = consoleSections
+    assert.match(
+      validateCoreContract(changed).join("\n"),
+      /reduced five-surface order/,
+    )
+  }
 })
 
 test("credential material and workstation paths are rejected", () => {

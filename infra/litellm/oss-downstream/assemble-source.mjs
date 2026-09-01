@@ -18,7 +18,6 @@ import {
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { stripEnterpriseBridges } from "./strip-enterprise-bridges.mjs"
-import { validateSidebarFunctionalCandidate } from "./validate-sidebar-functional-candidate.mjs"
 import { validateSourcePackage } from "./validate-source-package.mjs"
 
 const directory = path.dirname(fileURLToPath(import.meta.url))
@@ -47,15 +46,15 @@ function run(command, args, options = {}) {
 
 function parseArgs(args) {
   const values = {}
+  const allowed = new Set(["archive", "output", "packet"])
   for (let index = 0; index < args.length; index += 2) {
     const key = args[index]
     const value = args[index + 1]
-    if (!key?.startsWith("--") || !value) {
-      throw new Error(
-        "expected --archive PATH --output PATH [--packet PATH] [--candidate PATH]",
-      )
+    const name = key?.slice(2)
+    if (!key?.startsWith("--") || !value || !allowed.has(name)) {
+      throw new Error("expected --archive PATH --output PATH [--packet PATH]")
     }
-    values[key.slice(2)] = value
+    values[name] = value
   }
   if (!values.archive || !values.output) {
     throw new Error("--archive and --output are required")
@@ -148,31 +147,9 @@ function requireRemovalTarget(target, relative) {
   }
 }
 
-export function assembleSource({ archive, output, packet, candidate }) {
+export function assembleSource({ archive, output, packet }) {
   const errors = validateSourcePackage(manifest, repositoryRoot)
   if (errors.length > 0) throw new Error(errors.join("\n"))
-  let functionalCandidate = null
-  if (candidate) {
-    const candidatePath = path.resolve(candidate)
-    const expectedPath = path.resolve(
-      directory,
-      "sidebar-functional-candidate.json",
-    )
-    if (candidatePath !== expectedPath) {
-      throw new Error(
-        "functional candidate path is not the checked-in contract",
-      )
-    }
-    functionalCandidate = JSON.parse(readFileSync(candidatePath, "utf8"))
-    const candidateErrors = validateSidebarFunctionalCandidate(
-      functionalCandidate,
-      manifest,
-      repositoryRoot,
-    )
-    if (candidateErrors.length > 0) {
-      throw new Error(candidateErrors.join("\n"))
-    }
-  }
   const archivePath = path.resolve(archive)
   const outputPath = path.resolve(output)
   if (!lstatSync(archivePath).isFile()) throw new Error("archive is not a file")
@@ -207,31 +184,12 @@ export function assembleSource({ archive, output, packet, candidate }) {
       rmSync(target, { recursive: true })
     }
     stripEnterpriseBridges(source)
-    if (functionalCandidate) {
-      const overlay = path.resolve(
-        repositoryRoot,
-        functionalCandidate.overlay.path,
-      )
-      run(
-        "git",
-        ["apply", "--check", "--unidiff-zero", "--whitespace=nowarn", overlay],
-        {
-          cwd: source,
-        },
-      )
-      run("git", ["apply", "--unidiff-zero", "--whitespace=nowarn", overlay], {
-        cwd: source,
-      })
-    }
-
     const sourceName = "litellm-oss-1.96.2"
     const prepared = path.join(temporary, sourceName)
     renameSync(source, prepared)
     normalizeTimestamps(prepared)
     const inventory = buildInventory(prepared)
-    const expectedInventory =
-      functionalCandidate?.sourceInventory ??
-      manifest.downstream.sourceInventory
+    const expectedInventory = manifest.downstream.sourceInventory
     if (
       inventory.files.length !== expectedInventory.fileCount ||
       inventory.sha256 !== expectedInventory.sha256SumsSha256
@@ -256,25 +214,12 @@ export function assembleSource({ archive, output, packet, candidate }) {
         schema: "llm-machines.litellm-oss-source-inventory.v1",
         upstreamRevision: manifest.upstream.revision,
         patchSha256: manifest.downstream.patch.sha256,
-        ...(functionalCandidate
-          ? {
-              overlayPatchSha256: functionalCandidate.overlay.sha256,
-              version: functionalCandidate.version,
-            }
-          : {}),
         fileCount: inventory.files.length,
         sha256SumsSha256: inventory.sha256,
       },
       null,
       2,
     )}\n`
-    if (
-      functionalCandidate &&
-      createHash("sha256").update(inventoryDocument).digest("hex") !==
-        functionalCandidate.sourceInventory.inventoryDocumentSha256
-    ) {
-      throw new Error("functional candidate inventory document differs")
-    }
     writeFileSync(
       path.join(stagedOutput, "source-inventory.json"),
       inventoryDocument,

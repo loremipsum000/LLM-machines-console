@@ -15,7 +15,7 @@ export const inferenceCoreAlertNames: readonly string[] = Object.freeze([
 ])
 
 export const inferenceCoreCompatibilityFingerprint =
-  "sha256:9249bdc91f2dc7ac8471de88aad851644a8b8526d57c5f1501e6c63db246d1d7"
+  "sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40"
 
 export const healthResponseSchema = z
   .object({
@@ -103,62 +103,6 @@ export const inferenceCoreSeverityRank: Readonly<
   ) as Record<InferenceCoreSeverity, number>,
 )
 
-export const adminOverviewTileIdSchema = z.enum([
-  "applications",
-  "inference",
-  "hardware",
-  "system",
-])
-export type AdminOverviewTileId = z.infer<typeof adminOverviewTileIdSchema>
-
-export const adminOverviewMetricToneSchema = z.enum([
-  "neutral",
-  "good",
-  "warning",
-  "critical",
-])
-export type AdminOverviewMetricTone = z.infer<
-  typeof adminOverviewMetricToneSchema
->
-
-export const adminOverviewMetricSchema = z
-  .object({
-    id: z.string().min(1),
-    label: z.string().min(1),
-    value: z.string().min(1),
-    detail: z.string().min(1).nullable(),
-    tone: adminOverviewMetricToneSchema,
-  })
-  .strict()
-export type AdminOverviewMetric = z.infer<typeof adminOverviewMetricSchema>
-
-export const adminOverviewTileSchema = z
-  .object({
-    id: adminOverviewTileIdSchema,
-    title: z.string().min(1),
-    summary: z.string().min(1),
-    href: z.enum(["/keys", "/inference", "/hardware", "/activity"]),
-    sourceStatus: inferenceCoreSourceStatusSchema,
-    metrics: z.array(adminOverviewMetricSchema).min(1),
-    updatedAt: z.string().datetime(),
-  })
-  .strict()
-export type AdminOverviewTile = z.infer<typeof adminOverviewTileSchema>
-
-export const adminActivityEventSchema = z
-  .object({
-    id: z.string().min(1),
-    actorId: z.string().min(1),
-    action: z.string().min(1),
-    targetType: z.string().min(1),
-    targetId: z.string().min(1),
-    severity: inferenceCoreSeveritySchema,
-    href: z.string().regex(/^\/activity\?eventId=[A-Za-z0-9_.!~*'()%\-]+$/),
-    createdAt: z.string().datetime(),
-  })
-  .strict()
-export type AdminActivityEvent = z.infer<typeof adminActivityEventSchema>
-
 export const adminAuditMetadataEntrySchema = z
   .object({
     label: z.string().min(1),
@@ -203,7 +147,6 @@ export const adminAuditEventSchema = z
     reason: z.string().min(1).nullable(),
     severity: inferenceCoreSeveritySchema,
     metadata: z.array(adminAuditMetadataEntrySchema),
-    href: z.string().min(1),
     createdAt: z.string().datetime(),
   })
   .strict()
@@ -319,16 +262,6 @@ export const inferenceCoreNativeAuditCapabilitySchema = z
 export type InferenceCoreNativeAuditCapability = z.infer<
   typeof inferenceCoreNativeAuditCapabilitySchema
 >
-
-export const adminOverviewResponseSchema = z
-  .object({
-    activitySourceStatus: inferenceCoreSourceStatusSchema,
-    generatedAt: z.string().datetime(),
-    tiles: z.array(adminOverviewTileSchema).length(4),
-    activityEvents: z.array(adminActivityEventSchema),
-  })
-  .strict()
-export type AdminOverviewResponse = z.infer<typeof adminOverviewResponseSchema>
 
 export const adminTeamServiceStatusSchema = z.enum([
   "ok",
@@ -621,37 +554,9 @@ export type AdminTeamCsvImportCommitResponse = z.infer<
 export const adminSettingsLanguageSchema = z.enum(["en", "hr"])
 export type AdminSettingsLanguage = z.infer<typeof adminSettingsLanguageSchema>
 
-export const adminSettingsLogoMimeTypeSchema = z.enum([
-  "image/png",
-  "image/jpeg",
-])
-export type AdminSettingsLogoMimeType = z.infer<
-  typeof adminSettingsLogoMimeTypeSchema
->
-
-const maxLogoBytes = 1024 * 1024
-
-export const adminSettingsLogoAssetSchema = z
-  .object({
-    checksum: z.string().min(1),
-    dataUrl: z.string().min(1).max(1_500_000),
-    fileName: z.string().trim().min(1).max(120),
-    height: z.number().int().positive(),
-    mimeType: adminSettingsLogoMimeTypeSchema,
-    sizeBytes: z.number().int().positive().max(maxLogoBytes),
-    updatedAt: z.string().datetime(),
-    width: z.number().int().positive(),
-  })
-  .strict()
-export type AdminSettingsLogoAsset = z.infer<
-  typeof adminSettingsLogoAssetSchema
->
-
 export const adminSettingsOrganizationSchema = z
   .object({
     defaultLanguage: adminSettingsLanguageSchema,
-    fullLogo: adminSettingsLogoAssetSchema.nullable(),
-    iconLogo: adminSettingsLogoAssetSchema.nullable(),
     organizationName: z.string().trim().min(1).max(120),
     updatedAt: z.string().datetime().nullable(),
     updatedBy: z.string().min(1).nullable(),
@@ -664,20 +569,9 @@ export type AdminSettingsOrganization = z.infer<
 export const updateAdminSettingsOrganizationRequestSchema = z
   .object({
     defaultLanguage: adminSettingsLanguageSchema,
-    fullLogo: adminSettingsLogoAssetSchema.nullable().optional(),
-    iconLogo: adminSettingsLogoAssetSchema.nullable().optional(),
     organizationName: z.string().trim().min(1).max(120),
   })
   .strict()
-  .superRefine((value, ctx) => {
-    if (value.iconLogo && value.iconLogo.width !== value.iconLogo.height) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Icon logo must use a 1:1 aspect ratio.",
-        path: ["iconLogo"],
-      })
-    }
-  })
 export type UpdateAdminSettingsOrganizationRequest = z.infer<
   typeof updateAdminSettingsOrganizationRequestSchema
 >
@@ -1379,7 +1273,6 @@ const defaultAdminConnectedAppFirecrawl = {
 export const adminConnectedAppSchema = z
   .object({
     allowedModels: adminConnectedAppAllowedModelsSchema,
-    auditHref: z.string().min(1),
     authMethod: adminConnectedAppAuthMethodSchema,
     connectionStatus: adminConnectedAppConnectionStatusSchema,
     createdAt: z.string().datetime(),

@@ -5,7 +5,9 @@ import { dirname, resolve } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import {
+  activityAuditSurfaceRetirementPath,
   buildRouteBaseline,
+  overviewSurfaceRetirementPath,
   pr11aR1S1Pr09NativeIdentifierSuccessorEvidence,
   verifyReviewedPr09NativeIdentifierEvidence,
 } from "./guardrails.mjs"
@@ -19,6 +21,8 @@ const validationRegisterPath =
   "docs/reduction/inference-core/validation-register.md"
 const acceptedRouteBaselinePath =
   "docs/reduction/inference-core/route-baseline.json"
+const teamDeferredCapabilitiesBoundaryPath =
+  "docs/reduction/inference-core/console-team-deferred-capabilities-boundary.json"
 const integrationBase = "0f29c7939fa885c11c191e8b672f09e16635ddcb"
 const sourceBase = "aa831424949fb49095de48714b508ada0b57f589"
 const sourceBaseTree = "3c17e44c23fd15b1d84722529b4f96693ec0cd93"
@@ -125,14 +129,55 @@ test("R1-S1 makes only the reviewed opaque-session route transition", () => {
     baseCommit: sourceHead,
     root: repositoryRoot,
   })
-  const nativeSessionSuccessor = candidate.routes.filter(
+  const successorAwareRoutes = [...candidate.routes]
+  if (existsSync(resolve(repositoryRoot, activityAuditSurfaceRetirementPath))) {
+    successorAwareRoutes.push({
+      surface: "web-page",
+      method: "PAGE",
+      path: "/activity",
+      source: "apps/web/src/app/activity/page.tsx",
+      classification: "current-console-seam",
+    })
+  }
+  if (existsSync(resolve(repositoryRoot, overviewSurfaceRetirementPath))) {
+    successorAwareRoutes.push({
+      surface: "bff",
+      method: "GET",
+      path: "/api/admin/overview",
+      source: "apps/bff/src/routes/admin.ts",
+      classification: "current-console-seam",
+    })
+  }
+  if (
+    existsSync(resolve(repositoryRoot, teamDeferredCapabilitiesBoundaryPath))
+  ) {
+    const retiredTeamRoutes = new Set([
+      "GET /api/admin/team/csv-template",
+      "GET /api/admin/team/groups/:id",
+      "POST /api/admin/team/groups/:id/delete",
+      "POST /api/admin/team/groups/:id/members/:memberId/remove",
+      "POST /api/admin/team/groups/:id/members/bulk-assign",
+      "POST /api/admin/team/groups/:id/update",
+      "POST /api/admin/team/groups",
+      "POST /api/admin/team/import/commit",
+      "POST /api/admin/team/import/preview",
+      "POST /api/admin/team/members/:id/invite",
+      "POST /api/admin/team/members/:id/reset-password-email",
+    ])
+    successorAwareRoutes.push(
+      ...accepted.routes.filter(({ method, path }) =>
+        retiredTeamRoutes.has(`${method} ${path}`),
+      ),
+    )
+  }
+  const nativeSessionSuccessor = successorAwareRoutes.filter(
     ({ method, path, source, surface }) =>
       method === "GET" &&
       path === "/api/internal/native-session/litellm/authorize" &&
       source === "apps/bff/src/routes/console-session.ts" &&
       surface === "bff",
   )
-  const historicalCandidateRoutes = candidate.routes.filter(
+  const historicalCandidateRoutes = successorAwareRoutes.filter(
     (route) => !nativeSessionSuccessor.includes(route),
   )
   const acceptedSignatures = new Set(routeSignatures(accepted.routes))
@@ -216,8 +261,7 @@ test("R1-S1 mutation actions cannot swallow terminal Console sessions", () => {
   const terminalRethrows = source.match(
     /rethrowTerminalConsoleSession\(error\)/g,
   )
-
-  assert.equal(terminalRethrows?.length, 19)
+  assert.equal(terminalRethrows?.length, 10)
   assert.doesNotMatch(
     source,
     /export async function rotateAdminConnectedAppCredentialsAction/,

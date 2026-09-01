@@ -110,7 +110,7 @@ const expectedNginxLocations = {
     "= /api/admin/audit/export",
     "= /api/admin/audit/export/verification-keys",
     "= /",
-    '~ "^/(?:activity|hardware|inference|keys|applications|team)$"',
+    '~ "^/(?:hardware|inference|keys|applications|team)$"',
     '~ "^/(?:(?:keys|applications)/apps/(?:new|[A-Za-z0-9._-]{1,128})|settings|team/(?:import|groups/new|groups/[A-Za-z0-9._-]{1,128}|members|members/new|members/[A-Za-z0-9._-]{1,128}))$"',
     "= /team/import/template",
     "~ ^/auth/(?:signin|elevate|unavailable)$",
@@ -227,7 +227,7 @@ const expectedNginxLocations = {
 }
 const expectedRuntimeSourceHashes = {
   "product-edge.nginx.conf.template":
-    "04a01969e4f4b17cf875fabe62465115053a816451eebcbacd1ea683906a16b3",
+    "0ee42e06c3ff407f521cb5be8a43f74d62b4d9042b42b5f36c6e1b05cff8c847",
   "native-admin-edge-profile.json":
     "264c5f251e08401b562dd357753d5b7efb06ff0786b0b899d9b93c94e040ffc7",
   "proxy-common.inc":

@@ -1,0 +1,12 @@
+{
+  "schema": "llm-machines.genesis-source-transforms.v1",
+  "status": "REVIEWED_DETERMINISTIC_TRANSFORMS",
+  "transforms": [
+    {
+      "id": "standalone-root-package",
+      "sourcePath": "infra/genesis/snapshot-root-package.json",
+      "targetPath": "package.json",
+      "reason": "Remove source-history-only validation commands from the filtered snapshot while preserving them in the authoritative source repository."
+    }
+  ]
+}

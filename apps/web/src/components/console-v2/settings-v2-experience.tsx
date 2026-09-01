@@ -9,21 +9,18 @@ import type { TechnicalToolLink } from "@/lib/admin/technical-tools"
 import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import { cn } from "@/lib/utils"
 import type {
-  AdminSettingsLogoAsset,
   AdminSettingsResponse,
   AdminSettingsServiceId,
   InferenceCoreSourceStatus,
 } from "@llm-machines/contracts/inference-core"
 import { ChevronDown } from "lucide-react"
-import Image from "next/image"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import type { ChangeEvent, ReactNode } from "react"
 import { ConsoleActionToasts } from "./action-toasts"
+import { AuditEvidencePanel } from "./audit-evidence-panel"
 import { sourceStatusLabel } from "./source-status"
 
 const returnTo = "/settings"
-const maxLogoBytes = 1024 * 1024
-const supportedLogoTypes = ["image/png", "image/jpeg"]
 const settingsDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeZone: "UTC",
@@ -34,15 +31,6 @@ interface SettingsV2ExperienceProps {
   settings: AdminSettingsResponse
   settingsAction?: string
   technicalTools?: TechnicalToolLink[]
-}
-
-interface LogoCandidate {
-  error: string | null
-  fileName: string
-  height: number | null
-  sizeBytes: number
-  warning: string | null
-  width: number | null
 }
 
 export function SettingsV2Experience({
@@ -93,6 +81,10 @@ export function SettingsV2Experience({
           services={settings.reachability}
         />
         <TechnicalToolsPanel tools={technicalTools} />
+        <AuditEvidencePanel
+          accessRole={accessRole}
+          generatedAt={settings.generatedAt}
+        />
         <UpdatesLicensePanel settings={settings} />
         <PrivacyPanel
           accessRole={accessRole}
@@ -115,42 +107,19 @@ function OrganizationSettingsPanel({
 }) {
   const { organization } = settings
   const [organizationUi, setOrganizationUi] = useState({
-    clearFullLogo: false,
-    clearIconLogo: false,
     defaultLanguage: organization.defaultLanguage,
-    fullLogo: null as LogoCandidate | null,
-    iconLogo: null as LogoCandidate | null,
     organizationName: organization.organizationName,
   })
 
-  const hasFullLogoError = Boolean(organizationUi.fullLogo?.error)
-  const hasIconLogoError = Boolean(organizationUi.iconLogo?.error)
   const isDirty =
     organizationUi.organizationName !== organization.organizationName ||
-    organizationUi.defaultLanguage !== organization.defaultLanguage ||
-    Boolean(organizationUi.fullLogo) ||
-    Boolean(organizationUi.iconLogo) ||
-    organizationUi.clearFullLogo ||
-    organizationUi.clearIconLogo
-  const isValid =
-    organizationUi.organizationName.trim().length > 0 &&
-    !hasFullLogoError &&
-    !hasIconLogoError &&
-    (!organizationUi.fullLogo ||
-      (organizationUi.fullLogo.width !== null &&
-        organizationUi.fullLogo.height !== null)) &&
-    (!organizationUi.iconLogo ||
-      (organizationUi.iconLogo.width !== null &&
-        organizationUi.iconLogo.height !== null))
+    organizationUi.defaultLanguage !== organization.defaultLanguage
+  const isValid = organizationUi.organizationName.trim().length > 0
   const canMutate = accessRole === "admin" && persistenceReady
 
   function resetOrganizationForm() {
     setOrganizationUi({
-      clearFullLogo: false,
-      clearIconLogo: false,
       defaultLanguage: organization.defaultLanguage,
-      fullLogo: null,
-      iconLogo: null,
       organizationName: organization.organizationName,
     })
   }
@@ -163,8 +132,8 @@ function OrganizationSettingsPanel({
       <PanelHeading
         description={
           canMutate
-            ? "Controls the customer-facing name and Console shell branding used by this appliance."
-            : "Read-only customer-facing name and Console shell branding used by this appliance."
+            ? "Controls the customer-facing organization name and default language used by this appliance."
+            : "Read-only customer-facing organization name and default language used by this appliance."
         }
         title="Organization"
       />
@@ -177,14 +146,6 @@ function OrganizationSettingsPanel({
           <ReadonlySettingRow
             label="Default language"
             value={languageLabel(organization.defaultLanguage)}
-          />
-          <ReadonlySettingRow
-            label="Full logo"
-            value={organization.fullLogo?.fileName ?? "Not configured"}
-          />
-          <ReadonlySettingRow
-            label="Icon logo"
-            value={organization.iconLogo?.fileName ?? "Not configured"}
           />
         </div>
       ) : (
@@ -227,36 +188,6 @@ function OrganizationSettingsPanel({
             </option>
           </SettingsSelect>
 
-          <LogoUploadField
-            asset={organization.fullLogo}
-            candidate={organizationUi.fullLogo}
-            clearChecked={organizationUi.clearFullLogo}
-            clearName="clearFullLogo"
-            label="Full logo"
-            name="fullLogo"
-            onCandidateChange={(fullLogo) =>
-              setOrganizationUi((current) => ({ ...current, fullLogo }))
-            }
-            onClearChange={(clearFullLogo) =>
-              setOrganizationUi((current) => ({ ...current, clearFullLogo }))
-            }
-          />
-          <LogoUploadField
-            asset={organization.iconLogo}
-            candidate={organizationUi.iconLogo}
-            clearChecked={organizationUi.clearIconLogo}
-            clearName="clearIconLogo"
-            label="Icon logo"
-            mustBeSquare
-            name="iconLogo"
-            onCandidateChange={(iconLogo) =>
-              setOrganizationUi((current) => ({ ...current, iconLogo }))
-            }
-            onClearChange={(clearIconLogo) =>
-              setOrganizationUi((current) => ({ ...current, clearIconLogo }))
-            }
-          />
-
           <div className="flex items-center justify-end gap-2 pt-1">
             <button
               className={secondaryButtonClass}
@@ -276,468 +207,6 @@ function OrganizationSettingsPanel({
         </form>
       )}
     </section>
-  )
-}
-
-function LogoUploadField({
-  asset,
-  candidate,
-  clearChecked,
-  clearName,
-  label,
-  mustBeSquare = false,
-  name,
-  onCandidateChange,
-  onClearChange,
-}: {
-  asset: AdminSettingsLogoAsset | null
-  candidate: LogoCandidate | null
-  clearChecked: boolean
-  clearName: string
-  label: string
-  mustBeSquare?: boolean
-  name: "fullLogo" | "iconLogo"
-  onCandidateChange: (candidate: LogoCandidate | null) => void
-  onClearChange: (checked: boolean) => void
-}) {
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const inputId = `${name}-input`
-  const helperId = `${name}-helper`
-  const errorId = `${name}-error`
-
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) {
-      onCandidateChange(null)
-      return
-    }
-
-    const next: LogoCandidate = {
-      error: validateLogoFile(file, mustBeSquare),
-      fileName: file.name,
-      height: null,
-      sizeBytes: file.size,
-      warning: logoCandidateWarning(file, mustBeSquare, null),
-      width: null,
-    }
-    onCandidateChange(next)
-    onClearChange(false)
-
-    if (!next.error) {
-      readImageDimensions(file, (dimensions) => {
-        if (!dimensions) {
-          onCandidateChange({
-            ...next,
-            error: "Could not read image dimensions.",
-          })
-          return
-        }
-        const squareError =
-          mustBeSquare && dimensions.width !== dimensions.height
-            ? "Icon logo must be square."
-            : null
-        onCandidateChange({
-          ...next,
-          error: squareError,
-          height: dimensions.height,
-          warning: logoCandidateWarning(file, mustBeSquare, dimensions),
-          width: dimensions.width,
-        })
-      })
-    }
-  }
-
-  const width = candidate?.width ?? asset?.width ?? ""
-  const height = candidate?.height ?? asset?.height ?? ""
-  const hasValidCandidate = Boolean(candidate && !candidate.error)
-  const title = mustBeSquare ? "Icon logo" : "Full logo"
-  const emptyLabel = mustBeSquare ? "Choose icon logo" : "Choose full logo"
-  const replaceLabel = mustBeSquare ? "Replace icon logo" : "Replace full logo"
-  const chooseAnotherLabel = mustBeSquare
-    ? "Choose another icon logo"
-    : "Choose another full logo"
-  const removeLabel = mustBeSquare ? "Remove icon logo" : "Remove full logo"
-  const undoLabel = mustBeSquare
-    ? "Undo icon logo removal"
-    : "Undo full logo removal"
-  const chooseLabel = candidate
-    ? chooseAnotherLabel
-    : asset
-      ? replaceLabel
-      : emptyLabel
-
-  function openFilePicker() {
-    inputRef.current?.click()
-  }
-
-  function removeAsset() {
-    onCandidateChange(null)
-    onClearChange(true)
-    if (inputRef.current) {
-      inputRef.current.value = ""
-    }
-  }
-
-  function undoRemoveAsset() {
-    onClearChange(false)
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <label className="sr-only" htmlFor={inputId}>
-        {label}
-      </label>
-      <input
-        aria-describedby={`${helperId}${candidate?.error ? ` ${errorId}` : ""}`}
-        accept="image/png,image/jpeg"
-        className="sr-only"
-        id={inputId}
-        name={name}
-        onChange={handleFileChange}
-        ref={inputRef}
-        type="file"
-      />
-      <input name={`${name}Width`} type="hidden" value={width} />
-      <input name={`${name}Height`} type="hidden" value={height} />
-      {asset ? (
-        <input
-          aria-label={`Clear ${label}`}
-          checked={clearChecked}
-          className="sr-only"
-          name={clearName}
-          readOnly
-          type="checkbox"
-        />
-      ) : null}
-
-      <div className="rounded-lg border border-[#353535] bg-[#232323] p-3">
-        <div className="grid gap-3 sm:grid-cols-[1fr_220px] sm:items-start">
-          <LogoUploadStatus
-            asset={asset}
-            candidate={candidate}
-            clearChecked={clearChecked}
-            errorId={errorId}
-            helperId={helperId}
-            mustBeSquare={mustBeSquare}
-            title={title}
-          />
-          <div className="flex min-w-0 flex-col gap-2 sm:items-end sm:text-right">
-            <LogoUploadDetails
-              asset={asset}
-              candidate={candidate}
-              clearChecked={clearChecked}
-              hasValidCandidate={hasValidCandidate}
-              label={label}
-              mustBeSquare={mustBeSquare}
-            />
-            <LogoUploadActions
-              asset={asset}
-              chooseLabel={chooseLabel}
-              clearChecked={clearChecked}
-              onChoose={openFilePicker}
-              onRemove={removeAsset}
-              onUndoRemove={undoRemoveAsset}
-              removeLabel={removeLabel}
-              undoLabel={undoLabel}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function LogoUploadStatus({
-  asset,
-  candidate,
-  clearChecked,
-  errorId,
-  helperId,
-  mustBeSquare,
-  title,
-}: {
-  asset: AdminSettingsLogoAsset | null
-  candidate: LogoCandidate | null
-  clearChecked: boolean
-  errorId: string
-  helperId: string
-  mustBeSquare: boolean
-  title: string
-}) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-base font-medium leading-[19px] text-white">
-          {title}
-        </span>
-        <LogoStatusPill
-          asset={asset}
-          candidate={candidate}
-          clearChecked={clearChecked}
-        />
-      </div>
-      <p className="text-sm leading-5 text-[#b2b2b2]" id={helperId}>
-        PNG or JPEG, max 1 MiB
-        {mustBeSquare ? ", 1:1 ratio required" : ""}.
-      </p>
-      {candidate?.error ? (
-        <p
-          className="text-xs font-medium leading-5 text-[#ff595d]"
-          id={errorId}
-        >
-          {candidate.error}
-        </p>
-      ) : candidate?.warning ? (
-        <p className="text-xs font-medium leading-5 text-[#ffcc4d]">
-          {candidate.warning}
-        </p>
-      ) : null}
-    </div>
-  )
-}
-
-function LogoStatusPill({
-  asset,
-  candidate,
-  clearChecked,
-}: {
-  asset: AdminSettingsLogoAsset | null
-  candidate: LogoCandidate | null
-  clearChecked: boolean
-}) {
-  if (candidate) {
-    return (
-      <span
-        className={cn(
-          "inline-flex h-6 items-center rounded-full border px-2 text-xs font-medium leading-none",
-          candidate.error
-            ? "border-[#4e2527] bg-[#321f20] text-[#ff595d]"
-            : "border-[#3a3422] bg-[#2e2818] text-[#ffcc4d]",
-        )}
-      >
-        {candidate.error ? "Needs attention" : "Replacement pending"}
-      </span>
-    )
-  }
-  if (clearChecked) {
-    return (
-      <span className="inline-flex h-6 items-center rounded-full border border-[#3a3422] bg-[#2e2818] px-2 text-xs font-medium leading-none text-[#ffcc4d]">
-        Removal pending
-      </span>
-    )
-  }
-  if (asset) {
-    return (
-      <span className="inline-flex h-6 items-center rounded-full border border-[#265d3b] bg-[#152c20] px-2 text-xs font-medium leading-none text-[#78d957]">
-        Current
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex h-6 items-center rounded-full border border-[#353535] bg-[#181818] px-2 text-xs font-medium leading-none text-[#8b8b8b]">
-      Empty
-    </span>
-  )
-}
-
-function LogoUploadDetails({
-  asset,
-  candidate,
-  clearChecked,
-  hasValidCandidate,
-  label,
-  mustBeSquare,
-}: {
-  asset: AdminSettingsLogoAsset | null
-  candidate: LogoCandidate | null
-  clearChecked: boolean
-  hasValidCandidate: boolean
-  label: string
-  mustBeSquare: boolean
-}) {
-  return (
-    <>
-      {asset ? (
-        <Image
-          alt={`${label} preview`}
-          className={cn(
-            "max-h-12 max-w-[120px] rounded border border-[#353535] object-contain",
-            mustBeSquare && "size-12",
-            clearChecked && "opacity-40 grayscale",
-          )}
-          height={48}
-          unoptimized
-          src={asset.dataUrl}
-          width={mustBeSquare ? 48 : 120}
-        />
-      ) : null}
-      <div className="grid w-full gap-2 text-sm leading-5">
-        <LogoCurrentFileMeta asset={asset} clearChecked={clearChecked} />
-        {candidate ? (
-          <LogoCandidateMeta
-            asset={asset}
-            candidate={candidate}
-            hasValidCandidate={hasValidCandidate}
-          />
-        ) : null}
-      </div>
-    </>
-  )
-}
-
-function LogoCurrentFileMeta({
-  asset,
-  clearChecked,
-}: {
-  asset: AdminSettingsLogoAsset | null
-  clearChecked: boolean
-}) {
-  if (!asset) {
-    return (
-      <LogoMetaRow alignRight label="Current file" value="No logo uploaded" />
-    )
-  }
-  return (
-    <>
-      <LogoMetaRow
-        alignRight
-        label={clearChecked ? "Active until saved" : "Current file"}
-        value={asset.fileName}
-      />
-      <LogoMetaRow
-        alignRight
-        label="Dimensions"
-        value={formatDimensions(asset.width, asset.height)}
-      />
-      <LogoMetaRow
-        alignRight
-        label="Size"
-        value={formatBytes(asset.sizeBytes)}
-      />
-      <LogoMetaRow
-        alignRight
-        label="Checksum"
-        value={formatShortChecksum(asset.checksum)}
-      />
-      <LogoMetaRow
-        alignRight
-        label="Updated"
-        value={formatDateTime(asset.updatedAt)}
-      />
-    </>
-  )
-}
-
-function LogoCandidateMeta({
-  asset,
-  candidate,
-  hasValidCandidate,
-}: {
-  asset: AdminSettingsLogoAsset | null
-  candidate: LogoCandidate
-  hasValidCandidate: boolean
-}) {
-  return (
-    <div className="rounded-md border border-[#353535] bg-[#181818] p-2 text-left sm:text-right">
-      <LogoMetaRow
-        alignRight
-        label={hasValidCandidate ? "Pending file" : "Rejected file"}
-        value={candidate.fileName}
-      />
-      <LogoMetaRow
-        alignRight
-        label="Size"
-        value={formatBytes(candidate.sizeBytes)}
-      />
-      {candidate.width && candidate.height ? (
-        <LogoMetaRow
-          alignRight
-          label="Dimensions"
-          value={formatDimensions(candidate.width, candidate.height)}
-        />
-      ) : hasValidCandidate ? (
-        <LogoMetaRow
-          alignRight
-          label="Dimensions"
-          value="Reading image dimensions"
-        />
-      ) : null}
-      {asset && candidate.error ? (
-        <p className="mt-2 text-xs leading-5 text-[#8b8b8b]">
-          Existing logo remains active until a valid change is saved.
-        </p>
-      ) : null}
-    </div>
-  )
-}
-
-function LogoUploadActions({
-  asset,
-  chooseLabel,
-  clearChecked,
-  onChoose,
-  onRemove,
-  onUndoRemove,
-  removeLabel,
-  undoLabel,
-}: {
-  asset: AdminSettingsLogoAsset | null
-  chooseLabel: string
-  clearChecked: boolean
-  onChoose: () => void
-  onRemove: () => void
-  onUndoRemove: () => void
-  removeLabel: string
-  undoLabel: string
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-      <button className={secondaryButtonClass} onClick={onChoose} type="button">
-        {chooseLabel}
-      </button>
-      {asset && !clearChecked ? (
-        <button className={dangerButtonClass} onClick={onRemove} type="button">
-          {removeLabel}
-        </button>
-      ) : null}
-      {asset && clearChecked ? (
-        <button
-          className={secondaryButtonClass}
-          onClick={onUndoRemove}
-          type="button"
-        >
-          {undoLabel}
-        </button>
-      ) : null}
-    </div>
-  )
-}
-
-function LogoMetaRow({
-  alignRight = false,
-  label,
-  value,
-}: {
-  alignRight?: boolean
-  label: string
-  value: string
-}) {
-  return (
-    <div
-      className={cn(
-        "grid gap-1",
-        alignRight
-          ? "sm:grid-cols-1 sm:justify-items-end"
-          : "sm:grid-cols-[116px_1fr]",
-      )}
-    >
-      <span className="text-xs font-medium leading-5 text-[#8b8b8b]">
-        {label}
-      </span>
-      <span className="min-w-0 break-all text-sm leading-5 text-[#dfdfdf]">
-        {value}
-      </span>
-    </div>
   )
 }
 
@@ -1019,22 +488,17 @@ function SettingsActionNotice({
   const message =
     settingsAction === "organizationSaved"
       ? { description: "Organization settings saved.", tone: "success" }
-      : settingsAction === "invalidLogo"
-        ? {
-            description: "Logo upload failed validation.",
-            tone: "danger",
-          }
-        : settingsAction === "telemetryEnabled"
-          ? { description: "Telemetry enabled.", tone: "success" }
-          : settingsAction === "telemetryDisabled"
-            ? {
-                description: "Telemetry disabled.",
-                tone: "warning",
-              }
-            : {
-                description: "Settings action failed.",
-                tone: "danger",
-              }
+      : settingsAction === "telemetryEnabled"
+        ? { description: "Telemetry enabled.", tone: "success" }
+        : settingsAction === "telemetryDisabled"
+          ? {
+              description: "Telemetry disabled.",
+              tone: "warning",
+            }
+          : {
+              description: "Settings action failed.",
+              tone: "danger",
+            }
 
   return (
     <ConsoleActionToasts
@@ -1238,63 +702,6 @@ function ServiceStatus({ status }: { status: InferenceCoreSourceStatus }) {
   )
 }
 
-function validateLogoFile(file: File, mustBeSquare: boolean): string | null {
-  if (!supportedLogoTypes.includes(file.type)) {
-    return "Logo must be PNG or JPEG."
-  }
-  if (file.size > maxLogoBytes) {
-    return "Logo must be at or below 1 MiB."
-  }
-  if (mustBeSquare) {
-    return null
-  }
-  return null
-}
-
-function logoCandidateWarning(
-  file: File,
-  mustBeSquare: boolean,
-  dimensions: { height: number; width: number } | null,
-): string | null {
-  if (file.size > maxLogoBytes * 0.9) {
-    return "This file is close to the 1 MiB limit."
-  }
-  if (!dimensions) {
-    return null
-  }
-  if (!mustBeSquare && dimensions.width <= dimensions.height) {
-    return "This logo is tall or square and may appear small in the Console header."
-  }
-  if (mustBeSquare && dimensions.width < 256) {
-    return "This square icon is below 256 x 256 and may appear soft on high-density displays."
-  }
-  return null
-}
-
-function readImageDimensions(
-  file: File,
-  onResult: (dimensions: { height: number; width: number } | null) => void,
-) {
-  if (typeof window === "undefined") {
-    onResult(null)
-    return
-  }
-  const image = new window.Image()
-  const url = URL.createObjectURL(file)
-  image.onload = () => {
-    URL.revokeObjectURL(url)
-    onResult({
-      height: image.naturalHeight,
-      width: image.naturalWidth,
-    })
-  }
-  image.onerror = () => {
-    URL.revokeObjectURL(url)
-    onResult(null)
-  }
-  image.src = url
-}
-
 function ownerLabel(
   section: AdminSettingsResponse["reachability"][number]["owningSection"],
   serviceId: AdminSettingsServiceId,
@@ -1359,24 +766,6 @@ function systemUpdateStateLabel(
   return "Not configured"
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`
-  }
-  if (bytes < 1024 * 1024) {
-    return `${Math.round(bytes / 1024)} KiB`
-  }
-  return `${(bytes / 1024 / 1024).toFixed(1)} MiB`
-}
-
-function formatDimensions(width: number, height: number): string {
-  return `${width} x ${height}`
-}
-
-function formatShortChecksum(checksum: string): string {
-  return checksum.length > 22 ? `${checksum.slice(0, 22)}...` : checksum
-}
-
 function formatDateTime(value: string): string {
   return settingsDateTimeFormatter.format(new Date(value))
 }
@@ -1385,5 +774,3 @@ const primaryButtonClass =
   "flex h-[30px] items-center justify-center rounded-md bg-[#2e2e2e] px-2.5 py-1.5 text-center text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#383838] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff] disabled:cursor-not-allowed disabled:hover:bg-[#2e2e2e]"
 const secondaryButtonClass =
   "flex h-[30px] items-center justify-center rounded-md border border-[#353535] bg-transparent px-2.5 py-1.5 text-center text-sm font-medium leading-[18px] text-white transition-colors hover:bg-[#2e2e2e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"
-const dangerButtonClass =
-  "flex h-[30px] items-center justify-center rounded-md bg-[#321f20] px-2.5 py-1.5 text-center text-sm font-medium leading-[18px] text-[#ff595d] transition-colors hover:bg-[#432527] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#009fff]"

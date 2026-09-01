@@ -13,8 +13,6 @@ import {
   adminConnectedAppTestResultSchema,
   adminHardwareResponseSchema,
   adminInferenceDashboardSchema,
-  adminOverviewResponseSchema,
-  adminOverviewTileSchema,
   adminSettingsResponseSchema,
   adminSettingsServiceIdSchema,
   adminTeamGroupDetailSchema,
@@ -71,7 +69,7 @@ describe("inference-core status ownership", () => {
 
 it("pins the rendered inference profile compatibility fingerprint", () => {
   expect(inferenceCoreCompatibilityFingerprint).toBe(
-    "sha256:9249bdc91f2dc7ac8471de88aad851644a8b8526d57c5f1501e6c63db246d1d7",
+    "sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40",
   )
 })
 
@@ -122,83 +120,9 @@ describe("Inference Core contract boundary", () => {
     expect(inferenceCoreContracts).not.toHaveProperty(
       "adminConnectedAppFirecrawlPolicyRequestSchema",
     )
-  })
-
-  it("accepts only retained Overview tiles", () => {
-    const hrefById = {
-      applications: "/keys",
-      hardware: "/hardware",
-      inference: "/inference",
-      system: "/activity",
-    } as const
-    const tile = (id: "applications" | "inference" | "hardware" | "system") =>
-      ({
-        href: hrefById[id],
-        id,
-        metrics: [
-          {
-            detail: null,
-            id: `${id}-status`,
-            label: "Status",
-            tone: "good",
-            value: "Ready",
-          },
-        ],
-        sourceStatus: "ok",
-        summary: `${id} summary`,
-        title: id,
-        updatedAt: timestamp,
-      }) as const
-
-    expect(
-      adminOverviewResponseSchema.safeParse({
-        activityEvents: [],
-        activitySourceStatus: "ok",
-        generatedAt: timestamp,
-        tiles: [
-          tile("applications"),
-          tile("inference"),
-          tile("hardware"),
-          tile("system"),
-        ],
-      }).success,
-    ).toBe(true)
-    expect(
-      adminOverviewTileSchema.safeParse({
-        ...tile("system"),
-        id: "governance",
-      }).success,
-    ).toBe(false)
-    expect(
-      adminOverviewTileSchema.safeParse({
-        ...tile("inference"),
-        href: "https://litellm.example.test",
-      }).success,
-    ).toBe(false)
-    expect(
-      adminOverviewResponseSchema.safeParse({
-        activityEvents: [
-          {
-            action: "console.application.read",
-            actorId: "admin-1",
-            createdAt: timestamp,
-            href: "https://grafana.example.test/event-1",
-            id: "event-1",
-            severity: "info",
-            targetId: "app-1",
-            targetType: "application",
-          },
-        ],
-        activitySourceStatus: "ok",
-        generatedAt: timestamp,
-        tiles: [
-          tile("applications"),
-          tile("inference"),
-          tile("hardware"),
-          tile("system"),
-        ],
-      }).success,
-    ).toBe(false)
+    expect(inferenceCoreContracts).not.toHaveProperty(
+      "adminOverviewResponseSchema",
+    )
   })
 
   it("models alert egress as redacted intent pending runtime qualification", () => {
@@ -418,8 +342,6 @@ describe("Inference Core contract boundary", () => {
       },
       organization: {
         defaultLanguage: "en",
-        fullLogo: null,
-        iconLogo: null,
         organizationName: "LLM Machines",
         updatedAt: null,
         updatedBy: null,
@@ -465,6 +387,24 @@ describe("Inference Core contract boundary", () => {
     expect(
       adminSettingsResponseSchema.safeParse({
         ...settings,
+        organization: {
+          ...settings.organization,
+          fullLogo: { dataUrl: "data:image/png;base64,legacy" },
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      inferenceCoreContracts.updateAdminSettingsOrganizationRequestSchema.safeParse(
+        {
+          defaultLanguage: "en",
+          fullLogo: { dataUrl: "data:image/png;base64,legacy" },
+          organizationName: "LLM Machines",
+        },
+      ).success,
+    ).toBe(false)
+    expect(
+      adminSettingsResponseSchema.safeParse({
+        ...settings,
         urlPolicyRules: [],
       }).success,
     ).toBe(false)
@@ -485,7 +425,6 @@ describe("Inference Core contract boundary", () => {
     } as const
     const application = {
       allowedModels: ["local-chat"],
-      auditHref: "/activity?applicationId=app-1",
       authMethod: "api_key",
       connectionStatus: "not_connected",
       createdAt: timestamp,
@@ -973,7 +912,6 @@ describe("Inference Core contract boundary", () => {
             action: "admin.audit.read",
             actorId: "subject-1",
             createdAt: timestamp,
-            href: "/activity?eventId=00000000-0000-4000-8000-000000000001",
             id: "00000000-0000-4000-8000-000000000001",
             metadata: [],
             outcome: "succeeded",

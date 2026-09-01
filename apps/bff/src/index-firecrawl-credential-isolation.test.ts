@@ -89,7 +89,7 @@ describe("Firecrawl credential namespace isolation", () => {
     const dataKeyOnAdmin = await server.inject({
       headers: { authorization: `Bearer ${firecrawlKey}` },
       method: "GET",
-      url: "/api/admin/overview",
+      url: "/api/admin/settings",
     })
     expect(dataKeyOnAdmin.statusCode).toBe(401)
 

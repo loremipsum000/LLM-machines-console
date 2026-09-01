@@ -13,13 +13,8 @@ describe("Console MFA elevation", () => {
   })
 
   it("binds a known action to one path-only return target", () => {
-    expect(
-      consoleMfaElevationHref(
-        "activity_audit.export",
-        "/activity?view=exports",
-      ),
-    ).toBe(
-      "/auth/elevate?action=activity_audit.export&returnTo=%2Factivity%3Fview%3Dexports",
+    expect(consoleMfaElevationHref("activity_audit.export", "/settings")).toBe(
+      "/auth/elevate?action=activity_audit.export&returnTo=%2Fsettings",
     )
     expect(
       consoleMfaElevationHref(

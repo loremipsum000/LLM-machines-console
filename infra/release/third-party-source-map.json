@@ -1,0 +1,146 @@
+{
+  "schema": "llm-machines.third-party-source-map.v1",
+  "status": "SOURCE_INDEX",
+  "containsCredentials": false,
+  "inventoryPath": "infra/release/core-image-inventory.json",
+  "noticePath": "THIRD_PARTY_NOTICES.md",
+  "components": [
+    {
+      "id": "node-runtime-base",
+      "inventorySection": "buildInputs",
+      "license": "MIT",
+      "obligation": "license-and-notices",
+      "correspondingSource": null
+    },
+    {
+      "id": "product-edge",
+      "inventorySection": "components",
+      "license": "BSD-2-Clause",
+      "obligation": "license-and-notices",
+      "correspondingSource": null
+    },
+    {
+      "id": "keycloak",
+      "inventorySection": "components",
+      "license": "Apache-2.0",
+      "obligation": "license-and-notices",
+      "correspondingSource": null
+    },
+    {
+      "id": "litellm",
+      "inventorySection": "components",
+      "license": "MIT",
+      "obligation": "license-notices-and-transitive-source",
+      "correspondingSource": {
+        "status": "SOURCE_PACKAGE_CONTRACT",
+        "packetId": "litellm-oss-transitive-sources",
+        "contractPath": "infra/litellm/oss-downstream/source-package.json"
+      }
+    },
+    {
+      "id": "product-postgresql",
+      "inventorySection": "components",
+      "license": "PostgreSQL",
+      "obligation": "license-and-notices",
+      "correspondingSource": null
+    },
+    {
+      "id": "prometheus",
+      "inventorySection": "components",
+      "license": "Apache-2.0",
+      "obligation": "license-and-notices",
+      "correspondingSource": null
+    },
+    {
+      "id": "alertmanager",
+      "inventorySection": "components",
+      "license": "Apache-2.0",
+      "obligation": "license-and-notices",
+      "correspondingSource": null
+    },
+    {
+      "id": "grafana-private",
+      "inventorySection": "components",
+      "license": "AGPL-3.0-only",
+      "obligation": "corresponding-source-required",
+      "correspondingSource": {
+        "status": "GENERATED_AT_RELEASE",
+        "packetId": "grafana-corresponding-source",
+        "contractPath": "infra/release/release-evidence-policy.json"
+      }
+    },
+    {
+      "id": "firecrawl-api",
+      "inventorySection": "components",
+      "license": "AGPL-3.0-only",
+      "obligation": "corresponding-source-required",
+      "correspondingSource": {
+        "status": "SOURCE_PACKAGE_CONTRACT",
+        "packetId": "firecrawl-corresponding-source",
+        "contractPath": "infra/firecrawl/release/source-package.json"
+      }
+    },
+    {
+      "id": "firecrawl-browser",
+      "inventorySection": "components",
+      "license": "AGPL-3.0-only",
+      "obligation": "corresponding-source-required",
+      "correspondingSource": {
+        "status": "SOURCE_PACKAGE_CONTRACT",
+        "packetId": "firecrawl-corresponding-source",
+        "contractPath": "infra/firecrawl/release/source-package.json"
+      }
+    },
+    {
+      "id": "firecrawl-search",
+      "inventorySection": "components",
+      "license": "AGPL-3.0-or-later",
+      "obligation": "corresponding-source-required",
+      "correspondingSource": {
+        "status": "SOURCE_PACKAGE_CONTRACT",
+        "packetId": "firecrawl-corresponding-source",
+        "contractPath": "infra/firecrawl/release/source-package.json"
+      }
+    },
+    {
+      "id": "firecrawl-egress",
+      "inventorySection": "components",
+      "license": "GPL-2.0-or-later",
+      "obligation": "corresponding-source-required",
+      "correspondingSource": {
+        "status": "SOURCE_PACKAGE_CONTRACT",
+        "packetId": "firecrawl-corresponding-source",
+        "contractPath": "infra/firecrawl/release/source-package.json"
+      }
+    }
+  ],
+  "trackedUpstreamMaterial": [
+    {
+      "id": "urbanist-font",
+      "version": "1.303",
+      "sourceRevision": "f9ba63761ae4298607b133e7f42acd8c6b765f85",
+      "license": "OFL-1.1",
+      "licensePath": "THIRD_PARTY_LICENSES/Urbanist-OFL-1.1.txt",
+      "licenseSha256": "ee1221b1c2d08920e5f9ca764eb228dafa5c8090df9cf665373c2287b9cb8f49",
+      "pathPrefixes": [
+        "apps/web/public/fonts/urbanist/",
+        "infra/keycloak/themes/llm-machines/login/resources/fonts/urbanist/"
+      ]
+    },
+    {
+      "id": "firecrawl-reduced-source",
+      "license": "upstream-component-specific",
+      "contractPath": "infra/firecrawl/release/source-package.json",
+      "pathPrefixes": [
+        "infra/firecrawl/provenance/",
+        "infra/firecrawl/release/"
+      ]
+    },
+    {
+      "id": "litellm-oss-downstream",
+      "license": "MIT-with-transitive-obligations",
+      "contractPath": "infra/litellm/oss-downstream/source-package.json",
+      "pathPrefixes": ["infra/litellm/oss-downstream/"]
+    }
+  ]
+}

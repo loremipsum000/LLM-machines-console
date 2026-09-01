@@ -1,8 +1,4 @@
 import {
-  type ActivityFilters,
-  ActivityV2Experience,
-} from "@/components/console-v2/activity-v2-experience"
-import {
   ApplicationsV2Experience,
   type ApplicationsView,
 } from "@/components/console-v2/applications-v2-experience"
@@ -14,21 +10,17 @@ import {
 } from "@/components/console-v2/console-v2-shell"
 import { HardwareV2Experience } from "@/components/console-v2/hardware-v2-experience"
 import { InferenceV2Experience } from "@/components/console-v2/inference-v2-experience"
-import { OverviewV2Experience } from "@/components/console-v2/overview-v2-experience"
 import { SettingsV2Experience } from "@/components/console-v2/settings-v2-experience"
 import {
   TeamV2Experience,
   type TeamView,
 } from "@/components/console-v2/team-v2-experience"
 import {
-  getAdminAudit,
   getAdminConnectedAppDetail,
   getAdminConnectedApps,
   getAdminHardware,
   getAdminInference,
-  getAdminOverview,
   getAdminSettings,
-  getAdminTeamGroupDetail,
   getAdminTeamMemberDetail,
   getAdminTeamOverview,
   isConsoleBffAuthExpiredError,
@@ -44,18 +36,9 @@ import { notFound, redirect } from "next/navigation"
 import type { ReactNode } from "react"
 
 export interface ConsoleV2SearchParams {
-  applicationId?: string
   appAction?: string
-  cursor?: string
-  event?: string
-  eventId?: string
-  limit?: string
-  outcome?: string
-  q?: string
   range?: string
-  severity?: string
   settingsAction?: string
-  source?: string
   step?: string
   teamAction?: string
 }
@@ -64,49 +47,6 @@ type ActiveConsoleSession = Extract<
   CurrentConsoleSessionResolution,
   { state: "active" }
 >["session"]
-
-export async function renderOverviewConsoleRoute() {
-  return withConsoleAccess("overview", async () => {
-    const overview = await getAdminOverview()
-    return <OverviewV2Experience overview={overview} />
-  })
-}
-
-export async function renderActivityConsoleRoute(
-  searchParams?: Promise<ConsoleV2SearchParams>,
-) {
-  return withConsoleAccess("activity", async (role) => {
-    const resolvedSearchParams = searchParams ? await searchParams : undefined
-    const audit = await getAdminAudit({
-      applicationId: resolvedSearchParams?.applicationId,
-      cursor: resolvedSearchParams?.cursor,
-      eventId: resolvedSearchParams?.eventId ?? resolvedSearchParams?.event,
-      limit: resolvedSearchParams?.limit,
-      outcome: resolvedSearchParams?.outcome,
-      query: resolvedSearchParams?.q,
-      severity: resolvedSearchParams?.severity,
-      source: resolvedSearchParams?.source,
-    })
-    const filters: ActivityFilters = {
-      applicationId: audit.selectedApplicationId,
-      cursor: normalizedSearchParam(resolvedSearchParams?.cursor),
-      eventId: audit.selectedEventId,
-      limit: normalizedSearchParam(resolvedSearchParams?.limit),
-      outcome: audit.selectedOutcome,
-      query: audit.query,
-      severity: audit.selectedSeverity,
-      source: audit.selectedSource,
-    }
-
-    return (
-      <ActivityV2Experience
-        accessRole={role}
-        activity={audit}
-        filters={filters}
-      />
-    )
-  })
-}
 
 export async function renderApplicationsConsoleRoute({
   section,
@@ -240,20 +180,12 @@ export async function renderTeamConsoleRoute({
     }
     const selectedMemberId =
       teamView === "member-detail" ? section?.[1] : undefined
-    const selectedGroupId =
-      teamView === "group-detail" ? section?.[1] : undefined
     const [overview, memberDetail] = await Promise.all([
       getAdminTeamOverview(),
       selectedMemberId ? getAdminTeamMemberDetail(selectedMemberId) : null,
     ])
-    const groupDetail = selectedGroupId
-      ? await getAdminTeamGroupDetail(selectedGroupId)
-      : null
 
     if (teamView === "member-detail" && !selectedMemberId) {
-      notFound()
-    }
-    if (teamView === "group-detail" && !selectedGroupId) {
       notFound()
     }
 
@@ -261,7 +193,6 @@ export async function renderTeamConsoleRoute({
       <TeamV2Experience
         accessRole={role}
         detail={memberDetail}
-        groupDetail={groupDetail}
         overview={overview}
         teamAction={
           role === "admin" ? resolvedSearchParams?.teamAction : undefined
@@ -388,7 +319,6 @@ function ConsoleCapabilityDeniedPanel() {
 }
 
 function consoleSectionReturnPath(activeSection: ConsoleV2SectionId): string {
-  if (activeSection === "overview") return "/"
   return activeSection === "applications" ? "/keys" : `/${activeSection}`
 }
 
@@ -435,15 +365,6 @@ function resolveTeamView(section?: string[]): TeamView {
   if (!section?.[0]) {
     return "overview"
   }
-  if (section[0] === "import") {
-    return "import"
-  }
-  if (section[0] === "groups" && section[1] === "new") {
-    return "new-group"
-  }
-  if (section[0] === "groups" && section[1]) {
-    return "group-detail"
-  }
   if (section[0] === "members" && section[1] === "new") {
     return "new-member"
   }
@@ -457,7 +378,7 @@ function resolveTeamView(section?: string[]): TeamView {
 }
 
 function isTeamMutationView(view: TeamView): boolean {
-  return view === "import" || view === "new-group" || view === "new-member"
+  return view === "new-member"
 }
 
 function normalizedSearchParam(value: string | undefined): string | null {

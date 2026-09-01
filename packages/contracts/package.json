@@ -1,6 +1,7 @@
 {
   "name": "@llm-machines/contracts",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.js",

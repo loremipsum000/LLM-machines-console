@@ -10,7 +10,10 @@ and renders the exact Product edge, non-secret Web/BFF configuration, VM103
 Compose supervision unit, source-restricted gateway-to-edge firewall, and
 source-restricted VM103-to-SGLang route units.
 The renderer rejects mutable images, public network inputs, duplicate ports,
-unsafe paths, incomplete authorities, and missing commit or tree bindings.
+unsafe paths, incomplete authorities, missing commit or tree bindings, and an
+unsafe or generic inference workload unit. The credential-free placement must
+name one exact SGLang `.service`; the route unit is required only by that
+workload and never by the host-wide Docker service.
 
 The edge firewall manager verifies the existing `inet llmm_filter/input` base
 chain has the admitted input hook, priority `-10`, and default-drop policy. It
@@ -70,7 +73,10 @@ Operator sequence:
 3. Capture custody from the current protected BFF, exact active LiteLLM
    process, and exact commissioned Keycloak control file into a new root-only
    path.
-4. Install and start the gateway and inference route units before SGLang.
+4. Install and start the gateway route unit, then enable the inference route
+   unit through its `RequiredBy=<exact SGLang workload unit>` relationship.
+   A route or firewall failure blocks that SGLang workload without blocking
+   unrelated Docker workloads on the inference host.
 5. Start the side-by-side VM103 candidate with `docker compose up --wait`.
 6. Prove model admission, identity, native-session, no-bypass, and retention
    gates privately.
@@ -80,7 +86,7 @@ Status, restart, stop, and rollback remain exact-project operations:
 
 ```sh
 systemctl status llmm-founder-candidate.service
-systemctl reload llmm-founder-candidate.service
+systemctl restart llmm-founder-candidate.service
 systemctl stop llmm-founder-candidate.service
 docker compose --project-name llmm-founder-candidate --file <compose> stop
 ```

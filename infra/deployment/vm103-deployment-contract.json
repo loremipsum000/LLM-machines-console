@@ -31,7 +31,7 @@
     },
     "sourceInventory": {
       "path": "infra/release/core-image-inventory.json",
-      "sha256": "sha256:5fc2eb14c912b093bd39556447628b25b9fc891b08222a0d350c8bddfad63c3e"
+      "sha256": "sha256:cc208fcae9a998b6abd4c70ee0d65bb5252bd0ceceea6a8f67468eae6804df27"
     },
     "requiredComponentIds": [
       "product-edge",
@@ -359,7 +359,7 @@
     },
     "edgeTemplate": {
       "path": "infra/ingress/product-edge.nginx.conf.template",
-      "sha256": "sha256:04a01969e4f4b17cf875fabe62465115053a816451eebcbacd1ea683906a16b3"
+      "sha256": "sha256:0ee42e06c3ff407f521cb5be8a43f74d62b4d9042b42b5f36c6e1b05cff8c847"
     },
     "gatewayUpstream": "VM103_PRIVATE_ADDRESS:18443",
     "gatewayForwardsHost": true,

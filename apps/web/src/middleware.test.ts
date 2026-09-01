@@ -44,7 +44,6 @@ describe("Console middleware", () => {
   it("protects every retained Console route with a path-only return target", async () => {
     const protectedPaths = [
       "/",
-      "/activity",
       "/applications",
       "/applications/add",
       "/api/admin/audit/export",
@@ -53,7 +52,6 @@ describe("Console middleware", () => {
       "/inference",
       "/settings",
       "/team",
-      "/team/import/template",
     ]
     for (const pathname of protectedPaths) {
       const response = await runMiddleware(pathname)
@@ -62,6 +60,14 @@ describe("Console middleware", () => {
         "/auth/signin?returnTo=",
       )
     }
+    expect(mocks.resolveConsoleSession).not.toHaveBeenCalled()
+  })
+
+  it("does not turn the retired Activity route into an authenticated ghost page", async () => {
+    const response = await runMiddleware("/activity")
+
+    expect(response.headers.get("x-middleware-next")).toBe("1")
+    expect(response.headers.get("location")).toBeNull()
     expect(mocks.resolveConsoleSession).not.toHaveBeenCalled()
   })
 
@@ -77,7 +83,7 @@ describe("Console middleware", () => {
   })
 
   it("uses the configured Console authority behind the private Product edge", async () => {
-    process.env.WEB_CONSOLE_ORIGIN = "https://console.lab.llm-machines.com"
+    process.env.WEB_CONSOLE_ORIGIN = "https://console.example.test"
     try {
       const response = await runMiddleware(
         "/applications?tab=credentials",
@@ -86,7 +92,7 @@ describe("Console middleware", () => {
       )
 
       expect(response.headers.get("location")).toBe(
-        "https://console.lab.llm-machines.com/auth/signin?returnTo=%2Fapplications%3Ftab%3Dcredentials",
+        "https://console.example.test/auth/signin?returnTo=%2Fapplications%3Ftab%3Dcredentials",
       )
     } finally {
       Reflect.deleteProperty(process.env, "WEB_CONSOLE_ORIGIN")
@@ -94,8 +100,7 @@ describe("Console middleware", () => {
   })
 
   it("rejects an inexact configured Console authority", async () => {
-    process.env.WEB_CONSOLE_ORIGIN =
-      "https://console.lab.llm-machines.com/unapproved"
+    process.env.WEB_CONSOLE_ORIGIN = "https://console.example.test/unapproved"
     try {
       await expect(runMiddleware("/applications")).rejects.toThrow(
         "WEB_CONSOLE_ORIGIN must be an exact HTTPS origin.",

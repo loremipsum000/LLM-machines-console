@@ -2,22 +2,18 @@ import type { RetainedConsoleRole } from "@/lib/auth/role-claims"
 import { productCopy } from "@llm-machines/copy"
 import type { ComponentType, SVGProps } from "react"
 import {
-  ActivityIcon,
   HardwareIcon,
   InferenceIcon,
   KeysIcon,
-  OverviewIcon,
   SettingsIcon,
   TeamIcon,
 } from "./console-v2-icons"
 
 export type ConsoleV2SectionId =
-  | "overview"
   | "applications"
   | "inference"
   | "hardware"
   | "team"
-  | "activity"
   | "settings"
 
 export interface ConsoleV2Section {
@@ -28,12 +24,6 @@ export interface ConsoleV2Section {
 }
 
 export const consoleV2Sections: ConsoleV2Section[] = [
-  {
-    id: "overview",
-    href: "/",
-    icon: OverviewIcon,
-    label: "Overview",
-  },
   {
     id: "applications",
     href: productCopy.vocabulary.primaryIntegration.href,
@@ -57,12 +47,6 @@ export const consoleV2Sections: ConsoleV2Section[] = [
     href: "/team",
     icon: TeamIcon,
     label: "Team",
-  },
-  {
-    id: "activity",
-    href: "/activity",
-    icon: ActivityIcon,
-    label: "Activity & Audit",
   },
   {
     id: "settings",

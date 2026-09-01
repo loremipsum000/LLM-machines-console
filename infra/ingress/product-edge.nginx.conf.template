@@ -373,7 +373,7 @@ http {
       proxy_pass http://console_web;
     }
 
-    location ~ "^/(?:activity|hardware|inference|keys|applications|team)$" {
+    location ~ "^/(?:hardware|inference|keys|applications|team)$" {
       set $llmm_surface console;
       limit_except GET { deny all; }
       include /etc/nginx/llm-machines/proxy-common.inc;

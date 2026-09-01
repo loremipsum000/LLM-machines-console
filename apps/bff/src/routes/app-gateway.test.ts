@@ -2294,7 +2294,7 @@ function renderedAdmission(
       state: "ACTIVE_MEASURED",
     },
     coreCompatibilityFingerprint:
-      "sha256:9249bdc91f2dc7ac8471de88aad851644a8b8526d57c5f1501e6c63db246d1d7",
+      "sha256:3454120acc4928334bfbff130618f005f446c216034aec3db8de6e2127f77e40",
     engine: {},
     kind: "RenderedInferenceDeliveryProfile",
     model: {},

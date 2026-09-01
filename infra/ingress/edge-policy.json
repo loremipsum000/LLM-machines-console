@@ -177,7 +177,7 @@
       "methods": ["GET", "HEAD"],
       "path": {
         "kind": "regex",
-        "value": "^/(?:activity|hardware|inference|keys|applications|team)$"
+        "value": "^/(?:hardware|inference|keys|applications|team)$"
       },
       "queryPolicy": "console-navigation",
       "headerProfile": "console-browser",

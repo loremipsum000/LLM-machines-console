@@ -56,6 +56,7 @@ test("full Product test runs the exact mandatory release gate once", () => {
 test("every bound release suite resolves to checked-in tests", () => {
   const binding = readJson(pr12ReleaseTestGateBindingPath)
   const expectedDirectories = new Map([
+    ["infra/genesis/*.test.mjs", "infra/genesis"],
     ["infra/inference/*.test.mjs", "infra/inference"],
     ["infra/release/*.test.mjs", "infra/release"],
     ["infra/firecrawl/release/*.test.mjs", "infra/firecrawl/release"],
