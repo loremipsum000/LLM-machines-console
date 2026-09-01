@@ -2279,6 +2279,14 @@ export const pr04StandaloneDbTestBoundary = {
   },
 }
 
+const productLicenseStandaloneDbManifestSuccessor = {
+  path: "test-support/inference-core-db-tests/package.json",
+  predecessorSha256:
+    "ff725f8972d4a0e4ed349daa1ffbfb4aa10ab40a4c76be60f739125781c85470",
+  sha256: "da14a2dc68d44fffdc0c31e99dcd39153717979499f753d5bbb92bae2a5471d9",
+  license: "SEE LICENSE IN LICENSE",
+}
+
 export const pr05StandaloneDbTestBoundary = {
   ...pr04StandaloneDbTestBoundary,
   allowedPaths: [
@@ -6315,7 +6323,13 @@ export function verifyStandaloneDbTestBoundary(
       continue
     }
     const actualSha256 = sha256(readFileSync(absolutePath))
-    if (actualSha256 !== evidence.sha256) {
+    const acceptedProductLicenseSuccessor =
+      evidence === boundary.packageManifest &&
+      evidence.path === productLicenseStandaloneDbManifestSuccessor.path &&
+      evidence.sha256 ===
+        productLicenseStandaloneDbManifestSuccessor.predecessorSha256 &&
+      actualSha256 === productLicenseStandaloneDbManifestSuccessor.sha256
+    if (actualSha256 !== evidence.sha256 && !acceptedProductLicenseSuccessor) {
       errors.push(
         `standalone DB test boundary changed ${evidence.path} expected=${evidence.sha256} actual=${actualSha256}`,
       )
@@ -6334,7 +6348,21 @@ export function verifyStandaloneDbTestBoundary(
       devDependencies: boundary.packageManifest.devDependencies,
     }
     const manifest = readJson(resolve(root, manifestPath))
-    if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest)) {
+    const expectedProductLicenseSuccessor = {
+      name: boundary.packageManifest.name,
+      private: true,
+      license: productLicenseStandaloneDbManifestSuccessor.license,
+      version: "0.0.0",
+      type: "module",
+      packageManager: boundary.packageManifest.packageManager,
+      scripts: boundary.packageManifest.scripts,
+      devDependencies: boundary.packageManifest.devDependencies,
+    }
+    if (
+      JSON.stringify(manifest) !== JSON.stringify(expectedManifest) &&
+      JSON.stringify(manifest) !==
+        JSON.stringify(expectedProductLicenseSuccessor)
+    ) {
       errors.push("invalid standalone DB test package manifest")
     }
   }
@@ -24107,6 +24135,7 @@ function forbiddenPolicyDigest() {
       pr08IgnoredFindingFingerprints,
       pr04RetiredDependencyBoundaries,
       pr04StandaloneDbTestBoundary,
+      productLicenseStandaloneDbManifestSuccessor,
       implementation: [
         listCandidatePaths,
         listCachedEntries,
