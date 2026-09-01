@@ -1757,6 +1757,7 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/validation-register.md",
   "docs/reduction/inference-core/retention-characterization.json",
   "docs/reduction/inference-core/route-baseline.json",
+  "infra/genesis/source-classification.json",
   "infra/firecrawl/release/locks/Cargo.lock",
   "infra/firecrawl/release/locks/api-wolfi.sha256",
   "infra/firecrawl/release/locks/playwright-wolfi.sha256",
