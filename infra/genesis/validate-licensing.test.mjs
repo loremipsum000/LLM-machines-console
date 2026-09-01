@@ -161,7 +161,7 @@ test("the snapshot transform cannot change non-script package metadata", () => {
 test("the snapshot retained guardrail lane cannot be removed or renamed", () => {
   for (const mutate of [
     (manifest) => {
-      delete manifest.scripts["test:genesis-guardrails"]
+      manifest.scripts["test:genesis-guardrails"] = undefined
     },
     (manifest) => {
       manifest.scripts["test:genesis-guardrails"] = manifest.scripts[
