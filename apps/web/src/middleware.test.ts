@@ -83,7 +83,7 @@ describe("Console middleware", () => {
   })
 
   it("uses the configured Console authority behind the private Product edge", async () => {
-    process.env.WEB_CONSOLE_ORIGIN = "https://console.lab.llm-machines.com"
+    process.env.WEB_CONSOLE_ORIGIN = "https://console.example.test"
     try {
       const response = await runMiddleware(
         "/applications?tab=credentials",
@@ -92,7 +92,7 @@ describe("Console middleware", () => {
       )
 
       expect(response.headers.get("location")).toBe(
-        "https://console.lab.llm-machines.com/auth/signin?returnTo=%2Fapplications%3Ftab%3Dcredentials",
+        "https://console.example.test/auth/signin?returnTo=%2Fapplications%3Ftab%3Dcredentials",
       )
     } finally {
       Reflect.deleteProperty(process.env, "WEB_CONSOLE_ORIGIN")
@@ -100,8 +100,7 @@ describe("Console middleware", () => {
   })
 
   it("rejects an inexact configured Console authority", async () => {
-    process.env.WEB_CONSOLE_ORIGIN =
-      "https://console.lab.llm-machines.com/unapproved"
+    process.env.WEB_CONSOLE_ORIGIN = "https://console.example.test/unapproved"
     try {
       await expect(runMiddleware("/applications")).rejects.toThrow(
         "WEB_CONSOLE_ORIGIN must be an exact HTTPS origin.",

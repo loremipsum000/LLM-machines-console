@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { getAuthoritativeModelInventory } from "./model-admission-inventory"
 
+const activeMeasurementNow = new Date("2026-08-24T08:00:00.000Z")
 let admissionDirectory: string | null = null
 
 describe("authoritative model admission inventory", () => {
@@ -30,7 +31,7 @@ describe("authoritative model admission inventory", () => {
 
     await expect(
       getAuthoritativeModelInventory({
-        now: new Date("2026-08-24T08:00:00.000Z"),
+        now: activeMeasurementNow,
       }),
     ).resolves.toMatchObject({
       aliases: ["local-a", "local-b"],
@@ -49,25 +50,22 @@ describe("authoritative model admission inventory", () => {
     ])
     stubLiteLlm([{ model_name: "local-a" }])
 
-    await expect(getAuthoritativeModelInventory()).resolves.toMatchObject({
-      ok: false,
-      reason: "inconsistent",
-    })
+    await expect(
+      getAuthoritativeModelInventory({ now: activeMeasurementNow }),
+    ).resolves.toMatchObject({ ok: false, reason: "inconsistent" })
 
     vi.stubEnv("INFERENCE_ALLOW_INTERNAL_TEST_PROFILES", "true")
-    await expect(getAuthoritativeModelInventory()).resolves.toMatchObject({
-      aliases: ["local-a"],
-      ok: true,
-    })
+    await expect(
+      getAuthoritativeModelInventory({ now: activeMeasurementNow }),
+    ).resolves.toMatchObject({ aliases: ["local-a"], ok: true })
   })
 
   it("dynamically includes a newly admitted profile without a Key snapshot", async () => {
     await writeAdmissions([profile("local-a", "profile-a")])
     const fetchMock = stubLiteLlm([{ model_name: "local-a" }])
-    await expect(getAuthoritativeModelInventory()).resolves.toMatchObject({
-      aliases: ["local-a"],
-      ok: true,
-    })
+    await expect(
+      getAuthoritativeModelInventory({ now: activeMeasurementNow }),
+    ).resolves.toMatchObject({ aliases: ["local-a"], ok: true })
 
     await writeFile(
       join(admissionDirectory as string, "profile-b.json"),
@@ -76,10 +74,9 @@ describe("authoritative model admission inventory", () => {
     fetchMock.mockResolvedValueOnce(
       Response.json([{ model_name: "local-a" }, { model_name: "local-b" }]),
     )
-    await expect(getAuthoritativeModelInventory()).resolves.toMatchObject({
-      aliases: ["local-a", "local-b"],
-      ok: true,
-    })
+    await expect(
+      getAuthoritativeModelInventory({ now: activeMeasurementNow }),
+    ).resolves.toMatchObject({ aliases: ["local-a", "local-b"], ok: true })
   })
 
   it("distinguishes expired evidence from an unavailable projection", async () => {
@@ -96,7 +93,7 @@ describe("authoritative model admission inventory", () => {
     fetchMock.mockRejectedValueOnce(new Error("unavailable"))
     await expect(
       getAuthoritativeModelInventory({
-        now: new Date("2026-08-24T08:00:00.000Z"),
+        now: activeMeasurementNow,
       }),
     ).resolves.toMatchObject({ ok: false, reason: "unavailable" })
   })
@@ -111,10 +108,9 @@ describe("authoritative model admission inventory", () => {
     ]) {
       await writeAdmissions([invalid])
       stubLiteLlm([{ model_name: "local-a" }])
-      await expect(getAuthoritativeModelInventory()).resolves.toMatchObject({
-        ok: false,
-        reason: "inconsistent",
-      })
+      await expect(
+        getAuthoritativeModelInventory({ now: activeMeasurementNow }),
+      ).resolves.toMatchObject({ ok: false, reason: "inconsistent" })
       await resetDirectory()
       vi.unstubAllGlobals()
     }
@@ -124,26 +120,23 @@ describe("authoritative model admission inventory", () => {
       profile("local-a", "profile-b"),
     ])
     stubLiteLlm([{ model_name: "local-a" }])
-    await expect(getAuthoritativeModelInventory()).resolves.toMatchObject({
-      ok: false,
-      reason: "inconsistent",
-    })
+    await expect(
+      getAuthoritativeModelInventory({ now: activeMeasurementNow }),
+    ).resolves.toMatchObject({ ok: false, reason: "inconsistent" })
 
     await resetDirectory()
     await writeAdmissions([profile("local-a", "profile-a")])
     stubLiteLlm([{ model_name: "different-model" }])
-    await expect(getAuthoritativeModelInventory()).resolves.toMatchObject({
-      ok: false,
-      reason: "inconsistent",
-    })
+    await expect(
+      getAuthoritativeModelInventory({ now: activeMeasurementNow }),
+    ).resolves.toMatchObject({ ok: false, reason: "inconsistent" })
 
     await resetDirectory()
     await writeAdmissions([profile("local-a", "profile-a")])
     stubLiteLlm([{ model_info: { base_model: "local-a" } }])
-    await expect(getAuthoritativeModelInventory()).resolves.toMatchObject({
-      ok: false,
-      reason: "inconsistent",
-    })
+    await expect(
+      getAuthoritativeModelInventory({ now: activeMeasurementNow }),
+    ).resolves.toMatchObject({ ok: false, reason: "inconsistent" })
   })
 
   it("cannot use fixture aliases in production", async () => {

@@ -28,10 +28,11 @@ export const pr12ReleaseTestGateBindingPath =
   "docs/reduction/inference-core/pr-12-release-test-gate-binding.json"
 
 const pr12ReleaseTestCommand =
-  "node --test infra/inference/*.test.mjs infra/release/*.test.mjs infra/firecrawl/release/*.test.mjs infra/keycloak/*.test.mjs scripts/inference-core/pr12-*.test.mjs"
+  "node --test infra/genesis/*.test.mjs infra/inference/*.test.mjs infra/release/*.test.mjs infra/firecrawl/release/*.test.mjs infra/keycloak/*.test.mjs scripts/inference-core/pr12-*.test.mjs"
 const pr12FullProductTestCommand =
   "corepack pnpm run check:inference-core:base && corepack pnpm run test:inference-core-guardrails && corepack pnpm run test:release && corepack pnpm --filter @llm-machines/contracts --fail-if-no-match build && corepack pnpm --filter @llm-machines/copy --fail-if-no-match build && corepack pnpm run test:inference-core-authorization && corepack pnpm run test:inference-core-characterization && corepack pnpm run test:inference-core-db && corepack pnpm -r --fail-if-no-match test"
 const pr12RequiredReleaseTestSuites = [
+  "infra/genesis/*.test.mjs",
   "infra/inference/*.test.mjs",
   "infra/release/*.test.mjs",
   "infra/firecrawl/release/*.test.mjs",
@@ -1756,6 +1757,7 @@ const guardrailExclusions = new Set([
   "docs/reduction/inference-core/validation-register.md",
   "docs/reduction/inference-core/retention-characterization.json",
   "docs/reduction/inference-core/route-baseline.json",
+  "infra/genesis/source-classification.json",
   "infra/firecrawl/release/locks/Cargo.lock",
   "infra/firecrawl/release/locks/api-wolfi.sha256",
   "infra/firecrawl/release/locks/playwright-wolfi.sha256",
@@ -2275,6 +2277,14 @@ export const pr04StandaloneDbTestBoundary = {
     "typecheck:inference-core-db":
       "corepack pnpm --dir test-support/inference-core-db-tests install --frozen-lockfile --ignore-scripts && corepack pnpm --dir test-support/inference-core-db-tests typecheck",
   },
+}
+
+const productLicenseStandaloneDbManifestSuccessor = {
+  path: "test-support/inference-core-db-tests/package.json",
+  predecessorSha256:
+    "ff725f8972d4a0e4ed349daa1ffbfb4aa10ab40a4c76be60f739125781c85470",
+  sha256: "da14a2dc68d44fffdc0c31e99dcd39153717979499f753d5bbb92bae2a5471d9",
+  license: "SEE LICENSE IN LICENSE",
 }
 
 export const pr05StandaloneDbTestBoundary = {
@@ -6313,7 +6323,13 @@ export function verifyStandaloneDbTestBoundary(
       continue
     }
     const actualSha256 = sha256(readFileSync(absolutePath))
-    if (actualSha256 !== evidence.sha256) {
+    const acceptedProductLicenseSuccessor =
+      evidence === boundary.packageManifest &&
+      evidence.path === productLicenseStandaloneDbManifestSuccessor.path &&
+      evidence.sha256 ===
+        productLicenseStandaloneDbManifestSuccessor.predecessorSha256 &&
+      actualSha256 === productLicenseStandaloneDbManifestSuccessor.sha256
+    if (actualSha256 !== evidence.sha256 && !acceptedProductLicenseSuccessor) {
       errors.push(
         `standalone DB test boundary changed ${evidence.path} expected=${evidence.sha256} actual=${actualSha256}`,
       )
@@ -6332,7 +6348,21 @@ export function verifyStandaloneDbTestBoundary(
       devDependencies: boundary.packageManifest.devDependencies,
     }
     const manifest = readJson(resolve(root, manifestPath))
-    if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest)) {
+    const expectedProductLicenseSuccessor = {
+      name: boundary.packageManifest.name,
+      private: true,
+      license: productLicenseStandaloneDbManifestSuccessor.license,
+      version: "0.0.0",
+      type: "module",
+      packageManager: boundary.packageManifest.packageManager,
+      scripts: boundary.packageManifest.scripts,
+      devDependencies: boundary.packageManifest.devDependencies,
+    }
+    if (
+      JSON.stringify(manifest) !== JSON.stringify(expectedManifest) &&
+      JSON.stringify(manifest) !==
+        JSON.stringify(expectedProductLicenseSuccessor)
+    ) {
       errors.push("invalid standalone DB test package manifest")
     }
   }
@@ -24105,6 +24135,7 @@ function forbiddenPolicyDigest() {
       pr08IgnoredFindingFingerprints,
       pr04RetiredDependencyBoundaries,
       pr04StandaloneDbTestBoundary,
+      productLicenseStandaloneDbManifestSuccessor,
       implementation: [
         listCandidatePaths,
         listCachedEntries,
