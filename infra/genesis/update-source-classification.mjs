@@ -43,6 +43,17 @@ const labOnlyProductTests = new Set([
   "infra/release/l1b-executable-toolchain.test.mjs",
 ])
 
+const labOnlyCharacterizationPaths = new Set([
+  "infra/ingress/README.md",
+  "infra/ingress/native-admin-edge-profile.json",
+  "infra/ingress/validate-ingress.mjs",
+  "infra/ingress/validate-ingress.test.mjs",
+  "infra/keycloak/README.md",
+  "infra/keycloak/native-admin-profile.json",
+  "infra/keycloak/validate-native-admin-profile.mjs",
+  "infra/keycloak/validate-native-admin-profile.test.mjs",
+])
+
 function isTest(path) {
   return (
     path.startsWith("test-support/") ||
@@ -65,6 +76,7 @@ function isPackageBuildInput(path) {
 export function classifyPath(path) {
   if (path.startsWith("infra/portainer/")) return "DEFERRED_NOT_ADMITTED"
   if (labOnlyProductTests.has(path)) return "LAB_ONLY"
+  if (labOnlyCharacterizationPaths.has(path)) return "LAB_ONLY"
   if (retainedInferenceCoreScripts.has(path)) {
     return path.endsWith(".test.mjs") ? "PRODUCT_TEST" : "RELEASE_CONTRACT"
   }

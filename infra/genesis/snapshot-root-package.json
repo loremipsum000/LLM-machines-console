@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "corepack pnpm -r build",
-    "check:inference-core": "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/ingress/validate-ingress.mjs && node infra/storage/validate-profile.mjs",
+    "check:inference-core": "node infra/firecrawl/validate-profile.mjs && node infra/observability/validate-profile.mjs && node infra/storage/validate-profile.mjs",
     "check:genesis": "node infra/genesis/validate-licensing.mjs && node infra/genesis/generate-genesis-source.mjs --check HEAD",
     "dev": "corepack pnpm --filter @llm-machines/contracts build && corepack pnpm --filter @llm-machines/copy build && corepack pnpm --filter @llm-machines/web dev",
     "format": "biome format --write . && corepack pnpm -r format",

@@ -22,6 +22,7 @@ const paths = [
   "package.json",
   "apps/bff/package.json",
   "apps/web/package.json",
+  "apps/web/public/fonts/urbanist",
   "infra/genesis/snapshot-root-package.json",
   "infra/genesis/source-transforms.json",
   "packages/contracts/package.json",
@@ -34,6 +35,7 @@ const paths = [
   "infra/release/release-evidence-policy.json",
   "infra/firecrawl/release/source-package.json",
   "infra/litellm/oss-downstream/source-package.json",
+  "infra/keycloak/themes/llm-machines/login/resources/fonts/urbanist",
 ]
 
 before(() => {
@@ -91,7 +93,48 @@ test("third-party inventory drift is rejected", () => {
       sourceMap.components[0].license = "Apache-2.0"
     },
   )
-  assert.throws(() => validateLicensing(fixtureRoot), /mapping drifted/)
+  assert.throws(() => validateLicensing(fixtureRoot), /obligations drifted/)
+  restore()
+})
+
+test("the third-party source-map envelope is exact", () => {
+  const restore = mutateJson(
+    "infra/release/third-party-source-map.json",
+    (sourceMap) => {
+      sourceMap.status = "UNREVIEWED"
+    },
+  )
+  assert.throws(() => validateLicensing(fixtureRoot), /envelope drifted/)
+  restore()
+})
+
+test("source obligations and packet identities cannot be weakened", () => {
+  const restore = mutateJson(
+    "infra/release/third-party-source-map.json",
+    (sourceMap) => {
+      const grafana = sourceMap.components.find(
+        (component) => component.id === "grafana-private",
+      )
+      grafana.obligation = "license-and-notices"
+      grafana.correspondingSource.status = "UNREVIEWED"
+      grafana.correspondingSource.packetId = "other"
+    },
+  )
+  assert.throws(() => validateLicensing(fixtureRoot), /obligations drifted/)
+  restore()
+})
+
+test("upstream material prefixes cannot be redirected", () => {
+  const restore = mutateJson(
+    "infra/release/third-party-source-map.json",
+    (sourceMap) => {
+      sourceMap.trackedUpstreamMaterial[0].pathPrefixes = [
+        "apps/web/",
+        "infra/keycloak/",
+      ]
+    },
+  )
+  assert.throws(() => validateLicensing(fixtureRoot), /material index drifted/)
   restore()
 })
 

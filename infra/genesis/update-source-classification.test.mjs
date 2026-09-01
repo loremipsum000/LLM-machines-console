@@ -24,6 +24,14 @@ test("lab, historical and deferred paths remain excluded", () => {
     "LAB_ONLY",
   )
   assert.equal(
+    classifyPath("infra/ingress/native-admin-edge-profile.json"),
+    "LAB_ONLY",
+  )
+  assert.equal(
+    classifyPath("infra/keycloak/validate-native-admin-profile.mjs"),
+    "LAB_ONLY",
+  )
+  assert.equal(
     classifyPath("infra/portainer/README.md"),
     "DEFERRED_NOT_ADMITTED",
   )

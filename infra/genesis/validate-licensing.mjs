@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -19,6 +19,114 @@ const expectedLicenseSha256 =
   "3a4a1539d3e265d98a43af998a13e28d4f04fcc35c283bec1e9bf7a86b266ef7"
 const expectedUrbanistLicenseSha256 =
   "ee1221b1c2d08920e5f9ca764eb228dafa5c8090df9cf665373c2287b9cb8f49"
+const expectedSourceMapComponents = [
+  {
+    id: "node-runtime-base",
+    inventorySection: "buildInputs",
+    license: "MIT",
+    obligation: "license-and-notices",
+    correspondingSource: null,
+  },
+  {
+    id: "product-edge",
+    inventorySection: "components",
+    license: "BSD-2-Clause",
+    obligation: "license-and-notices",
+    correspondingSource: null,
+  },
+  {
+    id: "keycloak",
+    inventorySection: "components",
+    license: "Apache-2.0",
+    obligation: "license-and-notices",
+    correspondingSource: null,
+  },
+  {
+    id: "litellm",
+    inventorySection: "components",
+    license: "MIT",
+    obligation: "license-notices-and-transitive-source",
+    correspondingSource: {
+      status: "SOURCE_PACKAGE_CONTRACT",
+      packetId: "litellm-oss-transitive-sources",
+      contractPath: "infra/litellm/oss-downstream/source-package.json",
+    },
+  },
+  {
+    id: "product-postgresql",
+    inventorySection: "components",
+    license: "PostgreSQL",
+    obligation: "license-and-notices",
+    correspondingSource: null,
+  },
+  {
+    id: "prometheus",
+    inventorySection: "components",
+    license: "Apache-2.0",
+    obligation: "license-and-notices",
+    correspondingSource: null,
+  },
+  {
+    id: "alertmanager",
+    inventorySection: "components",
+    license: "Apache-2.0",
+    obligation: "license-and-notices",
+    correspondingSource: null,
+  },
+  {
+    id: "grafana-private",
+    inventorySection: "components",
+    license: "AGPL-3.0-only",
+    obligation: "corresponding-source-required",
+    correspondingSource: {
+      status: "GENERATED_AT_RELEASE",
+      packetId: "grafana-corresponding-source",
+      contractPath: "infra/release/release-evidence-policy.json",
+    },
+  },
+  ...[
+    ["firecrawl-api", "AGPL-3.0-only"],
+    ["firecrawl-browser", "AGPL-3.0-only"],
+    ["firecrawl-search", "AGPL-3.0-or-later"],
+    ["firecrawl-egress", "GPL-2.0-or-later"],
+  ].map(([id, license]) => ({
+    id,
+    inventorySection: "components",
+    license,
+    obligation: "corresponding-source-required",
+    correspondingSource: {
+      status: "SOURCE_PACKAGE_CONTRACT",
+      packetId: "firecrawl-corresponding-source",
+      contractPath: "infra/firecrawl/release/source-package.json",
+    },
+  })),
+]
+const expectedTrackedUpstreamMaterial = [
+  {
+    id: "urbanist-font",
+    version: "1.303",
+    sourceRevision: "f9ba63761ae4298607b133e7f42acd8c6b765f85",
+    license: "OFL-1.1",
+    licensePath: "THIRD_PARTY_LICENSES/Urbanist-OFL-1.1.txt",
+    licenseSha256: expectedUrbanistLicenseSha256,
+    pathPrefixes: [
+      "apps/web/public/fonts/urbanist/",
+      "infra/keycloak/themes/llm-machines/login/resources/fonts/urbanist/",
+    ],
+  },
+  {
+    id: "firecrawl-reduced-source",
+    license: "upstream-component-specific",
+    contractPath: "infra/firecrawl/release/source-package.json",
+    pathPrefixes: ["infra/firecrawl/provenance/", "infra/firecrawl/release/"],
+  },
+  {
+    id: "litellm-oss-downstream",
+    license: "MIT-with-transitive-obligations",
+    contractPath: "infra/litellm/oss-downstream/source-package.json",
+    pathPrefixes: ["infra/litellm/oss-downstream/"],
+  },
+]
 
 function fail(message) {
   throw new Error(`Genesis licensing validation failed: ${message}`)
@@ -103,6 +211,7 @@ function validateSnapshotRootPackage(root) {
     snapshotCommands.includes("scripts/inference-core/guardrails.mjs") ||
     snapshotCommands.includes("scripts/inference-core/pr12-") ||
     snapshotCommands.includes("scripts/pre-genesis/") ||
+    snapshotCommands.includes("infra/ingress/validate-ingress.mjs") ||
     !snapshotPackage.scripts?.test?.includes("check:genesis") ||
     !snapshotPackage.scripts?.["test:release"]?.includes(
       "infra/genesis/*.test.mjs",
@@ -118,6 +227,9 @@ function validateSnapshotRootPackage(root) {
     if (
       !sourcePackage.scripts?.["check:inference-core"]?.includes(
         "scripts/inference-core/guardrails.mjs",
+      ) ||
+      !sourcePackage.scripts?.["check:inference-core"]?.includes(
+        "infra/ingress/validate-ingress.mjs",
       ) ||
       !sourcePackage.scripts?.["check:inference-core:base"]?.includes(
         "--base-ref 6efab17a6f5f6a474a1dfe1444dcdd63e4973dd7",
@@ -176,6 +288,27 @@ export function validateLicensing(root = repositoryRoot) {
   const inventory = readJson(root, "infra/release/core-image-inventory.json")
   const disposition = readJson(root, "infra/release/license-disposition.json")
   const sourceMap = readJson(root, "infra/release/third-party-source-map.json")
+  if (
+    canonicalJson(Object.keys(sourceMap).sort()) !==
+      canonicalJson(
+        [
+          "components",
+          "containsCredentials",
+          "inventoryPath",
+          "noticePath",
+          "schema",
+          "status",
+          "trackedUpstreamMaterial",
+        ].sort(),
+      ) ||
+    sourceMap.schema !== "llm-machines.third-party-source-map.v1" ||
+    sourceMap.status !== "SOURCE_INDEX" ||
+    sourceMap.containsCredentials !== false ||
+    sourceMap.inventoryPath !== "infra/release/core-image-inventory.json" ||
+    sourceMap.noticePath !== "THIRD_PARTY_NOTICES.md"
+  ) {
+    fail("the third-party source-map envelope drifted")
+  }
   const components = inventory.components ?? []
   const productComponents = components.filter(
     (component) => component.kind === "product-build-output",
@@ -206,6 +339,9 @@ export function validateLicensing(root = repositoryRoot) {
       .map((component) => ({ ...component, inventorySection: "components" })),
   ]
   const mapped = sourceMap.components ?? []
+  if (canonicalJson(mapped) !== canonicalJson(expectedSourceMapComponents)) {
+    fail("the third-party source-map obligations drifted")
+  }
   assertExactSet(
     mapped.map((component) => component.id),
     thirdPartyInventory.map((component) => component.id),
@@ -257,7 +393,13 @@ export function validateLicensing(root = repositoryRoot) {
     fail("the first-party licence disposition is not fail closed")
   }
 
-  const urbanist = (sourceMap.trackedUpstreamMaterial ?? []).find(
+  if (
+    canonicalJson(sourceMap.trackedUpstreamMaterial) !==
+    canonicalJson(expectedTrackedUpstreamMaterial)
+  ) {
+    fail("the tracked upstream-material index drifted")
+  }
+  const urbanist = sourceMap.trackedUpstreamMaterial.find(
     (entry) => entry.id === "urbanist-font",
   )
   if (
@@ -268,9 +410,23 @@ export function validateLicensing(root = repositoryRoot) {
     sha256(readFileSync(resolve(root, urbanist.licensePath ?? ""))) !==
       expectedUrbanistLicenseSha256 ||
     !Array.isArray(urbanist.pathPrefixes) ||
-    urbanist.pathPrefixes.length !== 2
+    urbanist.pathPrefixes.some((prefix) => {
+      const directory = resolve(root, prefix)
+      return (
+        !existsSync(directory) ||
+        !readdirSync(directory).some((path) => path.endsWith(".ttf"))
+      )
+    })
   ) {
     fail("the tracked Urbanist source and licence identity drifted")
+  }
+  for (const entry of sourceMap.trackedUpstreamMaterial) {
+    if (
+      typeof entry.contractPath === "string" &&
+      !existsSync(resolve(root, entry.contractPath))
+    ) {
+      fail(`tracked upstream contract is missing for ${entry.id}`)
+    }
   }
 
   const notices = readFileSync(resolve(root, "THIRD_PARTY_NOTICES.md"), "utf8")

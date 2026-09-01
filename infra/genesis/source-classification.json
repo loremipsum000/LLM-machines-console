@@ -1829,7 +1829,7 @@
     },
     {
       "path": "infra/ingress/README.md",
-      "class": "GENERIC_DEPLOYMENT"
+      "class": "LAB_ONLY"
     },
     {
       "path": "infra/ingress/edge-policy.json",
@@ -1837,7 +1837,7 @@
     },
     {
       "path": "infra/ingress/native-admin-edge-profile.json",
-      "class": "GENERIC_DEPLOYMENT"
+      "class": "LAB_ONLY"
     },
     {
       "path": "infra/ingress/no-bypass-policy.json",
@@ -1893,15 +1893,15 @@
     },
     {
       "path": "infra/ingress/validate-ingress.mjs",
-      "class": "GENERIC_DEPLOYMENT"
+      "class": "LAB_ONLY"
     },
     {
       "path": "infra/ingress/validate-ingress.test.mjs",
-      "class": "PRODUCT_TEST"
+      "class": "LAB_ONLY"
     },
     {
       "path": "infra/keycloak/README.md",
-      "class": "GENERIC_DEPLOYMENT"
+      "class": "LAB_ONLY"
     },
     {
       "path": "infra/keycloak/inference-core-application-realm-commissioning.json",
@@ -1921,7 +1921,7 @@
     },
     {
       "path": "infra/keycloak/native-admin-profile.json",
-      "class": "GENERIC_DEPLOYMENT"
+      "class": "LAB_ONLY"
     },
     {
       "path": "infra/keycloak/pr11a-console-session-policy.json",
@@ -2033,11 +2033,11 @@
     },
     {
       "path": "infra/keycloak/validate-native-admin-profile.mjs",
-      "class": "GENERIC_DEPLOYMENT"
+      "class": "LAB_ONLY"
     },
     {
       "path": "infra/keycloak/validate-native-admin-profile.test.mjs",
-      "class": "PRODUCT_TEST"
+      "class": "LAB_ONLY"
     },
     {
       "path": "infra/keycloak/validate-pr11a-session-policy.mjs",
