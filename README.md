@@ -16,7 +16,8 @@ Source authority for the LLM Machines Core Appliance.
 
 Console is the primary customer surface. Retained native administration uses
 dedicated Product-edge authorities and separate native sessions. Private
-service ports are never customer ingress. Portainer is not admitted.
+service ports are never customer ingress.
+Portainer remains deferred for upstream security work. It is not admitted.
 
 ## Repository
 
